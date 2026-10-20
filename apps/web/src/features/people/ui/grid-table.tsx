@@ -20,12 +20,20 @@ type Range = { col: number; from: number; to: number } | null;
 type At = { r: number; c: number };
 
 const id = (r: number, c: number) => `grid-${r}-${c}`;
-const focusCell = (r: number, c: number) => document.getElementById(id(r, c))?.focus();
 const same = (a: At | null, r: number, c: number) => a?.r === r && a.c === c;
 const TYPE = { type: "employmentType", values: TYPES };
 const choiceWords = (f: GridField): readonly string[] =>
   f.kind === "sex" ? [t("bulkGrid.sex.MALE"), t("bulkGrid.sex.FEMALE")] : f.kind === "type" ? TYPES.map((v) => enumLabel(TYPE, v)) : [];
 const pickable = (f: GridField, text: string) => narrow(choiceWords(f), text);
+
+const viewport = (grid: HTMLDivElement) => {
+  let scroller: HTMLElement | null = grid.parentElement;
+  while (scroller && !(scroller.scrollHeight > scroller.clientHeight && /auto|scroll/.test(getComputedStyle(scroller).overflowY))) scroller = scroller.parentElement;
+  const top = scroller ? Math.max(0, scroller.getBoundingClientRect().top + scroller.clientTop) : 0;
+  const bottom = scroller ? Math.min(window.innerHeight, scroller.getBoundingClientRect().top + scroller.clientTop + scroller.clientHeight) : window.innerHeight;
+  const rowsTop = grid.getBoundingClientRect().top + grid.clientTop + (grid.firstElementChild?.firstElementChild?.getBoundingClientRect().height ?? 0);
+  return { scroller: scroller ?? window, top, bottom, rowsTop };
+};
 
 const nextCell = (key: string, r: number, c: number, rc: number, cc: number, ctrl?: boolean, page = DEFAULT_VISIBLE): At =>
   key === "ArrowDown" ? { r: Math.min(rc - 1, r + 1), c }
@@ -79,58 +87,54 @@ export function GridTable({
   const [opt, setOpt] = useState(0);
   const [range, setRange] = useState<Range>(null);
   const input = useRef<HTMLInputElement>(null);
+  const editingNow = useRef<At | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
+  const [viewportRows, setViewportRows] = useState(visibleRows);
 
   useEffect(() => {
-    const scroller = gridRef.current?.parentElement;
-    if (!scroller) return;
-    const onScroll = () => setScrollTop(scroller.scrollTop);
-    scroller.addEventListener("scroll", onScroll, { passive: true });
-    return () => scroller.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    const scroller = gridRef.current?.parentElement;
-    if (!scroller || !active) return;
-    const top = active.r * ROW_HEIGHT;
-    if (top < scroller.scrollTop) scroller.scrollTo({ top, behavior: "instant" });
-    else if (top + ROW_HEIGHT > scroller.scrollTop + scroller.clientHeight) scroller.scrollTo({ top: top + ROW_HEIGHT - scroller.clientHeight, behavior: "instant" });
-  }, [active]);
-
-  const windowSize = visibleRows + overscan;
-  let first = 0;
-  let last = Math.min(rows.length, windowSize);
-  if (rows.length > windowSize) {
-    if (active) {
-      if (active.r < visibleRows) {
-        first = 0;
-        last = Math.min(rows.length, windowSize);
-      } else if (active.r >= rows.length - visibleRows) {
-        first = Math.max(0, rows.length - windowSize);
-        last = rows.length;
-      } else {
-        first = Math.max(0, active.r - Math.floor(visibleRows / 2));
-        last = Math.min(rows.length, first + windowSize);
+    const onScroll = () => {
+      if (!gridRef.current) return;
+      const { top, bottom, rowsTop } = viewport(gridRef.current);
+      if (input.current && editingNow.current) {
+        const bounds = input.current.getBoundingClientRect();
+        if (bounds.bottom <= top || bounds.top >= bottom) input.current.blur();
       }
-    } else if (scrollTop > 0) {
-      first = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - overscan);
-      last = Math.min(rows.length, first + windowSize);
-    }
-  }
+      setScrollTop(Math.max(0, Math.min(rows.length * ROW_HEIGHT, top - rowsTop)));
+      setViewportRows(Math.max(visibleRows, Math.ceil((bottom - top) / ROW_HEIGHT) + 1));
+    };
+    onScroll();
+    // Scroll does not bubble; capture also observes the document and any scrollable ancestor.
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [visibleRows, rows.length]);
 
-  const editingNow = useRef<At | null>(null);
+  const windowSize = viewportRows + overscan;
+  const first = Math.max(0, Math.min(rows.length - windowSize, Math.floor(scrollTop / ROW_HEIGHT) - Math.floor(overscan / 2)));
+  const last = Math.min(rows.length, first + windowSize);
+
   const enterAfterIme = useRef(false);
   const startEditing = (r: number, c: number) => ((editingNow.current = { r, c }), setEditing({ r, c }));
   const shown = (row: GridRow, c: number) => row.typed[c] ?? row.current[c] ?? "";
   const inRange = (r: number, c: number) => range && range.col === c && r >= Math.min(range.from, range.to) && r <= Math.max(range.from, range.to);
-  useLayoutEffect(() => void (active && input.current?.focus()), [active]);
+  useLayoutEffect(() => void (active && input.current?.focus({ preventScroll: true })), [active]);
 
   const move = (r: number, c: number) => {
+    if (!rows.length || !columns.length) return;
     const nextR = Math.max(0, Math.min(rows.length - 1, r));
     const nextC = Math.max(0, Math.min(columns.length - 1, c));
+    if (gridRef.current) {
+      const { scroller, top, bottom, rowsTop } = viewport(gridRef.current);
+      const cellTop = rowsTop + nextR * ROW_HEIGHT;
+      const delta = cellTop < top ? cellTop - top : Math.max(0, cellTop + ROW_HEIGHT - bottom);
+      scroller.scrollBy({ top: delta, behavior: "instant" });
+      setScrollTop(Math.max(0, top - rowsTop + delta));
+    }
     setActive({ r: nextR, c: nextC });
-    if (typeof document !== "undefined") focusCell(nextR, nextC);
   };
   const nextError = (r: number, c: number) => {
     const flat = rows.flatMap((row, ri) => row.cells.map((cell, ci) => ({ ri, ci, bad: "bad" in cell })));
@@ -168,6 +172,7 @@ export function GridTable({
     if (to) move(to.r, to.c);
   };
   const nav = (e: KeyboardEvent<HTMLElement>, r: number, c: number) => {
+    if (!rows[r]?.cells[c] || !columns[c]) return;
     const key = e.key;
     if (key === "ArrowDown" && e.shiftKey) {
       e.preventDefault();
@@ -233,7 +238,7 @@ export function GridTable({
         const r = first + idx;
         const st = statusOf(row);
         return (
-          <div key={row.id} role="row" className={s.row}>
+          <div key={row.id} role="row" className={`${s.row} ${m.row}`}>
             <span role="rowheader" className={s.n}>{r + 1}</span>
             <span role="gridcell" className="num">{row.number}</span>
             <span role="gridcell">{row.name}</span>

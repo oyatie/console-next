@@ -3,3 +3,9 @@
   grid-column: 1 / -1;
   pointer-events: none;
 }
+
+/* Keep rendered rows the same height as their virtual spacers. */
+.row > span {
+  height: calc(var(--target) + var(--space-1));
+  min-height: 0;
+}
