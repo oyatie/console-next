@@ -130,7 +130,7 @@ fn hhmm(m: u16) -> String {
 }
 
 fn show(case: &Json) -> String {
-    let read = parse(
+    let read = parse_with_overnight(
         case.str("raw").unwrap_or_default(),
         case.num("long").unwrap_or(960),
         case.flag("confirmed"),
@@ -163,6 +163,24 @@ fn cases(table: &Json) -> &[Json] {
         Some(Json::Arr(cases)) => cases,
         _ => &[],
     }
+}
+
+#[test]
+fn public_parser_keeps_the_three_argument_contract_without_a_plan() {
+    use crate::records::parse;
+
+    assert_eq!(
+        parse("22-07", 960, true),
+        Err(ParseRefusal::OvernightWithoutMarker)
+    );
+    assert_eq!(parse("22-07+", 480, false), Err(ParseRefusal::SpanTooLong));
+    assert_eq!(
+        parse("22-07+", 480, true),
+        Ok(Entry::Times(vec![Window {
+            start: 1320,
+            end: 1860,
+        }]))
+    );
 }
 
 #[test]

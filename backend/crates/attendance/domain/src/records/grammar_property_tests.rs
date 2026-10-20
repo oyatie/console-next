@@ -18,8 +18,8 @@ fn every_minute_round_trips_and_confirmation_changes_only_the_policy_guard() {
             );
             for limit in [1, 480, 960, 1440] {
                 let expected = Ok(Entry::Times(vec![Window { start, end }]));
-                assert_eq!(parse(&raw, limit, true, false), expected, "{raw}");
-                let unconfirmed = parse(&raw, limit, false, false);
+                assert_eq!(parse(&raw, limit, true), expected, "{raw}");
+                let unconfirmed = parse(&raw, limit, false);
                 if u32::from(duration) > limit {
                     assert_eq!(unconfirmed, Err(ParseRefusal::SpanTooLong));
                 } else {
@@ -46,7 +46,7 @@ fn arbitrary_unicode_never_panics_or_produces_unbounded_or_overlapping_spans() {
                 })
                 .collect();
             for overnight in [false, true] {
-                if let Ok(Entry::Times(spans)) = parse(&raw, 960, true, overnight) {
+                if let Ok(Entry::Times(spans)) = parse_with_overnight(&raw, 960, true, overnight) {
                     assert!(!spans.is_empty());
                     assert!(spans[0].start < 1440);
                     assert!(spans.iter().all(|w| w.start < w.end && w.end <= 2880));

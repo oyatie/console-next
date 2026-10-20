@@ -240,11 +240,17 @@ fn spans(body: &str, next_day: bool, overnight: bool) -> Result<Vec<Window>, Par
     Ok(spans)
 }
 
+/// Parse a value without a day plan.
+///
 /// # Errors
-/// Why the value cannot be read, with a stable code. `overnight`: the day's
-/// planned shift crosses midnight, so a single span may end the next day
-/// without the `+`.
-pub fn parse(
+/// Why the value cannot be read, with a stable code.
+pub fn parse(raw: &str, long_span_minutes: u32, confirmed: bool) -> Result<Entry, ParseRefusal> {
+    parse_with_overnight(raw, long_span_minutes, confirmed, false)
+}
+
+/// `overnight`: the day's planned shift crosses midnight, so a single span
+/// may end the next day without the `+`.
+pub(super) fn parse_with_overnight(
     raw: &str,
     long_span_minutes: u32,
     confirmed: bool,

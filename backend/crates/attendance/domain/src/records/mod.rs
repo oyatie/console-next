@@ -106,7 +106,8 @@ pub fn resolve_value(
         .as_ref()
         .filter(|_| plan.kind == DayKind::Work || plan.holiday_work);
     let overnight = shift.is_some_and(|s| s.end > 1440);
-    let entry = parse(raw, long_span_minutes, confirmed, overnight).map_err(CellRefusal::Parse)?;
+    let entry = grammar::parse_with_overnight(raw, long_span_minutes, confirmed, overnight)
+        .map_err(CellRefusal::Parse)?;
     let record = |kind, segments| {
         if future {
             Err(CellRefusal::FutureDate)
