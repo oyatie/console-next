@@ -208,20 +208,19 @@ fn check_source_file(
     result: &mut GateResult,
     (wrappers, exclusion_counts): (&tx_wrapper::Wrappers, &mut HashMap<String, usize>),
 ) {
+    context::check_raw_insert(file, source, result);
     let wrapper_impls = wrappers.impl_ranges(file, source);
     let lines: Vec<&str> = source.lines().collect();
     let in_test = compute_test_mask(&lines);
     let mut pending_state_changing = false;
     let mut pending_exemption: Option<String> = None;
     let mut byte_offset = 0usize;
-    let mut line_idx = 0usize;
 
-    for line in source.lines() {
+    for (line_idx, line) in source.lines().enumerate() {
         if in_test.get(line_idx).copied().unwrap_or(false) {
             pending_state_changing = false;
             pending_exemption = None;
             byte_offset += line.len() + 1;
-            line_idx += 1;
             continue;
         }
 
@@ -309,7 +308,6 @@ fn check_source_file(
         }
 
         byte_offset += line.len() + 1;
-        line_idx += 1;
     }
 }
 

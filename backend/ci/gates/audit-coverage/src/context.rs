@@ -1,6 +1,29 @@
 //! Audit source and intent-key admission are owned by the two shared boundaries.
 use super::{GateResult, Violation, ViolationKind};
 use std::{fs, path::Path};
+
+pub(super) fn check_raw_insert(file: &Path, source: &str, result: &mut GateResult) {
+    if super::path_ends_with_repo_relative(file, "crates/platform/db/src/audit_write.rs") {
+        return;
+    }
+    let lines: Vec<_> = source.lines().collect();
+    let mask = super::compute_test_mask(&lines);
+    let production = lines
+        .iter()
+        .zip(mask)
+        .map(|(line, test)| if test { "" } else { *line })
+        .collect::<Vec<_>>()
+        .join("\n");
+    if super::sql::contains_audit_insert(&production) {
+        result.violations.push(Violation {
+            kind: ViolationKind::MissingAuditEvent,
+            file: file.to_path_buf(),
+            function_name: None,
+            detail: "audit_events inserts must use the shared audit writer in crates/platform/db/src/audit_write.rs".into(),
+        });
+    }
+}
+
 pub(super) fn check(root: &Path, mut result: GateResult) -> GateResult {
     for (path, required) in [
         (

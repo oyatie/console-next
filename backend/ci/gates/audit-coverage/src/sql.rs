@@ -11,9 +11,28 @@ pub(super) fn contains_state_mutating_sql(body: &str) -> bool {
     uses_sqlx_query && literals::contents(body).iter().any(|sql| mutates(sql))
 }
 
+pub(super) fn contains_audit_insert(source: &str) -> bool {
+    literals::contents(source).iter().any(|sql| {
+        let searchable = executable_sql(sql, false)
+            .unwrap_or_else(|| sql.to_owned())
+            .to_ascii_lowercase()
+            .replace('.', " . ");
+        let words: Vec<_> = searchable
+            .split(|c: char| !c.is_ascii_alphanumeric() && c != '_' && c != '.')
+            .filter(|word| !word.is_empty())
+            .collect();
+        words.windows(3).enumerate().any(|(i, words_at)| {
+            words_at[..2] == ["insert", "into"]
+                && (words_at[2] == "audit_events"
+                    || (words.get(i + 3) == Some(&".")
+                        && words.get(i + 4) == Some(&"audit_events")))
+        })
+    })
+}
+
 fn mutates(sql: &str) -> bool {
     // Unknown quote/comment extents fail closed to the original keyword scan.
-    let searchable = executable_sql(sql)
+    let searchable = executable_sql(sql, true)
         .unwrap_or_else(|| sql.to_owned())
         .to_ascii_lowercase();
     let words: Vec<_> = searchable
@@ -26,7 +45,7 @@ fn mutates(sql: &str) -> bool {
     })
 }
 
-fn executable_sql(sql: &str) -> Option<String> {
+fn executable_sql(sql: &str, mask_identifiers: bool) -> Option<String> {
     let bytes = sql.as_bytes();
     let mut masked = bytes.to_vec();
     let mut at = 0;
@@ -59,7 +78,9 @@ fn executable_sql(sql: &str) -> Option<String> {
             None
         };
         if let Some(end) = end {
-            masked[at..end].fill(b' ');
+            if mask_identifiers || bytes[at] != b'"' {
+                masked[at..end].fill(b' ');
+            }
             at = end;
         } else {
             at += 1;

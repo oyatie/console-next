@@ -59,7 +59,7 @@ app/tests/workflow_run_read_surface.rs	606
 app/tests/workflow_runtime_finalize_api.rs	835
 app/tests/workflow_runtime_instance_api.rs	1216
 app/tests/workorder_api.rs	1451
-ci/gates/audit-coverage/src/lib.rs	537
+ci/gates/audit-coverage/src/lib.rs	535
 ci/gates/audit-coverage/tests/gate_detects_violation.rs	450
 ci/gates/layer-boundary/src/lib.rs	431
 ci/gates/layer-boundary/tests/gate_detects_violation.rs	968
