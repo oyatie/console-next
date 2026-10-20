@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { chromium, type Browser, type Page } from "@playwright/test";

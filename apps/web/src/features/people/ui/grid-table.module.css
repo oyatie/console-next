@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
 /* Virtual spacers for 2,000-row capacity (spec E6-grid, P-08, #28). Tokens only. */
 .spacer {
   grid-column: 1 / -1;
