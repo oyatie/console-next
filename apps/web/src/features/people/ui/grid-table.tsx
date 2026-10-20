@@ -43,7 +43,7 @@ const nextCell = (key: string, r: number, c: number, rc: number, cc: number, ctr
   : key === "PageDown" ? { r: Math.min(rc - 1, r + page), c }
   : key === "PageUp" ? { r: Math.max(0, r - page), c }
   : key === "Home" ? (ctrl ? { r: 0, c: 0 } : { r, c: 0 })
-  : key === "End" ? (ctrl ? { r: rc - 1, c: cc - 1 } : { r: rc - 1, c }) : { r, c };
+  : key === "End" ? (ctrl ? { r: rc - 1, c: cc - 1 } : { r, c: cc - 1 }) : { r, c };
 
 /**
  * The correction grid (spec E6-grid, APG grid keys): arrows move, typing or F2 edits, Enter/Esc leave the cell,
@@ -87,6 +87,7 @@ export function GridTable({
   const [opt, setOpt] = useState(0);
   const [range, setRange] = useState<Range>(null);
   const input = useRef<HTMLInputElement>(null);
+  const focusPending = useRef(false);
   const editingNow = useRef<At | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -121,20 +122,29 @@ export function GridTable({
   const startEditing = (r: number, c: number) => ((editingNow.current = { r, c }), setEditing({ r, c }));
   const shown = (row: GridRow, c: number) => row.typed[c] ?? row.current[c] ?? "";
   const inRange = (r: number, c: number) => range && range.col === c && r >= Math.min(range.from, range.to) && r <= Math.max(range.from, range.to);
-  useLayoutEffect(() => void (active && input.current?.focus({ preventScroll: true })), [active]);
-
-  const move = (r: number, c: number) => {
-    if (!rows.length || !columns.length) return;
-    const nextR = Math.max(0, Math.min(rows.length - 1, r));
-    const nextC = Math.max(0, Math.min(columns.length - 1, c));
+  const validActive = Boolean(active && rows[active.r]?.cells[active.c] && columns[active.c]);
+  useLayoutEffect(() => {
+    if (!active || !validActive) return;
+    focusPending.current = true;
     if (gridRef.current) {
       const { scroller, top, bottom, rowsTop } = viewport(gridRef.current);
-      const cellTop = rowsTop + nextR * ROW_HEIGHT;
+      const cellTop = rowsTop + active.r * ROW_HEIGHT;
       const delta = cellTop < top ? cellTop - top : Math.max(0, cellTop + ROW_HEIGHT - bottom);
       scroller.scrollBy({ top: delta, behavior: "instant" });
       setScrollTop(Math.max(0, top - rowsTop + delta));
     }
-    setActive({ r: nextR, c: nextC });
+  }, [active, validActive]);
+  // Scrolling may need a second render to mount the requested cell's input.
+  useLayoutEffect(() => {
+    if (focusPending.current && input.current) {
+      input.current.focus({ preventScroll: true });
+      focusPending.current = false;
+    }
+  });
+
+  const move = (r: number, c: number) => {
+    if (!rows.length || !columns.length) return;
+    setActive({ r: Math.max(0, Math.min(rows.length - 1, r)), c: Math.max(0, Math.min(columns.length - 1, c)) });
   };
   const nextError = (r: number, c: number) => {
     const flat = rows.flatMap((row, ri) => row.cells.map((cell, ci) => ({ ri, ci, bad: "bad" in cell })));
@@ -225,8 +235,10 @@ export function GridTable({
 
   const at = active && rows[active.r]?.cells[active.c];
   return (
-    <div ref={gridRef} className={s.grid} role="grid" tabIndex={0} onKeyDown={onGridKeyDown} aria-label={label} aria-rowcount={rows.length + 1} data-cols={columns.length}>
-      <div role="row" className={s.head}>
+    <div ref={gridRef} className={s.grid} role="grid" tabIndex={0} onKeyDown={onGridKeyDown}
+      onFocus={(e) => e.target === e.currentTarget && move(active?.r ?? 0, active?.c ?? 0)}
+      aria-label={label} aria-rowcount={rows.length + 1} data-cols={columns.length}>
+      <div role="row" aria-rowindex={1} className={s.head}>
         <span role="columnheader" className={s.n}>{t("bulkGrid.col.row")}</span>
         <span role="columnheader">{t("bulkGrid.col.number")}</span>
         <span role="columnheader">{t("bulkGrid.col.name")}</span>
@@ -238,7 +250,7 @@ export function GridTable({
         const r = first + idx;
         const st = statusOf(row);
         return (
-          <div key={row.id} role="row" className={`${s.row} ${m.row}`}>
+          <div key={row.id} role="row" aria-rowindex={r + 2} className={`${s.row} ${m.row}`}>
             <span role="rowheader" className={s.n}>{r + 1}</span>
             <span role="gridcell" className="num">{row.number}</span>
             <span role="gridcell">{row.name}</span>
