@@ -124,6 +124,7 @@ fn every_refusal_has_its_stable_wire_code_and_status_class() {
     let all = [
         (R::ShiftWindowInvalid, "shift_window_invalid", false),
         (R::BreakBelowMinimum, "break_below_minimum", false),
+        (R::BreakFloorNotInForce, "break_floor_not_in_force", false),
         (R::DailyHoursOver8, "daily_hours_over_8", false),
         (R::WeeklyHoursOver40, "weekly_hours_over_40", false),
         (R::WeeklyHolidayMissing, "weekly_holiday_missing", false),

@@ -103,7 +103,7 @@ pub(crate) fn preview(
     let derived = pattern
         .spec
         .pattern
-        .validate()
+        .validate(today, &u.floors)
         .map_err(ScheduleStoreError::Refused)?;
     let reason = LayerReason::parse(&input.reason)
         .ok_or(ScheduleStoreError::Invalid(codes::REASON_INVALID))?;

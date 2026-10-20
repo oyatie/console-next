@@ -2,11 +2,14 @@
 
 use console_attendance_application::CallerScope;
 use console_attendance_application::schedule::{Items, PatternInput, PatternRead, StoredSpec};
-use console_attendance_domain::schedule::{PatternSpec, ScheduleRefusal, winner};
+use console_attendance_domain::schedule::{
+    BreakFloorRow, Derived, PatternSpec, ScheduleRefusal, winner,
+};
 use console_kernel_core::OrgId;
 use console_platform_db::{with_audits, with_org_conn};
 use serde_json::{Value, json};
 use sqlx::{Postgres, Row, Transaction};
+use time::Date;
 use uuid::Uuid;
 
 use super::org::{load_org, load_roster};
@@ -26,7 +29,11 @@ const SELECT: &str = "SELECT p.id, p.name, p.spec, p.weekly_minutes, p.cycle_day
 /// # Errors
 /// `regime_not_supported_yet` for 탄력 · 선택 · 간주 · 재량, a rule refusal, or
 /// `pattern_input_invalid` for a malformed body.
-pub fn parse_input(input: &PatternInput) -> Result<StoredSpec, ScheduleStoreError> {
+pub fn parse_input(
+    input: &PatternInput,
+    on: Date,
+    floors: &[BreakFloorRow],
+) -> Result<(StoredSpec, Derived), ScheduleStoreError> {
     if matches!(
         input.kind.as_str(),
         "FLEXIBLE" | "SELECTIVE" | "DEEMED" | "DISCRETIONARY"
@@ -41,27 +48,47 @@ pub fn parse_input(input: &PatternInput) -> Result<StoredSpec, ScheduleStoreErro
     });
     let pattern: PatternSpec = serde_json::from_value(raw)
         .map_err(|_| ScheduleStoreError::Invalid(codes::PATTERN_INPUT_INVALID))?;
-    pattern.validate()?;
+    let judged = pattern.validate(on, floors);
+    record_floor(&judged);
+    let derived = judged?;
     let name = input.name.trim();
     if name.is_empty() || name.chars().count() > 60 {
         return Err(ScheduleStoreError::Invalid(codes::PATTERN_INPUT_INVALID));
     }
-    Ok(StoredSpec {
-        pattern,
-        holiday_rule: input.holiday_rule.unwrap_or_default(),
-    })
+    Ok((
+        StoredSpec {
+            pattern,
+            holiday_rule: input.holiday_rule.unwrap_or_default(),
+        },
+        derived,
+    ))
+}
+
+fn record_floor(judged: &Result<console_attendance_domain::schedule::Derived, ScheduleRefusal>) {
+    let outcome = match judged {
+        Ok(_) => "within",
+        Err(ScheduleRefusal::BreakBelowMinimum) => "below",
+        Err(ScheduleRefusal::BreakFloorNotInForce) => "not_in_force",
+        Err(_) => return,
+    };
+    metrics::counter!("attendance_break_floor_judgments_total", "outcome" => outcome).increment(1);
+    if outcome != "within" {
+        tracing::info!(outcome, "attendance break floor judgment");
+    }
 }
 
 fn read_row(
     row: &sqlx::postgres::PgRow,
     people_today: i64,
+    on: Date,
+    floors: &[BreakFloorRow],
 ) -> Result<PatternRead, ScheduleStoreError> {
     let spec: Value = row.try_get("spec")?;
     let spec: StoredSpec =
         serde_json::from_value(spec).map_err(|_| ScheduleStoreError::Corrupt("spec"))?;
     let derived = spec
         .pattern
-        .validate()
+        .validate(on, floors)
         .map_err(|_| ScheduleStoreError::Corrupt("spec"))?;
     Ok(PatternRead {
         id: row.try_get("id")?,
@@ -88,7 +115,8 @@ async fn one(
         .fetch_optional(tx.as_mut())
         .await?
         .ok_or(ScheduleStoreError::NotFound(codes::PATTERN_NOT_FOUND))?;
-    read_row(&row, 0)
+    let floors = super::break_floor::load(tx).await?;
+    read_row(&row, 0, today_kst(), &floors)
 }
 
 impl PgAttendanceStore {
@@ -124,7 +152,7 @@ impl PgAttendanceStore {
                         .iter()
                         .map(|r| {
                             let id: Uuid = r.try_get("id")?;
-                            read_row(r, counts.get(&id).copied().unwrap_or(0))
+                            read_row(r, counts.get(&id).copied().unwrap_or(0), today, &u.floors)
                         })
                         .collect::<Result<_, ScheduleStoreError>>()?;
                     Ok(Items { items })
@@ -140,14 +168,15 @@ impl PgAttendanceStore {
         key: &str,
         input: PatternInput,
     ) -> Result<(PatternRead, bool), ScheduleStoreError> {
-        let spec = parse_input(&input)?;
-        let derived = spec.pattern.validate()?;
-        let name = input.name.trim().to_owned();
-        let body = json!({"name": name, "spec": spec});
-        let print = fingerprint(&body);
         let (caller, key) = (caller.clone(), key.to_owned());
         with_audits::<_, _, ScheduleStoreError>(&self.pool, OrgId::from_uuid(caller.org_id), move |tx| {
             Box::pin(async move {
+                let on = today_kst();
+                let floors = super::break_floor::load(tx).await?;
+                let (spec, derived) = parse_input(&input, on, &floors)?;
+                let name = input.name.trim().to_owned();
+                let body = json!({"name": name, "spec": spec});
+                let print = fingerprint(&body);
                 let key = claim_key(tx, &caller, &key).await?;
                 let prior: Option<(Uuid, String)> = sqlx::query_as(
                     "SELECT id, request_fingerprint FROM attendance_work_patterns WHERE idempotency_key = $1",

@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use console_attendance_application::{calendar::ContractualHoliday, schedule::StoredSpec};
 use console_attendance_domain::schedule::{
-    DayPlan, HolidayFact, HolidayKind, LayerRef, Level, plan_day, winner,
+    BreakFloorRow, DayPlan, HolidayFact, HolidayKind, LayerRef, Level, plan_day, winner,
 };
 use sqlx::{Postgres, Row, Transaction};
 use time::{Date, OffsetDateTime};
@@ -45,6 +45,7 @@ pub(crate) struct Universe {
     pub public: HashMap<Date, HolidayFact>,
     pub contractual: Vec<ContractualHoliday>,
     pub loaded_years: Vec<i32>,
+    pub floors: Vec<BreakFloorRow>,
 }
 
 pub(crate) const LAYER_COLUMNS: &str = "id, scope_kind, COALESCE(legal_entity_id, workplace_id, org_unit_id, crew_id, employee_id) AS scope_id, \
@@ -102,6 +103,7 @@ impl Universe {
         }
         let (public, loaded_years) = load_public(tx, years).await?;
         let contractual = load_contractual(tx).await?;
+        let floors = super::break_floor::load(tx).await?;
         Ok(Self {
             org,
             layers,
@@ -109,6 +111,7 @@ impl Universe {
             public,
             contractual,
             loaded_years,
+            floors,
         })
     }
 
