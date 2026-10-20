@@ -55,6 +55,7 @@ mod read;
 mod record_end;
 mod registration;
 mod registration_change;
+mod registration_end;
 mod registration_revision;
 mod reissue;
 mod revision_copy;
@@ -82,6 +83,7 @@ pub use governed::{
 pub use org_end::{EndOffer, OrgUnitEndOptions, OrgUnitErased};
 pub use org_units::{OrgUnitSetupFuture, OrgUnitSetupWritePort, RoutedFuture};
 pub use record_end::{OpenExitCase, RecordEndOptions};
+pub use registration_end::RegistrationEndOptions;
 
 use console_entity_application::{Actor, Revision};
 use console_entity_domain::Refusal;

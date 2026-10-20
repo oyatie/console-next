@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+- entity
+operationId: registrationEndOptions
+summary: Preview deletion of a mistaken business registration
+description: Setup-only void; linked non-voided workplaces refuse with record_in_use. can_manage is Cedar legal_entity_manage on this registration. Revisions remain in storage and evidence stays under retention.
+security:
+- bearerAuth: []
+parameters:
+- name: registrationId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+responses:
+  '200':
+    description: Deletion permission, blockers and cascade preview.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/RegistrationEndOptions'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

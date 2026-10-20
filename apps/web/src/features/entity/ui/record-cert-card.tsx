@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Eye, FilePlus2, FileText, MoreHorizontal } from "lucide-react";
 import type { BusinessRegistration, LegalEntity } from "@console/api/pending";
 import { t } from "@console/i18n";
@@ -8,7 +7,6 @@ import { BIZ_KIND, ISSUE_REASON, label, labeled, RECORD_STATUS, TAX_TYPE } from 
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { MenuButton } from "../../../ui/menu/menu-button";
-import { entityEndQuery } from "../api";
 import { addressLine, samePlace } from "../domain/view";
 import { FactRow } from "./record-fact-row";
 import { entityFields } from "./record-entity-fields";
@@ -39,7 +37,6 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
   // company-06: suspension / resumption of this certificate, offered on an open record only.
   const [statusing, setStatusing] = useState(false);
   const [voiding, setVoiding] = useState(false);
-  const end = useQuery({ ...entityEndQuery(e.id), retry: false }).data;
   const locked = useRecordLock() !== null;
   const suspended = c?.status === "SUSPENDED";
   const fix = <V,>(spec: FieldSpec<V>) => ({ kind: "fix" as const, onPress: () => act.field(spec) });
@@ -73,7 +70,7 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
               id: "void",
               text: t("uiRecordActions.end.delete"),
               label: t("uiRecordActions.end.delete"),
-              why: operating || end?.phase === "OPERATING" ? t("entity.regVoid.operatingWhy") : undefined,
+              why: operating ? t("entity.regVoid.operatingWhy") : undefined,
             }]}
             onAction={(k) => { if (k === "void") setVoiding(true); }}
           />
@@ -118,7 +115,7 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
         <FactRow label={t("entityRecord.field.issued")} action={fix(f.issued)}><span className="num">{c?.cert_issued_on ? fmtDate(c.cert_issued_on) : "—"}</span> · {c?.tax_office_label || "—"}</FactRow>
       </div>
       {statusing && <RegistrationStatusSheet e={e} r={r} onClose={() => setStatusing(false)} />}
-      {voiding && <VoidRegistration e={e} r={r} onClose={() => setVoiding(false)} />}
+      {voiding && <VoidRegistration r={r} onClose={() => setVoiding(false)} />}
     </section>
   );
 }

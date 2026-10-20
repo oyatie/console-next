@@ -13,12 +13,6 @@
   "why": "backend operation served; no action on the record's own page found within two interactions"
  },
  {
-  "record": "Entity.business_registration",
-  "op": "end",
-  "lane": "unit: crud-g10 (orchestra; registration void from the cert card)",
-  "why": "Registration void has no UI"
- },
- {
   "record": "Entity.document",
   "op": "create",
   "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",

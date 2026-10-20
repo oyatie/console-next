@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -10,10 +11,10 @@ import type { Act } from "./record-revise-sheet";
 import { CertCard } from "./record-cert-card";
 import { VoidRegistration } from "./void-registration";
 
-const endRead = vi.hoisted(() => ({ current: undefined as unknown }));
+const endRead = vi.hoisted(() => ({ current: undefined as unknown, error: null as unknown }));
 vi.mock("@tanstack/react-query", async (original) => ({
   ...(await original<typeof import("@tanstack/react-query")>()),
-  useQuery: () => ({ data: endRead.current, isPending: false, isError: false }),
+  useQuery: () => ({ data: endRead.current, error: endRead.error, isFetching: !endRead.current && !endRead.error, isPending: !endRead.current && !endRead.error, isError: !!endRead.error }),
 }));
 vi.mock("../../../ui/dialog", () => ({
   Dialog: ({ open, title, children }: { open: boolean; title: string; children: ReactNode }) =>
@@ -21,7 +22,7 @@ vi.mock("../../../ui/dialog", () => ({
 }));
 
 beforeAll(() => loadCatalog("ko"));
-afterEach(() => { endRead.current = undefined; });
+afterEach(() => { endRead.current = undefined; endRead.error = null; });
 
 const reg = (over: Partial<BusinessRegistration> = {}): BusinessRegistration => ({
   id: "reg-1",
@@ -84,60 +85,42 @@ async function renderWithRouter(node: () => ReactNode) {
   return renderToStaticMarkup(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
 }
 
-test("CertCard offers the ⋯ menu with 삭제 in setup and renders cascade preview + reason choices from end-options read", async () => {
-  const e = entity();
-  const r = reg();
-  endRead.current = {
-    id: e.id,
-    phase: "SETUP",
-    delete: { allowed: true, refusal: null },
-    close: { allowed: false, refusal: "record_never_used" },
-    can_manage: true,
-    open_exit_cases: 0,
-  };
-  const cardHtml = await renderWithRouter(() => <CertCard e={e} r={r} act={noopAct} operating={false} />);
-  expect(cardHtml).toContain('aria-label="사업자등록증 더보기"');
-
-  const dialogHtml = await renderWithRouter(() => <VoidRegistration e={e} r={r} onClose={() => undefined} />);
-  expect(dialogHtml).toContain("사업자등록증 삭제");
-  expect(dialogHtml).toContain("000-81-00028");
-  expect(dialogHtml).toContain("개정 이력 2건");
-  for (const label of ["중복 등록", "시험 입력", "다른 회사의 등록증"]) {
-    expect(dialogHtml).toContain(label);
-  }
-  expect(dialogHtml).toContain(t("entity.void.reasonNeeded"));
-  expect(dialogHtml).toContain('aria-disabled="true"');
+const options = (over = {}) => ({
+  id: "reg-1", phase: "SETUP", delete: { allowed: true, refusal: null },
+  can_manage: true, revisions: 7, linked_workplaces: [], ...over,
 });
 
-test("VoidRegistration warns when workplaces use the certificate and renders record_in_use and forbidden refusals", async () => {
-  const r = reg({ holder_workplace_id: "wp-1" });
-  const e = entity({
-    registrations: [r],
-    workplaces: [{ id: "wp-1", registration_id: "reg-1", is_head_office: true, current: { name: "본점", status: "CONTINUING" } } as unknown as LegalEntity["workplaces"][number]],
-  });
-  endRead.current = {
-    id: e.id,
-    phase: "SETUP",
-    delete: { allowed: false, refusal: "record_in_use" },
-    close: { allowed: true, refusal: null },
-    can_manage: true,
-    open_exit_cases: 0,
-  };
+test("CertCard offers the certificate menu; the dialog reads its cascade count from registration end-options", async () => {
+  endRead.current = options();
+  const card = await renderWithRouter(() => <CertCard e={entity()} r={reg()} act={noopAct} operating={false} />);
+  expect(card).toContain('aria-label="사업자등록증 더보기"');
+  const html = await renderWithRouter(() => <VoidRegistration r={reg()} onClose={() => undefined} />);
+  expect(html).toContain("000-81-00028");
+  expect(html).toContain("개정 이력 7건");
+  for (const code of ["DUPLICATE", "TEST_ENTRY", "WRONG_DOCUMENT"] as const) expect(html).toContain(t(`entity.void.reason.${code}`));
+  expect(html).toContain(t("entity.void.reasonNeeded"));
+  expect(html).toContain('aria-disabled="true"');
+});
 
-  const inUseHtml = await renderWithRouter(() => <VoidRegistration e={e} r={r} onClose={() => undefined} error={new ApiError(409, "record_in_use", "in use")} />);
-  expect(inUseHtml).toContain("본점");
-  expect(inUseHtml).toContain('role="alert"');
-  expect(inUseHtml).toContain(t("entity.refused.record_in_use"));
+test.each([
+  ["missing preview", undefined, "entity.regVoid.previewLoading"],
+  ["linked workplace", options({ linked_workplaces: [{ id: "wp-1", name: "서버에서 읽은 본점" }] }), "entity.refused.record_in_use"],
+  ["refusal", options({ delete: { allowed: false, refusal: "record_in_use" } }), "entity.refused.record_in_use"],
+  ["no grant", options({ can_manage: false }), "crud.noPermission"],
+  ["operating", options({ phase: "OPERATING" }), "entity.regVoid.operatingWhy"],
+] as const)("confirmation is disabled for %s", async (_name, preview, message) => {
+  endRead.current = preview;
+  const html = await renderWithRouter(() => <VoidRegistration r={reg()} onClose={() => undefined} />);
+  expect(html).toContain(t(message));
+  expect(html).toContain('aria-disabled="true"');
+  if (_name === "linked workplace") expect(html).toContain("서버에서 읽은 본점");
+});
 
-  endRead.current = {
-    id: e.id,
-    phase: "SETUP",
-    delete: { allowed: true, refusal: null },
-    close: { allowed: false, refusal: "record_never_used" },
-    can_manage: false,
-    open_exit_cases: 0,
-  };
-  const forbiddenHtml = await renderWithRouter(() => <VoidRegistration e={e} r={r} onClose={() => undefined} error={new ApiError(403, "forbidden", "forbidden")} />);
-  expect(forbiddenHtml).toContain(t("crud.noPermission"));
-  expect(forbiddenHtml).toContain(t("crud.refused.forbidden"));
+test("a failed preview blocks even cached allowed data and offers a reread", async () => {
+  endRead.current = options();
+  endRead.error = new ApiError(503, "unavailable", "unavailable");
+  const html = await renderWithRouter(() => <VoidRegistration r={reg()} onClose={() => undefined} />);
+  expect(html).toContain(t("entity.regVoid.previewFailed"));
+  expect(html).toContain(t("entity.regVoid.previewRetry"));
+  expect(html).toContain('aria-disabled="true"');
 });

@@ -1,15 +1,16 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { ApiError } from "@console/api";
-import { correctIdentifier, correctRegistrationNumber, voidRegistration } from "./api";
+import { correctIdentifier, correctRegistrationNumber, registrationEndQuery, voidRegistration } from "./api";
 
 const post = vi.hoisted(() => vi.fn());
+const get = vi.hoisted(() => vi.fn());
 const assertion = vi.hoisted(() => ({ assertion: { ceremony_id: "ceremony", credential: {} } }));
 vi.mock("@console/api", async (original) => ({
   ...(await original<typeof import("@console/api")>()),
-  api: { POST: post },
+  api: { POST: post, GET: get },
   assertBoundPasskey: vi.fn(async () => assertion),
 }));
-afterEach(() => post.mockReset());
+afterEach(() => { post.mockReset(); get.mockReset(); });
 const body = { value: "0008162529", document_id: "evidence", reason_code: "TYPO_AT_ENTRY" as const };
 const send = [
   () => correctIdentifier("original", "entity", { field: "crn", ...body }),
@@ -39,4 +40,13 @@ test("voidRegistration sends Idempotency-Key and reason_code to business-registr
     params: { path: { registrationId: "reg-1" }, header: { "Idempotency-Key": "intent-key-1" } },
     body: { reason_code: "DUPLICATE" },
   });
+});
+
+
+test("registration preview reads its own end-options, including server cascade data", async () => {
+  const preview = { id: "reg-1", phase: "SETUP", can_manage: true, delete: { allowed: true }, revisions: 7, linked_workplaces: [] };
+  get.mockResolvedValueOnce({ response: new Response(null, { status: 200 }), data: preview });
+  const query = registrationEndQuery("reg-1");
+  await expect(query.queryFn()).resolves.toEqual(preview);
+  expect(get).toHaveBeenCalledExactlyOnceWith("/api/v1/business-registrations/{registrationId}/end-options", { params: { path: { registrationId: "reg-1" } } });
 });

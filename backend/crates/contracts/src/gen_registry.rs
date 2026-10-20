@@ -2824,6 +2824,15 @@ const ENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/business-registrations/{registrationId}/end-options",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../entity/rest/openapi/paths/api__v1__business-registrations__registrationId__end-options.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/business-registrations/{registrationId}/identifier-corrections",
         operations: &[Operation {
             method: "post",
@@ -3730,6 +3739,10 @@ const ENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "RefListSource",
         body: include_str!("../../entity/rest/openapi/schemas/RefListSource.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationEndOptions",
+        body: include_str!("../../entity/rest/openapi/schemas/RegistrationEndOptions.yaml"),
     },
     NamedYaml {
         name: "RegistrationInput",

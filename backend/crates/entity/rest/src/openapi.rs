@@ -31,6 +31,15 @@ const EXTERNAL_SCHEMAS: &[&str] = &[
 
 const PATHS: &[PathItem] = &[
     PathItem {
+        path: "/api/v1/business-registrations/{registrationId}/end-options",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../openapi/paths/api__v1__business-registrations__registrationId__end-options.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/business-registrations/{registrationId}",
         operations: &[Operation {
             method: "put",
@@ -537,6 +546,10 @@ const PATHS: &[PathItem] = &[
 ];
 
 const SCHEMAS: &[NamedYaml] = &[
+    NamedYaml {
+        name: "RegistrationEndOptions",
+        body: include_str!("../openapi/schemas/RegistrationEndOptions.yaml"),
+    },
     NamedYaml {
         name: "AddressDetailOption",
         body: include_str!("../openapi/schemas/AddressDetailOption.yaml"),

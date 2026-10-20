@@ -119,3 +119,14 @@ pub(crate) async fn workplace_end_options(
 ) -> Result<Response> {
     record(&s, &h, Target::Workplace(id), "workplace_id", id).await
 }
+
+pub(crate) async fn registration_end_options(
+    State(s): State<EntityRestState>,
+    h: HeaderMap,
+    Path(id): Path<Uuid>,
+) -> Result<Response> {
+    let (a, can) = record_reader(&s, &h, Target::Registration(id)).await?;
+    let mut body = json!(s.store.registration_end_options(&a, id).await?);
+    body["can_manage"] = json!(can);
+    Ok(Json(body).into_response())
+}

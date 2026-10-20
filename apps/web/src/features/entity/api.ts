@@ -175,3 +175,5 @@ export const setWorkplaceCode = (key: string, workplaceId: string, code: string 
 /** Whether a legal entity or workplace is deleted (never used) or closed, and why not the other (the server decides by use). */
 export const entityEndQuery = (id: string) => get("/api/v1/legal-entities/{entityId}/end-options", { params: { path: { entityId: id } } });
 export const workplaceEndQuery = (id: string) => get("/api/v1/workplaces/{workplaceId}/end-options", { params: { path: { workplaceId: id } } });
+
+export const registrationEndQuery = (id: string) => get("/api/v1/business-registrations/{registrationId}/end-options", { params: { path: { registrationId: id } } });

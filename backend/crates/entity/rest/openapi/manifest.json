@@ -4,6 +4,9 @@
     "/api/v1/business-registrations/{registrationId}": [
       "put"
     ],
+    "/api/v1/business-registrations/{registrationId}/end-options": [
+      "get"
+    ],
     "/api/v1/business-registrations/{registrationId}/identifier-corrections": [
       "post"
     ],
@@ -259,6 +262,7 @@
     "RefCodePage",
     "RefList",
     "RefListSource",
+    "RegistrationEndOptions",
     "RegistrationInput",
     "RegistrationReissueRequest",
     "RegistrationRevisionRequest",

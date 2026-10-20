@@ -4405,6 +4405,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/business-registrations/{registrationId}/end-options:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+      - entity
+      operationId: registrationEndOptions
+      summary: Preview deletion of a mistaken business registration
+      description: Setup-only void; linked non-voided workplaces refuse with record_in_use. can_manage is Cedar legal_entity_manage on this registration. Revisions remain in storage and evidence stays under retention.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: registrationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Deletion permission, blockers and cascade preview.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationEndOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not permitted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: Not found in this tenant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/business-registrations/{registrationId}/identifier-corrections:
     post:
       tags:
@@ -53269,6 +53307,36 @@ components:
       properties:
         branch_id: {$ref: '#/components/schemas/Uuid'}
         source_system: {type: string, minLength: 1, maxLength: 80}
+    RegistrationEndOptions:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [id, phase, delete, revisions, linked_workplaces, can_manage]
+      properties:
+        id:
+          type: string
+          format: uuid
+        phase:
+          type: string
+          enum: [SETUP, OPERATING]
+        delete:
+          $ref: '#/components/schemas/EndOffer'
+        revisions:
+          type: integer
+          minimum: 0
+          description: Stored certificate revisions removed from the active record by voiding; retained in storage.
+        linked_workplaces:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id:
+                type: string
+                format: uuid
+              name:
+                type: string
+        can_manage:
+          type: boolean
     RegistrationInput:
       type: object
       description: One 사업자등록증. brn, or brn_pending_reason when the number is not issued yet.
