@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! Governed identifier corrections share the entity transaction with their verified assertion.
 use console_entity_adapter_postgres::{
     CorrectionCover, CorrectionSubject, GovernedCorrectionFuture, GovernedCorrectionPort, OpsCover,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
 pub(super) struct Setup {

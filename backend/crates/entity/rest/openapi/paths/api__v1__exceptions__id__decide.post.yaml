@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
 tags: [entity]
 operationId: decideIdentifierCorrectionException
 summary: Decide a pending identifier-correction exception

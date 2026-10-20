@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! Decisions and requester receipts for pending identifier-correction exceptions.
 use super::corrections::{correction_contributors, governance_kernel};
 use axum::{

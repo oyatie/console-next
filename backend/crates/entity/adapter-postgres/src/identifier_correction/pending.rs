@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! Persist and replay the pending receipt without applying the correction.
 use super::*;
 pub(super) async fn pending<T>(

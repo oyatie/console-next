@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 #[path = "setup.rs"]
 mod setup;
 use super::*;
