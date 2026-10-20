@@ -40,7 +40,7 @@ export function VoidRegistration({ r, onClose }: { r: BusinessRegistration; onCl
     : !end.delete.allowed || end.delete.refusal ? refusal ?? t("entity.regVoid.previewFailed")
     : !reason ? t("entity.void.reasonNeeded") : undefined;
   return (
-    <Dialog open title={t("entity.regVoid.title")} onClose={onClose}>
+    <Dialog open title={t("entity.regVoid.title")} dismissable={!run.isPending} onClose={() => { if (!run.isPending) onClose(); }}>
       <div className={s.voidPreview}>
         {end && <div>{t("entity.regVoid.consequence", { name, revisions: end.revisions })}</div>}
         {preview.fetchStatus !== "idle" && <div role="status">{t("entity.regVoid.previewLoading")}</div>}
@@ -56,7 +56,7 @@ export function VoidRegistration({ r, onClose }: { r: BusinessRegistration; onCl
       </div>
       <ChoiceField label={t("entity.void.reason")} required options={REASONS.map((code) => ({ value: code, label: t(`entity.void.reason.${code}`) }))} value={reason} onChange={setReason} />
       <div className={s.voidActions}>
-        <Button onClick={onClose}>{t("common.back")}</Button>
+        <Button disabled={run.isPending} onClick={onClose}>{t("common.back")}</Button>
         {!blocked ? (
           <Button variant="danger" disabled={run.isPending} onClick={() => run.mutate(undefined)}>{t("entity.regVoid.confirm")}</Button>
         ) : (

@@ -179,7 +179,7 @@ test("a cached preview stays blocked while loading or failed; retry reads curren
   }
 });
 
-test("pending submission disables repeat confirmation and closes only on success", async () => {
+test("pending submission blocks dismissal and repeat confirmation until success", async () => {
   let release!: () => void;
   const held = new Promise<void>((done) => { release = done; });
   submit = async () => { await held; return { status: 204 }; };
@@ -190,6 +190,12 @@ test("pending submission disables repeat confirmation and closes only on success
     await expect(confirm()).toBeEnabled();
     await confirm().click();
     await expect(confirm()).toBeDisabled();
+    await dialog().getByRole("button", { name: "돌아가기", exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+    expect(await dialog().count()).toBe(1);
+    await page.keyboard.press("Escape");
+    await expect(dialog()).toBeVisible();
+    await page.mouse.click(2, 2);
+    await expect(dialog()).toBeVisible();
     await confirm().evaluate((button: HTMLButtonElement) => button.click());
     expect(writes).toHaveLength(1);
     release();

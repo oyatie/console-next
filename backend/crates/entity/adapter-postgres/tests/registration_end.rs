@@ -5,7 +5,10 @@
 mod common;
 
 use common::*;
-use console_entity_application::{Actor, EntityScope, VoidRecord};
+use console_entity_adapter_postgres::PgEntityStore;
+use console_entity_application::{
+    Actor, EntityScope, RegistrationRevision, RegistrationStatusInput, VoidRecord,
+};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -15,6 +18,26 @@ fn mistake() -> VoidRecord {
     VoidRecord {
         reason_code: Some("DUPLICATE".into()),
     }
+}
+
+async fn add_revision(store: &PgEntityStore, actor: &Actor, registration: Uuid, brn: &str) {
+    store
+        .revise_registration(
+            &cmd(actor),
+            registration,
+            RegistrationRevision {
+                expected_version: Some(1),
+                effective_from: Some("2020-03-02".into()),
+                reason_code: Some("CORRECTION".into()),
+                input: certificate(brn),
+            },
+            RegistrationStatusInput {
+                status: Some("CONTINUING".into()),
+                ..RegistrationStatusInput::default()
+            },
+        )
+        .await
+        .unwrap();
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -63,12 +86,14 @@ async fn preview_matches_void_and_hides_missing_voided_and_out_of_scope_records(
         .unwrap()
         .record
         .id;
+    add_revision(&store, &actor, spare, "000-81-00071").await;
     let preview = store.registration_end_options(&actor, spare).await.unwrap();
     assert!(preview.delete.allowed);
-    assert_eq!(preview.revisions, 1);
+    assert_eq!(preview.revisions, 2);
     assert!(preview.linked_workplaces.is_empty());
 
     let preview = store.registration_end_options(&actor, used).await.unwrap();
+    assert_eq!(preview.revisions, 1);
     assert_eq!(preview.delete.refusal, Some("record_in_use"));
     assert_eq!(preview.linked_workplaces[0].id, workplace.id);
     assert_eq!(preview.linked_workplaces[0].name, "본사");
@@ -183,6 +208,7 @@ async fn scoped_preview_hides_sibling_names_without_hiding_the_blocker(owner: Pg
         .unwrap()
         .registrations[0]
         .id;
+    add_revision(&store, &actor, registration, "000-81-00009").await;
     let restricted = Actor {
         scope: EntityScope::Only(vec![own]),
         ..actor.clone()
@@ -191,6 +217,7 @@ async fn scoped_preview_hides_sibling_names_without_hiding_the_blocker(owner: Pg
         .registration_end_options(&restricted, registration)
         .await
         .unwrap();
+    assert_eq!(preview.revisions, 2);
     assert!(!preview.delete.allowed);
     assert_eq!(preview.delete.refusal, Some("record_in_use"));
     assert_eq!(preview.linked_workplaces.len(), 1);
