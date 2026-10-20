@@ -31,7 +31,7 @@ test("generated from the paired sha passes; a missing file or a missing backend 
   expect(checkApiSchema({ repo, out })).toMatchObject({ ok: true });
   expect(checkApiSchema({ repo: path.join(dir, "nowhere"), out }).ok).toBe(false);
   expect(checkApiSchema({ repo, ref: "no-such-ref", out }).ok).toBe(false);
-}, 60000);
+});
 
 test("a hand edit to the generated types fails", () => {
   const good = readFileSync(out, "utf8");
