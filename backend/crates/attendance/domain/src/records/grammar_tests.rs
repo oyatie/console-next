@@ -1,144 +1,259 @@
 use super::*;
 
-fn times(v: &str) -> Vec<(u16, u16)> {
-    // A value that does not parse as times reads as no spans, so the assert names it.
-    match parse(v, 960, false) {
-        Ok(Entry::Times(spans)) => spans.into_iter().map(|w| (w.start, w.end)).collect(),
-        _ => Vec::new(),
+/// The one table both parsers run (the console's `grammar.test.ts` reads the
+/// same file): a draft and the save must agree.
+const FIXTURE: &str =
+    include_str!("../../../../../../scripts/fixtures/attendance-grammar-cases.json");
+
+/// The fixture's JSON: objects, arrays, strings, integers and booleans. The
+/// domain crate has no JSON dependency.
+#[derive(Debug)]
+enum Json {
+    Str(String),
+    Num(u32),
+    Bool(bool),
+    Arr(Vec<Json>),
+    Obj(Vec<(String, Json)>),
+}
+
+impl Json {
+    fn get(&self, key: &str) -> Option<&Self> {
+        match self {
+            Self::Obj(fields) => fields.iter().find(|(k, _)| k == key).map(|(_, v)| v),
+            _ => None,
+        }
+    }
+    fn str(&self, key: &str) -> Option<&str> {
+        match self.get(key) {
+            Some(Self::Str(s)) => Some(s),
+            _ => None,
+        }
+    }
+    fn num(&self, key: &str) -> Option<u32> {
+        match self.get(key) {
+            Some(Self::Num(n)) => Some(*n),
+            _ => None,
+        }
+    }
+    fn flag(&self, key: &str) -> bool {
+        matches!(self.get(key), Some(Self::Bool(true)))
+    }
+}
+
+struct Reader<'a> {
+    chars: std::iter::Peekable<std::str::Chars<'a>>,
+}
+
+impl Reader<'_> {
+    fn skip(&mut self) {
+        while self.chars.next_if(|c| c.is_ascii_whitespace()).is_some() {}
+    }
+    fn value(&mut self) -> Option<Json> {
+        self.skip();
+        Some(match self.chars.peek().copied()? {
+            '"' => Json::Str(self.string()?),
+            '{' => {
+                self.chars.next();
+                let mut fields = Vec::new();
+                while !self.close('}') {
+                    self.skip();
+                    let key = self.string()?;
+                    self.skip();
+                    self.chars.next_if_eq(&':')?;
+                    fields.push((key, self.value()?));
+                }
+                Json::Obj(fields)
+            }
+            '[' => {
+                self.chars.next();
+                let mut items = Vec::new();
+                while !self.close(']') {
+                    items.push(self.value()?);
+                }
+                Json::Arr(items)
+            }
+            't' | 'f' => {
+                let word: String =
+                    std::iter::from_fn(|| self.chars.next_if(char::is_ascii_alphabetic)).collect();
+                Json::Bool(word == "true")
+            }
+            _ => {
+                let digits: String =
+                    std::iter::from_fn(|| self.chars.next_if(char::is_ascii_digit)).collect();
+                Json::Num(digits.parse().ok()?)
+            }
+        })
+    }
+    /// After a member: `,` continues, the closing bracket ends.
+    fn close(&mut self, end: char) -> bool {
+        self.skip();
+        if self.chars.next_if_eq(&end).is_some() {
+            return true;
+        }
+        self.chars.next_if_eq(&',');
+        self.skip();
+        self.chars.next_if_eq(&end).is_some()
+    }
+    fn string(&mut self) -> Option<String> {
+        self.chars.next_if_eq(&'"')?;
+        let mut out = String::new();
+        loop {
+            match self.chars.next()? {
+                '"' => return Some(out),
+                '\\' => match self.chars.next()? {
+                    'u' => {
+                        let hex: String = (0..4).filter_map(|_| self.chars.next()).collect();
+                        out.push(char::from_u32(u32::from_str_radix(&hex, 16).ok()?)?);
+                    }
+                    'n' => out.push('\n'),
+                    't' => out.push('\t'),
+                    c => out.push(c),
+                },
+                c => out.push(c),
+            }
+        }
+    }
+}
+
+/// The fixture, or an empty table when it does not read (the case-count
+/// assertion then fails).
+fn fixture() -> Json {
+    Reader {
+        chars: FIXTURE.chars().peekable(),
+    }
+    .value()
+    .unwrap_or(Json::Arr(Vec::new()))
+}
+
+fn hhmm(m: u16) -> String {
+    format!("{:02}:{:02}", m / 60, m % 60)
+}
+
+fn show(case: &Json) -> String {
+    let read = parse(
+        case.str("raw").unwrap_or_default(),
+        case.num("long").unwrap_or(960),
+        case.flag("confirmed"),
+        case.flag("overnight"),
+    );
+    match read {
+        Err(r) => format!("refused {}", r.code()),
+        Ok(Entry::Times(spans)) => format!(
+            "TIMES {}",
+            spans
+                .iter()
+                .map(|w| format!("{}-{}", hhmm(w.start), hhmm(w.end)))
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+        Ok(Entry::ClockInOnly(m)) => format!("CLOCK_IN_ONLY {}", hhmm(m)),
+        Ok(Entry::ClockOutOnly(m)) => format!("CLOCK_OUT_ONLY {}", hhmm(m)),
+        Ok(Entry::AsScheduled) => "AS_SCHEDULED".into(),
+        Ok(Entry::Absent) => "ABSENT".into(),
+        Ok(Entry::OutsideWork) => "OUTSIDE_WORK".into(),
+        Ok(Entry::BusinessTrip) => "BUSINESS_TRIP".into(),
+        Ok(Entry::DayOff) => "DAY_OFF".into(),
+        Ok(Entry::Shift(code)) => format!("SHIFT {code}"),
+        Ok(Entry::Leave(word)) => format!("LEAVE {word}"),
+    }
+}
+
+fn cases(table: &Json) -> &[Json] {
+    match table.get("cases") {
+        Some(Json::Arr(cases)) => cases,
+        _ => &[],
     }
 }
 
 #[test]
-fn the_spec_table_reads_as_spans() {
-    let day = vec![(540, 1080)];
-    for v in ["9-18", "0900-1800", "09:00~18:00", " 9 - 18 "] {
-        assert_eq!(times(v), day, "{v}");
+fn every_fixture_case_reads_as_the_shared_table_says() {
+    let table = fixture();
+    let wrong: Vec<_> = cases(&table)
+        .iter()
+        .map(|c| {
+            (
+                c.str("raw").unwrap_or_default(),
+                show(c),
+                c.str("expect").unwrap_or_default(),
+            )
+        })
+        .filter(|(_, got, want)| got != want)
+        .collect();
+    assert!(cases(&table).len() > 200, "fixture read");
+    assert!(wrong.is_empty(), "{wrong:#?}");
+}
+
+#[test]
+fn the_as_is_token_set_refuses_only_the_designed_residue() {
+    let table = fixture();
+    let as_is: Vec<_> = cases(&table).iter().filter(|c| c.flag("as_is")).collect();
+    let count = |key| table.num(key).and_then(|n| usize::try_from(n).ok());
+    assert_eq!(Some(as_is.len()), count("as_is_tokens"));
+    let refused = as_is
+        .iter()
+        .filter(|c| show(c).starts_with("refused "))
+        .count();
+    assert_eq!(Some(refused), count("as_is_refused"));
+}
+
+#[test]
+fn every_refusal_has_a_stable_code() {
+    for (refusal, code) in [
+        (ParseRefusal::OvertimeTyped, "overtime_typed"),
+        (ParseRefusal::Unreadable, "entry_unreadable"),
+        (
+            ParseRefusal::OvernightWithoutMarker,
+            "overnight_without_marker",
+        ),
+        (ParseRefusal::SpanTooLong, "span_too_long"),
+        (ParseRefusal::SpansOverlap, "spans_overlap"),
+        (ParseRefusal::StatusIsDerived, "status_is_derived"),
+        (ParseRefusal::HoursWithoutTimes, "hours_without_times"),
+        (ParseRefusal::ExcelFraction, "excel_fraction"),
+        (ParseRefusal::CodeAmbiguous, "code_ambiguous"),
+    ] {
+        assert_eq!(refusal.code(), code);
     }
-    assert_eq!(times("9:30-18:15"), vec![(570, 1095)]);
-    assert_eq!(times("6:50-16"), vec![(410, 960)], "H:MM-H");
-    assert_eq!(times("22-6+"), vec![(1320, 1800)]);
-    assert_eq!(times("9-12,13:30-18"), vec![(540, 720), (810, 1080)]);
-    assert_eq!(times("9-18/90"), vec![(540, 765), (855, 1080)]);
-    assert_eq!(times("21-24"), vec![(1260, 1440)]);
-}
-
-#[test]
-fn codes_and_clock_in_only() {
-    assert_eq!(parse("=", 960, false), Ok(Entry::AsScheduled));
-    assert_eq!(parse("소정", 960, false), Ok(Entry::AsScheduled));
-    assert_eq!(parse("x", 960, false), Ok(Entry::Absent));
-    assert_eq!(parse("결근", 960, false), Ok(Entry::Absent));
-    assert_eq!(parse("o", 960, false), Ok(Entry::OutsideWork));
-    assert_eq!(parse("출장", 960, false), Ok(Entry::BusinessTrip));
-    assert_eq!(parse("7:52-", 960, false), Ok(Entry::ClockInOnly(472)));
-}
-
-#[test]
-fn refusals_name_their_reason() {
-    let cases = [
-        ("+2", "overtime_typed"),
-        ("18+2", "overtime_typed"),
-        ("9-18+2", "overtime_typed"),
-        ("6:5O-16", "entry_unreadable"),
-        ("7:48-5:10", "overnight_without_marker"),
-        ("22-6", "overnight_without_marker"),
-        ("9-13,12-18", "spans_overlap"),
-        ("", "entry_unreadable"),
-        ("9:7-18", "entry_unreadable"),
-        ("25-26", "entry_unreadable"),
-        ("9-18/600", "entry_unreadable"),
-        ("9-18/0", "entry_unreadable"),
-        ("3~4/59", "entry_unreadable"),
-    ];
-    for (v, code) in cases {
-        assert_eq!(parse(v, 960, false).map_err(|e| e.code()), Err(code), "{v}");
-    }
-}
-
-#[test]
-fn long_spans_require_acknowledgement_under_the_supplied_policy() {
-    for raw in ["5-23", "5-12,13-23", "22-15+", "22-24,1-15+"] {
-        assert_eq!(
-            parse(raw, 960, false),
-            Err(ParseRefusal::SpanTooLong),
-            "{raw}"
-        );
-        assert!(
-            matches!(parse(raw, 960, true), Ok(Entry::Times(_))),
-            "{raw}"
-        );
-    }
-    assert_eq!(ParseRefusal::SpanTooLong.code(), "span_too_long");
-    assert_eq!(
-        parse(&format!("{}x", " ".repeat(40)), 960, true),
-        Err(ParseRefusal::Unreadable)
-    );
-    assert!(parse("5-21", 960, false).is_ok());
-    assert_eq!(parse("5-21:01", 960, false), Err(ParseRefusal::SpanTooLong));
-    assert!(parse("5-23", 1080, false).is_ok());
-    assert_eq!(parse("9-18", 480, false), Err(ParseRefusal::SpanTooLong));
-    assert_eq!(
-        parse("9-13,12-18", 960, true),
-        Err(ParseRefusal::SpansOverlap)
-    );
-    assert_eq!(
-        parse("22-6", 960, true),
-        Err(ParseRefusal::OvernightWithoutMarker)
-    );
-    assert_eq!(parse("24-6+", 960, true), Err(ParseRefusal::Unreadable));
-    assert_eq!(parse("5-23/2000", 960, true), Err(ParseRefusal::Unreadable));
-}
-
-#[test]
-fn regression_fz6_break_leaves_positive_time_on_both_sides() {
-    assert_eq!(parse("3~4/59", 960, true), Err(ParseRefusal::Unreadable));
-    assert_eq!(times("3~4/58"), vec![(180, 181), (239, 240)]);
-}
-
-#[test]
-fn regression_fz7_next_day_marker_cannot_create_a_zero_length_midnight_span() {
-    assert_eq!(
-        parse("0~1,1~9,9~10,10~11,24-0+", 1440, true),
-        Err(ParseRefusal::Unreadable)
-    );
-    assert_eq!(
-        parse("9-18,24-0+", 1440, true),
-        Err(ParseRefusal::Unreadable)
-    );
 }
 
 #[test]
 fn clock_syntax_refuses_out_of_range_and_noncanonical_digits() {
     for raw in [
-        "24:01", "0:60", "99", "000", "000:00", "9:000", "9:0", "9:ab", "ab:00", "0:99",
+        "24:01",
+        "0:60",
+        "99",
+        "000",
+        "000:00",
+        "9:000",
+        "9:0",
+        "9:ab",
+        "ab:00",
+        "0:99",
+        "9.5",
+        "오후 13",
+        "오전 0",
+        "9:30시",
+        "0900시",
     ] {
-        assert_eq!(clock(raw), None, "{raw}");
+        assert_eq!(clock(raw, false), None, "{raw}");
     }
-    assert_eq!(clock("24:00"), Some(1440));
-    assert_eq!(clock("00:00"), Some(0));
-    assert_eq!(clock("0000"), Some(0));
-    assert_eq!(
-        parse(&format!("{}x", " ".repeat(39)), 960, false),
-        Ok(Entry::Absent)
-    );
-    assert_eq!(parse("24-", 960, true), Err(ParseRefusal::Unreadable));
-    assert_eq!(
-        times("22-24,1-2,3-4+"),
-        vec![(1320, 1440), (1500, 1560), (1620, 1680)]
-    );
-    assert_eq!(times("9-12,12-18+"), vec![(540, 720), (720, 1080)]);
-    assert_eq!(
-        parse("0-1,23-24,0-24+", 1440, true),
-        Ok(Entry::Times(vec![
-            Window { start: 0, end: 60 },
-            Window {
-                start: 1380,
-                end: 1440
-            },
-            Window {
-                start: 1440,
-                end: 2880
-            }
-        ]))
-    );
+    assert_eq!(clock("24:00", false), Some(1440));
+    assert_eq!(clock("00:00", false), Some(0));
+    assert_eq!(clock("0000", false), Some(0));
+    assert_eq!(clock("09.30", false), Some(570));
+    assert_eq!(clock("18시", false), Some(1080));
+    assert_eq!(clock("오후 12", false), Some(720));
+    assert_eq!(clock("am 12", false), Some(0));
+    assert_eq!(clock("30", true), Some(1800));
+    assert_eq!(clock("47:59", true), Some(2879));
+    assert_eq!(clock("48", true), None);
+    assert_eq!(clock("오후 30", true), None);
+}
+
+#[test]
+fn normalising_folds_full_width_dashes_spaces_and_jamo() {
+    assert_eq!(normalise("０９：００～１８：００"), "09:00-18:00");
+    assert_eq!(normalise("\u{3000} 9 \u{2013}  18\u{feff}"), "9 - 18");
+    assert_eq!(normalise("\u{1112}\u{1172}\u{1106}\u{116e}"), "휴무");
+    assert_eq!(normalise("\u{110b}\u{1167}\u{11ab}"), "연");
 }
