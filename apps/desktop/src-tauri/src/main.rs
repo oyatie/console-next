@@ -4,6 +4,7 @@
 //! Windows shell for the hosted console (ADR-014). The window loads the configured origin and
 //! inherits its cookie session and CSP. No IPC is granted to the remote page (no capabilities).
 mod config;
+mod external;
 
 use std::sync::Mutex;
 use tauri::webview::{NewWindowResponse, PermissionKind, PermissionResponse};
@@ -79,16 +80,24 @@ fn main() {
 
 fn window(app: &AppHandle, console: Url, start: Url) -> tauri::Result<()> {
     let nav_console = console.clone();
+    let nav_app = app.clone();
+    let new_window_app = app.clone();
     WebviewWindowBuilder::new(app, MAIN, WebviewUrl::External(start))
         .title(app.package_info().name.clone())
         .inner_size(1280.0, 800.0)
         .on_document_title_changed(|w, title| {
             let _ = w.set_title(&title);
         })
-        // Navigation is locked to the console origin; other links go to the default browser.
-        .on_navigation(move |url| config::same_origin(&nav_console, url) || open_external(url))
-        .on_new_window(|url, _| {
-            open_external(&url);
+        // Off-origin requests require confirmation in a local interstitial, never in the hosted page.
+        .on_navigation(move |url| {
+            if config::same_origin(&nav_console, url) {
+                return true;
+            }
+            external::request(&nav_app, url);
+            false
+        })
+        .on_new_window(move |url, _| {
+            external::request(&new_window_app, &url);
             NewWindowResponse::Deny
         })
         .on_permission_request(permission)
@@ -97,16 +106,6 @@ fn window(app: &AppHandle, console: Url, start: Url) -> tauri::Result<()> {
         .disable_drag_drop_handler()
         .build()?;
     Ok(())
-}
-
-/// Hands a link to the default browser; always returns false so the webview does not navigate.
-fn open_external(url: &Url) -> bool {
-    if config::external(url)
-        && let Err(e) = tauri_plugin_opener::open_url(url.as_str(), None::<&str>)
-    {
-        config::diag(&format!("open {url}: {e}"));
-    }
-    false
 }
 
 /// The console needs none of these device permissions. `Other` (and anything unlisted) keeps

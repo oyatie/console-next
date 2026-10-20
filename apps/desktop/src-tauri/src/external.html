@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>외부 사이트로 이동</title>
+<style>
+  body { font: 16px/1.6 system-ui, sans-serif; margin: 2rem; }
+  #destination { overflow-wrap: anywhere; }
+  button { font: inherit; padding: .5rem 1rem; margin-inline-end: .5rem; }
+</style>
+<h1>외부 사이트로 이동</h1>
+<p>다음 주소를 기본 브라우저에서 열까요?</p>
+<p id="destination"></p>
+<button id="cancel" type="button" autofocus>취소</button>
+<button id="confirm" type="button">이동</button>
+<script>
+  document.getElementById("destination").textContent = decodeURIComponent(location.hash.slice(1));
+  for (const action of ["cancel", "confirm"]) {
+    document.getElementById(action).addEventListener("click", (event) => {
+      if (event.isTrusted) location.href = `about:blank?external-${action}`;
+    });
+  }
+</script>
+</html>
