@@ -121,6 +121,17 @@ pub async fn session_token(
     id: Uuid,
     role: &str,
 ) -> String {
+    session_token_in_scope(owner, issuer, tenant, id, role, None).await
+}
+
+pub async fn session_token_in_scope(
+    owner: &PgPool,
+    issuer: &JwtIssuer,
+    tenant: OrgId,
+    id: Uuid,
+    role: &str,
+    scope: Option<console_kernel_core::AccessScope>,
+) -> String {
     console_platform_test_support::issue_session_token(
         owner,
         issuer,
@@ -139,7 +150,7 @@ pub async fn session_token(
             session_generation: 0,
             issued_at: OffsetDateTime::now_utc(),
         },
-        None,
+        scope,
         vec![],
     )
     .await

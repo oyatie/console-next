@@ -45,7 +45,10 @@ fn step_up_failed() -> KernelError {
     KernelError::forbidden("the passkey step-up did not verify").with_code("passkey_step_up_failed")
 }
 
-async fn min_grant_age_days(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, org: OrgId) -> i32 {
+pub(super) async fn min_grant_age_days(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    org: OrgId,
+) -> i32 {
     let keys = [SettingKey::AuthzSecondPersonMinGrantAge];
     match resolve_in_tx(
         tx.as_mut(),

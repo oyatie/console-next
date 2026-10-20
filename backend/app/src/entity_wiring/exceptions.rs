@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Decisions and requester receipts for pending identifier-correction exceptions.
-use super::corrections::{correction_contributors, governance_kernel};
+use super::corrections::{correction_contributors, governance_kernel, min_grant_age_days};
 use axum::{
     Json, Router,
     extract::{Path, State},
@@ -13,6 +13,9 @@ use console_governance_adapter_postgres::{
     exception::{ExceptionDecision, decide_exception_conn, get_exception_conn},
 };
 use console_governance_domain::exception::{Decision, RuleCode, SubjectType};
+use console_identity_adapter_postgres::second_person::{
+    SecondPersonQuery, second_person_fact_in_tx,
+};
 use console_kernel_core::{ErrorKind, KernelError};
 use console_platform_auth::{
     JwtVerifier, MobilePasskeyStepUpBinding, MobilePasskeyStepUpEnvelope, MobileStepUpActionKind,
@@ -40,7 +43,7 @@ async fn decide_exception(
     State(state): State<EntityWiringState>,
     Path(id): Path<uuid::Uuid>,
     headers: HeaderMap,
-    Json(body): Json<DecideExceptionRequest>,
+    body: Result<Json<DecideExceptionRequest>, axum::extract::rejection::JsonRejection>,
 ) -> Response {
     let Some(verifier) = state.jwt.as_ref() else {
         return (
@@ -73,6 +76,18 @@ async fn decide_exception(
         }
     };
 
+    let Json(body) = match body {
+        Ok(body) => body,
+        Err(error) => {
+            return (
+                error.status(),
+                Json(serde_json::json!({"error": {
+                    "code": "validation_failed", "message": error.body_text(),
+                }})),
+            )
+                .into_response();
+        }
+    };
     let decision = match body.decision.trim() {
         "APPROVE" | "approve" => Decision::Approve,
         "DECLINE" | "decline" => Decision::Decline,
@@ -95,8 +110,14 @@ async fn decide_exception(
             if stored.rule != RuleCode::EntityIdentifierCorrection {
                 return Err(KernelError::forbidden("exception_rule_unsupported").into());
             }
-            let contributed = correction_contributors(tx, stored.subject_type, stored.subject_id)
-                .await?.contains(&principal.user_id);
+            let excluded = correction_contributors(tx, stored.subject_type, stored.subject_id).await?;
+            let contributed = excluded.contains(&principal.user_id);
+            let min_grant_age = min_grant_age_days(tx, stored.org_id).await;
+            let fact = second_person_fact_in_tx(tx, &SecondPersonQuery {
+                org: stored.org_id, feature: Feature::OrgChangeApply, branch: None,
+                requester: stored.requested_by, excluded, case_created_at: stored.created_at,
+                min_grant_age_days: min_grant_age,
+            }).await?;
             let binding = MobilePasskeyStepUpBinding::bound(
                 MobileStepUpActionKind::ExceptionDecide, stored.id, stored.fingerprint.clone(),
             );
@@ -108,6 +129,7 @@ async fn decide_exception(
                     .await.map_err(|_| KernelError::forbidden("step_up_required"))?)
             } else { None };
             let holds_permission = principal.branch_scope == console_kernel_core::BranchScope::All
+                && fact.eligible.contains(principal.user_id.as_uuid())
                 && authorize_capability(&principal, Action::new(Feature::OrgChangeApply)).is_ok();
             let input = ExceptionDecision {
                 decision, decider: &principal, contributed, holds_permission,

@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+#[path = "refusals.rs"]
+mod refusals;
 #[path = "setup.rs"]
 mod setup;
 use super::*;
@@ -130,6 +132,7 @@ async fn acceptance_crud_g101_second_person_on_entity_identifier_correction(owne
     )
     .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{refused}");
+    assert_eq!(refused["error"]["code"], "validation_failed");
 
     // Refusal test 2: Approver approving without step-up is refused.
     let (status, refused) = send(
@@ -232,6 +235,7 @@ async fn acceptance_crud_g101_second_person_on_entity_identifier_correction(owne
     )
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
+    assert_eq!(refused["error"]["code"], "exception_decide is not allowed");
     assert_eq!(count(&owner, "SELECT COUNT(*) FROM audit_events WHERE target_type='governed_exception' AND action='exception.decide' AND target_id=$1::text", exc_id).await, 0);
     let state: String = sqlx::query_scalar("SELECT status FROM governed_exceptions WHERE id=$1")
         .bind(exc_id)
