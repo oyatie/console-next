@@ -3,24 +3,55 @@ use super::{GateResult, Violation, ViolationKind};
 use std::{fs, path::Path};
 
 pub(super) fn compute_test_mask(lines: &[&str]) -> Vec<bool> {
-    let lines: Vec<_> = lines
+    let production = production_source(&lines.join("\n"));
+    lines
         .iter()
-        .map(|line| {
-            let predicate = line.trim_start().strip_prefix("#[cfg(");
-            if predicate.is_some()
-                && predicate
-                    .and_then(|rest| rest.split_once(")]"))
-                    .and_then(|(predicate, _)| cfg_without_test(predicate))
-                    != Some(false)
-            {
-                // The legacy mask treats every mention of `test` as test-only.
-                line.replacen("#[cfg(", "#[production_cfg(", 1)
-            } else {
-                (*line).to_owned()
+        .zip(production.lines())
+        .map(|(original, production)| *original != production && production.trim().is_empty())
+        .collect()
+}
+
+fn production_source(source: &str) -> String {
+    let code = super::strip_comments_and_strings(source);
+    let code = code.as_bytes();
+    let mut production = source.as_bytes().to_vec();
+    let mut at = 0;
+    while at < code.len() {
+        if code[at..].starts_with(b"#[cfg(")
+            && let Some(attribute_end) = item_end(code, at + 1)
+            && cfg_without_test(&source[at + 6..attribute_end - 2]) == Some(false)
+            && let Some(end) = item_end(code, attribute_end)
+        {
+            for byte in &mut production[at..end] {
+                if *byte != b'\n' {
+                    *byte = b' ';
+                }
             }
-        })
-        .collect();
-    super::mask::compute_test_mask(&lines.iter().map(String::as_str).collect::<Vec<_>>())
+            at = end;
+        } else {
+            at += 1;
+        }
+    }
+    String::from_utf8_lossy(&production).into_owned()
+}
+
+// Attributes, declarations and bodies end at their own delimiter, never a later item's brace.
+fn item_end(code: &[u8], from: usize) -> Option<usize> {
+    let mut depth = 0usize;
+    for (at, byte) in code.iter().enumerate().skip(from) {
+        match byte {
+            b'(' | b'[' | b'{' => depth += 1,
+            b')' | b']' | b'}' => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 && (*byte == b'}' || code[from] == b'[') {
+                    return Some(at + 1);
+                }
+            }
+            b';' if depth == 0 => return Some(at + 1),
+            _ => {}
+        }
+    }
+    None
 }
 
 fn cfg_without_test(predicate: &str) -> Option<bool> {
@@ -66,14 +97,7 @@ pub(super) fn check_raw_insert(file: &Path, source: &str, result: &mut GateResul
     if super::path_ends_with_repo_relative(file, "crates/platform/db/src/audit_write.rs") {
         return;
     }
-    let lines: Vec<_> = source.lines().collect();
-    let mask = super::compute_test_mask(&lines);
-    let production = lines
-        .iter()
-        .zip(mask)
-        .map(|(line, test)| if test { "" } else { *line })
-        .collect::<Vec<_>>()
-        .join("\n");
+    let production = production_source(source);
     if super::sql::contains_audit_insert(file, &production) {
         result.violations.push(Violation {
             kind: ViolationKind::MissingAuditEvent,

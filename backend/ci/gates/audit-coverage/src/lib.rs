@@ -24,7 +24,6 @@ use std::{collections::HashMap, fs};
 
 mod context;
 pub mod examined;
-mod mask;
 mod sql;
 mod surface;
 mod tx_wrapper;
@@ -489,102 +488,7 @@ fn has_audit_emission(body: &str) -> bool {
 }
 
 fn strip_comments_and_strings(source: &str) -> String {
-    strip_rust(source, false)
-}
-
-fn strip_rust(source: &str, keep_string_contents: bool) -> String {
-    let bytes = source.as_bytes();
-    let mut output = String::with_capacity(source.len());
-    let mut index = 0usize;
-    let mut in_line_comment = false;
-    let mut in_block_comment = false;
-    let mut in_string = false;
-    let mut in_char = false;
-    let mut escaped = false;
-
-    while index < bytes.len() {
-        let b = bytes[index];
-        let next = bytes.get(index + 1).copied();
-
-        if in_line_comment {
-            if b == b'\n' {
-                in_line_comment = false;
-                output.push('\n');
-            } else {
-                output.push(' ');
-            }
-            index += 1;
-            continue;
-        }
-        if in_block_comment {
-            if b == b'*' && next == Some(b'/') {
-                in_block_comment = false;
-                output.push_str("  ");
-                index += 2;
-            } else {
-                output.push(if b == b'\n' { '\n' } else { ' ' });
-                index += 1;
-            }
-            continue;
-        }
-        if in_string {
-            if escaped {
-                escaped = false;
-                output.push(if keep_string_contents { b as char } else { ' ' });
-            } else if b == b'\\' {
-                escaped = true;
-                output.push(' ');
-            } else if b == b'"' {
-                in_string = false;
-                output.push(' ');
-            } else {
-                output.push(if keep_string_contents {
-                    b as char
-                } else if b == b'\n' {
-                    '\n'
-                } else {
-                    ' '
-                });
-            }
-            index += 1;
-            continue;
-        }
-        if in_char {
-            if escaped {
-                escaped = false;
-            } else if b == b'\\' {
-                escaped = true;
-            } else if b == b'\'' {
-                in_char = false;
-            }
-            output.push(if b == b'\n' { '\n' } else { ' ' });
-            index += 1;
-            continue;
-        }
-
-        if b == b'/' && next == Some(b'/') {
-            in_line_comment = true;
-            output.push_str("  ");
-            index += 2;
-        } else if b == b'/' && next == Some(b'*') {
-            in_block_comment = true;
-            output.push_str("  ");
-            index += 2;
-        } else if b == b'"' {
-            in_string = true;
-            output.push(' ');
-            index += 1;
-        } else if b == b'\'' {
-            in_char = true;
-            output.push(' ');
-            index += 1;
-        } else {
-            output.push(b as char);
-            index += 1;
-        }
-    }
-
-    output
+    sql::strip_rust(source)
 }
 
 fn collect_rust_files(root: &Path) -> Result<Vec<PathBuf>, String> {

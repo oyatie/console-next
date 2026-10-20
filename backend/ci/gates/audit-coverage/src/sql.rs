@@ -3,6 +3,65 @@
 mod literals;
 use std::{fs, path::Path};
 
+pub(super) fn strip_rust(source: &str) -> String {
+    let bytes = source.as_bytes();
+    let mut masked = bytes.to_vec();
+    let mut at = 0;
+    while at < bytes.len() {
+        let end = if bytes[at..].starts_with(b"//") {
+            Some(
+                at + bytes[at..]
+                    .iter()
+                    .position(|b| *b == b'\n')
+                    .unwrap_or(bytes.len() - at),
+            )
+        } else if bytes[at..].starts_with(b"/*") {
+            Some(literals::block_comment_end(bytes, at).unwrap_or(bytes.len()))
+        } else if bytes[at] == b'r' {
+            let mut open = at + 1;
+            while bytes.get(open) == Some(&b'#') {
+                open += 1;
+            }
+            (bytes.get(open) == Some(&b'"')).then(|| {
+                let delimiter = format!("\"{}", &source[at + 1..open]);
+                source[open + 1..]
+                    .find(&delimiter)
+                    .map_or(bytes.len(), |end| open + 1 + end + delimiter.len())
+            })
+        } else if bytes[at] == b'"'
+            || (bytes[at] == b'\''
+                && (bytes.get(at + 1) == Some(&b'\\')
+                    || source[at + 1..].chars().nth(1) == Some('\'')))
+        {
+            let mut end = at + 1;
+            while end < bytes.len() {
+                if bytes[end] == b'\\' {
+                    end += 2;
+                } else if bytes[end] == bytes[at] {
+                    end += 1;
+                    break;
+                } else {
+                    end += 1;
+                }
+            }
+            Some(end.min(bytes.len()))
+        } else {
+            None
+        };
+        if let Some(end) = end {
+            for byte in &mut masked[at..end] {
+                if *byte != b'\n' {
+                    *byte = b' ';
+                }
+            }
+            at = end;
+        } else {
+            at += 1;
+        }
+    }
+    String::from_utf8_lossy(&masked).into_owned()
+}
+
 pub(super) fn contains_state_mutating_sql(body: &str) -> bool {
     let executable = super::strip_comments_and_strings(body).to_ascii_lowercase();
     let uses_sqlx_query = executable.contains("sqlx::query")
@@ -22,8 +81,7 @@ pub(super) fn contains_audit_insert(file: &Path, source: &str) -> bool {
     {
         return true;
     }
-    // strip_rust emits one character per input byte, including non-ASCII identifiers.
-    let code: Vec<u8> = stripped.chars().map(|c| c as u8).collect();
+    let code = stripped.as_bytes();
     for (at, token) in code.windows(b"include_str".len()).enumerate() {
         if token != b"include_str" {
             continue;

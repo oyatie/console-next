@@ -73,6 +73,37 @@ fn review_unicode_escaped_sql_identifier_is_not_exempt() -> TestResult {
 }
 
 #[test]
+fn review_test_items_do_not_hide_production_writers() -> TestResult {
+    let path = root("test-item-boundary")?;
+    let file = path.join("crates/platform/auth/src/raw.rs");
+    for item in [
+        "const ENABLED: bool = true;",
+        r#"const SQL: &str = "INSERT INTO audit_events(id) VALUES (1)";"#,
+        r#"mod tests { const OPEN: &str = "{"; }"#,
+        r##"mod tests { const OPEN: &str = r#""{"#; }"##,
+        "mod tests { const OPEN: char = '{'; /* { /* { */ } */ }",
+        "#[allow(dead_code)]\nconst ENABLED: bool = true;",
+        "#[allow(dead_code)]\nmod tests { const OPEN: char = '\\u{7b}'; }",
+    ] {
+        fs::write(&file, format!("#[cfg(test)]\n{item}"))?;
+        assert!(check_source_tree(&path).passed(), "test fixture: {item}");
+        for separator in ["\n", " "] {
+            fs::write(
+                &file,
+                format!(
+                    "#[cfg(test)]\n{item}{separator}pub fn write() {{ \
+                     sqlx::query(\"INSERT INTO audit_events(id) VALUES (1)\"); }}"
+                ),
+            )?;
+            let result = check_source_tree(&path);
+            assert!(!result.passed(), "production writer escaped: {item}");
+        }
+    }
+    fs::remove_dir_all(path)?;
+    Ok(())
+}
+
+#[test]
 fn review_external_sql_writer_is_not_exempt() -> TestResult {
     let path = root("include-sql")?;
     fs::write(
@@ -90,12 +121,21 @@ fn review_external_sql_writer_is_not_exempt() -> TestResult {
         r#"sqlx::query_file_scalar!("src/raw.sql")"#,
         r#"sqlx::query(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/raw.sql")))"#,
     ] {
-        fs::write(
-            path.join("crates/platform/auth/src/raw.rs"),
-            format!("pub async fn production() {{ {query}; }}"),
-        )?;
-        let result = check_source_tree(&path);
-        assert!(!result.passed(), "external SQL writer escaped: {query}");
+        for signature in [
+            "pub async fn production()",
+            "pub async fn production(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>)",
+            "pub async fn production<'tx>(tx: &mut sqlx::Transaction<'tx, sqlx::Postgres>)",
+        ] {
+            fs::write(
+                path.join("crates/platform/auth/src/raw.rs"),
+                format!("{signature} {{ {query}; }}"),
+            )?;
+            let result = check_source_tree(&path);
+            assert!(
+                !result.passed(),
+                "external SQL writer escaped: {signature} {{ {query}; }}"
+            );
+        }
     }
     fs::remove_dir_all(path)?;
     Ok(())
@@ -112,10 +152,14 @@ fn comments_sql_data_and_non_sql_includes_remain_allowed() -> TestResult {
     for source in [
         r#"const SCHEMA: &str = include_str!("schema.yaml");"#,
         r#"pub fn read() { sqlx::query(include_str!("read.sql")); }"#,
+        r#"pub fn read(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>) { sqlx::query(include_str!("read.sql")); }"#,
+        r#"pub fn read<'tx>(tx: &mut sqlx::Transaction<'tx, sqlx::Postgres>) { sqlx::query(include_str!("read.sql")); }"#,
+        r#"pub fn read() { let chars = ('\'', '\\', '한', '\u{7b}'); sqlx::query(include_str!("read.sql")); }"#,
         r#"pub fn read() { let 이름 = include_str!("read.sql"); sqlx::query(이름); }"#,
         r#"const SCHEMA: &str = include_str!("schema.yaml"); pub fn read() { sqlx::query("SELECT 1"); }"#,
         r#"// sqlx::query_file!("raw.sql")"#,
         r#"/* sqlx::query(include_str!("raw.sql")) */"#,
+        r#"/* outer /* nested */ sqlx::query_file!("raw.sql") */"#,
         r#"pub fn read() { sqlx::query("SELECT 'include_str!', 'query_file!'"); }"#,
         r##"pub fn read() { sqlx::query(r#"SELECT 'INSERT INTO U&"audit_\0065vents"'"#); }"##,
         r#"pub fn write() { sqlx::query("INSERT INTO users(id) VALUES (1)"); }"#,
