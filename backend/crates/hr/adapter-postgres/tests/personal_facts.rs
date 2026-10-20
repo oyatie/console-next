@@ -91,10 +91,15 @@ async fn personal_items_are_corrected_through_the_ledger_and_read_back(pool: PgP
     assert_eq!(facts.name_en.as_deref(), Some("KIM HANA"));
     assert_eq!(facts.nationality.as_deref(), Some("KR"));
     assert_eq!(facts.personal_email, None, "cleared back to 미입력");
-    assert_eq!(
-        facts.emergency_contacts,
-        json!([{ "name": "이하나", "relation": "SPOUSE", "phone": "+821012345678" }])
-    );
+    let first = &facts.emergency_contacts[0];
+    assert_eq!(first["name"], "이하나");
+    assert_eq!(first["relation"], "SPOUSE");
+    assert_eq!(first["phone"], "+821012345678");
+    assert_eq!(first["basis"], "VITAL_INTEREST_PENDING_COUNSEL");
+    assert_eq!(first["basis_label"], "검토 전");
+    assert_eq!(first["recorded_by"], w.hr_one.to_string());
+    assert!(first["recorded_at"].as_str().is_some_and(|s| !s.is_empty()));
+    assert_eq!(first["contact_notified"], true);
     let voided: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM employee_emergency_contacts WHERE employee_id = $1 AND voided_at IS NOT NULL",
     )
@@ -305,4 +310,66 @@ async fn former_employee_cannot_confirm_photo_upload_issued_while_active(pool: P
     .await
     .unwrap();
     assert!(!confirmed);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn emergency_contact_requires_confirmation_that_contact_was_told_and_records_basis_and_recorder(
+    pool: PgPool,
+) {
+    let w = world(&pool).await;
+    let at: OffsetDateTime = sqlx::query_scalar("SELECT updated_at FROM employees WHERE id = $1")
+        .bind(w.in_a)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let expected = at.format(&Rfc3339).unwrap();
+    let contacts = json!([{ "name": "이하나", "relation": "SPOUSE", "phone": "010-1234-5678" }]);
+
+    // Save without the employee's confirmation that the contact was told is refused with 422 emergency_contact_notice_unconfirmed.
+    let refused =
+        w.hr.record_emergency_contacts(
+            w.hr(w.hr_one),
+            &passkey_service(),
+            w.in_a,
+            expected.clone(),
+            contacts.clone(),
+            false,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(refused.code, "emergency_contact_notice_unconfirmed");
+    assert!(refused.message.contains("검토 전"));
+
+    let count_after_refusal: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM employee_emergency_contacts WHERE employee_id = $1",
+    )
+    .bind(w.in_a)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(count_after_refusal, 0, "refused save writes nothing");
+
+    // Save with confirmation records basis, recorded_by, recorded_at, and contact_notified.
+    w.hr.record_emergency_contacts(
+        w.hr(w.hr_one),
+        &passkey_service(),
+        w.in_a,
+        expected,
+        contacts,
+        true,
+    )
+    .await
+    .unwrap();
+
+    let facts = w.hr.personal_facts(w.hr(w.hr_one), w.in_a).await.unwrap();
+    let saved = &facts.emergency_contacts[0];
+    assert_eq!(saved["name"], "이하나");
+    assert_eq!(saved["relation"], "SPOUSE");
+    assert_eq!(saved["phone"], "+821012345678");
+    assert_eq!(saved["basis"], "VITAL_INTEREST_PENDING_COUNSEL");
+    assert_eq!(saved["basis_label"], "검토 전");
+    assert_eq!(saved["recorded_by"], w.hr_one.to_string());
+    assert!(saved["recorded_at"].as_str().is_some_and(|s| !s.is_empty()));
+    assert_eq!(saved["contact_notified"], true);
 }

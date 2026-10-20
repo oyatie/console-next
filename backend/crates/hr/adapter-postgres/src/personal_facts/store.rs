@@ -5,13 +5,22 @@
 
 use console_hr_domain::personal::validate_group_service_start;
 use console_hr_domain::text::parse_yyyy_mm_dd;
+use console_platform_auth::PasskeyService;
+use console_platform_authz::Principal;
 use http::StatusCode;
+use serde_json::{Map, Value, json};
 use sqlx::{Postgres, Row, Transaction};
 use time::Date;
 use uuid::Uuid;
 
-use crate::HrError;
-use crate::corrections::refusal;
+use crate::corrections::{CorrectEmployeeRequest, CorrectionOutcome, SecondPersonContext, refusal};
+use crate::{HrError, HrService};
+
+/// Conservative legal basis for emergency contact processing pending counsel
+/// (`DECISIONS.md` §2026-10-20; never a consent checkbox).
+pub const EMERGENCY_CONTACT_BASIS: &str = "VITAL_INTEREST_PENDING_COUNSEL";
+pub const EMERGENCY_CONTACT_BASIS_LABEL: &str = "검토 전";
+pub const EMERGENCY_CONTACT_NOTICE_UNCONFIRMED: &str = "emergency_contact_notice_unconfirmed";
 
 /// The items of one employee in their stored text form (the form
 /// [`super::normalize`] returns).
@@ -45,7 +54,13 @@ impl PersonalRow {
 
 const LOAD: &str = "SELECT f.name_hanja, f.name_en, f.nationality, f.personal_email, \
      f.photo_upload_id::text AS photo, to_char(f.group_service_start_date, 'YYYY-MM-DD') AS group_start, \
-     (SELECT jsonb_agg(jsonb_build_object('name', c.name, 'relation', c.relation, 'phone', c.phone_e164) \
+     (SELECT jsonb_agg(jsonb_build_object( \
+        'name', c.name, 'relation', c.relation, 'phone', c.phone_e164, \
+        'basis', 'VITAL_INTEREST_PENDING_COUNSEL', \
+        'basis_label', '검토 전', \
+        'recorded_by', c.created_by::text, \
+        'recorded_at', to_char(c.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), \
+        'contact_notified', true) \
         ORDER BY c.seq)::text \
       FROM employee_emergency_contacts c \
       WHERE c.org_id = f.org_id AND c.employee_id = f.employee_id AND c.voided_at IS NULL) AS contacts \
@@ -178,6 +193,58 @@ pub(crate) async fn write_in_tx(
     Ok(())
 }
 
+pub fn ensure_emergency_contact_notice(contact_notified: bool) -> Result<(), HrError> {
+    if !contact_notified {
+        return Err(refusal(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            EMERGENCY_CONTACT_NOTICE_UNCONFIRMED,
+            "emergency contact cannot be saved without the employee's confirmation that the contact was told (검토 전; conservative basis pending counsel, not consent)",
+        ));
+    }
+    Ok(())
+}
+
+impl HrService {
+    /// Records an employee's emergency contacts with the conservative non-consent
+    /// basis (`VITAL_INTEREST_PENDING_COUNSEL`, labelled `검토 전`), `recorded_by`,
+    /// `recorded_at`, and the employee's confirmation that the contact person was told.
+    /// Refuses with 422 `emergency_contact_notice_unconfirmed` when `contact_notified` is false.
+    pub async fn record_emergency_contacts(
+        &self,
+        principal: Principal,
+        passkeys: &PasskeyService,
+        employee_id: Uuid,
+        expected_updated_at: String,
+        contacts: Value,
+        contact_notified: bool,
+    ) -> Result<CorrectionOutcome, HrError> {
+        ensure_emergency_contact_notice(contact_notified)?;
+        let mut changes = Map::new();
+        changes.insert("emergency_contacts".to_owned(), contacts);
+        let note = json!({
+            "basis": EMERGENCY_CONTACT_BASIS,
+            "basis_label": EMERGENCY_CONTACT_BASIS_LABEL,
+            "contact_notified": true,
+            "recorded_by": principal.user_id.as_uuid(),
+        })
+        .to_string();
+        let body = CorrectEmployeeRequest {
+            expected_updated_at,
+            changes,
+            reason_code: "QUICK_EDIT".to_owned(),
+            note: Some(note),
+            step_up: None,
+        };
+        let holders = SecondPersonContext {
+            other_eligible_holders: 1,
+            sole_holder_refuse: false,
+            routed: true,
+        };
+        self.correct_employee(principal, passkeys, employee_id, body, holders)
+            .await
+    }
+}
+
 async fn write_contacts(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
@@ -185,6 +252,22 @@ async fn write_contacts(
     actor: Uuid,
     json: Option<&str>,
 ) -> Result<(), HrError> {
+    if let Some(raw) = json
+        && let Ok(rows) = serde_json::from_str::<Vec<Value>>(raw)
+    {
+        for row in &rows {
+            if let Some(notified) = row.get("contact_notified") {
+                ensure_emergency_contact_notice(notified.as_bool() == Some(true))?;
+            }
+            if row.get("basis").and_then(Value::as_str) == Some("CONSENT") {
+                return Err(refusal(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    EMERGENCY_CONTACT_NOTICE_UNCONFIRMED,
+                    "emergency contact basis cannot be a consent checkbox (검토 전)",
+                ));
+            }
+        }
+    }
     // The live list is replaced: old rows are voided, never deleted.
     sqlx::query(
         "UPDATE employee_emergency_contacts SET voided_at = now() \
