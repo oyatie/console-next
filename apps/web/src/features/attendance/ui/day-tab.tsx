@@ -98,7 +98,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
                       <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} actions={<Link to="/attendance" search={{ tab: "schedule" }}>{t("attendanceRecords.empty.toSchedule")}</Link>} />
                     )
                   ) : search.detail ? (
-                    <DayDetail board={b} store={store} onNote={setNote} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
+                    <DayDetail board={b} store={store} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                   ) : (
                     b.groups.map((g) => (
                       <Card

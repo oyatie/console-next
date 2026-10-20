@@ -8,10 +8,11 @@ import type { GridRow } from "../api";
 import { cellShape } from "../domain/day";
 import { toneCounts } from "../present";
 import { closed } from "../domain/month-state";
-import { baseOf, cellKey, draftState, fill, fillSchedule, readPaste, splitKey, type CellFacts, type Drafts } from "../domain/grid";
+import { baseOf, cellKey, draftState, fill, fillSchedule, readPaste, splitKey, type CellFacts, type Drafts, type PasteResult } from "../domain/grid";
 import { duration } from "../domain/minutes";
 import { weekdayText } from "../present";
 import { MarkGlyph } from "./mark-chip";
+import { PastePreviewSheet, type PastePerson } from "./paste-preview";
 import type { useDrafts } from "./use-drafts";
 
 const HOLIDAY = new Set(["PUBLIC_HOLIDAY", "SUBSTITUTE_HOLIDAY", "ELECTION_DAY", "LABOR_DAY", "CONTRACTUAL_HOLIDAY"]);
@@ -29,8 +30,10 @@ export type GridAct =
   | { kind: "month"; step: -1 | 1 }
   | { kind: "note"; message: string };
 
+type PendingPaste = { scope: string; month: string; people: PastePerson[]; plan: PasteResult; bases: (string | null)[] };
+
 /**
- * The month grid's cells and keys (A3-grid, spec §3): type to edit in the entry grammar, ⌘V paste by employee number,
+ * The month grid's cells and keys (A3-grid, spec §3): type to edit in the entry grammar, ⌘V paste by employee number and day,
  * `=` as scheduled over a selection, ⌘D fill down, ⌘↵ the focused draft into every selected cell, ⌘Z / ⌘Y on drafts,
  * Delete clears drafts or asks to void a saved cell, P the day sheet, ⌘S the save sheet, [ ] the month. The own row
  * and a closed month's rows are read-only. All four totals stay, a docked sheet or not (FE-2 restored).
@@ -47,6 +50,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
   // The open editor carries its own person-day and the version on screen when typing began (the save's If-Match base):
   // a re-sort, filter or live insert while typing never commits it into another row or against a newer record.
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [pasting, setPasting] = useState<PendingPaste | null>(null);
   const drafts: Drafts = store.drafts;
   const axes = { rows: rows.map((r) => r.employee_id), cols: days };
   const rect = rectIn(range, axes);
@@ -119,6 +123,40 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
     });
     return () => { active = false; };
   }, [gone]);
+  const acceptPaste = () => {
+    if (!pasting) return;
+    if (pasting.scope !== store.scope || pasting.month !== days[0]?.slice(0, 7)) {
+      setPasting(null);
+      act({ kind: "note", message: t("attendanceRecords.paste.preview.stale") });
+      return;
+    }
+    const currentRows = new Map(rows.map((row) => [row.employee_id, row] as const));
+    if (pasting.plan.cells.some((cell) => {
+      const person = pasting.people[cell.r];
+      const row = person && currentRows.get(person.employee_id);
+      return !days.includes(cell.date) || !row || row.own !== person.own || closed(row.month_state) !== person.closed;
+    })) {
+      setPasting(null);
+      act({ kind: "note", message: t("attendanceRecords.paste.preview.stale") });
+      return;
+    }
+    const next = { ...store.drafts };
+    let locked = 0;
+    for (const [i, cell] of pasting.plan.cells.entries()) {
+      const person = pasting.people[cell.r]!;
+      const row = currentRows.get(person.employee_id)!;
+      const c = days.indexOf(cell.date);
+      if (row.own || closed(row.month_state)) {
+        locked += 1;
+        continue;
+      }
+      const key = cellKey(person.employee_id, cell.date);
+      next[key] = { value: cell.value, base: baseOf(store.drafts, key, pasting.bases[i] === undefined ? row.cells[c]?.entry_id ?? null : pasting.bases[i]!) };
+    }
+    store.set(next);
+    setPasting(null);
+    act({ kind: "note", message: t("attendanceRecords.paste.matched", { rows: pasting.plan.matched + pasting.plan.missing.length, matched: pasting.plan.matched, missing: pasting.plan.missing.length, locked }) });
+  };
   const onKey = (e: KeyboardEvent): boolean => {
     const mod = e.metaKey || e.ctrlKey;
     const run = (fn: () => void) => (e.preventDefault(), fn(), true);
@@ -155,37 +193,34 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
   };
 
   // ⌘V while the grid has focus: rows by employee number, one row across from the focused cell.
-  const box = useRef({ rows, focus: f, drafts });
+  const box = useRef({ rows, focus: f });
   useEffect(() => {
-    box.current = { rows, focus: f, drafts };
+    box.current = { rows, focus: f };
   });
   useEffect(() => {
     const paste = (e: ClipboardEvent) => {
-      if (!(document.activeElement as HTMLElement | null)?.matches?.('[role="grid"]')) return;
+      const active = document.activeElement;
+      if (!(active instanceof HTMLElement) || !active.closest('[role="grid"]')) return;
       const text = e.clipboardData?.getData("text/plain");
       if (!text) return;
       e.preventDefault();
-      const { rows: rs, focus, drafts: ds } = box.current;
+      const { rows: rs, focus } = box.current;
       if (!focus) return;
-      const p = readPaste(text, rs.map((r) => r.employee_number ?? null), focus);
-      if (p.needsNumber) return act({ kind: "note", message: t("attendanceRecords.paste.needsNumber") });
-      const next = { ...ds };
-      let locked = 0;
-      for (const c of p.cells) {
-        const row = rs[c.r];
-        const day = days[c.c];
-        if (!row || !day) continue;
-        if (row.own || closed(row.month_state)) locked += 1;
-        else next[cellKey(row.employee_id, day)] = { value: c.value, base: baseOf(ds, cellKey(row.employee_id, day), row.cells[c.c]?.entry_id ?? null) };
-      }
-      store.set(next);
-      act({ kind: "note", message: t("attendanceRecords.paste.matched", { rows: p.matched + p.missing.length, matched: p.matched, missing: p.missing.length, locked }) });
+      const plan = readPaste(text, rs.map((r) => r.employee_number ?? null), days, focus);
+      const people = rs.map((row) => ({ employee_id: row.employee_id, employee_number: row.employee_number ?? null, name: row.name, own: row.own, closed: closed(row.month_state) }));
+      const bases = plan.cells.map((cell) => {
+        const row = rs[cell.r]!;
+        const key = cellKey(row.employee_id, cell.date);
+        return baseOf(store.drafts, key, row.cells[days.indexOf(cell.date)]?.entry_id ?? null);
+      });
+      setPasting({ scope: store.scope, month: days[0]!.slice(0, 7), people, plan, bases });
     };
     window.addEventListener("paste", paste);
     return () => window.removeEventListener("paste", paste);
-  }, [act, days, store]);
+  }, [days, store]);
 
   return (
+    <>
     <PersonDayGrid<GridRow>
       label={t("attendanceRecords.grid.label")}
       total={total}
@@ -250,5 +285,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
       rowHeight={32}
       groupOf={(r) => r.unit_name ?? ""}
     />
+      {pasting && <PastePreviewSheet plan={pasting.plan} people={pasting.people} month={pasting.month} onClose={() => setPasting(null)} onAccept={acceptPaste} />}
+    </>
   );
 }
