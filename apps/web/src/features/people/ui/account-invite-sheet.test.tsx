@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, expect, test, vi } from "vitest";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
