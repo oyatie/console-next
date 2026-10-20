@@ -17,19 +17,20 @@ async fn backdated_exit_overrides_the_earlier_recorded_canonical_snapshot(owner:
         .unwrap();
     tx.commit().await.unwrap();
     let cutoff = known(&owner).await;
-    let last_day = w.d - Duration::days(1);
-    lifecycle(&owner, &w, p, "TERMINATE", last_day).await;
+    let exit_date = w.d - Duration::days(1);
+    let last_working_day = exit_date - Duration::days(1);
+    lifecycle(&owner, &w, p, "TERMINATE", exit_date).await;
     sqlx::query("UPDATE employees SET employment_status='EXITED',exit_date=$2 WHERE id=$1")
         .bind(p)
-        .bind(last_day.to_string())
+        .bind(exit_date.to_string())
         .execute(&owner)
         .await
         .unwrap();
-    for date in [w.d, w.d + Duration::days(30)] {
+    for date in [exit_date, w.d, w.d + Duration::days(30)] {
         assert_eq!(counts(&read(&w, &w.actor, date, None).await, &w), [0, 0]);
     }
     assert_eq!(
-        counts(&read(&w, &w.actor, last_day, None).await, &w),
+        counts(&read(&w, &w.actor, last_working_day, None).await, &w),
         [1, 0]
     );
     assert_eq!(
@@ -58,10 +59,73 @@ async fn backdated_exit_overrides_the_earlier_recorded_canonical_snapshot(owner:
 async fn exit_scheduled_for_today_still_counts_on_its_last_working_day(owner: PgPool) {
     let w = world(&owner, "asof-last-working-day").await;
     let p = source_person(&owner, &w, "scheduled-exit").await;
-    lifecycle(&owner, &w, p, "TERMINATE", w.d).await;
-    assert_eq!(counts(&read(&w, &w.actor, w.d, None).await, &w), [1, 0]);
+    // 퇴직일 = 마지막 근무일 + 1 = 4대보험 상실일: the exit's effective date is not counted.
+    let exit_date = w.d;
+    let last_working_day = exit_date - Duration::days(1);
+    lifecycle(&owner, &w, p, "TERMINATE", exit_date).await;
     assert_eq!(
-        counts(&read(&w, &w.actor, w.d + Duration::days(1), None).await, &w),
+        counts(&read(&w, &w.actor, last_working_day, None).await, &w),
+        [1, 0]
+    );
+    for date in [exit_date, exit_date + Duration::days(1)] {
+        assert_eq!(counts(&read(&w, &w.actor, date, None).await, &w), [0, 0]);
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn compare_at_today_and_list_share_the_live_chart_exit_boundary(owner: PgPool) {
+    let w = world(&owner, "asof-exit-count-rule").await;
+    let p = source_person(&owner, &w, "exiting-person").await;
+    let exit_date = w.d;
+    let last_working_day = exit_date - Duration::days(1);
+    lifecycle(&owner, &w, p, "TERMINATE", exit_date).await;
+    let live = counts(&w.store.org_structure(&w.actor).await.unwrap(), &w);
+    assert_eq!(live, [0, 0]);
+    assert_eq!(counts(&read(&w, &w.actor, w.d, None).await, &w), live);
+    let listed = |date: Date| {
+        let store = &w.store;
+        let actor = &w.actor;
+        async move {
+            store
+                .list_entities_at(
+                    actor,
+                    false,
+                    ReadOptions {
+                        as_of: Some(date),
+                        known_at: None,
+                    },
+                )
+                .await
+                .unwrap()
+                .remove(0)
+                .workplaces
+                .iter()
+                .map(|wp| wp.headcount)
+                .sum::<i64>()
+        }
+    };
+    assert_eq!(listed(last_working_day).await, 1);
+    assert_eq!(listed(exit_date).await, 0);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn recorded_exit_date_without_events_is_the_first_uncounted_day(owner: PgPool) {
+    let w = world(&owner, "asof-exit-date-only").await;
+    let p = source_person(&owner, &w, "exit-date-only").await;
+    let exit_date = w.d - Duration::days(5);
+    sqlx::query("UPDATE employees SET employment_status='EXITED',exit_date=$2 WHERE id=$1")
+        .bind(p)
+        .bind(exit_date.to_string())
+        .execute(&owner)
+        .await
+        .unwrap();
+    let last_working_day = exit_date - Duration::days(1);
+    assert_eq!(
+        counts(&read(&w, &w.actor, last_working_day, None).await, &w),
+        [1, 0]
+    );
+    assert_eq!(
+        counts(&read(&w, &w.actor, exit_date, None).await, &w),
         [0, 0]
     );
 }
