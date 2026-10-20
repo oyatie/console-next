@@ -10,6 +10,7 @@ import { get } from "../apps/web/src/lib/query";
 import type { Act } from "../apps/web/src/features/entity/ui/record-revise-sheet";
 import { CertCard } from "../apps/web/src/features/entity/ui/record-cert-card";
 import { lockOf, RecordLockProvider } from "../apps/web/src/features/entity/ui/use-record-lock";
+import "../apps/web/src/app.css";
 
 export const fixtureUrl = import.meta.url;
 

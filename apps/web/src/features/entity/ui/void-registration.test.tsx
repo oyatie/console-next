@@ -258,3 +258,48 @@ test("an allowed preview becomes blocked while an active refresh is fetching", a
     await expect(confirm()).toBeDisabled();
   } finally { release({ json: options() }); }
 });
+
+test("an offline active refresh blocks an earlier allowed preview until the fresh read lands", async () => {
+  await mount();
+  await open();
+  await choose();
+  await expect(confirm()).toBeEnabled();
+  await context.setOffline(true);
+  await page.waitForFunction(() => !navigator.onLine);
+  await page.evaluate(() => window.dispatchEvent(new Event("registration-preview-refresh")));
+  await expect(confirm()).toBeDisabled({ timeout: 1000 });
+  await confirm().evaluate((button: HTMLButtonElement) => button.click());
+  expect(writes).toEqual([]);
+  preview = async () => ({ json: options({ can_manage: false }) });
+  await context.setOffline(false);
+  await expect(dialog()).toContainText("이 계정에는 이 일을 할 권한이 없습니다");
+  await expect(confirm()).toBeDisabled();
+  expect(writes).toEqual([]);
+});
+
+test.each([1280, 390])("preview changes keep the dialog and controls in place at %ipx", async (width) => {
+  await page.setViewportSize({ width, height: 844 });
+  let release!: (reply: Reply) => void;
+  const held = new Promise<Reply>((done) => { release = done; });
+  preview = () => held;
+  try {
+    await mount();
+    await open();
+    await choose();
+    await page.evaluate(() => document.fonts.ready);
+    const bounds = async () => Promise.all([dialog().boundingBox(), confirm().boundingBox(), page.getByRole("radio", { name: "중복 등록", exact: true }).boundingBox()]);
+    const loading = await bounds();
+    release({ status: 503, json: { error: { code: "unavailable", message: "unavailable" } } });
+    const retry = dialog().getByRole("button", { name: "삭제 미리보기 다시 읽기" });
+    await expect(retry).toBeVisible();
+    expect(await bounds()).toEqual(loading);
+    preview = async () => ({ json: options({ can_manage: false }) });
+    await retry.click();
+    await expect(dialog()).toContainText("이 계정에는 이 일을 할 권한이 없습니다");
+    expect(await bounds()).toEqual(loading);
+    preview = async () => ({ json: options() });
+    await page.evaluate(() => window.dispatchEvent(new Event("registration-preview-refresh")));
+    await expect(confirm()).toBeEnabled();
+    expect(await bounds()).toEqual(loading);
+  } finally { release({ json: options() }); }
+});

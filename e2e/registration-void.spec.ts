@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Request } from "@playwright/test";
 import { inviteAccount } from "./access-flows";
 import { expectAccessible } from "./a11y";
 import { firstSignIn, go, option } from "./flows";
@@ -27,8 +27,12 @@ test("certificate void fails closed during preview loading/failure and rechecks 
   const record = new URL(admin.url()).pathname;
   const entity = await (await api(`/legal-entities/${record.split("/").pop()!}`)).json();
   const id = entity.registrations[0].id as string;
-  const writes: string[] = [];
-  admin.on("request", (r) => { if (r.method() === "POST" && voidPath.test(new URL(r.url()).pathname)) writes.push(r.url()); });
+  const writes: Request[] = [];
+  // Pausing at the network boundary retains Chromium's streamed request body for the assertion.
+  await admin.route(voidPath, async (route) => {
+    if (route.request().method() === "POST") writes.push(route.request());
+    await route.continue();
+  });
 
   let release!: () => void;
   const held = new Promise<void>((resolve) => { release = resolve; });
@@ -70,8 +74,8 @@ test("certificate void fails closed during preview loading/failure and rechecks 
   const response = await removed;
   expect(response.status()).toBe(204);
   expect(new URL(response.url()).pathname).toBe(`/api/v1/business-registrations/${id}/void`);
-  expect(response.request().postDataJSON()).toEqual({ reason_code: "DUPLICATE" });
-  expect(response.request().headers()["idempotency-key"]).toMatch(/^[0-9a-f-]{36}$/);
+  expect(writes[0]!.postDataJSON()).toEqual({ reason_code: "DUPLICATE" });
+  expect(writes[0]!.headers()["idempotency-key"]).toMatch(/^[0-9a-f-]{36}$/);
   await expect(sheet(admin)).toBeHidden();
   await admin.reload();
   expect((await (await api(`/legal-entities/${entity.id}`)).json()).registrations).toEqual([]);

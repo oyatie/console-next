@@ -172,3 +172,54 @@ async fn preview_matches_void_and_hides_missing_voided_and_out_of_scope_records(
         "phase_not_setup"
     );
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn scoped_preview_hides_sibling_names_without_hiding_the_blocker(owner: PgPool) {
+    let (store, actor) = tenant(&owner, Uuid::new_v4(), "registration-scope").await;
+    let (entity, [(own, _), (sibling, _)]) = two_workplaces(&store, &actor).await;
+    let registration = store
+        .get_entity(&actor, entity, true)
+        .await
+        .unwrap()
+        .registrations[0]
+        .id;
+    let restricted = Actor {
+        scope: EntityScope::Only(vec![own]),
+        ..actor.clone()
+    };
+    let preview = store
+        .registration_end_options(&restricted, registration)
+        .await
+        .unwrap();
+    assert!(!preview.delete.allowed);
+    assert_eq!(preview.delete.refusal, Some("record_in_use"));
+    assert_eq!(preview.linked_workplaces.len(), 1);
+    assert_eq!(preview.linked_workplaces[0].id, own);
+    assert_eq!(preview.linked_workplaces[0].name, "본사");
+    assert!(preview.linked_workplaces.iter().all(|w| w.id != sibling));
+
+    let entity_reader = Actor {
+        scope: EntityScope::Only(vec![entity]),
+        ..actor.clone()
+    };
+    assert_eq!(
+        store
+            .registration_end_options(&entity_reader, registration)
+            .await
+            .unwrap()
+            .linked_workplaces
+            .len(),
+        2
+    );
+    store
+        .void_workplace(&cmd(&actor), own, mistake(), port())
+        .await
+        .unwrap();
+    let preview = store
+        .registration_end_options(&restricted, registration)
+        .await
+        .unwrap();
+    assert!(!preview.delete.allowed);
+    assert_eq!(preview.delete.refusal, Some("record_in_use"));
+    assert!(preview.linked_workplaces.is_empty());
+}
