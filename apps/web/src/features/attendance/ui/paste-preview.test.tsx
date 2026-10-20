@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
 import type { ReactNode } from "react";
@@ -5,9 +6,9 @@ import { loadCatalog } from "@console/i18n";
 import type { PasteResult } from "../domain/grid";
 import { PastePreviewSheet, type PastePerson } from "./paste-preview";
 
-type SheetProps = { open: boolean; title: string; subtitle: string; consequence: ReactNode; actions: ReactNode; children: ReactNode };
+type SheetProps = { open: boolean; title: string; notice?: ReactNode; consequence: ReactNode; actions: ReactNode; children: ReactNode };
 vi.mock("../../../ui/sheet/sheet", () => ({
-  Sheet: (p: SheetProps) => p.open ? <section><h2>{p.title}</h2><p>{p.subtitle}</p>{p.children}<p>{p.consequence}</p>{p.actions}</section> : null,
+  Sheet: (p: SheetProps) => p.open ? <section><h2>{p.title}</h2>{p.children}{p.notice}<p>{p.consequence}</p>{p.actions}</section> : null,
 }));
 beforeAll(() => loadCatalog("ko"));
 
