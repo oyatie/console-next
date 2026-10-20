@@ -1,36 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { beforeAll, expect, test, vi } from "vitest";
-import type { ReactNode } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { loadCatalog } from "@console/i18n";
-import { EntityQuickSheet } from "./entity-quick-sheet";
+import { expect, test } from "vitest";
+import { composerBrowser } from "../../../test/composer-browser";
 
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
-  Link: ({ children, className }: { children: ReactNode; className?: string }) => <span className={className}>{children}</span>,
-}));
-
-vi.mock("../../../ui/sheet/sheet", () => ({
-  Sheet: ({ children, actions }: { children: ReactNode; actions: ReactNode }) => (
-    <aside data-quick-sheet>{children}{actions}</aside>
-  ),
-}));
-
-beforeAll(() => loadCatalog("ko"));
-
-test("법인 등록 quick sheet primary commit is disabled (filled style, with DisabledReason) when required fields empty", () => {
-  const queryClient = new QueryClient();
-  const html = renderToStaticMarkup(
-    <QueryClientProvider client={queryClient}>
-      <EntityQuickSheet open={true} onClose={() => {}} onSaved={() => {}} />
-    </QueryClientProvider>,
-  );
-  expect(html).toContain("법인 등록");
-  expect(html).toContain("사업자 구분, 이름, 대표자를 정하면 저장할 수 있습니다.");
-  const button = html.match(/<button[^>]*>[^<]*법인 등록<\/button>/)![0];
-  expect(button).toContain('aria-disabled="true"');
-  expect(button).toContain("btn--primary");
-  const reasonId = button.match(/aria-describedby="([^"]+)"/)![1];
-  expect(html).toContain(`id="${reasonId}"`);
+const browser = composerBrowser();
+test("법인 등록 quick sheet keeps a filled inert primary with its own visible reason", async () => {
+  await browser.mount({ sheet: "entity" });
+  const page = browser.page;
+  expect(await page.getByRole("dialog", { name: "법인 추가" }).isVisible()).toBe(true);
+  expect(await page.getByText("법인 · 1번째 법인", { exact: true }).isVisible()).toBe(true);
+  await browser.blocked(page.getByRole("button", { name: "법인 등록", exact: true }), "사업자 구분, 이름, 대표자를 정하면 저장할 수 있습니다.");
+  // The consequence is rendered too; the control's own reason is an additional visible explanation.
+  expect(await page.getByText("사업자 구분, 이름, 대표자를 정하면 저장할 수 있습니다.", { exact: true }).count()).toBe(2);
 });

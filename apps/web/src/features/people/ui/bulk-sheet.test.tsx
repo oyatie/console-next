@@ -1,40 +1,30 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { beforeAll, expect, test, vi } from "vitest";
-import type { ReactNode } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { loadCatalog } from "@console/i18n";
-import { BulkSheet } from "./bulk-sheet";
-import { rosterPageQuery } from "../api";
-import { unitsQuery } from "../../../reference/org/api";
+import { expect, test } from "vitest";
+import { composerBrowser } from "../../../test/composer-browser";
 
-vi.mock("../../../ui/sheet/sheet", () => ({
-  Sheet: ({ children, actions }: { children: ReactNode; actions: ReactNode }) => (
-    <div data-sheet="bulk">{children}{actions}</div>
-  ),
-}));
-
-beforeAll(() => loadCatalog("ko"));
-
-test.each([0, 1])("primary commit is disabled (filled style, with DisabledReason) with %i targets and required fields empty", async (count) => {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
-  await Promise.all([
-    qc.prefetchQuery({ ...rosterPageQuery(0), queryFn: async () => ({
-      items: [{ id: "test-person", name: "가상직원", employee_number: "TEST-1", status: "ACTIVE" }], total: 1,
-    }) }),
-    qc.prefetchQuery({ ...unitsQuery, queryFn: async () => ({ items: [] }) }),
-  ]);
-  const html = renderToStaticMarkup(
-    <QueryClientProvider client={qc}>
-      <BulkSheet source={count === 0 ? { paste: "" } : { picked: new Map([["test-person", "가상직원"]]) }} onClose={() => {}} onDone={() => {}} />
-    </QueryClientProvider>,
-  );
-  const m = html.match(new RegExp(`<button[^>]*>${count}명 발령</button>`));
-  expect(m).not.toBeNull();
-  const btn = m![0];
-  expect(btn).toContain('aria-disabled="true"');
-  expect(btn).toContain("btn--primary");
-  const id = btn.match(/aria-describedby="([^"]+)"/)?.[1];
-  expect(id).toBeDefined();
-  expect(html).toContain(`id="${id}"`);
+const browser = composerBrowser();
+test.each([0, 1])("primary commit blocks %i targets with empty requirements and mixed error rows", async (count) => {
+  await browser.mount({ sheet: "bulk", count });
+  const page = browser.page;
+  const commit = page.getByRole("button", { name: `${count}명 발령`, exact: true });
+  await commit.waitFor();
+  if (count) await page.getByText("Test Person", { exact: true }).waitFor();
+  expect(await page.getByRole("dialog", { name: "일괄 발령" }).isVisible()).toBe(true);
+  expect(await page.getByText(`${count}명에게 같은 발령을 기록합니다.`, { exact: true }).isVisible()).toBe(true);
+  await browser.blocked(commit, `${count === 0 ? 4 : 3}개 항목을 채워야 합니다`);
+  if (count === 0) {
+    await browser.mount({ sheet: "bulk", count: 0, paste: true });
+    await page.getByRole("textbox", { name: /사번 목록/ }).fill("TEST-1\nMISSING");
+    await page.getByText("승진", { exact: true }).click();
+    await page.getByRole("textbox", { name: /새 직위/ }).fill("테스트직위");
+    await page.locator('input[type="date"]').fill("2099-12-31");
+    await page.getByText("기타", { exact: true }).click();
+    await page.getByRole("textbox", { name: /사유 \(자유 기재\)/ }).fill("테스트 사유");
+    const mixedCommit = page.getByRole("button", { name: /1명 .*승진/ });
+    await browser.blocked(mixedCommit, "오류 1줄을 수정하거나 제외해야 기록할 수 있습니다");
+    await page.getByRole("button", { name: /MISSING.*제외/ }).click();
+    expect(await mixedCommit.getAttribute("aria-disabled")).toBeNull();
+    await page.getByRole("textbox", { name: /사번 목록/ }).fill("사번");
+    await browser.blocked(page.getByRole("button", { name: /0명 .*승진/ }), "1개 항목을 채워야 합니다");
+  }
 });
