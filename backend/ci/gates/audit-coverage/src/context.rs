@@ -2,6 +2,66 @@
 use super::{GateResult, Violation, ViolationKind};
 use std::{fs, path::Path};
 
+pub(super) fn compute_test_mask(lines: &[&str]) -> Vec<bool> {
+    let lines: Vec<_> = lines
+        .iter()
+        .map(|line| {
+            let predicate = line.trim_start().strip_prefix("#[cfg(");
+            if predicate.is_some()
+                && predicate
+                    .and_then(|rest| rest.split_once(")]"))
+                    .and_then(|(predicate, _)| cfg_without_test(predicate))
+                    != Some(false)
+            {
+                // The legacy mask treats every mention of `test` as test-only.
+                line.replacen("#[cfg(", "#[production_cfg(", 1)
+            } else {
+                (*line).to_owned()
+            }
+        })
+        .collect();
+    super::mask::compute_test_mask(&lines.iter().map(String::as_str).collect::<Vec<_>>())
+}
+
+fn cfg_without_test(predicate: &str) -> Option<bool> {
+    let predicate: String = super::strip_comments_and_strings(predicate)
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+    if predicate == "test" {
+        return Some(false);
+    }
+    let (operator, arguments) = predicate.split_once('(')?;
+    let arguments = arguments.strip_suffix(')')?;
+    let mut depth = 0i32;
+    let mut values = arguments
+        .split(|c| {
+            match c {
+                '(' => depth += 1,
+                ')' => depth -= 1,
+                _ => {}
+            }
+            c == ',' && depth == 0
+        })
+        .filter(|argument| !argument.is_empty())
+        .map(cfg_without_test);
+    match operator {
+        "not" => values.next()?.map(|value| !value),
+        "all" | "any" => {
+            let decisive = operator == "any";
+            let mut unknown = false;
+            for value in values {
+                if value == Some(decisive) {
+                    return Some(decisive);
+                }
+                unknown |= value.is_none();
+            }
+            (!unknown).then_some(!decisive)
+        }
+        _ => None,
+    }
+}
+
 pub(super) fn check_raw_insert(file: &Path, source: &str, result: &mut GateResult) {
     if super::path_ends_with_repo_relative(file, "crates/platform/db/src/audit_write.rs") {
         return;
@@ -14,7 +74,7 @@ pub(super) fn check_raw_insert(file: &Path, source: &str, result: &mut GateResul
         .map(|(line, test)| if test { "" } else { *line })
         .collect::<Vec<_>>()
         .join("\n");
-    if super::sql::contains_audit_insert(&production) {
+    if super::sql::contains_audit_insert(file, &production) {
         result.violations.push(Violation {
             kind: ViolationKind::MissingAuditEvent,
             file: file.to_path_buf(),

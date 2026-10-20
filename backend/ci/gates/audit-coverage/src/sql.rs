@@ -1,6 +1,7 @@
 //! Find executable SQL mutations without charging words in SQL values or identifiers.
 #[path = "rust_literals.rs"]
 mod literals;
+use std::{fs, path::Path};
 
 pub(super) fn contains_state_mutating_sql(body: &str) -> bool {
     let executable = super::strip_comments_and_strings(body).to_ascii_lowercase();
@@ -11,22 +12,77 @@ pub(super) fn contains_state_mutating_sql(body: &str) -> bool {
     uses_sqlx_query && literals::contents(body).iter().any(|sql| mutates(sql))
 }
 
-pub(super) fn contains_audit_insert(source: &str) -> bool {
-    literals::contents(source).iter().any(|sql| {
-        let searchable = executable_sql(sql, false)
-            .unwrap_or_else(|| sql.to_owned())
-            .to_ascii_lowercase()
-            .replace('.', " . ");
-        let words: Vec<_> = searchable
-            .split(|c: char| !c.is_ascii_alphanumeric() && c != '_' && c != '.')
-            .filter(|word| !word.is_empty())
-            .collect();
-        words.windows(3).enumerate().any(|(i, words_at)| {
-            words_at[..2] == ["insert", "into"]
-                && (words_at[2] == "audit_events"
-                    || (words.get(i + 3) == Some(&".")
-                        && words.get(i + 4) == Some(&"audit_events")))
-        })
+pub(super) fn contains_audit_insert(file: &Path, source: &str) -> bool {
+    let stripped = super::strip_comments_and_strings(source);
+    let executable: String = stripped.chars().filter(|c| !c.is_whitespace()).collect();
+    // shortcut: query_file macros fail closed; resolve crate-relative paths before allowing them.
+    if ["query_file!", "query_file_as!", "query_file_scalar!"]
+        .iter()
+        .any(|name| executable.contains(name))
+    {
+        return true;
+    }
+    // strip_rust emits one character per input byte, including non-ASCII identifiers.
+    let code: Vec<u8> = stripped.chars().map(|c| c as u8).collect();
+    for (at, token) in code.windows(b"include_str".len()).enumerate() {
+        if token != b"include_str" {
+            continue;
+        }
+        let Some(arguments) = source[at + token.len()..]
+            .trim_start()
+            .strip_prefix('!')
+            .map(str::trim_start)
+        else {
+            continue;
+        };
+        let closing = match arguments.as_bytes().first() {
+            Some(b'(') => ')',
+            Some(b'[') => ']',
+            Some(b'{') => '}',
+            _ => return true,
+        };
+        let Some(end) = arguments.find(closing) else {
+            return true;
+        };
+        let arguments = &arguments[1..end];
+        let paths = literals::contents(arguments);
+        if paths.len() != 1
+            || !super::strip_comments_and_strings(arguments)
+                .trim_matches(|c: char| c.is_whitespace() || c == ',')
+                .is_empty()
+        {
+            return true;
+        }
+        let path = file.parent().unwrap_or(Path::new(".")).join(&paths[0]);
+        match fs::read_to_string(path) {
+            Ok(sql) if !audit_insert(&sql) => {}
+            _ => return true,
+        }
+    }
+    literals::contents(source)
+        .iter()
+        .any(|sql| audit_insert(sql))
+}
+
+fn audit_insert(sql: &str) -> bool {
+    let searchable = executable_sql(sql, false)
+        .unwrap_or_else(|| sql.to_owned())
+        .to_ascii_lowercase()
+        .replace('.', " . ");
+    let words: Vec<_> = searchable
+        .split(|c: char| !c.is_ascii_alphanumeric() && !matches!(c, '_' | '.' | '&'))
+        .filter(|word| !word.is_empty())
+        .collect();
+    let audit_or_unparsed = |i: usize| {
+        // shortcut: Unicode relation names fail closed; decode UESCAPE before allowing them.
+        words
+            .get(i)
+            .is_some_and(|word| matches!(*word, "audit_events" | "u&"))
+    };
+    words.windows(3).enumerate().any(|(i, words_at)| {
+        words_at[..2] == ["insert", "into"]
+            && (audit_or_unparsed(i + 2)
+                || (words.get(i + 3) == Some(&".") && audit_or_unparsed(i + 4)))
     })
 }
 

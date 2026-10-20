@@ -28,7 +28,7 @@ mod mask;
 mod sql;
 mod surface;
 mod tx_wrapper;
-use mask::compute_test_mask;
+use context::compute_test_mask;
 use surface::{
     accepts_transaction, is_handler_surface, path_contains_components, path_ends_with_repo_relative,
 };
