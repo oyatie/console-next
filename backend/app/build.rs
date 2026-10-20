@@ -7,7 +7,7 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let dir = Path::new(&std::env::var("CARGO_MANIFEST_DIR")?).join("../.sqlx");
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../.sqlx");
     println!("cargo::rerun-if-changed={}", dir.display());
     let mut queries = Vec::new();
     for entry in std::fs::read_dir(&dir)? {
