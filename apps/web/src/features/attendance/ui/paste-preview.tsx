@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { t, type MessageId } from "@console/i18n";
-import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
-import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
+import { KeyValue } from "../../../ui/key-value/key-value";
 import { Sheet } from "../../../ui/sheet/sheet";
+import { Table, type Column } from "../../../ui/table";
 import type { PasteRefusal, PasteResult } from "../domain/grid";
 
 export type PastePerson = { employee_id: string; employee_number: string | null; name: string; own: boolean; closed: boolean };
@@ -41,20 +42,20 @@ export function PastePreviewSheet({ plan, people, month, onClose, onAccept }: { 
     return person && !person.own && !person.closed;
   }).length;
   const accept = !plan.refusal && writable > 0;
-  const columns: LongColumn<PreviewRow>[] = [
-    { id: "number", header: t("attendanceRecords.grid.number"), cell: (row: PreviewRow) => row.employeeNumber ?? "–", width: 120 },
-    { id: "name", header: t("attendanceRecords.paste.preview.name"), cell: (row: PreviewRow) => row.sourceName && row.sourceName !== row.name ? `${row.sourceName} → ${row.name}` : row.name, rowHeader: true, width: "1.4fr" },
-    { id: "department", header: t("attendanceRecords.paste.preview.department"), cell: (row: PreviewRow) => row.department ?? "–", width: 140 },
-    { id: "status", header: t("attendanceRecords.paste.preview.status"), cell: (row: PreviewRow) => t(row.writable ? "attendanceRecords.paste.preview.writable" : "attendanceRecords.paste.preview.locked"), width: 120 },
-    ...dates.map((date) => ({ id: date, header: date.slice(5), cell: (row: PreviewRow) => row.values[date] ?? "–", width: 100 })),
+  const columns: Column<PreviewRow>[] = [
+    { header: t("attendanceRecords.grid.number"), cell: (row) => row.employeeNumber ?? "–", fit: true },
+    { header: t("attendanceRecords.paste.preview.name"), cell: (row) => row.sourceName && row.sourceName !== row.name ? `${row.sourceName} → ${row.name}` : row.name },
+    { header: t("attendanceRecords.paste.preview.department"), cell: (row) => row.department ?? "–" },
+    { header: t("attendanceRecords.paste.preview.status"), cell: (row) => t(row.writable ? "attendanceRecords.paste.preview.writable" : "attendanceRecords.paste.preview.locked"), fit: true },
+    ...dates.map((date) => ({ header: date.slice(5), cell: (row: PreviewRow) => row.values[date] ?? "–", fit: true })),
   ];
   return (
     <Sheet
       open
       title={t("attendanceRecords.paste.preview.title")}
-      subtitle={t("attendanceRecords.paste.preview.summary", { month, people: rows.length, cells, writable, locked: cells - writable })}
       onClose={onClose}
-      consequence={t("attendanceRecords.paste.preview.consequence", { cells: writable })}
+      consequence={t("attendanceRecords.paste.preview.summary", { month, people: rows.length, cells, writable, locked: cells - writable })}
+      notice={plan.refusal && <strong role="alert">{t(refusalKey[plan.refusal])}</strong>}
       actions={
         <>
           <Button onClick={onClose}>{t("attendance.close")}</Button>
@@ -62,23 +63,18 @@ export function PastePreviewSheet({ plan, people, month, onClose, onAccept }: { 
         </>
       }
     >
-      <Banner tone="info">{t("attendanceRecords.paste.preview.identity")}</Banner>
-      {plan.refusal && <Banner tone="danger">{t(refusalKey[plan.refusal])}</Banner>}
-      {plan.missing.length > 0 && <Banner tone="warn">{t("attendanceRecords.paste.preview.missing", { numbers: plan.missing.join(" · ") })}</Banner>}
-      {plan.ignoredColumns.length > 0 && <Banner tone="info">{t("attendanceRecords.paste.preview.ignored", { columns: plan.ignoredColumns.join(" · ") })}</Banner>}
-      {rows.length > 0 ? (
-        <LongTable
+      <KeyValue items={[
+        ...(plan.missing.length ? [{ key: "missing", label: t("attendanceRecords.paste.preview.missing"), value: plan.missing.join(" · ") }] : []),
+        ...(plan.ignoredColumns.length ? [{ key: "ignored", label: t("attendanceRecords.paste.preview.ignored"), value: plan.ignoredColumns.join(" · ") }] : []),
+      ]} />
+      {rows.length > 0 && (
+        <Table
           label={t("attendanceRecords.paste.preview.table")}
-          caption={t("attendanceRecords.paste.preview.rows", { count: rows.length })}
           rows={rows}
           rowId={(row) => row.key}
           columns={columns}
-          hasMore={false}
-          onLoadMore={() => undefined}
-          empty={t("attendanceRecords.paste.refusal.noCells")}
-          density="compact"
         />
-      ) : !plan.refusal ? <p className="muted">{t("attendanceRecords.paste.refusal.noCells")}</p> : null}
+      )}
     </Sheet>
   );
 }
