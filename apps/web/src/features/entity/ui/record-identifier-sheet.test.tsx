@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { realpathSync } from "node:fs";
+import { dirname } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { chromium, expect as browserExpect, type Browser, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
@@ -35,7 +36,7 @@ beforeAll(async () => {
   server = await createServer({
     configFile: false,
     cacheDir: ".cache/vite-identifier-sheet-test",
-    server: { host: "127.0.0.1", port: 0, fs: { allow: [process.cwd(), realpathSync("node_modules")] } },
+    server: { host: "127.0.0.1", port: 0, fs: { allow: [process.cwd(), dirname(realpathSync("node_modules/pretendard"))] } },
     plugins: [{
       name: "identifier-sheet-test",
       resolveId: (id) => id === entry ? entry : undefined,
@@ -78,7 +79,7 @@ async function open(field: "crn" | "brn", outcome: "PENDING" | "GOVERNED") {
       await route.fulfill({ json: { items: [] } });
     }
   });
-  await page.goto(`${origin}?field=${field}`, { waitUntil: "commit" });
+  await page.goto(`${origin}?field=${field}`, { waitUntil: "domcontentloaded" });
   await page.evaluate(`import(${JSON.stringify(entry)})`);
   await page.getByRole("dialog").waitFor();
   return { page, requests };
