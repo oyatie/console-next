@@ -219,6 +219,20 @@
     { "raw": "12.25", "expect": "refused hours_without_times" },
     { "raw": "0900", "expect": "refused hours_without_times" },
     { "raw": "0.75", "expect": "refused excel_fraction" },
-    { "raw": ".5", "expect": "refused excel_fraction" }
+    { "raw": ".5", "expect": "refused excel_fraction" },
+
+    { "raw": "⑨-⑱", "expect": "TIMES 09:00-18:00" },
+    { "raw": "⁹-¹⁸", "expect": "TIMES 09:00-18:00" },
+    { "raw": "𝟗-𝟏𝟖", "expect": "TIMES 09:00-18:00" },
+    { "raw": "\u00859-18", "expect": "refused entry_unreadable" },
+    { "raw": "9-18\u0085", "expect": "refused entry_unreadable" },
+    { "raw": "9\u0085-18", "expect": "refused entry_unreadable" },
+    { "raw": "9-\u008518", "expect": "refused entry_unreadable" },
+    { "raw": "\u20289-18\u2029", "expect": "TIMES 09:00-18:00" },
+    { "raw": "\u16809-18\ufeff", "expect": "TIMES 09:00-18:00" },
+    { "raw": "9:30시-18", "expect": "refused entry_unreadable" },
+    { "raw": "0900시-1800시", "expect": "refused entry_unreadable" },
+    { "raw": "-18 휴1", "expect": "refused entry_unreadable" },
+    { "raw": "-18 휴1:00", "expect": "refused entry_unreadable" }
   ]
 }

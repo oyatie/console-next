@@ -15,6 +15,7 @@
 //! 출장?), unconfirmed policy-long spans, 22-6 without + off a night plan.
 
 use crate::schedule::Window;
+use unicode_normalization::UnicodeNormalization;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Entry {
@@ -77,17 +78,10 @@ fn digits(s: &str, len: std::ops::RangeInclusive<usize>) -> bool {
     len.contains(&s.len()) && s.bytes().all(|b| b.is_ascii_digit())
 }
 
-/// NFKC as far as a cell needs it (full-width forms, compatibility spaces,
-/// conjoining jamo composed), every dash as `-`, inner spaces collapsed. The
-/// console applies full NFKC; the fixture holds both to the same readings.
+/// NFKC, every dash as `-`, ECMAScript whitespace collapsed to ASCII spaces.
 fn normalise(raw: &str) -> String {
     let mut out = String::with_capacity(raw.len());
-    for c in raw.chars() {
-        let c = match u32::from(c) {
-            n @ 0xFF01..=0xFF5E => char::from_u32(n - 0xFEE0).unwrap_or(c),
-            0x00A0 | 0x2000..=0x200A | 0x202F | 0x205F | 0x3000 | 0xFEFF => ' ',
-            _ => c,
-        };
+    for c in raw.nfkc() {
         let c = match c {
             '~'
             | '\u{2010}'..='\u{2015}'
@@ -100,24 +94,13 @@ fn normalise(raw: &str) -> String {
             | '\u{FE63}' => '-',
             _ => c,
         };
-        let composed = match (out.chars().next_back().map(u32::from), u32::from(c)) {
-            (Some(l @ 0x1100..=0x1112), v @ 0x1161..=0x1175) => {
-                Some(0xAC00 + ((l - 0x1100) * 21 + (v - 0x1161)) * 28)
-            }
-            (Some(s @ 0xAC00..=0xD7A3), t @ 0x11A8..=0x11C2) if (s - 0xAC00) % 28 == 0 => {
-                Some(s + t - 0x11A7)
-            }
-            _ => None,
-        };
-        match composed.and_then(char::from_u32) {
-            Some(syllable) => {
-                out.pop();
-                out.push(syllable);
-            }
-            None => out.push(c),
-        }
+        out.push(c);
     }
-    out.split_whitespace().collect::<Vec<_>>().join(" ")
+    // ECMAScript includes BOM but excludes NEL, unlike Rust's whitespace.
+    out.split(|c: char| c == '\u{feff}' || (c.is_whitespace() && c != '\u{0085}'))
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// A whole-cell code word, or `None` for a time.
@@ -146,14 +129,14 @@ fn code(v: &str) -> Option<Result<Entry, ParseRefusal>> {
 /// `오전` · `오후` · `AM` · `PM` before a clock: whether it is the afternoon.
 fn meridiem(raw: &str) -> (Option<bool>, &str) {
     if let Some(rest) = raw.strip_prefix("오전") {
-        return (Some(false), rest.trim_start());
+        return (Some(false), rest.trim_start_matches(' '));
     }
     if let Some(rest) = raw.strip_prefix("오후") {
-        return (Some(true), rest.trim_start());
+        return (Some(true), rest.trim_start_matches(' '));
     }
     match raw.get(..2) {
-        Some(w) if w.eq_ignore_ascii_case("am") => (Some(false), raw[2..].trim_start()),
-        Some(w) if w.eq_ignore_ascii_case("pm") => (Some(true), raw[2..].trim_start()),
+        Some(w) if w.eq_ignore_ascii_case("am") => (Some(false), raw[2..].trim_start_matches(' ')),
+        Some(w) if w.eq_ignore_ascii_case("pm") => (Some(true), raw[2..].trim_start_matches(' ')),
         _ => (None, raw),
     }
 }
@@ -162,10 +145,10 @@ fn meridiem(raw: &str) -> (Option<bool>, &str) {
 /// minutes; 24:00 only as 1440. A `late` end (no 오전/오후) may run to 47:59,
 /// the next day in shift-sheet notation.
 fn clock(raw: &str, late: bool) -> Option<u16> {
-    let (half, raw) = meridiem(raw.trim());
+    let (half, raw) = meridiem(raw.trim_matches(' '));
     let (raw, whole) = raw
         .strip_suffix('시')
-        .map_or((raw, false), |r| (r.trim_end(), true));
+        .map_or((raw, false), |r| (r.trim_end_matches(' '), true));
     let (h, m) = match raw.split_once([':', '.']) {
         Some((h, m)) if !whole && digits(h, 1..=2) && digits(m, 2..=2) => (h, m),
         None if !whole && digits(raw, 4..=4) => raw.split_at(2),
@@ -189,10 +172,10 @@ fn break_suffix(body: &str) -> Result<(String, Option<u16>), ParseRefusal> {
     let Some((head, tail)) = body.rsplit_once('휴') else {
         return Ok((body.to_owned(), None));
     };
-    let tail = tail.trim();
+    let tail = tail.trim_matches(' ');
     let (tail, plus) = tail
         .strip_suffix('+')
-        .map_or((tail, ""), |t| (t.trim_end(), "+"));
+        .map_or((tail, ""), |t| (t.trim_end_matches(' '), "+"));
     let minutes = match tail.split_once(':') {
         Some((h, m)) if digits(h, 1..=2) && digits(m, 2..=2) => h
             .parse::<u16>()
@@ -207,7 +190,10 @@ fn break_suffix(body: &str) -> Result<(String, Option<u16>), ParseRefusal> {
         _ => None,
     };
     let minutes = minutes.ok_or(ParseRefusal::Unreadable)?;
-    Ok((format!("{}{plus}", head.trim_end()), Some(minutes)))
+    Ok((
+        format!("{}{plus}", head.trim_end_matches(' ')),
+        Some(minutes),
+    ))
 }
 
 /// A value with no range: a fraction of a day or a count of hours.
@@ -274,11 +260,11 @@ pub fn parse(
     let v = ["재택", "교육"]
         .iter()
         .find_map(|w| v.strip_prefix(w))
-        .map_or(v.as_str(), str::trim_start);
+        .map_or(v.as_str(), |s| s.trim_start_matches(' '));
     let (body, break_minutes) = break_suffix(v)?;
     let (body, next_day) = body
         .strip_suffix('+')
-        .map_or((body.as_str(), false), |b| (b.trim_end(), true));
+        .map_or((body.as_str(), false), |b| (b.trim_end_matches(' '), true));
     if body.contains('+') {
         return Err(ParseRefusal::OvertimeTyped);
     }
@@ -302,7 +288,7 @@ pub fn parse(
         Some((b, m)) => (
             b,
             Some(
-                m.trim()
+                m.trim_matches(' ')
                     .parse::<u16>()
                     .map_err(|_| ParseRefusal::Unreadable)?,
             ),

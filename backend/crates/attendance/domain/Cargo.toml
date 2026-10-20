@@ -12,6 +12,7 @@ serde = { workspace = true }
 time = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
+unicode-normalization = "0.1.25"
 
 [lints]
 workspace = true
