@@ -1,16 +1,15 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { ApiError } from "@console/api";
-import { correctIdentifier, correctRegistrationNumber, registrationEndQuery, voidRegistration } from "./api";
+import { correctIdentifier, correctRegistrationNumber } from "./api";
 
 const post = vi.hoisted(() => vi.fn());
-const get = vi.hoisted(() => vi.fn());
 const assertion = vi.hoisted(() => ({ assertion: { ceremony_id: "ceremony", credential: {} } }));
 vi.mock("@console/api", async (original) => ({
   ...(await original<typeof import("@console/api")>()),
-  api: { POST: post, GET: get },
+  api: { POST: post },
   assertBoundPasskey: vi.fn(async () => assertion),
 }));
-afterEach(() => { post.mockReset(); get.mockReset(); });
+afterEach(() => post.mockReset());
 const body = { value: "0008162529", document_id: "evidence", reason_code: "TYPO_AT_ENTRY" as const };
 const send = [
   () => correctIdentifier("original", "entity", { field: "crn", ...body }),
@@ -31,22 +30,4 @@ test("an ordinary refusal never asks for a passkey or resends", async () => {
   post.mockResolvedValueOnce({ response: new Response(null, { status: 409 }), error: { error: { code: "identifier_correction_needs_exception", message: "denied" } } });
   await expect(send[0]!()).rejects.toBeInstanceOf(ApiError);
   expect(post).toHaveBeenCalledTimes(1);
-});
-
-test("voidRegistration sends Idempotency-Key and reason_code to business-registrations/{id}/void", async () => {
-  post.mockResolvedValueOnce({ response: new Response(null, { status: 204 }), data: undefined });
-  await expect(voidRegistration("intent-key-1", "reg-1", "DUPLICATE")).resolves.toBeUndefined();
-  expect(post).toHaveBeenCalledWith("/api/v1/business-registrations/{registrationId}/void", {
-    params: { path: { registrationId: "reg-1" }, header: { "Idempotency-Key": "intent-key-1" } },
-    body: { reason_code: "DUPLICATE" },
-  });
-});
-
-
-test("registration preview reads its own end-options, including server cascade data", async () => {
-  const preview = { id: "reg-1", phase: "SETUP", can_manage: true, delete: { allowed: true }, revisions: 7, linked_workplaces: [] };
-  get.mockResolvedValueOnce({ response: new Response(null, { status: 200 }), data: preview });
-  const query = registrationEndQuery("reg-1");
-  await expect(query.queryFn()).resolves.toEqual(preview);
-  expect(get).toHaveBeenCalledExactlyOnceWith("/api/v1/business-registrations/{registrationId}/end-options", { params: { path: { registrationId: "reg-1" } } });
 });

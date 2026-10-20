@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { BusinessRegistration } from "@console/api/pending";
 import { t } from "@console/i18n";
+import { freshOnOpen } from "../../../lib/query";
 import { useCommand } from "../../../lib/react/command";
 import { ownRefusal, refusalText } from "../../../reference/crud/present";
 import { Button } from "../../../ui/button/button";
@@ -18,7 +19,7 @@ const REASONS = ["DUPLICATE", "TEST_ENTRY", "WRONG_DOCUMENT"] as const;
 /** A mistaken certificate's setup void: the server owns its permission, blockers and cascade preview. */
 export function VoidRegistration({ r, onClose }: { r: BusinessRegistration; onClose: () => void }) {
   const name = r.brn?.display ?? r.current?.trade_name ?? t("entityRecord.cert.title");
-  const preview = useQuery({ ...registrationEndQuery(r.id), retry: false, refetchOnMount: "always" });
+  const preview = freshOnOpen(useQuery({ ...registrationEndQuery(r.id), retry: false, refetchOnMount: "always" }));
   const end = preview.data;
   const linked = end?.linked_workplaces ?? [];
   const [reason, setReason] = useState<string | null>(null);

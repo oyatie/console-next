@@ -1,126 +1,260 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { ReactNode } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
-import { afterEach, beforeAll, expect, test, vi } from "vitest";
-import type { BusinessRegistration, LegalEntity } from "@console/api/pending";
-import { loadCatalog, t } from "@console/i18n";
-import { ApiError } from "../api";
-import type { Act } from "./record-revise-sheet";
-import { CertCard } from "./record-cert-card";
-import { VoidRegistration } from "./void-registration";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { chromium, expect, type Browser, type BrowserContext, type Page, type Request } from "@playwright/test";
+import { createServer, type ViteDevServer } from "vite";
+import { afterAll, afterEach, beforeAll, beforeEach, test } from "vitest";
+import { fixtureUrl } from "../../../../../../e2e/registration-void.fixture";
 
-const endRead = vi.hoisted(() => ({ current: undefined as unknown, error: null as unknown }));
-vi.mock("@tanstack/react-query", async (original) => ({
-  ...(await original<typeof import("@tanstack/react-query")>()),
-  useQuery: () => ({ data: endRead.current, error: endRead.error, isFetching: !endRead.current && !endRead.error, isPending: !endRead.current && !endRead.error, isError: !!endRead.error }),
-}));
-vi.mock("../../../ui/dialog", () => ({
-  Dialog: ({ open, title, children }: { open: boolean; title: string; children: ReactNode }) =>
-    open ? <div role="dialog" aria-label={title}><h2>{title}</h2>{children}</div> : null,
-}));
-
-beforeAll(() => loadCatalog("ko"));
-afterEach(() => { endRead.current = undefined; endRead.error = null; });
-
-const reg = (over: Partial<BusinessRegistration> = {}): BusinessRegistration => ({
-  id: "reg-1",
-  holder_workplace_id: null,
-  brn: { value: "0008100028", display: "000-81-00028" },
-  verification_tier: "UNVERIFIED",
-  closed_on: null,
-  current: {
-    version: 2,
-    effective_from: "2026-01-01",
-    trade_name: "주식회사 누리",
-    opened_on: "2026-01-01",
-    business_address: { source: "MANUAL_UNVERIFIED", road_addr_part1: "서울 테헤란로 152", si_nm: "서울특별시" },
-    tax_type: "01",
-    status: "CONTINUING",
-    status_since: null,
-    status_until: null,
-    business_types: [{ is_main: true, sector_as_printed: "서비스", item_as_printed: "소프트웨어", ksic: null }],
-    issue_reason_kind: "NEW",
-    cert_issued_on: "2026-01-02",
-    tax_office_code: "101",
-    tax_office_label: "삼성세무서",
-    liquor_license_no: null,
-    unit_taxation: false,
-    e_invoice_email: null,
-    classification_reason: null,
-  },
-  ...over,
-} as unknown as BusinessRegistration);
-
-const entity = (over: Partial<LegalEntity> = {}): LegalEntity => ({
-  id: "ent-1",
-  biz_kind: "CORPORATION",
-  can_manage: true,
-  read_only: false,
-  closed_on: null,
-  current: { name: "주식회사 누리", representatives: ["김예시"], effective_from: "2026-01-01" },
-  registrations: [reg()],
-  workplaces: [],
-  scheduled: [],
-  identity_problems: [],
-  name_reviews: [],
-  ...over,
-} as unknown as LegalEntity);
-
-const noopAct: Act = {
-  field: () => undefined,
-  identifier: () => undefined,
-  reissue: () => undefined,
-  close: () => undefined,
-  remove: () => undefined,
-};
-
-async function renderWithRouter(node: () => ReactNode) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  const root = createRootRoute({ component: node });
-  const requests = createRoute({ getParentRoute: () => root, path: "/requests/$id" });
-  const router = createRouter({ routeTree: root.addChildren([requests]), history: createMemoryHistory({ initialEntries: ["/"] }) });
-  await router.load();
-  return renderToStaticMarkup(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
-}
-
+// Real React/React Aria controls in Chromium; only HTTP responses are substituted.
+let server: ViteDevServer;
+let browser: Browser;
+let context: BrowserContext;
+let page: Page;
+let origin: string;
+let errors: string[];
+let unexpected: string[];
+let writes: Request[];
+let reads: string[];
+const previewPath = "/api/v1/business-registrations/reg-1/end-options";
+const voidPath = "/api/v1/business-registrations/reg-1/void";
 const options = (over = {}) => ({
   id: "reg-1", phase: "SETUP", delete: { allowed: true, refusal: null },
   can_manage: true, revisions: 7, linked_workplaces: [], ...over,
 });
+type Reply = { status?: number; json: unknown };
+let preview: () => Promise<Reply>;
+let submit: () => Promise<Reply | { status: 204 }>;
 
-test("CertCard offers the certificate menu; the dialog reads its cascade count from registration end-options", async () => {
-  endRead.current = options();
-  const card = await renderWithRouter(() => <CertCard e={entity()} r={reg()} act={noopAct} operating={false} />);
-  expect(card).toContain('aria-label="사업자등록증 더보기"');
-  const html = await renderWithRouter(() => <VoidRegistration r={reg()} onClose={() => undefined} />);
-  expect(html).toContain("000-81-00028");
-  expect(html).toContain("개정 이력 7건");
-  for (const code of ["DUPLICATE", "TEST_ENTRY", "WRONG_DOCUMENT"] as const) expect(html).toContain(t(`entity.void.reason.${code}`));
-  expect(html).toContain(t("entity.void.reasonNeeded"));
-  expect(html).toContain('aria-disabled="true"');
+beforeAll(async () => {
+  server = await createServer({
+    root: resolve("apps/web"), configFile: resolve("apps/web/vite.config.ts"),
+    cacheDir: resolve(".cache/vite-registration-void-test"),
+    server: { host: "127.0.0.1", port: 0, strictPort: false, watch: null, hmr: false },
+    plugins: [{
+      name: "registration-void-test",
+      configureServer(vite) {
+        vite.middlewares.use("/__registration-void", (_req, res, next) => {
+          void vite.transformIndexHtml("/__registration-void", `<!doctype html><html lang="ko"><body><div id="root"></div><script type="module" src="/@fs${fileURLToPath(fixtureUrl)}"></script></body></html>`)
+            .then((html) => { res.setHeader("Content-Type", "text/html"); res.end(html); }, next);
+        });
+      },
+    }],
+  });
+  await server.listen();
+  origin = server.resolvedUrls!.local[0]!;
+  browser = await chromium.launch();
 });
+afterAll(async () => {
+  await browser?.close();
+  await server?.close();
+});
+beforeEach(async () => {
+  errors = []; unexpected = []; writes = []; reads = [];
+  preview = async () => ({ json: options() });
+  submit = async () => ({ status: 204 });
+  context = await browser.newContext();
+  page = await context.newPage();
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.route("**/api/v1/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (request.method() === "GET" && path === previewPath) {
+      reads.push(path);
+      await route.fulfill(await preview());
+    } else if (request.method() === "POST" && path === voidPath) {
+      writes.push(request);
+      await route.fulfill(await submit());
+    } else {
+      unexpected.push(`${request.method()} ${path}`);
+      await route.fulfill({ status: 404 });
+    }
+  });
+});
+afterEach(async () => {
+  await context?.close();
+  expect(errors).toEqual([]);
+  expect(unexpected).toEqual([]);
+});
+
+const dialog = () => page.getByRole("dialog", { name: "사업자등록증 삭제", exact: true });
+const confirm = () => dialog().getByRole("button", { name: "사업자등록증 삭제", exact: true });
+async function open() {
+  const more = page.getByRole("button", { name: "사업자등록증 더보기", exact: true });
+  expect(await more.count()).toBe(1);
+  await more.click();
+  await page.getByRole("menuitem", { name: "삭제", exact: true }).click();
+  await expect(dialog()).toBeVisible();
+}
+async function choose(label = "중복 등록") {
+  await page.getByRole("radiogroup", { name: /삭제 사유/ }).getByText(label, { exact: true }).click();
+  await expect(page.getByRole("radio", { name: label, exact: true })).toBeChecked();
+}
+async function mount(query = "") {
+  await page.goto(`${origin}__registration-void${query ? `?${query}` : ""}`);
+  await expect(page.getByRole("heading", { name: "사업자등록증", exact: true })).toBeVisible();
+}
+
+for (const [label, code] of [["중복 등록", "DUPLICATE"], ["시험 입력", "TEST_ENTRY"], ["다른 회사의 등록증", "WRONG_DOCUMENT"]]) {
+  test(`mounted certificate menu → ${label} → registration void`, async () => {
+    await mount();
+    await open();
+    await expect(dialog()).toContainText("000-81-00028");
+    await expect(dialog()).toContainText("개정 이력 7건");
+    await expect(confirm()).toBeDisabled();
+    // The blocked control stays focusable but cannot send even a programmatic click.
+    await confirm().evaluate((button: HTMLButtonElement) => button.click());
+    expect(writes).toEqual([]);
+    await choose(label);
+    await expect(confirm()).toBeEnabled();
+    await confirm().click();
+    await expect(dialog()).toHaveCount(0);
+    expect(reads).toContain(previewPath);
+    expect(writes).toHaveLength(1);
+    expect(new URL(writes[0]!.url()).pathname).toBe(voidPath);
+    expect(writes[0]!.postDataJSON()).toEqual({ reason_code: code });
+    expect(writes[0]!.headers()["idempotency-key"]).toMatch(/^[0-9a-f-]{36}$/);
+  });
+}
 
 test.each([
-  ["missing preview", undefined, "entity.regVoid.previewLoading"],
-  ["linked workplace", options({ linked_workplaces: [{ id: "wp-1", name: "서버에서 읽은 본점" }] }), "entity.refused.record_in_use"],
-  ["refusal", options({ delete: { allowed: false, refusal: "record_in_use" } }), "entity.refused.record_in_use"],
-  ["no grant", options({ can_manage: false }), "crud.noPermission"],
-  ["operating", options({ phase: "OPERATING" }), "entity.regVoid.operatingWhy"],
-] as const)("confirmation is disabled for %s", async (_name, preview, message) => {
-  endRead.current = preview;
-  const html = await renderWithRouter(() => <VoidRegistration r={reg()} onClose={() => undefined} />);
-  expect(html).toContain(t(message));
-  expect(html).toContain('aria-disabled="true"');
-  if (_name === "linked workplace") expect(html).toContain("서버에서 읽은 본점");
+  ["linked workplace despite allowed flag", options({ linked_workplaces: [{ id: "wp-1", name: "서버에서 읽은 본점" }] }), "서버에서 읽은 본점"],
+  ["record_in_use despite allowed flag", options({ delete: { allowed: true, refusal: "record_in_use" } }), "이 기록을 쓰는 곳이 있어 삭제할 수 없습니다"],
+  ["phase_not_setup refusal", options({ delete: { allowed: false, refusal: "phase_not_setup" } }), "삭제 미리보기를 읽지 못했습니다"],
+  ["denied without refusal", options({ delete: { allowed: false, refusal: null } }), "삭제 미리보기를 읽지 못했습니다"],
+  ["revoked grant", options({ can_manage: false }), "이 계정에는 이 일을 할 권한이 없습니다"],
+  ["operating", options({ phase: "OPERATING" }), "삭제할 수 없습니다"],
+])("choosing a reason cannot bypass %s", async (_name, end, message) => {
+  preview = async () => ({ json: end });
+  await mount();
+  await open();
+  await expect(dialog()).toContainText("개정 이력 7건");
+  await choose();
+  await expect(dialog()).toContainText(message);
+  await expect(confirm()).toBeDisabled();
+  await confirm().evaluate((button: HTMLButtonElement) => button.click());
+  expect(writes).toEqual([]);
 });
 
-test("a failed preview blocks even cached allowed data and offers a reread", async () => {
-  endRead.current = options();
-  endRead.error = new ApiError(503, "unavailable", "unavailable");
-  const html = await renderWithRouter(() => <VoidRegistration r={reg()} onClose={() => undefined} />);
-  expect(html).toContain(t("entity.regVoid.previewFailed"));
-  expect(html).toContain(t("entity.regVoid.previewRetry"));
-  expect(html).toContain('aria-disabled="true"');
+test("cached permission stays blocked during a paused offline refresh, then honors the fresh refusal", async () => {
+  preview = async () => ({ json: options({ can_manage: false }) });
+  await mount("cached");
+  await context.setOffline(true);
+  await open();
+  await choose();
+  await expect(confirm()).toBeDisabled();
+  await expect(dialog()).not.toContainText("개정 이력 99건");
+  expect(reads).toEqual([]);
+  await confirm().evaluate((button: HTMLButtonElement) => button.click());
+  expect(writes).toEqual([]);
+  await context.setOffline(false);
+  await expect(dialog()).toContainText("이 계정에는 이 일을 할 권한이 없습니다");
+  await expect(confirm()).toBeDisabled();
+  expect(reads).toEqual([previewPath]);
+  expect(writes).toEqual([]);
+});
+
+test("a cached preview stays blocked while loading or failed; retry reads current permission", async () => {
+  let release!: (reply: Reply) => void;
+  const held = new Promise<Reply>((done) => { release = done; });
+  preview = () => held;
+  try {
+    await mount("cached");
+    await open();
+    await choose();
+    await expect(confirm()).toBeDisabled();
+    await expect(dialog()).not.toContainText("개정 이력 99건");
+    await confirm().evaluate((button: HTMLButtonElement) => button.click());
+    expect(writes).toEqual([]);
+    release({ status: 503, json: { error: { code: "unavailable", message: "unavailable" } } });
+    await expect(dialog().getByRole("button", { name: "삭제 미리보기 다시 읽기" })).toBeVisible();
+    await expect(confirm()).toBeDisabled();
+    preview = async () => ({ json: options() });
+    await dialog().getByRole("button", { name: "삭제 미리보기 다시 읽기" }).click();
+    await expect(dialog()).toContainText("개정 이력 7건");
+    await expect(confirm()).toBeEnabled();
+    expect(writes).toEqual([]);
+  } finally {
+    release({ status: 503, json: { error: { code: "unavailable", message: "unavailable" } } });
+  }
+});
+
+test("pending submission disables repeat confirmation and closes only on success", async () => {
+  let release!: () => void;
+  const held = new Promise<void>((done) => { release = done; });
+  submit = async () => { await held; return { status: 204 }; };
+  try {
+    await mount();
+    await open();
+    await choose();
+    await expect(confirm()).toBeEnabled();
+    await confirm().click();
+    await expect(confirm()).toBeDisabled();
+    await confirm().evaluate((button: HTMLButtonElement) => button.click());
+    expect(writes).toHaveLength(1);
+    release();
+    await expect(dialog()).toHaveCount(0);
+    expect(writes).toHaveLength(1);
+  } finally { release(); }
+});
+
+test("a command refusal keeps the dialog open and shows the server's reason", async () => {
+  submit = async () => ({ status: 409, json: { error: { code: "record_in_use", message: "record_in_use" } } });
+  await mount();
+  await open();
+  await choose();
+  await expect(confirm()).toBeEnabled();
+  await confirm().click();
+  await expect(dialog().getByRole("alert")).toContainText("이 기록을 쓰는 곳이 있어 삭제할 수 없습니다");
+  await expect(dialog()).toBeVisible();
+  expect(writes).toHaveLength(1);
+});
+
+test("cancel closes without submitting and reopening requires a new preview and reason", async () => {
+  await mount();
+  await open();
+  await choose();
+  await expect(confirm()).toBeEnabled();
+  await dialog().getByRole("button", { name: "돌아가기", exact: true }).click();
+  await expect(dialog()).toHaveCount(0);
+  preview = async () => ({ json: options({ can_manage: false, revisions: 8 }) });
+  await open();
+  await expect(dialog()).toContainText("개정 이력 8건");
+  await expect(page.getByRole("radio", { name: "중복 등록", exact: true })).not.toBeChecked();
+  await choose();
+  await expect(confirm()).toBeDisabled();
+  expect(writes).toEqual([]);
+});
+
+test.each(["locked", "closed"])("a %s certificate has no deletion menu", async (state) => {
+  await mount(state);
+  await expect(page.getByRole("button", { name: "사업자등록증 더보기", exact: true })).toHaveCount(0);
+  expect(writes).toEqual([]);
+});
+
+test("the operating certificate menu explains why deletion is unavailable", async () => {
+  await mount("operating");
+  await page.getByRole("button", { name: "사업자등록증 더보기", exact: true }).click();
+  await expect(page.getByRole("menuitem", { name: /삭제/ })).toBeDisabled();
+  await expect(page.getByRole("menu")).toContainText("운영을 시작한 뒤에는 사업자등록증을 삭제할 수 없습니다");
+  expect(writes).toEqual([]);
+});
+
+test("an allowed preview becomes blocked while an active refresh is fetching", async () => {
+  let release!: (reply: Reply) => void;
+  const held = new Promise<Reply>((done) => { release = done; });
+  try {
+    await mount();
+    await open();
+    await choose();
+    await expect(confirm()).toBeEnabled();
+    preview = () => held;
+    await page.evaluate(() => window.dispatchEvent(new Event("registration-preview-refresh")));
+    await expect(confirm()).toBeDisabled();
+    await confirm().evaluate((button: HTMLButtonElement) => button.click());
+    expect(writes).toEqual([]);
+    release({ json: options({ can_manage: false }) });
+    await expect(dialog()).toContainText("이 계정에는 이 일을 할 권한이 없습니다");
+    await expect(confirm()).toBeDisabled();
+  } finally { release({ json: options() }); }
 });
