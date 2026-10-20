@@ -264,9 +264,14 @@ test("an offline active refresh blocks an earlier allowed preview until the fres
   await open();
   await choose();
   await expect(confirm()).toBeEnabled();
+  // Query tracks the offline event; navigator.onLine can change before its listener runs.
+  await page.evaluate(() => {
+    window.addEventListener("offline", () => {
+      window.dispatchEvent(new Event("registration-preview-refresh"));
+    }, { once: true });
+  });
   await context.setOffline(true);
   await page.waitForFunction(() => !navigator.onLine);
-  await page.evaluate(() => window.dispatchEvent(new Event("registration-preview-refresh")));
   await expect(confirm()).toBeDisabled({ timeout: 1000 });
   await confirm().evaluate((button: HTMLButtonElement) => button.click());
   expect(writes).toEqual([]);
