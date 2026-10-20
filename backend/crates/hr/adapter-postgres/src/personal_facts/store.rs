@@ -56,11 +56,11 @@ const LOAD: &str = "SELECT f.name_hanja, f.name_en, f.nationality, f.personal_em
      f.photo_upload_id::text AS photo, to_char(f.group_service_start_date, 'YYYY-MM-DD') AS group_start, \
      (SELECT jsonb_agg(jsonb_build_object( \
         'name', c.name, 'relation', c.relation, 'phone', c.phone_e164, \
-        'basis', 'VITAL_INTEREST_PENDING_COUNSEL', \
-        'basis_label', '검토 전', \
+        'basis', c.basis, \
+        'basis_label', CASE WHEN c.basis IS NOT NULL THEN '검토 전' END, \
         'recorded_by', c.created_by::text, \
         'recorded_at', to_char(c.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), \
-        'contact_notified', true) \
+        'contact_notified', c.contact_notified) \
         ORDER BY c.seq)::text \
       FROM employee_emergency_contacts c \
       WHERE c.org_id = f.org_id AND c.employee_id = f.employee_id AND c.voided_at IS NULL) AS contacts \
@@ -215,10 +215,17 @@ impl HrService {
         passkeys: &PasskeyService,
         employee_id: Uuid,
         expected_updated_at: String,
-        contacts: Value,
+        mut contacts: Value,
         contact_notified: bool,
     ) -> Result<CorrectionOutcome, HrError> {
         ensure_emergency_contact_notice(contact_notified)?;
+        if let Some(rows) = contacts.as_array_mut() {
+            for row in rows {
+                if let Some(row) = row.as_object_mut() {
+                    row.insert("contact_notified".to_owned(), json!(contact_notified));
+                }
+            }
+        }
         let mut changes = Map::new();
         changes.insert("emergency_contacts".to_owned(), contacts);
         let note = json!({
@@ -252,22 +259,8 @@ async fn write_contacts(
     actor: Uuid,
     json: Option<&str>,
 ) -> Result<(), HrError> {
-    if let Some(raw) = json
-        && let Ok(rows) = serde_json::from_str::<Vec<Value>>(raw)
-    {
-        for row in &rows {
-            if let Some(notified) = row.get("contact_notified") {
-                ensure_emergency_contact_notice(notified.as_bool() == Some(true))?;
-            }
-            if row.get("basis").and_then(Value::as_str) == Some("CONSENT") {
-                return Err(refusal(
-                    StatusCode::UNPROCESSABLE_ENTITY,
-                    EMERGENCY_CONTACT_NOTICE_UNCONFIRMED,
-                    "emergency contact basis cannot be a consent checkbox (검토 전)",
-                ));
-            }
-        }
-    }
+    // Revalidate before replacing rows, including values replayed from requests.
+    let contacts = super::normalize("emergency_contacts", &json!(json))?;
     // The live list is replaced: old rows are voided, never deleted.
     sqlx::query(
         "UPDATE employee_emergency_contacts SET voided_at = now() \
@@ -277,17 +270,18 @@ async fn write_contacts(
     .bind(employee_id)
     .execute(tx.as_mut())
     .await?;
-    if let Some(json) = json {
+    if let Some(json) = contacts {
         sqlx::query(
             "INSERT INTO employee_emergency_contacts (org_id, employee_id, seq, name, relation, \
-             phone_e164, created_by) \
-             SELECT $1, $2, r.n, r.v->>'name', r.v->>'relation', r.v->>'phone', $4 \
+             phone_e164, created_by, basis, contact_notified) \
+             SELECT $1, $2, r.n, r.v->>'name', r.v->>'relation', r.v->>'phone', $4, $5, (r.v->>'contact_notified')::boolean \
              FROM jsonb_array_elements($3::jsonb) WITH ORDINALITY AS r(v, n)",
         )
         .bind(org)
         .bind(employee_id)
         .bind(json)
         .bind(actor)
+        .bind(EMERGENCY_CONTACT_BASIS)
         .execute(tx.as_mut())
         .await?;
     }

@@ -39883,7 +39883,7 @@ components:
     EmergencyContact:
       type: object
       additionalProperties: false
-      required: [name, relation, phone]
+      required: [name, relation, phone, contact_notified]
       properties:
         name:
           type: string
@@ -39894,6 +39894,27 @@ components:
         phone:
           type: string
           description: Sent in any common form; answered in E.164.
+        contact_notified:
+          type: boolean
+          description: Employee confirmation that this contact was told. Must be true on saves (422 emergency_contact_notice_unconfirmed otherwise); false on historical unconfirmed reads.
+        basis:
+          type: string
+          nullable: true
+          readOnly: true
+          description: Server-recorded basis; null for historical unconfirmed contacts.
+        basis_label:
+          type: string
+          nullable: true
+          readOnly: true
+          description: 검토 전 when a basis is recorded.
+        recorded_by:
+          type: string
+          format: uuid
+          readOnly: true
+        recorded_at:
+          type: string
+          format: date-time
+          readOnly: true
     Employee:
       type: object
       required:

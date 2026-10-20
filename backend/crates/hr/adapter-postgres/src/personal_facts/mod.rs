@@ -86,6 +86,9 @@ fn emergency_contacts(value: &Value) -> Result<Option<String>, HrError> {
         other => other.clone(),
     };
     let rows: Vec<EmergencyContactInput> = serde_json::from_value(value).map_err(|_| shape())?;
+    for row in &rows {
+        store::ensure_emergency_contact_notice(row.contact_notified == Some(true))?;
+    }
     let mut rows = validate_emergency_contacts(rows).map_err(HrError::from_kernel)?;
     if rows.is_empty() {
         return Ok(None);
@@ -100,7 +103,7 @@ fn emergency_contacts(value: &Value) -> Result<Option<String>, HrError> {
 
 fn shape() -> HrError {
     HrError::validation(
-        "changes.emergency_contacts must be a list of {name, relation, phone} (relation: SPOUSE, PARENT, CHILD, SIBLING, RELATIVE or OTHER)",
+        "changes.emergency_contacts must be a list of {name, relation, phone, contact_notified: true} (relation: SPOUSE, PARENT, CHILD, SIBLING, RELATIVE or OTHER)",
     )
 }
 
@@ -136,12 +139,12 @@ mod tests {
         );
         let contacts = norm(
             "emergency_contacts",
-            json!([{ "name": "이하나", "relation": "SPOUSE", "phone": "010-1234-5678" }]),
+            json!([{ "name": "이하나", "relation": "SPOUSE", "phone": "010-1234-5678", "contact_notified": true }]),
         )
         .unwrap();
         assert_eq!(
             ledger_value("emergency_contacts", Some(&contacts)),
-            json!([{ "name": "이하나", "relation": "SPOUSE", "phone": "+821012345678" }])
+            json!([{ "name": "이하나", "relation": "SPOUSE", "phone": "+821012345678", "contact_notified": true }])
         );
         assert_eq!(
             norm("emergency_contacts", Value::String(contacts.clone())),
@@ -162,11 +165,11 @@ mod tests {
             ("group_service_start_date", json!("2019/01/02")),
             (
                 "emergency_contacts",
-                json!([{ "name": "이", "relation": "FRIEND", "phone": "010" }]),
+                json!([{ "name": "이", "relation": "FRIEND", "phone": "010", "contact_notified": true }]),
             ),
             (
                 "emergency_contacts",
-                json!([{ "name": "이", "relation": "OTHER", "phone": "abc" }]),
+                json!([{ "name": "이", "relation": "OTHER", "phone": "abc", "contact_notified": true }]),
             ),
         ] {
             assert!(normalize(field, &value).is_err(), "{field} {value}");

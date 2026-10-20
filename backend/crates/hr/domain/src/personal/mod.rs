@@ -150,6 +150,9 @@ pub struct EmergencyContactInput {
     pub name: String,
     pub relation: ContactRelation,
     pub phone: String,
+    /// Employee confirmation that the contact was told about registration.
+    #[serde(default)]
+    pub contact_notified: Option<bool>,
 }
 
 /// A checked 비상연락처; the phone is normalized to E.164 by the adapter.
@@ -158,6 +161,7 @@ pub struct EmergencyContact {
     pub name: String,
     pub relation: ContactRelation,
     pub phone: String,
+    pub contact_notified: bool,
 }
 
 /// Checks the whole 비상연락처 list (an empty list clears it).
@@ -188,6 +192,7 @@ pub fn validate_emergency_contacts(
                 name,
                 relation: row.relation,
                 phone,
+                contact_notified: row.contact_notified.unwrap_or(false),
             })
         })
         .collect()

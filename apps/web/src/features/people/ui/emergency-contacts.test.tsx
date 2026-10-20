@@ -109,11 +109,11 @@ describe("EmergencyContacts privacy basis and notification confirmation", () => 
     expect(html).toContain("검토 전");
     expect(html).toContain("동의 기반 아님");
     expect(html).toContain("연락처 당사자 안내 확인");
-    expect(html).toContain("직원이 비상연락처 대상자에게 등록 사실을 알렸음을 확인했습니다");
+    expect(html).toContain("직원이 저장할 모든 비상연락처 대상자에게 등록 사실을 알렸음을 확인했습니다");
     expect(html).toContain('type="checkbox"');
   });
 
-  test("refuses save when the employee's confirmation that the contact was told is missing, and records basis/recorder/timestamp when confirmed", () => {
+  test("refuses save without employee confirmation and sends typed confirmation when checked", () => {
     const unconfirmedHtml = renderToStaticMarkup(
       <ContactSheet
         c={makeCard()}
@@ -139,19 +139,38 @@ describe("EmergencyContacts privacy basis and notification confirmation", () => 
     );
     commandState.run?.();
     expect(correctEmployeeMock).toHaveBeenCalledTimes(1);
-    const [empId, updatedAt, changes, reason, noteRaw] = correctEmployeeMock.mock.calls[0]!;
+    const [empId, updatedAt, changes, reason] = correctEmployeeMock.mock.calls[0]!;
     expect(empId).toBe("00000000-0000-0000-0000-000000000001");
     expect(updatedAt).toBe("2026-10-20T00:00:00Z");
     expect(changes).toEqual({
-      emergency_contacts: [{ name: "이하나", relation: "SPOUSE", phone: "+821012345678" }],
+      emergency_contacts: [{ name: "이하나", relation: "SPOUSE", phone: "+821012345678", contact_notified: true }],
     });
     expect(reason).toBe("QUICK_EDIT");
-    const note = JSON.parse(noteRaw as string);
-    expect(note.basis).toBe("VITAL_INTEREST_PENDING_COUNSEL");
-    expect(note.basis_label).toBe("검토 전");
-    expect(note.contact_notified).toBe(true);
-    expect(note.recorded_by).toBe("00000000-0000-0000-0000-000000000099");
-    expect(typeof note.recorded_at).toBe("string");
+
+  });
+
+  test("sends typed confirmation for the replacement list and strips server-owned evidence", () => {
+    const list = [{
+      name: "이두리", relation: "PARENT" as const, phone: "+8221234567",
+      basis: null, basis_label: null, contact_notified: false,
+      recorded_by: "old-recorder", recorded_at: "2026-10-19T00:00:00Z",
+    }];
+    renderToStaticMarkup(
+      <ContactSheet c={makeCard(list)} list={list} at={null} onClose={() => {}}
+        initialDraft={{ name: "이하나", relation: "SPOUSE", phone: "010-1234-5678", notified: true }} />,
+    );
+    commandState.run?.();
+    expect(correctEmployeeMock.mock.calls[0]?.[2]).toEqual({ emergency_contacts: [
+      { name: "이두리", relation: "PARENT", phone: "+8221234567", contact_notified: true },
+      { name: "이하나", relation: "SPOUSE", phone: "+821012345678", contact_notified: true },
+    ] });
+  });
+
+  test("editing a confirmed contact requires a fresh employee confirmation", () => {
+    const list = [{ name: "이하나", relation: "SPOUSE" as const, phone: "+821012345678", contact_notified: true }];
+    renderToStaticMarkup(<ContactSheet c={makeCard(list)} list={list} at={0} onClose={() => {}} />);
+    expect(() => commandState.run?.()).toThrow("emergency_contact_notice_unconfirmed");
+    expect(correctEmployeeMock).not.toHaveBeenCalled();
   });
 
   test("displays recorded basis, recorder, and timestamp labelled 검토 전 on existing emergency contacts", () => {

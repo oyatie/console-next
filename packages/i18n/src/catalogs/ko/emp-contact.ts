@@ -15,8 +15,8 @@ export const koEmpContact = {
   "empContact.basis.label": "검토 전",
   "empContact.basis.notice": "처리 근거: 응급 상황 대비 (검토 전 · 동의 기반 아님)",
   "empContact.notice.label": "연락처 당사자 안내 확인",
-  "empContact.notice.confirm": "직원이 비상연락처 대상자에게 등록 사실을 알렸음을 확인했습니다 (검토 전)",
+  "empContact.notice.confirm": "직원이 저장할 모든 비상연락처 대상자에게 등록 사실을 알렸음을 확인했습니다 (검토 전)",
   "empContact.need.notice": "연락처 당사자에게 알렸는지 확인하십시오",
-  "empContact.recorded": "근거 {basis} (검토 전) · 기록 {by} · {at}",
+  "empContact.recorded": "근거 {basis} ({label}) · 기록 {by} · {at}",
   "empContact.of": "비상연락처 {who}",
 } as const;

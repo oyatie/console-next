@@ -41,6 +41,7 @@ fn emergency_contacts_are_bounded_and_named() {
         name: name.into(),
         relation: ContactRelation::Spouse,
         phone: phone.into(),
+        contact_notified: Some(true),
     };
     let rows = validate_emergency_contacts(vec![row(" 이 하나 ", "010-1234-5678")]).unwrap();
     assert_eq!(rows[0].name, "이 하나");

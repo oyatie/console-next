@@ -18722,6 +18722,16 @@ export interface components {
             relation: "SPOUSE" | "PARENT" | "CHILD" | "SIBLING" | "RELATIVE" | "OTHER";
             /** @description Sent in any common form; answered in E.164. */
             phone: string;
+            /** @description Employee confirmation that this contact was told. Must be true on saves (422 emergency_contact_notice_unconfirmed otherwise); false on historical unconfirmed reads. */
+            contact_notified: boolean;
+            /** @description Server-recorded basis; null for historical unconfirmed contacts. */
+            readonly basis?: string | null;
+            /** @description 검토 전 when a basis is recorded. */
+            readonly basis_label?: string | null;
+            /** Format: uuid */
+            readonly recorded_by?: string;
+            /** Format: date-time */
+            readonly recorded_at?: string;
         };
         Employee: {
             /**

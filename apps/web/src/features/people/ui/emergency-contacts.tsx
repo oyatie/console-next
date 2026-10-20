@@ -12,7 +12,7 @@ import { MaskedField } from "../../../ui/masked-field/masked-field";
 import { FieldRow } from "../../../ui/record/field-row";
 import { ListAdd, PathNote, RowActions } from "../../../ui/record-actions/record-actions";
 import { Composer } from "../../../ui/composer/composer";
-import { correctEmployee, mySub } from "../api";
+import { correctEmployee } from "../api";
 import { maskedPhone } from "../domain/card";
 import type { Card } from "./use-card";
 import type { Quick } from "./use-quick";
@@ -21,46 +21,30 @@ import s from "./card.module.css";
 import { Muted } from "../../../ui/muted/muted";
 
 type Contact = components["schemas"]["EmergencyContact"];
-export type StoredContact = Contact & {
-  basis?: string;
-  basis_label?: string;
-  recorded_by?: string;
-  recorded_at?: string;
-  contact_notified?: boolean;
-};
+export type StoredContact = Contact;
 const RELATIONS: Contact["relation"][] = ["SPOUSE", "PARENT", "CHILD", "SIBLING", "RELATIVE", "OTHER"];
 const route = getRouteApi("/app/people/$id");
 
 /** The server keeps at most three (MR-34). */
 const MAX = 3;
 const QUICK = "QUICK_EDIT";
-const EMERGENCY_CONTACT_BASIS = "VITAL_INTEREST_PENDING_COUNSEL";
 const EMERGENCY_CONTACT_REFUSAL_CODE = "emergency_contact_notice_unconfirmed";
 
-const toInput = ({ name, relation, phone }: Contact): Contact => ({ name, relation, phone });
+const toInput = ({ name, relation, phone, contact_notified }: Contact): Contact => ({ name, relation, phone, contact_notified: contact_notified ?? false });
 
 function buildEmergencyContactWrite(
   list: readonly Contact[],
   at: number | null,
   draft: { name: string; relation: Contact["relation"] | ""; phone: string; notified: boolean },
-  recordedBy: string | null = mySub() ?? null,
-  recordedAt: string = new Date().toISOString(),
-): { ok: true; contacts: Contact[]; note: string } | { ok: false; code: string } {
+): { ok: true; contacts: Contact[] } | { ok: false; code: string } {
   if (!draft.notified) return { ok: false, code: EMERGENCY_CONTACT_REFUSAL_CODE };
   const trimmed = draft.name.trim();
   const e164 = draft.phone ? phoneE164(draft.phone) : null;
   if (!trimmed || !draft.relation || !e164) return { ok: false, code: "validation_failed" };
-  const entry: Contact = { name: trimmed, relation: draft.relation, phone: e164 };
+  const entry: Contact = { name: trimmed, relation: draft.relation, phone: e164, contact_notified: true };
   const clean = list.map(toInput);
   const contacts = at === null ? [...clean, entry] : clean.map((x, i) => (i === at ? entry : x));
-  const note = JSON.stringify({
-    basis: EMERGENCY_CONTACT_BASIS,
-    basis_label: t("empContact.basis.label"),
-    contact_notified: true,
-    recorded_by: recordedBy,
-    recorded_at: recordedAt,
-  });
-  return { ok: true, contacts, note };
+  return { ok: true, contacts: contacts.map((contact) => ({ ...contact, contact_notified: true })) };
 }
 
 /**
@@ -94,7 +78,7 @@ export function EmergencyContacts({ c, quick }: { c: Card; quick: Quick }) {
           <ul className={s.contacts} aria-label={label}>
             {list.map((x, i) => (
               <li key={`${x.relation}-${x.phone}-${i}`} className={s.contact}>
-                <span>{who(x)} · {maskedPhone(x.phone)}{x.basis && x.recorded_by && x.recorded_at ? ` · ${t("empContact.recorded", { basis: x.basis, by: x.recorded_by, at: x.recorded_at })}` : ""}</span>
+                <span>{who(x)} · {maskedPhone(x.phone)}{x.basis && x.recorded_by && x.recorded_at ? ` · ${t("empContact.recorded", { basis: x.basis, label: x.basis_label ?? t("empContact.basis.label"), by: x.recorded_by, at: x.recorded_at })}` : ""}</span>
                 {c.editable && (
                   <RowActions
                     field={t("empContact.of", { who: who(x) })}
@@ -132,7 +116,7 @@ export function ContactSheet({
   const [name, setName] = useState(initialDraft?.name ?? before?.name ?? "");
   const [relation, setRelation] = useState<Contact["relation"] | "">(initialDraft?.relation ?? before?.relation ?? "");
   const [phone, setPhone] = useState(initialDraft?.phone ?? (before ? toDomestic(before.phone) : ""));
-  const [notified, setNotified] = useState(initialDraft?.notified ?? before?.contact_notified ?? false);
+  const [notified, setNotified] = useState(initialDraft?.notified ?? false);
   const [tried, setTried] = useState(initialDraft?.tried ?? false);
   const e164 = phone ? phoneE164(phone) : null;
   const plan = buildEmergencyContactWrite(list, at, { name, relation, phone, notified });
@@ -140,7 +124,7 @@ export function ContactSheet({
   const run = useCommand({
     run: () => {
       if (!plan.ok) throw new Error(plan.code);
-      return correctEmployee(c.e.id, c.personal.data?.updated_at ?? c.e.updated_at, { emergency_contacts: plan.contacts }, QUICK, plan.note);
+      return correctEmployee(c.e.id, c.personal.data?.updated_at ?? c.e.updated_at, { emergency_contacts: plan.contacts }, QUICK);
     },
     invalidates: ["/api/v1/employees"],
     settle: true,
