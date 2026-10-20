@@ -259,6 +259,37 @@ test("ArrowDown preserves focus across the render boundary", async () => {
   expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
 });
 
+for (const bounded of [false, true]) {
+  test(`keyboard navigation reveals clipped columns (${bounded ? "parent" : "document"} scrolling)`, async () => {
+    await page.setViewportSize({ width: 600, height: 800 });
+    await mount(bounded);
+    await page.locator("#grid-0-0").click();
+    for (const [key, cell] of [["ArrowRight", "grid-0-1"], ["ArrowRight", "grid-0-2"], ["Home", "grid-0-0"], ["Control+End", "grid-1999-2"]] as const) {
+      await page.keyboard.press(key);
+      await expect.poll(() => page.evaluate(() => document.activeElement?.closest('[role="gridcell"]')?.id)).toBe(cell);
+      await expect.poll(() => page.locator(`#${cell}`).evaluate((el) => {
+        const rect = el.getBoundingClientRect();
+        const wrapper = document.getElementById("scroller")!.getBoundingClientRect();
+        return rect.left >= Math.max(0, wrapper.left) && rect.right <= Math.min(innerWidth, wrapper.right);
+      })).toBe(true);
+    }
+  });
+}
+
+test("GridPage Paste focuses row one after it unmounts", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}__grid-test?page`);
+  await page.getByRole("grid").waitFor();
+  await page.locator("#grid-0-0").click();
+  for (let i = 0; i < 70; i++) await page.keyboard.press("ArrowDown");
+  await expect.poll(() => page.evaluate(() => document.activeElement?.closest('[role="gridcell"]')?.id)).toBe("grid-70-0");
+  expect(await page.locator("#grid-0-0").count()).toBe(0);
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole("button", { name: /^Paste/ }).click();
+    await expect.poll(() => page.evaluate(() => document.activeElement?.closest('[role="gridcell"]')?.id)).toBe("grid-0-0");
+  }
+  expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
+});
+
 test("GridPage First error reaches an unmounted stale_record refusal", async () => {
   await page.route("**/api/v1/employees/corrections/bulk/preview", (route) => route.fulfill({ json: {
     preview_id: "preview-test", preview_digest: "digest-test", step_up_required: false,

@@ -145,7 +145,7 @@ export function GridPage() {
             </div>
             <span className={s.grow} />
             <Button aria-expanded={pick} onClick={() => setPick((x) => !x)}><Columns3 size={16} aria-hidden />{t("bulkGrid.columns", { n: cols.length })}</Button>
-            <Button onClick={() => document.getElementById("grid-0-0")?.focus()}><ClipboardPaste size={16} aria-hidden />{t("bulkGrid.paste")}<Kbd keys="⌘V" /></Button>
+            <Button onClick={() => setActiveCell({ r: 0, c: 0 })}><ClipboardPaste size={16} aria-hidden />{t("bulkGrid.paste")}<Kbd keys="⌘V" /></Button>
             <Button onClick={() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "d", ctrlKey: true, bubbles: true }))}>{t("bulkGrid.fill")}<Kbd keys="Ctrl+D" /></Button>
           </div>
           <div className={s.verbs}>

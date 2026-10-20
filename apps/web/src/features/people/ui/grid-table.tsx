@@ -137,6 +137,7 @@ export function GridTable({
   // Scrolling may need a second render to mount the requested cell's input.
   useLayoutEffect(() => {
     if (focusPending.current && input.current) {
+      input.current.parentElement?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
       input.current.focus({ preventScroll: true });
       focusPending.current = false;
     }
