@@ -5,6 +5,7 @@ import type { components } from "@console/api/schema";
 import { isMessageId, t } from "@console/i18n";
 import { Sheet } from "../../../ui/sheet/sheet";
 import { Button } from "../../../ui/button/button";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Field, TextInput } from "../../../ui/field/field";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
 import { CommandError } from "../../../lib/react/command-error";
@@ -81,6 +82,15 @@ export function InviteSheet({ employeeId, onClose, onIssued, onOpenAccount }: {
     },
   });
   const missing = (displayName === "" ? 1 : 0) + (loginError ? 1 : 0);
+  const blockedWhy = !created
+    ? (!nonEmployee && who == null
+      ? t("accounts.invite.pickWho")
+      : displayName === ""
+        ? t("accounts.invite.pickName")
+        : missing > 0
+          ? t("accounts.missing", { count: missing })
+          : null)
+    : null;
   const commit = () => {
     setTried(true);
     if (created) return issue.mutate(created);
@@ -105,10 +115,20 @@ export function InviteSheet({ employeeId, onClose, onIssued, onOpenAccount }: {
       actions={
         <>
           <Button onClick={onClose} disabled={pending}>{t("common.back")}</Button>
-          {tried && missing > 0 && !created && <Muted>{t("accounts.missing", { count: missing })}</Muted>}
-          <Button variant="primary" onClick={commit} disabled={pending}>
-            <KeyRound size={16} aria-hidden /> {created ? t("accounts.invite.retryCode") : t("accounts.invite.commit")}
-          </Button>
+          {blockedWhy ? (
+            <DisabledReason
+              control={(p) => (
+                <Button variant="primary" {...p} onClick={(e) => { p.onClick(e); commit(); }}>
+                  <KeyRound size={16} aria-hidden /> {t("accounts.invite.commit")}
+                </Button>
+              )}
+              reason={blockedWhy}
+            />
+          ) : (
+            <Button variant="primary" onClick={commit} disabled={pending}>
+              <KeyRound size={16} aria-hidden /> {created ? t("accounts.invite.retryCode") : t("accounts.invite.commit")}
+            </Button>
+          )}
         </>
       }
     >

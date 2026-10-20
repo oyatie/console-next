@@ -10,6 +10,7 @@ import { useCommand } from "../../../lib/react/command";
 import { EntityError } from "./entity-error";
 import { entitiesRef } from "../../../reference/entity/api";
 import { Button } from "../../../ui/button/button";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Field, TextInput } from "../../../ui/field/field";
 import { Sheet } from "../../../ui/sheet/sheet";
 import { createEntity, ENTITY_READS } from "../api";
@@ -71,7 +72,14 @@ export function EntityQuickSheet({ open, onClose, onSaved }: { open: boolean; on
         <>
           <Button onClick={onClose}>{t("entityQuick.cancel")}</Button>
           <Button {...off} onClick={() => go("workplace")}>{t("entityQuick.createAndWorkplace")}</Button>
-          <Button variant="primary" {...off} onClick={() => go("stay")}>{t("entityQuick.create")}</Button>
+          {hold ? (
+            <DisabledReason
+              control={(p) => <Button variant="primary" {...p}>{t("entityQuick.create")}</Button>}
+              reason={hold}
+            />
+          ) : (
+            <Button variant="primary" onClick={() => go("stay")}>{t("entityQuick.create")}</Button>
+          )}
         </>
       }
     >

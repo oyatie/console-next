@@ -9,6 +9,7 @@ import { Field, TextInput } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { Sheet } from "../../../ui/sheet/sheet";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { CommandError } from "../../../lib/react/command-error";
 import { announce } from "../../../lib/react/announce";
 import { todayKst } from "../../../lib/pure/today";
@@ -102,7 +103,7 @@ export function BulkSheet({ source, matching, onClose, onDone }: {
   const unitName = all.find((u) => u.id === d.unitId)?.name;
 
   const missing = {
-    targets: paste && !d.text.trim() ? t("bulk.paste.missing") : undefined,
+    targets: (paste ? !d.text.trim() : count === 0) ? t("bulk.paste.missing") : undefined,
     kind: !d.kind ? t("bulk.kind.missing") : undefined,
     unit: d.kind === "TRANSFER" && !perLine && !d.unitId ? t("bulk.unit.missing") : undefined,
     position: d.kind === "PROMOTE" && !perLine && !d.position.trim() ? t("bulk.position.missing") : undefined,
@@ -112,6 +113,12 @@ export function BulkSheet({ source, matching, onClose, onDone }: {
     comment: !d.comment.trim() ? t("bulk.reason.missing") : undefined,
   };
   const missingCount = Object.values(missing).filter(Boolean).length;
+  const blockedWhy =
+    count === 0 || missingCount > 0
+      ? t("bulk.missing", { count: Math.max(1, missingCount) })
+      : errorLines > 0
+        ? t("bulk.errorsLeft", { count: errorLines })
+        : null;
   const shown = (m: string | undefined) => (tried ? m : undefined);
 
   const batches = (rs: Row[]): BulkRequest[] =>
@@ -220,9 +227,18 @@ export function BulkSheet({ source, matching, onClose, onDone }: {
         ) : (
           <>
             <Button onClick={onClose} disabled={cmd.busy}>{t("common.back")}</Button>
-            {tried && missingCount > 0 && <span className={s.why}>{t("bulk.missing", { count: missingCount })}</span>}
-            {tried && !missingCount && errorLines > 0 && <span className={s.why}>{t("bulk.errorsLeft", { count: errorLines })}</span>}
-            <Button variant={danger ? "danger" : "primary"} disabled={cmd.busy} onClick={submit}>{commitLabel}</Button>
+            {blockedWhy ? (
+              <DisabledReason
+                control={(p) => (
+                  <Button variant={danger ? "danger" : "primary"} {...p} onClick={(e) => { p.onClick(e); submit(); }}>
+                    {commitLabel}
+                  </Button>
+                )}
+                reason={blockedWhy}
+              />
+            ) : (
+              <Button variant={danger ? "danger" : "primary"} disabled={cmd.busy} onClick={submit}>{commitLabel}</Button>
+            )}
           </>
         )
       }
