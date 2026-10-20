@@ -174,6 +174,13 @@ async fn regression_d26_ops_covers_a_post_go_live_correction_only_with_its_bound
     assert_eq!(count(&owner, ledger, entity).await, 0);
     assert_eq!(count(&owner, exceptions, entity).await, 0);
 
+    // In a sole-holder situation, ops is the only eligible holder (demote hr).
+    sqlx::query("UPDATE users SET roles = ARRAY['MEMBER'] WHERE id = $1")
+        .bind(hr.id)
+        .execute(&owner)
+        .await
+        .unwrap();
+
     // Ops with its own step-up bound to exactly this correction.
     let mine = step_up_as(&owner, &svc, &mut ops, kind, entity, &line).await;
     let (status, saved) = send(&service, &uri, &ops.token, Some(&key()), with(mine)).await;
@@ -207,4 +214,173 @@ async fn regression_d26_ops_covers_a_post_go_live_correction_only_with_its_bound
     .unwrap();
     assert_eq!(audit["ops_break_glass"], true, "{audit}");
     assert_eq!(count(&owner, ledger, entity).await, 1);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn acceptance_crud_g101_second_person_on_entity_identifier_correction(owner: PgPool) {
+    let org = Uuid::new_v4();
+    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2, '가나 콘솔')")
+        .bind(org)
+        .bind(format!("g101-{}", &org.simple().to_string()[..12]))
+        .execute(&owner)
+        .await
+        .unwrap();
+    let (service, issuer) = router(&owner).await;
+    let svc = passkey_service();
+    let tenant = OrgId::from_uuid(org);
+    let mut ops: Admin = admin_in(&owner, &svc, &issuer, tenant, "운영 관리자").await;
+    let mut approver: Admin = admin_in(&owner, &svc, &issuer, tenant, "결재 관리자").await;
+    sqlx::query("UPDATE users SET is_tenant_ops = true WHERE id = $1")
+        .bind(ops.id)
+        .execute(&owner)
+        .await
+        .unwrap();
+
+    let (status, _) = send(
+        &service,
+        "/api/v1/onboarding/terms",
+        &ops.token,
+        Some(&key()),
+        terms::publish(&owner).await,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    let (status, entity) = send(
+        &service,
+        "/api/v1/legal-entities",
+        &ops.token,
+        Some(&key()),
+        json!({
+            "biz_kind": "CORPORATION", "name": "주식회사 가나", "representation_mode": "SINGLE",
+            "representatives": ["홍길동"], "crn": "130111-0006246",
+            "head_office_address": { "source": "MANUAL_UNVERIFIED", "road_addr_part1": "서울특별시 강남구 테헤란로 152",
+                                     "si_nm": "서울특별시", "sgg_nm": "강남구", "detail": "12층" },
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{entity}");
+    let entity: Uuid = entity["record"]["id"].as_str().unwrap().parse().unwrap();
+    let doc = upload(&service, &ops.token).await;
+    armed(
+        &owner,
+        org,
+        "UPDATE tenant_phase SET phase = 'OPERATING' WHERE org_id = $1",
+        org,
+    )
+    .await;
+    armed(
+        &owner,
+        org,
+        "UPDATE legal_entities SET identity_locked_at = now() WHERE id = $1",
+        entity,
+    )
+    .await;
+
+    let uri = format!("/api/v1/legal-entities/{entity}/identifier-corrections");
+    let fix = json!({ "field": "crn", "value": "110111-0012345", "document_id": doc, "reason_code": "REGISTRY_DIFFERS" });
+    let line = format!("ENTITY_IDENTIFIER_CORRECTION\ncrn\n{FIXED}\n{doc}");
+    let kind = MobileStepUpActionKind::ExceptionDecide;
+
+    // Ops with its step-up: with a second eligible holder (approver), the correction
+    // cannot be recorded as sole-holder. It is PENDING, not RECORDED.
+    let mine = step_up_as(&owner, &svc, &mut ops, kind, entity, &line).await;
+    let mut with_step_up = fix.clone();
+    with_step_up["step_up"] = mine;
+    let (status, resp) = send(&service, &uri, &ops.token, Some(&key()), with_step_up).await;
+    assert_eq!(status, StatusCode::CONFLICT, "{resp}");
+    assert_eq!(resp["error"]["code"], "exception_not_approved");
+
+    // The exception is stored as PENDING (not RECORDED) with fallback_kind SECOND_PERSON:
+    let (exc_id, rule, exc_status, fallback, by): (Uuid, String, String, Option<String>, Uuid) =
+        sqlx::query_as(
+            "SELECT id, rule_code, status, fallback_kind, requested_by \
+         FROM governed_exceptions WHERE subject_id = $1",
+        )
+        .bind(entity)
+        .fetch_one(&owner)
+        .await
+        .unwrap();
+    assert_eq!(
+        (rule.as_str(), exc_status.as_str(), fallback.as_deref(), by),
+        (
+            "ENTITY_IDENTIFIER_CORRECTION",
+            "PENDING",
+            Some("SECOND_PERSON"),
+            ops.id,
+        )
+    );
+
+    let decide_uri = format!("/api/v1/exceptions/{exc_id}/decide");
+
+    // Refusal test 1: Requester cannot decide their own exception (decider != requester).
+    let ops_step_up = step_up_as(&owner, &svc, &mut ops, kind, exc_id, &line).await;
+    let (status, refused) = send(
+        &service,
+        &decide_uri,
+        &ops.token,
+        Some(&key()),
+        json!({
+            "decision": "APPROVE",
+            "reason_code": "SECOND_PERSON_VERIFIED",
+            "step_up": ops_step_up,
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
+    assert_eq!(refused["error"]["code"], "exception_self_decision");
+
+    // Refusal test 2: Approver approving without step-up is refused.
+    let (status, refused) = send(
+        &service,
+        &decide_uri,
+        &approver.token,
+        Some(&key()),
+        json!({
+            "decision": "APPROVE",
+            "reason_code": "SECOND_PERSON_VERIFIED",
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
+    assert_eq!(refused["error"]["code"], "step_up_required");
+
+    // Success test: Approver decides with step-up.
+    let approver_step_up = step_up_as(&owner, &svc, &mut approver, kind, exc_id, &line).await;
+    let (status, approved) = send(
+        &service,
+        &decide_uri,
+        &approver.token,
+        Some(&key()),
+        json!({
+            "decision": "APPROVE",
+            "reason_code": "SECOND_PERSON_VERIFIED",
+            "step_up": approver_step_up,
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{approved}");
+    assert_eq!(approved["status"], "APPROVED");
+
+    // Refusal test 3: Deciding an already decided exception is refused.
+    let (status, refused) = send(
+        &service,
+        &decide_uri,
+        &approver.token,
+        Some(&key()),
+        json!({
+            "decision": "APPROVE",
+            "reason_code": "SECOND_PERSON_VERIFIED",
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT, "{refused}");
+    assert_eq!(refused["error"]["code"], "exception_not_pending");
+
+    // Now the approved exception can be consumed: ops submits with exception_id.
+    let mut with_exc = fix.clone();
+    with_exc["exception_id"] = json!(exc_id);
+    let (status, saved) = send(&service, &uri, &ops.token, Some(&key()), with_exc).await;
+    assert_eq!(status, StatusCode::OK, "{saved}");
+    assert_eq!(saved["change_mode"], "GOVERNED");
+    assert_eq!(saved["record"]["crn"]["value"], FIXED);
 }
