@@ -2810,6 +2810,7 @@ const ENTITY_FRAGMENT_EXTERNAL: &[&str] = &[
     "FieldError",
     "GroupTransferFacts",
     "KrAddress",
+    "MobilePasskeyStepUpEnvelope",
     "Uuid",
 ];
 
@@ -2953,6 +2954,24 @@ const ENTITY_FRAGMENT_PATHS: &[PathItem] = &[
             method: "post",
             body: include_str!(
                 "../../entity/rest/openapi/paths/api__v1__entity-setup__batches__batchId__undo.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/exceptions/{id}/decide",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../entity/rest/openapi/paths/api__v1__exceptions__id__decide.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/governed-exceptions/{id}/decide",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../entity/rest/openapi/paths/api__v1__governed-exceptions__id__decide.post.yaml"
             ),
         }],
     },

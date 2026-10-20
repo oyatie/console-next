@@ -45,6 +45,12 @@
     "/api/v1/entity-setup/batches/{batchId}/undo": [
       "post"
     ],
+    "/api/v1/exceptions/{id}/decide": [
+      "post"
+    ],
+    "/api/v1/governed-exceptions/{id}/decide": [
+      "post"
+    ],
     "/api/v1/legal-entities": [
       "get",
       "post"
@@ -315,6 +321,7 @@
     "FieldError",
     "GroupTransferFacts",
     "KrAddress",
+    "MobilePasskeyStepUpEnvelope",
     "Uuid"
   ]
 }

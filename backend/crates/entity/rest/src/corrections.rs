@@ -3,8 +3,9 @@
 
 use axum::Json;
 use axum::extract::{Path, State};
-use axum::http::HeaderMap;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
+use console_entity_adapter_postgres::CorrectionOutcome;
 use console_entity_application::{RegistrationReissue, Target};
 use console_entity_domain::correction::{IdentifierCorrectionInput, RegistrationChangeInput};
 use uuid::Uuid;
@@ -27,7 +28,7 @@ pub(crate) async fn correct_entity(
         .store
         .correct_entity_identifier(&a, id, b, s.governed.clone())
         .await?;
-    Ok(Json(saved).into_response())
+    Ok(correction_response(saved))
 }
 
 pub(crate) async fn correct_registration(
@@ -42,7 +43,7 @@ pub(crate) async fn correct_registration(
         .store
         .correct_registration_number(&a, id, b, s.governed.clone())
         .await?;
-    Ok(Json(saved).into_response())
+    Ok(correction_response(saved))
 }
 
 pub(crate) async fn change_registration(
@@ -64,4 +65,11 @@ pub(crate) async fn reissue(
 ) -> Result<Response> {
     let a = manager(&s, &h, Target::Registration(id)).await?;
     Ok(Json(s.store.reissue_registration(&a, id, b).await?).into_response())
+}
+
+fn correction_response<T: serde::Serialize>(outcome: CorrectionOutcome<T>) -> Response {
+    match outcome {
+        CorrectionOutcome::Applied(saved) => Json(saved).into_response(),
+        CorrectionOutcome::Pending { exception_id, payload_hash } => (StatusCode::ACCEPTED, Json(serde_json::json!({ "status": "PENDING", "exception_id": exception_id, "payload_hash": payload_hash }))).into_response(),
+    }
 }

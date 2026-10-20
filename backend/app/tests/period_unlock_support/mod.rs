@@ -178,6 +178,15 @@ pub async fn step_up_as(
         object_id,
         hex::encode(Sha256::digest(payload.as_bytes())),
     );
+    step_up_with_binding(owner, svc, who, binding).await
+}
+
+pub async fn step_up_with_binding(
+    owner: &PgPool,
+    svc: &PasskeyService,
+    who: &mut Admin,
+    binding: MobilePasskeyStepUpBinding,
+) -> Value {
     let start = svc
         .start_mobile_step_up(owner, who.id, binding.clone())
         .await

@@ -31,3 +31,11 @@ test("an ordinary refusal never asks for a passkey or resends", async () => {
   await expect(send[0]!()).rejects.toBeInstanceOf(ApiError);
   expect(post).toHaveBeenCalledTimes(1);
 });
+
+
+test.each(send)("a pending correction returns its recoverable receipt", async (correct) => {
+  const pending = { status: "PENDING", exception_id: "exception", payload_hash: "a".repeat(64) };
+  post.mockResolvedValueOnce({ response: new Response(null, { status: 202 }), data: pending });
+  await expect(correct()).resolves.toEqual(pending);
+  expect(post).toHaveBeenCalledTimes(1);
+});

@@ -32,6 +32,23 @@ responses:
       application/json:
         schema:
           $ref: '#/components/schemas/SavedBusinessRegistration'
+  '202':
+    description: A second eligible holder must decide the persisted PENDING exception. Bind EXCEPTION_DECIDE to exception_id and payload_hash, then POST /api/v1/exceptions/{exception_id}/decide.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [status, exception_id, payload_hash]
+          properties:
+            status:
+              type: string
+              enum: [PENDING]
+            exception_id:
+              type: string
+              format: uuid
+            payload_hash:
+              type: string
+              pattern: '^[a-f0-9]{64}$'
   '401':
     $ref: '#/components/responses/Unauthorized'
   '428':

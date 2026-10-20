@@ -5887,6 +5887,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/exceptions/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide a pending identifier-correction exception */
+        post: operations["decideIdentifierCorrectionException"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/exports/daily-status": {
         parameters: {
             query?: never;
@@ -6666,6 +6683,23 @@ export interface paths {
          * @description Opens a governance override (reason + before-value snapshot) for editing a non-draft object, recorded append-only.
          */
         post: operations["openGovernanceOverride"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/governed-exceptions/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide a pending identifier-correction exception */
+        post: operations["decideGovernedIdentifierCorrectionException"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21096,8 +21130,8 @@ export interface components {
              * @description After 운영 시작, the approved or sole-holder recorded governed exception for exactly this correction.
              */
             exception_id?: string | null;
-            /** @description After 운영 시작, the tenant ops account covering the correction itself (decisions #26 item d, break-glass): its passkey step-up envelope {binding, assertion}, kind EXCEPTION_DECIDE, object the 법인 (or 사업자등록) id, payload the line "ENTITY_IDENTIFIER_CORRECTION\n{field}\n{canonical value}\n{document_id}". The server records a sole-holder exception (사후 검토 due) and consumes it. Ignored for anyone else. */
-            step_up?: Record<string, never> | null;
+            /** @description After 운영 시작, the tenant ops account covering the correction itself (decisions #26 item d, break-glass): its passkey step-up envelope {binding, assertion}, kind EXCEPTION_DECIDE, object the 법인 (or 사업자등록) id, payload the line "ENTITY_IDENTIFIER_CORRECTION\n{field}\n{canonical value}\n{document_id}". With another eligible holder the server returns 202 PENDING and its exception_id; otherwise it records a sole-holder exception (사후 검토 due) and consumes it. Ignored for anyone else. */
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"] | null;
         };
         /** @description §16 self-checklist evidence for an ingest-commit ("적재") apply. Missing or false ⇒ fail-closed deny, nothing written (85 판정). */
         ImportApplyRequest: {
@@ -33611,6 +33645,21 @@ export interface operations {
                     "application/json": components["schemas"]["SavedBusinessRegistration"];
                 };
             };
+            /** @description A second eligible holder must decide the persisted PENDING exception. Bind EXCEPTION_DECIDE to exception_id and payload_hash, then POST /api/v1/exceptions/{exception_id}/decide. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "PENDING";
+                        /** Format: uuid */
+                        exception_id: string;
+                        payload_hash: string;
+                    };
+                };
+            };
             401: components["responses"]["Unauthorized"];
             /** @description Not permitted (legal_entity_manage on this record), or the ops account's step_up did not verify for exactly this correction (passkey_step_up_failed). */
             403: {
@@ -40701,6 +40750,73 @@ export interface operations {
             };
         };
     };
+    decideIdentifierCorrectionException: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description APPROVE or DECLINE (lowercase also accepted). */
+                    decision: string;
+                    reason_code: string;
+                    note?: string | null;
+                    /** @description Approval requires a verified EXCEPTION_DECIDE assertion bound to this exception ID and its stored fingerprint (the pending receipt's payload_hash). */
+                    step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Decision and its actor snapshots committed with an audit event. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        status: "APPROVED" | "DECLINED";
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Requester, contributor, missing approving permission, or absent or mismatched approval step-up. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Exception not found in the caller's tenant. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Exception is expired or no longer pending. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid decision, reason, or request shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     getDailyStatusExport: {
         parameters: {
             query: {
@@ -42171,6 +42287,73 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             422: components["responses"]["ValidationError"];
             503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    decideGovernedIdentifierCorrectionException: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description APPROVE or DECLINE (lowercase also accepted). */
+                    decision: string;
+                    reason_code: string;
+                    note?: string | null;
+                    /** @description Approval requires a verified EXCEPTION_DECIDE assertion bound to this exception ID and its stored fingerprint (the pending receipt's payload_hash). */
+                    step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Decision and its actor snapshots committed with an audit event. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        status: "APPROVED" | "DECLINED";
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Requester, contributor, missing approving permission, or absent or mismatched approval step-up. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Exception not found in the caller's tenant. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Exception is expired or no longer pending. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid decision, reason, or request shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     listGroupAdminGroups: {
@@ -44730,6 +44913,21 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SavedLegalEntity"];
+                };
+            };
+            /** @description A second eligible holder must decide the persisted PENDING exception. Bind EXCEPTION_DECIDE to exception_id and payload_hash, then POST /api/v1/exceptions/{exception_id}/decide. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "PENDING";
+                        /** Format: uuid */
+                        exception_id: string;
+                        payload_hash: string;
+                    };
                 };
             };
             401: components["responses"]["Unauthorized"];

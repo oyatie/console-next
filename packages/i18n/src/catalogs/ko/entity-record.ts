@@ -246,6 +246,7 @@ export const koEntityRecord = {
   "entityRecord.id.consequenceSetup": "정정. 바로 적용되고 이전 번호는 이력에 「정정」으로 남습니다.",
   "entityRecord.id.consequenceOperating": "정정. 증빙과 함께 기록되고 이전 번호는 이력에 「정정」으로 남습니다.",
   "entityRecord.id.save": "번호 정정",
+  "entityRecord.id.pending": "정정을 요청했습니다. 다른 적격자가 승인할 때까지 식별번호는 바뀌지 않습니다. 예외 요청: {id}",
   "entityRecord.id.saved": "{field|을를} 정정했습니다",
   "entityRecord.history.derived": "부가가치세 신고 단위 · 등록증에 따라 정해짐",
   "entityRecord.history.declared": "부가가치세 신고 단위 · 사업장 추가 때 정함",

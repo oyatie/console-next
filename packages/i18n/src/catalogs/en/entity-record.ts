@@ -246,6 +246,7 @@ export const enEntityRecord = {
   "entityRecord.id.consequenceSetup": "corrected. It applies at once and the old number stays in the history as a correction.",
   "entityRecord.id.consequenceOperating": "corrected. It is recorded with its evidence and the old number stays in the history as a correction.",
   "entityRecord.id.save": "Correct number",
+  "entityRecord.id.pending": "Correction requested; the identifier is unchanged until another eligible person approves. Exception: {id}",
   "entityRecord.id.saved": "Corrected the {field}",
   "entityRecord.history.derived": "VAT filing unit · set by the certificates",
   "entityRecord.history.declared": "VAT filing unit · chosen when a workplace was added",

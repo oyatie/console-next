@@ -43,8 +43,9 @@ pub type GovernedCorrectionFuture<'a> = std::pin::Pin<
 
 /// The future a [`GovernedCorrectionPort::cover_as_ops`] returns: the
 /// recorded exception's id.
-pub type OpsCoverFuture<'a> =
-    std::pin::Pin<Box<dyn std::future::Future<Output = Result<Uuid, KernelError>> + Send + 'a>>;
+pub type OpsCoverFuture<'a> = std::pin::Pin<
+    Box<dyn std::future::Future<Output = Result<RequestedCorrection, KernelError>> + Send + 'a>,
+>;
 
 /// The tenant ops account covering one correction (decisions #26 item d).
 #[derive(Debug, Clone, Copy)]
@@ -83,4 +84,21 @@ pub trait GovernedCorrectionPort: Send + Sync {
         subject: CorrectionSubject,
         payload: &'a Value,
     ) -> GovernedCorrectionFuture<'a>;
+}
+
+/// Whether the verified request admits the correction or needs a decision.
+#[derive(Debug, Clone, Copy)]
+pub enum RequestedCorrection {
+    Covered(Uuid),
+    Pending(Uuid),
+}
+
+/// A correction either changes the record or creates a recoverable request.
+#[derive(Debug)]
+pub enum CorrectionOutcome<T> {
+    Applied(console_entity_application::Saved<T>),
+    Pending {
+        exception_id: Uuid,
+        payload_hash: String,
+    },
 }

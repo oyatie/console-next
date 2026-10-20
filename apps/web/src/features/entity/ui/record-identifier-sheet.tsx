@@ -40,16 +40,20 @@ export function IdentifierSheet({ e: opened, field, registrationId, operating, o
   const all = useQuery(entitiesRef).data?.items ?? [];
   const taken = field === "brn" && value !== old?.value ? takenBrn(value, all) : null;
   const complete = value.length === fmt.max && value !== old?.value && !taken;
-  const ready = complete && reason !== null && doc !== null;
+  const [pendingException, setPendingException] = useState<string | null>(null);
+  const ready = complete && reason !== null && doc !== null && pendingException === null;
   const upload = useCommand({ run: (f: File) => uploadDocument(f, field === "brn" ? "BIZ_REG_CERT" : "CORP_REGISTRY_EXTRACT"), onSuccess: setDoc });
   const save = useCommand({
-    run: async (_: undefined, key: string): Promise<unknown> => {
+    run: async (_: undefined, key: string) => {
       const body = { value, document_id: doc!.id, reason_code: reason! };
       return field === "brn" ? correctRegistrationNumber(key, reg!.id, body) : correctIdentifier(key, e.id, { field: "crn", ...body });
     },
     invalidates: ENTITY_READS,
-    announce: () => t("entityRecord.id.saved", { field: t(`entityRecord.id.field.${field}`) }),
-    onSuccess: onClose,
+    announce: (out) => "status" in out && out.status === "PENDING" ? t("entityRecord.id.pending", { id: out.exception_id }) : t("entityRecord.id.saved", { field: t(`entityRecord.id.field.${field}`) }),
+    onSuccess: (out) => {
+      if ("status" in out && out.status === "PENDING") setPendingException(out.exception_id);
+      else onClose();
+    },
   });
   const where = field === "brn" ? `${entityName(e)} › ${holder?.current?.name ?? t("entityRecord.id.certificate")}` : entityName(e);
   return (
@@ -60,7 +64,7 @@ export function IdentifierSheet({ e: opened, field, registrationId, operating, o
       wide
       title={t("entityRecord.id.title", { field: t(`entityRecord.id.field.${field}`) })}
       subtitle={<><span className={s.kicker}><FileText size={14} aria-hidden /> {where}</span>{t("entityRecord.id.now", { value: old?.display ?? "—" })}</>}
-      notice={<EntityError error={upload.error ?? save.error} historyHref={`/org/entities/${encodeURIComponent(e.id)}?tab=history#history`} own={(code) => (code === "identifier_correction_needs_exception" ? t("entityRecord.id.needsOps") : undefined)} />}
+      notice={<>{pendingException && <p role="status">{t("entityRecord.id.pending", { id: pendingException })}</p>}<EntityError error={upload.error ?? save.error} historyHref={`/org/entities/${encodeURIComponent(e.id)}?tab=history#history`} own={(code) => (code === "identifier_correction_needs_exception" ? t("entityRecord.id.needsOps") : undefined)} /></>}
       consequence={
         complete ? (
           <span><span className={s.old}>{old?.display}</span>{ARROW}<b>{fmt.display(value)}</b> {t(operating ? "entityRecord.id.consequenceOperating" : "entityRecord.id.consequenceSetup")}</span>

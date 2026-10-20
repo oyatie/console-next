@@ -20,8 +20,14 @@ use uuid::Uuid;
 
 use crate::command::{Outcome, claim, command_id, finish};
 use crate::documents::attach_in_tx;
-use crate::governed::{CorrectionCover, CorrectionSubject, GovernedCorrectionPort, OpsCover};
+use crate::governed::{
+    CorrectionCover, CorrectionOutcome, CorrectionSubject, GovernedCorrectionPort, OpsCover,
+    RequestedCorrection,
+};
 use crate::{Admitted, PgEntityError, PgEntityStore, Tx, audit, read_phase};
+
+mod pending;
+use pending::{pending, save_pending};
 
 pub type Gate = Option<Arc<dyn GovernedCorrectionPort>>;
 
@@ -33,6 +39,11 @@ fn by_ops(input: &IdentifierCorrectionInput) -> ByOps<'_> {
     input.by_ops.then_some(input.step_up.as_ref())
 }
 
+enum CorrectionAdmission {
+    Immediate(Admitted, Option<Uuid>),
+    Pending(Uuid),
+}
+
 /// SETUP: immediate. OPERATING: only by consuming the correction's exception,
 /// which the tenant ops account may record itself after a step-up.
 async fn admit_correction(
@@ -42,10 +53,10 @@ async fn admit_correction(
     gate: Gate,
     actor: &Actor,
     ops: ByOps<'_>,
-) -> Result<(Admitted, Option<Uuid>), PgEntityError> {
+) -> Result<CorrectionAdmission, PgEntityError> {
     let phase = read_phase(tx, true).await?;
     if phase == TenantPhase::Setup {
-        return Ok((
+        return Ok(CorrectionAdmission::Immediate(
             Admitted {
                 phase,
                 mode: ChangeMode::Setup,
@@ -85,19 +96,24 @@ async fn admit_correction(
         (None, Some(Some(step_up))) => {
             let line = c.ops_step_up_line();
             let port = gate.as_ref().ok_or_else(unwired)?;
-            port.cover_as_ops(
-                tx,
-                OpsCover {
-                    org: actor.org,
-                    actor: *actor.user.as_uuid(),
-                    subject,
-                    payload: &payload,
-                    reason_code: c.reason.as_str(),
-                    step_up_line: &line,
-                    step_up,
-                },
-            )
-            .await?
+            match port
+                .cover_as_ops(
+                    tx,
+                    OpsCover {
+                        org: actor.org,
+                        actor: *actor.user.as_uuid(),
+                        subject,
+                        payload: &payload,
+                        reason_code: c.reason.as_str(),
+                        step_up_line: &line,
+                        step_up,
+                    },
+                )
+                .await?
+            {
+                RequestedCorrection::Covered(id) => id,
+                RequestedCorrection::Pending(id) => return Ok(CorrectionAdmission::Pending(id)),
+            }
         }
     };
     let Some(gate) = gate else {
@@ -110,7 +126,10 @@ async fn admit_correction(
         CorrectionCover::SecondPerson => ChangeMode::Governed,
         CorrectionCover::SoleHolder => ChangeMode::SoleHolder,
     };
-    Ok((Admitted { phase, mode }, Some(exception)))
+    Ok(CorrectionAdmission::Immediate(
+        Admitted { phase, mode },
+        Some(exception),
+    ))
 }
 
 struct LedgerRow<'a> {
@@ -169,14 +188,17 @@ impl PgEntityStore {
         id: Uuid,
         input: IdentifierCorrectionInput,
         gate: Gate,
-    ) -> Result<Saved<LegalEntityView>, PgEntityError> {
+    ) -> Result<CorrectionOutcome<LegalEntityView>, PgEntityError> {
         let actor = actor.clone();
         with_audits(&self.pool, actor.org, move |tx| {
             Box::pin(async move {
                 let request = json!({ "id": id, "correction": input });
                 if let Some(done) = claim(tx, &actor, "legal_entity.correct_identifier", request).await? {
+                    if done.change_mode.as_deref() == Some("PENDING") {
+                        return Ok((pending(tx, done.target.ok_or_else(|| console_kernel_core::KernelError::internal("pending correction has no exception"))?, &input).await?, vec![]));
+                    }
                     let record = crate::legal_entity::one(tx, id, None, true).await?;
-                    return Ok((Saved { record, warnings: vec![], change_mode: done.change_mode.unwrap_or_default() }, vec![]));
+                    return Ok((CorrectionOutcome::Applied(Saved { record, warnings: vec![], change_mode: done.change_mode.unwrap_or_default() }), vec![]));
                 }
                 let c = validate_correction(&input, false)?;
                 let head = sqlx::query("SELECT biz_kind, crn, voided_at IS NOT NULL AS voided FROM legal_entities WHERE id = $1 FOR UPDATE")
@@ -213,8 +235,11 @@ impl PgEntityStore {
                 }
                 let new_kind = if c.field == IdentifierField::BizKind { Some(c.value.clone()) } else { kind.clone() };
                 crate::name_evidence::correct_classification(tx, id, new_kind.as_deref().and_then(BizKind::parse), None).await?;
-                let (admitted, exception) = admit_correction(tx, &c, CorrectionSubject::LegalEntity(id), gate, &actor, by_ops(&input)).await?;
                 let (_, attached) = attach_in_tx(tx, &actor, c.document_id, id, None).await?;
+                let (admitted, exception) = match admit_correction(tx, &c, CorrectionSubject::LegalEntity(id), gate, &actor, by_ops(&input)).await? {
+                    CorrectionAdmission::Immediate(admitted, exception) => (admitted, exception),
+                    CorrectionAdmission::Pending(exception) => return save_pending(tx, &actor, exception, &input, attached).await,
+                };
                 for (field, old, new) in &rows {
                     let row = LedgerRow { entity: id, registration: None, field: *field, old: *old, new: *new };
                     ledger(tx, &actor, &c, admitted, exception, row).await?;
@@ -233,7 +258,7 @@ impl PgEntityStore {
                 }))?);
                 finish(tx, &actor, &Outcome { target: Some(id), change_mode: Some(admitted.mode.as_str().into()), count: None }).await?;
                 let record = crate::legal_entity::one(tx, id, None, true).await?;
-                Ok((Saved { record, warnings: vec![], change_mode: admitted.mode.as_str().into() }, events))
+                Ok((CorrectionOutcome::Applied(Saved { record, warnings: vec![], change_mode: admitted.mode.as_str().into() }), events))
             })
         })
         .await
@@ -247,7 +272,7 @@ impl PgEntityStore {
         id: Uuid,
         input: IdentifierCorrectionInput,
         gate: Gate,
-    ) -> Result<Saved<RegistrationView>, PgEntityError> {
+    ) -> Result<CorrectionOutcome<RegistrationView>, PgEntityError> {
         let actor = actor.clone();
         with_audits(&self.pool, actor.org, move |tx| {
             Box::pin(async move {
@@ -260,8 +285,11 @@ impl PgEntityStore {
                     .ok_or_else(|| Refusal::not_found("registration_not_found"))?;
                 let entity: Uuid = head.try_get("legal_entity_id")?;
                 if let Some(done) = replayed {
+                    if done.change_mode.as_deref() == Some("PENDING") {
+                        return Ok((pending(tx, done.target.ok_or_else(|| console_kernel_core::KernelError::internal("pending correction has no exception"))?, &input).await?, vec![]));
+                    }
                     let record = crate::registration::one(tx, entity, id).await?;
-                    return Ok((Saved { record, warnings: vec![], change_mode: done.change_mode.unwrap_or_default() }, vec![]));
+                    return Ok((CorrectionOutcome::Applied(Saved { record, warnings: vec![], change_mode: done.change_mode.unwrap_or_default() }), vec![]));
                 }
                 if head.try_get::<bool, _>("voided")? {
                     return Err(Refusal::conflict("registration_voided", "the registration was voided").into());
@@ -273,9 +301,11 @@ impl PgEntityStore {
                 }
                 let kind: Option<String> = sqlx::query_scalar("SELECT biz_kind FROM legal_entities WHERE id = $1 FOR UPDATE").bind(entity).fetch_one(tx.as_mut()).await?;
                 crate::name_evidence::correct_classification(tx, entity, kind.as_deref().and_then(BizKind::parse), Some((id, &c.value))).await?;
-                let (admitted, exception) =
-                    admit_correction(tx, &c, CorrectionSubject::BusinessRegistration(id), gate, &actor, by_ops(&input)).await?;
                 let (_, attached) = attach_in_tx(tx, &actor, c.document_id, entity, Some(id)).await?;
+                let (admitted, exception) = match admit_correction(tx, &c, CorrectionSubject::BusinessRegistration(id), gate, &actor, by_ops(&input)).await? {
+                    CorrectionAdmission::Immediate(admitted, exception) => (admitted, exception),
+                    CorrectionAdmission::Pending(exception) => return save_pending(tx, &actor, exception, &input, attached).await,
+                };
                 // A check of the old number never vouches for the new one (lane corrections #10).
                 let row = LedgerRow { entity, registration: Some(id), field: IdentifierField::Brn, old: old.as_deref(), new: Some(&c.value) };
                 ledger(tx, &actor, &c, admitted, exception, row).await?;
@@ -291,7 +321,7 @@ impl PgEntityStore {
                 }))?);
                 finish(tx, &actor, &Outcome { target: Some(id), change_mode: Some(admitted.mode.as_str().into()), count: None }).await?;
                 let record = crate::registration::one(tx, entity, id).await?;
-                Ok((Saved { record, warnings: vec![], change_mode: admitted.mode.as_str().into() }, events))
+                Ok((CorrectionOutcome::Applied(Saved { record, warnings: vec![], change_mode: admitted.mode.as_str().into() }), events))
             })
         })
         .await
