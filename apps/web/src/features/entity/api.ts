@@ -112,6 +112,8 @@ export const voidEntity = (key: string, entityId: string, reason_code: string) =
   unwrap(api.POST("/api/v1/legal-entities/{entityId}/void", { params: { path: { entityId }, header: once(key) }, body: { reason_code } }));
 export const voidWorkplace = (key: string, workplaceId: string, reason_code: string) =>
   unwrap(api.POST("/api/v1/workplaces/{workplaceId}/void", { params: { path: { workplaceId }, header: once(key) }, body: { reason_code } }));
+export const voidRegistration = (key: string, registrationId: string, reason_code: string) =>
+  unwrap(api.POST("/api/v1/business-registrations/{registrationId}/void", { params: { path: { registrationId }, header: once(key) }, body: { reason_code } }));
 export const createWorkplace = (key: string, entityId: string, body: CreateWorkplaceRequest) =>
   unwrap(api.POST("/api/v1/legal-entities/{entityId}/workplaces", { params: { path: { entityId }, header: once(key) }, body }));
 export const reviseWorkplace = (key: string, workplaceId: string, body: WorkplaceInput & Dated) =>

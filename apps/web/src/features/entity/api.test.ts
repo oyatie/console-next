@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { ApiError } from "@console/api";
-import { correctIdentifier, correctRegistrationNumber } from "./api";
+import { correctIdentifier, correctRegistrationNumber, voidRegistration } from "./api";
 
 const post = vi.hoisted(() => vi.fn());
 const assertion = vi.hoisted(() => ({ assertion: { ceremony_id: "ceremony", credential: {} } }));
@@ -30,4 +30,13 @@ test("an ordinary refusal never asks for a passkey or resends", async () => {
   post.mockResolvedValueOnce({ response: new Response(null, { status: 409 }), error: { error: { code: "identifier_correction_needs_exception", message: "denied" } } });
   await expect(send[0]!()).rejects.toBeInstanceOf(ApiError);
   expect(post).toHaveBeenCalledTimes(1);
+});
+
+test("voidRegistration sends Idempotency-Key and reason_code to business-registrations/{id}/void", async () => {
+  post.mockResolvedValueOnce({ response: new Response(null, { status: 204 }), data: undefined });
+  await expect(voidRegistration("intent-key-1", "reg-1", "DUPLICATE")).resolves.toBeUndefined();
+  expect(post).toHaveBeenCalledWith("/api/v1/business-registrations/{registrationId}/void", {
+    params: { path: { registrationId: "reg-1" }, header: { "Idempotency-Key": "intent-key-1" } },
+    body: { reason_code: "DUPLICATE" },
+  });
 });

@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Eye, FilePlus2, FileText } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Eye, FilePlus2, FileText, MoreHorizontal } from "lucide-react";
 import type { BusinessRegistration, LegalEntity } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { BIZ_KIND, ISSUE_REASON, label, labeled, RECORD_STATUS, TAX_TYPE } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
+import { MenuButton } from "../../../ui/menu/menu-button";
+import { entityEndQuery } from "../api";
 import { addressLine, samePlace } from "../domain/view";
 import { FactRow } from "./record-fact-row";
 import { entityFields } from "./record-entity-fields";
@@ -13,6 +16,7 @@ import { registrationFields } from "./record-registration-fields";
 import type { Act } from "./record-revise-sheet";
 import type { FieldSpec } from "./record-revise-sheet";
 import { useRecordLock } from "./use-record-lock";
+import { VoidRegistration } from "./void-registration";
 import { RegistrationStatusSheet } from "./workplace-status";
 import s from "./record.module.css";
 import { Muted } from "../../../ui/muted/muted";
@@ -29,10 +33,13 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
   const corp = e.biz_kind === "CORPORATION";
   const name = e.biz_kind === "INDIVIDUAL" ? f.tradeName : ef.name;
   const holder = e.workplaces.find((w) => w.id === r.holder_workplace_id);
+  const title = t(holder?.is_head_office ? "entityRecord.cert.titleHead" : "entityRecord.cert.title");
   const status = c ? labeled(RECORD_STATUS, c.status) : null;
   const reps = e.current?.representatives;
   // company-06: suspension / resumption of this certificate, offered on an open record only.
   const [statusing, setStatusing] = useState(false);
+  const [voiding, setVoiding] = useState(false);
+  const end = useQuery({ ...entityEndQuery(e.id), retry: false }).data;
   const locked = useRecordLock() !== null;
   const suspended = c?.status === "SUSPENDED";
   const fix = <V,>(spec: FieldSpec<V>) => ({ kind: "fix" as const, onPress: () => act.field(spec) });
@@ -41,7 +48,7 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
     <section className="card" aria-labelledby={`cert-${r.id}`}>
       <div className={s.cardHead}>
         <FileText size={16} aria-hidden />
-        <h2 id={`cert-${r.id}`} className={s.cardTitle}>{t(holder?.is_head_office ? "entityRecord.cert.titleHead" : "entityRecord.cert.title")}</h2>
+        <h2 id={`cert-${r.id}`} className={s.cardTitle}>{title}</h2>
         <span className="code">{r.brn?.display ?? t("entityRecord.cert.noBrn")}</span>
         {holder && <Chip tone="neutral">{holder.current?.name}</Chip>}
         {status && <Chip tone={status.tone}>{status.label}</Chip>}
@@ -56,6 +63,20 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
         {/* certificate reissue: where the certificate is shown, the way to record its newer issue (owner 2026-10-14). */}
         {!locked && c && c.status !== "CLOSED" && (
           <Button variant="ghost" onClick={() => act.reissue(r.id)} aria-label={t("entityReissue.actionOf", { brn: r.brn?.display ?? "" })}><FilePlus2 size={16} aria-hidden /> {t("entityReissue.action")}</Button>
+        )}
+        {!locked && c && c.status !== "CLOSED" && (
+          <MenuButton
+            label={t("uiRecordActions.more", { field: title })}
+            icon={<MoreHorizontal size={16} aria-hidden />}
+            caret={false}
+            items={[{
+              id: "void",
+              text: t("uiRecordActions.end.delete"),
+              label: t("uiRecordActions.end.delete"),
+              why: operating || end?.phase === "OPERATING" ? t("entity.regVoid.operatingWhy") : undefined,
+            }]}
+            onAction={(k) => { if (k === "void") setVoiding(true); }}
+          />
         )}
       </div>
       <div className={s.facts}>
@@ -97,6 +118,7 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
         <FactRow label={t("entityRecord.field.issued")} action={fix(f.issued)}><span className="num">{c?.cert_issued_on ? fmtDate(c.cert_issued_on) : "—"}</span> · {c?.tax_office_label || "—"}</FactRow>
       </div>
       {statusing && <RegistrationStatusSheet e={e} r={r} onClose={() => setStatusing(false)} />}
+      {voiding && <VoidRegistration e={e} r={r} onClose={() => setVoiding(false)} />}
     </section>
   );
 }
