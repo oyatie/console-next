@@ -21,7 +21,6 @@ import s from "./card.module.css";
 import { Muted } from "../../../ui/muted/muted";
 
 type Contact = components["schemas"]["EmergencyContact"];
-export type StoredContact = Contact;
 const RELATIONS: Contact["relation"][] = ["SPOUSE", "PARENT", "CHILD", "SIBLING", "RELATIVE", "OTHER"];
 const route = getRouteApi("/app/people/$id");
 
@@ -59,7 +58,7 @@ export function EmergencyContacts({ c, quick }: { c: Card; quick: Quick }) {
   const [state, setOpen] = useState<{ at: number | null } | null>(null);
   const open = state ?? (act === "contact.add" ? { at: null } : null);
   const close = () => (setOpen(null), act === "contact.add" && void navigate({ search: (x) => ({ ...x, act: undefined }), replace: true }));
-  const list = (c.personal.data?.emergency_contacts ?? []) as StoredContact[];
+  const list = c.personal.data?.emergency_contacts ?? [];
   const items = list.map(toInput);
   // The list is written at the version of the read that drew it (the personal facts), as the career rows are.
   const at = c.personal.data?.updated_at ?? c.e.updated_at;
@@ -107,7 +106,7 @@ export function ContactSheet({
   initialDraft,
 }: {
   c: Card;
-  list: StoredContact[];
+  list: Contact[];
   at: number | null;
   onClose: () => void;
   initialDraft?: { name?: string; relation?: Contact["relation"] | ""; phone?: string; notified?: boolean; tried?: boolean };

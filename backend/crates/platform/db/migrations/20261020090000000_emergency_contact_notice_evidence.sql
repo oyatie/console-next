@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-Proprietary
 -- Existing rows have no validated notice evidence. Keep them unconfirmed;
 -- additive columns also let the previous writer insert truthful legacy rows.
 SET LOCAL lock_timeout = '2s';

@@ -156,6 +156,20 @@ mod tests {
     }
 
     #[test]
+    fn emergency_contacts_refuse_missing_null_or_false_notice_confirmation() {
+        for confirmation in [None, Some(Value::Null), Some(json!(false))] {
+            let mut contact =
+                json!({ "name": "이하나", "relation": "SPOUSE", "phone": "010-1234-5678" });
+            if let Some(confirmation) = confirmation {
+                contact["contact_notified"] = confirmation;
+            }
+            let err = normalize("emergency_contacts", &json!([contact])).unwrap_err();
+            assert_eq!(err.status, http::StatusCode::UNPROCESSABLE_ENTITY);
+            assert_eq!(err.code, "emergency_contact_notice_unconfirmed");
+        }
+    }
+
+    #[test]
     fn bad_values_are_422() {
         for (field, value) in [
             ("name_en", json!("김하늘")),
