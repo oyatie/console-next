@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! §54① break-floor register. Rows are global and migration-only.
 
 use console_attendance_domain::schedule::BreakFloorRow;

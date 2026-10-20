@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-Proprietary
 -- MB-2: 근로기준법 §54① break floor as dated register rows, plus the 4-hour
 -- waiver (법률 제21784호, §54 시행 2026-12-10). Global, migration-only,
 -- SELECT-only to console_rt, same posture as attendance_public_holidays.
