@@ -2,6 +2,7 @@
 import { execFileSync } from "node:child_process";
 import { readDevSecrets } from "../../scripts/dev-secrets";
 import { expect, test, type Page } from "@playwright/test";
+import { OWN_ECHO_MS } from "../../apps/web/src/lib/freshness";
 import { expectAccessible } from "../a11y";
 import { go, option, registerEmployee, unique } from "../flows";
 import { startOperations, tenantInSetup } from "../setup-flows";
@@ -153,6 +154,8 @@ test("a later correction blocks every inverse row and a forced rollback writes n
   await expect(panel.getByRole("button", { name: /^되돌리기(?: 실행)?$/, exact: true })).toBeEnabled();
   let navigations = 0;
   admin.on("request", r => { if (r.isNavigationRequest()) navigations += 1; });
+  // A frame within OWN_ECHO_MS of this tab's own write is that write's echo (lib/live): the other session corrects after it.
+  await admin.waitForTimeout(OWN_ECHO_MS);
   const corrected = await api(`/employees/${employee.employee.id}`, "PATCH", {
     expected_updated_at: employee.employee.updated_at,
     changes: { job: "생산 관리" }, reason_code: "INPUT_ERROR",
