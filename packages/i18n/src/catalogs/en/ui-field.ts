@@ -9,4 +9,7 @@ export const enUiField: Record<keyof typeof koUiField, string> = {
   "uiField.override": "Edit",
   "uiField.override.label": "Edit {label}",
   "uiField.revert": "Recalculate automatically",
+  "uiField.copyUrlFailed": "Couldn’t copy the address. Select it and copy it yourself.",
+  "uiField.copyUrl": "Copy address",
+  "uiField.copiedUrl": "Address copied",
 };
