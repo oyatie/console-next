@@ -1,7 +1,9 @@
 import { beforeAll, expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createMemoryHistory, createRootRoute, createRouter, RouterContextProvider } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import type { components } from "@console/api/schema";
 import { loadCatalog } from "@console/i18n";
 import type { ImportDryRun, ImportPreview, ImportRow, ReviewItem } from "../domain/contract";
 import { initialPicks } from "../domain/steps";
@@ -9,6 +11,9 @@ import { PreviewStep } from "./preview-step";
 import { ReviewResolve } from "./review-resolve";
 import { RowDetail } from "./row-detail";
 import { ValueTable } from "./value-table";
+import { DoneStep } from "./done-step";
+import { RecentRuns } from "./recent-runs";
+import { applyJobQuery, runQuery, runsQuery } from "../api";
 
 // The screens rendered from answers shaped as the server publishes them (generated schema), so a wording or a
 // branch that the contract drives is checked without a server.
@@ -124,4 +129,52 @@ test("resolve: a status text offers the served codes in words; 사번 미부여 
     .toContain("Kim님에게 줄 사번");
   const deferred = row({ deferred: [{ field: "org_unit", route: "lifecycle_transfer" }] });
   expect(resolve({ id: "d", reason: "deferred_change", blocking: false, sheet: "SheetA", row: 2, rows: 1, field: "org_unit" }, [deferred])).toContain("가져오기로 변경하지 않습니다. 발령으로 처리합니다.");
+});
+
+const recordedRun: components["schemas"]["EmployeeImportRun"] = {
+  id: "00000000-0000-0000-0000-000000000001", source_filename: "stored-roster.xlsx", status: "APPLIED",
+  created_at: "2026-10-01T01:00:00Z", applied_at: "2026-10-01T02:00:00Z", applied_by: { id: "actor", name: "담당테스트" },
+  apply_summary: { input_rows: 12, inserted: 10, updated: 1, skipped: 1, companies: [] },
+  rolled_back_at: null, rolled_back_by: null, rollback_reason_code: null, rollback_note: null,
+  apply_job_state: null,
+};
+
+function recordedScreen(node: ReactNode, items = [recordedRun], jobState: "settling" | "failed" | null = null) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.setQueryData(runQuery(recordedRun.id).queryKey, { ...recordedRun, apply_job_state: jobState });
+  client.setQueryData(runsQuery.queryKey, { items, next_cursor: null });
+  if (jobState) client.setQueryData(applyJobQuery(recordedRun.id).queryKey, { run_id: recordedRun.id, state: jobState, total: 12, done: 6 });
+  const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
+  return renderToStaticMarkup(<RouterContextProvider router={router}><QueryClientProvider client={client}>{node}</QueryClientProvider></RouterContextProvider>);
+}
+
+test("result opened by run id shows the stored file, actor, zoned time and immutable counts", () => {
+  const out = recordedScreen(<DoneStep runId={recordedRun.id} />);
+  expect(out).toContain("stored-roster.xlsx");
+  expect(out).toContain("담당테스트");
+  expect(out).toContain('dateTime="2026-10-01T02:00:00Z"');
+  expect(out).toMatch(/GMT\+9|KST|한국 표준시/);
+  expect(out).toContain("신규 10명");
+  expect(out).toContain("갱신 1명");
+});
+
+test("recent import rows link to the served result record with counts from its stored summary", () => {
+  const out = recordedScreen(<RecentRuns />);
+  expect(out).toContain(`href="/people/import?run=${recordedRun.id}"`);
+  expect(out).toContain("등록 10 · 갱신 1");
+  expect(out).toContain("반영됨");
+});
+
+test("an empty recent-run list promises no fixed rollback window or second-person policy", () => {
+  const out = recordedScreen(<RecentRuns />, []);
+  expect(out).not.toContain("7일");
+  expect(out).not.toContain("다른 사람의 승인");
+});
+
+test("APPLIED while settlement is unfinished or failed stays on the existing job screen", () => {
+  for (const state of ["settling", "failed"] as const) {
+    const out = recordedScreen(<DoneStep runId={recordedRun.id} />, [], state);
+    expect(out).not.toContain("명부를 반영했습니다");
+    expect(out).toContain(state === "settling" ? "배치와 고용 정보를 기록하는 중입니다" : "반영하지 못했습니다");
+  }
 });

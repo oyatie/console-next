@@ -15,6 +15,7 @@ pub mod parsed;
 pub mod persist;
 pub mod plan_facts;
 pub mod preview;
+pub mod run_record;
 pub mod settle;
 pub mod settle_facts;
 mod statistics;

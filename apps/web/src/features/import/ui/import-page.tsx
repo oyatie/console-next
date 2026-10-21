@@ -22,6 +22,7 @@ import { PreviewStep } from "./preview-step";
 import { DryRunStep } from "./dryrun-step";
 import { DoneStep } from "./done-step";
 import { JobStep } from "./job-step";
+import { RecentRuns } from "./recent-runs";
 
 const route = getRouteApi("/app/people/import");
 const STEPS = ["upload", "preview", "dryrun", "done"] as const;
@@ -89,6 +90,7 @@ export function ImportPage() {
       )}
       <CommandError error={reread.error} own={importError} />
       {step === "upload" && <UploadStep paste={mode === "paste"} onPreview={(p, file) => (setSource(file), setPreview(p), setPicks(initialPicks()))} />}
+      {step === "upload" && <RecentRuns />}
       {step === "preview" && preview && picks && (
         <PreviewStep
           preview={preview}

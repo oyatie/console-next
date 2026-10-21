@@ -6079,6 +6079,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/employee-import-runs:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - employees
+      operationId: listEmployeeImportRuns
+      summary: Recent applied employee imports and their stored results
+      description: Requires org-wide employee_directory_manage. Counts are read from apply_summary, never the current roster. Results include only completed applies and are keyset-paged by applied_at and id, newest first.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: after
+          in: query
+          description: The previous page's next_cursor.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Applied and rolled-back runs in this tenant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeImportRunPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/employee-import-runs/{run_id}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - employees
+      operationId: getEmployeeImportRun
+      summary: Read an employee import's stored record
+      description: Requires org-wide employee_directory_manage. Unknown runs, other tenants' runs and non-employee runs all return import_run_not_found. Read once on open and after an import_run live frame; never poll.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: The import's file, actor, time and immutable apply result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeImportRun'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/employee-number-rules:
     delete:
       tags:
@@ -38916,6 +38981,107 @@ components:
                     type: array
                     items:
                       type: string
+    EmployeeImportRun:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+        - id
+        - source_filename
+        - status
+        - apply_job_state
+        - created_at
+        - applied_at
+        - applied_by
+        - apply_summary
+        - rolled_back_at
+        - rolled_back_by
+        - rollback_reason_code
+        - rollback_note
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        source_filename:
+          type: string
+        status:
+          type: string
+          enum: [PREVIEWED, DRY_RUN, APPLIED, FAILED, ROLLED_BACK]
+        apply_job_state:
+          type: string
+          nullable: true
+          enum: [queued, applying, settling, done, failed, null]
+          description: APPLIED is stored before settlement finishes. A job that is not done must stay on the apply job screen. Null denotes a legacy inline apply without a job.
+        created_at:
+          type: string
+          format: date-time
+        applied_at:
+          type: string
+          format: date-time
+          nullable: true
+        applied_by:
+          type: object
+          nullable: true
+          required: [id, name]
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            name:
+              type: string
+              nullable: true
+        apply_summary:
+          type: object
+          nullable: true
+          description: The unmodified apply_summary stored on the run. Optional additions from later apply versions are preserved.
+          required: [input_rows, inserted, updated, skipped, companies]
+          additionalProperties: true
+          properties:
+            input_rows:
+              type: integer
+              minimum: 0
+            inserted:
+              type: integer
+              minimum: 0
+            updated:
+              type: integer
+              minimum: 0
+            skipped:
+              type: integer
+              minimum: 0
+            companies:
+              type: array
+              items:
+                $ref: '#/components/schemas/EmployeeImportCompanySummary'
+        rolled_back_at:
+          type: string
+          format: date-time
+          nullable: true
+        rolled_back_by:
+          type: object
+          nullable: true
+          required: [id, name]
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            name:
+              type: string
+              nullable: true
+        rollback_reason_code:
+          type: string
+          nullable: true
+        rollback_note:
+          type: string
+          nullable: true
+    EmployeeImportRunPage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeImportRun'
+        next_cursor:
+          type: string
+          nullable: true
     EmployeeImportSheetReport:
       type: object
       description: 'IMPORT-2: one sheet of the workbook as the import read it.'

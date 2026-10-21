@@ -114,6 +114,10 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
         console_hr_rest::registration::REGISTRATION_ROUTE_PATHS,
     ),
     surface("hr-intake", console_hr_rest::intake::INTAKE_ROUTE_PATHS),
+    surface(
+        "hr-import-runs",
+        console_hr_rest::import_runs::IMPORT_RUN_ROUTE_PATHS,
+    ),
     // IMPORT-2: RRN read/reveal, 사번 변경, numbering rules, renumbering.
     surface(
         "hr-identity",

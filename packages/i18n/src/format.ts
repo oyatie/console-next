@@ -91,6 +91,8 @@ export function fmtDateTime(v: unknown) {
 
 /** Compatibility export for callers owned by other lanes. */
 export const fmtDateTimeShort = fmtDateTime;
+/** Full record timestamp with the business time zone visible (fmtDateTime already carries KST). */
+export const fmtZonedDateTime = fmtDateTime;
 
 export const fmtNumber = (n: number) => fmt().number.format(n);
 /** Money arrives as a decimal string; never coerce a missing value to 0. */

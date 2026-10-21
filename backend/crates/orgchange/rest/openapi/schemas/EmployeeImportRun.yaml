@@ -1,0 +1,88 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+  - id
+  - source_filename
+  - status
+  - apply_job_state
+  - created_at
+  - applied_at
+  - applied_by
+  - apply_summary
+  - rolled_back_at
+  - rolled_back_by
+  - rollback_reason_code
+  - rollback_note
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  source_filename:
+    type: string
+  status:
+    type: string
+    enum: [PREVIEWED, DRY_RUN, APPLIED, FAILED, ROLLED_BACK]
+  apply_job_state:
+    type: string
+    nullable: true
+    enum: [queued, applying, settling, done, failed, null]
+    description: APPLIED is stored before settlement finishes. A job that is not done must stay on the apply job screen. Null denotes a legacy inline apply without a job.
+  created_at:
+    type: string
+    format: date-time
+  applied_at:
+    type: string
+    format: date-time
+    nullable: true
+  applied_by:
+    type: object
+    nullable: true
+    required: [id, name]
+    properties:
+      id:
+        $ref: '#/components/schemas/Uuid'
+      name:
+        type: string
+        nullable: true
+  apply_summary:
+    type: object
+    nullable: true
+    description: The unmodified apply_summary stored on the run. Optional additions from later apply versions are preserved.
+    required: [input_rows, inserted, updated, skipped, companies]
+    additionalProperties: true
+    properties:
+      input_rows:
+        type: integer
+        minimum: 0
+      inserted:
+        type: integer
+        minimum: 0
+      updated:
+        type: integer
+        minimum: 0
+      skipped:
+        type: integer
+        minimum: 0
+      companies:
+        type: array
+        items:
+          $ref: '#/components/schemas/EmployeeImportCompanySummary'
+  rolled_back_at:
+    type: string
+    format: date-time
+    nullable: true
+  rolled_back_by:
+    type: object
+    nullable: true
+    required: [id, name]
+    properties:
+      id:
+        $ref: '#/components/schemas/Uuid'
+      name:
+        type: string
+        nullable: true
+  rollback_reason_code:
+    type: string
+    nullable: true
+  rollback_note:
+    type: string
+    nullable: true

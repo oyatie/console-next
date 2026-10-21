@@ -124,7 +124,10 @@ pub fn preview_digest(
     let mut blockers = blockers.to_vec();
     blockers.sort();
     let bytes = serde_json::to_vec(&(rows, blockers))?;
-    Ok(format!("{:x}", Sha256::digest(bytes)))
+    Ok(Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect())
 }
 
 #[cfg(test)]

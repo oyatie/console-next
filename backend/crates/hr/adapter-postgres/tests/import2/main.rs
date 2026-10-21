@@ -21,6 +21,7 @@ mod r3_cap;
 mod r3_facts;
 mod r3_import;
 mod reconcile;
+mod rollback;
 mod rrn_read;
 mod rrn_tombstone;
 mod statistics;

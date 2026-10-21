@@ -47,6 +47,7 @@ pub(super) fn merge(router: Router, state: &HrState) -> Router {
         .merge(requests::router(hr.clone()))
         .merge(registration::router(hr.clone()))
         .merge(intake::router(hr.clone()))
+        .merge(console_hr_rest::import_runs::router(hr.clone()))
         .merge(change_sets::router(hr.clone()))
         .merge(register_facts::router(hr.clone()))
         .merge(corrections::setup_router(hr.clone()))
