@@ -11,6 +11,7 @@ import { Button } from "../../../ui/button/button";
 import { Segmented } from "../../../ui/button/segmented";
 import { Card as Surface } from "../../../ui/card/card";
 import { ChipChoice } from "../../../ui/choice/chip-choice";
+import { DateInput } from "../../../ui/date/date-input";
 import { TextInput } from "../../../ui/field/field";
 import { Tag } from "../../../ui/record/record-section";
 import { RecordRows } from "../../../ui/record/rows";
@@ -129,11 +130,11 @@ export function FixChange({ c, field, act, onClose, onDone, onCorrect }: { c: Ca
         {free && <TextInput aria-label={t("empFix.change.new", { field: fieldName })} value={typedTo} onChange={(e) => setTypedTo(e.target.value)} />}
       </div>
       <div id="chg-when">
-        <ChipChoice label={t("empFix.change.when")} options={[{ value: "today", label: t("empFix.change.today", { date: today.slice(5) }) }, { value: "next", label: t("empFix.change.nextMonth", { date: nextMonthFirst(today).slice(5) }) }, { value: "typed", label: t("empFix.change.typed") }]} value={when} onChange={(x) => setWhen(x as typeof when)} />
-        {when === "typed" && <TextInput type="date" aria-label={t("empFix.change.typed")} value={typed} onChange={(e) => setTyped(e.target.value)} />}
+        <ChipChoice label={t("empFix.change.when")} options={[{ value: "today", label: t("empFix.change.today", { date: fmtDate(today) }) }, { value: "next", label: t("empFix.change.nextMonth", { date: fmtDate(nextMonthFirst(today)) }) }, { value: "typed", label: t("empFix.change.typed") }]} value={when} onChange={(x) => setWhen(x as typeof when)} />
+        {when === "typed" && <DateInput label={t("empFix.change.typed")} value={typed} onChange={setTyped} />}
         {from && <p className={s.ok}>{t(from > today ? "empFix.change.echo.planned" : "empFix.change.echo.now", { date: fmtDay(from) })}</p>}
       </div>
-      {needEnd && <div id="chg-end"><TextInput type="date" aria-label={t("empFix.change.contractEnd")} value={end} onChange={(e) => setEnd(e.target.value)} /></div>}
+      {needEnd && <div id="chg-end"><DateInput label={t("empFix.change.contractEnd")} value={end} onChange={setEnd} /></div>}
       {act === "PROMOTE" && reasons.length > 0 && <div id="chg-why"><ChipChoice label={t("empFix.change.why")} options={reasons} value={why} onChange={setWhy} /></div>}
       {askTitle && (
         <Surface id="chg-title" look="outline">

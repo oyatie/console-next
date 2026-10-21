@@ -1,4 +1,5 @@
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { DateField } from "../../../ui/date/date-field";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
@@ -13,7 +14,7 @@ import type { GovernState } from "./use-govern";
 export function GovernFields({ s }: { s: GovernState }) {
   const presets = [
     { label: t("orgUnit.gov.today"), date: s.today },
-    { label: t("orgUnit.gov.nextMonth", { date: firstOfNextMonth(s.today).slice(5) }), date: firstOfNextMonth(s.today) },
+    { label: t("orgUnit.gov.nextMonth", { date: fmtDate(firstOfNextMonth(s.today)) }), date: firstOfNextMonth(s.today) },
   ];
   return (
     <>

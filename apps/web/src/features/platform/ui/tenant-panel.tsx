@@ -6,7 +6,7 @@ import { OpsRecovery } from "./ops-recovery";
 import { useState } from "react";
 import { X } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtDate, fmtDateTime } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import { TENANT_STATUS, labeled } from "../../../lib/labels";
 import { Chip } from "../../../ui/chip";
 import { Button } from "../../../ui/button/button";
@@ -64,7 +64,7 @@ export function TenantPanel({ org, health, enrolled, onEnrolled, onIssued, onRec
         <dt>{t("tenants.panel.updated")}</dt><dd className="num">{fmtDateTime(org.updated_at)}</dd>
         <dt>{t("tenants.col.users")}</dt><dd className="num">{health ? t("tenants.panel.users", { active: health.active_user_count, total: health.user_count }) : "—"}</dd>
         <dt>{t("tenants.panel.ordersLabel")}</dt><dd className="num">{health ? t("tenants.panel.orders", { open: health.open_work_orders, active: health.active_work_orders }) : "—"}</dd>
-        <dt>{t("tenants.col.activity")}</dt><dd className="num">{fmtDate(health?.last_activity_at)}</dd>
+        <dt>{t("tenants.col.activity")}</dt><dd className="num">{fmtDateTime(health?.last_activity_at)}</dd>
       </dl>
 
       <Button onClick={() => setDomainOpen(true)}>{t("tenants.domain.change")}</Button>

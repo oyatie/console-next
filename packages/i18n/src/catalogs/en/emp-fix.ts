@@ -16,7 +16,6 @@ export const enEmpFix: Partial<Record<keyof typeof koEmpFix, string>> = {
   "empFix.field.job": "Job",
   "empFix.field.family": "Job family",
   "empFix.field.employment_type": "Employment type",
-  "empFix.datePlaceholder": "2019-03-04",
   "empFix.newAddress": "new address",
   "empFix.registerItem": "Register item {no}",
   "empFix.second": "Second person confirms",

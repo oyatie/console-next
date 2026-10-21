@@ -12,7 +12,7 @@ export type Person = { name: string; number?: string; unit?: string; workplace?:
 
 /**
  * Fills the open sheet: name, a typed 사번 when given, the place (searched by `unit`; left alone when the sheet opened
- * with one chosen), the start date typed after 「직접」, the type, and the fields the server still needs.
+ * with one chosen), the start date typed into its visible field, the type, and the fields the server still needs.
  */
 export async function fillRegister(page: Page, p: Person, c: C = plain) {
   const s = registerSheet(page);
@@ -27,10 +27,13 @@ export async function fillRegister(page: Page, p: Person, c: C = plain) {
   }
   // A unit not under a registered workplace asks which one (the org chart made it before the workplace was registered).
   if (p.workplace) await c.click(s.getByRole("radiogroup", { name: /^어느 사업장 소속입니까/ }).getByText(new RegExp(p.workplace)));
-  await c.click(s.getByRole("button", { name: "직접", exact: true }));
   await s.getByRole("textbox", { name: /^입사일/ }).fill(p.hired);
+  await s.getByRole("textbox", { name: /^입사일/ }).blur();
   await c.click(s.getByRole("radiogroup", { name: /^고용형태/ }).getByText(p.type ?? (p.contractEnd ? "계약직" : "정규직"), { exact: true }));
-  if (p.contractEnd) await s.getByLabel(/^계약 종료일/).fill(p.contractEnd);
+  if (p.contractEnd) {
+    await s.getByLabel(/^계약 종료일/).fill(p.contractEnd);
+    await s.getByLabel(/^계약 종료일/).blur();
+  }
   await s.getByRole("textbox", { name: /^휴대전화/ }).fill(p.phone ?? "010-1234-0001");
   await s.getByRole("textbox", { name: /^직위/ }).fill("사원");
   await s.getByRole("textbox", { name: /^기본급/ }).fill("3000000");

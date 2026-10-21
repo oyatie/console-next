@@ -59,7 +59,7 @@ export const enAttendanceSchedule: Partial<Record<keyof typeof koAttendanceSched
   "attendanceSchedule.assign.oneDay": "Covers {date} only",
   "attendanceSchedule.assign.reason": "Reason",
   "attendanceSchedule.assign.evidence": "Supporting document",
-  "attendanceSchedule.assign.evidence.example": "Reduced hours for childcare, request of 2026-10-02",
+  "attendanceSchedule.assign.evidence.example": "Reduced hours for childcare, request of 10/02/2026",
   "attendanceSchedule.assign.rotation": "Rotation start",
   "attendanceSchedule.assign.rotationFor": "Rotation start for {name} (day 1)",
   "attendanceSchedule.assign.start": "Start time",

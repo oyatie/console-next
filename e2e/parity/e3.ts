@@ -46,10 +46,9 @@ export async function captureE3(page: Page) {
   await openRegister(page);
   const s = sheet(page);
   await s.getByRole("textbox", { name: /^생년월일/ }).fill("1999-11-03");
-  await s.getByRole("button", { name: "직접", exact: true }).click();
   await s.getByRole("textbox", { name: /^입사일/ }).fill("2026-13-01");
   await s.getByRole("button", { name: /^등록하고 다음 사람/ }).click();
-  await expect(s.getByRole("alert").first()).toContainText("수정해야 등록됩니다");
+  await expect(s.getByRole("alert").filter({ hasText: "수정해야 등록됩니다" })).toContainText("수정해야 등록됩니다");
   await shot(page, "E3-register-error");
   await s.getByRole("button", { name: "닫기", exact: true }).click();
   // The duplicate: 김민서 registered once, then typed again with the same name and birth date.

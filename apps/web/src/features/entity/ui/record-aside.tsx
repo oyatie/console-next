@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Ban, FileText, Trash2, TriangleAlert } from "lucide-react";
 import type { EntityDocument, LegalEntity, Revision } from "@console/api/pending";
 import { t } from "@console/i18n";
-import { fmtDate, fmtNumber } from "@console/i18n/format";
+import { fmtDate, fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
@@ -65,7 +65,7 @@ export function RecordAside({ e, phase, depts, docs, act, onTab }: { e: LegalEnt
             return (
               <li key={r.version} data-t={kind === "corrected" ? "fix" : kind === "created" ? "new" : "rev"}>
                 {/* The record time is an instant: its day is Korea's, never the UTC date's (TS-21). */}
-                <span className={s.when}>{fmtDate(r.recorded_at)}{r.effective_from !== recordedDay(r.recorded_at) && ` · ${t(future ? "entityRecord.history.scheduled" : "entityRecord.history.from", { date: fmtDate(r.effective_from) })}`}</span>
+                <span className={s.when}>{fmtDateTime(r.recorded_at)}{r.effective_from !== recordedDay(r.recorded_at) && ` · ${t(future ? "entityRecord.history.scheduled" : "entityRecord.history.from", { date: fmtDate(r.effective_from) })}`}</span>
                 <b>{t(`entityRecord.history.${kind}`)}</b>
                 {/* company-19: what changed, old → new, and why (the first two fields; the history tab has them all). */}
                 {!derived && r.changes.length > 0 && <span>{[r.changes.slice(0, 2).map(changeLine).join(" · "), reasonText(r.reason_code)].filter(Boolean).join(" · ")}</span>}
@@ -105,7 +105,7 @@ export function RecordAside({ e, phase, depts, docs, act, onTab }: { e: LegalEnt
             <Button variant="ghost" onClick={() => onTab("documents")}>{t("entityRecord.docs.all", { count: docs.length })}</Button>
           </div>
           <ul className={s.mlist}>
-            {docs.slice(0, 3).map((d) => <li key={d.id}><FileText size={14} aria-hidden /><span>{d.file_name} · {fmtDate(d.uploaded_at)}</span></li>)}
+            {docs.slice(0, 3).map((d) => <li key={d.id}><FileText size={14} aria-hidden /><span>{d.file_name} · {fmtDateTime(d.uploaded_at)}</span></li>)}
             {docs.length === 0 && <li className="muted">{t("entityRecord.docs.none")}</li>}
           </ul>
         </section>

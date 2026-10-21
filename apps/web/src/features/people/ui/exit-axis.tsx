@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { fmtDate, fmtDateTimeShort } from "@console/i18n/format";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button";
 import { ChainStepper, type ChainStep } from "../../../ui/chain-stepper/chain-stepper";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
@@ -83,7 +83,7 @@ export function CaseAxis({ c: live, onBack, onDone }: { c: Case; onBack: (k: Bac
       key: step,
       who: titled(t(`exit.step.${step}`), text),
       state,
-      meta: state === "current" && next ? (forward ? t("exit.next.mine") : holder(next, sameActor)) : when && fmtDateTimeShort(when),
+      meta: state === "current" && next ? (forward ? t("exit.next.mine") : holder(next, sameActor)) : when && fmtDateTime(when),
     };
   });
   if (isClosed(c))
@@ -95,7 +95,7 @@ export function CaseAxis({ c: live, onBack, onDone }: { c: Case; onBack: (k: Bac
         c.closed_reason && <span className={s.quote}>{c.closed_reason}</span>,
       ),
       state: "failed",
-      meta: c.closed_at && fmtDateTimeShort(c.closed_at),
+      meta: c.closed_at && fmtDateTime(c.closed_at),
     });
   const backRow = back.length > 0 && (
     <span className="row" role="group" aria-label={t("exit.actions")}>

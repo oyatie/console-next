@@ -108,9 +108,11 @@ test("parity 1012: statutory register dated empty, gap links and purpose-bound a
   await expect.poll(() => a.locator("html").getAttribute("data-register-printed")).toContain("R-1012");
   await expect.poll(() => a.locator("html").getAttribute("data-register-printed")).toContain("김명부");
   await a.getByRole("textbox", { name: /^기준일/ }).fill(kstDate(-21));
+  await a.getByRole("textbox", { name: /^기준일/ }).blur();
   await expect(a.getByText("이 기준일의 근로자 명부가 없습니다", { exact: true })).toBeVisible();
   await scene(a, "register-date-empty");
   await a.getByRole("textbox", { name: /^기준일/ }).fill(kstDate());
+  await a.getByRole("textbox", { name: /^기준일/ }).blur();
   await a.getByRole("link", { name: /김명부 · 주소 확인 필요/ }).click();
   await expect(a.getByRole("dialog")).toContainText("주소");
 });

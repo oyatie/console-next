@@ -53,7 +53,7 @@ test("the HR confirmation reads as an exit only once the exit applied; a failed 
 
 // ICU ko drops the weekday's parentheses once a year is shown; the sentence would read "21일 수입니다".
 test("fmtDay keeps the ko weekday in parentheses for another year's date", () => {
-  expect(fmtDay("2099-04-21")).toBe("2099년 4월 21일 (화)");
+  expect(fmtDay("2099-04-21")).toBe("2099. 04. 21. (화)");
 });
 
 test("typed wage warnings name their floor, while same-day notices explain namesakes", () => {

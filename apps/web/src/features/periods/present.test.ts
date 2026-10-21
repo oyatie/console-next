@@ -14,11 +14,11 @@ const lock = (over: Partial<PeriodLock> = {}) =>
 // regression (governance-09, worst-case-04, governance-33): the refusal printed ISO ranges and named no lock.
 test("a closed period is named by its domain, month, locker and time in Korean dates, never ISO", () => {
   i18n.set("ko");
-  expect(closedText(lock())).toBe("급여 · 2026년 9월 마감 (김마감 · 2026년 10월 1일 15:00)");
+  expect(closedText(lock())).toBe("급여 · 2026년 9월 마감 (김마감 · 2026. 10. 01. 15:00 KST)");
   expect(closedText(lock({ lockedBy: undefined, lockedByName: undefined }))).toContain("(자동 다시 잠금 · ");
   expect(closedText(lock({ lockedByName: undefined }))).toContain("(삭제된 계정 · ");
   const r = lockRefusal(lock(), "2026-09-15", false);
-  expect(r.reason).toBe("9월 15일은 잠긴 기간에 속합니다: 급여 · 2026년 9월 마감 (김마감 · 2026년 10월 1일 15:00)");
+  expect(r.reason).toBe("2026. 09. 15.은 잠긴 기간에 속합니다: 급여 · 2026년 9월 마감 (김마감 · 2026. 10. 01. 15:00 KST)");
   expect(`${r.title} ${r.reason} ${r.remedy}`).not.toMatch(/\d{4}-\d{2}-\d{2}/);
   expect(r.remedy).toContain("잠금을 해제하면");
   expect(lockRefusal(lock(), "2026-09-15", true).remedy).toContain("패스키");
@@ -27,6 +27,6 @@ test("a closed period is named by its domain, month, locker and time in Korean d
 
 test("the same facts read in English", () => {
   i18n.set("en");
-  expect(closedText(lock())).toBe("Payroll · September 2026 closed (김마감 · October 1, 2026 at 15:00)");
+  expect(closedText(lock())).toBe("Payroll · September 2026 closed (김마감 · 10/01/2026, 15:00 KST)");
   i18n.set("ko");
 });

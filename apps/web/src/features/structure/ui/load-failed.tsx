@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, History, RefreshCw } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtDateTimeShort } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button";
 import css from "./chart.module.css";
 
@@ -14,7 +14,7 @@ export function LoadFailed({ at, onRetry }: { at: number; onRetry: () => void })
   return (
     <div className={css.loadFailed} role="alert">
       <AlertTriangle size={18} aria-hidden />
-      <p className={css.loadFailedText}><b>{t("structure.loadFailed.title")}</b> {t("structure.loadFailed.detail", { at: fmtDateTimeShort(new Date(at).toISOString()) })}</p>
+      <p className={css.loadFailedText}><b>{t("structure.loadFailed.title")}</b> {t("structure.loadFailed.detail", { at: fmtDateTime(new Date(at).toISOString()) })}</p>
       <Button variant="primary" onClick={onRetry}><RefreshCw size={16} aria-hidden />{t("structure.loadFailed.retry")}</Button>
       <Link to="/org/history" className="btn btn--ghost"><History size={16} aria-hidden />{t("structure.stale.history")}</Link>
     </div>

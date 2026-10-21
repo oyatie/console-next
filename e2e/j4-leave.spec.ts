@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
-import { go, registerEmployee } from "./flows";
+import { go, koDate, registerEmployee } from "./flows";
 import { hrAct, hrItem, hrMenu, openHistory } from "./record";
 import { staffedTenant } from "./setup-flows";
 import { reasonBox, sheet, todayPreset, fillDate } from "./sheet";
@@ -22,7 +22,7 @@ test("J4 leave of absence with a leave type, then return", { tag: "@hr" }, async
   await leave.getByRole("button", { name: "오늘 휴직 처리", exact: true }).click(); // a check, not part of the journey
   await expect(leave).toContainText("육아휴직·출산휴가는 복귀 예정일을 정해야 합니다");
   await fillDate(leave, "2027-09-30", "복귀 예정일");
-  await expect(leave).toContainText(/복귀 예정일은 2027년 9월 30일 \(?목\)?입니다/);
+  await expect(leave).toContainText(`복귀 예정일은 ${koDate("2027-09-30")} (목)입니다`);
   await reasonBox(leave).fill("육아 휴직 신청");
   await expect(leave.getByRole("checkbox")).toHaveCount(0); // BW-11 A13: no statement to tick
   await expectAccessible(admin, "J4: leave sheet with leave type");

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
-import { fmtDateTimeShort } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { Button } from "../../../ui/button/button";
@@ -29,11 +29,11 @@ export function RollbackPanel({ run, onChanged }: { run: ImportRun; onChanged: (
       <h2 id="import-rollback" className="panel__title">{t("import.rollback.title")}</h2>
       <p className="muted">{t("import.rollback.why")}</p>
       {run.status === "APPLIED" && run.rollback_until && (
-        <p>{canAsk || Date.parse(run.rollback_until) > now ? t("import.rollback.until", { until: fmtDateTimeShort(run.rollback_until) }) : t("import.rollback.closed")}</p>
+        <p>{canAsk || Date.parse(run.rollback_until) > now ? t("import.rollback.until", { until: fmtDateTime(run.rollback_until) }) : t("import.rollback.closed")}</p>
       )}
-      {rb && <p>{t("import.rollback.requested", { name: rb.requested_by.name, at: fmtDateTimeShort(rb.requested_at) })}</p>}
+      {rb && <p>{t("import.rollback.requested", { name: rb.requested_by.name, at: fmtDateTime(rb.requested_at) })}</p>}
       {rb?.decided_by && rb.decided_at && (
-        <p>{t(rb.decision === "APPROVE" ? "import.rollback.approved" : "import.rollback.refused", { name: rb.decided_by.name, at: fmtDateTimeShort(rb.decided_at) })}</p>
+        <p>{t(rb.decision === "APPROVE" ? "import.rollback.approved" : "import.rollback.refused", { name: rb.decided_by.name, at: fmtDateTime(rb.decided_at) })}</p>
       )}
       {run.rollback_kept.length > 0 && (
         <p>{t("import.rollback.kept", { count: run.rollback_kept.length, names: run.rollback_kept.map((p) => p.name).join(", ") })}</p>

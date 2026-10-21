@@ -4,7 +4,7 @@ import { getRouteApi } from "@tanstack/react-router";
 import { UserPlus } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
@@ -146,5 +146,5 @@ const columns = (open?: string): LongColumn<Person>[] => [
     },
   },
   { id: "passkey", header: t("accounts.col.passkey"), cell: (p) => t(p.has_passkey ? "accounts.passkey.yes" : "accounts.passkey.no"), width: 96 },
-  { id: "created", header: t("accounts.col.created"), cell: (p) => <span className="num">{fmtDate(p.created_at)}</span>, width: 128 },
+  { id: "created", header: t("accounts.col.created"), cell: (p) => <span className="num">{fmtDateTime(p.created_at)}</span>, width: 128 },
 ];

@@ -20,10 +20,25 @@ test("solo: bulk catalog promotions preserve IDs and demotion rules; inactive en
   const read = async () => (await (await api(`/employees/${worker.id}`)).json()) as { classification: { job_title_id: string | null } };
   const titles = ((await (await api("/job-titles")).json()) as { items: { id: string; label: string; active: boolean }[] }).items;
 
+  // Hold the selected-person read: filtering the location tree must retain its loading space.
+  const rosterRead = Promise.withResolvers<void>();
+  const rosterRoute = "**/api/v1/employees?**";
+  await admin.route(rosterRoute, async (route) => {
+    if (new URL(admin.url()).pathname === "/people/bulk") await rosterRead.promise;
+    await route.continue();
+  });
   await pickBulk(admin, "PC-0001");
+  const where = admin.getByRole("region", { name: "어디로", exact: true });
+  const promotion = admin.getByRole("group", { name: "무엇을" }).getByRole("button", { name: "승진" });
+  await expect(promotion).toBeDisabled();
+  const loadingHeight = (await where.boundingBox())!.height;
+  rosterRead.resolve();
+  await expect(promotion).toBeEnabled();
+  expect((await where.boundingBox())!.height, "the filtered location tree retains its reserved space").toBeGreaterThanOrEqual(loadingHeight);
+  await admin.unroute(rosterRoute);
   await admin.getByRole("group", { name: "무엇을" }).getByRole("button", { name: "승진" }).click();
   await admin.getByRole("combobox", { name: "승진인의 새 직위" }).selectOption({ label: "선임" });
-  await admin.getByRole("button", { name: /^오늘 \d{2}-\d{2}/ }).click();
+  await todayPreset(admin).click();
   await admin.getByRole("radiogroup", { name: /^사유/ }).getByText("정기 승진", { exact: true }).click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("정기 평가");
   await admin.getByRole("button", { name: /^1명 승진 · 오늘 반영/ }).click();
@@ -36,7 +51,7 @@ test("solo: bulk catalog promotions preserve IDs and demotion rules; inactive en
   const reasons = admin.getByRole("radiogroup", { name: /^사유/ });
   await expect(reasons.getByRole("radio")).toHaveCount(1);
   await expect(reasons).toContainText("강등(징계)");
-  await admin.getByRole("button", { name: /^오늘 \d{2}-\d{2}/ }).click();
+  await todayPreset(admin).click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("징계 결정에 따른 강등");
   await admin.getByRole("button", { name: /^1명 승진 · 오늘 반영/ }).click();
   expect((await read()).classification.job_title_id).toBe(titles.find((x) => x.label === "선임")!.id);

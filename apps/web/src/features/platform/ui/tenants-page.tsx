@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtDate, fmtDateTime } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import { announce, focusSoon } from "../../../lib/react/announce";
 import { QueryState } from "../../../lib/react/query-state";
 import { TENANT_STATUS, labeled } from "../../../lib/labels";
@@ -147,8 +147,8 @@ export function TenantsPage() {
                     { header: t("tenants.col.group"), cell: (o) => <span title={o.group_name ?? undefined}>{o.group_name ?? "—"}</span>, wide: true },
                     { header: t("tenants.col.status"), cell: (o) => { const s = labeled(TENANT_STATUS, o.status); return <Chip tone={s.tone}>{s.label}</Chip>; }, fit: true },
                     { header: t("tenants.col.users"), cell: (o) => { const h = health.get(o.id); return <span className="num">{h ? t("tenants.users.ratio", { active: h.active_user_count, total: h.user_count }) : "—"}</span>; }, fit: true },
-                    { header: t("tenants.col.activity"), cell: (o) => <span className="num">{fmtDate(health.get(o.id)?.last_activity_at)}</span>, fit: true, wide: true },
-                    { header: t("tenants.col.created"), cell: (o) => <span className="num">{fmtDate(o.created_at)}</span>, fit: true },
+                    { header: t("tenants.col.activity"), cell: (o) => <span className="num">{fmtDateTime(health.get(o.id)?.last_activity_at)}</span>, fit: true, wide: true },
+                    { header: t("tenants.col.created"), cell: (o) => <span className="num">{fmtDateTime(o.created_at)}</span>, fit: true },
                   ]}
                 />
               </>

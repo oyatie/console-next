@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { t } from "@console/i18n";
 import { ToggleButton } from "../../../ui/button/button";
-import { TextInput } from "../../../ui/field/field";
+import { DateInput } from "../../../ui/date/date-input";
 import { endPresets } from "../domain/grants";
 import s from "./access.module.css";
 
@@ -34,7 +34,7 @@ export function EndPick({ value, onChange, today, error, hideLabel = false }: {
         <ToggleButton size="sm" pressed={custom} onClick={() => (setTyping(true), preset && onChange(null))}>{value && !preset ? value : t("access.grant.end.pick")}</ToggleButton>
       </div>
       {typing && (
-        <TextInput type="date" aria-label={t("access.grant.end.date")} className={s.endDate} min={today} value={value && !preset ? value : ""} onChange={(e) => onChange(e.target.value || null)} onBlur={(e) => e.target.value && setTyping(false)} />
+        <DateInput label={t("access.grant.end.date")} className={s.endDate} min={today} value={value && !preset ? value : ""} onChange={(date) => onChange(date || null)} onBlur={(e) => e.currentTarget.value && setTyping(false)} />
       )}
       {error && <span id={`${id}-e`} className="field__error">{error}</span>}
     </div>

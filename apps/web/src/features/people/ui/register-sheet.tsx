@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ClipboardPaste, ListPlus, Users } from "lucide-react";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { unitsQuery } from "../../../reference/org/api";
 import { checklistRef, entitiesRef, orgStructureRef } from "../../../reference/entity/api";
 import { CommandError } from "../../../lib/react/command-error";
@@ -149,7 +150,7 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
             tried={tried}
           />
         )}
-        <RegisterPlace d={d} set={set} units={units} options={options} workplaces={placesRead && place && !place.own ? workplaceChoices(entities) : []} shown={shown} hireLabel={d.hire ? d.hire.slice(5) : null} />
+        <RegisterPlace d={d} set={set} units={units} options={options} workplaces={placesRead && place && !place.own ? workplaceChoices(entities) : []} shown={shown} hireLabel={d.hire ? fmtDate(d.hire) : null} />
         <RegisterTerms d={d} set={set} shown={shown} today={today} tried={tried} />
       </div>
     </Sheet>
