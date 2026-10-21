@@ -8,6 +8,8 @@ use uuid::Uuid;
 use crate::AuthError;
 use crate::refresh_audit::{insert_audit_in_tx, insert_refusal_audit_in_tx};
 
+mod revocation;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RefreshToken(String);
 
@@ -57,18 +59,6 @@ pub enum RefreshTokenUseError {
     SignedOutElsewhere,
     #[error("refresh token storage error")]
     Storage,
-}
-
-impl RefreshTokenUseError {
-    fn revoked(reason: Option<&str>) -> Self {
-        match reason {
-            Some(crate::idle::IDLE_TIMEOUT_REASON) => Self::IdleExpired,
-            Some("credential_reset") => Self::PasskeyReset,
-            Some("user_deactivated" | "employee_exit") => Self::AccountDeactivated,
-            Some("logout") => Self::SignedOutElsewhere,
-            _ => Self::FamilyRevoked,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -736,25 +726,4 @@ fn hex_encode(bytes: &[u8]) -> String {
         out.push(HEX[(byte & 0x0f) as usize] as char);
     }
     out
-}
-
-#[cfg(test)]
-mod recovery_reason_tests {
-    use super::RefreshTokenUseError as E;
-
-    #[test]
-    fn revocation_keeps_the_recovery_reason() {
-        for (reason, expected) in [
-            (Some(crate::idle::IDLE_TIMEOUT_REASON), E::IdleExpired),
-            (Some("credential_reset"), E::PasskeyReset),
-            (Some("user_deactivated"), E::AccountDeactivated),
-            (Some("employee_exit"), E::AccountDeactivated),
-            (Some("ops_holder_exit"), E::FamilyRevoked),
-            (Some("logout"), E::SignedOutElsewhere),
-            (Some("reuse_detected"), E::FamilyRevoked),
-            (None, E::FamilyRevoked),
-        ] {
-            assert_eq!(E::revoked(reason), expected);
-        }
-    }
 }
