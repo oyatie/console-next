@@ -1,17 +1,21 @@
 // Labels for the access screens: domains, levels, reasons and states by catalog id (never the server key), one-line role
 // summaries, and the scope as every consequence names it.
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
+import { fmtDate, fmtStamp } from "@console/i18n/format";
 import { codeText } from "../../lib/labels";
 import type { Level } from "./domain/grid";
 import { lastDay } from "./domain/grants";
 import { find, reach, type OrgNode, type Scope } from "./domain/scope";
-import type { AccessRoleLine, AccessScope } from "./api";
+import type { AccessRoleLine, AccessScope, PreviewItem } from "./api";
 
 export const domainText = (key: string) => codeText(`accessCodes.domain.${key}`, key);
 export const domainHelp = (key: string) => codeText(`accessCodes.domain.${key}.help`, "");
 export const levelText = (l: Level) => t(`accessCodes.level.${l}`);
 export const enforcementText = (e: string) => codeText(`accessCodes.enforcement.${e}`, e);
+/** Only a server-scheduled preview carries an activation time. */
+export const scheduledText = (item: Pick<PreviewItem, "enforcement_after" | "activates_at">) =>
+  item.enforcement_after === "SCHEDULED" && item.activates_at
+    ? `${enforcementText(item.enforcement_after)} · ${t("access.period.open", { from: fmtStamp(item.activates_at) })}` : null;
 /** Why the server refused one operation of a batch, by its code; an unknown code falls back to the server's own words. */
 export const refusalText = (r: { code: string; message: string } | null | undefined) => (r ? codeText(`accessCodes.refusal.${r.code}`, r.message) : t("access.refused"));
 
@@ -38,7 +42,7 @@ export const scopeText = (roots: readonly OrgNode[], s: AccessScope) => (reach(r
 
 /** "go-live ~ last day" for a grant waiting for go-live, else its first day; an open end reads "from ...". */
 export function periodText(g: { valid_from: string; valid_to?: string | null; activates_at?: string | null; enforcement: string }) {
-  const from = g.enforcement === "PREPARED" ? t("access.period.golive") : todayKst(new Date(g.activates_at ?? g.valid_from));
+  const from = g.enforcement === "PREPARED" ? t("access.period.golive") : g.enforcement === "SCHEDULED" && g.activates_at ? fmtStamp(g.activates_at) : fmtDate(g.valid_from);
   const to = lastDay(g.valid_to);
   return to ? t("access.period", { from, to: fmtDate(to) }) : t("access.period.open", { from });
 }

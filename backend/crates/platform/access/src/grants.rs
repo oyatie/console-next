@@ -164,6 +164,14 @@ pub async fn preview(s: &AccessService, p: Principal, body: Batch) -> AccessResu
                 .collect();
             let request = json!({ "reason_code": body.reason_code, "reason_note": body.reason_note, "ops": ops });
             let digest = digest(&request, &items);
+            // The deadline advances at apply; keep it outside the receipt digest.
+            let items = checked.into_iter().map(|c| {
+                let mut item = c.item;
+                if let Some(at) = c.activates_at {
+                    item["activates_at"] = json!(at.format(&time::format_description::well_known::Rfc3339).map_err(AccessError::internal)?);
+                }
+                Ok(item)
+            }).collect::<AccessResult<Vec<_>>>()?;
             let expires_at = now + RECEIPT_TTL;
             let receipt: Uuid = sqlx::query_scalar(
                 "INSERT INTO access_grant_receipts (org_id, actor_id, digest, request, refused, expires_at, id)

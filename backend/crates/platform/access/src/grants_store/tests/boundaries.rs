@@ -86,14 +86,14 @@ async fn configured_solo_delay_is_not_the_minimum_second_person_age(pool: PgPool
         .execute(tx.as_mut())
         .await
         .unwrap();
+    let mut now = OffsetDateTime::now_utc();
     for (key, value) in [
         (SettingKey::AuthzElevatedGrantSoleAdminDelay, 48),
         (SettingKey::AuthzSecondPersonMinGrantAge, 13),
     ] {
-        sqlx::query("INSERT INTO tenant_setting_overrides (org_id,key,value,set_by,reason_code,effective_from) VALUES ($1,$2,$3,$4,'POLICY',$5)")
-            .bind(org.as_uuid()).bind(key.as_str()).bind(serde_json::json!(value)).bind(actor).bind(OffsetDateTime::now_utc() - Duration::days(1)).execute(tx.as_mut()).await.unwrap();
+        now = sqlx::query_scalar("INSERT INTO tenant_setting_overrides (org_id,key,value,set_by,reason_code) VALUES ($1,$2,$3,$4,'POLICY') RETURNING effective_from")
+            .bind(org.as_uuid()).bind(key.as_str()).bind(serde_json::json!(value)).bind(actor).fetch_one(tx.as_mut()).await.unwrap();
     }
-    let now = OffsetDateTime::now_utc();
     let due = crate::pending::deadline(&mut tx, org, role, &FixedClock(now))
         .await
         .unwrap()
@@ -151,4 +151,49 @@ async fn setup_elevated_grant_applies_immediately_without_a_pending_row(pool: Pg
             .await
             .unwrap();
     assert_eq!(pending, 0);
+}
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn preview_exposes_the_computed_deadline_only_for_delayed_grants(pool: PgPool) {
+    use console_kernel_core::{BranchScope, UserId};
+    use console_platform_authz::Principal;
+    use time::format_description::well_known::Rfc3339;
+    for setup in [false, true] {
+        let (org, actor, target, role) = if setup {
+            fixture_in_setup(&pool).await
+        } else {
+            fixture(&pool).await
+        };
+        let service = crate::AccessService::new(pool.clone(), None);
+        let principal = Principal::new(
+            UserId::from_uuid(actor),
+            org,
+            Default::default(),
+            BranchScope::All,
+        )
+        .with_tenant_ops(true);
+        let before = OffsetDateTime::now_utc();
+        let preview = crate::grants::preview(&service, principal, serde_json::from_value(serde_json::json!({
+            "reason_code": "PROMOTION_OR_REASSIGNMENT", "operations": [{
+                "op": "grant", "account_id": target, "role_id": role,
+                "scope": {"kind": "TENANT", "include_descendants": true}, "effective_in_setup": true
+            }]
+        })).unwrap()).await.unwrap();
+        assert_eq!(preview["refused"], 0, "{preview}");
+        let item = &preview["items"][0];
+        assert_eq!(
+            item["enforcement_after"],
+            if setup { "ENFORCED" } else { "SCHEDULED" }
+        );
+        if setup {
+            assert!(item["activates_at"].is_null());
+        } else {
+            let at = OffsetDateTime::parse(
+                item["activates_at"].as_str().expect("scheduled deadline"),
+                &Rfc3339,
+            )
+            .unwrap();
+            assert!(at > before);
+        }
+    }
 }

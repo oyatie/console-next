@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { fmtStamp } from "@console/i18n/format";
 import { expect, type Page } from "@playwright/test";
 import { activatePendingGrants } from "./second-person-fixture";
 import { bearerOf } from "./helpers/api";
@@ -68,7 +69,14 @@ export async function grantAccess(admin: Page, name: string, access: Access, sco
   else await chooseRadio(sheet, /^저장 즉시/);
   await chooseRadio(sheet, /^업무 배정·변경/);
   // Preview, passkey and apply are three round trips: allowed longer than one assertion under a loaded slot.
+  const previewResponse = admin.waitForResponse((r) => r.url().endsWith("/access/grants/preview") && r.request().method() === "POST");
   await sheet.getByRole("button", { name: "패스키로 확인하고 부여 1건 저장" }).click();
+  const preview = await (await previewResponse).json() as { items: { enforcement_after: string; activates_at?: string }[] };
+  const scheduled = preview.items.filter((i) => i.enforcement_after === "SCHEDULED");
+  if (scheduled.length) {
+    for (const item of scheduled) await expect(sheet.getByText(fmtStamp(item.activates_at), { exact: false })).toBeVisible();
+    await sheet.getByRole("button", { name: "패스키로 확인하고 부여 1건 저장" }).click();
+  }
   await expect(admin.getByRole("status").filter({ hasText: `${name}님에게 부여 1건을 저장했습니다` })).toBeVisible({ timeout: 20_000 });
   if (activate) await activatePendingGrants(admin, token);
   // this is set-up plumbing for the calling spec, whose own screens are what its stability checks judge; the

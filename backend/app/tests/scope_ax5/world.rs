@@ -6,8 +6,7 @@
 //! no legacy role, each granted 인사 실무 over one scope node.
 #![allow(dead_code)]
 
-use console_kernel_core::OrgId;
-use console_kernel_core::kr::synthetic;
+use console_kernel_core::{FixedClock, OrgId, kr::synthetic};
 use console_platform_test_support::soft_passkey::SoftKey;
 use http::StatusCode;
 use serde_json::{Value, json};
@@ -94,6 +93,31 @@ impl World {
         let step_up = self.key.step_up(&self.pool).await;
         let apply = json!({ "receipt_id": preview["receipt_id"], "step_up": step_up });
         self.ok("POST", "/api/v1/access/grants/apply", apply).await;
+        let mut tx = self.pool.begin().await.unwrap();
+        sqlx::query("SELECT set_config('app.current_org',$1,true)")
+            .bind(self.org.to_string())
+            .execute(tx.as_mut())
+            .await
+            .unwrap();
+        let (grant, activates_at): (Uuid, time::OffsetDateTime) = sqlx::query_as(
+            "SELECT p.grant_id, p.activates_at FROM user_role_grants_pending p
+             JOIN access_grants g ON g.org_id=p.org_id AND g.id=p.grant_id
+             WHERE p.org_id=$1 AND g.account_id=$2 AND g.status='PENDING'",
+        )
+        .bind(self.org)
+        .bind(user.as_uuid())
+        .fetch_one(tx.as_mut())
+        .await
+        .unwrap();
+        console_platform_access::pending::activate_in_tx(
+            &mut tx,
+            OrgId::from_uuid(self.org),
+            grant,
+            &FixedClock(activates_at),
+        )
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
         ctx(&self.pool, self.org, user, &[], None).await
     }
 }

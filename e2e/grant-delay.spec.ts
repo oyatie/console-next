@@ -9,7 +9,11 @@ test("a sole admin's elevated grant waits for the configured deadline", { tag: [
   const { admin } = await tenantInSetup(browser, "grantdelay", "권한대기", false, "본점", "none");
   await startOperations(admin);
   const token = bearerOf(admin);
+  const previewResponse = admin.waitForResponse((r) => r.url().endsWith("/access/grants/preview") && r.request().method() === "POST");
   await grantAccess(admin, "이임원", "full", /^전체/, false);
+  const preview = await (await previewResponse).json() as { items: { enforcement_after: string; activates_at?: string }[] };
+  expect(preview.items[0]!.enforcement_after).toBe("SCHEDULED");
+  expect(Date.parse(preview.items[0]!.activates_at!)).toBeGreaterThan(Date.now());
   const api = apiOf(admin, token);
   const read = async () => {
     const response = await api("/access/grants");
@@ -27,8 +31,9 @@ test("a sole admin's elevated grant waits for the configured deadline", { tag: [
 
 test("setup grants apply immediately before operations start", { tag: ["@access", "@regression"] }, async ({ browser }) => {
   const { admin } = await tenantInSetup(browser, "setupgrant", "설정권한", false, "본점", "none");
+  const token = bearerOf(admin);
   await grantAccess(admin, "이임원", "full", /^전체/, false);
-  const response = await apiOf(admin, bearerOf(admin))("/access/grants");
+  const response = await apiOf(admin, token)("/access/grants");
   expect(response.ok()).toBeTruthy();
   const grants = await response.json() as { enforcement: string; activates_at?: string | null }[];
   expect(grants).toHaveLength(1);

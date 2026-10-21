@@ -13938,6 +13938,8 @@ export interface components {
             grant_id?: components["schemas"]["Uuid"] | null;
             /** @description null when REFUSED. */
             enforcement_after: components["schemas"]["AccessEnforcement"] | null;
+            /** @description Sole-admin security delay deadline for a SCHEDULED grant; recalculated when applied. */
+            activates_at?: components["schemas"]["Timestamp"];
             /** @description Lines the account gains now (enforced); PREPARED/SCHEDULED grants gain nothing yet. */
             gains: components["schemas"]["AccessEffectLine"][];
             losses: components["schemas"]["AccessEffectLine"][];

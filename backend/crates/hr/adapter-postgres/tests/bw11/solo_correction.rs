@@ -211,8 +211,11 @@ async fn another_holder_prevents_the_recorders_solo_correction(pool: PgPool) {
 async fn refuse_mode_keeps_a_solo_correction_closed(pool: PgPool) {
     let f = solo(pool).await;
     let event = original(&f).await;
-    sqlx::query("INSERT INTO tenant_setting_overrides (org_id,key,value,set_by,reason_code,effective_from) VALUES ($1,'authz.sole_holder.mode','\"refuse\"',$2,'F8',$3)")
-        .bind(f.principal.org_id.as_uuid()).bind(f.principal.user_id.as_uuid()).bind(time::OffsetDateTime::now_utc() - time::Duration::days(1)).execute(&f.owner).await.unwrap();
+    let effective_from: time::OffsetDateTime = sqlx::query_scalar("INSERT INTO tenant_setting_overrides (org_id,key,value,set_by,reason_code) VALUES ($1,'authz.sole_holder.mode','\"refuse\"',$2,'F8') RETURNING effective_from")
+        .bind(f.principal.org_id.as_uuid()).bind(f.principal.user_id.as_uuid()).fetch_one(&f.owner).await.unwrap();
+    while time::OffsetDateTime::now_utc() < effective_from {
+        tokio::task::yield_now().await;
+    }
     let err =
         f.hr.correct_lifecycle_event(
             f.principal.clone(),

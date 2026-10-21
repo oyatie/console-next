@@ -45,6 +45,9 @@ properties:
     oneOf:
     - $ref: '#/components/schemas/AccessEnforcement'
     - type: 'null'
+  activates_at:
+    description: Sole-admin security delay deadline for a SCHEDULED grant; recalculated when applied.
+    $ref: '#/components/schemas/Timestamp'
   gains:
     type: array
     description: Lines the account gains now (enforced); PREPARED/SCHEDULED grants gain nothing yet.
