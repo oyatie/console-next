@@ -72,7 +72,7 @@ export async function grantAccess(admin: Page, name: string, access: Access, sco
   const previewResponse = admin.waitForResponse((r) => r.url().endsWith("/access/grants/preview") && r.request().method() === "POST");
   await sheet.getByRole("button", { name: "패스키로 확인하고 부여 1건 저장" }).click();
   const preview = await (await previewResponse).json() as { items: { enforcement_after: string; activates_at?: string }[] };
-  const scheduled = preview.items.filter((i) => i.enforcement_after === "SCHEDULED");
+  const scheduled = preview.items.filter((i) => i.enforcement_after === "SCHEDULED" && i.activates_at);
   if (scheduled.length) {
     for (const item of scheduled) await expect(sheet.getByText(fmtStamp(item.activates_at), { exact: false })).toBeVisible();
     await sheet.getByRole("button", { name: "패스키로 확인하고 부여 1건 저장" }).click();
