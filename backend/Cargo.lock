@@ -3038,6 +3038,7 @@ dependencies = [
  "sha2 0.11.0",
  "sqlx 0.9.0",
  "time",
+ "tokio",
  "tracing",
  "uuid",
 ]

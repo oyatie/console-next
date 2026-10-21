@@ -9,6 +9,9 @@ use uuid::Uuid;
 use crate::dto::{GrantOut, ScopeOut};
 use crate::error::{AccessError, AccessResult};
 
+#[cfg(test)]
+mod tests;
+
 type Tx<'a, 'b> = &'a mut Transaction<'b, Postgres>;
 
 /// One stored grant with what its checks need.
