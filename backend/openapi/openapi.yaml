@@ -51751,6 +51751,10 @@ components:
       - tax_office_label
       - tax_type
       properties:
+        trade_name:
+          type: [string, 'null']
+          maxLength: 200
+          description: '개인사업자: 사업자등록증 ① 상호 as printed; ignored for 법인. Absent on create defaults to the entity name; absent on revise preserves the stored value.'
         classification_reason:
           type: [string, 'null']
           maxLength: 1000
@@ -51954,8 +51958,7 @@ components:
         trade_name:
           type: string
           readOnly: true
-          deprecated: true
-          description: Derived, never stored here - the entity's name (법인명/상호 has one source). Read the entity's name instead.
+          description: "INDIVIDUAL: the certificate's own 상호; otherwise the entity's 법인명 (derived). Legacy NULL falls back to the entity name."
         opened_on:
           type:
           - string

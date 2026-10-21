@@ -25179,6 +25179,8 @@ export interface components {
         };
         /** @description One 사업자등록증. brn, or brn_pending_reason when the number is not issued yet. */
         RegistrationInput: {
+            /** @description 개인사업자: 사업자등록증 ① 상호 as printed; ignored for 법인. Absent on create defaults to the entity name; absent on revise preserves the stored value. */
+            trade_name?: string | null;
             /** @description Explicit exception reason for registration classification or primary head-office requirement. */
             classification_reason?: string | null;
             /** @description 사업자등록번호; formatted or digits in, canonical digits out. */
@@ -25265,10 +25267,7 @@ export interface components {
             effective_from: string;
             /** @description Today is before the first record takes effect (e.g. before 개설일); this is that first record. */
             before_first_record: boolean;
-            /**
-             * @deprecated
-             * @description Derived, never stored here - the entity's name (법인명/상호 has one source). Read the entity's name instead.
-             */
+            /** @description INDIVIDUAL: the certificate's own 상호; otherwise the entity's 법인명 (derived). Legacy NULL falls back to the entity name. */
             readonly trade_name: string;
             /** Format: date */
             opened_on?: string | null;

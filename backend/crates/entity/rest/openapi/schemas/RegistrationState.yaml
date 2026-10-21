@@ -23,8 +23,7 @@ properties:
   trade_name:
     type: string
     readOnly: true
-    deprecated: true
-    description: Derived, never stored here - the entity's name (법인명/상호 has one source). Read the entity's name instead.
+    description: "INDIVIDUAL: the certificate's own 상호; otherwise the entity's 법인명 (derived). Legacy NULL falls back to the entity name."
   opened_on:
     type:
     - string

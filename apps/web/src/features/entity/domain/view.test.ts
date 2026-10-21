@@ -151,3 +151,8 @@ describe("the current state as the input a dated revision sends", () => {
     expect(workplaceInput(e, wp({ current: undefined }))).toBeNull();
   });
 });
+
+test("individual registration revisions carry the certificate name, corporations omit it", () => {
+  expect(registrationInput(entity({ biz_kind: "INDIVIDUAL" }), "r1")).toHaveProperty("trade_name", "가나");
+  expect(registrationInput(entity(), "r1")).not.toHaveProperty("trade_name");
+});

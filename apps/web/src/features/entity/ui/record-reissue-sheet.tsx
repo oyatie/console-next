@@ -32,7 +32,7 @@ function items(e: LegalEntity, r: BusinessRegistration): { key: ItemKey; spec: A
   // The entity's part needs its whole state: a reader who may not see representative changes only the certificate's own facts.
   const entity = e.current?.representatives != null;
   const list: [ItemKey, unknown, boolean][] = [
-    ["name", ef.name, entity],
+    ["name", e.biz_kind === "INDIVIDUAL" ? f.tradeName : ef.name, e.biz_kind === "INDIVIDUAL" || entity],
     ["representatives", ef.representatives, entity],
     ["businessAddress", f.businessAddress, true],
     ["headOffice", ef.headOffice, entity && e.biz_kind === "CORPORATION"],

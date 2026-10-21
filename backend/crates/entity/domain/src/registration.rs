@@ -11,6 +11,8 @@ use crate::refusal::{Issues, NOT_APPLICABLE, REQUIRED, Refusal, Warning};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RegistrationInput {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trade_name: Option<String>,
     pub brn: Option<String>,
     pub brn_pending_reason: Option<String>,
     #[serde(
@@ -42,8 +44,7 @@ pub struct RegistrationInput {
 pub struct RegistrationDraft {
     pub brn: Option<BizRegNo>,
     pub brn_pending_reason: Option<BrnPendingReason>,
-    /// Never read: 법인명/상호 has one stored source, the entity's revision. `None` for a
-    /// 법인; an individual registration still records its 상호 until the contract step.
+    /// An individual certificate's printed 상호; other kinds store no name copy.
     pub trade_name: Option<String>,
     pub classification_reason: Option<Option<String>>,
     pub opened_on: time::Date,
@@ -66,6 +67,8 @@ pub struct RegistrationDraft {
 pub struct EntityContext<'a> {
     pub biz_kind: Option<BizKind>,
     pub entity_name: &'a str,
+    /// No head on create; a revision may have a legacy NULL 상호.
+    pub head_trade_name: Option<Option<&'a str>>,
 }
 
 /// # Errors
@@ -76,6 +79,17 @@ pub fn validate_registration(
     today: time::Date,
 ) -> Result<(RegistrationDraft, Vec<Warning>), Refusal> {
     let mut is = Issues::default();
+    let trade_name = if ctx.biz_kind == Some(BizKind::Individual) {
+        match input.trade_name.as_deref() {
+            Some(name) => is.text("trade_name", Some(name), 200, true),
+            None => ctx
+                .head_trade_name
+                .unwrap_or(Some(ctx.entity_name))
+                .map(str::to_owned),
+        }
+    } else {
+        None
+    };
     let pending = is.choice(
         "brn_pending_reason",
         input.brn_pending_reason.as_deref(),
@@ -193,11 +207,7 @@ pub fn validate_registration(
         let draft = RegistrationDraft {
             brn,
             brn_pending_reason: pending,
-            trade_name: if ctx.biz_kind == Some(BizKind::Individual) {
-                Some(ctx.entity_name.to_owned())
-            } else {
-                None
-            },
+            trade_name,
             classification_reason,
             opened_on: opened_on?,
             business_address: business_address?,

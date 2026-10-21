@@ -35,6 +35,12 @@ export function registrationFields(r: BusinessRegistration) {
     show: (v) => dash(v.trim()), patch: (v) => ({ [key]: v.trim() || null }), ready: (v) => v.trim() !== initial && (!v.trim() || ok(v.trim())),
   });
   return {
+    tradeName: {
+      label: t("entityRecord.field.tradeName"), group, owner, current: dash(c?.trade_name), initial: c?.trade_name ?? "",
+      edit: (v, set) => <Field label={t("entityRecord.field.tradeName")} required>{(f) => <TextInput {...f} maxLength={200} value={v} onChange={(x) => set(x.target.value)} />}</Field>,
+      show: (v) => dash(v.trim()), patch: (v) => ({ trade_name: v.trim() }),
+      ready: (v) => v.trim() !== "" && [...v.trim()].length <= 200 && v.trim() !== c?.trade_name,
+    } satisfies FieldSpec<string>,
     classificationReason: text(t("entity.name.classificationReason"), "classification_reason", c?.classification_reason ?? ""),
     taxType: {
       label: t("entityRecord.field.taxType"), group, owner, current: c?.tax_type ? label(TAX_TYPE, c.tax_type) : "—", initial: c?.tax_type ?? null,

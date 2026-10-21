@@ -80,8 +80,8 @@ fuzz_target!(|bytes: &[u8]| {
             check(validate_registration(
                 &input,
                 EntityContext {
-                    representatives: &[],
                     biz_kind: kind,
+                    head_trade_name: None,
                     entity_name: "주식회사 예시",
                 },
                 TODAY,

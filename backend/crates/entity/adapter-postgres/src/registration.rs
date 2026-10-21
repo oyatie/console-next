@@ -94,7 +94,7 @@ impl PgEntityStore {
                 let admitted = admit(tx, WriteClass::EntityStructure).await?;
                 let facts = lock_entity(tx, entity).await?;
                 let today = today_kst(tx).await?;
-                let ctx = EntityContext { biz_kind: facts.biz_kind, entity_name: &facts.name };
+                let ctx = EntityContext { biz_kind: facts.biz_kind, entity_name: &facts.name, head_trade_name: None };
                 let (draft, warnings) = validate_registration(&input, ctx, today)?;
                 // The unique index is the backstop; checking first names the
                 // number before any later rule (VAT unit) can mask it.

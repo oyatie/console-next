@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { emptyDraft, missing, OWNER, SECTIONS, type Draft } from "./draft";
-import { planEntityCreate, type Facts } from "./plan";
+import { planEntityCreate, planRegistration, type Facts } from "./plan";
 
 const today = "2026-10-02";
 const addr = { key: "b1", road: "서울특별시 종로구 세종대로 209", zip: "03154", detail: "", verified: true };
@@ -75,8 +75,7 @@ test("every section has an owner", () => {
   expect(Object.keys(OWNER).sort()).toEqual([...SECTIONS].sort());
 });
 
-test("a further certificate does not ask the entity's own facts again", async () => {
-  const { planRegistration } = await import("./plan");
+test("a further certificate does not ask the entity's own facts again", () => {
   const d: Draft = { ...filled(), scope: "registration", bizKind: "CORPORATION", crn: "", headOffice: null };
   expect(missing(d, false)).toMatchObject({ identity: 0, address: 0 });
   const p = planRegistration(d, facts());
@@ -136,4 +135,10 @@ test("a hand-typed or list-picked district: province, at most two si/gun/gu word
   expect(pick("서울특별시 종로구 사직동")).toMatchObject({ si_nm: "서울특별시", sgg_nm: "종로구", emd_nm: "사직동", adm_cd: "1111053000" });
   expect(pick("경기도 성남시 분당구")).toMatchObject({ sgg_nm: "성남시 분당구", emd_nm: null });
   expect(pick("세종특별자치시 한솔동")).toMatchObject({ si_nm: "세종특별자치시", sgg_nm: null, emd_nm: "한솔동" });
+});
+
+test("individual first and further certificates send their printed trade name", () => {
+  const d = filled({ bizKind: "INDIVIDUAL", name: " 가나상회 2호점 ", crn: "", headOffice: null });
+  expect(planEntityCreate(d, facts())).toMatchObject({ ok: true, body: { registration: { trade_name: "가나상회 2호점" } } });
+  expect(planRegistration({ ...d, scope: "registration" }, facts())).toMatchObject({ ok: true, body: { trade_name: "가나상회 2호점" } });
 });

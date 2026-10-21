@@ -96,6 +96,7 @@ export function planEntityCreate(d: Draft, f: Facts): Plan {
 function registrationOf(d: Draft, documentId?: string): CreateRegistrationRequest {
   return {
     ...(documentId ? { document_id: documentId } : {}),
+    ...(d.bizKind === "INDIVIDUAL" ? { trade_name: d.name.trim() } : {}),
     brn: d.brn,
     opened_on: d.openedOn,
     business_address: krAddress(d.businessAddress!),
