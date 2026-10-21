@@ -81,8 +81,10 @@ async fn settings_and_statutory_answer_signed_in_users_and_writes_stay_closed(po
     assert_eq!(status, StatusCode::OK, "{page}");
     assert!(page.to_string().contains("POLICY_VIOLATION"), "{page}");
 
-    // Writes and history: Cedar-only and not enrolled yet, so closed even
-    // for the strongest legacy role, and nothing is written.
+    // Acceptance-2 DB/API grid:
+    // (a) No grant: neither plain member nor legacy SUPER_ADMIN holds settings
+    // authority without an explicit grant; all writes and admin reads return 403,
+    // and 0 rows are written.
     let change = json!({"value": 20, "reason_code": "POLICY_REVIEW"});
     let history = "/api/v1/settings/auth.idle_timeout_minutes/history";
     let add =
@@ -114,6 +116,161 @@ async fn settings_and_statutory_answer_signed_in_users_and_writes_stay_closed(po
             .unwrap();
         assert_eq!(written, 0, "{sql}");
     }
+
+    // (b) Out of scope: user holds grant over legal entity A only.
+    // Tenant-wide writes get scope_tenant_wide_only (403), writes targeting
+    // entity B get out_of_scope (403), and 0 rows are written.
+    let le_a = seed_legal_entity(&pool, org, admin).await;
+    let le_b = seed_legal_entity(&pool, org, admin).await;
+    let scoped_user = seed_user(&pool, org, "MEMBER").await;
+    let scoped_token = token(&pool, &keys, org, scoped_user, "MEMBER").await;
+    seed_role_and_grant(&pool, org, admin, scoped_user, "LEGAL_ENTITY", Some(le_a)).await;
+
+    // Tenant-wide settings write (scope_entity_id: None)
+    let (status, body) = send(
+        &service,
+        "POST",
+        "/api/v1/settings/auth.idle_timeout_minutes",
+        Some(&scoped_token),
+        Some(change.clone()),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+    assert_eq!(body["error"]["code"], "scope_tenant_wide_only", "{body}");
+
+    // Reason code write (tenant-wide only)
+    let (status, body) = send(
+        &service,
+        "POST",
+        "/api/v1/reason-codes",
+        Some(&scoped_token),
+        Some(add.clone()),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+    assert_eq!(body["error"]["code"], "scope_tenant_wide_only", "{body}");
+
+    // Settings write targeting entity B (outside held scope)
+    let change_b = json!({
+        "value": 20,
+        "reason_code": "POLICY_REVIEW",
+        "scope_entity_id": le_b,
+    });
+    let (status, body) = send(
+        &service,
+        "POST",
+        "/api/v1/settings/auth.idle_timeout_minutes",
+        Some(&scoped_token),
+        Some(change_b),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+    assert_eq!(body["error"]["code"], "out_of_scope", "{body}");
+
+    for sql in [
+        "SELECT count(*) FROM tenant_setting_overrides WHERE org_id = $1",
+        "SELECT count(*) FROM reason_codes WHERE org_id = $1",
+    ] {
+        let written: i64 = sqlx::query_scalar(sql)
+            .bind(org)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(written, 0, "{sql}");
+    }
+
+    // (c) Another tenant: user in org2 attempts to modify settings for entity A in org1.
+    // Gets 403 out_of_scope, and 0 rows are written in org1.
+    let org2 = Uuid::new_v4();
+    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2, 'Other Co')")
+        .bind(org2)
+        .bind(format!("set-{}", &org2.simple().to_string()[..12]))
+        .execute(&pool)
+        .await
+        .unwrap();
+    let other_admin = seed_user(&pool, org2, "SUPER_ADMIN").await;
+    let other_user = seed_user(&pool, org2, "MEMBER").await;
+    let other_token = token(&pool, &keys, org2, other_user, "MEMBER").await;
+    let le_other = seed_legal_entity(&pool, org2, other_admin).await;
+    seed_role_and_grant(
+        &pool,
+        org2,
+        other_admin,
+        other_user,
+        "LEGAL_ENTITY",
+        Some(le_other),
+    )
+    .await;
+
+    let change_foreign = json!({
+        "value": 20,
+        "reason_code": "POLICY_REVIEW",
+        "scope_entity_id": le_a,
+    });
+    let (status, body) = send(
+        &service,
+        "POST",
+        "/api/v1/settings/auth.idle_timeout_minutes",
+        Some(&other_token),
+        Some(change_foreign),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+    assert_eq!(body["error"]["code"], "out_of_scope", "{body}");
+
+    for sql in [
+        "SELECT count(*) FROM tenant_setting_overrides WHERE org_id = $1",
+        "SELECT count(*) FROM reason_codes WHERE org_id = $1",
+    ] {
+        let written: i64 = sqlx::query_scalar(sql)
+            .bind(org)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(written, 0, "{sql}");
+    }
+
+    // (d) Granted holder: user with tenant-wide SettingsManage grant in org1 succeeds.
+    // Writes succeed with 201 Created and exactly 1 row is written to each table.
+    let granted_user = seed_user(&pool, org, "MEMBER").await;
+    let granted_token = token(&pool, &keys, org, granted_user, "MEMBER").await;
+    seed_role_and_grant(&pool, org, admin, granted_user, "TENANT", None).await;
+
+    let (status, body) = send(
+        &service,
+        "POST",
+        "/api/v1/settings/auth.idle_timeout_minutes",
+        Some(&granted_token),
+        Some(change),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+
+    let (status, body) = send(
+        &service,
+        "POST",
+        "/api/v1/reason-codes",
+        Some(&granted_token),
+        Some(add),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+
+    let overrides_count: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM tenant_setting_overrides WHERE org_id = $1")
+            .bind(org)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(overrides_count, 1);
+
+    let reasons_count: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM reason_codes WHERE org_id = $1")
+            .bind(org)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(reasons_count, 1);
 }
 
 async fn send(
@@ -232,4 +389,86 @@ fn app_state(runtime: PgPool, public_pem: String) -> Result<AppState, console_ap
         ("CONSOLE_JWT_PUBLIC_KEY_PEM", public_pem),
     ])?;
     AppState::new(config, DatabaseDependency::Postgres(runtime))
+}
+
+async fn seed_legal_entity(pool: &PgPool, org: Uuid, user: UserId) -> Uuid {
+    let id = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO legal_entities (org_id, id, biz_kind, created_change_mode, created_by)
+         VALUES ($1, $2, 'INDIVIDUAL', 'SETUP', $3)",
+    )
+    .bind(org)
+    .bind(id)
+    .bind(*user.as_uuid())
+    .execute(pool)
+    .await
+    .unwrap();
+    id
+}
+
+async fn seed_role_and_grant(
+    pool: &PgPool,
+    org: Uuid,
+    granter: UserId,
+    grantee: UserId,
+    scope_kind: &str,
+    legal_entity_id: Option<Uuid>,
+) -> Uuid {
+    let role_id = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO access_roles (org_id, id, name_ko, status, version, created_by)
+         VALUES ($1, $2, $3, 'ACTIVE', 1, $4)",
+    )
+    .bind(org)
+    .bind(role_id)
+    .bind(format!(
+        "settings manager {}",
+        &role_id.simple().to_string()[..8]
+    ))
+    .bind(*granter.as_uuid())
+    .execute(pool)
+    .await
+    .unwrap();
+
+    sqlx::query(
+        "INSERT INTO access_role_versions (org_id, role_id, version, name_ko, status, change_mode, created_by)
+         VALUES ($1, $2, 1, $3, 'ACTIVE', 'SETUP', $4)",
+    )
+    .bind(org)
+    .bind(role_id)
+    .bind(format!("settings manager {}", &role_id.simple().to_string()[..8]))
+    .bind(*granter.as_uuid())
+    .execute(pool)
+    .await
+    .unwrap();
+
+    sqlx::query(
+        "INSERT INTO access_role_lines (org_id, role_id, version, domain, levels)
+         VALUES ($1, $2, 1, 'settings', ARRAY['edit'])",
+    )
+    .bind(org)
+    .bind(role_id)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let grant_id = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO access_grants (
+            org_id, id, account_id, role_id, scope_kind, legal_entity_id,
+            valid_from, effective_in_setup, change_mode, reason_code, granted_by
+         ) VALUES ($1, $2, $3, $4, $5, $6, now() - interval '1 minute', true, 'SETUP', 'TEST', $7)",
+    )
+    .bind(org)
+    .bind(grant_id)
+    .bind(*grantee.as_uuid())
+    .bind(role_id)
+    .bind(scope_kind)
+    .bind(legal_entity_id)
+    .bind(*granter.as_uuid())
+    .execute(pool)
+    .await
+    .unwrap();
+
+    grant_id
 }

@@ -34,6 +34,31 @@ impl SettingsStore for Fake {
         })
     }
 
+    async fn validate_reason(
+        &mut self,
+        code: &str,
+        note: Option<&str>,
+    ) -> Result<console_settings_domain::code_lists::ValidReason, KernelError> {
+        console_settings_domain::code_lists::validate_reason(
+            console_settings_domain::code_lists::ReasonDomain::SettingsChange,
+            code,
+            note,
+            &[],
+        )
+        .map_err(Into::into)
+    }
+
+    async fn resolve_step_up(
+        &mut self,
+        _actor: Actor,
+        ceremony_id: Option<Uuid>,
+        _scope_entity_id: Option<Uuid>,
+        _key: SettingKey,
+        _value: &console_settings_domain::SettingValue,
+    ) -> Result<bool, KernelError> {
+        Ok(ceremony_id.is_some())
+    }
+
     async fn rows(
         &mut self,
         _key: SettingKey,

@@ -95,6 +95,13 @@ where
     A: FnOnce(ReasonDomain) -> Result<(), KernelError> + Send,
 {
     let domain = parse_domain(&cmd.domain)?;
+    if !domain.tenant_extensible() {
+        return Err(KernelError::forbidden(
+            "governance reason domains are closed to tenant customization",
+        )
+        .with_code("reason_domain_closed")
+        .with_field("domain"));
+    }
     if (cmd.notice_required && !cmd.involuntary)
         || (domain != ReasonDomain::ExitReason && (cmd.involuntary || cmd.notice_required))
     {

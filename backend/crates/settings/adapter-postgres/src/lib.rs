@@ -18,6 +18,7 @@ pub use read::{
 };
 pub use reason_codes::{CatalogEntry, validate_reason_in_tx};
 pub use reason_stats::{CodeCount, SourceStats};
+pub use tx::settings_change_payload;
 
 use console_kernel_core::{AuditRequestContext, KernelError, OrgId, Timestamp, TraceContext};
 use console_platform_db::{DbError, with_audits, with_org_conn};

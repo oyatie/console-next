@@ -15,6 +15,7 @@ use console_kernel_core::{
     AuditAction, AuditEvent, AuditRequestContext, KernelError, OrgId, Timestamp, TraceContext,
     UserId,
 };
+use console_settings_domain::code_lists::ValidReason;
 use console_settings_domain::{
     Direction, OverrideRow, SettingError, SettingKey, SettingValue, check_change, resolve,
 };
@@ -61,6 +62,21 @@ pub struct InsertedOverride {
 pub trait SettingsStore {
     fn facts(&mut self) -> impl Future<Output = Result<StoreFacts, KernelError>> + Send;
 
+    fn validate_reason(
+        &mut self,
+        code: &str,
+        note: Option<&str>,
+    ) -> impl Future<Output = Result<ValidReason, KernelError>> + Send;
+
+    fn resolve_step_up(
+        &mut self,
+        actor: Actor,
+        ceremony_id: Option<Uuid>,
+        scope_entity_id: Option<Uuid>,
+        key: SettingKey,
+        value: &SettingValue,
+    ) -> impl Future<Output = Result<bool, KernelError>> + Send;
+
     /// Every row of `key` at the tenant scope and, when given, at `entity`.
     fn rows(
         &mut self,
@@ -101,7 +117,9 @@ pub struct Actor {
 pub struct ChangeFacts {
     pub key: SettingKey,
     pub direction: Direction,
+    pub step_up: bool,
     pub step_up_assertion_id: Option<Uuid>,
+    pub scope_entity_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -135,11 +153,9 @@ where
     A: FnOnce(&ChangeFacts) -> Result<(), KernelError> + Send,
 {
     let key: SettingKey = cmd.key.parse().map_err(|_| unknown_key(&cmd.key))?;
-    if cmd.reason_code.trim().is_empty() {
-        return Err(KernelError::validation("a reason code is required")
-            .with_code("reason_code_invalid")
-            .with_field("reason_code"));
-    }
+    let valid_reason = store
+        .validate_reason(&cmd.reason_code, cmd.reason_note.as_deref())
+        .await?;
     let facts = store.facts().await?;
     let effective_from = cmd.effective_from.unwrap_or(facts.now);
     let rows = store.rows(key, cmd.scope_entity_id).await?;
@@ -156,11 +172,27 @@ where
         in_force,
         facts.onboarding,
     )?;
+    let step_up = store
+        .resolve_step_up(
+            actor,
+            cmd.step_up_assertion_id,
+            cmd.scope_entity_id,
+            key,
+            &accepted.value,
+        )
+        .await?;
     authorize(&ChangeFacts {
         key,
         direction: accepted.direction,
+        step_up,
         step_up_assertion_id: cmd.step_up_assertion_id,
+        scope_entity_id: cmd.scope_entity_id,
     })?;
+    let step_up_assertion_id = if step_up {
+        cmd.step_up_assertion_id
+    } else {
+        None
+    };
     let inserted = store
         .insert(NewOverride {
             key,
@@ -168,9 +200,9 @@ where
             value: accepted.value,
             effective_from,
             set_by: actor.user,
-            reason_code: cmd.reason_code.clone(),
-            reason_note: cmd.reason_note,
-            step_up_assertion_id: cmd.step_up_assertion_id,
+            reason_code: valid_reason.code.clone(),
+            reason_note: valid_reason.note,
+            step_up_assertion_id,
             now: facts.now,
         })
         .await?;
@@ -188,8 +220,8 @@ where
     // what it keys on. Add with BW-29's security-contact channel.
     let mut after =
         serde_json::to_value(&view).map_err(|e| KernelError::internal(e.to_string()))?;
-    after["reason_code"] = cmd.reason_code.into();
-    after["step_up_assertion_id"] = serde_json::json!(cmd.step_up_assertion_id);
+    after["reason_code"] = valid_reason.code.into();
+    after["step_up_assertion_id"] = serde_json::json!(step_up_assertion_id);
     let event = AuditEvent::new(
         Some(actor.user),
         AuditAction::new(SETTING_CHANGE_AUDIT_ACTION)?,
