@@ -7,6 +7,44 @@ export type Fact = { id: string; label: string; record: string; surfaces: readon
 
 export const FACTS: readonly Fact[] = [
   {
+    id: "legal_entity.name",
+    label: "법인명(단체명)",
+    record: "Entity.legal_entity",
+    surfaces: [
+      { name: "법인 page · header", page: "entity", region: { role: "heading" } },
+      { name: "법인 page · ① card", page: "entity", via: [{ role: "button", name: "사업자등록증", prefix: true }], region: { role: "region", name: "사업자등록증" } },
+      { name: "법인 list · row", page: "entities", region: { role: "grid", name: "법인" } },
+      { name: "org chart · node", page: "chart", region: { role: "tree" } },
+      { name: "인사카드 · placement", page: "card", region: { role: "group", name: "소속" } },
+      { name: "직원 명부 · row", page: "people", region: { role: "main" } },
+      { name: "직원 등록 · place picker", page: "register", type: { combobox: "둘 곳", text: "가람" }, region: { role: "main" } },
+    ],
+  },
+  {
+    id: "legal_entity.short_name",
+    label: "약칭",
+    record: "Entity.legal_entity",
+    surfaces: [
+      { name: "법인 page · header", page: "entity", region: { role: "heading" } },
+      { name: "법인 list · row", page: "entities", region: { role: "grid", name: "법인" } },
+      { name: "org chart · node", page: "chart", region: { role: "tree" } },
+      { name: "직원 명부 · row", page: "people", region: { role: "main" } },
+      { name: "직원 등록 · place picker", page: "register", type: { combobox: "둘 곳", text: "가람" }, region: { role: "main" } },
+    ],
+  },
+  {
+    id: "legal_entity.english_name",
+    label: "영문명",
+    record: "Entity.legal_entity",
+    surfaces: [
+      { name: "법인 page · header", page: "entity", region: { role: "heading" } },
+      { name: "법인 list · row", page: "entities", region: { role: "grid", name: "법인" } },
+      { name: "org chart · node", page: "chart", region: { role: "tree" } },
+      { name: "직원 명부 · row", page: "people", region: { role: "main" } },
+      { name: "직원 등록 · place picker", page: "register", type: { combobox: "둘 곳", text: "가람" }, region: { role: "main" } },
+    ],
+  },
+  {
     id: "workplace.name",
     label: "사업장 이름",
     record: "Entity.workplace",
@@ -47,7 +85,7 @@ export const UNTRACKED: readonly string[] = [
   "사번", "직급", "직위", "직책", "직무", "직군", "고용형태", "입사일", "그룹 입사일", "수습", "경력",
   "자격·면허", "병역", "어학", "교육", "포상", "가족",
   // Record-level edits (a section or the whole record from its source), not one fact: 고용 기록, 등록증 보며 (법인)
-  "고용 기록", "등록증 보며",
+  "고용 기록",
   // 사업장
   "종류", "소재지", "상태", "본점 · 대표", "사업자등록", "개설일", "사업장 대표자", "주생산품", "전화", "팩스", "메일", "우편물 받는 곳", "사업장 코드", "4대보험",
   // 부서

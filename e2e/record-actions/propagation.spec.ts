@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { go, kstDate, option } from "../flows";
 import { box } from "../structure-flows";
+import { setName } from "../helpers/entity";
 import { FACTS, type Fact, type Surface } from "./facts";
 import { NAMES, control, openCard, pageUrl, soloWorld } from "./world";
 
@@ -9,6 +10,36 @@ type World = Awaited<ReturnType<typeof soloWorld>>;
 type Edit = { old: string; next: string; run: (w: World) => Promise<void> };
 
 const EDITS: Record<string, Edit> = {
+  "legal_entity.name": {
+    old: "주식회사 가온상사",
+    next: "주식회사 누리테크",
+    run: async (w) => {
+      await go(w.admin, pageUrl(w, "entity"));
+      const cert = w.admin.getByRole("button", { name: /^사업자등록증/ });
+      if (await cert.count()) await cert.click();
+      await setName(w.admin, "법인명(단체명)", "주식회사 누리테크");
+    },
+  },
+  "legal_entity.short_name": {
+    old: "가온",
+    next: "다온",
+    run: async (w) => {
+      await go(w.admin, pageUrl(w, "entity"));
+      const overview = w.admin.getByRole("button", { name: "기본 정보", exact: true });
+      if (await overview.count()) await overview.click();
+      await setName(w.admin, "약칭", "다온");
+    },
+  },
+  "legal_entity.english_name": {
+    old: "Gaon Corp.",
+    next: "Daon Tech Ltd.",
+    run: async (w) => {
+      await go(w.admin, pageUrl(w, "entity"));
+      const overview = w.admin.getByRole("button", { name: "기본 정보", exact: true });
+      if (await overview.count()) await overview.click();
+      await setName(w.admin, "영문명", "Daon Tech Ltd.");
+    },
+  },
   "workplace.name": {
     old: NAMES.workplace,
     next: "가람허브",
@@ -89,12 +120,18 @@ for (const live of [false, true]) {
   test(`every surface of an edited fact shows the new value and never the old: ${live ? "live tenant" : "setup phase"}`, { tag: "@record-actions" }, async ({ browser }) => {
     test.setTimeout(300_000);
     const w = await soloWorld(browser, live ? "ra-prop-live" : "ra-prop", live ? "한결상사" : "가온상사", live, { seed: true });
+    await go(w.admin, pageUrl(w, "entity"));
+    const overview = w.admin.getByRole("button", { name: "기본 정보", exact: true });
+    if (await overview.count()) await overview.click();
+    await setName(w.admin, "약칭", "가온");
+    await setName(w.admin, "영문명", "Gaon Corp.");
     const failures: string[] = [];
     for (const fact of FACTS) {
-      const e = EDITS[fact.id];
-      expect(e, `facts.ts ${fact.id} has no edit in this harness`).toBeDefined();
-      await e!.run(w);
-      failures.push(...(await verify(w, fact, e!, false)), ...(await verify(w, fact, e!, true)));
+      const base = EDITS[fact.id];
+      expect(base, `facts.ts ${fact.id} has no edit in this harness`).toBeDefined();
+      const e = fact.id === "legal_entity.name" ? { ...base!, old: `주식회사 ${w.company}` } : base!;
+      await e.run(w);
+      failures.push(...(await verify(w, fact, e, false)), ...(await verify(w, fact, e, true)));
     }
     expect(failures).toEqual([]);
   });
@@ -105,6 +142,23 @@ test("planted: a surface reading a cached copy of the 사업장 name fails the h
   const w = await soloWorld(browser, "ra-prop-plant", "다온상사", false);
   const fact = FACTS.find((f) => f.id === "workplace.name")!;
   const e = EDITS[fact.id]!;
+  // The plant, before the edit: every read answers from a copy that never takes the new name (a stale cache, a copied fact).
+  await w.admin.route("**/api/v1/**", async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const res = await route.fetch();
+    await route.fulfill({ response: res, body: (await res.text()).replaceAll(e.next, e.old) });
+  });
+  await e.run(w);
+  const failures = await verify(w, { ...fact, surfaces: fact.surfaces.filter((s) => s.page === "entity" && s.via) }, e, false);
+  expect(failures.length, failures.join("\n")).toBeGreaterThan(0);
+});
+
+test("planted: a surface reading a cached copy of the 법인 name fails the harness", { tag: "@record-actions" }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const w = await soloWorld(browser, "ra-prop-plant-entity", "다온상사", false);
+  const fact = FACTS.find((f) => f.id === "legal_entity.name")!;
+  const base = EDITS[fact.id]!;
+  const e = { ...base, old: `주식회사 ${w.company}` };
   // The plant, before the edit: every read answers from a copy that never takes the new name (a stale cache, a copied fact).
   await w.admin.route("**/api/v1/**", async (route) => {
     if (route.request().method() !== "GET") return route.fallback();
