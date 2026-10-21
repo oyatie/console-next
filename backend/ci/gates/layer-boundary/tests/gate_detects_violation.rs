@@ -260,6 +260,72 @@ fn gate_detects_domain_depending_on_sqlx() {
 }
 
 // ---------------------------------------------------------------------------
+// Framework confinement: stacker belongs only to platform/authz
+// ---------------------------------------------------------------------------
+
+#[test]
+fn gate_confines_stacker_to_platform_authz() -> Result<(), Box<dyn std::error::Error>> {
+    let ws = temp_workspace("stacker-confinement")?;
+    write_file(
+        &ws.join("Cargo.toml"),
+        r#"
+[workspace]
+resolver = "3"
+members = ["crates/platform/authz", "crates/platform/db"]
+
+[workspace.package]
+edition = "2024"
+publish = false
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+"#,
+    )?;
+
+    for name in ["authz", "db"] {
+        let dir = ws.join("crates/platform").join(name);
+        write_file(
+            &dir.join("Cargo.toml"),
+            &format!(
+                r#"
+[package]
+name = "console-platform-{name}"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+stacker = "=0.1.24"
+
+[lints]
+workspace = true
+"#
+            ),
+        )?;
+        write_file(&dir.join("src/lib.rs"), "// platform fixture\n")?;
+    }
+
+    let (metadata, edition) = load_metadata(&ws)?;
+    let result = check(&metadata, &edition);
+    assert!(!result.passed(), "stacker outside authz must fail the gate");
+    assert_eq!(
+        result.violations.len(),
+        1,
+        "only db → stacker should fail; authz → stacker must pass: {:#?}",
+        result.violations
+    );
+    let violation = &result.violations[0];
+    assert_eq!(violation.kind, ViolationKind::ForbiddenExternalDep);
+    assert_eq!(violation.crate_name, "console-platform-db");
+    assert!(
+        violation.detail.contains("stacker"),
+        "violation must name stacker: {violation:#?}"
+    );
+    fs::remove_dir_all(&ws)?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Manifest hygiene: missing console- prefix is detected
 // ---------------------------------------------------------------------------
 
