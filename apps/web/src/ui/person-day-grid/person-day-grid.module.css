@@ -3,9 +3,9 @@
 .table:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 .table thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--border); padding: var(--space-1) var(--space-2); font-weight: var(--fw-medium); color: var(--steel); }
-.lead { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left; padding: 0 var(--space-2); white-space: nowrap; font-weight: var(--fw-regular); }
-.lead[data-w="name"] { left: var(--grid-code-w, 64px); min-width: 96px; }
-.lead[data-w="code"] { width: var(--grid-code-w, 64px); font-family: var(--font-mono); }
+.lead { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left; padding: 0 var(--space-2); white-space: nowrap; font-weight: var(--fw-body); }
+.lead[data-w="name"] { left: 64px; min-width: 96px; }
+.lead[data-w="code"] { width: 64px; font-family: var(--font-mono); }
 .table thead .lead { z-index: 3; }
 .tail { position: sticky; right: 0; z-index: 1; background: var(--surface); border-left: 1px solid var(--border); padding: 0 var(--space-2); text-align: right; white-space: nowrap; min-width: 64px; }
 .table thead .tail { z-index: 3; }
@@ -15,13 +15,13 @@
 .sub { display: block; font-size: var(--text-xs); }
 .row { height: var(--row-h-compact); }
 .row > * { border-bottom: 1px solid var(--border); }
-.row[data-group] > * { border-top: 2px solid var(--border-strong, var(--border)); }
+.row[data-group] > * { border-top: 2px solid var(--control-border); }
 .cell { position: relative; text-align: center; padding: 0 var(--space-1); white-space: nowrap; cursor: cell; }
-.cell[data-tone="holiday"] { background: var(--att-hol, var(--danger-bg)); }
+.cell[data-tone="holiday"] { background: var(--danger-bg); }
 .cell[data-tone="rest"] { background: var(--canvas); }
 .cell[aria-selected="true"] { background: var(--primary-soft); }
 .cell[data-focus] { outline: 2px solid var(--primary); outline-offset: -2px; }
 .cell[data-look="draft"] { outline: 1px dashed var(--primary); outline-offset: -4px; }
-.cell[data-look="refused"] { outline: 2px solid var(--danger); outline-offset: -3px; color: var(--danger-tx); }
+.cell[data-look="refused"] { outline: 2px solid var(--danger-solid); outline-offset: -3px; color: var(--danger-tx); }
 .cell[data-look="locked"] { color: var(--steel); background-image: repeating-linear-gradient(45deg, transparent 0 4px, var(--border) 4px 5px); }
 .editor { width: 100%; min-width: 88px; border: 0; background: var(--surface); color: var(--ink); font: inherit; text-align: center; outline: none; }
