@@ -5,6 +5,7 @@ pub mod classification;
 pub mod company_review;
 pub mod fields;
 pub mod pii;
+pub mod rollback;
 pub mod rrn;
 
 // --- lane: IMPORT (BW-10) ---
