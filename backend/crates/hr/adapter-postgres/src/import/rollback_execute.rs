@@ -8,11 +8,15 @@ use serde_json::json;
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
-use super::{Loaded, RollbackOutcome, event};
+use super::{Loaded, RollbackOutcome, check_digest, enforce, event, job, plan};
+use crate::authz::authorize_hr_org_wide;
+use crate::requests::ChangeRequestResponse;
 use crate::{
     HrError,
-    corrections::{LedgerMeta, apply_fields_in_tx},
+    corrections::{LedgerMeta, SecondPersonContext, apply_fields_in_tx},
 };
+use console_platform_authz::Feature;
+use console_platform_authz::cedar_pbac::actions::import_rollback::RollbackFacts;
 
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn apply(
@@ -93,7 +97,7 @@ pub(super) async fn apply(
     )?;
     let trace = console_kernel_core::TraceContext::generate();
     let at = sqlx::query_scalar(
-        "SELECT leave_api.mark_employee_import_rolled_back($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+        "SELECT import_api.mark_employee_import_rolled_back($1,$2,$3,$4,$5,$6,$7,$8,$9)",
     )
     .bind(org)
     .bind(run)
@@ -106,7 +110,7 @@ pub(super) async fn apply(
     .bind(trace.span_id())
     .fetch_one(tx.as_mut())
     .await?;
-    sqlx::query("SELECT leave_api.remove_employee_import_effects($1,$2)")
+    sqlx::query("SELECT import_api.remove_employee_import_effects($1,$2)")
         .bind(org)
         .bind(run)
         .execute(tx.as_mut())
@@ -136,4 +140,67 @@ pub(crate) fn request_closed_event(
         json!({"request_id":request.id,"status":request.status,"requester":request.requested_by,
             "actor":principal.user_id,"reason_code":request.decision_reason_code,"digest":request.payload["preview_digest"]}),
     )
+}
+
+pub async fn apply_requested_rollback_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    principal: &Principal,
+    request: &ChangeRequestResponse,
+    holders: SecondPersonContext,
+) -> Result<Vec<AuditEvent>, HrError> {
+    let start = std::time::Instant::now();
+    authorize_hr_org_wide(principal, Feature::EmployeeDirectoryManage)?;
+    enforce(
+        principal,
+        RollbackFacts {
+            actor_holds_permission: true,
+            setup: false,
+            routed: true,
+            other_eligible_holders: i64::try_from(holders.other_eligible_holders)
+                .unwrap_or(i64::MAX),
+            sole_holder_refuse: holders.sole_holder_refuse,
+            step_up: false,
+            filing: false,
+            actor_is_requester: request.requested_by == *principal.user_id.as_uuid(),
+        },
+    )?;
+    let digest = request.payload["preview_digest"]
+        .as_str()
+        .ok_or_else(|| HrError::validation("preview_digest required"))?;
+    let loaded = plan::load(
+        tx,
+        principal,
+        request.subject_id,
+        Some((request.id, request.created_at)),
+        true,
+    )
+    .await?;
+    check_digest(&loaded.preview, digest)?;
+    if loaded.preview.rows.len() > crate::import::apply_job::SETTLE_CHUNK_ROWS {
+        let (_, audits) = job::enqueue(
+            tx,
+            principal,
+            request.subject_id,
+            &loaded,
+            &request.reason_code,
+            request.note.as_deref(),
+            Some((request.requested_by, request.created_at)),
+            false,
+        )
+        .await?;
+        return Ok(audits);
+    }
+    let (_, audits) = apply(
+        tx,
+        principal,
+        request.subject_id,
+        &loaded,
+        &request.reason_code,
+        request.note.as_deref(),
+        Some(request.requested_by),
+        false,
+    )
+    .await?;
+    crate::metrics::record_import_rollback("rollback", start.elapsed().as_secs_f64());
+    Ok(audits)
 }

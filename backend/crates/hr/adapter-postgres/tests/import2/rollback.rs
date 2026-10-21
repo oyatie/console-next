@@ -251,3 +251,8 @@ mod rollback_3_journey;
 
 #[path = "rollback_home_branch.rs"]
 mod rollback_home_branch;
+
+#[path = "rollback_jobs.rs"]
+mod rollback_jobs;
+#[path = "rollback_routed_job.rs"]
+mod rollback_routed_job;

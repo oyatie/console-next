@@ -17,7 +17,7 @@ async fn run_history_routes_are_authenticated_and_hide_unknown_runs(pool: PgPool
         "INSERT INTO organizations (id, slug, name) VALUES ($1, $2, 'Import rollback test')",
     )
     .bind(org)
-    .bind(format!("rollback-{org}"))
+    .bind(format!("rb-{}", &org.simple().to_string()[..12]))
     .execute(&pool)
     .await
     .unwrap();
@@ -302,3 +302,6 @@ async fn rollback_frames(i: &import_fixture::Importer, run: Uuid) -> Vec<String>
 
 #[path = "import_rollback/approval_journey.rs"]
 mod import_rollback_journey;
+
+#[path = "import_rollback/async_job.rs"]
+mod async_job;

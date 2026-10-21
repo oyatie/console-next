@@ -31,14 +31,14 @@ export function RollbackPanel({ run, onChanged }: { run: ImportRun; onChanged: (
     queryKey: ["/api/v1/employee-import-runs/{run_id}/rollback/preview", { path: { run_id: run.id } }],
     queryFn: () => previewRollback(run.id), enabled: canPreview, retry: false,
   });
-  const pending = run.status === "ROLLBACK_REQUESTED" || Boolean(run.rollback.pending_request);
+  const pending = run.status === "ROLLBACK_REQUESTED" || run.status === "ROLLBACK_RUNNING" || Boolean(run.rollback.pending_request);
   const closed = run.rollback.refusal_code === "import_rollback_window_closed" || (preview.error instanceof ApiError && preview.error.code === "import_rollback_window_closed");
   return (
     <section className="card panel form" aria-labelledby="import-rollback">
       <h2 id="import-rollback" className="panel__title">{t("import.rollback.title")}</h2>
       {run.status === "ROLLED_BACK" && run.rolled_back_at && run.rolled_back_by && <p>{t("import.rollback.completedAt", { name: run.rolled_back_by.name ?? run.rolled_back_by.id, at: fmtZonedDateTime(run.rolled_back_at) })}</p>}
       {run.rollback.pending_request && <p>{t("import.rollback.requestedAt", { at: fmtZonedDateTime(run.rollback.pending_request.created_at) })}</p>}
-      {run.status === "ROLLED_BACK" ? <p role="status">{t("import.rollback.done")}</p> : pending ? <p role="status">{t("import.rollback.wait")}</p> : <>
+      {run.status === "ROLLED_BACK" ? <p role="status">{t("import.rollback.done")}</p> : pending ? <p role="status">{t(run.status === "ROLLBACK_RUNNING" ? "import.rollback.running" : "import.rollback.wait")}</p> : <>
         <p className="muted">{t("import.rollback.why")}</p>
         {run.rollback.window_until && <p>{t("import.rollback.until", { until: fmtZonedDateTime(run.rollback.window_until), days: run.rollback.window_days })}</p>}
         {closed ? <>
@@ -48,6 +48,7 @@ export function RollbackPanel({ run, onChanged }: { run: ImportRun; onChanged: (
           {(plan) => <Execute key={plan.preview_digest} run={run} plan={plan} onChanged={onChanged} />}
         </QueryState> : <CommandError error={preview.error} own={importError} />}
       </>}
+      {run.rollback.job?.error && <CommandError error={new ApiError(run.rollback.job.error.status, run.rollback.job.error.code, run.rollback.job.error.message)} own={importError} />}
       <p className="muted">{t("import.rollback.kept")}</p>
     </section>
   );
@@ -68,10 +69,10 @@ function Execute({ run, plan, onChanged }: { run: ImportRun; plan: RollbackPrevi
       }, key);
     },
     invalidates: ["/api/v1/employee-import-runs"],
-    announce: (out) => t(out.status === "ROLLED_BACK" ? "import.rollback.done" : "import.rollback.wait"),
+    announce: (out) => t(out.status === "ROLLED_BACK" ? "import.rollback.done" : out.status === "ROLLBACK_RUNNING" ? "import.rollback.running" : "import.rollback.wait"),
     onSuccess: onChanged,
   });
-  if (send.data) return <p role="status">{t(send.data.status === "ROLLED_BACK" ? "import.rollback.done" : "import.rollback.wait")}</p>;
+  if (send.data) return <p role="status">{t(send.data.status === "ROLLED_BACK" ? "import.rollback.done" : send.data.status === "ROLLBACK_RUNNING" ? "import.rollback.running" : "import.rollback.wait")}</p>;
   if (send.error instanceof ApiError && send.error.status === 403) return <Denied error={send.error} />;
   const blocked = plan.blockers.length > 0;
   const reasonMissing = plan.mode !== "SETUP" && Boolean(reasonProblem(reason, OTHER));

@@ -26,7 +26,7 @@ export const OUTCOME_TONE: Record<ImportOutcome, Tone> = {
 export const outcomeLabel = (o: ImportOutcome) => t(`import.outcome.${o}`);
 
 type RunStatus = ImportRun["status"] | "PREVIEW";
-export const STATUS_TONE: Record<RunStatus, Tone> = { PREVIEW: "neutral", PREVIEWED: "neutral", DRY_RUN: "neutral", APPLIED: "ok", FAILED: "danger", ROLLBACK_REQUESTED: "warn", ROLLED_BACK: "neutral" };
+export const STATUS_TONE: Record<RunStatus, Tone> = { PREVIEW: "neutral", PREVIEWED: "neutral", DRY_RUN: "neutral", APPLIED: "ok", FAILED: "danger", ROLLBACK_REQUESTED: "warn", ROLLBACK_RUNNING: "warn", ROLLED_BACK: "neutral" };
 export const statusLabel = (s: RunStatus) => s === "FAILED" ? t("importJob.failed") : t(`import.status.${s === "PREVIEWED" ? "PREVIEW" : s}`);
 
 export const SHEET_TONE: Record<SheetStatus, Tone> = { mapped: "ok", needs_mapping: "danger", empty: "neutral", skipped: "neutral" };

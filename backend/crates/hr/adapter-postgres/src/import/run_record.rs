@@ -61,6 +61,7 @@ pub struct RunRollback {
     pub window_until: Option<OffsetDateTime>,
     pub window_days: i64,
     pub pending_request: Option<PendingRollback>,
+    pub job: Option<super::rollback::job::RollbackJobStatus>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -83,7 +84,7 @@ macro_rules! record_select {
          r.applied_by, a.display_name AS applied_by_name, \
          CASE WHEN r.status IN ('APPLIED', 'ROLLED_BACK') THEN r.apply_summary END AS apply_summary, r.rolled_back_at, \
          r.rolled_back_by, b.display_name AS rolled_back_by_name, \
-         r.rollback_reason_code, r.rollback_note, r.rollback_ledger_complete, \
+         r.rollback_reason_code, r.rollback_note, r.rollback_ledger_complete, r.rollback_job, \
          pending.id AS pending_id, pending.requested_by AS pending_requested_by, pending.created_at AS pending_created_at \
          FROM data_import_runs r \
          LEFT JOIN users a ON a.org_id = r.org_id AND a.id = r.applied_by \
@@ -125,7 +126,14 @@ fn record(row: PgRow, policy: &ReadPolicy) -> Result<EmployeeImportRun, HrError>
         .transpose()?;
     let mut status: String = row.try_get("status")?;
     let apply_job_state: Option<String> = row.try_get("apply_job_state")?;
-    let can_preview = status == "APPLIED"
+    let job = row
+        .try_get::<Option<Value>, _>("rollback_job")?
+        .map(serde_json::from_value::<super::rollback::job::RollbackJobStatus>)
+        .transpose()
+        .map_err(|_| HrError::internal("stored rollback job is unreadable"))?;
+    let running = job.as_ref().is_some_and(|j| j.state == "queued");
+    let can_preview = !running
+        && status == "APPLIED"
         && row.try_get::<bool, _>("rollback_ledger_complete")?
         && apply_job_state
             .as_deref()
@@ -164,6 +172,9 @@ fn record(row: PgRow, policy: &ReadPolicy) -> Result<EmployeeImportRun, HrError>
     if status == "APPLIED" && pending_request.is_some() {
         status = "ROLLBACK_REQUESTED".into();
     }
+    if status == "APPLIED" && running {
+        status = "ROLLBACK_RUNNING".into();
+    }
     Ok(EmployeeImportRun {
         id: row.try_get("id")?,
         source_filename: row.try_get("source_filename")?,
@@ -183,6 +194,7 @@ fn record(row: PgRow, policy: &ReadPolicy) -> Result<EmployeeImportRun, HrError>
             window_until,
             window_days: policy.window_days,
             pending_request,
+            job,
         },
         allowed: if can_preview {
             vec!["preview_rollback"]

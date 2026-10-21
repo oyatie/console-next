@@ -18792,7 +18792,7 @@ export interface components {
         EmployeeImportRollbackOutcome: {
             run_id: components["schemas"]["Uuid"];
             /** @enum {string} */
-            status: "ROLLED_BACK" | "ROLLBACK_REQUESTED";
+            status: "ROLLED_BACK" | "ROLLBACK_REQUESTED" | "ROLLBACK_RUNNING";
             /** Format: uuid */
             request_id: string | null;
             review_required: boolean;
@@ -18842,7 +18842,7 @@ export interface components {
             id: components["schemas"]["Uuid"];
             source_filename: string;
             /** @enum {string} */
-            status: "PREVIEWED" | "DRY_RUN" | "APPLIED" | "FAILED" | "ROLLBACK_REQUESTED" | "ROLLED_BACK";
+            status: "PREVIEWED" | "DRY_RUN" | "APPLIED" | "FAILED" | "ROLLBACK_REQUESTED" | "ROLLBACK_RUNNING" | "ROLLED_BACK";
             /**
              * @description APPLIED is stored before settlement finishes. A job that is not done must stay on the apply job screen. Null denotes a legacy inline apply without a job.
              * @enum {string|null}
@@ -18875,6 +18875,16 @@ export interface components {
             rollback_reason_code: string | null;
             rollback_note: string | null;
             rollback: {
+                job: {
+                    /** @enum {string} */
+                    state: "queued" | "done" | "failed";
+                    total: number;
+                    error: {
+                        status: number;
+                        code: string;
+                        message: string;
+                    } | null;
+                } | null;
                 refusal_code: string | null;
                 /** @enum {string} */
                 mode: "SETUP" | "GOVERNED";
@@ -34707,6 +34717,8 @@ export interface operations {
             query?: never;
             header: {
                 "Idempotency-Key": string;
+                /** @description respond-async accepts a tracked rollback job. Large inverses always use the job path. */
+                Prefer?: string;
             };
             path: {
                 run_id: components["schemas"]["Uuid"];
@@ -34728,7 +34740,7 @@ export interface operations {
                     "application/json": components["schemas"]["EmployeeImportRollbackOutcome"];
                 };
             };
-            /** @description IMPORT_ROLLBACK request filed for a different eligible holder through change-requests decide. */
+            /** @description Tracked rollback job accepted, or IMPORT_ROLLBACK request filed for a different eligible holder. The run record and import_run events carry progress and completion. */
             202: {
                 headers: {
                     [name: string]: unknown;

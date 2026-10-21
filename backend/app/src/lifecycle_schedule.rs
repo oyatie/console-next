@@ -94,6 +94,11 @@ pub fn spawn(pool: sqlx::PgPool, worker: bool) -> LifecycleScheduleHandle {
                         Ok(resumed) => tracing::info!(resumed, "stale import apply jobs resumed"),
                         Err(error) => tracing::warn!(%error, "stale import apply resume failed"),
                     }
+                    match console_hr_adapter_postgres::HrService::new(pool.clone()).resume_import_rollbacks().await {
+                        Ok(0) => {},
+                        Ok(resumed) => tracing::info!(resumed, "import rollback jobs resumed"),
+                        Err(error) => tracing::warn!(code=error.code, "import rollback resume failed"),
+                    }
                     // CAP-04: a bulk 발령 job whose driver died is finished from what committed.
                     match console_hr_adapter_postgres::HrService::new(pool.clone()).finish_stale_bulk_lifecycle_jobs().await {
                         Ok(0) => {},

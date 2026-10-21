@@ -25,7 +25,8 @@ pub(super) async fn load(
         ARRAY(SELECT employee_id FROM import_run_row_snapshots WHERE org_id=$1 AND run_id=$2 \
           UNION SELECT employee_id FROM import_run_effects WHERE org_id=$1 AND run_id=$2) AS expected_people, \
         EXISTS(SELECT 1 FROM change_requests c WHERE c.org_id=r.org_id AND c.subject_id=r.id \
-            AND c.kind='IMPORT_ROLLBACK' AND c.status='OPEN' AND ($3::UUID IS NULL OR c.id<>$3)) AS pending \
+            AND c.kind='IMPORT_ROLLBACK' AND c.status='OPEN' AND ($3::UUID IS NULL OR c.id<>$3))
+        OR (COALESCE(r.rollback_job->>'state','')='queued' AND $3::UUID IS NULL) AS pending \
         FROM data_import_runs r WHERE r.org_id=$1 AND r.id=$2 AND r.entity_type='employee_hr'";
     let sql = if lock {
         format!("{query} FOR UPDATE OF r")

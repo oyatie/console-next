@@ -117,20 +117,28 @@ async fn rollback(
         Some(SettingKey::ApprovalPolicyImportRollback),
     )
     .await?;
-    let outcome = state
-        .hr
-        .rollback_import(
-            principal,
-            run_id,
-            body,
-            Some(RollbackCredentials {
-                passkeys: state.passkeys,
-                idempotency_key,
-            }),
-            holders,
-        )
-        .await?;
-    let status = if outcome.status == "ROLLBACK_REQUESTED" {
+    let asynchronous = crate::lifecycle_bulk_job::prefers_async(&headers);
+    let slot = console_hr_adapter_postgres::import::apply_job::DriverSlot::take()?;
+    let org = principal.org_id;
+    let credentials = Some(RollbackCredentials {
+        passkeys: state.passkeys,
+        idempotency_key,
+    });
+    let outcome = if asynchronous {
+        state
+            .hr
+            .start_import_rollback(principal, run_id, body, credentials, holders)
+            .await?
+    } else {
+        state
+            .hr
+            .rollback_import(principal, run_id, body, credentials, holders)
+            .await?
+    };
+    if outcome.status == "ROLLBACK_RUNNING" {
+        state.hr.spawn_import_rollback(org, run_id, slot);
+    }
+    let status = if outcome.status != "ROLLED_BACK" {
         StatusCode::ACCEPTED
     } else {
         StatusCode::OK

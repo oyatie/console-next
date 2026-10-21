@@ -102,7 +102,7 @@ export const runQuery = (id: string) => get("/api/v1/employee-import-runs/{run_i
 export const rollbackReasonsQuery = get("/api/v1/reason-codes", { params: { query: { domain: ROLLBACK_REASONS } } });
 export const previewRollback = (id: string) => unwrap(api.POST("/api/v1/employee-import-runs/{run_id}/rollback/preview", { params: { path: { run_id: id } } }));
 export const requestRollback = (id: string, body: RollbackRequest, key: string) =>
-  unwrap(api.POST("/api/v1/employee-import-runs/{run_id}/rollback", { params: { path: { run_id: id }, ...idem(key) }, body }));
+  unwrap(api.POST("/api/v1/employee-import-runs/{run_id}/rollback", { params: { path: { run_id: id }, header: { ...idem(key).header, Prefer: "respond-async" } }, body }));
 
 // --- the migration check: the applied run checked row by row and signed off (spec E7-reconcile/-row/-signoff, BE-EMP-UI §5) ---
 const onRun = (runId: string) => ({ path: { run_id: runId } });

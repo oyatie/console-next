@@ -3,7 +3,10 @@
 
 #[path = "rollback_execute.rs"]
 mod execute;
+pub use execute::apply_requested_rollback_in_tx;
 pub(crate) use execute::request_closed_event;
+#[path = "rollback_job.rs"]
+pub mod job;
 #[path = "rollback_plan.rs"]
 mod plan;
 
@@ -27,7 +30,7 @@ use uuid::Uuid;
 use crate::authz::authorize_hr_org_wide;
 use crate::corrections::{SecondPersonContext, refusal};
 use crate::lifecycle::title_reason::validate_reason_code;
-use crate::requests::ChangeRequestResponse;
+
 use crate::requests::create::{NewChangeRequest, insert_change_request_in_tx};
 use crate::{HrError, HrService};
 use console_settings_domain::code_lists::ReasonDomain;
@@ -139,7 +142,7 @@ fn measured<T>(
 ) -> Result<T, HrError> {
     crate::metrics::record_import_rollback(stage, start.elapsed().as_secs_f64());
     if result.is_err() {
-        crate::metrics::record_import_rollback("rollback_refused", 0.0);
+        crate::metrics::record_import_rollback("rollback_refused", start.elapsed().as_secs_f64());
     }
     result
 }
@@ -170,17 +173,42 @@ impl HrService {
         credentials: Option<RollbackCredentials>,
         holders: SecondPersonContext,
     ) -> Result<RollbackOutcome, HrError> {
+        self.submit_import_rollback(principal, run, body, credentials, holders, false)
+            .await
+    }
+
+    pub async fn start_import_rollback(
+        &self,
+        principal: Principal,
+        run: Uuid,
+        body: RollbackRequest,
+        credentials: Option<RollbackCredentials>,
+        holders: SecondPersonContext,
+    ) -> Result<RollbackOutcome, HrError> {
+        self.submit_import_rollback(principal, run, body, credentials, holders, true)
+            .await
+    }
+
+    async fn submit_import_rollback(
+        &self,
+        principal: Principal,
+        run: Uuid,
+        body: RollbackRequest,
+        credentials: Option<RollbackCredentials>,
+        holders: SecondPersonContext,
+        asynchronous: bool,
+    ) -> Result<RollbackOutcome, HrError> {
         authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
         let start = std::time::Instant::now();
         let result = with_audits::<_,_,HrError>(&self.pool, principal.org_id, move |tx| Box::pin(async move {
             let org = *principal.org_id.as_uuid();
             let me = *principal.user_id.as_uuid();
-            let operation = format!("employee_import.rollback:{run}:{me}");
+            let operation = "employee_import.rollback";
             // A step-up assertion is consumable, so replay compares the stable command only.
-            let fingerprint = json!({"preview_digest":body.preview_digest,"acknowledged":body.acknowledged,
+            let fingerprint = json!({"run_id":run,"actor":me,"preview_digest":body.preview_digest,"acknowledged":body.acknowledged,
                 "reason_code":body.reason_code,"note":body.note});
             if let Some(c) = &credentials {
-                match claim_idempotency_key(tx,&operation,&c.idempotency_key,&fingerprint).await? {
+                match claim_idempotency_key(tx,operation,&c.idempotency_key,&fingerprint).await? {
                     IdempotencyClaim::Replay(value) => return Ok((serde_json::from_value(value).map_err(|_|HrError::internal("rollback replay"))?,vec![])),
                     IdempotencyClaim::Mismatch => return Err(crate::idempotency::idempotency_key_reused()),
                     IdempotencyClaim::Fresh => {}
@@ -218,10 +246,12 @@ impl HrService {
                 let audit = event(&principal,run,"data_import.rollback_request",json!({"requester":me,"request_id":request.id,
                     "reason_code":reason,"digest":p.preview_digest,"mode":p.mode}))?;
                 (RollbackOutcome {run_id:run,status:"ROLLBACK_REQUESTED".into(),request_id:Some(request.id),review_required:false,rolled_back_at:None},vec![audit])
+            } else if asynchronous || p.rows.len() > crate::import::apply_job::SETTLE_CHUNK_ROWS {
+                job::enqueue(tx,&principal,run,&loaded,&reason,note.as_deref(),None,review).await?
             } else {
                 execute::apply(tx,&principal,run,&loaded,&reason,note.as_deref(),None,review).await?
             };
-            if let Some(c)=credentials { complete_idempotency_key(tx,&operation,&c.idempotency_key,&serde_json::to_value(&outcome).map_err(|_|HrError::internal("rollback outcome"))?).await?; }
+            if let Some(c)=credentials { complete_idempotency_key(tx,operation,&c.idempotency_key,&serde_json::to_value(&outcome).map_err(|_|HrError::internal("rollback outcome"))?).await?; }
             Ok((outcome,audits))
         })).await;
         let stage = match &result {
@@ -232,65 +262,17 @@ impl HrService {
     }
 }
 
-pub async fn apply_requested_rollback_in_tx(
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    principal: &Principal,
-    request: &ChangeRequestResponse,
-    holders: SecondPersonContext,
-) -> Result<Vec<AuditEvent>, HrError> {
-    authorize_hr_org_wide(principal, Feature::EmployeeDirectoryManage)?;
-    enforce(
-        principal,
-        RollbackFacts {
-            actor_holds_permission: true,
-            setup: false,
-            routed: true,
-            other_eligible_holders: i64::try_from(holders.other_eligible_holders)
-                .unwrap_or(i64::MAX),
-            sole_holder_refuse: holders.sole_holder_refuse,
-            step_up: false,
-            filing: false,
-            actor_is_requester: request.requested_by == *principal.user_id.as_uuid(),
-        },
-    )?;
-    let digest = request.payload["preview_digest"]
-        .as_str()
-        .ok_or_else(|| HrError::validation("preview_digest required"))?;
-    let loaded = plan::load(
-        tx,
-        principal,
-        request.subject_id,
-        Some((request.id, request.created_at)),
-        true,
-    )
-    .await?;
-    check_digest(&loaded.preview, digest)?;
-    let (_, audits) = execute::apply(
-        tx,
-        principal,
-        request.subject_id,
-        &loaded,
-        &request.reason_code,
-        request.note.as_deref(),
-        Some(request.requested_by),
-        false,
-    )
-    .await?;
-    crate::metrics::record_import_rollback("rollback", 0.0);
-    Ok(audits)
-}
-
 pub(super) fn check_digest(preview: &RollbackPreview, digest: &str) -> Result<(), HrError> {
-    if preview.preview_digest != digest {
-        let mut err = coded("rows_changed_since_preview");
-        err.refusals = Some(serde_json::json!([{"preview":preview}]));
-        Err(err)
-    } else if !preview.blockers.is_empty() {
+    if !preview.blockers.is_empty() {
         let mut err = coded("import_rollback_blocked");
         err.refusals = Some(
             serde_json::to_value(&preview.blockers)
                 .map_err(|_| HrError::internal("rollback blockers"))?,
         );
+        Err(err)
+    } else if preview.preview_digest != digest {
+        let mut err = coded("rows_changed_since_preview");
+        err.refusals = Some(serde_json::json!([{"preview":preview}]));
         Err(err)
     } else {
         Ok(())

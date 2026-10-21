@@ -103,7 +103,11 @@ test("SETUP rollback acknowledges two new people and one form-record update, the
   await panel.getByRole("checkbox").press("Space");
   await expect(execute).toBeEnabled();
   await expectAccessible(admin, "rollback SETUP acknowledged, light and dark");
+  const accepted = admin.waitForResponse(r => r.request().method() === "POST" && new URL(r.url()).pathname.endsWith(`/employee-import-runs/${run}/rollback`));
   await execute.click();
+  const response = await accepted;
+  expect(response.status()).toBe(202);
+  expect(response.request().headers()["prefer"]).toBe("respond-async");
   await expect(panel.getByRole("status")).toContainText(/되돌렸습니다/);
   await expectAccessible(admin, "rollback SETUP completed, light and dark");
   expect(await headcount(api)).toBe(1);

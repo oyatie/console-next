@@ -14,6 +14,8 @@ export const koImportRollback = {
   "import.rollback.title": "되돌리기",
   "import.rollback.why": "이 가져오기 전의 값으로 되돌리고, 이 가져오기로 새로 등록한 직원은 등록 취소합니다. 이후 기록이 있으면 전체를 되돌리지 않습니다.",
   "import.rollback.done": "가져오기를 되돌렸습니다",
+  "import.status.ROLLBACK_RUNNING": "되돌리는 중",
+  "import.rollback.running": "되돌리는 중입니다. 완료되면 이 화면에 표시됩니다.",
   "import.rollback.wait": "다른 담당자의 승인을 기다리고 있습니다. 업무함에서 결정할 수 있습니다.",
   "import.rollback.until": "{until}까지 요청할 수 있습니다. 반영 후 {days, number}일 동안 되돌릴 수 있습니다.",
   "import.rollback.closed": "되돌릴 수 있는 기간이 지났습니다. 직원별 정보 정정이나 등록 취소로 처리하십시오.",

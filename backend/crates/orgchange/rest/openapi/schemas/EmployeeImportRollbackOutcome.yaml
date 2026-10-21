@@ -6,7 +6,7 @@ properties:
     $ref: '#/components/schemas/Uuid'
   status:
     type: string
-    enum: [ROLLED_BACK, ROLLBACK_REQUESTED]
+    enum: [ROLLED_BACK, ROLLBACK_REQUESTED, ROLLBACK_RUNNING]
   request_id:
     type: string
     format: uuid

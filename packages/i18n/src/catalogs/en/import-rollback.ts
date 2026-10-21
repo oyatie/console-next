@@ -14,6 +14,8 @@ export const enImportRollback = {
   "import.rollback.title": "Roll back",
   "import.rollback.why": "Restore the values from before this import and void registrations it created. Later records block the whole rollback.",
   "import.rollback.done": "The import was rolled back",
+  "import.status.ROLLBACK_RUNNING": "Reversing",
+  "import.rollback.running": "Reversing this import. Completion will appear here.",
   "import.rollback.wait": "Waiting for another eligible holder. Decisions are made in the work inbox.",
   "import.rollback.until": "Request until {until}, within {days, number} days of applying.",
   "import.rollback.closed": "The rollback window has closed. Use individual corrections or registration voids.",

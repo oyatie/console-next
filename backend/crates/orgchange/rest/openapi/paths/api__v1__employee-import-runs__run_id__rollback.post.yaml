@@ -17,6 +17,12 @@ parameters:
       type: string
       minLength: 16
       maxLength: 200
+  - name: Prefer
+    in: header
+    required: false
+    description: respond-async accepts a tracked rollback job. Large inverses always use the job path.
+    schema:
+      type: string
 requestBody:
   required: true
   content:
@@ -31,7 +37,7 @@ responses:
         schema:
           $ref: '#/components/schemas/EmployeeImportRollbackOutcome'
   '202':
-    description: IMPORT_ROLLBACK request filed for a different eligible holder through change-requests decide.
+    description: Tracked rollback job accepted, or IMPORT_ROLLBACK request filed for a different eligible holder. The run record and import_run events carry progress and completion.
     content:
       application/json:
         schema:

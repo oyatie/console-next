@@ -9,9 +9,12 @@ use console_hr_domain::import::detect::WorkbookMappingRequest;
 use console_hr_domain::import::grid::GridSheet;
 use sqlx::PgPool;
 
-use crate::harness::{Importer, decisions, importer, table};
+use crate::harness::{decisions, importer, table};
+use tracing::instrument::WithSubscriber;
+#[path = "rollback_queries.rs"]
+mod queries;
 
-fn roster(people: usize, position: &str) -> GridSheet {
+pub(super) fn roster(people: usize, position: &str) -> GridSheet {
     let mut rows = vec![vec![
         "사번".to_owned(),
         "성명".to_owned(),
@@ -34,31 +37,6 @@ fn roster(people: usize, position: &str) -> GridSheet {
         .collect();
     let borrowed: Vec<&[&str]> = borrowed.iter().map(Vec::as_slice).collect();
     table("명부", 0, &borrowed)
-}
-
-async fn dependency_calls(i: &Importer) -> Option<(i64, i64)> {
-    let installed: bool = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements')",
-    )
-    .fetch_one(&i.owner)
-    .await
-    .unwrap();
-    if !installed {
-        return None;
-    }
-    Some(
-        sqlx::query_as(
-            "SELECT \
-             COALESCE(sum(calls) FILTER (WHERE query LIKE '%import_rollback:heads%'), 0)::bigint, \
-             COALESCE(sum(calls) FILTER (WHERE query LIKE '%import_rollback:blockers%'), 0)::bigint \
-             FROM pg_stat_statements \
-             WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database()) \
-               AND query NOT LIKE '%pg_stat_statements%'",
-        )
-        .fetch_one(&i.owner)
-        .await
-        .unwrap(),
-    )
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -101,11 +79,11 @@ async fn two_thousand_people_rollback_atomically_with_bounded_dependency_reads(p
         preview.rows.iter().filter(|row| row.inserted).count(),
         1_000
     );
-    let calls_before = dependency_calls(&i).await;
+    let queries = queries::DependencyQueries::default();
     let started = Instant::now();
     let outcome =
         i.f.hr
-            .rollback_import(
+            .start_import_rollback(
                 i.f.principal.clone(),
                 run,
                 RollbackRequest {
@@ -124,20 +102,33 @@ async fn two_thousand_people_rollback_atomically_with_bounded_dependency_reads(p
             )
             .await
             .unwrap();
+    let accepted = started.elapsed();
+    assert!(accepted <= Duration::from_secs(10), "accept: {accepted:?}");
+    assert_eq!(outcome.status, "ROLLBACK_RUNNING");
+    let queued = i.f.hr.import_run(i.f.principal.clone(), run).await.unwrap();
+    assert_eq!(queued.status, "ROLLBACK_RUNNING");
+    let started = Instant::now();
+    i.f.hr
+        .drive_import_rollback(i.f.principal.org_id, run)
+        .with_subscriber(queries.clone())
+        .await
+        .unwrap();
     let elapsed = started.elapsed();
-    eprintln!(
-        "2,000-person inline rollback: {:.3}s",
-        elapsed.as_secs_f64()
+    eprintln!("2,000-person job rollback: {:.3}s", elapsed.as_secs_f64());
+    assert_eq!(
+        i.f.hr
+            .import_run(i.f.principal.clone(), run)
+            .await
+            .unwrap()
+            .status,
+        "ROLLED_BACK"
     );
-    assert!(elapsed <= Duration::from_secs(10), "{elapsed:?}");
-    assert_eq!(outcome.status, "ROLLED_BACK");
-    if let Some(before) = calls_before {
-        let after = dependency_calls(&i).await.unwrap();
-        for calls in [after.0 - before.0, after.1 - before.1] {
-            assert!((1..=3).contains(&calls), "dependency query calls: {calls}");
-        }
-    } else {
-        eprintln!("pg_stat_statements absent: dependency query-count proof was not measured");
+    eprintln!(
+        "dependency SQL statements (heads, blockers): {:?}",
+        queries.counts()
+    );
+    for calls in queries.counts() {
+        assert!((1..=3).contains(&calls), "dependency query calls: {calls}");
     }
     let state: (String, i64, i64, i64) = sqlx::query_as(
         "SELECT r.status, \

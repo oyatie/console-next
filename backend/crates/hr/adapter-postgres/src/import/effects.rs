@@ -85,7 +85,7 @@ pub async fn assign_home_branches(
     ).bind(org).bind(run).bind(keys).fetch_all(tx.as_mut()).await?;
     let trace = console_kernel_core::TraceContext::generate();
     for employee in people {
-        sqlx::query("SELECT leave_api.set_employee_import_home_branch($1,$2,$3,$4,$5,$6)")
+        sqlx::query("SELECT import_api.set_employee_import_home_branch($1,$2,$3,$4,$5,$6)")
             .bind(org)
             .bind(run)
             .bind(employee)

@@ -146,7 +146,7 @@ const recordedRun: components["schemas"]["EmployeeImportRun"] = {
   apply_summary: { input_rows: 12, inserted: 10, updated: 1, skipped: 1, companies: [] },
   rolled_back_at: null, rolled_back_by: null, rollback_reason_code: null, rollback_note: null,
   apply_job_state: null,
-  rollback: { mode: "SETUP", window_until: null, window_days: 14, pending_request: null, refusal_code: null }, allowed: ["preview_rollback"],
+  rollback: { job: null, mode: "SETUP", window_until: null, window_days: 14, pending_request: null, refusal_code: null }, allowed: ["preview_rollback"],
 };
 
 function recordedScreen(node: ReactNode, items = [recordedRun], jobState: "settling" | "failed" | null = null) {
@@ -269,4 +269,12 @@ test("a forbidden rollback preview uses the shared denied state and offers no ex
   const out = rollbackScreen(recordedRun, { ...rollbackPlan, rows: [{ employee_id: "matched", employee_number: "HB-01", inserted: false, fields: [{ field: "home_branch_id", current: "본점", before: null }], effects: ["home_branch_set"] }] });
   expect(out).toContain("지점: 본점 → 미지정");
   expect(out).not.toContain("home_branch");
+});
+
+
+test("a tracked rollback job shows progress without a second decision or execute action", () => {
+  const out = rollbackScreen({ ...recordedRun, status: "ROLLBACK_RUNNING", allowed: [], rollback: { ...recordedRun.rollback, job: { state: "queued", total: 2000, error: null } } });
+  expect(out).toContain(t("import.rollback.running"));
+  expect(out).not.toContain(t("import.rollback.acknowledge"));
+  expect(out).not.toContain("<button");
 });

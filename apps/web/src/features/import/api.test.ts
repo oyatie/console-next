@@ -33,7 +33,7 @@ test("rollback posts the published preview and digest-bound command paths with i
     expect(post).toHaveBeenLastCalledWith("/api/v1/employee-import-runs/{run_id}/rollback/preview", expect.objectContaining({ params: { path: { run_id: "run-1" } } }));
     const body = { preview_digest: "a".repeat(64), acknowledged: true };
     await requestRollback("run-1", body, "rollback-intent-key");
-    expect(post).toHaveBeenLastCalledWith("/api/v1/employee-import-runs/{run_id}/rollback", expect.objectContaining({ params: { path: { run_id: "run-1" }, header: { "Idempotency-Key": "rollback-intent-key" } }, body }));
+    expect(post).toHaveBeenLastCalledWith("/api/v1/employee-import-runs/{run_id}/rollback", expect.objectContaining({ params: { path: { run_id: "run-1" }, header: { "Idempotency-Key": "rollback-intent-key", Prefer: "respond-async" } }, body }));
     expect(post).toHaveBeenCalledTimes(2);
   } finally { post.mockRestore(); }
 });

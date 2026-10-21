@@ -22,7 +22,7 @@ properties:
     type: string
   status:
     type: string
-    enum: [PREVIEWED, DRY_RUN, APPLIED, FAILED, ROLLBACK_REQUESTED, ROLLED_BACK]
+    enum: [PREVIEWED, DRY_RUN, APPLIED, FAILED, ROLLBACK_REQUESTED, ROLLBACK_RUNNING, ROLLED_BACK]
   apply_job_state:
     type: string
     nullable: true
@@ -90,8 +90,32 @@ properties:
     nullable: true
   rollback:
     type: object
-    required: [mode, window_until, window_days, pending_request, refusal_code]
+    required: [mode, window_until, window_days, pending_request, refusal_code, job]
     properties:
+      job:
+        type: object
+        nullable: true
+        required: [state, total, error]
+        properties:
+          state:
+            type: string
+            enum: [queued, done, failed]
+          total:
+            type: integer
+            minimum: 0
+          error:
+            type: object
+            nullable: true
+            required: [status, code, message]
+            properties:
+              status:
+                type: integer
+                minimum: 400
+                maximum: 599
+              code:
+                type: string
+              message:
+                type: string
       refusal_code:
         type: string
         nullable: true

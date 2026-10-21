@@ -1,6 +1,18 @@
 -- SPDX-License-Identifier: LicenseRef-Proprietary
 -- Expand only: provenance and guarded employee import reversal.
 SET LOCAL lock_timeout = '2s';
+CREATE SCHEMA import_api AUTHORIZATION console_leave_definer;
+REVOKE ALL ON SCHEMA import_api FROM PUBLIC;
+GRANT USAGE ON SCHEMA import_api TO console_rt;
+ALTER TABLE data_import_runs ADD COLUMN rollback_job JSONB;
+COMMENT ON COLUMN data_import_runs.rollback_job IS 'pd:personal — authorized rollback command, actor snapshot and tracked result';
+ALTER TABLE api_idempotency_keys DROP CONSTRAINT api_idempotency_keys_operation_check;
+ALTER TABLE api_idempotency_keys ADD CONSTRAINT api_idempotency_keys_operation_check CHECK (operation IN (
+ 'users.create','employee.lifecycle.create','hr.exit_case.create','employee.lifecycle.bulk',
+ 'period_lock.lock','period_lock.unlock','period_lock.unlock_approve','period_lock.unlock_reject',
+ 'employee.correction.bulk','appointment_notice.issue','tenant.domain.request','platform.tenant.rename',
+ 'employee_import.rollback')) NOT VALID;
+ALTER TABLE api_idempotency_keys VALIDATE CONSTRAINT api_idempotency_keys_operation_check;
 ALTER TABLE data_import_runs
   ADD COLUMN rollback_ledger_complete BOOLEAN NOT NULL DEFAULT false;
 COMMENT ON COLUMN data_import_runs.rollback_ledger_complete IS 'pd:none — every settle side write has explicit run provenance';
@@ -53,6 +65,7 @@ ALTER TABLE change_requests ADD CONSTRAINT change_requests_subject_type_check CH
 CREATE UNIQUE INDEX change_requests_import_rollback_open_idx
  ON change_requests(org_id,subject_id) WHERE kind='IMPORT_ROLLBACK' AND status='OPEN';
 INSERT INTO realtime_topic_map(target_type,action,resource_type,carries_id) VALUES
+ ('data_import_run','data_import.rollback.progress','import_run',true),
  ('data_import_run','data_import.rollback_request','import_run',true),
  ('data_import_run','data_import.rollback','import_run',true),
  ('data_import_run','data_import.rollback_request_closed','import_run',true);
@@ -114,7 +127,7 @@ ALTER FUNCTION leave_api.employee_import_run_writer_guard() OWNER TO console_lea
 GRANT SELECT ON change_requests TO console_leave_definer;
 GRANT UPDATE (status,rolled_back_by,rolled_back_at,rollback_reason_code,rollback_note,rollback_requested_by,rollback_requested_at)
  ON data_import_runs TO console_leave_definer;
-CREATE FUNCTION leave_api.mark_employee_import_rolled_back(
+CREATE FUNCTION import_api.mark_employee_import_rolled_back(
  p_org UUID,p_run UUID,p_actor UUID,p_requested_by UUID,p_reason TEXT,p_note TEXT,
  p_audit UUID,p_trace TEXT,p_span TEXT
 ) RETURNS TIMESTAMPTZ LANGUAGE plpgsql SECURITY DEFINER
@@ -128,22 +141,24 @@ BEGIN
  END IF;
  IF p_requested_by IS NOT NULL AND NOT EXISTS (
    SELECT 1 FROM public.change_requests WHERE org_id=p_org AND subject_id=p_run
-    AND kind='IMPORT_ROLLBACK' AND status='OPEN' AND requested_by=p_requested_by
+    AND kind='IMPORT_ROLLBACK' AND requested_by=p_requested_by
+    AND (status='OPEN' OR (status='APPLIED' AND decided_by=p_actor))
  ) THEN RAISE EXCEPTION 'import_rollback_request_required' USING ERRCODE='42501'; END IF;
  UPDATE public.data_import_runs SET status='ROLLED_BACK',rolled_back_by=p_actor,
   rolled_back_at=clock_timestamp(),rollback_reason_code=p_reason,rollback_note=p_note,
   rollback_requested_by=p_requested_by,
   rollback_requested_at=CASE WHEN p_requested_by IS NULL THEN NULL ELSE
     (SELECT created_at FROM public.change_requests WHERE org_id=p_org AND subject_id=p_run
-      AND kind='IMPORT_ROLLBACK' AND status='OPEN') END
+      AND kind='IMPORT_ROLLBACK' AND requested_by=p_requested_by
+      AND (status='OPEN' OR (status='APPLIED' AND decided_by=p_actor)) ORDER BY created_at DESC LIMIT 1) END
  WHERE org_id=p_org AND id=p_run AND entity_type='employee_hr' AND status='APPLIED'
  RETURNING rolled_back_at INTO v_at;
  IF v_at IS NULL THEN RAISE EXCEPTION 'import_run_not_applied' USING ERRCODE='23514'; END IF;
  RETURN v_at;
 END $$;
-ALTER FUNCTION leave_api.mark_employee_import_rolled_back(UUID,UUID,UUID,UUID,TEXT,TEXT,UUID,TEXT,TEXT) OWNER TO console_leave_definer;
-REVOKE ALL ON FUNCTION leave_api.mark_employee_import_rolled_back(UUID,UUID,UUID,UUID,TEXT,TEXT,UUID,TEXT,TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION leave_api.mark_employee_import_rolled_back(UUID,UUID,UUID,UUID,TEXT,TEXT,UUID,TEXT,TEXT) TO console_rt;
+ALTER FUNCTION import_api.mark_employee_import_rolled_back(UUID,UUID,UUID,UUID,TEXT,TEXT,UUID,TEXT,TEXT) OWNER TO console_leave_definer;
+REVOKE ALL ON FUNCTION import_api.mark_employee_import_rolled_back(UUID,UUID,UUID,UUID,TEXT,TEXT,UUID,TEXT,TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION import_api.mark_employee_import_rolled_back(UUID,UUID,UUID,UUID,TEXT,TEXT,UUID,TEXT,TEXT) TO console_rt;
 CREATE FUNCTION leave_api.employee_import_rollback_audit_required() RETURNS TRIGGER
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET row_security=on AS $$
 BEGIN
@@ -164,7 +179,7 @@ CREATE CONSTRAINT TRIGGER employee_import_rollback_audit_required AFTER UPDATE O
 -- Import evidence replaces the form-create audit required by set_employee_home_branch_create.
 -- The routing write, provenance and audit share the settle transaction (no post-commit orphan).
 GRANT INSERT ON import_run_effects TO console_leave_definer;
-CREATE FUNCTION leave_api.set_employee_import_home_branch(
+CREATE FUNCTION import_api.set_employee_import_home_branch(
  p_org UUID,p_run UUID,p_employee UUID,p_actor UUID,p_trace TEXT,p_span TEXT
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET row_security=on AS $$
 DECLARE v_branch UUID; v_old_updated TIMESTAMPTZ;
@@ -206,14 +221,15 @@ BEGIN
    jsonb_build_object('home_branch_id',v_branch,'updated_at',now(),'import_run_id',p_run),p_trace,p_span,statement_timestamp(),p_org);
  RETURN v_branch;
 END $$;
-ALTER FUNCTION leave_api.set_employee_import_home_branch(UUID,UUID,UUID,UUID,TEXT,TEXT) OWNER TO console_leave_definer;
-REVOKE ALL ON FUNCTION leave_api.set_employee_import_home_branch(UUID,UUID,UUID,UUID,TEXT,TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION leave_api.set_employee_import_home_branch(UUID,UUID,UUID,UUID,TEXT,TEXT) TO console_rt;
+ALTER FUNCTION import_api.set_employee_import_home_branch(UUID,UUID,UUID,UUID,TEXT,TEXT) OWNER TO console_leave_definer;
+REVOKE ALL ON FUNCTION import_api.set_employee_import_home_branch(UUID,UUID,UUID,UUID,TEXT,TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION import_api.set_employee_import_home_branch(UUID,UUID,UUID,UUID,TEXT,TEXT) TO console_rt;
 
 -- Deletions are limited to the exact records this run created; history is untouched.
 GRANT SELECT,DELETE ON employee_employment_profiles,employee_register_facts,employee_rrn TO console_leave_definer;
-CREATE FUNCTION leave_api.remove_employee_import_effects(p_org UUID,p_run UUID)
+CREATE FUNCTION import_api.remove_employee_import_effects(p_org UUID,p_run UUID)
 RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET row_security=on AS $$
+DECLARE v_include TEXT := current_setting('app.include_voided',true);
 BEGIN
  IF p_org IS DISTINCT FROM NULLIF(current_setting('app.current_org',true),'')::UUID
  OR NOT EXISTS (SELECT 1 FROM public.data_import_runs WHERE org_id=p_org AND id=p_run
@@ -221,6 +237,7 @@ BEGIN
     AND xmin=pg_catalog.pg_current_xact_id()::xid) THEN
    RAISE EXCEPTION 'import_run_not_applied' USING ERRCODE='42501';
  END IF;
+ PERFORM set_config('app.include_voided','on',true);
  UPDATE public.employees e SET home_branch_id=NULL,updated_at=now()
  FROM public.import_run_effects f WHERE f.org_id=p_org AND f.run_id=p_run AND f.effect='home_branch_set'
    AND e.org_id=f.org_id AND e.id=f.employee_id AND e.home_branch_id=f.target_id;
@@ -233,10 +250,11 @@ BEGIN
  DELETE FROM public.employee_rrn p USING public.import_run_effects f
  WHERE f.org_id=p_org AND f.run_id=p_run AND f.effect='rrn_recorded'
    AND p.org_id=f.org_id AND p.employee_id=f.target_id AND p.import_run_id=p_run;
+ PERFORM set_config('app.include_voided',COALESCE(v_include,''),true);
 END $$;
-ALTER FUNCTION leave_api.remove_employee_import_effects(UUID,UUID) OWNER TO console_leave_definer;
-REVOKE ALL ON FUNCTION leave_api.remove_employee_import_effects(UUID,UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION leave_api.remove_employee_import_effects(UUID,UUID) TO console_rt;
+ALTER FUNCTION import_api.remove_employee_import_effects(UUID,UUID) OWNER TO console_leave_definer;
+REVOKE ALL ON FUNCTION import_api.remove_employee_import_effects(UUID,UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION import_api.remove_employee_import_effects(UUID,UUID) TO console_rt;
 
 DROP FUNCTION setting_definition(TEXT);
 -- BEGIN GENERATED by console-settings-domain tests/sql_definitions.rs

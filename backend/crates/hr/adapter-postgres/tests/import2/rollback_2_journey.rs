@@ -93,7 +93,7 @@ async fn rollback_rechecks_a_changed_employee_after_preview(pool: PgPool) {
         command(&preview.preview_digest),
         SOLO,
         409,
-        "rows_changed_since_preview",
+        "import_rollback_blocked",
     )
     .await;
 }
@@ -146,6 +146,13 @@ async fn rollback_database_guards_require_the_command_audit_and_append_only_prov
     let i = importer(pool).await;
     let run = applied(&i).await;
     let before = unchanged_snapshot(&i).await;
+    let schemas: (bool, bool) = sqlx::query_as("SELECT has_schema_privilege(current_user,'leave_api','USAGE'), has_schema_privilege(current_user,'import_api','USAGE')")
+        .fetch_one(&i.f.rt).await.unwrap();
+    assert_eq!(
+        schemas,
+        (false, true),
+        "runtime must keep the leave capability isolated"
+    );
     for sql in [
         "UPDATE data_import_runs SET status='ROLLED_BACK' WHERE org_id=$1 AND id=$2",
         "UPDATE import_run_effects SET created_at=clock_timestamp() WHERE org_id=$1 AND run_id=$2",
@@ -187,7 +194,7 @@ async fn rollback_database_guards_require_the_command_audit_and_append_only_prov
     .execute(tx.as_mut())
     .await
     .unwrap();
-    sqlx::query("SELECT leave_api.mark_employee_import_rolled_back($1,$2,$3,NULL,'IMPORT_ROLLBACK',NULL,$4,$5,$6)")
+    sqlx::query("SELECT import_api.mark_employee_import_rolled_back($1,$2,$3,NULL,'IMPORT_ROLLBACK',NULL,$4,$5,$6)")
         .bind(i.org()).bind(run).bind(*i.f.principal.user_id.as_uuid()).bind(Uuid::new_v4()).bind(trace.trace_id()).bind(trace.span_id())
         .execute(tx.as_mut()).await.unwrap();
     let err = tx.commit().await.unwrap_err();

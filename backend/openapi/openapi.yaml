@@ -6165,6 +6165,12 @@ paths:
             type: string
             minLength: 16
             maxLength: 200
+        - name: Prefer
+          in: header
+          required: false
+          description: respond-async accepts a tracked rollback job. Large inverses always use the job path.
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -6179,7 +6185,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/EmployeeImportRollbackOutcome'
         '202':
-          description: IMPORT_ROLLBACK request filed for a different eligible holder through change-requests decide.
+          description: Tracked rollback job accepted, or IMPORT_ROLLBACK request filed for a different eligible holder. The run record and import_run events carry progress and completion.
           content:
             application/json:
               schema:
@@ -39111,7 +39117,7 @@ components:
           $ref: '#/components/schemas/Uuid'
         status:
           type: string
-          enum: [ROLLED_BACK, ROLLBACK_REQUESTED]
+          enum: [ROLLED_BACK, ROLLBACK_REQUESTED, ROLLBACK_RUNNING]
         request_id:
           type: string
           format: uuid
@@ -39244,7 +39250,7 @@ components:
           type: string
         status:
           type: string
-          enum: [PREVIEWED, DRY_RUN, APPLIED, FAILED, ROLLBACK_REQUESTED, ROLLED_BACK]
+          enum: [PREVIEWED, DRY_RUN, APPLIED, FAILED, ROLLBACK_REQUESTED, ROLLBACK_RUNNING, ROLLED_BACK]
         apply_job_state:
           type: string
           nullable: true
@@ -39312,8 +39318,32 @@ components:
           nullable: true
         rollback:
           type: object
-          required: [mode, window_until, window_days, pending_request, refusal_code]
+          required: [mode, window_until, window_days, pending_request, refusal_code, job]
           properties:
+            job:
+              type: object
+              nullable: true
+              required: [state, total, error]
+              properties:
+                state:
+                  type: string
+                  enum: [queued, done, failed]
+                total:
+                  type: integer
+                  minimum: 0
+                error:
+                  type: object
+                  nullable: true
+                  required: [status, code, message]
+                  properties:
+                    status:
+                      type: integer
+                      minimum: 400
+                      maximum: 599
+                    code:
+                      type: string
+                    message:
+                      type: string
             refusal_code:
               type: string
               nullable: true
