@@ -1,6 +1,7 @@
 // The server enforces the idle timeout. This module reports user activity and computes the warning shown by IdleGuard.
 import type { QueryClient } from "@tanstack/react-query";
 import { api, lastReported, lastTouch, session, touch } from "@console/api";
+import { syncDraftPrincipal } from "../lib/react/use-draft";
 
 export const IDLE_KEY = "auth.idle_timeout_minutes";
 /** The server remains authoritative for expiry. */
@@ -32,6 +33,12 @@ export function idleCutoff(last: number | null, timeoutMs: number | null, now: n
 
 /** Keep the same user's drafts after expiry; reload after another user signs in so cached data cannot cross accounts. */
 export function watchSession(qc: QueryClient, signedOut: () => void) {
+  const channel = typeof window !== "undefined" && typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("console.session") : null;
+  channel?.addEventListener("message", ({ data }: MessageEvent<unknown>) => {
+    if (!data || typeof data !== "object" || !("previous" in data) || !("principal" in data)) return;
+    if (data.principal === null && data.previous === session.principal) session.expire("session_signed_out_elsewhere");
+    else if (typeof data.principal === "string" && session.principal !== null && data.principal !== session.principal) session.set(null);
+  });
   let shared = 0;
   const onInput = (e: Event) => {
     if (!e.isTrusted) return;
@@ -52,11 +59,14 @@ export function watchSession(qc: QueryClient, signedOut: () => void) {
   let wasLost = false;
   session.subscribe(() => {
     if (session.lost) return void (wasLost = true);
-    const next = session.token ? (session.claims?.sub ?? null) : null;
+    const next = session.token ? session.principal : null;
+    // A cold refused refresh has not identified anyone; only a known account or its explicit sign-out decides ownership.
+    if (next !== null || principal !== null) syncDraftPrincipal(next);
     const resumed = wasLost;
     wasLost = false;
     if (next !== principal) {
-      const replaced = resumed && principal !== null && next !== null;
+      channel?.postMessage({ previous: principal, principal: next });
+      const replaced = principal !== null && next !== null;
       principal = next;
       qc.clear();
       if (replaced) return location.assign(session.claims?.platform ? "/platform" : "/");

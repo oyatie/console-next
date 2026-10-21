@@ -12,10 +12,12 @@ describe("phase band (BL-016)", () => {
     expect(phaseBand("OPERATING", start, now + 7 * 86400000 - 1)).toBe("started");
     expect(phaseBand("OPERATING", start, now + 7 * 86400000)).toBeNull();
   });
-  it("omits legacy, invalid, future and unknown phases", () => {
+  it("keeps the operating reminder despite client clock skew", () => {
+    expect(phaseBand("OPERATING", start, now - 1)).toBe("started");
+  });
+  it("omits legacy, invalid and unknown phases", () => {
     expect(phaseBand("OPERATING", null, now)).toBeNull();
     expect(phaseBand("OPERATING", "invalid", now)).toBeNull();
-    expect(phaseBand("OPERATING", start, now - 1)).toBeNull();
     expect(phaseBand("UNKNOWN", start, now)).toBeNull();
   });
 });

@@ -73,10 +73,9 @@ test("a session that ends in use signs back in over the same screen, the draft i
   await expect(other).toHaveURL(/\/login$/);
   await other.close();
 
-  // The save is refused, and the user signs in again where they are: no trip to the sign-in screen.
-  await field.press("Enter");
+  // The other tab's sign-out is announced immediately; no write is needed to discover it.
   const dialog = page.getByRole("dialog", { name: "다시 로그인" });
-  await expect(dialog).toContainText("작성 중인 내용은 이 화면에 그대로 있으니");
+  await expect(dialog).toContainText("다른 곳에서 로그아웃했습니다");
   await expect(page).toHaveURL(/\/org/);
   await expectAccessible(page, "re-auth dialog");
   await dialog.getByRole("button", { name: "패스키로 다시 로그인" }).click();

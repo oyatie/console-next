@@ -49,8 +49,26 @@ pub enum RefreshTokenUseError {
     /// The family ended for inactivity (INF-03): `session_idle_expired`.
     #[error("session ended for inactivity")]
     IdleExpired,
+    #[error("passkeys were reset")]
+    PasskeyReset,
+    #[error("account was deactivated")]
+    AccountDeactivated,
+    #[error("session was signed out elsewhere")]
+    SignedOutElsewhere,
     #[error("refresh token storage error")]
     Storage,
+}
+
+impl RefreshTokenUseError {
+    fn revoked(reason: Option<&str>) -> Self {
+        match reason {
+            Some(crate::idle::IDLE_TIMEOUT_REASON) => Self::IdleExpired,
+            Some("credential_reset") => Self::PasskeyReset,
+            Some("user_deactivated" | "employee_exit") => Self::AccountDeactivated,
+            Some("logout") => Self::SignedOutElsewhere,
+            _ => Self::FamilyRevoked,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -354,22 +372,14 @@ impl RefreshTokenStore {
         let family_revoked_at: Option<OffsetDateTime> = row.try_get("family_revoked_at")?;
         let family_created_at: OffsetDateTime = row.try_get("family_created_at")?;
 
-        if family_revoked_at.is_some() {
-            let reason: Option<String> = row.try_get("family_revoked_reason")?;
-            return Err(
-                if reason.as_deref() == Some(crate::idle::IDLE_TIMEOUT_REASON) {
-                    RefreshTokenUseError::IdleExpired
-                } else {
-                    RefreshTokenUseError::FamilyRevoked
-                }
-                .into(),
-            );
+        // Deactivation supersedes an earlier reset: signing in can no longer recover this account.
+        if active != Some(true) {
+            return Err(RefreshTokenUseError::AccountDeactivated.into());
         }
 
-        // Preserve a real revoked-family result for offboarded Accounts. An
-        // inactive Account with a remaining family still cannot mutate or rotate.
-        if active != Some(true) {
-            return Err(RefreshTokenUseError::InvalidToken.into());
+        if family_revoked_at.is_some() {
+            let reason: Option<String> = row.try_get("family_revoked_reason")?;
+            return Err(RefreshTokenUseError::revoked(reason.as_deref()).into());
         }
 
         // Absolute session-lifetime cap (NIST 800-63B AAL2 reauthentication):
@@ -726,4 +736,25 @@ fn hex_encode(bytes: &[u8]) -> String {
         out.push(HEX[(byte & 0x0f) as usize] as char);
     }
     out
+}
+
+#[cfg(test)]
+mod recovery_reason_tests {
+    use super::RefreshTokenUseError as E;
+
+    #[test]
+    fn revocation_keeps_the_recovery_reason() {
+        for (reason, expected) in [
+            (Some(crate::idle::IDLE_TIMEOUT_REASON), E::IdleExpired),
+            (Some("credential_reset"), E::PasskeyReset),
+            (Some("user_deactivated"), E::AccountDeactivated),
+            (Some("employee_exit"), E::AccountDeactivated),
+            (Some("ops_holder_exit"), E::FamilyRevoked),
+            (Some("logout"), E::SignedOutElsewhere),
+            (Some("reuse_detected"), E::FamilyRevoked),
+            (None, E::FamilyRevoked),
+        ] {
+            assert_eq!(E::revoked(reason), expected);
+        }
+    }
 }

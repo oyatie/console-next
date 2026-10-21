@@ -151,6 +151,5 @@ export const koExit = {
   "exit.report.firstItem": "{date} {action} 예약이 남아 있습니다",
   "exit.report.firstHint": "마지막 근무일 뒤에 시행되면 안 됩니다 · 예약을 거둔 뒤 보고하면 퇴직과 겹치지 않습니다",
   "exit.report.cancelFirst": "예약 취소",
-  "exit.field.date.note": "기본값 없음 · 마지막으로 근무한 날",
   "exit.field.date.contractEnd": "계약 종료일",
 } as const;

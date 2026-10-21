@@ -153,10 +153,32 @@ impl RestError {
 
     pub(crate) fn from_refresh(error: RefreshTokenUseError) -> Self {
         match error {
-            RefreshTokenUseError::InvalidToken
-            | RefreshTokenUseError::Expired
-            | RefreshTokenUseError::FamilyRevoked
-            | RefreshTokenUseError::ReuseDetected => Self::unauthorized(error.to_string()),
+            RefreshTokenUseError::InvalidToken => Self::unauthorized(error.to_string()),
+            RefreshTokenUseError::Expired => Self {
+                status: StatusCode::UNAUTHORIZED,
+                code: "session_expired",
+                message: error.to_string(),
+            },
+            RefreshTokenUseError::FamilyRevoked | RefreshTokenUseError::ReuseDetected => Self {
+                status: StatusCode::UNAUTHORIZED,
+                code: "session_revoked",
+                message: error.to_string(),
+            },
+            RefreshTokenUseError::PasskeyReset => Self {
+                status: StatusCode::UNAUTHORIZED,
+                code: "session_passkey_reset",
+                message: error.to_string(),
+            },
+            RefreshTokenUseError::AccountDeactivated => Self {
+                status: StatusCode::UNAUTHORIZED,
+                code: "session_deactivated",
+                message: error.to_string(),
+            },
+            RefreshTokenUseError::SignedOutElsewhere => Self {
+                status: StatusCode::UNAUTHORIZED,
+                code: "session_signed_out_elsewhere",
+                message: error.to_string(),
+            },
             // INF-03: the client says why the session ended (signed out for inactivity).
             RefreshTokenUseError::IdleExpired => Self {
                 status: StatusCode::UNAUTHORIZED,
@@ -213,5 +235,32 @@ impl IntoResponse for RestError {
             }),
         )
             .into_response()
+    }
+}
+
+#[cfg(test)]
+mod recovery_reason_tests {
+    use super::*;
+
+    #[test]
+    fn refresh_refusals_expose_only_the_recovery_code() {
+        for (reason, code) in [
+            (RefreshTokenUseError::Expired, "session_expired"),
+            (RefreshTokenUseError::IdleExpired, "session_idle_expired"),
+            (RefreshTokenUseError::FamilyRevoked, "session_revoked"),
+            (RefreshTokenUseError::PasskeyReset, "session_passkey_reset"),
+            (
+                RefreshTokenUseError::AccountDeactivated,
+                "session_deactivated",
+            ),
+            (
+                RefreshTokenUseError::SignedOutElsewhere,
+                "session_signed_out_elsewhere",
+            ),
+        ] {
+            let error = RestError::from_refresh(reason);
+            assert_eq!(error.status, StatusCode::UNAUTHORIZED);
+            assert_eq!(error.code, code);
+        }
     }
 }
