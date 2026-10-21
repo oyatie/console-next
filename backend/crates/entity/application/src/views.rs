@@ -175,6 +175,9 @@ pub struct WorkplaceView {
     pub legal_entity_id: Uuid,
     pub registration_id: Option<Uuid>,
     pub sub_serial: Option<String>,
+    pub not_registered_reason: Option<CodeRef>,
+    pub is_abstract: bool,
+    pub filing_registration_id: Option<Uuid>,
     pub default_branch_id: Option<Uuid>,
     /// 사업장 kind code (decisions #18); `None` = 미지정.
     pub kind_code: Option<String>,
@@ -219,6 +222,8 @@ pub struct WorkplaceState {
     pub mobile: Option<Formatted>,
     pub email: Option<String>,
     pub is_construction_site: bool,
+    pub is_abstract: bool,
+    pub not_registered_reason: Option<CodeRef>,
     pub status: OperatingStatus,
     #[serde(with = "crate::iso_date::option")]
     pub status_since: Option<time::Date>,

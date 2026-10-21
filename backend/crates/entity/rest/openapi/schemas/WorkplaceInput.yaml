@@ -18,6 +18,24 @@ properties:
     pattern: ^[0-9]{4}$
     x-console-format: sub_serial
     description: 종사업장 일련번호.
+  reg_mode:
+    type:
+    - string
+    - 'null'
+    enum:
+    - NEW
+    - EXISTING
+    - UNIT_TAXATION_SUB
+    - NOT_REQUIRED
+    - LATER
+  not_registered_reason:
+    anyOf:
+    - $ref: '#/components/schemas/CodeInput'
+    - type: 'null'
+  is_abstract:
+    type:
+    - boolean
+    - 'null'
   same_address_as_registration:
     type: boolean
   address:

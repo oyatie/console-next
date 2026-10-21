@@ -24232,6 +24232,7 @@ paths:
           - insurance_branch
           - ksic
           - bank
+          - workplace_not_registered_reason
       - name: q
         in: query
         required: false
@@ -58728,6 +58729,17 @@ components:
           type:
           - string
           - 'null'
+        not_registered_reason:
+          anyOf:
+          - $ref: '#/components/schemas/CodeRef'
+          - type: 'null'
+        is_abstract:
+          type: boolean
+        filing_registration_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
         default_branch_id:
           type:
           - string
@@ -59092,6 +59104,24 @@ components:
           pattern: ^[0-9]{4}$
           x-console-format: sub_serial
           description: 종사업장 일련번호.
+        reg_mode:
+          type:
+          - string
+          - 'null'
+          enum:
+          - NEW
+          - EXISTING
+          - UNIT_TAXATION_SUB
+          - NOT_REQUIRED
+          - LATER
+        not_registered_reason:
+          anyOf:
+          - $ref: '#/components/schemas/CodeInput'
+          - type: 'null'
+        is_abstract:
+          type:
+          - boolean
+          - 'null'
         same_address_as_registration:
           type: boolean
         address:
@@ -59320,6 +59350,12 @@ components:
           - 'null'
         is_construction_site:
           type: boolean
+        is_abstract:
+          type: boolean
+        not_registered_reason:
+          anyOf:
+          - $ref: '#/components/schemas/CodeRef'
+          - type: 'null'
         status:
           $ref: '#/components/schemas/OperatingStatus'
         status_since:

@@ -41,8 +41,8 @@ pub(crate) async fn create_workplace_in_tx(
         default_branch(tx, entity, &facts.name, &draft.name, cmd.default_branch_id).await?;
     let id: Uuid = sqlx::query_scalar(
         "INSERT INTO workplaces (org_id, legal_entity_id, registration_id, sub_serial, default_branch_id, \
-           created_change_mode, created_by, kind_code) \
-         VALUES (NULLIF(current_setting('app.current_org', true), '')::uuid, $1, $2, $3, $4, $5, $6, $7) RETURNING id",
+           created_change_mode, created_by, kind_code, not_registered_reason_code, not_registered_reason_label, not_registered_reason_version, is_abstract) \
+         VALUES (NULLIF(current_setting('app.current_org', true), '')::uuid, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
     )
     .bind(entity)
     .bind(draft.registration_id)
@@ -51,6 +51,10 @@ pub(crate) async fn create_workplace_in_tx(
     .bind(admitted.mode.as_str())
     .bind(*actor.user.as_uuid())
     .bind(&kind)
+    .bind(draft.not_registered_reason.as_ref().map(|r| r.code.as_str()))
+    .bind(draft.not_registered_reason.as_ref().map(|r| r.label.as_str()))
+    .bind(draft.not_registered_reason.as_ref().map(|r| r.version.as_str()))
+    .bind(draft.is_abstract)
     .fetch_one(tx.as_mut())
     .await?;
     // INTEG-3: the first record starts at 개설일.
@@ -151,10 +155,34 @@ pub(crate) async fn revise_workplace_in_tx(
         port,
     )
     .await?;
-    sqlx::query("UPDATE workplaces SET needs_confirmation = false WHERE id = $1")
-        .bind(id)
-        .execute(tx.as_mut())
-        .await?;
+    sqlx::query(
+        "UPDATE workplaces SET needs_confirmation = false, \
+           not_registered_reason_code = $2, not_registered_reason_label = $3, \
+           not_registered_reason_version = $4, is_abstract = $5 \
+         WHERE id = $1",
+    )
+    .bind(id)
+    .bind(
+        draft
+            .not_registered_reason
+            .as_ref()
+            .map(|r| r.code.as_str()),
+    )
+    .bind(
+        draft
+            .not_registered_reason
+            .as_ref()
+            .map(|r| r.label.as_str()),
+    )
+    .bind(
+        draft
+            .not_registered_reason
+            .as_ref()
+            .map(|r| r.version.as_str()),
+    )
+    .bind(draft.is_abstract)
+    .execute(tx.as_mut())
+    .await?;
     let event = audit(
         actor,
         "workplace.revise",

@@ -253,3 +253,31 @@ fn company_text_is_placement_work_not_a_separate_setup_step() {
     );
     assert!(!c.steps.iter().any(|s| s.key == "company_names"));
 }
+
+#[test]
+fn workplace_step_done_when_exempt_from_registration_and_blocked_when_staffed_without_registration()
+{
+    let base = SetupFacts {
+        phase_is_setup: true,
+        terms_accepted: true,
+        entities: 1,
+        workplaces: 1,
+        entities_without_primary_workplace: 0,
+        workplaces_incomplete: 0,
+        staffed_workplaces_without_registration: 0,
+        ..SetupFacts::default()
+    };
+    let c = checklist(&base);
+    let wp = c.steps.iter().find(|s| s.key == "workplace").unwrap();
+    assert_eq!(wp.state, StepState::Done);
+
+    let unreg = SetupFacts {
+        staffed_workplaces_without_registration: 1,
+        ..base
+    };
+    let c_unreg = checklist(&unreg);
+    let wp_unreg = c_unreg.steps.iter().find(|s| s.key == "workplace").unwrap();
+    assert_eq!(wp_unreg.state, StepState::Attention);
+    assert_eq!(wp_unreg.remedy, Some("complete_workplace"));
+    assert_eq!(wp_unreg.count, Some(1));
+}

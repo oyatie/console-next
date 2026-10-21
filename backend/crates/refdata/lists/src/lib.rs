@@ -61,6 +61,8 @@ pub struct Code {
 }
 
 const ADMIN_REGION_TSV: &str = include_str!("../data/admin_region-2026-10-01.tsv");
+const WORKPLACE_NOT_REGISTERED_REASON_TSV: &str =
+    include_str!("../data/workplace-not-registered-reason-2026-10-21.tsv");
 
 const fn empty(key: &'static str, status: ListStatus, reason: &'static str) -> ListInfo {
     ListInfo {
@@ -103,6 +105,20 @@ pub const LISTS: &[ListInfo] = &[
         }),
         reason: None,
     },
+    ListInfo {
+        key: "workplace_not_registered_reason",
+        title: Some("사업자등록 제외 사유"),
+        version: Some("2026-10-21"),
+        status: ListStatus::Loaded,
+        source: Some(Source {
+            title: "부가가치세법 및 관계법령 사업장 정의 규정",
+            url: "https://www.law.go.kr/법령/부가가치세법",
+            retrieved_on: "2026-10-21",
+            sha256: "b2db64271ea854377647d1c50931ab0a9e216e442fee409e1f132a0ff8abab56",
+            derivation: "부가가치세법, 파견근로자 보호 등에 관한 법률, 국민건강보험법 규정 사유 정리",
+        }),
+        reason: None,
+    },
     // 국세청 업종코드 (고시 2026-14) is published as images only (design §4).
     empty(
         "nts_industry_code",
@@ -124,6 +140,8 @@ pub const LISTS: &[ListInfo] = &[
 ];
 
 static ADMIN_REGION: LazyLock<Vec<Code>> = LazyLock::new(|| parse_tsv(ADMIN_REGION_TSV));
+static WORKPLACE_NOT_REGISTERED_REASON: LazyLock<Vec<Code>> =
+    LazyLock::new(|| parse_tsv(WORKPLACE_NOT_REGISTERED_REASON_TSV));
 
 fn parse_tsv(raw: &'static str) -> Vec<Code> {
     raw.lines()
@@ -148,6 +166,7 @@ fn codes(key: &str) -> &'static [Code] {
     match key {
         "admin_region" => &ADMIN_REGION,
         "brn_classification" => &brn::CODES,
+        "workplace_not_registered_reason" => &WORKPLACE_NOT_REGISTERED_REASON,
         _ => &[],
     }
 }
@@ -228,5 +247,18 @@ mod tests {
         let v = serde_json::to_value(info("ksic").unwrap()).unwrap();
         assert_eq!(v["status"], "HOLD");
         assert_eq!(v["key"], "ksic");
+    }
+
+    #[test]
+    fn workplace_not_registered_reason_is_loaded_and_searchable() {
+        let (list, all) = search("workplace_not_registered_reason", "", usize::MAX).unwrap();
+        assert_eq!(list.status, ListStatus::Loaded);
+        assert_eq!(all.len(), 6);
+        let depot = all.iter().find(|c| c.code == "VAT_DEPOT").unwrap();
+        assert_eq!(depot.label, "하치장 (재화 보관·관리 장소)");
+        assert_eq!(depot.parent_label, Some("부가가치세법 시행령 제8조 제1항"));
+        let (_, telework) = search("workplace_not_registered_reason", "재택", 10).unwrap();
+        assert_eq!(telework.len(), 1);
+        assert_eq!(telework[0].code, "REMOTE_TELEWORK");
     }
 }

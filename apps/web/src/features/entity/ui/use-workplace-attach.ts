@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { t } from "@console/i18n";
-import type { LegalEntity, Workplace } from "@console/api/pending";
+import type { CodeRef, LegalEntity, Workplace } from "@console/api/pending";
 import { FORMATS } from "../../../lib/pure/formats";
 import { useCommand } from "../../../lib/react/command";
 import { addRegistration, changeRegistration, ENTITY_READS, readVersion, reviseEntity, stepKey } from "../api";
@@ -12,7 +12,7 @@ import type { VatUnit } from "./use-workplace-create";
 
 /** The ways a workplace with no certificate gets one: its own (typed), one the entity holds free, or a unit-taxation serial. */
 export const ATTACH_MODES: readonly RegMode[] = ["NEW", "EXISTING", "UNIT_TAXATION_SUB"];
-type Fields = { regMode: RegMode | null; registrationId: string | null; subSerial: string };
+type Fields = { regMode: RegMode | null; registrationId: string | null; subSerial: string; notRegisteredReason?: CodeRef | null; isAbstract?: boolean };
 
 /**
  * Attach a certificate to a workplace added without one (org-03, catalog company-18). The certificate is typed (nothing is
@@ -23,7 +23,7 @@ export function useWorkplaceAttach(e: LegalEntity, wp: Workplace, onDone: () => 
   const free = unheld(e);
   const unit = unitRegistration(e);
   const reg = useEntityDraft({ scope: "registration", bizKind: e.biz_kind ?? null });
-  const [w, setW] = useState<Fields>({ regMode: null, registrationId: null, subSerial: "" });
+  const [w, setW] = useState<Fields>({ regMode: null, registrationId: null, subSerial: "", notRegisteredReason: null, isAbstract: false });
   const [vat, setVat] = useState<VatUnit | null>(null);
   const [from, setFrom] = useState("");
   const [addedReg, setAddedReg] = useState<string | null>(null);

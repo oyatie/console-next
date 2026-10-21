@@ -37,6 +37,9 @@ pub struct WorkplaceInput {
     pub status_since: Option<String>,
     /// 휴업's expected end (SUSPENDED only).
     pub status_until: Option<String>,
+    pub is_abstract: Option<bool>,
+    pub reg_mode: Option<String>,
+    pub not_registered_reason: Option<crate::legal_entity::CodeInput>,
 }
 
 /// Where the address comes from after validation.
@@ -44,6 +47,7 @@ pub struct WorkplaceInput {
 pub enum WorkplaceAddress {
     Own(Box<KrAddress>),
     SameAsRegistration,
+    None,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -51,6 +55,8 @@ pub struct WorkplaceDraft {
     pub name: String,
     pub registration_id: Option<Uuid>,
     pub sub_serial: Option<SubWorkplaceSerial>,
+    pub not_registered_reason: Option<crate::legal_entity::CodeRef>,
+    pub is_abstract: bool,
     pub address: WorkplaceAddress,
     pub mail_address: Option<KrAddress>,
     pub opened_on: time::Date,
@@ -99,20 +105,63 @@ pub fn validate_workplace(
     if sub_serial.is_some() && !ctx.registration_is_unit_taxation_of_other {
         is.push("sub_serial", NOT_APPLICABLE);
     }
-    let address = match (&input.address, input.same_address_as_registration) {
-        (Some(_), true) => {
+    let is_abstract = input.is_abstract.unwrap_or(false);
+    if is_abstract && input.registration_id.is_some() {
+        is.push("registration_id", NOT_APPLICABLE);
+    }
+    if is_abstract && input.sub_serial.is_some() {
+        is.push("sub_serial", NOT_APPLICABLE);
+    }
+
+    let is_reg_mode_not_required = input.reg_mode.as_deref() == Some("NOT_REQUIRED");
+    if is_reg_mode_not_required && input.registration_id.is_some() {
+        is.push("registration_id", NOT_APPLICABLE);
+    }
+
+    let not_registered_reason =
+        if input.registration_id.is_some() && input.not_registered_reason.is_some() {
+            is.push("not_registered_reason", NOT_APPLICABLE);
+            None
+        } else if is_reg_mode_not_required {
+            crate::workplace_registration::validate_not_registered_reason(
+                &mut is,
+                "not_registered_reason",
+                input.not_registered_reason.as_ref(),
+            )
+        } else if let Some(raw) = input.not_registered_reason.as_ref() {
+            crate::workplace_registration::validate_not_registered_reason(
+                &mut is,
+                "not_registered_reason",
+                Some(raw),
+            )
+        } else {
+            None
+        };
+
+    let address = if is_abstract {
+        if input.address.is_some() || input.same_address_as_registration {
             is.push("address", NOT_APPLICABLE);
-            None
         }
-        (Some(addr), false) => {
-            validate_address(&mut is, "address", addr).map(|a| WorkplaceAddress::Own(Box::new(a)))
-        }
-        (None, true) if input.registration_id.is_some() => {
-            Some(WorkplaceAddress::SameAsRegistration)
-        }
-        (None, _) => {
-            is.push("address", REQUIRED);
-            None
+        Some(WorkplaceAddress::None)
+    } else {
+        match (&input.address, input.same_address_as_registration) {
+            (Some(_), true) => {
+                is.push("address", NOT_APPLICABLE);
+                None
+            }
+            (Some(addr), false) => validate_address(&mut is, "address", addr)
+                .map(|a| WorkplaceAddress::Own(Box::new(a))),
+            (None, true) if input.registration_id.is_some() => {
+                Some(WorkplaceAddress::SameAsRegistration)
+            }
+            (None, true) => {
+                is.push("address", NOT_APPLICABLE);
+                None
+            }
+            (None, false) => {
+                is.push("address", REQUIRED);
+                None
+            }
         }
     };
     let mail_address = input
@@ -187,6 +236,8 @@ pub fn validate_workplace(
             name: name?,
             registration_id: input.registration_id,
             sub_serial,
+            not_registered_reason,
+            is_abstract,
             address: address?,
             mail_address,
             opened_on: opened_on?,

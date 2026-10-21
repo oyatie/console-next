@@ -20,6 +20,7 @@ parameters:
     - insurance_branch
     - ksic
     - bank
+    - workplace_not_registered_reason
 - name: q
   in: query
   required: false

@@ -28,6 +28,7 @@ pub mod structure_code;
 pub mod suspension;
 pub mod workplace;
 pub mod workplace_kind;
+pub mod workplace_registration;
 
 pub use address::{AddressInput, KrAddress};
 pub use refusal::{FieldIssue, Issues, Refusal, Warning};

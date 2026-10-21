@@ -16,7 +16,7 @@ export type InsuranceRow = { insurer: Insurer; status: InsuranceStatus | null; m
  * How the workplace is registered for VAT: its own new certificate, a certificate already entered for this entity
  * that no workplace holds yet (the first certificate), a sub-workplace of a unit-taxation registration, or later.
  */
-export type RegMode = "NEW" | "EXISTING" | "UNIT_TAXATION_SUB" | "LATER";
+export type RegMode = "NEW" | "EXISTING" | "UNIT_TAXATION_SUB" | "NOT_REQUIRED" | "LATER";
 
 export type WorkplaceDraft = {
   name: string;
@@ -24,6 +24,8 @@ export type WorkplaceDraft = {
   /** EXISTING: which of the entity's unheld certificates. */
   registrationId: string | null;
   subSerial: string;
+  notRegisteredReason: CodeRef | null;
+  isAbstract: boolean;
   address: AddrDraft | null;
   openedOn: string;
   phone: string;
@@ -36,7 +38,7 @@ export type WorkplaceDraft = {
   rows: InsuranceRow[];
 };
 export const emptyWorkplace = (): WorkplaceDraft => ({
-  name: "", regMode: null, registrationId: null, subSerial: "", address: null, openedOn: "", phone: "", email: "", independentAccounts: null, headOffice: null, insurance: null,
+  name: "", regMode: null, registrationId: null, subSerial: "", notRegisteredReason: null, isAbstract: false, address: null, openedOn: "", phone: "", email: "", independentAccounts: null, headOffice: null, insurance: null,
   rows: INSURERS.map((insurer) => ({ insurer, status: null, mgmtNo: "", establishedOn: "" })),
 });
 
@@ -81,9 +83,15 @@ export function workplaceProblems(d: WorkplaceDraft, f: WpFacts): Partial<Record
     need("subSerial", d.subSerial !== "");
     if (d.subSerial && (d.subSerial.length !== FORMATS.subSerial.max || d.subSerial === "0000")) out.subSerial = "subSerial";
   }
+  if (d.regMode === "NOT_REQUIRED") {
+    need("notRegisteredReason", d.notRegisteredReason !== null);
+  }
   // A certificate of its own brings the address and opening date; otherwise they are asked here.
-  if (d.regMode === "UNIT_TAXATION_SUB" || d.regMode === "LATER") {
+  // An abstract workplace has no address.
+  if ((d.regMode === "UNIT_TAXATION_SUB" || d.regMode === "LATER" || d.regMode === "NOT_REQUIRED") && !d.isAbstract) {
     need("address", d.address !== null);
+  }
+  if (d.regMode === "UNIT_TAXATION_SUB" || d.regMode === "LATER" || d.regMode === "NOT_REQUIRED") {
     need("openedOn", d.openedOn !== "");
   }
   need("independentAccounts", d.independentAccounts !== null);
@@ -114,12 +122,16 @@ const rowCode = (r: InsuranceRow): Partial<InsurerInput> => (r.code && r.insurer
  */
 export function planWorkplace(d: WorkplaceDraft, f: { corp: boolean; registrationId: string | null; openedOn?: string; headOffice: boolean | null }): CreateWorkplaceRequest {
   const own = d.regMode === "NEW" || d.regMode === "EXISTING";
+  const notReq = d.regMode === "NOT_REQUIRED";
   return {
     name: d.name.trim(),
-    registration_id: d.regMode === "LATER" ? null : f.registrationId,
+    registration_id: d.regMode === "LATER" || notReq ? null : f.registrationId,
     sub_serial: d.regMode === "UNIT_TAXATION_SUB" ? d.subSerial : null,
+    reg_mode: d.regMode ?? undefined,
+    not_registered_reason: notReq && d.notRegisteredReason ? { code: d.notRegisteredReason.code } : null,
+    is_abstract: d.isAbstract,
     same_address_as_registration: own,
-    address: own || !d.address ? null : krAddress(d.address),
+    address: own || d.isAbstract || !d.address ? null : krAddress(d.address),
     opened_on: own ? f.openedOn! : d.openedOn,
     phone: d.phone ? phoneE164(d.phone) : null,
     email: d.email.trim() || null,

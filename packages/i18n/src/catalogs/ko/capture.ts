@@ -18,4 +18,5 @@ export const koCapture = {
   "capture.docs.open": "열기",
   "capture.docs.openLabel": "{file} 원본 열기",
   "capture.list.brn_classification": "사업자등록번호 구분",
+  "capture.list.workplace_not_registered_reason": "사업자등록 미대상 사유",
 };

@@ -53,7 +53,7 @@ export function WorkplaceCreateSheet({ e, kinds, setup, onClose, onSaved }: { e:
       </div>
       {kinds && <KindChoice kinds={kinds} value={c.kind} onChange={c.setKind} headOffice={head ? workplaceName(head) : undefined} />}
       <RegistrationChoice e={e} c={c} />
-      {!own && (
+      {!own && !c.w.isAbstract && (
         <AddressField label={t("workplace.create.address")} required value={c.w.address} onChange={(v) => c.set("address", v && search.withCodes(v))} query={search.query} onQueryChange={search.setQuery} hits={search.hits} loading={search.loading} problem={search.problem}>
           <DistrictPick a={c.w.address} onChange={(a) => c.set("address", a)} />
         </AddressField>
@@ -74,6 +74,7 @@ function Foot({ c, e, setup }: { c: WorkplaceCreate; e: LegalEntity; setup: bool
       c.missing.withholding && t("workplace.create.withholding"),
       c.missing.insurance && t("workplace.field.insurance"),
       c.problems.headOffice && t(e.biz_kind === "CORPORATION" ? "workplace.field.headOffice" : "workplace.field.mainPlace"),
+      c.problems.notRegisteredReason && t("workplace.field.notRegisteredReason"),
       c.problems.address && t("workplace.create.address"),
     ].filter(Boolean);
     return (

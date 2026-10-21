@@ -5,7 +5,7 @@ import type { EntityDocument, LegalEntity, Workplace } from "@console/api/pendin
 export function unattached(entities: readonly LegalEntity[]): { e: LegalEntity; w: Workplace }[] {
   return entities
     .filter((e) => !e.closed_on)
-    .flatMap((e) => e.workplaces.filter((w) => !w.registration_id && !w.closed_on).map((w) => ({ e, w })))
+    .flatMap((e) => e.workplaces.filter((w) => !w.registration_id && !w.not_registered_reason && !w.closed_on).map((w) => ({ e, w })))
     .sort((a, b) => Number(b.w.headcount > 0) - Number(a.w.headcount > 0));
 }
 
