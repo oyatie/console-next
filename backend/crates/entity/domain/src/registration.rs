@@ -42,9 +42,9 @@ pub struct RegistrationInput {
 pub struct RegistrationDraft {
     pub brn: Option<BizRegNo>,
     pub brn_pending_reason: Option<BrnPendingReason>,
-    /// Deprecated shadow of the entity's name (written for N-1 readers, never read):
-    /// 법인명/상호 has one stored source, the entity's revision.
-    pub trade_name: String,
+    /// Never read: 법인명/상호 has one stored source, the entity's revision. `None` for a
+    /// 법인; an individual registration still records its 상호 until the contract step.
+    pub trade_name: Option<String>,
     pub classification_reason: Option<Option<String>>,
     pub opened_on: time::Date,
     pub business_address: KrAddress,
@@ -193,7 +193,11 @@ pub fn validate_registration(
         let draft = RegistrationDraft {
             brn,
             brn_pending_reason: pending,
-            trade_name: ctx.entity_name.to_owned(),
+            trade_name: if ctx.biz_kind == Some(BizKind::Individual) {
+                Some(ctx.entity_name.to_owned())
+            } else {
+                None
+            },
             classification_reason,
             opened_on: opened_on?,
             business_address: business_address?,

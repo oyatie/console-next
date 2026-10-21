@@ -38,7 +38,18 @@ fn the_registration_name_is_the_entitys_and_a_sent_one_is_ignored() {
     json["trade_name"] = "NURI".into();
     let sent: RegistrationInput = serde_json::from_value(json).unwrap();
     let (draft, warnings) = validate_registration(&sent, CTX, date!(2026 - 10 - 02)).unwrap();
-    assert_eq!(draft.trade_name, "주식회사 가나");
+    assert_eq!(draft.trade_name, None);
+    assert!(warnings.is_empty());
+}
+
+#[test]
+fn individual_registration_draft_retains_trade_name() {
+    let ctx = EntityContext {
+        biz_kind: Some(BizKind::Individual),
+        entity_name: "가나상회",
+    };
+    let (draft, warnings) = validate_registration(&input(), ctx, date!(2026 - 10 - 02)).unwrap();
+    assert_eq!(draft.trade_name, Some("가나상회".into()));
     assert!(warnings.is_empty());
 }
 
