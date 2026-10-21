@@ -712,7 +712,7 @@
  },
  "GET /api/v1/status/evidence": {
   "lane": "MAT-PARITY",
-  "reason": "Workorder evidence is outside Org + HR MVP; reviewed workorder promotion required.",
+  "reason": "internal: unauthenticated endpoint (security: []): public feed, not a signed-in screen; confirm it needs no in-app view",
   "when": "excluded"
  },
  "GET /api/v1/statutory/insurance-loss-codes": {
