@@ -52,7 +52,7 @@ test("J-ONB-19: the applied run opens with file, actor, time and stored counts f
 });
 
 async function applyRoster(page: Page, filename: string, lines: string[][]) {
-  await go(page, "/people/import");
+  await page.goto("/people/import");
   await chooseWorkbook(page, filename, await workbook([{ name: "명부", lines }]));
   const previewed = page.waitForResponse(r => r.request().method() === "POST" && new URL(r.url()).pathname.endsWith("/import/preview"));
   await page.getByRole("button", { name: "명부 미리보기" }).click();
@@ -172,6 +172,13 @@ test("OPERATING rollback waits for another holder and reaches done through the l
   const slug = "rollbackroute";
   const { admin, exec } = await tenantInSetup(browser, slug, "결정상사", false, "본점", "full");
   const api = apiOf(admin, bearerOf(admin));
+  // D0.2 excludes an unlinked account without a non-employee exception from second-person eligibility.
+  await registerEmployee(admin, { name: "이임원", number: "RB-HOLDER", hired: "2020-03-02", unit: "본점" });
+  await admin.getByRole("navigation", { name: "인사카드 탭" }).getByRole("link", { name: "권한", exact: true }).click();
+  await admin.getByRole("combobox", { name: "연결할 계정" }).fill("이임원");
+  await admin.getByRole("option", { name: /이임원/ }).click();
+  await admin.getByRole("button", { name: "계정 연결", exact: true }).click();
+  await expect(admin.getByRole("status").filter({ hasText: "이임원 계정을 연결했습니다" })).toBeVisible();
   await startOperations(admin);
   await go(exec, "/");
   const notice = exec.getByRole("region", { name: "확인할 새 권한 1건" });
@@ -182,6 +189,9 @@ test("OPERATING rollback waits for another holder and reaches done through the l
   const run = await applyRoster(admin, "결정명부.xlsx", [rosterHeader,
     ["RB-ROUTE", "결정직원", "2020-03-02", "정규직", "사원"],
   ]);
+  const preview = await api(`/employee-import-runs/${run}/rollback/preview`, "POST");
+  expect(preview.status()).toBe(200);
+  expect((await preview.json() as { basis: string }).basis).toBe("SECOND_PERSON");
   const panel = rollbackPanel(admin);
   await option(admin, "되돌리는 이유", "다른 파일을 올림").click();
   await panel.getByRole("checkbox").press("Space");
@@ -197,7 +207,7 @@ test("OPERATING rollback waits for another holder and reaches done through the l
     decision: "APPLY", reason_code: "REVIEWED",
   });
   expect([self.status(), await codeOf(self)]).toEqual([403, "authz_sod_requester"]);
-  expect(await headcount(api)).toBe(1);
+  expect(await headcount(api)).toBe(2);
   await go(exec, "/people/requests?sel=" + outcome.request_id);
   const request = exec.getByRole("complementary", { name: "요청 상세" });
   await expect(request).toContainText("되돌리기");
@@ -211,14 +221,14 @@ test("OPERATING rollback waits for another holder and reaches done through the l
   expect(navigations).toBe(0);
   await expect(admin).toHaveURL(new RegExp(`/people/import\\?run=${run}$`));
   await expectAccessible(admin, "rollback approved live without reload, light and dark");
-  expect(await headcount(api)).toBe(0);
+  expect(await headcount(api)).toBe(1);
 });
 
 test("a clean twelve-row 사업장 import has no 지점 미지정 chips and its rollback restores the roster", { tag: ["@hr", "@negative"] }, async ({ browser }) => {
   test.setTimeout(300_000);
   const { admin } = await tenantInSetup(browser, "rollbackbranch", "지점가져오기", false, "본점");
   const api = apiOf(admin, bearerOf(admin));
-  const before = await headcount(api);
+  const before = (await headcount(api)) ?? 0;
   const run = await applyRoster(admin, "지점명부.xlsx", [
     [...rosterHeader, "사업장"],
     ...Array.from({ length: 12 }, (_, n) => [`BR-${n + 1}`, `지점직원${n + 1}`, "2020-03-02", "정규직", "사원", "본점"]),

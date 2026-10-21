@@ -29,9 +29,9 @@ export const TOPICS: Readonly<Record<string, Topic>> = {
   org_unit: { detail: "/api/v1/org-units", paths: [...STRUCTURE_READS, ...EMPLOYEE_READS] },
   org_change: { detail: "/api/v1/org-changes", paths: ["/api/v1/org-changes", "/api/v1/legal-entities", ...STRUCTURE_READS] },
   entity_setup_batch: { paths: [...ENTITY_READS, ...STRUCTURE_READS] },
-  employee: { detail: "/api/v1/employees", paths: ["/api/v1/org-structure", "/api/v1/legal-entities", ...EMPLOYEE_READS, "/api/v1/org-units", "/api/v1/onboarding", "/api/v1/workplaces"] },
-  exit_case: { detail: "/api/v1/hr/exit-cases", paths: [...EMPLOYEE_READS, "/api/v1/org-structure", "/api/v1/legal-entities", "/api/v1/workplaces"] },
-  change_request: { paths: ["/api/v1/change-requests", ...EMPLOYEE_READS] },
+  employee: { detail: "/api/v1/employees", paths: ["/api/v1/org-structure", "/api/v1/legal-entities", ...EMPLOYEE_READS, "/api/v1/org-units", "/api/v1/onboarding", "/api/v1/workplaces", "/api/v1/employee-import-runs"] },
+  exit_case: { detail: "/api/v1/hr/exit-cases", paths: [...EMPLOYEE_READS, "/api/v1/org-structure", "/api/v1/legal-entities", "/api/v1/workplaces", "/api/v1/employee-import-runs"] },
+  change_request: { paths: ["/api/v1/change-requests", ...EMPLOYEE_READS, "/api/v1/employee-import-runs"] },
   import_run: { paths: [...EMPLOYEE_READS, "/api/v1/employee-import-runs", "/api/v1/org-units", "/api/v1/onboarding"] },
   user: { detail: "/api/v1/users", paths: ["/api/v1/users", "/api/v1/directory", "/api/v1/access", "/api/v1/onboarding"] },
   // A role or its assignment changes who may do what, this user's own grants included.

@@ -30,6 +30,12 @@ async fn accepted_job_is_recovered_and_replay_never_reverses_twice(pool: PgPool)
                 .unwrap();
         assert_eq!(accepted.status, "ROLLBACK_RUNNING");
     }
+    let running = i.f.hr.import_run(i.f.principal.clone(), run).await.unwrap();
+    assert_eq!(running.status, "ROLLBACK_RUNNING");
+    assert!(
+        running.allowed.is_empty(),
+        "running jobs offer no rollback actions"
+    );
     assert_refused(
         &i,
         run,

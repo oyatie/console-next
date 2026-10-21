@@ -30,6 +30,7 @@ export function RollbackPanel({ run, onChanged }: { run: ImportRun; onChanged: (
   const preview = useQuery({
     queryKey: ["/api/v1/employee-import-runs/{run_id}/rollback/preview", { path: { run_id: run.id } }],
     queryFn: () => previewRollback(run.id), enabled: canPreview, retry: false,
+    staleTime: 0, refetchOnMount: "always",
   });
   const pending = run.status === "ROLLBACK_REQUESTED" || run.status === "ROLLBACK_RUNNING" || Boolean(run.rollback.pending_request);
   const closed = run.rollback.refusal_code === "import_rollback_window_closed" || (preview.error instanceof ApiError && preview.error.code === "import_rollback_window_closed");
