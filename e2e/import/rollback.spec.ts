@@ -145,14 +145,22 @@ test("a later correction blocks every inverse row and a forced rollback writes n
   const unrelated = await (await api(`/employee-import-runs/${run}/rollback/preview`, "POST")).json() as { blockers: unknown[] };
   expect(unrelated.blockers, "a later correction of a field this run did not set is preserved").toEqual([]);
   const employee = await (await api(record.replace(/^\/people\//, "/employees/"))).json() as { employee: { id: string; updated_at: string } };
+  const refreshed = admin.waitForResponse(r => r.request().method() === "POST" && new URL(r.url()).pathname === `/api/v1/employee-import-runs/${run}/rollback/preview`);
+  await go(admin, `/people/import?run=${run}`);
+  expect((await refreshed).status()).toBe(200);
+  const panel = rollbackPanel(admin);
+  await panel.getByRole("checkbox").press("Space");
+  await expect(panel.getByRole("button", { name: /^되돌리기(?: 실행)?$/, exact: true })).toBeEnabled();
+  let navigations = 0;
+  admin.on("request", r => { if (r.isNavigationRequest()) navigations += 1; });
   const corrected = await api(`/employees/${employee.employee.id}`, "PATCH", {
     expected_updated_at: employee.employee.updated_at,
     changes: { job: "생산 관리" }, reason_code: "INPUT_ERROR",
   });
   expect(corrected.status()).toBe(200);
-  await go(admin, `/people/import?run=${run}`);
-  const panel = rollbackPanel(admin);
-  await expect(panel.getByRole("alert")).toContainText("아무것도 되돌리지 않았습니다");
+  await expect(panel.getByRole("alert")).toContainText("아무것도 되돌리지 않았습니다", { timeout: 10_000 });
+  await expect(panel.getByRole("checkbox")).toHaveCount(0);
+  expect(navigations).toBe(0);
   const blocker = panel.getByRole("table").getByRole("link", { name: "RB-EDIT", exact: true });
   await expect(blocker).toHaveAttribute("href", record);
   await expect(panel.getByRole("button", { name: /^되돌리기(?: 실행)?$/, exact: true })).toBeDisabled();
@@ -175,7 +183,7 @@ test("OPERATING rollback waits for another holder and reaches done through the l
   // D0.2 excludes an unlinked account without a non-employee exception from second-person eligibility.
   await registerEmployee(admin, { name: "이임원", number: "RB-HOLDER", hired: "2020-03-02", unit: "본점" });
   await admin.getByRole("navigation", { name: "인사카드 탭" }).getByRole("link", { name: "권한", exact: true }).click();
-  await admin.getByRole("combobox", { name: "연결할 계정" }).fill("이임원");
+  await admin.getByRole("combobox", { name: "연결할 계정" }).fill("이임");
   await admin.getByRole("option", { name: /이임원/ }).click();
   await admin.getByRole("button", { name: "계정 연결", exact: true }).click();
   await expect(admin.getByRole("status").filter({ hasText: "이임원 계정을 연결했습니다" })).toBeVisible();

@@ -110,6 +110,20 @@ pub struct Blocker {
     pub since: String,
 }
 
+/// Field changes already explain why this person's rollback is blocked.
+pub fn remove_redundant_changed_since(blockers: &mut Vec<Blocker>) {
+    let field_changes: std::collections::BTreeSet<_> = blockers
+        .iter()
+        .filter(|b| b.kind == BlockerKind::ChangedSince && b.field.is_some())
+        .map(|b| b.employee_id)
+        .collect();
+    blockers.retain(|b| {
+        b.kind != BlockerKind::ChangedSince
+            || b.field.is_some()
+            || !field_changes.contains(&b.employee_id)
+    });
+}
+
 /// Canonical plan order makes the digest independent of SQL result order.
 pub fn preview_digest(
     rows: &[InverseRow],

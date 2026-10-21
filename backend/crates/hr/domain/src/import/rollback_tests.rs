@@ -163,3 +163,37 @@ fn run_state_refusals_do_not_admit_an_unreversible_run() {
     }
     assert_eq!(check_run("APPLIED", true, false), Ok(()));
 }
+
+#[test]
+fn field_blockers_replace_only_the_same_persons_general_change_blocker() {
+    let person = Uuid::from_u128(1);
+    let other_person = Uuid::from_u128(2);
+    let general = Blocker {
+        employee_id: person,
+        employee_number: None,
+        kind: BlockerKind::ChangedSince,
+        field: None,
+        record: format!("/people/{person}"),
+        since: "2026-10-02T00:00:00Z".into(),
+    };
+    let mut job = general.clone();
+    job.field = Some("job".into());
+    let mut position = general.clone();
+    position.field = Some("position".into());
+    let mut other = general.clone();
+    other.employee_id = other_person;
+    let mut blockers = vec![general, job.clone(), position, other];
+    for kind in [
+        BlockerKind::WorkRecord,
+        BlockerKind::LaterRun,
+        BlockerKind::AccountLinked,
+    ] {
+        let mut blocker = job.clone();
+        blocker.kind = kind;
+        blocker.field = None;
+        blockers.push(blocker);
+    }
+    let expected = blockers[1..].to_vec();
+    remove_redundant_changed_since(&mut blockers);
+    assert_eq!(blockers, expected);
+}

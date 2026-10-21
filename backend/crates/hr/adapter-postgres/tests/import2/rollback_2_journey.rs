@@ -73,20 +73,50 @@ async fn rollback_dependency_kinds_block_the_entire_batch(pool: PgPool) {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn rollback_rechecks_a_changed_employee_after_preview(pool: PgPool) {
+    use console_hr_domain::import::rollback::BlockerKind;
+    use console_platform_test_support::soft_passkey::passkey_service;
+    use time::{OffsetDateTime, format_description::well_known::Rfc3339};
     let i = importer(pool).await;
-    let run = applied(&i).await;
+    let (run, employee) = updated_job_run(&i, None).await;
     let preview =
         i.f.hr
             .preview_import_rollback(i.f.principal.clone(), run)
             .await
             .unwrap();
-    sqlx::query(
-        "UPDATE employees SET position='과장',updated_at=clock_timestamp() WHERE org_id=$1",
-    )
-    .bind(i.org())
-    .execute(&i.owner)
-    .await
+    assert!(preview.blockers.is_empty());
+    let version: OffsetDateTime =
+        sqlx::query_scalar("SELECT updated_at FROM employees WHERE org_id=$1 AND id=$2")
+            .bind(i.org())
+            .bind(employee)
+            .fetch_one(&i.owner)
+            .await
+            .unwrap();
+    let correction = serde_json::from_value(serde_json::json!({
+        "expected_updated_at": version.format(&Rfc3339).unwrap(),
+        "changes": {"job": "생산 관리"}, "reason_code": "DATA_ENTRY_ERROR",
+    }))
     .unwrap();
+    i.f.hr
+        .correct_employee(
+            i.f.principal.clone(),
+            &passkey_service(),
+            employee,
+            correction,
+            SOLO,
+        )
+        .await
+        .unwrap();
+    let changed =
+        i.f.hr
+            .preview_import_rollback(i.f.principal.clone(), run)
+            .await
+            .unwrap();
+    assert_eq!(changed.blockers.len(), 1, "{:?}", changed.blockers);
+    let blocker = &changed.blockers[0];
+    assert_eq!(blocker.employee_id, employee);
+    assert_eq!(blocker.kind, BlockerKind::ChangedSince);
+    assert_eq!(blocker.field.as_deref(), Some("job"));
+    assert_ne!(changed.preview_digest, preview.preview_digest);
     assert_refused(
         &i,
         run,

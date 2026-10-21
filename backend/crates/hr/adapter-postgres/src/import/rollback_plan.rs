@@ -282,6 +282,7 @@ pub(super) async fn load(
             });
         }
     }
+    rollback::remove_redundant_changed_since(&mut blockers);
     let digest = rollback::preview_digest(&inverse, &blockers)
         .map_err(|_| HrError::internal("rollback digest"))?;
     Ok(Loaded {
