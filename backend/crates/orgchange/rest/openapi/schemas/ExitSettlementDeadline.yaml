@@ -1,0 +1,29 @@
+type: object
+additionalProperties: false
+required: [kind, opens_on, due_date, due_in_days, deadline_status, instrument, article]
+properties:
+  kind:
+    type: string
+    enum: [FINAL_PAY, SEVERANCE_PAY]
+    description: FINAL_PAY - 금품청산 (final wages, 남은 연차 수당, every 금품). SEVERANCE_PAY - 퇴직금.
+  opens_on:
+    type: [string, 'null']
+    description: YYYY-MM-DD. The 퇴직일 (the day after effective_exit_date), when payment may be made.
+  due_date:
+    type: [string, 'null']
+    description: YYYY-MM-DD from the register's day count after effective_exit_date; null when the register has no
+      row in force (never a guessed date).
+  due_in_days:
+    type: [integer, 'null']
+    format: int64
+    description: Days from today (KST) to due_date; negative once overdue.
+  deadline_status:
+    type: string
+    enum: [RELEASED, HOLD, UNKNOWN]
+    description: HOLD until a qualified reviewer releases the register row; UNKNOWN carries no date.
+  instrument:
+    type: [string, 'null']
+    description: The register row's statute, by its formal name.
+  article:
+    type: [string, 'null']
+    description: The article the deadline rests on.

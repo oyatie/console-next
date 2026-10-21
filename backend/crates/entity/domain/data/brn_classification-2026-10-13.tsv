@@ -1,0 +1,10 @@
+01-79	개인 과세사업자	INDIVIDUAL	true
+80	법인이 아닌 단체 등	ID_NUMBER_ORG,INDIVIDUAL	true
+81	영리법인 본점	CORPORATION	true
+82	비영리법인 본점·지점 및 법인으로 보는 단체	CORPORATION,ID_NUMBER_ORG	true
+83	국가·지방자치단체·조합	ID_NUMBER_ORG	true
+84	외국법인 본점·지점·연락사무소	CORPORATION	true
+85	영리법인 지점	CORPORATION	false
+86-88	영리법인 본점	CORPORATION	true
+89	법인이 아닌 종교단체	ID_NUMBER_ORG	true
+90-99	개인 면세사업자	INDIVIDUAL	true

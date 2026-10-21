@@ -1,0 +1,31 @@
+tags:
+  - employees
+operationId: getEmployeeRegisterFacts
+summary: The 근로자 명부 items HR holds for one employee
+description: >-
+  MR-23. 성별, 주소, 이력 · 경력, 퇴직 사유 and 그 밖에 필요한 사항
+  (근로기준법 §41, 시행령 §20). Org-wide employee_directory_manage (the
+  items are not shown to a directory reader); each read leaves a 접속기록
+  row. null = 미입력. `updated_at` is the employee's version for the
+  PATCH /employees/{id} that corrects them.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The register items.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeRegisterFacts'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

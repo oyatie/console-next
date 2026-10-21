@@ -1,0 +1,49 @@
+tags:
+- access
+operationId: previewAccessGrants
+summary: Preview a batch of grant / revoke / set-end operations and get a single-use receipt
+description: 'One to 200 operations. Each item is checked on its own and returns OK or REFUSED with a code; the
+
+  receipt binds the normalized batch, the caller and the tenant''s access state, and expires after
+
+  10 minutes. Nothing is written except the receipt. A non-ops caller needs 권한 관리 등록·수정
+
+  over each operation''s scope and must already hold every line of the role over that scope.
+
+  '
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/AccessGrantBatchRequest'
+      example:
+        reason_code: PROMOTION_OR_REASSIGNMENT
+        operations:
+        - op: grant
+          account_id: 7c1e2d3a-0000-4000-8000-000000000001
+          role_id: 5b0d9f10-0000-4000-8000-000000000002
+          scope:
+            kind: LEGAL_ENTITY
+            node_id: 1f2e3d4c-0000-4000-8000-000000000003
+            include_descendants: true
+          valid_from: '2026-10-07T00:00:00+09:00'
+          valid_to: '2027-01-01T00:00:00+09:00'
+          effective_in_setup: true
+        - op: revoke
+          grant_id: 9a8b7c6d-0000-4000-8000-000000000004
+responses:
+  '200':
+    description: The preview and its receipt.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessGrantPreview'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'

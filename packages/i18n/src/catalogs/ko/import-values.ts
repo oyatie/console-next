@@ -1,0 +1,25 @@
+// Korean source for `importValues.` ids (features/import/ui/value-table.tsx): 값 연결 — each text in the file and where
+// it goes in the console (spec E7-values).
+export const koImportValues = {
+  "importValues.title": "값 연결 · {kind}",
+  "importValues.counts": "값 {all, number} · 선택할 것 {open, number}",
+  "importValues.col.text": "파일의 값",
+  "importValues.col.rows": "행",
+  "importValues.col.place": "콘솔의 자리",
+  "importValues.col.why": "왜",
+  "importValues.none": "아직 선택하지 않음",
+  "importValues.unplaced": "미배치로 둠",
+  "importValues.empty": "비워 둠",
+  "importValues.near": "“{value}”와 비슷한 이름",
+  "importValues.basis.same_name": "같은 이름 여럿",
+  "importValues.basis.normalized": "띄어쓰기·기호만 다름",
+  "importValues.basis.path": "경로의 끝",
+  "importValues.basis.suffix": "공장·지점 같은 끝말만 다름",
+  "importValues.why.auto": "이름 같음 · 자동",
+  "importValues.why.open": "선택할 것",
+  "importValues.why.blocking": "선택할 것 · 반영 막음",
+  "importValues.why.chosen": "고름",
+  "importValues.why.remembered": "전에 선택한 값",
+  "importValues.basis.registration_number": "등록번호 일치",
+  "importValues.basis.alias": "약칭 후보",
+} as const;

@@ -1,0 +1,30 @@
+type: object
+required:
+- digest
+properties:
+  digest:
+    type: string
+    pattern: ^[a-f0-9]{64}$
+    description: The preview digest the actor confirmed.
+  sole_holder_acknowledged:
+    type: boolean
+    description: 「결재할 다른 사람이 없어 본인이 단독으로 결재하게 됩니다」 confirmed.
+  step_up:
+    type: object
+    required:
+    - ceremony_id
+    - credential
+    properties:
+      ceremony_id:
+        type: string
+        format: uuid
+      credential:
+        type: object
+        description: WebAuthn assertion of the caller's own passkey.
+  line_digests:
+    type: object
+    maxProperties: 128
+    description: Line fingerprints from the confirmed preview; bound to digest for changed-code reporting.
+    additionalProperties:
+      type: string
+      pattern: ^[a-f0-9]{64}$

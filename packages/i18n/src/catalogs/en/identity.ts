@@ -1,0 +1,26 @@
+import type { koIdentity } from "../ko/identity";
+
+export const enIdentity: Partial<Record<keyof typeof koIdentity, string>> = {
+  "identity.title": "Is {name} someone already on file?",
+  "identity.fact": "An import or registration found a record that may be the same person. If they differ, the flag clears; if they are the same, this record merges into the one kept.",
+  "identity.verdict": "Verdict",
+  "identity.verdict.missing": "Choose whether they are different or the same person",
+  "identity.different": "Different people",
+  "identity.different.note": "Clears the review flag. Both records stay",
+  "identity.same": "The same person",
+  "identity.same.note": "Merges this record into the one you pick. It cannot be undone, so it asks for your passkey, and another HR person confirms it when there is one",
+  "identity.keep": "Record to keep",
+  "identity.keep.group": "Employee records",
+  "identity.keep.none": "No other record matches that name or number",
+  "identity.keep.missing": "Choose the record to keep",
+  "identity.keep.placeholder": "the record you pick",
+  "identity.none.consequence": "Choose a verdict to see what changes",
+  "identity.different.consequence": "Clears {name}’s identity review flag. The records do not change; the verdict and reason are kept",
+  "identity.same.consequence": "Merges {name}’s record into {keep}. The merged record is no longer used; this cannot be undone",
+  "identity.different.commit": "Confirm different people",
+  "identity.same.commit": "Confirm with passkey and merge",
+  "identity.passkeyCancelled": "The passkey check was cancelled, so nothing was merged. Press again to be asked again",
+  "identity.receipt.different": "Confirmed as different people.",
+  "identity.receipt.merged": "Merged into the record kept.",
+  "identity.receipt.pending": "The merge waits for another HR person to confirm it.",
+};

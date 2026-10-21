@@ -1,0 +1,26 @@
+type: object
+required: [employee_id, name, void_reason_code, void_mode, voided_by, voided_at]
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  employee_number:
+    type: string
+    nullable: true
+    description: Null once a SETUP delete freed it.
+  name:
+    type: string
+    description: (파기됨) once the personal data is destroyed.
+  void_reason_code:
+    type: string
+  void_mode:
+    type: string
+    enum: [SETUP, GOVERNED, SOLE_HOLDER]
+  voided_by:
+    $ref: '#/components/schemas/Uuid'
+  voided_at:
+    type: string
+    format: date-time
+  pii_destroyed_at:
+    type: string
+    format: date-time
+    nullable: true

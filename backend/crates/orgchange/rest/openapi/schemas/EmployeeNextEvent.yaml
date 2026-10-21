@@ -1,0 +1,11 @@
+type: object
+required: [id, event_type, effective_date]
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  event_type:
+    type: string
+    enum: [TRANSFER, PROMOTE, LEAVE_OF_ABSENCE, RETURN_FROM_LEAVE, CONTRACT_RENEWAL, TERMINATE]
+  effective_date:
+    type: string
+    format: date

@@ -1,0 +1,14 @@
+type: object
+required:
+- kind
+properties:
+  kind:
+    $ref: '#/components/schemas/AccessScopeKind'
+  node_id:
+    description: The 법인, 사업장 or 부서 id. Absent or null for TENANT, required otherwise.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  include_descendants:
+    type: boolean
+    default: true

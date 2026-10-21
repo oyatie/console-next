@@ -1,0 +1,11 @@
+/* ui/path-picker: a search box that reads as the chosen path, with its count and the list opener. Tokens only. */
+.picker { display: flex; flex-direction: column; }
+.box { display: flex; align-items: center; gap: var(--space-2); min-height: calc(var(--target) + var(--space-2)); padding: 0 var(--space-2) 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); }
+.picker[data-chosen] .box { border-color: var(--ok-solid); }
+.picker[data-invalid] .box { border-color: var(--danger-solid); }
+.box:focus-within { box-shadow: var(--focus); }
+.icon { display: inline-flex; flex: none; color: var(--steel); }
+.input { flex: 1; min-width: 0; height: var(--target); border: 0; background: transparent; color: var(--ink); font: inherit; font-size: var(--text-body); outline: none; }
+.count { flex: none; font-size: var(--text-xs); color: var(--steel); font-variant-numeric: tabular-nums; }
+.button { display: inline-grid; place-items: center; width: var(--target); height: var(--target); border: 0; background: transparent; color: var(--steel); cursor: pointer; }
+.empty { margin: 0; padding: var(--space-2) var(--space-3); font-size: var(--text-sm); color: var(--steel); }

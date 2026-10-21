@@ -1,0 +1,45 @@
+type: object
+properties:
+  feature:
+    type: string
+    description: Feature key, matching `/api/v1/policy/features`.
+  permission:
+    type: string
+    description: Effective permission level (`deny` is never emitted).
+    enum:
+    - request_only
+    - limited
+    - allow
+  branch_scope:
+    allOf:
+    - $ref: '#/components/schemas/BranchScope'
+    description: >-
+      The branch subset this `permission` level actually holds over —
+      not necessarily the caller's full `branch_scope`. A
+      branch-narrowed custom grant only elevates the capability within
+      its own branches; the caller must intersect this with the target
+      branch before offering the affordance (otherwise the UI can offer
+      an action the server's `authorize` call would then reject outside
+      this scope).
+  org_wide:
+    type: boolean
+    description: >-
+      Whether the caller passes the server's org-wide gate for this feature
+      at `allow` (all-branch scope, held by SUPER_ADMIN/EXECUTIVE or an
+      org-wide custom grant). Screens that act on the whole organization with
+      no branch in the request, such as period locks, must gate on this flag;
+      `branch_scope` only says where per-branch actions hold.
+  scoped:
+    type: boolean
+    description: >-
+      AX-5: whether the caller holds this feature over part of the tenant
+      through its access grants, so the per-resource doors admit it inside
+      that scope (the server decides per person). Doors that stay whole-tenant
+      refuse such a holder with `scope_tenant_wide_only`; gate those on
+      `org_wide`.
+required:
+- feature
+- scoped
+- permission
+- branch_scope
+- org_wide

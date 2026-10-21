@@ -1,0 +1,41 @@
+tags:
+- entity
+operationId: workplaceClosePlan
+summary: What closing a 사업장 must plan for, and its open (or last) close job
+description: 'UX-R2 ENDS. Everyone not EXITED who is placed at the 사업장 or bound to its own unit or a 부서 under it, the active 부서 under it (parents first), the open exit cases of those people, and the newest close job. Needs the HR manage door (the list names people).'
+security:
+- bearerAuth: []
+parameters:
+- name: workplaceId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+responses:
+  '200':
+    description: 'The plan''s inputs.'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/WorkplaceClosePlanView'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: 'Not permitted (HR manage door).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: 'Not found in this tenant (`workplace_not_found`).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: '`workplace_voided`.'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

@@ -1,0 +1,3 @@
+type: string
+enum: [WEEKLY, ROTATION, STAGGERED, FLEXIBLE, SELECTIVE, DEEMED, DISCRETIONARY]
+description: FLEXIBLE (탄력), SELECTIVE (선택), DEEMED (간주) and DISCRETIONARY (재량) are refused with regime_not_supported_yet until their agreement records exist.

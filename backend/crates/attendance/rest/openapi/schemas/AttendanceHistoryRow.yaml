@@ -1,0 +1,3 @@
+type: object
+required: [date, entry]
+properties: { date: { type: string, format: date }, entry: { $ref: '#/components/schemas/AttendanceEntry' } }

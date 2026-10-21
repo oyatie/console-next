@@ -1,0 +1,33 @@
+[package]
+name = "console-onboarding-rest"
+version = "0.1.0"
+description = "REST face for the tenant setup phase: setup rail, go-live preview and 운영 시작, terms, step choices."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+console-contracts = { path = "../../contracts" }
+axum.workspace = true
+console-kernel-core.workspace = true
+console-onboarding-adapter-postgres.workspace = true
+console-onboarding-domain.workspace = true
+console-platform-auth = { path = "../../platform/auth" }
+console-platform-authz.workspace = true
+console-platform-request-context.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+console-platform-test-support.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+time.workspace = true
+p256 = { workspace = true, features = ["ecdsa", "pkcs8", "pem"] }
+tower = { workspace = true, features = ["util"] }
+
+[lints]
+workspace = true

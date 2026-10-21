@@ -1,0 +1,22 @@
+[package]
+name = "console-settings-application"
+version = "0.1.0"
+description = "Settings registry use cases (BW-00): change a setting over a store port. No IO."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+console-kernel-core.workspace = true
+console-settings-domain = { path = "../domain" }
+serde.workspace = true
+serde_json.workspace = true
+time.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,3 @@
+type: object
+required: [scope_kind, scope_id]
+properties: { scope_kind: { $ref: '#/components/schemas/AttendanceScopeKind' }, scope_id: { $ref: '#/components/schemas/Uuid' }, rotation_start: { type: string, format: date }, start_choice: { type: integer, minimum: 0, maximum: 1439 } }

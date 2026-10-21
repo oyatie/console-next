@@ -1,0 +1,10 @@
+tags: [attendance]
+operationId: listAttendancePatterns
+summary: 근무 유형 with how many people each one governs today
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: include_retired, in: query, required: false, schema: { type: boolean } }
+responses:
+  '200': { description: Patterns, content: { application/json: { schema: { $ref: '#/components/schemas/AttendancePatternList' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }

@@ -1,0 +1,231 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+# Continuous delivery (console-infra docs/adr-0003-cd-actions-keyless.md).
+# INERT until the owner's D-07: nothing runs unless the repository variable
+# CD_ENABLED is 'true' (a missing variable is off), and the host accepts keyless
+# signatures only once console-infra host/agent/verify.env pins this file's
+# identity (a config release).
+# Assumes the Phase 2 monorepo: this repo is both build contexts (backend/ and the
+# web workspaces) and `dev` is the one trunk.
+# Every push to dev that passes every gate rolls out, with no approval step:
+#   build linux/arm64 -> api-compat (N-1 OpenAPI) -> sbom -> scan -> smoke -> sign-candidate -> rehearse -> sign (keyless:
+#   GitHub OIDC -> Fulcio, logged in Rekor) -> provenance -> release (signed
+#   desired.json) -> the host agent's blue/green canary (5 -> 25 -> 50 -> 100 %,
+#   rollback on an SLO breach) -> verify. The steps are console-infra's `just`
+#   targets in the pinned toolbox, the same ones a laptop runs, at the console-infra
+#   commit in vars.CONSOLE_INFRA_REF (a full sha; build.json and the gates
+#   predicate record it as inputs.infra).
+# The host trusts exactly this file on refs/heads/dev (console-infra
+# host/agent/verify.env): renaming it or the repo needs a config release first.
+# Owner switches: "Run workflow" (dev only) freezes the host, holds/promotes/aborts
+# a canary or rolls back; unfreeze is the operator's (`just unfreeze`, key-signed:
+# the host refuses it from CI). Failures and cancels e-mail the ONS ticket topic;
+# an automatic rollback reaches it through the host's DeployFailed alert.
+# Secrets (environment `production`): CONSOLE_OCIR_PREFIX, CONSOLE_OCIR_USER
+# (<ns>/console-cd-push), OCIR_PUSH_TOKEN (its auth token), OCI_CONFIG + OCI_API_KEY
+# (console-ci-deploy), CONSOLE_PUBLIC_URL, ONS_TOPIC_ID, CONSOLE_INFRA_DEPLOY_KEY, and for
+# the egress allow-list CONSOLE_OCIR_HOST (<region>.ocir.io) and CONSOLE_PUBLIC_HOST;
+# the switches pull as console-ci-pull (CONSOLE_OCIR_PULL_USER, OCIR_CI_PULL_TOKEN).
+# Egress is blocked to the allow-list below (CD-7). On the first enabled run, a
+# step that fails on a blocked endpoint is named in harden-runner's insights: add
+# it here. The OIDC token reaches the toolbox only for the signing targets
+# (console-infra scripts/tb).
+name: cd
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Owner switch
+        required: true
+        type: choice
+        options: [freeze, canary-hold, canary-promote, canary-abort, rollback]
+permissions: {}
+env:
+  OCI_CLI_AUTH: api_key
+  COSIGN_KEYLESS: "1"
+  GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  BACKEND_TRUNK: dev
+  WEB_TRUNK: dev
+
+jobs:
+  rollout:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && vars.CD_ENABLED == 'true'
+    runs-on: ubuntu-24.04-arm
+    environment: production
+    timeout-minutes: 240
+    # One rollout at a time; a newer push waits (only the newest waiting one runs).
+    # The owner switches (control) are never in this group: a freeze or an abort
+    # must not queue behind the rollout it is meant to stop.
+    concurrency:
+      group: cd-rollout
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write # Fulcio certificate (cosign) and the provenance attestation
+      attestations: write
+    env:
+      CONSOLE_OCIR_PREFIX: ${{ secrets.CONSOLE_OCIR_PREFIX }}
+      CONSOLE_OCIR_USER: ${{ secrets.CONSOLE_OCIR_USER }}
+      CONSOLE_PUBLIC_URL: ${{ secrets.CONSOLE_PUBLIC_URL }}
+      OCIR_PUSH_TOKEN: ${{ secrets.OCIR_PUSH_TOKEN }}
+    steps:
+      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+        with:
+          egress-policy: block
+          # GitHub (checkout, OIDC, attestations), the registries and package
+          # mirrors the build reads (versions.json, images/*.Dockerfile: Docker Hub,
+          # mcr.microsoft.com for smoke's Playwright, gcr.io distroless, quay.io), Sigstore,
+          # OCI (OCIR, Object Storage, ONS) and the public site (verify).
+          allowed-endpoints: >
+            github.com:443 api.github.com:443 codeload.github.com:443
+            objects.githubusercontent.com:443 pkg-containers.githubusercontent.com:443
+            token.actions.githubusercontent.com:443 pipelines.actions.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443 ghcr.io:443
+            registry-1.docker.io:443 auth.docker.io:443 production.cloudflare.docker.com:443
+            mcr.microsoft.com:443 *.data.mcr.microsoft.com:443 gcr.io:443 storage.googleapis.com:443
+            quay.io:443 cdn01.quay.io:443 release-assets.githubusercontent.com:443
+            snapshot.debian.org:443 deb.debian.org:443 static.rust-lang.org:443
+            index.crates.io:443 static.crates.io:443 registry.npmjs.org:443
+            grype.anchore.io:443 toolbox-data.anchore.io:443
+            fulcio.sigstore.dev:443 rekor.sigstore.dev:443 tuf-repo-cdn.sigstore.dev:443
+            ${{ secrets.CONSOLE_OCIR_HOST }}:443 objectstorage.ap-chuncheon-1.oraclecloud.com:443
+            notification.ap-chuncheon-1.oraclecloud.com:443 cell-1.notification.ap-chuncheon-1.oci.oraclecloud.com:443
+            ${{ secrets.CONSOLE_PUBLIC_HOST }}:443
+      - name: console-infra ref is a full sha (CD-5)
+        env:
+          REF: ${{ vars.CONSOLE_INFRA_REF }}
+        run: '[[ "${REF}" =~ ^[0-9a-f]{40}$ ]] || { echo "vars.CONSOLE_INFRA_REF must be a 40-hex console-infra commit" >&2; exit 1; }'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: app
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ vars.CONSOLE_INFRA_REPOSITORY }}
+          ref: ${{ vars.CONSOLE_INFRA_REF }}
+          ssh-key: ${{ secrets.CONSOLE_INFRA_DEPLOY_KEY }}
+          path: infra
+          persist-credentials: false
+      - name: Credentials (toolbox mount, OCIR login)
+        working-directory: infra
+        env:
+          BACKEND_REPO: ${{ github.workspace }}/app
+          WEB_REPO: ${{ github.workspace }}/app
+          OCI_CONFIG: ${{ secrets.OCI_CONFIG }}
+          OCI_API_KEY: ${{ secrets.OCI_API_KEY }}
+        run: .github/ci-creds.sh
+      - name: tools-check
+        working-directory: infra
+        run: scripts/tb tools-check
+      - name: candidate (linux/arm64, native)
+        working-directory: infra
+        run: scripts/tb candidate "${GITHUB_SHA}" "${GITHUB_SHA}"
+      - name: api-compat (N-1 OpenAPI, B-11)
+        working-directory: infra
+        run: scripts/tb api-compat
+      - name: sbom
+        working-directory: infra
+        run: scripts/tb sbom
+      - name: scan
+        working-directory: infra
+        run: scripts/tb scan
+      - name: smoke
+        working-directory: infra
+        run: scripts/tb smoke
+      - name: sign-candidate (attestation only; the host rehearses nothing else)
+        working-directory: infra
+        run: scripts/tb sign-candidate
+      - name: rehearse
+        working-directory: infra
+        run: scripts/tb rehearse
+      - name: sign
+        id: sign
+        working-directory: infra
+        run: |
+          scripts/tb sign
+          image="$(jq -r .image "out/$(cat out/LATEST)/build.json")"
+          echo "digest=${image#*@}" >>"${GITHUB_OUTPUT}"
+          echo "image=${image}" >>"${GITHUB_ENV}"
+      - name: provenance (SLSA, Sigstore, GitHub attestation store)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: console-app # not the registry path: region and namespace stay out of the public store
+          subject-digest: ${{ steps.sign.outputs.digest }}
+      - name: release (signed desired.json; the host agent starts the canary)
+        working-directory: infra
+        env:
+          APPROVER: "cd: automatic after every gate, run ${{ github.run_id }}"
+        run: scripts/tb release "${image}"
+      - name: verify (deploy record, edge, watch window)
+        working-directory: infra
+        run: scripts/tb verify "${image}"
+      - name: Notify the owner (ONS)
+        if: failure() || cancelled()
+        working-directory: infra
+        env:
+          ONS_TOPIC_ID: ${{ secrets.ONS_TOPIC_ID }}
+          STATUS: ${{ job.status }}
+        run: |
+          scripts/tb notify "console CD ${STATUS} on ${GITHUB_SHA:0:12}" "A gate, the release or the verify step failed, or the run was cancelled or timed out. Nothing after the last finished step was published."
+
+  control:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && vars.CD_ENABLED == 'true'
+    runs-on: ubuntu-24.04-arm
+    environment: production
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # desired.json is signed with this workflow's identity
+    env:
+      CONSOLE_OCIR_PREFIX: ${{ secrets.CONSOLE_OCIR_PREFIX }}
+      # Pull-only: the switches pull the toolbox and verify signatures, never push.
+      CONSOLE_OCIR_USER: ${{ secrets.CONSOLE_OCIR_PULL_USER }}
+      OCIR_PULL_TOKEN: ${{ secrets.OCIR_CI_PULL_TOKEN }}
+      ACTION: ${{ inputs.action }}
+    steps:
+      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443 api.github.com:443 codeload.github.com:443
+            token.actions.githubusercontent.com:443 pipelines.actions.githubusercontent.com:443
+            fulcio.sigstore.dev:443 rekor.sigstore.dev:443 tuf-repo-cdn.sigstore.dev:443
+            ${{ secrets.CONSOLE_OCIR_HOST }}:443 objectstorage.ap-chuncheon-1.oraclecloud.com:443
+            notification.ap-chuncheon-1.oraclecloud.com:443 cell-1.notification.ap-chuncheon-1.oci.oraclecloud.com:443
+      - name: console-infra ref is a full sha (CD-5)
+        env:
+          REF: ${{ vars.CONSOLE_INFRA_REF }}
+        run: '[[ "${REF}" =~ ^[0-9a-f]{40}$ ]] || { echo "vars.CONSOLE_INFRA_REF must be a 40-hex console-infra commit" >&2; exit 1; }'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ vars.CONSOLE_INFRA_REPOSITORY }}
+          ref: ${{ vars.CONSOLE_INFRA_REF }}
+          ssh-key: ${{ secrets.CONSOLE_INFRA_DEPLOY_KEY }}
+          path: infra
+          persist-credentials: false
+      - name: Credentials
+        working-directory: infra
+        env:
+          OCI_CONFIG: ${{ secrets.OCI_CONFIG }}
+          OCI_API_KEY: ${{ secrets.OCI_API_KEY }}
+        run: .github/ci-creds.sh
+      - name: Switch
+        working-directory: infra
+        env:
+          APPROVER: "cd: ${{ github.triggering_actor }} via workflow_dispatch, run ${{ github.run_id }}"
+        run: |
+          case "${ACTION}" in
+            freeze) scripts/tb freeze ;;
+            canary-hold | canary-promote | canary-abort) scripts/tb "${ACTION}" ;;
+            rollback) scripts/tb rollback ;;
+            *) echo "unknown action ${ACTION}" >&2; exit 1 ;;
+          esac
+      - name: Notify the owner (ONS)
+        if: always()
+        working-directory: infra
+        env:
+          ONS_TOPIC_ID: ${{ secrets.ONS_TOPIC_ID }}
+          STATUS: ${{ job.status }}
+        run: |
+          scripts/tb notify "console CD ${ACTION} ${STATUS}" "Run ${GITHUB_RUN_URL}."

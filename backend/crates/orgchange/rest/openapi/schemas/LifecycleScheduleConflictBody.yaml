@@ -1,0 +1,41 @@
+type: object
+required: [error]
+properties:
+  error:
+    type: object
+    required: [code, message]
+    properties:
+      code:
+        type: string
+        description: >-
+          lifecycle_schedule_conflict when the change would make the employee's later SCHEDULED events fail on
+          their dates (error.refusals names each; nothing was recorded); otherwise the usual 409 codes
+          (invalid_transition, conflict, lifecycle_scheduled_state when the event meets the employee in a status
+          an earlier SCHEDULED event causes, e.g. EXITED by a scheduled exit).
+      message:
+        type: string
+      refusals:
+        type: array
+        description: Present with lifecycle_schedule_conflict; one entry per SCHEDULED event that would no longer
+          apply. Cancel or change those first.
+        items:
+          type: object
+          required: [lifecycle_event_id, event_type, effective_date, code, message]
+          properties:
+            lifecycle_event_id:
+              $ref: '#/components/schemas/Uuid'
+            event_type:
+              type: string
+            effective_date:
+              type: string
+              format: date
+            code:
+              type: string
+              description: >-
+                The refusal that event would meet on its date, e.g. invalid_transition, lifecycle_noop. Stable;
+                branch on this, not on message.
+            message:
+              type: string
+              description: >-
+                Human-readable reason, localized exactly like error.message (Korean when the request prefers
+                `Accept-Language: ko`).

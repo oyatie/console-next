@@ -1,0 +1,11 @@
+tags: [attendance]
+operationId: listAttendanceCrews
+summary: 근무조 of the caller's 사업장 with members on a date
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: workplace_id, in: query, required: false, schema: { $ref: '#/components/schemas/Uuid' } }
+  - { name: date, in: query, required: false, schema: { type: string, format: date } }
+responses:
+  '200': { description: Crews, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceCrewList' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }

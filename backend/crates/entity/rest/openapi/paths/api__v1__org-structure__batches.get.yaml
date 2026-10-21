@@ -1,0 +1,22 @@
+tags:
+- entity
+operationId: listOrgSetupBatches
+summary: Recent setup 부서 batches and undos (설정 단계 기록), newest first
+description: The latest 200. undoable is true for an APPLY not yet undone while the tenant is in SETUP.
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: The batches.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgSetupBatchList'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

@@ -1,0 +1,5 @@
+/* ui/band: a full-bleed strip's surface and its separating rule. Layout belongs to the caller. Tokens only. */
+.band { background: var(--surface); }
+.band[data-tone="canvas"] { background: var(--canvas); }
+.band[data-edge="bottom"] { border-bottom: 1px solid var(--border); }
+.band[data-edge="top"] { border-top: 1px solid var(--border); }

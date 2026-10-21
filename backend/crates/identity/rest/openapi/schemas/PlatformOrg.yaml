@@ -1,0 +1,45 @@
+type: object
+required:
+- id
+- slug
+- name
+- status
+- group_id
+- group_slug
+- group_name
+- created_at
+- updated_at
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  slug:
+    type: string
+  domain_aliases:
+    type: array
+    items:
+      type: string
+    description: Permanently reserved previous company domains, searchable after sign-in expires.
+  pending_domain:
+    type: [string, 'null']
+    description: Requested domain from tenant ops, awaiting operator fulfilment.
+  name:
+    type: string
+  status:
+    $ref: '#/components/schemas/PlatformOrgStatus'
+  group_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  group_slug:
+    type:
+    - string
+    - 'null'
+  group_name:
+    type:
+    - string
+    - 'null'
+  created_at:
+    $ref: '#/components/schemas/Timestamp'
+  updated_at:
+    $ref: '#/components/schemas/Timestamp'

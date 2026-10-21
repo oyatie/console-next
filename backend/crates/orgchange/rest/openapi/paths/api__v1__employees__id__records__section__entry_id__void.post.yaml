@@ -1,0 +1,66 @@
+tags:
+  - employees
+operationId: voidEmployeeRecord
+summary: Void a 인사카드 이력 entry
+description: Appends a VOID revision with the required reason; the entry leaves the 인사카드 and keeps its history.
+  Works while the section is switched off, so collected data can still be retired. Voiding a voided entry
+  answers it unchanged. Idempotency-Key as for create. Audited as employee.record.void.
+  403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: section
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/PersonRecordSectionSegment'
+- name: entry_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [expected_version, reason]
+        properties:
+          expected_version:
+            type: integer
+            format: int64
+            minimum: 1
+          reason:
+            type: string
+            minLength: 1
+            maxLength: 500
+responses:
+  '200':
+    description: The voided entry.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PersonRecordEntry'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

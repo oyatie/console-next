@@ -1,0 +1,65 @@
+tags:
+- entity
+operationId: correctLegalEntityClose
+summary: Correct a closed 법인's 종료일 or 종료 사유 (catalog company-19)
+description: 'A closed 법인 is read-only except this correction. The 종료일 and 종료 사유 become the given ones and the
+  사업장 and 사업자등록 that closed with it move to the same date (a CLOSED revision each). It never reopens anything;
+  `why` is kept in the audit row. Refused 409 `legal_entity_not_closed` for an open 법인, 409 `record_in_use` when an
+  earlier date would cut through someone still placed (remedy `move_people_first`), 422 `close_unchanged` (field
+  closed_on) when nothing changes.'
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: entityId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CloseCorrectionRequest'
+responses:
+  '200':
+    description: Corrected; the 법인 as it now reads.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SavedLegalEntity'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Refused with a stable code and a remedy (legal_entity_not_closed, record_in_use).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}] (closed_on date_in_future / close_unchanged, reason_code, why required).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

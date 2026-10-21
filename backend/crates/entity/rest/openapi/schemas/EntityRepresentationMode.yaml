@@ -1,0 +1,6 @@
+type: string
+enum:
+- SINGLE
+- SEVERAL
+- JOINT
+description: 단독 · 각자대표 · 공동대표 (상법 §389②).

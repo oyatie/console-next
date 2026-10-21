@@ -1,0 +1,5 @@
+type: object
+description: Without revision the entity's name stays; with it, the registration's 상호 becomes the name by that dated 정정 (its name must be the review's registration_name).
+properties:
+  revision:
+    $ref: '#/components/schemas/LegalEntityRevisionRequest'

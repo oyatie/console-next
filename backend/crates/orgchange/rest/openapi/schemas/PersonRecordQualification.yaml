@@ -1,0 +1,26 @@
+type: object
+additionalProperties: false
+description: 자격·면허. number is never a 운전면허번호 (고유식별정보); a DRIVER_LICENSE entry has no number.
+required: [name, kind]
+properties:
+  name:
+    type: string
+    maxLength: 100
+  kind:
+    type: string
+    enum: [NATIONAL_TECHNICAL, NATIONAL_PROFESSIONAL, PRIVATE, DRIVER_LICENSE, FOREIGN, OTHER]
+  grade:
+    type: [string, 'null']
+    maxLength: 50
+  issuer:
+    type: [string, 'null']
+    maxLength: 100
+  number:
+    type: [string, 'null']
+    maxLength: 50
+  acquired_on:
+    type: [string, 'null']
+    format: date
+  expires_on:
+    type: [string, 'null']
+    format: date

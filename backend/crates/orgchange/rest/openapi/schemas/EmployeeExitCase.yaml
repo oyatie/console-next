@@ -1,0 +1,117 @@
+type: object
+description: Optional fields are omitted (not null) when absent, except the `*_name` actor display names, which are
+  always present and null when the actor is unset or unknown. exit_reason_code (BE-EMP-UI) is the report's 퇴직
+  사유, omitted when none was given.
+required:
+- id
+- employee_id
+- employee_name
+- company
+- status
+- effective_exit_date
+- site_manager_note
+- reported_by
+- reported_by_name
+- hr_confirmed_by_name
+- hq_confirmed_by_name
+- approval_submitted_by_name
+- closed_by_name
+- reported_at
+- exit_lifecycle_event_id
+- exit_event_state
+- next_actions
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  employee_name:
+    type: string
+  employee_number:
+    type: string
+  company:
+    type: string
+  org_unit:
+    type: string
+  worksite_name:
+    type: string
+  branch_id:
+    $ref: '#/components/schemas/Uuid'
+  branch_name:
+    type: string
+  absence_alert_id:
+    $ref: '#/components/schemas/Uuid'
+  status:
+    $ref: '#/components/schemas/EmployeeExitCaseStatus'
+  effective_exit_date:
+    type: string
+    description: YYYY-MM-DD
+  site_manager_note:
+    type: string
+  exit_reason_code:
+    type: string
+    description: BE-EMP-UI. The report's 퇴직 사유 (BW-07 exit_reason code); omitted when none was given.
+  reported_by:
+    $ref: '#/components/schemas/Uuid'
+  reported_by_name:
+    type: [string, 'null']
+    description: Display name of `reported_by`, resolved server-side within the tenant; null when unset or unknown.
+  reported_at:
+    $ref: '#/components/schemas/Timestamp'
+  hr_confirmed_by:
+    $ref: '#/components/schemas/Uuid'
+  hr_confirmed_by_name:
+    type: [string, 'null']
+    description: Display name of `hr_confirmed_by`, resolved server-side within the tenant; null when unset or unknown.
+  hr_confirmed_at:
+    $ref: '#/components/schemas/Timestamp'
+  hq_confirmed_by:
+    $ref: '#/components/schemas/Uuid'
+  hq_confirmed_by_name:
+    type: [string, 'null']
+    description: Display name of `hq_confirmed_by`, resolved server-side within the tenant; null when unset or unknown.
+  hq_confirmed_at:
+    $ref: '#/components/schemas/Timestamp'
+  approval_submitted_by:
+    $ref: '#/components/schemas/Uuid'
+  approval_submitted_by_name:
+    type: [string, 'null']
+    description: Display name of `approval_submitted_by`, resolved server-side within the tenant; null when unset or unknown.
+  approval_submitted_at:
+    $ref: '#/components/schemas/Timestamp'
+  closed_by:
+    $ref: '#/components/schemas/Uuid'
+  closed_by_name:
+    type: [string, 'null']
+    description: Display name of `closed_by`, resolved server-side within the tenant; null when unset or unknown.
+  closed_at:
+    $ref: '#/components/schemas/Timestamp'
+  closed_reason:
+    type: string
+    description: Present on REJECTED/CANCELLED cases.
+  settlement_package:
+    $ref: '#/components/schemas/EmployeeExitSettlementPackage'
+  exit_lifecycle_event_id:
+    description: The TERMINATE lifecycle event the HR confirmation recorded; null before HR confirmation (or when the
+      employee was already EXITED by import). For a case a 전적 opened (exit_reason_code GROUP_TRANSFER), the
+      GROUP_TRANSFER event; such a case starts HR_CONFIRMED, offers no cancel_exit or reject_exit (409
+      exit_case_follows_group_transfer), and is cancelled with the 전적 when it is withdrawn, replaced or rescinded.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  exit_event_state:
+    type: [string, 'null']
+    enum: [SCHEDULED, APPLIED, APPLY_FAILED, CANCELLED, null]
+    description: That event's state. SCHEDULED while an exit confirmed ahead of its effective_exit_date waits for the
+      date (퇴사 예정); APPLIED once the employee is EXITED; APPLY_FAILED when it could not apply on the date (see the
+      lifecycle event's failure_code); CANCELLED when the case was rejected or cancelled before the date.
+  next_actions:
+    type: array
+    items:
+      $ref: '#/components/schemas/ExitCaseNextAction'
+  settlement_deadlines:
+    type: array
+    description: GET /api/v1/hr/exit-cases/{id} only. What the leaving employer settles and by when, from the
+      statutory register (근로기준법 §36 금품청산, 근로자퇴직급여 보장법 §9 퇴직금).
+    items:
+      $ref: '#/components/schemas/ExitSettlementDeadline'

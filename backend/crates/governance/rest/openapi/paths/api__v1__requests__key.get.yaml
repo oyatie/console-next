@@ -1,0 +1,18 @@
+tags: [audit]
+operationId: getCommandOutcome
+summary: Read a command by operation ID or original key
+security: [{bearerAuth: []}]
+parameters:
+- in: path
+  name: key
+  required: true
+  schema: {type: string, minLength: 16, maxLength: 200}
+responses:
+  '200':
+    description: Authorized, currently masked command outcome
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/CommandOutcome'}
+  '401': {$ref: '#/components/responses/Unauthorized'}
+  '404': {$ref: '#/components/responses/NotFound'}
+  '422': {$ref: '#/components/responses/ValidationError'}

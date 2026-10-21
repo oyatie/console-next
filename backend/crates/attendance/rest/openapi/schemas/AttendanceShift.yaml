@@ -1,0 +1,3 @@
+type: object
+required: [start, end, breaks]
+properties: { start: { type: integer, minimum: 0, maximum: 1439 }, end: { type: integer, minimum: 1, maximum: 2880, description: past 1440 = the next day }, breaks: { type: array, maxItems: 4, items: { $ref: '#/components/schemas/AttendanceWindow' } }, minutes: { type: integer, readOnly: true, description: scheduled work minutes (span minus breaks) }, night_minutes: { type: integer, readOnly: true, description: minutes between 22:00 and 06:00 } }

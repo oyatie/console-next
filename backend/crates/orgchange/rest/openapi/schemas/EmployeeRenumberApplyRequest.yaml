@@ -1,0 +1,9 @@
+type: object
+additionalProperties: false
+required: [request, preview_digest]
+properties:
+  request:
+    $ref: '#/components/schemas/EmployeeRenumberRequest'
+  preview_digest:
+    type: string
+    pattern: ^[0-9a-f]{64}$

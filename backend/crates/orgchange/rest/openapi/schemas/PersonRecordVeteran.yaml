@@ -1,0 +1,13 @@
+type: object
+additionalProperties: false
+description: 보훈 (restricted). Whether the employee is the 국가유공자 (SELF) or a family member.
+required: [target, basis]
+properties:
+  target:
+    type: string
+    enum: [SELF, FAMILY]
+  recognised_on:
+    type: [string, 'null']
+    format: date
+  basis:
+    $ref: '#/components/schemas/PersonRecordBasis'

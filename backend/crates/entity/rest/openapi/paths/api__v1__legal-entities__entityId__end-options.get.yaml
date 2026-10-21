@@ -1,0 +1,36 @@
+tags:
+- entity
+operationId: legalEntityEndOptions
+summary: Whether a 법인 is deleted (never used) or closed (폐업), and why not the other
+description: CRUD. During setup the delete is the setup undo (record_in_use while anyone is placed); after 운영 시작 only for a
+  법인 nothing ever used (record_has_history, record_has_units). can_manage is legal_entity_manage.
+security:
+- bearerAuth: []
+parameters:
+- name: entityId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+responses:
+  '200':
+    description: The two ways and the reason each is or is not offered.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/RecordEndOptions'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

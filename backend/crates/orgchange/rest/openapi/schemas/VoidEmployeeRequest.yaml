@@ -1,0 +1,22 @@
+type: object
+additionalProperties: false
+required: [expected_updated_at, reason_code]
+properties:
+  expected_updated_at:
+    type: string
+    format: date-time
+  reason_code:
+    type: string
+    minLength: 1
+    maxLength: 100
+  note:
+    type: string
+    maxLength: 1000
+  attest_never_worked:
+    type: boolean
+    default: false
+    description: 「근무한 적 없음」; required unless the person is PRE_HIRE.
+  step_up:
+    description: A sole holder's EXCEPTION_DECIDE passkey step-up envelope.
+    allOf:
+    - $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'

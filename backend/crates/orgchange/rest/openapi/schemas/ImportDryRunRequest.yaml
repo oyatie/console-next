@@ -1,0 +1,5 @@
+type: object
+additionalProperties: false
+properties:
+  decisions:
+    $ref: '#/components/schemas/EmployeeImportDecisions'

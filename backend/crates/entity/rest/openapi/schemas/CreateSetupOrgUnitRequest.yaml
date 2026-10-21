@@ -1,0 +1,27 @@
+type: object
+description: One of workplace_id or parent_org_unit_id.
+required:
+- name
+properties:
+  name:
+    type: string
+    maxLength: 120
+  kind:
+    type: string
+    deprecated: true
+    description: Retired (decision 18, one 부서 kind); accepted and ignored.
+    enum:
+    - DEPARTMENT
+    - TEAM
+  workplace_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+    description: The 사업장 the 부서 sits in directly.
+  parent_org_unit_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+    description: The 부서 (or 사업장 unit) it sits under.

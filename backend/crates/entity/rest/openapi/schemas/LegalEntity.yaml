@@ -1,0 +1,89 @@
+type: object
+required:
+- id
+- needs_confirmation
+- identity_locked
+- founding
+- can_manage
+- head_office_has_no_workplace
+- scheduled
+- registrations
+- workplaces
+- regular_workers
+properties:
+  identity_problems:
+    type: array
+    items: { $ref: '#/components/schemas/EntityFieldWarning' }
+    description: "Typed identity problems, computed on read: legal_name_unconfirmed, legal_name_not_hangul, legal_name_is_person, display_name_is_person, english_name_is_person, primary_registration_classification, legal_name_review."
+  name_reviews:
+    type: array
+    description: Open one-time reviews (personal readers only) - a registration 상호 that differed from the name when it became single-source.
+    items: { $ref: '#/components/schemas/LegalEntityNameReview' }
+  id:
+    type: string
+    format: uuid
+  biz_kind:
+    anyOf:
+    - $ref: '#/components/schemas/EntityBizKind'
+    - type: 'null'
+  crn:
+    anyOf:
+    - $ref: '#/components/schemas/FormattedValue'
+    - type: 'null'
+  needs_confirmation:
+    type: boolean
+  identity_locked:
+    type: boolean
+  founding:
+    description: 설립 중 — recorded before its 설립등기 (no 법인등록번호 yet); ends when the number is entered.
+    type: boolean
+  can_manage:
+    description: Whether this reader may manage the 법인 itself (Cedar legal_entity_manage within their scope).
+    type: boolean
+  closed_on:
+    type:
+    - string
+    - 'null'
+    format: date
+  close_reason_code:
+    anyOf:
+    - $ref: '#/components/schemas/EntityCloseReason'
+    - type: 'null'
+  primary_workplace_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  head_office_workplace_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  head_office_has_no_workplace:
+    type: boolean
+  current:
+    anyOf:
+    - $ref: '#/components/schemas/LegalEntityState'
+    - type: 'null'
+  scheduled:
+    type: array
+    items:
+      $ref: '#/components/schemas/LegalEntityState'
+  registrations:
+    type: array
+    items:
+      $ref: '#/components/schemas/BusinessRegistration'
+  workplaces:
+    type: array
+    items:
+      $ref: '#/components/schemas/Workplace'
+  regular_workers:
+    $ref: '#/components/schemas/RegularWorkers'
+  as_of:
+    type: string
+    format: date
+  known_at:
+    type: string
+    nullable: true
+  read_only:
+    type: boolean

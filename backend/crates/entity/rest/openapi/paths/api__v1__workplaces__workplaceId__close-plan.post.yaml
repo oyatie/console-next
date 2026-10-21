@@ -1,0 +1,60 @@
+tags:
+- entity
+operationId: planWorkplaceClose
+summary: Close a 사업장 that still has people and 부서, by one plan
+description: 'UX-R2 ENDS (decisions #21, #28). A line for every person (TRANSFER = 전근 to an active unit of another open 사업장 of the same 법인, or to a 부서 this plan moves there; EXIT = 퇴직 with 마지막 근무일 the day before `closed_on` and `exit_reason_code` CLOSURE (폐업, default) or INSOLVENCY (도산), opening or joining an exit case at once; GROUP_TRANSFER = 전적 to a unit at another 법인''s open 사업장 named by to_workplace_id, with the person''s consent and continuity (group_transfer), recorded with the plan and dated `closed_on`, opening the sending 법인''s settlement case when 퇴직금 is SETTLED) and for every 부서 directly under the 사업장 (MOVE under another open 사업장''s unit or 부서, its sub-부서 with it; DISSOLVE = 폐지 once empty). Fail-closed: nothing is written on any refusal. Applied all-or-none on `closed_on`: in this request when that is today and the plan has at most 300 lines, else by the lifecycle tick on the day (a later or larger plan is dry-run here when it fits); a job WAITS while a 퇴직 it opened or a 전적 it recorded is not in effect and is then finished by the tick. Needs `legal_entity_manage` on the 사업장 AND the HR manage door, and a 발령 grant (lifecycle_manage or employee_directory_manage) on each 전적''s receiving place: 403 out_of_scope otherwise, nothing written.'
+security:
+- bearerAuth: []
+parameters:
+- name: workplaceId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID; a retry with the same key and body answers the same job, writing nothing.
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/WorkplaceClosePlanRequest'
+responses:
+  '200':
+    description: 'The job (APPLIED, WAITING or SCHEDULED), with its lines.'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/WorkplaceCloseJob'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: 'Not permitted: `legal_entity_manage` on the 사업장 or the HR manage door is missing.'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: '`workplace_not_found`.'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: '`workplace_not_open` (already closed), `workplace_holds_entity_role` (the 대표 사업장 or 본점), `close_job_open` (a close is already planned), `workplace_voided`, `idempotency_key_reused`.'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: '`date_in_past` / `invalid_date` on `closed_on`; `close_plan_incomplete` (error.refusals names each person or 부서 with no line, `line_missing`); `close_plan_refused` (error.refusals names each refused line: `workplace_not_open` with `open_workplace_ids`, `transfer_cross_entity` (offer the 전적 line), `group_transfer_same_entity`, `org_unit_at_other_workplace`, `to_workplace_id_required`, `org_unit_not_found`, `to_org_unit_id_required`, `to_parent_id_required`, `exit_reason_not_for_close`, `line_not_in_plan`, `line_duplicate`, or a lifecycle refusal of that person).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

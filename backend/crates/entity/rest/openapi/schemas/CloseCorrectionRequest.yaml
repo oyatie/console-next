@@ -1,0 +1,16 @@
+type: object
+required:
+- closed_on
+- reason_code
+- why
+properties:
+  closed_on:
+    type: string
+    format: date
+    description: The right 해산일 or 폐업일; no later than today (KST).
+  reason_code:
+    $ref: '#/components/schemas/EntityCloseReason'
+  why:
+    type: string
+    maxLength: 200
+    description: Why the recorded close was wrong (kept in the audit row).

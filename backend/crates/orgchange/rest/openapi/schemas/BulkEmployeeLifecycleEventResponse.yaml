@@ -1,0 +1,11 @@
+type: object
+required: [batch_id, items]
+properties:
+  batch_id:
+    $ref: '#/components/schemas/Uuid'
+  items:
+    type: array
+    description: One recorded event per employee, in employee_ids or lines order (a selection in employee id
+      order); each carries batch_id.
+    items:
+      $ref: '#/components/schemas/EmployeeLifecycleEvent'

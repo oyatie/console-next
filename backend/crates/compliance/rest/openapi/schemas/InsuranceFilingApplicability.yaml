@@ -1,0 +1,7 @@
+type: object
+additionalProperties: false
+required: [status]
+properties:
+  status: { type: string, enum: [APPLIES, NOT_APPLICABLE, UNKNOWN] }
+  reason: { $ref: '#/components/schemas/InsuranceFilingReason' }
+  missing: { type: array, items: { type: string } }

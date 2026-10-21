@@ -1,0 +1,35 @@
+{
+ "results": {
+  "common": {
+   "errorMessage": "정상",
+   "errorCode": "0",
+   "totalCount": "93"
+  },
+  "juso": [
+   {
+    "rnMgtSn": "117102005011",
+    "buldSlno": "0",
+    "buldMnnm": "345",
+    "dongNm": "101동",
+    "udrtYn": "0",
+    "admCd": "1171010700"
+   },
+   {
+    "rnMgtSn": "117102005011",
+    "buldSlno": "0",
+    "buldMnnm": "345",
+    "dongNm": "102동",
+    "udrtYn": "0",
+    "admCd": "1171010700"
+   },
+   {
+    "rnMgtSn": "117102005011",
+    "buldSlno": "0",
+    "buldMnnm": "345",
+    "dongNm": "103동",
+    "udrtYn": "0",
+    "admCd": "1171010700"
+   }
+  ]
+ }
+}

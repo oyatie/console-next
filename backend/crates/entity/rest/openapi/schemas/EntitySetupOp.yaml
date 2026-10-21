@@ -1,0 +1,41 @@
+type: object
+required:
+- op
+properties:
+  ref:
+    type: string
+    description: The row key, echoed back; unique within the batch; another op's entity_ref may name it.
+  op:
+    type: string
+    enum:
+    - CREATE_ENTITY
+    - REVISE_ENTITY
+    - CREATE_WORKPLACE
+    - REVISE_WORKPLACE
+  id:
+    type: string
+    format: uuid
+    description: REVISE_*.
+  expected_version:
+    type: integer
+    description: REVISE_* (409 stale_revision otherwise).
+  legal_entity_id:
+    type: string
+    format: uuid
+    description: CREATE_WORKPLACE, an existing 법인 (or entity_ref).
+  entity_ref:
+    type: string
+    description: CREATE_WORKPLACE, a 법인 created earlier in the batch.
+  effective_from:
+    type: string
+    format: date
+  reason_code:
+    type: string
+  is_primary:
+    type: boolean
+  is_head_office:
+    type: boolean
+  entity:
+    $ref: '#/components/schemas/LegalEntityInput'
+  workplace:
+    $ref: '#/components/schemas/WorkplaceInput'

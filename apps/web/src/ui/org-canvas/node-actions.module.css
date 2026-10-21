@@ -1,0 +1,10 @@
+.tools { position: absolute; z-index: 3; display: flex; gap: calc(2 * 1px); padding: calc(2 * 1px); white-space: nowrap; transform-origin: 0 0; scale: var(--unzoom, 1); }
+.tools[data-side="above"] { transform: translate(-100%, calc(-100% - var(--space-1))); }
+.tools[data-side="below"], .tools[data-side="left"], .tools[data-side="inside"] { transform: translateX(-100%); }
+.tools :global(.btn) { min-height: 28px; padding: 0 var(--space-2); font-size: var(--text-xs); border: 0; }
+/* The clamped toolbar's empty areas still select the box underneath. */
+.tools[data-side="inside"] { margin-left: calc(-32px * var(--unzoom, 1)); padding: 0; pointer-events: none; }
+.tools[data-side="inside"] :global(.btn) { min-height: 24px; pointer-events: auto; }
+.corner { position: absolute; top: 1px; right: 1px; z-index: 4; transform-origin: 100% 0; scale: var(--unzoom, 1); background: var(--surface); border-radius: var(--radius); }
+.corner :global(.btn) { min-height: 24px; padding: 0 var(--space-1); }
+@media print { .tools, .corner { display: none; } }

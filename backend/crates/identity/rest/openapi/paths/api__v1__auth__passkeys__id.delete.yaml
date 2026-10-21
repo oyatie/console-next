@@ -1,0 +1,40 @@
+tags:
+  - auth
+operationId: deleteAuthPasskey
+summary: Revoke one of the authenticated user's own passkey credentials
+description: Deletes a credential owned by the caller through the auth namespace. A credential that is not the caller's
+  own returns 404. The caller's last remaining passkey cannot be deleted (409) so they do not lock themselves out. This
+  route works for both platform-admin and tenant sessions. The body must carry a fresh `step_up` assertion of one of
+  the caller's passkeys (ceremony from `passkey/login/start`); without it, or with an assertion of another user's
+  passkey, the call returns 401 and nothing is deleted. This is the only passkey-removal route.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/DeletePasskeyRequest'
+responses:
+  '204':
+    description: The passkey was revoked.
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '503':
+    description: JWT verification is not configured.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

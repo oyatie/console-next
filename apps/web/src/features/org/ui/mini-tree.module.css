@@ -1,0 +1,30 @@
+/* A small before/after structure tree: boxes under connectors, a level edge on top, change tags as text. Tokens only. */
+.frame { position: relative; margin: 0; padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); background: var(--canvas); min-width: 0; }
+.cap { position: absolute; top: var(--space-2); right: var(--space-3); font-size: var(--text-xs); color: var(--steel); }
+.empty { display: grid; place-items: center; min-height: calc(var(--row-h) * 6); text-align: center; font-size: var(--text-sm); color: var(--steel); white-space: pre-line; }
+.tree, .kids { margin: 0; padding: 0; list-style: none; }
+.kids { margin-left: var(--space-4); padding-left: var(--space-4); border-left: 1px solid var(--control-border); }
+.item { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-2); }
+.kids > .item { position: relative; }
+.kids > .item::before { content: ""; position: absolute; left: calc(var(--space-4) * -1); top: calc(var(--space-2) + var(--row-h) / 2); width: var(--space-4); border-top: 1px solid var(--control-border); }
+.box { position: relative; display: flex; align-items: center; gap: var(--space-2); max-width: calc(var(--panel-w) * 0.66); min-height: var(--row-h); padding: 0 var(--space-3); border: 1px solid var(--border); border-top: 3px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); font-size: var(--text-sm); }
+.box[data-top] { border-top-color: var(--teal); font-weight: var(--fw-strong); }
+.box[data-tone="gone"] { border-style: dashed; background: var(--canvas); color: var(--steel); box-shadow: none; }
+.box[data-tone="mov"] { border-color: var(--info-bd); border-top-color: var(--info-tx); background: var(--info-bg); }
+.box[data-tone="chg"] { border-color: var(--warn-bd); border-top-color: var(--warn-solid); }
+.box[data-tone="new"] { border-color: var(--ok-bd); border-top-color: var(--ok-solid); background: var(--ok-bg); }
+.name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-medium); }
+.n { font-weight: var(--fw-strong); font-variant-numeric: tabular-nums; }
+.tag { position: absolute; top: calc(var(--space-3) * -1); right: var(--space-2); display: inline-flex; align-items: center; height: var(--chip-h); padding: 0 var(--space-2); border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--surface); color: var(--steel); font-size: var(--text-xs); font-weight: var(--fw-medium); white-space: nowrap; }
+.tag[data-tone="mov"] { border-color: var(--info-bd); background: var(--info-bg); color: var(--info-tx); }
+.tag[data-tone="chg"] { border-color: var(--warn-bd); background: var(--warn-bg); color: var(--warn-tx); }
+.tag[data-tone="new"] { border-color: var(--ok-bd); background: var(--ok-bg); color: var(--ok-tx); }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin: 0; padding: 0; list-style: none; font-size: var(--text-xs); color: var(--steel); }
+.legend li { display: inline-flex; align-items: center; gap: var(--space-1); }
+.legend i { display: inline-block; width: var(--space-3); height: var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--surface); }
+.legend i[data-tone="gone"] { border-style: dashed; background: var(--canvas); }
+.legend i[data-tone="mov"] { border-color: var(--info-tx); background: var(--info-bg); }
+.legend i[data-tone="chg"] { border-color: var(--warn-solid); background: var(--surface); }
+.legend i[data-tone="new"] { border-color: var(--ok-solid); background: var(--ok-bg); }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr); align-items: center; gap: var(--space-3); }
+.arrow { color: var(--steel); }

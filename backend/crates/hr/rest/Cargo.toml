@@ -1,0 +1,44 @@
+[package]
+name = "console-hr-rest"
+version = "0.1.0"
+description = "HR context inbound HTTP adapter: extractors, routers and the HrApiError wire mapping. No SQL."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+console-compliance-adapter-postgres = { workspace = true }
+axum = { workspace = true }
+console-hr-adapter-postgres = { workspace = true }
+console-hr-domain = { workspace = true }
+console-identity-adapter-postgres = { workspace = true }
+console-kernel-core = { workspace = true }
+console-platform-auth = { workspace = true }
+console-platform-authz = { workspace = true }
+serde = { workspace = true }
+console-platform-preconditions = { path = "../../platform/preconditions" }
+console-platform-db = { workspace = true }
+console-platform-storage = { workspace = true }
+console-settings-adapter-postgres = { path = "../../settings/adapter-postgres" }
+console-settings-domain = { path = "../../settings/domain" }
+futures = { workspace = true }
+serde_json = { workspace = true }
+time = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+console-platform-auth = { workspace = true }
+console-platform-request-context = { workspace = true }
+console-platform-test-support = { workspace = true }
+p256 = { workspace = true, features = ["ecdsa", "pkcs8", "pem"] }
+sqlx = { workspace = true }
+time = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true, features = ["util"] }
+url = { workspace = true }
+uuid = { workspace = true }
+webauthn-authenticator-rs = { workspace = true, features = ["softpasskey"] }
+
+[lints]
+workspace = true

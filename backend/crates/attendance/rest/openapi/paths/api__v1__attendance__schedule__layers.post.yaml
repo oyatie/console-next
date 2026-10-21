@@ -1,0 +1,14 @@
+tags: [attendance]
+operationId: assignAttendanceSchedule
+summary: Assign a 근무 유형 to one or more scopes from a date; one transaction, re-checked by the server
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceScheduleAssignInput' } } } }
+responses:
+  '201': { description: Assigned, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceScheduleAssignReceipt' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '404': { $ref: '#/components/responses/NotFound' }
+  '409': { $ref: '#/components/responses/Conflict' }
+  '422': { $ref: '#/components/responses/ValidationError' }

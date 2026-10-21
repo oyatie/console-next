@@ -1,0 +1,38 @@
+tags:
+  - me
+operationId: getCurrentUserAuthz
+summary: Get the authenticated caller's authorization projection
+description: >-
+  The caller's authorization projection: org, branch scope,
+  roles-as-principal-attributes, and the legacy-matrix capability grants
+  the console needs for deny-by-omission rendering. NON-AUTHORITATIVE
+  (`authority = "advisory_ui_only"`) — the server remains the sole
+  enforcer; this is a rendering hint that lets the frontend gate on grants
+  instead of hardcoded role lists. `source = "legacy_matrix"` today; the
+  Cedar enforce-flip later flips `source` to `"cedar"` with this shape
+  unchanged. Capabilities are deny-by-omission: a feature the caller cannot
+  use is omitted (never emitted at `deny`). Org and HR menu keys (same
+  matrix the handlers enforce): `org_change_read` (org-change list/detail and
+  the OrgUnit tree), `org_change_draft` (draft/submit org changes, OrgUnit
+  create/rename/move/dissolve drafts), `org_change_approve`,
+  `org_change_apply`, `employee_directory_read`, `employee_directory_manage`
+  (employee create, lifecycle events), `exit_case_report`,
+  `exit_case_hr_confirm`, `exit_case_hq_confirm`, `exit_settlement_manage`,
+  `user_manage`, `subordinate_user_create`, `region_manage`, `branch_manage`.
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: The caller's authorization projection.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/MeAuthzResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '503':
+    description: JWT verification is not configured.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

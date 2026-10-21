@@ -1,0 +1,28 @@
+tags:
+  - employees
+operationId: getEmployeeImportApplyJob
+summary: Read the apply job of an employee import run
+description: 'BE-MIG W11 (decisions #27): the job POST …/apply started — state (queued, applying, settling,
+  done, failed), rows done of total, the report when done, the refusal when failed. Read once after an
+  import_run event or on reconnect; never polled. 404 when no apply was started.'
+security:
+- bearerAuth: []
+parameters:
+- name: run_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The run's apply job.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeImportApplyJob'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

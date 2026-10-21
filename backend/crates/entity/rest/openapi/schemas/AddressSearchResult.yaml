@@ -1,0 +1,19 @@
+type: object
+required:
+- status
+- items
+- total
+properties:
+  status:
+    type: string
+    enum:
+    - OK
+    - TOO_BROAD
+    - UNAVAILABLE
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/KrAddress'
+  total:
+    type: integer
+    format: int64

@@ -1,0 +1,45 @@
+/* The unplaced screen (spec E8): head, company tabs, banner, three panes and the receipt dock. Tokens only. */
+.page { display: flex; flex-direction: column; min-height: 100%; }
+.crumb { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-sm); color: var(--steel); }
+.titleRow { display: flex; align-items: center; gap: var(--space-3); }
+.sum { font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.grow { flex: 1; }
+.tabs { display: flex; gap: var(--space-1); padding: 0 var(--space-5); border-bottom: 1px solid var(--border); }
+.count { margin-left: var(--space-1); color: var(--steel); font-variant-numeric: tabular-nums; }
+.banner { display: flex; align-items: center; gap: var(--space-2); margin: 0; padding: var(--space-2) var(--space-5); border-bottom: 1px solid var(--info-bd); background: var(--info-bg); color: var(--info-tx); font-size: var(--text-sm); }
+.panes { display: grid; grid-template-columns: calc(var(--space-6) * 6.5) minmax(0, 1fr) calc(var(--space-6) * 10.5); flex: 1; min-height: 0; }
+
+.groups { display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--surface); }
+.groupsHead { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); font-size: var(--text-sm); color: var(--steel); }
+.groupList { margin: 0; padding: 0; list-style: none; }
+.groupPick { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: calc(var(--target) + var(--space-3)); padding: var(--space-1) var(--space-3); border: 0; border-bottom: 1px solid var(--border-soft); border-radius: 0; background: transparent; text-align: left; font-weight: var(--fw-body); }
+.groupPick[aria-pressed="true"] { background: var(--primary-soft); border-left: 3px solid var(--primary); }
+.groupDone { display: flex; align-items: center; gap: var(--space-2); min-height: calc(var(--target) + var(--space-3)); padding: var(--space-1) var(--space-3); border-bottom: 1px solid var(--border-soft); color: var(--steel); }
+.groupText { display: flex; flex: 1; flex-direction: column; min-width: 0; font-size: var(--text-sm); }
+.groupText small { font-size: var(--text-xs); color: var(--steel); }
+.groupsFoot { margin: auto 0 calc(var(--space-6) * 2.25); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border-soft); font-size: var(--text-xs); color: var(--steel); }
+.ok { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--ok-tx); }
+
+.rows { display: flex; flex-direction: column; min-width: 0; }
+.rowsHead { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--border); font-size: var(--text-sm); }
+.sub { font-size: var(--text-xs); color: var(--steel); }
+.alone { color: var(--primary); font-size: var(--text-sm); text-decoration: underline; cursor: pointer; }
+.doneBlock { display: flex; flex-direction: column; border-top: 1px solid var(--border); }
+.doneHead { padding: var(--space-1) var(--space-4); background: var(--canvas); font-size: var(--text-xs); color: var(--steel); }
+.doneRow { display: grid; grid-template-columns: calc(var(--space-6) * 3) calc(var(--space-6) * 3) 1fr; gap: var(--space-2); padding: var(--space-1) var(--space-4); border-top: 1px solid var(--border-soft); font-size: var(--text-sm); color: var(--steel); }
+
+.targets { display: flex; flex-direction: column; border-left: 1px solid var(--border); background: var(--surface); }
+.targetsHead { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); }
+.h2 { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); }
+.targetsBody { display: flex; flex: 1; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.findRow { display: flex; flex-direction: column; gap: var(--space-2); }
+.sec { display: flex; flex-direction: column; gap: var(--space-1); }
+.secHead { font-size: var(--text-xs); color: var(--steel); }
+.suggestion { justify-content: flex-start; width: 100%; font-weight: var(--fw-body); text-align: left; }
+.suggestion small { font-size: var(--text-xs); color: var(--steel); }
+.row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.keys { margin: auto 0 0; font-size: var(--text-xs); color: var(--steel); }
+.dock { position: fixed; bottom: var(--space-5); left: calc(var(--space-6) * 8); z-index: 15; max-width: var(--card-w); }
+/* A long closed action (the remembered link) wraps inside the side pane instead of running past it (tripled: wins over
+   the closed look's nowrap whatever the stylesheet order). */
+.wrapBtn.wrapBtn.wrapBtn { max-width: 100%; height: auto; min-height: var(--target); white-space: normal; text-align: left; }

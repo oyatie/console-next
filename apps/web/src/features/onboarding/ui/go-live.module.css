@@ -1,0 +1,8 @@
+/* A blocker resolved on this screen keeps its row's height (the alert's padding and border around a button), so
+   the preview's re-read never pulls the start button up under a pointer. */
+.resolved { min-height: calc(var(--row-h) - var(--space-1) + 2 * var(--space-3) + 2px); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); font-size: var(--text-sm); }
+
+.termsText { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Lazy text and its skeleton occupy one scroll area, so the actions below keep their place. */
+.termsRead { height: min(50dvh, calc(var(--row-h) * 8)); overflow: auto; }

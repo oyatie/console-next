@@ -1,0 +1,37 @@
+type: object
+required: [employee_id, updated_at, name_hanja, name_en, nationality, personal_email, emergency_contacts, photo, group_service_start_date]
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  updated_at:
+    type: string
+    format: date-time
+  name_hanja:
+    type: [string, 'null']
+  name_en:
+    type: [string, 'null']
+  nationality:
+    type: [string, 'null']
+    pattern: '^[A-Z]{2}$'
+  personal_email:
+    type: [string, 'null']
+  emergency_contacts:
+    type: [array, 'null']
+    items:
+      $ref: '#/components/schemas/EmergencyContact'
+  photo:
+    oneOf:
+    - type: 'null'
+    - type: object
+      required: [upload_id, content_type, url]
+      properties:
+        upload_id:
+          $ref: '#/components/schemas/Uuid'
+        content_type:
+          type: string
+        url:
+          type: [string, 'null']
+          description: Presigned GET, valid for 5 minutes.
+  group_service_start_date:
+    type: [string, 'null']
+    format: date

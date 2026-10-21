@@ -1,0 +1,4 @@
+/* ui/code-picker: the not-loaded state and the error line; the picker reuses server-picker's styles. Tokens only. */
+.unloaded { display: flex; flex-direction: column; gap: var(--space-1); }
+.note { font-size: var(--text-sm); color: var(--warn-tx); }
+.error { font-size: var(--text-sm); color: var(--danger-tx); }

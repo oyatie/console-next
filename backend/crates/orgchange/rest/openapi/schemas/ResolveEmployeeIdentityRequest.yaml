@@ -1,0 +1,15 @@
+type: object
+additionalProperties: false
+required: [verdict, reason_code]
+properties:
+  verdict:
+    type: string
+    enum: [SAME, DIFFERENT]
+  keep_employee_id:
+    $ref: '#/components/schemas/Uuid'
+  reason_code:
+    type: string
+    minLength: 1
+    maxLength: 100
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'

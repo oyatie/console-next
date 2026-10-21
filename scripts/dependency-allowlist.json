@@ -1,0 +1,29 @@
+{
+  "$comment": "EN-5: external npm packages any package.json may name. Adding one needs owner approval; remove entries when a dependency is dropped. Workspace packages (@console/*) are always allowed.",
+  "allow": [
+    "@axe-core/playwright",
+    "@playwright/test",
+    "@tanstack/react-query",
+    "@tanstack/react-router",
+    "@types/node",
+    "@types/react",
+    "@types/react-dom",
+    "@vitejs/plugin-react",
+    "exceljs",
+    "intl-messageformat",
+    "lucide-react",
+    "openapi-fetch",
+    "openapi-typescript",
+    "oxlint",
+    "pretendard",
+    "react",
+    "react-aria-components",
+    "react-dom",
+    "stylelint",
+    "stylelint-declaration-strict-value",
+    "typescript",
+    "vite",
+    "vitest",
+    "zod"
+  ]
+}

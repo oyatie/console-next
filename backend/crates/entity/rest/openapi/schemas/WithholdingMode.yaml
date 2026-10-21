@@ -1,0 +1,5 @@
+type: string
+enum:
+- HEAD_OFFICE
+- OWN_INDEPENDENT_ACCOUNTS
+- HEAD_OFFICE_BULK

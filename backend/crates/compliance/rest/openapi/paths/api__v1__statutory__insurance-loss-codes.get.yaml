@@ -1,0 +1,18 @@
+tags: [Compliance]
+operationId: listStatutoryInsuranceLossCodes
+summary: List one insurer's 상실 codes in force on a date (BW-30)
+description: >
+  Reads the global, migration-only statutory register. Rows ship HOLD until a
+  qualified reviewer lifts CTRL-KR-WORKFORCE-001; HOLD rows are listed with
+  their disposition. An insurer with no sourced code table returns an empty
+  list. Any authenticated principal may read it (public law, no tenant data).
+security: [{ bearerAuth: [] }]
+parameters:
+- { name: insurer, in: query, required: true, schema: { type: string, enum: [EI, NPS, NHIS] } }
+- { name: on, in: query, required: true, description: The date the code table must be in force on (the exit date)., schema: { type: string, format: date } }
+responses:
+  '200': { description: The insurer's codes in force on the date., content: { application/json: { schema: { $ref: '#/components/schemas/StatutoryInsuranceLossCodePage' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '422': { $ref: '#/components/responses/ValidationError' }
+  '500': { $ref: '#/components/responses/InternalServerError' }

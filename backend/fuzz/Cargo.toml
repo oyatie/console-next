@@ -1,0 +1,91 @@
+# Coverage-guided fuzzing (cargo-fuzz / libFuzzer) of the untrusted-input parsers behind
+# the MVP routes. Its own workspace root, so the stable workspace never sees the nightly
+# toolchain pinned in rust-toolchain.toml here. Run through ./run.sh.
+[package]
+name = "console-fuzz"
+version = "0.0.0"
+publish = false
+license = "LicenseRef-Proprietary"
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4.13"
+calamine = { version = "0.35.0", features = ["dates"] }
+chrono = { version = "0.4.45", default-features = false, features = ["std"] }
+serde_json = "1"
+time = { version = "0.3", features = ["macros"] }
+console-kernel-core = { path = "../crates/kernel/core" }
+console-attendance-domain = { path = "../crates/attendance/domain" }
+console-hr-domain = { path = "../crates/hr/domain" }
+console-compliance-domain = { path = "../crates/compliance/domain" }
+console-entity-domain = { path = "../crates/entity/domain" }
+console-platform-preconditions = { path = "../crates/platform/preconditions" }
+
+# The workspace's [patch] does not reach a separate root: repeat the calamine one.
+[patch.crates-io]
+calamine = { path = "../../third-party/rust/vendor/calamine-0.35.0-quickxml41" }
+quick-xml = { path = "../../third-party/rust/vendor/quick-xml-0.41.0-compat" }
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "xlsx-read"
+path = "fuzz_targets/xlsx_read.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "import-cells"
+path = "fuzz_targets/import_cells.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "import-mapping"
+path = "fuzz_targets/import_mapping.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "kr-ids"
+path = "fuzz_targets/kr_ids.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "json-patch"
+path = "fuzz_targets/json_patch.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "entity-bodies"
+path = "fuzz_targets/entity_bodies.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "attendance-entry"
+path = "fuzz_targets/attendance_entry.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "statutory-filing"
+path = "fuzz_targets/statutory_filing.rs"
+test = false
+doc = false
+bench = false

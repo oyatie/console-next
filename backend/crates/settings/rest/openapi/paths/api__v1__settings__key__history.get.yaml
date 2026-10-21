@@ -1,0 +1,35 @@
+operationId: listSettingHistory
+summary: List one setting's stored overrides
+description: Every stored override row of the key, all scopes, newest first.
+tags:
+- Settings
+security:
+- bearerAuth: []
+parameters:
+- name: key
+  in: path
+  required: true
+  schema:
+    type: string
+responses:
+  '200':
+    description: Stored rows, newest first.
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/SettingOverrideRecord'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

@@ -1,0 +1,58 @@
+tags:
+  - employees
+operationId: resolveEmployeeIdentity
+summary: Resolve an identity-review record
+description: >-
+  BW-18. Org-wide employee_directory_manage only. DIFFERENT clears
+  `identity_review_required`. SAME merges the record into
+  `keep_employee_id`: it needs an IDENTITY_MERGE passkey step-up bound to
+  this employee id with payload_hash = SHA-256 hex of
+  `{"keep_employee_id":"<uuid>","verdict":"SAME"}` (401 without), then a
+  second person applies the IDENTITY_REVIEW change request it files
+  (202); a sole holder's merge applies with `review_required`, unless
+  `authz.sole_holder.mode` is `refuse` (403).
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ResolveEmployeeIdentityRequest'
+responses:
+  '200':
+    description: The verdict applied.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeIdentityResolution'
+  '202':
+    description: A SAME verdict waits for a second person (`pending_request`).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeIdentityResolution'
+  '401':
+    description: A SAME verdict without a verified IDENTITY_MERGE step-up.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: The record is not under identity review, or either record was merged.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'

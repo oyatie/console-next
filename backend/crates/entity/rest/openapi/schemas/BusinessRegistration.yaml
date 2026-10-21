@@ -1,0 +1,50 @@
+type: object
+required:
+- id
+- legal_entity_id
+- verification_tier
+- needs_confirmation
+- identity_locked
+properties:
+  id:
+    type: string
+    format: uuid
+  legal_entity_id:
+    type: string
+    format: uuid
+  brn:
+    anyOf:
+    - $ref: '#/components/schemas/FormattedValue'
+    - type: 'null'
+  brn_pending_reason:
+    anyOf:
+    - $ref: '#/components/schemas/BrnPendingReason'
+    - type: 'null'
+  holder_workplace_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  verification_tier:
+    type: string
+    enum:
+    - NONE
+    - T1
+    - T2
+  unverified_reason:
+    anyOf:
+    - $ref: '#/components/schemas/UnverifiedReason'
+    - type: 'null'
+  needs_confirmation:
+    type: boolean
+  identity_locked:
+    type: boolean
+  closed_on:
+    type:
+    - string
+    - 'null'
+    format: date
+  current:
+    anyOf:
+    - $ref: '#/components/schemas/RegistrationState'
+    - type: 'null'

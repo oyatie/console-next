@@ -1,0 +1,21 @@
+{
+  "//": "Catalog ids allowed to stay unused (scripts/check-copy.mjs); shrink-only. live.*: realtime awareness copy that landed ahead of its screens, which are post-MVP.",
+  "unused": [
+    "live.status.offline",
+    "live.updated_ago",
+    "live.notice.updated_by",
+    "live.notice.changed_while_editing",
+    "live.notice.compare",
+    "live.notice.content_changed",
+    "live.notice.content_changed.open",
+    "live.notice.done_elsewhere.hidden",
+    "live.notice.stacked",
+    "live.notice.stacked.hidden",
+    "live.presence.viewing",
+    "live.presence.editing",
+    "live.presence.editing.field",
+    "live.claim.held_by",
+    "live.claim.take_over",
+    "live.claim.taken_over"
+  ]
+}

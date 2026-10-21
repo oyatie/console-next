@@ -1,0 +1,23 @@
+operationId: listStatutoryWorkplaces
+tags: [HR]
+parameters:
+- in: query
+  name: as_of
+  required: false
+  schema: { type: string, format: date }
+responses:
+  '200':
+    description: Workplace labels within the viewer's HR scope
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            required: [id, name, entity_name]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              entity_name: { type: string, nullable: true }
+  '403': { description: Cedar denies this scope }
+  '422': { description: Invalid reference date }

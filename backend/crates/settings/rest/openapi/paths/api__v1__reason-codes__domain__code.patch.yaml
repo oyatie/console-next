@@ -1,0 +1,42 @@
+operationId: updateReasonCode
+summary: Switch a tenant reason code on or off, or reorder it
+description: Changes active and/or sort of a tenant code. System codes are fixed. An inactive code stays resolvable for
+  history but is refused for new records.
+tags:
+- Settings
+security:
+- bearerAuth: []
+parameters:
+- name: domain
+  in: path
+  required: true
+  schema:
+    type: string
+- name: code
+  in: path
+  required: true
+  schema:
+    type: string
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ReasonCodeUpdateRequest'
+responses:
+  '200':
+    description: Code updated.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/TenantReasonCode'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

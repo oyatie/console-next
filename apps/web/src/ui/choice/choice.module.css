@@ -1,0 +1,42 @@
+/* ui/choice: segmented control (2–5 short) and radio cards (2–5 described). The 6–15 select uses ui/field. */
+.group { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--ink); }
+.hint { font-size: var(--text-xs); color: var(--steel); }
+.error { font-size: var(--text-sm); color: var(--danger-tx); }
+
+.seg { display: inline-flex; flex-wrap: wrap; align-self: flex-start; border: 1px solid var(--control-border); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.segItem { display: inline-flex; align-items: center; min-height: var(--target); padding: 0 var(--space-4); border-left: 1px solid var(--control-border); font-weight: var(--fw-medium); cursor: pointer; }
+.segItem:first-child { border-left: 0; }
+.segItem[data-hovered] { background: var(--muted); }
+.segItem[data-selected] { background: var(--primary-soft); color: var(--primary); outline: 1px solid var(--primary); outline-offset: -2px; }
+.segItem[data-focus-visible] { outline: 2px solid var(--primary); outline-offset: -3px; }
+
+.cards { display: grid; gap: var(--space-2); }
+.card { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); align-items: start; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; }
+.card[data-hovered] { border-color: var(--control-border); }
+.card[data-selected] { border-color: var(--primary); background: var(--primary-soft); outline: 1px solid var(--primary); outline-offset: -2px; }
+.card[data-focus-visible] { box-shadow: var(--focus); }
+.dot { grid-row: span 2; width: var(--space-4); height: var(--space-4); margin-top: var(--space-1); border: 2px solid var(--control-border); border-radius: var(--radius-lg); background: var(--surface); }
+.card[data-selected] .dot { border: 5px solid var(--primary); }
+.optLabel { font-weight: var(--fw-medium); }
+.desc { grid-column: 2; font-size: var(--text-xs); color: var(--steel); }
+.why { grid-column: 2; font-size: var(--text-xs); color: var(--warn-tx); }
+.card[data-disabled] { cursor: not-allowed; background: var(--muted); }
+.card[data-disabled] .optLabel { color: var(--steel); }
+.group[data-invalid] .seg, .group[data-invalid] .card:not([data-selected]) { border-color: var(--danger-solid); }
+
+/* look="chips": separate pills, a check on the chosen one; `add` ends the row with a dashed pill. */
+.note { font-size: var(--text-xs); font-weight: var(--fw-body); color: var(--steel); }
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+/* A list still loading (a server reason list) holds its row, so the field under it never moves when the options land. */
+.seg:empty, .chips:empty { min-height: var(--target); }
+.seg:empty { box-sizing: content-box; border-color: transparent; }
+.chip { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--target); padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: calc(var(--target) / 2); background: var(--surface); font-size: var(--text-sm); white-space: nowrap; cursor: pointer; }
+.chip[data-hovered] { background: var(--muted); }
+.chip[data-selected] { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); font-weight: var(--fw-medium); outline: 1px solid var(--primary); outline-offset: -2px; }
+.chip[data-focus-visible] { box-shadow: var(--focus); }
+.tick { display: none; }
+.chip[data-selected] .tick { display: inline; }
+.chipAdd { composes: chip; border-style: dashed; color: var(--steel); }
+.cards[data-columns="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cards[data-columns="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }

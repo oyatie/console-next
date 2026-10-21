@@ -1,0 +1,14 @@
+tags: [attendance]
+operationId: cancelAttendanceScheduleLayer
+summary: Cancel a layer before it takes effect; after that a new layer from a later date replaces it
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: layer_id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceReasonInput' } } } }
+responses:
+  '200': { description: Cancelled, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceScheduleLayer' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '404': { $ref: '#/components/responses/NotFound' }
+  '409': { $ref: '#/components/responses/Conflict' }
+  '422': { $ref: '#/components/responses/ValidationError' }

@@ -1,0 +1,52 @@
+tags:
+  - employees
+operationId: applyEmployeeRecordImport
+summary: Apply a previewed 인사카드 section sheet
+description: Bound to the preview's plan_digest; 409 record_import_plan_changed when the rows or the records
+  changed since (preview again). Applies every valid row (partial apply) and reports the rest with their codes.
+  Idempotency-Key (a UUID) is required; a replay answers 200 with the stored report. Audited as one
+  employee.record.import row per written entry plus one employee.record.import_batch row.
+  403 own_record_forbidden, nothing written, when a row names the caller's own record (linked account, or the same person); take that row out; another holder in scope, or the ops account as the sole holder, records it (people-self-33).
+security:
+- bearerAuth: []
+parameters:
+- name: section
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/PersonRecordSectionSegment'
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/PersonRecordImportRequest'
+responses:
+  '201':
+    description: The applied report.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PersonRecordImportReport'
+  '200':
+    description: Replay of the same Idempotency-Key; the stored report.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PersonRecordImportReport'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

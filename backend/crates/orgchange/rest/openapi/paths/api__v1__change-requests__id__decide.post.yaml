@@ -1,0 +1,61 @@
+tags:
+  - employees
+operationId: decideChangeRequest
+summary: Apply, decline or withdraw a change request
+description: >-
+  BW-17. APPLY and DECLINE are decided by Cedar change_request_decide:
+  the HR tier's and never the requester's (422
+  change_request_self_decision); a named assignee is the only second
+  person. WITHDRAW is the requester's alone. A closed request is
+  409 change_request_closed. Applying a PROFILE_CORRECTION writes the
+  correction in the same transaction. The named assignee of an
+  ACCESS_EXPLANATION or POLICY_QUESTION answers it (APPLY or DECLINE,
+  a note required) even outside the HR tier.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [decision, reason_code]
+        properties:
+          decision:
+            type: string
+            enum: [APPLY, DECLINE, WITHDRAW]
+          reason_code:
+            type: string
+            minLength: 1
+            maxLength: 100
+          note:
+            type: string
+            maxLength: 1000
+responses:
+  '200':
+    description: The closed change request.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ChangeRequest'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: The request is already closed, or the correction conflicts with the employee's current state.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'

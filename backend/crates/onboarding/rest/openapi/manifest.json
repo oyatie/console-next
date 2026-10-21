@@ -1,0 +1,40 @@
+{
+  "source": "console-onboarding-rest",
+  "paths": {
+    "/api/v1/onboarding/checklist": [
+      "get"
+    ],
+    "/api/v1/onboarding/go-live": [
+      "post"
+    ],
+    "/api/v1/onboarding/go-live/preview": [
+      "get"
+    ],
+    "/api/v1/onboarding/steps/{step}/skip": [
+      "post"
+    ],
+    "/api/v1/onboarding/terms": [
+      "get",
+      "post"
+    ]
+  },
+  "schemas": [
+    "GoLivePreview",
+    "GoLivePreviewItem",
+    "GoLiveRequest",
+    "GoLiveResult",
+    "SetupChecklist",
+    "SetupFacts",
+    "SetupStep",
+    "SetupStepState",
+    "TermsAcceptanceRequest",
+    "TermsDocument"
+  ],
+  "external_schemas": [
+    "ActorKind",
+    "AuditLastChange",
+    "ErrorBody",
+    "FieldError",
+    "Uuid"
+  ]
+}

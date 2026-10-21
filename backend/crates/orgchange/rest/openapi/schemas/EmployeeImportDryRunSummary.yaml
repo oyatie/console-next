@@ -1,0 +1,121 @@
+type: object
+required:
+- run_id
+- input_rows
+- candidate_rows
+- preserved_rows
+- insert_candidates
+- update_candidates
+- unchanged_rows
+- excluded_rows
+- unsettled_rows
+- companies
+- org_unit_bound_rows
+- org_unit_unbound_rows
+- unresolved_org_units
+- dry_run_digest
+- decisions
+- rows
+- review
+- remembered
+- auto_mapped
+- employment_type_empty_rows
+- unplaced
+- phone_unstored_rows
+properties:
+  run_id:
+    $ref: '#/components/schemas/Uuid'
+  input_rows:
+    type: integer
+    minimum: 0
+  candidate_rows:
+    type: integer
+    minimum: 0
+  preserved_rows:
+    type: integer
+    minimum: 0
+  insert_candidates:
+    type: integer
+    minimum: 0
+  update_candidates:
+    type: integer
+    minimum: 0
+  unchanged_rows:
+    type: integer
+    minimum: 0
+  excluded_rows:
+    type: integer
+    minimum: 0
+  unsettled_rows:
+    type: integer
+    minimum: 0
+    description: Rows refused or unresolved_identity. Apply runs only at 0.
+  companies:
+    type: array
+    items:
+      $ref: '#/components/schemas/EmployeeImportCompanySummary'
+  org_unit_bound_rows:
+    type: integer
+    minimum: 0
+    description: New people bound to an ACTIVE unit by its name or by the unit map.
+  org_unit_unbound_rows:
+    type: integer
+    minimum: 0
+    description: New people with no unit (a blank cell, or a name that binds no unit, 미배치) or former employees
+      (unit text only). Imports never create units.
+  unresolved_org_units:
+    type: array
+    description: Unit names that bind no unit; their people come in 미배치 (unit_map binds them).
+    items:
+      type: string
+  dry_run_digest:
+    type: string
+    pattern: ^[0-9a-f]{64}$
+    description: sha-256 of rows; POST …/apply names it.
+  decisions:
+    $ref: '#/components/schemas/EmployeeImportDecisions'
+  rows:
+    type: array
+    items:
+      $ref: '#/components/schemas/EmployeeImportPlannedRow'
+  review:
+    $ref: '#/components/schemas/EmployeeImportReviewQueue'
+  remembered:
+    type: array
+    description: 'IMPORT-2: decision entries filled from the tenant''s mapping memory (the operator''s own win).'
+    items:
+      type: object
+      required: [decision, key]
+      properties:
+        decision:
+          type: string
+        key:
+          type: string
+  auto_mapped:
+    type: array
+    description: 'W02: labels the catalog mapped without asking; employment_type_map overrides one.'
+    items:
+      type: object
+      required: [field, value, code, rows]
+      properties:
+        field:
+          type: string
+          enum: [employment_type]
+        value:
+          type: string
+        code:
+          type: string
+        rows:
+          type: integer
+          minimum: 1
+  employment_type_empty_rows:
+    type: integer
+    minimum: 0
+    description: 'W02: new people who come in with no 고용형태 (the apply button names it).'
+  unplaced:
+    $ref: '#/components/schemas/EmployeeImportUnplaced'
+  phone_unstored_rows:
+    type: integer
+    minimum: 0
+    description: 'W12: rows whose 휴대전화 is not stored — a new person with no 고용형태 (the phone lives on the
+      employment profile), or a person on file (their phone is changed on the 인사카드).'

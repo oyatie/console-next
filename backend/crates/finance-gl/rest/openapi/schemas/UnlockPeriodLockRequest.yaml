@@ -1,0 +1,19 @@
+type: object
+required:
+- reasonCode
+- relockAt
+properties:
+  reasonCode:
+    type: string
+    description: A period_unlock reason code (reason-codes catalog).
+  note:
+    type: string
+    maxLength: 1000
+    description: Required when the code requires a note.
+  relockAt:
+    type: string
+    format: date-time
+    description: RFC 3339; in the future and at most period_lock.unlock_max_days out (422
+      period_unlock_window_invalid).
+  stepUp:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'

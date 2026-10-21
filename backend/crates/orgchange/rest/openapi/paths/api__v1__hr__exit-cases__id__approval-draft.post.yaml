@@ -1,0 +1,39 @@
+tags:
+  - hr
+operationId: draftEmployeeExitApproval
+summary: Draft or submit employee exit approval documents
+description: Drafts the exit approval from HQ_CONFIRMED, SETTLEMENT_READY or APPROVAL_DRAFTED. submit=true files
+  it (SUBMITTED, final) only once the exit has taken effect; while exit_event_state is SCHEDULED or APPLY_FAILED
+  submit is 409 invalid_transition (a scheduled exit stays withdrawable by rejecting the case until then).
+  403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person). Nobody records an HR act on their own record, whatever they hold; another holder in scope, or the ops account, records it. The ops account passes only when no other active account holds the act over the employee, and that pass is audited as authz.own_record.break_glass with review_required (people-self-33).
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/DraftEmployeeExitApprovalRequest'
+responses:
+  '200':
+    description: Employee exit case with generated approval payloads.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeExitCase'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

@@ -1,0 +1,31 @@
+tags:
+- access
+operationId: deleteAccessRole
+summary: Delete a role that was never active (DRAFT only)
+description: An ACTIVE or RETIRED role is kept for the 3-year record; retire it instead (409 `role_not_draft`).
+security:
+- bearerAuth: []
+parameters:
+- name: roleId
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: expected_version
+  in: query
+  required: true
+  schema:
+    type: integer
+    format: int32
+    minimum: 1
+responses:
+  '204':
+    description: Deleted.
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'

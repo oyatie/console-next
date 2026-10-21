@@ -1,0 +1,27 @@
+type: object
+required: [id, employee_id, to_number, effective_date, reason_code, changed_at]
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  from_number:
+    type: [string, 'null']
+    description: The alias kept; null when the person had no 사번 (사번 미부여).
+  to_number:
+    type: string
+  effective_date:
+    type: string
+    format: date
+  reason_code:
+    type: string
+  batch_id:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  changed_at:
+    type: string
+    format: date-time
+  undone_at:
+    type: [string, 'null']
+    format: date-time

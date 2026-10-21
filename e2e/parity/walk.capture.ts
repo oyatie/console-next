@@ -1,0 +1,243 @@
+import { expect, test } from "@playwright/test";
+import { openTenant } from "../helpers/tenant";
+import { inviteAccount } from "../access-flows";
+import { fillRegister, openRegistered, pressRegister, receiptOf, registerSheet } from "../helpers/register";
+import { chooseRadio, go, kstDate, registerEmployee } from "../flows";
+import { draftWeekly, openAttendance } from "../helpers/attendance";
+import { registerEntity, registerWorkplace, setupCompany, setupRail, startOperations } from "../setup-flows";
+import { addDepartments, revealUnit } from "../structure-flows";
+import { cardVerbs, hrMenu, openHistory } from "../record";
+import { capture, inspect } from "./capture";
+
+test.use({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
+
+test("parity: solo setup, launch, home and source failure", async ({ browser }) => {
+  const a = await openTenant(browser, "parity-home", "패리티홈");
+  await expect(setupRail(a)).toBeVisible();
+  await capture(a, "home-first-run", ["H1-setup-empty", "H1-master-setup", "S1-home"], "Empty tenant, sole ops account; checklist and shell.");
+  await inspect(a, "home-first-run", "empty");
+  await setupCompany(a, "패리티홈", "본사");
+  await go(a, "/setup/go-live");
+  await expect(a.getByRole("button", { name: "운영 시작", exact: true })).toBeVisible();
+  await capture(a, "home-first-run", ["H3-launch-conflict", "P6-golive-preview", "P6-golive-migration-warning"], "Live launch preview; migration warning exists, no induced stale preview yet.");
+  await inspect(a, "home-first-run", "launch");
+  await startOperations(a);
+  await capture(a, "home-first-run", ["H4-launch-receipt", "P7-day1-home", "P7-golive-done", "H5-deadline", "H7-scale-held"], "Actual post-launch Home; only a small tenant, not a scale or legal-deadline fixture.");
+  await inspect(a, "home-first-run", "operating");
+  await a.route(/\/api\/v1\/employees\?.*identity_review_required=true/, (r) => r.fulfill({ status: 500, body: "" }));
+  await a.reload();
+  await expect(a.getByRole("alert").filter({ hasText: "일부 항목을 불러오지 못했습니다" })).toBeVisible();
+  await capture(a, "home-first-run", ["H6-source-error"], "Controlled GET500; real server handles all other reads. Partial-error UI is visible.");
+  await a.unroute(/\/api\/v1\/employees\?.*identity_review_required=true/);
+  await a.route(/\/api\/v1\/hr\/exit-cases(\?|$)/, (r) => r.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ error: { code: "forbidden", message: "forbidden" } }) }));
+  await a.reload();
+  await expect(a.getByRole("region", { name: "일부 항목은 볼 권한이 없습니다" })).toBeVisible();
+  await capture(a, "home-first-run", ["H8-permission"], "Controlled GET403 exercises refusal rendering; it is not a Cedar revocation proof.");
+  await a.unroute(/\/api\/v1\/hr\/exit-cases(\?|$)/);
+  await go(a, "/requests/missing-parity-request");
+  await expect(a.getByRole("heading", { name: /요청을 찾을 수 없습니다/ })).toBeVisible();
+  await capture(a, "home-first-run", ["H9-outcome"], "Real server404 on an unknown request; original-outcome success not represented by this image.");
+});
+
+test("parity: legal entity and workplace records, revisions, closure", async ({ browser }) => {
+  const a = await openTenant(browser, "parity-entity", "패리티법인");
+  await go(a, "/org/entities");
+  await expect(a.getByRole("link", { name: "법인 추가" }).first()).toBeVisible();
+  await capture(a, "entities", ["S2-registry", "S4-entity-quick"], "Empty entity list, before any registration.");
+  await go(a, "/org/entities/new");
+  await capture(a, "entities", ["S4-entity-create-cert", "S4-entity-create-idorg", "S4-entity-create-individual"], "Initial kind/name wizard; the different registration kinds are choices, none selected.");
+  await registerEntity(a, "패리티법인");
+  const record = new URL(a.url()).pathname;
+  await capture(a, "entities", ["S3-entity-detail", "E1-units-success", "E2-evidence-success"], "Live entity overview with registration and held regular-worker count. No statutory-unit graph or source-region viewer.");
+  await inspect(a, "entities", "record");
+  await a.getByRole("button", { name: "대표전화 수정" }).click();
+  await capture(a, "entities", ["S3-entity-revise-initial"], "Actual dated fact editor, no mode selected.");
+  await a.getByRole("dialog").getByRole("button", { name: "취소", exact: true }).click();
+  await a.getByRole("button", { name: /^문서/ }).click();
+  await capture(a, "entities", ["S3-entity-docs", "E2-evidence-empty"], "Actual empty documents tab, no evidence upload in this tenant.");
+  await go(a, "/");
+  await setupRail(a).getByRole("link", { name: "사업장 등록" }).first().click();
+  await capture(a, "entities", ["S5-workplace-create"], "Actual empty workplace creation sheet.");
+  await registerWorkplace(a, "패리티법인", "본사");
+  await registerEmployee(a, { name: "법인직원", unit: "본사", hired: kstDate() });
+  await go(a, record);
+  await startOperations(a);
+  await go(a, record);
+  await a.getByRole("button", { name: "법인 종료 계획 보기", exact: true }).click();
+  await expect(a.getByRole("dialog")).toBeVisible();
+  await capture(a, "entities", ["S3-entity-close", "E3-closure-empty", "E3-closure-error"], "Actual closure dialog with its remaining-employee blocker. No executable multi-record closure plan.");
+  await inspect(a, "entities", "closure");
+});
+
+test("parity: organisation chart, outline, department and operating act", async ({ browser }) => {
+  const a = await openTenant(browser, "parity-org", "패리티조직");
+  await go(a, "/org");
+  await capture(a, "org", ["S10-empty-first-visit", "S14-empty"], "Empty structure entry; no reorganisation editor.");
+  await setupCompany(a, "패리티조직", "본사");
+  await go(a, "/org");
+  await addDepartments(a, "본사", ["인사부", "개발부"]);
+  await revealUnit(a, "인사부");
+  await capture(a, "org", ["S2-chart-entity", "S6-dept-panel", "S14-temporal"], "Live selected department and chart, today, two departments; not future compatible-set or scale proof.");
+  await inspect(a, "org", "chart");
+  await a.getByRole("button", { name: "아웃라인", exact: true }).click();
+  await expect(a.getByRole("tree", { name: "아웃라인" })).toBeVisible();
+  await capture(a, "org", ["S2b-outline"], "Actual outline view.");
+  await startOperations(a);
+  await go(a, "/org");
+  await revealUnit(a, "본사");
+  await a.keyboard.press("a");
+  const s = a.getByRole("dialog", { name: "부서 신설" });
+  await expect(s).toBeVisible();
+  await s.getByLabel("부서 이름").fill("운영팀");
+  await s.getByRole("button", { name: /^오늘/ }).click();
+  await s.getByLabel("사유").fill("운영 기능 신설");
+  await capture(a, "org", ["S6-dept-add-op", "S14-preflight"], "Actual one-act draft and preview; no explicit per-person destination graph.");
+  await s.getByRole("button", { name: "반영 · 항목 1개" }).click();
+  await expect(a.getByRole("status").filter({ hasText: "운영팀 신설을 반영했습니다" }).first()).toBeVisible();
+  await capture(a, "org", ["S14-success", "S2-chart-moved"], "Actual applied org act and receipt; create act, not a move fixture.");
+});
+
+test("parity: employee roster, registration, card, history and lifecycle", async ({ browser }) => {
+  const a = await openTenant(browser, "parity-people", "패리티직원");
+  await setupCompany(a, "패리티직원", "본사");
+  await go(a, "/people");
+  await expect(a.getByRole("heading", { level: 1 })).toBeVisible();
+  await capture(a, "people", ["E1-empty", "R-empty"], "Actual empty employee roster; no all-evidence investigation surface.");
+  await go(a, "/people/new");
+  await expect(registerSheet(a)).toBeVisible();
+  await capture(a, "people", ["E3-register-initial", "E3-register", "E3-register-interim"], "Minimum registration form in setup, before fields are filled.");
+  await pressRegister(a);
+  await expect(registerSheet(a).getByRole("alert")).toBeVisible();
+  await capture(a, "people", ["E3-register-error", "E3-register-ime-error"], "Actual required-field refusal; IME hardware input not exercised.");
+  await fillRegister(a, { name: "김직원", unit: "본사", hired: kstDate() });
+  await pressRegister(a, false);
+  await expect(receiptOf(a, "김직원")).toBeVisible();
+  await capture(a, "people", ["E3-register-done"], "Actual successful registration receipt.");
+  await openRegistered(a, "김직원");
+  await expect(a.getByRole("heading", { name: /김직원/, level: 1 })).toBeVisible();
+  const record = new URL(a.url()).pathname;
+  await capture(a, "people", ["E2-card", "R-success", "E2-inline", "E2-records"], "Actual personnel card, one minimal employee; no period-known-at investigation or source package.");
+  await inspect(a, "people", "card");
+  await openHistory(a);
+  await capture(a, "people", ["E2-history"], "Actual action-history tab.");
+  await a.getByRole("navigation", { name: "인사카드 탭" }).getByRole("link", { name: "변경 이력", exact: true }).click();
+  await capture(a, "people", ["E2-ledger"], "Actual change-history tab; read log/CSV controls remain unavailable.");
+  await a.getByRole("navigation", { name: "인사카드 탭" }).getByRole("link", { name: "문서", exact: true }).click();
+  await capture(a, "people", ["E2-docs-empty", "E2-docs"], "Actual unserved document-tab notice.");
+  await cardVerbs(a).getByRole("button", { name: "증명서", exact: true }).click();
+  await capture(a, "people", ["E2-cert", "E2-cert-issued", "E2-cert-register"], "Actual certificate preview; issuance/number/seal/register are disabled, nothing is issued.");
+  await a.keyboard.press("Escape");
+  await cardVerbs(a).getByRole("button", { name: "정정", exact: true }).click();
+  await capture(a, "people", ["E4-multi", "C-empty"], "Actual multi-field correction entry; no interval/dependency correction submitted.");
+  await a.keyboard.press("Escape");
+  await go(a, "/people");
+  await capture(a, "people", ["E1-roster", "E1-views", "E1-select", "E1-selectall"], "Actual small roster; all-matching selection, saved views and scale fixture not exercised.");
+  await inspect(a, "people", "roster");
+  await startOperations(a);
+  await go(a, record);
+  await capture(a, "people", ["L1-card-cases"], "Actual card after launch; lifecycle cases are limited to those generated by this registration.");
+  await hrMenu(a);
+  await capture(a, "people", ["E5-menu"], "Actual HR-action menu after operations start.");
+  await a.keyboard.press("Escape");
+  for (const [act, frame] of [["전보", "E5-transfer"], ["직책 임면", "E5-appoint"], ["휴직 처리", "E5-leave"]]) {
+    const menu = await hrMenu(a);
+    const item = menu.getByRole("menuitem", { name: act, exact: true });
+    if (await item.count()) {
+      await item.click();
+      await expect(a.getByRole("dialog")).toBeVisible();
+      await capture(a, "people", [frame!], `Actual ${act} entry sheet, no lifecycle write submitted.`);
+      await a.keyboard.press("Escape");
+    } else await a.keyboard.press("Escape");
+  }
+  await a.getByRole("group", { name: "기록 정정" }).getByRole("button", { name: "퇴직", exact: true }).click();
+  await expect(a.getByRole("dialog")).toBeVisible();
+  await capture(a, "people", ["E5-exit"], "Actual exit-report entry, no exit submitted.");
+  await a.keyboard.press("Escape");
+  for (const route of ["/people/notices", "/people/exits", "/people/requests"]) {
+    await go(a, route);
+    await expect(a.getByRole("heading", { level: 1 })).toBeVisible();
+    await capture(a, "people", [route.endsWith("notices") ? "N1-published" : route.endsWith("exits") ? "L4-progress" : "E12-queue-empty"], `Actual reachable ${route}, empty state.`);
+  }
+});
+
+test("parity: roles, grants, review entry and emergency account", async ({ browser }) => {
+  const a = await openTenant(browser, "parity-access", "패리티권한");
+  await setupCompany(a, "패리티권한", "본사");
+  await go(a, "/access/roles");
+  await expect(a.getByRole("heading", { name: "아직 역할이 없습니다" })).toBeVisible();
+  await capture(a, "access", ["M1-roles-empty", "C11-first-use"], "Actual no-preset role entry.");
+  await go(a, "/access/roles/new");
+  await a.getByRole("textbox", { name: /^역할 이름/ }).fill("인사 조회");
+  await a.getByRole("button", { name: "인사기본 조회", exact: true }).click();
+  await capture(a, "access", ["M2-role-edit", "C1-decision", "C4-version"], "Actual role grid before create, unheld role; no semantic decision/version migration.");
+  await a.getByRole("button", { name: "역할 추가", exact: true }).click();
+  await expect(a.getByRole("row", { name: /인사 조회/ })).toBeVisible();
+  await capture(a, "access", ["M1-roles-list"], "Actual one role, zero holders, sole admin.");
+  await inspect(a, "access", "roles");
+  await inviteAccount(a, "박담당", "none"); // Account record only; this person never signs in or helps setup.
+  await go(a, "/access/grants");
+  await a.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill("박담당");
+  await a.getByRole("option", { name: /박담당/ }).click();
+  const grant = a.getByRole("dialog", { name: "권한 부여" });
+  await grant.getByRole("button", { name: / 역할$/ }).click();
+  await a.getByRole("option", { name: /^인사 조회/ }).click();
+  await grant.getByRole("button", { name: /범위 선택/ }).click();
+  const scope = a.getByRole("dialog", { name: "범위 선택" });
+  await scope.getByRole("row", { name: /^전체/ }).click();
+  await capture(a, "access", ["M3-scope-picker"], "Actual whole-tenant scope picker; invited account has never signed in.");
+  await scope.getByRole("button", { name: "이 범위로 설정" }).click();
+  await grant.getByRole("button", { name: /^1년/ }).click();
+  await chooseRadio(grant, /^설정 단계부터/);
+  await chooseRadio(grant, /^업무 배정·변경/);
+  await capture(a, "access", ["M4-grant-person", "M4-grant-nopasskey", "C2-impact"], "Actual typed one-person grant and no-passkey warning; no net-effective-source simulation.");
+  await grant.getByRole("button", { name: "패스키로 확인하고 부여 1건 저장" }).click();
+  await expect(a.getByRole("status").filter({ hasText: "박담당님에게 부여 1건을 저장했습니다" })).toBeVisible();
+  await capture(a, "access", ["M4-grant-saved", "M7-grants", "C5-lifecycle"], "Actual grant receipt and inventory; only the ops admin signed in.");
+  await go(a, "/access/ready");
+  await capture(a, "access", ["M6-readiness"], "Actual setup access readiness, sole admin.");
+  await go(a, "/access/ops");
+  await capture(a, "access", ["C7-emergency"], "Actual operating-account detail or route refusal, not purpose-bound emergency-use proof.");
+});
+
+test("parity: schedule pattern, assignment preview and receipt", async ({ browser }) => {
+  const a = await openTenant(browser, "parity-attendance", "패리티근태");
+  await setupCompany(a, "패리티근태", "본사");
+  await go(a, "/people/new");
+  await fillRegister(a, { name: "김근무", unit: "본사", hired: kstDate() });
+  await pressRegister(a, false);
+  await expect(receiptOf(a, "김근무")).toBeVisible();
+  await startOperations(a);
+  await openAttendance(a);
+  await capture(a, "attendance", ["A12-first-run", "A2-schedule"], "Actual attendance first run/calendar; only schedule slice is landed.");
+  await a.getByRole("tab", { name: /근무 유형/ }).click();
+  const s = await draftWeekly(a, "통상 주간", ["09:00", "18:00", "12:00", "13:00"]);
+  await capture(a, "attendance", ["A2-types"], "Actual weekly pattern sheet, five workdays and legal break.");
+  await s.getByRole("button", { name: "통상 주간 추가" }).click();
+  await expect(a.getByRole("row", { name: /통상 주간/ })).toBeVisible();
+  await inspect(a, "attendance", "patterns");
+  await a.getByRole("tab", { name: "달력" }).click();
+  await a.getByRole("button", { name: "이 범위에 근무 일정 지정" }).click();
+  const assign = a.getByRole("dialog", { name: "근무 일정 지정" });
+  await assign.getByRole("combobox", { name: /^근무 유형/ }).selectOption({ label: "통상 주간" });
+  await assign.getByRole("textbox", { name: /^적용 시작일/ }).fill(kstDate(2));
+  await chooseRadio(assign, /기본 일정/);
+  await expect(assign.getByRole("button", { name: /^1명에게 .+부터 적용$/ })).toBeVisible();
+  await capture(a, "attendance", ["A2-assign", "A2-assign--preview"], "Actual future schedule assignment with server-counted one-person preview.");
+  await assign.getByRole("button", { name: /^1명에게 .+부터 적용$/ }).click();
+  await expect(a.getByRole("region", { name: "이 범위의 일정 이력" })).toContainText("예정");
+  await capture(a, "attendance", ["A2-schedule"], "Actual calendar with scheduled assignment and receipt.");
+  for (const [view, frame] of [["crews", "A2-crews"], ["holidays", "A2-holidays"]]) {
+    await go(a, `/attendance?view=${view}`);
+    await capture(a, "attendance", [frame!], `Actual ${view} tab, empty configuration.`);
+  }
+});
+
+test("parity: record audit history and absent tenant audit surfaces", async ({ browser }) => {
+  const a = await openTenant(browser, "parity-audit", "패리티감사");
+  await setupCompany(a, "패리티감사", "본사");
+  await a.getByRole("button", { name: /^이력/ }).click();
+  await capture(a, "audit", ["M10-changes", "H1-investigation-success"], "Actual entity history; not tenant-wide bounded audit investigation.");
+  await inspect(a, "audit", "history");
+  await go(a, "/audit");
+  await capture(a, "audit", ["M10-audit", "H1-investigation-empty", "H2-evidence-empty", "H3-review-empty", "H6-retention-empty"], "Direct tenant audit URL: actual unserved route. These images document absence, not the intended lifecycle empty states.");
+});

@@ -1,0 +1,11 @@
+allOf:
+- $ref: '#/components/schemas/AppointmentNoticeSummary'
+- type: object
+  required: [note, lines]
+  properties:
+    note:
+      type: [string, 'null']
+    lines:
+      type: array
+      items:
+        $ref: '#/components/schemas/AppointmentNoticeLine'

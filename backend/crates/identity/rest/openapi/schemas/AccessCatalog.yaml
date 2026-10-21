@@ -1,0 +1,23 @@
+type: object
+required:
+- domains
+- levels
+- scope_kinds
+- reason_domain
+properties:
+  domains:
+    type: array
+    items:
+      $ref: '#/components/schemas/AccessCatalogDomain'
+  levels:
+    type: array
+    items:
+      $ref: '#/components/schemas/AccessLevel'
+  scope_kinds:
+    type: array
+    items:
+      $ref: '#/components/schemas/AccessCatalogScopeKind'
+  reason_domain:
+    type: string
+    const: role_change
+    description: The reason-code domain grants and role changes use (GET /api/v1/reason-codes).

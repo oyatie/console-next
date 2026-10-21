@@ -1,0 +1,14 @@
+type: object
+required:
+- admin_user_id
+- otp
+- admin_otp_expires_at
+properties:
+  admin_user_id:
+    $ref: '#/components/schemas/Uuid'
+  otp:
+    type: string
+    minLength: 1
+    description: One-time sign-in code returned exactly once; deliver out-of-band and never log it.
+  admin_otp_expires_at:
+    $ref: '#/components/schemas/Timestamp'

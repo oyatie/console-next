@@ -1,0 +1,95 @@
+type: object
+required:
+- version
+- effective_from
+- before_first_record
+- name
+- additional_representatives
+- change_mode
+properties:
+  english_name:
+    type: [string, 'null']
+    maxLength: 200
+    description: Optional 영문명 - Latin letters, digits, spaces and & . , - ' ( ) only (english_name_not_latin). Omitted keeps it; null clears it.
+  version:
+    type: integer
+  effective_from:
+    type: string
+    format: date
+  before_first_record:
+    type: boolean
+    description: Today is before the first record takes effect (e.g. before 개설일); this is that first record.
+  name:
+    type: string
+  display_name:
+    type:
+    - string
+    - 'null'
+  representation_mode:
+    anyOf:
+    - $ref: '#/components/schemas/EntityRepresentationMode'
+    - type: 'null'
+  representatives:
+    type:
+    - array
+    - 'null'
+    items:
+      type: string
+    description: null for callers without the restricted-read permission.
+  additional_representatives:
+    type: integer
+  head_office_address:
+    anyOf:
+    - $ref: '#/components/schemas/KrAddress'
+    - type: 'null'
+  incorporated_on:
+    type:
+    - string
+    - 'null'
+    format: date
+  fiscal_year_end_month:
+    type:
+    - integer
+    - 'null'
+  capital_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  directors:
+    type:
+    - array
+    - 'null'
+    items:
+      $ref: '#/components/schemas/EntityDirector'
+    description: 임원 (상법 §317②8). Null for callers who may not manage the 법인, like representatives.
+  vat_unit_mode:
+    anyOf:
+    - $ref: '#/components/schemas/VatUnitMode'
+    - type: 'null'
+  vat_unit_mode_basis:
+    anyOf:
+    - $ref: '#/components/schemas/VatUnitBasis'
+    - type: 'null'
+  main_ksic:
+    anyOf:
+    - $ref: '#/components/schemas/CodeRef'
+    - type: 'null'
+  main_phone:
+    anyOf:
+    - $ref: '#/components/schemas/FormattedValue'
+    - type: 'null'
+  priority_support:
+    type:
+    - string
+    - 'null'
+  priority_support_basis:
+    type:
+    - string
+    - 'null'
+  large_group_member:
+    type:
+    - boolean
+    - 'null'
+  change_mode:
+    $ref: '#/components/schemas/EntityChangeMode'

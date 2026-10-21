@@ -1,0 +1,64 @@
+tags:
+- entity
+operationId: withdrawLegalEntityClose
+summary: Withdraw a closed 법인's close (종료 취소, catalog company-19)
+description: 'The business goes on. The 법인 reads open again, and the 사업장 and 사업자등록 that closed with it (on its
+  종료일, by its close) reopen with the revision each had before the close and every 사업장 its own unit. Grants ended
+  with the close stay ended. `why` is kept in the audit row. Refused 409 `legal_entity_not_closed` for an open 법인;
+  422 `why` required.'
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: entityId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CloseWithdrawalRequest'
+responses:
+  '200':
+    description: Withdrawn; the 법인 as it now reads.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SavedLegalEntity'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Refused with a stable code and a remedy (legal_entity_not_closed).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}] (why required).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

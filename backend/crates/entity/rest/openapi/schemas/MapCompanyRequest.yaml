@@ -1,0 +1,15 @@
+type: object
+required:
+- company_text
+- legal_entity_id
+- workplace_id
+properties:
+  company_text:
+    type: string
+    maxLength: 500
+  legal_entity_id:
+    type: string
+    format: uuid
+  workplace_id:
+    type: string
+    format: uuid

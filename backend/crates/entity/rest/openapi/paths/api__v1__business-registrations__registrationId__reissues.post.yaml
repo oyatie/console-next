@@ -1,0 +1,68 @@
+tags:
+- entity
+operationId: reissueBusinessRegistration
+summary: 등록증 재발급·정정 — a newly issued certificate and the facts it changed, as one dated, evidenced change
+description: The registration's new state (and, when the certificate changed what the 법인 records — 대표자,
+  법인명, 본점 — the 법인's) is appended from effective_from with the certificate linked as its evidence; the
+  certificate kept before stays, superseded. Setup applies at once; after 운영 시작 the change is governed and
+  audited. Never dated before the registration state in force nor before a scheduled registration or 법인
+  state (full-state revisions would hide or undo it); a 법인 state in force from a later date moves the 법인's
+  part to that date, with the warning entity_change_from_later_state.
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: registrationId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/RegistrationReissueRequest'
+responses:
+  '200':
+    description: Recorded.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SavedBusinessRegistration'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}] (document_id required, document_not_certificate,
+      document_attached_elsewhere, document_not_found, document_not_new — the certificate in force or one already superseded; reason; effective_from and cert_issued_on required, never
+      after today; effective_from before_state_in_force, registration_change_scheduled, entity_change_scheduled).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Refused with a stable code (stale_revision with error.current_version, registration_voided).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

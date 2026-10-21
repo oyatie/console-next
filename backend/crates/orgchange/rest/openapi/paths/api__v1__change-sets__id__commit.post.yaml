@@ -1,0 +1,72 @@
+tags:
+  - employees
+operationId: commitChangeSet
+summary: Commit the caller's change set as one lifecycle batch, all or nothing (BW-38)
+description: >-
+  Every line is locked and pinned first: any line whose employee changed since it was drafted refuses the whole
+  set (409 stale_record, error.refusals naming each stale line with line_id, employee_id, expected_head_version
+  and head_version). Then each line meets the single-event rules exactly as the bulk endpoint applies them; any
+  refusal records nothing (422 bulk_lifecycle_refused naming each refused line). Otherwise one event per line
+  is recorded, all sharing one batch_id (rescindable as one, POST
+  /api/v1/employees/lifecycle-events/bulk/{batch_id}/rescind), and the set becomes COMMITTED. Audited per event
+  and as employee.lifecycle.bulk carrying change_set_id.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: 16..200 characters. An exact replay returns 200 with the original body; the same key with a
+    different body is 409 conflict.
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [signoffs]
+        properties:
+          signoffs:
+            $ref: '#/components/schemas/EmployeeLifecycleSignoffs'
+responses:
+  '200':
+    description: Every line recorded (also the exact Idempotency-Key replay).
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [change_set_id, batch_id, items]
+          properties:
+            change_set_id:
+              $ref: '#/components/schemas/Uuid'
+            batch_id:
+              $ref: '#/components/schemas/Uuid'
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/EmployeeLifecycleEvent'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    description: Invalid request (code validation), or code bulk_lifecycle_refused with error.refusals naming
+      each line that cannot take the change; nothing was recorded.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/BulkLifecycleRefusalBody'

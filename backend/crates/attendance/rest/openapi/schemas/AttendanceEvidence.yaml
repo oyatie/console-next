@@ -1,0 +1,3 @@
+type: object
+required: [kind]
+properties: { kind: { type: string, enum: [PAPER_SHEET, SUPERVISOR_CONFIRM, DEVICE_FILE, EMPLOYEE_STATEMENT, OTHER] }, note: { type: string, maxLength: 500 }, confirmer_employee_id: { $ref: '#/components/schemas/Uuid', description: required for SUPERVISOR_CONFIRM } }

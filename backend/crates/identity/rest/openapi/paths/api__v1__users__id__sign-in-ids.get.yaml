@@ -1,0 +1,27 @@
+tags:
+  - users
+operationId: listUserSignInIds
+summary: Every 아이디 an account held
+description: 'Decisions #33. Newest first; `state` is CURRENT, ALIAS (still signs in until `alias_until`) or
+  RESERVED (searchable only, never reissued).'
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The account's 아이디 history.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SignInIdHistory'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

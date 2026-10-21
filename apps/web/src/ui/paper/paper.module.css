@@ -1,0 +1,25 @@
+/* ui/paper: tables on a printed form (always in print weight). Tokens only. */
+.grid, .table { width: 100%; border-collapse: collapse; font-size: var(--text-xs); }
+.grid th, .grid td, .table th, .table td { padding: var(--space-1) var(--space-2); border: 1px solid var(--border); text-align: start; vertical-align: top; font-weight: var(--fw-body); }
+.grid th, .table thead th { background: var(--canvas); color: var(--steel); white-space: nowrap; }
+.grid th { width: 1%; }
+/* The paper itself (Paper) and the well around a page. */
+.paper { position: relative; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-pop); font-size: var(--text-xs); }
+.paper[data-size="a4"] { width: min(100%, calc(var(--sheet-w) + var(--space-6))); min-height: calc(var(--sheet-w) * 1.414); padding: calc(var(--space-6) - var(--space-1)) var(--space-6); }
+.paper[data-size="wide"] { width: 100%; min-height: calc(var(--sheet-w) * 1.1); padding: var(--space-5); }
+/* The register keeps each person on one line: facts that land late never grow a line under the others (E10). */
+.paper[data-size="wide"] table { table-layout: fixed; }
+.paper[data-size="wide"] td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.well { display: flex; justify-content: center; padding: var(--space-5); border-radius: var(--radius-lg); background: var(--muted); }
+.top { display: flex; align-items: flex-end; gap: var(--space-3); }
+.title { font-size: var(--text-lg); letter-spacing: var(--space-1); }
+.foot { margin-top: auto; padding-top: var(--space-2); border-top: 1px solid var(--border); color: var(--steel); }
+.id { display: grid; grid-template-columns: calc(var(--space-6) * 3.2) minmax(0, 1fr); gap: var(--space-3); align-items: stretch; }
+.photo { display: grid; place-items: center; border: 1px solid var(--border); color: var(--steel); font-size: var(--text-lg); }
+.wm { position: absolute; inset: 40% 0 auto; text-align: center; transform: rotate(-18deg); pointer-events: none; }
+.wm::after { content: attr(data-wm); color: var(--steel); opacity: 0.18; font-size: var(--text-lg); white-space: nowrap; }
+@media print {
+  .wm { display: none; }
+  .well { padding: 0; background: none; }
+  .paper[data-size="a4"] { width: 100%; border: 0; box-shadow: none; }
+}

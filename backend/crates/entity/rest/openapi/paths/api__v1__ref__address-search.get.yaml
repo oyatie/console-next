@@ -1,0 +1,49 @@
+tags:
+- entity
+operationId: searchRoadAddress
+summary: 도로명주소 keyword search through the server (juso.go.kr); UNAVAILABLE falls back to manual entry
+description: The key lives in the server environment (STREET_JUSO_API_KEY). No key, an expired or rejected key,
+  a timeout or a juso failure answer status UNAVAILABLE (200), never an error. Rate-limited per user.
+security:
+- bearerAuth: []
+parameters:
+- name: q
+  in: query
+  required: true
+  schema:
+    type: string
+    maxLength: 80
+- name: page
+  in: query
+  required: false
+  schema:
+    type: integer
+    minimum: 1
+    default: 1
+responses:
+  '200':
+    description: Hits (20 per page), each a full KrAddress with source JUSO and no 상세주소.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AddressSearchResult'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}].'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '429':
+    description: Over the per-user search budget (code rate_limited); retry in a minute.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

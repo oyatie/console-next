@@ -1,0 +1,27 @@
+type: object
+required:
+- org_id
+- display_name
+- step_up
+properties:
+  org_id:
+    $ref: '#/components/schemas/Uuid'
+  display_name:
+    type: string
+    minLength: 1
+  phone:
+    type: string
+  tenant_roles:
+    type: array
+    items:
+      $ref: '#/components/schemas/PlatformTenantRole'
+    default:
+    - MEMBER
+  group_role:
+    allOf:
+    - $ref: '#/components/schemas/PlatformGroupRole'
+    default: GROUP_ADMIN
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'
+    description: The operator's fresh passkey assertion (the response carries a one-time code and tenant_roles may
+      grant any tenant role).

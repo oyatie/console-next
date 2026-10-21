@@ -1,0 +1,10 @@
+.verbs { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--panel-w) / 2.5), 1fr)); gap: var(--space-2); }
+.verb { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.verb[data-allowed="false"] { background: var(--muted); }
+.verb[data-allowed="false"] b { color: var(--steel); }
+.verb :global(.btn) { margin-top: auto; }
+.desc { font-size: var(--text-sm); color: var(--steel); }
+.cascade { display: flex; flex-direction: column; gap: var(--space-2); }
+.cascadeHead { margin: 0; font-size: var(--text-sm); font-weight: var(--fw-strong); }
+.cascadeList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.cascadeList li { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--border-soft); font-size: var(--text-sm); }

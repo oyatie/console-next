@@ -1,0 +1,39 @@
+tags:
+  - employees
+operationId: revealEmployeeRrn
+summary: The full 주민등록번호, with a 사유 (IMPORT-2)
+description: 'Decisions #25. reason_code from the rrn_reveal domain (PAYROLL_WITHHOLDING, SOCIAL_INSURANCE_FILING,
+  IDENTITY_VERIFICATION, DATA_SUBJECT_ACCESS, OTHER + note); the 접속기록 row (action employee.rrn_reveal) names
+  the code, never the number. 404 when none is recorded; 503 rrn_vault_unavailable when the server has no vault
+  keys. Never cached (Cache-Control no-store).'
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/EmployeeRrnRevealRequest'
+responses:
+  '200':
+    description: The number, once.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeRrnRevealed'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

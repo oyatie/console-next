@@ -1,0 +1,21 @@
+type: object
+additionalProperties: false
+description: 병역. No 면제 사유 and no 전역 구분 (both can disclose health, 개인정보 보호법 §23). branch, rank and
+  dates only for COMPLETED or SERVING.
+required: [status]
+properties:
+  status:
+    type: string
+    enum: [COMPLETED, SERVING, NOT_COMPLETED, EXEMPT, NOT_APPLICABLE]
+  branch:
+    type: [string, 'null']
+    enum: [ARMY, NAVY, AIR_FORCE, MARINE_CORPS, SOCIAL_SERVICE, ALTERNATIVE, OTHER, null]
+  rank:
+    type: [string, 'null']
+    maxLength: 30
+  served_from:
+    type: [string, 'null']
+    format: date
+  served_to:
+    type: [string, 'null']
+    format: date

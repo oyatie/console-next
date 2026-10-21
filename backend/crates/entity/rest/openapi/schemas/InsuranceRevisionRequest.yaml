@@ -1,0 +1,23 @@
+type: object
+required:
+- expected_version
+- effective_from
+- reason_code
+- insurers
+properties:
+  expected_version:
+    type: integer
+    minimum: 0
+    description: The highest 4대보험 revision version of the 사업장 the client read (0 when it has none). A
+      change since is 409 stale_revision, with error.current_version.
+  effective_from:
+    type: string
+    format: date
+  reason_code:
+    type: string
+    maxLength: 100
+  insurers:
+    type: array
+    minItems: 1
+    items:
+      $ref: '#/components/schemas/InsurerInput'

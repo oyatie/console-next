@@ -1,0 +1,17 @@
+type: object
+required:
+- op
+- grant_id
+- valid_to
+additionalProperties: false
+description: Extend or shorten a grant. A new end before now is refused (`valid_range_invalid`); revoke instead.
+properties:
+  op:
+    type: string
+    const: set_end
+  grant_id:
+    $ref: '#/components/schemas/Uuid'
+  valid_to:
+    oneOf:
+    - $ref: '#/components/schemas/Timestamp'
+    - type: 'null'

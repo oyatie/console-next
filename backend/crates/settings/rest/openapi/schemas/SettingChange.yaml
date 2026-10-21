@@ -1,0 +1,21 @@
+type: object
+additionalProperties: false
+required: [id, key, scope_entity_id, value, effective_from, direction, onboarding_exempt]
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  key:
+    type: string
+  scope_entity_id:
+    allOf:
+    - $ref: '#/components/schemas/Uuid'
+    nullable: true
+  value:
+    $ref: '#/components/schemas/SettingValue'
+  effective_from:
+    $ref: '#/components/schemas/Timestamp'
+  direction:
+    $ref: '#/components/schemas/SettingDirection'
+  onboarding_exempt:
+    type: boolean
+    description: A loosening applied at once because the tenant had no employees and no applied payroll run.

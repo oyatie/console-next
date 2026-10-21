@@ -1,0 +1,14 @@
+type: object
+required:
+- version
+- sha256
+- body
+properties:
+  version:
+    type: string
+  sha256:
+    type: string
+    pattern: ^[a-f0-9]{64}$
+  body:
+    type: string
+    description: Exact published UTF-8 text whose SHA-256 is returned.

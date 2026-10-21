@@ -1,0 +1,34 @@
+tags:
+  - employees
+operationId: openChangeSet
+summary: Open the caller's change set (발령안) for an intent (BW-38)
+description: The caller's OPEN draft for the intent, opened when there is none; two tabs opening at once share
+  one draft. A draft is the caller's alone (another user gets 404 for it and opens their own). Takes org-wide
+  employee_directory_manage, the gate of the act a commit performs.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [intent]
+        properties:
+          intent:
+            type: string
+            enum: [TRANSFER, PROMOTE, APPOINT, EMPLOYMENT_TYPE_CHANGE]
+responses:
+  '200':
+    description: The open draft with its lines.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ChangeSetDetail'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'

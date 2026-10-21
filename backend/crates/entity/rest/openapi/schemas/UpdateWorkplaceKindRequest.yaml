@@ -1,0 +1,11 @@
+type: object
+properties:
+  label:
+    type:
+    - string
+    - 'null'
+    maxLength: 40
+    description: Absent keeps the label; null returns a platform default to its catalog label (refused on a tenant
+      kind).
+  active:
+    type: boolean

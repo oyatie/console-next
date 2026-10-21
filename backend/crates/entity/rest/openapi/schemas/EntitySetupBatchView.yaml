@@ -1,0 +1,36 @@
+type: object
+required:
+- id
+- kind
+- change_mode
+- records
+- created_at
+- undoable
+properties:
+  id:
+    type: string
+    format: uuid
+  kind:
+    type: string
+    enum:
+    - APPLY
+    - UNDO
+  undoes:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  undone_by:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  change_mode:
+    type: string
+  records:
+    type: integer
+  created_at:
+    type: string
+    format: date-time
+  undoable:
+    type: boolean

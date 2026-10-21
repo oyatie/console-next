@@ -1,0 +1,35 @@
+tags:
+- entity
+operationId: orgUnitEndOptions
+summary: Whether a 부서 is deleted (never used) or 폐지 (used), and why not the other
+description: CRUD. Read the moment an end is offered. can_manage is Cedar org_unit_manage for the caller.
+security:
+- bearerAuth: []
+parameters:
+- name: orgUnitId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+responses:
+  '200':
+    description: The two ways and the reason each is or is not offered.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgUnitEndOptions'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

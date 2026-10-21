@@ -1,0 +1,31 @@
+tags:
+  - employees
+operationId: getEmployeePersonalFacts
+summary: The 인적사항 extras HR holds for one employee
+description: >-
+  MR-34. 한자 · 영문 성명, 국적, 개인 메일, 비상연락처, 사진 and 그룹 입사일.
+  Org-wide employee_directory_manage; each read leaves a 접속기록 row.
+  null = 미입력. `photo.url` is a presigned GET valid for 5 minutes (null
+  when object storage is not configured). `updated_at` is the employee's
+  version for the PATCH /employees/{id} that corrects them.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The 인적사항 extras.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeePersonalFacts'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

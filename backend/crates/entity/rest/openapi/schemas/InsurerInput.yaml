@@ -1,0 +1,78 @@
+type: object
+required:
+- insurer
+properties:
+  insurer:
+    $ref: '#/components/schemas/Insurer'
+  status:
+    $ref: '#/components/schemas/InsuranceStatus'
+  mgmt_no:
+    type:
+    - string
+    - 'null'
+    pattern: ^[0-9 -]{8,20}$
+    x-console-format: insurance_mgmt_no
+    description: 사업장관리번호 (8–13 digits).
+  established_on:
+    type:
+    - string
+    - 'null'
+    format: date
+  unit_mode:
+    anyOf:
+    - $ref: '#/components/schemas/InsuranceUnitMode'
+    - type: 'null'
+  main_workplace_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  nps_separate_application:
+    type:
+    - boolean
+    - 'null'
+  nhis_unit_workplace_code:
+    type:
+    - string
+    - 'null'
+  nhis_branch_office_code:
+    type:
+    - string
+    - 'null'
+  nhis_workplace_class:
+    anyOf:
+    - $ref: '#/components/schemas/NhisWorkplaceClass'
+    - type: 'null'
+  iaci_business_type_code:
+    type:
+    - string
+    - 'null'
+  iaci_business_type_label:
+    type:
+    - string
+    - 'null'
+  iaci_insurance_year:
+    type:
+    - integer
+    - 'null'
+  iaci_business_form:
+    anyOf:
+    - $ref: '#/components/schemas/IaciBusinessForm'
+    - type: 'null'
+  iaci_term_from:
+    type:
+    - string
+    - 'null'
+    format: date
+  iaci_term_to:
+    type:
+    - string
+    - 'null'
+    format: date
+  prime_contractor_mgmt_no:
+    type:
+    - string
+    - 'null'
+    pattern: ^[0-9 -]{8,20}$
+    x-console-format: insurance_mgmt_no
+    description: 사업장관리번호 (8–13 digits).

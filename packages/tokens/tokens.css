@@ -1,0 +1,64 @@
+/* Oyatie Console tokens — colours from the Design System project `tokens/colors.css`
+ * (extracted from Oyatie Console.dc.html:26-72). Type scale deliberately evolved:
+ * 12px floor / 14px body instead of the prototype's 9.5–13px band (plan D5). */
+:root {
+  --canvas: #f2f4f7; --surface: #ffffff; --muted: #eceff3; --border: #dbe1e8; --border-soft: #e8ecf1;
+  --ink: #141a21; --steel: #566475; --faint: #5f6b79;
+  --primary: #2247d8; --primary-hover: #1c3cbb; --primary-soft: #eef2ff; --primary-bd: #c7d2fe; --on-primary: #ffffff;
+  --signal: #f6b521; --signal-deep: #e2a30d; --teal: #0f766e;
+  --danger-bg: #fef2f2; --danger-bd: #fca5a5; --danger-tx: #b91c1c; --danger-solid: #dc2626;
+  --warn-bg: #fffbeb; --warn-bd: #fcd34d; --warn-tx: #92400e; --warn-solid: #b45309;
+  --ok-bg: #ecfdf5; --ok-bd: #6ee7b7; --ok-tx: #065f46; --ok-solid: #059669;
+  --info-bg: #eff6ff; --info-bd: #93c5fd; --info-tx: #1e40af;
+  --accent-bg: #fffbeb; --accent-bd: #f6b521; --accent-tx: #78350f;
+  --purple-bg: #f5f3ff; --purple-bd: #c4b5fd; --purple-tx: #5b21b6;
+  --shadow: 0 1px 2px rgba(20, 26, 33, 0.05);
+  --shadow-pop: 0 12px 32px rgba(20, 26, 33, 0.16);
+  /* Non-text contrast (WCAG 1.4.11): ≥3:1 against --surface and --canvas in both themes. */
+  --control-border: #7b8797; --on-danger: #ffffff; --on-signal: #141a21;
+  --selected-bar: inset 3px 0 0 var(--primary); --tab-selected: inset 0 -2px 0 var(--primary);
+
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --text-xs: 12px; --text-sm: 13px; --text-body: 14px; --text-lg: 16px; --text-xl: 20px; --text-2xl: 24px;
+  --fw-body: 400; --fw-medium: 600; --fw-strong: 700;
+  --lh-base: 1.5; --tracking-label: 0.4px;
+
+  /* H1+ state colour grammar (design/h1plus/system.css). Role names, not hues; aliases follow the theme.
+   *   due = LEGAL clock D-n ≤ 14 only, never plain dates · over = overdue legal item
+   *   exception = 예외 처리 mark only · derived = 자동 value, editable only with a reason */
+  --due-bg: var(--accent-bg); --due-bd: var(--accent-bd); --due-tx: var(--accent-tx);
+  --over-bg: var(--danger-bg); --over-bd: var(--danger-bd); --over-tx: var(--danger-tx);
+  --exception-bg: var(--purple-bg); --exception-bd: var(--purple-bd); --exception-tx: var(--purple-tx);
+  --derived-bg: var(--muted); --derived-tx: var(--steel); --kbd-bg: var(--muted);
+  --scrim: rgba(20, 26, 33, 0.32);
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
+  --radius-sm: 4px; --radius: 6px; --radius-lg: 10px;
+  --row-h: 40px; --rail-w: 220px; --topbar-h: 48px; --panel-w: 440px;
+  --qrow-h: 64px; --queue-w: 400px; --card-w: 640px; --sheet-w: 560px;
+  --target: 32px; --target-touch: 44px; --chip-h: 22px;
+  /* Compact table rows (roster) and toolbar / page-head controls (tabs, 기준일, find box): design-language §2. */
+  --row-h-compact: 32px; --control-h-sm: 36px;
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary);
+  color-scheme: light;
+}
+
+/* Dark --primary is lifted to keep ≥4.5:1 on --primary-soft / --muted (active nav, selected rows; axe color-contrast). */
+:root[data-theme="dark"] {
+  --canvas: #0e1319; --surface: #161c24; --muted: #1f2731; --border: #2b3542; --border-soft: #232c37;
+  --ink: #e8edf4; --steel: #9cabbc; --faint: #8b9aab;
+  --primary: #6d8bff; --primary-hover: #8aa2ff; --primary-soft: #1a2540; --primary-bd: #2f4694; --on-primary: #0b1020;
+  --signal: #f6b521; --signal-deep: #ffc93d; --teal: #2dd4bf;
+  --danger-bg: #3a1214; --danger-bd: #7f2b2b; --danger-tx: #fda4a4; --danger-solid: #f87171;
+  --warn-bg: #3a2606; --warn-bd: #92610a; --warn-tx: #fcd34d; --warn-solid: #fbbf24;
+  --ok-bg: #062e22; --ok-bd: #0b6e51; --ok-tx: #6ee7b7; --ok-solid: #34d399;
+  --info-bg: #14243f; --info-bd: #2d5eb8; --info-tx: #93c5fd;
+  --accent-bg: #362605; --accent-bd: #a97b06; --accent-tx: #fcd34d;
+  --purple-bg: #271449; --purple-bd: #6d43c0; --purple-tx: #c4b5fd;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.55);
+  --scrim: rgba(0, 0, 0, 0.55);
+  --control-border: #66748a; --on-danger: #0b1020; --on-signal: #141a21;
+  color-scheme: dark;
+}

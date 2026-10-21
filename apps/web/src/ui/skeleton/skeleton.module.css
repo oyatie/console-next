@@ -1,0 +1,11 @@
+/* ui/skeleton: placeholder blocks after 200 ms (design-language §5.2). Tokens only. */
+.skeleton { display: flex; flex-direction: column; gap: var(--space-3); opacity: 0; animation: skeleton-in 0s linear 200ms forwards; }
+@keyframes skeleton-in { to { opacity: 1; } }
+.bone { display: block; height: var(--space-4); border-radius: var(--radius); background: var(--muted); }
+.bone[data-bone="title"] { width: calc(var(--panel-w) / 1.75); height: var(--space-5); }
+.bone[data-bone="line"] { width: calc(var(--panel-w) * 1.2); max-width: 100%; }
+.bone[data-bone="row"] { width: 100%; height: var(--row-h); }
+.bone[data-bone="crumb"] { width: calc(var(--space-6) * 6); height: var(--space-3); }
+.bone[data-bone="short"] { width: calc(var(--space-6) * 9); height: var(--space-3); }
+.bone[data-bone="block"] { width: 100%; height: calc(var(--space-6) * 6); border-radius: var(--radius-lg); }
+.bone[data-bone="spine"] { width: 100%; height: calc(var(--space-6) * 16); border-radius: var(--radius-lg); }

@@ -1,0 +1,7 @@
+type: object
+additionalProperties: false
+required: [dry_run_digest]
+properties:
+  dry_run_digest:
+    type: string
+    pattern: ^[0-9a-f]{64}$

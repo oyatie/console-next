@@ -1,0 +1,11 @@
+type: object
+required:
+- value
+- display
+properties:
+  value:
+    type: string
+    description: Canonical digits / E.164.
+  display:
+    type: string
+    description: Masked display form.

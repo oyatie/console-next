@@ -1,0 +1,37 @@
+tags:
+  - ws
+operationId: openRealtimeEventStream
+summary: Open the server-sent change stream (one per tab)
+description: 'text/event-stream of hello/change/reset frames (ids, type and version only; no PII) plus
+  the messenger and notification frames. Every change frame passed the caller''s read check. A 25 s
+  comment heartbeat keeps the stream alive; the body ends at the bearer''s exp, on shutdown, or when
+  the principal changes. Reconnect with Last-Event-ID to replay.
+
+  '
+security:
+- bearerAuth: []
+parameters:
+- name: Last-Event-ID
+  in: header
+  required: false
+  description: The last seq the client saw (decimal). Anything else opens the stream live.
+  schema:
+    type: string
+responses:
+  '200':
+    description: The event stream (Cache-Control no-store).
+    content:
+      text/event-stream:
+        schema:
+          type: string
+  '401':
+    description: token_expired — a well-formed bearer past its exp (renew it and reconnect);
+      unauthorized — any other missing or invalid bearer.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '429':
+    description: The caller already holds realtime.max_streams_per_user open streams.
+  '503':
+    description: Realtime is unavailable.

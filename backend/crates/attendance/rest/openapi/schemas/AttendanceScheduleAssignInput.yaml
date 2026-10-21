@@ -1,0 +1,3 @@
+type: object
+required: [targets, pattern_id, effective_from, reason]
+properties: { targets: { type: array, minItems: 1, maxItems: 20, items: { $ref: '#/components/schemas/AttendanceScheduleTarget' } }, pattern_id: { $ref: '#/components/schemas/Uuid' }, effective_from: { type: string, format: date }, effective_to: { type: string, format: date, description: exclusive end of a bounded layer }, reason: { type: string, enum: [STANDARD, REDUCTION, SUBSTITUTE, TEMPORARY] }, evidence_ref: { type: string, maxLength: 200 } }

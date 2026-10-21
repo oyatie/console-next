@@ -1,0 +1,16 @@
+tags:
+- access
+operationId: getAccessCatalog
+summary: The platform-fixed domain × level catalog and the scope kinds the pilot enforces
+description: Any signed-in account. Render role editors and grant sheets from this, option-first.
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: The catalog.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessCatalog'
+  '401':
+    $ref: '#/components/responses/Unauthorized'

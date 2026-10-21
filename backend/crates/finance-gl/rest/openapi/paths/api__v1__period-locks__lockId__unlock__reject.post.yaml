@@ -1,0 +1,49 @@
+tags:
+  - period-locks
+operationId: rejectPeriodUnlock
+summary: Refuse the waiting unlock request as the second person (반려)
+description: 'Close-authority gated (PeriodLockManage, org-wide), audited (BW-15). The same second person who may
+  approve (never the requester''s own person: 403 second_person_required / second_person_ineligible) refuses the
+  request with a note; the lock stays in force and the requester sees the note on the lock
+  (PeriodLock.unlockRequest). The request must still be the open one (409 period_unlock_request_changed) and
+  inside its window (409 period_unlock_request_expired); a blank or over-long note is 422
+  period_unlock_reject_note_invalid. An Idempotency-Key replays the first response.'
+security:
+- bearerAuth: []
+parameters:
+- name: lockId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+- name: Idempotency-Key
+  in: header
+  required: false
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/RejectPeriodUnlockRequest'
+responses:
+  '200':
+    description: Refused; the lock stays in force.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PeriodUnlockRejection'
+  '401':
+    description: No session.
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

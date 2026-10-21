@@ -1,0 +1,35 @@
+type: object
+required:
+- receipt_id
+- expires_at
+- digest
+- phase
+- step_up_required
+- items
+- refused
+- accounts_affected
+properties:
+  receipt_id:
+    $ref: '#/components/schemas/Uuid'
+  expires_at:
+    $ref: '#/components/schemas/Timestamp'
+  digest:
+    type: string
+    pattern: ^[a-f0-9]{64}$
+  phase:
+    type: string
+    enum:
+    - SETUP
+    - OPERATING
+  step_up_required:
+    type: boolean
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/AccessGrantPreviewItem'
+  refused:
+    type: integer
+    minimum: 0
+  accounts_affected:
+    type: integer
+    minimum: 0

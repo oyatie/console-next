@@ -1,0 +1,8 @@
+type: object
+additionalProperties: false
+properties:
+  identifier:
+    type:
+    - string
+    - 'null'
+    description: 'The sign-in ID `<아이디>@<회사 도메인>` (decisions #33). Omit for usernameless sign-in.'

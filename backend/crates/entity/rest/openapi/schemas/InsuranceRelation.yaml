@@ -1,0 +1,37 @@
+type: object
+required:
+- insurer
+- version
+- effective_from
+- before_first_record
+- status
+- unit_mode
+properties:
+  insurer:
+    $ref: '#/components/schemas/Insurer'
+  version:
+    type: integer
+  effective_from:
+    type: string
+    format: date
+  before_first_record:
+    type: boolean
+    description: Today is before the first record takes effect (e.g. before 개설일); this is that first record.
+  status:
+    $ref: '#/components/schemas/InsuranceStatus'
+  mgmt_no:
+    anyOf:
+    - $ref: '#/components/schemas/FormattedValue'
+    - type: 'null'
+  established_on:
+    type:
+    - string
+    - 'null'
+    format: date
+  unit_mode:
+    $ref: '#/components/schemas/InsuranceUnitMode'
+  main_workplace_id:
+    type:
+    - string
+    - 'null'
+    format: uuid

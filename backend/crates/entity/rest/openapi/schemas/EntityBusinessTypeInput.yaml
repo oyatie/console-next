@@ -1,0 +1,25 @@
+type: object
+required:
+- is_main
+- sector
+- item
+properties:
+  is_main:
+    type: boolean
+  sector:
+    type: string
+    maxLength: 100
+    description: 업태 as printed
+  item:
+    type: string
+    maxLength: 200
+    description: 종목 as printed
+  nts_code:
+    type:
+    - string
+    - 'null'
+    pattern: ^[0-9]{6}$
+  ksic:
+    anyOf:
+    - $ref: '#/components/schemas/CodeInput'
+    - type: 'null'

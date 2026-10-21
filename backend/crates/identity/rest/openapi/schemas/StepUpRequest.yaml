@@ -1,0 +1,8 @@
+type: object
+description: A fresh assertion of one of the CALLER's own passkeys (ceremony from `passkey/login/start`, user
+  verification required), so a stolen bearer token alone cannot perform the action.
+required:
+- step_up
+properties:
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'

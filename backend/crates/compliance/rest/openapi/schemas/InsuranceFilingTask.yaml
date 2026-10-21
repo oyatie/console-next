@@ -1,0 +1,49 @@
+type: object
+additionalProperties: false
+required: [event_id, employee_id, name, employee_number, kind, insurer, effective_date, legal_entity_id, workplace_id, workplace_name, due_date, due_in_days, deadline_status, version, completed_on, receipt_number, loss_code, loss_options, detail, opens_on, target_on, due_on, dates, basis, applicability, applicability_facts, state, record_action, not_applicable_reason, not_applicable_options, total_remuneration_won, is_request, acquired_on, can_record_sensitive_facts, birth_date_known]
+properties:
+  event_id: { type: string }
+  employee_id: { type: string }
+  name: { type: string }
+  employee_number: { type: string, nullable: true }
+  kind: { type: string }
+  insurer: { type: string }
+  effective_date: { type: string }
+  legal_entity_id: { type: string, nullable: true }
+  workplace_id: { type: string, nullable: true }
+  workplace_name: { type: string, nullable: true }
+  due_date: { type: string, nullable: true }
+  deadline_status: { type: string }
+  completed_on: { type: string, nullable: true }
+  receipt_number: { type: string, nullable: true }
+  loss_code: { type: string, nullable: true }
+  detail: { type: string, nullable: true }
+  due_in_days: { type: integer, nullable: true }
+  version: { type: integer, format: int64 }
+  can_record_sensitive_facts: { type: boolean }
+  birth_date_known: { type: boolean }
+  opens_on: { type: string, format: date, nullable: true }
+  target_on: { type: string, format: date, nullable: true }
+  due_on: { type: string, format: date, nullable: true }
+  dates: { $ref: '#/components/schemas/InsuranceFilingDates' }
+  basis: { type: object, nullable: true, additionalProperties: true, description: Effective-dated statutory rule and cited SETTLED penalty facts }
+  applicability: { $ref: '#/components/schemas/InsuranceFilingApplicability' }
+  applicability_facts: { $ref: '#/components/schemas/InsuranceFilingFacts' }
+  state: { type: string, x-extensible-enum: [PENDING, DONE, NOT_APPLICABLE, COVERED] }
+  record_action: { type: string, nullable: true }
+  not_applicable_reason: { $ref: '#/components/schemas/InsuranceFilingReason' }
+  not_applicable_options: { type: array, items: { $ref: '#/components/schemas/InsuranceFilingReason' } }
+  total_remuneration_won: { type: integer, format: int64, nullable: true, minimum: 0 }
+  is_request: { type: boolean }
+  acquired_on: { type: string, format: date, nullable: true }
+  loss_options:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [code, label, requires_detail, held]
+      properties:
+        code: { type: string }
+        label: { type: string }
+        requires_detail: { type: boolean }
+        held: { type: boolean }

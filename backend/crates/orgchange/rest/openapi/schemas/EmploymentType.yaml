@@ -1,0 +1,3 @@
+type: string
+enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, FREELANCE]
+description: 고용형태 (E13, employee_employment_profiles.employment_type).

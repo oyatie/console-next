@@ -1,0 +1,4 @@
+/* The focused cell's input (r3:records-01): unseen while the cell is only focused, the DS input once typing starts. */
+.cell { position: relative; }
+.catch { position: absolute; inset: 0; width: 100%; opacity: 0; }
+.edit { flex: 1; min-width: 0; }

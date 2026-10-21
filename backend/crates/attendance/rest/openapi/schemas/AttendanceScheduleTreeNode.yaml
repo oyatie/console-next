@@ -1,0 +1,3 @@
+type: object
+required: [kind, id, name, people]
+properties: { kind: { $ref: '#/components/schemas/AttendanceScopeKind' }, id: { $ref: '#/components/schemas/Uuid' }, parent_id: { $ref: '#/components/schemas/Uuid', nullable: true }, name: { type: string }, people: { type: integer, description: people placed here on the date (subtree for 법인 and 사업장) }, layer: { $ref: '#/components/schemas/AttendanceLayerSummary', nullable: true } }

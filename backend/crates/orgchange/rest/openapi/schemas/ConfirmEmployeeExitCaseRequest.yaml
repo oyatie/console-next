@@ -1,0 +1,31 @@
+type: object
+additionalProperties: false
+properties:
+  hq_confirmation:
+    type: boolean
+    default: false
+    description: >-
+      false = HR tier (exit_case_hr_confirm; case must be REPORTED): records the TERMINATE lifecycle event that
+      exits the employee, carrying the signoffs given. true = HQ tier (exit_case_hq_confirm; case must be
+      HR_CONFIRMED). Under approval.policy.exit = none the HR confirmer may finish it; under route it needs a
+      different actor (403 exit_hq_second_person_required), except the tenant ops account with step_up
+      (decisions #26). Selects the tier only; the capability and stored state are the authority. To refuse an
+      exit use POST /api/v1/hr/exit-cases/{id}/reject.
+  note:
+    type: string
+    maxLength: 1000
+    nullable: true
+  signoffs:
+    $ref: '#/components/schemas/EmployeeLifecycleSignoffs'
+    description: HR tier only (ignored by the HQ tier). TERMINATE requires all four acknowledgements —
+      privacy_notice_ack, korean_labor_law_ack, payroll_cutoff_ack, retirement_settlement_ack; a missing one is 422
+      lifecycle_signoff_required naming it.
+  settlement_input:
+    oneOf:
+    - $ref: '#/components/schemas/ExitSettlementInput'
+    - type: 'null'
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+    description: HQ tier under route when the tenant ops account confirms its own HR confirmation — a step-up
+      of kind EXIT_CONFIRM bound to the case id and the payload {"hq_confirmation":true}; without it 401
+      step_up_required, unverified 401 step_up_failed.

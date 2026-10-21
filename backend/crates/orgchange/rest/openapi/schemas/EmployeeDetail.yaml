@@ -1,0 +1,54 @@
+type: object
+required: [employee, employment, allowed_events, allowed_scheduled_events, schedule_after, classification]
+properties:
+  employee:
+    $ref: '#/components/schemas/Employee'
+  employment:
+    description: Null when the employee has no employment profile yet (roster-import rows).
+    oneOf:
+    - $ref: '#/components/schemas/EmployeeEmploymentDetail'
+    - type: 'null'
+  pending_employment:
+    description: Facts recorded before employment classification; absent once classified.
+    $ref: '#/components/schemas/EmployeePendingEmploymentDetail'
+  allowed_events:
+    type: array
+    description: Lifecycle events the server accepts for this employee right now, computed by the same state rules
+      POST /api/v1/employees/{id}/lifecycle-events enforces (empty once EXITED, and empty for callers without
+      employee_directory_manage, and empty on the caller's own record, people-self-33). Exits are not listed; they go
+      through /api/v1/hr/exit-cases.
+    items:
+      $ref: '#/components/schemas/AllowedLifecycleEvent'
+  allowed_scheduled_events:
+    type: array
+    description: Lifecycle events schedulable for an effective_date after schedule_after, computed by the same rules
+      against the employee as they will stand after their last SCHEDULED event (e.g. RETURN_FROM_LEAVE after a
+      scheduled LEAVE_OF_ABSENCE). Empty when nothing is scheduled (allowed_events then covers every date), once
+      an exit is scheduled, for callers without employee_directory_manage, and on the caller's own record.
+    items:
+      $ref: '#/components/schemas/AllowedLifecycleEvent'
+  schedule_after:
+    type: [string, 'null']
+    format: date
+    description: The effective_date of the employee's last SCHEDULED event; null when none.
+  classification:
+    type: object
+    required: [grade_id, job_title_id, position_kind_id, job_id, job_family_id]
+    description: MR-25. The current 직급, 직위, 직책, 직무 and 직군 catalog ids (labels from GET
+      /api/v1/job-titles); each null when none. Changed by PROMOTE (직급, 직위) and APPOINT (직책, 직무, 직군).
+    properties:
+      grade_id:
+        oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]
+      job_title_id:
+        oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]
+      position_kind_id:
+        oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]
+      job_id:
+        oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]
+      job_family_id:
+        oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]
+  warnings:
+    type: array
+    description: Registration and detail reads, absent when empty. Current non-blocking worker notices; wage notices are returned only to managers.
+    items:
+      $ref: '#/components/schemas/EmployeeCreateWarning'

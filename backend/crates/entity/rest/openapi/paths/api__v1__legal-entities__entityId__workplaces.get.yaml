@@ -1,0 +1,43 @@
+tags:
+- entity
+operationId: listEntityWorkplaces
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: as_of
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date
+- name: known_at
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date
+responses:
+  '200':
+    description: Dated read.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/WorkplaceList'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+  '422':
+    description: Invalid date or reversed range.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

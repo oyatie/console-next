@@ -1,0 +1,25 @@
+import type { koImportValues } from "../ko/import-values";
+
+export const enImportValues: Record<keyof typeof koImportValues, string> = {
+  "importValues.title": "Value links · {kind}",
+  "importValues.counts": "{all, number} values · {open, number} to choose",
+  "importValues.col.text": "In the file",
+  "importValues.col.rows": "Rows",
+  "importValues.col.place": "In the console",
+  "importValues.col.why": "Why",
+  "importValues.none": "Not selected yet",
+  "importValues.unplaced": "Left unplaced",
+  "importValues.empty": "Left empty",
+  "importValues.near": "Names close to “{value}”",
+  "importValues.basis.same_name": "several of this name",
+  "importValues.basis.normalized": "only spacing or marks differ",
+  "importValues.basis.path": "end of a path",
+  "importValues.basis.suffix": "only a suffix differs",
+  "importValues.why.auto": "Same name · automatic",
+  "importValues.why.open": "To select",
+  "importValues.why.blocking": "To select · blocks the apply",
+  "importValues.why.chosen": "Chosen",
+  "importValues.why.remembered": "Selected before",
+  "importValues.basis.registration_number": "Registration number matches",
+  "importValues.basis.alias": "Short-label candidate",
+};

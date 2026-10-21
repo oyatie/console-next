@@ -1,0 +1,42 @@
+type: object
+required: [version, name, parentId, status, effectiveFrom, actorId, actorName, createdAt]
+properties:
+  actorKind: {oneOf: [{$ref: '#/components/schemas/ActorKind'}, {type: 'null'}]}
+  commandId: {type: [string, 'null'], format: uuid}
+  version:
+    type: integer
+    format: int64
+    minimum: 1
+  name:
+    type: string
+  parentId:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  status:
+    $ref: '#/components/schemas/OrgUnitStatus'
+  effectiveFrom:
+    $ref: '#/components/schemas/Date'
+  actorId:
+    $ref: '#/components/schemas/Uuid'
+  actorName:
+    type: [string, 'null']
+    description: The actor's display name, resolved server-side within the tenant; null when unknown.
+  createdAt:
+    $ref: '#/components/schemas/Timestamp'
+  code:
+    type: [string, 'null']
+    description: The unit's code in this revision (a code change is a history line).
+  headEmployeeId:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+    description: The 부서장 in this revision.
+  headName:
+    type: [string, 'null']
+    description: The 부서장's name, resolved within the tenant; null when none or unknown.
+  mergedInto:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+    description: The unit a dissolved one was merged into (its successor, 합치기).

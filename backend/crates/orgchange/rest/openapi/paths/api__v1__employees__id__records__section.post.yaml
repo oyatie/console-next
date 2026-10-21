@@ -1,0 +1,66 @@
+tags:
+  - employees
+operationId: createEmployeeRecord
+summary: Record a 인사카드 이력 entry
+description: Creates an entry (version 1) in the section. The first write for an employee with no Person binding
+  mints and binds one through the Person port. Idempotency-Key (a UUID) is required; the same key and payload
+  answers 200 with the entry, the same key with another payload 409. 409 record_section_disabled when the
+  tenant turned the section off (장애·보훈 start off, PIPA §23①); 409 record_single_entry_exists for a second
+  live 병역, 장애 or 보훈 entry. 422 for a field rule, including a 주민등록번호/외국인등록번호 shape in any text
+  and any 운전면허번호 (record the licence kind and class only). 장애·보훈 carry a basis (CONSENT with its
+  date, or STATUTE). A restricted section passes the employee_restricted_record Cedar action (403
+  record_restricted_forbidden, record_restricted_self). Audited as employee.record.create without the values.
+  403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: section
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/PersonRecordSectionSegment'
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [fields]
+        properties:
+          fields:
+            $ref: '#/components/schemas/PersonRecordFields'
+responses:
+  '201':
+    description: The new entry.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PersonRecordEntry'
+  '200':
+    description: Replay of the same Idempotency-Key and payload.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PersonRecordEntry'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

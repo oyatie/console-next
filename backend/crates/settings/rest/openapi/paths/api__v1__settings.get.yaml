@@ -1,0 +1,34 @@
+operationId: listSettings
+summary: List every setting resolved now
+description: Every registered setting key with its definition, the value in force now for the tenant (or the given
+  legal entity or 사업장), where it came from, and rows scheduled to take effect later. The frontend reads these values;
+  the server decides with them.
+tags:
+- Settings
+security:
+- bearerAuth: []
+parameters:
+- name: entity
+  in: query
+  required: false
+  description: Legal entity or 사업장 to resolve for; omitted = tenant-wide.
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: Every key, resolved.
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/SettingEntry'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

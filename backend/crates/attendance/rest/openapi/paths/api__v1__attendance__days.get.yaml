@@ -1,0 +1,15 @@
+tags: [attendance]
+operationId: readAttendanceDayBoard
+summary: One day's board (일별 · 간단히) — the partition ledger, then 사업장 › 부서 groups with issue rows first
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: date, in: query, required: true, schema: { type: string, format: date } }
+  - { name: workplace_id, in: query, required: false, schema: { $ref: '#/components/schemas/Uuid' } }
+  - { name: unit_id, in: query, required: false, description: open this 부서 group (all its rows), schema: { $ref: '#/components/schemas/Uuid' } }
+  - { name: issues_only, in: query, required: false, schema: { type: boolean } }
+responses:
+  '200': { description: Board, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceDayBoard' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '404': { $ref: '#/components/responses/NotFound' }
+  '422': { $ref: '#/components/responses/ValidationError' }

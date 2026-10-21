@@ -1,0 +1,111 @@
+tags:
+  - employees
+operationId: getEmploymentFacts
+summary: Person and employment facts (EMP-MODEL E3, E4, E5, E12, E13)
+description: Birth date, work email (an HR fact that only prefills an invitation), identification type (never
+  the number, decision 6), and, when the employee has an employment profile, the employment type with its
+  derived worker classification, base pay in whole won with its unit, and the probation period with its server
+  clock (probation_state, probation_days_left; DUE_SOON needs the reminder-window setting and is not served
+  yet). Personal data, so org-wide employee_directory_manage.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The facts record; the same shape the PATCH tests against.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [employee_id, hire_date, birth_date, work_email, id_type, employment, updated_at]
+          properties:
+            employee_id:
+              $ref: '#/components/schemas/Uuid'
+            hire_date:
+              type: [string, 'null']
+            birth_date:
+              type: [string, 'null']
+              format: date
+            work_email:
+              type: [string, 'null']
+            id_type:
+              type: [string, 'null']
+              enum: [RRN, ARC, DOMESTIC_RESIDENCE, NOT_ISSUED, null]
+            employment:
+              oneOf:
+              - type: 'null'
+              - type: object
+                required: [employment_type, worker_classification, base_pay_won, pay_unit, probation_end_date,
+                  probation_confirmed_at, probation_state, probation_days_left]
+                properties:
+                  employment_type:
+                    type: string
+                    enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN,
+                      OUTSOURCED_ON_SITE, FREELANCE]
+                  worker_classification:
+                    type: string
+                    enum: [EMPLOYEE, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, PLATFORM_OR_FREELANCE]
+                  base_pay_won:
+                    type: [integer, 'null']
+                    format: int64
+                  pay_unit:
+                    type: [string, 'null']
+                    enum: [MONTHLY, HOURLY, DAILY, ANNUAL, null]
+                  probation_end_date:
+                    type: [string, 'null']
+                    format: date
+                  probation_confirmed_at:
+                    type: [string, 'null']
+                    format: date-time
+                  probation_state:
+                    type: string
+                    enum: [NONE, RUNNING, DUE_SOON, OVERDUE, CONFIRMED]
+                  probation_days_left:
+                    type: [integer, 'null']
+            pending_employment:
+              oneOf:
+              - type: 'null'
+              - type: object
+                required: [employment_type, worker_classification, base_pay_won, pay_unit, probation_end_date,
+                  probation_confirmed_at, probation_state, probation_days_left]
+                properties:
+                  employment_type:
+                    nullable: true
+                    type: string
+                    enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN,
+                      OUTSOURCED_ON_SITE, FREELANCE]
+                  worker_classification:
+                    nullable: true
+                    type: string
+                    enum: [EMPLOYEE, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, PLATFORM_OR_FREELANCE]
+                  base_pay_won:
+                    type: [integer, 'null']
+                    format: int64
+                  pay_unit:
+                    type: [string, 'null']
+                    enum: [MONTHLY, HOURLY, DAILY, ANNUAL, null]
+                  probation_end_date:
+                    type: [string, 'null']
+                    format: date
+                  probation_confirmed_at:
+                    type: [string, 'null']
+                    format: date-time
+                  probation_state:
+                    type: string
+                    enum: [NONE, RUNNING, DUE_SOON, OVERDUE, CONFIRMED]
+                  probation_days_left:
+                    type: [integer, 'null']
+            updated_at:
+              type: string
+              format: date-time
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

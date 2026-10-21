@@ -1,0 +1,56 @@
+tags:
+- entity
+operationId: searchRefListCodes
+summary: Search an official reference list (bundled, versioned data with its source)
+description: A list that is NOT_LOADED (no verified source) or HOLD (licence pending) answers its state and no
+  items; the form then keeps the printed text.
+security:
+- bearerAuth: []
+parameters:
+- name: key
+  in: path
+  required: true
+  schema:
+    type: string
+    enum:
+    - admin_region
+    - brn_classification
+    - nts_industry_code
+    - tax_office
+    - insurance_branch
+    - ksic
+    - bank
+- name: q
+  in: query
+  required: false
+  description: Words that must each appear in the code, the label or the parent label.
+  schema:
+    type: string
+- name: as_of
+  in: query
+  required: false
+  description: Accepted for the contract; every bundled list has one version today.
+  schema:
+    type: string
+    format: date
+responses:
+  '200':
+    description: At most 50 codes, in list order.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/RefCodePage'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

@@ -1,0 +1,21 @@
+// English for `uiOverrideSheet.` ids (ui/override-sheet).
+export const enUiOverrideSheet = {
+  "uiOverrideSheet.name": "Exception sheet",
+  "uiOverrideSheet.risk.low": "Low risk",
+  "uiOverrideSheet.risk.mid": "Medium risk",
+  "uiOverrideSheet.risk.high": "High risk",
+  "uiOverrideSheet.route": "Route",
+  "uiOverrideSheet.auto": "Automatic",
+  "uiOverrideSheet.sole.passkey": "Confirm it is you with a passkey",
+  "uiOverrideSheet.sole.passkey.meta": "Bound to this request",
+  "uiOverrideSheet.sole.notify": "Notify {count, plural, one {# executive or super admin} other {# executives and super admins}}",
+  "uiOverrideSheet.sole.review": "Flag for review",
+  "uiOverrideSheet.sole.review.meta": "Monthly exception review",
+  "uiOverrideSheet.stepUp": "Confirm with a passkey and {action}",
+  "uiOverrideSheet.stepUp.owed": "Confirm with a passkey",
+  "uiOverrideSheet.stepUp.done": "Passkey confirmed · {at}",
+  "uiOverrideSheet.binding": "{action} · request hash {hash}",
+  "uiOverrideSheet.back": "Go back",
+  "uiOverrideSheet.reasonMissing": "Select an exception reason to continue",
+  "uiOverrideSheet.mark": "Exception",
+} as const;

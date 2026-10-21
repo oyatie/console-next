@@ -1,0 +1,63 @@
+tags:
+- entity
+operationId: createBusinessRegistration
+summary: Record one 사업자등록증
+description: The entity's VAT unit is derived while one registration decides it; a second registration without a declared
+  vat_unit_mode is a 422 naming it.
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: entityId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CreateBusinessRegistrationRequest'
+responses:
+  '201':
+    description: Created.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SavedBusinessRegistration'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}] (with document_id: document_not_found, document_not_certificate,
+      document_attached_elsewhere, document_not_new).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Refused with a stable code and reasons[] naming the remedy (e.g. phase_not_setup → submit_org_change).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

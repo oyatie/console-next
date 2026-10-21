@@ -1,0 +1,43 @@
+type: object
+required:
+- id
+- requested_by
+- screen
+- reason_code
+- status
+- created_at
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  requested_by:
+    $ref: '#/components/schemas/Uuid'
+  requester_name:
+    type:
+    - string
+    - 'null'
+  screen:
+    type: string
+    description: The refused screen's route key.
+  reason_code:
+    $ref: '#/components/schemas/AccessRequestReason'
+  note:
+    type:
+    - string
+    - 'null'
+  status:
+    type: string
+    enum:
+    - OPEN
+    - DONE
+    - DECLINED
+    - WITHDRAWN
+  created_at:
+    $ref: '#/components/schemas/Timestamp'
+  closed_by:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  closed_at:
+    oneOf:
+    - $ref: '#/components/schemas/Timestamp'
+    - type: 'null'

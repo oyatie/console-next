@@ -1,0 +1,59 @@
+tags:
+  - employees
+operationId: listEmployeeRecords
+summary: 인사카드 sections of an employee (MR-31/33/35)
+description: 학력, 자격·면허, 병역, 교육 이수, 어학, 포상, 가족 entries of the natural person this employee is bound to (two
+  employee records of one person show the same entries), with each section's tenant switch
+  (hr.record.<section>.enabled). Voided entries only with include_voided. Takes org-wide
+  employee_directory_manage. Without section, the restricted sections (징계, 장애, 보훈) are left out,
+  knowing such a record exists is itself sensitive. section=discipline|disability|veteran needs a
+  purpose (422 record_purpose_required, reason_code_invalid, reason_note_required), passes the
+  employee_restricted_record Cedar action (403 record_restricted_forbidden; 403 record_restricted_self
+  on one's own record), and writes one employee.record.restricted_read audit row naming the entries and
+  the purpose, never the values. Responses carry Cache-Control no-store.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: section
+  in: query
+  required: false
+  schema:
+    $ref: '#/components/schemas/PersonRecordSectionSegment'
+- name: include_voided
+  in: query
+  required: false
+  schema:
+    type: boolean
+    default: false
+- name: purpose
+  in: query
+  required: false
+  description: Required for a restricted section (discipline, disability, veteran) — a
+    restricted_record_purpose reason code (system or active tenant code).
+  schema:
+    type: string
+- name: purpose_note
+  in: query
+  required: false
+  description: Required when the purpose code asks for a note (OTHER).
+  schema:
+    type: string
+    maxLength: 1000
+responses:
+  '200':
+    description: The entries and the section switches.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PersonRecordList'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

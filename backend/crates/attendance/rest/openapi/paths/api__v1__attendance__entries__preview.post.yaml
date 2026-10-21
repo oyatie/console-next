@@ -1,0 +1,10 @@
+tags: [attendance]
+operationId: previewAttendanceEntries
+summary: Re-parse and evaluate typed cells (잠정 · 저장 전 미리보기) — each cell OK, UNCHANGED, REFUSED with its code, or CONFLICT — writing nothing
+security: [{ bearerAuth: [] }]
+requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AttendancePreviewInput' } } } }
+responses:
+  '200': { description: Preview, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceSavePreview' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '422': { $ref: '#/components/responses/ValidationError' }

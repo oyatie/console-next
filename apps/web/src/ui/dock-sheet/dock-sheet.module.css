@@ -1,0 +1,11 @@
+/* ui/dock-sheet: a non-modal sheet docked beside its view (same anatomy as ui/sheet). Tokens only. */
+.dock { display: flex; flex-direction: column; width: min(100%, var(--sheet-w)); min-height: 0; height: 100%; background: var(--surface); color: var(--ink); border-left: 1px solid var(--border); }
+.head { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border); }
+.titles { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.kicker { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); color: var(--steel); }
+.title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); outline: none; }
+.subtitle { margin: 0; font-size: var(--text-sm); color: var(--steel); }
+.body { display: flex; flex: 1; flex-direction: column; gap: var(--space-5); min-height: 0; padding: var(--space-4) var(--space-5); overflow: auto; overscroll-behavior: contain; }
+.foot { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-top: 1px solid var(--border); background: var(--canvas); }
+.consequence { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); }

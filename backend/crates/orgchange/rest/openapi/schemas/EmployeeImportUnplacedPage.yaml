@@ -1,0 +1,52 @@
+type: object
+required: [count, items]
+properties:
+  count:
+    type: integer
+    minimum: 0
+  items:
+    type: array
+    items:
+      type: object
+      required: [employee_id, name, company, reason]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        employee_number:
+          type: [string, 'null']
+        company:
+          type: string
+        legal_entity_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        workplace_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        org_unit_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        source_org_unit:
+          type: [string, 'null']
+          description: The 부서 text the import file named that bound nothing (원본 부서).
+        reason:
+          type: string
+          enum: [no_place, workplace_unknown, unit_unknown]
+        position:
+          type: [string, 'null']
+          description: 'UX-R3 IMPORT (r3:hire-21): the facts placement is decided with, read with the
+            person (직위, 고용형태 code, 입사일 YYYY-MM-DD, the 근무지 and 부서 texts on the record).'
+        employment_type:
+          type: [string, 'null']
+        hire_date:
+          type: [string, 'null']
+        worksite_name:
+          type: [string, 'null']
+        org_unit:
+          type: [string, 'null']
+  next_cursor:
+    type: [string, 'null']

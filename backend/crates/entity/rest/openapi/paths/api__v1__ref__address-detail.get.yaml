@@ -1,0 +1,71 @@
+tags:
+- entity
+operationId: searchAddressDetail
+summary: 상세주소 options (동, then 층·호) of the building a road-address hit names
+description: Through the server with DETAILED_JUSO_API_KEY. Without dong it lists the building's 동; with dong
+  (empty for a building without 동) the 층·호 of that 동. UNAVAILABLE or no options keep the free-text 상세주소.
+security:
+- bearerAuth: []
+parameters:
+- name: adm_cd
+  in: query
+  required: true
+  schema:
+    type: string
+    pattern: ^[0-9]{10}$
+- name: rn_mgt_sn
+  in: query
+  required: true
+  schema:
+    type: string
+    pattern: ^[0-9]{12}$
+- name: udrt_yn
+  in: query
+  required: true
+  schema:
+    type: boolean
+- name: buld_mnnm
+  in: query
+  required: true
+  schema:
+    type: integer
+    minimum: 0
+- name: buld_slno
+  in: query
+  required: true
+  schema:
+    type: integer
+    minimum: 0
+- name: dong
+  in: query
+  required: false
+  schema:
+    type: string
+    maxLength: 50
+responses:
+  '200':
+    description: Options (possibly none).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AddressDetailResult'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}].'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '429':
+    description: Over the per-user search budget (code rate_limited); retry in a minute.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

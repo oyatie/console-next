@@ -1,0 +1,7 @@
+type: object
+additionalProperties: false
+required: [source_event_id, filing_kind, anchor_on]
+properties:
+  source_event_id: { type: string, format: uuid }
+  filing_kind: { type: string, enum: [WORK_CONFIRMATION, SEPARATION_CERTIFICATE, ACQUIRE_REQUESTED, MONTHLY_REMUNERATION] }
+  anchor_on: { type: string, format: date }

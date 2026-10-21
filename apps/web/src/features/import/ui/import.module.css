@@ -1,0 +1,40 @@
+/* features/import: row-filter chips, a row's detail lines, and the apply bar. Tokens only. */
+.filters { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.detail { display: flex; flex-direction: column; gap: var(--space-2); min-width: 16rem; margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border-soft); }
+.detail p { margin: 0; color: var(--danger-tx); font-size: var(--text-sm); }
+.lines { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); }
+.held { color: var(--warn-tx); }
+.issue { color: var(--danger-tx); }
+.consequence { margin: 0; font-size: var(--text-sm); color: var(--ink); }
+.bar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: flex-end; gap: var(--space-2) var(--space-3); }
+@media (max-width: 767px) { .detail { min-width: 0; } }
+.cellLine { display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.choices { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.resolve { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-3); border-top: 1px solid var(--border-soft); padding-top: var(--space-3); }
+.people { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.person { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border-soft); }
+.sheet { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) 0; border-top: 1px solid var(--border-soft); }
+/* The workspace head (spec E7). */
+.grow { flex: 1; }
+/* The column step's workspace (spec E7-columns): the file on the left, the column links on the right. */
+.workspace { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+@media (max-width: 1279px) { .workspace { grid-template-columns: minmax(0, 1fr); } }
+.pane { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.wrapCells td, .wrapCells th { overflow-wrap: anywhere; }
+.order { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.reconcile { display: flex; flex-direction: column; gap: var(--space-3); }
+/* An answer opened under a card's table (value links, the queue): its lines sit on the card's inner edge. */
+.resolveCard { padding-bottom: var(--space-4); }
+.resolveCard > :not(:first-child) { margin-inline: var(--space-4); }
+/* A line of a card with no panel padding of its own. */
+.inset { margin: 0 var(--space-4) var(--space-3); }
+/* A fieldset that groups an answer's controls without the browser's frame. */
+.plain { min-width: 0; }
+/* The migration check (spec E7-reconcile): the checks on the left, the sign-off card beside them (under them below 1280 px). */
+.reconcileWrap { display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--panel-w) * 0.8); gap: var(--space-4); align-items: start; }
+@media (max-width: 1279px) { .reconcileWrap { grid-template-columns: minmax(0, 1fr); } }
+/* One sheet inside the sheets card: its table full width, its lines and its mapping form on the card's inner edge. */
+.sheet { padding-bottom: var(--space-3); }
+.sheet > p, .edge { margin-inline: var(--space-4); }
+/* Two fields side by side line up by their labels, whatever hint either carries. */
+.alignTop { align-items: flex-start; }

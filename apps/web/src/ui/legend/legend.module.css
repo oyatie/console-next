@@ -1,0 +1,9 @@
+/* ui/legend: swatch + words (kit .legend, .lg-*). Tokens only. */
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0; padding: 0; list-style: none; color: var(--steel); font-size: var(--text-xs); }
+.item { display: inline-flex; align-items: center; gap: var(--space-1); }
+.swatch { display: inline-block; width: var(--space-3); height: var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--surface); }
+.swatch[data-swatch="new"] { border-color: var(--ok-solid); background: var(--ok-bg); }
+.swatch[data-swatch="mov"] { border-color: var(--info-tx); background: var(--info-bg); }
+.swatch[data-swatch="chg"] { border-color: var(--warn-solid); }
+.swatch[data-swatch="gone"] { border-style: dashed; background: var(--canvas); }
+.swatch[data-swatch="sel"] { border-color: var(--primary); background: var(--primary-soft); }

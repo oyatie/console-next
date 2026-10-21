@@ -1,0 +1,13 @@
+type: object
+description: An action the case's current state admits, as a key; the client owns its label and route (the caller's capability is still checked by the action).
+required:
+- key
+properties:
+  key:
+    type: string
+    enum:
+    - confirm_exit
+    - confirm_exit_hq
+    - prepare_settlement
+    - cancel_exit
+    - reject_exit

@@ -1,0 +1,46 @@
+type: object
+required:
+- id
+- name_ko
+- status
+- version
+- lines
+- holder_count
+- created_at
+- updated_at
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  name_ko:
+    type: string
+  name_en:
+    type:
+    - string
+    - 'null'
+  description:
+    type:
+    - string
+    - 'null'
+  status:
+    $ref: '#/components/schemas/AccessRoleStatus'
+  version:
+    type: integer
+    format: int32
+    minimum: 1
+  lines:
+    type: array
+    items:
+      $ref: '#/components/schemas/AccessRoleLine'
+  holder_count:
+    type: integer
+    minimum: 0
+    description: Accounts with a grant of this role that is not revoked and not ended.
+  holders_affected:
+    type: array
+    description: PATCH only — accounts whose enforced access this edit changed.
+    items:
+      $ref: '#/components/schemas/Uuid'
+  created_at:
+    $ref: '#/components/schemas/Timestamp'
+  updated_at:
+    $ref: '#/components/schemas/Timestamp'

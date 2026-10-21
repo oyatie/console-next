@@ -1,0 +1,38 @@
+tags: [platform]
+operationId: requestCompanyDomainChange
+summary: Tenant ops asks the platform operator to change their own company domain
+security:
+- bearerAuth: []
+parameters:
+- in: header
+  name: Idempotency-Key
+  required: true
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [slug]
+        properties:
+          slug:
+            type: string
+            pattern: ^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$
+responses:
+  '200':
+    description: Request recorded for platform operators
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/CompanyDomainRequestState'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    description: Invalid requested company domain

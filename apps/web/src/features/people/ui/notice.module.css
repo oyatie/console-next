@@ -1,0 +1,17 @@
+/* Appointment notices (spec E5-notice): the form, the document and how it prints. Tokens only. */
+.form { display: flex; flex-direction: column; gap: var(--space-4); max-width: 40rem; }
+.muted { margin: 0; font-size: var(--text-sm); color: var(--steel); }
+.actions { display: flex; justify-content: flex-end; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.grow { flex: 1; }
+.doc { display: flex; flex-direction: column; gap: var(--space-3); max-width: 52rem; padding: var(--space-6); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); color: var(--ink); }
+.docHead { margin: 0; text-align: center; font-size: var(--text-xl); letter-spacing: var(--tracking-label); }
+.docNo { margin: 0; text-align: center; font-size: var(--text-sm); color: var(--steel); }
+.docSection h3 { margin: 0 0 var(--space-2); font-size: var(--text-body); }
+.docTable { overflow-x: auto; }
+.docNote { margin: 0; font-size: var(--text-sm); }
+.docFoot { margin: var(--space-4) 0 0; text-align: right; font-size: var(--text-sm); }
+@media print {
+  :global(.rail), :global(.top), .noPrint { display: none; }
+  .doc { border: 0; padding: 0; max-width: none; }
+}

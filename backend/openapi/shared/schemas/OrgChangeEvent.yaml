@@ -1,0 +1,24 @@
+      type: object
+      required:
+      - at
+      - actor
+      - actorName
+      - action
+      properties:
+        at:
+          $ref: '#/components/schemas/Timestamp'
+        actor:
+          $ref: '#/components/schemas/Uuid'
+        actorName:
+          type: [string, 'null']
+          description: The actor's display name, resolved server-side within the tenant; null when unknown.
+        action:
+          type: string
+        fromStatus:
+          type: string
+          description: An OrgChangeStatus wire value.
+        toStatus:
+          type: string
+          description: An OrgChangeStatus wire value.
+        reason:
+          type: string

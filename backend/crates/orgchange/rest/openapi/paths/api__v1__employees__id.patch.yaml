@@ -1,0 +1,98 @@
+tags:
+  - employees
+operationId: correctEmployee
+summary: Correct employee master data (정정)
+description: >-
+  BW-18, MR-8: the one correction path for every scalar employee field.
+  Org-wide employee_directory_manage only; a branch-scoped caller files a
+  PROFILE_CORRECTION change request instead. Each changed field is
+  recorded as a 정정 in the ledger (old and new value, reason). `name`,
+  `phone`, `job`, `work_email`, `id_type` and typed catalog ids
+  (`grade_id`, `job_title_id`, `position_kind_id`, `job_id`, `job_family_id`)
+  apply at once. Catalog ids must name an active entry of their kind in
+  the caller's tenant (422 `job_title_unknown`); corrections preserve
+  before/after ids in the ledger and create no lifecycle event. `hire_date`,
+  `exit_date`, `birth_date`, `employee_number`, `employment_type`,
+  `base_pay` (whole won), `pay_unit` and `probation_end_date` go to a
+  second person through a BW-17 change request (202 with
+  `pending_request`) when another eligible holder exists; a sole holder
+  applies them with `review_required` after an EXCEPTION_DECIDE passkey
+  step-up bound to this employee id with payload_hash = SHA-256 hex of
+  `changes` serialized with sorted keys and no whitespace (401
+  step_up_required without, step_up_failed when it does not verify),
+  unless `authz.sole_holder.mode` is `refuse` (403). Cedar
+  change_request_decide decides the sole holder's self-decision. A field
+  that holds no value yet is a first recording and applies at once. Only
+  `job`, `work_email` and `probation_end_date` may be cleared (null).
+  `position_id` (a promotion or transfer) and the placement text twins
+  `company`, `worksite_name`, `worksite_address` and `org_unit` (the
+  employment assignment: a re-bind or a TRANSFER) are refused with 409
+  `employee_correction_unavailable`. `exit_date` is corrected only on an
+  EXITED record (409 `exit_date_needs_exit`) that has no live exit case
+  (409 `exit_case_owns_exit_date`), on or after the hire date. A taken
+  `employee_number` is 409 `employee_number_in_use`; `pay_unit` on a
+  record without one needs `base_pay` in the same change (422). A record
+  without an employment profile is 409 `employee_profile_missing` for
+  profile fields; a merged record is 409 `employee_merged`. 근로자 명부
+  items (MR-23; 근로기준법 §41, 시행령 §20 2·4·5·8·9호): `sex`,
+  `address`, `careers` and `register_note` apply at once and may be
+  cleared (null = 미입력; `careers: []` = 「경력 없음」); `exit_reason` (퇴직
+  사유, an exit_reason catalog code, never cleared) applies at once when
+  none is recorded and otherwise takes the high-risk path. It is recorded
+  only on an EXITED record (409 `employee_not_exited`) whose exit no live
+  exit case owns (409 `exit_case_owns_exit_reason`). Read them with GET
+  /employees/{id}/register-facts. 인적사항 extras (MR-34): `name_hanja`,
+  `name_en`, `nationality`, `personal_email`, `emergency_contacts` and
+  `photo` apply at once and may be cleared (null = 미입력);
+  `group_service_start_date` (그룹 입사일, 근속 기산일) applies at once
+  when none is recorded and otherwise takes the high-risk path, and is
+  never after the 입사일 (422). `photo` is the id of a confirmed upload of
+  this employee (409 `photo_upload_unconfirmed`, 404
+  `photo_upload_not_found`). Read them with GET
+  /employees/{id}/personal-facts.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CorrectEmployeeRequest'
+responses:
+  '200':
+    description: Every changed field applied.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeCorrection'
+  '202':
+    description: Some fields wait for a second person (`pending_request`).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeCorrection'
+  '401':
+    description: A sole holder's high-risk correction without a verified step-up for this payload.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: Stale `expected_updated_at`, a merged record, a field that cannot be corrected here, an exit date
+      owned by the exit case, or a taken employee number.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'

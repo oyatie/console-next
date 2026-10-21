@@ -1,0 +1,19 @@
+tags:
+  - employees
+operationId: importEmployees
+summary: Removed one-shot workbook import (410)
+description: 'BW-10 8: the one-shot import matched people by file position and is gone. Always 410
+  legacy_import_removed; use preview, dry-run and apply.'
+security:
+- bearerAuth: []
+responses:
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '410':
+    description: legacy_import_removed.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

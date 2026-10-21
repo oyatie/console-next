@@ -1,0 +1,41 @@
+tags:
+- onboarding
+operationId: goLive
+summary: 운영 시작 (one-way)
+description: SUPER_ADMIN, a fresh passkey step-up and the confirmed digest; the Rust backstop and the Cedar tenant_go_live
+  bundle must both allow.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/GoLiveRequest'
+responses:
+  '200':
+    description: Operating.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/GoLiveResult'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: go_live_blocked (errors name the failing facts), preview_stale or phase_not_setup.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '428':
+    description: passkey_step_up_required.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

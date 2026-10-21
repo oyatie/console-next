@@ -1,0 +1,45 @@
+type: object
+required:
+- status
+- lock
+properties:
+  status:
+    type: string
+    enum: [UNLOCKED, PENDING_SECOND_PERSON]
+  lock:
+    $ref: '#/components/schemas/PeriodLock'
+  request:
+    type: object
+    required: [id, requestedBy, reasonCode, relockAt, requestedAt]
+    properties:
+      id:
+        type: string
+        format: uuid
+      requestedBy:
+        type: string
+        format: uuid
+      reasonCode:
+        type: string
+      reasonNote:
+        type: string
+        nullable: true
+      relockAt:
+        type: string
+        format: date-time
+      requestedAt:
+        type: string
+        format: date-time
+  exception:
+    type: object
+    description: 'A sole-holder unlock (decisions 7, case B) only. The governed exception (예외 처리,
+      PERIOD_UNLOCK_SOLE_HOLDER) recorded and consumed with the unlock; reviewDueAt is its 사후 검토 due time
+      (review.sole_holder_exception.due).'
+    required: [id]
+    properties:
+      id:
+        type: string
+        format: uuid
+      reviewDueAt:
+        type: string
+        format: date-time
+        nullable: true

@@ -1,0 +1,37 @@
+tags:
+  - employees
+operationId: getEmployeeImportReconcile
+summary: 이관 확인 of an applied import (BE-EMP-UI; spec E7-reconcile)
+description: >-
+  The server's account of an applied run - per-sheet funnels from the run's own rows (read, preserved, errors,
+  candidates) and plan (inserted, updated, unchanged, excluded); 배치 대조 per 사업장 against the live roster
+  (current people only, null workplace = 미배치); the per-row verification counts; and the sign-off, if any. 409
+  import_not_applied before the apply, 404 for an unknown run. Needs employee_directory_manage org-wide (the
+  import's gate).
+security:
+- bearerAuth: []
+parameters:
+- name: run_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The reconcile.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeImportReconcile'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: import_not_applied.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

@@ -1,0 +1,14 @@
+type: object
+required:
+- change_id
+- code
+- effective_date
+properties:
+  change_id:
+    type: string
+    format: uuid
+  code:
+    type: string
+  effective_date:
+    type: string
+    format: date

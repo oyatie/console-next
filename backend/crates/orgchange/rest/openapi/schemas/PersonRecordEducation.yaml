@@ -1,0 +1,23 @@
+type: object
+additionalProperties: false
+description: 학력. Dates are month precision (the day is stored as 1).
+required: [school, level, status]
+properties:
+  school:
+    type: string
+    maxLength: 100
+  level:
+    type: string
+    enum: [HIGH_SCHOOL, ASSOCIATE, BACHELOR, MASTER, DOCTORATE, OTHER]
+  major:
+    type: [string, 'null']
+    maxLength: 100
+  status:
+    type: string
+    enum: [GRADUATED, EXPECTED, ENROLLED, ON_LEAVE, COMPLETED, WITHDRAWN]
+  entered_on:
+    type: [string, 'null']
+    format: date
+  ended_on:
+    type: [string, 'null']
+    format: date

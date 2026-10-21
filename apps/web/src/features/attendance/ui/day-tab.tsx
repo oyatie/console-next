@@ -1,0 +1,132 @@
+import { useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { getRouteApi } from "@tanstack/react-router";
+import { t } from "@console/i18n";
+import { QueryState } from "../../../lib/react/query-state";
+import { todayKst } from "../../../lib/pure/today";
+import { Banner } from "../../../ui/banner/banner";
+import { Button, IconButton, ToggleButton } from "../../../ui/button/button";
+import { Card } from "../../../ui/card/card";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
+import { EmptyState } from "../../../ui/empty-state";
+import { ItemList } from "../../../ui/item-list/item-list";
+import { addDays } from "../../../ui/date/days";
+import { dayBoardQuery, type DayBoard } from "../api";
+import { baseOf, cellKey, ledgerParts } from "../domain/grid";
+import { closed, pageState } from "../domain/month-state";
+import { dateText, refusalText } from "../present";
+import { DayDetail } from "./day-detail";
+import { DayDock } from "./day-dock";
+import { DayRow } from "./day-row";
+import { MonthStateBanner } from "./month-state-banner";
+import { SaveDock } from "./save-dock";
+import { ScopePicker } from "./scope-picker";
+import { useDrafts } from "./use-drafts";
+import { useOnline } from "./use-online";
+import s from "./records.module.css";
+
+const route = getRouteApi("/app/attendance");
+
+/**
+ * Day (A1-day simple · A3-entry detailed): one day, yesterday by default. The ledger line partitions everyone in scope (G8);
+ * groups workplace › department fold their clean rows; issue rows come first, each with its sentence and one verb. Today is judged
+ * only after it ends. Drafts typed here are saved through the same save sheet as the month grid.
+ */
+export function DayTab() {
+  const search = route.useSearch();
+  const navigate = route.useNavigate();
+  const date = search.date ?? addDays(todayKst(), -1);
+  const board = useQuery(dayBoardQuery(date, search.wp, search.unit, search.issues));
+  const store = useDrafts(`day:${date}`);
+  const online = useOnline();
+  const [save, setSave] = useState(false);
+  const [open, setOpen] = useState<{ id: string; own: boolean } | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const feedback = [note, store.problem && t(`attendanceRecords.drafts.${store.problem}`)].filter(Boolean).join(" · ");
+  const go = (patch: Record<string, unknown>) => void navigate({ search: (x) => ({ ...x, ...patch }) });
+  const drafts = Object.keys(store.drafts).length;
+  const names = (b?: DayBoard) => (b?.groups ?? []).flatMap((g) => g.rows.map((r) => ({ employee_id: r.employee_id, name: r.name })));
+  const saveWhy = !online ? t("attendanceRecords.save.offline") : !drafts ? t("attendanceRecords.save.nothing") : null;
+
+  return (
+    <div className={s.dayPage}>
+      <div className={s.toolbar} role="toolbar" aria-label={t("attendanceRecords.toolbar.label")}>
+        <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} />
+        <div className={s.stepper}>
+          <IconButton size="sm" label={t("attendanceRecords.toolbar.prevDay")} onClick={() => go({ date: addDays(date, -1) })}><ChevronLeft size={16} aria-hidden /></IconButton>
+          <span className={s.stepText}>{dateText(date)}</span>
+          <IconButton size="sm" label={t("attendanceRecords.toolbar.nextDay")} onClick={() => go({ date: addDays(date, 1) })}><ChevronRight size={16} aria-hidden /></IconButton>
+        </div>
+        <ToggleButton size="sm" pressed={!!search.issues} onClick={() => go({ issues: search.issues ? undefined : true })}>{t("attendanceRecords.board.issuesOnly")}</ToggleButton>
+        <ToggleButton size="sm" pressed={!search.detail} onClick={() => go({ detail: undefined })}>{t("attendanceRecords.board.simple")}</ToggleButton>
+        <ToggleButton size="sm" pressed={!!search.detail} onClick={() => go({ detail: true })}>{t("attendanceRecords.board.detail")}</ToggleButton>
+        <span role="status">{t("attendanceRecords.toolbar.unsaved", { count: drafts, refused: 0 })}</span>
+        {saveWhy ? <DisabledReason reason={saveWhy} control={(p) => <Button {...p} variant="primary">{t("attendanceRecords.toolbar.save")}</Button>} /> : <Button variant="primary" onClick={() => setSave(true)}>{t("attendanceRecords.toolbar.save")}</Button>}
+      </div>
+      {feedback && <p className="muted" role="status">{feedback}</p>}
+      <QueryState q={board} own={refusalText}>
+        {(b) => {
+          const ledger = ledgerParts(b.ledger);
+          return (
+            <div className={s.monthLayout} data-docked={save || open ? "" : undefined}>
+              <div className={s.dayLayout}>
+                <div className={s.dayPage}>
+                  <MonthStateBanner state={pageState(b.groups.flatMap((g) => g.rows.map((r) => r.month_state)))} month={date.slice(0, 7)} />
+                  {!b.judged && <Banner tone="info">{t("attendanceRecords.board.notJudged")}</Banner>}
+                  <p className="num">
+                    {t("attendanceRecords.board.ledgerHead", { people: b.ledger.people })}{" "}
+                    {ledger.parts.filter(([, n]) => n > 0).map(([k, n]) => t(`attendanceRecords.ledger.${k}`, { count: n })).join(" + ")}
+                  </p>
+                  {!ledger.adds && <Banner tone="warn">{t("attendanceRecords.board.ledgerGap")}</Banner>}
+                  {search.detail ? (
+                    <DayDetail board={b} store={store} />
+                  ) : !b.groups.length ? (
+                    search.issues ? (
+                      <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.board.noIssues")} actions={<Button onClick={() => go({ issues: undefined, wp: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />
+                    ) : (
+                      <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} />
+                    )
+                  ) : (
+                    b.groups.map((g) => (
+                      <Card
+                        key={`${g.workplace_id}-${g.unit_id}`}
+                        title={g.name}
+                        meta={t("attendanceRecords.board.groupMeta", { people: g.people, normal: g.normal, blocking: g.marks.blocking, decision: g.marks.decision })}
+                        tools={g.hidden > 0 && g.unit_id ? <Button size="sm" variant="ghost" onClick={() => go({ unit: g.unit_id })}>{t("attendanceRecords.board.expand", { count: g.hidden })}</Button> : undefined}
+                      >
+                        {g.rows.map((r) => (
+                          <DayRow key={r.employee_id} row={r} draft={store.drafts[cellKey(r.employee_id, date)]} onDraft={(v) => store.put(cellKey(r.employee_id, date), v ? { value: v, base: baseOf(store.drafts, cellKey(r.employee_id, date), r.day.entry?.id ?? null) } : null)} onOpen={() => setOpen({ id: r.employee_id, own: r.own })} />
+                        ))}
+                      </Card>
+                    ))
+                  )}
+                </div>
+                <Card title={t("attendanceRecords.rail.title")}>
+                  <Button variant="secondary" onClick={() => go({ issues: true, detail: undefined })}>{t("attendanceRecords.rail.process", { count: b.marks.blocking + b.marks.decision })}</Button>
+                  <ItemList
+                    label={t("attendanceRecords.rail.groups")}
+                    items={b.groups.filter((g) => g.marks.blocking > 0).map((g) => ({
+                      key: `${g.workplace_id}-${g.unit_id}`,
+                      text: t("attendanceRecords.rail.groupLine", { name: g.name, blocking: g.marks.blocking }),
+                      end: (
+                        <Button size="sm" onClick={() => {
+                          const empty = g.rows.filter((r) => !r.own && !closed(r.month_state) && r.day.marks.includes("NO_RECORD"));
+                          store.set({ ...store.drafts, ...Object.fromEntries(empty.map((r) => [cellKey(r.employee_id, date), { value: "=", base: baseOf(store.drafts, cellKey(r.employee_id, date), null) }])) });
+                          setNote(t("attendanceRecords.fill.done", { filled: empty.length, rest: 0, recorded: 0, locked: g.rows.length - empty.length }));
+                        }}>{t("attendanceRecords.rail.asScheduled")}</Button>
+                      ),
+                    }))}
+                  />
+                  <Button variant="ghost" onClick={() => window.print()}>{t("attendanceRecords.rail.print")}</Button>
+                </Card>
+              </div>
+              {save && <SaveDock drafts={store.drafts} rows={names(b)} month={date.slice(0, 7)} onClose={() => setSave(false)} onFocusCell={() => setSave(false)} onSaved={(r, keys) => (store.saved(keys), setSave(false), setNote(t("attendanceRecords.receipt.saved", { saved: r.saved, opens: r.opens.blocking + r.opens.decision })))} />}
+              {!save && open && <DayDock employeeId={open.id} date={date} own={open.own} onClose={() => setOpen(null)} onRewrite={() => setOpen(null)} onDone={(m) => (setOpen(null), setNote(m))} />}
+            </div>
+          );
+        }}
+      </QueryState>
+    </div>
+  );
+}

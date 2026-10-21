@@ -1,0 +1,3 @@
+type: object
+required: [scope_kind, scope_id, scope_name, month, stack, upcoming, days, holidays_loaded]
+properties: { scope_kind: { $ref: '#/components/schemas/AttendanceScopeKind' }, scope_id: { $ref: '#/components/schemas/Uuid' }, scope_name: { type: string }, month: { type: string }, stack: { type: array, description: nearest level first, items: { $ref: '#/components/schemas/AttendanceStackEntry' } }, upcoming: { type: array, items: { $ref: '#/components/schemas/AttendanceLayerSummary' } }, days: { type: array, items: { $ref: '#/components/schemas/AttendanceScheduleDay' } }, holidays_loaded: { type: boolean } }

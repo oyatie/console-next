@@ -1,0 +1,161 @@
+type: object
+required:
+- id
+- company
+- name
+- identity_resolution_strategy
+- identity_resolution_confidence
+- identity_review_required
+- identity_name_only_merge
+- home_branch_review_required
+- org_unit_id
+- legal_entity_id
+- workplace_id
+- next_event
+- failed_event
+- created_at
+- updated_at
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  company:
+    type: string
+  name:
+    type: string
+  employee_number:
+    type: string
+    nullable: true
+  org_unit:
+    type: string
+    nullable: true
+    description: Read-only projection; for a bound employee this is the bound OrgUnit's name.
+  org_unit_id:
+    description: Canonical OrgUnit (Site/Department/Team) binding; null when unbound (legacy or imported rows).
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  legal_entity_id:
+    description: 법인 of the employee's current (or last) employment assignment; null when none is recorded.
+      company stays a display snapshot.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  workplace_id:
+    description: 사업장 of the same assignment; null when none is recorded.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  worksite_name:
+    type: string
+    nullable: true
+  worksite:
+    type: string
+    nullable: true
+  job:
+    type: string
+    nullable: true
+  position:
+    type: string
+    nullable: true
+  hire_date:
+    type: string
+    nullable: true
+  exit_date:
+    type: string
+    nullable: true
+  status:
+    type: string
+    nullable: true
+  leave_accrued:
+    type: string
+    nullable: true
+  leave_used:
+    type: string
+    nullable: true
+  leave_remaining:
+    type: string
+    nullable: true
+  home_branch_id:
+    type: string
+    format: uuid
+    nullable: true
+    description: Active authoritative leave-routing branch; null requires HR review before self-service filing.
+  home_branch_name:
+    type: string
+    nullable: true
+  register_review_required:
+    type: boolean
+    description: Missing statutory register facts; complete them from the personnel card.
+  home_branch_review_required:
+    type: boolean
+    description: True when no active authoritative home branch is configured.
+  identity_resolution_strategy:
+    type: string
+    enum:
+    - employee_number
+    - legal_identifier_hash
+    - birth_hire_fingerprint
+    - source_row_fingerprint
+    description: Non-PII strategy used to keep same-name employees from being merged by name alone.
+  identity_resolution_confidence:
+    type: string
+    enum:
+    - high
+    - medium
+    - low
+    description: Confidence derived from the accepted identity strategy; never from user-supplied labels.
+  identity_review_required:
+    type: boolean
+    description: True when HR must manually verify the employee identity before account linkage or duplicate cleanup.
+  identity_name_only_merge:
+    type: boolean
+    description: Always false; name-only merging is not allowed because different people can share a name.
+  contract_end_date:
+    type: string
+    format: date
+    description: Current fixed-term contract end (YYYY-MM-DD); absent unless the employee has a CONTRACT employment
+      profile carrying one. Moved by CONTRACT_RENEWAL.
+  employment_type:
+    type: string
+    description: The employment profile's type (REGULAR, CONTRACT, PART_TIME, INTERN); absent for a roster-import row
+      with no profile.
+  expected_return_date:
+    type: string
+    format: date
+    description: While ON_LEAVE, the expected return date of the leave that put the employee there; absent otherwise
+      or when the leave named none.
+  work_email:
+    type: string
+    description: 업무용 이메일, the only contact a directory row carries; absent when none is recorded. The registered
+      personal phone is never on the row (EmployeeEmploymentDetail.phone_e164, directory managers only).
+  next_event:
+    description: The nearest SCHEDULED lifecycle event (effective-dated personnel action, 발령 효력 예정), earliest
+      effective_date first; null when none.
+    oneOf:
+    - $ref: '#/components/schemas/EmployeeNextEvent'
+    - type: 'null'
+  failed_event:
+    description: The latest scheduled action that could not apply on its date (APPLY_FAILED) and was not redone
+      since, i.e. no SCHEDULED or APPLIED event of the same event_type was recorded after it; null when none and
+      once the employee has EXITED. Redo it by scheduling or recording that action again. GET /api/v1/employees
+      filters on it with lifecycle_apply_failed.
+    oneOf:
+    - type: object
+      required: [id, event_type, effective_date, failure_code]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        event_type:
+          type: string
+          enum: [TRANSFER, PROMOTE, LEAVE_OF_ABSENCE, RETURN_FROM_LEAVE, CONTRACT_RENEWAL, TERMINATE]
+        effective_date:
+          type: string
+          format: date
+        failure_code:
+          type: string
+          description: The refusal code recorded on its date (as EmployeeLifecycleEvent.failure_code).
+    - type: 'null'
+  created_at:
+    $ref: '#/components/schemas/Timestamp'
+  updated_at:
+    $ref: '#/components/schemas/Timestamp'

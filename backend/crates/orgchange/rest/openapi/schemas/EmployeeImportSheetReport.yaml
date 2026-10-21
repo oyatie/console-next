@@ -1,0 +1,57 @@
+type: object
+description: 'IMPORT-2: one sheet of the workbook as the import read it.'
+required: [name, status, rows]
+properties:
+  name:
+    type: string
+  status:
+    type: string
+    enum: [mapped, needs_mapping, empty, skipped]
+  rows:
+    type: integer
+    minimum: 0
+  source:
+    type: string
+    enum: [remembered]
+    description: 'W12 (r3:hire-18): remembered — skipped because an earlier import skipped a sheet of this name; send
+      `skip: false` for it to read it this time.'
+  header_row:
+    type: integer
+    minimum: 1
+  columns:
+    type: array
+    items:
+      type: object
+      required: [column, label, source]
+      properties:
+        column:
+          type: string
+          description: Column letter.
+        label:
+          type: string
+        target:
+          type: [string, 'null']
+        source:
+          type: string
+          enum: [catalog, remembered, operator]
+  header_candidates:
+    type: array
+    description: needs_mapping only, in the response only (never stored) — the likeliest header rows, label-like
+      cells only.
+    items:
+      type: object
+      required: [row, cells]
+      properties:
+        row:
+          type: integer
+          minimum: 1
+        cells:
+          type: array
+          items:
+            type: object
+            required: [column, label]
+            properties:
+              column:
+                type: string
+              label:
+                type: string

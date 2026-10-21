@@ -1,0 +1,20 @@
+type: object
+required:
+- at
+- account_id
+- method
+- path
+properties:
+  at:
+    $ref: '#/components/schemas/Timestamp'
+  account_id:
+    $ref: '#/components/schemas/Uuid'
+  method:
+    type: string
+  path:
+    type: string
+    description: Request path without the query string.
+  session_family_id:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'

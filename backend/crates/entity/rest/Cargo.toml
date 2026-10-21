@@ -1,0 +1,34 @@
+[package]
+name = "console-entity-rest"
+version = "0.1.0"
+description = "REST face for 법인 · 사업자등록 · 사업장, org structure, employment assignments and setup-phase org units."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+console-contracts = { path = "../../contracts" }
+axum = { workspace = true, features = ["multipart"] }
+console-entity-adapter-juso = { path = "../adapter-juso" }
+console-entity-adapter-postgres.workspace = true
+console-entity-application.workspace = true
+# UX-R2 ENDS: the 사업장 close job runs HR's lifecycle path (close_plan.rs).
+console-hr-adapter-postgres.workspace = true
+console-entity-domain.workspace = true
+console-kernel-core.workspace = true
+console-platform-auth = { path = "../../platform/auth" }
+console-platform-authz.workspace = true
+console-platform-db.workspace = true
+console-platform-request-context.workspace = true
+console-refdata = { path = "../../refdata/lists" }
+console-settings-adapter-postgres = { path = "../../settings/adapter-postgres" }
+console-settings-domain = { path = "../../settings/domain" }
+serde.workspace = true
+serde_json.workspace = true
+time.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

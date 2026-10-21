@@ -1,0 +1,12 @@
+tags: [attendance]
+operationId: listAttendanceScheduleLayers
+summary: Every layer ever assigned at one scope, newest first, with its state (예정 · 적용 중 · 지난 일정 · 취소됨)
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: scope_kind, in: query, required: true, schema: { $ref: '#/components/schemas/AttendanceScopeKind' } }
+  - { name: scope_id, in: query, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+responses:
+  '200': { description: History, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceScheduleLayerList' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '404': { $ref: '#/components/responses/NotFound' }

@@ -1,0 +1,15 @@
+type: object
+additionalProperties: false
+required: [kind, name]
+properties:
+  kind:
+    $ref: '#/components/schemas/OrgUnitKind'
+  parentId:
+    description: Required for DEPARTMENT/TEAM (an existing ACTIVE unit); null or the Company root id for SITE.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  name:
+    type: string
+    minLength: 1
+    maxLength: 120

@@ -1,0 +1,124 @@
+-- Split reference slices at every verified supporting-law boundary; filing calculations and evidence remain unchanged.
+SET LOCAL lock_timeout = '2s';
+WITH refs(key,citation) AS (VALUES
+('IACI_DECREE','{"instrument":"고용보험 및 산업재해보상보험의 보험료징수 등에 관한 법률 시행령","article":"제19조의7제4항","promulgation":"대통령령 제35576호","enforced_on":"2025-06-02","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=271473&efYd=20250602&chrClsCd=010202"}'::jsonb),
+('EI_ACT','{"instrument":"고용보험법","article":"제10조·제10조의2","promulgation":"법률 제19210호","enforced_on":"2023-07-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=247483&efYd=20230701&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제36116호","enforced_on":"2026-02-19","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=283469&efYd=20260219&chrClsCd=010202"}'::jsonb),
+('NPS_ACT','{"instrument":"국민연금법","article":"제6조·제8조·제12조·제126조","promulgation":"법률 제21203호","enforced_on":"2026-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=280269&efYd=20260101&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제36306호","enforced_on":"2026-06-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=285831&efYd=20260601&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제34048호","enforced_on":"2024-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=257249&efYd=20240101&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제36675호","enforced_on":"2026-12-24","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=289701&efYd=20261224&chrClsCd=010202"}'::jsonb),
+('IACI_ACT','{"instrument":"고용보험 및 산업재해보상보험의 보험료징수 등에 관한 법률","article":"제16조의10제3항 단서·제7항","promulgation":"법률 제21472호","enforced_on":"2027-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=284441&efYd=20270101&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제36306호","enforced_on":"2026-05-12","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=285831&efYd=20260512&chrClsCd=010202"}'::jsonb),
+('EI_ACT','{"instrument":"고용보험법","article":"제10조·제10조의2","promulgation":"법률 제21065호","enforced_on":"2025-10-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=276843&efYd=20251001&chrClsCd=010202"}'::jsonb),
+('EI_ACT','{"instrument":"고용보험법","article":"제10조·제10조의2","promulgation":"법률 제21133호","enforced_on":"2026-05-12","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=279807&efYd=20260512&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제36675호","enforced_on":"2026-10-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=289701&efYd=20261001&chrClsCd=010202"}'::jsonb),
+('NPS_DECREE','{"instrument":"국민연금법 시행령","article":"제2조제1호·제4호·제111조","promulgation":"대통령령 제34163호","enforced_on":"2024-03-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=259317&efYd=20240301&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제36675호","enforced_on":"2027-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=289701&efYd=20270101&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제21687호","enforced_on":"2026-11-27","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=286213&efYd=20261127&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제35934호","enforced_on":"2026-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=280525&efYd=20260101&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제33844호","enforced_on":"2024-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=255953&efYd=20240101&chrClsCd=010202"}'::jsonb),
+('NPS_ACT','{"instrument":"국민연금법","article":"제6조·제8조·제12조·제126조","promulgation":"법률 제21689호","enforced_on":"2026-05-26","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=286165&efYd=20260526&chrClsCd=010202"}'::jsonb),
+('NPS_DECREE','{"instrument":"국민연금법 시행령","article":"제2조제1호·제4호·제111조","promulgation":"대통령령 제35498호","enforced_on":"2025-07-19","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=270997&efYd=20250719&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제21065호","enforced_on":"2026-01-02","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=276651&efYd=20260102&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제35832호","enforced_on":"2025-11-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=279283&efYd=20251101&chrClsCd=010202"}'::jsonb),
+('NPS_ACT','{"instrument":"국민연금법","article":"제6조·제8조·제12조·제126조","promulgation":"법률 제21203호","enforced_on":"2026-06-17","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=280269&efYd=20260617&chrClsCd=010202"}'::jsonb),
+('EI_ACT','{"instrument":"고용보험법","article":"제10조·제10조의2","promulgation":"법률 제20519호","enforced_on":"2025-02-23","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=265957&efYd=20250223&chrClsCd=010202"}'::jsonb),
+('IACI_DECREE','{"instrument":"고용보험 및 산업재해보상보험의 보험료징수 등에 관한 법률 시행령","article":"제19조의7제4항","promulgation":"대통령령 제35805호","enforced_on":"2025-10-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=277399&efYd=20251001&chrClsCd=010202"}'::jsonb),
+('NPS_ACT','{"instrument":"국민연금법","article":"제6조·제8조·제12조·제126조","promulgation":"법률 제21065호","enforced_on":"2026-01-02","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=276655&efYd=20260102&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제35277호","enforced_on":"2025-02-23","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=269075&efYd=20250223&chrClsCd=010202"}'::jsonb),
+('IACI_DECREE','{"instrument":"고용보험 및 산업재해보상보험의 보험료징수 등에 관한 법률 시행령","article":"제19조의7제4항","promulgation":"대통령령 제35935호","enforced_on":"2025-12-23","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=280527&efYd=20251223&chrClsCd=010202"}'::jsonb),
+('NPS_ACT','{"instrument":"국민연금법","article":"제6조·제8조·제12조·제126조","promulgation":"법률 제19294호","enforced_on":"2023-09-29","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=249303&efYd=20230929&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제35947호","enforced_on":"2026-01-02","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=281219&efYd=20260102&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제35805호","enforced_on":"2025-10-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=277401&efYd=20251001&chrClsCd=010202"}'::jsonb),
+('EI_ACT','{"instrument":"고용보험법","article":"제10조·제10조의2","promulgation":"법률 제21473호","enforced_on":"2027-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=284449&efYd=20270101&chrClsCd=010202"}'::jsonb),
+('NPS_ACT','{"instrument":"국민연금법","article":"제6조·제8조·제12조·제126조","promulgation":"법률 제21065호","enforced_on":"2025-10-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=276655&efYd=20251001&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제35446호","enforced_on":"2025-04-23","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=270671&efYd=20250423&chrClsCd=010202"}'::jsonb),
+('NPS_DECREE','{"instrument":"국민연금법 시행령","article":"제2조제1호·제4호·제111조","promulgation":"대통령령 제33668호","enforced_on":"2023-09-14","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=253941&efYd=20230914&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제36472호","enforced_on":"2026-07-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=287489&efYd=20260701&chrClsCd=010202"}'::jsonb),
+('NPS_ACT','{"instrument":"국민연금법","article":"제6조·제8조·제12조·제126조","promulgation":"법률 제21689호","enforced_on":"2027-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=286165&efYd=20270101&chrClsCd=010202"}'::jsonb),
+('EI_ACT','{"instrument":"고용보험법","article":"제10조·제10조의2","promulgation":"법률 제21699호","enforced_on":"2026-11-27","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=286253&efYd=20261127&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제21235호","enforced_on":"2026-12-24","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=280447&efYd=20261224&chrClsCd=010202"}'::jsonb),
+('IACI_DECREE','{"instrument":"고용보험 및 산업재해보상보험의 보험료징수 등에 관한 법률 시행령","article":"제19조의7제4항","promulgation":"대통령령 제35101호","enforced_on":"2025-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=267205&efYd=20250101&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제35751호","enforced_on":"2025-09-16","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=273649&efYd=20250916&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제35947호","enforced_on":"2026-01-02","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=281153&efYd=20260102&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제36588호","enforced_on":"2026-09-18","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=288717&efYd=20260918&chrClsCd=010202"}'::jsonb),
+('IACI_ACT','{"instrument":"고용보험 및 산업재해보상보험의 보험료징수 등에 관한 법률","article":"제16조의10제3항 단서·제7항","promulgation":"법률 제21532호","enforced_on":"2026-10-08","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=285369&efYd=20261008&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제19420호","enforced_on":"2023-11-20","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=251193&efYd=20231120&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제21522호","enforced_on":"2026-10-08","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=285273&efYd=20261008&chrClsCd=010202"}'::jsonb),
+('IACI_ACT','{"instrument":"고용보험 및 산업재해보상보험의 보험료징수 등에 관한 법률","article":"제16조의10제3항 단서·제7항","promulgation":"법률 제19209호","enforced_on":"2024-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=247481&efYd=20240101&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제35597호","enforced_on":"2025-06-21","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=272443&efYd=20250621&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제20505호","enforced_on":"2025-04-23","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=265877&efYd=20250423&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제35931호","enforced_on":"2026-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=280453&efYd=20260101&chrClsCd=010202"}'::jsonb),
+('EI_ACT','{"instrument":"고용보험법","article":"제10조·제10조의2","promulgation":"법률 제21473호","enforced_on":"2026-09-18","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=284449&efYd=20260918&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제21687호","enforced_on":"2027-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=286213&efYd=20270101&chrClsCd=010202"}'::jsonb),
+('NPS_DECREE','{"instrument":"국민연금법 시행령","article":"제2조제1호·제4호·제111조","promulgation":"대통령령 제35602호","enforced_on":"2026-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=272577&efYd=20260101&chrClsCd=010202"}'::jsonb),
+('EI_ACT','{"instrument":"고용보험법","article":"제10조·제10조의2","promulgation":"법률 제21372호","enforced_on":"2026-08-20","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=283373&efYd=20260820&chrClsCd=010202"}'::jsonb),
+('IACI_DECREE','{"instrument":"고용보험 및 산업재해보상보험의 보험료징수 등에 관한 법률 시행령","article":"제19조의7제4항","promulgation":"대통령령 제34049호","enforced_on":"2024-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=257251&efYd=20240101&chrClsCd=010202"}'::jsonb),
+('NPS_ACT','{"instrument":"국민연금법","article":"제6조·제8조·제12조·제126조","promulgation":"법률 제20584호","enforced_on":"2024-12-20","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=267373&efYd=20241220&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제20092호","enforced_on":"2024-01-23","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=259043&efYd=20240123&chrClsCd=010202"}'::jsonb),
+('EI_ACT','{"instrument":"고용보험법","article":"제10조·제10조의2","promulgation":"법률 제19591호","enforced_on":"2024-05-17","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=253517&efYd=20240517&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제34048호","enforced_on":"2024-02-09","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=257249&efYd=20240209&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제19841호","enforced_on":"2024-12-27","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=257207&efYd=20241227&chrClsCd=010202"}'::jsonb),
+('NPS_DECREE','{"instrument":"국민연금법 시행령","article":"제2조제1호·제4호·제111조","promulgation":"대통령령 제34163호","enforced_on":"2024-01-23","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=259317&efYd=20240123&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제35575호","enforced_on":"2025-07-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=271471&efYd=20250701&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제34844호","enforced_on":"2024-08-21","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=264967&efYd=20240821&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제20324호","enforced_on":"2024-05-21","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=260561&efYd=20240521&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제34217호","enforced_on":"2024-02-13","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=260527&efYd=20240213&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제20092호","enforced_on":"2024-07-03","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=259043&efYd=20240703&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제34601호","enforced_on":"2024-07-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=263319&efYd=20240701&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제35697호","enforced_on":"2025-08-05","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=273039&efYd=20250805&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제19527호","enforced_on":"2024-01-12","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=252495&efYd=20240112&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제20324호","enforced_on":"2024-08-21","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=260561&efYd=20240821&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제20211호","enforced_on":"2024-05-07","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=259677&efYd=20240507&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제19885호","enforced_on":"2024-04-03","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=257845&efYd=20240403&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제34423호","enforced_on":"2024-07-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=261803&efYd=20240701&chrClsCd=010202"}'::jsonb),
+('NPS_DECREE','{"instrument":"국민연금법 시행령","article":"제2조제1호·제4호·제111조","promulgation":"대통령령 제35602호","enforced_on":"2025-07-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=272577&efYd=20250701&chrClsCd=010202"}'::jsonb),
+('IACI_DECREE','{"instrument":"고용보험 및 산업재해보상보험의 보험료징수 등에 관한 법률 시행령","article":"제19조의7제4항","promulgation":"대통령령 제34494호","enforced_on":"2024-05-17","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=262567&efYd=20240517&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제35100호","enforced_on":"2025-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=267179&efYd=20250101&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제34497호","enforced_on":"2024-07-03","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=262519&efYd=20240703&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제34497호","enforced_on":"2024-05-07","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=262519&efYd=20240507&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제34091호","enforced_on":"2024-01-12","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=257525&efYd=20240112&chrClsCd=010202"}'::jsonb),
+('NPS_ACT','{"instrument":"국민연금법","article":"제6조·제8조·제12조·제126조","promulgation":"법률 제19839호","enforced_on":"2024-01-18","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=257295&efYd=20240118&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제19958호","enforced_on":"2024-07-10","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=258049&efYd=20240710&chrClsCd=010202"}'::jsonb),
+('IACI_DECREE','{"instrument":"고용보험 및 산업재해보상보험의 보험료징수 등에 관한 법률 시행령","article":"제19조의7제4항","promulgation":"대통령령 제34602호","enforced_on":"2024-07-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=263361&efYd=20240701&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제35054호","enforced_on":"2025-01-01","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=266971&efYd=20250101&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제34497호","enforced_on":"2024-07-10","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=262519&efYd=20240710&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제34927호","enforced_on":"2024-10-02","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=265609&efYd=20241002&chrClsCd=010202"}'::jsonb),
+('NHIS_ACT','{"instrument":"국민건강보험법","article":"제6조제2항제1호·제109조","promulgation":"법률 제19420호","enforced_on":"2024-05-20","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=251193&efYd=20240520&chrClsCd=010202"}'::jsonb),
+('EI_DECREE','{"instrument":"고용보험법 시행령","article":"제3조제1항·제2항·제3조의3","promulgation":"대통령령 제35769호","enforced_on":"2025-10-02","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=273765&efYd=20251002&chrClsCd=010202"}'::jsonb),
+('NHIS_DECREE','{"instrument":"국민건강보험법 시행령","article":"제9조제1호","promulgation":"대통령령 제34497호","enforced_on":"2024-05-20","source_url":"https://www.law.go.kr/LSW/lsInfoR.do?lsiSeq=262519&efYd=20240520&chrClsCd=010202"}'::jsonb)
+), source AS MATERIALIZED (
+ SELECT * FROM statutory_rules WHERE filing_rule IS NOT NULL AND effective_from>=DATE '2024-01-01'
+), cuts AS (
+ SELECT s.code,s.effective_from AS original_from,s.effective_to_exclusive AS original_until,c.on_date
+ FROM source s CROSS JOIN LATERAL (
+   SELECT s.effective_from AS on_date UNION
+   SELECT (citation->>'enforced_on')::date FROM refs
+   WHERE key=ANY(CASE s.filing_rule->>'insurer'
+     WHEN 'NPS' THEN ARRAY['NPS_ACT','NPS_DECREE'] WHEN 'NHIS' THEN ARRAY['NHIS_ACT','NHIS_DECREE']
+     WHEN 'EI' THEN ARRAY['EI_ACT','EI_DECREE'] ELSE ARRAY['IACI_ACT','IACI_DECREE','EI_DECREE'] END)
+   AND (citation->>'enforced_on')::date>s.effective_from
+   AND (s.effective_to_exclusive IS NULL OR (citation->>'enforced_on')::date<s.effective_to_exclusive)
+ ) c
+), intervals AS (
+ SELECT *,lead(on_date,1,original_until) OVER(PARTITION BY code,original_from ORDER BY on_date) AS until_date FROM cuts
+), slices AS MATERIALIZED (
+ SELECT s.*,i.on_date,i.until_date,
+   s.filing_rule || jsonb_build_object('effective_from',i.on_date::text,'effective_to_exclusive',i.until_date::text,
+     'applicability_citations',(SELECT jsonb_agg(r.citation ORDER BY r.key) FROM (
+       SELECT DISTINCT ON (key) key,citation FROM refs
+       WHERE key=ANY(CASE s.filing_rule->>'insurer'
+         WHEN 'NPS' THEN ARRAY['NPS_ACT','NPS_DECREE'] WHEN 'NHIS' THEN ARRAY['NHIS_ACT','NHIS_DECREE']
+         WHEN 'EI' THEN ARRAY['EI_ACT','EI_DECREE'] ELSE ARRAY['IACI_ACT','IACI_DECREE','EI_DECREE'] END)
+       AND (citation->>'enforced_on')::date<=i.on_date ORDER BY key,citation->>'enforced_on' DESC
+     ) r)) AS updated_rule
+ FROM source s JOIN intervals i ON s.code=i.code AND s.effective_from=i.original_from
+), closed AS (
+ UPDATE statutory_rules s SET effective_to_exclusive=x.until_date,filing_rule=x.updated_rule
+ FROM slices x WHERE s.code=x.code AND s.effective_from=x.on_date RETURNING s.code
+)
+INSERT INTO statutory_rules (code,effective_from,effective_to_exclusive,unit,value_num,value_den,instrument_ko,article_ko,
+ promulgation_ko,enforced_on,source_url,retrieved_on,provenance_ko,release_disposition,review_receipt_ref,filing_rule)
+SELECT code,on_date,until_date,unit,value_num,value_den,instrument_ko,article_ko,promulgation_ko,enforced_on,source_url,
+ retrieved_on,provenance_ko,release_disposition,review_receipt_ref,updated_rule FROM slices WHERE on_date<>effective_from;

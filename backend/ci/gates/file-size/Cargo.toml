@@ -1,0 +1,25 @@
+[package]
+name = "console-gate-file-size"
+version = "0.1.0"
+description = "CI gate: 300 code lines per Rust file (500 for journey tests); oversize files are pinned in a baseline that may only shrink."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "console-gate-file-size"
+path = "src/main.rs"
+
+[lib]
+name = "console_gate_file_size"
+path = "src/lib.rs"
+
+[dependencies]
+# Gate -> gate path dep: reuses writer-ownership's syn-based cfg(test) evaluation
+# instead of a third cfg detector (backend challenge item 20).
+console-gate-writer-ownership = { path = "../writer-ownership" }
+syn = { workspace = true }
+
+[lints]
+workspace = true

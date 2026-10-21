@@ -1,0 +1,51 @@
+type: object
+required:
+- phase
+- steps
+- done
+- total
+- go_live_at
+- summary
+properties:
+  phase:
+    type: string
+    enum:
+    - SETUP
+    - OPERATING
+  steps:
+    type: array
+    items:
+      $ref: '#/components/schemas/SetupStep'
+  done:
+    type: integer
+  total:
+    type: integer
+  go_live_at:
+    type:
+    - string
+    - 'null'
+    format: date-time
+  summary:
+    type: object
+    required:
+    - people
+    - placed
+    - unplaced
+    - entity_unknown
+    - progress
+    properties:
+      people:
+        type: integer
+        format: int64
+      placed:
+        type: integer
+        format: int64
+      unplaced:
+        type: integer
+        format: int64
+      entity_unknown:
+        type: integer
+        format: int64
+      progress:
+        type: integer
+        format: int64

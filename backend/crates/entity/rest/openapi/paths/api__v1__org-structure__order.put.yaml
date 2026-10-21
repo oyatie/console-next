@@ -1,0 +1,60 @@
+tags:
+- entity
+operationId: reorderOrgStructure
+summary: Put one parent's children in order (순서; a label, direct in both phases, audited)
+description: 'At most one parent: none (the tenant''s 법인; needs legal_entity_manage on the tenant), legal_entity_id
+  (its 사업장; needs legal_entity_manage on the 법인), workplace_id (the 부서 directly in that 사업장) or org_unit_id
+  (the 부서 under that 부서; both need the org-change apply permission). children names every current child once,
+  in the new order; expected_children, when sent, is the order the caller read, and a different current order is
+  refused (no lost reorder). Unit versions do not change, so setup batch pins stay valid. The chart, the outline,
+  the 목록, the 법인 list and export read this order.'
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ReorderStructureRequest'
+responses:
+  '200':
+    description: Reordered.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/StructureOrder'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}] (legal_entity_id: one_parent_required).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: The parent is not found in this tenant (parent_not_found).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: The children or their order changed since they were read (children_changed, remedy reload).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

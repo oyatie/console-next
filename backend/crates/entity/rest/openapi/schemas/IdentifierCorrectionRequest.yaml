@@ -1,0 +1,37 @@
+type: object
+required:
+- field
+- value
+- document_id
+- reason_code
+properties:
+  field:
+    type: string
+    enum:
+    - biz_kind
+    - crn
+    - brn
+    description: biz_kind or crn on a 법인; brn on a 사업자등록. Leaving CORPORATION clears the crn too.
+  value:
+    type: string
+    description: The corrected value (masked or canonical; stored canonical).
+  document_id:
+    type: string
+    format: uuid
+    description: The evidence uploaded first (POST /api/v1/entity-documents); attached to the record and kept.
+  reason_code:
+    $ref: '#/components/schemas/IdentifierCorrectionReason'
+  exception_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+    description: After 운영 시작, the approved or sole-holder recorded governed exception for exactly this correction.
+  step_up:
+    type:
+    - object
+    - 'null'
+    description: 'After 운영 시작, the tenant ops account covering the correction itself (decisions #26 item d, break-glass):
+      its passkey step-up envelope {binding, assertion}, kind EXCEPTION_DECIDE, object the 법인 (or 사업자등록) id, payload
+      the line "ENTITY_IDENTIFIER_CORRECTION\n{field}\n{canonical value}\n{document_id}". The server records a sole-holder
+      exception (사후 검토 due) and consumes it. Ignored for anyone else.'

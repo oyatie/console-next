@@ -1,0 +1,20 @@
+allOf:
+- $ref: '#/components/schemas/WorkplaceInput'
+- type: object
+  required:
+  - expected_version
+  - effective_from
+  - reason_code
+  properties:
+    expected_version:
+      type: integer
+      minimum: 1
+      description: The version the client read. A later revision since then is 409 stale_revision, with
+        error.current_version.
+    effective_from:
+      type: string
+      format: date
+      description: When the revision takes effect (KST); may be in the future.
+    reason_code:
+      type: string
+      maxLength: 100

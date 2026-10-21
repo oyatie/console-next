@@ -1,0 +1,11 @@
+type: object
+required: [id, name, basis]
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  name:
+    type: string
+  alias:
+    type: [string, 'null']
+  basis:
+    type: string

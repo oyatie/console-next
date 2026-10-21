@@ -1,0 +1,17 @@
+/* features/structure: the empty chart is the sequence (mockup S10). */
+.canvas { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 0; padding: var(--space-6) var(--space-5); overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); background-color: var(--canvas); background-image: radial-gradient(var(--border) 1px, transparent 1px); background-size: 16px 16px; }
+.slot { width: min(920px, 100%); display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-5); border: 1px dashed var(--control-border); border-radius: var(--radius-lg); background: var(--surface); }
+.slotHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); }
+.stepper { display: flex; align-items: center; gap: var(--space-3); margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); color: var(--steel); }
+.stepper li { display: inline-flex; align-items: center; gap: var(--space-1); }
+.stepper li[aria-current] { color: var(--ink); font-weight: var(--fw-medium); }
+.n { display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--control-border); border-radius: calc(999 * 1px); font-size: var(--text-xs); font-weight: var(--fw-strong); }
+.stepper li[aria-current] .n { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.card h3 { margin: 0; font-size: var(--text-body); }
+.card p { margin: 0; flex: 1; }
+.ghosts { display: flex; gap: var(--space-5); margin-top: var(--space-5); }
+.ghost { display: flex; align-items: center; gap: var(--space-1); width: 300px; margin: 0; padding: var(--space-3); border: 1px dashed var(--control-border); border-radius: var(--radius); font-size: var(--text-xs); color: var(--steel); }
+.caption { margin: auto 0 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); font-size: var(--text-xs); color: var(--steel); }

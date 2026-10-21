@@ -1,0 +1,38 @@
+type: object
+required: [source_key, sheet, row, name, employee_id, employee_number, outcome, state, note, checked_by,
+  checked_at, version]
+properties:
+  company_confirmation:
+    $ref: '#/components/schemas/EmployeeImportCompanyConfirmation'
+  source_key:
+    type: string
+  sheet:
+    type: string
+  row:
+    type: integer
+  name:
+    type: [string, 'null']
+  employee_id:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  employee_number:
+    type: [string, 'null']
+  outcome:
+    type: string
+    enum: [insert, update, unchanged, excluded]
+  state:
+    type: string
+    enum: [UNCHECKED, CONFIRMED, NEEDS_CHECK]
+  note:
+    type: [string, 'null']
+  checked_by:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  checked_at:
+    type: [string, 'null']
+    format: date-time
+  version:
+    type: integer
+    minimum: 0

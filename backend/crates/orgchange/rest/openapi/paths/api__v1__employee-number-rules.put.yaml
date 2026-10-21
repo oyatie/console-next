@@ -1,0 +1,27 @@
+tags:
+  - employees
+operationId: setEmployeeNumberRule
+summary: Set the rule of a scope (IMPORT-2)
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/EmployeeNumberRuleRequest'
+responses:
+  '200':
+    description: The rule and the number it would give next.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeNumberRule'
+  '400':
+    $ref: '#/components/responses/BadRequest'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

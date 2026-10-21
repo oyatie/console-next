@@ -1,0 +1,34 @@
+type: object
+additionalProperties: false
+required: [id, scope_entity_id, value, effective_from, direction, onboarding_exempt, set_by, reason_code, reason_note,
+  step_up_assertion_id, created_at]
+properties:
+  actor_kind: {oneOf: [{$ref: '#/components/schemas/ActorKind'}, {type: 'null'}]}
+  command_id: {type: [string, 'null'], format: uuid}
+  id:
+    $ref: '#/components/schemas/Uuid'
+  scope_entity_id:
+    allOf:
+    - $ref: '#/components/schemas/Uuid'
+    nullable: true
+  value:
+    $ref: '#/components/schemas/SettingValue'
+  effective_from:
+    $ref: '#/components/schemas/Timestamp'
+  direction:
+    $ref: '#/components/schemas/SettingDirection'
+  onboarding_exempt:
+    type: boolean
+  set_by:
+    $ref: '#/components/schemas/Uuid'
+  reason_code:
+    type: string
+  reason_note:
+    type: string
+    nullable: true
+  step_up_assertion_id:
+    allOf:
+    - $ref: '#/components/schemas/Uuid'
+    nullable: true
+  created_at:
+    $ref: '#/components/schemas/Timestamp'

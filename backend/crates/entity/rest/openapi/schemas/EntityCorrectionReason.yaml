@@ -1,0 +1,9 @@
+type: string
+enum:
+- TRADE_NAME
+- RELOCATION
+- INDUSTRY
+- UNIT_TAXATION
+- REPRESENTATIVE
+- OTHER
+description: 정정 sub-reason (부가세법 시행령 §14①).

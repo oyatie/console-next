@@ -1,0 +1,35 @@
+[package]
+name = "console-entity-adapter-postgres"
+version = "0.1.0"
+description = "Postgres writer for 법인 · 사업자등록 · 사업장, employment assignments and setup-phase org units."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+console-entity-application.workspace = true
+console-entity-domain.workspace = true
+console-orgchange-domain.workspace = true
+console-kernel-core.workspace = true
+console-platform-db.workspace = true
+console-settings-domain = { path = "../../settings/domain" }
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+time.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+# The canonical OrgUnit owner behind the setup org-unit port, as the app wires it.
+console-ontology-canonical-adapter-postgres = { path = "../../ontology/canonical-adapter-postgres" }
+console-ontology-canonical-domain = { path = "../../ontology/canonical-domain" }
+# The BW-06 governed exceptions behind the identifier-correction port, as the app wires it.
+console-governance-adapter-postgres.workspace = true
+console-governance-domain.workspace = true
+console-platform-test-support.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true

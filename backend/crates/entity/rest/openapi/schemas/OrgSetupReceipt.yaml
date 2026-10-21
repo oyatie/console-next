@@ -1,0 +1,15 @@
+type: object
+required:
+- batch_id
+- change_mode
+- units
+properties:
+  batch_id:
+    type: string
+    format: uuid
+  change_mode:
+    type: string
+  units:
+    type: array
+    items:
+      $ref: '#/components/schemas/OrgSetupUnit'

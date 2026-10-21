@@ -1,0 +1,21 @@
+/* ui/receipt: draft toast (ink) and the sending / recorded / checking receipt card. */
+.region { min-width: 0; max-width: var(--card-w); }
+.docked { position: fixed; left: calc(var(--rail-w) + var(--space-4)); bottom: var(--space-4); z-index: 40; max-width: calc(var(--panel-w) * 1.75); box-shadow: var(--shadow-pop); border-radius: var(--radius); background: var(--surface); }
+@media (max-width: 767px) { .docked { left: var(--space-2); right: var(--space-2); } }
+.toast { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4); border-radius: var(--radius); background: var(--ink); color: var(--surface); box-shadow: var(--shadow-pop); font-size: var(--text-sm); }
+.tag { padding: 0 var(--space-2); border: 1px solid var(--surface); border-radius: var(--radius-sm); font-size: var(--text-xs); font-weight: var(--fw-medium); }
+.grow { flex: 1; }
+.undo { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--target); padding: 0 var(--space-3); border: 1px solid var(--surface); border-radius: var(--radius); background: transparent; color: var(--surface); font-weight: var(--fw-medium); cursor: pointer; }
+.undo:focus-visible { box-shadow: var(--focus); }
+.card { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-left: 3px solid var(--ok-solid); border-radius: var(--radius); background: var(--surface); font-size: var(--text-sm); }
+.pending { border-left-color: var(--control-border); }
+.unknown { border-left-color: var(--warn-solid); }
+.top { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-weight: var(--fw-strong); }
+.icon { flex: none; color: var(--ok-tx); }
+.pending .icon { color: var(--steel); animation: spin 1s linear infinite; }
+.unknown .icon { color: var(--warn-tx); }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); margin: 0; font-size: var(--text-xs); color: var(--steel); }
+.badge { color: var(--ok-tx); font-weight: var(--fw-medium); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pending .icon { animation: none; } }

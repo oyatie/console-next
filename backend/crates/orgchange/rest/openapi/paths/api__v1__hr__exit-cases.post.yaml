@@ -1,0 +1,50 @@
+tags:
+  - hr
+operationId: reportEmployeeExitCase
+summary: Report an employee exit case from an absence signal
+description: Creates an audited employee exit case that HR can confirm and prepare for settlement/approval workflows.
+  409 invalid_transition when the employee is already EXITED or already has a scheduled exit (a SCHEDULED
+  TERMINATE of another case, withdrawn by rejecting or cancelling that case). 409 exit_case_open when the employee
+  already has an open case; error.refusals[0] names it as { case_id, reported_by, reported_at }.
+  403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person). Nobody records an HR act on their own record, whatever they hold; another holder in scope, or the ops account, records it. The ops account passes only when no other active account holds the act over the employee, and that pass is audited as authz.own_record.break_glass with review_required (people-self-33).
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: 16..200 characters. An exact replay returns 200 with the original body; the same key with a
+    different body is 409 conflict.
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ReportEmployeeExitCaseRequest'
+responses:
+  '200':
+    description: Exact Idempotency-Key replay; the originally created case.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeExitCase'
+  '201':
+    description: Employee exit case created (status REPORTED).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeExitCase'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

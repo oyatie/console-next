@@ -1,0 +1,23 @@
+node_modules*
+dist
+.dev-secrets
+*.tsbuildinfo
+test-results
+test-results-*/
+playwright-report
+.stryker-tmp
+reports
+
+.cache/
+
+# backend
+/backend/target/
+/backend/node_modules/
+/node_modules/
+/buck-out/
+/.lane-logs/
+__pycache__/
+*.pyc
+/ops/.dev-secrets/
+/.tmp/
+__pycache__/

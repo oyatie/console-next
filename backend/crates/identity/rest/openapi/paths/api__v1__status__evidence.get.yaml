@@ -1,0 +1,17 @@
+summary: Public-safe worker freshness for the external status producer
+operationId: getPublicStatusEvidence
+security: []
+responses:
+  '200':
+    description: Read-only scheduler evidence; null is unknown, never healthy
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required: [schema, worker_age_seconds]
+          properties:
+            schema: {type: integer, const: 1}
+            worker_age_seconds: {type: [integer, 'null']}
+  '503':
+    description: Evidence unavailable; no internal names or database errors

@@ -1,0 +1,3 @@
+type: object
+required: [date, name, kind, basis]
+properties: { date: { type: string, format: date }, name: { type: string }, kind: { type: string, enum: [NATIONAL, SUBSTITUTE, ELECTION, LABOR_DAY] }, substitute_for: { type: string, format: date, nullable: true }, basis: { type: string } }

@@ -1,0 +1,44 @@
+type: object
+required:
+- employee_id
+- phase
+- cancel
+- cancel_route
+- attestation_required
+- register_confirmation_required
+- exit
+- updated_at
+- can_cancel
+- can_report_exit
+properties:
+  employee_id:
+    type: string
+    format: uuid
+  phase:
+    type: string
+    enum:
+    - SETUP
+    - OPERATING
+  cancel:
+    $ref: '#/components/schemas/EndOffer'
+  cancel_route:
+    type: string
+    enum:
+    - DELETE
+    - VOID
+  attestation_required:
+    type: boolean
+  register_confirmation_required:
+    type: boolean
+  exit:
+    $ref: '#/components/schemas/EndOffer'
+  open_exit_case_id:
+    type: string
+    format: uuid
+  updated_at:
+    type: string
+    format: date-time
+  can_cancel:
+    type: boolean
+  can_report_exit:
+    type: boolean

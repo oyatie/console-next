@@ -1,0 +1,11 @@
+/* ui/reason: reason codes as radio chips (Other last) over the memo. Tokens only. */
+.reason { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.group { display: flex; flex-direction: column; gap: var(--space-2); }
+.label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--ink); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip { display: inline-flex; align-items: center; min-height: var(--target); padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); font-weight: var(--fw-medium); cursor: pointer; }
+.chip[data-hovered] { background: var(--muted); }
+.chip[data-selected] { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); outline: 1px solid var(--primary); outline-offset: -2px; }
+.chip[data-focus-visible] { box-shadow: var(--focus); }
+.group[data-invalid] .chip:not([data-selected]) { border-color: var(--danger-solid); }
+.error { font-size: var(--text-sm); color: var(--danger-tx); }

@@ -1,0 +1,29 @@
+allOf:
+- $ref: '#/components/schemas/WorkplaceInput'
+- type: object
+  required:
+  - insurance
+  properties:
+    insurance:
+      $ref: '#/components/schemas/InsuranceSetupInput'
+    is_primary:
+      type:
+      - boolean
+      - 'null'
+    is_head_office:
+      type:
+      - boolean
+      - 'null'
+    default_branch_id:
+      type:
+      - string
+      - 'null'
+      format: uuid
+      description: Bind this existing open, unbound branch instead of creating one. Branches are never matched
+        by name.
+    kind_code:
+      type:
+      - string
+      - 'null'
+      description: '사업장 kind (decisions #18; a label only): a platform default code or a tenant kind code from
+        GET /api/v1/workplace-kinds. Absent = not chosen.'

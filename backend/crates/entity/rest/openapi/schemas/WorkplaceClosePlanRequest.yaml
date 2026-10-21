@@ -1,0 +1,66 @@
+type: object
+additionalProperties: false
+required:
+- closed_on
+properties:
+  closed_on:
+    type: string
+    format: date
+    description: 폐쇄일, today or later (KST).
+  reason_code:
+    type: string
+  people:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - employee_id
+      - action
+      properties:
+        employee_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          enum:
+          - TRANSFER
+          - EXIT
+          - GROUP_TRANSFER
+        to_org_unit_id:
+          type: string
+          format: uuid
+        exit_reason_code:
+          type: string
+          enum:
+          - CLOSURE
+          - INSOLVENCY
+        to_workplace_id:
+          type: string
+          format: uuid
+          description: GROUP_TRANSFER, required then. The receiving 사업장 of another 법인, the one to_org_unit_id
+            sits at; the planner's 발령 grant must reach it (403 out_of_scope, nothing written).
+        group_transfer:
+          $ref: '#/components/schemas/GroupTransferFacts'
+          description: GROUP_TRANSFER, required then. The person's consent and continuity, checked as a single
+            전적 checks them.
+  units:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - org_unit_id
+      - action
+      properties:
+        org_unit_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          enum:
+          - MOVE
+          - DISSOLVE
+        to_parent_id:
+          type: string
+          format: uuid

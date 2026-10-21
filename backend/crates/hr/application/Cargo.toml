@@ -1,0 +1,18 @@
+[package]
+name = "console-hr-application"
+version = "0.1.0"
+description = "HR context ring 2: lifecycle and exit use cases over hr-domain. Created by PREREG-3 with the lifecycle apply hooks only."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+console-kernel-core = { workspace = true }
+console-hr-domain = { workspace = true }
+console-compliance-domain = { workspace = true }
+time = { workspace = true }
+uuid = { workspace = true }
+
+[lints]
+workspace = true

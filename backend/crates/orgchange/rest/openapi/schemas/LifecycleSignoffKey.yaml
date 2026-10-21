@@ -1,0 +1,6 @@
+type: string
+enum:
+- privacy_notice_ack
+- korean_labor_law_ack
+- payroll_cutoff_ack
+- retirement_settlement_ack

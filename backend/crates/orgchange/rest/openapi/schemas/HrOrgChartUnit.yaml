@@ -1,0 +1,23 @@
+type: object
+required:
+- org_unit_id
+- name
+- total
+- positions
+properties:
+  org_unit_id:
+    description: The canonical OrgUnit this group is (grouped by binding, named by the unit's current name); null
+      for legacy free-text groups.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  name:
+    type: string
+  total:
+    type: integer
+    format: int64
+    minimum: 0
+  positions:
+    type: array
+    items:
+      $ref: '#/components/schemas/HrOrgChartPosition'

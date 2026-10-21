@@ -1,0 +1,15 @@
+/* features/platform: the tenant panel's sections and the force-removal checklist. Tokens only. */
+.section { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--border-soft); }
+.heading { margin: 0; font-size: var(--text-sm); font-weight: var(--fw-strong); color: var(--ink); }
+.note { margin: 0; font-size: var(--text-sm); color: var(--steel); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.items { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }
+.availability { display: block; min-height: 1lh; }
+/* The tenant table's columns are fixed shares of its width: a count or a date landing late, or a new tenant's longer
+   name, never re-flows them under the pointer. A long value ends in an ellipsis (its title has it all). */
+.list :global(.table) { table-layout: fixed; }
+.list :global(.table td) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list :global(.table th:nth-child(1)) { width: 26%; }
+.list :global(.table th:nth-child(2)), .list :global(.table th:nth-child(3)) { width: 14%; }
+.list :global(.table th:nth-child(4)), .list :global(.table th:nth-child(5)) { width: 10%; }
+.list :global(.table th:nth-child(6)), .list :global(.table th:nth-child(7)) { width: 13%; }

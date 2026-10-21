@@ -1,0 +1,51 @@
+type: object
+required: [run_id, funnels, placement, counts, signoff]
+properties:
+  run_id:
+    $ref: '#/components/schemas/Uuid'
+  funnels:
+    type: array
+    items:
+      type: object
+      required: [sheet, read, preserved, errors, candidates, inserted, updated, unchanged, excluded]
+      properties:
+        sheet:
+          type: string
+        read:
+          type: integer
+        preserved:
+          type: integer
+        errors:
+          type: integer
+        candidates:
+          type: integer
+        inserted:
+          type: integer
+        updated:
+          type: integer
+        unchanged:
+          type: integer
+        excluded:
+          type: integer
+  placement:
+    type: array
+    items:
+      type: object
+      required: [workplace_id, from_file, outside_file, now]
+      properties:
+        workplace_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        from_file:
+          type: integer
+        outside_file:
+          type: integer
+        now:
+          type: integer
+  counts:
+    $ref: '#/components/schemas/EmployeeImportReconcileCounts'
+  signoff:
+    oneOf:
+    - $ref: '#/components/schemas/EmployeeImportSignoff'
+    - type: 'null'

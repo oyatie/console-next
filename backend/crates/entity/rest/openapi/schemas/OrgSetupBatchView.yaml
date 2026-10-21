@@ -1,0 +1,41 @@
+type: object
+required:
+- id
+- kind
+- undoes
+- undone_by
+- undoable
+- units
+- actor_id
+- created_at
+properties:
+  id:
+    type: string
+    format: uuid
+  kind:
+    type: string
+    enum:
+    - APPLY
+    - UNDO
+  undoes:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  undone_by:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  undoable:
+    type: boolean
+  units:
+    type: array
+    items:
+      $ref: '#/components/schemas/OrgSetupUnit'
+  actor_id:
+    type: string
+    format: uuid
+  created_at:
+    type: string
+    format: date-time

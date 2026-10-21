@@ -1,0 +1,39 @@
+tags:
+- onboarding
+operationId: skipSetupStep
+summary: 「부서 없이 진행」 / 「직원은 나중에」
+security:
+- bearerAuth: []
+parameters:
+- name: step
+  in: path
+  required: true
+  schema:
+    type: string
+    enum:
+    - org
+    - employees
+    - roles
+responses:
+  '204':
+    description: Recorded.
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}].'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Refused with a stable code and reasons[] naming the remedy (e.g. phase_not_setup → submit_org_change).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

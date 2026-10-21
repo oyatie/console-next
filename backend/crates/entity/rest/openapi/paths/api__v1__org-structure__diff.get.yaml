@@ -1,0 +1,41 @@
+tags:
+- entity
+operationId: compareOrgStructure
+security:
+- bearerAuth: []
+parameters:
+- name: a
+  in: query
+  required: true
+  schema:
+    type: string
+    format: date
+- name: b
+  in: query
+  required: true
+  schema:
+    type: string
+    format: date
+- name: known_at
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date
+responses:
+  '200':
+    description: Dated read.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/StructureDiff'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+  '422':
+    description: Invalid date or reversed range.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

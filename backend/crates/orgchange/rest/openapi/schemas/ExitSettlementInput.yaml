@@ -1,0 +1,25 @@
+type: object
+description: Average-wage and ordinary-wage source fields for the statutory severance calculation.
+required:
+- average_wage_period_start
+- average_wage_period_end
+- average_wage_calendar_days
+- average_wage_total_won
+- monthly_ordinary_wage_won
+properties:
+  average_wage_period_start:
+    type: string
+    description: YYYY-MM-DD
+  average_wage_period_end:
+    type: string
+    description: YYYY-MM-DD
+  average_wage_calendar_days:
+    type: integer
+    format: int64
+  average_wage_total_won:
+    type: integer
+    format: int64
+  monthly_ordinary_wage_won:
+    type: integer
+    format: int64
+    description: Monthly 통상임금; mandatory so the ordinary-wage floor is never skipped.

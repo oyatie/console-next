@@ -1,0 +1,14 @@
+/* ui/blocker: the red refusal panel; red only for a server refusal (state-color-grammar). */
+.panel { display: flex; flex-direction: column; border: 1px solid var(--danger-bd); border-left: 3px solid var(--danger-solid); border-radius: var(--radius); background: var(--surface); }
+.head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-2) var(--space-3); padding: var(--space-3) var(--space-4) var(--space-2); }
+.icon { flex: none; margin-top: var(--space-1); color: var(--danger-tx); }
+.title { flex: 1 1 calc(var(--panel-w) / 2); margin: 0; font-size: var(--text-body); font-weight: var(--fw-strong); }
+.code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--danger-tx); }
+.body { padding: 0 var(--space-4) var(--space-3) calc(var(--space-6) + var(--space-2)); font-size: var(--text-sm); }
+.unblock { display: flex; flex-direction: column; gap: var(--space-2); margin: 0 var(--space-4) 0 calc(var(--space-6) + var(--space-2)); padding: var(--space-3) 0; border-top: 1px solid var(--border-soft); }
+.whoLabel { font-size: var(--text-xs); color: var(--steel); }
+.who { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); }
+.who li { display: inline-flex; gap: var(--space-1); }
+.name { font-weight: var(--fw-medium); }
+.role { color: var(--steel); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }

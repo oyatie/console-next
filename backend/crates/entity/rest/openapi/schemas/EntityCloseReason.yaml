@@ -1,0 +1,5 @@
+type: string
+enum:
+- DISSOLVED
+- BUSINESS_CLOSED
+description: Why a 법인 closed (MR-15) — DISSOLVED (해산) or BUSINESS_CLOSED (폐업).

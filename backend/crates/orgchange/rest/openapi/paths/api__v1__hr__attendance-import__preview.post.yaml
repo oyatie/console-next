@@ -1,0 +1,48 @@
+tags:
+  - hr
+operationId: previewAttendanceImport
+summary: Preview a direct attendance workbook or CSV through the governed import ledger
+description: Creates an immutable attendance_direct import run and preserves raw source rows except restricted columns
+  and any resident-registration-number-shaped value, which are dropped before anything is stored or returned (a column
+  that had values is listed in `columns` as `restricted`). Records coordinate-free attendance facts only after dry-run
+  and apply. Imported rows are lineage
+  for payroll readiness, not payable payroll lines.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    multipart/form-data:
+      schema:
+        type: object
+        required:
+        - file
+        - pay_period_start
+        - pay_period_end
+        properties:
+          file:
+            type: string
+            format: binary
+            description: Direct attendance .xlsx workbook or UTF-8 .csv file.
+          pay_period_start:
+            type: string
+            format: date
+            description: First day (YYYY-MM-DD) of the pay period this upload belongs to. Required text part; the
+              upload is refused (422) without it.
+          pay_period_end:
+            type: string
+            format: date
+            description: Last day (YYYY-MM-DD) of the pay period, not before pay_period_start. Required text part.
+responses:
+  '200':
+    description: Attendance import preview with masked sample rows and mapping profile.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AttendanceImportPreviewResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'

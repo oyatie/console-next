@@ -1,0 +1,12 @@
+/* ui/month-grid: a month as weeks of day cells (A2 calendar). */
+.grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.head { padding: var(--space-1) var(--space-2); color: var(--steel); font-size: var(--text-xs); font-weight: var(--fw-medium); text-align: left; }
+.cell { height: calc(var(--row-h) * 2.5); padding: var(--space-1) var(--space-2); vertical-align: top; border: 1px solid var(--border-soft); background: var(--surface); font-size: var(--text-xs); overflow-wrap: anywhere; cursor: default; }
+.cell[aria-selected] { cursor: pointer; }
+.cell[aria-selected="true"] { outline: 2px solid var(--primary); outline-offset: -2px; }
+.cell:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.cell[data-tone="rest"] { background: var(--canvas); }
+.cell[data-tone="holiday"] { background: var(--danger-bg); }
+.cell[data-out] { color: var(--steel); background: var(--canvas); }
+.day { display: block; color: var(--ink); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.cell[data-out] .day { color: var(--steel); }

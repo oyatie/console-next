@@ -1,0 +1,38 @@
+type: object
+required:
+- expected_version
+additionalProperties: false
+properties:
+  expected_version:
+    type: integer
+    format: int32
+    minimum: 1
+  name_ko:
+    type: string
+    minLength: 1
+    maxLength: 60
+  name_en:
+    type:
+    - string
+    - 'null'
+    maxLength: 60
+  description:
+    type:
+    - string
+    - 'null'
+    maxLength: 500
+  lines:
+    type: array
+    minItems: 1
+    items:
+      $ref: '#/components/schemas/AccessRoleLine'
+  reason_code:
+    type: string
+    description: Domain `role_change`; required when `lines` change on a held role.
+  reason_note:
+    type:
+    - string
+    - 'null'
+    maxLength: 500
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'

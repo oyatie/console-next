@@ -1,0 +1,40 @@
+tags:
+- entity
+operationId: getOrgStructure
+summary: 전체 → 법인 → 사업장 → 부서 (any depth)
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: The tree.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgStructure'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: Invalid date.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+parameters:
+- name: as_of
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date
+- name: known_at
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date

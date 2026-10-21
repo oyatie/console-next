@@ -1,0 +1,244 @@
+import { useEffect, useId, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type ColumnProps } from "react-aria-components";
+import { t } from "@console/i18n";
+import { ALL_MATCHING, NO_SELECTION, applyKeys, selectionCount, shownKeys, type Selection } from "./selection";
+import { DisabledReason } from "../disabled-reason/disabled-reason";
+import { listenRowKeys, rowIdOf } from "./row-keys";
+import css from "./long-table.module.css";
+
+const NONE = new Set<string>();
+
+/** `width` is a React Aria column size: "1fr" (default), "2fr", a percentage, or px for codes and dates. */
+export type LongColumn<R> = { id: string; header: ReactNode; cell: (r: R) => ReactNode; rowHeader?: boolean; width?: ColumnProps["width"] };
+
+const SELECT = "__select";
+// aria-rowcount counts loaded rows, not the server total (React Aria has no override); the caption
+// carries the total and the loaded count, and the grid is described by it.
+// Fixed geometry in px, as TableLayout needs it: the --row-h token (regular) or the compact row, and the checkbox column.
+const LAYOUT = {
+  regular: { rowHeight: 40, headingHeight: 40, loaderHeight: 40 },
+  compact: { rowHeight: 32, headingHeight: 36, loaderHeight: 32 },
+};
+const SELECT_WIDTH = 48;
+/** Placeholder rows while the first page loads (long-table.module.css sizes the table to fit them). */
+const SKELETON_ROWS = 8;
+
+/**
+ * A long server list (3,000+ rows): React Aria Table + Virtualizer + TableLayout, so only visible rows are in the
+ * DOM while the sticky header and grid keys stay. More rows load through TableLoadMoreItem; paging lives in the
+ * caller's infinite query (ui/ knows no data layer).
+ *
+ * Find: browser find cannot see unrendered rows, so `/` (only while focus is inside this table's region; no
+ * global single-key shortcut, KWCAG 2.2 6.1.4) focuses the in-app search, and Enter hands the text to `onFind`
+ * (server search, or a jump to an exact employee number; the caller decides). With `rowKeys`, J/K move between
+ * rows and O opens the focused one, in the region only; the bar names the keys.
+ *
+ * Selection: the header checkbox takes the loaded rows; selecting every row matching the filter is an explicit
+ * action and becomes a server-side selection (filter + exclusions; see selection.ts). With `selectAllLimit`, a
+ * filter matching more rows than one command takes offers that action disabled, with why beside it.
+ */
+export function LongTable<R>(p: {
+  label: string;
+  columns: LongColumn<R>[];
+  rows: R[];
+  rowId: (r: R) => string;
+  /** The server's count of rows matching the filter. */
+  total?: number;
+  /** A count line for the header (employees: 3,214). */
+  caption?: ReactNode;
+  hasMore: boolean;
+  loadingMore?: boolean;
+  onLoadMore: () => void;
+  /** First page in flight: a placeholder of the table's shape (its columns, a screenful of rows) after the skeleton delay. */
+  loading?: boolean;
+  empty: ReactNode;
+  density?: "regular" | "compact";
+  onRowAction?: (id: string) => void;
+  /** Prefetch hooks: the pointer entered a row, or a row took focus. */
+  onRowHover?: (id: string) => void;
+  onRowFocus?: (id: string) => void;
+  find?: { label: string; onFind: (q: string) => void; defaultValue?: string };
+  /**
+   * Where the search sits instead of this table's own bar (a filter band above it): the bar then keeps only the caption
+   * (none: no bar). `null` while that place is not mounted yet. `/` from inside the table still focuses it.
+   */
+  findSlot?: HTMLElement | null;
+  /** J/K row moves and O to open (`onOpen`, else `onRowAction`). */
+  rowKeys?: { onOpen?: (id: string) => void };
+  selection?: Selection;
+  onSelectionChange?: (s: Selection) => void;
+  selectAllLimit?: { max: number; reason?: ReactNode; remedy?: ReactNode };
+  /** What to do with the selection (the bulk command), after the count. */
+  selectionActions?: ReactNode;
+  /** "person": the selection counts people, not items. */
+  countUnit?: "person";
+  /** The scrolling element, for a caller that restores the scroll position. */
+  scrollRef?: (el: HTMLElement | null) => void;
+}) {
+  const search = useRef<HTMLInputElement>(null);
+  const region = useRef<HTMLElement>(null);
+  const grid = useRef<HTMLElement | null>(null);
+  const captionId = useId();
+  const open = p.rowKeys?.onOpen ?? p.onRowAction;
+  const hasFind = Boolean(p.find);
+  const hasRowKeys = Boolean(p.rowKeys);
+  const handlers = useRef({ open, focus: p.onRowFocus });
+  useEffect(() => void (handlers.current = { open, focus: p.onRowFocus }));
+  useEffect(() => {
+    const el = region.current;
+    if (!el) return;
+    // Focus landed in a body row: the row itself, or a cell or checkbox in it (a click focuses the cell, and the
+    // arrows then move cell to cell). The header row has no column cells of a body row.
+    const focus = (e: FocusEvent) => {
+      const row = (e.target as Element).closest?.("[role=row][data-key]");
+      const id = row && !row.querySelector("[role=columnheader]") ? rowIdOf(row) : null;
+      if (id) handlers.current.focus?.(id);
+    };
+    el.addEventListener("focusin", focus);
+    const keys = hasFind || hasRowKeys
+      ? listenRowKeys(el, {
+          find: hasFind ? () => search.current?.focus() : undefined,
+          rows: hasRowKeys ? { grid: () => grid.current, onOpen: (id) => handlers.current.open?.(id) } : undefined,
+        })
+      : undefined;
+    return () => (el.removeEventListener("focusin", focus), keys?.());
+  }, [hasFind, hasRowKeys]);
+  const density = p.density ?? "regular";
+  const loaded = p.rows.map(p.rowId);
+  const sel = p.selection;
+  const cols: LongColumn<R>[] = sel ? [{ id: SELECT, header: null, cell: () => null, width: SELECT_WIDTH }, ...p.columns] : p.columns;
+  const slotted = p.findSlot !== undefined;
+  const finder = p.find && (
+    <SearchField className={css.find} defaultValue={p.find.defaultValue} onSubmit={p.find.onFind} onClear={() => p.find?.onFind("")}>
+      <Label className="sr-only">{p.find.label}</Label>
+      <Input ref={search} className="field__input" placeholder={p.find.label} />
+      <kbd className={css.kbd} aria-hidden="true">/</kbd>
+    </SearchField>
+  );
+  return (
+    <section ref={region} className={css.region} aria-label={p.label} data-density={density}>
+      {(!slotted || p.caption != null) && (
+        <div className={css.bar}>
+          {/* Held while the count loads: the hints and the search beside it must not slide over when it lands. */}
+          <span id={captionId} className={css.caption}>{p.caption}</span>
+          {!slotted && finder}
+        </div>
+      )}
+      {slotted && p.findSlot && finder && createPortal(finder, p.findSlot)}
+      {sel && p.onSelectionChange && (
+        <SelectionBar sel={sel} loaded={loaded.length} total={p.total} hasMore={p.hasMore} limit={p.selectAllLimit} actions={p.selectionActions} unit={p.countUnit ?? "item"} onChange={p.onSelectionChange} />
+      )}
+      <ResizableTableContainer>
+      <Virtualizer layout={TableLayout} layoutOptions={LAYOUT[density]}>
+        <Table
+          ref={(el) => {
+            grid.current = el;
+            p.scrollRef?.(el);
+          }}
+          aria-label={p.label}
+          aria-describedby={p.caption ? captionId : undefined}
+          className={css.table}
+          // An empty virtualized body is as tall as the viewport, so give the empty and loading states a height.
+          data-state={p.rows.length ? undefined : p.loading ? "loading" : "empty"}
+          selectionMode={sel ? "multiple" : "none"}
+          selectionBehavior="toggle"
+          // Always controlled (empty without a selection): a selection that arrives with the permissions would otherwise
+          // switch React Aria from uncontrolled to controlled.
+          selectedKeys={sel ? shownKeys(sel, loaded) : NONE}
+          onSelectionChange={(keys) => sel && p.onSelectionChange?.(applyKeys(sel, keys as "all" | Set<string>, loaded))}
+          onRowAction={p.onRowAction && ((k) => p.onRowAction?.(String(k)))}
+          // Esc never drops a selection that took many clicks to build; the caller's Esc (closing a panel) runs.
+          {...({ escapeKeyBehavior: "none" } as object)}
+        >
+          <TableHeader className={css.head} columns={cols}>
+            {(c) => (
+              <Column id={c.id} isRowHeader={c.rowHeader} width={c.width ?? "1fr"} className={css.th}>
+                {c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.header}
+              </Column>
+            )}
+          </TableHeader>
+          <TableBody
+            className={css.body}
+            renderEmptyState={() =>
+              p.loading ? <Skeleton columns={cols.length} rows={SKELETON_ROWS} /> : <div className={css.empty}>{p.empty}</div>
+            }
+          >
+            <Collection items={p.rows} dependencies={[cols]}>
+              {(r) => {
+                const id = p.rowId(r);
+                return (
+                  <Row id={id} columns={cols} className={css.row} onHoverStart={p.onRowHover && (() => p.onRowHover?.(id))}>
+                    {(c) => <Cell className={css.td}>{c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r)}</Cell>}
+                  </Row>
+                );
+              }}
+            </Collection>
+            {p.hasMore && (
+              <TableLoadMoreItem className={css.more} onLoadMore={p.onLoadMore} isLoading={p.loadingMore}>
+                {t("uiLongTable.loadingMore")}
+              </TableLoadMoreItem>
+            )}
+          </TableBody>
+        </Table>
+      </Virtualizer>
+      </ResizableTableContainer>
+    </section>
+  );
+}
+
+const Box = () => <span className={css.box} aria-hidden="true" />;
+
+/**
+ * The first page's placeholder: the table's columns and rows as grey bars, announced once as loading. CSS shows
+ * the bars only after `display.skeleton_delay` (200 ms, the animation delay), so a fast load never flashes.
+ */
+function Skeleton({ columns, rows }: { columns: number; rows: number }) {
+  return (
+    <div className={css.skeleton} role="status">
+      <span className="sr-only">{t("uiLongTable.loading")}</span>
+      {Array.from({ length: rows }, (_r, i) => (
+        <div key={i} className={css.skeletonRow} aria-hidden="true">
+          {Array.from({ length: columns }, (_c, j) => <span key={j} className={css.skeletonCell} />)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** The selected count, the explicit select-all-matching action (or why not), the caller's actions, and how to clear. */
+function SelectionBar({ sel, loaded, total, hasMore, limit, actions, unit, onChange }: {
+  sel: Selection;
+  loaded: number;
+  total?: number;
+  hasMore: boolean;
+  limit?: { max: number; reason?: ReactNode; remedy?: ReactNode };
+  actions?: ReactNode;
+  unit: string;
+  onChange: (s: Selection) => void;
+}) {
+  const count = selectionCount(sel, total ?? loaded);
+  if (count === 0) return null;
+  const offerAll = sel.kind === "ids" && hasMore && total !== undefined && sel.ids.size === loaded && total > loaded;
+  const tooMany = offerAll && limit !== undefined && total! > limit.max;
+  return (
+    <div className={css.selection}>
+      <span role="status">
+        {sel.kind === "all"
+          ? t("uiLongTable.selection.all", { count, excluded: sel.excluded.size, unit })
+          : t("uiLongTable.selection.ids", { count, unit })}
+      </span>
+      {offerAll && !tooMany && <Button className="btn btn--ghost" onPress={() => onChange(ALL_MATCHING)}>{t("uiLongTable.selection.selectAll", { total, unit })}</Button>}
+      {tooMany && (
+        <DisabledReason
+          layout="inline"
+          reason={limit.reason ?? t("uiLongTable.selection.tooMany", { total, max: limit.max })}
+          remedy={limit.remedy}
+          control={(d) => <button {...d} className={`btn btn--ghost ${d.className ?? ""}`}>{t("uiLongTable.selection.selectAll", { total, unit })}</button>}
+        />
+      )}
+      {actions}
+      <Button className="btn btn--ghost" onPress={() => onChange(NO_SELECTION)}>{t("uiLongTable.selection.clear")}</Button>
+    </div>
+  );
+}

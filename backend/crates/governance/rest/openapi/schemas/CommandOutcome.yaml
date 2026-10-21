@@ -1,0 +1,24 @@
+type: object
+required: [id, idempotency_key, command, state, deadline, inputs_masked, result, touched, refusal_code, created_at, settled_at, masked]
+properties:
+  id: {$ref: '#/components/schemas/Uuid'}
+  idempotency_key: {type: string}
+  command: {type: string}
+  state: {type: string, enum: [PROCESSING, APPLIED, REFUSED, CONFLICT, CANCELLED, EXPIRED]}
+  deadline: {type: [string, 'null'], format: date-time}
+  inputs_masked: {type: object, additionalProperties: true}
+  result: {}
+  refusal_code: {type: [string, 'null']}
+  created_at: {type: string, format: date-time}
+  settled_at: {type: [string, 'null'], format: date-time}
+  masked: {type: boolean}
+  touched:
+    type: array
+    items:
+      type: object
+      required: [type, id, audit_id, branch_id]
+      properties:
+        type: {type: string}
+        id: {type: string}
+        audit_id: {$ref: '#/components/schemas/Uuid'}
+        branch_id: {type: [string, 'null'], format: uuid}

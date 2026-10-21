@@ -1,0 +1,13 @@
+tags: [attendance]
+operationId: createAttendancePattern
+summary: Add a 근무 유형 (WEEKLY, ROTATION or STAGGERED); refused with its rule when it breaks §50, §54 or §55
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AttendancePatternInput' } } } }
+responses:
+  '201': { description: Added, content: { application/json: { schema: { $ref: '#/components/schemas/AttendancePattern' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '409': { $ref: '#/components/responses/Conflict' }
+  '422': { $ref: '#/components/responses/ValidationError' }

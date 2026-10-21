@@ -1,0 +1,21 @@
+[package]
+name = "console-hr-domain"
+version = "0.1.0"
+description = "HR context ring 1: pure employee, lifecycle, exit and import rules. No IO, no clocks, no settings lookups."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+console-kernel-core = { workspace = true }
+serde = { workspace = true }
+time = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

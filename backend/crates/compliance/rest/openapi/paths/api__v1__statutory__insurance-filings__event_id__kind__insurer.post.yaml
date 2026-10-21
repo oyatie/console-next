@@ -1,0 +1,21 @@
+operationId: recordInsuranceFiling
+tags: [HR]
+parameters:
+- { in: path, name: event_id, required: true, schema: { type: string, format: uuid } }
+- { in: path, name: kind, required: true, schema: { type: string } }
+- { in: path, name: insurer, required: true, schema: { type: string } }
+- { in: header, name: Idempotency-Key, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema: { $ref: '#/components/schemas/RecordInsuranceFiling' }
+responses:
+  '200':
+    description: Completion or undo recorded; retries return the recorded result
+    content:
+      application/json:
+        schema: { $ref: '#/components/schemas/InsuranceFilingTask' }
+  '403': { description: Cedar denies this record }
+  '409': { description: Stale version, reused idempotency key or inactive lifecycle event }
+  '422': { description: Invalid filing date or statutory loss code }

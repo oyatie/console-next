@@ -1,0 +1,34 @@
+/* The proposal card: sections top to bottom, the consequence right above the decision bar. */
+/* Beside the tree like the panel it replaces: sticky below the top bar, scrolling on its own. */
+.card { position: sticky; top: 0; max-height: calc(100dvh - var(--topbar-h) - var(--space-5)); overflow: auto; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); min-width: 0; }
+.head { display: flex; align-items: center; gap: var(--space-2); }
+.sub { margin: calc(-1 * var(--space-3)) 0 0; font-size: var(--text-sm); color: var(--steel); }
+.section { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border-soft); }
+.sectionTitle { margin: 0; font-size: var(--text-sm); font-weight: var(--fw-strong); color: var(--steel); letter-spacing: var(--tracking-label); }
+.note { margin: 0; font-size: var(--text-sm); color: var(--steel); }
+.caution { margin: 0; font-size: var(--text-sm); color: var(--warn-tx); display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.names { display: block; margin-top: var(--space-1); }
+
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.check { display: grid; grid-template-columns: max-content max-content 1fr; gap: var(--space-1) var(--space-2); align-items: start; font-size: var(--text-sm); }
+.check svg { margin-top: var(--space-1); }
+.check[data-tone="ok"] svg, .check[data-tone="ok"] .checkTag { color: var(--ok-tx); }
+.check[data-tone="caution"] svg, .check[data-tone="caution"] .checkTag { color: var(--warn-tx); }
+.check[data-tone="block"] svg, .check[data-tone="block"] .checkTag { color: var(--danger-tx); }
+.checkTag { font-weight: var(--fw-medium); white-space: nowrap; }
+.checkAction { grid-column: 3; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+
+.diff { display: flex; flex-direction: column; gap: var(--space-2); }
+.diffSummary { margin: 0; }
+.diffCols { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--panel-w) / 2), 1fr)); gap: var(--space-3); }
+.diffCol { padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); min-width: 0; }
+.diffTitle { margin: 0 0 var(--space-2); font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--steel); }
+.diffTree, .diffTree ul { list-style: none; margin: 0; padding: 0; }
+.diffTree ul { padding-inline-start: var(--space-5); }
+.diffRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); min-height: var(--target); font-size: var(--text-sm); }
+.diffRow[data-mark] .diffName { font-weight: var(--fw-strong); }
+.diffRow[data-mark="dissolved"] .diffName { text-decoration: line-through; }
+
+.foot { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.consequence { margin: 0; font-size: var(--text-sm); }
+.bar { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-2); }

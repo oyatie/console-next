@@ -1,0 +1,1 @@
+ {"biz_kind": "CORPORATION", "name": "주식회사 가상", "crn": "000111-1234560", "representation_mode": "SINGLE", "representatives": ["김가상"], "head_office_address": {"road": "서울특별시 중구 세종대로 1", "zip": "04524"}, "incorporated_on": "2020-01-02", "fiscal_year_end_month": 12, "capital_won": 100000000, "main_phone": "02-000-0000"}

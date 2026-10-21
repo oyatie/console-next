@@ -1,0 +1,40 @@
+tags:
+  - users
+operationId: changeUserSignInId
+summary: Change an account's 아이디
+description: 'Decisions #33. A `user_manage` holder over the account sets a new 아이디 with a reason
+  (`sign_in_id_change` domain) and a 기준일 of today or earlier. The old 아이디 still signs in for 90 days, stays
+  searchable for good and is never reissued to anyone in the tenant. Audited as `user.sign_in_id.change`. 409
+  sign_in_id_taken (held or held before, including the account''s own old values); 422 sign_in_id_invalid,
+  sign_in_id_unchanged, effective_date_in_future and the reason-code refusals.'
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ChangeSignInIdRequest'
+responses:
+  '200':
+    description: The new current 아이디.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SignInIdRecord'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

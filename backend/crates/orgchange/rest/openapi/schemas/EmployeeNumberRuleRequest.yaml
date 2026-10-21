@@ -1,0 +1,16 @@
+type: object
+additionalProperties: false
+required: [scope_kind, prefix, width]
+properties:
+  scope_kind:
+    type: string
+    enum: [TENANT, LEGAL_ENTITY, WORKPLACE]
+  scope_id:
+    $ref: '#/components/schemas/Uuid'
+  prefix:
+    type: string
+    pattern: ^[A-Za-z0-9_-]{0,16}$
+  width:
+    type: integer
+    minimum: 1
+    maximum: 12

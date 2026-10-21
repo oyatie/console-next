@@ -1,0 +1,13 @@
+tags: [attendance]
+operationId: saveAttendanceEntries
+summary: Save cells in one transaction (≤ 10,000) with one 근거; a refused cell (422 cells_refused, error.details.refused) or a changed base (409 entry_conflict, error.details.conflicts) saves nothing
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceSaveInput' } } } }
+responses:
+  '201': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceSaveReceipt' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '409': { description: 'entry_conflict (error.details.conflicts) or entry_month_closed', content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceEntryConflictBody' } } } }
+  '422': { $ref: '#/components/responses/ValidationError' }

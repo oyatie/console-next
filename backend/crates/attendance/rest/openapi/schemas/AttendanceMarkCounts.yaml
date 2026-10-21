@@ -1,0 +1,3 @@
+type: object
+required: [blocking, decision, info]
+properties: { blocking: { type: integer }, decision: { type: integer }, info: { type: integer } }

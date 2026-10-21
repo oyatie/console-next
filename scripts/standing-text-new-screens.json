@@ -1,0 +1,42 @@
+{
+  "apps/web/src/features/statutory/ui/statutory-page.tsx#StatutoryPage": {
+    "FACT": 24,
+    "REFUSAL": 15,
+    "EMPTY": 1,
+    "LEGAL": 1,
+    "RECEIPT": 11,
+    "EXPLANATION": 0
+  },
+  "apps/web/src/features/attendance/ui/attendance-page.tsx#DayPage": {
+    "FACT": 56,
+    "REFUSAL": 18,
+    "EMPTY": 4,
+    "LEGAL": 0,
+    "RECEIPT": 17,
+    "EXPLANATION": 0
+  },
+  "apps/web/src/features/attendance/ui/attendance-page.tsx#MonthPage": {
+    "FACT": 51,
+    "REFUSAL": 19,
+    "EMPTY": 4,
+    "LEGAL": 0,
+    "RECEIPT": 27,
+    "EXPLANATION": 0
+  },
+  "apps/web/src/features/attendance/ui/attendance-page.tsx#PersonPage": {
+    "FACT": 37,
+    "REFUSAL": 7,
+    "EMPTY": 2,
+    "LEGAL": 0,
+    "RECEIPT": 9,
+    "EXPLANATION": 0
+  },
+  "apps/web/src/features/company-domain/ui/domain-page.tsx#default": {
+    "FACT": 15,
+    "REFUSAL": 15,
+    "EMPTY": 1,
+    "LEGAL": 0,
+    "RECEIPT": 1,
+    "EXPLANATION": 0
+  }
+}

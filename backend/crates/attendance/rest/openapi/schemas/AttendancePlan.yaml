@@ -1,0 +1,3 @@
+type: object
+required: [kind, holiday_work]
+properties: { kind: { $ref: '#/components/schemas/AttendanceDayKind' }, shift: { $ref: '#/components/schemas/AttendanceShift' }, holiday_name: { type: string }, holiday_work: { type: boolean } }

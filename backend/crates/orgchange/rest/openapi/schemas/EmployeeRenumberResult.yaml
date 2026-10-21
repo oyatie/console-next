@@ -1,0 +1,8 @@
+type: object
+required: [batch_id, changed]
+properties:
+  batch_id:
+    $ref: '#/components/schemas/Uuid'
+  changed:
+    type: integer
+    minimum: 0

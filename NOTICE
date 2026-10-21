@@ -1,0 +1,46 @@
+Console
+Copyright (c) 2026 Jason Lee, trading as Oyatie. All rights reserved. See LICENSE.
+
+This repository's own code carries no licence grant (SPDX: LicenseRef-Proprietary).
+Third-party components remain under their own licences. The full list is
+generated as THIRD_PARTY_LICENSES by scripts/third-party-licenses.mjs (the web
+bundle from package-lock.json; the backend image and the desktop installer from
+cargo metadata), to ship with each artifact. The entries below are maintained
+by hand.
+
+-------------------------------------------------------------------------------
+Third-party code committed to this repository
+-------------------------------------------------------------------------------
+third-party/rust/vendor/ (backend; modified, each directory keeps its licence file)
+  calamine 0.35.0 ............ MIT
+  quick-xml 0.41.0 ........... MIT
+  umya-spreadsheet 3.0.0 ..... MIT
+
+-------------------------------------------------------------------------------
+Entries that licence tools do not detect (maintained by hand)
+-------------------------------------------------------------------------------
+OpenSSL 3.6.3, statically linked into the backend binary through openssl-src
+  (openssl crate, "vendored" feature, backend/crates/platform/auth/Cargo.toml).
+  Licensed under the Apache License 2.0. Copyright 1995-2025 The OpenSSL
+  Project Authors.
+
+AWS-LC, statically linked through aws-lc-sys (rustls). Licensed under
+  Apache-2.0 and ISC, with the OpenSSL and SSLeay copyright notices retained in
+  its LICENSE file.
+
+Cedar (cedar-policy, cedar-policy-core, cedar-policy-formatter), Apache-2.0.
+  NOTICE: "Copyright Cedar Contributors".
+
+webauthn-rs, webauthn-rs-core, webauthn-rs-proto, webauthn-attestation-ca and
+  base64urlsafedata 0.5.5, MPL-2.0, used unmodified. Source:
+  https://github.com/kanidm/webauthn-rs
+
+Desktop shell (Windows): cssparser, cssparser-macros, selectors, dtoa-short and
+  option-ext, MPL-2.0, used unmodified. Sources: their crates.io pages.
+
+Pretendard (web font), SIL Open Font License 1.1. Copyright (c) 2021,
+  Kil Hyung-jin, with Reserved Font Name Pretendard. The licence text is
+  embedded in the font files' name table; OFL.txt is to be added by the
+  release generator.
+
+Mozilla CA certificate bundle (webpki-roots), CDLA-Permissive-2.0.

@@ -1,0 +1,7 @@
+type: string
+enum:
+- ALL_ESTABLISHED_NUMBERS_LATER
+- ALL_ESTABLISHED_NOW
+- NONE_YET
+- PER_INSURER
+description: One-choice 4대보험 setup; no default.

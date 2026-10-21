@@ -1,0 +1,17 @@
+/* ui/field: label + marker, control + unit, hint, inline error; the derived-value tag. Tokens only. */
+.field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--ink); }
+.marker { font-size: var(--text-xs); font-weight: var(--fw-body); color: var(--steel); }
+.control { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.control > :first-child { flex: 1; min-width: 0; }
+.control [aria-invalid="true"] { border-color: var(--danger-solid); }
+.unit { font-size: var(--text-sm); color: var(--steel); white-space: nowrap; }
+.hint { margin: 0; font-size: var(--text-xs); color: var(--steel); }
+.hint > span + span::before { content: " · "; }
+.error { margin: 0; font-size: var(--text-sm); color: var(--danger-tx); }
+.warning { margin: 0; font-size: var(--text-sm); color: var(--warn-tx); }
+.value { font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; }
+.derived, .overridden { display: inline-flex; align-items: center; height: var(--chip-h); padding: 0 var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-xs); font-weight: var(--fw-medium); white-space: nowrap; }
+.derived { background: var(--derived-bg); color: var(--derived-tx); }
+.overridden { background: var(--warn-bg); color: var(--warn-tx); }
+.link { font-size: var(--text-sm); }

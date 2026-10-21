@@ -1,0 +1,7 @@
+type: object
+required:
+- mapped
+properties:
+  mapped:
+    type: integer
+    format: int64

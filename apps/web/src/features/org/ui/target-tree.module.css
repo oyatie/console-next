@@ -1,0 +1,9 @@
+/* A valid-only target tree of one legal entity's workplaces and departments (ui/tree underneath). Tokens only. */
+.box { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.list { max-height: calc(var(--row-h) * 11); overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.row { display: flex; flex: 1; align-items: center; gap: var(--space-2); min-height: var(--row-h); min-width: 0; }
+.strong { font-weight: var(--fw-strong); }
+.right { margin-left: auto; padding-right: var(--space-2); font-size: var(--text-xs); color: var(--steel); white-space: nowrap; }
+.dot { flex: none; width: var(--space-4); height: var(--space-4); border: 2px solid var(--control-border); border-radius: var(--radius-lg); background: var(--surface); }
+.row[data-checked] .dot { border: 5px solid var(--primary); }
+.hint { display: flex; gap: var(--space-1); margin: 0; font-size: var(--text-xs); color: var(--steel); line-height: var(--lh-base); }

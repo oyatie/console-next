@@ -1,0 +1,27 @@
+type: object
+required: [event_type, required_signoffs]
+properties:
+  event_type:
+    type: string
+    description: Grows as the server learns events (GROUP_TRANSFER since E-S3b); a client ignores one it does not know.
+    x-extensible-enum:
+    - ONBOARD
+    - TRANSFER
+    - GROUP_TRANSFER
+    - PROMOTE
+    - APPOINT
+    - EMPLOYMENT_TYPE_CHANGE
+    - LEAVE_OF_ABSENCE
+    - RETURN_FROM_LEAVE
+    - CONTRACT_RENEWAL
+  required_signoffs:
+    type: array
+    description: The acknowledgements (EmployeeLifecycleSignoffs keys) that must be true to record this event;
+      empty for every lifecycle act since A13.
+    items:
+      $ref: '#/components/schemas/LifecycleSignoffKey'
+  cross_company_required_signoffs:
+    type: array
+    description: TRANSFER only; the acknowledgements when to_company changes the company.
+    items:
+      $ref: '#/components/schemas/LifecycleSignoffKey'

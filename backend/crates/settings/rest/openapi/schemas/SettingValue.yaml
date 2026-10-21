@@ -1,0 +1,6 @@
+description: A number, boolean or code, by the key's kind.
+oneOf:
+- type: integer
+  format: int64
+- type: boolean
+- type: string

@@ -1,0 +1,28 @@
+type: object
+required:
+- legal_entity_id
+- company
+- total
+- active
+- units
+properties:
+  legal_entity_id:
+    description: The 법인 this group is (company is then its current name); null for a legacy company-text group
+      of employees with no 법인 assignment.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  company:
+    type: string
+  total:
+    type: integer
+    format: int64
+    minimum: 0
+  active:
+    type: integer
+    format: int64
+    minimum: 0
+  units:
+    type: array
+    items:
+      $ref: '#/components/schemas/HrOrgChartUnit'

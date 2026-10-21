@@ -1,0 +1,72 @@
+tags:
+  - employees
+operationId: listChangeRequests
+summary: List change requests (변경 요청)
+description: >-
+  BW-17. HR (org-wide employee_directory_manage) sees the organization's
+  requests; any other caller sees only the requests it filed (기다리는
+  중) or is named on. `assignee=me` lists the requests named to the
+  caller (a 소명 요청 to answer); `assignee=role` is HR-only.
+security:
+- bearerAuth: []
+parameters:
+- name: assignee
+  in: query
+  required: false
+  schema:
+    type: string
+    enum: [me, role]
+  description: me = named to the caller; role = open to any HR person.
+- name: requester
+  in: query
+  required: false
+  schema:
+    type: string
+    enum: [me]
+  description: me = only the requests the caller filed (기다리는 중).
+- name: status
+  in: query
+  required: false
+  schema:
+    type: string
+    enum: [OPEN, APPLIED, DECLINED, WITHDRAWN]
+- name: limit
+  in: query
+  required: false
+  schema:
+    type: integer
+    format: int64
+- name: offset
+  in: query
+  required: false
+  schema:
+    type: integer
+    format: int64
+responses:
+  '200':
+    description: One page of change requests, newest first.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [items, total, limit, offset]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/ChangeRequest'
+            total:
+              type: integer
+              format: int64
+            limit:
+              type: integer
+              format: int64
+            offset:
+              type: integer
+              format: int64
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'

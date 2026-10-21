@@ -1,0 +1,17 @@
+operationId: exportWorkerRegister
+tags: [HR]
+parameters:
+- { in: query, name: workplace_id, required: true, schema: { type: string, format: uuid } }
+- { in: query, name: as_of, required: true, schema: { type: string, format: date } }
+- { in: query, name: format, required: true, schema: { type: string, x-extensible-enum: [xlsx, pdf] } }
+- { in: query, name: export_purpose, required: true, schema: { type: string } }
+responses:
+  '200':
+    description: All scoped register rows as XLSX or audited print data for browser Save as PDF
+    content:
+      application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+        schema: { type: string, format: binary }
+      application/json:
+        schema: { $ref: '#/components/schemas/WorkerRegisterPage' }
+  '403': { description: Cedar denies register or export access }
+  '422': { description: Missing purpose or invalid date }

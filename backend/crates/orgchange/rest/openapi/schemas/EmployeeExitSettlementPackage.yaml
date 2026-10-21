@@ -1,0 +1,75 @@
+type: object
+required:
+- id
+- status
+- missing_source_fields
+- statutory_basis
+- insurance_loss_payload
+- approval_payload
+- certification_status
+- generated_at
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  status:
+    type: string
+    enum:
+    - NEEDS_SOURCE
+    - READY_FOR_APPROVAL
+    - APPROVAL_DRAFTED
+    - SUBMITTED
+  service_days:
+    type: integer
+  average_wage_period_start:
+    type: string
+  average_wage_period_end:
+    type: string
+  average_wage_calendar_days:
+    type: integer
+  average_wage_total_won:
+    type: integer
+    format: int64
+  average_daily_wage_milliwon:
+    type: integer
+    format: int64
+  severance_pay_won:
+    type: integer
+    format: int64
+  monthly_ordinary_wage_won:
+    type: integer
+    format: int64
+  ordinary_daily_wage_won:
+    type: integer
+    format: int64
+  statutory_daily_wage_milliwon:
+    type: integer
+    format: int64
+  missing_source_fields:
+    type: array
+    items:
+      type: string
+  statutory_basis:
+    type: object
+    additionalProperties: true
+  insurance_loss_payload:
+    type: object
+    additionalProperties: true
+    description: Generated MOEL/NHIS insurance-loss document (carries certification_status).
+  approval_payload:
+    type: object
+    additionalProperties: true
+    description: Generated approval-submission document (carries certification_status).
+  certification_status:
+    type: string
+    enum:
+    - UNCERTIFIED_DRAFT
+    - CERTIFIED
+  generated_at:
+    $ref: '#/components/schemas/Timestamp'
+  submitted_by:
+    $ref: '#/components/schemas/Uuid'
+  submitted_at:
+    $ref: '#/components/schemas/Timestamp'
+  figures_withheld:
+    type: boolean
+    description: "True when the reader lacks exit_settlement_manage over the case's branch (BW-26); every pay figure is then omitted, statutory_basis is {} and the two documents carry only certification_status. Omitted when false."

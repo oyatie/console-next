@@ -1,0 +1,107 @@
+import { expect, test } from "@playwright/test";
+import { fmtDateTime } from "@console/i18n/format";
+import { expectAccessible } from "./a11y";
+import { inviteAccount } from "./access-flows";
+import { apiAs, sent } from "./chaos";
+import { firstSignIn, go } from "./flows";
+import { reviseFact } from "./helpers/entity";
+import { openTenant } from "./helpers/tenant";
+import { registerEntity } from "./setup-flows";
+import { recordShifts } from "./stability";
+
+const ENTITY = /\/api\/v1\/legal-entities\/[0-9a-f-]{36}$/;
+const OPS_BADGE = "운영 계정 · 긴급 권한";
+
+test("BL-009/011 two browsers expose the latest authorized change and its original audit outcome", { tag: ["@org", "@ledger", "@regression"] }, async ({ browser }) => {
+  const admin = await openTenant(browser, "ledger-conflict", "원장동시");
+  const colleague = await firstSignIn(browser, await inviteAccount(admin, "박원장", "full"));
+  const read = apiAs(admin);
+  await go(admin, "/org/entities/new");
+  await registerEntity(admin, "원장동시");
+  const entityPage = new URL(admin.url()).pathname;
+  const entityId = entityPage.split("/").pop()!;
+  const staleContext = await browser.newContext({ storageState: await admin.context().storageState() });
+  await staleContext.addInitScript(recordShifts);
+  const otherBrowser = await staleContext.newPage();
+  await otherBrowser.goto(entityPage);
+  await expect(otherBrowser.getByRole("heading", { name: /원장동시/, level: 1 })).toBeVisible();
+
+  // Each browser opens its own snapshot. Only UI saves create the race.
+  const stale = await reviseFact(otherBrowser, "대표전화", "cor");
+  const input = stale.getByRole("textbox", { name: /^대표전화/ });
+  await input.fill("025550142");
+  const winning = await reviseFact(admin, "대표전화", "cor");
+  await winning.getByRole("textbox", { name: /^대표전화/ }).fill("025550199");
+  const winnerResponse = admin.waitForResponse((r) => ENTITY.test(new URL(r.url()).pathname) && r.request().method() === "PUT");
+  await winning.getByRole("button", { name: "정정 기록", exact: true }).click();
+  const winner = await winnerResponse;
+  expect(winner.status()).toBe(200);
+  const winnerId = winner.headers()["operation-id"];
+  expect(winnerId).toMatch(/^[0-9a-f-]{36}$/);
+  await expect(winning).toBeHidden();
+  await expect(admin.getByText("02-555-0199").first()).toBeVisible();
+
+  const attempts = sent(otherBrowser, ENTITY, "PUT");
+  const refusedResponse = otherBrowser.waitForResponse((r) => ENTITY.test(new URL(r.url()).pathname) && r.request().method() === "PUT");
+  await stale.getByRole("button", { name: "정정 기록", exact: true }).click();
+  const refused = await refusedResponse;
+  expect(refused.status()).toBe(409);
+  const body = await refused.json();
+  expect(body.error.code).toBe("stale_revision");
+  const change = body.error.last_change;
+  expect(change).toMatchObject({ actor_kind: "OPS_ACCOUNT", redacted: false });
+  expect(change.actor_name).toBeTruthy();
+  expect(Number.isNaN(Date.parse(change.recorded_at))).toBe(false);
+  expect(change.fields).toContain("main_phone");
+  expect(change.audit_id).toMatch(/^[0-9a-f-]{36}$/);
+  expect(change).not.toHaveProperty("before");
+  expect(change).not.toHaveProperty("after");
+
+  const alert = stale.getByRole("alert").first();
+  await expect(alert).toContainText("다른 사람이 먼저 이 법인을 변경해 저장해서");
+  await expect(alert).toContainText(change.actor_name);
+  await expect(alert).toContainText("대표전화");
+  await expect(alert).not.toContainText("main_phone");
+  await expect(alert).toContainText(fmtDateTime(change.recorded_at));
+  await expect(alert.getByText(OPS_BADGE, { exact: true })).toBeVisible();
+  await expect(input).toHaveValue("02-555-0142");
+  const conflict = stale.getByRole("region", { name: "그사이 기록된 내용" });
+  await expect(conflict).toContainText(/대표전화: .*→ .*0199/);
+  await expect(conflict).toContainText("내 값: 02-555-0142");
+  await expect(stale.getByRole("button", { name: "정정 기록", exact: true })).toHaveAttribute("aria-disabled", "true");
+  expect(attempts.count()).toBe(1);
+  await expectAccessible(otherBrowser, "BL-011 latest actor, time and stale-value preservation");
+
+  const revisions = await read<{ items: { changes: { field: string; after: unknown }[] }[] }>(`/api/v1/legal-entities/${entityId}/revisions`);
+  const phones = revisions.items.filter((r) => r.changes.some((c) => c.field === "main_phone"));
+  expect(phones).toHaveLength(1);
+  expect(JSON.stringify(phones)).not.toContain("0142");
+  const compare = alert.getByRole("link", { name: "바뀐 곳 보기", exact: true });
+  await expect(compare).toHaveAttribute("href", new RegExp(`/org/entities/${entityId}`));
+  await compare.focus();
+  await otherBrowser.keyboard.press("Enter");
+  await expect(otherBrowser.locator("#history-title")).toBeVisible();
+  const history = otherBrowser.locator('section[aria-labelledby="history-title"]');
+  const phoneRow = history.getByRole("listitem").filter({ hasText: "대표전화" }).first();
+  await expect(phoneRow).toContainText("0199");
+  await expect(phoneRow.getByText(OPS_BADGE, { exact: true })).toBeVisible();
+  const outcomeLink = phoneRow.getByRole("link", { name: "요청 결과 보기", exact: true });
+  await expect(outcomeLink).toHaveAttribute("href", `/requests/${winnerId}`);
+  await expectAccessible(otherBrowser, "BL-009 ops badge and history outcome link");
+
+  await go(colleague, `${entityPage}?tab=history`);
+  const readerLink = colleague.locator('section[aria-labelledby="history-title"]').getByRole("listitem").filter({ hasText: "대표전화" }).first().getByRole("link", { name: "요청 결과 보기", exact: true });
+  await expect(readerLink).toHaveAttribute("href", `/requests/${winnerId}`);
+  const lookupResponse = colleague.waitForResponse((r) => new URL(r.url()).pathname === `/api/v1/requests/${winnerId}`);
+  await readerLink.focus();
+  await colleague.keyboard.press("Enter");
+  const lookup = await lookupResponse;
+  expect(lookup.status()).toBe(200);
+  const outcome = await lookup.json();
+  expect(outcome).toMatchObject({ id: winnerId, state: "APPLIED", masked: false });
+  expect(outcome.touched).toEqual(expect.arrayContaining([expect.objectContaining({ type: "legal_entity", id: entityId, audit_id: change.audit_id })]));
+  await expect(colleague.getByRole("status").filter({ hasText: /^반영됨$/ })).toBeVisible();
+  expect(attempts.count()).toBe(1);
+  await expectAccessible(colleague, "BL-010 record reader opens another actor's command outcome");
+  await staleContext.close();
+});

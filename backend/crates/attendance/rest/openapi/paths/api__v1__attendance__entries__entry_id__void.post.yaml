@@ -1,0 +1,15 @@
+tags: [attendance]
+operationId: voidAttendanceEntry
+summary: 기록 취소 — the day goes back to empty with a reason; the entry stays struck in the history and a 재기록 restores a value
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: entry_id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+  - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceVoidInput' } } } }
+responses:
+  '201': { description: Voided, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceSaveReceipt' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '404': { $ref: '#/components/responses/NotFound' }
+  '409': { $ref: '#/components/responses/Conflict' }
+  '422': { $ref: '#/components/responses/ValidationError' }

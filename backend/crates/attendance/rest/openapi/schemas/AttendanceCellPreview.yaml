@@ -1,0 +1,3 @@
+type: object
+required: [employee_id, work_date, status]
+properties: { employee_id: { $ref: '#/components/schemas/Uuid' }, work_date: { type: string, format: date }, status: { type: string, enum: [OK, UNCHANGED, REFUSED, CONFLICT] }, code: { type: string }, long_span_minutes: { type: integer, minimum: 1, description: Effective employer confirmation threshold in minutes }, after: { $ref: '#/components/schemas/AttendanceDay' } }

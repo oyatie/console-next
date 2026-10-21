@@ -1,0 +1,5 @@
+type: object
+required: [items, operation_id]
+properties:
+  items: {type: array, items: {$ref: '#/components/schemas/AccessGrant'}}
+  operation_id: {$ref: '#/components/schemas/Uuid'}

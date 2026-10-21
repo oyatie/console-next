@@ -1,0 +1,34 @@
+tags:
+- access
+operationId: createAccessRequest
+summary: File a 「권한 요청」 from a refused screen
+description: Any signed-in account. One open request per (account, screen); filing again answers the open one with 200.
+  An `OTHER` reason needs a note (422 `access_request_note_required`). Writes an `access.request.create` audit row.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CreateAccessRequest'
+      example:
+        screen: people.lifecycle
+        reason_code: NEW_DUTY
+responses:
+  '200':
+    description: The request already open for this screen.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessRequest'
+  '201':
+    description: The request was filed.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessRequest'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '422':
+    $ref: '#/components/responses/ValidationError'

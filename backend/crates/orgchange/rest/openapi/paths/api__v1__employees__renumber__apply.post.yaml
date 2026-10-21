@@ -1,0 +1,30 @@
+tags:
+  - employees
+operationId: applyEmployeeRenumber
+summary: Apply a previewed renumbering as one job (IMPORT-2)
+description: 'Every old 사번 stays its person''s alias. SETUP only for now (409 phase_not_setup after 운영 시작;
+  a governed renumbering is not built — 사번 변경 of one person stays available). 409 renumber_preview_stale
+  (people or numbers moved since the preview), renumber_conflicts; 422 reason or effective_date_in_future.'
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/EmployeeRenumberApplyRequest'
+responses:
+  '200':
+    description: The batch.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeRenumberResult'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

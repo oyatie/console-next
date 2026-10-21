@@ -1,0 +1,10 @@
+tags: [attendance]
+operationId: listAttendanceHolidays
+summary: The year's 공휴일 (bundled reference data, read-only) and 약정휴일
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: year, in: query, required: true, schema: { type: integer, minimum: 2000, maximum: 2100 } }
+responses:
+  '200': { description: Holidays, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceHolidayYear' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }

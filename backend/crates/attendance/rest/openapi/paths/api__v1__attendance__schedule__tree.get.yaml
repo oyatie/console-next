@@ -1,0 +1,10 @@
+tags: [attendance]
+operationId: readAttendanceScheduleTree
+summary: 법인 › 사업장 › 부서 with 근무조, the layer each node holds on a date, people counts and the unscheduled count
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: date, in: query, required: false, schema: { type: string, format: date } }
+responses:
+  '200': { description: Tree, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceScheduleTree' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }

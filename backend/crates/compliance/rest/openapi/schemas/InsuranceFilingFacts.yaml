@@ -1,0 +1,21 @@
+type: object
+additionalProperties: false
+properties:
+  birth_date: { type: string, format: date, nullable: true }
+  monthly_hours: { type: integer, minimum: 0, nullable: true }
+  weekly_hours: { type: integer, minimum: 0, nullable: true }
+  continuous_months: { type: integer, minimum: 0, nullable: true }
+  daily: { type: boolean, nullable: true }
+  work_days: { type: integer, minimum: 0, nullable: true }
+  worked_monthly_hours: { type: integer, minimum: 0, nullable: true }
+  pension_lecturer_covered: { type: boolean, nullable: true }
+  pension_daily_sector: { type: string, enum: [GENERAL, CONSTRUCTION_NOTICE, UNVERIFIED], nullable: true }
+  pension_opt_in: { type: boolean, nullable: true }
+  minor_opt_out: { type: boolean, nullable: true }
+  multiple_jobs_covered: { type: boolean, nullable: true }
+  income_exception_covered: { type: boolean, nullable: true }
+  monthly_income_won: { type: integer, format: int64, minimum: 0, nullable: true }
+  foreign: { type: boolean, nullable: true }
+  treaty: { type: string, enum: [COVERED, EXCLUDED, UNVERIFIED], nullable: true }
+  visa: { type: string, enum: [MANDATORY, OPTED_IN, OPTIONAL_NOT_OPTED_IN, EXCLUDED, UNVERIFIED], nullable: true }
+  director_without_worker_status: { type: boolean, nullable: true }

@@ -1,0 +1,20 @@
+type: object
+additionalProperties: false
+required: [domain, code, label_ko, label_en, requires_note, active, sort]
+properties:
+  domain:
+    type: string
+  code:
+    type: string
+  label_ko:
+    type: string
+  label_en:
+    type: string
+    nullable: true
+  requires_note:
+    type: boolean
+  active:
+    type: boolean
+  sort:
+    type: integer
+    format: int32

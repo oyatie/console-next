@@ -1,0 +1,18 @@
+type: object
+required: [employee_id, verdict, review_required]
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  verdict:
+    type: string
+    enum: [SAME, DIFFERENT]
+  merged_into_employee_id:
+    nullable: true
+    allOf:
+    - $ref: '#/components/schemas/Uuid'
+  review_required:
+    type: boolean
+  pending_request:
+    nullable: true
+    allOf:
+    - $ref: '#/components/schemas/ChangeRequest'

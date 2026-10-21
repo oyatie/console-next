@@ -1,0 +1,13 @@
+      type: object
+      additionalProperties: false
+      required: [op, orgUnitId, name]
+      properties:
+        op:
+          type: string
+          enum: [RENAME_ORG_UNIT]
+        orgUnitId:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120

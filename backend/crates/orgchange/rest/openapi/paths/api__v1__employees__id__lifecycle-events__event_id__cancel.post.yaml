@@ -1,0 +1,51 @@
+tags:
+  - employees
+operationId: cancelEmployeeLifecycleEvent
+summary: Cancel a scheduled lifecycle event
+description: Withdraws a SCHEDULED lifecycle event before its effective date (state CANCELLED; audited as
+  employee.lifecycle.cancel). Takes employee_directory_manage. 409 invalid_transition when the event is not
+  SCHEDULED, or when it is a scheduled exit, which is withdrawn by cancelling or rejecting its exit case. 409
+  lifecycle_schedule_conflict when a later SCHEDULED event only applies after this one (a return after this
+  leave); error.refusals names each, and those must be cancelled first.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: event_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CancelEmployeeLifecycleEventRequest'
+responses:
+  '200':
+    description: The cancelled event (state CANCELLED; cancelled_by, cancelled_at and cancel_reason set).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeLifecycleEvent'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: Conflicts with the employee's state or schedule. lifecycle_schedule_conflict names, in
+      error.refusals, every SCHEDULED event of the employee the change would make fail on its date; nothing was
+      recorded.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/LifecycleScheduleConflictBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'

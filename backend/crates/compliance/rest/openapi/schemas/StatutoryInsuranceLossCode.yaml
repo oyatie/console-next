@@ -1,0 +1,16 @@
+type: object
+description: One `insurance_loss_codes` row, verbatim.
+required: [insurer, code, label_ko, reason_group, requires_detail, effective_from, effective_to_exclusive, instrument_ko, article_ko, source_url, release_disposition, review_receipt_ref]
+properties:
+  insurer: { type: string, enum: [EI, NPS, NHIS] }
+  code: { type: string }
+  label_ko: { type: string }
+  reason_group: { type: string, enum: [VOLUNTARY, INVOLUNTARY, INVOLUNTARY_FAULT, TERM_END, OTHER] }
+  requires_detail: { type: boolean, description: The exit must carry a note for this code. }
+  effective_from: { type: string, format: date, description: The code-table version an exit payload records. }
+  effective_to_exclusive: { type: [string, 'null'], format: date }
+  instrument_ko: { type: string }
+  article_ko: { type: string }
+  source_url: { type: string }
+  release_disposition: { type: string, enum: [HOLD, RELEASED] }
+  review_receipt_ref: { type: [string, 'null'], description: Jurisdiction-register receipt id; present exactly when RELEASED. }

@@ -1,0 +1,3 @@
+type: object
+required: [level, people]
+properties: { level: { $ref: '#/components/schemas/AttendanceScopeKind' }, people: { type: integer } }

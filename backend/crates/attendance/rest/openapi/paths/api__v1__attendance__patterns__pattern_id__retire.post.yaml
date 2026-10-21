@@ -1,0 +1,12 @@
+tags: [attendance]
+operationId: retireAttendancePattern
+summary: Stop using a 근무 유형 (사용 중지); refused while a current or future layer uses it
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: pattern_id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+responses:
+  '200': { description: Retired, content: { application/json: { schema: { $ref: '#/components/schemas/AttendancePattern' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '404': { $ref: '#/components/responses/NotFound' }
+  '409': { $ref: '#/components/responses/Conflict' }

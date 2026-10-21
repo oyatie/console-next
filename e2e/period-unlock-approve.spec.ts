@@ -1,0 +1,145 @@
+import { expect, test, type Page } from "@playwright/test";
+import { OWN_ECHO_MS } from "../apps/web/src/lib/freshness";
+import { expectAccessible } from "./a11y";
+import { grantAccess } from "./access-flows";
+import { firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "./flows";
+import { apiOf, bearerOf, codeOf } from "./helpers/api";
+import { openTenant } from "./helpers/tenant";
+import { letGrantsAge } from "./second-person-fixture";
+import { startOperations, tenantInSetup } from "./setup-flows";
+
+const today = kstDate();
+const lastMonth = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1)).toISOString().slice(0, 7);
+const month = new Intl.DateTimeFormat("ko-KR", { timeZone: "UTC", year: "numeric", month: "long" }).format(new Date(`${lastMonth}-15T00:00:00Z`));
+const LOCKS = "/people/period-locks";
+
+/** The requester's unlock, reason and time box, ending in the waiting receipt. */
+async function requestUnlock(admin: Page) {
+  const row = admin.getByRole("row", { name: /월 급여 마감/ });
+  await row.getByRole("button", { name: `급여 ${month} 잠금 해제` }).click();
+  const dialog = admin.getByRole("dialog", { name: `급여 ${month} 잠금 해제` });
+  await option(admin, "해제 사유", "소급 정정").click();
+  await dialog.getByLabel("해제 메모").fill("8월 급여 소급분 반영");
+  await dialog.getByRole("button", { name: /^3일 동안/ }).click();
+  await dialog.getByRole("button", { name: "패스키로 확인하고 잠금 해제" }).click();
+  await expect(admin.getByRole("status").filter({ hasText: "잠금 해제를 요청했습니다" })).toContainText("다른 마감 권한자가 패스키로 확인하면 해제됩니다");
+  await expect(row).toContainText("승인 대기");
+  return row;
+}
+
+// BW-15 second person (P0: an unlock waiting for another close authority had no screen to approve it, so it sat until it
+// expired). The close authority is made on the 권한 screen and confirms the grant's notice on Home (decisions D0.2,
+// 155: before both, the two-person rule never applied in a UI-built tenant). The requester waits and sees the outcome
+// live; the second person finds it on Home and on the lock page, refuses it with a reason, then approves a new request
+// with their own passkey. Refusals change nothing.
+test("period unlock: a second close authority refuses, then approves; the requester sees each outcome", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
+  test.setTimeout(8 * 60_000); // two tenants, three accounts and two passkey decisions, all through the UI
+  const slug = "unlockco";
+  // The setup's colleague holds nothing: the lower-grant account below.
+  const { admin, exec: nobody } = await tenantInSetup(browser, slug, "해제주식회사", false, "본사", "none");
+  // The close authority is an employee whose account is invited from the record (linked), then granted 회사 전체.
+  await registerEmployee(admin, { name: "김마감", number: "UL-0001", hired: "2024-03-04", unit: "본사" });
+  await admin.getByRole("button", { name: "계정 초대" }).click();
+  await stepUp(admin.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", admin.getByLabel("일회용 코드"));
+  const exec = await firstSignIn(browser, await takeCode(admin));
+  await startOperations(admin);
+  await grantAccess(admin, "김마감", "close");
+  // A changed grant ends the account's sessions: the close authority signs in again with their passkey, and Home asks
+  // them to confirm the grant's notice; until they do, it makes them nobody's second person.
+  await go(exec, "/", true);
+  await passkeyLogin(exec);
+  await exec.reload(); // an open page learns of new access on its next load (access-hr-walk)
+  const notices = exec.getByRole("region", { name: "확인할 새 권한 1건" });
+  await expect(notices).toContainText("기간 마감 · 전체 ·", { timeout: 20_000 }); // Home holds its first frame until every read lands
+  await expectAccessible(exec, "grant notice");
+  await notices.getByRole("button", { name: "기간 마감 부여 확인 기록" }).click();
+  await expect(exec.getByRole("status").filter({ hasText: "기간 마감 부여 확인을 기록했습니다" })).toBeVisible();
+  await expect(notices).toBeHidden();
+  letGrantsAge(unique(slug), "김마감");
+  // A frame within OWN_ECHO_MS of this tab's own write is that write's echo (lib/live): the requester acts after it.
+  await exec.waitForTimeout(OWN_ECHO_MS);
+
+  // The ops account locks last month, then asks to unlock it: another close authority exists, so it waits.
+  const adminBearer = bearerOf(admin);
+  await go(admin, LOCKS);
+  await option(admin, "업무 영역", "급여").click();
+  await admin.getByRole("combobox", { name: /^월/ }).selectOption(lastMonth);
+  await option(admin, "잠금 사유", "월 급여 마감").click();
+  await admin.getByRole("button", { name: `급여 ${month} 잠금` }).click();
+  await expect(admin.getByRole("status").filter({ hasText: `급여 ${month} 기간을 잠갔습니다` })).toBeVisible();
+  const row = await requestUnlock(admin);
+
+  // The requester sees the request and whose turn it is, never a decision of their own.
+  await row.getByRole("button", { name: `급여 ${month} 해제 요청 보기` }).click();
+  const mine = admin.getByRole("dialog", { name: `급여 ${month} 잠금 해제 요청` });
+  await expect(mine).toContainText("다른 마감 권한자 1명이 승인하거나 반려합니다");
+  await expect(mine).toContainText("소급 정정 · 8월 급여 소급분 반영");
+  await expect(mine.getByRole("button", { name: /승인/ })).toHaveCount(0);
+  await expectAccessible(admin, "unlock request (requester)");
+  await mine.getByRole("button", { name: "돌아가기" }).click();
+
+  // Refusals at the server, none of which changes anything: the requester, an account with no grant, another tenant.
+  const api = apiOf(admin, adminBearer);
+  const lock = ((await (await api("/period-locks?active=true")).json()) as { items: { id: string; unlockRequest?: { id: string; status: string } }[] }).items[0]!;
+  const requestId = lock.unlockRequest!.id;
+  const own = await api(`/period-locks/${lock.id}/unlock/reject`, "POST", { requestId, note: "본인 반려" });
+  expect([own.status(), await codeOf(own)]).toEqual([403, "second_person_required"]);
+  const nobodyBearer = bearerOf(nobody);
+  await go(nobody, LOCKS);
+  await expect(nobody.getByText("기간 잠금을 볼 권한이 없습니다")).toBeVisible();
+  await expect.poll(nobodyBearer, { timeout: 15_000 }).not.toBe("");
+  const lower = await apiOf(nobody, nobodyBearer)(`/period-locks/${lock.id}/unlock/reject`, "POST", { requestId, note: "권한 없음" });
+  expect(lower.status()).toBe(403);
+  const outsider = await openTenant(browser, "unlockother", "다른주식회사");
+  const outsiderBearer = bearerOf(outsider);
+  await go(outsider, LOCKS);
+  await expect(outsider.getByRole("heading", { name: "기간 잠금", level: 1 })).toBeVisible();
+  await expect.poll(outsiderBearer, { timeout: 15_000 }).not.toBe("");
+  const foreign = await apiOf(outsider, outsiderBearer)(`/period-locks/${lock.id}/unlock/reject`, "POST", { requestId, note: "다른 회사" });
+  expect(foreign.status()).toBe(404);
+  const still = ((await (await api("/period-locks?active=true")).json()) as { items: { unlockRequest?: { status: string } }[] }).items[0]!;
+  expect(still.unlockRequest?.status).toBe("PENDING");
+  await expect(row).toContainText("승인 대기");
+
+  // The second person, on Home all along, is told live (Home holds a change until asked), and refuses it with a reason,
+  // after the requester's own-write window (OWN_ECHO_MS), as people do.
+  await exec.waitForTimeout(OWN_ECHO_MS);
+  await exec.getByRole("button", { name: /^새 항목 \d+건/ }).click();
+  const queue = exec.getByRole("region", { name: "승인할 잠금 해제 1건" });
+  await queue.getByRole("link", { name: `급여 ${month} 해제 요청 검토` }).click();
+  const card = exec.getByRole("dialog", { name: `급여 ${month} 잠금 해제 요청` });
+  await expect(card).toContainText("내 차례입니다");
+  await expect(card).toContainText("운영 계정 ·");
+  await expectAccessible(exec, "unlock request (second person)");
+  await card.getByRole("button", { name: "반려", exact: true }).click();
+  await card.getByRole("button", { name: "잠금 해제 반려" }).click(); // a check: no reason yet, nothing is sent
+  await expect(card).toContainText("반려 사유를 입력하십시오");
+  await card.getByLabel(/^반려 사유/).fill("9월 급여 확정 뒤 다시 요청");
+  await card.getByRole("button", { name: "잠금 해제 반려" }).click();
+  await expect(card).toBeHidden();
+  await expect(exec.getByRole("status").filter({ hasText: `급여 ${month} 잠금 해제 요청을 반려했습니다` })).toBeVisible();
+
+  // The requester's page follows without a reload: still locked, refused, and why.
+  await expect(row).toContainText("반려됨");
+  await row.getByRole("button", { name: `급여 ${month} 해제 요청 보기` }).click();
+  await expect(mine).toContainText("김마감님이");
+  await expect(mine).toContainText("9월 급여 확정 뒤 다시 요청");
+  await expectAccessible(admin, "unlock request (refused)");
+  await mine.getByRole("button", { name: "돌아가기" }).click();
+
+  // A new request, and the second person approves it with their own passkey. The live stream takes any frame within
+  // OWN_ECHO_MS of a tab's own write as that write's echo (lib/live), so each acts after the other's window, as people do.
+  await admin.waitForTimeout(OWN_ECHO_MS);
+  await requestUnlock(admin);
+  await exec.waitForTimeout(OWN_ECHO_MS);
+  await exec.getByRole("button", { name: `급여 ${month} 해제 요청 검토` }).click();
+  await card.getByRole("button", { name: "패스키로 확인하고 잠금 해제 승인" }).click();
+  await expect(exec.getByRole("status").filter({ hasText: `급여 ${month} 잠금 해제를 승인했습니다` })).toBeVisible();
+
+  // The requester sees it open, approved by the second person, with nothing flagged for review.
+  await expect(admin.getByRole("heading", { name: "잠긴 기간 0건" })).toBeVisible();
+  await admin.getByRole("button", { name: "해제됨 1" }).click();
+  const opened = admin.getByRole("row", { name: /월 급여 마감/ });
+  await expect(opened).toContainText("다른 마감 권한자가 확인함");
+  await expect(opened).not.toContainText("사후 검토 필요");
+});

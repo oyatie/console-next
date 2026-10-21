@@ -1,0 +1,17 @@
+      type: object
+      additionalProperties: false
+      description: >-
+        Mark an OrgUnit DISSOLVED. Preflight blocker ORG_UNIT_ACTIVE_MEMBERS while any employee who is not EXITED
+        (on-leave included) is still bound to it, and ORG_UNIT_ACTIVE_CHILDREN while it has active child units —
+        unless an earlier op of the same change moves them (REASSIGN_ORG_UNIT / MOVE_ORG_UNIT). Applied on the
+        change's 시행일. `mergedInto` (합치기) names the unit it merges into; kept on the dissolved revision as its
+        successor (`merged_into`), and must still be active when the change applies.
+      required: [op, orgUnitId]
+      properties:
+        op:
+          type: string
+          enum: [DISSOLVE_ORG_UNIT]
+        orgUnitId:
+          $ref: '#/components/schemas/Uuid'
+        mergedInto:
+          $ref: '#/components/schemas/Uuid'

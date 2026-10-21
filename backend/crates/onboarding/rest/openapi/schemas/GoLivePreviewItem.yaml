@@ -1,0 +1,43 @@
+type: object
+required:
+- code
+- records
+properties:
+  code:
+    type: string
+  count:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  remedy:
+    type:
+    - string
+    - 'null'
+  records:
+    description: The records the line counts (count equals their number where the line is per record), so the fix opens on that record.
+    type: array
+    items:
+      type: object
+      required:
+      - kind
+      - id
+      - name
+      - legal_entity_id
+      properties:
+        kind:
+          type: string
+          x-extensible-enum:
+          - legal_entity
+          - registration
+          - workplace
+          - employee
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        legal_entity_id:
+          type: string
+          format: uuid
+          description: Legal entity id; the nil UUID denotes an employee whose legal entity is unknown.

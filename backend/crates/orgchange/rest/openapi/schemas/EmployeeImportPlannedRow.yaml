@@ -1,0 +1,180 @@
+type: object
+required: [source_key, sheet, row, name, outcome]
+properties:
+  source_key:
+    type: string
+  sheet:
+    type: string
+  row:
+    type: integer
+    format: int32
+  name:
+    type: string
+  outcome:
+    type: string
+    enum: [insert, update, unchanged, excluded, refused, unresolved_identity]
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  employee_number:
+    type: string
+  observed:
+    type: string
+    format: date-time
+    description: update/unchanged — the person's updated_at the plan saw.
+  diff:
+    type: array
+    description: update — the fields this row changes.
+    items:
+      type: object
+      required: [field, to]
+      properties:
+        field:
+          type: string
+          enum: [job, position, worksite_name, worksite_address, birth_date, employment_type]
+        from:
+          type: [string, 'null']
+        to:
+          type: string
+  deferred:
+    type: array
+    description: Differences import never writes for an existing person, with the flow that does them.
+    items:
+      type: object
+      required: [field, route]
+      properties:
+        field:
+          type: string
+          x-extensible-enum: [org_unit, exit_date, employment_status, employment_type, employee_number, company]
+          description: 'company (r3:worst-case-22): the file names another 법인 than the person''s; routed entity_transfer.'
+        from:
+          type: [string, 'null']
+        to:
+          type: [string, 'null']
+        route:
+          type: string
+          x-extensible-enum: [lifecycle_transfer, exit_case, rehire, correction, value_map, leave, lifecycle,
+            employee_number_change, entity_transfer]
+          description: 'entity_transfer (r3:worst-case-22): a 법인 change is a 전적 (or a mistake in the file), never a
+            발령; the 부서 change of the same row takes this route too. Import never moves anyone between 법인.'
+  new_person:
+    type: object
+    required: [status, hire_date, migrated_former]
+    properties:
+      employee_number:
+        type: [string, 'null']
+        description: 'IMPORT-2: the 사번 apply records, shown here (never invented at apply); null — 사번 미부여.'
+      employee_number_source:
+        type: string
+        enum: [file, rule, manual]
+      status:
+        type: string
+        enum: [ACTIVE, ON_LEAVE, PRE_HIRE, EXITED]
+      leave:
+        type: object
+        description: 'IMPORT-2 (decisions #26): ON_LEAVE — recorded at apply as an APPLIED LEAVE_OF_ABSENCE from
+          start_date (a setup fact, not a 발령).'
+        required: [start_date, leave_type]
+        properties:
+          start_date:
+            type: string
+            format: date
+          leave_type:
+            type: string
+            enum: [CHILDCARE, MATERNITY, ILLNESS, PERSONAL, OTHER]
+          expected_return_date:
+            type: string
+            format: date
+      hire_date:
+        type: string
+        format: date
+      exit_date:
+        type: [string, 'null']
+        format: date
+      birth_date:
+        type: [string, 'null']
+        format: date
+      org_unit:
+        type: [string, 'null']
+      org_unit_id:
+        oneOf:
+        - $ref: '#/components/schemas/Uuid'
+        - type: 'null'
+      migrated_former:
+        type: boolean
+        description: First load of a former employee (근기법 §42 보존), allowed only before the first approved
+          payroll period.
+      workplace_id:
+        description: 'MR-7: the 사업장 placed at from hire_date (its 법인 follows); null: 미배치. Never for a former
+          employee.'
+        oneOf:
+        - $ref: '#/components/schemas/Uuid'
+        - type: 'null'
+      employment_type:
+        type: [string, 'null']
+        enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE,
+          FREELANCE, null]
+        description: 'MR-7: the employment profile is created with it; null: no profile (정보 미입력).'
+      unresolved_org_unit:
+        type: [string, 'null']
+        description: 'MR-7: the unit name that bound no unit, kept on the person (source_metadata).'
+      unplaced_reason:
+        type: string
+        enum: [unit_unknown, unit_ambiguous, unit_left_unplaced, workplace_unknown, no_place]
+        description: 'W03: why a current person comes in 미배치 (absent: placed, or a former employee).'
+      sex:
+        type: string
+        enum: [MALE, FEMALE]
+        description: 'r3:hire-16: the first 근로자 명부 성별 (the 성별 column, else the 주민등록번호''s 7th digit).'
+      contract_end_date:
+        type: string
+        format: date
+        description: 'r3:hire-16: the employment profile''s 계약종료일.'
+      probation_end_date:
+        type: string
+        format: date
+        description: 'r3:hire-16: the employment profile''s 수습종료일.'
+  refusal_code:
+    type: string
+    enum: [duplicate_in_file, invalid_date, identity_mismatch, hire_date_required, former_load_closed,
+      workplace_conflict, identity_conflict, employee_number_taken, status_unmapped, status_conflict,
+      exit_date_required, leave_start_required, leave_type_unmapped, leave_return_required]
+  refusal_field:
+    type: string
+    x-extensible-enum: [employee_number, name, hire_date, exit_date, birth_date, worksite_name, rrn, employment_status,
+      leave_start_date, leave_type, leave_return_date, contract_end_date, probation_end_date]
+  matched_by:
+    type: string
+    enum: [employee_number, alias, rrn, pick]
+  unit_name:
+    type: string
+    description: The unit name that bound no unit; the person comes in 미배치 (unit_map binds it).
+  workplace_name:
+    type: string
+    description: 'MR-7: the 사업장 text that named no open 사업장 (a 현장 name, or two 사업장 of that name);
+      workplace_map answers it.'
+  candidates:
+    type: array
+    description: unresolved_identity — people this row may be (never matched on a name alone).
+    items:
+      type: object
+      required: [employee_id, status, basis]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        employee_number:
+          type: [string, 'null']
+        status:
+          type: string
+        basis:
+          type: string
+          enum: [rrn, name_birth_date, name_only]
+        company:
+          type: string
+          description: 'IMPORT-2 동명이인: what tells namesakes apart (never a name suffix).'
+        org_unit:
+          type: string
+        birth_date_masked:
+          type: string
+          description: 1990-01-**
+  exclusion_code:
+    type: string

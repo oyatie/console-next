@@ -1,0 +1,21 @@
+operationId: requestInsuranceFiling
+tags: [HR]
+parameters:
+- in: header
+  name: Idempotency-Key
+  required: true
+  schema: { type: string }
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema: { $ref: '#/components/schemas/RequestInsuranceFiling' }
+responses:
+  '200':
+    description: Recorded request and authorized filing tasks
+    content:
+      application/json:
+        schema: { $ref: '#/components/schemas/InsuranceFilingPage' }
+  '403': { description: Cedar denies this scope or own-record guard }
+  '409': { description: Source event inactive or idempotency conflict }
+  '422': { description: Invalid filing request }

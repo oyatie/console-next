@@ -1,0 +1,6 @@
+type: string
+enum:
+- BIZ_REG_CERT
+- CORP_REGISTRY_EXTRACT
+- INSURANCE_NOTICE
+- OTHER

@@ -1,0 +1,60 @@
+tags:
+  - employees
+operationId: issueAppointmentNotice
+summary: Issue a 발령 공고 with the next 발령 번호 (BE-EMP-UI, EMP-UI 10)
+description: >-
+  Announces recorded lifecycle events (APPLIED or SCHEDULED, not a RESCIND or exit reversal, not undone) named
+  by exactly one of event_ids (printed in that order) or batch_id (a bulk 발령, in employee order). The server
+  assigns notice_no YYYY-NNNN, per tenant and notice_date year, gapless at issue and never reused; a refused
+  issue takes no number. An event is on one notice only. Issued once, never rewritten; no approval step (#26).
+  Audited appointment_notice.issue. Needs employee_directory_manage org-wide.
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: 16..200 characters (422 without it). An exact replay returns the original notice; the same key
+    with a different body is 409 conflict.
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/IssueAppointmentNoticeRequest'
+responses:
+  '201':
+    description: The notice as issued (also an exact replay).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AppointmentNotice'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    description: not_found - a named event (error.refusals [{lifecycle_event_id}]) or the batch does not exist.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: appointment_notice_event_taken (error.refusals [{lifecycle_event_id, notice_no}]),
+      appointment_notice_event_ineligible (error.refusals [{lifecycle_event_id, state, event_type, voided}]),
+      appointment_notice_numbers_exhausted, or the Idempotency-Key reused with another body (conflict).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: appointment_notice_events_required (none, both, a repeat, or over 500), or validation (title
+      1..200, notice_date YYYY-MM-DD, note up to 1000, the Idempotency-Key).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

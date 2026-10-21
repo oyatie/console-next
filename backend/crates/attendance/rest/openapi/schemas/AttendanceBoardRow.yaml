@@ -1,0 +1,3 @@
+type: object
+required: [employee_id, name, own, day, month_state]
+properties: { employee_id: { $ref: '#/components/schemas/Uuid' }, employee_number: { type: string, nullable: true }, name: { type: string }, own: { type: boolean, description: the caller's own row (read-only) }, day: { $ref: '#/components/schemas/AttendanceDay' }, month_state: { $ref: '#/components/schemas/AttendanceMonthState' } }

@@ -1,0 +1,23 @@
+/* The org change record and list. Tokens only. */
+.head { display: flex; flex-direction: column; gap: var(--space-1); }
+.back { align-self: flex-start; font-size: var(--text-sm); }
+.sub { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin: 0; color: var(--steel); font-size: var(--text-sm); }
+.cols { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+/* The record's sections stack and scroll with the page; a sticky .panel would slide over the one above it. */
+.main > :global(.panel) { position: static; }
+@media (max-width: 1023px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+.receipt { outline: none; }
+.next { display: flex; flex-direction: column; gap: var(--space-3); }
+.consequence { margin: 0; padding: var(--space-3); border-radius: var(--radius); border: 1px solid var(--ink); background: var(--surface); }
+.caution { margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--warn-bg); color: var(--warn-tx); font-size: var(--text-sm); }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.spacer { flex: 1; }
+.quote { margin: 0; padding: var(--space-2) var(--space-3); border-left: 3px solid var(--border); white-space: pre-wrap; }
+.ops { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }
+.check, .item { display: flex; flex-direction: column; gap: var(--space-2); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border-soft); }
+.fix { display: flex; flex-direction: column; gap: var(--space-2); }
+.form { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border-soft); }
+.formHead { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); outline: none; }
+.eyebrow { margin: 0; font-size: var(--text-xs); letter-spacing: var(--tracking-label); color: var(--steel); }
+.nowrap { white-space: nowrap; }
+.changed { margin: 0; font-size: var(--text-sm); color: var(--info-tx); }

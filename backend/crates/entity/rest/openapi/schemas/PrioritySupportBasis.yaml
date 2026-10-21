@@ -1,0 +1,6 @@
+type: string
+enum:
+- ANNEX_1
+- SME_ACT
+- GRACE_5Y
+- NOT_ELIGIBLE

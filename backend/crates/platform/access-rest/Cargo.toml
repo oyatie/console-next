@@ -1,0 +1,31 @@
+[package]
+name = "console-platform-access-rest"
+version = "0.1.0"
+description = "REST face for tenant roles, grants and effective access (decision #26 pilot roles slice)."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+axum.workspace = true
+console-kernel-core.workspace = true
+console-platform-auth = { path = "../auth" }
+console-platform-access = { path = "../access" }
+console-platform-authz.workspace = true
+console-platform-request-context.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+console-platform-test-support = { workspace = true }
+p256 = { workspace = true, features = ["ecdsa", "pkcs8", "pem"] }
+sqlx = { workspace = true }
+time = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tower = { workspace = true, features = ["util"] }
+
+[lints]
+workspace = true

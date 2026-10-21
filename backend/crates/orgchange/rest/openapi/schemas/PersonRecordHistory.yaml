@@ -1,0 +1,33 @@
+type: object
+required: [entry_id, section, revisions]
+properties:
+  entry_id:
+    $ref: '#/components/schemas/Uuid'
+  section:
+    $ref: '#/components/schemas/PersonRecordSection'
+  revisions:
+    type: array
+    items:
+      type: object
+      required: [version, kind, source, reason, actor_id, fields, created_at]
+      properties:
+        version:
+          type: integer
+          format: int64
+        kind:
+          type: string
+          enum: [CREATE, UPDATE, VOID]
+        source:
+          type: string
+          enum: [MANUAL, IMPORT]
+        reason:
+          type: [string, 'null']
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        actor_kind: {oneOf: [{$ref: '#/components/schemas/ActorKind'}, {type: 'null'}]}
+        command_id: {type: [string, 'null'], format: uuid}
+        fields:
+          $ref: '#/components/schemas/PersonRecordFields'
+        created_at:
+          type: string
+          format: date-time

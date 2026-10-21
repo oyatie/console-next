@@ -1,0 +1,9 @@
+type: object
+required: [field, code, message]
+properties:
+  field:
+    type: [string, 'null']
+  code:
+    type: string
+  message:
+    type: string

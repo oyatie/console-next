@@ -1,0 +1,59 @@
+tags:
+- entity
+operationId: undoOrgSetupBatch
+summary: Undo a setup 부서 batch (되돌리기)
+description: SETUP only. Puts every unit the batch touched back (a unit it created is dissolved; a 부서 moved back
+  takes its people's 사업장 placement back). Refused, applying nothing, when a unit no longer holds what the batch
+  left (undo_conflict, remedy undo_later_batches_first; errors[].field = the unit id), when a created unit has
+  people or 부서 of its own (undo_unit_in_use), or when the batch is an undo (batch_not_undoable) or was undone
+  (batch_already_undone).
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: batchId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+responses:
+  '201':
+    description: Undone; the receipt of the undo.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgSetupReceipt'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Refused with a stable code and reasons[] naming the remedy (e.g. phase_not_setup → submit_org_change).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '503':
+    description: Org-unit writes are not wired.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

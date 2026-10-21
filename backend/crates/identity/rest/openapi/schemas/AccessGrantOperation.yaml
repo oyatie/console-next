@@ -1,0 +1,10 @@
+oneOf:
+- $ref: '#/components/schemas/AccessGrantOpGrant'
+- $ref: '#/components/schemas/AccessGrantOpRevoke'
+- $ref: '#/components/schemas/AccessGrantOpSetEnd'
+discriminator:
+  propertyName: op
+  mapping:
+    grant: '#/components/schemas/AccessGrantOpGrant'
+    revoke: '#/components/schemas/AccessGrantOpRevoke'
+    set_end: '#/components/schemas/AccessGrantOpSetEnd'

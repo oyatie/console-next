@@ -1,0 +1,88 @@
+{
+  "plugins": [
+    "react",
+    "typescript",
+    "jsx-a11y",
+    "import",
+    "oxc"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "ignorePatterns": [
+    "packages/api/src/schema.d.ts"
+  ],
+  "rules": {
+    "react/forbid-dom-props": [
+      "error",
+      {
+        "forbid": [
+          "style"
+        ]
+      }
+    ],
+    "no-console": "error",
+    "react/react-in-jsx-scope": "off",
+    "react/no-unstable-nested-components": [
+      "warn",
+      {
+        "allowAsProps": true
+      }
+    ],
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "max-lines": ["error", { "max": 300, "skipBlankLines": true, "skipComments": true }],
+    "import/no-cycle": "error",
+    "react/only-export-components": "error",
+    "react/jsx-no-literals": ["error", { "noStrings": true, "ignoreProps": true, "allowedStrings": ["·", "—", "–", "/", ":", "|", "…", "(", ")", " "] }],
+    "oxc/no-barrel-file": ["error", { "threshold": 0 }],
+    "import/no-unassigned-import": ["warn", { "allow": ["**/*.css"] }],
+    "no-restricted-imports": ["error", {
+      "paths": [{ "name": "@tanstack/react-query", "importNames": ["useMutation", "useQueryClient"], "message": "Writes go through lib/command.ts (idempotent, no optimistic updates)" }]
+    }]
+  },
+  "overrides": [
+    { "files": ["packages/*/src/index.ts"], "rules": { "oxc/no-barrel-file": "off" } },
+    { "files": ["apps/web/src/routes/**"], "rules": { "react/only-export-components": "off" } },
+    { "files": ["apps/web/src/lib/**", "apps/web/src/main.tsx"], "rules": { "no-restricted-imports": "off" } },
+
+    { "files": ["apps/web/src/features/*/domain/**", "apps/web/src/lib/pure/**"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "group": ["react", "react-dom", "react-dom/**", "@tanstack/**", "react-aria*", "react-aria*/**", "lucide-react", "@console/i18n", "@console/i18n/**"], "message": "domain ring: no frameworks, no copy" },
+          { "group": ["@console/api", "@console/api/web"], "message": "domain may import only types from @console/api/schema" } ] }],
+        "no-restricted-globals": ["error", "window", "document", "navigator", "location", "localStorage", "sessionStorage", "fetch"] } },
+    { "files": ["apps/web/src/features/*/*.ts", "apps/web/src/features/*/api/*.ts", "apps/web/src/reference/*/*.ts", "apps/web/src/reference/*/api/*.ts"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "group": ["react", "react-dom", "react-dom/**", "@tanstack/**", "react-aria*", "react-aria*/**", "lucide-react", "@console/api/web"], "message": "slice root is pure TS; React and TanStack live under ui/" } ] }],
+        "no-restricted-globals": ["error", "window", "document", "navigator", "location", "localStorage", "sessionStorage"] } },
+    { "files": ["apps/web/src/ui/**"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "group": ["@console/api", "@console/api/**", "@tanstack/**"], "message": "ui primitives know no domain, data or router" } ] }] } },
+    { "files": ["packages/api/src/**", "packages/i18n/src/**"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "group": ["react", "react-dom", "react-dom/**", "@tanstack/**", "react-aria*", "react-aria*/**"], "message": "packages are platform-neutral" } ] }],
+        "no-restricted-globals": ["error", "window", "document", "navigator", "location", "localStorage", "sessionStorage"] } },
+    { "files": ["packages/api/src/web.ts"], "rules": { "no-restricted-globals": "off" } },
+    { "files": ["apps/web/src/features/*/ui/**", "apps/web/src/reference/*/ui/**", "apps/web/src/routes/**"],
+      "rules": {
+        "react/forbid-elements": ["error", { "forbid": ["button", "input", "select", "textarea", "table", "dialog", "a", "form"] }],
+        "no-restricted-imports": ["error", {
+          "patterns": [{ "group": ["react-aria*", "react-aria*/**", "@console/api", "@console/api/web"], "message": "views use ui/ and the slice api.ts" }],
+          "paths": [{ "name": "@tanstack/react-query", "importNames": ["useMutation", "useQueryClient"], "message": "Writes go through lib/command.ts" }] }] } },
+
+    { "files": ["apps/web/src/main.tsx"], "rules": { "react/only-export-components": "off" } },
+    { "files": ["apps/web/src/**/*.gallery.tsx"], "rules": { "react/only-export-components": ["error", { "allowExportNames": ["order"] }] } },
+
+    { "files": ["apps/web/src/reference/org/ui/unit-picker.tsx"],
+      "rules": { "no-restricted-imports": ["error", {
+        "paths": [{ "name": "@tanstack/react-query", "importNames": ["useMutation", "useQueryClient"], "message": "Writes go through lib/command.ts (idempotent, no optimistic updates)" }] }] } },
+    { "files": ["apps/web/src/auth/Login.tsx", "apps/web/src/features/home/Home.tsx", "apps/web/src/features/org/OrgChange.tsx", "apps/web/src/features/people/Employee.tsx"],
+      "rules": { "react/only-export-components": "off" } },
+    { "files": ["apps/web/src/shell/shell.tsx"],
+      "rules": { "react/jsx-no-literals": ["error", { "noStrings": true, "ignoreProps": true, "allowedStrings": ["·", "—", "–", "/", ":", "|", "…", "(", ")", " ", "C"] }] } }
+  ]
+}

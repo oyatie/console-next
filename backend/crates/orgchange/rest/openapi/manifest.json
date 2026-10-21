@@ -1,0 +1,540 @@
+{
+  "source": "console-orgchange-rest",
+  "paths": {
+    "/api/v1/appointment-notices": [
+      "get",
+      "post"
+    ],
+    "/api/v1/appointment-notices/{id}": [
+      "get"
+    ],
+    "/api/v1/change-requests": [
+      "get",
+      "post"
+    ],
+    "/api/v1/change-requests/{id}/decide": [
+      "post"
+    ],
+    "/api/v1/change-sets": [
+      "get",
+      "post"
+    ],
+    "/api/v1/change-sets/{id}": [
+      "delete",
+      "get"
+    ],
+    "/api/v1/change-sets/{id}/commit": [
+      "post"
+    ],
+    "/api/v1/change-sets/{id}/lines": [
+      "post"
+    ],
+    "/api/v1/change-sets/{id}/lines/{line_id}": [
+      "delete"
+    ],
+    "/api/v1/employee-number-rules": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/api/v1/employee-records/{section}": [
+      "get"
+    ],
+    "/api/v1/employee-records/{section}/import/apply": [
+      "post"
+    ],
+    "/api/v1/employee-records/{section}/import/preview": [
+      "post"
+    ],
+    "/api/v1/employees": [
+      "get",
+      "post"
+    ],
+    "/api/v1/employees/by-number/{number}": [
+      "get"
+    ],
+    "/api/v1/employees/corrections/bulk": [
+      "post"
+    ],
+    "/api/v1/employees/corrections/bulk/preview": [
+      "post"
+    ],
+    "/api/v1/employees/corrections/bulk/{id}": [
+      "get"
+    ],
+    "/api/v1/employees/export.csv": [
+      "get"
+    ],
+    "/api/v1/employees/facets": [
+      "get"
+    ],
+    "/api/v1/employees/import": [
+      "post"
+    ],
+    "/api/v1/employees/import/preview": [
+      "post"
+    ],
+    "/api/v1/employees/import/unplaced": [
+      "get"
+    ],
+    "/api/v1/employees/import/{run_id}/apply": [
+      "get",
+      "post"
+    ],
+    "/api/v1/employees/import/{run_id}/dry-run": [
+      "post"
+    ],
+    "/api/v1/employees/import/{run_id}/reconcile": [
+      "get"
+    ],
+    "/api/v1/employees/import/{run_id}/reconcile/rows": [
+      "get"
+    ],
+    "/api/v1/employees/import/{run_id}/reconcile/rows/{source_key}": [
+      "put"
+    ],
+    "/api/v1/employees/import/{run_id}/signoff": [
+      "post"
+    ],
+    "/api/v1/employees/lifecycle-events/bulk": [
+      "post"
+    ],
+    "/api/v1/employees/lifecycle-events/bulk/jobs/{job_id}": [
+      "get"
+    ],
+    "/api/v1/employees/lifecycle-events/bulk/preview": [
+      "post"
+    ],
+    "/api/v1/employees/lifecycle-events/bulk/{batch_id}/rescind": [
+      "post"
+    ],
+    "/api/v1/employees/register-facts/bulk": [
+      "post"
+    ],
+    "/api/v1/employees/renumber/apply": [
+      "post"
+    ],
+    "/api/v1/employees/renumber/preview": [
+      "post"
+    ],
+    "/api/v1/employees/renumber/{batch_id}/undo": [
+      "post"
+    ],
+    "/api/v1/employees/voided": [
+      "get"
+    ],
+    "/api/v1/employees/{id}": [
+      "delete",
+      "get",
+      "patch"
+    ],
+    "/api/v1/employees/{id}/contracts": [
+      "get",
+      "post"
+    ],
+    "/api/v1/employees/{id}/employee-number": [
+      "post"
+    ],
+    "/api/v1/employees/{id}/employee-number/history": [
+      "get"
+    ],
+    "/api/v1/employees/{id}/employment-facts": [
+      "get",
+      "patch"
+    ],
+    "/api/v1/employees/{id}/end-options": [
+      "get"
+    ],
+    "/api/v1/employees/{id}/fixed-term": [
+      "get"
+    ],
+    "/api/v1/employees/{id}/home-branch": [
+      "put"
+    ],
+    "/api/v1/employees/{id}/identity-resolution": [
+      "post"
+    ],
+    "/api/v1/employees/{id}/lifecycle-events": [
+      "get",
+      "post"
+    ],
+    "/api/v1/employees/{id}/lifecycle-events/{event_id}/cancel": [
+      "post"
+    ],
+    "/api/v1/employees/{id}/lifecycle-events/{event_id}/correct": [
+      "post"
+    ],
+    "/api/v1/employees/{id}/lifecycle-events/{event_id}/rescind": [
+      "post"
+    ],
+    "/api/v1/employees/{id}/onboarding-checklist": [
+      "get"
+    ],
+    "/api/v1/employees/{id}/personal-facts": [
+      "get"
+    ],
+    "/api/v1/employees/{id}/photo-uploads": [
+      "post"
+    ],
+    "/api/v1/employees/{id}/photo-uploads/{upload_id}/confirm": [
+      "post"
+    ],
+    "/api/v1/employees/{id}/probation/confirm": [
+      "post"
+    ],
+    "/api/v1/employees/{id}/records": [
+      "get"
+    ],
+    "/api/v1/employees/{id}/records/{section}": [
+      "post"
+    ],
+    "/api/v1/employees/{id}/records/{section}/{entry_id}": [
+      "put"
+    ],
+    "/api/v1/employees/{id}/records/{section}/{entry_id}/history": [
+      "get"
+    ],
+    "/api/v1/employees/{id}/records/{section}/{entry_id}/void": [
+      "post"
+    ],
+    "/api/v1/employees/{id}/register-facts": [
+      "get"
+    ],
+    "/api/v1/employees/{id}/rehire": [
+      "post"
+    ],
+    "/api/v1/employees/{id}/rrn": [
+      "get"
+    ],
+    "/api/v1/employees/{id}/rrn/reveal": [
+      "post"
+    ],
+    "/api/v1/employees/{id}/void": [
+      "post"
+    ],
+    "/api/v1/hr/absence-exit-dashboard": [
+      "get"
+    ],
+    "/api/v1/hr/attendance-import/preview": [
+      "post"
+    ],
+    "/api/v1/hr/attendance-import/summary": [
+      "get"
+    ],
+    "/api/v1/hr/attendance-import/{run_id}/apply": [
+      "post"
+    ],
+    "/api/v1/hr/attendance-import/{run_id}/dry-run": [
+      "post"
+    ],
+    "/api/v1/hr/attendance-records": [
+      "get"
+    ],
+    "/api/v1/hr/attendance-records/me": [
+      "get",
+      "post"
+    ],
+    "/api/v1/hr/attendance-summary": [
+      "get"
+    ],
+    "/api/v1/hr/exit-cases": [
+      "get",
+      "post"
+    ],
+    "/api/v1/hr/exit-cases/{id}": [
+      "get"
+    ],
+    "/api/v1/hr/exit-cases/{id}/approval-draft": [
+      "post"
+    ],
+    "/api/v1/hr/exit-cases/{id}/cancel": [
+      "post"
+    ],
+    "/api/v1/hr/exit-cases/{id}/confirm": [
+      "post"
+    ],
+    "/api/v1/hr/exit-cases/{id}/reject": [
+      "post"
+    ],
+    "/api/v1/hr/leave-balances": [
+      "get"
+    ],
+    "/api/v1/hr/minimum-wage": [
+      "get"
+    ],
+    "/api/v1/hr/org-chart": [
+      "get"
+    ],
+    "/api/v1/hr/readiness-summary": [
+      "get"
+    ],
+    "/api/v1/job-titles": [
+      "get",
+      "post"
+    ],
+    "/api/v1/job-titles/{id}": [
+      "patch"
+    ],
+    "/api/v1/org-changes": [
+      "get",
+      "post"
+    ],
+    "/api/v1/org-changes/{id}": [
+      "get",
+      "patch"
+    ],
+    "/api/v1/org-changes/{id}/approval-steps/{stepId}/decision": [
+      "post"
+    ],
+    "/api/v1/org-changes/{id}/archive": [
+      "post"
+    ],
+    "/api/v1/org-changes/{id}/cancel": [
+      "post"
+    ],
+    "/api/v1/org-changes/{id}/effectuate": [
+      "post"
+    ],
+    "/api/v1/org-changes/{id}/preflight": [
+      "post"
+    ],
+    "/api/v1/org-changes/{id}/settlement-items/{itemId}/complete": [
+      "post"
+    ],
+    "/api/v1/org-changes/{id}/submit": [
+      "post"
+    ],
+    "/api/v1/org-entities": [
+      "get"
+    ],
+    "/api/v1/org-units": [
+      "get",
+      "post"
+    ],
+    "/api/v1/org-units/{id}": [
+      "delete",
+      "get",
+      "patch"
+    ]
+  },
+  "schemas": [
+    "AllowedLifecycleEvent",
+    "AppointmentNotice",
+    "AppointmentNoticeLine",
+    "AppointmentNoticePage",
+    "AppointmentNoticeSummary",
+    "AttendanceImportApplyReport",
+    "AttendanceImportColumn",
+    "AttendanceImportDryRunSummary",
+    "AttendanceImportPreviewResponse",
+    "AttendanceImportPreviewRow",
+    "AttendanceImportRowError",
+    "AttendanceImportSummaryItem",
+    "AttendanceImportSummaryPage",
+    "AttendanceRecordKind",
+    "AttendanceSummaryItem",
+    "AttendanceSummaryPage",
+    "BulkCorrectionRefusal",
+    "BulkEmployeeCorrectionCounts",
+    "BulkEmployeeCorrectionJob",
+    "BulkEmployeeCorrectionPreview",
+    "BulkEmployeeCorrectionRequest",
+    "BulkEmployeeCorrectionResult",
+    "BulkEmployeeLifecycleEventRequest",
+    "BulkEmployeeLifecycleEventResponse",
+    "BulkLifecyclePreview",
+    "BulkLifecycleRefusalBody",
+    "BulkRegisterFactsOutcome",
+    "BulkRegisterFactsRequest",
+    "BulkSelection",
+    "BulkTransferLine",
+    "CancelEmployeeLifecycleEventRequest",
+    "CancelOrgChangeRequest",
+    "ChangeRequest",
+    "ChangeSetDetail",
+    "ChangeSetLine",
+    "ChangeSetSummary",
+    "CloseEmployeeExitCaseRequest",
+    "CompleteOrgChangeSettlementItemRequest",
+    "ConfirmEmployeeExitCaseRequest",
+    "CorrectEmployeeRequest",
+    "CreateEmployeeAttendanceRecordRequest",
+    "CreateEmployeeContract",
+    "CreateEmployeeLifecycleEventRequest",
+    "CreateEmployeeRequest",
+    "CreateOrgChangeRequest",
+    "CreateOrgUnitRequest",
+    "DraftEmployeeExitApprovalRequest",
+    "DuplicateOverride",
+    "EmergencyContact",
+    "Employee",
+    "EmployeeAttendanceRecord",
+    "EmployeeAttendanceRecordPage",
+    "EmployeeCareer",
+    "EmployeeCorrection",
+    "EmployeeCreateWarning",
+    "EmployeeDetail",
+    "EmployeeEmploymentDetail",
+    "EmployeeEndOptions",
+    "EmployeeExitCase",
+    "EmployeeExitCasePage",
+    "EmployeeExitCaseStatus",
+    "EmployeeExitSettlementPackage",
+    "EmployeeFacetCount",
+    "EmployeeFacets",
+    "EmployeeHomeBranch",
+    "EmployeeIdentityResolution",
+    "EmployeeImportApplyJob",
+    "EmployeeImportApplyRequest",
+    "EmployeeImportColumn",
+    "EmployeeImportCompanyConfirmation",
+    "EmployeeImportCompanySummary",
+    "EmployeeImportDecisions",
+    "EmployeeImportDryRunSummary",
+    "EmployeeImportNameCandidate",
+    "EmployeeImportPlannedRow",
+    "EmployeeImportPreviewResponse",
+    "EmployeeImportPreviewRow",
+    "EmployeeImportReconcile",
+    "EmployeeImportReconcileCounts",
+    "EmployeeImportReconcileRow",
+    "EmployeeImportReconcileRowPage",
+    "EmployeeImportReport",
+    "EmployeeImportReviewItem",
+    "EmployeeImportReviewQueue",
+    "EmployeeImportSheetReport",
+    "EmployeeImportSignoff",
+    "EmployeeImportUnplaced",
+    "EmployeeImportUnplacedPage",
+    "EmployeeLifecycleEvent",
+    "EmployeeLifecycleEventPage",
+    "EmployeeLifecycleSignoffs",
+    "EmployeeNextEvent",
+    "EmployeeNumberChange",
+    "EmployeeNumberChangeRequest",
+    "EmployeeNumberMatch",
+    "EmployeeNumberRule",
+    "EmployeeNumberRuleRequest",
+    "EmployeePage",
+    "EmployeePendingEmploymentDetail",
+    "EmployeePersonalFacts",
+    "EmployeePhotoUpload",
+    "EmployeeRegisterFacts",
+    "EmployeeRenumberApplyRequest",
+    "EmployeeRenumberPreview",
+    "EmployeeRenumberRequest",
+    "EmployeeRenumberResult",
+    "EmployeeRrnRevealRequest",
+    "EmployeeRrnRevealed",
+    "EmployeeRrnStatus",
+    "EmployeeVoidOutcome",
+    "EmploymentType",
+    "ExitCaseNextAction",
+    "ExitSettlementDeadline",
+    "ExitSettlementInput",
+    "HrOrgChartCompany",
+    "HrOrgChartEmployee",
+    "HrOrgChartPosition",
+    "HrOrgChartResponse",
+    "HrOrgChartUnit",
+    "ImportApplyRequest",
+    "ImportDryRunRequest",
+    "IssueAppointmentNoticeRequest",
+    "JobTitleKind",
+    "LeaveBalanceItem",
+    "LeaveBalancePage",
+    "LeaveBalanceSummary",
+    "LifecycleScheduleConflictBody",
+    "LifecycleSignoffKey",
+    "OrgChangeDecisionRequest",
+    "OrgChangePage",
+    "OrgEntitySummary",
+    "OrgTreeNodeKind",
+    "OrgUnitDetail",
+    "OrgUnitHead",
+    "OrgUnitList",
+    "OrgUnitMember",
+    "OrgUnitMembers",
+    "OrgUnitRevision",
+    "OrgUnitStatus",
+    "PersonRecordAward",
+    "PersonRecordBasis",
+    "PersonRecordDisability",
+    "PersonRecordDiscipline",
+    "PersonRecordEducation",
+    "PersonRecordEntry",
+    "PersonRecordFamily",
+    "PersonRecordFields",
+    "PersonRecordHistory",
+    "PersonRecordImportReport",
+    "PersonRecordImportRequest",
+    "PersonRecordLanguage",
+    "PersonRecordList",
+    "PersonRecordMilitary",
+    "PersonRecordQualification",
+    "PersonRecordSection",
+    "PersonRecordSectionSegment",
+    "PersonRecordSheet",
+    "PersonRecordTraining",
+    "PersonRecordVeteran",
+    "RehireEmployeeRequest",
+    "ReportEmployeeExitCaseRequest",
+    "ResolveEmployeeIdentityRequest",
+    "SetEmployeeHomeBranchRequest",
+    "SetEmployeeImportReconcileRowRequest",
+    "SetupDeleteEmployeeRequest",
+    "SignOffEmployeeImportRequest",
+    "UpdateOrgChangeDraftRequest",
+    "UpdateOrgUnitRequest",
+    "VoidEmployeeRequest",
+    "VoidedEmployee"
+  ],
+  "external_schemas": [
+    "ActorKind",
+    "AddressSource",
+    "AuditLastChange",
+    "Date",
+    "EndOffer",
+    "ErrorBody",
+    "FieldError",
+    "GroupTransferFacts",
+    "KrAddress",
+    "MobilePasskeyStepUpBinding",
+    "MobilePasskeyStepUpEnvelope",
+    "MobileStepUpActionKind",
+    "OrgChangeApprovalRoleKey",
+    "OrgChangeApprovalStep",
+    "OrgChangeDetail",
+    "OrgChangeEvent",
+    "OrgChangeKind",
+    "OrgChangePreflightBlocker",
+    "OrgChangePreflightReport",
+    "OrgChangePreflightWarning",
+    "OrgChangeSettlementItem",
+    "OrgChangeSettlementKey",
+    "OrgChangeStatus",
+    "OrgChangeStepDecision",
+    "OrgChangeSummary",
+    "OrgChangeTarget",
+    "OrgChangeTargetKind",
+    "OrgProposalOp",
+    "OrgProposalOpCreateBranch",
+    "OrgProposalOpCreateOrgUnit",
+    "OrgProposalOpCreateRegion",
+    "OrgProposalOpCreateSite",
+    "OrgProposalOpDeactivateBranch",
+    "OrgProposalOpDeactivateRegion",
+    "OrgProposalOpDissolveOrgUnit",
+    "OrgProposalOpMoveOrgUnit",
+    "OrgProposalOpReassignOrgUnit",
+    "OrgProposalOpRenameBranch",
+    "OrgProposalOpRenameOrgUnit",
+    "OrgProposalOpRenameRegion",
+    "OrgProposalOpUpdateSite",
+    "OrgProposalReassignScope",
+    "OrgUnitKind",
+    "PasskeyStepUpAssertion",
+    "Timestamp",
+    "Uuid"
+  ]
+}

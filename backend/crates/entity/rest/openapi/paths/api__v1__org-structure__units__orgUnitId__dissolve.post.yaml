@@ -1,0 +1,63 @@
+tags:
+- entity
+operationId: dissolveOrgUnit
+summary: 폐지 a used 부서 and its empty sub-부서 now (either phase)
+description: CRUD. History kept (a dissolved revision). Refused for a unit nobody ever used (org_unit_never_used, erase it instead), while
+  anyone is placed in it or moving into it (org_unit_has_members), while an org change names it, and after 운영 시작
+  while org changes are routed. Audited org_unit.setup_dissolve per unit.
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: orgUnitId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/PinnedVersionRequest'
+responses:
+  '200':
+    description: Applied.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SetupOrgUnitResult'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Cedar org_unit_manage denies (a tenant-wide org_change_apply holder is allowed).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: stale_revision, org_unit_never_used, org_unit_has_members, org_unit_change_open, org_change_routed, site_is_a_workplace; reasons[] names the remedy.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}].'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

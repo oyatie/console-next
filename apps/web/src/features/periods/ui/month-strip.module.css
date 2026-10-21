@@ -1,0 +1,12 @@
+/* features/periods: the 12-month lock calendar (governance-39). Tokens only. */
+.grid { display: flex; flex-direction: column; gap: var(--space-2); overflow-x: auto; }
+.row { display: grid; grid-template-columns: minmax(4rem, max-content) repeat(12, minmax(3.5rem, 1fr)); gap: var(--space-1); align-items: stretch; }
+.head { display: flex; align-items: center; font-weight: var(--fw-medium); color: var(--ink); }
+.cell { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); width: 100%; min-height: calc(var(--row-h) + var(--space-3)); padding: var(--space-1) var(--space-2); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; }
+.cell[data-state="locked"] { border-color: var(--info-bd); background: var(--info-bg); color: var(--info-tx); }
+.cell[data-state="unlocked"] { border-color: var(--warn-bd); background: var(--warn-bg); color: var(--warn-tx); }
+.month { font-weight: var(--fw-medium); }
+.state { font-size: var(--text-xs); }
+.open { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.open li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.hint { margin: 0; font-size: var(--text-sm); color: var(--steel); }

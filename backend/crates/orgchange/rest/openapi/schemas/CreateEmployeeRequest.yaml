@@ -1,0 +1,104 @@
+type: object
+additionalProperties: false
+required:
+- name
+- idempotency_key
+- hire_date
+properties:
+  employee_number:
+    type: string
+    description: Optional. Omitted or blank, the server assigns the tenant's next number, E- and a zero-padded
+      sequence (E-000001, E-000002, …), continuing past any manual number of that shape. A manual number already
+      in use is 409 conflict.
+  name:
+    type: string
+    minLength: 1
+  company:
+    type: string
+    minLength: 1
+  employment_type:
+    type: string
+    enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, FREELANCE]
+    description: 고용형태 (E13). The worker classification is derived from it, never sent.
+  phone:
+    type: string
+    description: Phone number normalized by the server to E.164.
+  org_unit:
+    type: string
+    description: Deprecated free text, ignored when org_unit_id is given; the stored org_unit becomes the unit's
+      name.
+  org_unit_id:
+    description: An ACTIVE Site/Department/Team of the caller's tenant. Unknown or foreign units are 404; a dissolved
+      unit is 422.
+    $ref: '#/components/schemas/Uuid'
+  position:
+    type: string
+    minLength: 1
+  site:
+    type: string
+    minLength: 1
+  home_branch_id:
+    $ref: '#/components/schemas/Uuid'
+  base_pay:
+    type: string
+    minLength: 1
+    maxLength: 15
+    pattern: '^(0|[1-9][0-9]{0,11})(\.[0-9]{1,2})?$'
+    description: Canonical non-negative KRW NUMERIC(14,2) decimal; only returned by privileged detail. Optional; when base_pay_won is given (it then defaults to that amount and must equal it when both are sent).
+  idempotency_key:
+    type: string
+    minLength: 1
+    maxLength: 128
+  hire_date:
+    type: string
+    format: date
+    description: YYYY-MM-DD. The ONBOARD lifecycle event takes effect on it; a date after today (KST) makes the
+      employee PRE_HIRE with that ONBOARD SCHEDULED (BW-19).
+  contract_start_date:
+    type: string
+    format: date
+    description: CONTRACT only (422 for any other employment_type). YYYY-MM-DD; defaults to hire_date.
+  contract_end_date:
+    type: string
+    format: date
+    description: Optional when employment_type is CONTRACT, refused otherwise. YYYY-MM-DD, on or
+      after contract_start_date. A CONTRACT registration with `contract` may omit both dates (they come from the
+      contract) and must otherwise match it.
+  work_email:
+    type: string
+    maxLength: 254
+    description: 업무용 이메일 (E3); trimmed, domain lower-cased. An HR fact that prefills an invitation, not the
+      invitation address.
+  birth_date:
+    type: string
+    format: date
+    description: 생년월일 (E4); a past date on or after 1900-01-01.
+  id_type:
+    type: string
+    enum: [RRN, ARC, DOMESTIC_RESIDENCE, NOT_ISSUED]
+    description: 신분증명 종류 only; the number is never sent or stored (decisions #6).
+  base_pay_won:
+    type: integer
+    format: int64
+    minimum: 0
+    description: 기본급, integer KRW (E5). Sent together with pay_unit.
+  pay_unit:
+    type: string
+    enum: [MONTHLY, HOURLY, DAILY, ANNUAL]
+  probation_end_date:
+    type: string
+    format: date
+    description: 수습 종료일 (E12); employee types only (worker classification EMPLOYEE), on or after hire_date.
+  contract:
+    $ref: '#/components/schemas/CreateEmployeeContract'
+  duplicate_override:
+    $ref: '#/components/schemas/DuplicateOverride'
+  legal_entity_id:
+    type: string
+    format: uuid
+    description: 'MR-22: the 법인 of the person''s first assignment; needs workplace_id and must be its 법인.'
+  workplace_id:
+    type: string
+    format: uuid
+    description: 'MR-22: the open 사업장 the person works at from hire_date. Omitted: the 사업장 of org_unit_id,
+      else 미배치.'

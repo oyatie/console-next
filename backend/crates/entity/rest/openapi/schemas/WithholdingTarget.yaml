@@ -1,0 +1,22 @@
+type: object
+description: Where the 사업장's 원천세 is filed, derived from 소득세법 §7①3·4 with its basis.
+required:
+- kind
+properties:
+  kind:
+    type: string
+    enum:
+    - SELF_UNIT
+    - WORKPLACE
+    - ENTITY_HEAD_OFFICE
+    - UNDECIDED
+  workplace_id:
+    type: string
+    format: uuid
+    description: WORKPLACE only.
+  basis:
+    type: string
+    description: Statutory basis code, e.g. income_tax_act_7_1_3.
+  remedy:
+    type: string
+    description: 'UNDECIDED only: the fix.'

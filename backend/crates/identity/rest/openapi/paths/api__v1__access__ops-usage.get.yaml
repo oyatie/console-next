@@ -1,0 +1,34 @@
+tags:
+- access
+operationId: listOpsUsage
+summary: 「ops 사용 기록」 — one row per request the ops account made
+description: Needs 감사·접속기록 조회 (`audit` × `view`) over the whole tenant, or ops. Newest first.
+security:
+- bearerAuth: []
+parameters:
+- name: before
+  in: query
+  required: false
+  schema:
+    $ref: '#/components/schemas/Timestamp'
+- name: limit
+  in: query
+  required: false
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 200
+    default: 50
+responses:
+  '200':
+    description: Usage rows.
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpsUsageEntry'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'

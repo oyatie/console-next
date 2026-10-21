@@ -1,0 +1,21 @@
+tags:
+- onboarding
+operationId: getGoLivePreview
+summary: 운영 시작 preview
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Blockers, warnings, what becomes governed, digest.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/GoLivePreview'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

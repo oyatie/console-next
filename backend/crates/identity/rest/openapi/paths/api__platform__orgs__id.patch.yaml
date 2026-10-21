@@ -1,0 +1,52 @@
+tags:
+  - platform
+operationId: setPlatformOrgStatus
+summary: Rename a tenant and/or change its lifecycle status (platform vendor tier)
+description: 'Changes any of a tenant organization''s name, slug (its sign-in identifier) and status (ACTIVE, SUSPENDED,
+  ARCHIVED); at least one is required. Platform token required; every write is cross-tenant and audited to the target
+  organization (`platform.tenant.rename` with before and after values, `platform.tenant.status`). A rename needs an
+  enrolled operator passkey (403 passkey_required); a slug change additionally requires a fresh assertion (401 without proof). The status is validated before anything is
+  written, so a bad status never leaves a half-applied change. A slug used by another tenant is 409 `slug_taken`; a
+  slug outside `^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$` is 422 `slug_invalid` (both with `errors[0].field` = `slug`). The
+  platform sentinel and unknown tenants are 404.'
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- in: header
+  name: Idempotency-Key
+  required: false
+  description: Stable intent for a rename only; do not combine it with status.
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/UpdatePlatformOrgRequest'
+responses:
+  '200':
+    description: The updated tenant organization.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PlatformOrg'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

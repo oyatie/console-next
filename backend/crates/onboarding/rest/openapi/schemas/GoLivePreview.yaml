@@ -1,0 +1,120 @@
+type: object
+required:
+- phase
+- blockers
+- warnings
+- becomes_governed
+- facts
+- digest
+- line_digests
+- terms_version
+- breakdown
+- roles_becoming_active
+- access_admin_holders
+- hr_accounts_with_no_grant
+properties:
+  phase:
+    type: string
+    enum:
+    - SETUP
+    - OPERATING
+  blockers:
+    type: array
+    items:
+      $ref: '#/components/schemas/GoLivePreviewItem'
+  warnings:
+    type: array
+    items:
+      $ref: '#/components/schemas/GoLivePreviewItem'
+  becomes_governed:
+    type: array
+    items:
+      type: string
+  facts:
+    $ref: '#/components/schemas/SetupFacts'
+  digest:
+    type: string
+    pattern: ^[a-f0-9]{64}$
+  breakdown:
+    type: array
+    items:
+      type: object
+      required:
+      - kind
+      - id
+      - name
+      - legal_entity_id
+      - people
+      - units
+      properties:
+        kind:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        legal_entity_id:
+          type: string
+        people:
+          type: integer
+          format: int64
+        units:
+          type: integer
+          format: int64
+  roles_becoming_active:
+    type: array
+    items:
+      type: object
+      required:
+      - role_id
+      - role
+      - scope_kind
+      - scope_id
+      - scope
+      - holders
+      properties:
+        role_id:
+          type: string
+        role:
+          type: string
+        scope_kind:
+          type: string
+        scope_id:
+          type: string
+        scope:
+          type: string
+        holders:
+          type: array
+          items: &id001
+            type: object
+            required:
+            - id
+            - name
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+  access_admin_holders:
+    type: array
+    items: *id001
+  hr_accounts_with_no_grant:
+    type: array
+    items: *id001
+  line_digests:
+    type: object
+    additionalProperties:
+      type: string
+      pattern: ^[a-f0-9]{64}$
+  terms_version:
+    type:
+    - object
+    - 'null'
+    required:
+    - version
+    - sha256
+    properties:
+      version:
+        type: string
+      sha256:
+        type: string

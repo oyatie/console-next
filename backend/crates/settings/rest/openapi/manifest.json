@@ -1,0 +1,43 @@
+{
+  "source": "console-settings-rest",
+  "paths": {
+    "/api/v1/reason-codes": [
+      "get",
+      "post"
+    ],
+    "/api/v1/reason-codes/stats": [
+      "get"
+    ],
+    "/api/v1/reason-codes/{domain}/{code}": [
+      "patch"
+    ],
+    "/api/v1/settings": [
+      "get"
+    ],
+    "/api/v1/settings/{key}": [
+      "post"
+    ],
+    "/api/v1/settings/{key}/history": [
+      "get"
+    ]
+  },
+  "schemas": [
+    "ReasonCatalogEntry",
+    "ReasonCode",
+    "ReasonCodeAddRequest",
+    "ReasonCodeSourceStats",
+    "ReasonCodeUpdateRequest",
+    "SettingChange",
+    "SettingChangeRequest",
+    "SettingDirection",
+    "SettingEntry",
+    "SettingOverrideRecord",
+    "SettingValue",
+    "TenantReasonCode"
+  ],
+  "external_schemas": [
+    "ActorKind",
+    "Timestamp",
+    "Uuid"
+  ]
+}

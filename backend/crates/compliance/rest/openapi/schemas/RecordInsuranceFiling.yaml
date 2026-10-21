@@ -1,0 +1,13 @@
+type: object
+additionalProperties: false
+required: [expected_version, action]
+properties:
+  expected_version: { type: integer, format: int64, minimum: 0 }
+  action: { type: string, x-extensible-enum: [COMPLETE, UNDO, NOT_APPLICABLE, ASSESS] }
+  completed_on: { type: string, format: date, nullable: true }
+  receipt_number: { type: string, maxLength: 100, nullable: true }
+  loss_code: { type: string, nullable: true }
+  detail: { type: string, maxLength: 1000, nullable: true }
+  not_applicable_reason: { $ref: '#/components/schemas/InsuranceFilingReason' }
+  applicability_facts: { $ref: '#/components/schemas/InsuranceFilingFacts' }
+  total_remuneration_won: { type: integer, format: int64, minimum: 0, nullable: true }

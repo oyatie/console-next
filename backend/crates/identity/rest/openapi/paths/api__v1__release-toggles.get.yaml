@@ -1,0 +1,23 @@
+tags:
+  - system
+operationId: listReleaseToggles
+summary: Release toggles on for this deployment (B-15)
+description: >-
+  Unauthenticated deployment config (CONSOLE_RELEASE_TOGGLES): the SPA reads
+  it once at boot and shows a toggled feature only when its name is listed.
+  An unlisted name is off.
+responses:
+  '200':
+    description: The enabled toggle names.
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required: [enabled]
+          properties:
+            enabled:
+              type: array
+              items:
+                type: string
+                pattern: '^[a-z0-9-]{1,40}$'

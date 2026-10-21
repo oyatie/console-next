@@ -1,0 +1,38 @@
+tags:
+- access
+operationId: closeAccessRequest
+summary: Close a 「권한 요청」
+description: DONE or DECLINED by a holder of 권한 관리 등록·수정 (or ops); WITHDRAWN by the requester. 403 `access_denied`
+  otherwise, 404 `access_request_not_found`, 409 `access_request_closed` once closed. Writes an `access.request.close`
+  audit row.
+security:
+- bearerAuth: []
+parameters:
+- name: requestId
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CloseAccessRequest'
+responses:
+  '200':
+    description: The closed request.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessRequest'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

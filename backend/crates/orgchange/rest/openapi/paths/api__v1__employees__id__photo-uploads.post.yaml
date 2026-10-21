@@ -1,0 +1,78 @@
+tags:
+  - employees
+operationId: issueEmployeePhotoUpload
+summary: Start a 사진 upload (presigned PUT)
+description: >-
+  MR-34. Org-wide employee_directory_manage. JPEG, PNG or WebP (no SVG),
+  1 byte to 5 MiB (422 otherwise). Answers a presigned PUT valid for 5
+  minutes; its content type and length are signed, so send exactly the
+  returned headers. Then confirm the upload and PATCH /employees/{id}
+  with `photo` = `upload_id`. 503 `photo_storage_unavailable` when object
+  storage is not configured.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [content_type, byte_size]
+        properties:
+          content_type:
+            type: string
+            enum: [image/jpeg, image/png, image/webp]
+          byte_size:
+            type: integer
+            minimum: 1
+            maximum: 5242880
+responses:
+  '200':
+    description: The upload and its presigned PUT.
+    content:
+      application/json:
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/EmployeePhotoUpload'
+          - type: object
+            required: [put]
+            properties:
+              put:
+                type: object
+                required: [method, url, headers, expires_in_secs]
+                properties:
+                  method:
+                    type: string
+                  url:
+                    type: string
+                  headers:
+                    type: array
+                    items:
+                      type: array
+                      minItems: 2
+                      maxItems: 2
+                      items:
+                        type: string
+                  expires_in_secs:
+                    type: integer
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    description: Object storage is not configured (`photo_storage_unavailable`).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

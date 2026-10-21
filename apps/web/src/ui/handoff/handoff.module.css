@@ -1,0 +1,17 @@
+.handoff { display: grid; grid-template-columns: 1fr max-content 1fr; gap: var(--space-2); align-items: center; }
+.hand { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; align-self: stretch; }
+.head { display: flex; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border-soft); background: var(--canvas); font-size: var(--text-xs); color: var(--steel); }
+.item { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3); }
+.note { font-size: var(--text-sm); color: var(--steel); }
+.arrow { color: var(--steel); }
+.blindField { display: flex; flex-direction: column; gap: var(--space-1); }
+.blind { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); color: var(--steel); }
+.blind svg { width: var(--space-3); height: var(--space-3); }
+.mismatch { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--danger-bd); border-radius: var(--radius); background: var(--surface); }
+.mismatchHead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); color: var(--danger-tx); }
+.mismatchHead h3 { margin: 0; font-size: var(--text-body); font-weight: var(--fw-strong); flex: 1; }
+.compare { display: grid; grid-template-columns: 1fr 1fr; margin: 0; border-top: 1px solid var(--border-soft); }
+.compare > div { padding: var(--space-2) var(--space-3); }
+.compare > div + div { border-left: 1px solid var(--border-soft); }
+.compare dt { font-size: var(--text-xs); color: var(--steel); }
+.compare dd { margin: 0; font-weight: var(--fw-strong); font-variant-numeric: tabular-nums; color: var(--danger-tx); }

@@ -1,0 +1,19 @@
+type: object
+required:
+- code
+- label
+properties:
+  biz_kinds:
+    type: array
+    items: { type: string }
+  head_office:
+    type: boolean
+    description: NTS middle-code class suitable as primary without an exception.
+  code:
+    type: string
+  label:
+    type: string
+  parent_label:
+    type:
+    - string
+    - 'null'

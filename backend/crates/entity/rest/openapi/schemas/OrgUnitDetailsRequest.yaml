@@ -1,0 +1,17 @@
+type: object
+additionalProperties: false
+required:
+- expected_version
+properties:
+  expected_version:
+    type: integer
+    format: int32
+  code:
+    type:
+    - string
+    - 'null'
+  head_employee_id:
+    type:
+    - string
+    - 'null'
+    format: uuid

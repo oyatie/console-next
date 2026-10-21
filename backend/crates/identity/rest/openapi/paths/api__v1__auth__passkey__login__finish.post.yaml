@@ -1,0 +1,30 @@
+tags:
+  - auth
+summary: Finish passkey login
+description: Verifies the passkey assertion and issues an ES256 access JWT plus an opaque rotating refresh token.
+  Rate-limited to 30 attempts per minute per asserted credential id, independent of the client IP.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/PasskeyLoginFinishRequest'
+responses:
+  '200':
+    description: Access and refresh tokens.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/TokenPairResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: tenant_inactive — the account's tenant is SUSPENDED or ARCHIVED (the platform tier
+      excepted); no session is issued. Checked after the credential is proven, so sign-in start never
+      tells the states apart.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '429':
+    $ref: '#/components/responses/TooManyRequests'

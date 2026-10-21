@@ -1,0 +1,13 @@
+type: object
+required: [headcount, items]
+properties:
+  headcount:
+    type: integer
+    format: int64
+    minimum: 0
+    description: Members who are not EXITED (ACTIVE, ON_LEAVE, UNKNOWN), as OrgUnitHead.headcount.
+  items:
+    type: array
+    description: Members (not EXITED, on-leave included) in name order, at most 200.
+    items:
+      $ref: '#/components/schemas/OrgUnitMember'

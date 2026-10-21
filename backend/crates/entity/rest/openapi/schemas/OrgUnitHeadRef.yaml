@@ -1,0 +1,23 @@
+type: object
+description: A 부서's head as of today (dated; may belong to another unit).
+required:
+- employee_id
+- name
+- since
+- concurrent
+properties:
+  employee_id:
+    type: string
+    format: uuid
+  name:
+    type:
+    - string
+    - 'null'
+  since:
+    type:
+    - string
+    - 'null'
+    format: date
+  concurrent:
+    type: boolean
+    description: 「(겸)」 — the head belongs to another unit, or heads another unit too.

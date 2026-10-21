@@ -1,0 +1,13 @@
+type: object
+additionalProperties: false
+description: 장애 (restricted, 민감정보). Severity only (중증 counts twice, 장애인고용촉진법 §28의3).
+required: [severity, basis]
+properties:
+  severity:
+    type: string
+    enum: [SEVERE, NON_SEVERE]
+  recognised_on:
+    type: [string, 'null']
+    format: date
+  basis:
+    $ref: '#/components/schemas/PersonRecordBasis'

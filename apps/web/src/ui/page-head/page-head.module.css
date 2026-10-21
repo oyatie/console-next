@@ -1,0 +1,21 @@
+/* ui/page-head: the page head and its crumbs (design-language §4.3, kit .ph / .crumbs). Tokens only. */
+.head { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.head[data-band] { padding: var(--space-3) var(--space-6); border-bottom: 1px solid var(--border); background: var(--surface); }
+/* Tabs sit on the band's bottom rule. */
+.head[data-band][data-tabs] { padding-bottom: 0; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); min-width: 0; }
+.title { margin: 0; font-size: var(--text-xl); font-weight: var(--fw-strong); overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; color: var(--steel); font-size: var(--text-sm); }
+.grow { flex: 1; }
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.sub { margin: 0; color: var(--steel); font-size: var(--text-sm); }
+.crumbs { min-width: 0; font-size: var(--text-sm); color: var(--steel); }
+.trail { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.crumb { display: inline-flex; align-items: center; min-width: 0; }
+.sep { display: inline-flex; color: var(--faint); }
+.current { color: var(--ink); font-weight: var(--fw-medium); }
+.phase { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; color: var(--steel); font-size: var(--text-xs); }
+.dot { flex: none; width: var(--space-2); height: var(--space-2); border-radius: var(--space-1); background: var(--ok-solid); }
+.phase[data-phase="operating"] .dot { background: var(--primary); }
+.asof { display: inline-flex; align-items: center; gap: var(--space-2); height: calc(var(--target) + var(--space-1)); padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); color: var(--steel); font-size: var(--text-sm); white-space: nowrap; }
+.asofDate { color: var(--ink); font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; }

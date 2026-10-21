@@ -1,0 +1,35 @@
+tags:
+- entity
+operationId: workplaceEndOptions
+summary: Whether a 사업장 is deleted (never used) or closed (폐쇄), and why not the other
+description: CRUD. As the 법인 read, for one 사업장.
+security:
+- bearerAuth: []
+parameters:
+- name: workplaceId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+responses:
+  '200':
+    description: The two ways and the reason each is or is not offered.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/RecordEndOptions'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

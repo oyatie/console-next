@@ -1,0 +1,99 @@
+/* The personnel card (E2): head band, section bar, record + spine. Mirrors employee-ux/final .ph2 / .bar2 / .rec.
+   Layout only (design-language §12): surfaces are ui/ components (Band, Card, Banner, Paper, Avatar, Tabs), type and
+   tone are composed from the §3 classes. */
+.page { display: flex; flex-direction: column; min-height: 100%; }
+.head { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-5) 0; }
+.top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-height: var(--target); }
+.crumb { composes: t-sm muted from global; display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.pos { composes: t-xs muted from global; white-space: nowrap; }
+.posAt { composes: t-ink num from global; }
+.hdr { display: grid; grid-template-columns: calc(var(--space-6) * 2) minmax(0, 1fr) auto; gap: var(--space-4); align-items: center; }
+@media (max-width: 1023px) { .hdr { grid-template-columns: calc(var(--space-6) * 2) minmax(0, 1fr); } .verbs { grid-column: 1 / -1; } }
+.who { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.nameRow { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.name { composes: t-2xl t-strong from global; margin: 0; white-space: nowrap; }
+.hanja { composes: t-sm muted from global; }
+.empno { composes: t-mono t-sm from global; }
+/* One line each, whatever loads late (titles, a reservation): the head never grows under the pointer; the rest ellipsizes. */
+.path { composes: t-sm from global; display: flex; align-items: center; gap: calc(var(--space-1) / 2); white-space: nowrap; flex-wrap: nowrap; min-width: 0; overflow: hidden; }
+.pathIcon { composes: t-faint from global; flex: none; }
+.pathLast { composes: t-medium from global; }
+.facts { composes: muted from global; margin-left: var(--space-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.next { composes: t-xs muted from global; display: flex; gap: var(--space-1); align-items: center; flex-wrap: nowrap; white-space: nowrap; min-width: 0; overflow: hidden; }
+.next > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.nextWhat { composes: t-info from global; }
+.verbs { display: flex; gap: var(--space-2); align-self: start; flex-wrap: wrap; justify-content: flex-end; }
+/* The exit and registration-cancel row: the head's full width under the name and verbs (never the photo column), holding a
+   control's height before end-options answer, so the buttons and their reasons land beside each other with no shift. */
+.ends { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) max-content; min-height: var(--row-h); align-items: center; }
+/* One line: a refusal that lands beside its button (an exit reported, applied) wraps inside its own box, never pushing the
+   other end to a second line that moves the tabs and sections under the head. */
+.ends > * { min-width: 0; }
+.ends > button { justify-self: start; }
+.invite { grid-column: 3; display: inline-flex; justify-self: end; min-height: var(--row-h); }
+.hiddenInvite { visibility: hidden; }
+@media (max-width: 767px) { .ends { grid-template-columns: minmax(0, 1fr); } .invite { grid-column: 1; justify-self: start; } }
+/* The head and the section chips held while the record scrolls (wide screens; a phone keeps the whole height for the record). */
+@media (min-width: 1024px) and (min-height: 640px) { .held { position: sticky; top: 0; z-index: 3; } }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-5); flex-wrap: wrap; }
+.rec { display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--panel-w) - var(--space-6) * 2); gap: var(--space-4); padding: var(--space-4) var(--space-5) var(--space-6); align-items: start; }
+@media (max-width: 1279px) { .rec { grid-template-columns: minmax(0, 1fr); } }
+/* Beside a sheet (G5) the record reflows to one column (its two-column sections stack: ui/record data-one). */
+.rec[data-one] { grid-template-columns: minmax(0, calc(var(--sheet-w) + var(--space-6) + var(--space-2))); }
+.main { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.gap { composes: t-warn t-medium from global; }
+.ok { composes: t-xs t-ok from global; display: inline-flex; align-items: center; gap: var(--space-1); }
+.warn { composes: t-xs t-warn t-medium from global; }
+.steel { composes: muted from global; }
+.s12 { composes: t-xs muted from global; }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.legend { display: inline-flex; align-items: center; gap: var(--space-2); }
+.keys { display: inline-flex; align-items: center; gap: var(--space-1); }
+.reveal { display: inline-flex; align-items: center; gap: calc(var(--space-1) / 2); }
+.note { composes: t-xs muted from global; margin: 0; line-height: var(--lh-base); }
+.popActs { display: flex; justify-content: flex-end; gap: var(--space-2); flex-wrap: wrap; }
+.lockLine { composes: t-xs muted from global; display: inline-flex; align-items: center; gap: var(--space-1); }
+.rowInputs { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.rowInputs > * { flex: 1 1 calc(var(--space-6) * 3.5); min-width: 0; height: calc(var(--space-6) - var(--space-1)); }
+.rowFoot { composes: t-xs from global; display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.late { animation: late 0.2s step-end both; }
+@keyframes late { from { visibility: hidden; } to { visibility: visible; } }
+.center { padding: calc(var(--space-6) * 1.5); display: flex; justify-content: center; }
+.stateCard { width: min(100%, var(--card-w)); }
+.stateTitle { composes: t-xl t-strong from global; margin: 0; }
+.legendList { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
+.legendList div { display: grid; grid-template-columns: calc(var(--space-6) * 3.5) 1fr; gap: var(--space-2); align-items: start; }
+.legendText { composes: t-xs muted from global; margin: 0; }
+.pad { padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
+.filters { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+.foot { composes: t-xs muted from global; display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-5); min-height: calc(var(--space-6) + var(--space-1)); }
+.nowNew { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); align-items: center; }
+.boxBody { composes: t-sm from global; display: flex; flex-direction: column; gap: var(--space-1); }
+.lineNote { composes: t-sm muted from global; display: flex; align-items: center; gap: var(--space-2); margin: 0; }
+.stackHead { composes: t-sm from global; display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.fieldBlock { display: flex; flex-direction: column; gap: var(--space-1); }
+.fieldLabel { composes: t-sm t-medium from global; }
+.mono { composes: t-mono from global; }
+.err { composes: t-xs t-danger from global; display: inline-flex; align-items: center; gap: var(--space-1); }
+.empnoStatus { min-height: 1lh; }
+.printPage { display: flex; flex-direction: column; min-height: 100%; }
+.printHead { display: flex; align-items: center; gap: var(--space-3); min-height: calc(var(--space-6) * 1.75); padding: 0 var(--space-5); }
+.printGrid { display: grid; grid-template-columns: calc(var(--panel-w) - var(--space-6) - var(--space-2)) minmax(0, 1fr); gap: var(--space-5); padding: var(--space-4) var(--space-5) calc(var(--space-6) * 3); align-items: start; }
+@media (max-width: 1023px) { .printGrid { grid-template-columns: 1fr; } }
+.printFoot { composes: t-sm from global; position: sticky; bottom: 0; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-5); }
+@media print { .printHead, .printOpts, .printFoot { display: none; } .printGrid { display: block; padding: 0; } }
+.familyItem { display: inline-flex; gap: var(--space-1); margin-right: var(--space-2); }
+.conflictHead { composes: t-sm t-warn from global; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin: 0; }
+.readOnly { composes: t-sm muted from global; display: flex; align-items: center; gap: var(--space-2); margin: 0; }
+.rail { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) 0; }
+.link { composes: t-sm t-primary from global; }
+.inlineConflict { grid-column: 1 / -1; margin-top: var(--space-2); }
+/* The placement history in section 2: the term beside its value, the earlier placements under it. */
+.placements { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-1) var(--space-3); margin: 0; }
+.placements dd { margin: 0; }
+.stackRow { display: flex; flex-direction: column; gap: var(--space-1); }
+.logText { composes: t-xs t-ink from global; margin: 0; }
+.scrollBox { max-height: 50dvh; overflow: auto; }
+.contacts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.contact { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.photoCell { display: inline-flex; align-items: center; gap: var(--space-2); }

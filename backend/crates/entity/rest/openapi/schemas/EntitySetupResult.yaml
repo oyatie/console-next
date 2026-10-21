@@ -1,0 +1,22 @@
+type: object
+required:
+- dry_run
+- preview_digest
+- change_mode
+- items
+properties:
+  dry_run:
+    type: boolean
+  preview_digest:
+    type: string
+  batch_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  change_mode:
+    type: string
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/EntitySetupItem'

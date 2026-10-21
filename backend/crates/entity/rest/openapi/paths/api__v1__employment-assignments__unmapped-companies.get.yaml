@@ -1,0 +1,21 @@
+tags:
+- entity
+operationId: listUnmappedCompanies
+summary: '「회사 이름 정리」: legacy company texts with no mapped 법인'
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Distinct texts.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/UnmappedCompanyList'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

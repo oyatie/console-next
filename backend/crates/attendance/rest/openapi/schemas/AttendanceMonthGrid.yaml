@@ -1,0 +1,3 @@
+type: object
+required: [month, rows, people_total]
+properties: { month: { type: string }, rows: { type: array, items: { $ref: '#/components/schemas/AttendanceGridRow' } }, people_total: { type: integer }, next_cursor: { type: string, nullable: true } }

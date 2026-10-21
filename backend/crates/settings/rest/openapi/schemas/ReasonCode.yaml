@@ -1,0 +1,5 @@
+type: string
+minLength: 1
+description: >-
+  Code from the tenant reason-code catalog for the command's domain. An
+  unknown or inactive code is refused with 422 reason_code_invalid.

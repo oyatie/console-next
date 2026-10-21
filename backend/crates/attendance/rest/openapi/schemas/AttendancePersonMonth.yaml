@@ -1,0 +1,3 @@
+type: object
+required: [employee_id, name, month, days, history, totals, provisional, month_state]
+properties: { employee_id: { $ref: '#/components/schemas/Uuid' }, employee_number: { type: string, nullable: true }, name: { type: string }, month: { type: string }, days: { type: array, items: { $ref: '#/components/schemas/AttendanceDay' } }, history: { type: array, items: { $ref: '#/components/schemas/AttendanceHistoryRow' } }, totals: { $ref: '#/components/schemas/AttendanceGridTotals' }, provisional: { type: boolean }, month_state: { $ref: '#/components/schemas/AttendanceMonthState' } }

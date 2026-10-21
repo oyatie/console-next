@@ -1,0 +1,67 @@
+tags:
+  - employees
+operationId: listEmployeeContracts
+summary: Contract history of an employee (EMP-MODEL G1)
+description: Every recorded contract row, newest start first, including rows a later correction superseded
+  (superseded_by set; they leave the live history). in_force marks the live row covering today (KST). Wages are
+  compensation, so this takes org-wide employee_directory_manage.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The contract history.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                required: [id, kind, start_date, end_date, wage_won, pay_unit, weekly_minutes, supersedes_id,
+                  superseded_by, in_force, created_at]
+                properties:
+                  id:
+                    $ref: '#/components/schemas/Uuid'
+                  kind:
+                    type: string
+                    enum: [OPEN_ENDED, FIXED_TERM, PART_TIME, DAILY, DISPATCH_OUTSOURCING, EXECUTIVE_MANDATE, FREELANCE_SERVICE]
+                  start_date:
+                    type: string
+                    format: date
+                  end_date:
+                    type: [string, 'null']
+                    format: date
+                  wage_won:
+                    type: integer
+                    format: int64
+                  pay_unit:
+                    type: string
+                    enum: [MONTHLY, HOURLY, DAILY, ANNUAL]
+                  weekly_minutes:
+                    type: [integer, 'null']
+                  supersedes_id:
+                    type: [string, 'null']
+                    format: uuid
+                  superseded_by:
+                    type: [string, 'null']
+                    format: uuid
+                  in_force:
+                    type: boolean
+                  created_at:
+                    type: string
+                    format: date-time
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

@@ -1,0 +1,99 @@
+type: object
+additionalProperties: false
+required:
+- event_type
+- effective_date
+- comment
+properties:
+  event_type:
+    type: string
+    enum: [TRANSFER, PROMOTE, APPOINT, EMPLOYMENT_TYPE_CHANGE, CONTRACT_RENEWAL]
+    description: CONTRACT_RENEWAL (BE-EMP-UI) needs contract_end_date and runs the single route's two-year rule
+      per person (a batch carries no exception, so a renewal past the limit is that person's fixed_term_limit
+      refusal).
+  employee_ids:
+    type: array
+    maxItems: 500
+    uniqueItems: true
+    items:
+      $ref: '#/components/schemas/Uuid'
+    description: The events are recorded (and returned) in this order. Exactly one of employee_ids, lines and
+      selection names the employees.
+  lines:
+    type: array
+    maxItems: 500
+    items:
+      $ref: '#/components/schemas/BulkTransferLine'
+    description: TRANSFER only, without to_org_unit_id. Each employee's own destination unit (a pasted sheet across
+      units), still one all-or-nothing batch; recorded in this order.
+  selection:
+    $ref: '#/components/schemas/BulkSelection'
+  to_org_unit_id:
+    description: TRANSFER with employee_ids or selection, required. An ACTIVE Site/Department/Team of this tenant;
+      unknown or foreign is 404, dissolved is 422. An employee of another 법인 than the unit's is refused
+      (transfer_cross_entity, field to_org_unit_id).
+    $ref: '#/components/schemas/Uuid'
+  to_position:
+    type: string
+    minLength: 1
+    description: PROMOTE only; this or to_job_title_id is required. The position every employee receives.
+  to_job_title_id:
+    description: PROMOTE only (BW-13). An active catalog title; its label becomes the position (wins over
+      to_position). Unknown or inactive is 422 job_title_unknown.
+    $ref: '#/components/schemas/Uuid'
+  to_grade_id:
+    description: PROMOTE only (MR-25). An active 직급 (catalog kind GRADE); a lower grade_rank needs
+      DISCIPLINARY_DEMOTION. A 직급-only PROMOTE keeps the 직위. Unknown, inactive or another kind is 422
+      job_title_unknown.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  to_position_kind_id:
+    description: APPOINT only (MR-25). The 직책 (kind POSITION) after; absent keeps it.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  vacate_position_kind:
+    type: boolean
+    description: APPOINT only. 보직 해제, the employee holds no 직책 after (excludes to_position_kind_id).
+  to_job_id:
+    description: APPOINT only. The 직무 (kind JOB) after; its label becomes the employee's job (종사 업무, 근기법
+      시행령 §20 6호).
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  to_job:
+    type: [string, 'null']
+    maxLength: 200
+    description: APPOINT only. 종사 업무 as free text when to_job_id is absent; clears the 직무 id.
+  to_job_family_id:
+    description: APPOINT only. The 직군 (kind JOB_FAMILY) after.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  to_employment_type:
+    description: EMPLOYMENT_TYPE_CHANGE only, required there (MR-24, 고용형태 전환). A change to CONTRACT needs
+      contract_end_date (the window starts on effective_date); a change away from CONTRACT closes the window.
+      409 employment_profile_missing when the employee has no employment profile.
+    oneOf:
+    - $ref: '#/components/schemas/EmploymentType'
+    - type: 'null'
+  contract_end_date:
+    type: string
+    format: date
+    description: EMPLOYMENT_TYPE_CHANGE to CONTRACT only, required then.
+  reason_code:
+    type: string
+    description: BW-07 code of lifecycle_transfer / lifecycle_promote (422 reason_code_invalid otherwise); comment
+      is its note. A PROMOTE to a lower grade_rank needs DISCIPLINARY_DEMOTION (422 demotion_reason_required).
+  effective_date:
+    type: string
+    format: date
+    description: YYYY-MM-DD, today or earlier (KST).
+  comment:
+    type: string
+    minLength: 1
+  signoffs:
+    $ref: '#/components/schemas/EmployeeLifecycleSignoffs'
+    description: Optional. No lifecycle act requires an acknowledgement (A13); a body sent is stored as
+      given.

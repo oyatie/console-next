@@ -1,0 +1,3 @@
+type: object
+required: [error]
+properties: { error: { type: object, required: [code, message], properties: { code: { type: string }, message: { type: string }, details: { type: object, description: 'entry_conflict carries `conflicts`, cells_refused carries `refused`', properties: { conflicts: { type: array, items: { $ref: '#/components/schemas/AttendanceConflict' } }, refused: { type: array, items: { $ref: '#/components/schemas/AttendanceCellPreview' } } } } } } }

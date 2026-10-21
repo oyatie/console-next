@@ -1,0 +1,30 @@
+/* features/structure: the outline docked beside the live chart (mockup S2b). */
+.split { display: flex; flex: 1; min-width: 0; gap: var(--space-3); }
+.pane { width: 600px; flex: none; display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4) 0; }
+.intro { margin: 0; padding: var(--space-1) var(--space-4) var(--space-3); font-size: var(--text-xs); color: var(--steel); border-bottom: 1px solid var(--border); }
+.rows { flex: 1; overflow: auto; }
+.colhead, .row { display: grid; grid-template-columns: minmax(0, 1fr) var(--target) calc(var(--target) * 2) calc(var(--target) * 4); align-items: center; gap: var(--space-2); padding: 0 var(--space-4); }
+.colhead { height: 36px; font-size: var(--text-xs); color: var(--steel); border-bottom: 1px solid var(--border); }
+.row { min-height: 40px; border-bottom: 1px solid var(--border-soft); font-size: var(--text-sm); outline: none; }
+.row:focus-visible { --shadow-x: inset 0 0 0 2px var(--ink); box-shadow: var(--shadow-x); }
+.row[data-current] { box-shadow: var(--selected-bar); background: var(--primary-soft); }
+.row[data-new] { background: var(--ok-bg); }
+.row > :last-child { text-align: right; }
+.edit { display: flex; flex-wrap: wrap; gap: var(--space-1); min-width: 0; }
+.edit .input { width: 100%; }
+.name { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.grip { color: var(--faint); flex: none; }
+.sp { width: 14px; flex: none; }
+.strong { font-weight: var(--fw-strong); }
+.level { font-size: var(--text-xs); color: var(--steel); }
+.input { height: 28px; padding: 0 var(--space-2); }
+.foot { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border); }
+.keys { margin: 0; font-size: var(--text-xs); color: var(--steel); }
+.pasteList { margin: var(--space-3) 0 0; padding: 0; list-style: none; font-size: var(--text-sm); }
+.pasteList li { display: flex; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) 0; border-bottom: 1px solid var(--border-soft); }
+.pasteList li[data-bad] { color: var(--danger-tx); }
+@media (max-width: 960px) {
+  .split { flex-direction: column; }
+  .pane { width: auto; }
+}

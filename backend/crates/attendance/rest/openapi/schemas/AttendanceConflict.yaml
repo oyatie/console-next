@@ -1,0 +1,3 @@
+type: object
+required: [employee_id, work_date, mine]
+properties: { employee_id: { $ref: '#/components/schemas/Uuid' }, work_date: { type: string, format: date }, base_entry_id: { $ref: '#/components/schemas/Uuid', nullable: true }, current: { $ref: '#/components/schemas/AttendanceEntry', nullable: true }, mine: { type: string } }

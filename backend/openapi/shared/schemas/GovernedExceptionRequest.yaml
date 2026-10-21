@@ -1,0 +1,17 @@
+      type: object
+      description: >-
+        Explicit request to proceed past a soft rule. The server records it as
+        a governed exception, marks the resulting record as an exception, and
+        raises a review flag. Hard invariants never accept one.
+      required:
+      - rule_code
+      - reason_code
+      properties:
+        rule_code:
+          type: string
+          description: Stable code of the soft rule being overridden.
+        reason_code:
+          $ref: '#/components/schemas/ReasonCode'
+        note:
+          type: string
+          description: Free-text detail; required when the reason code requires a note.

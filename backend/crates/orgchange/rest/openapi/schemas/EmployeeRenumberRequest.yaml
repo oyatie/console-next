@@ -1,0 +1,24 @@
+type: object
+additionalProperties: false
+required: [scope_kind, prefix, width, effective_date, reason_code]
+properties:
+  scope_kind:
+    type: string
+    enum: [TENANT, LEGAL_ENTITY, WORKPLACE]
+  scope_id:
+    $ref: '#/components/schemas/Uuid'
+  prefix:
+    type: string
+    pattern: ^[A-Za-z0-9_-]{0,16}$
+  width:
+    type: integer
+    minimum: 1
+    maximum: 12
+  effective_date:
+    type: string
+    format: date
+  reason_code:
+    type: string
+  note:
+    type: string
+    maxLength: 1000

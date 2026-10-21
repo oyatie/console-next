@@ -1,0 +1,73 @@
+type: object
+required:
+- kind
+- id
+- name
+- headcount
+- direct_headcount
+- dispatched_headcount
+- chips
+- children
+properties:
+  kind:
+    type: string
+    enum:
+    - LEGAL_ENTITY
+    - WORKPLACE
+    - SITE
+    - DEPARTMENT
+  id:
+    type: string
+    format: uuid
+  name:
+    type: string
+  version:
+    type: integer
+    format: int64
+    description: 'SITE/DEPARTMENT: the current version, sent back as expected_version.'
+  org_unit_id:
+    type: string
+    format: uuid
+    description: 'WORKPLACE: the 사업장''s own unit (register people there with no 부서).'
+  workplace_kind:
+    type: string
+    description: 'WORKPLACE: its kind code (decisions #18), when chosen.'
+  code:
+    type: string
+    description: 'WORKPLACE: its 사업장 code; DEPARTMENT: its 부서 코드 — when set.'
+  head:
+    $ref: '#/components/schemas/OrgUnitHeadRef'
+  headcount:
+    type: integer
+    format: int64
+    description: '인원: people who have not left, everything below included. LEGAL_ENTITY includes its 미배치 (direct_headcount)
+      since this field was added; WORKPLACE and LEGAL_ENTITY count today''s assignments, SITE and DEPARTMENT count
+      members.'
+  direct_headcount:
+    type: integer
+    format: int64
+    description: 'People on this node and on no child: DEPARTMENT its own members, WORKPLACE 사업장 직속 (its own unit),
+      LEGAL_ENTITY 미배치 (a 법인 but no 사업장).'
+  dispatched_headcount:
+    type: integer
+    format: int64
+    description: Of headcount, people employed as DISPATCHED_IN or OUTSOURCED_ON_SITE (the 「파견·협력 n명 포함」 chip).
+  chips:
+    type: array
+    items:
+      type: string
+      enum:
+      - needs_confirmation
+      - suspended
+      - closed
+      - registration_missing
+      - unverified
+  children:
+    type: array
+    description: 'In order: 순서 first (PUT /api/v1/org-structure/order), then name (부서) or creation (사업장).'
+    items:
+      $ref: '#/components/schemas/OrgStructureNode'
+  scheduled_by:
+    $ref: '#/components/schemas/StructureScheduledBy'
+  changed_after:
+    type: boolean

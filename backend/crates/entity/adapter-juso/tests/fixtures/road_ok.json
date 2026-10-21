@@ -1,0 +1,39 @@
+{
+ "results": {
+  "common": {
+   "countPerPage": "2",
+   "errorMessage": "정상",
+   "errorCode": "0",
+   "totalCount": "1",
+   "currentPage": "1"
+  },
+  "juso": [
+   {
+    "siNm": "경기도",
+    "lnbrMnnm": "532",
+    "bdKdcd": "0",
+    "jibunAddr": "경기도 성남시 분당구 백현동 532 카카오 판교 아지트",
+    "buldSlno": "0",
+    "bdMgtSn": "4113511000105320000000002",
+    "zipNo": "13529",
+    "roadAddr": "경기도 성남시 분당구 판교역로 166 (백현동)",
+    "admCd": "4113511000",
+    "liNm": "",
+    "bdNm": "카카오 판교 아지트",
+    "mtYn": "0",
+    "rnMgtSn": "411353179025",
+    "roadAddrPart2": " (백현동)",
+    "sggNm": "성남시 분당구",
+    "buldMnnm": "166",
+    "roadAddrPart1": "경기도 성남시 분당구 판교역로 166",
+    "emdNm": "백현동",
+    "lnbrSlno": "0",
+    "engAddr": "166 Pangyoyeok-ro, Bundang-gu, Seongnam-si, Gyeonggi-do",
+    "udrtYn": "0",
+    "rn": "판교역로",
+    "detBdNmList": "",
+    "emdNo": "02"
+   }
+  ]
+ }
+}

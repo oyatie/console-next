@@ -1,0 +1,43 @@
+type: object
+required:
+- version
+- name_ko
+- status
+- lines
+- change_mode
+- created_at
+- created_by
+properties:
+  version:
+    type: integer
+    format: int32
+    minimum: 1
+  name_ko:
+    type: string
+  name_en:
+    type:
+    - string
+    - 'null'
+  description:
+    type:
+    - string
+    - 'null'
+  status:
+    $ref: '#/components/schemas/AccessRoleStatus'
+  lines:
+    type: array
+    items:
+      $ref: '#/components/schemas/AccessRoleLine'
+  change_mode:
+    type: string
+    enum:
+    - SETUP
+    - OPERATING
+  reason_code:
+    type:
+    - string
+    - 'null'
+  created_at:
+    $ref: '#/components/schemas/Timestamp'
+  created_by:
+    $ref: '#/components/schemas/Uuid'

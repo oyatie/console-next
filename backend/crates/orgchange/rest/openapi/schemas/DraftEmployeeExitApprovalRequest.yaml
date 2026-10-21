@@ -1,0 +1,15 @@
+type: object
+properties:
+  submit:
+    type: boolean
+    default: false
+    description: false = APPROVAL_DRAFTED, true = SUBMITTED.
+  note:
+    type: string
+    maxLength: 1000
+    nullable: true
+  settlement_input:
+    description: Required unless a complete settlement package already exists for the case.
+    oneOf:
+    - $ref: '#/components/schemas/ExitSettlementInput'
+    - type: 'null'

@@ -1,0 +1,16 @@
+tags: [platform]
+operationId: getOwnCompanyDomainRequest
+summary: Read the tenant ops account's pending company-domain request
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Pending request, or null after fulfilment
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/CompanyDomainRequestState'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'

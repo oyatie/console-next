@@ -1,0 +1,12 @@
+      type: object
+      additionalProperties: false
+      description: Re-parent an OrgUnit. Kind nesting and cycles are re-checked at preflight and apply; a SITE cannot move.
+      required: [op, orgUnitId, parentId]
+      properties:
+        op:
+          type: string
+          enum: [MOVE_ORG_UNIT]
+        orgUnitId:
+          $ref: '#/components/schemas/Uuid'
+        parentId:
+          $ref: '#/components/schemas/Uuid'

@@ -1,0 +1,20 @@
+type: object
+required:
+- operations
+- reason_code
+additionalProperties: false
+properties:
+  operations:
+    type: array
+    minItems: 1
+    maxItems: 200
+    items:
+      $ref: '#/components/schemas/AccessGrantOperation'
+  reason_code:
+    type: string
+    description: Reason-code domain `role_change`.
+  reason_note:
+    type:
+    - string
+    - 'null'
+    maxLength: 500

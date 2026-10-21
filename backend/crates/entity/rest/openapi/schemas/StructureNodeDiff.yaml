@@ -1,0 +1,29 @@
+type: object
+required:
+- id
+- name
+- before_name
+- marks
+- changes
+properties:
+  id:
+    type: string
+    format: uuid
+  name:
+    type: string
+  before_name:
+    type: string
+    nullable: true
+  marks:
+    type: array
+    items:
+      type: string
+      enum:
+      - new
+      - moved
+      - renamed
+      - gone
+  changes:
+    type: array
+    items:
+      $ref: '#/components/schemas/StructureScheduledBy'

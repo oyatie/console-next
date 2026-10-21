@@ -1,0 +1,58 @@
+tags:
+  - employees
+operationId: createChangeRequest
+summary: File a change request to HR
+description: >-
+  BW-17. An employee or branch subject outside the caller's branch scope
+  reads as 404. PROFILE_CORRECTION carries `payload.changes` with fields
+  from name, phone, hire_date, employment_type, position_id, base_pay
+  (applied through BW-18). OTHER requires a note and is flagged for
+  review. ACCESS_EXPLANATION (governance S7 소명 요청) needs org-wide
+  audit_log_read, a USER_ACCOUNT subject and `assignee_user_id` equal to
+  it; POLICY_QUESTION (S5) names the ORGANIZATION.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [kind, subject_type, subject_id, reason_code]
+        properties:
+          kind:
+            type: string
+            enum: [PROFILE_CORRECTION, IDENTITY_REVIEW, ACCESS_REQUEST, SCOPE_ACTION, OTHER, ACCESS_EXPLANATION, POLICY_QUESTION]
+          subject_type:
+            type: string
+            enum: [EMPLOYEE, USER_ACCOUNT, BRANCH, ORGANIZATION]
+          subject_id:
+            $ref: '#/components/schemas/Uuid'
+          payload:
+            type: object
+            additionalProperties: true
+          reason_code:
+            type: string
+            minLength: 1
+            maxLength: 100
+          note:
+            type: string
+            maxLength: 1000
+          assignee_user_id:
+            $ref: '#/components/schemas/Uuid'
+responses:
+  '201':
+    description: The open change request.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ChangeRequest'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '422':
+    $ref: '#/components/responses/ValidationError'

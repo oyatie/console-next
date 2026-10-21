@@ -1,0 +1,20 @@
+type: object
+required:
+- title
+- url
+- retrieved_on
+- sha256
+- derivation
+properties:
+  title:
+    type: string
+  url:
+    type: string
+    format: uri
+  retrieved_on:
+    type: string
+    format: date
+  sha256:
+    type: string
+  derivation:
+    type: string

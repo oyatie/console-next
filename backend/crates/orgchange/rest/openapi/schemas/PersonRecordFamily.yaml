@@ -1,0 +1,16 @@
+type: object
+additionalProperties: false
+description: 가족. Never a 주민등록번호; no 부양 flag (payroll).
+required: [relation, name]
+properties:
+  relation:
+    type: string
+    enum: [SPOUSE, CHILD, PARENT, PARENT_IN_LAW, SIBLING, GRANDPARENT, GRANDCHILD, OTHER]
+  name:
+    type: string
+    maxLength: 50
+  birth_date:
+    type: [string, 'null']
+    format: date
+  cohabiting:
+    type: [boolean, 'null']

@@ -1,0 +1,8 @@
+type: object
+required: [status, lock]
+properties:
+  status:
+    type: string
+    enum: [REJECTED]
+  lock:
+    $ref: '#/components/schemas/PeriodLock'

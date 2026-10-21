@@ -1,0 +1,10 @@
+tags: [attendance]
+operationId: previewAttendanceHoliday
+summary: People and closed months a 약정휴일 would touch, and its overlap with 공휴일, writing nothing
+security: [{ bearerAuth: [] }]
+requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceHolidayInput' } } } }
+responses:
+  '200': { description: Preview, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceHolidayPreview' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '422': { $ref: '#/components/responses/ValidationError' }

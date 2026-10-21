@@ -1,0 +1,13 @@
+type: object
+required:
+- domain
+- levels
+properties:
+  domain:
+    $ref: '#/components/schemas/AccessDomain'
+  levels:
+    type: array
+    minItems: 1
+    uniqueItems: true
+    items:
+      $ref: '#/components/schemas/AccessLevel'

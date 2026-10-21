@@ -1,0 +1,56 @@
+type: object
+required:
+- domain
+- level
+- scope
+- grant_id
+- role_id
+- role_name_ko
+- valid_from
+- enforcement
+- caveats
+properties:
+  caveats:
+    type: array
+    description: What this line does NOT reach over a scope narrower than the tenant (AX-5) — scope_people,
+      scope_register, scope_export, tenant_wide_hr_basic, tenant_wide_bulk_appointment, exit_settlement_branch. Empty
+      over the tenant.
+    items:
+      type: string
+  domain:
+    $ref: '#/components/schemas/AccessDomain'
+  level:
+    $ref: '#/components/schemas/AccessLevel'
+  scope:
+    $ref: '#/components/schemas/AccessScope'
+  grant_id:
+    $ref: '#/components/schemas/Uuid'
+  role_id:
+    $ref: '#/components/schemas/Uuid'
+  role_name_ko:
+    type: string
+  valid_from:
+    $ref: '#/components/schemas/Timestamp'
+  valid_to:
+    oneOf:
+    - $ref: '#/components/schemas/Timestamp'
+    - type: 'null'
+  enforcement:
+    type: string
+    description: The grant's AccessEnforcement, except that an ENFORCED row Cedar denies on the account's own slice (a voided
+      사업장, a broken chain) reads SCOPE_UNAVAILABLE, and every row of a deactivated account reads ACCOUNT_INACTIVE.
+    x-extensible-enum:
+    - ENFORCED
+    - PREPARED
+    - SCHEDULED
+    - ENDED
+    - REVOKED
+    - ROLE_INACTIVE
+    - SCOPE_UNAVAILABLE
+    - ACCOUNT_INACTIVE
+  noticed_at:
+    description: When the holder confirmed this grant's notice (decisions D0.2); null until then. Until it is set the
+      grant does not count toward an eligible second person.
+    oneOf:
+    - $ref: '#/components/schemas/Timestamp'
+    - type: 'null'

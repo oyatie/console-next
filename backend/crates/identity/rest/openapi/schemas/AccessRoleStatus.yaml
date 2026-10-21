@@ -1,0 +1,5 @@
+type: string
+enum:
+- DRAFT
+- ACTIVE
+- RETIRED

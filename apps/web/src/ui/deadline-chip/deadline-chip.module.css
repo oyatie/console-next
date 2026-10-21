@@ -1,0 +1,7 @@
+.far { background: var(--muted); border-color: var(--border); color: var(--steel); }
+.due { background: var(--due-bg); border-color: var(--due-bd); color: var(--due-tx); }
+.over { background: var(--over-bg); border-color: var(--over-bd); color: var(--over-tx); }
+.clock { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); align-items: baseline; }
+.basis { grid-column: 2; font-size: var(--text-sm); color: var(--steel); }
+.interest { color: var(--over-tx); font-weight: var(--fw-medium); }
+.interest::before { content: " · "; color: var(--steel); }

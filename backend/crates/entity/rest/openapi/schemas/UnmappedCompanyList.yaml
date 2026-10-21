@@ -1,0 +1,17 @@
+type: object
+required:
+- items
+properties:
+  items:
+    type: array
+    items:
+      type: object
+      required:
+      - company_text
+      - employees
+      properties:
+        company_text:
+          type: string
+        employees:
+          type: integer
+          format: int64

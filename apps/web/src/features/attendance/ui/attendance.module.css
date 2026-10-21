@@ -1,0 +1,28 @@
+/* features/attendance: layout only. Tokens only. */
+
+/* A2 calendar: scope tree · month · layer stack; below 1360 px the side column goes under the month, below 960 px the
+   tree goes on top (200 % zoom), so nothing is cut and nothing scrolls sideways. */
+.calendarLayout { display: grid; grid-template-columns: calc(var(--panel-w) * 0.7) minmax(0, 1fr) var(--panel-w); gap: var(--space-4); align-items: start; }
+@media (max-width: 1360px) { .calendarLayout { grid-template-columns: calc(var(--panel-w) * 0.7) minmax(0, 1fr); } .sideCol { grid-column: 2; } }
+@media (max-width: 960px) { .calendarLayout { grid-template-columns: minmax(0, 1fr); } .sideCol { grid-column: auto; } }
+.treeCol, .centerCol, .sideCol { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.monthText { min-width: calc(var(--space-6) * 4); text-align: center; }
+.scopeLine { margin: 0; }
+.dayCell { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+.treeRow { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; width: 100%; }
+.grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.stepNo { display: inline-flex; justify-content: center; min-width: var(--space-4); }
+.markGap { display: inline-block; width: var(--space-3); }
+
+/* Lists with their tools: a head row that wraps, a table under it. */
+.listHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) var(--panel-w); gap: var(--space-4); align-items: start; }
+@media (max-width: 1360px) { .split { grid-template-columns: minmax(0, 1fr); } }
+
+/* Sheet editors: one row per day or slot, fields side by side that wrap. */
+.dayRow { display: grid; grid-template-columns: calc(var(--space-6) * 2) minmax(0, 1fr); gap: var(--space-2); align-items: start; }
+.dayInputs { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: flex-end; }
+.dayInputs > * { flex: 1 1 calc(var(--space-6) * 3); min-width: 0; }
+.slotTools { display: flex; gap: var(--space-1); align-items: center; }
+.checks { display: flex; flex-direction: column; gap: var(--space-1); }

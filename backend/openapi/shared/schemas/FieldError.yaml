@@ -1,0 +1,13 @@
+      type: object
+      description: >-
+        One field-level validation failure. `field` names the request-body
+        input it refers to; `code` is a stable machine code that clients
+        render from their message catalog.
+      required:
+      - field
+      - code
+      properties:
+        field:
+          type: string
+        code:
+          type: string

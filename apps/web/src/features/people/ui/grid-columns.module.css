@@ -1,0 +1,16 @@
+/* The column picker (spec E6-columns): a wide panel under the toolbar with the card's sections side by side. */
+.pop { position: absolute; z-index: 20; top: 100%; right: var(--space-5); left: var(--space-5); display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-pop); }
+.head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); font-size: var(--text-sm); color: var(--steel); }
+.grow { flex: 1; }
+.find { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-5); padding: var(--space-4); }
+.group { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.groupTitle { margin: 0; font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--steel); }
+.item { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.tag { display: inline-flex; align-items: center; padding: 0 var(--space-1); border: 1px solid var(--warn-bd); border-radius: var(--radius-sm); background: var(--warn-bg); color: var(--warn-tx); font-size: var(--text-xs); }
+.tag[data-cls="second"] { border-color: var(--info-bd); background: var(--info-bg); color: var(--info-tx); }
+.routed { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); }
+.routed li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); }
+.lock { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--steel); font-size: var(--text-xs); }
+.foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-top: 1px solid var(--border); font-size: var(--text-xs); color: var(--steel); }
+@media (width <= 900px) { .cols { grid-template-columns: minmax(0, 1fr); } }

@@ -1,0 +1,63 @@
+type: object
+required: [id, employee_id, expected_head_version, head_version, stale, other_open_drafts, effective_date,
+  to_org_unit_id, to_job_title_id, to_position, reason_code, comment]
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  expected_head_version:
+    type: integer
+  head_version:
+    type: integer
+    description: The employee's version now.
+  stale:
+    type: boolean
+    description: head_version differs from the pin; a commit refuses the set until the line is redrafted.
+  other_open_drafts:
+    type: integer
+    description: Lines on this employee in other OPEN drafts (anyone's).
+  effective_date:
+    type: string
+    format: date
+  to_org_unit_id:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  to_job_title_id:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  to_position:
+    type: [string, 'null']
+  reason_code:
+    type: [string, 'null']
+  to_grade_id:
+    description: PROMOTE by 직급 (catalog GRADE), MR-27.
+    $ref: '#/components/schemas/Uuid'
+  to_position_kind_id:
+    description: APPOINT 직책 (catalog POSITION).
+    $ref: '#/components/schemas/Uuid'
+  vacate_position_kind:
+    type: boolean
+    description: APPOINT 보직 해제.
+  to_job_id:
+    description: APPOINT 직무 (catalog JOB).
+    $ref: '#/components/schemas/Uuid'
+  to_job:
+    type: string
+    maxLength: 200
+    description: APPOINT 종사 업무 as text, when to_job_id is absent.
+  to_job_family_id:
+    description: APPOINT 직군 (catalog JOB_FAMILY).
+    $ref: '#/components/schemas/Uuid'
+  to_employment_type:
+    type: string
+    enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, FREELANCE]
+    description: EMPLOYMENT_TYPE_CHANGE target.
+  contract_end_date:
+    type: string
+    format: date
+    description: EMPLOYMENT_TYPE_CHANGE to CONTRACT (required there).
+  comment:
+    type: string

@@ -1,0 +1,68 @@
+type: object
+required:
+- id
+- domain
+- periodStart
+- periodEnd
+- reason
+- lockedAt
+- unlockReviewRequired
+- active
+properties:
+  id:
+    type: string
+    format: uuid
+  domain:
+    type: string
+    enum: [payroll, accounting]
+  periodStart:
+    type: string
+    format: date
+  periodEnd:
+    type: string
+    format: date
+  reason:
+    type: string
+  lockedBy:
+    type: string
+    format: uuid
+  lockedByName:
+    type: string
+    description: Display name of who locked; absent for a system re-lock or a removed account.
+  lockedAt:
+    type: string
+    format: date-time
+  unlockedBy:
+    type: string
+    format: uuid
+  unlockedByName:
+    type: string
+    description: Display name of who unlocked.
+  unlockedAt:
+    type: string
+    format: date-time
+  unlockReason:
+    type: string
+  reasonCode:
+    type: string
+  unlockReasonCode:
+    type: string
+  relockAt:
+    type: string
+    format: date-time
+    description: End of the unlock window; the lock is in force again from then.
+  unlockApprovedBy:
+    type: string
+    format: uuid
+    description: The second person who approved the unlock.
+  unlockApprovedByName:
+    type: string
+    description: Display name of the second person.
+  unlockReviewRequired:
+    type: boolean
+    description: A sole-holder unlock, flagged for review.
+  active:
+    type: boolean
+    description: In force now (never unlocked, or the unlock window has passed).
+  unlockRequest:
+    $ref: '#/components/schemas/PeriodUnlockRequestState'

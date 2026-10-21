@@ -1,0 +1,10 @@
+/* ui/toast: bottom-left receipt (R37). Tokens only. */
+.toast { position: fixed; left: calc(var(--rail-w) + var(--space-4)); bottom: var(--space-4); z-index: 40; max-width: calc(var(--panel-w) * 1.75); display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--ink); color: var(--surface); box-shadow: var(--shadow-pop); font-size: var(--text-sm); }
+.toast[data-state="error"] { background: var(--danger-solid); color: var(--on-danger); }
+.toast :global(.btn) { min-height: var(--target); color: inherit; border-color: color-mix(in srgb, var(--surface) 35%, transparent); background: transparent; }
+.toast :global(.btn):hover { background: color-mix(in srgb, var(--surface) 12%, transparent); }
+.text { flex: 1; min-width: 0; }
+.spin { animation: spin 1s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 767px) { .toast { left: var(--space-2); right: var(--space-2); } }

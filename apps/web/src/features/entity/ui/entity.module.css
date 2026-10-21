@@ -1,0 +1,14 @@
+/* features/entity: the certificate beside the form, and the entity pages. Tokens only. */
+.capture { display: grid; grid-template-columns: 1fr; gap: var(--space-4); align-items: start; }
+@media (min-width: 1280px) { .capture { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+.pane { position: sticky; top: 0; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); max-height: calc(100vh - var(--space-6)); overflow: auto; }
+.paneTitle { margin: 0; flex: 1; min-width: 0; font-size: var(--text-body); font-weight: var(--fw-strong); overflow-wrap: anywhere; }
+.status { margin: 0; font-size: var(--text-sm); color: var(--steel); }
+.preview { width: 100%; min-height: calc(var(--panel-w) * 1.4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--canvas); object-fit: contain; }
+.form { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); }
+.start { display: grid; grid-template-columns: 1fr; gap: var(--space-4); }
+@media (min-width: 1024px) { .start { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
+.alt { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-4); }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-2) var(--space-4); margin: 0; }
+.facts dt { color: var(--steel); font-size: var(--text-sm); }
+.facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }

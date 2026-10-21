@@ -1,0 +1,126 @@
+//! BW-11 정정 (correct) and 취소·철회 (rescind).
+
+use console_hr_adapter_postgres::lifecycle::correct::CorrectLifecycleEventRequest;
+use console_hr_adapter_postgres::lifecycle::void::RescindLifecycleEventRequest;
+use serde_json::{Value, json};
+use sqlx::PgPool;
+use uuid::Uuid;
+
+use crate::{fixture, promote};
+
+fn rescind(confirm: bool) -> RescindLifecycleEventRequest {
+    serde_json::from_value(json!({"reason_code": "INPUT_ERROR", "confirm_cascades": confirm}))
+        .unwrap()
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_rescission_previews_then_restores_the_head_once(pool: PgPool) {
+    let f = fixture(pool).await;
+    let first = f
+        .record(promote("대리", "2026-09-01", json!({})))
+        .await
+        .unwrap();
+    let second = f
+        .record(promote("과장", "2026-09-02", json!({})))
+        .await
+        .unwrap();
+    let id = |v: &Value| Uuid::parse_str(v["id"].as_str().unwrap()).unwrap();
+    let p = || f.principal.clone();
+    let older =
+        f.hr.rescind_lifecycle_event(p(), f.employee, id(&first), rescind(true))
+            .await;
+    assert_eq!(older.unwrap_err().code, "lifecycle_void_not_latest");
+
+    let preview =
+        f.hr.rescind_lifecycle_event(p(), f.employee, id(&second), rescind(false))
+            .await
+            .unwrap();
+    assert!(preview.rescinded.is_none());
+    assert_eq!(f.version().await, 2);
+    let done =
+        f.hr.rescind_lifecycle_event(p(), f.employee, id(&second), rescind(true))
+            .await
+            .unwrap();
+    let row = done.rescinded.unwrap();
+    assert_eq!(
+        (row.event_type.as_str(), row.voids_event_id),
+        ("RESCIND", Some(id(&second)))
+    );
+    assert_eq!(row.to_position.as_deref(), Some("대리"));
+    assert_eq!(f.version().await, 3);
+    let again =
+        f.hr.rescind_lifecycle_event(p(), f.employee, id(&second), rescind(true))
+            .await;
+    assert_eq!(again.unwrap_err().code, "lifecycle_event_voided");
+    // The earlier one is now the latest effective change.
+    f.hr.rescind_lifecycle_event(p(), f.employee, id(&first), rescind(true))
+        .await
+        .unwrap();
+    let position: Option<String> =
+        sqlx::query_scalar("SELECT position FROM employees WHERE id = $1")
+            .bind(f.employee)
+            .fetch_one(&f.owner)
+            .await
+            .unwrap();
+    assert_eq!(position.as_deref(), Some("사원"));
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_correction_replaces_the_event_on_its_date(pool: PgPool) {
+    let f = fixture(pool).await;
+    let leave = |kind: &str, extra: Value| {
+        let mut body = json!({"event_type": "LEAVE_OF_ABSENCE", "leave_type": kind,
+            "effective_date": "2026-09-01", "comment": "BW-11",
+            "signoffs": {"privacy_notice_ack": true, "korean_labor_law_ack": true, "payroll_cutoff_ack": true}});
+        for (key, value) in extra.as_object().unwrap() {
+            body[key] = value.clone();
+        }
+        body
+    };
+    let original = f
+        .record(serde_json::from_value(leave("PERSONAL", json!({}))).unwrap())
+        .await
+        .unwrap();
+    let event = Uuid::parse_str(original["id"].as_str().unwrap()).unwrap();
+    let correct = |replacement: Value| -> CorrectLifecycleEventRequest {
+        serde_json::from_value(json!({"replacement": replacement, "reason_code": "INPUT_ERROR"}))
+            .unwrap()
+    };
+    let p = || f.principal.clone();
+    let moved = leave("PERSONAL", json!({"effective_date": "2026-09-02"}));
+    assert_eq!(
+        f.hr.correct_lifecycle_event(p(), f.employee, event, correct(moved))
+            .await
+            .unwrap_err()
+            .status,
+        422
+    );
+    let dated = leave("PERSONAL", json!({"expected_return_date": "2026-12-01"}));
+    let refused =
+        f.hr.correct_lifecycle_event(p(), f.employee, event, correct(dated))
+            .await
+            .unwrap_err();
+    assert_eq!(refused.code, "second_person_required");
+
+    let fixed =
+        f.hr.correct_lifecycle_event(p(), f.employee, event, correct(leave("ILLNESS", json!({}))))
+            .await
+            .unwrap();
+    assert_eq!(
+        (fixed.leave_type.as_deref(), fixed.voids_event_id),
+        (Some("ILLNESS"), Some(event))
+    );
+    let page =
+        f.hr.lifecycle_events(p(), f.employee, Default::default(), false)
+            .await
+            .unwrap();
+    let voided = page.items.iter().find(|e| e.id == event).unwrap();
+    assert_eq!(voided.voided_by, Some(fixed.id));
+    let status: String =
+        sqlx::query_scalar("SELECT employment_status FROM employees WHERE id = $1")
+            .bind(f.employee)
+            .fetch_one(&f.owner)
+            .await
+            .unwrap();
+    assert_eq!(status, "ON_LEAVE");
+}

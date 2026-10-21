@@ -1,0 +1,15 @@
+type: string
+description: 'ENFORCED — counts now. PREPARED — waits for 운영 시작 (SETUP, not `effective_in_setup`).
+
+  SCHEDULED — `valid_from` is in the future. ENDED — `valid_to` passed. REVOKED — revoked.
+
+  ROLE_INACTIVE — the role is not ACTIVE.
+
+  '
+enum:
+- ENFORCED
+- PREPARED
+- SCHEDULED
+- ENDED
+- REVOKED
+- ROLE_INACTIVE

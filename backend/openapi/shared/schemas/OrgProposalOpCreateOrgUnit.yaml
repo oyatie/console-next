@@ -1,0 +1,19 @@
+      type: object
+      additionalProperties: false
+      description: Create a canonical OrgUnit (`organization.create_org_unit`) at apply. parentId must name an existing
+        ACTIVE unit of the tenant that the kind may nest under (null or the Company root id for SITE).
+      required: [op, kind, parentId, name]
+      properties:
+        op:
+          type: string
+          enum: [CREATE_ORG_UNIT]
+        kind:
+          $ref: '#/components/schemas/OrgUnitKind'
+        parentId:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120

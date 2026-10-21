@@ -1,0 +1,45 @@
+tags:
+  - employees
+operationId: rehireEmployee
+summary: 재입사 — a new employment period for an EXITED person (BW-19)
+description: 'The same person (same 사번 and history) starts a new period: a REHIRE lifecycle event, the head
+  ACTIVE (or PRE_HIRE with a SCHEDULED ONBOARD when hire_date is after today, KST), exit date cleared, the profile''s
+  employment type and contract window replaced and probation cleared. 409 rehire_requires_exited for anyone not
+  EXITED; 409 idempotency_key_reused for a key used by another request. Org-wide employee_directory_manage.'
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/RehireEmployeeRequest'
+responses:
+  '201':
+    description: The employee on the new period.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeDetail'
+  '200':
+    description: Idempotent replay.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeDetail'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

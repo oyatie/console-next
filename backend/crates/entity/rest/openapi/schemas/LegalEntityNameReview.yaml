@@ -1,0 +1,7 @@
+type: object
+required: [id, registration_id, entity_name, registration_name]
+properties:
+  id: { type: string, format: uuid }
+  registration_id: { type: string, format: uuid }
+  entity_name: { type: string }
+  registration_name: { type: string }

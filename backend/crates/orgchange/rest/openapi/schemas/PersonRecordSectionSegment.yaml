@@ -1,0 +1,2 @@
+type: string
+enum: [education, qualification, military, training, language, award, discipline, family, disability, veteran]

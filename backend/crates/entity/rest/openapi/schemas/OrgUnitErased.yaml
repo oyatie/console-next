@@ -1,0 +1,15 @@
+type: object
+required:
+- id
+- erased
+- change_mode
+properties:
+  id:
+    type: string
+    format: uuid
+  erased:
+    type: integer
+    format: int64
+    description: The units deleted (the 부서 and its sub-부서).
+  change_mode:
+    type: string

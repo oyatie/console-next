@@ -1,0 +1,11 @@
+/* Fixed over the bottom of the screen: it never moves the page under someone typing. The banner inside is ui/banner. */
+.warning {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-4);
+  transform: translateX(-50%);
+  z-index: 25;
+  max-width: calc(100vw - var(--space-4) * 2);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+}

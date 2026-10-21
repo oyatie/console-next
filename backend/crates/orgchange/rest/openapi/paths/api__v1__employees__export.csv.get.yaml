@@ -1,0 +1,139 @@
+tags:
+  - employees
+operationId: exportEmployeesCsv
+summary: Export standardized employee directory CSV
+description: Exports canonical employee fields only. Raw import ledger values, payroll data, account numbers, resident
+  identifiers, and import provenance are not included. Takes the GET /api/v1/employees filters and every matching
+  row (no cap), streamed as UTF-8 with a BOM and Cache-Control no-store. export_purpose (다운로드 용도) is required;
+  the download is logged (excel_export_logs and an employee.export 접속기록 event with the row count) before the
+  first byte, and a refusal is logged as employee.export_refused.
+security:
+- bearerAuth: []
+parameters:
+- name: company
+  in: query
+  required: false
+  schema:
+    type: string
+  description: Filter by workbook sheet/company name.
+- name: search
+  in: query
+  required: false
+  schema:
+    type: string
+  description: Case-insensitive name or employee-number typeahead query.
+- name: register_review_required
+  in: query
+  schema:
+    type: boolean
+  description: Only records with missing statutory register facts.
+- name: home_branch_review_required
+  in: query
+  required: false
+  schema:
+    type: boolean
+  description: Filter to employees whose active authoritative home branch is missing/inactive (true) or usable (false).
+- name: identity_review_required
+  in: query
+  required: false
+  schema:
+    type: boolean
+  description: Filter to employees whose import identity resolution needs review (true) or not (false).
+- name: org_unit_id
+  in: query
+  required: false
+  schema:
+    $ref: '#/components/schemas/Uuid'
+  description: Only employees bound to this OrgUnit (direct members; child units are not included).
+- name: legal_entity_id
+  in: query
+  required: false
+  schema:
+    $ref: '#/components/schemas/Uuid'
+  description: Only employees whose current employment assignment (the last one once exited, the first one
+    before the hire date) names this 법인.
+- name: workplace_id
+  in: query
+  required: false
+  schema:
+    $ref: '#/components/schemas/Uuid'
+  description: Only employees whose current employment assignment names this 사업장.
+- name: status
+  in: query
+  required: false
+  style: form
+  explode: false
+  schema:
+    type: array
+    items:
+      type: string
+      enum: [ACTIVE, ON_LEAVE, EXITED, UNKNOWN]
+  description: One employment status or a comma-separated list (`status=ACTIVE,ON_LEAVE`). Omitted means every
+    status, EXITED included.
+- name: employee_number
+  in: query
+  required: false
+  style: form
+  explode: false
+  schema:
+    type: array
+    maxItems: 500
+    items:
+      type: string
+  description: Exact employee numbers, comma-separated (`employee_number=A-1,A-2`), at most 500 (422 above). Resolves a
+    pasted column in one read.
+- name: contract_ending_before
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date
+  description: YYYY-MM-DD. Only employees whose current contract ends strictly before this date (e.g. tomorrow with
+    status=ACTIVE finds expired contracts of still-active employees). `total` counts the filtered set.
+- name: lifecycle_apply_failed
+  in: query
+  required: false
+  schema:
+    type: boolean
+  description: true lists only employees with a failed_event (a scheduled action that could not apply on its date
+    and was not redone); false only those without. `total` counts the filtered set.
+- name: export_purpose
+  in: query
+  required: true
+  schema:
+    type: string
+    enum: [AUDIT_RESPONSE, INTERNAL_REVIEW, DISPUTE_RESPONSE, DATA_SUBJECT_REQUEST, OTHER]
+  description: The download 용도 (고시 2023-6 §8②). Missing or unknown is 422 export_purpose_required.
+- name: layout
+  in: query
+  required: false
+  schema:
+    type: string
+    enum: [standard, register]
+    default: standard
+  description: >-
+    register writes the 근로자 명부 (근로기준법 §41, 시행령 §20) in 시행규칙 별지 제16호서식 order as
+    employees-register.csv: 사번, 성명, 성별, 생년월일, 주소, 전화번호, 사업장, 소속, 종사 업무, 고용일, 갱신일
+    (latest applied CONTRACT_RENEWAL), 계약기간 (start~end of the current contract), 마지막 근무일, 퇴직일
+    (마지막 근무일 + 1), 퇴직(해고) 사유, 이력, 그 밖에 필요한 사항. Items not held yet (성별, 주소, 이력, 기타,
+    퇴직 사유) are empty cells. Labels only: no codes or internal ids. 사업장 is the assigned workplace's current
+    name (else the imported worksite text); pass workplace_id for one 사업장's register (§41① 각 사업장별로).
+    register needs employee_directory_manage (it carries 생년월일 and the personal phone); a reader gets 403.
+responses:
+  '200':
+    description: Standardized employee CSV (employees-standard.csv), or the register layout.
+    headers:
+      Cache-Control:
+        schema:
+          type: string
+          enum: [no-store]
+    content:
+      text/csv:
+        schema:
+          type: string
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'

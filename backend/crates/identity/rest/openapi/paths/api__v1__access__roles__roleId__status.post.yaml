@@ -1,0 +1,42 @@
+tags:
+- access
+operationId: setAccessRoleStatus
+summary: Activate a draft, or retire an active role
+description: 'DRAFT → ACTIVE, ACTIVE → RETIRED. Retiring needs `reason_code`; it is refused with 409
+
+  `role_has_active_grants` while any grant of the role is not revoked and not expired — revoke
+
+  them first (the grant preview lists them).
+
+  '
+security:
+- bearerAuth: []
+parameters:
+- name: roleId
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SetAccessRoleStatusRequest'
+responses:
+  '200':
+    description: The role at its new version.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessRole'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

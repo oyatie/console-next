@@ -1,0 +1,21 @@
+/* features/attendance records (S2): layout only. Tokens only. */
+.monthPage, .dayPage { display: flex; flex-direction: column; gap: var(--space-3); min-height: 0; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2); }
+.stepper { display: inline-flex; align-items: center; gap: var(--space-1); }
+.stepText { min-width: calc(var(--space-6) * 4); text-align: center; }
+.selection { margin: 0; }
+/* The grid and a docked sheet side by side; the grid reflows (all four totals stay) rather than folding columns. */
+.monthLayout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; min-height: calc(var(--row-h) * 14); }
+.monthLayout[data-docked] { grid-template-columns: minmax(0, 1fr) var(--sheet-w); }
+@media (max-width: 960px) { .monthLayout[data-docked] { grid-template-columns: minmax(0, 1fr); } }
+.gridCol { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; min-height: 0; max-height: calc(100dvh - var(--topbar-h) * 5); }
+/* Day board: the board and the to-do rail. */
+.dayLayout { display: grid; grid-template-columns: minmax(0, 1fr) var(--panel-w); gap: var(--space-4); align-items: start; }
+@media (max-width: 1360px) { .dayLayout { grid-template-columns: minmax(0, 1fr); } }
+.boardRow { display: grid; grid-template-columns: var(--space-5) minmax(calc(var(--space-6) * 4), 1fr) minmax(calc(var(--space-6) * 6), 2fr) minmax(0, 3fr) auto; gap: var(--space-3); align-items: center; }
+@media (max-width: 960px) { .boardRow { grid-template-columns: var(--space-5) minmax(0, 1fr); } }
+.inline { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: flex-end; }
+.strip { display: flex; flex-wrap: wrap; gap: var(--space-4); }
+
+/* Keep close anchored while the day record and its available verbs load. */
+.dayActions { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); width: 100%; }

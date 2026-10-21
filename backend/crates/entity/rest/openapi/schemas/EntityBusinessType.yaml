@@ -1,0 +1,20 @@
+type: object
+required:
+- is_main
+- sector_as_printed
+- item_as_printed
+properties:
+  is_main:
+    type: boolean
+  sector_as_printed:
+    type: string
+  item_as_printed:
+    type: string
+  nts_code:
+    type:
+    - string
+    - 'null'
+  ksic:
+    anyOf:
+    - $ref: '#/components/schemas/CodeRef'
+    - type: 'null'

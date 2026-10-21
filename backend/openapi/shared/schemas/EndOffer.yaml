@@ -1,0 +1,9 @@
+      type: object
+      required:
+      - allowed
+      properties:
+        allowed:
+          type: boolean
+        refusal:
+          type: string
+          description: The stable code the write itself refuses with (absent when allowed).

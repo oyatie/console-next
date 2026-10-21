@@ -1,0 +1,34 @@
+tags:
+  - auth
+summary: Start a passkey login (identifier-first or usernameless)
+description: 'Starts an authentication ceremony (decisions #33). With no body (autofill, the usernameless button,
+  an N-1 client) the challenge has an empty allowCredentials list and the user is resolved from the asserted
+  credential at finish. With `identifier` (`<아이디>@<회사 도메인>`) the challenge lists that account''s credentials,
+  so a non-resident key signs in; an unknown, passkey-less, deactivated or expired-alias identifier gets the same
+  shape with one synthetic credential id, stable per identifier, so the response never reveals an account. With a
+  bearer token (a step-up) it lists the caller''s own credentials. Rate-limited per minute to 300 per client IP
+  (sized for an office behind one NAT address), 30 per `X-Device-Id`, 20 000 overall, and 20 per identifier.'
+requestBody:
+  required: false
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/PasskeyLoginStartRequest'
+responses:
+  '200':
+    description: Authentication ceremony challenge.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PasskeyLoginStartResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '422':
+    description: sign_in_id_invalid — the identifier is not `<아이디>@<회사 도메인>` by the sign-in ID rule (syntax
+      only; says nothing about any account).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '429':
+    $ref: '#/components/responses/TooManyRequests'

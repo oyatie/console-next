@@ -1,0 +1,10 @@
+/* ui/item-list: compact rows split by hairlines (kit .mlist). Tokens only. */
+.list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.item { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-h-compact); border-top: 1px solid var(--border-soft); font-size: var(--text-sm); }
+.item:first-child { border-top: 0; }
+.mark { display: inline-flex; flex: none; color: var(--steel); }
+.item[data-tone="ok"] .mark { color: var(--ok-solid); }
+.item[data-tone="warn"] .mark { color: var(--warn-solid); }
+.item[data-tone="danger"] .mark { color: var(--danger-solid); }
+.text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.end { flex: none; color: var(--steel); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }

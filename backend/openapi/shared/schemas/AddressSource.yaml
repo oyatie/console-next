@@ -1,0 +1,6 @@
+      type: string
+      enum:
+      - JUSO
+      - MANUAL_UNVERIFIED
+      description: 'JUSO: a 도로명주소 search result (codes required). MANUAL_UNVERIFIED: structured manual entry when the search is
+        unavailable.'

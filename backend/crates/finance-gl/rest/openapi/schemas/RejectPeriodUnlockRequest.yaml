@@ -1,0 +1,11 @@
+type: object
+additionalProperties: false
+required: [requestId, note]
+properties:
+  requestId:
+    type: string
+    format: uuid
+  note:
+    type: string
+    minLength: 1
+    maxLength: 1000

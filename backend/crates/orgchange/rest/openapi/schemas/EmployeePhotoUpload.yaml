@@ -1,0 +1,15 @@
+type: object
+required: [upload_id, employee_id, content_type, byte_size, confirmed]
+properties:
+  upload_id:
+    $ref: '#/components/schemas/Uuid'
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  content_type:
+    type: string
+    enum: [image/jpeg, image/png, image/webp]
+  byte_size:
+    type: integer
+    format: int64
+  confirmed:
+    type: boolean

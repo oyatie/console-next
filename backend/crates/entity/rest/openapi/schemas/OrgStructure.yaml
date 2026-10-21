@@ -1,0 +1,36 @@
+type: object
+description: 전체 → 법인 → 사업장 → 부서 (one 부서 kind, any depth; decision 18).
+required:
+- tenant_name
+- phase
+- entities
+- unplaced
+properties:
+  tenant_name:
+    type: string
+  phase:
+    type: string
+    enum:
+    - SETUP
+    - OPERATING
+  entities:
+    type: array
+    items:
+      $ref: '#/components/schemas/OrgStructureNode'
+  unplaced:
+    type: array
+    items:
+      $ref: '#/components/schemas/OrgStructureNode'
+  entity_unknown_headcount:
+    type: integer
+    format: int64
+    description: '「법인 미정」: people who have not left and have no 법인 today. Only for a tenant-wide caller; absent
+      for a scoped one.'
+  as_of:
+    type: string
+    format: date
+  known_at:
+    type: string
+    nullable: true
+  read_only:
+    type: boolean

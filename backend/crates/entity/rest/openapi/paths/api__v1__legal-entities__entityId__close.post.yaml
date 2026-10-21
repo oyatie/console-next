@@ -1,0 +1,66 @@
+tags:
+- entity
+operationId: closeLegalEntity
+summary: Close a 법인 (해산 or 폐업) with its open 사업장 and 사업자등록
+description: 'MR-15. Records the 법인''s close on `closed_on` (no later than today) with `reason_code` DISSOLVED (해산)
+  or BUSINESS_CLOSED (폐업). Its open 사업장 and 사업자등록 close on the same date (a CLOSED revision each; their own
+  units dissolve) and the close is set once: a closed 법인 is read-only. Refused 409 `record_in_use` while anyone not
+  exited is placed in it past `closed_on` (remedy `move_people_first`) or 부서 remain (remedy `move_or_dissolve_units_first`);
+  409 `legal_entity_not_open` when already closed or voided. A 사업장 alone closes by a revision with status CLOSED
+  (PUT /workplaces/{workplaceId}).'
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: entityId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CloseLegalEntityRequest'
+responses:
+  '200':
+    description: Closed; the 법인 as it now reads.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SavedLegalEntity'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}].'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Refused with a stable code and a remedy (record_in_use, legal_entity_not_open).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

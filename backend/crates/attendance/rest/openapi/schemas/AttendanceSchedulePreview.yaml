@@ -1,0 +1,3 @@
+type: object
+required: [people_in_scope, people_changed, kept, closed_months, past_from, night_work, weekly_minutes, unscheduled_after, refusals]
+properties: { people_in_scope: { type: integer }, people_changed: { type: integer }, kept: { type: array, items: { $ref: '#/components/schemas/AttendanceScheduleKept' } }, closed_months: { type: array, items: { type: string } }, past_from: { type: boolean, description: the start date is before today (KST) }, night_work: { type: boolean }, weekly_minutes: { type: integer }, unscheduled_after: { type: integer }, refusals: { type: array, items: { $ref: '#/components/schemas/AttendanceRefusal' } } }

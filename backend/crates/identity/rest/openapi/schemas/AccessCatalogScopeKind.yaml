@@ -1,0 +1,14 @@
+type: object
+required:
+- kind
+- enforceable
+- descendants_only
+properties:
+  kind:
+    $ref: '#/components/schemas/AccessScopeKind'
+  enforceable:
+    type: boolean
+    description: false = refused with `scope_not_enforceable_in_pilot` (DEPARTMENT until the door re-key, AX-5).
+  descendants_only:
+    type: boolean
+    description: true = `include_descendants` must be true in the pilot.

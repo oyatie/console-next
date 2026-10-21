@@ -1,0 +1,27 @@
+type: object
+required:
+- op
+- account_id
+- role_id
+- scope
+additionalProperties: false
+properties:
+  op:
+    type: string
+    const: grant
+  account_id:
+    $ref: '#/components/schemas/Uuid'
+  role_id:
+    $ref: '#/components/schemas/Uuid'
+  scope:
+    $ref: '#/components/schemas/AccessScope'
+  valid_from:
+    $ref: '#/components/schemas/Timestamp'
+    description: Defaults to now.
+  valid_to:
+    oneOf:
+    - $ref: '#/components/schemas/Timestamp'
+    - type: 'null'
+  effective_in_setup:
+    type: boolean
+    default: false

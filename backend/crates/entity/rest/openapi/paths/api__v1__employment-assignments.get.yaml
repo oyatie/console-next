@@ -1,0 +1,28 @@
+tags:
+- entity
+operationId: listEmploymentAssignments
+summary: One employee's 법인 and 사업장 placements, newest first
+security:
+- bearerAuth: []
+parameters:
+- name: employee_id
+  in: query
+  required: true
+  schema:
+    type: string
+    format: uuid
+responses:
+  '200':
+    description: Placements (corrections that were replaced are left out).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmploymentAssignmentList'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

@@ -1,0 +1,17 @@
+type: object
+additionalProperties: false
+description: 포상.
+required: [title, decided_on]
+properties:
+  title:
+    type: string
+    maxLength: 100
+  decided_on:
+    type: string
+    format: date
+  issuer:
+    type: [string, 'null']
+    maxLength: 100
+  details:
+    type: [string, 'null']
+    maxLength: 500

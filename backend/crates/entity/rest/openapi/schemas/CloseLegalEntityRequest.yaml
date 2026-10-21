@@ -1,0 +1,11 @@
+type: object
+required:
+- closed_on
+- reason_code
+properties:
+  closed_on:
+    type: string
+    format: date
+    description: 해산일 or 폐업일; no later than today (KST).
+  reason_code:
+    $ref: '#/components/schemas/EntityCloseReason'

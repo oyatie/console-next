@@ -1,0 +1,134 @@
+tags:
+  - employees
+operationId: confirmProbation
+summary: Record the 수습 종료 (EMP-MODEL F5)
+description: Closes the probation period. A command (ME-7) that must assert /employment/probation_end_date in
+  `expected`; 409 stale_facts when it changed. A repeat on a confirmed probation returns the record unchanged.
+  409 invalid_transition when no probation is recorded. Audited as employee.probation.confirm.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required: [expected]
+        properties:
+          expected:
+            type: array
+            items:
+              type: object
+              required: [path, value]
+              properties:
+                path:
+                  type: string
+                value: {}
+responses:
+  '200':
+    description: The facts record with probation_confirmed_at set.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [employee_id, hire_date, birth_date, work_email, id_type, employment, updated_at]
+          properties:
+            employee_id:
+              $ref: '#/components/schemas/Uuid'
+            hire_date:
+              type: [string, 'null']
+            birth_date:
+              type: [string, 'null']
+              format: date
+            work_email:
+              type: [string, 'null']
+            id_type:
+              type: [string, 'null']
+              enum: [RRN, ARC, DOMESTIC_RESIDENCE, NOT_ISSUED, null]
+            employment:
+              oneOf:
+              - type: 'null'
+              - type: object
+                required: [employment_type, worker_classification, base_pay_won, pay_unit, probation_end_date,
+                  probation_confirmed_at, probation_state, probation_days_left]
+                properties:
+                  employment_type:
+                    type: string
+                    enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN,
+                      OUTSOURCED_ON_SITE, FREELANCE]
+                  worker_classification:
+                    type: string
+                    enum: [EMPLOYEE, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, PLATFORM_OR_FREELANCE]
+                  base_pay_won:
+                    type: [integer, 'null']
+                    format: int64
+                  pay_unit:
+                    type: [string, 'null']
+                    enum: [MONTHLY, HOURLY, DAILY, ANNUAL, null]
+                  probation_end_date:
+                    type: [string, 'null']
+                    format: date
+                  probation_confirmed_at:
+                    type: [string, 'null']
+                    format: date-time
+                  probation_state:
+                    type: string
+                    enum: [NONE, RUNNING, DUE_SOON, OVERDUE, CONFIRMED]
+                  probation_days_left:
+                    type: [integer, 'null']
+            pending_employment:
+              oneOf:
+              - type: 'null'
+              - type: object
+                required: [employment_type, worker_classification, base_pay_won, pay_unit, probation_end_date,
+                  probation_confirmed_at, probation_state, probation_days_left]
+                properties:
+                  employment_type:
+                    nullable: true
+                    type: string
+                    enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN,
+                      OUTSOURCED_ON_SITE, FREELANCE]
+                  worker_classification:
+                    nullable: true
+                    type: string
+                    enum: [EMPLOYEE, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, PLATFORM_OR_FREELANCE]
+                  base_pay_won:
+                    type: [integer, 'null']
+                    format: int64
+                  pay_unit:
+                    type: [string, 'null']
+                    enum: [MONTHLY, HOURLY, DAILY, ANNUAL, null]
+                  probation_end_date:
+                    type: [string, 'null']
+                    format: date
+                  probation_confirmed_at:
+                    type: [string, 'null']
+                    format: date-time
+                  probation_state:
+                    type: string
+                    enum: [NONE, RUNNING, DUE_SOON, OVERDUE, CONFIRMED]
+                  probation_days_left:
+                    type: [integer, 'null']
+            updated_at:
+              type: string
+              format: date-time
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: stale_facts, invalid_transition, or no employment profile.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'

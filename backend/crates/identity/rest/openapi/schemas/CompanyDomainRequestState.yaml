@@ -1,0 +1,5 @@
+type: object
+required: [pending_domain]
+properties:
+  pending_domain:
+    type: [string, 'null']

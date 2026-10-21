@@ -1,0 +1,51 @@
+tags:
+  - employees
+operationId: getBulkEmployeeLifecycleJob
+summary: A bulk appointment sent as a job (CAP-04)
+description: The job of a POST /api/v1/employees/lifecycle-events/bulk sent with Prefer respond-async. state is
+  queued, running (phase checking, then recording; done of total), done (result is the batch response) or
+  failed (error is the refusal, e.g. bulk_lifecycle_refused with its refusals, or bulk_job_interrupted when
+  the server stopped before the batch was recorded; nothing was recorded, send it again). Requires
+  employee_directory_manage tenant-wide.
+security:
+- bearerAuth: []
+parameters:
+- name: job_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The job.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [id, state, total, done, created_at]
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            state:
+              type: string
+              enum: [queued, running, done, failed]
+            phase:
+              type: [string, 'null']
+              enum: [checking, recording, null]
+            total:
+              type: integer
+            done:
+              type: integer
+            result:
+              oneOf:
+              - $ref: '#/components/schemas/BulkEmployeeLifecycleEventResponse'
+              - type: 'null'
+            error:
+              type: [object, 'null']
+              description: '{code, message, refusals?} of a failed job.'
+            created_at:
+              type: string
+              format: date-time
+            finished_at:
+              type: [string, 'null']
+              format: date-time

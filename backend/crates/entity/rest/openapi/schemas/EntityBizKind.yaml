@@ -1,0 +1,6 @@
+type: string
+enum:
+- CORPORATION
+- INDIVIDUAL
+- ID_NUMBER_ORG
+description: 사업자 구분 (공통서식 「사업장 형태」).

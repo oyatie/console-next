@@ -1,0 +1,4 @@
+type: string
+description: Org-tree node kind. COMPANY is the tenant itself (id = the tenant org id), projected as the root; the
+  others are OrgUnit kinds.
+enum: [COMPANY, SITE, DEPARTMENT, TEAM]

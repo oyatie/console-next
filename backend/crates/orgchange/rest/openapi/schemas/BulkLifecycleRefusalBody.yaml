@@ -1,0 +1,35 @@
+type: object
+required: [error]
+properties:
+  error:
+    type: object
+    required: [code, message]
+    properties:
+      code:
+        type: string
+        description: bulk_lifecycle_refused, or validation for a malformed request.
+      message:
+        type: string
+      refusals:
+        type: array
+        description: Present with bulk_lifecycle_refused; one entry per refused employee.
+        items:
+          type: object
+          required: [employee_id, code, message]
+          properties:
+            employee_id:
+              $ref: '#/components/schemas/Uuid'
+            code:
+              type: string
+              description: >-
+                The single-event refusal code, e.g. not_found, invalid_transition, lifecycle_noop,
+                lifecycle_signoff_required, transfer_cross_entity. Stable; branch on this, not on message.
+            field:
+              type: string
+              description: >-
+                The input the refusal names, when it names one (to_org_unit_id for transfer_cross_entity).
+            message:
+              type: string
+              description: >-
+                Human-readable reason, localized exactly like error.message (Korean when the request
+                prefers `Accept-Language: ko`).

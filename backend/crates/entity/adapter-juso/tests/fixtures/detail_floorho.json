@@ -1,0 +1,41 @@
+{
+ "results": {
+  "common": {
+   "errorMessage": "정상",
+   "errorCode": "0",
+   "totalCount": "48"
+  },
+  "juso": [
+   {
+    "rnMgtSn": "117102005011",
+    "buldSlno": "0",
+    "buldMnnm": "345",
+    "hoNm": "101호",
+    "dongNm": "101동",
+    "udrtYn": "0",
+    "floorNm": "1층",
+    "admCd": "1171010700"
+   },
+   {
+    "rnMgtSn": "117102005011",
+    "buldSlno": "0",
+    "buldMnnm": "345",
+    "hoNm": "104호",
+    "dongNm": "101동",
+    "udrtYn": "0",
+    "floorNm": "1층",
+    "admCd": "1171010700"
+   },
+   {
+    "rnMgtSn": "117102005011",
+    "buldSlno": "0",
+    "buldMnnm": "345",
+    "hoNm": "201호",
+    "dongNm": "101동",
+    "udrtYn": "0",
+    "floorNm": "2층",
+    "admCd": "1171010700"
+   }
+  ]
+ }
+}

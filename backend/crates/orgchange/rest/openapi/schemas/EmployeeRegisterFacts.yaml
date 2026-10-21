@@ -1,0 +1,26 @@
+type: object
+required: [employee_id, updated_at, sex, address, careers, exit_reason_code, exit_reason_label, register_note]
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  updated_at:
+    type: string
+    format: date-time
+  sex:
+    type: [string, 'null']
+    enum: [MALE, FEMALE, null]
+  address:
+    oneOf:
+    - $ref: '#/components/schemas/KrAddress'
+    - type: 'null'
+  careers:
+    description: null = 미입력; [] = 경력 없음.
+    type: [array, 'null']
+    items:
+      $ref: '#/components/schemas/EmployeeCareer'
+  exit_reason_code:
+    type: [string, 'null']
+  exit_reason_label:
+    type: [string, 'null']
+  register_note:
+    type: [string, 'null']

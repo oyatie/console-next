@@ -1,0 +1,54 @@
+type: object
+required: [total, status, employment_type, legal_entity, workplace, review]
+properties:
+  total:
+    type: integer
+    format: int64
+  status:
+    type: array
+    items:
+      $ref: '#/components/schemas/EmployeeFacetCount'
+  employment_type:
+    type: array
+    description: value null counts rows with no employment profile.
+    items:
+      $ref: '#/components/schemas/EmployeeFacetCount'
+  legal_entity:
+    type: array
+    description: Counts per legal_entity_id (value is the id; null counts rows with no assignment), with every
+      filter except legal_entity_id.
+    items:
+      $ref: '#/components/schemas/EmployeeFacetCount'
+  workplace:
+    type: array
+    description: Counts per workplace_id (value is the id; null counts rows with no 사업장), with every filter
+      except workplace_id.
+    items:
+      $ref: '#/components/schemas/EmployeeFacetCount'
+  review:
+    type: object
+    required: [register_review_required, identity_review_required, home_branch_review_required, lifecycle_apply_failed, contract_ended,
+      contract_ending_before]
+    properties:
+      identity_review_required:
+        type: integer
+        format: int64
+      register_review_required:
+        type: integer
+        format: int64
+      home_branch_review_required:
+        type: integer
+        format: int64
+      lifecycle_apply_failed:
+        type: integer
+        format: int64
+      contract_ended:
+        type: integer
+        format: int64
+        description: Current contract ended before today (KST).
+      contract_ending_before:
+        description: Current contract ends before the request's contract_ending_before; null without that date.
+        oneOf:
+        - type: integer
+          format: int64
+        - type: 'null'

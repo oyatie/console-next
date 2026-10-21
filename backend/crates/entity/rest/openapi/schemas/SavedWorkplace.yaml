@@ -1,0 +1,14 @@
+type: object
+required:
+- record
+- warnings
+- change_mode
+properties:
+  record:
+    $ref: '#/components/schemas/Workplace'
+  warnings:
+    type: array
+    items:
+      $ref: '#/components/schemas/EntityFieldWarning'
+  change_mode:
+    $ref: '#/components/schemas/EntityChangeMode'

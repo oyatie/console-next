@@ -1,0 +1,4 @@
+/* Dev-only gallery layout (ships only in the lazily loaded /_gallery chunk). */
+.gallery__section { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+
+.gallery__canvas { display: flex; height: 360px; }

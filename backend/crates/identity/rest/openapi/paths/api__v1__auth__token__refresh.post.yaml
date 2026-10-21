@@ -1,0 +1,38 @@
+tags:
+  - auth
+summary: Rotate refresh token
+description: Rotates an opaque refresh token; reuse of an old token revokes the whole family and returns 401.
+  Rate-limited per refresh family (one signed-in session), 60 rotations per minute, never per client IP, so a whole
+  office behind one NAT address is never limited together. A 429 leaves the presented token unspent; retry it later.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/RefreshTokenRequest'
+responses:
+  '200':
+    description: New access and refresh tokens.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/TokenPairResponse'
+  '401':
+    description: unauthorized — the token is unknown, expired or revoked (reuse revokes the family).
+      session_idle_expired — the session passed the tenant's auth.idle_timeout_minutes since its last
+      user interaction (X-Last-Interaction); the family ends and keeps answering this code until a new
+      sign-in.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '403':
+    description: tenant_inactive — the account's tenant is SUSPENDED or ARCHIVED (the platform tier
+      excepted); no session is issued. Checked after the credential is proven, so sign-in start never
+      tells the states apart.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '429':
+    $ref: '#/components/responses/TooManyRequests'

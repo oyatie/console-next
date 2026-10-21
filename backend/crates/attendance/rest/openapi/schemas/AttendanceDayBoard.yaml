@@ -1,0 +1,3 @@
+type: object
+required: [date, judged, ledger, marks, groups]
+properties: { date: { type: string, format: date }, judged: { type: boolean }, ledger: { $ref: '#/components/schemas/AttendanceLedger' }, marks: { $ref: '#/components/schemas/AttendanceMarkCounts' }, groups: { type: array, items: { $ref: '#/components/schemas/AttendanceBoardGroup' } } }

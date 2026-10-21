@@ -1,0 +1,53 @@
+tags:
+- entity
+operationId: updateWorkplaceKind
+summary: Relabel or (de)activate a 사업장 kind; a platform default gets the tenant's override
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: code
+  in: path
+  required: true
+  schema:
+    type: string
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/UpdateWorkplaceKindRequest'
+responses:
+  '200':
+    description: Updated.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/WorkplaceKind'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}].'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: workplace_kind_not_found.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

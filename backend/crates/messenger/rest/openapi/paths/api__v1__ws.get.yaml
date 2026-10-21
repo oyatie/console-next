@@ -1,0 +1,37 @@
+tags:
+  - ws
+operationId: connectRealtimeWebSocket
+summary: Connect to the realtime WebSocket stream
+description: 'Upgrades to a WebSocket after bearer-token verification (routed for any method so an
+  HTTP/2 extended CONNECT also upgrades). Server frames are JSON realtime events and a ping every
+  25 s. Reconnecting clients pass last_message_id to resume messenger frames; changes=true adds the
+  change stream of GET /api/v1/events, resumed with last_event_id.
+
+  '
+security:
+- bearerAuth: []
+parameters:
+- name: last_message_id
+  in: query
+  required: false
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: changes
+  in: query
+  required: false
+  schema:
+    type: boolean
+- name: last_event_id
+  in: query
+  required: false
+  schema:
+    type: integer
+    format: int64
+    minimum: 0
+responses:
+  '101':
+    description: WebSocket upgrade accepted.
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '503':
+    description: Realtime is unavailable.

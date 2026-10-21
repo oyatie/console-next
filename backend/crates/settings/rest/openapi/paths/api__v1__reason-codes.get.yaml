@@ -1,0 +1,38 @@
+operationId: listReasonCodes
+summary: List one domain's reason codes
+description: The domain's catalog for reason pickers. System codes come first in roster order (labels from the frontend
+  catalog, keyed reason.<domain>.<code>), then the tenant's own codes by sort (active and inactive, with their labels),
+  then OTHER, which always needs a note.
+tags:
+- Settings
+security:
+- bearerAuth: []
+parameters:
+- name: domain
+  in: query
+  required: true
+  description: Reason domain, e.g. period_unlock.
+  schema:
+    type: string
+responses:
+  '200':
+    description: The domain's catalog.
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required: [domain, items]
+          properties:
+            domain:
+              type: string
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/ReasonCatalogEntry'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

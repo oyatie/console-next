@@ -1,0 +1,11 @@
+type: object
+required:
+- list
+- items
+properties:
+  list:
+    $ref: '#/components/schemas/RefList'
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/RefCode'

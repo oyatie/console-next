@@ -1,0 +1,81 @@
+tags:
+  - employees
+operationId: previewEmployeeImport
+summary: Preview an employee workbook through the governed import ledger
+description: >-
+  Creates an immutable tenant-scoped raw import run and preserves every non-empty source row except restricted
+  columns (resident registration number, pay, bank account, phone and similar) and any resident-registration-number-shaped
+  value, which are dropped before anything is stored or returned; such columns are listed in `columns` as `restricted`
+  only. Location values are masked in the response. Returns a column-to-employee schema mapping preview. No employee
+  rows are written until dry-run and apply are completed.
+
+  IMPORT-2 (decisions #25): any layout. The upload is read under the registry caps (import.upload.max_mib: 413
+  import_file_too_large; import.zip.max_entries, import.zip.max_expanded_mib counted while inflating,
+  import.zip.max_ratio, import.sheet.max_grid_cells, import.workbook.max_cells: 422 workbook_too_many_entries,
+  workbook_expands_too_far, workbook_compression_ratio, sheet_grid_too_large, workbook_too_many_cells,
+  workbook_corrupt, workbook_protected, workbook_not_xlsx). Every sheet is detected on its own — the operator's
+  mapping, then the tenant's remembered header labels, then the catalog aliases; a sheet with no 성명 header is
+  `needs_mapping` (sheets[].header_candidates), stores no cell and is a blocking 확인 필요 item until it is mapped
+  or skipped. A 주민등록번호 column is sealed apart (never in a raw row) when the server has its vault keys,
+  dropped otherwise (rrn_unavailable). Labels the operator maps are remembered for the tenant.
+
+  BE-MIG (walkthrough W12): a totals / footer row (a 합계/총계/소계/계/total cell, a 성명 cell that is empty, a
+  totals word or a count, and no 입사일) is kept PRESERVED, never a person (non-blocking summary_row_skipped).
+  The phone column (휴대폰, 휴대전화, 핸드폰, 연락처, 전화번호, phone, mobile → target phone) is read as E.164 and
+  staged apart, never in a raw row or a preview; apply stores it on the employment profile (a cell that is not
+  a phone number: non-blocking phone_invalid). A sheet skipped once is skipped again by name (sheets[].status
+  skipped, source remembered) until mapping.sheets[name].skip is false.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    multipart/form-data:
+      schema:
+        type: object
+        required:
+        - file
+        properties:
+          file:
+            type: string
+            format: binary
+            description: Employee .xlsx workbook.
+          pay_period_start:
+            type: string
+            format: date
+            description: First day (YYYY-MM-DD) of the pay period this upload belongs to. W12 — optional for an
+              employee roster (never defaulted; a run without one is never payroll material); send both or
+              neither (422 otherwise).
+          pay_period_end:
+            type: string
+            format: date
+            description: Last day (YYYY-MM-DD) of the pay period, not before pay_period_start. With
+              pay_period_start, or not at all.
+          mapping:
+            type: string
+            description: 'IMPORT-2, optional JSON: {"sheets": {"<sheet name>": {"header_row": 1-based, "columns":
+              {"<column letter>": "<target>" | null}, "skip": bool | null}}}. skip true is remembered for the
+              sheet name; false, or mapping the sheet (header_row or columns), imports a remembered skip.
+              Columns need header_row; the sheet needs
+              a name column. 422 mapping_invalid, mapping_unknown_sheet, mapping_unknown_target,
+              mapping_bad_column, mapping_header_row_required, mapping_header_row_out_of_range,
+              mapping_name_required, mapping_duplicate_target.'
+responses:
+  '200':
+    description: Import run preview with masked sample rows and mapping profile.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeImportPreviewResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '413':
+    description: import_file_too_large — the upload passed import.upload.max_mib.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'

@@ -1,0 +1,2 @@
+      type: string
+      enum: [TENANT_USER, OPS_ACCOUNT, GROUP_ADMIN, SUPPORT_OPERATOR, SYSTEM]

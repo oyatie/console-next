@@ -1,0 +1,22 @@
+tags:
+  - employees
+operationId: listEmployeeNumberRules
+summary: The tenant's 사번 numbering rules with each rule's next number (IMPORT-2)
+description: 'Decisions #25. Most specific first at numbering: 사업장, its 법인, the tenant; no rule: E- + 6
+  digits. Whether an import numbers rows without a 사번 at all is the registry key
+  import.employee_number.unnumbered (assign_by_rule | queue).'
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: The rules; next_number is a preview, nothing is reserved.
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeNumberRule'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'

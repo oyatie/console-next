@@ -1,0 +1,21 @@
+tags:
+- onboarding
+operationId: getSetupChecklist
+summary: The setup rail
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Steps with states and remedies.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SetupChecklist'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

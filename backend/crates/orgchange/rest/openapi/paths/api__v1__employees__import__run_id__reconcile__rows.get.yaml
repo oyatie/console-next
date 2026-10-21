@@ -1,0 +1,54 @@
+tags:
+  - employees
+operationId: listEmployeeImportReconcileRows
+summary: The 이관 확인 rows of an applied import (BE-EMP-UI; spec E7-row)
+description: One row per planned row, keyset by (sheet, row); state filter UNCHECKED, CONFIRMED or NEEDS_CHECK
+  (case-insensitive). Name and 사번 only - never a raw cell, never the 주민등록번호. limit 1..500 (default 100).
+security:
+- bearerAuth: []
+parameters:
+- name: run_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: state
+  in: query
+  required: false
+  schema:
+    type: string
+    enum: [UNCHECKED, CONFIRMED, NEEDS_CHECK]
+- name: after
+  in: query
+  required: false
+  description: The previous page's next_cursor.
+  schema:
+    type: string
+- name: limit
+  in: query
+  required: false
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 500
+responses:
+  '200':
+    description: One page.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeImportReconcileRowPage'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: import_not_applied.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'

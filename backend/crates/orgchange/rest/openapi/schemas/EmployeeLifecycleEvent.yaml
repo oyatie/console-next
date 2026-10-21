@@ -1,0 +1,193 @@
+type: object
+required:
+- id
+- employee_id
+- event_type
+- to_status
+- state
+- effective_date
+- comment
+- signoffs
+- created_by
+- created_by_name
+- created_at
+properties:
+  actor_kind: {oneOf: [{$ref: '#/components/schemas/ActorKind'}, {type: 'null'}]}
+  command_id: {type: [string, 'null'], format: uuid}
+  id:
+    $ref: '#/components/schemas/Uuid'
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  event_type:
+    type: string
+    enum:
+    - ONBOARD
+    - OFFBOARD
+    - TERMINATE
+    - TRANSFER
+    - PROMOTE
+    - LEAVE_OF_ABSENCE
+    - RETURN_FROM_LEAVE
+    - CONTRACT_RENEWAL
+    - EXIT_REVERSAL
+    - REHIRE
+    - RESCIND
+    - GROUP_TRANSFER
+    - APPOINT
+    - EMPLOYMENT_TYPE_CHANGE
+    description: OFFBOARD/TERMINATE rows are recorded by exit-case HR confirmation (or are historical);
+      EXIT_REVERSAL is the compensating event a rejected/cancelled exit case records; RESCIND is the compensating
+      row of a rescission (voids_event_id names the rescinded event); REHIRE starts a new employment period
+      (재입사, BW-19).
+  from_status:
+    type: string
+    nullable: true
+  to_status:
+    type: string
+    enum:
+    - PRE_HIRE
+    - ACTIVE
+    - ON_LEAVE
+    - EXITED
+    - UNKNOWN
+  from_company:
+    type: string
+    nullable: true
+  to_company:
+    type: string
+    nullable: true
+  from_org_unit:
+    type: string
+    nullable: true
+  to_org_unit:
+    type: string
+    nullable: true
+  from_position:
+    type: string
+    nullable: true
+  to_position:
+    type: string
+    nullable: true
+  expected_return_date:
+    type: string
+    nullable: true
+  contract_end_date:
+    type: string
+    nullable: true
+  leave_type:
+    type: string
+    enum: [CHILDCARE, MATERNITY, ILLNESS, PERSONAL, OTHER]
+    description: LEAVE_OF_ABSENCE only; absent when not given. Omitted for callers without
+      employee_directory_manage (ILLNESS and MATERNITY reveal health information, 개보법 제23조).
+  batch_id:
+    $ref: '#/components/schemas/Uuid'
+    description: Present when the event was recorded by a bulk appointment (POST /api/v1/employees/lifecycle-events/bulk).
+  state:
+    type: string
+    enum: [SCHEDULED, APPLIED, APPLY_FAILED, CANCELLED]
+    description: SCHEDULED until its effective_date (KST) arrives; APPLIED once in effect (every immediate event);
+      APPLY_FAILED when it was no longer valid on its date (failure_code/failure_reason say why); CANCELLED when
+      withdrawn or replaced by a correction (superseded_by). The from_/to_ fields of a SCHEDULED event are the
+      projection at scheduling time and are rewritten from the live employee when it applies.
+  applied_at:
+    $ref: '#/components/schemas/Timestamp'
+    description: When a scheduled event was applied; absent otherwise.
+  failure_code:
+    type: string
+    description: APPLY_FAILED only, the refusal code (e.g. invalid_transition, lifecycle_noop, validation).
+  failure_reason:
+    type: string
+    description: >-
+      APPLY_FAILED only, the server's refusal message, localized exactly like error.message (Korean when the
+      request prefers `Accept-Language: ko`).
+  cancelled_by:
+    $ref: '#/components/schemas/Uuid'
+    description: CANCELLED only.
+  cancelled_by_name:
+    type: string
+    description: CANCELLED by hand only, the canceller's display name resolved server-side within the tenant;
+      absent when unknown.
+  cancelled_at:
+    $ref: '#/components/schemas/Timestamp'
+    description: CANCELLED only.
+  cancel_reason:
+    type: string
+    description: CANCELLED by hand only (absent when replaced by a correction). Omitted for callers without
+      employee_directory_manage (free text about the employee).
+  superseded_by:
+    $ref: '#/components/schemas/Uuid'
+    description: CANCELLED by a correction only, the SCHEDULED event that replaced it.
+  reason_code:
+    type: string
+    description: The BW-07 reason code of a TRANSFER or PROMOTE (lifecycle_cancel for a RESCIND), when one was
+      given; comment is its note.
+  voids_event_id:
+    $ref: '#/components/schemas/Uuid'
+    description: BW-11. The event this row corrects (same type and date) or rescinds (RESCIND).
+  voided_by:
+    $ref: '#/components/schemas/Uuid'
+    description: BW-11. The correction or RESCIND row that voided this event; it no longer holds.
+  to_workplace_id:
+    $ref: '#/components/schemas/Uuid'
+    description: TRANSFER (E-S3b). The 사업장 of the same 법인 the event moves the employee to (전근), named or
+      taken from the unit's 사업장; absent when the employee stays where they work. GROUP_TRANSFER - the
+      receiving 사업장 of the other 법인.
+  group_transfer:
+    $ref: '#/components/schemas/GroupTransferFacts'
+    description: GROUP_TRANSFER only. The facts recorded with the 전적 (evidence references are omitted from the
+      read-only view), plus from_legal_entity_id and to_legal_entity_id.
+  from_job_title_id:
+    $ref: '#/components/schemas/Uuid'
+    description: PROMOTE only, the catalog title before (absent when the employee had none).
+  to_job_title_id:
+    $ref: '#/components/schemas/Uuid'
+    description: PROMOTE by catalog id only, the title after.
+  from_grade_id:
+    $ref: '#/components/schemas/Uuid'
+    description: PROMOTE with to_grade_id only (MR-25), the 직급 before.
+  to_grade_id:
+    $ref: '#/components/schemas/Uuid'
+    description: PROMOTE with to_grade_id only, the 직급 after.
+  from_position_kind_id:
+    $ref: '#/components/schemas/Uuid'
+    description: APPOINT only, the 직책 before (absent when none).
+  to_position_kind_id:
+    $ref: '#/components/schemas/Uuid'
+    description: APPOINT only, the 직책 after (absent when none, e.g. 보직 해제).
+  from_job_id:
+    $ref: '#/components/schemas/Uuid'
+    description: APPOINT only, the 직무 before.
+  to_job_id:
+    $ref: '#/components/schemas/Uuid'
+    description: APPOINT only, the 직무 after.
+  from_job:
+    type: string
+    description: APPOINT only, the 종사 업무 text before.
+  to_job:
+    type: string
+    description: APPOINT only, the 종사 업무 text after.
+  from_job_family_id:
+    $ref: '#/components/schemas/Uuid'
+    description: APPOINT only, the 직군 before.
+  to_job_family_id:
+    $ref: '#/components/schemas/Uuid'
+    description: APPOINT only, the 직군 after.
+  from_employment_type:
+    $ref: '#/components/schemas/EmploymentType'
+    description: EMPLOYMENT_TYPE_CHANGE only (MR-24), the 고용형태 before.
+  to_employment_type:
+    $ref: '#/components/schemas/EmploymentType'
+    description: EMPLOYMENT_TYPE_CHANGE only, the 고용형태 after.
+  effective_date:
+    type: string
+  comment:
+    type: string
+  signoffs:
+    $ref: '#/components/schemas/EmployeeLifecycleSignoffs'
+  created_by:
+    $ref: '#/components/schemas/Uuid'
+  created_by_name:
+    type: [string, 'null']
+    description: The recorder's display name, resolved server-side within the tenant; null when unknown.
+  created_at:
+    $ref: '#/components/schemas/Timestamp'

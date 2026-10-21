@@ -1,0 +1,70 @@
+/* The people roster (E1): head band, view switch, scope and stat chips, the table full-bleed, the key strip. Layout only
+   (design-language §12): surfaces are ui/ components (Band, PageHead's PhaseLine, ToggleButton chips, Banner, Avatar,
+   PathList), type and tone are composed from the §3 classes. */
+.page { display: flex; flex-direction: column; min-height: 100%; }
+.band { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-5) 0; }
+.titleRow { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.title { composes: t-xl t-strong from global; margin: 0; white-space: nowrap; }
+/* Counts hold the room of a 2,000-person company before and after they land: a count that a live change re-reads moves nothing beside it. */
+.headcount { composes: t-sm muted num from global; display: inline-block; min-width: 10ch; white-space: nowrap; }
+.views { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; padding-bottom: var(--space-2); }
+.sortPick { flex: none; }
+.findSlot { display: flex; flex: 1 1 auto; justify-content: flex-end; min-width: 0; min-height: calc(var(--target) + var(--space-1)); }
+.scope { display: flex; align-items: center; gap: var(--space-2); min-height: calc(var(--target) + var(--space-1) + var(--space-2) * 2); box-sizing: border-box; padding: var(--space-2) var(--space-5); flex-wrap: wrap; }
+.stats { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-5); flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+.stats[data-pending] .chips { visibility: hidden; }
+.chips { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: nowrap; flex: none; }
+.lab { composes: t-label from global; white-space: nowrap; flex: none; margin-left: var(--space-2); }
+.op { composes: t-xs muted from global; flex: none; }
+.sum { composes: t-xs muted from global; display: inline-block; min-width: 12ch; white-space: nowrap; }
+/* At least the loading placeholder's height: a short first page does not pull the foot up under the pointer. */
+.tableWrap, .firstRun { min-width: 0; min-height: calc(var(--row-h) * 9); }
+.foot { composes: t-xs muted from global; display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-5); min-height: calc(var(--space-6) + var(--space-1)); flex-wrap: wrap; }
+.footCount { display: inline-block; min-width: calc(var(--space-6) * 3); }
+.footRange { composes: t-ink num from global; }
+.key { display: inline-flex; align-items: center; gap: var(--space-1); }
+.steel { composes: muted from global; }
+.warnText { composes: t-warn from global; }
+.nm { composes: t-medium from global; }
+.notes { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-5) 0; }
+.split { position: relative; }
+.changed { display: inline-flex; margin-inline-start: var(--space-3); }
+.inView { display: inline-flex; align-items: center; gap: var(--space-1); }
+.keep { display: inline-flex; align-items: center; gap: var(--space-1); }
+.firstRun { display: flex; flex-direction: column; gap: var(--space-5); max-width: calc(var(--card-w) * 1.7); padding: var(--space-6) calc(var(--space-6) * 1.5); }
+.firstTitle { composes: t-xl t-strong from global; margin: 0; }
+.firstSub { composes: t-sm muted from global; margin: var(--space-1) 0 0; }
+.paths { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--panel-w) * 0.6), 1fr)); gap: var(--space-4); }
+.pathTitle { composes: t-lg from global; display: flex; align-items: center; gap: var(--space-2); margin: 0; }
+.columns { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--space-4); }
+@media (max-width: 767px) { .columns { grid-template-columns: minmax(0, 1fr); } }
+.colList, .colSide { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.order { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.order li { display: flex; align-items: center; gap: var(--space-1); min-height: var(--target); }
+.fixed { composes: t-sm muted from global; padding-left: var(--space-1); }
+.colBox { flex: 1; display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--target); }
+.said { composes: t-xs muted from global; margin: 0; }
+/* The peek lies over the table's right side, full height (E1-peek): the list keeps its columns and its scroll. */
+.peek { position: absolute; inset: 0 0 0 auto; z-index: 2; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); width: var(--panel-w); max-width: 100%; overflow: auto; }
+.peekCrumb { composes: t-xs muted from global; }
+.peekHead { display: flex; align-items: center; gap: var(--space-3); }
+.peekName { composes: t-lg from global; margin: 0; }
+.peekSub { composes: t-xs muted from global; }
+.peekTitle { composes: t-sm from global; display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); }
+.peekGap { composes: t-danger t-medium from global; }
+.peekOk { composes: t-ok t-medium from global; }
+.peekItems { composes: t-sm from global; display: grid; gap: var(--space-1); margin: 0; }
+.peekItems > div { display: grid; grid-template-columns: calc(var(--space-6) * 3.5) minmax(0, 1fr); gap: var(--space-2); padding: calc(var(--space-1) / 2) 0; }
+.peekTerm { composes: muted from global; }
+.peekItems dd { margin: 0; }
+.peekFoot { composes: t-xs muted from global; margin: 0; }
+.scopePick { display: flex; flex-direction: column; gap: var(--space-2); }
+.peekKept { composes: t-xs muted from global; display: flex; align-items: center; gap: var(--space-1); margin: 0; }
+.peekBox { composes: t-sm from global; display: grid; gap: var(--space-1); margin: 0; }
+.peekBox > div { display: grid; grid-template-columns: calc(var(--space-6) * 3) minmax(0, 1fr); gap: var(--space-2); }
+.peekBox dd { margin: 0; }
+.ways { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.way { composes: t-xs muted from global; display: grid; grid-template-columns: calc(var(--space-6) * 4.5) minmax(0, 1fr); gap: var(--space-3); align-items: center; }
+.exitTabs { display: flex; gap: var(--space-1); }
+.voided { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-5); }
+.listError { margin: var(--space-2) var(--space-4); }

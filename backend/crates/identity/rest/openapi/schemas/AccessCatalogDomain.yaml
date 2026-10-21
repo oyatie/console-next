@@ -1,0 +1,29 @@
+type: object
+required:
+- domain
+- grantable
+- levels
+- operations
+properties:
+  domain:
+    $ref: '#/components/schemas/AccessDomain'
+  grantable:
+    type: boolean
+  levels:
+    type: array
+    description: Levels this domain offers, in display order.
+    items:
+      $ref: '#/components/schemas/AccessLevel'
+  operations:
+    type: array
+    description: The operation keys tagged with this domain, each with its level (explain only).
+    items:
+      type: object
+      required:
+      - operation
+      - level
+      properties:
+        operation:
+          type: string
+        level:
+          $ref: '#/components/schemas/AccessLevel'

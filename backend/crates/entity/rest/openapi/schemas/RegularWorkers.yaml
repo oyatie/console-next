@@ -1,0 +1,32 @@
+type: object
+description: 상시근로자 수 (근로기준법 시행령 §7의2). Derived, never typed; HOLD until a 노무사 releases the method
+  (BW-35), so no value is shown, only the live roster count.
+required:
+- status
+- basis
+- missing
+- live_headcount
+properties:
+  status:
+    type: string
+    enum:
+    - HOLD
+  value:
+    type:
+    - integer
+    - 'null'
+  basis:
+    type: string
+    enum:
+    - LSA_DECREE_7_2
+  missing:
+    type: array
+    items:
+      type: string
+      enum:
+      - labor_attorney_review
+      - statutory_rule_rows
+      - operating_day_calendar
+  live_headcount:
+    type: integer
+    format: int64

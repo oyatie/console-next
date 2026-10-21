@@ -1,0 +1,31 @@
+type: object
+required:
+- name_ko
+- lines
+additionalProperties: false
+properties:
+  name_ko:
+    type: string
+    minLength: 1
+    maxLength: 60
+  name_en:
+    type:
+    - string
+    - 'null'
+    maxLength: 60
+  description:
+    type:
+    - string
+    - 'null'
+    maxLength: 500
+  status:
+    type: string
+    enum:
+    - DRAFT
+    - ACTIVE
+    default: ACTIVE
+  lines:
+    type: array
+    minItems: 1
+    items:
+      $ref: '#/components/schemas/AccessRoleLine'

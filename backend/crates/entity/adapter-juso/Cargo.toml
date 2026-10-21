@@ -1,0 +1,24 @@
+[package]
+name = "console-entity-adapter-juso"
+version = "0.1.0"
+description = "도로명주소 검색 and 상세주소 검색 (juso.go.kr) through the server: key from the environment, explicit unavailable state, per-user rate limit."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+console-entity-domain.workspace = true
+reqwest = { workspace = true, features = ["rustls"] }
+serde.workspace = true
+serde_json.workspace = true
+time.workspace = true
+tracing.workspace = true
+url.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util", "time"] }
+
+[lints]
+workspace = true

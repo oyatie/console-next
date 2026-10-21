@@ -1,0 +1,320 @@
+[
+ {
+  "record": "Entity.business_registration",
+  "op": "create",
+  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Entity.business_registration",
+  "op": "update",
+  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Entity.business_registration",
+  "op": "end",
+  "lane": "unit: crud-g10 (orchestra; registration void from the cert card)",
+  "why": "Registration void has no UI"
+ },
+ {
+  "record": "Entity.document",
+  "op": "create",
+  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Entity.identifier_correction",
+  "op": "create",
+  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Entity.setup_batch",
+  "op": "create",
+  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Entity.setup_batch",
+  "op": "end",
+  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Entity.workplace_close",
+  "op": "create",
+  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Entity.workplace_close",
+  "op": "end",
+  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Entity.workplace_kind",
+  "op": "create",
+  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Entity.workplace_kind",
+  "op": "update",
+  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Entity.workplace_kind",
+  "op": "end",
+  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Org.legacy_branch",
+  "op": "update",
+  "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Org.org_change",
+  "op": "create",
+  "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Org.org_change",
+  "op": "update",
+  "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Org.org_change",
+  "op": "end",
+  "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Org.setup_batch",
+  "op": "create",
+  "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "Org.setup_batch",
+  "op": "end",
+  "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.absence_alert",
+  "op": "end",
+  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.appointment_notice",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.change_request",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.change_request",
+  "op": "end",
+  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.change_set",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.change_set",
+  "op": "update",
+  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.change_set",
+  "op": "end",
+  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+  "why": "A change-set draft cannot be discarded from the UI"
+ },
+ {
+  "record": "HR.contract",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.contract",
+  "op": "update",
+  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.correction_ledger",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.data_import_run",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.data_import_run",
+  "op": "update",
+  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.employee_number",
+  "op": "end",
+  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+  "why": "A single 사번 change has no undo; rule removal is a raw DELETE"
+ },
+ {
+  "record": "HR.employee_rrn",
+  "op": "create",
+  "lane": "unit: crud-g22 (orchestra; with crud-p0-rrn-correct for the governed path)",
+  "why": "No single-person RRN entry at registration or on the card"
+ },
+ {
+  "record": "HR.employment_assignment",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.exit_case",
+  "op": "end",
+  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.exit_settlement",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.exit_settlement",
+  "op": "update",
+  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.exit_settlement",
+  "op": "end",
+  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.identity_resolution",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.import_memory",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.import_memory",
+  "op": "update",
+  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.import_reconcile",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.import_reconcile",
+  "op": "update",
+  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.insurance_filing",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.insurance_filing",
+  "op": "update",
+  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.job_title",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.job_title",
+  "op": "update",
+  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.job_title",
+  "op": "end",
+  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.lifecycle_bulk_job",
+  "op": "create",
+  "lane": "unit: crud-g41 (orchestra; the async bulk job from the web)",
+  "why": "Bulk 발령 create never records a job row from the web"
+ },
+ {
+  "record": "HR.lifecycle_bulk_job",
+  "op": "end",
+  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+  "why": "Past bulk batches cannot be found to rescind"
+ },
+ {
+  "record": "HR.lifecycle_event",
+  "op": "update",
+  "lane": "unit: crud-appointment-correction (orchestra; governed 발령 correction)",
+  "why": "Correcting a 발령's date or pay is impossible (hard-coded deny)"
+ },
+ {
+  "record": "HR.lifecycle_event",
+  "op": "end",
+  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.person",
+  "op": "create",
+  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+  "why": "backend operation served; no action on the record's own page found within two interactions"
+ },
+ {
+  "record": "HR.person_record_import_batch",
+  "op": "create",
+  "lane": "unit: crud-g42 (orchestra; section import)",
+  "why": "인사카드 section import has no UI"
+ }
+]

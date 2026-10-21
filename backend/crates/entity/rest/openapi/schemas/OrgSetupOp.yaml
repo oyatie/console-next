@@ -1,0 +1,52 @@
+type: object
+description: 'One change. CREATE — name and one of workplace_id, parent_org_unit_id, parent_ref (the ref of a unit
+  created earlier in the batch). RENAME — org_unit_id, expected_version, name. MOVE — org_unit_id, expected_version
+  and one parent. DISSOLVE — org_unit_id, expected_version (the 부서 and the 부서 under it). SET_DETAILS —
+  org_unit_id, expected_version, code and head_employee_id, both the full new values (null clears; the head is
+  dated from today). CREATE also takes code and head_employee_id. Field codes: code invalid_format | code_taken
+  (another active 부서 has it), head_employee_id head_unavailable (not found or left).'
+required:
+- op
+properties:
+  op:
+    type: string
+    enum:
+    - CREATE
+    - RENAME
+    - MOVE
+    - DISSOLVE
+    - SET_DETAILS
+  ref:
+    type: string
+    description: 'CREATE: a label later ops of the batch name as parent_ref.'
+  name:
+    type: string
+    maxLength: 120
+  org_unit_id:
+    type: string
+    format: uuid
+  expected_version:
+    type: integer
+    format: int32
+    minimum: 1
+  workplace_id:
+    type: string
+    format: uuid
+  parent_org_unit_id:
+    type: string
+    format: uuid
+  parent_ref:
+    type: string
+  code:
+    type:
+    - string
+    - 'null'
+    maxLength: 30
+    pattern: ^[A-Za-z0-9._-]{1,30}$
+    description: 'CREATE, SET_DETAILS: 부서 코드, unique among active 부서 (the org change''s rule).'
+  head_employee_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+    description: 'CREATE, SET_DETAILS: 부서장, someone who has not left; may belong to another unit.'

@@ -1,0 +1,71 @@
+tags:
+  - employees
+operationId: rescindEmployeeLifecycleEvent
+summary: Rescind (취소·철회) an applied lifecycle event (BW-11)
+description: Undoes the employee's latest effective change (APPLIED, not RESCIND, not voided; otherwise 409
+  lifecycle_void_not_latest / lifecycle_event_voided / lifecycle_void_not_applied). Exits are reversed through
+  their exit case (409 lifecycle_void_exit_owned); ONBOARD and REHIRE cannot be rescinded (409
+  lifecycle_void_unsupported). The employee is restored to the event's from_ values (status, company, unit and
+  its binding, position and catalog title, contract end) and a RESCIND row naming it (voids_event_id) is
+  appended; a locked payroll month refuses it. Takes org-wide employee_directory_manage. Audited as
+  employee.lifecycle.rescind.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: event_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [reason_code]
+        properties:
+          reason_code:
+            type: string
+            description: A lifecycle_cancel code (422 reason_code_invalid).
+          note:
+            type: [string, 'null']
+            maxLength: 1000
+          confirm_cascades:
+            type: boolean
+            default: false
+            description: false previews cascades and writes nothing; true rescinds.
+responses:
+  '200':
+    description: The preview, or the rescission.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [cascades, rescinded]
+          properties:
+            cascades:
+              type: array
+              description: The employee's SCHEDULED events; on confirm they are re-validated against the
+                restored employee and any that would fail refuse the rescission (409 lifecycle_schedule_conflict).
+              items:
+                type: object
+            rescinded:
+              description: The RESCIND row once confirmed; null on a preview.
+              oneOf:
+              - $ref: '#/components/schemas/EmployeeLifecycleEvent'
+              - type: 'null'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

@@ -1,0 +1,98 @@
+tags:
+  - employees
+operationId: putChangeSetLine
+summary: Draft or redraft one employee's line in the caller's change set (BW-38)
+description: One line per employee per set; a second post for the same employee replaces it. Checked on draft
+  (shape and the single event's per-kind field rules, employee 404, an ACTIVE unit for TRANSFER, an active
+  title for PROMOTE, the reason code); catalog ids of APPOINT / 직급 and the
+  state, no-op, schedule and supersede rules run at commit. The pin is expected_head_version, else the
+  employee's version now. At most 500 lines. A set that is not OPEN is 409 invalid_transition.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [employee_id, effective_date, comment]
+        properties:
+          employee_id:
+            $ref: '#/components/schemas/Uuid'
+          expected_head_version:
+            type: [integer, 'null']
+            minimum: 0
+            description: The head_version the client read (GET …/lifecycle-events).
+          effective_date:
+            type: string
+            format: date
+          to_org_unit_id:
+            description: TRANSFER (required there; refused for PROMOTE).
+            oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+          to_job_title_id:
+            description: PROMOTE by catalog title (wins over to_position).
+            oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+          to_position:
+            type: [string, 'null']
+            maxLength: 200
+          reason_code:
+            type: [string, 'null']
+            description: A lifecycle_transfer / lifecycle_promote code; comment is its note.
+          to_grade_id:
+            description: PROMOTE by 직급 (catalog GRADE), MR-27.
+            $ref: '#/components/schemas/Uuid'
+          to_position_kind_id:
+            description: APPOINT 직책 (catalog POSITION).
+            $ref: '#/components/schemas/Uuid'
+          vacate_position_kind:
+            type: boolean
+            description: APPOINT 보직 해제.
+          to_job_id:
+            description: APPOINT 직무 (catalog JOB).
+            $ref: '#/components/schemas/Uuid'
+          to_job:
+            type: string
+            maxLength: 200
+            description: APPOINT 종사 업무 as text, when to_job_id is absent.
+          to_job_family_id:
+            description: APPOINT 직군 (catalog JOB_FAMILY).
+            $ref: '#/components/schemas/Uuid'
+          to_employment_type:
+            type: string
+            enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, FREELANCE]
+            description: EMPLOYMENT_TYPE_CHANGE target.
+          contract_end_date:
+            type: string
+            format: date
+            description: EMPLOYMENT_TYPE_CHANGE to CONTRACT (required there).
+          comment:
+            type: string
+            maxLength: 1000
+responses:
+  '200':
+    description: The drafted line.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ChangeSetLine'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

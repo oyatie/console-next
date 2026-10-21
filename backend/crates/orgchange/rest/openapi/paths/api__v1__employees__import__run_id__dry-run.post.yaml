@@ -1,0 +1,66 @@
+tags:
+  - employees
+operationId: dryRunEmployeeImport
+summary: Plan every candidate row against the live roster without writing employees
+description: 'BW-10 6: one planned row per candidate row — insert, update (field diff), unchanged, excluded (BW-07
+  import_exclude reason), refused (refusal_code, refusal_field) or unresolved_identity (candidates). Identity
+  is the 사번 only; a row without one that resembles people on file waits for an identity pick. MR-7: a unit
+  name that binds no unit is never a question that blocks apply: the person comes in 미배치 (unit_name keeps the
+  name); a new current person is placed at the 사업장 of their unit, else of the 사업장 text (workplace_name when
+  it names none; a unit and a text that disagree are refused workplace_conflict); 고용형태 creates the
+  employment profile (a code as is, a label through employment_type_map; unmapped is deferred value_map) and
+  fills an empty one of a person on file (a different one is deferred correction). Apply records every change
+  to a person on file in the BW-18 correction ledger (reason_code IMPORT_APPLY, import_run_id), and a replayed
+  apply completes what an interrupted one left, never twice. Call again with decisions until unsettled_rows is
+  0; each call replaces the stored plan and its dry_run_digest.
+
+  IMPORT-2 (decisions #25, #26): identity is the 사번 (or an alias of an earlier 사번), then the 주민등록번호
+  keyed hash, then namesakes as candidates only (matched_by); a 사번 and an RRN naming two people is
+  identity_conflict, an RRN differing from the stored one identity_mismatch (field rrn). A stated 재직상태 is a
+  setup fact of a new person (휴직 with leave_start_date, leave_type and, for 육아휴직/출산전후휴가, a 복직예정일);
+  unknown texts map through status_map / leave_type_map. New people without a 사번 get the tenant rule''s next
+  number here (employee_number_source rule) unless import.employee_number.unnumbered is queue (사번 미부여,
+  employee_numbers answers). Unanswered value maps are filled from the tenant''s memory (remembered); review is
+  the counted 확인 필요 queue, and apply refuses while review.blocking > 0. A run older than
+  import.staged_identity.ttl_days is 409 import_run_expired (dry run and apply): its sealed 주민등록번호 rows are
+  purged, so upload the file again.
+
+  BE-MIG (walkthrough W02, W03, W05) — 고용형태 labels with one meaning map without asking (정규/정규직/상용 →
+  REGULAR, 계약/계약직/기간제 → CONTRACT, 일용 → DAILY …; listed in auto_mapped, overridable); any other label is
+  a blocking employment_type_unmapped item (choices — the likely code first, then every code; null leaves it
+  empty, counted in employment_type_empty_rows). A unit or 사업장 text that binds nothing exactly gets
+  candidates (whitespace, width, separators, 공장/지점-style suffixes, the last segment of a path) — offered,
+  never bound; the people come in 미배치, counted in unplaced. Dates also read 2011년 4월 10일. A
+  group_exclusions answer leaves out every row with that refusal (review.groups lists them). 409
+  apply_in_progress while the run''s apply job runs; 422 import_row_limit over import.apply.max_rows.'
+security:
+- bearerAuth: []
+parameters:
+- name: run_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: false
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ImportDryRunRequest'
+responses:
+  '200':
+    description: The plan, its counts and digest.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeImportDryRunSummary'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

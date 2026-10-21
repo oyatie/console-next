@@ -1,0 +1,40 @@
+tags:
+  - employees
+operationId: changeEmployeeNumber
+summary: 사번 변경 with an effective date and a reason (IMPORT-2)
+description: 'Decisions #25. Not a 정정: the old 사번 stays an alias that still finds the person (GET
+  /employees/by-number/{number}) and is never handed to anyone else; history in GET …/employee-number/history.
+  reason_code from employee_number_change. 409 employee_number_taken (someone holds or held it), stale_revision;
+  422 employee_number_unchanged, effective_date_in_future (a change takes effect today or earlier).
+  403 own_record_forbidden when the employee is the caller''s own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).'
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/EmployeeNumberChangeRequest'
+responses:
+  '200':
+    description: The recorded change.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeNumberChange'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

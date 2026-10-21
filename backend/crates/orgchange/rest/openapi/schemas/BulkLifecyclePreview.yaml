@@ -1,0 +1,35 @@
+type: object
+required: [event_type, effective_date, scheduled, counts, refusals]
+properties:
+  event_type:
+    type: string
+  effective_date:
+    type: string
+    format: date
+  scheduled:
+    type: boolean
+    description: The date is after today (KST) - the whole batch is a reservation.
+  counts:
+    type: object
+    required: [selected, will_apply, will_schedule, refused]
+    properties:
+      selected:
+        type: integer
+      will_apply:
+        type: integer
+      will_schedule:
+        type: integer
+      refused:
+        type: integer
+  refusals:
+    type: array
+    items:
+      type: object
+      required: [employee_id, code, message]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          type: string
+        message:
+          type: string

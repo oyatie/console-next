@@ -1,0 +1,19 @@
+type: object
+required:
+- employee_id
+- legal_entity_id
+- workplace_id
+- valid_from
+properties:
+  employee_id:
+    type: string
+    format: uuid
+  legal_entity_id:
+    type: string
+    format: uuid
+  workplace_id:
+    type: string
+    format: uuid
+  valid_from:
+    type: string
+    format: date

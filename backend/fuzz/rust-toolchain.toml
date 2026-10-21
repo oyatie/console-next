@@ -1,0 +1,4 @@
+# libFuzzer needs -Zsanitizer / sancov flags, which only nightly accepts. This pin applies to
+# backend/fuzz alone; the workspace (backend/rust-toolchain.toml) stays on stable.
+[toolchain]
+channel = "nightly-2026-09-10"

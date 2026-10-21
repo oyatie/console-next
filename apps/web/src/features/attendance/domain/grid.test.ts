@@ -1,0 +1,52 @@
+import { expect, test } from "vitest";
+import { baseOf, draftState, fill, fillSchedule, ledgerParts, readPaste, type CellFacts } from "./grid";
+
+const cell = (key: string, planKind: string, entryId: string | null = null, own = false): CellFacts => ({ key, planKind, entryId, own, closed: false });
+
+test("fill as scheduled drafts only empty work days and counts every skip", () => {
+  const cells = [cell("a|1", "WORK"), cell("a|2", "WEEKLY_HOLIDAY"), cell("b|1", "WORK", "e1"), cell("c|1", "WORK", null, true), cell("d|1", "WORK")];
+  const r = fillSchedule(cells, {});
+  expect(r.filled).toBe(2);
+  expect(r.skipped).toEqual({ rest: 1, recorded: 1, locked: 1 });
+  expect(r.drafts["a|1"]).toEqual({ value: "=", base: null });
+});
+
+test("one value fills a selection with each cell's base, skipping the own row", () => {
+  const r = fill([cell("a|1", "WORK", "e1"), cell("c|1", "WORK", null, true)], "9-18", {});
+  expect(r.drafts).toEqual({ "a|1": { value: "9-18", base: "e1" } });
+  expect(r.skipped).toBe(1);
+  expect(draftState({ value: "+2", base: null })).toEqual({ ok: false, code: "overtime_typed", at: undefined });
+});
+
+test("a multi-row paste matches by employee number and names the misses", () => {
+  const numbers = ["20007", "20047", null];
+  const r = readPaste("20047\t06:54-16:06\t=\n99999\t9-18\n20007\t06:40-16:00\n", numbers, { r: 0, c: 5 });
+  expect(r.matched).toBe(2);
+  expect(r.missing).toEqual(["99999"]);
+  expect(r.cells).toEqual([
+    { r: 1, c: 5, value: "06:54-16:06" },
+    { r: 1, c: 6, value: "=" },
+    { r: 0, c: 5, value: "06:40-16:00" },
+  ]);
+  const one = readPaste("9-18\t9-18", numbers, { r: 2, c: 0 });
+  expect(one.cells).toEqual([{ r: 2, c: 0, value: "9-18" }, { r: 2, c: 1, value: "9-18" }]);
+  expect(readPaste("9-18\n9-18", numbers, { r: 0, c: 0 }).needsNumber).toBe(true);
+});
+
+test("the day ledger's parts add up to the people in scope", () => {
+  const l = { people: 10, no_schedule: 1, rest: 2, no_record: 1, missing_out: 0, absent: 0, outside: 1, trip: 0, late_or_early: 1, normal: 4, pending: 0 };
+  expect(ledgerParts(l).adds).toBe(true);
+  expect(ledgerParts({ ...l, normal: 3 }).adds).toBe(false);
+});
+
+// Regression (silent overwrite): a draft's base was re-read from the live row on every keystroke or fill, so a change
+// another HR worker saved while it was being typed became the base and the save overwrote it without a 409.
+test("a draft keeps the version seen when it began; only a new draft takes the version on screen", () => {
+  const drafts = { "a|1": { value: "9-17", base: "e1" }, "b|1": { value: "=", base: null } };
+  expect(baseOf(drafts, "a|1", "e2")).toBe("e1");
+  expect(baseOf(drafts, "b|1", "e9")).toBeNull();
+  expect(baseOf(drafts, "c|1", "e3")).toBe("e3");
+  const r = fill([cell("a|1", "WORK", "e2"), cell("c|1", "WORK", "e3")], "9-18", drafts);
+  expect(r.drafts["a|1"]).toEqual({ value: "9-18", base: "e1" });
+  expect(r.drafts["c|1"]).toEqual({ value: "9-18", base: "e3" });
+});

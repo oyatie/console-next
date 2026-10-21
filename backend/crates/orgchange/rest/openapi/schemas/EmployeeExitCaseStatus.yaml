@@ -1,0 +1,32 @@
+type: string
+description: |-
+  Exit-case state machine (server-enforced; any other transition is 409 invalid_transition).
+
+  ```
+  REPORTED --confirm (HR tier)--> HR_CONFIRMED --confirm (HQ tier, different actor)--> HQ_CONFIRMED
+  HQ_CONFIRMED --complete settlement source (confirm/approval-draft)--> SETTLEMENT_READY
+  HQ_CONFIRMED | SETTLEMENT_READY | APPROVAL_DRAFTED --approval-draft submit=false--> APPROVAL_DRAFTED
+  HQ_CONFIRMED | SETTLEMENT_READY | APPROVAL_DRAFTED --approval-draft submit=true--> SUBMITTED
+  REPORTED | HR_CONFIRMED --cancel(reason)--> CANCELLED
+  REPORTED .. APPROVAL_DRAFTED --reject(reason)--> REJECTED
+  ```
+
+  SUBMITTED, REJECTED and CANCELLED are terminal: confirm, approval-draft, reject and cancel all answer
+  409 invalid_transition. approval-draft from HQ_CONFIRMED passes through SETTLEMENT_READY in the same call
+  (it requires a complete settlement package).
+
+  Exit effect: the HR-tier confirmation is the only lifecycle route to EXITED — it records a TERMINATE
+  lifecycle event (EXITED, exit_date = effective_exit_date). Direct OFFBOARD/TERMINATE lifecycle events are
+  refused (422); an employee import that states EXITED is the one non-lifecycle path, and an exit case
+  cannot be reported for an EXITED employee (409). Rejecting or cancelling a case after HR confirmation records a compensating EXIT_REVERSAL
+  lifecycle event that restores the status the exit replaced (and clears exit_date), audited with the
+  reject/cancel. A linked absence alert returns to OPEN.
+enum:
+- REPORTED
+- HR_CONFIRMED
+- HQ_CONFIRMED
+- SETTLEMENT_READY
+- APPROVAL_DRAFTED
+- SUBMITTED
+- REJECTED
+- CANCELLED

@@ -1,0 +1,4 @@
+type: object
+description: 'people = no_schedule + rest + no_record + missing_out + absent + outside + trip + late_or_early + normal + pending (pending: today, not judged yet)'
+required: [people, no_schedule, rest, no_record, missing_out, absent, outside, trip, late_or_early, normal, pending]
+properties: { people: { type: integer }, no_schedule: { type: integer }, rest: { type: integer }, no_record: { type: integer }, missing_out: { type: integer }, absent: { type: integer }, outside: { type: integer }, trip: { type: integer }, late_or_early: { type: integer }, normal: { type: integer }, pending: { type: integer } }

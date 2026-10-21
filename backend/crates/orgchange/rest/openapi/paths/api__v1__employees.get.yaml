@@ -1,0 +1,155 @@
+tags:
+- employees
+operationId: listEmployees
+summary: Paginated tenant HR employee directory
+description: Executive/admin/super-admin read of first-class employee rows. Employees are not auth users. A branch-scoped
+  caller (BW-22) lists only employees homed in its branches; employees with no home branch are org-wide only.
+security:
+- bearerAuth: []
+parameters:
+- name: company
+  in: query
+  required: false
+  schema:
+    type: string
+  description: Filter by workbook sheet/company name.
+- name: search
+  in: query
+  required: false
+  schema:
+    type: string
+  description: Case-insensitive name or employee-number typeahead query.
+- name: register_review_required
+  in: query
+  schema:
+    type: boolean
+  description: Only records with missing statutory register facts.
+- name: home_branch_review_required
+  in: query
+  required: false
+  schema:
+    type: boolean
+  description: Filter to employees whose active authoritative home branch is missing/inactive (true) or usable (false).
+- name: identity_review_required
+  in: query
+  required: false
+  schema:
+    type: boolean
+  description: Filter to employees whose import identity resolution needs review (true) or not (false).
+- name: org_unit_id
+  in: query
+  required: false
+  schema:
+    $ref: '#/components/schemas/Uuid'
+  description: Only employees bound to this OrgUnit (direct members; child units are not included).
+- name: legal_entity_id
+  in: query
+  required: false
+  schema:
+    $ref: '#/components/schemas/Uuid'
+  description: Only employees whose current employment assignment (the last one once exited, the first one before
+    the hire date) names this 법인.
+- name: workplace_id
+  in: query
+  required: false
+  schema:
+    $ref: '#/components/schemas/Uuid'
+  description: Only employees whose current employment assignment names this 사업장.
+- name: status
+  in: query
+  required: false
+  style: form
+  explode: false
+  schema:
+    type: array
+    items:
+      type: string
+      enum:
+      - PRE_HIRE
+      - ACTIVE
+      - ON_LEAVE
+      - EXITED
+      - UNKNOWN
+  description: One employment status or a comma-separated list (`status=ACTIVE,ON_LEAVE`). Omitted means every status,
+    EXITED included. PRE_HIRE is 입사 예정 (a future hire date, ONBOARD scheduled).
+- name: employee_number
+  in: query
+  required: false
+  style: form
+  explode: false
+  schema:
+    type: array
+    maxItems: 500
+    items:
+      type: string
+  description: Exact employee numbers, comma-separated (`employee_number=A-1,A-2`), at most 500 (422 above). Resolves
+    a pasted column in one read.
+- name: contract_ending_before
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date
+  description: YYYY-MM-DD. Only employees whose current contract ends strictly before this date (e.g. tomorrow with
+    status=ACTIVE finds expired contracts of still-active employees). `total` counts the filtered set.
+- name: lifecycle_apply_failed
+  in: query
+  required: false
+  schema:
+    type: boolean
+  description: true lists only employees with a failed_event (a scheduled action that could not apply on its date
+    and was not redone); false only those without. `total` counts the filtered set.
+- name: limit
+  in: query
+  required: false
+  schema:
+    type: integer
+    format: int64
+    minimum: 1
+    maximum: 1000
+    default: 500
+- name: offset
+  in: query
+  required: false
+  schema:
+    type: integer
+    format: int64
+    minimum: 0
+    default: 0
+  description: Offset paging, only without sort and cursor (cursor with an offset above 0 is 422).
+- name: sort
+  in: query
+  required: false
+  schema:
+    type: string
+    enum:
+    - name
+    - -name
+    - employee_number
+    - -employee_number
+    - hire_date
+    - -hire_date
+    - org_unit
+    - -org_unit
+  description: Keyset paging in this order (`-` descending; ties by id; a missing value sorts as empty). The response
+    carries next_cursor. Without sort or cursor the list keeps its offset order (company, name, source row).
+- name: cursor
+  in: query
+  required: false
+  schema:
+    type: string
+  description: The previous page's next_cursor. It carries its sort; a different sort beside it, or an unknown cursor,
+    is 422. A row added or removed meanwhile never shifts the next page.
+responses:
+  '200':
+    description: Paginated employee list.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeePage'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'

@@ -1,0 +1,71 @@
+tags:
+- org
+operationId: listOrgChanges
+summary: List org changes
+description: RLS-filtered page of the tenant's org-change requests, newest first.
+security:
+- bearerAuth: []
+parameters:
+- name: status
+  in: query
+  required: false
+  description: One status or a comma-separated list (`status=DRAFT,IN_APPROVAL`); a request matches any of them.
+    An unknown value is 422.
+  style: form
+  explode: false
+  schema:
+    type: array
+    items:
+      $ref: '#/components/schemas/OrgChangeStatus'
+- name: kind
+  in: query
+  required: false
+  schema:
+    $ref: '#/components/schemas/OrgChangeKind'
+- name: drafted_by
+  in: query
+  required: false
+  description: Only requests drafted by this user (e.g. the caller's own drafts).
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: limit
+  in: query
+  required: false
+  description: Defaults to 50; the server clamps the value into 1..200 rather than rejecting it.
+  schema:
+    type: integer
+    format: int64
+- name: offset
+  in: query
+  required: false
+  description: Defaults to 0; the server clamps the value into 0..100000 rather than rejecting it.
+  schema:
+    type: integer
+    format: int64
+- name: effective_from
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date
+- name: effective_to
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date
+responses:
+  '200':
+    description: Page of org-change summaries.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgChangePage'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

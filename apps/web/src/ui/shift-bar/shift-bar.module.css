@@ -1,0 +1,7 @@
+/* ui/shift-bar: three tracks of one person-day; colours are tokens. */
+.bar { display: block; width: 100%; min-width: calc(var(--space-6) * 5); height: var(--space-5); }
+.plan { fill: none; stroke: var(--steel); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.recognised { fill: var(--primary); }
+.hatch { fill: var(--warn-solid); }
+.record { fill: var(--ink); }
+.open { stroke: var(--ink); stroke-width: 2; stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; }

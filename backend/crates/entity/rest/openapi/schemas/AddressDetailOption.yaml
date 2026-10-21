@@ -1,0 +1,14 @@
+type: object
+properties:
+  dong:
+    type:
+    - string
+    - 'null'
+  floor:
+    type:
+    - string
+    - 'null'
+  ho:
+    type:
+    - string
+    - 'null'

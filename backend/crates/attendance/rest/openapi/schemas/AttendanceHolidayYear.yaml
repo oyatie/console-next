@@ -1,0 +1,3 @@
+type: object
+required: [year, loaded, public, contractual]
+properties: { year: { type: integer }, loaded: { type: boolean, description: 'false: no reference rows ship for this year, so 공휴일 are unknown, never guessed' }, edition: { type: string, nullable: true }, public: { type: array, items: { $ref: '#/components/schemas/AttendancePublicHoliday' } }, contractual: { type: array, items: { $ref: '#/components/schemas/AttendanceContractualHoliday' } } }

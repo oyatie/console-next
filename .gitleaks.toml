@@ -1,0 +1,65 @@
+# gitleaks config (security baseline rows 1 and 17.11). Runs in `npm run check` over the repo
+# history and the built apps/web/dist, and in scripts/hooks/pre-commit over staged changes.
+# Keep the default rules; every allowlist below is a triaged false positive with its reason.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Vite CSS-module class map in built chunks (keyRow:\"_keyRow_<hash>_<line>\"): a scoped class name, not a credential"
+targetRules = ["generic-api-key"]
+regexTarget = "secret"
+regexes = ['''^_[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_-]{5}_\d{1,5}$''']
+
+[[allowlists]]
+description = "Dotted camelCase i18n message keys (e.g. in packages/i18n gallery copy): catalog identifiers, not credentials"
+targetRules = ["generic-api-key"]
+regexTarget = "secret"
+regexes = ['''^[a-z][A-Za-z0-9]*(?:\.[a-z][A-Za-z0-9]*)+$''']
+
+[[allowlists]]
+description = "UUIDs in unit tests (idempotency keys, entity ids): random ids, not credentials"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''\.test\.tsx?$''']
+regexTarget = "secret"
+regexes = ['''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$''']
+
+[[allowlists]]
+description = "Readable lowercase identifiers (idempotency keys like finalize-run-key-0001, feature keys, column names): words joined by - or _, not a generated credential. The first word must hold a letter g-z, so a UUID or dashed hex value is still flagged"
+targetRules = ["generic-api-key"]
+regexTarget = "secret"
+regexes = ['''^[a-z0-9]*[g-z][a-z0-9]*(?:[_-][a-z0-9]+)+$''']
+
+[[allowlists]]
+description = "Sec-WebSocket-Key in test handshakes: a public per-connection nonce (RFC 6455 section 4.1), not a credential"
+targetRules = ["generic-api-key"]
+regexTarget = "match"
+regexes = ['''Sec-WebSocket-Key: [A-Za-z0-9+/]{22}==''']
+
+[[allowlists]]
+description = "SSH public-key fingerprints (key SHA256:...) in test fixtures: a hash of a public key"
+targetRules = ["generic-api-key"]
+regexTarget = "match"
+regexes = ['''key SHA256:[A-Za-z0-9+/]{43}''']
+
+[[allowlists]]
+description = "Prose after the word 'keyless' (cosign keyless signing): the matched value is ordinary text"
+targetRules = ["generic-api-key"]
+regexTarget = "match"
+regexes = ['''^keyless[ :]''']
+
+[[allowlists]]
+description = "Gate-content SHA-256 digests and a git commit SHA (PR473 rollback floor) pinned in gate scripts: public hashes"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^scripts/check-ci-preflight\.mjs$''', '''^scripts/check-production-authority-blocked\.mjs$''']
+regexTarget = "secret"
+regexes = ['''^(?:[0-9a-f]{40}|[0-9a-f]{64})$''']
+
+[[allowlists]]
+description = "Throwaway 32-byte key in rrn_vault.rs's #[cfg(test)] module (a_sealed_number_opens_only_for_its_tenant...); appears nowhere else in any repo"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^backend/app/src/hr/rrn_vault\.rs$''']
+regexTarget = "line"
+regexes = ['''^\s*let key = "[A-Za-z0-9+/]{43}=";$''']

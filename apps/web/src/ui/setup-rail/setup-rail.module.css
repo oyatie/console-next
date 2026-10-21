@@ -1,0 +1,23 @@
+/* ui/setup-rail: grouped first-run steps with a state, one action and a remedy when blocked. Tokens only. */
+.rail { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.head { display: flex; align-items: baseline; gap: var(--space-3); }
+.count { font-size: var(--text-sm); color: var(--steel); font-variant-numeric: tabular-nums; }
+.summary { margin: 0; font-size: var(--text-sm); color: var(--steel); }
+.groups { display: flex; flex-direction: column; gap: var(--space-4); }
+.group { display: flex; flex-direction: column; gap: var(--space-2); }
+.groupTitle { margin: 0; font-size: var(--text-xs); font-weight: var(--fw-strong); color: var(--steel); letter-spacing: 0.02em; }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.step { display: grid; grid-template-columns: max-content 1fr max-content; gap: var(--space-1) var(--space-3); align-items: center; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); }
+.step:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.icon { color: var(--faint); }
+.title { font-weight: var(--fw-medium); color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
+.actions { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); min-height: var(--target); }
+.detail { grid-column: 2 / -1; min-height: calc(var(--lh-base) * var(--text-sm)); font-size: var(--text-sm); color: var(--steel); }
+.step[aria-current="step"] { border-color: var(--primary-bd); background: var(--primary-soft); }
+.step[data-state="done"] .icon { color: var(--ok-solid); }
+.step[data-state="done"] .title { color: var(--steel); font-weight: var(--fw-body); }
+.step[data-state="attention"] .icon { color: var(--warn-solid); }
+.step[data-state="attention"] .detail { color: var(--warn-tx); }
+/* Blocked is waiting on an earlier step, not an error: quiet, with its remedy beside it. */
+.step[data-state="blocked"] .icon { color: var(--faint); }
+.step[data-state="blocked"] .title { color: var(--steel); }

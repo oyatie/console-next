@@ -1,0 +1,11 @@
+tags: [attendance]
+operationId: readOwnAttendanceSchedule
+summary: The signed-in employee's own month of 근무 일정 (read-only)
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: month, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' } }
+responses:
+  '200': { description: Own month, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceScheduleCalendar' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '422': { $ref: '#/components/responses/ValidationError' }

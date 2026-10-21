@@ -1,0 +1,54 @@
+tags:
+- entity
+operationId: runEntitySetupBatch
+summary: Dry-run or apply a sheet of 법인 · 사업장 creates and full-state revisions in one transaction (MR-29)
+description: 'The client merges each sheet row over the record it read and sends full states. dry_run runs every
+  op and rolls back: per-op outcome (CREATED / CHANGED / UNCHANGED / ERROR), the changed fields and every
+  row''s refusal at once, plus preview_digest. The apply carries that digest and applies all or nothing (the first
+  refused op is named as ops[i].<field>). A revise that changes nothing is not written. In SETUP the receipt can be
+  undone; after 운영 시작 the writes are governed like the one-by-one routes.'
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: false
+  description: Required for an apply (a UUID per user intent; a retry replays the receipt). A dry run needs none.
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/EntitySetupBatchRequest'
+responses:
+  '200':
+    description: The preview (dry run) or the applied receipt.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EntitySetupResult'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted (legal_entity_manage on every record of the batch).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Shape issues (ops required / too_many, ops[i].ref duplicate_ref, ops[i].id duplicate_target),
+      preview_digest required, or the first refused op as ops[i].<field>.'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: 'rows_changed_since_preview (remedy preview_again), or the first refused op (already_exists,
+      stale_revision, use_identifier_correction, …) named as ops[i].'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

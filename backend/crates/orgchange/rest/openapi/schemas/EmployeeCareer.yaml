@@ -1,0 +1,22 @@
+type: object
+additionalProperties: false
+required: [employer_name, from]
+properties:
+  employer_name:
+    type: string
+    maxLength: 100
+  from:
+    type: string
+    pattern: '^[0-9]{4}-[0-9]{2}$'
+  to:
+    type: [string, 'null']
+    pattern: '^[0-9]{4}-[0-9]{2}$'
+  position:
+    type: [string, 'null']
+    maxLength: 100
+  duty:
+    type: [string, 'null']
+    maxLength: 200
+  leave_reason:
+    type: [string, 'null']
+    maxLength: 200

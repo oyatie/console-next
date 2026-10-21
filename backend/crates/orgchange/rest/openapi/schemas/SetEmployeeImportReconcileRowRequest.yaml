@@ -1,0 +1,13 @@
+type: object
+additionalProperties: false
+required: [state]
+properties:
+  state:
+    type: string
+    enum: [CONFIRMED, NEEDS_CHECK]
+  note:
+    type: [string, 'null']
+    maxLength: 1000
+  expected_version:
+    type: [integer, 'null']
+    minimum: 0

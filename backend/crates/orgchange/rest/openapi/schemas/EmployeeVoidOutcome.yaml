@@ -1,0 +1,19 @@
+type: object
+required: [employee_id, status, review_required]
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  status:
+    type: string
+    enum: [VOIDED, PENDING]
+  voided_at:
+    type: string
+    format: date-time
+    nullable: true
+  review_required:
+    type: boolean
+    description: A sole holder voided; reviewed after the fact.
+  pending_request:
+    nullable: true
+    allOf:
+    - $ref: '#/components/schemas/ChangeRequest'

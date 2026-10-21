@@ -1,0 +1,26 @@
+type: object
+description: A change set (BW-38) without its lines.
+required: [id, intent, state, batch_id, line_count, stale_count, created_at]
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  intent:
+    type: string
+    enum: [TRANSFER, PROMOTE]
+  state:
+    type: string
+    enum: [OPEN, COMMITTED, DISCARDED]
+  batch_id:
+    description: The lifecycle batch a commit recorded.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  line_count:
+    type: integer
+    description: 「저장 안 됨 · n건」 — lines not yet committed.
+  stale_count:
+    type: integer
+    description: Lines whose employee changed since they were drafted; a commit refuses them.
+  created_at:
+    type: string
+    format: date-time

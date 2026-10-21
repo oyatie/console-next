@@ -1,0 +1,11 @@
+/* ui/menu: a command menu (personnel action ▾, ⋯). Tokens only. */
+.pop { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-pop); min-width: calc(var(--panel-w) / 1.6); max-width: var(--panel-w); }
+.menu { outline: none; padding: var(--space-1); display: flex; flex-direction: column; }
+.item { display: grid; grid-template-columns: 1fr auto; gap: 0 var(--space-3); align-items: center; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); cursor: pointer; outline: none; font-size: var(--text-sm); }
+.item[data-focused] { background: var(--primary-soft); box-shadow: var(--selected-bar); }
+.item[data-disabled] { cursor: default; color: var(--steel); }
+.label { font-weight: var(--fw-medium); }
+.hint { justify-self: end; }
+.why { grid-column: 1 / -1; font-size: var(--text-xs); color: var(--steel); }
+.icon { justify-content: center; padding: 0; width: calc(var(--row-h) - var(--space-1)); }
+td .icon { width: var(--space-5); min-height: var(--space-5); border-color: transparent; background: transparent; }

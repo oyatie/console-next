@@ -1,0 +1,42 @@
+allOf:
+- $ref: '#/components/schemas/RegistrationInput'
+- type: object
+  required:
+  - expected_version
+  - effective_from
+  - reason_code
+  - status
+  properties:
+    expected_version:
+      type: integer
+      minimum: 1
+      description: The version the client read. A later revision since then is 409 stale_revision, with
+        error.current_version.
+    effective_from:
+      type: string
+      format: date
+      description: When the revision takes effect (KST); may be in the future.
+    reason_code:
+      type: string
+      maxLength: 100
+    status:
+      $ref: '#/components/schemas/OperatingStatus'
+    status_since:
+      type:
+      - string
+      - 'null'
+      format: date
+    status_until:
+      description: 휴업's expected end (SUSPENDED only, never before status_since).
+      type:
+      - string
+      - 'null'
+      format: date
+    document_id:
+      type:
+      - string
+      - 'null'
+      format: uuid
+      description: A 재발급 / 정정 사업자등록증 kept for this revision, attached in the same transaction and named as
+        its evidence; it supersedes the one kept before. Never the certificate in force or one already
+        superseded (422 document_not_new).

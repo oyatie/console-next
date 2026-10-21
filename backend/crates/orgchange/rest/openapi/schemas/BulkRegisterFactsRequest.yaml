@@ -1,0 +1,31 @@
+type: object
+additionalProperties: false
+required: [reason_code, rows]
+properties:
+  dry_run:
+    type: boolean
+    default: false
+  reason_code:
+    type: string
+    minLength: 1
+    maxLength: 100
+  note:
+    type: string
+    maxLength: 1000
+  rows:
+    type: array
+    minItems: 1
+    maxItems: 500
+    items:
+      type: object
+      additionalProperties: false
+      required: [changes]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        employee_number:
+          type: string
+        changes:
+          type: object
+          minProperties: 1
+          description: sex, address, careers, register_note, name_hanja, name_en, nationality, personal_email, emergency_contacts (and a first exit_reason or group_service_start_date) as in CorrectEmployeeRequest.changes.

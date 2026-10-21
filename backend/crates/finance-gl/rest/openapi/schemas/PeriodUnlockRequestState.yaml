@@ -1,0 +1,39 @@
+type: object
+description: The lock's latest unlock request and its decision (BW-15). EXPIRED is read from relockAt, never
+  written; canDecide says whether the caller may approve or refuse it now (a PENDING request only).
+required: [id, status, requestedBy, requestedAt, reasonCode, relockAt, canDecide]
+properties:
+  id:
+    type: string
+    format: uuid
+  status:
+    type: string
+    enum: [PENDING, APPROVED, REJECTED, EXPIRED, SUPERSEDED]
+  requestedBy:
+    type: string
+    format: uuid
+  requestedByName:
+    type: string
+  requestedAt:
+    type: string
+    format: date-time
+  reasonCode:
+    type: string
+  reasonNote:
+    type: string
+  relockAt:
+    type: string
+    format: date-time
+  decidedBy:
+    type: string
+    format: uuid
+  decidedByName:
+    type: string
+  decidedAt:
+    type: string
+    format: date-time
+  decisionNote:
+    type: string
+    description: Why the second person refused it (REJECTED).
+  canDecide:
+    type: boolean

@@ -1,0 +1,66 @@
+tags:
+- entity
+operationId: settleLegalEntityNameReview
+summary: Settle a one-time 법인명 review (keep the name, or take the registration 상호 by 정정)
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: entityId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+- name: reviewId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SettleNameReviewRequest'
+responses:
+  '200':
+    description: Settled; the 법인 as it is now.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SavedLegalEntity'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}] (name_review_choice, or the 정정''s own).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Refused with a stable code and reasons[] naming the remedy (e.g. phase_not_setup → submit_org_change).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: name_review_not_found (unknown, settled or another 법인's) or not in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

@@ -1,0 +1,15 @@
+/* ui/banner: the one tinted message box (kit .banner / .alert / .notice). Tokens only. */
+.banner { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid; border-radius: var(--radius); font-size: var(--text-sm); }
+.banner[data-placement="page"] { align-items: center; padding: var(--space-2) var(--space-4); border-width: 0 0 1px; border-radius: 0; }
+.banner[data-tone="info"] { border-color: var(--info-bd); background: var(--info-bg); color: var(--info-tx); }
+.banner[data-tone="warn"] { border-color: var(--warn-bd); background: var(--warn-bg); color: var(--warn-tx); }
+.banner[data-tone="danger"] { border-color: var(--danger-bd); background: var(--danger-bg); color: var(--danger-tx); }
+.banner[data-tone="ok"] { border-color: var(--ok-bd); background: var(--ok-bg); color: var(--ok-tx); }
+.banner[data-tone="past"] { border-color: var(--ink); background: var(--ink); color: var(--surface); }
+/* Centred on the first line of text (line-height × the small size), whatever the line count. */
+.icon { flex: none; margin-top: calc((var(--text-sm) * var(--lh-base) - var(--space-4)) / 2); }
+.body { display: flex; flex: 1 1 calc(var(--panel-w) / 2); flex-direction: column; gap: var(--space-1); min-width: 0; }
+.title { font-weight: var(--fw-strong); }
+.text { display: flex; flex-direction: column; gap: var(--space-1); }
+.text p { margin: 0; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }

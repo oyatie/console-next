@@ -1,0 +1,14 @@
+type: object
+description: Send version and sha256 together. For N-1 compatibility, terms_version alone accepts the current published version.
+properties:
+  version:
+    type: string
+    minLength: 1
+    maxLength: 40
+  sha256:
+    type: string
+    pattern: ^[a-f0-9]{64}$
+  terms_version:
+    type: string
+    maxLength: 40
+    deprecated: true

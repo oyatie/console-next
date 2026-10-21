@@ -1,0 +1,13 @@
+type: object
+required: [selected, change, pending, unchanged, refused]
+properties:
+  selected:
+    type: integer
+  change:
+    type: integer
+  pending:
+    type: integer
+  unchanged:
+    type: integer
+  refused:
+    type: integer

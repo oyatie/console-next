@@ -1,0 +1,9 @@
+      type: object
+      required: [actor_name, actor_kind, recorded_at, fields, audit_id, redacted]
+      properties:
+        actor_name: {type: [string, 'null']}
+        actor_kind: {oneOf: [{$ref: '#/components/schemas/ActorKind'}, {type: 'null'}]}
+        recorded_at: {type: [string, 'null'], format: date-time}
+        audit_id: {type: [string, 'null'], format: uuid}
+        fields: {type: array, items: {type: string}}
+        redacted: {type: boolean}

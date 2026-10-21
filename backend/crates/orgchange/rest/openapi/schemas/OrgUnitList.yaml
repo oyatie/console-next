@@ -1,0 +1,9 @@
+type: object
+required: [items]
+properties:
+  items:
+    type: array
+    description: Flat list — the COMPANY root first, then every SITE/DEPARTMENT/TEAM head (dissolved included). A
+      tenant with no units yet returns just the root.
+    items:
+      $ref: '#/components/schemas/OrgUnitHead'

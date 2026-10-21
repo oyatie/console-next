@@ -1,0 +1,16 @@
+tags:
+- access
+operationId: listAccessGranters
+summary: Who can grant access — the count and up to five names a refusal shows
+description: Any signed-in account. The ops account and every active account holding 권한 관리 등록·수정 that counts now.
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: The granters.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessGranters'
+  '401':
+    $ref: '#/components/responses/Unauthorized'

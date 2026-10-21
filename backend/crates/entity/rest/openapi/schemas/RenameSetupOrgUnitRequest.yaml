@@ -1,0 +1,17 @@
+type: object
+description: A new name, a new parent (workplace_id or parent_org_unit_id), or both.
+properties:
+  name:
+    type: string
+    maxLength: 120
+  expected_version:
+    type: integer
+    format: int32
+    minimum: 1
+    description: The version read from the tree. Absent, the change applies to whatever is current.
+  workplace_id:
+    type: string
+    format: uuid
+  parent_org_unit_id:
+    type: string
+    format: uuid

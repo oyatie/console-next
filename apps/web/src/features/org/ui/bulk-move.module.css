@@ -1,0 +1,18 @@
+/* S8 bulk move: a full page (D9) — head, three columns, a sticky foot with the consequence. Tokens only. */
+.page { display: flex; flex-direction: column; min-height: calc(100dvh - var(--topbar-h)); background: var(--canvas); }
+.head { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-2) var(--space-5); border-bottom: 1px solid var(--border); background: var(--surface); }
+.titles { display: flex; flex-direction: column; gap: var(--space-1); }
+.crumb { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-sm); color: var(--steel); }
+.title { margin: 0; font-size: var(--text-xl); font-weight: var(--fw-strong); }
+.sub { font-size: var(--text-lg); font-weight: var(--fw-medium); color: var(--steel); }
+.lead { margin: 0; padding-left: var(--space-4); border-left: 1px solid var(--border); font-size: var(--text-sm); color: var(--steel); }
+.cols { display: grid; flex: 1; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.45fr) minmax(0, 0.8fr); gap: var(--space-5); align-items: start; padding: var(--space-5); }
+.col { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.colTitle { margin: 0; font-size: var(--text-body); font-weight: var(--fw-strong); }
+.gov { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border-soft); }
+.foot { position: sticky; bottom: 0; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-5); border-top: 1px solid var(--border); background: var(--surface); }
+.footText { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
+.reason { display: flex; align-items: center; gap: var(--space-2); color: var(--steel); }
+.clash { display: flex; flex-direction: column; gap: var(--space-2); min-inline-size: 0; margin: 0; padding: var(--space-2) 0; border: 0; }
+.clashHead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin: 0; padding: 0; color: var(--danger-tx); font-weight: var(--fw-medium); }
+.pick[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }

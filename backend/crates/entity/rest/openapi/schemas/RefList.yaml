@@ -1,0 +1,34 @@
+type: object
+required:
+- key
+- status
+properties:
+  key:
+    type: string
+  title:
+    type:
+    - string
+    - 'null'
+  version:
+    type:
+    - string
+    - 'null'
+  status:
+    type: string
+    enum:
+    - LOADED
+    - NOT_LOADED
+    - HOLD
+  source:
+    anyOf:
+    - $ref: '#/components/schemas/RefListSource'
+    - type: 'null'
+  reason:
+    type:
+    - string
+    - 'null'
+    enum:
+    - no_machine_readable_source
+    - no_verified_source
+    - licence_pending
+    - null

@@ -1,0 +1,78 @@
+tags:
+  - employees
+operationId: createJobTitle
+summary: Add a catalog entry (BW-13, MR-25)
+description: Adds an entry to one of the five lists (the inline 「목록에 추가」). A label the list already has
+  (ignoring case) answers 200 with that row,
+  so a repeated add is harmless (no second audit row); a new row is 201. Who may add is Cedar's
+  job_title_manage (fail-closed), a tenant-wide holder of job_title_manage or org_change_apply (the tenant ops
+  account; after the access model, a role line 조직 · 등록·수정 granted over the tenant). A 법인/사업장-scoped
+  grant is 403 (the lists are tenant-wide). An unknown kind is refused on the wire (422 validation);
+  422 job_title_label_invalid, job_title_rank_invalid. Audited as job_title.create.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [kind, label]
+        properties:
+          kind:
+            $ref: '#/components/schemas/JobTitleKind'
+          label:
+            type: string
+            minLength: 1
+            maxLength: 100
+          grade_rank:
+            description: GRADE and TITLE only (422 job_title_rank_invalid otherwise).
+            type: [integer, 'null']
+            minimum: 0
+            maximum: 1000
+responses:
+  '200':
+    description: The tenant already had this label.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [id, kind, label, grade_rank, active]
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            kind:
+              $ref: '#/components/schemas/JobTitleKind'
+            label:
+              type: string
+            grade_rank:
+              type: [integer, 'null']
+              description: Higher = more senior; null = unranked.
+            active:
+              type: boolean
+  '201':
+    description: Added.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [id, kind, label, grade_rank, active]
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            kind:
+              $ref: '#/components/schemas/JobTitleKind'
+            label:
+              type: string
+            grade_rank:
+              type: [integer, 'null']
+              description: Higher = more senior; null = unranked.
+            active:
+              type: boolean
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'

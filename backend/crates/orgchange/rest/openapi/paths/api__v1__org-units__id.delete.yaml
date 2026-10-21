@@ -1,0 +1,47 @@
+tags:
+- org
+operationId: draftDissolveOrgUnit
+summary: Draft an org change that dissolves an OrgUnit
+description: Creates a DRAFT org change (kind DISSOLVE) with one DISSOLVE_ORG_UNIT op. Like every DISSOLVE change it
+  opens settlement at effectuate and applies at archive. Preflight blocks it while the unit has ACTIVE members or
+  active children.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+responses:
+  '200':
+    description: Idempotent replay of the existing draft.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgChangeDetail'
+  '201':
+    description: Draft org change created.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgChangeDetail'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

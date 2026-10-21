@@ -1,0 +1,24 @@
+type: object
+required: [lines, conflicts, preview_digest]
+properties:
+  lines:
+    type: array
+    items:
+      type: object
+      required: [employee_id, to]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        from:
+          type: [string, 'null']
+        to:
+          type: string
+        conflict:
+          type: string
+          enum: [number_taken]
+  conflicts:
+    type: integer
+    minimum: 0
+  preview_digest:
+    type: string
+    pattern: ^[0-9a-f]{64}$

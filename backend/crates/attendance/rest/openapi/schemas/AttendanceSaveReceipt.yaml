@@ -1,0 +1,3 @@
+type: object
+required: [batch_id, saved, unchanged, closes, opens]
+properties: { batch_id: { $ref: '#/components/schemas/Uuid' }, saved: { type: integer }, unchanged: { type: integer }, closes: { $ref: '#/components/schemas/AttendanceMarkCounts' }, opens: { $ref: '#/components/schemas/AttendanceMarkCounts' } }

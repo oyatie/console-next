@@ -1,0 +1,6 @@
+/* ui/action-bar: consequence above the actions (the sheet foot, inline). Tokens only. */
+.bar { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border-soft); }
+.bar[data-sticky] { position: sticky; bottom: 0; z-index: 5; padding: var(--space-3) var(--space-5); border-top-color: var(--border); background: var(--canvas); }
+.consequence { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
+.consequence b, .consequence strong { font-weight: var(--fw-strong); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); }

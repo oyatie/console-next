@@ -1,0 +1,8 @@
+/* The stale-move alert (S11): full width under the page head, warning tokens, actions at the end. */
+.banner { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-5); border-block: 1px solid var(--warn-bd); background: var(--warn-bg); }
+.banner:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.icon { flex: none; color: var(--warn-tx); }
+.text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
+.text p { margin: 0; }
+.title { color: var(--warn-tx); font-weight: var(--fw-strong); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }

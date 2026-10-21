@@ -1,0 +1,15 @@
+tags: [attendance]
+operationId: placeAttendanceCrewMembers
+summary: Put people in this 근무조 from a date (a move ends their previous 근무조 the day before)
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: crew_id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+  - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceCrewMembersInput' } } } }
+responses:
+  '200': { description: Crew after the change, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceCrew' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '404': { $ref: '#/components/responses/NotFound' }
+  '409': { $ref: '#/components/responses/Conflict' }
+  '422': { $ref: '#/components/responses/ValidationError' }

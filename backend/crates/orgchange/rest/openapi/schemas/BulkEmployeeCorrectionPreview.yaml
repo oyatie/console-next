@@ -1,0 +1,58 @@
+type: object
+required: [preview_id, preview_digest, counts, step_up_required, rows]
+properties:
+  preview_id:
+    $ref: '#/components/schemas/Uuid'
+  preview_digest:
+    type: string
+    description: SHA-256 hex; the commit's preview_digest and the step-up payload_hash.
+  counts:
+    $ref: '#/components/schemas/BulkEmployeeCorrectionCounts'
+  step_up_required:
+    type: boolean
+    description: A sole holder writes a high-risk field; the commit needs step_up (EXCEPTION_DECIDE bound to preview_id).
+  rows:
+    type: array
+    items:
+      type: object
+      required: [employee_id, outcome, fields]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: [string, 'null']
+        employee_number:
+          type: [string, 'null']
+        updated_at:
+          type: [string, 'null']
+          format: date-time
+        outcome:
+          type: string
+          enum: [CHANGE, PENDING, UNCHANGED, REFUSED]
+        fields:
+          type: array
+          description: Only the fields whose value differs from the record.
+          items:
+            type: object
+            required: [field, path]
+            properties:
+              field:
+                type: string
+              before:
+                type: [string, 'null']
+              after:
+                type: [string, 'null']
+              path:
+                type: string
+                enum: [NOW, SECOND_PERSON, SOLE_HOLDER_REVIEW]
+        code:
+          type: string
+          description: REFUSED - the first refusal's code (see refusals).
+        message:
+          type: string
+        refusals:
+          type: array
+          description: BE-EMP-UI (EMP-UI 13). REFUSED - every refusal, each naming its field; field null is the
+            whole row's (stale_record, an unknown employee, dates that disagree across two fields).
+          items:
+            $ref: '#/components/schemas/BulkCorrectionRefusal'

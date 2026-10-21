@@ -1,0 +1,10 @@
+type: object
+description: A soft signal (never a refusal), e.g. brn_checksum_mismatch.
+required:
+- field
+- code
+properties:
+  field:
+    type: string
+  code:
+    type: string

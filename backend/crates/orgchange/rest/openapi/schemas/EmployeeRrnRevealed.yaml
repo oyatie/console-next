@@ -1,0 +1,8 @@
+type: object
+required: [employee_id, rrn]
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  rrn:
+    type: string
+    pattern: ^[0-9]{6}-[1-8][0-9]{6}$

@@ -1,0 +1,20 @@
+type: object
+required: [id, fields, reason_code, counts, review_required, created_by, created_at]
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  fields:
+    type: array
+    items:
+      type: string
+  reason_code:
+    type: string
+  counts:
+    $ref: '#/components/schemas/BulkEmployeeCorrectionCounts'
+  review_required:
+    type: boolean
+  created_by:
+    $ref: '#/components/schemas/Uuid'
+  created_at:
+    type: string
+    format: date-time

@@ -1,0 +1,18 @@
+type: object
+required:
+- passkey_id
+- user_id
+- credential_id
+properties:
+  passkey_id:
+    $ref: '#/components/schemas/Uuid'
+  user_id:
+    $ref: '#/components/schemas/Uuid'
+  credential_id:
+    type: string
+  sign_in_id:
+    type:
+    - string
+    - 'null'
+    description: 'The account''s sign-in ID `<아이디>@<회사 도메인>` (decisions #33): the client signs in with it
+      right after enrollment, identifier-first, so a key with no resident credential works too.'

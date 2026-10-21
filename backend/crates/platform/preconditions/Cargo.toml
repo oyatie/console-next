@@ -1,0 +1,18 @@
+[package]
+name = "console-platform-preconditions"
+version = "0.1.0"
+description = "Shared precondition evaluator: JSON Patch `test` ops and command `expected` facts against the current record (ME-3, ME-6..ME-12). Pure: no IO, no async."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,5 @@
+type: string
+enum:
+- TYPO_AT_ENTRY
+- REGISTRY_DIFFERS
+- OTHER_EVIDENCED

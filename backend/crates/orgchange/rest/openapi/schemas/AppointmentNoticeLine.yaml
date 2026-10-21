@@ -1,0 +1,14 @@
+type: object
+required: [line_no, employee_id, employee_number, name, event]
+properties:
+  line_no:
+    type: integer
+    minimum: 1
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  employee_number:
+    type: [string, 'null']
+  name:
+    type: string
+  event:
+    $ref: '#/components/schemas/EmployeeLifecycleEvent'

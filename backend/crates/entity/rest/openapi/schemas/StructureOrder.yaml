@@ -1,0 +1,12 @@
+type: object
+required:
+- children
+- change_mode
+properties:
+  children:
+    type: array
+    items:
+      type: string
+      format: uuid
+  change_mode:
+    type: string

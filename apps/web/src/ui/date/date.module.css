@@ -1,0 +1,19 @@
+/* ui/date: presets with resolved dates, native date input, echo, bounds line, weekend suggestion. */
+.date { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.presets { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.preset { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--target); padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius-lg); background: var(--surface); font-size: var(--text-sm); font-weight: var(--fw-medium); cursor: pointer; }
+.preset:hover { background: var(--muted); }
+.preset[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.resolved { font-size: var(--text-xs); font-weight: var(--fw-body); color: var(--steel); }
+.preset[aria-pressed="true"] .resolved { color: var(--primary); }
+/* Outside the bounds: still visible, so the user learns the date exists, but inert and neutral (the bounds line says why). */
+.preset[aria-disabled="true"], .preset[aria-disabled="true"]:hover { background: var(--muted); color: var(--steel); cursor: not-allowed; }
+.input { width: auto; }
+.lines { display: flex; flex-direction: column; gap: var(--space-1); }
+.echo { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--ink); }
+.rel { font-weight: var(--fw-body); color: var(--steel); }
+.bounds { display: block; }
+.sep::before { content: " · "; }
+.remedy { margin-left: var(--space-2); }
+.suggest { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); margin: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--info-bd); border-radius: var(--radius); background: var(--info-bg); color: var(--info-tx); font-size: var(--text-sm); }

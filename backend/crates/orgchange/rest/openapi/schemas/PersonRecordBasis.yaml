@@ -1,0 +1,23 @@
+description: 개인정보 보호법 §23① basis of a restricted entry — CONSENT (§23①1, separate consent) or STATUTE
+  (§23①2; DISABLED_EMPLOYMENT for 장애, VETERAN_EMPLOYMENT for 보훈).
+oneOf:
+- type: object
+  additionalProperties: false
+  required: [kind, consent_on]
+  properties:
+    kind:
+      type: string
+      enum: [CONSENT]
+    consent_on:
+      type: string
+      format: date
+- type: object
+  additionalProperties: false
+  required: [kind, statute]
+  properties:
+    kind:
+      type: string
+      enum: [STATUTE]
+    statute:
+      type: string
+      enum: [DISABLED_EMPLOYMENT, VETERAN_EMPLOYMENT]

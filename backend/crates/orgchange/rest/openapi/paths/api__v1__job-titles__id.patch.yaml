@@ -1,0 +1,64 @@
+tags:
+  - employees
+operationId: updateJobTitle
+summary: Rename, re-rank or (de)activate a job title (BW-13)
+description: Omitted fields stay. A title is never deleted; active false hides it from new promotions while
+  history and scheduled promotions keep resolving it. 409 job_title_label_taken when another title has the label.
+  Who may change is Cedar's job_title_manage, as for POST (403 otherwise; nothing written). Audited as
+  job_title.update.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        properties:
+          label:
+            type: string
+            minLength: 1
+            maxLength: 100
+          grade_rank:
+            type: integer
+            minimum: 0
+            maximum: 1000
+          active:
+            type: boolean
+responses:
+  '200':
+    description: The changed title.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [id, kind, label, grade_rank, active]
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            kind:
+              $ref: '#/components/schemas/JobTitleKind'
+            label:
+              type: string
+            grade_rank:
+              type: [integer, 'null']
+              description: Higher = more senior; null = unranked.
+            active:
+              type: boolean
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

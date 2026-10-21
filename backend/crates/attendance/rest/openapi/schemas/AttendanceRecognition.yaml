@@ -1,0 +1,4 @@
+type: object
+description: 'minutes; 기록 (recorded) and 인정 (recognised) are never the same number by accident: 인정 = 기록 ∩ (소정 ∪ 승인)'
+required: [recorded, recognised, regular, approved, early_unrecognised, late_unrecognised, late_in, early_out, away, approval_unused]
+properties: { recorded: { type: integer }, recognised: { type: integer }, regular: { type: integer }, approved: { type: integer }, early_unrecognised: { type: integer }, late_unrecognised: { type: integer }, late_in: { type: integer }, early_out: { type: integer }, away: { type: integer }, approval_unused: { type: integer } }

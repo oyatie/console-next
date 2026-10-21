@@ -1,0 +1,17 @@
+type: object
+additionalProperties: false
+required: [value, reason_code]
+properties:
+  value:
+    $ref: '#/components/schemas/SettingValue'
+  effective_from:
+    $ref: '#/components/schemas/Timestamp'
+  scope_entity_id:
+    $ref: '#/components/schemas/Uuid'
+  reason_code:
+    $ref: '#/components/schemas/ReasonCode'
+  reason_note:
+    type: string
+    maxLength: 1000
+  step_up_assertion_id:
+    $ref: '#/components/schemas/Uuid'

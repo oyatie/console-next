@@ -1,0 +1,72 @@
+/* access screens (roles-ux mockups M1–M6). Every value is a token. */
+.lede { margin: 0; color: var(--steel); font-size: var(--text-sm); }
+.strong { font-weight: var(--fw-medium); }
+.titleRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; width: 100%; counter-reset: step; }
+.steps li { padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--canvas); font-size: var(--text-sm); counter-increment: step; }
+.steps li::before { content: counter(step); display: inline-grid; place-items: center; width: var(--space-5); height: var(--space-5); margin-bottom: var(--space-2); border-radius: var(--radius-sm); background: var(--primary-soft); color: var(--primary); font-size: var(--text-xs); font-weight: var(--fw-strong); }
+.steps b { display: block; margin-bottom: var(--space-1); }
+.how { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); color: var(--steel); }
+
+.editor { display: grid; grid-template-columns: minmax(0, 1fr) var(--queue-w); gap: var(--space-4); align-items: start; }
+@media (max-width: 1100px) { .editor { grid-template-columns: minmax(0, 1fr); } }
+.stack { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.pad { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3); }
+.wide { width: 100%; justify-content: center; }
+
+.help { display: block; font-weight: var(--fw-body); font-size: var(--text-xs); color: var(--steel); }
+.cell { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); min-width: calc(var(--space-6) * 3); min-height: var(--target); padding: 0 var(--space-2); border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--surface); color: var(--steel); font-size: var(--text-sm); font-weight: var(--fw-medium); cursor: pointer; }
+.cell[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.cell[aria-pressed="true"][data-auto] { background: var(--primary-soft); border-color: var(--primary-bd); color: var(--primary); }
+
+.preview { position: sticky; top: 0; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.preview h2, .preview h3 { margin: 0; font-size: var(--text-body); }
+.preview ul { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--text-sm); }
+.say { margin: 0; padding: var(--space-3); border-radius: var(--radius); background: var(--canvas); border: 1px solid var(--border); font-size: var(--text-sm); }
+
+/* A grant line (M4): role, scope, end chips, remove, in one row; stacked one under another in a side card (M5). */
+.lines { display: flex; flex-direction: column; gap: var(--space-2); container-type: inline-size; }
+.line { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr) minmax(0, 1fr) auto; gap: var(--space-2); align-items: start; margin: 0; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); min-width: 0; }
+.line > .full { grid-column: 1 / -1; }
+@container (max-width: 560px) { .line { grid-template-columns: minmax(0, 1fr) auto; } .line > :nth-child(2), .line > :nth-child(3) { grid-column: 1; } }
+.stackedLine { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; border: 0; min-width: 0; }
+.pick { justify-content: flex-start; width: 100%; min-width: 0; min-height: var(--target); border-color: var(--control-border); }
+.pick span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick[data-empty] { border-style: dashed; color: var(--steel); font-weight: var(--fw-body); }
+.pick svg { flex: none; color: var(--steel); }
+.chev { margin-left: auto; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; }
+.endPick { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.endDate { max-width: calc(var(--panel-w) / 1.5); }
+.when [role="radiogroup"] > div:has(> label) { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+/* M3: the scope tree with the whole company on top; the units a pick brings along read included. */
+.tree { border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; }
+.node { display: flex; align-items: center; gap: var(--space-2); flex: 1; min-width: 0; font-size: var(--text-sm); }
+.kind { width: calc(var(--space-6) + var(--space-3)); font-size: var(--text-xs); color: var(--steel); flex: none; }
+.count { margin-left: auto; color: var(--steel); font-variant-numeric: tabular-nums; }
+
+.person { display: inline-flex; align-items: center; gap: var(--space-3); }
+.who { display: flex; flex-direction: column; gap: 0; font-size: var(--text-sm); }
+.name { font-size: var(--text-lg); color: var(--ink); }
+.personTitle { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); }
+.acc { display: grid; grid-template-columns: minmax(120px, 160px) 1fr; }
+.acc > * { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border-soft); }
+.src { font-size: var(--text-xs); color: var(--steel); }
+.held { margin: 0; padding: 0; list-style: none; }
+.held li { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-top: 1px solid var(--border-soft); }
+.held li > :first-child { flex: 1; }
+
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4) 0; }
+.filters > :first-child { flex: 1; min-width: calc(var(--panel-w) / 1.5); }
+
+.check { display: grid; grid-template-columns: var(--space-5) 1fr auto; gap: var(--space-3); align-items: start; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border-soft); }
+.check:last-child { border-bottom: 0; }
+.check p { margin: var(--space-1) 0 0; font-size: var(--text-sm); color: var(--steel); }
+.ok { color: var(--ok-tx); }
+.bad { color: var(--danger-tx); }
+.info { color: var(--info-tx); }
+.actions { display: flex; flex-wrap: nowrap; gap: var(--space-1); }
+.nowrap { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: var(--space-1); white-space: nowrap; }

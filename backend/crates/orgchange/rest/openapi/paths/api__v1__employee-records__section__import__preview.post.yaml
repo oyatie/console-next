@@ -1,0 +1,43 @@
+tags:
+  - employees
+operationId: previewEmployeeRecordImport
+summary: Preview a 인사카드 section sheet (writes nothing)
+description: The browser parses the sheet and sends typed rows keyed by 사번 (1 to 1000). Each row is CREATE,
+  UPDATE, VOID, UNCHANGED (equal to a live entry, so re-importing a sheet changes nothing) or ERROR with a code
+  (employee_not_found, employee_number_ambiguous, fields_required, invalid_fields, invalid_reason,
+  void_needs_entry, entry_not_found, entry_voided, version_conflict, duplicate_in_sheet). A 병역 row without
+  entry_id corrects the person's live entry. 409 record_section_disabled when the section is off and
+  the sheet has a non-void row (a voids-only sheet runs, as a one-by-one void does). In a restricted
+  section each row passes the Cedar gate for its own subject (ERROR restricted_denied otherwise, e.g. one's
+  own record).
+security:
+- bearerAuth: []
+parameters:
+- name: section
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/PersonRecordSectionSegment'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/PersonRecordImportRequest'
+responses:
+  '200':
+    description: The plan and its digest.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PersonRecordImportReport'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

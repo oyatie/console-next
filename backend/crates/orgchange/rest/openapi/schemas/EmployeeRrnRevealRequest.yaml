@@ -1,0 +1,10 @@
+type: object
+additionalProperties: false
+required: [reason_code]
+properties:
+  reason_code:
+    type: string
+    description: rrn_reveal reason code.
+  note:
+    type: string
+    maxLength: 1000

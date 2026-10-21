@@ -1,0 +1,47 @@
+[package]
+name = "console-platform-auth"
+version = "0.1.0"
+description = "Passkey ceremonies, ES256 access JWTs, and rotating refresh-token families."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+console-kernel-core = { workspace = true }
+console-platform-db = { path = "../db" }
+console-settings-domain = { path = "../../settings/domain" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+time = { workspace = true }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+webauthn-rs = { version = "0.5.5", features = [
+    "danger-allow-state-serialisation",
+    "conditional-ui",
+] }
+# Proto enums (ResidentKeyRequirement) not re-exported by the webauthn-rs prelude.
+webauthn-rs-proto = "0.5.5"
+jsonwebtoken = { version = "10.4.0", default-features = false, features = ["rust_crypto", "use_pem"] }
+sha2 = "0.11.0"
+# Key ids (RFC 7638 thumbprints) and P-256 SPKI parsing. Both already resolve in
+# Cargo.lock (base64 0.22.1 workspace pin; p256 0.13.2 via jsonwebtoken): no new crate.
+base64 = { workspace = true }
+p256 = { workspace = true, features = ["pkcs8", "pem"] }
+tracing = { workspace = true }
+metrics = { workspace = true }
+url = "2.5.8"
+# Force the lockfile-pinned OpenSSL source into the auth test closure. The
+# `vendored` feature makes openssl-sys build and link its own static OpenSSL
+# rather than consulting the host SDK or Homebrew.
+openssl = { version = "0.10.80", features = ["vendored"] }
+
+[dev-dependencies]
+p256 = { workspace = true, features = ["ecdsa", "pkcs8", "pem"] }
+tokio = { workspace = true, features = ["sync"] }
+webauthn-authenticator-rs = { workspace = true, features = ["softpasskey"] }
+
+[lints]
+workspace = true

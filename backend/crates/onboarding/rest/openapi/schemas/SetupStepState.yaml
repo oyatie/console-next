@@ -1,0 +1,6 @@
+type: string
+enum:
+- todo
+- done
+- attention
+- blocked

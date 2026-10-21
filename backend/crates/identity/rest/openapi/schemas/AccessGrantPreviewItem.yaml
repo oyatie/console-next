@@ -1,0 +1,56 @@
+type: object
+required:
+- index
+- op
+- outcome
+- account_id
+- enforcement_after
+- gains
+- losses
+properties:
+  index:
+    type: integer
+    minimum: 0
+  op:
+    type: string
+    enum:
+    - grant
+    - revoke
+    - set_end
+  outcome:
+    type: string
+    enum:
+    - OK
+    - REFUSED
+  refusal:
+    type:
+    - object
+    - 'null'
+    required:
+    - code
+    - message
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+  account_id:
+    $ref: '#/components/schemas/Uuid'
+  grant_id:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  enforcement_after:
+    description: null when REFUSED.
+    oneOf:
+    - $ref: '#/components/schemas/AccessEnforcement'
+    - type: 'null'
+  gains:
+    type: array
+    description: Lines the account gains now (enforced); PREPARED/SCHEDULED grants gain nothing yet.
+    items:
+      $ref: '#/components/schemas/AccessEffectLine'
+  losses:
+    type: array
+    items:
+      $ref: '#/components/schemas/AccessEffectLine'

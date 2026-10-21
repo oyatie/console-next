@@ -1,0 +1,57 @@
+[package]
+name = "console-hr-adapter-postgres"
+version = "0.1.0"
+description = "HR context ring 3: Postgres adapter and the HrService facade (exits, lifecycle, import, directory, dashboard)."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+console-hr-application = { workspace = true }
+console-entity-domain = { workspace = true }
+console-hr-domain = { workspace = true }
+console-identity-application = { workspace = true }
+console-entity-adapter-postgres = { workspace = true }
+console-kernel-core = { workspace = true }
+console-leave-adapter-postgres = { workspace = true }
+console-leave-domain = { workspace = true }
+console-ontology-canonical-adapter-postgres = { path = "../../ontology/canonical-adapter-postgres" }
+console-platform-auth = { workspace = true }
+console-platform-authz = { workspace = true }
+console-payroll-domain = { workspace = true }
+console-platform-db = { workspace = true }
+console-platform-preconditions = { path = "../../platform/preconditions" }
+console-platform-request-context = { workspace = true }
+console-settings-adapter-postgres = { path = "../../settings/adapter-postgres" }
+console-settings-domain = { path = "../../settings/domain" }
+console-compliance-domain = { workspace = true }
+console-platform-excel = { workspace = true }
+console-governance-adapter-postgres = { workspace = true }
+console-governance-domain = { workspace = true }
+futures = { workspace = true }
+hex = { workspace = true }
+http = { workspace = true }
+metrics = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+sqlx = { workspace = true }
+time = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+console-compliance-adapter-postgres = { workspace = true }
+# UX-R2 ENDS close_plan tests: the entity suites' fixtures (법인, 사업장, 부서) and canonical port.
+console-entity-application = { workspace = true }
+console-ontology-canonical-domain = { path = "../../ontology/canonical-domain" }
+console-inbox-adapter-postgres = { workspace = true }
+console-platform-test-support = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+url = { workspace = true }
+webauthn-authenticator-rs = { workspace = true, features = ["softpasskey"] }
+
+[lints]
+workspace = true

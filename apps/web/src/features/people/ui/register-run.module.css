@@ -1,0 +1,46 @@
+/* Registration in a row (spec E3-run): head, carry bar, the row table with its entry row, the side cards. Tokens only. */
+.page { display: flex; flex-direction: column; min-height: 100%; }
+.sum { font-size: var(--text-sm); color: var(--ink); }
+.carry { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--border); background: var(--surface); }
+.carryLabel { max-width: 16rem; font-size: var(--text-sm); color: var(--steel); }
+.carry .carryChip { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--target); padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: calc(var(--target) / 2); background: var(--surface); color: var(--ink); font-size: var(--text-sm); white-space: nowrap; cursor: pointer; }
+.carry .carryChip[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); font-weight: var(--fw-medium); outline: 1px solid var(--primary); outline-offset: -2px; }
+.carry .carryChip[aria-disabled="true"] { border-style: dashed; color: var(--steel); cursor: default; }
+.carry .carryChip:focus-visible { box-shadow: var(--focus); outline: none; }
+.note { font-size: var(--text-xs); color: var(--steel); line-height: 1.45; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: var(--space-4); padding: var(--space-4) var(--space-5); align-items: start; }
+.main { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.wrap :global(.table) { table-layout: fixed; min-width: 68rem; }
+/* #, name, birth, number, type, place, start, phone, position, pay, save: fits 1440 px with the side cards under the rows. */
+.wrap :global(.table) th:nth-child(1) { width: 2.5rem; }
+.wrap :global(.table) th:nth-child(2) { width: 6.5rem; }
+.wrap :global(.table) th:nth-child(3), .wrap :global(.table) th:nth-child(7) { width: 7.5rem; }
+.wrap :global(.table) th:nth-child(4), .wrap :global(.table) th:nth-child(5) { width: 6.5rem; }
+.wrap :global(.table) th:nth-child(6) { width: 10rem; }
+.wrap :global(.table) th:nth-child(8) { width: 8rem; }
+.wrap :global(.table) th:nth-child(9) { width: 5.5rem; }
+.wrap :global(.table) th:nth-child(10) { width: 6.5rem; }
+.wrap :global(.table) th:nth-child(11) { width: 5.5rem; }
+.wrap :global(.table) td { vertical-align: middle; }
+.n { color: var(--steel); font-variant-numeric: tabular-nums; }
+.done { display: inline-flex; align-items: center; gap: var(--space-1); }
+.undone { color: var(--steel); text-decoration: line-through; }
+.cell { position: relative; display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.cell :global(.field__input) { min-width: 0; width: 100%; }
+/* Every control in a cell shrinks to the column (a flex item would keep its own content width and push the row out). */
+.cell > :not(.tag) { flex: 1 1 auto; min-width: 0; }
+.cell select { flex: 1; min-width: 4.5rem; min-height: var(--target); }
+/* A carried value's tag sits on the cell's top edge, so it takes no width from the value. */
+.tag { position: absolute; top: calc(-1 * var(--space-2)); right: var(--space-1); z-index: 1; pointer-events: none; padding: 0 var(--space-1); border: 1px solid var(--info-bd); border-radius: var(--radius-sm); background: var(--info-bg); color: var(--info-tx); font-size: var(--text-xs); white-space: nowrap; }
+.folded { display: flex; align-items: center; gap: var(--space-1); margin: 0; padding: var(--space-1) var(--space-3); border-bottom: 1px solid var(--border); font-size: var(--text-sm); color: var(--steel); }
+.err { font-size: var(--text-sm); color: var(--danger-tx); }
+.side { display: flex; flex-direction: column; gap: var(--space-3); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-3); margin: 0; align-items: center; font-size: var(--text-sm); }
+.keys dd { margin: 0; }
+.keyRow { display: contents; }
+.wrap td :global(.field__input) { box-sizing: border-box; width: 100%; min-width: 0; padding-inline: var(--space-2); }
+/* The server still needs three more columns per person (EMP-UI 1): below 1600px the side cards go under the rows,
+   side by side. Last, so it wins over .side above. */
+@media (max-width: 1599px) { .cols { grid-template-columns: minmax(0, 1fr); } .side { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); align-items: start; } }

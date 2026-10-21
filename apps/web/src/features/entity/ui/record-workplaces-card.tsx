@@ -1,0 +1,75 @@
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ChevronRight, Plus } from "lucide-react";
+import type { LegalEntity, Workplace } from "@console/api/pending";
+import { t } from "@console/i18n";
+import { fmtNumber } from "@console/i18n/format";
+import { labeled, RECORD_STATUS } from "../../../lib/labels";
+import { Chip } from "../../../ui/chip";
+import { Table } from "../../../ui/table";
+import { addressLine, headcount, registrationOf } from "../domain/view";
+import s from "./record.module.css";
+import { Muted } from "../../../ui/muted/muted";
+
+/** A workplace's four social insurance relations in one chip: all established, or how many still wait for their number. */
+function insurance(w: Workplace) {
+  const pending = w.insurance.filter((i) => i.status === "ESTABLISHED_NUMBER_PENDING").length;
+  const done = w.insurance.filter((i) => i.status === "ESTABLISHED").length;
+  if (pending) return <Chip tone="warn">{t("entityRecord.workplaces.insPending", { count: pending })}</Chip>;
+  return done ? <Chip tone="ok">{t("entityRecord.workplaces.insDone", { count: done })}</Chip> : <Chip tone="neutral">{t("entityRecord.workplaces.insNone")}</Chip>;
+}
+
+/** workplaces and certificates (spec S3): every workplace with its headcount, its certificate's number and status, place and social insurance. */
+export function WorkplacesCard({ e }: { e: LegalEntity }) {
+  const nav = useNavigate();
+  const vat = e.current?.vat_unit_mode;
+  return (
+    <section className="card" aria-labelledby="workplaces-title">
+      <div className={s.cardHead}>
+        <h2 id="workplaces-title" className={s.cardTitle}>{t("entityRecord.workplaces.title")}</h2>
+        <span className="muted">
+          {t("entityRecord.workplaces.summary", { count: e.workplaces.length, people: fmtNumber(headcount(e)) })}
+          {vat && ` · ${t("entityRecord.workplaces.vat", { mode: t(`entity.vat.${vat}`) })}`}
+        </span>
+        <span className="grow" />
+        {!e.read_only && !e.closed_on && <Link to="/org/entities/$id/workplaces/new" params={{ id: e.id }} className="btn btn--ghost"><Plus size={16} aria-hidden /> {t("entityRecord.workplaces.add")}</Link>}
+      </div>
+      {e.workplaces.length === 0 ? (
+        <p className={`muted ${s.cardBody}`}>{t("entityRecord.workplaces.none")}</p>
+      ) : (
+        <Table
+          label={t("entityRecord.workplaces.table")}
+          rows={e.workplaces}
+          rowId={(w) => w.id}
+          onSelect={(id) => void nav({ to: "/org/entities/$id", params: { id: e.id }, search: { wp: id, as_of: e.as_of, known_at: e.known_at ?? undefined } })}
+          columns={[
+            {
+              header: t("entityRecord.workplaces.col.name"),
+              cell: (w) => (
+                <span className="row">
+                  <b>{w.current?.name}</b>
+                  {w.is_head_office && <Chip tone="neutral">{t("entityRecord.workplaces.head")}</Chip>}
+                  {w.is_primary && <Chip tone="neutral">{t("entityRecord.workplaces.primary")}</Chip>}
+                </span>
+              ),
+            },
+            { header: t("entityRecord.workplaces.col.people"), cell: (w) => <b className="num">{fmtNumber(w.headcount)}</b>, fit: true },
+            { header: t("entityRecord.workplaces.col.brn"), cell: (w) => <span className="code">{registrationOf(e, w.registration_id)?.brn?.display ?? "—"}</span>, fit: true },
+            {
+              header: t("entityRecord.workplaces.col.status"),
+              fit: true,
+              cell: (w) => {
+                const r = registrationOf(e, w.registration_id);
+                if (!r?.current) return <Chip tone="warn">{t("entityRecord.workplaces.noCert")}</Chip>;
+                const st = labeled(RECORD_STATUS, r.current.status);
+                return <Chip tone={st.tone}>{st.label}</Chip>;
+              },
+            },
+            { header: t("entityRecord.workplaces.col.address"), cell: (w) => <Muted>{addressLine(w.current?.address ?? registrationOf(e, w.registration_id)?.current?.business_address) || "—"}</Muted>, wide: true },
+            { header: t("entityRecord.workplaces.col.insurance"), cell: insurance, fit: true },
+            { header: <span className="sr-only">{t("entityRecord.workplaces.col.open")}</span>, cell: () => <ChevronRight size={14} aria-hidden />, fit: true },
+          ]}
+        />
+      )}
+    </section>
+  );
+}

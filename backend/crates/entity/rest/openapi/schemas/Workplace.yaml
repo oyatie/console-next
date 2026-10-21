@@ -1,0 +1,87 @@
+type: object
+required:
+- id
+- legal_entity_id
+- is_primary
+- is_head_office
+- needs_confirmation
+- can_manage
+- insurance
+- withholding
+- headcount
+- regular_workers
+properties:
+  id:
+    type: string
+    format: uuid
+  legal_entity_id:
+    type: string
+    format: uuid
+  registration_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  sub_serial:
+    type:
+    - string
+    - 'null'
+  default_branch_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+    description: Branch backing the 사업장; use as home_branch_id when registering people here.
+  kind_code:
+    type:
+    - string
+    - 'null'
+    description: 사업장 kind code (decisions
+  code:
+    type:
+    - string
+    - 'null'
+    description: The 사업장 code (unique among open 사업장), when set.
+  is_primary:
+    type: boolean
+  is_head_office:
+    type: boolean
+  needs_confirmation:
+    type: boolean
+  can_manage:
+    description: Whether this reader may manage the 사업장 (Cedar legal_entity_manage within their scope).
+    type: boolean
+  closed_on:
+    type:
+    - string
+    - 'null'
+    format: date
+  current:
+    anyOf:
+    - $ref: '#/components/schemas/WorkplaceState'
+    - type: 'null'
+  insurance:
+    type: array
+    items:
+      $ref: '#/components/schemas/InsuranceRelation'
+  withholding:
+    $ref: '#/components/schemas/WithholdingTarget'
+  headcount:
+    type: integer
+    format: int64
+  org_unit_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+    description: The 사업장's own SITE org unit (decisions
+  regular_workers:
+    $ref: '#/components/schemas/RegularWorkers'
+  as_of:
+    type: string
+    format: date
+  known_at:
+    type: string
+    nullable: true
+  read_only:
+    type: boolean

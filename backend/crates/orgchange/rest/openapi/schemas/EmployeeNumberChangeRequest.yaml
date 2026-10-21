@@ -1,0 +1,20 @@
+type: object
+additionalProperties: false
+required: [new_number, effective_date, reason_code, expected_updated_at]
+properties:
+  new_number:
+    type: string
+    minLength: 1
+    maxLength: 40
+  effective_date:
+    type: string
+    format: date
+  reason_code:
+    type: string
+    description: employee_number_change reason code.
+  note:
+    type: string
+    maxLength: 1000
+  expected_updated_at:
+    type: string
+    format: date-time

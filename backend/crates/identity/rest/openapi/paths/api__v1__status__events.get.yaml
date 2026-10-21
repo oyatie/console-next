@@ -1,0 +1,11 @@
+summary: Bounded public SSE heartbeat through the realtime listener
+operationId: getPublicStatusHeartbeat
+security: []
+responses:
+  '200':
+    description: Single heartbeat comment, no tenant subscription or event data
+    content:
+      text/event-stream:
+        schema: {type: string}
+  '503':
+    description: Listener missing, stopped, overloaded or unavailable

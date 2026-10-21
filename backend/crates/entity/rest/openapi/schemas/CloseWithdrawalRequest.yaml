@@ -1,0 +1,8 @@
+type: object
+required:
+- why
+properties:
+  why:
+    type: string
+    maxLength: 200
+    description: Why the business goes on (kept in the audit row).

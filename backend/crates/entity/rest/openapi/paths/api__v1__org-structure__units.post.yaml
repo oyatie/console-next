@@ -1,0 +1,57 @@
+tags:
+- entity
+operationId: createSetupOrgUnit
+summary: Create a 부서 immediately during setup
+description: SETUP only; after 운영 시작 the refusal is phase_not_setup with remedy submit_org_change. A batch of one
+  op (undoable by its batch_id). The level is inferred — workplace_id puts it in the 사업장, parent_org_unit_id
+  under that 부서.
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CreateSetupOrgUnitRequest'
+responses:
+  '201':
+    description: Created.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SetupOrgUnitResult'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}].'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Refused with a stable code and reasons[] naming the remedy (e.g. phase_not_setup → submit_org_change).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '503':
+    description: Org-unit writes are not wired.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

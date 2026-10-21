@@ -1,0 +1,13 @@
+{
+  "plugins": ["stylelint-declaration-strict-value"],
+  "ignoreFiles": ["packages/tokens/tokens.css", "**/dist/**", "**/node_modules/**"],
+  "rules": {
+    "color-no-hex": true,
+    "color-named": "never",
+    "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla"],
+    "scale-unlimited/declaration-strict-value": [
+      ["/color$/", "fill", "stroke", "font-size", "font-family", "font-weight", "border-radius", "box-shadow", "/^(margin|padding|gap|row-gap|column-gap)/"],
+      { "ignoreValues": ["inherit", "currentcolor", "transparent", "0", "none", "auto", "unset", "initial"], "disableFix": true }
+    ]
+  }
+}

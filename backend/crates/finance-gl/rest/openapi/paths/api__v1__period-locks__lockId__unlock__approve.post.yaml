@@ -1,0 +1,51 @@
+tags:
+  - period-locks
+operationId: approvePeriodUnlock
+summary: Approve the waiting unlock request as the second person
+description: 'Close-authority gated (PeriodLockManage, org-wide), audited (BW-15). The approver is an eligible
+  second person (decisions D0.2), never the requester''s own person (Cedar independent_people; 403
+  second_person_required / second_person_ineligible), with a PERIOD_UNLOCK step-up bound to the request id and the
+  SHA-256 of "PERIOD_UNLOCK_APPROVE\n{requestId}". A request whose relockAt has passed is refused (409
+  period_unlock_request_expired); one replaced by a newer request than requestId, too (409
+  period_unlock_request_changed). An Idempotency-Key replays the first response.'
+security:
+- bearerAuth: []
+parameters:
+- name: lockId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+- name: Idempotency-Key
+  in: header
+  required: false
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ApprovePeriodUnlockRequest'
+responses:
+  '200':
+    description: Unlocked.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PeriodUnlockOutcome'
+  '401':
+    description: No step-up, a failed one, or no session.
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    description: JWT or passkey step-up verification is not configured.

@@ -1,0 +1,24 @@
+type: object
+required:
+- a
+- b
+- structure
+- marks
+- changes
+properties:
+  a:
+    type: string
+    format: date
+  b:
+    type: string
+    format: date
+  structure:
+    $ref: '#/components/schemas/OrgStructure'
+  marks:
+    type: array
+    items:
+      $ref: '#/components/schemas/StructureNodeDiff'
+  changes:
+    type: array
+    items:
+      $ref: '#/components/schemas/StructureScheduledBy'

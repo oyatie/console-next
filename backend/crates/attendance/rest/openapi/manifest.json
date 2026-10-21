@@ -1,0 +1,214 @@
+{
+  "source": "console-attendance-rest",
+  "paths": {
+    "/api/v1/attendance/batches/{batch_id}/undo": [
+      "post"
+    ],
+    "/api/v1/attendance/closes": [
+      "get",
+      "post"
+    ],
+    "/api/v1/attendance/closes/preflight": [
+      "post"
+    ],
+    "/api/v1/attendance/closes/{close_id}/amendments": [
+      "post"
+    ],
+    "/api/v1/attendance/crews": [
+      "get",
+      "post"
+    ],
+    "/api/v1/attendance/crews/{crew_id}/members": [
+      "post"
+    ],
+    "/api/v1/attendance/days": [
+      "get"
+    ],
+    "/api/v1/attendance/entries": [
+      "post"
+    ],
+    "/api/v1/attendance/entries/preview": [
+      "post"
+    ],
+    "/api/v1/attendance/entries/{entry_id}/correct": [
+      "post"
+    ],
+    "/api/v1/attendance/entries/{entry_id}/void": [
+      "post"
+    ],
+    "/api/v1/attendance/exceptions": [
+      "get",
+      "post"
+    ],
+    "/api/v1/attendance/exceptions/{exception_id}": [
+      "get"
+    ],
+    "/api/v1/attendance/exceptions/{exception_id}/resolve": [
+      "post"
+    ],
+    "/api/v1/attendance/holidays": [
+      "get",
+      "post"
+    ],
+    "/api/v1/attendance/holidays/preview": [
+      "post"
+    ],
+    "/api/v1/attendance/holidays/{holiday_id}/retire": [
+      "post"
+    ],
+    "/api/v1/attendance/me/exceptions": [
+      "get"
+    ],
+    "/api/v1/attendance/me/schedule": [
+      "get"
+    ],
+    "/api/v1/attendance/me/week52": [
+      "get"
+    ],
+    "/api/v1/attendance/month": [
+      "get"
+    ],
+    "/api/v1/attendance/patterns": [
+      "get",
+      "post"
+    ],
+    "/api/v1/attendance/patterns/{pattern_id}/retire": [
+      "post"
+    ],
+    "/api/v1/attendance/people/{employee_id}/month": [
+      "get"
+    ],
+    "/api/v1/attendance/schedule/calendar": [
+      "get"
+    ],
+    "/api/v1/attendance/schedule/layers": [
+      "get",
+      "post"
+    ],
+    "/api/v1/attendance/schedule/layers/preview": [
+      "post"
+    ],
+    "/api/v1/attendance/schedule/layers/{layer_id}/cancel": [
+      "post"
+    ],
+    "/api/v1/attendance/schedule/tree": [
+      "get"
+    ],
+    "/api/v1/attendance/substitution-candidates": [
+      "get"
+    ],
+    "/api/v1/attendance/substitutions": [
+      "get",
+      "post"
+    ],
+    "/api/v1/attendance/substitutions/{substitution_id}/cancel": [
+      "post"
+    ],
+    "/api/v1/attendance/week52": [
+      "get"
+    ],
+    "/api/v1/attendance/week52/acks": [
+      "post"
+    ]
+  },
+  "schemas": [
+    "AssignAttendanceSubstituteRequest",
+    "AttendanceBoardGroup",
+    "AttendanceBoardRow",
+    "AttendanceCellInput",
+    "AttendanceCellPreview",
+    "AttendanceCloseAmendment",
+    "AttendanceCloseAmendmentRequest",
+    "AttendanceCloseBoard",
+    "AttendanceCloseCheck",
+    "AttendanceClosePreflight",
+    "AttendanceCloseRequest",
+    "AttendanceConflict",
+    "AttendanceContractualHoliday",
+    "AttendanceCorrectInput",
+    "AttendanceCrew",
+    "AttendanceCrewInput",
+    "AttendanceCrewList",
+    "AttendanceCrewMember",
+    "AttendanceCrewMembersInput",
+    "AttendanceDay",
+    "AttendanceDayBoard",
+    "AttendanceDayKind",
+    "AttendanceDaySpec",
+    "AttendanceEntry",
+    "AttendanceEntryConflictBody",
+    "AttendanceEntryKind",
+    "AttendanceEvidence",
+    "AttendanceException",
+    "AttendanceExceptionEvidence",
+    "AttendanceExceptionLink",
+    "AttendanceExceptionPage",
+    "AttendanceExceptionResolution",
+    "AttendanceGridCell",
+    "AttendanceGridRow",
+    "AttendanceGridTotals",
+    "AttendanceHistoryRow",
+    "AttendanceHolidayInput",
+    "AttendanceHolidayOverlap",
+    "AttendanceHolidayPreview",
+    "AttendanceHolidayRetireInput",
+    "AttendanceHolidayYear",
+    "AttendanceLayerSummary",
+    "AttendanceLedger",
+    "AttendanceMark",
+    "AttendanceMarkCounts",
+    "AttendanceMonthClose",
+    "AttendanceMonthCloseItem",
+    "AttendanceMonthGrid",
+    "AttendanceMonthState",
+    "AttendancePattern",
+    "AttendancePatternInput",
+    "AttendancePatternKind",
+    "AttendancePatternList",
+    "AttendancePersonMonth",
+    "AttendancePlan",
+    "AttendancePreviewInput",
+    "AttendancePublicHoliday",
+    "AttendanceReasonInput",
+    "AttendanceRecognition",
+    "AttendanceRefusal",
+    "AttendanceRotationSlot",
+    "AttendanceSaveInput",
+    "AttendanceSavePreview",
+    "AttendanceSaveReceipt",
+    "AttendanceScheduleAssignInput",
+    "AttendanceScheduleAssignReceipt",
+    "AttendanceScheduleCalendar",
+    "AttendanceScheduleDay",
+    "AttendanceScheduleKept",
+    "AttendanceScheduleLayer",
+    "AttendanceScheduleLayerList",
+    "AttendanceSchedulePreview",
+    "AttendanceScheduleTarget",
+    "AttendanceScheduleTree",
+    "AttendanceScheduleTreeNode",
+    "AttendanceScopeKind",
+    "AttendanceShift",
+    "AttendanceStackEntry",
+    "AttendanceSubstitution",
+    "AttendanceSubstitutionCandidate",
+    "AttendanceSubstitutionCandidatePage",
+    "AttendanceSubstitutionPage",
+    "AttendanceVoidInput",
+    "AttendanceWeek52AckRequest",
+    "AttendanceWeek52Board",
+    "AttendanceWeek52Row",
+    "AttendanceWindow",
+    "CancelAttendanceSubstitutionRequest",
+    "OwnAttendanceException",
+    "OwnAttendanceExceptionPage",
+    "OwnAttendanceExceptionResolution",
+    "OwnAttendanceWeek52",
+    "OwnAttendanceWeek52Response",
+    "RaiseAttendanceExceptionRequest",
+    "ResolveAttendanceExceptionRequest"
+  ],
+  "external_schemas": [
+    "Uuid"
+  ]
+}

@@ -1,0 +1,51 @@
+tags:
+- org
+operationId: draftUpdateOrgUnit
+summary: Draft an org change that renames and/or moves an OrgUnit
+description: Creates a DRAFT org change (kind REORG) with RENAME_ORG_UNIT and/or MOVE_ORG_UNIT.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/UpdateOrgUnitRequest'
+responses:
+  '200':
+    description: Idempotent replay of the existing draft.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgChangeDetail'
+  '201':
+    description: Draft org change created.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgChangeDetail'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

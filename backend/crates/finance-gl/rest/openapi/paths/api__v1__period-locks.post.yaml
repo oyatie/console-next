@@ -1,0 +1,47 @@
+tags:
+  - period-locks
+operationId: createPeriodLock
+summary: Lock a payroll/accounting period (freeze window)
+description: 'Close-authority gated (PeriodLockManage, org-wide), audited. While the lock is active every
+  date-stamping write in the domain whose business date falls inside [periodStart, periodEnd] fails closed with 409.
+  Overlapping an existing active lock in the same domain is refused. An Idempotency-Key replays the first
+  response (200).'
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: false
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CreatePeriodLockRequest'
+responses:
+  '200':
+    description: Replay of an earlier request with the same Idempotency-Key.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PeriodLock'
+  '201':
+    description: Period locked.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PeriodLock'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    description: JWT verification is not configured.

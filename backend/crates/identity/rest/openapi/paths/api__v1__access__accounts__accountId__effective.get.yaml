@@ -1,0 +1,26 @@
+tags:
+- access
+operationId: getAccountEffectiveAccess
+summary: What one account can do now, and what is prepared or scheduled
+description: Needs 권한 관리 조회 over the whole tenant, or ops.
+security:
+- bearerAuth: []
+parameters:
+- name: accountId
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The account's effective access.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessEffective'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

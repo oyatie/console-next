@@ -1,0 +1,13 @@
+description: OrgUnitHead fields plus history and members.
+allOf:
+- $ref: '#/components/schemas/OrgUnitHead'
+- type: object
+  required: [revisions, members]
+  properties:
+    revisions:
+      type: array
+      description: Newest first.
+      items:
+        $ref: '#/components/schemas/OrgUnitRevision'
+    members:
+      $ref: '#/components/schemas/OrgUnitMembers'

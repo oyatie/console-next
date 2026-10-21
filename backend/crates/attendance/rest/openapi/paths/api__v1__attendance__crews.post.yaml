@@ -1,0 +1,13 @@
+tags: [attendance]
+operationId: createAttendanceCrew
+summary: Add a 근무조 to a 사업장
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceCrewInput' } } } }
+responses:
+  '201': { description: Added, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceCrew' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '409': { $ref: '#/components/responses/Conflict' }
+  '422': { $ref: '#/components/responses/ValidationError' }

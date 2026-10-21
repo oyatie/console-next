@@ -1,0 +1,23 @@
+type: object
+required: [id, section, version, voided, source, fields, created_at, revised_at]
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  section:
+    $ref: '#/components/schemas/PersonRecordSection'
+  version:
+    type: integer
+    format: int64
+  voided:
+    type: boolean
+  source:
+    type: string
+    enum: [MANUAL, IMPORT]
+  fields:
+    $ref: '#/components/schemas/PersonRecordFields'
+  created_at:
+    type: string
+    format: date-time
+  revised_at:
+    type: string
+    format: date-time

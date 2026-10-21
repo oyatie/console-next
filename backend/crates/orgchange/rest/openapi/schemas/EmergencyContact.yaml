@@ -1,0 +1,13 @@
+type: object
+additionalProperties: false
+required: [name, relation, phone]
+properties:
+  name:
+    type: string
+    maxLength: 50
+  relation:
+    type: string
+    enum: [SPOUSE, PARENT, CHILD, SIBLING, RELATIVE, OTHER]
+  phone:
+    type: string
+    description: Sent in any common form; answered in E.164.

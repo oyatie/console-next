@@ -1,0 +1,11 @@
+type: object
+required: [employeeId, name]
+properties:
+  employeeId:
+    $ref: '#/components/schemas/Uuid'
+  name:
+    type: string
+  employeeNumber:
+    type: string
+  position:
+    type: string

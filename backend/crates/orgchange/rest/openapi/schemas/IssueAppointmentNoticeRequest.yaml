@@ -1,0 +1,23 @@
+type: object
+additionalProperties: false
+required: [title, notice_date]
+properties:
+  title:
+    type: string
+    minLength: 1
+    maxLength: 200
+  notice_date:
+    type: string
+    format: date
+    description: The 공고 date; its year numbers the notice.
+  event_ids:
+    type: array
+    maxItems: 500
+    uniqueItems: true
+    items:
+      $ref: '#/components/schemas/Uuid'
+  batch_id:
+    $ref: '#/components/schemas/Uuid'
+  note:
+    type: [string, 'null']
+    maxLength: 1000

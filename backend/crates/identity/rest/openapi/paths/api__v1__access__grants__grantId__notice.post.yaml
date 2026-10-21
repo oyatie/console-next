@@ -1,0 +1,42 @@
+tags:
+- access
+operationId: confirmAccessGrantNotice
+summary: The grant's holder confirms they were told of it
+description: 'Decisions D0.2: a grant counts toward an eligible second person (period unlock, governed
+
+  corrections and every other two-person act) only after its holder was told of it, besides its age
+
+  (`authz.second_person.min_grant_age`). The holder confirms the notice in the console; the grant ledger
+
+  records who, when and how (`channel` IN_APP). Cedar `grant_notice_confirm`: only the holder of a live grant
+
+  of their own tenant. Idempotent: a confirmed notice answers with its first confirmation. 404
+
+  `grant_not_found` for an unknown grant or another tenant''s, 403 `grant_notice_not_holder` for someone
+
+  else''s grant, 409 `grant_ended` for a revoked or ended one.
+
+  '
+security:
+- bearerAuth: []
+parameters:
+- name: grantId
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The notice confirmation.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessGrantNotice'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'

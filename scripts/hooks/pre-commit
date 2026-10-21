@@ -1,0 +1,13 @@
+#!/bin/sh
+# Refuse a commit whose staged diff carries a secret (security baseline row 17.11).
+#
+# Install (owner, once per machine): paste this line into ~/.githooks/pre-commit right
+# after the shebang, before anything that can `exit 0` early:
+#   t=$(git rev-parse --show-toplevel); [ ! -x "$t/scripts/hooks/pre-commit" ] || "$t/scripts/hooks/pre-commit" || exit 1
+# Not via a repo-local core.hooksPath: that would switch off the global commit-msg and
+# pre-push hooks. `gitleaks git --pre-commit --staged` is the current spelling of the
+# deprecated `gitleaks protect --staged`.
+set -eu
+command -v gitleaks >/dev/null 2>&1 || { echo "pre-commit: gitleaks is not installed (brew install gitleaks)" >&2; exit 1; }
+top=$(git rev-parse --show-toplevel)
+exec gitleaks git --pre-commit --staged --redact --no-banner --config "$top/.gitleaks.toml" "$top"

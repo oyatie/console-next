@@ -1,0 +1,75 @@
+type: object
+additionalProperties: false
+required: [reason_code]
+description: Either selection with changes, or rows (1..5000), never both.
+properties:
+  selection:
+    type: object
+    additionalProperties: false
+    properties:
+      filter:
+        type: object
+        additionalProperties: false
+        description: The GET /api/v1/employees filters (no paging). Unknown keys are refused.
+        properties:
+          company:
+            type: string
+          search:
+            type: string
+          register_review_required:
+            type: boolean
+          home_branch_review_required:
+            type: boolean
+          identity_review_required:
+            type: boolean
+          org_unit_id:
+            $ref: '#/components/schemas/Uuid'
+          status:
+            type: string
+            description: Comma-separated ACTIVE, ON_LEAVE, EXITED, UNKNOWN. Absent selects everyone but EXITED.
+          contract_ending_before:
+            type: string
+            format: date
+          lifecycle_apply_failed:
+            type: boolean
+      exclude_ids:
+        type: array
+        items:
+          $ref: '#/components/schemas/Uuid'
+  changes:
+    type: object
+    minProperties: 1
+    description: With selection. The fields and value rules of CorrectEmployeeRequest.changes.
+    additionalProperties: true
+  rows:
+    type: array
+    maxItems: 5000
+    items:
+      type: object
+      additionalProperties: false
+      required: [employee_id, changes]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        changes:
+          type: object
+          minProperties: 1
+          description: The fields and value rules of CorrectEmployeeRequest.changes.
+          additionalProperties: true
+        expected_updated_at:
+          type: string
+          format: date-time
+          description: The employee's updated_at as the grid read it; a newer record is REFUSED stale_record.
+  reason_code:
+    type: string
+    minLength: 1
+    maxLength: 100
+  note:
+    type: string
+    maxLength: 1000
+  preview_digest:
+    type: string
+    pattern: '^[0-9a-f]{64}$'
+    description: Commit only (required there).
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'

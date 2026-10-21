@@ -1,0 +1,20 @@
+type: object
+additionalProperties: false
+required:
+- login
+- effective_date
+- reason_code
+properties:
+  login:
+    type: string
+    description: The new 아이디 (before `@`), a-z 0-9 and . _ - inside, 1-32 characters.
+  effective_date:
+    $ref: '#/components/schemas/Date'
+  reason_code:
+    type: string
+    description: A `sign_in_id_change` reason code (NAME_CHANGE, INPUT_ERROR, HOLDER_REQUEST, SECURITY_INCIDENT,
+      a tenant code, or OTHER with a note).
+  note:
+    type:
+    - string
+    - 'null'

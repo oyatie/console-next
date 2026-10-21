@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/oyatie/console-next/security/advisories/new
+    about: Report privately (see SECURITY.md). Do not open a public issue.

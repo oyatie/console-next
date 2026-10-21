@@ -1,0 +1,20 @@
+type: object
+additionalProperties: false
+required: [as_of, workplace_id, workplace_name, headers, items, total, next]
+properties:
+  as_of: { type: string, format: date }
+  workplace_id: { type: string, format: uuid }
+  workplace_name: { type: string }
+  headers: { type: array, items: { type: string } }
+  total: { type: integer, format: int64 }
+  next: { type: string, format: uuid, nullable: true }
+  items:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [employee_id, cells, missing]
+      properties:
+        employee_id: { type: string, format: uuid }
+        cells: { type: array, items: { type: string } }
+        missing: { type: array, items: { type: string } }

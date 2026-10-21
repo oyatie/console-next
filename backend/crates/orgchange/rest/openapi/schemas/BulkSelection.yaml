@@ -1,0 +1,21 @@
+type: object
+additionalProperties: false
+description: 「필터와 일치하는 {n}명 모두 선택」 — every employee the list filters admit under the caller's scope,
+  minus exclude_employee_ids, resolved by the server in the batch transaction (recorded in employee id order).
+required: [query, expected_count]
+properties:
+  query:
+    type: object
+    description: The GET /api/v1/employees filters as JSON (company, search, org_unit_id, legal_entity_id, workplace_id, status, employee_number,
+      home_branch_review_required, identity_review_required, contract_ending_before, lifecycle_apply_failed),
+      each written as in the query string (status "ACTIVE,ON_LEAVE"); paging fields are ignored.
+    additionalProperties: true
+  exclude_employee_ids:
+    type: array
+    items:
+      $ref: '#/components/schemas/Uuid'
+  expected_count:
+    type: integer
+    minimum: 1
+    maximum: 3000
+    description: The count the confirmation showed; a different resolved count is 409 bulk_selection_changed.

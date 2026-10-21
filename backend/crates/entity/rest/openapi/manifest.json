@@ -1,0 +1,313 @@
+{
+  "source": "console-entity-rest",
+  "paths": {
+    "/api/v1/business-registrations/{registrationId}": [
+      "put"
+    ],
+    "/api/v1/business-registrations/{registrationId}/identifier-corrections": [
+      "post"
+    ],
+    "/api/v1/business-registrations/{registrationId}/reissues": [
+      "post"
+    ],
+    "/api/v1/business-registrations/{registrationId}/revisions": [
+      "get"
+    ],
+    "/api/v1/business-registrations/{registrationId}/void": [
+      "post"
+    ],
+    "/api/v1/employment-assignments": [
+      "get",
+      "post"
+    ],
+    "/api/v1/employment-assignments/map-company": [
+      "post"
+    ],
+    "/api/v1/employment-assignments/unmapped-companies": [
+      "get"
+    ],
+    "/api/v1/entity-documents": [
+      "post"
+    ],
+    "/api/v1/entity-documents/{id}": [
+      "get"
+    ],
+    "/api/v1/entity-documents/{id}/content": [
+      "get"
+    ],
+    "/api/v1/entity-setup/batches": [
+      "get",
+      "post"
+    ],
+    "/api/v1/entity-setup/batches/{batchId}/undo": [
+      "post"
+    ],
+    "/api/v1/legal-entities": [
+      "get",
+      "post"
+    ],
+    "/api/v1/legal-entities/{entityId}": [
+      "get",
+      "put"
+    ],
+    "/api/v1/legal-entities/{entityId}/close": [
+      "delete",
+      "post",
+      "put"
+    ],
+    "/api/v1/legal-entities/{entityId}/documents": [
+      "get"
+    ],
+    "/api/v1/legal-entities/{entityId}/end-options": [
+      "get"
+    ],
+    "/api/v1/legal-entities/{entityId}/identifier-corrections": [
+      "post"
+    ],
+    "/api/v1/legal-entities/{entityId}/name-reviews/{reviewId}/settle": [
+      "post"
+    ],
+    "/api/v1/legal-entities/{entityId}/registrations": [
+      "post"
+    ],
+    "/api/v1/legal-entities/{entityId}/revisions": [
+      "get"
+    ],
+    "/api/v1/legal-entities/{entityId}/roles": [
+      "post"
+    ],
+    "/api/v1/legal-entities/{entityId}/void": [
+      "post"
+    ],
+    "/api/v1/legal-entities/{entityId}/workplaces": [
+      "get",
+      "post"
+    ],
+    "/api/v1/org-structure": [
+      "get"
+    ],
+    "/api/v1/org-structure/batches": [
+      "get",
+      "post"
+    ],
+    "/api/v1/org-structure/batches/{batchId}/undo": [
+      "post"
+    ],
+    "/api/v1/org-structure/change-dates": [
+      "get"
+    ],
+    "/api/v1/org-structure/diff": [
+      "get"
+    ],
+    "/api/v1/org-structure/order": [
+      "put"
+    ],
+    "/api/v1/org-structure/units": [
+      "post"
+    ],
+    "/api/v1/org-structure/units/{orgUnitId}": [
+      "delete",
+      "patch"
+    ],
+    "/api/v1/org-structure/units/{orgUnitId}/details": [
+      "put"
+    ],
+    "/api/v1/org-structure/units/{orgUnitId}/dissolve": [
+      "post"
+    ],
+    "/api/v1/org-structure/units/{orgUnitId}/end-options": [
+      "get"
+    ],
+    "/api/v1/org-structure/units/{orgUnitId}/erase": [
+      "post"
+    ],
+    "/api/v1/ref/address-detail": [
+      "get"
+    ],
+    "/api/v1/ref/address-search": [
+      "get"
+    ],
+    "/api/v1/ref/lists/{key}/codes": [
+      "get"
+    ],
+    "/api/v1/workplace-kinds": [
+      "get",
+      "post"
+    ],
+    "/api/v1/workplace-kinds/{code}": [
+      "patch"
+    ],
+    "/api/v1/workplaces/{workplaceId}": [
+      "get",
+      "put"
+    ],
+    "/api/v1/workplaces/{workplaceId}/close-plan": [
+      "get",
+      "post"
+    ],
+    "/api/v1/workplaces/{workplaceId}/close-plan/cancel": [
+      "post"
+    ],
+    "/api/v1/workplaces/{workplaceId}/code": [
+      "put"
+    ],
+    "/api/v1/workplaces/{workplaceId}/end-options": [
+      "get"
+    ],
+    "/api/v1/workplaces/{workplaceId}/insurance": [
+      "put"
+    ],
+    "/api/v1/workplaces/{workplaceId}/kind": [
+      "put"
+    ],
+    "/api/v1/workplaces/{workplaceId}/registration-changes": [
+      "post"
+    ],
+    "/api/v1/workplaces/{workplaceId}/revisions": [
+      "get"
+    ],
+    "/api/v1/workplaces/{workplaceId}/void": [
+      "post"
+    ]
+  },
+  "schemas": [
+    "AddressDetailOption",
+    "AddressDetailResult",
+    "AddressSearchResult",
+    "BindAssignmentRequest",
+    "BrnPendingReason",
+    "BusinessRegistration",
+    "CloseCorrectionRequest",
+    "CloseLegalEntityRequest",
+    "CloseWithdrawalRequest",
+    "CodeInput",
+    "CodeRef",
+    "CreateBusinessRegistrationRequest",
+    "CreateLegalEntityRequest",
+    "CreateSetupOrgUnitRequest",
+    "CreateWorkplaceKindRequest",
+    "CreateWorkplaceRequest",
+    "EmploymentAssignment",
+    "EmploymentAssignmentList",
+    "EntityBizKind",
+    "EntityBusinessType",
+    "EntityBusinessTypeInput",
+    "EntityChangeMode",
+    "EntityCloseReason",
+    "EntityCorrectionReason",
+    "EntityDirector",
+    "EntityDirectorInput",
+    "EntityDirectorRole",
+    "EntityDocument",
+    "EntityDocumentKind",
+    "EntityDocumentList",
+    "EntityDocumentUpload",
+    "EntityFieldChange",
+    "EntityFieldWarning",
+    "EntityIssueReasonKind",
+    "EntityRepresentationMode",
+    "EntityRevision",
+    "EntityRevisionList",
+    "EntityRolesRequest",
+    "EntitySetupBatchList",
+    "EntitySetupBatchRequest",
+    "EntitySetupBatchView",
+    "EntitySetupItem",
+    "EntitySetupOp",
+    "EntitySetupOpError",
+    "EntitySetupResult",
+    "FormattedValue",
+    "IaciBusinessForm",
+    "IdentifierCorrectionReason",
+    "IdentifierCorrectionRequest",
+    "InsuranceRelation",
+    "InsuranceRevisionRequest",
+    "InsuranceSetupInput",
+    "InsuranceShortcut",
+    "InsuranceStatus",
+    "InsuranceUnitMode",
+    "Insurer",
+    "InsurerInput",
+    "LegalEntity",
+    "LegalEntityInput",
+    "LegalEntityList",
+    "LegalEntityNameReview",
+    "LegalEntityRevisionRequest",
+    "LegalEntityState",
+    "MapCompanyRequest",
+    "MapCompanyResult",
+    "NhisWorkplaceClass",
+    "NtsTaxType",
+    "OperatingStatus",
+    "OrgSetupBatchList",
+    "OrgSetupBatchRequest",
+    "OrgSetupBatchView",
+    "OrgSetupOp",
+    "OrgSetupReceipt",
+    "OrgSetupUnit",
+    "OrgStructure",
+    "OrgStructureNode",
+    "OrgUnitDetailsRequest",
+    "OrgUnitEndOptions",
+    "OrgUnitErased",
+    "OrgUnitHeadRef",
+    "PinnedVersionRequest",
+    "PrioritySupport",
+    "PrioritySupportBasis",
+    "RecordEndOptions",
+    "RefCode",
+    "RefCodePage",
+    "RefList",
+    "RefListSource",
+    "RegistrationInput",
+    "RegistrationReissueRequest",
+    "RegistrationRevisionRequest",
+    "RegistrationState",
+    "RegularWorkers",
+    "RenameSetupOrgUnitRequest",
+    "ReorderStructureRequest",
+    "SavedBusinessRegistration",
+    "SavedLegalEntity",
+    "SavedWorkplace",
+    "SetWorkplaceCodeRequest",
+    "SetWorkplaceKindRequest",
+    "SettleNameReviewRequest",
+    "SetupOrgUnitResult",
+    "StructureChangeDates",
+    "StructureDiff",
+    "StructureNodeDiff",
+    "StructureOrder",
+    "StructureScheduledBy",
+    "UnmappedCompanyList",
+    "UnverifiedReason",
+    "UpdateWorkplaceKindRequest",
+    "VatUnitBasis",
+    "VatUnitMode",
+    "VoidRecordRequest",
+    "WithholdingMode",
+    "WithholdingTarget",
+    "Workplace",
+    "WorkplaceCloseJob",
+    "WorkplaceClosePlanRequest",
+    "WorkplaceClosePlanView",
+    "WorkplaceInput",
+    "WorkplaceKind",
+    "WorkplaceKindList",
+    "WorkplaceList",
+    "WorkplaceRegistrationChangeRequest",
+    "WorkplaceRevisionRequest",
+    "WorkplaceState"
+  ],
+  "external_schemas": [
+    "ActorKind",
+    "AddressSource",
+    "AuditLastChange",
+    "Date",
+    "EndOffer",
+    "ErrorBody",
+    "FieldError",
+    "GroupTransferFacts",
+    "KrAddress",
+    "Uuid"
+  ]
+}

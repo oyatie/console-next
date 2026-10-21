@@ -1,0 +1,35 @@
+tags:
+- entity
+operationId: uploadEntityDocument
+summary: Keep an uploaded original (PDF, JPEG or PNG, ≤ 10 MiB); attach it with document_id on the create or revise it backs
+description: No extraction runs (extraction_status is always NONE); the form is typed beside the document. The
+  same file and kind uploaded again returns the first document, so a retry needs no Idempotency-Key.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    multipart/form-data:
+      schema:
+        $ref: '#/components/schemas/EntityDocumentUpload'
+responses:
+  '201':
+    description: Kept (or the same file kept before).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EntityDocument'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}].'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

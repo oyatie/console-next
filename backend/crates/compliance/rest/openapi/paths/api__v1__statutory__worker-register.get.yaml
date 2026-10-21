@@ -1,0 +1,27 @@
+operationId: readWorkerRegister
+tags: [HR]
+parameters:
+- in: query
+  name: workplace_id
+  required: true
+  schema: { type: string, format: uuid }
+- in: query
+  name: as_of
+  required: true
+  schema: { type: string, format: date }
+- in: query
+  name: after
+  required: false
+  schema: { type: string }
+- in: query
+  name: limit
+  required: false
+  schema: { type: integer }
+responses:
+  '200':
+    description: Scoped statutory records
+    content:
+      application/json:
+        schema: { $ref: '#/components/schemas/WorkerRegisterPage' }
+  '403': { description: Cedar denies this scope }
+  '422': { description: Invalid query }

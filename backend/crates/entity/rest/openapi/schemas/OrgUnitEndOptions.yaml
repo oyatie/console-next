@@ -1,0 +1,55 @@
+type: object
+required:
+- org_unit_id
+- name
+- version
+- phase
+- delete
+- dissolve
+- members
+- people_ever
+- units
+- can_manage
+properties:
+  org_unit_id:
+    type: string
+    format: uuid
+  name:
+    type: string
+  version:
+    type: integer
+    format: int64
+  phase:
+    type: string
+    enum:
+    - SETUP
+    - OPERATING
+  delete:
+    $ref: '#/components/schemas/EndOffer'
+  dissolve:
+    $ref: '#/components/schemas/EndOffer'
+  members:
+    type: integer
+    format: int64
+  people_ever:
+    type: integer
+    format: int64
+  units:
+    type: integer
+    format: int64
+  can_manage:
+    type: boolean
+  held_by:
+    description: The open org change that holds the unit (its one blocker, UX-R3 org-16); null when none.
+    type:
+    - object
+    - 'null'
+    required:
+    - id
+    - code
+    properties:
+      id:
+        type: string
+        format: uuid
+      code:
+        type: string

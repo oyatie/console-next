@@ -1,0 +1,13 @@
+type: object
+required:
+- count
+- names
+properties:
+  count:
+    type: integer
+    minimum: 0
+  names:
+    type: array
+    maxItems: 5
+    items:
+      type: string

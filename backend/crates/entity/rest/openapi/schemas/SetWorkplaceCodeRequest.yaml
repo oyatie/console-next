@@ -1,0 +1,11 @@
+type: object
+required:
+- code
+properties:
+  code:
+    type:
+    - string
+    - 'null'
+    maxLength: 30
+    pattern: ^[A-Za-z0-9._-]{1,30}$
+    description: The code; null (or blank) clears it.

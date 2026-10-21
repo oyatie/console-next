@@ -1,0 +1,24 @@
+type: object
+required:
+- effective_from
+- reason_code
+properties:
+  registration_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+    description: The 사업자등록 the 사업장 files VAT under from effective_from (null for none).
+  sub_serial:
+    type:
+    - string
+    - 'null'
+    pattern: ^[0-9]{4}$
+    description: 종사업장 일련번호; required under a 사업자단위과세 registration held by another 사업장, refused otherwise.
+  effective_from:
+    type: string
+    format: date
+    description: On or before today (KST).
+  reason_code:
+    type: string
+    maxLength: 100

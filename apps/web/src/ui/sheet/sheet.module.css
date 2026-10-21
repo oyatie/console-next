@@ -1,0 +1,15 @@
+/* ui/sheet: a side sheet over the right of the page; head, scrolling body, foot with the consequence. Tokens only. */
+.overlay { position: fixed; inset: 0; z-index: 20; display: flex; justify-content: flex-end; background: var(--scrim); }
+.sheet { display: flex; width: min(100%, var(--sheet-w)); height: 100dvh; background: var(--surface); color: var(--ink); box-shadow: var(--shadow-pop); outline: none; }
+.sheet[data-wide] { width: min(100%, calc(var(--sheet-w) * 1.3)); }
+.dialog { display: flex; flex: 1; flex-direction: column; min-width: 0; outline: none; }
+.head { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border); }
+.titles { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.kicker { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); color: var(--steel); }
+.title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); }
+.subtitle { margin: 0; font-size: var(--text-sm); color: var(--steel); }
+.body { display: flex; flex: 1; flex-direction: column; gap: var(--space-5); min-height: 0; padding: var(--space-4) var(--space-5); overflow: auto; overscroll-behavior: contain; }
+.foot { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-top: 1px solid var(--border); background: var(--canvas); }
+.consequence { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
+.consequence b, .consequence strong { font-weight: var(--fw-strong); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); }

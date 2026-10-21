@@ -1,0 +1,38 @@
+operationId: changeSetting
+summary: Change one setting
+description: Appends an effective-dated override row. The value must be of the key's kind and inside its range; it is
+  never back-dated; a loosening takes effect no earlier than 24 hours later unless the tenant is onboarding. Cedar
+  decides who may change what (a loosening needs a fresh step-up).
+tags:
+- Settings
+security:
+- bearerAuth: []
+parameters:
+- name: key
+  in: path
+  required: true
+  schema:
+    type: string
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SettingChangeRequest'
+responses:
+  '201':
+    description: Override recorded.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SettingChange'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

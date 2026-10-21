@@ -1,0 +1,8 @@
+type: object
+additionalProperties: false
+required: [items, total, pending, next]
+properties:
+  items: { type: array, items: { $ref: '#/components/schemas/InsuranceFilingTask' } }
+  total: { type: integer, format: int64 }
+  pending: { type: integer, format: int64 }
+  next: { type: string, nullable: true }

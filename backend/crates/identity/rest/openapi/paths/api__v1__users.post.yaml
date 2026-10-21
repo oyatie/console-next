@@ -1,0 +1,49 @@
+tags:
+  - users
+operationId: createUser
+summary: Create a user with roles and branch memberships
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: 16..200 characters. An exact replay returns 200 with the original body; the same key with a
+    different body is 409 conflict.
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CreateUserRequest'
+responses:
+  '200':
+    description: Exact Idempotency-Key replay; the originally created user.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/UserSummary'
+  '201':
+    description: User created.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/UserSummary'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    description: JWT verification is not configured.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

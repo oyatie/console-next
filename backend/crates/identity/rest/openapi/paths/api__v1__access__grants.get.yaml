@@ -1,0 +1,37 @@
+tags:
+- access
+operationId: listAccessGrants
+summary: List grants
+description: Needs 권한 관리 조회 over any node, or ops. A holder scoped below the tenant sees only the grants over nodes it may view. Revoked and expired grants are listed only on request.
+security:
+- bearerAuth: []
+parameters:
+- name: account_id
+  in: query
+  required: false
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: role_id
+  in: query
+  required: false
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: include_ended
+  in: query
+  required: false
+  schema:
+    type: boolean
+    default: false
+responses:
+  '200':
+    description: Grants.
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessGrant'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'

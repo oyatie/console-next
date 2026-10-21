@@ -1,0 +1,11 @@
+type: object
+required: [rows, confirmed, needs_check, unchecked]
+properties:
+  rows:
+    type: integer
+  confirmed:
+    type: integer
+  needs_check:
+    type: integer
+  unchecked:
+    type: integer

@@ -1,0 +1,16 @@
+type: object
+required:
+- field
+properties:
+  field:
+    type: string
+    description: Column name (addresses as head_office_address / business_address / address / mail_address;
+      lists as representatives, directors, business_types, co_owners; insurance as insurance.<INSURER>.<column>).
+  before:
+    type:
+    - string
+    - 'null'
+  after:
+    type:
+    - string
+    - 'null'

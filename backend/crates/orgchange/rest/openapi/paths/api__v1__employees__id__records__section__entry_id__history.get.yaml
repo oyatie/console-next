@@ -1,0 +1,51 @@
+tags:
+  - employees
+operationId: getEmployeeRecordHistory
+summary: Every revision of one 인사카드 entry, oldest first
+description: A restricted section (discipline, disability, veteran) needs a purpose and is audited, as for
+  the list. Cache-Control no-store.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: section
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/PersonRecordSectionSegment'
+- name: entry_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: purpose
+  in: query
+  required: false
+  description: Required for a restricted section (discipline, disability, veteran) — a
+    restricted_record_purpose reason code (system or active tenant code).
+  schema:
+    type: string
+- name: purpose_note
+  in: query
+  required: false
+  description: Required when the purpose code asks for a note (OTHER).
+  schema:
+    type: string
+    maxLength: 1000
+responses:
+  '200':
+    description: The revisions.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PersonRecordHistory'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

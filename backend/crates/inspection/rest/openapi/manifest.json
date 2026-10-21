@@ -1,0 +1,34 @@
+{
+  "source": "console-inspection-rest",
+  "paths": {
+    "/api/v1/inspections/my-schedules": [
+      "get"
+    ],
+    "/api/v1/inspections/schedules": [
+      "get",
+      "post"
+    ],
+    "/api/v1/inspections/schedules/{schedule_id}/rounds": [
+      "post"
+    ]
+  },
+  "schemas": [
+    "CompleteInspectionRoundRequest",
+    "CreateInspectionScheduleRequest",
+    "InspectionCycle",
+    "InspectionRoundOutcome",
+    "InspectionRoundSummary",
+    "InspectionSchedulePage",
+    "InspectionScheduleStatus",
+    "InspectionScheduleSummary"
+  ],
+  "external_schemas": [
+    "ActorKind",
+    "AuditLastChange",
+    "Date",
+    "ErrorBody",
+    "FieldError",
+    "Timestamp",
+    "Uuid"
+  ]
+}

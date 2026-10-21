@@ -1,0 +1,33 @@
+/* The bulk act workspace (spec E6-move): head with steps, kind toggle, three columns and a commit bar. Tokens only. */
+.page { display: flex; flex-direction: column; min-height: 100%; }
+.kinds { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-5) 0; }
+.cols { display: grid; grid-template-columns: minmax(0, 4.5fr) minmax(0, 10fr) minmax(0, 5fr); gap: var(--space-4); align-items: start; padding: var(--space-3) var(--space-5) var(--space-5); }
+.pane { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
+.paneHead { display: flex; flex-wrap: wrap; align-items: center; min-height: calc(var(--target) + 2 * var(--space-3)); box-sizing: border-box; gap: var(--space-1) var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); }
+.paneHead small { font-size: var(--text-xs); color: var(--steel); }
+.paneTitle { margin: 0; font-size: var(--text-body); font-weight: var(--fw-strong); }
+.paneBody { padding: var(--space-3) var(--space-4); }
+.tableWrap { overflow-x: auto; }
+/* A long check (a contract that continues) wraps in its cell, so the row's drop button stays in view. */
+.tableWrap :global(.chip) { height: auto; min-height: calc(var(--space-5) - var(--space-1)); white-space: normal; }
+.foot { margin: 0; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border); font-size: var(--text-xs); color: var(--steel); }
+.drop { min-height: var(--space-5); padding: 0 var(--space-1); color: var(--primary); text-decoration: underline; font-weight: var(--fw-body); }
+.side { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.bar { position: sticky; bottom: 0; display: flex; align-items: center; gap: var(--space-3); margin-top: auto; padding: var(--space-3) var(--space-5); border-top: 1px solid var(--border); background: var(--surface); }
+.barText { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; font-size: var(--text-sm); }
+.steel { color: var(--steel); }
+.err { font-size: var(--text-sm); color: var(--danger-tx); }
+/* The headcount table names its columns for assistive tech only. */
+.after thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* The renewal workspace (spec E6-renew): the contracts, and the check card beside them (under them below 1280 px). */
+.renewCols { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: var(--space-4); align-items: start; padding: var(--space-3) var(--space-5) var(--space-5); }
+@media (max-width: 1279px) { .renewCols { grid-template-columns: minmax(0, 1fr); } }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; }
+.stats div { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2); border-left: 1px solid var(--border-soft); }
+.stats div:first-child { border-left: 0; }
+.stats dt { font-size: var(--text-xs); color: var(--steel); }
+.stats dd { margin: 0; font-size: var(--text-xl); font-weight: var(--fw-strong); font-variant-numeric: tabular-nums; }
+.promote { display: inline-flex; min-width: 9rem; }
+/* Below 1440 px the people table keeps its full width (every column and the drop button in view): where and who side by
+   side, when and why under them. */
+@media (max-width: 1439px) { .cols { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); } .cols > :last-child { grid-column: 1 / -1; } }

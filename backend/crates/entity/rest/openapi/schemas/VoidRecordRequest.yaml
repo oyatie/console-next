@@ -1,0 +1,7 @@
+type: object
+required:
+- reason_code
+properties:
+  reason_code:
+    type: string
+    maxLength: 100

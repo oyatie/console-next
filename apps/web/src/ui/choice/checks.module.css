@@ -1,0 +1,10 @@
+/* ui/choice/checks: one checkbox per statement to confirm. Tokens only. */
+.group { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); font-size: var(--text-sm); font-weight: var(--fw-medium); }
+.item { display: flex; align-items: flex-start; gap: var(--space-2); min-height: var(--target); font-size: var(--text-sm); cursor: pointer; }
+.box { display: grid; place-items: center; flex: none; width: var(--space-4); height: var(--space-4); margin-top: var(--space-1); border: 2px solid var(--control-border); border-radius: var(--radius-sm); background: var(--surface); }
+.item[data-selected] .box { border-color: var(--primary); background: var(--primary); color: var(--on-primary); }
+.item[data-focus-visible] .box { box-shadow: var(--focus); }
+.item[data-disabled] { cursor: default; opacity: 0.6; }
+.group[data-invalid] .item:not([data-selected]) .box { border-color: var(--danger-solid); }
+.error { font-size: var(--text-sm); color: var(--danger-tx); }

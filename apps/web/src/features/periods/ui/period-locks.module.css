@@ -1,0 +1,7 @@
+/* features/periods: the stranded change codes, the form's consequence and reason lines, no-wrap table cells. Tokens only. */
+.nowrap { white-space: nowrap; }
+.views { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.codes { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin: 0; padding: 0; list-style: none; }
+.consequence { margin: 0; font-size: var(--text-sm); color: var(--ink); }
+.reason { margin: 0; font-size: var(--text-sm); color: var(--steel); }
+@media (max-width: 767px) { .nowrap { white-space: normal; } }

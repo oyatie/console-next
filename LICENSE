@@ -1,0 +1,78 @@
+Proprietary License — All Rights Reserved
+
+Copyright (c) 2026 Jason Lee, trading as Oyatie. All rights reserved.
+
+This repository, including all source code, object code, documentation,
+designs, mockups, data models, configuration, tests and other materials in it
+(the "Software"), is the proprietary property of Jason Lee, trading as Oyatie,
+and is protected by copyright and other intellectual property laws of the
+Republic of Korea and of other countries, and by international treaties.
+
+1. Public visibility is not a license.
+   This repository is publicly visible only for transparency and to run
+   continuous integration. Being able to view the Software grants no right to
+   use it. The only rights anyone receives are those the GitHub Terms of
+   Service require for public repositories: viewing the Software and forking
+   it within GitHub. Those rights extend no further than the Terms of Service
+   require.
+
+2. No license is granted.
+   Except as stated in section 1, no right or license is granted, by
+   implication, estoppel or otherwise. Without the prior written permission
+   of oyatie, you may not:
+     (a) use, run, deploy or host the Software, or offer it as a service;
+     (b) copy, reproduce, modify, translate, adapt or create derivative works
+         of the Software, in whole or in part;
+     (c) distribute, publish, sell, sublicense, rent, lease or otherwise make
+         the Software available to any third party;
+     (d) reverse engineer, decompile or disassemble any part of the Software,
+         except to the extent applicable law expressly permits it despite
+         this restriction;
+     (e) use the Software, or any output derived from it, to develop or
+         improve a competing product or service;
+     (f) use the Software as data to train, fine-tune or evaluate machine
+         learning or AI models; or
+     (g) remove or alter any copyright, trademark or proprietary notice.
+
+3. Third-party components.
+   Third-party software included in, or used by, the Software is licensed
+   under its own license terms, which remain in effect for that component.
+   Nothing in this license restricts rights granted by those terms.
+
+4. Contributions.
+   Contributions are accepted only from persons authorized by oyatie. By
+   submitting a contribution (code, documentation, issue content or
+   otherwise), you assign to oyatie, to the extent permitted by law, all
+   right, title and interest in it. Where an assignment is not permitted, you
+   grant oyatie a perpetual, worldwide, irrevocable, royalty-free, exclusive
+   license to use it for any purpose. You also confirm that you have the
+   right to make the contribution.
+
+5. Trademarks.
+   This license grants no right to use the names, logos or trademarks of
+   oyatie, including product names used in the Software.
+
+6. Disclaimer and limitation of liability.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED. TO THE MAXIMUM EXTENT PERMITTED BY LAW, OYATIE IS NOT LIABLE FOR
+   ANY DAMAGES ARISING FROM ANY ACCESS TO OR USE OF THE SOFTWARE.
+
+7. Termination and enforcement.
+   Any use that is not expressly permitted infringes oyatie's rights. oyatie
+   may pursue every remedy available at law or in equity, including
+   injunctive relief.
+
+8. Governing law.
+   This license is governed by the laws of the Republic of Korea. The Seoul
+   Central District Court has exclusive jurisdiction over any dispute arising
+   from it, unless mandatory law provides otherwise.
+
+For licensing inquiries, contact oyatie.
+
+---
+
+[요약] 이 저장소의 모든 코드·문서·디자인 등 일체의 저작권과 지식재산권은
+oyatie에 있습니다. 공개 저장소로 열람만 가능하며, oyatie의 사전 서면 허락
+없이 사용·복제·수정·배포·서비스 제공·역설계·경쟁 제품 개발·AI 학습 이용을
+금지합니다. 제3자 구성 요소는 각자의 라이선스를 따릅니다. 이 라이선스는
+대한민국 법을 따르며, 관할 법원은 서울중앙지방법원입니다.

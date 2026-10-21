@@ -1,0 +1,19 @@
+type: object
+required: [code, employee_ids]
+properties:
+  code:
+    type: string
+    enum: [same_name_in_unit, same_name_same_hire_date, pay_below_minimum_wage]
+    description: same_name_in_unit — other employees (not EXITED) bound to the same org unit have exactly this name.
+      same_name_same_hire_date — others of the same name (spaces ignored) start on the same day (BW-19).
+      pay_below_minimum_wage — the pay of a 근로자 is below the 최저임금 floor (floor_won) in force on the hire
+      date. Notices, not blocks.
+  employee_ids:
+    type: array
+    description: The namesakes for same_name_in_unit; empty for pay_below_minimum_wage.
+    items:
+      $ref: '#/components/schemas/Uuid'
+  floor_won:
+    type: integer
+    format: int64
+    description: pay_below_minimum_wage only.

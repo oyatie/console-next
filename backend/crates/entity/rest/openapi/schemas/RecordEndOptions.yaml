@@ -1,0 +1,48 @@
+type: object
+required:
+- id
+- phase
+- delete
+- close
+- open_exit_cases
+- can_manage
+properties:
+  open_exit_cases:
+    description: UX-R2 ENDS. Exit cases still open (not rejected, cancelled or submitted) for anyone placed at the record, so its close never hides a 퇴직 in flight.
+    type: array
+    items:
+      type: object
+      required:
+      - case_id
+      - employee_id
+      - employee_name
+      - status
+      - effective_exit_date
+      properties:
+        case_id:
+          type: string
+          format: uuid
+        employee_id:
+          type: string
+          format: uuid
+        employee_name:
+          type: string
+        status:
+          type: string
+        effective_exit_date:
+          type: string
+          format: date
+  id:
+    type: string
+    format: uuid
+  phase:
+    type: string
+    enum:
+    - SETUP
+    - OPERATING
+  delete:
+    $ref: '#/components/schemas/EndOffer'
+  close:
+    $ref: '#/components/schemas/EndOffer'
+  can_manage:
+    type: boolean

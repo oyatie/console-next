@@ -1,0 +1,44 @@
+type: object
+required:
+- index
+- op
+- outcome
+- changes
+- warnings
+properties:
+  index:
+    type: integer
+  ref:
+    type:
+    - string
+    - 'null'
+  op:
+    type: string
+  outcome:
+    type: string
+    enum:
+    - CREATED
+    - CHANGED
+    - UNCHANGED
+    - ERROR
+  target_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  version:
+    type:
+    - integer
+    - 'null'
+  changes:
+    type: array
+    items:
+      $ref: '#/components/schemas/EntityFieldChange'
+  warnings:
+    type: array
+    items:
+      $ref: '#/components/schemas/EntityFieldWarning'
+  error:
+    oneOf:
+    - type: 'null'
+    - $ref: '#/components/schemas/EntitySetupOpError'

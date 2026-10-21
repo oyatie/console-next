@@ -1,0 +1,13 @@
+/* ui/address-field: search, the chosen address with its unit, and manual entry. Tokens only. */
+.wrap { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.chosen { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); }
+.pin { margin-top: var(--space-1); color: var(--steel); flex: none; }
+.lines { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.road { font-weight: var(--fw-medium); overflow-wrap: anywhere; }
+.sub { font-size: var(--text-xs); color: var(--steel); }
+.printed { font-size: var(--text-xs); color: var(--steel); overflow-wrap: anywhere; }
+.unverified { display: inline-flex; align-items: center; height: var(--chip-h); padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--warn-bg); color: var(--warn-tx); font-size: var(--text-xs); font-weight: var(--fw-medium); white-space: nowrap; }
+.note { margin: 0; font-size: var(--text-sm); color: var(--warn-tx); }
+.error { margin: 0; font-size: var(--text-sm); color: var(--danger-tx); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.link { font-size: var(--text-sm); }

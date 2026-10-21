@@ -1,0 +1,22 @@
+tags:
+- org
+operationId: listOrgUnits
+summary: List the org tree (flat)
+description: The caller's Company root plus every Site/Department/Team head with headcount, in the org chart's order
+  (each parent before its children; Sites in their 법인 then 사업장 order, Departments by their stored order, then
+  name). Read floor is the org-change read floor (ADMIN, EXECUTIVE, SUPER_ADMIN).
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Flat org tree.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgUnitList'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

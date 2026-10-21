@@ -1,0 +1,16 @@
+type: object
+required: [employee_id, recorded]
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  recorded:
+    type: boolean
+  masked:
+    type: [string, 'null']
+    description: 900101-1******
+  source:
+    type: [string, 'null']
+    enum: [IMPORT, FORM, null]
+  recorded_at:
+    type: [string, 'null']
+    format: date-time

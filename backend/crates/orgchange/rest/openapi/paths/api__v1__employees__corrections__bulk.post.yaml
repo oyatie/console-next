@@ -1,0 +1,67 @@
+tags:
+  - employees
+operationId: commitBulkEmployeeCorrection
+summary: Commit a previewed bulk 정정 as one job (MR-27)
+description: >-
+  The preview body plus preview_digest (and step_up when the preview said step_up_required). One
+  transaction: the employees are locked in id order and planned again; if the plan differs from the
+  preview, 409 rows_changed_since_preview carries the fresh preview in error.refusals and nothing is
+  written. Otherwise CHANGE and PENDING rows are written through the correction ledger
+  (employee_corrections.batch_id = the job), a high-risk field filed as one PROFILE_CORRECTION request per
+  employee (payload.bulk_correction_id) or applied by the step-up-verified sole holder with
+  review_required; REFUSED and UNCHANGED rows are reported, not written. One employee.correct audit per
+  written employee and one employee.correct.bulk for the job.
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: 16..200 characters. An exact replay returns 200 with the original body; the same key with a
+    different body is 409 conflict.
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/BulkEmployeeCorrectionRequest'
+responses:
+  '200':
+    description: The job was recorded and every field is written (also the exact Idempotency-Key replay).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/BulkEmployeeCorrectionResult'
+  '202':
+    description: The job was recorded; counts.pending employees have a field waiting for a second person.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/BulkEmployeeCorrectionResult'
+  '401':
+    description: step_up_required or step_up_failed (sole holder), or unauthenticated.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '409':
+    description: rows_changed_since_preview (error.refusals = every row as it stands now, the
+      BulkEmployeeCorrectionPreview rows; preview again for a new digest),
+      bulk_correction_committed (this preview was committed already), or an Idempotency-Key reused with
+      another body.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: Invalid request, preview_digest missing, or nothing to write (no CHANGE or PENDING row).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

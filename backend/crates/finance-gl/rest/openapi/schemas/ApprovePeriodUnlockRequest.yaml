@@ -1,0 +1,9 @@
+type: object
+properties:
+  requestId:
+    type: string
+    format: uuid
+    description: The request the approver reviewed (PeriodLock.unlockRequest.id); when a newer request replaced
+      it the approval is refused (409 period_unlock_request_changed).
+  stepUp:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'

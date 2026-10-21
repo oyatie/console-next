@@ -1,0 +1,34 @@
+tags:
+- entity
+operationId: listBusinessRegistrationRevisions
+summary: Dated history of a 사업자등록
+security:
+- bearerAuth: []
+parameters:
+- name: registrationId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+responses:
+  '200':
+    description: Revisions, newest first; restricted names (대표자, 임원, 공동사업자) and their changes only for callers who may change them.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EntityRevisionList'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

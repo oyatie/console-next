@@ -1,0 +1,13 @@
+type: object
+description: At least one of status, name and slug. A domain change requires a fresh operator passkey assertion; old domains remain reserved permanently.
+properties:
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'
+  status:
+    $ref: '#/components/schemas/PlatformOrgStatus'
+  name:
+    type: string
+    minLength: 1
+  slug:
+    type: string
+    pattern: ^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$

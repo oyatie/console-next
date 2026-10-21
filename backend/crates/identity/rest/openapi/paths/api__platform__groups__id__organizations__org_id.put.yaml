@@ -1,0 +1,46 @@
+tags:
+  - platform
+operationId: assignPlatformOrgToGroup
+summary: Assign or move a tenant organization into a platform group
+description: Assigns the tenant organization to the selected group. Platform token and GroupManage authority required;
+  the write is audited to the target organization. Group accounts reach every organization in their group, so the
+  caller must have an enrolled passkey (403 passkey_required) and send a fresh `step_up` assertion of it (401
+  without one or when it fails).
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: org_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/StepUpRequest'
+responses:
+  '200':
+    description: The tenant organization after group assignment.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PlatformOrg'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

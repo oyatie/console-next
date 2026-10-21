@@ -1,0 +1,18 @@
+type: object
+description: A unit the batch wrote and the version it left it at (a DISSOLVE lists the 부서 under it too).
+required:
+- op_index
+- org_unit_id
+- version
+properties:
+  op_index:
+    type: integer
+    minimum: 0
+  ref:
+    type: string
+  org_unit_id:
+    type: string
+    format: uuid
+  version:
+    type: integer
+    format: int64

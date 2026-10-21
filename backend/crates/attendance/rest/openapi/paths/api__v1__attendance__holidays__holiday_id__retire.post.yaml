@@ -1,0 +1,14 @@
+tags: [attendance]
+operationId: retireAttendanceHoliday
+summary: Stop a 약정휴일 from a year on (사용 중지); earlier years keep it
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: holiday_id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceHolidayRetireInput' } } } }
+responses:
+  '200': { description: Retired, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceContractualHoliday' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '404': { $ref: '#/components/responses/NotFound' }
+  '409': { $ref: '#/components/responses/Conflict' }
+  '422': { $ref: '#/components/responses/ValidationError' }

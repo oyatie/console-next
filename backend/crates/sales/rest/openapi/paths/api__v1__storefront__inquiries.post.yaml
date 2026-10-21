@@ -1,0 +1,21 @@
+tags:
+  - storefront
+operationId: submitInquiry
+summary: Submit a public customer inquiry (#6)
+description: Public, unauthenticated lead intake. Accepts the customer's contact details and topic and acknowledges
+  receipt without echoing any field. Generic validation; a bad payload returns 400.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SubmitInquiryRequest'
+responses:
+  '202':
+    description: Inquiry accepted for processing.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/InquiryAck'
+  '400':
+    $ref: '#/components/responses/ValidationError'

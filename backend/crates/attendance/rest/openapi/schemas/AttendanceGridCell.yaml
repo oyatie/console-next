@@ -1,0 +1,3 @@
+type: object
+required: [date, plan_kind, recognised, unrecognised, not_worked]
+properties: { date: { type: string, format: date }, plan_kind: { $ref: '#/components/schemas/AttendanceDayKind' }, entry_id: { $ref: '#/components/schemas/Uuid' }, entry_kind: { $ref: '#/components/schemas/AttendanceEntryKind' }, segments: { type: array, items: { $ref: '#/components/schemas/AttendanceWindow' } }, source: { type: string }, recognised: { type: integer }, unrecognised: { type: integer }, not_worked: { type: integer }, marks: { type: array, items: { $ref: '#/components/schemas/AttendanceMark' } } }

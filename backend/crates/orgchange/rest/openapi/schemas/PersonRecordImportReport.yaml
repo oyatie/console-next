@@ -1,0 +1,31 @@
+type: object
+required: [section, plan_digest, applied, rows]
+properties:
+  section:
+    $ref: '#/components/schemas/PersonRecordSection'
+  plan_digest:
+    type: string
+    description: Hex SHA-256 of the plan; apply must send it back.
+  applied:
+    type: boolean
+  rows:
+    type: array
+    items:
+      type: object
+      required: [row, outcome, employee_id, entry_id, code, message]
+      properties:
+        row:
+          type: integer
+        outcome:
+          type: string
+          enum: [CREATE, UPDATE, VOID, UNCHANGED, ERROR]
+        employee_id:
+          type: [string, 'null']
+          format: uuid
+        entry_id:
+          type: [string, 'null']
+          format: uuid
+        code:
+          type: [string, 'null']
+        message:
+          type: [string, 'null']

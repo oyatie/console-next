@@ -1,0 +1,3 @@
+type: object
+required: [name, rule_kind, paid, scope_kind, scope_id, basis_kind, basis_ref, start_year]
+properties: { name: { type: string, minLength: 1, maxLength: 40 }, rule_kind: { type: string, enum: [DATE, YEARLY] }, on_date: { type: string, format: date }, month: { type: integer, minimum: 1, maximum: 12 }, day: { type: integer, minimum: 1, maximum: 31 }, paid: { type: boolean }, scope_kind: { type: string, enum: [LEGAL_ENTITY, WORKPLACE] }, scope_id: { $ref: '#/components/schemas/Uuid' }, basis_kind: { type: string, enum: [WORK_RULES, COLLECTIVE_AGREEMENT] }, basis_ref: { type: string, minLength: 1, maxLength: 100 }, start_year: { type: integer, minimum: 2000, maximum: 2100 } }

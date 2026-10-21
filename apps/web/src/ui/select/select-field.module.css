@@ -1,0 +1,19 @@
+/* ui/select: a compact select in a popover (components.html §3). Every value is a token. */
+.select { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.label { font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--ink); }
+.trigger { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-width: 0; min-height: var(--target); padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); color: var(--ink); font-weight: var(--fw-medium); text-align: left; cursor: pointer; }
+.trigger[data-focus-visible] { box-shadow: var(--focus); }
+.trigger svg { flex: none; color: var(--steel); }
+.select[data-invalid] .trigger { border-color: var(--danger-solid); }
+.trigger:has(.value[data-placeholder]) { border-style: dashed; }
+.value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.value[data-placeholder] { color: var(--steel); font-weight: var(--fw-body); }
+.chev { margin-left: auto; }
+.error { font-size: var(--text-sm); color: var(--danger-tx); }
+.pop { width: var(--trigger-width); min-width: calc(var(--panel-w) / 1.2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); overflow: auto; }
+.list { padding: var(--space-1); outline: none; }
+.opt { display: flex; flex-direction: column; gap: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius); cursor: pointer; outline: none; }
+.opt[data-focused] { background: var(--muted); }
+.opt[data-selected] { background: var(--primary-soft); color: var(--primary); }
+.optLabel { font-weight: var(--fw-medium); }
+.desc { font-size: var(--text-xs); color: var(--steel); }

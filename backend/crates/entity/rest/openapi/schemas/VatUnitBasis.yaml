@@ -1,0 +1,6 @@
+type: string
+enum:
+- DECLARED
+- SINGLE_REGISTRATION
+- CERTIFICATE_UNIT_TAXATION
+description: A derived basis is a fact (one registration; 등록증 ⑩), not a default.

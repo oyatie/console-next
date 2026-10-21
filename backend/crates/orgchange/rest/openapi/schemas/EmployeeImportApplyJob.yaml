@@ -1,0 +1,33 @@
+type: object
+description: 'W11: the apply job of an employee import run (ids and counts only; no person values).'
+required: [run_id, state, dry_run_digest, requested_by, total, done]
+properties:
+  run_id:
+    $ref: '#/components/schemas/Uuid'
+  state:
+    type: string
+    enum: [queued, applying, settling, done, failed]
+  dry_run_digest:
+    type: string
+    pattern: ^[0-9a-f]{64}$
+  requested_by:
+    $ref: '#/components/schemas/Uuid'
+  total:
+    type: integer
+    minimum: 0
+    description: Plan rows the settle covers.
+  done:
+    type: integer
+    minimum: 0
+  report:
+    $ref: '#/components/schemas/EmployeeImportReport'
+  error:
+    type: object
+    description: 'failed: the refusal (code, message, refusals) — e.g. rows_changed_since_preview, apply_interrupted.'
+    required: [code, message]
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+      refusals: {}

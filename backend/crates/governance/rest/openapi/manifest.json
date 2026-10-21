@@ -1,0 +1,72 @@
+{
+  "source": "console-governance-rest",
+  "paths": {
+    "/api/audit": [
+      "get"
+    ],
+    "/api/v1/audit/attestation": [
+      "get"
+    ],
+    "/api/v1/governance/approvals": [
+      "post"
+    ],
+    "/api/v1/governance/approvals/decide": [
+      "post"
+    ],
+    "/api/v1/governance/lifecycle/preflight": [
+      "post"
+    ],
+    "/api/v1/governance/lifecycle/transitions": [
+      "post"
+    ],
+    "/api/v1/governance/overrides": [
+      "post"
+    ],
+    "/api/v1/integrity/findings": [
+      "get"
+    ],
+    "/api/v1/integrity/findings/{id}/triage": [
+      "post"
+    ],
+    "/api/v1/lifecycles/{objectType}/{objectId}": [
+      "get"
+    ],
+    "/api/v1/lifecycles/{objectType}/{objectId}/hold": [
+      "post"
+    ],
+    "/api/v1/lifecycles/{objectType}/{objectId}/transition": [
+      "post"
+    ],
+    "/api/v1/requests": [
+      "get"
+    ],
+    "/api/v1/requests/{key}": [
+      "get"
+    ]
+  },
+  "schemas": [
+    "AuditChainAttestation",
+    "CommandOutcome",
+    "FindingSeverity",
+    "FindingStatus",
+    "GovernanceConfigureTransitionRequest",
+    "GovernanceDecideApprovalRequest",
+    "GovernanceFinding",
+    "GovernanceLifecyclePreflightRequest",
+    "GovernanceOpenOverrideRequest",
+    "LifecycleState",
+    "ObjectLifecycle",
+    "ObjectLifecycleTransition",
+    "SetLifecycleHoldRequest",
+    "TransitionLifecycleRequest",
+    "TriageFindingRequest"
+  ],
+  "external_schemas": [
+    "ActorKind",
+    "AuditLastChange",
+    "ErrorBody",
+    "FieldError",
+    "Timestamp",
+    "Uuid"
+  ]
+}

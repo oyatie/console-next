@@ -1,0 +1,42 @@
+tags:
+- entity
+operationId: createWorkplaceKind
+summary: Add a tenant 사업장 kind (the server generates its code)
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CreateWorkplaceKindRequest'
+responses:
+  '201':
+    description: Added.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/WorkplaceKind'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}] (label: required, too_long, label_taken).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

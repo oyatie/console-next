@@ -1,0 +1,4 @@
+/* The workplace kind list (S5-kind-manage): each row's verbs sit together on the right. */
+.acts { display: flex; justify-content: flex-end; align-items: center; gap: var(--space-1); flex-wrap: wrap; }
+.reset[data-hidden] { visibility: hidden; }
+.note { font-size: var(--text-xs); color: var(--steel); }

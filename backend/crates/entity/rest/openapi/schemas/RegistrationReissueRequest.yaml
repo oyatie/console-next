@@ -1,0 +1,61 @@
+type: object
+required:
+- document_id
+- reason
+- effective_from
+- registration
+properties:
+  document_id:
+    type: string
+    format: uuid
+    description: The newly issued 사업자등록증, uploaded first (POST /api/v1/entity-documents, kind BIZ_REG_CERT).
+  reason:
+    type: string
+    enum:
+    - CERT_REISSUE
+    - CERT_CHANGE_REPORT
+    - CERT_ERROR_CORRECTION
+    description: 재발급 (lost or damaged, facts unchanged), 정정 신고 (the facts changed from effective_from), or
+      오류 정정 (the record was wrong from the start). Recorded as the revisions' reason_code.
+  effective_from:
+    type: string
+    format: date
+    description: From when the certificate's facts hold (정정일); never after today.
+  registration:
+    description: The registration's full state as the new certificate prints it (cert_issued_on required).
+    allOf:
+    - $ref: '#/components/schemas/RegistrationInput'
+    - type: object
+      required:
+      - expected_version
+      - status
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+        status:
+          $ref: '#/components/schemas/OperatingStatus'
+        status_since:
+          type:
+          - string
+          - 'null'
+          format: date
+        status_until:
+          type:
+          - string
+          - 'null'
+          format: date
+  entity:
+    description: The 법인's full state with what the certificate changed (대표자, 법인명, 본점); omitted when the
+      certificate changed nothing the 법인 records.
+    oneOf:
+    - type: 'null'
+    - allOf:
+      - $ref: '#/components/schemas/LegalEntityInput'
+      - type: object
+        required:
+        - expected_version
+        properties:
+          expected_version:
+            type: integer
+            minimum: 1

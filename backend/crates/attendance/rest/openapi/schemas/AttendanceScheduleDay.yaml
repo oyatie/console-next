@@ -1,0 +1,3 @@
+type: object
+required: [date, kind]
+properties: { date: { type: string, format: date }, kind: { type: string, enum: [WORK, WEEKLY_HOLIDAY, REST_DAY, PUBLIC_HOLIDAY, SUBSTITUTE_HOLIDAY, ELECTION_DAY, LABOR_DAY, CONTRACTUAL_HOLIDAY, NO_SCHEDULE] }, shift: { $ref: '#/components/schemas/AttendanceShift' }, slot_code: { type: string }, holiday_name: { type: string }, holiday_work: { type: boolean, description: the pattern runs on this holiday (교대); work counts as 휴일근로 only through a 승인 }, decided_by: { $ref: '#/components/schemas/AttendanceScopeKind' }, layer_id: { $ref: '#/components/schemas/Uuid' } }

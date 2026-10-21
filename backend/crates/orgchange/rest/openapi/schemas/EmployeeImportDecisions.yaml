@@ -1,0 +1,102 @@
+type: object
+additionalProperties: false
+properties:
+  company_map:
+    type: object
+    description: Source company alias candidate to a certificate-confirmed primary workplace; null keeps it unresolved.
+    additionalProperties:
+      oneOf:
+      - $ref: '#/components/schemas/Uuid'
+      - type: 'null'
+  unit_map:
+    type: object
+    description: 'Unit name in the file → an ACTIVE Site/Department/Team id, or null: 미배치.'
+    additionalProperties:
+      oneOf:
+      - $ref: '#/components/schemas/Uuid'
+      - type: 'null'
+  workplace_map:
+    type: object
+    description: 'MR-7: 사업장 text in the file → an open 사업장 id, or null: not a 사업장 (a 현장 name).'
+    additionalProperties:
+      oneOf:
+      - $ref: '#/components/schemas/Uuid'
+      - type: 'null'
+  employment_type_map:
+    type: object
+    description: 'MR-7: 고용형태 text in the file → an employment type code, or null: leave it empty.'
+    additionalProperties:
+      type: [string, 'null']
+      enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE,
+        FREELANCE, null]
+  identity:
+    type: object
+    description: source_key → the person a row without a 사번 is (employee_id), or a new person (null).
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [employee_id]
+      properties:
+        employee_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+  exclusions:
+    type: object
+    description: source_key → why the row is left out (BW-07 domain import_exclude).
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [reason_code]
+      properties:
+        reason_code:
+          type: string
+        note:
+          type: string
+          maxLength: 1000
+  status_map:
+    type: object
+    description: 'IMPORT-2: 재직상태 text → status.'
+    additionalProperties:
+      type: string
+      enum: [ACTIVE, ON_LEAVE, EXITED, PRE_HIRE]
+  leave_type_map:
+    type: object
+    description: 'IMPORT-2: 휴직 유형 text ("" for an empty cell) → leave type.'
+    additionalProperties:
+      type: string
+      enum: [CHILDCARE, MATERNITY, ILLNESS, PERSONAL, OTHER]
+  employee_numbers:
+    type: object
+    description: 'IMPORT-2: source_key → the 사번 the operator gives a new person without one.'
+    additionalProperties:
+      type: string
+      minLength: 1
+      maxLength: 40
+  group_exclusions:
+    type: object
+    description: 'W05: a row-level reason (invalid_date) or reason:field (invalid_date:hire_date) → why every
+      such row is left out (BW-07 import_exclude). A row''s own exclusions entry wins; an unknown reason is 422.'
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [reason_code]
+      properties:
+        reason_code:
+          type: string
+        note:
+          type: string
+          maxLength: 1000
+  group_answers:
+    type: object
+    description: 'r3:hire-19: one answer for a conflict pattern, never row by row — workplace_conflict: follow_unit (the
+      부서''s 사업장) or follow_workplace (the 근무지, the 부서 left 미배치); status_conflict: pre_hire (재직 with a future
+      입사일 comes in 입사 예정). Any other key or answer is 422 validation.'
+    properties:
+      workplace_conflict:
+        type: string
+        enum: [follow_unit, follow_workplace]
+      status_conflict:
+        type: string
+        enum: [pre_hire]
+    additionalProperties: false

@@ -1,0 +1,57 @@
+type: object
+required:
+- login
+- sign_in_id
+- effective_date
+- reason_code
+- note
+- assigned_by
+- assigned_by_name
+- assigned_at
+- retired_at
+- alias_until
+- state
+properties:
+  login:
+    type: string
+  sign_in_id:
+    type: string
+    description: '`<아이디>@<회사 도메인>` as a person types it.'
+  effective_date:
+    $ref: '#/components/schemas/Date'
+  reason_code:
+    type: string
+    description: A sign_in_id_change reason code, INVITE or SYSTEM_DEFAULT.
+  note:
+    type:
+    - string
+    - 'null'
+  assigned_by:
+    type:
+    - string
+    - 'null'
+    format: uuid
+    description: Null when the system assigned it (account creation default or the migration).
+  assigned_by_name:
+    type:
+    - string
+    - 'null'
+  assigned_at:
+    $ref: '#/components/schemas/Timestamp'
+  retired_at:
+    type:
+    - string
+    - 'null'
+    format: date-time
+  alias_until:
+    type:
+    - string
+    - 'null'
+    format: date-time
+    description: The old 아이디 signs in until then.
+  state:
+    type: string
+    enum:
+    - CURRENT
+    - ALIAS
+    - RESERVED

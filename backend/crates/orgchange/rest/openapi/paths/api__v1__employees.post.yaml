@@ -1,0 +1,63 @@
+tags:
+  - employees
+operationId: createEmployee
+summary: Create an employee and governed employment profile
+description: >-
+  HR directory managers only. Creates the stable employee identity, employment
+  profile, ONBOARD lifecycle event, and audit record atomically. Reusing an
+  idempotency key replays the same payload; a different payload conflicts.
+  hire_date is required and the ONBOARD event takes effect on it; a CONTRACT
+  employment also requires contract_end_date (422 validation otherwise).
+  Without employee_number the server assigns one (E-000001, …). When other
+  employees (not EXITED) in the same org unit have exactly this name, the
+  response carries warnings [{code: same_name_in_unit, employee_ids}]; the
+  employee is created regardless. BW-19: a person already on file (any
+  status) with the same name (spaces ignored) and the same phone or 생년월일
+  is 409 duplicate_candidate listing them in error.refusals [{employee_id,
+  status, employee_number, basis, remedy}] (remedy rehire for an EXITED
+  one: POST /api/v1/employees/{id}/rehire); resend with duplicate_override
+  naming every candidate to record the governed exception
+  DUPLICATE_NAME_CONFIRMED and create the employee. A 사번 already held is
+  409 employee_number_taken with error.refusals [{holder: {id, status}}]; a
+  reused idempotency key with another payload is 409 idempotency_key_reused.
+  A namesake hired the same day is only the warning same_name_same_hire_date.
+  A future hire_date creates the employee 입사 예정 (status PRE_HIRE) with a
+  SCHEDULED ONBOARD the lifecycle runner applies on that day.
+  MR-22: the 법인 · 사업장 assignment is written in the same transaction
+  from hire_date: the workplace_id asked for (its 법인 follows), else the
+  사업장 the org unit sits in (its own placement or its nearest
+  ancestor's); neither is 미배치 (no assignment). Cause SETUP_BIND while
+  the tenant is in SETUP, HIRE after. 422 workplace_required (a
+  legal_entity_id without workplace_id), org_unit_at_other_workplace,
+  workplace_of_other_entity, workplace_not_open; nothing is written then.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CreateEmployeeRequest'
+responses:
+  '201':
+    description: Employee created.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeDetail'
+  '200':
+    description: Idempotent replay of the original employee create.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeDetail'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

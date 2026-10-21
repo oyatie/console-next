@@ -1,0 +1,51 @@
+tags:
+  - employees
+operationId: setupDeleteEmployee
+summary: Delete a mistaken registration during SETUP (MR-26)
+description: >-
+  Before 운영 시작 only (409 phase_not_setup after it; use
+  POST /api/v1/employees/{id}/void). Org-wide employee_directory_manage.
+  The record is voided and tombstoned in the same transaction: it leaves
+  every read (lists, facets, export, org chart, detail 404), its 사번 is
+  freed, its personal data (name, contact, birth date, pay, the
+  correction ledger's values, the person's name history) is destroyed,
+  and the ids, dates and void facts stay as the tombstone listed by
+  GET /api/v1/employees/voided. Scheduled 발령 are cancelled and the
+  법인 · 사업장 assignment is withdrawn. An EXITED person within the
+  근로자 명부 period (퇴직일 + retention.labor.employee_register years,
+  근로기준법 §42, 시행령 §22②1) needs register_kept = true (409
+  exited_register_confirmation_required). Audited as
+  employee.setup_delete with ids, 사번 and the reason only.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SetupDeleteEmployeeRequest'
+responses:
+  '200':
+    description: The registration is void and tombstoned.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeVoidOutcome'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: phase_not_setup, exited_register_confirmation_required, or a stale expected_updated_at.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'

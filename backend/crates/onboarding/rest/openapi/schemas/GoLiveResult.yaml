@@ -1,0 +1,16 @@
+type: object
+required:
+- phase
+- go_live_at
+- notified
+properties:
+  phase:
+    type: string
+    enum:
+    - OPERATING
+  go_live_at:
+    type: string
+    format: date-time
+  notified:
+    type: integer
+    format: int64

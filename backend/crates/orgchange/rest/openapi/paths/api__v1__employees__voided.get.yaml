@@ -1,0 +1,20 @@
+tags:
+  - employees
+operationId: listVoidedEmployees
+summary: The 「취소된 등록」 list (MR-26)
+description: Every voided registration, newest first (at most 500), with its tombstone facts; name reads
+  (파기됨) once the personal data is destroyed. Org-wide employee_directory_manage. A personal-data list read,
+  recorded in the 접속기록 (employee.list_read, view = voided).
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: The voided registrations.
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/VoidedEmployee'
+  '403':
+    $ref: '#/components/responses/Forbidden'

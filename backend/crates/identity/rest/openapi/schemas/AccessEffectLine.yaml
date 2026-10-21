@@ -1,0 +1,12 @@
+type: object
+required:
+- domain
+- level
+- scope
+properties:
+  domain:
+    $ref: '#/components/schemas/AccessDomain'
+  level:
+    $ref: '#/components/schemas/AccessLevel'
+  scope:
+    $ref: '#/components/schemas/AccessScope'

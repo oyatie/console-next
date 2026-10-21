@@ -1,0 +1,24 @@
+type: object
+required:
+- domain
+- periodStart
+- periodEnd
+properties:
+  domain:
+    type: string
+    enum: [payroll, accounting]
+  periodStart:
+    type: string
+    format: date
+  periodEnd:
+    type: string
+    format: date
+  reasonCode:
+    type: string
+    description: A period_lock reason code (reason-codes catalog); reason is then its note. One of reasonCode or
+      reason is required.
+  reason:
+    type: string
+    minLength: 1
+    maxLength: 1000
+    description: Trimmed; blank is 422.

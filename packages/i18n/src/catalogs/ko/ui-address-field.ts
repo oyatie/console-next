@@ -1,0 +1,22 @@
+// Korean source for `uiAddressField.` ids (apps/web/src/ui/address-field). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+export const koUiAddressField = {
+  "uiAddressField.printed": "등록증 표기:",
+  "uiAddressField.jibun": "지번 {jibun}",
+  "uiAddressField.zip": "우편번호 {zip}",
+  "uiAddressField.unverified": "주소 검증 필요",
+  "uiAddressField.change": "주소 다시 찾기",
+  "uiAddressField.detail": "상세주소",
+  "uiAddressField.detailExample": "3층 301호",
+  "uiAddressField.loading": "찾는 중…",
+  "uiAddressField.narrow": "결과가 너무 많습니다. 도로명과 건물번호까지 입력하십시오.",
+  "uiAddressField.none": "찾는 주소가 없습니다. 도로명과 건물번호, 또는 건물 이름으로 찾아 보십시오.",
+  "uiAddressField.hint": "도로명과 건물번호, 동 이름과 지번, 건물 이름으로 찾습니다.",
+  "uiAddressField.manual": "주소를 직접 입력",
+  "uiAddressField.unavailable": "주소 검색을 지금 쓸 수 없습니다. 주소를 직접 입력하면 「주소 검증 필요」로 저장되고, 검색이 돌아오면 다시 맞춰 봅니다.",
+  "uiAddressField.road": "도로명주소",
+  "uiAddressField.roadExample": "서울특별시 종로구 세종대로 209",
+  "uiAddressField.zipLabel": "우편번호 (5자리)",
+  "uiAddressField.useManual": "이 주소로 저장",
+  "uiAddressField.manualNeeds": "도로명주소와 5자리 우편번호가 필요합니다.",
+  "uiAddressField.backToSearch": "검색으로 돌아가기",
+} as const;

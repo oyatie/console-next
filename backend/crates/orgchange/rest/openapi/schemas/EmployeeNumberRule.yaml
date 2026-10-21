@@ -1,0 +1,14 @@
+type: object
+required: [scope_kind, scope_id, prefix, width, next_number]
+properties:
+  scope_kind:
+    type: string
+    enum: [TENANT, LEGAL_ENTITY, WORKPLACE]
+  scope_id:
+    $ref: '#/components/schemas/Uuid'
+  prefix:
+    type: string
+  width:
+    type: integer
+  next_number:
+    type: string

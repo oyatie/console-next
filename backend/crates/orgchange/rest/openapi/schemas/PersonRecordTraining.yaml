@@ -1,0 +1,24 @@
+type: object
+additionalProperties: false
+description: 교육 이수.
+required: [course, status, started_on]
+properties:
+  course:
+    type: string
+    maxLength: 100
+  provider:
+    type: [string, 'null']
+    maxLength: 100
+  status:
+    type: string
+    enum: [COMPLETED, IN_PROGRESS, NOT_COMPLETED]
+  started_on:
+    type: string
+    format: date
+  ended_on:
+    type: [string, 'null']
+    format: date
+  hours:
+    type: [integer, 'null']
+    minimum: 1
+    maximum: 9999

@@ -1,0 +1,85 @@
+type: object
+required:
+- key
+- group
+- state
+- action
+- skippable
+- counts
+- paths
+- can_act
+- needs
+properties:
+  key:
+    type: string
+    x-extensible-enum:
+    - entity
+    - workplace
+    - org
+    - approval
+    - people
+    - passkey
+    - employees
+    - roles
+    - golive
+  group:
+    type: string
+    enum:
+    - company
+    - operations
+    - people
+  state:
+    $ref: '#/components/schemas/SetupStepState'
+  action:
+    type: string
+  remedy:
+    type:
+    - string
+    - 'null'
+  count:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  skippable:
+    type: boolean
+  counts:
+    type: object
+    required:
+    - entities
+    - workplaces
+    - units
+    - people
+    - unplaced
+    - entity_unknown
+    properties:
+      entities:
+        type: integer
+        format: int64
+      workplaces:
+        type: integer
+        format: int64
+      units:
+        type: integer
+        format: int64
+      people:
+        type: integer
+        format: int64
+      unplaced:
+        type: integer
+        format: int64
+      entity_unknown:
+        type: integer
+        format: int64
+  paths:
+    type: array
+    items:
+      type: string
+      enum:
+      - one
+      - paste
+      - import
+  can_act:
+    type: boolean
+  needs:
+    type: string

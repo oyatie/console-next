@@ -1,0 +1,21 @@
+tags:
+- entity
+operationId: listWorkplaceKinds
+summary: 사업장 kinds (platform defaults, then the tenant's own; inactive ones included)
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Every kind.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/WorkplaceKindList'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

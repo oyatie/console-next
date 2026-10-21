@@ -1,0 +1,16 @@
+type: object
+additionalProperties: false
+required: [expected_updated_at, reason_code]
+properties:
+  expected_updated_at:
+    type: string
+    format: date-time
+    description: The employee's updated_at as last read.
+  reason_code:
+    type: string
+    minLength: 1
+    maxLength: 100
+  register_kept:
+    type: boolean
+    default: false
+    description: An EXITED person within the 근로자 명부 period — the tenant keeps its original register.

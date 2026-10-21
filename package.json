@@ -1,0 +1,46 @@
+{
+  "name": "console-react",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "gen:api": "node scripts/check-api-schema.mjs --write",
+    "dev": "npm run dev -w @console/web",
+    "build": "tsc -p tsconfig.json && npm run build -w @console/web",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --configLoader native",
+    "e2e": "playwright test",
+    "e2e:agent": "mkdir -p \"$HOME/.cache\" && node scripts/e2e-slot.mjs",
+    "lint": "oxlint -c oxlint.json apps packages && stylelint \"apps/**/*.css\" && node scripts/check-copy.mjs",
+    "check": "node scripts/check-standing-text.mjs && node scripts/check-api-schema.mjs && node scripts/check-reach.mjs && node scripts/check-e2e-identifiers.mjs && npm run typecheck && npm run lint && npm test && npm run build && node scripts/check-bundle.mjs && npm run secrets && node scripts/check-license-headers.mjs && node scripts/check-fixture-ids.mjs && node scripts/third-party-licenses.mjs --check && node --test scripts/cd-workflow.test.mjs scripts/dev-secrets.test.mjs",
+    "secrets": "gitleaks git --redact --no-banner --config .gitleaks.toml --log-opts=HEAD . && gitleaks dir --redact --no-banner --config .gitleaks.toml apps/web/dist",
+    "e2e:served": "E2E_SERVED=1 playwright test",
+    "desktop:test": "cd apps/desktop/src-tauri && CONSOLE_URL=https://console.invalid cargo test",
+    "desktop:licenses": "cargo deny --manifest-path apps/desktop/src-tauri/Cargo.toml check licenses",
+    "desktop:build": "cd apps/desktop/src-tauri && cargo tauri build --target x86_64-pc-windows-msvc",
+    "desktop:build:cross": "cd apps/desktop/src-tauri && cargo tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc",
+    "demo": "npm run build && CONSOLE_DEV_PROJECT=console-react-demo CONSOLE_DEV_PG_PORT=25532 CONSOLE_DEV_S3_PORT=28433 CONSOLE_DEV_OTEL_PORT=24417 CONSOLE_DEV_BACKEND_PORT=8190 CONSOLE_MAILPIT_SMTP_PORT=1125 CONSOLE_MAILPIT_UI_PORT=8125 CONSOLE_WEB_ORIGIN=http://localhost:8190 CONSOLE_WEB_DIST=\"$PWD/apps/web/dist\" node scripts/backend-dev.mjs",
+    "mutants": "stryker run",
+    "check:request-body-contract": "node --test scripts/check-request-body-contract.test.mjs scripts/check-openapi-refs.test.mjs scripts/check-prototype-chain-lookups.test.mjs && node scripts/check-request-body-contract.mjs && node scripts/check-openapi-refs.mjs && node scripts/check-prototype-chain-lookups.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "~4.13.0",
+    "@playwright/test": "^1.63.0",
+    "@stryker-mutator/core": "^10.0.0",
+    "@types/node": "^24.19.0",
+    "exceljs": "^4.4.0",
+    "openapi-typescript": "^7.13.0",
+    "oxlint": "^1.86.0",
+    "stylelint": "^17.15.0",
+    "stylelint-declaration-strict-value": "^1.12.1",
+    "typescript": "~5.9",
+    "vitest": "^5.0.2"
+  },
+  "license": "UNLICENSED"
+}

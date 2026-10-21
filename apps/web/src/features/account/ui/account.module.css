@@ -1,0 +1,7 @@
+/* features/account: one readable column; dates and buttons in table cells never wrap (a reason under a button may). */
+.column { max-width: calc(var(--panel-w) * 2); }
+.nowrap { white-space: nowrap; }
+/* A padded block inside the flush passkeys card, above and below its table. */
+.pad { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+/* Phone widths: wrapping beats a sideways scroll. Tripled class: outranks DisabledReason's doubled `.off.off` nowrap. */
+@media (max-width: 767px) { .nowrap.nowrap.nowrap { white-space: normal; } }

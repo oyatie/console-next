@@ -1,0 +1,107 @@
+type: object
+required:
+- id
+- workplace_id
+- closed_on
+- reason_code
+- state
+- failure
+- created_at
+- settled_at
+- lines
+properties:
+  id:
+    type: string
+    format: uuid
+  workplace_id:
+    type: string
+    format: uuid
+  closed_on:
+    type: string
+    format: date
+  reason_code:
+    type:
+    - string
+    - 'null'
+  state:
+    type: string
+    enum:
+    - SCHEDULED
+    - WAITING
+    - APPLIED
+    - FAILED
+    - CANCELLED
+  failure:
+    description: A FAILED apply's refusal (`code`, `message`, `refusals`).
+    type:
+    - object
+    - 'null'
+  created_at:
+    type: string
+    format: date-time
+  settled_at:
+    type:
+    - string
+    - 'null'
+    format: date-time
+  lines:
+    type: array
+    items:
+      type: object
+      required:
+      - employee_id
+      - org_unit_id
+      - action
+      - target_unit_id
+      - target_workplace_id
+      - exit_reason_code
+      - exit_case_id
+      - lifecycle_event_id
+      - done
+      properties:
+        employee_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        org_unit_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        action:
+          type: string
+          description: Grows as a close learns what to do with a person (GROUP_TRANSFER since decision 30); a
+            client ignores one it does not know.
+          x-extensible-enum:
+          - TRANSFER
+          - EXIT
+          - GROUP_TRANSFER
+          - MOVE
+          - DISSOLVE
+        target_unit_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        target_workplace_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        exit_reason_code:
+          type:
+          - string
+          - 'null'
+        exit_case_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        lifecycle_event_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        done:
+          type: boolean

@@ -1,0 +1,28 @@
+operationId: getReasonCodeStats
+summary: Reason code usage
+description: Per stored reason-code column, the rows that carry a code, the rows that carry OTHER, the OTHER rate and
+  the count per code. A column shared by several domains is reported once, with its domains.
+tags:
+- Settings
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Usage per column.
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/ReasonCodeSourceStats'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

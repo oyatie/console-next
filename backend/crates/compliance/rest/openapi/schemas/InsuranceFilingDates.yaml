@@ -1,0 +1,12 @@
+type: object
+nullable: true
+additionalProperties: false
+required: [opens_on, target_on, due_on, legal_latest_candidate, conservative, without_delay, holiday_roll_unverified]
+properties:
+  opens_on: { type: string, format: date }
+  target_on: { type: string, format: date }
+  due_on: { type: string, format: date, nullable: true }
+  legal_latest_candidate: { type: string, format: date, nullable: true }
+  conservative: { type: boolean }
+  without_delay: { type: boolean }
+  holiday_roll_unverified: { type: boolean }

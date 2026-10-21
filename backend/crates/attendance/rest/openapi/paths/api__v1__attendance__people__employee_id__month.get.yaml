@@ -1,0 +1,12 @@
+tags: [attendance]
+operationId: readAttendancePersonMonth
+summary: One person's month (개인 근태 카드) — every day with its plan, entry, recognition and marks, and the entry history (잠정 until closed)
+security: [{ bearerAuth: [] }]
+parameters:
+  - { name: employee_id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
+  - { name: month, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' } }
+responses:
+  '200': { description: Person month, content: { application/json: { schema: { $ref: '#/components/schemas/AttendancePersonMonth' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '404': { $ref: '#/components/responses/NotFound' }

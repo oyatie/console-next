@@ -1,0 +1,44 @@
+tags:
+- access
+operationId: updateAccessRole
+summary: Edit a role; every edit is a new version, enforced at once
+description: 'Changing `lines` of a role that has enforced holders is an access change: it needs `reason_code`
+
+  (domain `role_change`) and a fresh passkey `step_up`, and the response lists `holders_affected`.
+
+  (The versioned rollout lane with simulate and review, AX-7, comes after the pilot.)
+
+  '
+security:
+- bearerAuth: []
+parameters:
+- name: roleId
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/UpdateAccessRoleRequest'
+responses:
+  '200':
+    description: The role at its new version.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessRole'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '428':
+    $ref: '#/components/responses/PreconditionRequired'

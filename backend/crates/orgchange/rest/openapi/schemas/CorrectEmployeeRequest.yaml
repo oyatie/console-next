@@ -1,0 +1,150 @@
+type: object
+additionalProperties: false
+required: [expected_updated_at, changes, reason_code]
+properties:
+  expected_updated_at:
+    type: string
+    format: date-time
+    description: The employee's updated_at as last read; a stale value is 409.
+  changes:
+    type: object
+    minProperties: 1
+    additionalProperties: false
+    properties:
+      name:
+        type: string
+      hire_date:
+        type: string
+        format: date
+      phone:
+        type: string
+      employment_type:
+        type: string
+        enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, FREELANCE]
+      position_id:
+        type: string
+        description: Refused, 409 employee_correction_unavailable (a promotion or transfer).
+      grade_id:
+        type: string
+        format: uuid
+        description: Correction to an active tenant GRADE catalog entry; 422 job_title_unknown for unknown, inactive or wrong-kind entries.
+      job_title_id:
+        type: string
+        format: uuid
+        description: Correction to an active tenant TITLE catalog entry; 422 job_title_unknown for unknown, inactive or wrong-kind entries.
+      position_kind_id:
+        type: string
+        format: uuid
+        description: Correction to an active tenant POSITION catalog entry; 422 job_title_unknown for unknown, inactive or wrong-kind entries.
+      job_id:
+        type: string
+        format: uuid
+        description: Correction to an active tenant JOB catalog entry; 422 job_title_unknown for unknown, inactive or wrong-kind entries.
+      job_family_id:
+        type: string
+        format: uuid
+        description: Correction to an active tenant JOB_FAMILY catalog entry; 422 job_title_unknown for unknown, inactive or wrong-kind entries.
+      base_pay:
+        description: Whole won (E5), a number or a digit string.
+        oneOf:
+        - type: integer
+          minimum: 0
+        - type: string
+          pattern: '^(0|[1-9][0-9]{0,11})$'
+      pay_unit:
+        type: string
+        enum: [MONTHLY, HOURLY, DAILY, ANNUAL]
+      probation_end_date:
+        type: [string, 'null']
+        format: date
+      exit_date:
+        type: string
+        format: date
+      birth_date:
+        type: string
+        format: date
+      employee_number:
+        type: string
+        maxLength: 200
+      job:
+        type: [string, 'null']
+        maxLength: 200
+      work_email:
+        type: [string, 'null']
+        maxLength: 254
+      id_type:
+        type: string
+        enum: [RRN, ARC, DOMESTIC_RESIDENCE, NOT_ISSUED]
+      company:
+        type: string
+        description: Refused, 409 employee_correction_unavailable (the employment assignment).
+      worksite_name:
+        type: string
+        description: Refused, 409 employee_correction_unavailable (the employment assignment).
+      worksite_address:
+        type: string
+        description: Refused, 409 employee_correction_unavailable (the employment assignment).
+      org_unit:
+        type: string
+        description: Refused, 409 employee_correction_unavailable (a TRANSFER).
+      sex:
+        type: [string, 'null']
+        enum: [MALE, FEMALE, null]
+      address:
+        description: 주소 (영 §20 4호), a juso result or structured manual entry; null clears it.
+        oneOf:
+        - $ref: '#/components/schemas/KrAddress'
+        - type: 'null'
+      careers:
+        description: 이력 · 경력 (영 §20 5호), the whole list; [] = 경력 없음, null = 미입력.
+        type: [array, 'null']
+        maxItems: 100
+        items:
+          $ref: '#/components/schemas/EmployeeCareer'
+      exit_reason:
+        description: 퇴직(해고) 사유 (영 §20 8호), an exit_reason catalog code.
+        type: string
+      register_note:
+        description: 그 밖에 필요한 사항 (영 §20 9호).
+        type: [string, 'null']
+        maxLength: 500
+      name_hanja:
+        description: 한자 성명 (CJK ideographs).
+        type: [string, 'null']
+        maxLength: 30
+      name_en:
+        description: 영문 성명 (Latin letters, spaces, - ' . ,).
+        type: [string, 'null']
+        maxLength: 100
+      nationality:
+        description: 국적, ISO 3166-1 alpha-2.
+        type: [string, 'null']
+        pattern: '^[A-Za-z]{2}$'
+      personal_email:
+        description: 개인 메일.
+        type: [string, 'null']
+        maxLength: 254
+      emergency_contacts:
+        description: 비상연락처, the whole list (at most 3); [] or null clears it.
+        type: [array, 'null']
+        maxItems: 3
+        items:
+          $ref: '#/components/schemas/EmergencyContact'
+      photo:
+        description: The upload_id of a confirmed photo upload of this employee; null clears it.
+        oneOf:
+        - $ref: '#/components/schemas/Uuid'
+        - type: 'null'
+      group_service_start_date:
+        description: 그룹 입사일 (근속 기산일); on or before the hire date.
+        type: [string, 'null']
+        format: date
+  reason_code:
+    type: string
+    minLength: 1
+    maxLength: 100
+  note:
+    type: string
+    maxLength: 1000
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'

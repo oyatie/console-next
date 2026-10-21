@@ -1,0 +1,25 @@
+tags:
+  - employees
+operationId: listEmployeeNumberHistory
+summary: The 사번 history of an employee, oldest first (IMPORT-2)
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: Every change, undone ones included (undone_at).
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeNumberChange'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'

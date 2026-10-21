@@ -1,0 +1,47 @@
+type: object
+description: 'IMPORT-2 (decisions #25): the 「확인 필요」 queue, counted. Blocking items keep apply closed (422
+  import_unresolved); the rest are imported as the plan says (미배치, 사번 미부여) and stay listed.'
+required: [count, blocking, items, groups]
+properties:
+  count:
+    type: integer
+    minimum: 0
+  blocking:
+    type: integer
+    minimum: 0
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/EmployeeImportReviewItem'
+  groups:
+    type: array
+    description: 'W05: one answer (decisions.group_exclusions[key]) for each row-level reason covering two or
+      more rows.'
+    items:
+      type: object
+      required: [key, reason, field, rows, blocking, resolution]
+      properties:
+        key:
+          type: string
+        reason:
+          type: string
+        field:
+          type: string
+        rows:
+          type: integer
+          minimum: 2
+        blocking:
+          type: boolean
+        resolution:
+          type: object
+          required: [decision, key, choices]
+          properties:
+            decision:
+              type: string
+              enum: [group_exclusions]
+            key:
+              type: string
+            choices:
+              type: array
+              items:
+                type: string

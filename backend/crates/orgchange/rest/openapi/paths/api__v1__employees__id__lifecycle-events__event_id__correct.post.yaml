@@ -1,0 +1,54 @@
+tags:
+  - employees
+operationId: correctEmployeeLifecycleEvent
+summary: Correct (정정) an applied lifecycle event on its date (BW-11)
+description: The same voidability rules as rescind. The employee is restored and the replacement (same
+  event_type and effective_date, else 422) is recorded in the same transaction with voids_event_id naming the
+  original, which then shows voided_by. A replacement that changes contract_end_date or expected_return_date
+  needs a second person (Cedar; until that rule is enabled it is 403 second_person_required). Audited as
+  employee.lifecycle.correct plus employee.lifecycle.record.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: event_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [replacement, reason_code]
+        properties:
+          replacement:
+            $ref: '#/components/schemas/CreateEmployeeLifecycleEventRequest'
+          reason_code:
+            type: string
+            description: A lifecycle_cancel code (INPUT_ERROR, ...).
+          note:
+            type: [string, 'null']
+            maxLength: 1000
+responses:
+  '200':
+    description: The replacement event.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeLifecycleEvent'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

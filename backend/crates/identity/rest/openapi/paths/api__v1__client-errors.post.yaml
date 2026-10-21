@@ -1,0 +1,44 @@
+tags:
+  - system
+operationId: reportClientError
+summary: First-party client error beacon (B-01)
+description: >-
+  Unauthenticated and same-origin: the SPA reports an uncaught error, an
+  unhandled rejection, a failed bundle or stylesheet, a failed dynamic
+  import or a boot that never rendered, with navigator.sendBeacon (any
+  content type). A closed vocabulary only: no message, query or form value.
+  Counted in console_client_errors_total{kind,build}; capped per client IP
+  and per process (429 + Retry-After).
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [kind, build, route]
+        properties:
+          kind:
+            type: string
+            enum: [error, rejection, resource, preload, boot]
+          build:
+            type: string
+            pattern: '^[A-Za-z0-9_-]{1,16}$'
+          route:
+            type: string
+            maxLength: 64
+            pattern: '^/[A-Za-z0-9/:._-]*$'
+          name:
+            type: string
+            pattern: '^[A-Za-z0-9_]{1,40}$'
+responses:
+  '204':
+    description: Counted.
+  '400':
+    description: Not a beacon (unknown kind or field, bad charset); not counted.
+  '403':
+    description: A cross-site browser post (Sec-Fetch-Site); not counted.
+  '413':
+    description: Body over 2048 bytes.
+  '429':
+    description: Over the per-IP or global cap; Retry-After 60.

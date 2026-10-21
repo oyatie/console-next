@@ -1,0 +1,9 @@
+type: object
+required:
+- kind_code
+properties:
+  kind_code:
+    type:
+    - string
+    - 'null'
+    description: The kind code; null clears it.

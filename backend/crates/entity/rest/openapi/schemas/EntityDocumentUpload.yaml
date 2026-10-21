@@ -1,0 +1,11 @@
+type: object
+required:
+- file
+- kind
+properties:
+  file:
+    type: string
+    format: binary
+    description: PDF, JPEG or PNG (decided from the bytes), at most 10 MiB.
+  kind:
+    $ref: '#/components/schemas/EntityDocumentKind'

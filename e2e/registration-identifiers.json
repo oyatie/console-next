@@ -1,0 +1,23 @@
+{
+  "primary": {
+    "biz_kind": "CORPORATION",
+    "head_office": true,
+    "brn": "0008100014",
+    "crn": "0002119999918",
+    "synthetic": true
+  },
+  "second": {
+    "biz_kind": "CORPORATION",
+    "head_office": true,
+    "brn": "0008600023",
+    "crn": "0002119999926",
+    "synthetic": true
+  },
+  "branch_primary": {
+    "biz_kind": "CORPORATION",
+    "head_office": false,
+    "brn": "0008500031",
+    "crn": "0002119999934",
+    "synthetic": true
+  }
+}

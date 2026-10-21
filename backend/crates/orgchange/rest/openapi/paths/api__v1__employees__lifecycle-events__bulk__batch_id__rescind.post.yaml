@@ -1,0 +1,67 @@
+tags:
+  - employees
+operationId: rescindBulkEmployeeLifecycleEvents
+summary: Rescind every event of a bulk appointment (BW-11)
+description: Each event of the batch through the single rescind, all or nothing (422 bulk_lifecycle_refused
+  naming each refused employee). BE-EMP-UI - a dated batch's SCHEDULED events are withdrawn with it (state
+  CANCELLED, as the single cancel; a later reservation that depends on one refuses it); 404 when the batch has
+  no APPLIED or SCHEDULED event left. The restored units are each person's from_ binding; a locked payroll month
+  refuses it (the batch can be rescinded until the payroll cutoff of its month). Audited per employee and as
+  employee.lifecycle.bulk_rescind.
+security:
+- bearerAuth: []
+parameters:
+- name: batch_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [reason_code]
+        properties:
+          reason_code:
+            type: string
+            description: A lifecycle_cancel code (422 reason_code_invalid).
+          note:
+            type: [string, 'null']
+            maxLength: 1000
+          confirm_cascades:
+            type: boolean
+            default: false
+            description: false previews cascades and writes nothing; true rescinds.
+responses:
+  '200':
+    description: One outcome per employee of the batch.
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            required: [cascades, rescinded]
+            properties:
+              cascades:
+                type: array
+                description: The employee's SCHEDULED events; on confirm they are re-validated against the
+                  restored employee and any that would fail refuse the rescission (409 lifecycle_schedule_conflict).
+                items:
+                  type: object
+              rescinded:
+                description: The RESCIND row once confirmed; null on a preview.
+                oneOf:
+                - $ref: '#/components/schemas/EmployeeLifecycleEvent'
+                - type: 'null'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

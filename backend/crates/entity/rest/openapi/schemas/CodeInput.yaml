@@ -1,0 +1,11 @@
+type: object
+description: 'A reference-list value as sent: the code only. The server stamps label and list version (UNVERIFIED
+  while no list is loaded); any label or version sent is ignored.'
+required:
+- code
+properties:
+  code:
+    type: string
+    maxLength: 20
+    pattern: ^[A-Ua-u]?[0-9]{2,5}$
+    description: KSIC code (optional section letter, then 2–5 digits).

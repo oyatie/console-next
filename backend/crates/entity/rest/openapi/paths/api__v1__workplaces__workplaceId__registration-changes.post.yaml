@@ -1,0 +1,60 @@
+tags:
+- entity
+operationId: changeWorkplaceRegistration
+summary: Move a 사업장 to another 사업자등록 or 종사업장 일련번호, dated (MR-18)
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: workplaceId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/WorkplaceRegistrationChangeRequest'
+responses:
+  '200':
+    description: Applied and recorded in its ledger.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SavedWorkplace'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted (legal_entity_manage on this record).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}].'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: 'registration_holder_in_use (remedy move_workplaces_first), or the 법인 is not open.'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

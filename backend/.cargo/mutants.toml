@@ -1,0 +1,14 @@
+# cargo-mutants config, read by tools/lanes/mutants.sh (run that, not cargo mutants directly: copy mode
+# breaks on the ../third-party/rust/vendor [patch] paths in Cargo.toml).
+# Tests and test-only files are never mutated (cfg(test) modules are skipped by cargo-mutants itself;
+# the globs cover sibling *_tests.rs files and tests/ dirs). No generated Rust lives in the domain crates
+# today; the generated globs keep it that way if codegen ever lands there.
+exclude_globs = ["**/*_tests.rs", "**/tests/**", "**/generated/**", "**/*.generated.rs"]
+# A derived-by-hand Debug that prints nothing is not a behaviour anyone depends on; redaction Debugs are
+# asserted where they matter (kernel redact.rs is not a Debug impl).
+exclude_re = ["<impl .*Debug for "]
+# Auto test timeout = baseline x multiplier, never under the minimum (a mutant that loops is a TIMEOUT,
+# which counts as detected). Build timeout guards a mutant that sends rustc into the weeds.
+timeout_multiplier = 3.0
+minimum_test_timeout = 30
+build_timeout_multiplier = 4.0

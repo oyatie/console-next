@@ -1,0 +1,456 @@
+[package]
+name = "console-app"
+version = "0.1.0"
+description = "Composition root binary for the maintenance FSM backend."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+default-run = "console-app"
+
+[[bin]]
+name = "console-app"
+path = "src/main.rs"
+
+# Cedar/PBAC parity evidence: read-only aggregation of recorded shadow parity
+# observations (`authz.cedar_pbac_parity` audit rows) into per-site agree/disagree
+# totals + concrete divergent cases. Promotion gate reads this; no REST surface.
+[[bin]]
+name = "console-cedar-parity-report"
+path = "src/bin/console_cedar_parity_report.rs"
+
+[lib]
+name = "console_app"
+path = "src/lib.rs"
+
+[features]
+# Enables the inline PostgreSQL integration suite. This is intentionally inert
+# by default so normal unit tests need no database topology.
+test-postgres = []
+# E2E-only HTTP fixture API. Never enable in a deployable binary.
+e2e-test-support = []
+# Local role-switch dev-auth endpoint. NOT in `default` (nor in `mvp` or `full`)
+# and MUST NEVER be added to one — `console-gate-dev-auth-absence` asserts this
+# via `cargo metadata` and is wired into CI as a blocking gate.
+dev-auth = ["console-platform-auth-rest/dev-auth"]
+
+# --- Build profiles: the MVP binary and the full build (docs/ops/mvp-build.md) ---
+# `default` is the MVP the release image ships (Org + HR, decisions #19/#21/#22):
+# every module below that `mvp` does not list is compiled out of it, and its
+# routes and loops answer 404 / do not run. `full` turns every module on: INTEG, the pgtest sweeps,
+# openapi_drift and the E2E-of-everything build with it. Each module feature
+# gates one `mount_<module>` (routes/*.rs) and its loops. Promoting a module
+# into `mvp` is a reviewed change that passes the promotion checklist in
+# docs/ops/mvp-build.md. Migrations are never gated: one schema for every build.
+default = ["mvp"]
+# The modules in the MVP besides the always-on Org + HR core. 근태 is in the MVP
+# (decision #22; HR logs it in the pilot) although the web does not call it yet.
+mvp = ["attendance"]
+full = [
+  # People
+  "attendance", "leave", "recruiting", "evaluation", "benefit", "payroll",
+  # Governance and the ontology engine
+  "compliance", "integrity", "docs", "ontology", "governance",
+  # Finance and business
+  "financial", "sales", "reporting", "consulting", "finance-gl", "analytics-quant",
+  # Field operations, maintenance and assets
+  "dispatch", "logistics", "inventory", "equipment", "inspection", "registry", "workorder", "facilities", "production",
+  # Communication
+  "support", "messenger", "notifications", "inbox", "todos", "mail", "notices",
+  # Workflow studio and the workspace
+  "workspace", "office",
+]
+attendance = ["dep:console-attendance-adapter-postgres", "dep:console-attendance-rest"]
+leave = ["dep:console-leave-rest"]
+recruiting = ["dep:console-recruiting-adapter-postgres", "dep:console-recruiting-application", "dep:console-recruiting-domain", "dep:console-recruiting-rest"]
+evaluation = ["dep:console-evaluation-adapter-postgres", "dep:console-evaluation-rest"]
+benefit = ["dep:console-benefit-adapter-postgres", "dep:console-benefit-rest"]
+payroll = ["dep:console-payroll-adapter-postgres", "dep:console-payroll-rest"]
+compliance = ["dep:console-compliance-rest"]
+integrity = ["dep:console-integrity"]
+docs = ["dep:console-docs-adapter-postgres", "dep:console-docs-rest"]
+ontology = ["dep:console-ontology-rest", "dep:console-registry-adapter-postgres", "dep:console-registry-application", "dep:console-registry-domain", "dep:console-payroll-adapter-postgres"]
+governance = ["dep:console-governance-rest"]
+financial = ["dep:console-financial-adapter-postgres", "dep:console-financial-rest"]
+sales = ["dep:console-sales-adapter-postgres", "dep:console-sales-rest"]
+reporting = ["dep:console-reporting-adapter-postgres", "dep:console-reporting-rest"]
+consulting = ["dep:console-consulting-rest"]
+finance-gl = ["dep:console-finance-gl-adapter-postgres", "dep:console-finance-gl-rest"]
+analytics-quant = ["dep:console-analytics-quant-rest"]
+dispatch = ["dep:console-dispatch-adapter-postgres", "dep:console-dispatch-rest", "dep:console-dispatch-worker"]
+logistics = ["dep:console-logistics-adapter-postgres", "dep:console-logistics-rest"]
+inventory = ["dep:console-inventory-adapter-postgres", "dep:console-inventory-rest"]
+equipment = ["dep:console-equipment-adapter-postgres", "dep:console-equipment-rest"]
+inspection = ["dep:console-inspection-adapter-postgres", "dep:console-inspection-rest"]
+registry = ["dep:console-registry-adapter-postgres", "dep:console-registry-application", "dep:console-registry-domain", "dep:console-registry-rest"]
+workorder = ["dep:console-workorder-adapter-postgres", "dep:console-workorder-application", "dep:console-workorder-rest", "dep:console-workflow-domain", "dep:console-workflow-runtime-adapter-postgres", "dep:console-payroll-adapter-postgres"]
+facilities = ["dep:console-facilities-rest"]
+production = ["dep:console-production-rest"]
+support = ["dep:console-support-adapter-postgres", "dep:console-support-application", "dep:console-support-domain", "dep:console-support-rest"]
+messenger = ["dep:console-messenger-rest"]
+notifications = ["dep:console-notifications-rest"]
+inbox = ["dep:console-inbox-rest"]
+todos = ["dep:console-todos-adapter-postgres", "dep:console-todos-rest"]
+mail = ["dep:console-comms-adapter-imap", "dep:console-comms-adapter-postgres", "dep:console-comms-application", "dep:console-comms-rest"]
+notices = ["dep:console-notices-adapter-postgres", "dep:console-notices-rest"]
+workspace = ["dep:console-action-inbox-application", "dep:console-workflow-domain", "dep:console-workflow-runtime", "dep:console-workflow-runtime-adapter-postgres", "dep:console-dispatch-adapter-postgres", "dep:console-support-adapter-postgres", "dep:console-workorder-adapter-postgres", "dep:console-workorder-application", "dep:console-payroll-adapter-postgres", "dep:console-todos-adapter-postgres", "dep:croner", "dep:chrono-tz"]
+office = []
+
+[dependencies]
+axum = { workspace = true }
+base64 = { workspace = true }
+calamine = { workspace = true }
+chrono = { workspace = true }
+chrono-tz = { workspace = true, optional = true }
+croner = { workspace = true, optional = true }
+futures = { workspace = true }
+http = { workspace = true }
+hex = { workspace = true }
+ipnet = { workspace = true }
+jsonwebtoken = { workspace = true }
+reqwest = { workspace = true }
+console-comms-adapter-imap = { workspace = true, optional = true }
+console-comms-adapter-postgres = { workspace = true, optional = true }
+console-comms-application = { workspace = true, optional = true }
+console-comms-credential-cipher = { workspace = true }
+console-comms-rest = { workspace = true, optional = true }
+console-action-inbox-application = { workspace = true, optional = true }
+console-benefit-adapter-postgres = { workspace = true, optional = true }
+console-benefit-rest = { workspace = true, optional = true }
+console-consulting-rest = { workspace = true, optional = true }
+console-compliance-adapter-postgres = { workspace = true }
+console-compliance-rest = { workspace = true, optional = true }
+console-erp-domain = { workspace = true }
+console-integrity = { workspace = true, optional = true }
+console-financial-adapter-postgres = { workspace = true, optional = true }
+console-financial-rest = { workspace = true, optional = true }
+console-facilities-rest = { path = "../crates/facilities/rest", optional = true }
+console-identity-adapter-postgres = { workspace = true }
+console-identity-rest = { workspace = true }
+console-inspection-adapter-postgres = { workspace = true, optional = true }
+console-inspection-rest = { workspace = true, optional = true }
+console-inventory-adapter-postgres = { workspace = true, optional = true }
+console-inventory-rest = { workspace = true, optional = true }
+console-support-adapter-postgres = { workspace = true, optional = true }
+console-support-application = { workspace = true, optional = true }
+console-support-domain = { workspace = true, optional = true }
+console-support-rest = { workspace = true, optional = true }
+console-sales-adapter-postgres = { workspace = true, optional = true }
+console-sales-rest = { workspace = true, optional = true }
+console-settings-adapter-postgres = { path = "../crates/settings/adapter-postgres" }
+console-settings-rest = { path = "../crates/settings/rest" }
+console-settings-domain = { path = "../crates/settings/domain" }
+console-kernel-core = { workspace = true }
+console-messenger-adapter-postgres = { workspace = true }
+console-messenger-rest = { workspace = true, optional = true }
+console-notifications-adapter-postgres = { workspace = true }
+console-notifications-rest = { workspace = true, optional = true }
+console-inbox-adapter-postgres = { workspace = true }
+console-inbox-rest = { workspace = true, optional = true }
+console-leave-adapter-postgres = { workspace = true }
+console-leave-domain = { workspace = true }
+console-equipment-adapter-postgres = { workspace = true, optional = true }
+console-equipment-rest = { workspace = true, optional = true }
+console-evaluation-adapter-postgres = { workspace = true, optional = true }
+console-evaluation-rest = { workspace = true, optional = true }
+console-logistics-adapter-postgres = { workspace = true, optional = true }
+console-logistics-rest = { workspace = true, optional = true }
+console-recruiting-adapter-postgres = { workspace = true, optional = true }
+console-recruiting-application = { workspace = true, optional = true }
+console-recruiting-domain = { workspace = true, optional = true }
+console-recruiting-rest = { workspace = true, optional = true }
+console-leave-rest = { workspace = true, optional = true }
+console-hr-domain = { workspace = true }
+console-hr-adapter-postgres = { workspace = true }
+console-hr-rest = { workspace = true }
+console-todos-adapter-postgres = { workspace = true, optional = true }
+console-todos-rest = { workspace = true, optional = true }
+console-payroll-domain = { workspace = true }
+console-payroll-adapter-postgres = { workspace = true, optional = true }
+console-payroll-rest = { workspace = true, optional = true }
+console-notices-adapter-postgres = { workspace = true, optional = true }
+console-notices-rest = { workspace = true, optional = true }
+console-finance-gl-adapter-postgres = { workspace = true, optional = true }
+console-finance-gl-rest = { workspace = true, optional = true }
+console-analytics-quant-rest = { workspace = true, optional = true }
+console-attendance-adapter-postgres = { workspace = true, optional = true }
+console-attendance-rest = { workspace = true, optional = true }
+console-platform-audit-chain = { path = "../crates/platform/audit-chain" }
+console-platform-auth = { path = "../crates/platform/auth" }
+console-platform-auth-rest = { workspace = true }
+console-platform-access = { workspace = true }
+console-platform-access-rest = { workspace = true }
+console-platform-authz = { path = "../crates/platform/authz" }
+console-platform-authz-rest = { workspace = true }
+console-ontology-adapter-postgres = { workspace = true }
+# The four canonical ports this crate is the composition root for. No
+# [workspace.dependencies] entry exists for it (same as its two sibling owners),
+# so it is depended on by path. App is the only tier allowed to know a port
+# IMPLEMENTATION: the ontology REST tier stays free of a domain-adapter edge.
+console-ontology-canonical-adapter-postgres = { path = "../crates/ontology/canonical-adapter-postgres" }
+console-ontology-rest = { workspace = true, optional = true }
+console-governance-adapter-postgres = { workspace = true }
+console-governance-domain = { workspace = true }
+console-governance-rest = { workspace = true, optional = true }
+console-entity-adapter-juso = { path = "../crates/entity/adapter-juso" }
+console-entity-adapter-postgres = { workspace = true }
+console-entity-rest = { workspace = true }
+console-onboarding-adapter-postgres = { workspace = true }
+console-onboarding-rest = { workspace = true }
+console-orgchange-adapter-postgres = { workspace = true }
+console-orgchange-rest = { workspace = true }
+console-docs-adapter-postgres = { workspace = true, optional = true }
+console-docs-rest = { workspace = true, optional = true }
+console-platform-request-context = { workspace = true }
+console-platform-db = { workspace = true }
+console-platform-email = { workspace = true }
+console-platform-jobs = { workspace = true }
+console-platform-provisioning = { path = "../crates/platform/provisioning" }
+console-platform-rest = { path = "../crates/platform/platform-rest" }
+console-platform-push = { workspace = true }
+console-platform-realtime = { workspace = true }
+console-platform-storage = { workspace = true }
+console-reporting-adapter-postgres = { workspace = true, optional = true }
+console-reporting-rest = { workspace = true, optional = true }
+console-registry-adapter-postgres = { workspace = true, optional = true }
+console-registry-application = { workspace = true, optional = true }
+console-registry-domain = { workspace = true, optional = true }
+console-registry-rest = { workspace = true, optional = true }
+console-dispatch-adapter-postgres = { workspace = true, optional = true }
+console-dispatch-domain = { workspace = true }
+console-dispatch-rest = { workspace = true, optional = true }
+console-dispatch-worker = { workspace = true, optional = true }
+console-workflow-domain = { workspace = true, optional = true }
+console-workflow-runtime = { workspace = true, optional = true }
+console-workflow-runtime-adapter-postgres = { workspace = true, optional = true }
+console-workorder-adapter-postgres = { workspace = true, optional = true }
+console-workorder-application = { workspace = true, optional = true }
+console-workorder-rest = { workspace = true, optional = true }
+console-production-rest = { workspace = true, optional = true }
+opentelemetry = { workspace = true }
+opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
+opentelemetry_sdk = { workspace = true }
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+sqlx = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true }
+tokio = { workspace = true, features = ["net", "signal", "sync", "time"] }
+tower = { workspace = true, features = ["limit", "load-shed", "timeout"] }
+tower-http = { workspace = true, features = ["catch-panic", "fs", "trace"] }
+tracing = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+# `CommandId` for the org-change → OrgUnit port seam; the coverage test also
+# asks `DispatchTarget::ALL` what the roster holds.
+console-ontology-canonical-domain = { path = "../crates/ontology/canonical-domain" }
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt", "json"] }
+url = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+console-entity-domain = { workspace = true }
+console-orgchange-domain = { workspace = true }
+console-platform-test-support = { path = "../crates/platform/test-support" }
+# auth_rest's financial step-up case compiles in every build (it runs with `financial`).
+console-financial-adapter-postgres = { workspace = true }
+console-financial-application = { workspace = true }
+console-financial-domain = { workspace = true }
+console-governance-application = { workspace = true }
+console-notifications-domain = { workspace = true }
+console-settings-domain = { path = "../crates/settings/domain" }
+p256 = { workspace = true, features = ["ecdsa", "pkcs8", "pem"] }
+tokio = { workspace = true, features = ["io-util", "net", "macros", "rt-multi-thread", "test-util"] }
+tower = { workspace = true, features = ["util"] }
+# Builds the .xlsx fixtures for the import privacy tests (hr.rs).
+umya-spreadsheet = "3.0.0"
+webauthn-authenticator-rs = { workspace = true, features = ["softpasskey"] }
+webauthn-rs = { version = "0.5.5", features = ["danger-allow-state-serialisation"] }
+
+[build-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true
+
+# Integration suites of modules compiled out of the MVP build (docs/ops/mvp-build.md):
+# each runs only when its module is compiled in (`--features full` runs them all).
+# Auto-discovery stays on; these entries only add `required-features`.
+
+[[test]]
+name = "action_inbox_api"
+required-features = ["workspace"]
+
+[[test]]
+name = "attendance_persona_api"
+required-features = ["attendance"]
+
+[[test]]
+name = "benefit_catalog_api"
+required-features = ["benefit"]
+
+[[test]]
+name = "board_ack_api"
+required-features = ["notices"]
+
+[[test]]
+name = "compliance_api"
+required-features = ["compliance"]
+
+[[test]]
+name = "compliance_catalog_api"
+required-features = ["compliance"]
+
+[[test]]
+name = "consulting_engagement_api"
+required-features = ["consulting"]
+
+[[test]]
+name = "dispatch_pipeline_api"
+required-features = ["dispatch"]
+
+[[test]]
+name = "equipment_3r_api"
+required-features = ["equipment"]
+
+[[test]]
+name = "evaluation_cycle_api"
+required-features = ["evaluation"]
+
+[[test]]
+name = "facilities_pilot_story"
+required-features = ["facilities"]
+
+[[test]]
+name = "field_visit_api"
+required-features = ["support"]
+
+[[test]]
+name = "finance_gl_voucher_sod"
+required-features = ["finance-gl"]
+
+[[test]]
+name = "hr_attendance_self_read"
+required-features = ["attendance"]
+
+[[test]]
+name = "logistics_pilot_story"
+required-features = ["logistics"]
+
+[[test]]
+name = "m2_real_engine_drive"
+required-features = ["workorder"]
+
+[[test]]
+name = "maintenance_chain_api"
+required-features = ["workorder"]
+
+[[test]]
+name = "mobile_api"
+required-features = ["workorder"]
+
+[[test]]
+name = "notif_routing_api"
+required-features = ["notifications"]
+
+[[test]]
+name = "notifications_api"
+required-features = ["notifications"]
+
+[[test]]
+name = "object_graph_api"
+required-features = ["workspace"]
+
+[[test]]
+name = "object_links_api"
+required-features = ["workspace"]
+
+[[test]]
+name = "object_ontology_api"
+required-features = ["workspace"]
+
+[[test]]
+name = "object_resolve_api"
+required-features = ["workspace"]
+
+[[test]]
+name = "office_versions"
+required-features = ["office"]
+
+[[test]]
+name = "openapi_drift"
+required-features = ["full"]
+
+[[test]]
+name = "persona_ess_http"
+required-features = ["attendance", "payroll", "inbox"]
+
+[[test]]
+name = "purchase_request_collection_api"
+required-features = ["financial"]
+
+[[test]]
+name = "recruiting_pipeline_api"
+required-features = ["recruiting"]
+
+[[test]]
+name = "registry_api"
+required-features = ["registry"]
+
+[[test]]
+name = "search_api"
+required-features = ["workspace"]
+
+[[test]]
+name = "settings_statutory_api"
+required-features = ["compliance"]
+
+[[test]]
+name = "submittable_definitions_api"
+required-features = ["workspace"]
+
+[[test]]
+name = "workbench_api"
+required-features = ["workspace"]
+
+[[test]]
+name = "workbench_native_api"
+required-features = ["workspace"]
+
+[[test]]
+name = "workflow_automation_triggers"
+required-features = ["workspace", "workorder"]
+
+[[test]]
+name = "workflow_dynamics_branch"
+required-features = ["workspace"]
+
+[[test]]
+name = "workflow_four_eyes_publish"
+required-features = ["workspace"]
+
+[[test]]
+name = "workflow_object_context_api"
+required-features = ["workspace"]
+
+[[test]]
+name = "workflow_object_kind_dynamics"
+required-features = ["workspace"]
+
+[[test]]
+name = "workflow_run_read_surface"
+required-features = ["workspace"]
+
+[[test]]
+name = "workflow_runtime_finalize_api"
+required-features = ["workspace"]
+
+[[test]]
+name = "workflow_runtime_instance_api"
+required-features = ["workspace"]
+
+[[test]]
+name = "workorder_api"
+required-features = ["workorder"]

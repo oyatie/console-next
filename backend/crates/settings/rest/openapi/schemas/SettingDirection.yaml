@@ -1,0 +1,2 @@
+type: string
+enum: [tighten, loosen, neutral]

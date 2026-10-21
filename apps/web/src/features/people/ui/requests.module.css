@@ -1,0 +1,6 @@
+.layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.changes { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
+.decide { display: flex; flex-direction: column; gap: var(--space-3); border-top: 1px solid var(--line); padding-top: var(--space-3); }
+@media (max-width: 960px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+}

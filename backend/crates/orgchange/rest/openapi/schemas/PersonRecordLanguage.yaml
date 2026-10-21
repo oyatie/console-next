@@ -1,0 +1,20 @@
+type: object
+additionalProperties: false
+description: 어학. language is an ISO 639 code (stored lower case).
+required: [language]
+properties:
+  language:
+    type: string
+    pattern: '^[A-Za-z]{2,3}$'
+  test:
+    type: [string, 'null']
+    maxLength: 100
+  score:
+    type: [string, 'null']
+    maxLength: 30
+  taken_on:
+    type: [string, 'null']
+    format: date
+  expires_on:
+    type: [string, 'null']
+    format: date

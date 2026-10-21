@@ -1,0 +1,29 @@
+tags:
+  - employees
+operationId: getEmployeeDetail
+summary: Read employee employment detail
+description: Readable with employee_directory_read (e.g. EXECUTIVE). Callers that also hold employee_directory_manage
+  get the full detail; read-only callers get it without employment.phone_e164 and employment.base_pay (omitted) and
+  with an empty allowed_events. The ordinary directory list never includes phone or pay. A branch-scoped caller (BW-22)
+  reads only employees homed in its branches; any other employee is 404, and the manager view follows the home branch.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: Privileged employee detail.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeDetail'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

@@ -1,0 +1,27 @@
+tags:
+  - employees
+operationId: getEmployeeRrn
+summary: The masked 주민등록번호 of an employee (IMPORT-2)
+description: 'Decisions #25. Masked by default (생년월일 + 성별 digit); recorded false when none is stored.
+  Org-wide employee_directory_manage; each read leaves a 접속기록 row.'
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The masked number and where it came from.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeRrnStatus'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

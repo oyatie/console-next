@@ -1,0 +1,29 @@
+tags:
+  - employees
+operationId: undoEmployeeRenumber
+summary: Restore the old numbers of a renumbering, during SETUP only (IMPORT-2)
+description: '409 phase_not_setup after 운영 시작, renumber_already_undone, renumber_undo_conflict (a 사번 of the batch
+  changed since).'
+security:
+- bearerAuth: []
+parameters:
+- name: batch_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The batch and how many numbers were restored.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeRenumberResult'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'

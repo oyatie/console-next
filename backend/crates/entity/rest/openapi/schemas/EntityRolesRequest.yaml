@@ -1,0 +1,14 @@
+type: object
+properties:
+  primary_workplace_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  head_office_workplace_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  head_office_has_no_workplace:
+    type: boolean

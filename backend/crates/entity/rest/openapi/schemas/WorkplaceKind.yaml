@@ -1,0 +1,20 @@
+type: object
+required:
+- code
+- platform
+- active
+properties:
+  code:
+    type: string
+    description: A platform default (HEAD_OFFICE, WORKPLACE, FACTORY, BRANCH, SALES_OFFICE, RESEARCH_LAB, LOGISTICS_CENTER,
+      STORE) or a tenant kind's generated code.
+  label:
+    type:
+    - string
+    - 'null'
+    description: The tenant's label. Null on a platform default = the catalog label.
+  platform:
+    type: boolean
+  active:
+    type: boolean
+    description: Offered in the picker. A deactivated kind still reads on its 사업장.

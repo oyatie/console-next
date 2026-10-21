@@ -1,0 +1,21 @@
+type: object
+additionalProperties: false
+required: [domain, label_ko, requires_note]
+properties:
+  domain:
+    type: string
+  label_ko:
+    type: string
+    minLength: 1
+    maxLength: 60
+  label_en:
+    type: string
+    nullable: true
+    minLength: 1
+    maxLength: 60
+  requires_note:
+    type: boolean
+  sort:
+    type: integer
+    format: int32
+    nullable: true

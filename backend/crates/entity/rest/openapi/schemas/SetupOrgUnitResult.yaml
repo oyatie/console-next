@@ -1,0 +1,22 @@
+type: object
+required:
+- id
+- version
+- batch_id
+- change_mode
+properties:
+  id:
+    type: string
+    format: uuid
+  version:
+    type:
+    - integer
+    - 'null'
+    format: int64
+    description: The unit's new version; null when nothing changed.
+  batch_id:
+    type: string
+    format: uuid
+    description: The batch to undo (POST /api/v1/org-structure/batches/{batchId}/undo).
+  change_mode:
+    type: string

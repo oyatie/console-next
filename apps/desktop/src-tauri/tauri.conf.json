@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Console",
+  "identifier": "com.console.app",
+  "app": {
+    "windows": []
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "languages": ["Korean", "English"]
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQyRDUxODU5QTBDODlBOTQKUldTVW1zaWdXUmpWUWxBenFSQ0hsT2VVdk1TcWVOVHlHY0RCdmhrcDc1OEFGVjRzZDRYN09keHMK",
+      "requireSignedVersion": true,
+      "windows": { "installMode": "passive" }
+    },
+    "deep-link": {
+      "desktop": { "schemes": ["cosskorea-console"] }
+    }
+  }
+}

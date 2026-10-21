@@ -1,0 +1,21 @@
+/* The employee page: history in the main column (2fr), facts in the rail (1fr); one column when narrow. */
+.layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+@media (max-width: 64rem) { .layout { grid-template-columns: minmax(0, 1fr); } }
+/* The rail's cards stack and scroll with the page; a sticky .panel would slide over the one above it and take its clicks. */
+.rail > :global(.panel) { position: static; }
+.history { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); min-width: 0; }
+/* A completed action must not push the history; the dock stays below open sheets. */
+.receiptDock { position: fixed; left: calc(var(--rail-w) + var(--space-4)); bottom: var(--space-4); z-index: 10; max-width: calc(var(--panel-w) * 1.75); }
+@media (max-width: 767px) { .receiptDock { left: var(--space-2); right: var(--space-2); } }
+.facts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; color: var(--steel); }
+.notice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--warn-bd); border-radius: var(--radius); background: var(--warn-bg); color: var(--warn-tx); }
+.next { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.nextItem { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.lineLink { height: auto; padding: 0; text-align: start; white-space: normal; }
+/* Loading outline: neutral blocks, shown only after a short delay (no motion beyond the fade). */
+.skeleton { display: flex; flex-direction: column; gap: var(--space-3); opacity: 0; animation: skeleton-in 0s linear 400ms forwards; }
+@keyframes skeleton-in { to { opacity: 1; } }
+.bone { display: block; height: var(--space-4); border-radius: var(--radius); background: var(--muted); }
+.bone[data-w="title"] { width: 16rem; height: var(--space-5); }
+.bone[data-w="line"] { width: 24rem; max-width: 100%; }
+.bone[data-w="row"] { width: 100%; height: var(--space-6); }

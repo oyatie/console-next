@@ -1,0 +1,181 @@
+type: object
+required:
+- event_type
+- effective_date
+- comment
+properties:
+  event_type:
+    type: string
+    description: Exits are not recorded here — OFFBOARD/TERMINATE are 422; an employee leaves through an exit
+      case (POST /api/v1/hr/exit-cases), whose HR confirmation records TERMINATE. GROUP_TRANSFER (전적,
+      E-S3b) moves the employee to a 사업장 of another 법인 from effective_date (their first day there; the
+      last day at the sending 법인 is the day before), with to_workplace_id and group_transfer required.
+      APPOINT (MR-25) records a dated 직책·직무·직군 change; EMPLOYMENT_TYPE_CHANGE (MR-24) a dated 고용형태
+      전환. Both keep the employee's status.
+    enum:
+    - ONBOARD
+    - TRANSFER
+    - GROUP_TRANSFER
+    - PROMOTE
+    - APPOINT
+    - EMPLOYMENT_TYPE_CHANGE
+    - LEAVE_OF_ABSENCE
+    - RETURN_FROM_LEAVE
+    - CONTRACT_RENEWAL
+  to_status:
+    type: string
+    nullable: true
+    description: Defaults per event_type (ONBOARD/TRANSFER/PROMOTE/RETURN_FROM_LEAVE ACTIVE, LEAVE_OF_ABSENCE
+      ON_LEAVE, CONTRACT_RENEWAL the current status); any other value is 409.
+    enum:
+    - ACTIVE
+    - ON_LEAVE
+    - UNKNOWN
+  to_company:
+    type: string
+    nullable: true
+  to_org_unit:
+    type: string
+    nullable: true
+    description: Legacy free text. On its own it clears the employee's OrgUnit binding; ignored when to_org_unit_id
+      is given.
+  to_org_unit_id:
+    description: TRANSFER target OrgUnit (ACTIVE Site/Department/Team of this tenant). Rebinds the employee and
+      projects the unit name into org_unit / to_org_unit. Unknown or foreign units are 404; dissolved is 422.
+      A unit in another 법인 than the employee's on effective_date (its own 사업장's, or its nearest placed
+      ancestor's for a 부서/팀) is 422 transfer_cross_entity, its error.refusals entry naming field
+      to_org_unit_id with value, from_legal_entity_id and to_legal_entity_id. A 전보 never crosses 법인; that
+      move is a 전적 (decision 30). Nothing is written.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  to_position:
+    type: string
+    nullable: true
+    description: PROMOTE needs this or to_job_title_id (the new position).
+  to_grade_id:
+    description: PROMOTE only (MR-25). An active 직급 (catalog kind GRADE); a lower grade_rank needs
+      DISCIPLINARY_DEMOTION. A 직급-only PROMOTE keeps the 직위. Unknown, inactive or another kind is 422
+      job_title_unknown.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  to_position_kind_id:
+    description: APPOINT only (MR-25). The 직책 (kind POSITION) after; absent keeps it.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  vacate_position_kind:
+    type: boolean
+    description: APPOINT only. 보직 해제, the employee holds no 직책 after (excludes to_position_kind_id).
+  to_job_id:
+    description: APPOINT only. The 직무 (kind JOB) after; its label becomes the employee's job (종사 업무, 근기법
+      시행령 §20 6호).
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  to_job:
+    type: [string, 'null']
+    maxLength: 200
+    description: APPOINT only. 종사 업무 as free text when to_job_id is absent; clears the 직무 id.
+  to_job_family_id:
+    description: APPOINT only. The 직군 (kind JOB_FAMILY) after.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  to_employment_type:
+    description: EMPLOYMENT_TYPE_CHANGE only, required there (MR-24, 고용형태 전환). A change to CONTRACT needs
+      contract_end_date (the window starts on effective_date); a change away from CONTRACT closes the window.
+      409 employment_profile_missing when the employee has no employment profile.
+    oneOf:
+    - $ref: '#/components/schemas/EmploymentType'
+    - type: 'null'
+  to_job_title_id:
+    description: PROMOTE only (BW-13). An active catalog title; its label becomes the position (wins over
+      to_position) and the employee's job_title_id is set. Unknown or inactive is 422 job_title_unknown. A PROMOTE
+      by to_position alone clears the employee's catalog title.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  reason_code:
+    type: [string, 'null']
+    description: TRANSFER and PROMOTE only (422 otherwise). A BW-07 code of lifecycle_transfer / lifecycle_promote
+      (422 reason_code_invalid / reason_note_required); comment is its note. A PROMOTE from a ranked title to a
+      lower grade_rank needs DISCIPLINARY_DEMOTION (422 demotion_reason_required).
+  expected_return_date:
+    type: string
+    nullable: true
+    description: LEAVE_OF_ABSENCE only. YYYY-MM-DD, on or after effective_date. Required for CHILDCARE and
+      MATERNITY (422 leave_return_date_required).
+  contract_end_date:
+    type: string
+    nullable: true
+    description: CONTRACT_RENEWAL (required), or an EMPLOYMENT_TYPE_CHANGE to CONTRACT (required, the new
+      contract's end; MR-24). YYYY-MM-DD, on or after effective_date. A renewal that takes
+      fixed-term service past the statutory limit (기간제법 §4①, the register's FIXED_TERM_MAX_YEARS; 육아휴직 not
+      counted) is 409 fixed_term_limit unless exception_id admits it. Over the limit on the hire-date fallback
+      (no contract history) is allowed and flagged by GET /api/v1/employees/{id}/fixed-term.
+  to_workplace_id:
+    description: TRANSFER or GROUP_TRANSFER (E-S3b). TRANSFER - a 사업장 of the employee's own 법인 to move them to (전근); the
+      employment_assignments row splits on effective_date. Without it, a to_org_unit_id placed at another
+      사업장 moves them there. A 사업장 of another 법인 is 422 transfer_cross_entity (field to_workplace_id; a 전적);
+      no 법인 recorded is 409 employee_unassigned; a closed or voided 사업장 is 422 workplace_not_open; one
+      that is not the unit's is 422 org_unit_at_other_workplace; the 사업장 they already work at with no unit
+      change is 422 lifecycle_noop. GROUP_TRANSFER (required then) - a 사업장 of another 법인 (전적); one of
+      the employee's own 법인 is 422 group_transfer_same_entity, a 사업장 outside the caller's grant set is 403
+      out_of_scope, and the rest refuse as for TRANSFER.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  group_transfer:
+    description: GROUP_TRANSFER only, and required then (E-S3b). The 전적's consent (민법 §657①) and its
+      continuity choice; 422 validation names a missing or invalid field.
+    oneOf:
+    - $ref: '#/components/schemas/GroupTransferFacts'
+    - type: 'null'
+  exception_id:
+    description: CONTRACT_RENEWAL only (BW-12). A RECORDED or APPROVED FIXED_TERM_OVER_TWO_YEARS exception for
+      this employee whose reason_code is a 기간제법 §4① 단서 ground (PROJECT_COMPLETION, ABSENCE_COVER,
+      STUDY_OR_TRAINING, OLDER_WORKER, PROFESSIONAL, GOVERNMENT_JOB_PROGRAM, DECREE_LISTED; otherwise 422
+      fixed_term_exemption_ground_invalid), requested for the payload {"employee_id", "contract_end_date"}. It is
+      consumed by this renewal (409 exception_consumed / exception_scope_changed / exception_expired otherwise).
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  expected_head_version:
+    type: [integer, 'null']
+    description: BW-11 version pin, the head_version of GET /api/v1/employees/{id}/lifecycle-events. When it no
+      longer matches, 409 stale_record; error.refusals[0] names the last applied change (lifecycle_event_id,
+      event_type, effective_date, recorded_by, recorded_at).
+  expected_contract_end_date:
+    type: [string, 'null']
+    description: CONTRACT_RENEWAL only (BW-11). The current contract end the client saw (YYYY-MM-DD); a different
+      stored end is 409 stale_record.
+  replaces_event_id:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+    description: BW-11. A future-dated event of a kind and date that is already SCHEDULED is 409
+      scheduled_conflict (error.refusals[0] = {event_id, event_type, effective_date, recorded_by}) unless this
+      names that event; it is then CANCELLED (superseded_by this event, cancel_reason_code
+      replace_reason_code) in the same transaction. Naming any other event is 409 scheduled_replace_mismatch.
+  replace_reason_code:
+    type: [string, 'null']
+    description: Required with replaces_event_id (422 reason_code_required). A lifecycle_cancel code.
+  leave_type:
+    type: [string, 'null']
+    description: Required for LEAVE_OF_ABSENCE (422 leave_type_required; leave_type_invalid for another value);
+      422 on any other event.
+    enum: [CHILDCARE, MATERNITY, ILLNESS, PERSONAL, OTHER, null]
+  effective_date:
+    type: string
+    format: date
+    description: YYYY-MM-DD. A date after today (KST) schedules the event. Before the employee's hire date is
+      422 effective_date_before_hire (BW-11).
+  comment:
+    type: string
+    minLength: 1
+  signoffs:
+    $ref: '#/components/schemas/EmployeeLifecycleSignoffs'
+    description: Optional. No lifecycle act requires an acknowledgement (A13); a body sent is stored as
+      given.

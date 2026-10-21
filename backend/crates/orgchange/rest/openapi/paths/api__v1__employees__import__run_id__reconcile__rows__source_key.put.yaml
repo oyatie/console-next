@@ -1,0 +1,48 @@
+tags:
+  - employees
+operationId: setEmployeeImportReconcileRow
+summary: Mark one import row 확인함 or 확인 필요 (BE-EMP-UI)
+description: Versioned (expected_version = the row's version as read, 0 when never set). Audited
+  data_import.reconcile_check. 409 import_not_applied, import_signed_off (the run is frozen after its sign-off;
+  error.refusals carries the sign-off), stale_revision (error.refusals [{source_key, current_version}]); 404 for
+  a row the run did not plan; 422 for another state or a note over 1000.
+security:
+- bearerAuth: []
+parameters:
+- name: run_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: source_key
+  in: path
+  required: true
+  schema:
+    type: string
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SetEmployeeImportReconcileRowRequest'
+responses:
+  '200':
+    description: The row as stored.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeImportReconcileRow'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: import_not_applied, import_signed_off or stale_revision.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'

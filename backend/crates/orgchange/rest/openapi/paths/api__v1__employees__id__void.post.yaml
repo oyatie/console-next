@@ -1,0 +1,73 @@
+tags:
+  - employees
+operationId: voidEmployee
+summary: Void (등록 취소) a registration that should never have existed (MR-26)
+description: >-
+  After 운영 시작 only (409 phase_not_operating during SETUP; delete
+  instead). Org-wide employee_directory_manage. Allowed for a PRE_HIRE
+  person, or for one registered fewer than people.void_window days ago
+  (default 14) when attest_never_worked is true (409
+  employee_void_attestation_required without it, 409
+  employee_void_not_eligible outside the window or for an EXITED or
+  ON_LEAVE record). A record with an exit case, an applied 발령 other
+  than the ONBOARD, an attendance record or a payroll line is 409
+  employee_void_has_work_records: exit it, or merge a duplicate. Governed
+  like a high-risk 정정: with another eligible holder an EMPLOYEE_VOID
+  change request is filed (202, pending_request) and every condition is
+  checked again when the second person applies it (the window measured
+  at the filing date); a sole holder voids at once with review_required
+  after an EXCEPTION_DECIDE passkey step-up bound to this employee id
+  with payload_hash = SHA-256 hex of {"attest_never_worked":<bool>}
+  (401 step_up_required / step_up_failed), unless authz.sole_holder.mode
+  is refuse (403 employee_void_sole_holder_refused). The record becomes
+  VOIDED and leaves every read; it keeps its 사번 (never reused,
+  decisions #6) and its personal data is destroyed after
+  people.void_pii_retention days (default 30). Scheduled 발령 are
+  cancelled and the 법인 · 사업장 assignment is withdrawn. An
+  EMPLOYEE_VOID request is never filed through POST /change-requests
+  (422).
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/VoidEmployeeRequest'
+responses:
+  '200':
+    description: Voided now (a sole holder; review_required).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeVoidOutcome'
+  '202':
+    description: Waiting for a second person (pending_request).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeVoidOutcome'
+  '401':
+    description: A sole holder's void without a verified step-up for this payload.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: phase_not_operating, an employee_void_* refusal, or a stale expected_updated_at.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'

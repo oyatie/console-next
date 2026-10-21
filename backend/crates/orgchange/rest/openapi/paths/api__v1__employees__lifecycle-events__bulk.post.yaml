@@ -1,0 +1,120 @@
+tags:
+  - employees
+operationId: createBulkEmployeeLifecycleEvents
+summary: Record one TRANSFER, PROMOTE, APPOINT, EMPLOYMENT_TYPE_CHANGE or CONTRACT_RENEWAL for many employees, all or nothing
+description: >-
+  Bulk appointment (일괄 발령). Every listed employee is locked and validated by the single-event rules of
+  POST /api/v1/employees/{id}/lifecycle-events (state, no-op, signoffs) before anything is written; an
+  effective_date after today (KST) schedules every event (state SCHEDULED) exactly as the single-event
+  endpoint does. If any employee is refused, nothing is recorded and the 422 names every
+  refused employee in error.refusals. Otherwise one lifecycle event per employee is recorded, all sharing
+  one batch_id, each with its own employee.lifecycle.record (or .schedule) audit, plus one employee.lifecycle.bulk audit
+  for the batch. The employees are named by exactly one of employee_ids (up to 500), lines (TRANSFER only, up to 500,
+  each with its own to_org_unit_id; the batch-level to_org_unit_id is then absent), or selection (every employee the
+  GET /api/v1/employees filters admit under the caller's scope, minus exclude_employee_ids, up to 3,000). A selection
+  whose resolved count differs from expected_count is 409 bulk_selection_changed and records nothing.
+  With Prefer respond-async (CAP-04, decisions #28) the batch is a job: the request's own checks (422
+  validation) answer at once, then 202 returns the job and its Location; the batch runs exactly as above
+  (one transaction, all or nothing) and its outcome is read with GET
+  /api/v1/employees/lifecycle-events/bulk/jobs/{job_id} and announced by the audited
+  employee.lifecycle.bulk.progress steps.
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: 16..200 characters. An exact replay returns 200 with the original body (202 with the same job
+    when sent as a job); the same key with a different body is 409 conflict.
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+- name: Prefer
+  in: header
+  required: false
+  description: respond-async makes the batch a job (202).
+  schema:
+    type: string
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/BulkEmployeeLifecycleEventRequest'
+responses:
+  '200':
+    description: Every event recorded (also the exact Idempotency-Key replay).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/BulkEmployeeLifecycleEventResponse'
+  '202':
+    description: Accepted as a job (Prefer respond-async); Location names the job. An exact replay of the key
+      returns the same job.
+    headers:
+      Location:
+        schema:
+          type: string
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [id, state, total, done, created_at]
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            state:
+              type: string
+              enum: [queued, running, done, failed]
+            phase:
+              type: [string, 'null']
+              enum: [checking, recording, null]
+            total:
+              type: integer
+            done:
+              type: integer
+            result:
+              oneOf:
+              - $ref: '#/components/schemas/BulkEmployeeLifecycleEventResponse'
+              - type: 'null'
+            error:
+              type: [object, 'null']
+              description: '{code, message, refusals?} of a failed job.'
+            created_at:
+              type: string
+              format: date-time
+            finished_at:
+              type: [string, 'null']
+              format: date-time
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: Idempotency-Key reused with a different body (conflict), or bulk_selection_changed (the selection now
+      matches a different number of employees than expected_count; nothing was recorded).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: Invalid request (code validation), or code bulk_lifecycle_refused with error.refusals naming each
+      employee that cannot take the change; nothing was recorded.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/BulkLifecycleRefusalBody'
+  '503':
+    description: bulk_lifecycle_busy (a job; every driver of this server is busy, nothing was written) with
+      Retry-After, or unavailable (overload) with Retry-After.
+    headers:
+      Retry-After:
+        schema:
+          type: integer
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

@@ -1,0 +1,147 @@
+import { PlacePath } from "./place-path";
+import { entityNames } from "../../../reference/entity/domain/names";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Building2, Lock } from "lucide-react";
+import type { components } from "@console/api/schema";
+import { t } from "@console/i18n";
+import { fmtNumber } from "@console/i18n/format";
+import { label } from "../../../lib/labels";
+import { CommandError } from "../../../lib/react/command-error";
+import { useCommand } from "../../../lib/react/command";
+import { FORMATS, phoneE164 } from "../../../lib/pure/formats";
+import { todayKst } from "../../../lib/pure/today";
+import { unitsQuery } from "../../../reference/org/api";
+import { entitiesRef, orgStructureRef } from "../../../reference/entity/api";
+import { Button } from "../../../ui/button/button";
+import { ChoiceField } from "../../../ui/choice/choice-field";
+import { Chip } from "../../../ui/chip";
+import { DateChips } from "../../../ui/date/date-chips";
+import { datePresets } from "../../../ui/date/date-text";
+import { DateField } from "../../../ui/date/date-field";
+import { Field, TextInput } from "../../../ui/field/field";
+import { Kbd } from "../../../ui/kbd/kbd";
+import { MaskedField } from "../../../ui/masked-field/masked-field";
+import { PathPicker } from "../../../ui/path-picker/path-picker";
+import { Sheet } from "../../../ui/sheet/sheet";
+import { rehireEmployee } from "../api";
+import { addDays } from "../domain/lifecycle";
+import { EMPLOYMENT_TYPES, type EmploymentType, type Where } from "../domain/register";
+import { placeOptions } from "../domain/register-place";
+import { placeText } from "../present";
+import s from "./register.module.css";
+
+type Detail = components["schemas"]["EmployeeDetail"];
+const TYPE = { type: "employmentType", values: EMPLOYMENT_TYPES };
+const NEEDED = ["hire", "unit", "type", "position", "end"] as const;
+
+/**
+ * Rehire (spec E3-rehire): from a retained exit, a new period of the same person. The earlier period is named and
+ * not changed; start date, place, type and title are picked, nothing in advance. The server keeps the same employee
+ * number and history and has no service-continuity choice yet (both said, never faked).
+ */
+export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => void; onDone: (message: string) => void }) {
+  const e = d.employee;
+  const today = todayKst();
+  const units = useQuery(unitsQuery).data?.items ?? [];
+  const entities = useQuery(entitiesRef).data?.items ?? [];
+  const roots = useQuery({ ...orgStructureRef, retry: false }).data?.entities ?? [];
+  const [where, setWhere] = useState<Where | null>(null);
+  const options = placeOptions(units, roots, entities, where);
+  const [f, setF] = useState({ hire: "", unit: "", type: null as EmploymentType | null, position: e.position ?? "", end: "", phone: "", pay: "" });
+  const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
+  const [tried, setTried] = useState(false);
+  const minHire = e.exit_date ? addDays(e.exit_date, 1) : undefined;
+  const dateRefusal = e.exit_date ? t("people.refusal.rehire_date_not_after_exit", { date: e.exit_date }) : undefined;
+  const gaps = NEEDED.filter((k) => (k === "end" ? f.type === "CONTRACT" && !f.end : k === "type" ? !f.type : k === "hire" ? !f.hire || Boolean(minHire && f.hire < minHire) : !f[k]));
+  const place = options.find((o) => o.unit.id === f.unit);
+  const run = useCommand({
+    run: (_: void, key: string) =>
+      rehireEmployee(e.id, {
+        hire_date: f.hire,
+        employment_type: f.type!,
+        org_unit_id: f.unit,
+        position: f.position.trim(),
+        company: place?.entityRecord ? entityNames(place.entityRecord).name : undefined,
+        contract_end_date: f.type === "CONTRACT" ? f.end : undefined,
+        phone: f.phone ? (phoneE164(f.phone) ?? FORMATS.phone.display(f.phone)) : undefined,
+        base_pay_won: f.pay ? Number(f.pay) : undefined,
+        idempotency_key: key,
+      }),
+    invalidates: ["/api/v1/employees", "/api/v1/org-units", "/api/v1/legal-entities", "/api/v1/org-structure"],
+    settle: true,
+    onSuccess: () => onDone(t("register.rehire.done", { name: e.name, date: f.hire })),
+  });
+  const submit = () => (setTried(true), gaps.length === 0 && run.mutate());
+  const status = f.hire > today ? t("register.foot.statusFuture") : t("register.foot.statusNow");
+  return (
+    <Sheet
+      open
+      wide
+      kicker={<><Lock size={12} aria-hidden />{t("register.rehire.kicker", { name: e.name, number: e.employee_number ?? "—" })}</>}
+      title={t("register.rehire.title")}
+      onClose={onClose}
+      pending={run.isPending}
+      notice={<CommandError error={run.error} own={(code) => code === "rehire_date_not_after_exit" ? dateRefusal : undefined} />}
+      consequence={
+        gaps.length > 0 ? (
+          <b className={tried ? s.err : undefined}>{t("register.foot.todo", { n: gaps.length, list: gaps.map((g) => t(`register.field.${g === "unit" ? "unit" : g === "end" ? "contractEnd" : g}`)).join(" · ") })}</b>
+        ) : (
+          <b>{t("register.rehire.foot", { name: e.name, place: place ? placeText(units, place).split(" › ").slice(1).join(" › ") : "", type: label(TYPE, f.type!), status, date: f.hire.slice(5), number: e.employee_number ?? "—" })}</b>
+        )
+      }
+      actions={
+        <>
+          <Button variant="ghost" onClick={onClose}>{t("lifecycle.back")}</Button>
+          <Button variant="primary" aria-disabled={run.isPending || undefined} onClick={submit}>{t("register.rehire.commit")}<Kbd keys="⌘↵" /></Button>
+        </>
+      }
+    >
+      <div className={s.form}>
+        <div className={s.before}>
+          <span>{t("register.rehire.before", { name: e.name, number: e.employee_number ?? "—", place: [e.company, e.org_unit].filter(Boolean).join(" › "), from: e.hire_date ?? "—", to: e.exit_date ?? "—" })}</span>
+          <Chip>{t("register.rehire.kept")}</Chip>
+          <span className={s.hint}>{t("register.rehire.same")}</span>
+        </div>
+        <div className={s.block}>
+          {/* The same three answers as a first registration (spec E3-rehire); unplaced is closed with why. */}
+          <ChoiceField
+            label={t("register.where")}
+            required
+            look="chips"
+            options={[
+              { value: "unit", label: t("register.where.unit") },
+              { value: "site", label: t("register.where.site") },
+              { value: "none", label: t("register.where.none"), disabled: t("register.where.noneClosed") },
+            ]}
+            value={where}
+            onChange={(v) => (setWhere(v as Where), set("unit", ""))}
+          />
+          <PathPicker options={options.map((o) => ({ id: o.unit.id, text: placeText(units, o), content: <PlacePath option={o} units={units} />, count: t("register.place.count", { n: o.unit.headcount }) }))} icon={<Building2 size={16} aria-hidden />} value={f.unit} onChange={(v) => set("unit", v)} placeholder={t(where === "site" ? "register.place.sitePlaceholder" : "register.place.unitPlaceholder")} label={t("register.place.label")} openLabel={t("register.place.open")} invalid={tried && !f.unit} />
+          {tried && !f.unit && <span className={s.err}>{t("register.err.unit")}</span>}
+        </div>
+        <div className={s.termsRow}>
+          <DateChips label={t("register.hire")} required min={minHire} presets={datePresets(today, ["nextMonday", "nextMonthFirst"])} value={f.hire} onChange={(v) => set("hire", v)} echo={f.hire ? t(f.hire > today ? "register.hire.future" : "register.hire.past") : undefined} error={tried && !f.hire ? t("register.err.hire") : tried && minHire && f.hire < minHire ? dateRefusal : undefined} showErrors={tried} />
+          <ChoiceField label={t("register.type")} required look="chips" options={EMPLOYMENT_TYPES.map((v) => ({ value: v, label: label(TYPE, v) }))} value={f.type} onChange={(v) => set("type", v as EmploymentType)} error={tried && !f.type ? t("register.err.type") : undefined} />
+        </div>
+        {f.type === "CONTRACT" && <DateField label={t("register.contractEnd")} required today={today} min={f.hire || undefined} value={f.end} onChange={(v) => set("end", v)} error={tried && !f.end ? t("register.err.contractEnd") : undefined} />}
+        <Field label={t("register.position")} required error={tried && !f.position.trim() ? t("register.err.position") : undefined}>
+          {(p) => <TextInput {...p} value={f.position} onChange={(x) => set("position", x.target.value)} />}
+        </Field>
+        <div className={s.block}>
+          <span className={s.flabel}>{t("register.rehire.service")}</span>
+          <span className={s.hint}>{t("register.rehire.serviceClosed")}</span>
+        </div>
+        <fieldset className={s.extra}>
+          <legend className={s.flabel}>{t("register.rehire.profile")}</legend>
+          <div className={s.extraRow}>
+            <MaskedField label={t("register.phone")} required={false} format={FORMATS.phone} value={f.phone} onChange={(v) => set("phone", v)} />
+            <Field label={t("register.pay")} required={false}>
+              {(p) => <TextInput {...p} className="num" inputMode="numeric" value={f.pay ? fmtNumber(Number(f.pay)) : ""} onChange={(x) => set("pay", x.target.value.replace(/[^\d]/g, ""))} />}
+            </Field>
+          </div>
+        </fieldset>
+      </div>
+    </Sheet>
+  );
+}

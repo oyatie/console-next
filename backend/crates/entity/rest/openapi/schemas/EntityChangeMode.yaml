@@ -1,0 +1,6 @@
+type: string
+enum:
+- SETUP
+- GOVERNED
+- SOLE_HOLDER
+- MIGRATION

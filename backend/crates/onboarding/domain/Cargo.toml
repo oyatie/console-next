@@ -1,0 +1,16 @@
+[package]
+name = "console-onboarding-domain"
+version = "0.1.0"
+description = "Tenant setup phase: setup-rail checklist, go-live preview and its digest, the Rust go-live backstop. Pure."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+console-kernel-core.workspace = true
+serde.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true

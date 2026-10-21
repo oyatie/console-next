@@ -1,0 +1,108 @@
+type: object
+required:
+- workplace_id
+- legal_entity_id
+- site_org_unit_id
+- closed_on
+- holds_entity_role
+- people
+- units
+- exit_cases
+- job
+properties:
+  workplace_id:
+    type: string
+    format: uuid
+  legal_entity_id:
+    type: string
+    format: uuid
+  site_org_unit_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  closed_on:
+    type:
+    - string
+    - 'null'
+    format: date
+  holds_entity_role:
+    type: boolean
+  people:
+    type: array
+    items:
+      type: object
+      required:
+      - employee_id
+      - name
+      - employee_number
+      - org_unit_id
+      - hire_date
+      properties:
+        employee_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        employee_number:
+          type:
+          - string
+          - 'null'
+        org_unit_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        hire_date:
+          type:
+          - string
+          - 'null'
+          format: date
+  units:
+    type: array
+    items:
+      type: object
+      required:
+      - org_unit_id
+      - name
+      - parent_org_unit_id
+      - version
+      properties:
+        org_unit_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parent_org_unit_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        version:
+          type: integer
+          format: int64
+  exit_cases:
+    type: array
+    items:
+      type: object
+      required:
+      - employee_id
+      - case_id
+      - status
+      - effective_exit_date
+      properties:
+        employee_id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        effective_exit_date:
+          type: string
+          format: date
+  job:
+    oneOf:
+    - $ref: '#/components/schemas/WorkplaceCloseJob'
+    - type: 'null'

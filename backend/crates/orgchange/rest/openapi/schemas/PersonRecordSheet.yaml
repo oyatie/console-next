@@ -1,0 +1,20 @@
+type: object
+required: [items, next_after]
+properties:
+  items:
+    type: array
+    items:
+      type: object
+      required: [employee_id, employee_number, employee_name, entry]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        employee_number:
+          type: [string, 'null']
+        employee_name:
+          type: string
+        entry:
+          $ref: '#/components/schemas/PersonRecordEntry'
+  next_after:
+    type: [string, 'null']
+    format: uuid

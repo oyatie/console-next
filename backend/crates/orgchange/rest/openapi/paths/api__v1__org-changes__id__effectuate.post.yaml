@@ -1,0 +1,36 @@
+tags:
+- org
+operationId: effectuateOrgChange
+summary: Apply the approved change
+description: >-
+  APPROVED only, and never before the effective date (발효일). Every kind replays the proposal atomically to
+  APPLIED (a DISSOLVE closes its unit on the date; no settlement list). A unit moved to another 사업장 takes
+  its people (a dated TRANSFER each) and a reassign moves its members, all in the same transaction; the
+  change's headcount becomes the number of people it moved. A person who cannot move refuses the whole change
+  with that refusal's code (e.g. 422 transfer_cross_entity, 409 lifecycle_schedule_conflict). A due APPROVED
+  change is also applied by the schedule from 00:05 KST on its date.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: Applied, or settling for a dissolve.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgChangeDetail'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

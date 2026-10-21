@@ -1,0 +1,50 @@
+type: object
+description: BW-17 change request (변경 요청) to HR. The requester never decides.
+required: [id, kind, subject_type, subject_id, payload, reason_code, requested_by, assignee_role, status, review_required, created_at]
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  kind:
+    type: string
+    enum: [PROFILE_CORRECTION, IDENTITY_REVIEW, ACCESS_REQUEST, SCOPE_ACTION, OTHER, ACCESS_EXPLANATION, POLICY_QUESTION, EMPLOYEE_VOID]
+  subject_type:
+    type: string
+    enum: [EMPLOYEE, USER_ACCOUNT, BRANCH, ORGANIZATION]
+  subject_id:
+    $ref: '#/components/schemas/Uuid'
+  payload:
+    type: object
+    additionalProperties: true
+  reason_code:
+    type: string
+  note:
+    type: [string, 'null']
+  requested_by:
+    $ref: '#/components/schemas/Uuid'
+  assignee_role:
+    type: string
+    enum: [HR]
+  assignee_user_id:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  status:
+    type: string
+    enum: [OPEN, APPLIED, DECLINED, WITHDRAWN]
+  review_required:
+    type: boolean
+    description: OTHER requests are reviewed after the fact.
+  decided_by:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  decision_reason_code:
+    type: [string, 'null']
+  decision_note:
+    type: [string, 'null']
+  created_at:
+    $ref: '#/components/schemas/Timestamp'
+  decided_at:
+    oneOf:
+    - $ref: '#/components/schemas/Timestamp'
+    - type: 'null'

@@ -1,0 +1,8 @@
+type: object
+additionalProperties: false
+required: [employee_id, to_org_unit_id]
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  to_org_unit_id:
+    $ref: '#/components/schemas/Uuid'

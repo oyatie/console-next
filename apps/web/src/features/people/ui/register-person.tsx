@@ -1,0 +1,55 @@
+import { t } from "@console/i18n";
+import { ChoiceField } from "../../../ui/choice/choice-field";
+import { Field, TextInput } from "../../../ui/field/field";
+import { fmtLongDay, typedProblem } from "../../../ui/date/date-text";
+import { parseTyped } from "../../../ui/date/days";
+import type { Draft, Gap } from "../domain/register";
+import s from "./register.module.css";
+
+type Set = <K extends keyof Draft>(k: K, v: Draft[K]) => void;
+
+/**
+ * Who: name, birth date (typed, read in any common form), resident registration number (not taken on this screen
+ * yet, said so) and employee number (the server's next one, or typed). Errors show only after a commit attempt (`shown`).
+ */
+export function RegisterPerson({ d, set, shown }: { d: Draft; set: Set; shown: ReadonlySet<Gap> }) {
+  const birth = parseTyped(d.birth);
+  return (
+    <div className={s.personRow}>
+      <Field label={t("register.name")} required error={shown.has("name") ? t("register.err.name") : undefined}>
+        {(p) => <TextInput {...p} placeholder={t("register.name.placeholder")} value={d.name} onChange={(e) => set("name", e.target.value)} />}
+      </Field>
+      <Field
+        label={t("register.birth")}
+        required={null}
+        tag={<span className={s.tag}>{t("register.birth.tag")}</span>}
+        hint={"date" in birth ? <span className={s.ok}>{fmtLongDay(birth.date, false)}</span> : shown.has("birth") ? undefined : t("register.birth.hint")}
+        error={shown.has("birth") ? (typedProblem(birth) ?? undefined) : undefined}
+      >
+        {(p) => <TextInput {...p} className="num" inputMode="numeric" placeholder="YYYY-MM-DD" value={d.birth} onChange={(e) => set("birth", e.target.value)} />}
+      </Field>
+      <Field
+        label={t("register.rrn")}
+        required={null}
+        tag={<><span className={s.tag}>{t("register.optional")}</span><span className={s.legal}>{t("register.rrn.legal")}</span></>}
+        hint={t("register.rrn.closed")}
+      >
+        {(p) => <TextInput {...p} className="num" disabled placeholder={t("register.rrn.placeholder")} value="" />}
+      </Field>
+      <div className={s.numberCol}>
+        <ChoiceField
+          label={t("register.number")}
+          required={false}
+          look="chips"
+          options={[{ value: "auto", label: t("register.number.auto") }, { value: "manual", label: t("register.number.manual") }]}
+          value={d.numberMode}
+          onChange={(v) => set("numberMode", v as Draft["numberMode"])}
+          error={shown.has("number") ? t("register.err.number") : undefined}
+        />
+        {d.numberMode === "manual" && (
+          <TextInput className="num" aria-label={t("register.number.manualLabel")} aria-invalid={shown.has("number") || undefined} value={d.number} onChange={(e) => set("number", e.target.value)} />
+        )}
+      </div>
+    </div>
+  );
+}

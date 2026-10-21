@@ -1,0 +1,44 @@
+tags:
+- access
+operationId: createAccessRole
+summary: Create a role (version 1)
+description: 'Needs 권한 관리 등록·수정 (`access` × `edit`) over the whole tenant, or ops. A non-ops author must
+
+  hold every line they add, over the whole tenant (grantor ceiling, GR-7). Levels are normalized:
+
+  `edit`, `approve` and `export` add `view` when the domain offers it.
+
+  '
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CreateAccessRoleRequest'
+      example:
+        name_ko: 인사 실무
+        description: 직원 등록과 인사기본 수정
+        lines:
+        - domain: hr_basic
+          levels:
+          - edit
+        - domain: org
+          levels:
+          - view
+responses:
+  '201':
+    description: The created role.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessRole'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

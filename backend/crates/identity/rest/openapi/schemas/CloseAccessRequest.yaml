@@ -1,0 +1,11 @@
+type: object
+additionalProperties: false
+required:
+- status
+properties:
+  status:
+    type: string
+    enum:
+    - DONE
+    - DECLINED
+    - WITHDRAWN

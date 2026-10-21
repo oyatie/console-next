@@ -1,0 +1,28 @@
+type: object
+required: [id, kind, name, parentId, status, effectiveFrom, headcount, updatedAt]
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  kind:
+    $ref: '#/components/schemas/OrgTreeNodeKind'
+  name:
+    type: string
+  parentId:
+    description: Null only for the COMPANY root; a SITE's parent is the Company root id.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  status:
+    $ref: '#/components/schemas/OrgUnitStatus'
+  effectiveFrom:
+    $ref: '#/components/schemas/Date'
+  headcount:
+    type: integer
+    format: int64
+    minimum: 0
+    description: >-
+      Members bound to this unit, not rolled up from children: every employee who is not EXITED (ACTIVE,
+      ON_LEAVE and UNKNOWN; someone on leave still belongs to the unit). For COMPANY, every such employee of the
+      tenant. The same set blocks a dissolve (ORG_UNIT_ACTIVE_MEMBERS) and moves with REASSIGN_ORG_UNIT.
+  updatedAt:
+    $ref: '#/components/schemas/Timestamp'

@@ -1,0 +1,2 @@
+/* The registration receipt docked bottom-left over the roster (spec §1.4 R37). Tokens only. */
+.dock { position: fixed; bottom: var(--space-5); left: calc(var(--space-6) * 8); z-index: 15; display: flex; flex-direction: column; gap: var(--space-2); max-width: var(--card-w); }

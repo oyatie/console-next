@@ -1,0 +1,2 @@
+/* Gallery layout only. */
+.split { display: grid; grid-template-columns: 1fr auto; min-height: calc(var(--row-h) * 8); }

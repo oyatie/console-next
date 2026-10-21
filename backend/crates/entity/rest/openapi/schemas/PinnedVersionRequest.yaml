@@ -1,0 +1,9 @@
+type: object
+additionalProperties: false
+required:
+- expected_version
+properties:
+  expected_version:
+    type: integer
+    format: int32
+    description: The version read; stale is 409 stale_revision.

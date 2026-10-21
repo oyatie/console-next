@@ -1,0 +1,1 @@
+{ "extends": "./tsconfig.base.json", "compilerOptions": { "incremental": true, "tsBuildInfoFile": ".cache/tsc.tsbuildinfo" }, "include": ["apps/web/src", "packages/api/src", "packages/i18n/src", "e2e", "playwright.config.ts"] }

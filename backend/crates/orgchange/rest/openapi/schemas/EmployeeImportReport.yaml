@@ -1,0 +1,52 @@
+type: object
+required:
+- input_rows
+- inserted
+- updated
+- skipped
+- companies
+- org_units_bound
+properties:
+  input_rows:
+    type: integer
+    minimum: 0
+  inserted:
+    type: integer
+    minimum: 0
+  updated:
+    type: integer
+    minimum: 0
+  skipped:
+    type: integer
+    minimum: 0
+  companies:
+    type: array
+    items:
+      $ref: '#/components/schemas/EmployeeImportCompanySummary'
+  org_units_bound:
+    type: integer
+    minimum: 0
+    description: Imported rows bound to the one ACTIVE OrgUnit their org_unit text names.
+  unplaced:
+    $ref: '#/components/schemas/EmployeeImportUnplaced'
+  register_gaps:
+    type: object
+    description: 'r3:hire-16 / records-02: the 근로자 명부 (근기법 시행령 §20) items the run''s new people still lack after
+      the apply (exit_reason: former employees only); absent on runs applied before it existed.'
+    required: [people, sex, address, careers, exit_reason]
+    properties:
+      people:
+        type: integer
+        minimum: 0
+      sex:
+        type: integer
+        minimum: 0
+      address:
+        type: integer
+        minimum: 0
+      careers:
+        type: integer
+        minimum: 0
+      exit_reason:
+        type: integer
+        minimum: 0

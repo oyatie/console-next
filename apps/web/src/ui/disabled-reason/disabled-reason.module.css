@@ -1,0 +1,6 @@
+/* ui/disabled-reason: an inert control in a neutral tone (never danger pink), its reason under or beside it, then a remedy. */
+.stacked { display: inline-flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+.inline { display: inline-grid; grid-template-columns: max-content minmax(0, 1fr); align-items: baseline; gap: var(--space-1) var(--space-3); }
+/* Doubled class: wins over any variant (.btn--danger, .btn--primary) whatever the stylesheet order. */
+.off.off, .off.off:hover { border-color: var(--border); background: var(--muted); color: var(--steel); cursor: not-allowed; white-space: nowrap; }
+.why { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); font-size: var(--text-sm); color: var(--steel); }

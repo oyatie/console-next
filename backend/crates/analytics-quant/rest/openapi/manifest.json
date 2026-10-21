@@ -1,0 +1,20 @@
+{
+  "source": "console-analytics-quant-rest",
+  "paths": {
+    "/api/v1/analytics/projection": [
+      "post"
+    ]
+  },
+  "schemas": [
+    "ProjectionAssumptions",
+    "ProjectionRequest",
+    "ProjectionResult"
+  ],
+  "external_schemas": [
+    "ActorKind",
+    "AuditLastChange",
+    "ErrorBody",
+    "FieldError",
+    "Uuid"
+  ]
+}

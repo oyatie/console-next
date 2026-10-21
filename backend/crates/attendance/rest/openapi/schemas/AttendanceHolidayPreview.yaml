@@ -1,0 +1,3 @@
+type: object
+required: [people, first_date, closed_months, overlaps_public, refusals]
+properties: { people: { type: integer }, first_date: { type: string, format: date }, closed_months: { type: array, items: { type: string } }, overlaps_public: { type: array, items: { $ref: '#/components/schemas/AttendanceHolidayOverlap' } }, refusals: { type: array, items: { $ref: '#/components/schemas/AttendanceRefusal' } } }

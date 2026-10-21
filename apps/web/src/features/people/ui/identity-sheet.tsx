@@ -1,0 +1,91 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { components } from "@console/api/schema";
+import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
+import { useCommand } from "../../../lib/react/command";
+import { CommandError } from "../../../lib/react/command-error";
+import { ChoiceField } from "../../../ui/choice/choice-field";
+import { Field, TextInput } from "../../../ui/field/field";
+import { ServerPicker } from "../../../ui/server-picker/server-picker";
+import { resolveIdentity, samePersonQuery, type Resolution } from "../api";
+import { LifecycleFrame } from "./lifecycle-frame";
+import s from "./lifecycle.module.css";
+
+type Detail = components["schemas"]["EmployeeDetail"];
+const REASON_MAX = 100;
+
+/**
+ * Settles an identity review (BW-18): either these are different people (the flag clears), or this record is the
+ * same person as another one, which it is merged into. A merge is irreversible, so it asks for the user's passkey
+ * bound to this record and the record kept, and waits for a second person when one exists.
+ */
+export function IdentitySheet({ d, onClose, onDone }: { d: Detail; onClose: () => void; onDone: (out: Resolution) => void }) {
+  const e = d.employee;
+  const [verdict, setVerdict] = useState<"SAME" | "DIFFERENT" | null>(null);
+  const [query, setQuery] = useState(e.name);
+  const [keep, setKeep] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [tried, setTried] = useState(false);
+  const found = useQuery({ ...samePersonQuery(query), enabled: verdict === "SAME" && query.trim().length > 0 });
+  const others = (found.data?.items ?? []).filter((x) => x.id !== e.id);
+  const missing = { verdict: !verdict, keep: verdict === "SAME" && !keep, reason: !reason.trim() };
+  const count = Object.values(missing).filter(Boolean).length;
+  const run = useCommand({
+    run: () => resolveIdentity(e.id, { verdict: verdict!, keep: verdict === "SAME" ? keep! : undefined, reason: reason.trim() }),
+    invalidates: ["/api/v1/employees", "/api/v1/change-requests"],
+    onSuccess: onDone,
+  });
+  const kept = others.find((x) => x.id === keep);
+  const cancelled = run.error instanceof Error && run.error.message === "passkey_cancelled";
+  return (
+    <LifecycleFrame
+      title={t("identity.title", { name: e.name })}
+      subtitle={[e.employee_number, e.org_unit, e.hire_date && fmtDate(e.hire_date)].filter(Boolean).join(" · ")}
+      onClose={onClose}
+      pending={run.isPending}
+      notice={cancelled ? <p className={s.changed} role="alert">{t("identity.passkeyCancelled")}</p> : run.isError && <CommandError error={run.error} />}
+      consequence={<span>{verdict === "SAME" ? t("identity.same.consequence", { name: e.name, keep: kept ? `${kept.name} (${kept.employee_number ?? "—"})` : t("identity.keep.placeholder") }) : verdict === "DIFFERENT" ? t("identity.different.consequence", { name: e.name }) : t("identity.none.consequence")}</span>}
+      commit={{ label: t(verdict === "SAME" ? "identity.same.commit" : "identity.different.commit"), tone: verdict === "SAME" ? "danger" : "primary" }}
+      missing={tried ? count : 0}
+      onSubmit={() => {
+        setTried(true);
+        if (count > 0) return false;
+        run.mutate(undefined);
+      }}
+    >
+      <p className={s.fact}>{t("identity.fact")}</p>
+      <ChoiceField
+        label={t("identity.verdict")}
+        required
+        options={[
+          { value: "DIFFERENT", label: t("identity.different"), description: t("identity.different.note") },
+          { value: "SAME", label: t("identity.same"), description: t("identity.same.note") },
+        ]}
+        value={verdict}
+        onChange={(x) => (run.reset(), setVerdict(x as "SAME" | "DIFFERENT"))}
+        error={tried && missing.verdict ? t("identity.verdict.missing") : undefined}
+      />
+      {verdict === "SAME" && (
+        <>
+          <ServerPicker
+            label={t("identity.keep")}
+            isRequired
+            query={query}
+            onQueryChange={setQuery}
+            loading={found.isFetching}
+            options={others.map((x) => ({ id: x.id, name: x.name, code: x.employee_number ?? undefined, context: [x.org_unit, x.hire_date && fmtDate(x.hire_date)].filter(Boolean).join(" · ") }))}
+            value={keep}
+            onChange={(id) => (run.reset(), setKeep(id))}
+            group={t("identity.keep.group")}
+            empty={t("identity.keep.none")}
+          />
+          {tried && missing.keep && <p className={s.error}>{t("identity.keep.missing")}</p>}
+        </>
+      )}
+      <Field label={t("profile.reason")} required hint={t("lifecycle.reason.count", { count: reason.length, max: REASON_MAX })} error={tried && missing.reason ? t("lifecycle.reason.missing") : undefined}>
+        {(p) => <TextInput {...p} value={reason} maxLength={REASON_MAX} onChange={(x) => (run.reset(), setReason(x.target.value))} />}
+      </Field>
+    </LifecycleFrame>
+  );
+}

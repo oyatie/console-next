@@ -1,0 +1,17 @@
+type: object
+required: [sections, items]
+properties:
+  sections:
+    type: array
+    items:
+      type: object
+      required: [section, enabled]
+      properties:
+        section:
+          $ref: '#/components/schemas/PersonRecordSection'
+        enabled:
+          type: boolean
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/PersonRecordEntry'

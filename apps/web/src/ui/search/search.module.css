@@ -1,0 +1,4 @@
+/* ui/search: the find box, the icon inside the control's start (kit .find). Tokens only. */
+.search { position: relative; display: flex; align-items: center; min-width: 0; }
+.icon { position: absolute; left: var(--space-3); color: var(--steel); pointer-events: none; }
+.input { flex: 1; min-width: 0; padding-left: calc(var(--space-3) + var(--space-4) + var(--space-2)); }

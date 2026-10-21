@@ -1,0 +1,120 @@
+import { useId, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getRouteApi } from "@tanstack/react-router";
+import { User } from "lucide-react";
+import type { components } from "@console/api/schema";
+import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
+import { Button } from "../../../ui/button/button";
+import { DateChips } from "../../../ui/date/date-chips";
+import { addDays } from "../../../ui/date/days";
+import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
+import { Field } from "../../../ui/field/field";
+import { TextArea } from "../../../ui/field/text-area";
+import { Banner } from "../../../ui/banner/banner";
+import { ReasonCodeField } from "../../../reference/reason/ui/reason-code-field";
+import { reasonCodesQuery } from "../../../lib/reason-codes";
+import { eventsQuery, reportExit } from "../api";
+import { whoLine } from "../present";
+import { OpsExitNote } from "./account-link-card";
+import { StepFrame } from "./exit-foot";
+import { focusFirstInvalid, useExitCommand } from "./use-exit-command";
+import s from "./exit.module.css";
+
+type Employee = components["schemas"]["Employee"];
+const route = getRouteApi("/app/people/$id");
+const NOTE_MAX = 1000;
+
+/**
+ * Reporting an exit opens its case (spec E5-exit); nothing about the employee changes until HR confirms. The last
+ * working day has no default (it decides the outcome): a contract worker's contract end is offered as a chip, else it
+ * is typed. What must be settled first is named above it: a reservation dated after that day would apply to someone
+ * who has left. The exit reason is recorded once the exit is in effect (backend-followups EMP-UI 14).
+ */
+export function ReportForm({ employee, onClose, onDone }: { employee: Employee; onClose: () => void; onDone: (message: string) => void }) {
+  const [date, setDate] = useState("");
+  const [note, setNote] = useState("");
+  const [reason, setReason] = useState<string | null>(null);
+  const reasonsRead = !useQuery(reasonCodesQuery("exit_reason")).isPending;
+  const [tried, setTried] = useState(false);
+  const formId = useId();
+  const navigate = route.useNavigate();
+  const run = useExitCommand({
+    check: "resend",
+    run: (_: void, key: string) => reportExit({ employee_id: employee.id, effective_exit_date: date, site_manager_note: note.trim(), exit_reason_code: reason ?? undefined }, key),
+    onSuccess: () => onDone(t("exit.reported", { name: employee.name })),
+  });
+  const problems = { date: !date, note: !note.trim() };
+  const missing = Object.values(problems).filter(Boolean).length;
+  const when = date ? fmtDate(date) : "";
+  const later = (useQuery(eventsQuery(employee.id)).data?.items ?? []).filter((x) => x.state === "SCHEDULED" && (!date || x.effective_date > date));
+  return (
+    <StepFrame
+      formId={formId}
+      onSubmit={() => {
+        setTried(true);
+        if (missing === 0) run.submit(undefined);
+        else focusFirstInvalid(formId);
+      }}
+      sheet={{
+        kicker: <><User size={12} aria-hidden />{t("lifecycle.kicker", { name: employee.name, number: employee.employee_number ?? "—", where: [employee.org_unit, employee.position].filter(Boolean).join(" · ") })}</>,
+        title: t("exit.report"),
+        subtitle: t("lifecycle.now", { where: whoLine(employee) }),
+        onClose,
+      }}
+      run={run}
+      employeeId={employee.id}
+      consequence={date ? t("exit.report.consequence.dated", { name: employee.name, date: when }) : t("exit.report.consequence", { name: employee.name })}
+      missing={tried ? missing : 0}
+      aside={<Button variant="ghost" onClick={onClose} disabled={run.pending}>{t("lifecycle.cancel")}</Button>}
+      primary={
+        <Button type="submit" form={formId} variant="primary" disabled={run.pending}>
+          {date ? t("exit.report.commit", { date: when }) : t("exit.report")}
+        </Button>
+      }
+    >
+      <OpsExitNote employeeId={employee.id} search={employee.employee_number || employee.name} />
+      <fieldset className={s.group} disabled={run.locked}>
+        <DateChips
+          label={t("exit.field.date")}
+          required
+          note={t("exit.field.date.note")}
+          presets={employee.contract_end_date ? [{ label: t("exit.field.date.contractEnd"), date: employee.contract_end_date }] : []}
+          value={date}
+          onChange={setDate}
+          showErrors={tried}
+          // Decision #9: the field is the last working day; the statutory exit date and the insurance loss date are the day after.
+          echo={date ? `${t("exit.field.date.statutory")} ${fmtDate(addDays(date, 1))} · ${t("exit.field.date.loss")} ${fmtDate(addDays(date, 1))}` : undefined}
+          error={tried && problems.date ? t("exit.error.date") : undefined}
+        />
+        {/* What to settle first sits under the date it depends on: drawn above it, it pushed the field being typed in down. */}
+        {later.length > 0 && (
+          <Banner tone="warn" live="polite" title={t("exit.report.first", { n: later.length })}>
+            <ul className={s.lines}>
+              {later.map((x) => (
+                <li key={x.id} className={s.firstRow}>
+                  <span>{t("exit.report.firstItem", { date: x.effective_date.slice(5), action: label(LIFECYCLE_EVENT, x.event_type) })}</span>
+                  {/* The withdrawal opens over the record and its receipt comes back to this report. */}
+                  <Button variant="ghost" onClick={() => void navigate({ search: { act: `cancel:${x.id}`, back: "exit.report" } })}>{t("exit.report.cancelFirst")}</Button>
+                </li>
+              ))}
+            </ul>
+            <span>{t("exit.report.firstHint")}</span>
+          </Banner>
+        )}
+        {/* The one exit reason list (BW-07 exit_reason; the case's code is the register's reason). Optional: unknown now, it is
+            recorded on the card after the exit. */}
+        {/* Drawn once the list has landed, with the field under it: twenty chips arriving late pushed it down. */}
+        {reasonsRead && <ReasonCodeField domain="exit_reason" look="chips" required={false} label={t("exit.field.reason")} value={reason} onChange={setReason} hint={t("exit.field.reason.hint")} />}
+        {reasonsRead && <Field
+          label={t("exit.field.circumstances")}
+          hint={t("exit.field.count", { count: note.length, max: NOTE_MAX })}
+          required
+          error={tried && problems.note ? t("exit.error.text") : undefined}
+        >
+          {(p) => <TextArea {...p} maxLength={NOTE_MAX} value={note} onChange={(e) => setNote(e.target.value)} />}
+        </Field>}
+      </fieldset>
+    </StepFrame>
+  );
+}

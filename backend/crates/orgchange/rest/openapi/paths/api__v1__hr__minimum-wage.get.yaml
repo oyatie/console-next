@@ -1,0 +1,75 @@
+tags:
+  - employees
+operationId: getMinimumWageHint
+summary: The 최저임금 floor beside a pay input (EMP-CREATE E5)
+description: The floor a wage in pay_unit is compared with on a day, from payroll's statutory register, with the
+  고시 that sets it. A part-time week takes the 209-hour monthly floor in proportion to weekly_minutes; under 15
+  hours a week no monthly or annual floor is derived (floor_won null). The body is null when the register has no
+  figure for the day. Org-wide employee_directory_manage.
+security:
+- bearerAuth: []
+parameters:
+- name: on
+  in: query
+  required: false
+  description: YYYY-MM-DD; today (KST) when omitted.
+  schema:
+    type: string
+    format: date
+- name: pay_unit
+  in: query
+  required: true
+  schema:
+    type: string
+    enum: [MONTHLY, HOURLY, DAILY, ANNUAL]
+- name: weekly_minutes
+  in: query
+  required: false
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 10080
+responses:
+  '200':
+    description: The floor, or null.
+    content:
+      application/json:
+        schema:
+          oneOf:
+          - type: 'null'
+          - type: object
+            required: [on, pay_unit, hourly_won, floor_won, instrument]
+            properties:
+              on:
+                type: string
+                format: date
+              pay_unit:
+                type: string
+                enum: [MONTHLY, HOURLY, DAILY, ANNUAL]
+              hourly_won:
+                type: integer
+                format: int64
+              floor_won:
+                type:
+                - integer
+                - 'null'
+                format: int64
+              instrument:
+                type: object
+                required: [name_ko, promulgation_ko, url, enforced_on]
+                properties:
+                  name_ko:
+                    type: string
+                  promulgation_ko:
+                    type: string
+                  url:
+                    type: string
+                  enforced_on:
+                    type: string
+                    format: date
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'

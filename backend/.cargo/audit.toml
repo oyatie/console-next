@@ -1,0 +1,10 @@
+# cargo-audit (RUSTSEC) configuration, read from backend/.
+# This ignore list must equal the one in backend/deny.toml. Every line reads
+#   "ID", # expires YYYY-MM-DD: reason
+# and scripts/check-audit-ignores.mjs fails on drift, a missing reason, or an
+# expired entry. Fuller rationale for each ID sits beside it in deny.toml.
+[advisories]
+ignore = [
+  "RUSTSEC-2023-0071", # expires 2027-01-07: rsa Marvin is a decryption side channel; via jsonwebtoken we only sign (FCM RS256), no decryption oracle; no fixed rsa release
+  "RUSTSEC-2024-0436", # expires 2027-01-07: paste is unmaintained, not vulnerable; build-time proc-macro via umya-spreadsheet, no runtime surface
+]

@@ -1,0 +1,62 @@
+tags:
+- entity
+operationId: setWorkplaceCode
+summary: Set or clear the code of a 사업장 (a label; direct in both phases, audited)
+description: The same rule as 부서 코드 (1-30 letters, digits, '.', '_', '-'), unique among the tenant's open 사업장.
+  A code a closed or voided 사업장 held is accepted with the warning code_reused.
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: workplaceId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SetWorkplaceCodeRequest'
+responses:
+  '200':
+    description: Set; warnings may carry code_reused.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SavedWorkplace'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}] (code: invalid_format, code_taken).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Refused with a stable code (workplace_voided).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

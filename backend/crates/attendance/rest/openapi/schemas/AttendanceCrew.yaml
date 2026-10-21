@@ -1,0 +1,3 @@
+type: object
+required: [id, workplace_id, workplace_name, name, status, members]
+properties: { id: { $ref: '#/components/schemas/Uuid' }, workplace_id: { $ref: '#/components/schemas/Uuid' }, workplace_name: { type: string }, name: { type: string }, status: { type: string, enum: [ACTIVE, RETIRED] }, members: { type: array, items: { $ref: '#/components/schemas/AttendanceCrewMember' } }, layer: { $ref: '#/components/schemas/AttendanceLayerSummary', nullable: true } }

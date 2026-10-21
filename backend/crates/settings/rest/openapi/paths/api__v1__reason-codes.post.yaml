@@ -1,0 +1,31 @@
+operationId: addReasonCode
+summary: Add a tenant reason code
+description: Adds a tenant code to a domain without a deploy. The server assigns the code (T_ and 32 hex digits); a
+  label already used in the domain is refused.
+tags:
+- Settings
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ReasonCodeAddRequest'
+responses:
+  '201':
+    description: Code added.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/TenantReasonCode'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

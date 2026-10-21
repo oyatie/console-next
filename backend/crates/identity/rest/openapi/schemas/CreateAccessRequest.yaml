@@ -1,0 +1,17 @@
+type: object
+additionalProperties: false
+required:
+- screen
+- reason_code
+properties:
+  screen:
+    type: string
+    minLength: 1
+    maxLength: 200
+  reason_code:
+    $ref: '#/components/schemas/AccessRequestReason'
+  note:
+    type:
+    - string
+    - 'null'
+    maxLength: 500

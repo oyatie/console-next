@@ -1,0 +1,6 @@
+type: object
+required:
+- step_up
+properties:
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'

@@ -1,0 +1,155 @@
+type: object
+required:
+- phase_is_setup
+- terms_accepted
+- org_step_skipped
+- security_contact_recorded
+- security_contact_store_available
+- employees_step_deferred
+- entities
+- entities_needing_confirmation
+- registrations
+- registrations_needing_confirmation
+- registrations_unverified
+- entities_without_primary_workplace
+- workplaces
+- workplaces_incomplete
+- staffed_workplaces_without_registration
+- empty_workplaces_without_registration
+- org_units
+- org_change_approvers
+- other_eligible_holders
+- org_change_routed
+- employees
+- employees_starting_later
+- unmapped_assignments
+- insurance_not_established_with_people
+- insurance_numbers_pending
+- org_changes_in_approval
+- setup_writes
+- own_passkeys
+- unplaced_people
+- entity_unknown_people
+- tenant_roles
+- grants_effective_in_setup
+- prepared_grants
+- non_ops_grants
+- hr_accounts_invited
+- hr_accounts_enrolled
+- access_admin_holders
+- roles_step_skipped
+properties:
+  phase_is_setup:
+    type: boolean
+  terms_accepted:
+    type: boolean
+  org_step_skipped:
+    type: boolean
+  security_contact_recorded:
+    type: boolean
+  security_contact_store_available:
+    type: boolean
+  employees_step_deferred:
+    type: boolean
+  entities:
+    type: integer
+    format: int64
+  entities_needing_confirmation:
+    type: integer
+    format: int64
+  registrations:
+    type: integer
+    format: int64
+  registrations_needing_confirmation:
+    type: integer
+    format: int64
+  registrations_unverified:
+    type: integer
+    format: int64
+  entities_without_primary_workplace:
+    type: integer
+    format: int64
+  workplaces:
+    type: integer
+    format: int64
+  workplaces_incomplete:
+    type: integer
+    format: int64
+  staffed_workplaces_without_registration:
+    type: integer
+    format: int64
+  empty_workplaces_without_registration:
+    type: integer
+    format: int64
+  org_units:
+    type: integer
+    format: int64
+  org_change_approvers:
+    type: integer
+    format: int64
+    description: Active accounts the access engine lets decide an org change over
+      the whole tenant, the ops account and the caller included; 0 unless org changes
+      route.
+  other_eligible_holders:
+    type: integer
+    format: int64
+  org_change_routed:
+    type: boolean
+    description: approval.policy.org_structure = route (decisions
+  employees:
+    type: integer
+    format: int64
+    description: People employed today (재직 or 휴직); never a 입사 예정, a 퇴직 or a cancelled
+      registration.
+  employees_starting_later:
+    type: integer
+    format: int64
+    description: 입사 예정 people, shown apart from the headcount.
+  unmapped_assignments:
+    type: integer
+    format: int64
+  insurance_not_established_with_people:
+    type: integer
+    format: int64
+  insurance_numbers_pending:
+    type: integer
+    format: int64
+  org_changes_in_approval:
+    type: integer
+    format: int64
+  setup_writes:
+    type: integer
+    format: int64
+  own_passkeys:
+    type: integer
+    format: int64
+    description: The caller's own passkeys; with one, a lost device ends the account.
+  unplaced_people:
+    type: integer
+    format: int64
+  entity_unknown_people:
+    type: integer
+    format: int64
+  tenant_roles:
+    type: integer
+    format: int64
+  grants_effective_in_setup:
+    type: integer
+    format: int64
+  prepared_grants:
+    type: integer
+    format: int64
+  non_ops_grants:
+    type: integer
+    format: int64
+  hr_accounts_invited:
+    type: integer
+    format: int64
+  hr_accounts_enrolled:
+    type: integer
+    format: int64
+  access_admin_holders:
+    type: integer
+    format: int64
+  roles_step_skipped:
+    type: boolean

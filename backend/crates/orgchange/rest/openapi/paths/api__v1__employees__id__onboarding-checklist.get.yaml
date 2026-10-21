@@ -1,0 +1,45 @@
+tags:
+  - employees
+operationId: getOnboardingChecklist
+summary: Derived onboarding checklist (EMP-MODEL E10)
+description: Items derived from recorded facts, never ticked. CONTRACT_DELIVERED (근기법 §17② 교부) and
+  INSURANCE_ACQUISITION_REPORTED (취득신고) are NOT_TRACKED until their attestation and statutory clock exist.
+  NOT_ISSUED identification is a FOLLOW_UP. Org-wide employee_directory_manage.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The checklist.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [employee_id, items]
+          properties:
+            employee_id:
+              $ref: '#/components/schemas/Uuid'
+            items:
+              type: array
+              items:
+                type: object
+                required: [item, state]
+                properties:
+                  item:
+                    type: string
+                    enum: [CONTRACT_RECORDED, CONTRACT_DELIVERED, ID_REGISTERED, BIRTH_DATE_RECORDED,
+                      PAY_RECORDED, INSURANCE_ACQUISITION_REPORTED]
+                  state:
+                    type: string
+                    enum: [DONE, OPEN, FOLLOW_UP, NOT_TRACKED]
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

@@ -1,0 +1,13 @@
+/* Bulk appointment sheet: sections, the lines to fix, the result cell. Tokens only. */
+.section { display: flex; flex-direction: column; gap: var(--space-3); }
+.sectionTitle { margin: 0; font-size: var(--text-sm); font-weight: var(--fw-strong); color: var(--steel); letter-spacing: var(--tracking-label); }
+.lines { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.issues { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.issue { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--danger-bd); border-radius: var(--radius); background: var(--danger-bg); font-size: var(--text-sm); }
+.issue[data-tone="warn"] { border-color: var(--warn-bd); background: var(--warn-bg); }
+.issueText { flex: 1; min-width: 0; }
+.result { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+/* Two lines fit the 40 px row; the full text is the cell title and the issue list above. */
+.resultText { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; font-size: var(--text-sm); }
+.why { font-size: var(--text-sm); color: var(--danger-tx); }
+.notice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }

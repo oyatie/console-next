@@ -1,0 +1,36 @@
+type: object
+required:
+- employee_id
+- effective_exit_date
+- site_manager_note
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  branch_id:
+    description: >-
+      Optional consistency assertion only. It must match the durable branch derived from the named absence
+      alert, the employee home branch, or the latest attendance fact. It never assigns or overrides
+      authorization; a mismatch is 404.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  absence_alert_id:
+    description: >-
+      Optional durable absence signal. When supplied, it must exist for this exact employee or the request is
+      404; its stored branch takes precedence in branch authorization. The alert becomes LINKED_EXIT.
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  effective_exit_date:
+    type: string
+    description: YYYY-MM-DD
+  site_manager_note:
+    type: string
+    minLength: 1
+    maxLength: 1000
+  exit_reason_code:
+    type: [string, 'null']
+    description: BE-EMP-UI (EMP-UI 14). 퇴직 사유, a BW-07 exit_reason code (system, or the tenant's active T_
+      code); a code that requires a note takes site_manager_note. 422 reason_code_invalid / reason_note_required,
+      nothing written. The case's code is the employee's 퇴직 사유 (register read and 명부 export) while the case
+      is live; a case reported without one leaves the register item to record it.

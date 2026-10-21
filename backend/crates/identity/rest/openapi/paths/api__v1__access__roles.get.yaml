@@ -1,0 +1,26 @@
+tags:
+- access
+operationId: listAccessRoles
+summary: List the tenant's roles
+description: Needs 권한 관리 조회 (`access` × `view`) over any node, or ops (role definitions are tenant-wide objects).
+security:
+- bearerAuth: []
+parameters:
+- name: status
+  in: query
+  required: false
+  schema:
+    $ref: '#/components/schemas/AccessRoleStatus'
+responses:
+  '200':
+    description: Roles, newest first.
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessRole'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'

@@ -1,0 +1,21 @@
+// Korean source for `capture.` ids (apps/web/src/features/entity: regular headcount, code lists, kept originals). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+export const koCapture = {
+  "capture.headcount.label": "상시근로자수",
+  "capture.headcount.value": "{count, number}명",
+  "capture.headcount.held": "산정 보류",
+  "capture.headcount.hold": "노무사 확인 전",
+  "capture.headcount.live": "지금 재직 {count, number}명 (상시근로자수는 근로기준법 시행령 제7조의2에 따라 따로 산정합니다)",
+  "capture.headcount.missing": "산정에 필요한 것:",
+  "capture.headcount.missing.labor_attorney_review": "노무사 확인",
+  "capture.headcount.missing.statutory_rule_rows": "법정 기준값",
+  "capture.headcount.missing.operating_day_calendar": "가동일 달력",
+  "capture.list.ksic": "표준산업분류",
+  "capture.list.insurance_branch": "건강보험공단 지사",
+  "capture.list.admin_region": "행정구역",
+  "capture.field.nhisOffice": "관할 건강보험 지사",
+  "capture.field.district": "행정구역",
+  "capture.docs.col.original": "원본",
+  "capture.docs.open": "열기",
+  "capture.docs.openLabel": "{file} 원본 열기",
+  "capture.list.brn_classification": "사업자등록번호 구분",
+};

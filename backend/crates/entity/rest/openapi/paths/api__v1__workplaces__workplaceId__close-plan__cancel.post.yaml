@@ -1,0 +1,48 @@
+tags:
+- entity
+operationId: cancelWorkplaceClose
+summary: Withdraw a planned 사업장 close
+description: 'UX-R2 ENDS. The open (SCHEDULED or WAITING) job becomes CANCELLED; exit cases it opened stay open and are cancelled on their own. Same doors as planning.'
+security:
+- bearerAuth: []
+parameters:
+- name: workplaceId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID; a retry with the same key and body answers the same job, writing nothing.
+  schema:
+    type: string
+    format: uuid
+responses:
+  '200':
+    description: 'The cancelled job.'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/WorkplaceCloseJob'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: 'Not permitted.'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: '`workplace_not_found`.'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: '`close_job_not_open`.'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

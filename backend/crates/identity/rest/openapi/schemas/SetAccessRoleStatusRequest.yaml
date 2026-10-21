@@ -1,0 +1,23 @@
+type: object
+required:
+- expected_version
+- status
+additionalProperties: false
+properties:
+  expected_version:
+    type: integer
+    format: int32
+    minimum: 1
+  status:
+    type: string
+    enum:
+    - ACTIVE
+    - RETIRED
+  reason_code:
+    type: string
+    description: Domain `role_change`; required for RETIRED.
+  reason_note:
+    type:
+    - string
+    - 'null'
+    maxLength: 500

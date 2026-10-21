@@ -1,0 +1,3 @@
+type: object
+required: [kind]
+properties: { kind: { type: string, enum: [WORK, WEEKLY_HOLIDAY, REST_DAY] }, shift: { $ref: '#/components/schemas/AttendanceShift' } }

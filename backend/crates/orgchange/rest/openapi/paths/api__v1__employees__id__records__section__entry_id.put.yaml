@@ -1,0 +1,68 @@
+tags:
+  - employees
+operationId: correctEmployeeRecord
+summary: Correct a 인사카드 이력 entry
+description: Appends the whole new snapshot as the next version (history kept). expected_version is the version
+  the editor read; 409 record_version_conflict when the entry moved on. Equal values write nothing. A voided
+  entry cannot be corrected (409 invalid_transition). Idempotency-Key as for create; 200 either way. 409
+  record_section_disabled when the section is off. Audited as employee.record.update without the values.
+  403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: section
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/PersonRecordSectionSegment'
+- name: entry_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [expected_version, fields]
+        properties:
+          expected_version:
+            type: integer
+            format: int64
+            minimum: 1
+          fields:
+            $ref: '#/components/schemas/PersonRecordFields'
+          reason:
+            type: [string, 'null']
+            maxLength: 500
+responses:
+  '200':
+    description: The entry as it stands now.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PersonRecordEntry'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

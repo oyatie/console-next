@@ -1,0 +1,66 @@
+tags:
+- entity
+operationId: correctLegalEntityIdentifier
+summary: Correct 사업자 구분 or 법인등록번호 with evidence (MR-17)
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: entityId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/IdentifierCorrectionRequest'
+responses:
+  '200':
+    description: Applied and recorded in its ledger.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SavedLegalEntity'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '428':
+    description: 'After 운영 시작, the tenant ops account sent no step_up: passkey_step_up_required (remedy passkey_step_up).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '403':
+    description: 'Not permitted (legal_entity_manage on this record), or the ops account''s step_up did not verify for exactly this correction (passkey_step_up_failed).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}].'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: 'After 운영 시작 identifier_correction_needs_exception (remedy request_governed_exception: rule ENTITY_IDENTIFIER_CORRECTION over {field, value, document_id}), identifier_correction_unavailable, or the exception''s own refusal (exception_not_approved, exception_consumed, exception_expired, exception_scope_changed).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

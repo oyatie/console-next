@@ -1,0 +1,28 @@
+type: object
+required: [bulk_correction_id, counts, review_required, rows]
+properties:
+  bulk_correction_id:
+    $ref: '#/components/schemas/Uuid'
+  counts:
+    $ref: '#/components/schemas/BulkEmployeeCorrectionCounts'
+  review_required:
+    type: boolean
+  rows:
+    type: array
+    items:
+      type: object
+      required: [employee_id, outcome, applied]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        outcome:
+          type: string
+          enum: [CHANGE, PENDING, UNCHANGED, REFUSED]
+        applied:
+          type: array
+          items:
+            type: string
+        pending_request_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          type: string

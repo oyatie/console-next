@@ -1,0 +1,35 @@
+type: object
+additionalProperties: false
+required: [hire_date, employment_type, org_unit_id, position, idempotency_key]
+properties:
+  hire_date:
+    type: string
+    format: date
+    description: The new period's first day, after the last exit date. After today (KST) the person is PRE_HIRE
+      until a SCHEDULED ONBOARD applies on it.
+  employment_type:
+    type: string
+    enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, FREELANCE]
+  org_unit_id:
+    $ref: '#/components/schemas/Uuid'
+  position:
+    type: string
+    maxLength: 200
+  company:
+    type: string
+    description: Defaults to the 법인 of the last period.
+  contract_end_date:
+    type: string
+    format: date
+    description: Required for CONTRACT (on or after hire_date), refused otherwise.
+  phone:
+    type: string
+    description: Required with base_pay_won only when the person has no employment profile (a former employee
+      loaded by import).
+  base_pay_won:
+    type: integer
+    format: int64
+    minimum: 0
+  idempotency_key:
+    type: string
+    maxLength: 128

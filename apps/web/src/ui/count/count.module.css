@@ -1,0 +1,6 @@
+/* Tabular digits in a box as wide as "9,999": a count up to four digits lands without moving anything.
+   a count of 10,000 or more widens its chip once; size the box to five digits if tenants grow there. */
+.count { display: inline-block; min-width: 4.5ch; font-variant-numeric: tabular-nums; text-align: end; }
+/* Still loading: a bar after display.skeleton_delay (200 ms), so a fast count never flashes it. */
+@keyframes count-show { to { visibility: visible; } }
+.pending { height: var(--space-2); border-radius: var(--radius-sm); background: var(--muted); visibility: hidden; animation: count-show 0s linear 200ms forwards; }

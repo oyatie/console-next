@@ -1,0 +1,25 @@
+tags:
+  - employees
+operationId: findEmployeeByNumber
+summary: Who a 사번 finds — its holder, else the person whose earlier 사번 it was (IMPORT-2)
+security:
+- bearerAuth: []
+parameters:
+- name: number
+  in: path
+  required: true
+  schema:
+    type: string
+responses:
+  '200':
+    description: The person and how the number found them.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeNumberMatch'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

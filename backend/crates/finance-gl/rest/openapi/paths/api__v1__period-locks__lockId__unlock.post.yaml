@@ -1,0 +1,59 @@
+tags:
+  - period-locks
+operationId: unlockPeriodLock
+summary: Unlock a period lock for a time box (step-up; second person when one exists)
+description: 'Close-authority gated (PeriodLockManage, org-wide), audited (BW-15). Needs a PERIOD_UNLOCK step-up
+  bound to object lockId and the SHA-256 (lowercase hex) of "PERIOD_UNLOCK\n{lockId}\n{reasonCode}\n{relockAt as
+  sent}". relockAt is at most period_lock.unlock_max_days out; the period locks again then on its own. When another
+  eligible holder exists the request waits for them (202, PENDING_SECOND_PERSON; a new request supersedes the open
+  one). With none, authz.sole_holder.mode step_up_notice_review unlocks at once, flags the lock for review and
+  records the 예외 처리 with its 사후 검토 item (200, exception); any other mode refuses (409
+  period_unlock_sole_holder_refused). An Idempotency-Key replays the first response.'
+security:
+- bearerAuth: []
+parameters:
+- name: lockId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+- name: Idempotency-Key
+  in: header
+  required: false
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/UnlockPeriodLockRequest'
+responses:
+  '200':
+    description: Unlocked (sole holder, flagged for review), or an Idempotency-Key replay.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PeriodUnlockOutcome'
+  '202':
+    description: Waiting for the second person.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PeriodUnlockOutcome'
+  '401':
+    description: No step-up (passkey_step_up_required) or a failed one (passkey_step_up_failed,
+      passkey_step_up_binding_mismatch), or no session.
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    description: JWT or passkey step-up verification is not configured.

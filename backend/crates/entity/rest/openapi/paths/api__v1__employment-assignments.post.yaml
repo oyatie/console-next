@@ -1,0 +1,49 @@
+tags:
+- entity
+operationId: bindEmploymentAssignment
+summary: Bind an employee to a 법인 and 사업장 from a date
+description: A change of 법인 is refused (entity_change_needs_group_transfer → start_group_transfer).
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/BindAssignmentRequest'
+responses:
+  '201':
+    description: Bound.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmploymentAssignment'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}].'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Refused with a stable code and reasons[] naming the remedy (e.g. phase_not_setup → submit_org_change).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

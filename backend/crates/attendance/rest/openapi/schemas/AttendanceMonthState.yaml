@@ -1,0 +1,4 @@
+type: object
+description: Whether a person's 근태 month takes writes. CLOSED refuses them (lock_id is the payroll period lock to request an unlock of, null when none covers the month); REOPENED takes them while an approved period unlock is open, until relock_at (null only for an unlock without a time box).
+required: [state]
+properties: { state: { type: string, enum: [OPEN, CLOSED, REOPENED] }, lock_id: { type: string, format: uuid, nullable: true }, relock_at: { type: string, format: date-time, nullable: true } }

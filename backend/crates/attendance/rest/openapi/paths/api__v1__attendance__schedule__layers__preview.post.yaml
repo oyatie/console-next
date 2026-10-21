@@ -1,0 +1,11 @@
+tags: [attendance]
+operationId: previewAttendanceSchedule
+summary: What an assignment would change (people moved, kept by a nearer layer, closed months, past days, night work), writing nothing
+security: [{ bearerAuth: [] }]
+requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceScheduleAssignInput' } } } }
+responses:
+  '200': { description: Preview, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceSchedulePreview' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '404': { $ref: '#/components/responses/NotFound' }
+  '422': { $ref: '#/components/responses/ValidationError' }

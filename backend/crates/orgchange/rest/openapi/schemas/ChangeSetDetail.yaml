@@ -1,0 +1,9 @@
+allOf:
+- $ref: '#/components/schemas/ChangeSetSummary'
+- type: object
+  required: [lines]
+  properties:
+    lines:
+      type: array
+      items:
+        $ref: '#/components/schemas/ChangeSetLine'

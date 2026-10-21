@@ -1,0 +1,41 @@
+type: object
+required:
+- id
+- employee_id
+- valid_from
+- cause
+properties:
+  id:
+    type: string
+    format: uuid
+  employee_id:
+    type: string
+    format: uuid
+  legal_entity_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  workplace_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  valid_from:
+    type: string
+    format: date
+  valid_to:
+    type:
+    - string
+    - 'null'
+    format: date
+  cause:
+    type: string
+    enum:
+    - HIRE
+    - TRANSFER
+    - GROUP_TRANSFER
+    - CORRECTION
+    - SETUP_BIND
+    - MIGRATION
+    - MIGRATION_UNMAPPED

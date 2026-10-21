@@ -1,0 +1,25 @@
+type: object
+description: At most one of legal_entity_id, workplace_id, org_unit_id (none = the tenant's 법인), and every current child once.
+required:
+- children
+properties:
+  legal_entity_id:
+    type: string
+    format: uuid
+  workplace_id:
+    type: string
+    format: uuid
+  org_unit_id:
+    type: string
+    format: uuid
+  children:
+    type: array
+    items:
+      type: string
+      format: uuid
+  expected_children:
+    type: array
+    description: The order the caller read; when the current order differs, 409 children_changed.
+    items:
+      type: string
+      format: uuid

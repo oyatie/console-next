@@ -1,0 +1,21 @@
+tags:
+  - employees
+operationId: listChangeSets
+summary: The caller's open change sets with their unsaved line counts (BW-38)
+description: Each OPEN draft with line_count (「저장 안 됨 · n건」) and stale_count (lines whose employee changed
+  since they were drafted). Takes org-wide employee_directory_manage.
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: The caller's OPEN drafts, oldest first.
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChangeSetSummary'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'

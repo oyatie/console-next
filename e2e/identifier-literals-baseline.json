@@ -1,0 +1,20 @@
+{
+  "note": "shrink-only: files still holding inline identifier literals (refusal fixtures, parity captures); remove entries as they move to registration-identifiers.json",
+  "files": [
+    "e2e/emp/universe.ts",
+    "e2e/entity-ops.spec.ts",
+    "e2e/entity-record-fixes.spec.ts",
+    "e2e/entity-reissue.spec.ts",
+    "e2e/entity-wizard-honesty.spec.ts",
+    "e2e/helpers/people-fixes.ts",
+    "e2e/org-move-hired-today.spec.ts",
+    "e2e/orgchange-r2.spec.ts",
+    "e2e/parity/walk-1011.capture.ts",
+    "e2e/parity/world-b.ts",
+    "e2e/person.spec.ts",
+    "e2e/placement.spec.ts",
+    "e2e/workplace-close-api.spec.ts",
+    "e2e/workplace-close-group.spec.ts",
+    "e2e/workplace-close.spec.ts"
+  ]
+}

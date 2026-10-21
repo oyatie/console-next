@@ -1,0 +1,15 @@
+type: object
+required:
+- grant_id
+- channel
+- noticed_at
+properties:
+  grant_id:
+    $ref: '#/components/schemas/Uuid'
+  channel:
+    type: string
+    description: How the notice reached the holder.
+    x-extensible-enum:
+    - IN_APP
+  noticed_at:
+    $ref: '#/components/schemas/Timestamp'

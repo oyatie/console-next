@@ -1,0 +1,39 @@
+tags:
+  - employees
+operationId: previewBulkEmployeeLifecycleEvents
+summary: Preview a bulk appointment with the commit's own validation (BE-EMP-UI)
+description: >-
+  The same body as POST /api/v1/employees/lifecycle-events/bulk, validated exactly as the commit validates it
+  (per-kind rules, every employee locked and checked by the single-event rules, the two-year rule of a
+  CONTRACT_RENEWAL), writing and auditing nothing. counts are exact for a commit now - refused > 0 means the
+  commit answers 422 bulk_lifecycle_refused with the same refusals. No Idempotency-Key. Needs
+  employee_directory_manage org-wide.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/BulkEmployeeLifecycleEventRequest'
+responses:
+  '200':
+    description: The preview.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/BulkLifecyclePreview'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: bulk_selection_changed (the selection matches a different count than expected_count).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'

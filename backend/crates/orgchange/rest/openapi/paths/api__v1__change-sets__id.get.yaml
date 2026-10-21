@@ -1,0 +1,27 @@
+tags:
+  - employees
+operationId: getChangeSet
+summary: Read one of the caller's change sets with its lines (BW-38)
+description: Any state. Each line carries its pin, the employee's version now, stale, and other_open_drafts
+  (lines on the same employee in other OPEN drafts). 404 for a set the caller does not own.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The set and its lines.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ChangeSetDetail'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

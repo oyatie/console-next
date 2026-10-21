@@ -1,0 +1,36 @@
+tags: [Platform]
+operationId: checkCompanyDomain
+summary: Check company-domain availability including permanent aliases
+security:
+- bearerAuth: []
+parameters:
+- name: slug
+  in: query
+  required: true
+  schema:
+    type: string
+    pattern: ^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$
+responses:
+  '200':
+    description: Domain availability
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [available, alias_days]
+          properties:
+            available:
+              type: boolean
+            alias_days:
+              type: integer
+              format: int64
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    description: Invalid company domain
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

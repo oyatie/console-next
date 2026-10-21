@@ -1,0 +1,60 @@
+tags:
+- entity
+operationId: setWorkplaceKind
+summary: Set or clear the kind of a 사업장 (a label only; direct in both phases, audited)
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent. A retry with the same key and request replays the first result; the same
+    key with another request is 409 idempotency_key_reused.
+  schema:
+    type: string
+    format: uuid
+- name: workplaceId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SetWorkplaceKindRequest'
+responses:
+  '200':
+    description: Set.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SavedWorkplace'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}] (kind_code: invalid_choice, inactive_choice).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Refused with a stable code (workplace_voided).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

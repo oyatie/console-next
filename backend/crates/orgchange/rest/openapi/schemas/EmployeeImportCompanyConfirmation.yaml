@@ -1,0 +1,17 @@
+type: object
+required: [value, source_column, cell, registration_number, candidates, confirmed_employer]
+properties:
+  value:
+    type: string
+  source_column:
+    type: [string, 'null']
+  cell:
+    type: [string, 'null']
+  registration_number:
+    type: [string, 'null']
+  candidates:
+    type: array
+    items:
+      $ref: '#/components/schemas/EmployeeImportNameCandidate'
+  confirmed_employer:
+    type: [string, 'null']

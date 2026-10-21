@@ -1,0 +1,28 @@
+tags:
+  - employees
+operationId: getAppointmentNotice
+summary: One 발령 공고 with its lines as render data (BE-EMP-UI)
+description: Each line carries the employee's name and 사번 and the lifecycle event as the history serves it
+  (a reader without employee_directory_manage sees it redacted as the history redacts it). Needs
+  employee_directory_read org-wide.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The notice.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AppointmentNotice'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

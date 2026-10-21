@@ -1,0 +1,152 @@
+tags:
+  - employees
+operationId: recordEmployeeContract
+summary: Record a contract row (append-only)
+description: Records a new contract, a renewal, or (with supersedes_id) a correction of an earlier row. Rows are
+  never edited. Idempotency-Key (a UUID) is required; a replay with the same terms answers 200 with the stored
+  row, the same key with other terms 409. A labour contract (OPEN_ENDED, FIXED_TERM, PART_TIME, DAILY) needs a
+  wage above 0 and weekly_minutes (주 소정근로시간, 근기법 §17①). FIXED_TERM, DISPATCH_OUTSOURCING and
+  FREELANCE_SERVICE need end_date; OPEN_ENDED has none.
+  409 when the period overlaps another live row (correct that row instead) or the corrected row was already
+  corrected. Audited as employee.contract.record without the wage.
+  403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [kind, start_date, wage_won, pay_unit]
+        properties:
+          kind:
+            type: string
+            enum: [OPEN_ENDED, FIXED_TERM, PART_TIME, DAILY, DISPATCH_OUTSOURCING, EXECUTIVE_MANDATE, FREELANCE_SERVICE]
+          start_date:
+            type: string
+            format: date
+          end_date:
+            type: [string, 'null']
+            format: date
+          wage_won:
+            type: integer
+            format: int64
+            minimum: 0
+          pay_unit:
+            type: string
+            enum: [MONTHLY, HOURLY, DAILY, ANNUAL]
+          weekly_minutes:
+            type: [integer, 'null']
+            minimum: 1
+            maximum: 10080
+          supersedes_id:
+            oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+responses:
+  '201':
+    description: The recorded row.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [id, kind, start_date, end_date, wage_won, pay_unit, weekly_minutes, supersedes_id,
+            superseded_by, in_force, created_at]
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            kind:
+              type: string
+              enum: [OPEN_ENDED, FIXED_TERM, PART_TIME, DAILY, DISPATCH_OUTSOURCING, EXECUTIVE_MANDATE, FREELANCE_SERVICE]
+            start_date:
+              type: string
+              format: date
+            end_date:
+              type: [string, 'null']
+              format: date
+            wage_won:
+              type: integer
+              format: int64
+            pay_unit:
+              type: string
+              enum: [MONTHLY, HOURLY, DAILY, ANNUAL]
+            weekly_minutes:
+              type: [integer, 'null']
+            supersedes_id:
+              type: [string, 'null']
+              format: uuid
+            superseded_by:
+              type: [string, 'null']
+              format: uuid
+            in_force:
+              type: boolean
+            created_at:
+              type: string
+              format: date-time
+  '200':
+    description: Replay of the same Idempotency-Key with the same terms; the stored row.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [id, kind, start_date, end_date, wage_won, pay_unit, weekly_minutes, supersedes_id,
+            superseded_by, in_force, created_at]
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            kind:
+              type: string
+              enum: [OPEN_ENDED, FIXED_TERM, PART_TIME, DAILY, DISPATCH_OUTSOURCING, EXECUTIVE_MANDATE, FREELANCE_SERVICE]
+            start_date:
+              type: string
+              format: date
+            end_date:
+              type: [string, 'null']
+              format: date
+            wage_won:
+              type: integer
+              format: int64
+            pay_unit:
+              type: string
+              enum: [MONTHLY, HOURLY, DAILY, ANNUAL]
+            weekly_minutes:
+              type: [integer, 'null']
+            supersedes_id:
+              type: [string, 'null']
+              format: uuid
+            superseded_by:
+              type: [string, 'null']
+              format: uuid
+            in_force:
+              type: boolean
+            created_at:
+              type: string
+              format: date-time
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: Overlapping live contract, an already corrected row, or a reused Idempotency-Key.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'

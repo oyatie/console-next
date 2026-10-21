@@ -1,0 +1,23 @@
+type: object
+required: [id, notice_no, title, notice_date, issued_by, issued_by_name, issued_at, line_count]
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  notice_no:
+    type: string
+    pattern: '^[0-9]{4}-[0-9]{4}$'
+    description: 발령 번호 YYYY-NNNN.
+  title:
+    type: string
+  notice_date:
+    type: string
+    format: date
+  issued_by:
+    $ref: '#/components/schemas/Uuid'
+  issued_by_name:
+    type: [string, 'null']
+  issued_at:
+    type: string
+    format: date-time
+  line_count:
+    type: integer

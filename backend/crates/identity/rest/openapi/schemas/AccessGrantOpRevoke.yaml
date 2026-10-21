@@ -1,0 +1,11 @@
+type: object
+required:
+- op
+- grant_id
+additionalProperties: false
+properties:
+  op:
+    type: string
+    const: revoke
+  grant_id:
+    $ref: '#/components/schemas/Uuid'

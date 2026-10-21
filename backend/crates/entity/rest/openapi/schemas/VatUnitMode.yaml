@@ -1,0 +1,5 @@
+type: string
+enum:
+- PER_WORKPLACE
+- CONSOLIDATED_PAYMENT
+- UNIT_TAXATION

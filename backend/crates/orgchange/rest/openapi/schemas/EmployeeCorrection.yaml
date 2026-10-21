@@ -1,0 +1,19 @@
+type: object
+required: [employee_id, updated_at, applied, review_required]
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  updated_at:
+    type: string
+    format: date-time
+  applied:
+    type: array
+    items:
+      type: string
+  review_required:
+    type: boolean
+    description: A sole holder applied a high-risk field; reviewed after the fact.
+  pending_request:
+    nullable: true
+    allOf:
+    - $ref: '#/components/schemas/ChangeRequest'

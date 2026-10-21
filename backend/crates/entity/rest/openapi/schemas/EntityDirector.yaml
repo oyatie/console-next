@@ -1,0 +1,14 @@
+type: object
+required:
+- role
+- name
+properties:
+  role:
+    $ref: '#/components/schemas/EntityDirectorRole'
+  name:
+    type: string
+  appointed_on:
+    type:
+    - string
+    - 'null'
+    format: date

@@ -1,0 +1,139 @@
+tags:
+  - employees
+operationId: patchEmploymentFacts
+summary: Edit the facts with JSON Patch (concurrent-editing ME-6)
+description: A JSON Patch where every write is preceded by a `test` of its base value. It records facts that
+  hold no value yet; each write goes through the MR-8 correction path and is ledgered (reason FIRST_RECORD).
+  Writable paths are /birth_date, /work_email, /id_type, /employment/base_pay_won with /employment/pay_unit
+  (together; the pay counts as recorded once its unit is), and /employment/probation_end_date. A value already
+  recorded is changed only by a correction (PATCH /api/v1/employees/{id}), 409 correction_required. 422
+  precondition_missing for a write without its test; 409 field_conflict (error.refusals lists pointer, current,
+  at) when a tested value changed, unless the record already holds the written value. Audited as
+  employee.facts.update with field names only.
+  403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person); nothing is written. Another holder in scope, or the ops account as the sole holder (audited authz.own_record.break_glass with review_required), records it (people-self-33).
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json-patch+json:
+      schema:
+        type: array
+        items:
+          type: object
+          required: [op, path]
+          properties:
+            op:
+              type: string
+              enum: [test, add, replace, remove]
+            path:
+              type: string
+            value: {}
+responses:
+  '200':
+    description: The facts record after the edit.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [employee_id, hire_date, birth_date, work_email, id_type, employment, updated_at]
+          properties:
+            employee_id:
+              $ref: '#/components/schemas/Uuid'
+            hire_date:
+              type: [string, 'null']
+            birth_date:
+              type: [string, 'null']
+              format: date
+            work_email:
+              type: [string, 'null']
+            id_type:
+              type: [string, 'null']
+              enum: [RRN, ARC, DOMESTIC_RESIDENCE, NOT_ISSUED, null]
+            employment:
+              oneOf:
+              - type: 'null'
+              - type: object
+                required: [employment_type, worker_classification, base_pay_won, pay_unit, probation_end_date,
+                  probation_confirmed_at, probation_state, probation_days_left]
+                properties:
+                  employment_type:
+                    type: string
+                    enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN,
+                      OUTSOURCED_ON_SITE, FREELANCE]
+                  worker_classification:
+                    type: string
+                    enum: [EMPLOYEE, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, PLATFORM_OR_FREELANCE]
+                  base_pay_won:
+                    type: [integer, 'null']
+                    format: int64
+                  pay_unit:
+                    type: [string, 'null']
+                    enum: [MONTHLY, HOURLY, DAILY, ANNUAL, null]
+                  probation_end_date:
+                    type: [string, 'null']
+                    format: date
+                  probation_confirmed_at:
+                    type: [string, 'null']
+                    format: date-time
+                  probation_state:
+                    type: string
+                    enum: [NONE, RUNNING, DUE_SOON, OVERDUE, CONFIRMED]
+                  probation_days_left:
+                    type: [integer, 'null']
+            pending_employment:
+              oneOf:
+              - type: 'null'
+              - type: object
+                required: [employment_type, worker_classification, base_pay_won, pay_unit, probation_end_date,
+                  probation_confirmed_at, probation_state, probation_days_left]
+                properties:
+                  employment_type:
+                    nullable: true
+                    type: string
+                    enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN,
+                      OUTSOURCED_ON_SITE, FREELANCE]
+                  worker_classification:
+                    nullable: true
+                    type: string
+                    enum: [EMPLOYEE, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, PLATFORM_OR_FREELANCE]
+                  base_pay_won:
+                    type: [integer, 'null']
+                    format: int64
+                  pay_unit:
+                    type: [string, 'null']
+                    enum: [MONTHLY, HOURLY, DAILY, ANNUAL, null]
+                  probation_end_date:
+                    type: [string, 'null']
+                    format: date
+                  probation_confirmed_at:
+                    type: [string, 'null']
+                    format: date-time
+                  probation_state:
+                    type: string
+                    enum: [NONE, RUNNING, DUE_SOON, OVERDUE, CONFIRMED]
+                  probation_days_left:
+                    type: [integer, 'null']
+            updated_at:
+              type: string
+              format: date-time
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: field_conflict, correction_required, or no employment profile.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'

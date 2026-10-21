@@ -1,0 +1,13 @@
+description: The section's values; the shape follows the entry's section (award is a subset of discipline,
+  so this is anyOf).
+anyOf:
+- $ref: '#/components/schemas/PersonRecordEducation'
+- $ref: '#/components/schemas/PersonRecordQualification'
+- $ref: '#/components/schemas/PersonRecordMilitary'
+- $ref: '#/components/schemas/PersonRecordTraining'
+- $ref: '#/components/schemas/PersonRecordLanguage'
+- $ref: '#/components/schemas/PersonRecordAward'
+- $ref: '#/components/schemas/PersonRecordDiscipline'
+- $ref: '#/components/schemas/PersonRecordFamily'
+- $ref: '#/components/schemas/PersonRecordDisability'
+- $ref: '#/components/schemas/PersonRecordVeteran'

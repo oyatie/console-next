@@ -1,0 +1,7 @@
+:root { --register-page-margin: 10mm; --register-cell-padding: 4px; }
+@page { size: A3 landscape; margin: var(--register-page-margin); }
+body { font: 10pt sans-serif; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid; padding: var(--register-cell-padding); overflow-wrap: anywhere; }
+thead { display: table-header-group; }
+tr { break-inside: avoid; }

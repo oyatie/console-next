@@ -1,0 +1,3 @@
+type: string
+enum: [GRADE, TITLE, POSITION, JOB, JOB_FAMILY]
+description: MR-25 catalog kind - 직급 GRADE, 직위 TITLE, 직책 POSITION, 직무 JOB, 직군 JOB_FAMILY.

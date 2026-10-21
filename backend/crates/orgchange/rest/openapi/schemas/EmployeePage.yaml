@@ -1,0 +1,25 @@
+type: object
+required:
+- items
+- total
+- limit
+- offset
+- next_cursor
+properties:
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/Employee'
+  total:
+    type: integer
+    format: int64
+  limit:
+    type: integer
+    format: int64
+  offset:
+    type: integer
+    format: int64
+  next_cursor:
+    type: [string, 'null']
+    description: With sort or cursor, the cursor of the next page (null on the last one); always null for an offset
+      read.

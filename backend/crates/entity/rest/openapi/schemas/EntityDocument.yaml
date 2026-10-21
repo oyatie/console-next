@@ -1,0 +1,71 @@
+type: object
+required:
+- id
+- kind
+- file_name
+- content_type
+- byte_size
+- uploaded_at
+- retention_key
+- extraction_status
+properties:
+  id:
+    type: string
+    format: uuid
+  kind:
+    $ref: '#/components/schemas/EntityDocumentKind'
+  file_name:
+    type: string
+  content_type:
+    type: string
+    enum:
+    - application/pdf
+    - image/jpeg
+    - image/png
+  byte_size:
+    type: integer
+  uploaded_at:
+    type: string
+    format: date-time
+  legal_entity_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  registration_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  issued_on:
+    type:
+    - string
+    - 'null'
+    format: date
+    description: 발급일 as typed on the 사업자등록 it backs.
+  superseded_at:
+    type:
+    - string
+    - 'null'
+    format: date-time
+    description: When a newer document of the same kind replaced it on the same record.
+  retention_key:
+    type: string
+    enum:
+    - retention.entity_registration_document
+  retain_until:
+    type:
+    - string
+    - 'null'
+    format: date
+    description: Null while in use; superseded_at (KST day) plus the retention setting's years.
+  extraction_status:
+    type: string
+    enum:
+    - NONE
+    description: No extraction service in the MVP; the form is typed beside the document.
+  extracted:
+    type: 'null'
+  preview_url:
+    type: 'null'
+    description: Never served; the client previews its own file.

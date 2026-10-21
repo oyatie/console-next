@@ -1,0 +1,4 @@
+/* ui/record-actions: a row's edit and the overflow menu, and the path line said before a commit. */
+.row { display: inline-flex; align-items: center; gap: var(--space-1); }
+.path { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); color: var(--steel); }
+.path[data-k="approval"], .path[data-k="second"], .path[data-k="stepUp"] { color: var(--ink); }

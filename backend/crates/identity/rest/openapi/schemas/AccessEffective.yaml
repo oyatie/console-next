@@ -1,0 +1,25 @@
+type: object
+required:
+- account_id
+- is_ops
+- phase
+- as_of
+- entries
+properties:
+  account_id:
+    $ref: '#/components/schemas/Uuid'
+  is_ops:
+    type: boolean
+    description: The ops account holds everything by platform policy (break-glass, logged); it has no entries.
+  phase:
+    type: string
+    enum:
+    - SETUP
+    - OPERATING
+  as_of:
+    $ref: '#/components/schemas/Timestamp'
+  entries:
+    type: array
+    description: One row per grant × domain × level, Cedar-checked; ENFORCED rows are what counts now.
+    items:
+      $ref: '#/components/schemas/AccessEffectiveEntry'

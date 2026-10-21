@@ -1,0 +1,47 @@
+operationId: listInsuranceFilings
+tags: [HR]
+parameters:
+- in: query
+  name: workplace_id
+  required: false
+  schema: { type: string }
+- in: query
+  name: legal_entity_id
+  required: false
+  schema: { type: string }
+- in: query
+  name: search
+  required: false
+  schema: { type: string }
+- in: query
+  name: state
+  required: false
+  schema: { type: string }
+- in: query
+  name: after
+  required: false
+  schema: { type: string }
+- in: query
+  name: limit
+  required: false
+  schema: { type: integer }
+- in: query
+  name: event_id
+  required: false
+  schema: { type: string }
+- in: query
+  name: kind
+  required: false
+  schema: { type: string }
+- in: query
+  name: insurer
+  required: false
+  schema: { type: string }
+responses:
+  '200':
+    description: Scoped statutory records
+    content:
+      application/json:
+        schema: { $ref: '#/components/schemas/InsuranceFilingPage' }
+  '403': { description: Cedar denies this scope }
+  '422': { description: Invalid query }

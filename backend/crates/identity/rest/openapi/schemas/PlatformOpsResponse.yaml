@@ -1,0 +1,40 @@
+type: object
+required:
+- tenants
+- notices
+properties:
+  tenants:
+    type: array
+    items:
+      $ref: '#/components/schemas/PlatformTenantHealth'
+  notices:
+    type: array
+    description: Operator notices for the vendor only (never a tenant surface), e.g. a juso key from D-14
+      before it expires, after it expired, or once juso rejected it.
+    items:
+      type: object
+      required:
+      - env
+      - state
+      properties:
+        env:
+          type: string
+          description: The environment variable holding the key (never the key).
+          enum:
+          - STREET_JUSO_API_KEY
+          - DETAILED_JUSO_API_KEY
+        state:
+          type: string
+          enum:
+          - EXPIRING
+          - EXPIRED
+          - REJECTED
+        expires_on:
+          type:
+          - string
+          - 'null'
+          format: date
+        days_left:
+          type:
+          - integer
+          - 'null'

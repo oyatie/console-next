@@ -1,0 +1,17 @@
+type: object
+required:
+- items
+- head_version
+- next_cursor
+properties:
+  head_version:
+    type: integer
+    description: The employee's lifecycle version (BW-11); every applied lifecycle change moves it. Send it as
+      expected_head_version.
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/EmployeeLifecycleEvent'
+  next_cursor:
+    type: [string, 'null']
+    description: The cursor of the next (older) page; null on the last one.

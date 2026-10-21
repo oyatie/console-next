@@ -1,0 +1,3 @@
+type: object
+required: [reason]
+properties: { reason: { type: string, minLength: 1, maxLength: 500 } }

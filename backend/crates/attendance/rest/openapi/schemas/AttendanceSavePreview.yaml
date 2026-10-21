@@ -1,0 +1,3 @@
+type: object
+required: [cells, ok, unchanged, refused, conflicts, closes, opens]
+properties: { cells: { type: array, items: { $ref: '#/components/schemas/AttendanceCellPreview' } }, ok: { type: integer }, unchanged: { type: integer }, refused: { type: integer }, conflicts: { type: integer }, closes: { $ref: '#/components/schemas/AttendanceMarkCounts' }, opens: { $ref: '#/components/schemas/AttendanceMarkCounts' } }

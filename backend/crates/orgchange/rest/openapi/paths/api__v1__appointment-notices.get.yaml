@@ -1,0 +1,34 @@
+tags:
+  - employees
+operationId: listAppointmentNotices
+summary: 발령 공고, newest first (BE-EMP-UI)
+description: Keyset pages by (issued_at, id), newest first; limit 1..500 (default 200), cursor the previous
+  page's next_cursor (422 for one this list did not return). Needs employee_directory_read org-wide.
+security:
+- bearerAuth: []
+parameters:
+- name: limit
+  in: query
+  required: false
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 500
+- name: cursor
+  in: query
+  required: false
+  schema:
+    type: string
+responses:
+  '200':
+    description: One page.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AppointmentNoticePage'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'

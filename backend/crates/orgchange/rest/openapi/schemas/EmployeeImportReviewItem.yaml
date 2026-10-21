@@ -1,0 +1,67 @@
+type: object
+required: [id, reason, blocking, sheet, rows]
+properties:
+  source_column:
+    type: string
+    description: Original header of the imported company cell.
+  id:
+    type: string
+    description: Stable across dry runs of one run.
+  reason:
+    type: string
+    description: A refusal_code, or sheet_needs_mapping, rrn_unavailable, rrn_invalid, unresolved_identity,
+      status_unmapped, leave_type_unmapped, unit_unmapped, workplace_unmapped, employment_type_unmapped
+      (blocking, W02), employee_number_missing (사번 미부여), deferred_change, summary_row_skipped and
+      phone_invalid (W12, non-blocking).
+  blocking:
+    type: boolean
+  sheet:
+    type: string
+  row:
+    type: integer
+    format: int32
+  cell:
+    type: string
+    description: The source cell, e.g. B14.
+  field:
+    type: string
+  value:
+    type: string
+    description: The text to map (a unit, 사업장, 고용형태, 재직상태 or 휴직 유형 text), never a person's value.
+  rows:
+    type: integer
+    minimum: 1
+    description: Rows the item covers (a value map covers every row with that text).
+  resolution:
+    type: object
+    description: 'One click: set decisions[decision][key] to one of choices (empty: a value to type or pick) and dry
+      run again; decision mapping means re-upload with the mapping field (or skip the sheet).'
+    required: [decision, key, choices]
+    properties:
+      decision:
+        type: string
+        x-extensible-enum: [identity, exclusions, company_map, unit_map, workplace_map, employment_type_map, status_map, leave_type_map,
+          employee_numbers, mapping, group_exclusions]
+      key:
+        type: string
+      choices:
+        type: array
+        items:
+          type: string
+  candidates:
+    type: array
+    description: 'W03: the records a unit or 사업장 text may mean, best first (resolution.choices are their
+      ids); never bound without the operator''s answer.'
+    items:
+      type: object
+      required: [id, name, basis]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        basis:
+          type: string
+          x-extensible-enum: [same_name, normalized, path, suffix, registration_number, alias]
+        alias:
+          type: [string, 'null']

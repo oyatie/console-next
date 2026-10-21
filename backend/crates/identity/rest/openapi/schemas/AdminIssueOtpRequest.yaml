@@ -1,0 +1,18 @@
+type: object
+required:
+- user_id
+- step_up
+properties:
+  user_id:
+    $ref: '#/components/schemas/Uuid'
+  branch_id:
+    $ref: '#/components/schemas/Uuid'
+    description: Required only when the target user is branch-scoped. Org-wide targets (EXECUTIVE, SUPER_ADMIN) omit it, so a new tenant can invite its first colleagues before any branch exists.
+  ttl_seconds:
+    type: integer
+    format: int64
+    description: Optional code lifetime in seconds; defaults to 86400 (24 hours).
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'
+    description: The caller's fresh assertion of one of their own passkeys; without it, or when it fails, 401 and
+      no code is minted.

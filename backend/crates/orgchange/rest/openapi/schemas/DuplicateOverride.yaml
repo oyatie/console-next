@@ -1,0 +1,17 @@
+type: object
+additionalProperties: false
+description: 'BW-19: confirms a different person after 409 duplicate_candidate. Names every candidate; the reason
+  is a BW-07 code of domain exception (OTHER needs note). Recorded as the governed exception
+  DUPLICATE_NAME_CONFIRMED (low risk, no second person).'
+required: [candidate_ids, reason_code]
+properties:
+  candidate_ids:
+    type: array
+    items:
+      $ref: '#/components/schemas/Uuid'
+  reason_code:
+    type: string
+    maxLength: 64
+  note:
+    type: string
+    maxLength: 1000

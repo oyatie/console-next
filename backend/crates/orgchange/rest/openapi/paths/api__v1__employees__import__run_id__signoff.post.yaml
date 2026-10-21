@@ -1,0 +1,51 @@
+tags:
+  - employees
+operationId: signOffEmployeeImport
+summary: The HR sign-off of an applied import (BE-EMP-UI; spec E7-signoff)
+description: >-
+  Once per run. expected_open_count is the open count (needs_check + unchecked) the person saw - a different one
+  is 409 import_reconcile_changed with the current counts. Open rows are a warning, never a blocker (decisions
+  #20 Q5) - they must be said with acknowledge_open true, else 428 import_signoff_ack_required. Records who
+  signed and the counts signed over; no second person (#26). Audited data_import.signoff.
+security:
+- bearerAuth: []
+parameters:
+- name: run_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SignOffEmployeeImportRequest'
+responses:
+  '201':
+    description: Signed off.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeImportSignoff'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: import_not_applied, import_signed_off (error.refusals carries the sign-off) or
+      import_reconcile_changed (error.refusals [counts]).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '428':
+    description: import_signoff_ack_required (error.refusals [counts]).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

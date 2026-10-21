@@ -1,0 +1,103 @@
+type: object
+required:
+- name
+- opened_on
+properties:
+  name:
+    type: string
+    maxLength: 200
+  registration_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  sub_serial:
+    type:
+    - string
+    - 'null'
+    pattern: ^[0-9]{4}$
+    x-console-format: sub_serial
+    description: 종사업장 일련번호.
+  same_address_as_registration:
+    type: boolean
+  address:
+    anyOf:
+    - $ref: '#/components/schemas/KrAddress'
+    - type: 'null'
+  mail_address:
+    anyOf:
+    - $ref: '#/components/schemas/KrAddress'
+    - type: 'null'
+  opened_on:
+    type: string
+    format: date
+  representative_name:
+    type:
+    - string
+    - 'null'
+    maxLength: 100
+  main_product:
+    type:
+    - string
+    - 'null'
+  phone:
+    type:
+    - string
+    - 'null'
+    x-console-format: phone_kr
+    description: Phone; Korean domestic or +E.164 in, E.164 stored.
+  fax:
+    type:
+    - string
+    - 'null'
+    x-console-format: phone_kr
+    description: Phone; Korean domestic or +E.164 in, E.164 stored.
+  mobile:
+    type:
+    - string
+    - 'null'
+    x-console-format: phone_kr
+    description: Phone; Korean domestic or +E.164 in, E.164 stored.
+  email:
+    type:
+    - string
+    - 'null'
+    format: email
+    maxLength: 254
+  is_construction_site:
+    type:
+    - boolean
+    - 'null'
+  withholding_mode:
+    anyOf:
+    - $ref: '#/components/schemas/WithholdingMode'
+    - type: 'null'
+  bulk_filed_on:
+    type:
+    - string
+    - 'null'
+    format: date
+  independent_lsa_unit:
+    type:
+    - boolean
+    - 'null'
+  independent_lsa_evidence:
+    type:
+    - string
+    - 'null'
+    maxLength: 500
+  status:
+    anyOf:
+    - $ref: '#/components/schemas/OperatingStatus'
+    - type: 'null'
+  status_since:
+    type:
+    - string
+    - 'null'
+    format: date
+  status_until:
+    description: 휴업's expected end (SUSPENDED only, never before status_since).
+    type:
+    - string
+    - 'null'
+    format: date

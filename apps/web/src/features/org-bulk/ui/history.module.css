@@ -1,0 +1,8 @@
+/* org chart change history (S9): head, the scheduled banner, filters, the who-and-how cell. Tokens only. */
+.head { display: flex; flex-direction: column; gap: var(--space-1); }
+.crumb { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-sm); color: var(--steel); }
+.banner { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--info-bd); border-radius: var(--radius); background: var(--info-bg); color: var(--info-tx); font-weight: var(--fw-medium); }
+.grow { flex: 1; min-width: 0; }
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
+.who { display: flex; flex-direction: column; gap: var(--space-1); }
+.asof { gap: var(--space-2); }

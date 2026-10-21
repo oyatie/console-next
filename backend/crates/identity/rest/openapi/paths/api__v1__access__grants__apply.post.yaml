@@ -1,0 +1,44 @@
+tags:
+- access
+operationId: applyAccessGrants
+summary: Apply a previewed batch, all or nothing
+description: '권한 부여 is high-risk (decision #26): it needs a fresh passkey `step_up`. The batch is re-checked in
+
+  the write transaction; any difference from the preview is 409 `preview_stale` (preview again). A
+
+  receipt with any REFUSED item is 409 `preview_has_refusals`. Every write lands in the grant ledger
+
+  and bumps each affected account''s authorization version, so it takes effect on that account''s
+
+  next request.
+
+  '
+security:
+- bearerAuth: []
+parameters:
+- in: header
+  name: Idempotency-Key
+  schema: {type: string, minLength: 16, maxLength: 200}
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ApplyAccessGrantsRequest'
+responses:
+  '200':
+    description: The written grants (granted, revoked or re-dated).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ApplyGrantsOutcome'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '428':
+    $ref: '#/components/responses/PreconditionRequired'

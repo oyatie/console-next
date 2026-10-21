@@ -1,0 +1,75 @@
+type: object
+required:
+- id
+- account_id
+- account_active
+- account_has_passkey
+- role_id
+- role_name_ko
+- scope
+- valid_from
+- effective_in_setup
+- enforcement
+- reason_code
+- granted_by
+- granted_at
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  account_id:
+    $ref: '#/components/schemas/Uuid'
+  account_display_name:
+    type:
+    - string
+    - 'null'
+  account_active:
+    type: boolean
+    description: false = the account is deactivated; its grants grant nothing (멈춤).
+  account_has_passkey:
+    type: boolean
+    description: Whether the holder has enrolled a passkey (can sign in to use the grant).
+  account_unit:
+    type:
+    - string
+    - 'null'
+    description: The holder's 소속 (their employee record's 부서), when the account is linked.
+  account_employee_number:
+    type:
+    - string
+    - 'null'
+  role_id:
+    $ref: '#/components/schemas/Uuid'
+  role_name_ko:
+    type: string
+  scope:
+    $ref: '#/components/schemas/AccessScope'
+  valid_from:
+    $ref: '#/components/schemas/Timestamp'
+  valid_to:
+    oneOf:
+    - $ref: '#/components/schemas/Timestamp'
+    - type: 'null'
+    description: Exclusive end; null = open-ended.
+  effective_in_setup:
+    type: boolean
+    description: 「설정 단계부터 적용」 — enforced during SETUP too.
+  enforcement:
+    $ref: '#/components/schemas/AccessEnforcement'
+  reason_code:
+    type: string
+  reason_note:
+    type:
+    - string
+    - 'null'
+  granted_by:
+    $ref: '#/components/schemas/Uuid'
+  granted_at:
+    $ref: '#/components/schemas/Timestamp'
+  revoked_by:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  revoked_at:
+    oneOf:
+    - $ref: '#/components/schemas/Timestamp'
+    - type: 'null'

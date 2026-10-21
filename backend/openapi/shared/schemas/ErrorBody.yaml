@@ -1,0 +1,44 @@
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            trace_id:
+              type: string
+              description: Present on a 5xx. The server-side trace id to quote to operators; the message is then generic and the detail stays in the server log.
+            operation_id:
+              $ref: '#/components/schemas/Uuid'
+              description: Present when an operation has an uncertain admission or external outcome.
+            original_operation_id:
+              $ref: '#/components/schemas/Uuid'
+              description: Original successful grant operation when a preview receipt was already used.
+            last_change:
+              $ref: '#/components/schemas/AuditLastChange'
+            reasons:
+              type: array
+              items:
+                type: string
+              description: Stable machine-readable reasons for review-required conflicts, when applicable.
+            current_key_write_revision:
+              type: integer
+              format: int64
+              minimum: 1
+            current_version:
+              type: integer
+              format: int32
+              minimum: 1
+              description: The record's current revision version, present on a stale_revision refusal.
+            errors:
+              type: array
+              items:
+                $ref: '#/components/schemas/FieldError'
+              description: Field-level validation failures, present when the server can point at the offending input.

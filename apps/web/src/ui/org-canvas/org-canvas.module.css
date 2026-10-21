@@ -1,0 +1,72 @@
+/* ui/org-canvas: the pan/zoom surface, its connectors, the floating zoom bar, gutter and minimap.
+ * Chart tokens (spec §4, proposed): derived from the shared tokens, scoped to the canvas. */
+.canvas {
+  --chart-connector: var(--control-border);
+  --chart-drop-ok: var(--ok-solid);
+  --chart-minimap-w: calc(var(--panel-w) / 2);
+  position: relative;
+  container-type: inline-size;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: clip;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--canvas);
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.canvas[data-dimmed] .stage { opacity: 0.55; }
+.viewport { position: relative; flex: 1; overflow: hidden; touch-action: none; cursor: grab; }
+.viewport:active { cursor: grabbing; }
+.stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.layer { pointer-events: none; }
+.layer > * { pointer-events: auto; }
+.lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.lines path { fill: none; stroke: var(--chart-connector); stroke-width: 1; }
+.lines path.ok { stroke: var(--chart-drop-ok); stroke-width: 2; stroke-dasharray: 5 4; }
+
+.float { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+/* The top edge is a band on the canvas's own ground: a box panned up passes under it whole, never between its controls. */
+.top { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-4) var(--space-2); border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface); box-shadow: var(--shadow); pointer-events: none; }
+/* Only its controls take the pointer: the band itself lets a drag pan the chart, and covers nothing a press can reach. */
+.top > * { pointer-events: auto; }
+.bottom { position: absolute; left: var(--space-4); right: calc(var(--chart-minimap-w) + var(--space-4) * 2); bottom: var(--space-4); display: flex; align-items: flex-end; gap: var(--space-3); pointer-events: none; }
+.bottom > * { pointer-events: auto; }
+.zoom { display: flex; align-items: center; padding: calc(2 * 1px); flex: none; }
+.zoom :global(.btn) { min-height: var(--target); border: 0; }
+.zoomValue { min-width: 48px; text-align: center; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.vsep { width: 1px; align-self: stretch; margin: var(--space-1) calc(2 * 1px); background: var(--border); }
+/* The gutter row spans the canvas; only what it holds takes the pointer, the boxes behind its empty part stay reachable. */
+.gutter { flex: 1; min-width: 0; display: flex; justify-content: center; pointer-events: none; }
+:where(.gutter > *) { pointer-events: auto; }
+.gutter:empty { visibility: hidden; }
+
+@container (max-width: 720px) {
+  .mini { display: none; }
+  .bottom { right: var(--space-4); }
+}
+
+.mini { position: absolute; right: var(--space-4); bottom: var(--space-4); width: var(--chart-minimap-w); padding: var(--space-2); }
+.mini[data-collapsed] { width: auto; }
+.miniHead { display: flex; align-items: center; justify-content: space-between; font-size: var(--text-xs); color: var(--steel); margin-bottom: var(--space-1); }
+.miniToggle { min-height: 24px; padding: 0 var(--space-1); font-size: var(--text-xs); }
+.miniFit { min-height: 24px; padding: 0 var(--space-1); }
+.mini > svg { display: block; width: 100%; height: 120px; background: var(--muted); border-radius: var(--radius-sm); cursor: pointer; }
+.mini[data-collapsed] > svg { display: none; }
+.mini rect { fill: var(--surface); stroke-width: 2; vector-effect: non-scaling-stroke; stroke: var(--control-border); stroke-opacity: 0.6; }
+.mini rect[data-level="tenant"], .mini rect[data-level="entity"] { stroke: var(--ink); stroke-opacity: 0.55; }
+.mini rect[data-level="site"] { stroke: var(--teal); stroke-opacity: 0.7; }
+.mini rect[data-hit] { fill: var(--primary); stroke: var(--primary); stroke-opacity: 1; }
+.mini rect.vp { fill: none; stroke: var(--primary); stroke-opacity: 1; }
+
+/* A narrow canvas gives the hint or receipt its own row above the zoom bar, and the overview gives way. */
+@container (max-width: 960px) {
+  .bottom { flex-wrap: wrap; }
+  .gutter { order: -1; flex-basis: 100%; }
+}
+@media print {
+  .bottom, .top { display: none; }
+  .canvas { border: 0; background: none; }
+}

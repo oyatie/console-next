@@ -1,0 +1,28 @@
+tags:
+- org
+operationId: getOrgUnit
+summary: Read one org-tree node
+description: Head, revision history, and ACTIVE members. The Company root id is accepted. Out-of-scope ids are 404.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The node.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgUnitDetail'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

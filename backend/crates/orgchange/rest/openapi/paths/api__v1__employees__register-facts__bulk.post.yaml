@@ -1,0 +1,42 @@
+tags:
+  - employees
+operationId: bulkCorrectRegisterFacts
+summary: 근로자 명부 항목 import profile and bulk update
+description: >-
+  MR-23. Org-wide employee_directory_manage. The browser parses the sheet
+  (no file and no 주민등록번호 reaches the server) and sends one row per
+  employee, by `employee_id` or a `employee_number` that names exactly
+  one record, carrying `sex`, `address`, `careers` and `register_note`
+  and the 인적사항 profile's `name_hanja`, `name_en`, `nationality`,
+  `personal_email` and `emergency_contacts` (MR-34), plus a first
+  `exit_reason` or `group_service_start_date` (changing a recorded one is
+  per person, PATCH /employees/{id}; a `photo` is uploaded per person). `dry_run` returns
+  what each row would change and why a row cannot be taken. The apply is
+  all-or-nothing (422 `bulk_register_facts_refused` with `refusals`) and
+  writes one 정정 ledger row per changed item; an unchanged value writes
+  nothing. At most 500 rows.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/BulkRegisterFactsRequest'
+responses:
+  '200':
+    description: The plan (dry_run) or the applied result.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/BulkRegisterFactsOutcome'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    description: A row cannot be taken (`bulk_register_facts_refused`, nothing recorded) or the body is invalid.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

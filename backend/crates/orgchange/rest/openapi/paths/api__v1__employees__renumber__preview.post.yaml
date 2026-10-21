@@ -1,0 +1,30 @@
+tags:
+  - employees
+operationId: previewEmployeeRenumber
+summary: Old → new 사번 of a scope under a new scheme, with conflicts (IMPORT-2)
+description: 'Decisions #25 bulk renumbering. The current people of the scope (재직, 휴직, 입사 예정; former
+  employees keep their numbers) from 1 by 입사일, then current 사번. A new number someone outside the line holds
+  or held is a conflict (number_taken). preview_digest binds the apply.'
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/EmployeeRenumberRequest'
+responses:
+  '200':
+    description: The lines and their conflicts.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeRenumberPreview'
+  '400':
+    $ref: '#/components/responses/BadRequest'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

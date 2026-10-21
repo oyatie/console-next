@@ -1,0 +1,33 @@
+type: object
+additionalProperties: false
+description: The first contract (G1), recorded in the same transaction. The kind must fit employment_type
+  (REGULAR OPEN_ENDED; CONTRACT FIXED_TERM; PART_TIME PART_TIME; INTERN FIXED_TERM or OPEN_ENDED; DAILY DAILY;
+  EXECUTIVE EXECUTIVE_MANDATE; DISPATCHED_IN and OUTSOURCED_ON_SITE DISPATCH_OUTSOURCING; FREELANCE
+  FREELANCE_SERVICE). Omitted terms default from the registration.
+required: [kind]
+properties:
+  kind:
+    type: string
+    enum: [OPEN_ENDED, FIXED_TERM, PART_TIME, DAILY, DISPATCH_OUTSOURCING, EXECUTIVE_MANDATE, FREELANCE_SERVICE]
+  start_date:
+    type: string
+    format: date
+    description: Defaults to hire_date.
+  end_date:
+    type: string
+    format: date
+    description: Required for FIXED_TERM, refused for OPEN_ENDED.
+  wage_won:
+    type: integer
+    format: int64
+    minimum: 0
+    description: Defaults to base_pay_won; required (non-zero) for a 근로계약.
+  pay_unit:
+    type: string
+    enum: [MONTHLY, HOURLY, DAILY, ANNUAL]
+    description: Defaults to pay_unit.
+  weekly_minutes:
+    type: integer
+    minimum: 1
+    maximum: 10080
+    description: 주 소정근로시간 in minutes; required for a 근로계약.

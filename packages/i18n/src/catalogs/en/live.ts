@@ -1,0 +1,28 @@
+import type { koLive } from "../ko/live";
+
+export const enLive: Partial<Record<keyof typeof koLive, string>> = {
+  "live.status.reconnecting": "Live connection lost · reconnecting",
+  "live.status.offline": "Offline · this screen is not updating",
+  "live.updated_ago": "Updated {ago}",
+  "live.notice.updated_by": "{actor} changed this at {time}",
+  "live.notice.updated_by.hidden": "Changed at {time}",
+  "live.notice.changed_elsewhere": "The record you are viewing changed elsewhere at {time}; the screen shows the new content. Anything you were typing is kept.",
+  "live.notice.dismiss": "Dismiss",
+  "live.notice.changed_while_editing": "{count, plural, one {# field} other {# fields}} changed while you were editing. Your draft is kept.",
+  "live.notice.compare": "Compare changed fields",
+  "live.notice.content_changed": "The content changed while you were reviewing it. Open the new content before you decide.",
+  "live.notice.content_changed.open": "Open the new content",
+  "live.notice.done_elsewhere": "{actor} already handled this at {time}",
+  "live.notice.done_elsewhere.hidden": "Already handled at {time}",
+  "live.notice.stacked": "{count, plural, one {# change} other {# changes}} · last by {actor}",
+  "live.notice.stacked.hidden": "{count, plural, one {# change} other {# changes}}",
+  "live.notice.gone": "This item was deleted. You can still read and copy your draft.",
+  "live.notice.no_access": "You no longer have access to this item. You can still read and copy your draft.",
+  "live.list.new_rows": "{count, plural, one {# new item} other {# new items}} · Refresh",
+  "live.presence.viewing": "{name} is viewing",
+  "live.presence.editing": "{name} is editing",
+  "live.presence.editing.field": "{name} is editing {field}",
+  "live.claim.held_by": "{holder} is handling this · {minutes, plural, one {# minute} other {# minutes}} left",
+  "live.claim.take_over": "Take over this item",
+  "live.claim.taken_over": "{actor} took over this item",
+};

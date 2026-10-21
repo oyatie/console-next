@@ -1,0 +1,28 @@
+type: object
+required:
+- code
+- message
+- fields
+properties:
+  code:
+    type: string
+  message:
+    type: string
+  fields:
+    type: array
+    items:
+      $ref: '#/components/schemas/EntityFieldWarning'
+  remedy:
+    type:
+    - string
+    - 'null'
+  current_version:
+    type:
+    - integer
+    - 'null'
+  existing_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+    description: already_exists, the record the row matched (turn the CREATE into a REVISE of it).

@@ -1,0 +1,14 @@
+type: object
+description: 'A reference-list value: code + label + list version, stamped by the server. version UNVERIFIED
+  = format-checked only (「코드 확인 필요」).'
+required:
+- code
+- label
+- version
+properties:
+  code:
+    type: string
+  label:
+    type: string
+  version:
+    type: string

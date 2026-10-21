@@ -1,0 +1,19 @@
+tags:
+- onboarding
+operationId: readTerms
+summary: Read the latest published service terms
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Exact published text, version and hash.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/TermsDocument'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Contracting ops administrator required.
+  '409':
+    description: terms_not_published; ask the service operator for approved terms.

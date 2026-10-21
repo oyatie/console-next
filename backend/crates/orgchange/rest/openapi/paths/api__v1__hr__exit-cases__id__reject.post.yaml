@@ -1,0 +1,37 @@
+tags:
+  - hr
+operationId: rejectEmployeeExitCase
+summary: Reject an employee exit case
+description: Moves an open case (REPORTED, HR_CONFIRMED, HQ_CONFIRMED, SETTLEMENT_READY, APPROVAL_DRAFTED) to REJECTED. Requires exit_case_hr_confirm or exit_case_hq_confirm on the case branch (403 otherwise). When HR confirmation already exited the employee, a compensating EXIT_REVERSAL lifecycle event restores the prior employment status in the same audited transaction; a still-SCHEDULED exit is withdrawn instead (its TERMINATE event becomes CANCELLED).
+  403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person). Nobody records an HR act on their own record, whatever they hold; another holder in scope, or the ops account, records it. The ops account passes only when no other active account holds the act over the employee, and that pass is audited as authz.own_record.break_glass with review_required (people-self-33).
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CloseEmployeeExitCaseRequest'
+responses:
+  '200':
+    description: The closed case (status REJECTED; closed_by, closed_at and closed_reason set).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeExitCase'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

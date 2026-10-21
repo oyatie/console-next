@@ -1,0 +1,25 @@
+type: object
+required: [dry_run, applied, rows]
+properties:
+  dry_run:
+    type: boolean
+  applied:
+    type: boolean
+  rows:
+    type: array
+    items:
+      type: object
+      required: [index, changed]
+      properties:
+        index:
+          type: integer
+        employee_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        changed:
+          type: array
+          items:
+            type: string
+        error:
+          type: [string, 'null']

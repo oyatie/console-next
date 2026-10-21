@@ -1,0 +1,50 @@
+tags:
+  - users
+operationId: deactivateUser
+summary: Deactivate (soft-disable) a user
+description: Archives the account, deletes every passkey it holds and revokes its sessions. The caller sends a fresh
+  `step_up` assertion of one of their own passkeys (428 passkey_step_up_required without one, 401 when it fails),
+  so a stolen bearer token alone cannot lock people out.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/StepUpRequest'
+responses:
+  '200':
+    description: Deactivated user.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/UserSummary'
+  '400':
+    $ref: '#/components/responses/ValidationError'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '428':
+    description: Fresh passkey step-up is required.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '503':
+    description: JWT verification is not configured.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

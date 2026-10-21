@@ -1,0 +1,43 @@
+tags:
+- org
+operationId: updateOrgChangeDraft
+summary: Edit an org-change draft, or move a scheduled change
+description: >-
+  DRAFT or PRECHECKED: every edit returns the request to DRAFT, so a stored preflight receipt must be re-run before
+  submit. APPROVED before its 시행일 (예약 수정): only effectiveDate and reason move (a kind or proposal is 409
+  org_change_scheduled_content); moved to today it applies at once; under approval.policy.org_structure = route
+  only a caller holding org_change_apply may move it (403 org_change_scheduled_locked). Omitted fields are left
+  unchanged.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/UpdateOrgChangeDraftRequest'
+responses:
+  '200':
+    description: Draft updated.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgChangeDetail'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'
