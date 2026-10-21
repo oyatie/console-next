@@ -172,14 +172,7 @@ impl RestError {
     }
 
     fn code(&self) -> &'static str {
-        match self.kind {
-            ErrorKind::Validation => "validation",
-            ErrorKind::NotFound => "not_found",
-            ErrorKind::Forbidden => "forbidden",
-            ErrorKind::Conflict => "conflict",
-            ErrorKind::InvalidTransition => "invalid_transition",
-            ErrorKind::Internal => "internal",
-        }
+        self.kind.code()
     }
 }
 
@@ -528,14 +521,7 @@ fn rest_error_from_request_context(
 }
 
 fn status_for_error_kind(kind: ErrorKind) -> StatusCode {
-    match kind {
-        ErrorKind::Validation => StatusCode::UNPROCESSABLE_ENTITY,
-        ErrorKind::NotFound => StatusCode::NOT_FOUND,
-        ErrorKind::Forbidden => StatusCode::FORBIDDEN,
-        ErrorKind::Conflict => StatusCode::CONFLICT,
-        ErrorKind::InvalidTransition => StatusCode::CONFLICT,
-        ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-    }
+    StatusCode::from_u16(kind.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 #[cfg(test)]

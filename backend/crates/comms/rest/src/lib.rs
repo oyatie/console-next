@@ -1029,6 +1029,7 @@ impl RestError {
             ErrorKind::Conflict | ErrorKind::InvalidTransition => {
                 Self::new(StatusCode::CONFLICT, "conflict", error.message)
             }
+            ErrorKind::Unavailable => Self::unavailable(error.message),
             ErrorKind::Internal => Self::internal("internal server error"),
         }
     }

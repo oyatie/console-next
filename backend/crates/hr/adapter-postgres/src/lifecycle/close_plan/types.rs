@@ -132,6 +132,7 @@ pub(crate) fn entity_error(error: PgEntityError) -> HrError {
                 ErrorKind::NotFound => StatusCode::NOT_FOUND,
                 ErrorKind::Forbidden => StatusCode::FORBIDDEN,
                 ErrorKind::Conflict | ErrorKind::InvalidTransition => StatusCode::CONFLICT,
+                ErrorKind::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
                 ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
             },
             code: r.code,

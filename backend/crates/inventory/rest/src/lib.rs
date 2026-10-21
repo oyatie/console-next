@@ -754,6 +754,11 @@ impl RestError {
             ErrorKind::Conflict | ErrorKind::InvalidTransition => {
                 Self::new(StatusCode::CONFLICT, "conflict", error.message)
             }
+            ErrorKind::Unavailable => Self::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "unavailable",
+                error.message,
+            ),
             ErrorKind::Internal => {
                 Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", error.message)
             }
@@ -772,6 +777,11 @@ impl RestError {
                 ErrorKind::Conflict | ErrorKind::InvalidTransition => {
                     Self::new(StatusCode::CONFLICT, "conflict", "inventory state conflict")
                 }
+                ErrorKind::Unavailable => Self::new(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "unavailable",
+                    "inventory database unavailable",
+                ),
                 ErrorKind::Validation | ErrorKind::Forbidden | ErrorKind::Internal => {
                     tracing::error!(error = %error, "inventory store error");
                     Self::new(

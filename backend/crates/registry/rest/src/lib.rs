@@ -2037,13 +2037,8 @@ impl RestError {
     }
 
     fn from_kernel(error: KernelError) -> Self {
-        let status = match error.kind {
-            ErrorKind::Validation => StatusCode::UNPROCESSABLE_ENTITY,
-            ErrorKind::NotFound => StatusCode::NOT_FOUND,
-            ErrorKind::Forbidden => StatusCode::FORBIDDEN,
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => StatusCode::CONFLICT,
-            ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-        };
+        let status =
+            StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
         Self {
             status,
             code: error_code(error.kind),
@@ -2119,14 +2114,7 @@ struct ErrorPayload {
 }
 
 fn error_code(kind: ErrorKind) -> &'static str {
-    match kind {
-        ErrorKind::Validation => "validation",
-        ErrorKind::NotFound => "not_found",
-        ErrorKind::Forbidden => "forbidden",
-        ErrorKind::Conflict => "conflict",
-        ErrorKind::InvalidTransition => "invalid_transition",
-        ErrorKind::Internal => "internal",
-    }
+    kind.code()
 }
 
 #[cfg(test)]

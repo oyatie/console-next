@@ -2450,21 +2450,17 @@ struct ObjectError {
     status: StatusCode,
     code: &'static str,
     message: String,
+    errors: Option<Vec<crate::http::error::FieldError>>,
 }
 
 impl ObjectError {
     fn from_kernel(error: KernelError) -> Self {
-        let status = match error.kind {
-            ErrorKind::Validation => StatusCode::UNPROCESSABLE_ENTITY,
-            ErrorKind::NotFound => StatusCode::NOT_FOUND,
-            ErrorKind::Forbidden => StatusCode::FORBIDDEN,
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => StatusCode::CONFLICT,
-            ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-        };
+        let mapped = crate::http::error::MappedKernelError::from(error);
         Self {
-            status,
-            code: error_code(error.kind),
-            message: error.message,
+            status: mapped.status,
+            code: mapped.code,
+            message: mapped.message,
+            errors: mapped.errors,
         }
     }
 
@@ -2485,6 +2481,7 @@ impl ObjectError {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             code: "internal",
             message: message.into(),
+            errors: None,
         }
     }
 }
@@ -2497,6 +2494,9 @@ impl From<KernelError> for ObjectError {
 
 impl From<DbError> for ObjectError {
     fn from(value: DbError) -> Self {
+        if value.is_unavailable() {
+            return Self::from_kernel(KernelError::unavailable("object database unavailable"));
+        }
         tracing::error!(error = %value, "object-layer database operation failed");
         Self::internal("object-layer request failed")
     }
@@ -2504,28 +2504,13 @@ impl From<DbError> for ObjectError {
 
 impl From<sqlx::Error> for ObjectError {
     fn from(value: sqlx::Error) -> Self {
-        Self::from(DbError::Sqlx(value))
+        Self::from(DbError::from(value))
     }
 }
 
 impl IntoResponse for ObjectError {
     fn into_response(self) -> Response {
-        (
-            self.status,
-            Json(json!({ "error": { "code": self.code, "message": self.message } })),
-        )
-            .into_response()
-    }
-}
-
-fn error_code(kind: ErrorKind) -> &'static str {
-    match kind {
-        ErrorKind::Validation => "validation",
-        ErrorKind::NotFound => "not_found",
-        ErrorKind::Forbidden => "forbidden",
-        ErrorKind::Conflict => "conflict",
-        ErrorKind::InvalidTransition => "invalid_transition",
-        ErrorKind::Internal => "internal",
+        crate::http::error::error_response(self.status, self.code, self.message, self.errors)
     }
 }
 

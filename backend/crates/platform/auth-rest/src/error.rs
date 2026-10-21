@@ -147,6 +147,7 @@ impl RestError {
             ErrorKind::Conflict | ErrorKind::InvalidTransition => {
                 RestError::conflict(error.message)
             }
+            ErrorKind::Unavailable => RestError::unavailable(error.message),
             ErrorKind::Internal => RestError::internal(error.message),
         }
     }

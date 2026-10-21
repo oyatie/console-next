@@ -10,9 +10,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
-use console_kernel_core::{
-    AuditAction, AuditEvent, BranchScope, ErrorKind, KernelError, OrgId, UserId,
-};
+use console_kernel_core::{AuditAction, AuditEvent, BranchScope, KernelError, OrgId, UserId};
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
 use console_platform_db::{DbError, with_audits, with_org_conn};
@@ -954,13 +952,8 @@ impl RestError {
         }
     }
     fn kernel(error: KernelError) -> Self {
-        let status = match error.kind {
-            ErrorKind::Validation => StatusCode::UNPROCESSABLE_ENTITY,
-            ErrorKind::NotFound => StatusCode::NOT_FOUND,
-            ErrorKind::Forbidden => StatusCode::FORBIDDEN,
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => StatusCode::CONFLICT,
-            ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-        };
+        let status =
+            StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
         Self::new(
             status,
             if status == StatusCode::CONFLICT {

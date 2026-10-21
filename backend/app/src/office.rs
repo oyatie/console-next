@@ -1040,23 +1040,18 @@ pub struct OfficeError {
     /// Set when the failure was a unique-constraint conflict on the callback
     /// source-key index, so `record_version` can resolve to the winning row.
     retryable_conflict: bool,
+    errors: Option<Vec<crate::http::error::FieldError>>,
 }
 
 impl OfficeError {
     fn from_kernel(error: KernelError) -> Self {
-        let (status, code) = match error.kind {
-            ErrorKind::Validation => (StatusCode::UNPROCESSABLE_ENTITY, "validation"),
-            ErrorKind::NotFound => (StatusCode::NOT_FOUND, "not_found"),
-            ErrorKind::Forbidden => (StatusCode::FORBIDDEN, "forbidden"),
-            ErrorKind::Conflict => (StatusCode::CONFLICT, "conflict"),
-            ErrorKind::InvalidTransition => (StatusCode::CONFLICT, "invalid_transition"),
-            ErrorKind::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "internal"),
-        };
+        let mapped = crate::http::error::MappedKernelError::from(error);
         Self {
-            status,
-            code,
-            message: error.message,
+            status: mapped.status,
+            code: mapped.code,
+            message: mapped.message,
             retryable_conflict: false,
+            errors: mapped.errors,
         }
     }
 
@@ -1074,6 +1069,7 @@ impl OfficeError {
             code: "office_not_configured",
             message: message.into(),
             retryable_conflict: false,
+            errors: None,
         }
     }
 
@@ -1083,6 +1079,7 @@ impl OfficeError {
             code: "invalid_token",
             message: message.into(),
             retryable_conflict: false,
+            errors: None,
         }
     }
 
@@ -1092,6 +1089,7 @@ impl OfficeError {
             code: "storage",
             message: message.into(),
             retryable_conflict: false,
+            errors: None,
         }
     }
 
@@ -1101,6 +1099,7 @@ impl OfficeError {
             code: "internal",
             message: message.into(),
             retryable_conflict: false,
+            errors: None,
         }
     }
 }
@@ -1123,7 +1122,11 @@ impl From<DbError> for OfficeError {
                 code: "conflict",
                 message: "version conflict".to_owned(),
                 retryable_conflict: true,
+                errors: None,
             };
+        }
+        if value.is_unavailable() {
+            return Self::from_kernel(KernelError::unavailable("office database unavailable"));
         }
         tracing::error!(error = %value, "office database operation failed");
         Self::internal("office request failed")
@@ -1132,17 +1135,13 @@ impl From<DbError> for OfficeError {
 
 impl From<sqlx::Error> for OfficeError {
     fn from(value: sqlx::Error) -> Self {
-        Self::from(DbError::Sqlx(value))
+        Self::from(DbError::from(value))
     }
 }
 
 impl IntoResponse for OfficeError {
     fn into_response(self) -> Response {
-        (
-            self.status,
-            Json(json!({ "error": { "code": self.code, "message": self.message } })),
-        )
-            .into_response()
+        crate::http::error::error_response(self.status, self.code, self.message, self.errors)
     }
 }
 

@@ -45,7 +45,7 @@ pub enum PgCedarError {
 
 impl From<sqlx::Error> for PgCedarError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

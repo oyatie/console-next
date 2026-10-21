@@ -22,7 +22,7 @@ pub enum PgOrgChangeError {
 
 impl From<sqlx::Error> for PgOrgChangeError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 
@@ -40,6 +40,7 @@ impl PgOrgChangeError {
             {
                 ErrorKind::Conflict
             }
+            Self::Db(DbError::Unavailable(_)) => ErrorKind::Unavailable,
             Self::Db(_) => ErrorKind::Internal,
         }
     }

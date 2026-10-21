@@ -485,28 +485,17 @@ struct WorkflowObjectContextError {
     status: StatusCode,
     code: &'static str,
     message: String,
+    errors: Option<Vec<crate::http::error::FieldError>>,
 }
 
 impl WorkflowObjectContextError {
     fn from_kernel(error: KernelError) -> Self {
-        let status = match error.kind {
-            ErrorKind::Validation => StatusCode::UNPROCESSABLE_ENTITY,
-            ErrorKind::NotFound => StatusCode::NOT_FOUND,
-            ErrorKind::Forbidden => StatusCode::FORBIDDEN,
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => StatusCode::CONFLICT,
-            ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-        };
+        let mapped = crate::http::error::MappedKernelError::from(error);
         Self {
-            status,
-            code: match error.kind {
-                ErrorKind::Validation => "validation",
-                ErrorKind::NotFound => "not_found",
-                ErrorKind::Forbidden => "forbidden",
-                ErrorKind::Conflict => "conflict",
-                ErrorKind::InvalidTransition => "invalid_transition",
-                ErrorKind::Internal => "internal",
-            },
-            message: error.message,
+            status: mapped.status,
+            code: mapped.code,
+            message: mapped.message,
+            errors: mapped.errors,
         }
     }
 
@@ -523,6 +512,7 @@ impl WorkflowObjectContextError {
             status: StatusCode::UNPROCESSABLE_ENTITY,
             code: "invalid_cursor",
             message: "before must identify a visible workflow run for this subject".to_owned(),
+            errors: None,
         }
     }
 
@@ -531,12 +521,18 @@ impl WorkflowObjectContextError {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             code: "internal",
             message: message.into(),
+            errors: None,
         }
     }
 }
 
 impl From<DbError> for WorkflowObjectContextError {
     fn from(error: DbError) -> Self {
+        if error.is_unavailable() {
+            return Self::from_kernel(KernelError::unavailable(
+                "workflow object context database unavailable",
+            ));
+        }
         tracing::error!(error = %error, "workflow object context database operation failed");
         Self::internal("workflow object context request failed")
     }
@@ -544,17 +540,13 @@ impl From<DbError> for WorkflowObjectContextError {
 
 impl From<sqlx::Error> for WorkflowObjectContextError {
     fn from(error: sqlx::Error) -> Self {
-        Self::from(DbError::Sqlx(error))
+        Self::from(DbError::from(error))
     }
 }
 
 impl IntoResponse for WorkflowObjectContextError {
     fn into_response(self) -> Response {
-        (
-            self.status,
-            Json(json!({ "error": { "code": self.code, "message": self.message } })),
-        )
-            .into_response()
+        crate::http::error::error_response(self.status, self.code, self.message, self.errors)
     }
 }
 

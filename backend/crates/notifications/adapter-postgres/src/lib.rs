@@ -70,6 +70,7 @@ impl PgNotificationError {
         match self {
             Self::Domain(err) => err.kind,
             Self::Db(DbError::Sqlx(sqlx::Error::RowNotFound)) => ErrorKind::NotFound,
+            Self::Db(DbError::Unavailable(_)) => ErrorKind::Unavailable,
             Self::Dedup | Self::Db(_) => ErrorKind::Internal,
         }
     }
@@ -77,7 +78,7 @@ impl PgNotificationError {
 
 impl From<sqlx::Error> for PgNotificationError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

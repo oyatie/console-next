@@ -554,6 +554,9 @@ impl RestError {
             ErrorKind::Conflict | ErrorKind::InvalidTransition => {
                 Self::new(StatusCode::CONFLICT, "conflict", e.message)
             }
+            ErrorKind::Unavailable => {
+                Self::new(StatusCode::SERVICE_UNAVAILABLE, "unavailable", e.message)
+            }
             ErrorKind::Internal => {
                 Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", e.message)
             }

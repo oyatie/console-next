@@ -101,6 +101,7 @@ impl RestError {
             ErrorKind::NotFound => StatusCode::NOT_FOUND,
             ErrorKind::Forbidden => StatusCode::FORBIDDEN,
             ErrorKind::Conflict => StatusCode::CONFLICT,
+            ErrorKind::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
             ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         };
         Self {
@@ -111,14 +112,7 @@ impl RestError {
     }
 
     fn code(&self) -> &'static str {
-        match self.kind {
-            ErrorKind::Validation => "validation",
-            ErrorKind::NotFound => "not_found",
-            ErrorKind::Forbidden => "forbidden",
-            ErrorKind::Conflict => "conflict",
-            ErrorKind::InvalidTransition => "invalid_transition",
-            ErrorKind::Internal => "internal",
-        }
+        self.kind.code()
     }
 }
 

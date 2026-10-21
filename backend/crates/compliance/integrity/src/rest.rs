@@ -270,6 +270,10 @@ impl RestError {
             DbError::Sqlx(sqlx::Error::RowNotFound) => {
                 Self::from_kernel(KernelError::not_found("row was not found"))
             }
+            DbError::Unavailable(err) => {
+                tracing::warn!(error = %err, "database unavailable in integrity handler");
+                Self::unavailable("service temporarily unavailable")
+            }
             DbError::Sqlx(err) => {
                 tracing::error!(error = %err, "database error in integrity handler");
                 Self {
@@ -298,13 +302,7 @@ impl RestError {
     }
 
     fn code(&self) -> &'static str {
-        match self.kind {
-            ErrorKind::Validation => "validation",
-            ErrorKind::NotFound => "not_found",
-            ErrorKind::Forbidden => "forbidden",
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => "conflict",
-            ErrorKind::Internal => "internal",
-        }
+        self.kind.code()
     }
 }
 
@@ -324,11 +322,5 @@ impl IntoResponse for RestError {
 }
 
 fn status_for_kind(kind: ErrorKind) -> StatusCode {
-    match kind {
-        ErrorKind::Validation => StatusCode::UNPROCESSABLE_ENTITY,
-        ErrorKind::NotFound => StatusCode::NOT_FOUND,
-        ErrorKind::Forbidden => StatusCode::FORBIDDEN,
-        ErrorKind::Conflict | ErrorKind::InvalidTransition => StatusCode::CONFLICT,
-        ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-    }
+    StatusCode::from_u16(kind.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
 }

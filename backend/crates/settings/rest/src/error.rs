@@ -18,13 +18,8 @@ pub(crate) struct ApiError {
 
 impl From<KernelError> for ApiError {
     fn from(error: KernelError) -> Self {
-        let status = match error.kind {
-            ErrorKind::Validation => StatusCode::UNPROCESSABLE_ENTITY,
-            ErrorKind::NotFound => StatusCode::NOT_FOUND,
-            ErrorKind::Forbidden => StatusCode::FORBIDDEN,
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => StatusCode::CONFLICT,
-            ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-        };
+        let status =
+            StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
         Self { status, error }
     }
 }
@@ -33,6 +28,9 @@ impl From<PgSettingsError> for ApiError {
     fn from(error: PgSettingsError) -> Self {
         match error {
             PgSettingsError::Domain(error) => error.into(),
+            PgSettingsError::Db(error) if error.is_unavailable() => {
+                KernelError::unavailable("settings database unavailable").into()
+            }
             PgSettingsError::Db(error) => {
                 tracing::error!(error = %error, "settings transaction failed");
                 KernelError::internal("internal server error").into()
@@ -41,23 +39,9 @@ impl From<PgSettingsError> for ApiError {
     }
 }
 
-const fn kind_code(kind: ErrorKind) -> &'static str {
-    match kind {
-        ErrorKind::Validation => "validation",
-        ErrorKind::NotFound => "not_found",
-        ErrorKind::Forbidden => "forbidden",
-        ErrorKind::Conflict => "conflict",
-        ErrorKind::InvalidTransition => "invalid_transition",
-        ErrorKind::Internal => "internal",
-    }
-}
-
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        let code = self
-            .error
-            .code
-            .unwrap_or_else(|| kind_code(self.error.kind));
+        let code = self.error.code.unwrap_or_else(|| self.error.kind.code());
         let message = if self.error.kind == ErrorKind::Internal {
             "internal server error".to_owned()
         } else {

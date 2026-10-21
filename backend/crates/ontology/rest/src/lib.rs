@@ -3148,6 +3148,10 @@ impl RestError {
 
     fn from_db(error: DbError) -> Self {
         match error {
+            DbError::Unavailable(err) => {
+                tracing::warn!(error = %err, "ontology database unavailable");
+                Self::unavailable("ontology database unavailable")
+            }
             DbError::Sqlx(sqlx::Error::RowNotFound) => {
                 Self::from_kernel(KernelError::not_found("row was not found"))
             }
@@ -3261,19 +3265,13 @@ const fn status_for_error_kind(kind: ErrorKind) -> StatusCode {
         ErrorKind::NotFound => StatusCode::NOT_FOUND,
         ErrorKind::Forbidden => StatusCode::FORBIDDEN,
         ErrorKind::Conflict | ErrorKind::InvalidTransition => StatusCode::CONFLICT,
+        ErrorKind::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
         ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
     }
 }
 
 const fn code_for_error_kind(kind: ErrorKind) -> &'static str {
-    match kind {
-        ErrorKind::Validation => "validation",
-        ErrorKind::NotFound => "not_found",
-        ErrorKind::Forbidden => "forbidden",
-        ErrorKind::Conflict => "conflict",
-        ErrorKind::InvalidTransition => "invalid_transition",
-        ErrorKind::Internal => "internal",
-    }
+    kind.code()
 }
 
 #[cfg(test)]

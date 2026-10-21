@@ -9,6 +9,8 @@ pub enum AppError {
     Config(String),
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
+    #[error("database unavailable: {0}")]
+    DatabaseUnavailable(String),
     #[error("internal error: {0}")]
     Internal(String),
     #[error("i/o error: {0}")]
@@ -26,6 +28,7 @@ pub enum AppError {
 impl From<DbError> for AppError {
     fn from(value: DbError) -> Self {
         match value {
+            DbError::Unavailable(err) => Self::DatabaseUnavailable(err.to_string()),
             DbError::Sqlx(err) => Self::Database(err),
             DbError::Serialize(err) => Self::Internal(err.to_string()),
             DbError::CodeIssuance(err) => Self::Internal(err),

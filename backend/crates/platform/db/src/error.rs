@@ -6,8 +6,11 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum DbError {
+    #[error("database unavailable: {0}")]
+    Unavailable(#[source] sqlx::Error),
+
     #[error("database error: {0}")]
-    Sqlx(#[from] sqlx::Error),
+    Sqlx(sqlx::Error),
 
     #[error("serialization error: {0}")]
     Serialize(#[from] serde_json::Error),
@@ -28,15 +31,32 @@ impl DbError {
         if matches!(err, sqlx::Error::PoolTimedOut) {
             let _ = POOL_TIMED_OUT.try_with(|seen| seen.set(true));
         }
-        Self::Sqlx(err)
+        Self::from(err)
+    }
+
+    #[must_use]
+    pub const fn is_unavailable(&self) -> bool {
+        matches!(self, Self::Unavailable(_))
+    }
+}
+
+impl From<sqlx::Error> for DbError {
+    fn from(error: sqlx::Error) -> Self {
+        if matches!(error, sqlx::Error::PoolTimedOut) {
+            let _ = POOL_TIMED_OUT.try_with(|seen| seen.set(true));
+        }
+        if matches!(error, sqlx::Error::PoolTimedOut | sqlx::Error::Io(_)) {
+            Self::Unavailable(error)
+        } else {
+            Self::Sqlx(error)
+        }
     }
 }
 
 /// Runs `f` and says whether a database helper inside it timed out waiting for
 /// a pooled connection (decisions #28): the app then answers 503 +
 /// `Retry-After` even where a crate mapped the error to an opaque 500.
-/// only the `with_*` helpers mark it; a crate's own `pool.begin()`
-/// still needs sqlx's text in its error to be shed.
+/// The shared `DbError` conversion marks the timeout without inspecting driver text.
 pub async fn watch_pool_timeouts<F: std::future::Future>(f: F) -> (F::Output, bool) {
     POOL_TIMED_OUT
         .scope(Cell::new(false), async move {
@@ -48,11 +68,26 @@ pub async fn watch_pool_timeouts<F: std::future::Future>(f: F) -> (F::Output, bo
 
 #[cfg(test)]
 mod tests {
-    use super::watch_pool_timeouts;
+    use super::{DbError, watch_pool_timeouts};
     use crate::with_org_conn;
     use console_kernel_core::OrgId;
     use sqlx::PgPool;
     use sqlx::postgres::PgPoolOptions;
+
+    #[test]
+    fn pool_and_connection_failures_are_typed_unavailable() {
+        assert!(matches!(
+            DbError::from(sqlx::Error::PoolTimedOut),
+            DbError::Unavailable(_)
+        ));
+        assert!(matches!(
+            DbError::from(sqlx::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::ConnectionReset,
+                "reset"
+            ))),
+            DbError::Unavailable(_)
+        ));
+    }
 
     /// regression (PERF-BE): a helper that timed out on the pool marks the
     /// request, so the app sheds it 503 even when the crate's error is opaque.

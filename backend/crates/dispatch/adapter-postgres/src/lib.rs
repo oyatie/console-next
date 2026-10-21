@@ -47,6 +47,7 @@ impl PgDispatchError {
             {
                 ErrorKind::Conflict
             }
+            Self::Db(DbError::Unavailable(_)) => ErrorKind::Unavailable,
             Self::Db(_) => ErrorKind::Internal,
         }
     }
@@ -54,7 +55,7 @@ impl PgDispatchError {
 
 impl From<sqlx::Error> for PgDispatchError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

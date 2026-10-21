@@ -33,7 +33,7 @@ pub enum PgEquipment3rError {
 }
 impl From<sqlx::Error> for PgEquipment3rError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 impl PgEquipment3rError {

@@ -22,13 +22,8 @@ pub struct HrError {
 
 impl HrError {
     pub fn from_kernel(error: KernelError) -> Self {
-        let status = match error.kind {
-            ErrorKind::Validation => StatusCode::UNPROCESSABLE_ENTITY,
-            ErrorKind::NotFound => StatusCode::NOT_FOUND,
-            ErrorKind::Forbidden => StatusCode::FORBIDDEN,
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => StatusCode::CONFLICT,
-            ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-        };
+        let status =
+            StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
         Self {
             status,
             code: error_code(error.kind),
@@ -170,13 +165,12 @@ impl From<DbError> for HrError {
                 refusals: None,
             };
         }
-        // No pooled connection in time is overload, not a fault (decisions #28):
-        // 503, and the app's redact layer adds Retry-After on this exact text.
-        if matches!(value, DbError::Sqlx(sqlx::Error::PoolTimedOut)) {
+        // Pool and connection failures are overload, not application faults (decisions #28).
+        if matches!(value, DbError::Unavailable(_)) {
             return Self {
                 status: StatusCode::SERVICE_UNAVAILABLE,
                 code: "unavailable",
-                message: sqlx::Error::PoolTimedOut.to_string(),
+                message: "service temporarily unavailable".into(),
                 refusals: None,
             };
         }
@@ -187,7 +181,7 @@ impl From<DbError> for HrError {
 
 impl From<sqlx::Error> for HrError {
     fn from(value: sqlx::Error) -> Self {
-        HrError::from(DbError::Sqlx(value))
+        HrError::from(DbError::from(value))
     }
 }
 
@@ -250,12 +244,5 @@ impl From<employment::EmploymentError> for HrError {
 }
 
 fn error_code(kind: ErrorKind) -> &'static str {
-    match kind {
-        ErrorKind::Validation => "validation",
-        ErrorKind::NotFound => "not_found",
-        ErrorKind::Forbidden => "forbidden",
-        ErrorKind::Conflict => "conflict",
-        ErrorKind::InvalidTransition => "invalid_transition",
-        ErrorKind::Internal => "internal",
-    }
+    kind.code()
 }

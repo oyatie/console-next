@@ -27,6 +27,7 @@ impl PgOrgError {
             {
                 ErrorKind::Validation
             }
+            Self::Db(DbError::Unavailable(_)) => ErrorKind::Unavailable,
             Self::Db(_) => ErrorKind::Internal,
         }
     }
@@ -34,6 +35,6 @@ impl PgOrgError {
 
 impl From<sqlx::Error> for PgOrgError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }

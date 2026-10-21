@@ -56,6 +56,7 @@ impl PgInventoryError {
             {
                 ErrorKind::Conflict
             }
+            Self::Db(DbError::Unavailable(_)) => ErrorKind::Unavailable,
             Self::Db(_) => ErrorKind::Internal,
         }
     }
@@ -63,7 +64,7 @@ impl PgInventoryError {
 
 impl From<sqlx::Error> for PgInventoryError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

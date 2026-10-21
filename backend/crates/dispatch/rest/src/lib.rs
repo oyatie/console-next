@@ -648,11 +648,7 @@ impl RestError {
     }
 
     fn unavailable(message: impl Into<String>) -> Self {
-        Self::new(
-            StatusCode::SERVICE_UNAVAILABLE,
-            "service_unavailable",
-            message,
-        )
+        Self::new(StatusCode::SERVICE_UNAVAILABLE, "unavailable", message)
     }
 
     fn internal(message: impl Into<String>) -> Self {
@@ -671,6 +667,7 @@ impl RestError {
             ErrorKind::Conflict | ErrorKind::InvalidTransition => {
                 Self::new(StatusCode::CONFLICT, "conflict", error.message)
             }
+            ErrorKind::Unavailable => Self::unavailable(error.message),
             ErrorKind::Internal => Self::internal(error.message),
         }
     }

@@ -361,7 +361,7 @@ async fn park_waiting_node(
 
 impl From<sqlx::Error> for PgWorkflowRuntimeError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

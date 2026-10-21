@@ -210,7 +210,7 @@ pub enum LifecycleError {
 
 impl From<sqlx::Error> for LifecycleError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

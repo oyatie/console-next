@@ -49,6 +49,7 @@ impl PgMessengerError {
             {
                 ErrorKind::Conflict
             }
+            Self::Db(DbError::Unavailable(_)) => ErrorKind::Unavailable,
             Self::Db(_) => ErrorKind::Internal,
         }
     }
@@ -56,7 +57,7 @@ impl PgMessengerError {
 
 impl From<sqlx::Error> for PgMessengerError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

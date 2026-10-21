@@ -47,7 +47,7 @@ pub enum PgBenefitCatalogError {
 
 impl From<sqlx::Error> for PgBenefitCatalogError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 
@@ -62,6 +62,7 @@ impl PgBenefitCatalogError {
             {
                 ErrorKind::Conflict
             }
+            Self::Db(DbError::Unavailable(_)) => ErrorKind::Unavailable,
             Self::Db(_) => ErrorKind::Internal,
         }
     }

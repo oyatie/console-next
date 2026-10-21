@@ -265,16 +265,13 @@ impl IntoResponse for HireError {
             ),
             Self::Recruiting(error) => match error {
                 PgRecruitingError::Domain(kernel) => {
-                    let (status, code) = match kernel.kind {
-                        ErrorKind::Validation => (StatusCode::UNPROCESSABLE_ENTITY, "validation"),
-                        ErrorKind::NotFound => (StatusCode::NOT_FOUND, "not_found"),
-                        ErrorKind::Forbidden => (StatusCode::FORBIDDEN, "forbidden"),
-                        ErrorKind::Conflict | ErrorKind::InvalidTransition => {
-                            (StatusCode::CONFLICT, "conflict")
-                        }
-                        ErrorKind::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "internal"),
-                    };
-                    error_response(status, code, &kernel.message)
+                    let mapped = crate::http::error::MappedKernelError::from(kernel);
+                    crate::http::error::error_response(
+                        mapped.status,
+                        mapped.code,
+                        mapped.message,
+                        mapped.errors,
+                    )
                 }
                 PgRecruitingError::AlreadyHired { employee_id } => (
                     StatusCode::CONFLICT,
@@ -296,6 +293,11 @@ impl IntoResponse for HireError {
                     StatusCode::UNPROCESSABLE_ENTITY,
                     "PREFLIGHT_FAILED",
                     "publish preflight failed",
+                ),
+                PgRecruitingError::Db(error) if error.is_unavailable() => error_response(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "unavailable",
+                    "recruiting database unavailable",
                 ),
                 PgRecruitingError::Db(_) => error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,

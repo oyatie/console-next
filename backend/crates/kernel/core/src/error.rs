@@ -15,8 +15,37 @@ pub enum ErrorKind {
     Conflict,
     /// Illegal state-machine transition (→ 409 with transition detail).
     InvalidTransition,
+    /// Service or resource temporarily unavailable (→ 503).
+    Unavailable,
     /// Unexpected internal failure (→ 500; details logged, not returned).
     Internal,
+}
+
+impl ErrorKind {
+    #[must_use]
+    pub const fn status_code(&self) -> u16 {
+        match self {
+            Self::Validation => 422,
+            Self::NotFound => 404,
+            Self::Forbidden => 403,
+            Self::Conflict | Self::InvalidTransition => 409,
+            Self::Unavailable => 503,
+            Self::Internal => 500,
+        }
+    }
+
+    #[must_use]
+    pub const fn code(&self) -> &'static str {
+        match self {
+            Self::Validation => "validation",
+            Self::NotFound => "not_found",
+            Self::Forbidden => "forbidden",
+            Self::Conflict => "conflict",
+            Self::InvalidTransition => "invalid_transition",
+            Self::Unavailable => "unavailable",
+            Self::Internal => "internal",
+        }
+    }
 }
 
 /// A refused response's OpenTelemetry `error.type` (its stable code), carried as a response extension: the HTTP
@@ -88,8 +117,18 @@ impl KernelError {
     }
 
     #[must_use]
+    pub fn unavailable(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::Unavailable, message)
+    }
+
+    #[must_use]
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::Internal, message)
+    }
+
+    #[must_use]
+    pub const fn status_code(&self) -> u16 {
+        self.kind.status_code()
     }
 }
 
@@ -125,5 +164,17 @@ mod tests {
             r#"{"kind":"validation","message":"bad slug","field":"slug"}"#
         );
         assert_eq!(rich.code, Some("slug_invalid"));
+    }
+
+    #[test]
+    fn kind_status_codes_match_http_taxonomy() {
+        assert_eq!(ErrorKind::Validation.status_code(), 422);
+        assert_eq!(ErrorKind::NotFound.status_code(), 404);
+        assert_eq!(ErrorKind::Forbidden.status_code(), 403);
+        assert_eq!(ErrorKind::Conflict.status_code(), 409);
+        assert_eq!(ErrorKind::InvalidTransition.status_code(), 409);
+        assert_eq!(ErrorKind::Unavailable.status_code(), 503);
+        assert_eq!(ErrorKind::Internal.status_code(), 500);
+        assert_eq!(ErrorKind::Unavailable.code(), "unavailable");
     }
 }

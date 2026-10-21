@@ -47,6 +47,11 @@ impl RestError {
             ErrorKind::Conflict | ErrorKind::InvalidTransition => {
                 Self::new(StatusCode::CONFLICT, "conflict", error.message)
             }
+            ErrorKind::Unavailable => Self::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "unavailable",
+                "attendance service unavailable",
+            ),
             ErrorKind::Internal => Self::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal",

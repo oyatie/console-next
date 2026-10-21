@@ -61,3 +61,37 @@ for (const width of [1280, 390]) {
     expect(creates.count()).toBe(1);
   });
 }
+
+test("a named server refusal focuses once and its summary link returns to the field", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
+  const admin = await soloTenant(browser, "reg-server-field", "서버검증");
+  await setupCompany(admin, "서버검증", "본사");
+  await go(admin, "/people/new");
+  await fillRegister(admin, { name: "김검증", hired: kstDate() });
+
+  await admin.route("**/api/v1/employees", (route) => route.request().method() === "POST"
+    ? route.fulfill({
+        status: 422,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: "validation_failed",
+            message: "validation failed",
+            operation_id: "op-server-field",
+            errors: [{ field: "name", code: "name_invalid" }],
+          },
+        }),
+      })
+    : route.continue(), { times: 1 });
+
+  await pressRegister(admin);
+  const sheet = registerSheet(admin);
+  const name = sheet.getByRole("textbox", { name: /^이름/ });
+  const phone = sheet.getByLabel("휴대전화");
+  const summary = sheet.locator('[data-component="error-summary"]');
+  await expect(summary).toBeVisible();
+  await expect(name).toBeFocused();
+  await phone.fill("01012345678");
+  await expect(phone).toBeFocused();
+  await summary.getByRole("link", { name: /이름/ }).click();
+  await expect(name).toBeFocused();
+});
