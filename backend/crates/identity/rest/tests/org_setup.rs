@@ -45,6 +45,7 @@ const TEST_AUDIENCE: &str = "console-api";
 
 #[path = "org_setup/account_link_guard.rs"]
 mod account_link_guard;
+use account_link_guard::seed_employee_link;
 
 struct Harness {
     private_pem: String,
@@ -3928,53 +3929,6 @@ async fn seed_user_active(pool: &PgPool, user_id: UserId, is_active: bool) {
     })
     .await
     .unwrap();
-}
-
-async fn seed_employee_link(
-    pool: &PgPool,
-    user_id: UserId,
-    number: &str,
-    name: &str,
-) -> uuid::Uuid {
-    let employee_id = uuid::Uuid::new_v4();
-    let number = number.to_owned();
-    let name = name.to_owned();
-    let event = AuditEvent::new(
-        None,
-        AuditAction::new("test.seed_employee_link").unwrap(),
-        "employee",
-        employee_id.to_string(),
-        TraceContext::generate(),
-        OffsetDateTime::now_utc(),
-    )
-    .with_org(OrgId::one());
-    with_audit(pool, event, |tx| {
-        Box::pin(async move {
-            sqlx::query(
-                "INSERT INTO employees \
-                 (id, org_id, company, name, employee_number, source_filename, source_sheet, source_row, source_key) \
-                 VALUES ($1, $2, 'Test Company', $3, $4, 'test.csv', 'employees', 1, $5)",
-            )
-            .bind(employee_id)
-            .bind(*OrgId::one().as_uuid())
-            .bind(name)
-            .bind(&number)
-            .bind(format!("test:{number}"))
-            .execute(tx.as_mut())
-            .await
-            .map_err(DbError::Sqlx)?;
-            sqlx::query("UPDATE users SET employee_id = $1 WHERE id = $2")
-                .bind(employee_id)
-                .bind(*user_id.as_uuid())
-                .execute(tx.as_mut())
-                .await
-                .map_err(DbError::Sqlx)?;
-            Ok::<(), DbError>(())
-        })
-    })
-    .await
-    .unwrap();
-    employee_id
 }
 
 async fn seed_policy_role(
