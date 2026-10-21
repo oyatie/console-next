@@ -9927,6 +9927,67 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/hr/certificate-settings",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../orgchange/rest/openapi/paths/api__v1__hr__certificate-settings.get.yaml"
+                ),
+            },
+            Operation {
+                method: "put",
+                body: include_str!(
+                    "../../orgchange/rest/openapi/paths/api__v1__hr__certificate-settings.put.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/hr/certificates",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../orgchange/rest/openapi/paths/api__v1__hr__certificates.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../orgchange/rest/openapi/paths/api__v1__hr__certificates.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/hr/certificates/{id}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__hr__certificates__id.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/hr/certificates/{id}/reissue",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__hr__certificates__id__reissue.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/hr/certificates/{id}/void",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__hr__certificates__id__void.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/hr/exit-cases",
         operations: &[
             Operation {
@@ -10344,6 +10405,34 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../orgchange/rest/openapi/schemas/CancelOrgChangeRequest.yaml"),
     },
     NamedYaml {
+        name: "Certificate",
+        body: include_str!("../../orgchange/rest/openapi/schemas/Certificate.yaml"),
+    },
+    NamedYaml {
+        name: "CertificateActionRequest",
+        body: include_str!("../../orgchange/rest/openapi/schemas/CertificateActionRequest.yaml"),
+    },
+    NamedYaml {
+        name: "CertificatePage",
+        body: include_str!("../../orgchange/rest/openapi/schemas/CertificatePage.yaml"),
+    },
+    NamedYaml {
+        name: "CertificateSettings",
+        body: include_str!("../../orgchange/rest/openapi/schemas/CertificateSettings.yaml"),
+    },
+    NamedYaml {
+        name: "CertificateSettingsRequest",
+        body: include_str!("../../orgchange/rest/openapi/schemas/CertificateSettingsRequest.yaml"),
+    },
+    NamedYaml {
+        name: "CertificateSettingsView",
+        body: include_str!("../../orgchange/rest/openapi/schemas/CertificateSettingsView.yaml"),
+    },
+    NamedYaml {
+        name: "CertificateSnapshot",
+        body: include_str!("../../orgchange/rest/openapi/schemas/CertificateSnapshot.yaml"),
+    },
+    NamedYaml {
         name: "ChangeRequest",
         body: include_str!("../../orgchange/rest/openapi/schemas/ChangeRequest.yaml"),
     },
@@ -10734,6 +10823,10 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!(
             "../../orgchange/rest/openapi/schemas/IssueAppointmentNoticeRequest.yaml"
         ),
+    },
+    NamedYaml {
+        name: "IssueCertificateRequest",
+        body: include_str!("../../orgchange/rest/openapi/schemas/IssueCertificateRequest.yaml"),
     },
     NamedYaml {
         name: "JobTitleKind",

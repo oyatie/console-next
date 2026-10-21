@@ -2006,6 +2006,7 @@ dependencies = [
 name = "console-hr-adapter-postgres"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "console-compliance-adapter-postgres",
  "console-compliance-domain",
  "console-entity-adapter-postgres",
@@ -2091,6 +2092,7 @@ dependencies = [
  "console-settings-adapter-postgres",
  "console-settings-domain",
  "futures",
+ "metrics",
  "p256",
  "serde",
  "serde_json",
@@ -2098,6 +2100,7 @@ dependencies = [
  "time",
  "tokio",
  "tower",
+ "tracing",
  "url",
  "uuid",
  "webauthn-authenticator-rs",

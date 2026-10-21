@@ -6770,6 +6770,114 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/hr/certificate-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * getCertificateSettings
+         * @description Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction. Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are immutable. Errors include a support trace_id.
+         */
+        get: operations["getCertificateSettings"];
+        /**
+         * setCertificateSettings
+         * @description Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction. Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are immutable. Errors include a support trace_id.
+         */
+        put: operations["setCertificateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hr/certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * listCertificates
+         * @description Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction. Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are immutable. Errors include a support trace_id.
+         */
+        get: operations["listCertificates"];
+        put?: never;
+        /**
+         * issueCertificate
+         * @description Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction. Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are immutable. Errors include a support trace_id.
+         */
+        post: operations["issueCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hr/certificates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * getCertificate
+         * @description Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction. Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are immutable. Errors include a support trace_id.
+         */
+        get: operations["getCertificate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hr/certificates/{id}/reissue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * reissueCertificate
+         * @description Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction. Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are immutable. Errors include a support trace_id.
+         */
+        post: operations["reissueCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hr/certificates/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * voidCertificate
+         * @description Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction. Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are immutable. Errors include a support trace_id.
+         */
+        post: operations["voidCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/hr/exit-cases": {
         parameters: {
             query?: never;
@@ -15749,6 +15857,95 @@ export interface components {
         CancelOrgChangeRequest: {
             reason: string;
         };
+        Certificate: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            employee_id: string;
+            certificate_no: string;
+            /** @enum {string} */
+            kind: "EMPLOYMENT" | "CAREER" | "EXIT";
+            items: ("period" | "duty" | "position" | "wage" | "birth")[];
+            purpose: string;
+            snapshot: components["schemas"]["CertificateSnapshot"];
+            /** Format: uuid */
+            replaces_id: string | null;
+            /** Format: uuid */
+            issued_by: string;
+            /** Format: date-time */
+            issued_at: string;
+            /** Format: date-time */
+            voided_at: string | null;
+            void_reason: string | null;
+        };
+        CertificateActionRequest: {
+            reason: string;
+        };
+        CertificatePage: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                employee_id: string;
+                certificate_no: string;
+                name: string;
+                /** @enum {string} */
+                kind: "EMPLOYMENT" | "CAREER" | "EXIT";
+                purpose: string;
+                /** Format: date-time */
+                issued_at: string;
+                /** Format: date-time */
+                voided_at: string | null;
+                /** Format: uuid */
+                replaces_id: string | null;
+            }[];
+            next_cursor: string | null;
+        };
+        CertificateSettings: {
+            prefix: string;
+            width: number;
+            seal_text: string;
+            version: number;
+            /** @description Optional PNG data URL; validated bytes, size and dimensions. Clearing settings does not change previously issued snapshots. */
+            seal_png: string | null;
+            /** Format: uuid */
+            legal_entity_id: string;
+        };
+        CertificateSettingsRequest: {
+            prefix: string;
+            width: number;
+            seal_text: string;
+            expected_version: number;
+            /** @description Optional PNG data URL; validated bytes, size and dimensions. Clearing settings does not change previously issued snapshots. */
+            seal_png?: string | null;
+            /** Format: uuid */
+            legal_entity_id: string;
+        };
+        CertificateSettingsView: {
+            settings: components["schemas"]["CertificateSettings"][];
+            seal_max_bytes: number;
+        };
+        CertificateSnapshot: {
+            name: string;
+            issuer: string;
+            seal_text: string;
+            period?: {
+                /** Format: date */
+                from: string;
+                /** Format: date */
+                to: string;
+            };
+            duty?: string;
+            position?: string;
+            /** Format: date */
+            birth?: string;
+            wage?: {
+                won: string;
+                unit: string;
+            };
+            /** @description Optional PNG data URL; validated bytes, size and dimensions. Clearing settings does not change previously issued snapshots. */
+            seal_png?: string | null;
+        };
         /** @description BW-17 change request (변경 요청) to HR. The requester never decides. */
         ChangeRequest: {
             id: components["schemas"]["Uuid"];
@@ -20855,6 +21052,14 @@ export interface components {
             event_ids?: components["schemas"]["Uuid"][];
             batch_id?: components["schemas"]["Uuid"];
             note?: string | null;
+        };
+        IssueCertificateRequest: {
+            /** Format: uuid */
+            employee_id: string;
+            /** @enum {string} */
+            kind: "EMPLOYMENT" | "CAREER" | "EXIT";
+            items: ("period" | "duty" | "position" | "wage" | "birth")[];
+            purpose: string;
         };
         /**
          * @description MR-25 catalog kind - 직급 GRADE, 직위 TITLE, 직책 POSITION, 직무 JOB, 직군 JOB_FAMILY.
@@ -40962,6 +41167,381 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    getCertificateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Certificate operation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateSettingsView"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description not_found; absent and foreign objects are concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_settings_required, certificate_retention_expired, certificate_ineligible, certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting intent */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_invalid or validation; no business side effect */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    setCertificateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CertificateSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Certificate operation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateSettings"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description not_found; absent and foreign objects are concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_settings_required, certificate_retention_expired, certificate_ineligible, certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting intent */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_invalid or validation; no business side effect */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    listCertificates: {
+        parameters: {
+            query?: {
+                employee_id?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Certificate operation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificatePage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description not_found; absent and foreign objects are concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_settings_required, certificate_retention_expired, certificate_ineligible, certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting intent */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_invalid or validation; no business side effect */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    issueCertificate: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueCertificateRequest"];
+            };
+        };
+        responses: {
+            /** @description Certificate operation result */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificate"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description not_found; absent and foreign objects are concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_settings_required, certificate_retention_expired, certificate_ineligible, certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting intent */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_invalid or validation; no business side effect */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    getCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Certificate operation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificate"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description not_found; absent and foreign objects are concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_settings_required, certificate_retention_expired, certificate_ineligible, certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting intent */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_invalid or validation; no business side effect */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    reissueCertificate: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CertificateActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Certificate operation result */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificate"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description not_found; absent and foreign objects are concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_settings_required, certificate_retention_expired, certificate_ineligible, certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting intent */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_invalid or validation; no business side effect */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    voidCertificate: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CertificateActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Certificate operation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificate"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description not_found; absent and foreign objects are concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_settings_required, certificate_retention_expired, certificate_ineligible, certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting intent */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description certificate_invalid or validation; no business side effect */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     listEmployeeExitCases: {

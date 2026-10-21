@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+  - settings
+  - seal_max_bytes
+properties:
+  settings:
+    type: array
+    items:
+      $ref: '#/components/schemas/CertificateSettings'
+  seal_max_bytes:
+    type: integer
+    minimum: 1

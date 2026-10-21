@@ -6,6 +6,8 @@ export const outcomeQuery = (key: string) => get("/api/v1/requests/{key}", {para
 export const recordHref = (kind: string, id: string): string | undefined => {
   const value = encodeURIComponent(id);
   switch (kind) {
+    case "hr_certificate": return `/people/certificates/${value}`;
+    case "hr_certificate_settings": return "/people/certificates";
     case "employee": return `/people/${value}`;
     case "statutory": return `/statutory?event=${value}`;
     case "legal_entity": return `/org/entities/${value}?tab=history#history`;

@@ -30,6 +30,20 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
                 ),
             )),
         )
+        .merge(
+            console_platform_request_context::with_request_context(
+                console_hr_rest::certificates::router(console_hr_adapter_postgres::HrService::new(
+                    pool.clone(),
+                )),
+                state.jwt_verifier.clone(),
+                pool.clone(),
+            )
+            .layer(axum::Extension(
+                console_platform_request_context::record_access::outcome::Reader(
+                    crate::requests::read_certificate_outcome,
+                ),
+            )),
+        )
         // EMP-RECORD 인사카드 sections (MR-31/33/35), behind the request context.
         .merge(console_platform_request_context::with_request_context(
             console_hr_rest::record::router(console_hr_adapter_postgres::HrService::new(

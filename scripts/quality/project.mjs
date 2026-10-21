@@ -17,10 +17,12 @@ export function sourceFiles(root, dirs) {
     }
   };
   dirs.forEach(walk);
+  if (!files.length) throw new Error("quality: no source files found");
   return files;
 }
 
 export function project(root, files) {
+  if (!files.length) throw new Error("quality: no source files supplied");
   const config = ts.readConfigFile(path.join(root, "tsconfig.json"), ts.sys.readFile);
   if (config.error) throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, "\n"));
   const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root);

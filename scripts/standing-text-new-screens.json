@@ -38,5 +38,21 @@
     "LEGAL": 0,
     "RECEIPT": 1,
     "EXPLANATION": 0
+  },
+  "apps/web/src/features/people/ui/certificate-page.tsx#CertificatePage": {
+    "FACT": 18,
+    "REFUSAL": 15,
+    "EMPTY": 0,
+    "LEGAL": 1,
+    "RECEIPT": 4,
+    "EXPLANATION": 0
+  },
+  "apps/web/src/features/people/ui/certificates-page.tsx#CertificatesPage": {
+    "FACT": 31,
+    "REFUSAL": 19,
+    "EMPTY": 3,
+    "LEGAL": 0,
+    "RECEIPT": 2,
+    "EXPLANATION": 0
   }
 }

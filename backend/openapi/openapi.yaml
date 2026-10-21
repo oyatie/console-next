@@ -13544,6 +13544,400 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/hr/certificate-settings:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - employees
+      operationId: getCertificateSettings
+      summary: getCertificateSettings
+      description: >-
+        Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction.
+        Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are
+        immutable. Errors include a support trace_id.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Certificate operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CertificateSettingsView'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: not_found; absent and foreign objects are concealed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: >-
+            certificate_settings_required, certificate_retention_expired, certificate_ineligible,
+            certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting
+            intent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: certificate_invalid or validation; no business side effect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+    put:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - employees
+      operationId: setCertificateSettings
+      summary: setCertificateSettings
+      description: >-
+        Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction.
+        Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are
+        immutable. Errors include a support trace_id.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Certificate operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CertificateSettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: not_found; absent and foreign objects are concealed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: >-
+            certificate_settings_required, certificate_retention_expired, certificate_ineligible,
+            certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting
+            intent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: certificate_invalid or validation; no business side effect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CertificateSettingsRequest'
+  /api/v1/hr/certificates:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - employees
+      operationId: listCertificates
+      summary: listCertificates
+      description: >-
+        Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction.
+        Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are
+        immutable. Errors include a support trace_id.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Certificate operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CertificatePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: not_found; absent and foreign objects are concealed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: >-
+            certificate_settings_required, certificate_retention_expired, certificate_ineligible,
+            certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting
+            intent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: certificate_invalid or validation; no business side effect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+      parameters:
+        - name: employee_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: cursor
+          in: query
+          schema:
+            type: string
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - employees
+      operationId: issueCertificate
+      summary: issueCertificate
+      description: >-
+        Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction.
+        Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are
+        immutable. Errors include a support trace_id.
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Certificate operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: not_found; absent and foreign objects are concealed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: >-
+            certificate_settings_required, certificate_retention_expired, certificate_ineligible,
+            certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting
+            intent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: certificate_invalid or validation; no business side effect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCertificateRequest'
+  /api/v1/hr/certificates/{id}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - employees
+      operationId: getCertificate
+      summary: getCertificate
+      description: >-
+        Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction.
+        Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are
+        immutable. Errors include a support trace_id.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Certificate operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: not_found; absent and foreign objects are concealed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: >-
+            certificate_settings_required, certificate_retention_expired, certificate_ineligible,
+            certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting
+            intent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: certificate_invalid or validation; no business side effect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+  /api/v1/hr/certificates/{id}/reissue:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - employees
+      operationId: reissueCertificate
+      summary: reissueCertificate
+      description: >-
+        Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction.
+        Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are
+        immutable. Errors include a support trace_id.
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Certificate operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: not_found; absent and foreign objects are concealed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: >-
+            certificate_settings_required, certificate_retention_expired, certificate_ineligible,
+            certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting
+            intent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: certificate_invalid or validation; no business side effect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CertificateActionRequest'
+  /api/v1/hr/certificates/{id}/void:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - employees
+      operationId: voidCertificate
+      summary: voidCertificate
+      description: >-
+        Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction.
+        Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are
+        immutable. Errors include a support trace_id.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Certificate operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: not_found; absent and foreign objects are concealed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: >-
+            certificate_settings_required, certificate_retention_expired, certificate_ineligible,
+            certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting
+            intent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: certificate_invalid or validation; no business side effect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CertificateActionRequest'
   /api/v1/hr/exit-cases:
     get:
       tags:
@@ -32832,6 +33226,262 @@ components:
           type: string
           minLength: 1
           maxLength: 4000
+    Certificate:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - employee_id
+        - certificate_no
+        - kind
+        - items
+        - purpose
+        - snapshot
+        - replaces_id
+        - issued_by
+        - issued_at
+        - voided_at
+        - void_reason
+      properties:
+        id:
+          type: string
+          format: uuid
+        employee_id:
+          type: string
+          format: uuid
+        certificate_no:
+          type: string
+        kind:
+          type: string
+          enum:
+            - EMPLOYMENT
+            - CAREER
+            - EXIT
+        items:
+          type: array
+          items:
+            type: string
+            enum:
+              - period
+              - duty
+              - position
+              - wage
+              - birth
+        purpose:
+          type: string
+        snapshot:
+          $ref: '#/components/schemas/CertificateSnapshot'
+        replaces_id:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        issued_by:
+          type: string
+          format: uuid
+        issued_at:
+          type: string
+          format: date-time
+        voided_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        void_reason:
+          type:
+            - string
+            - 'null'
+    CertificateActionRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    CertificatePage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+        - items
+        - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, employee_id, certificate_no, name, kind, purpose, issued_at, voided_at, replaces_id]
+            properties:
+              id:
+                type: string
+                format: uuid
+              employee_id:
+                type: string
+                format: uuid
+              certificate_no:
+                type: string
+              name:
+                type: string
+              kind:
+                type: string
+                enum: [EMPLOYMENT, CAREER, EXIT]
+              purpose:
+                type: string
+              issued_at:
+                type: string
+                format: date-time
+              voided_at:
+                type: [string, 'null']
+                format: date-time
+              replaces_id:
+                type: [string, 'null']
+                format: uuid
+        next_cursor:
+          type:
+            - string
+            - 'null'
+    CertificateSettings:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+        - prefix
+        - width
+        - seal_text
+        - version
+        - seal_png
+        - legal_entity_id
+      properties:
+        prefix:
+          type: string
+        width:
+          type: integer
+          minimum: 1
+          maximum: 12
+        seal_text:
+          type: string
+        version:
+          type: integer
+        seal_png:
+          type:
+            - string
+            - 'null'
+          description: >-
+            Optional PNG data URL; validated bytes, size and dimensions. Clearing settings does not change
+            previously issued snapshots.
+        legal_entity_id:
+          type: string
+          format: uuid
+    CertificateSettingsRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+        - prefix
+        - width
+        - seal_text
+        - expected_version
+        - legal_entity_id
+      properties:
+        prefix:
+          type: string
+          minLength: 1
+          maxLength: 40
+        width:
+          type: integer
+          minimum: 1
+          maximum: 12
+        seal_text:
+          type: string
+          minLength: 1
+          maxLength: 200
+        expected_version:
+          type: integer
+          minimum: 0
+        seal_png:
+          type:
+            - string
+            - 'null'
+          description: >-
+            Optional PNG data URL; validated bytes, size and dimensions. Clearing settings does not change
+            previously issued snapshots.
+        legal_entity_id:
+          type: string
+          format: uuid
+    CertificateSettingsView:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+        - settings
+        - seal_max_bytes
+      properties:
+        settings:
+          type: array
+          items:
+            $ref: '#/components/schemas/CertificateSettings'
+        seal_max_bytes:
+          type: integer
+          minimum: 1
+    CertificateSnapshot:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - issuer
+        - seal_text
+      properties:
+        name:
+          type: string
+        issuer:
+          type: string
+        seal_text:
+          type: string
+        period:
+          type: object
+          additionalProperties: false
+          required:
+            - from
+            - to
+          properties:
+            from:
+              type: string
+              format: date
+            to:
+              type: string
+              format: date
+        duty:
+          type: string
+        position:
+          type: string
+        birth:
+          type: string
+          format: date
+        wage:
+          type: object
+          additionalProperties: false
+          required:
+            - won
+            - unit
+          properties:
+            won:
+              type: string
+            unit:
+              type: string
+        seal_png:
+          type:
+            - string
+            - 'null'
+          description: >-
+            Optional PNG data URL; validated bytes, size and dimensions. Clearing settings does not change
+            previously issued snapshots.
     ChangeRequest:
       type: object
       description: BW-17 change request (변경 요청) to HR. The requester never decides.
@@ -42454,6 +43104,42 @@ components:
         note:
           type: [string, 'null']
           maxLength: 1000
+    IssueCertificateRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+        - employee_id
+        - kind
+        - items
+        - purpose
+      properties:
+        employee_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+            - EMPLOYMENT
+            - CAREER
+            - EXIT
+        items:
+          type: array
+          minItems: 1
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - period
+              - duty
+              - position
+              - wage
+              - birth
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 200
     JobTitleKind:
       type: string
       enum: [GRADE, TITLE, POSITION, JOB, JOB_FAMILY]

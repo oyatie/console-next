@@ -8,6 +8,8 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+tracing = { workspace = true }
+metrics = { workspace = true }
 console-compliance-adapter-postgres = { workspace = true }
 axum = { workspace = true }
 console-hr-adapter-postgres = { workspace = true }

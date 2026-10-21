@@ -16,6 +16,8 @@ const noticeNew = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/people/ui/notice-new-page")), "NoticeNewPage"),
 });
 const notice = createRoute({ getParentRoute: () => app, path: "/people/notices/$noticeId", component: lazyRouteComponent(screen(() => import("../features/people/ui/notice-page")), "NoticePage") });
+const certificates = createRoute({ getParentRoute: () => app, path: "/people/certificates", validateSearch: (s: Record<string, unknown>): { employee?: string } => ({ employee: str(s.employee) }), component: lazyRouteComponent(screen(() => import("../features/people/ui/certificates-page")), "CertificatesPage") });
+const certificate = createRoute({ getParentRoute: () => app, path: "/people/certificates/$certificateId", remountDeps: ({ params }) => params.certificateId, component: lazyRouteComponent(screen(() => import("../features/people/ui/certificate-page")), "CertificatePage") });
 const renew = createRoute({ getParentRoute: () => app, path: "/people/renew", component: lazyRouteComponent(screen(() => import("../features/people/ui/renew-page")), "RenewPage") });
 const grid = createRoute({ getParentRoute: () => app, path: "/people/grid", component: lazyRouteComponent(screen(() => import("../features/people/ui/grid-page")), "GridPage") });
 const CARD_TABS = ["events", "docs", "ledger", "access"] as const;
@@ -93,4 +95,4 @@ const people = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/people/ui/people-route")), "PeopleRoute"),
 });
 
-export const peopleRoutes = [people.addChildren([registerEmployee]), peopleImport, unplaced, bulk, run, renew, notices, noticeNew, notice, grid, periodLocks, exitCases, exitCase, changeRequests, jobTitles, employee];
+export const peopleRoutes = [people.addChildren([registerEmployee]), peopleImport, unplaced, bulk, run, renew, notices, noticeNew, notice, certificates, certificate, grid, periodLocks, exitCases, exitCase, changeRequests, jobTitles, employee];

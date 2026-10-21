@@ -68,7 +68,7 @@ ci/gates/migration-safety/tests/gate_detects_violation.rs	372
 ci/gates/personal-data-classification/src/lib.rs	1255
 ci/gates/personal-data-classification/tests/gate_detects_violation.rs	1364
 ci/gates/pii-no-logs/src/lib.rs	399
-ci/gates/tenant-isolation/src/lib.rs	798
+ci/gates/tenant-isolation/src/lib.rs	779
 ci/gates/writer-ownership/src/lib.rs	924
 ci/gates/writer-ownership/tests/census_executes_against_postgres.rs	1804
 ci/gates/writer-ownership/tests/gate_detects_violation.rs	2266
