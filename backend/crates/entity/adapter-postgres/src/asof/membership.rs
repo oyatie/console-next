@@ -68,7 +68,8 @@ pub(crate) async fn load(
          LEFT JOIN assignments a ON a.employee_id=e.id \
          WHERE e.created_at <= COALESCE($2::timestamptz,now()) \
            AND (NOT $3 OR e.employment_status NOT IN ('PRE_HIRE','EXITED','VOIDED')) \
-           AND (r.valid_from IS NOT NULL OR l.id IS NOT NULL OR first_event.id IS NOT NULL OR entity_try_iso_date(e.hire_date) IS NULL OR entity_try_iso_date(e.hire_date) <= $1) \
+           AND (r.valid_from IS NOT NULL OR first_event.event_type IN ('ONBOARD','REHIRE') AND entity_try_iso_date(first_event.effective_date) <= $1 \
+               OR entity_try_iso_date(e.hire_date) IS NULL OR entity_try_iso_date(e.hire_date) <= $1) \
            AND CASE WHEN l.id IS NOT NULL THEN l.to_status NOT IN ('EXITED','VOIDED') \
                WHEN r.attributes ? 'employment_status' THEN r.attributes->>'employment_status' NOT IN ('EXITED','VOIDED') \
                WHEN first_event.id IS NOT NULL THEN first_event.from_status NOT IN ('EXITED','VOIDED') \

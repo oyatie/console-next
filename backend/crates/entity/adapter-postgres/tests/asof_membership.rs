@@ -267,6 +267,16 @@ async fn rehire_keeps_original_employment_in_past_and_known_counts(owner: PgPool
         counts(&read(&w, &w.actor, past, Some(cutoff)).await, &w),
         [1, 0]
     );
+    for (date, expected) in [
+        (w.d - Duration::days(101), [0, 0]),
+        (w.d - Duration::days(100), [1, 0]),
+        (w.d - Duration::days(11), [0, 0]),
+        (w.d - Duration::days(10), [0, 1]),
+    ] {
+        let tree = read(&w, &w.actor, date, None).await;
+        assert_eq!(counts(&tree, &w), expected);
+        assert_eq!(tree.entity_unknown_headcount, Some(0));
+    }
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
