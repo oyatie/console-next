@@ -1,19 +1,20 @@
 import { session } from "@console/api";
-import { t } from "@console/i18n";
-import { fmtDate, fmtDateTime, fmtMonth } from "@console/i18n/format";
-import { domainText, periodText } from "../../reference/periods/present";
+import { i18n, t } from "@console/i18n";
+import { fmtDate, fmtDateTimeShort } from "@console/i18n/format";
+import { dayFormat, domainText, periodText } from "../../reference/periods/present";
 import { windowDays, type Window } from "./domain/period";
 import type { PeriodLock } from "./api";
 
 export { domainText, monthText, periodText } from "../../reference/periods/present";
 
-/** A month label with its year. */
-export const monthShort = (d: string) => fmtMonth(d, "short");
-/** A full business date. */
-export const dayText = (d: string) => fmtDate(d);
+/** A `YYYY-MM` month by its short name, e.g. "Sep" in English. */
+export const monthShort = dayFormat({ month: "short" });
+/** A `YYYY-MM-DD` date as month and day, e.g. "September 1" in English. */
+export const dayText = dayFormat({ month: "long", day: "numeric" });
 
 /** An instant as a long date and 24-hour time in Seoul, in the UI language (the Korean year, month and day words). */
-export const instantText = (at: string) => fmtDateTime(at);
+export const instantText = (at: string) =>
+  new Intl.DateTimeFormat(i18n.locale === "ko" ? "ko-KR" : "en-US", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(at));
 
 /** Who locked: the account's name; a lock with no locker is the automatic re-lock, one with no name a removed account. */
 const lockerText = (l: PeriodLock) => l.lockedByName ?? t(l.lockedBy ? "periodLocks.closed.removed" : "periodLocks.closed.system");
@@ -50,4 +51,4 @@ export const rangeText = (w: Window) => t("periodLocks.derived", { from: fmtDate
  * names for other holders once the lock list carries `locked_by_name` (BW-15).
  */
 export const lockedText = (l: PeriodLock) =>
-  l.lockedBy && l.lockedBy === session.claims?.sub && session.claims.name ? t("periodLocks.by", { name: session.claims.name, at: fmtDateTime(l.lockedAt) }) : fmtDateTime(l.lockedAt);
+  l.lockedBy && l.lockedBy === session.claims?.sub && session.claims.name ? t("periodLocks.by", { name: session.claims.name, at: fmtDateTimeShort(l.lockedAt) }) : fmtDateTimeShort(l.lockedAt);

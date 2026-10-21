@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { go, koDate, kstDate } from "./flows";
+import { go, kstDate } from "./flows";
 import { chooseWorkbook, payPeriod } from "./helpers/import";
 import { many, plain, workbook } from "./helpers/import-layouts";
 import { addDepts, openUnit, sheet } from "./helpers/structure";
@@ -47,7 +47,7 @@ test("dated chart and comparison retain 2,000 imported people through a projecte
   await team.getByRole("button", { name: "이름 변경" }).click();
   const rename = sheet(admin, "대량팀 이름 변경");
   await rename.getByRole("textbox", { name: /^새 이름/ }).fill("대량미래팀");
-  await rename.getByRole("textbox", { name: /^시행일/ }).fill(due);
+  await rename.getByLabel(/^시행일/).and(rename.locator('input[type="date"]')).fill(due);
   await rename.getByRole("textbox", { name: /^사유/ }).fill("전체 구성원을 유지하는 이름 변경");
   const submitted = admin.waitForResponse((r) => r.request().method() === "POST"
     && /^\/api\/v1\/org-changes\/[^/]+\/submit$/.test(new URL(r.url()).pathname));
@@ -58,14 +58,13 @@ test("dated chart and comparison retain 2,000 imported people through a projecte
   await expect(control.getByRole("group", { name: "변경일" }).locator(`[data-change-date="${due}"]`)).toBeVisible();
   await control.getByRole("button", { name: "다음 변경일" }).focus();
   await admin.keyboard.press("Enter");
-  await expect(control.getByLabel(/^기준일/)).toHaveValue(koDate(due));
+  await expect(control.getByLabel(/^기준일/)).toHaveValue(due);
   await findBox(admin, "대량미래팀");
   await expect(box(admin, "대량미래팀")).toHaveAttribute("aria-label", /2,?000명/);
   await expect(box(admin, "대량미래팀")).toHaveAttribute("data-scheduled", "true");
   const compare = admin.getByRole("region", { name: "기준일 비교", exact: true });
   await compare.getByRole("button", { name: "기준일 비교", exact: true }).click();
   await compare.getByLabel(/^날짜 A/).fill(kstDate());
-  await compare.getByLabel(/^날짜 A/).blur();
   // Hold the dated read: its records must not steal chart height or wrap the scheduled-change link on arrival.
   const target = (url: URL) => url.pathname === "/api/v1/org-structure/diff"
     && url.searchParams.get("a") === kstDate() && url.searchParams.get("b") === due;
@@ -79,7 +78,6 @@ test("dated chart and comparison retain 2,000 imported people through a projecte
   }));
   try {
     await compare.getByLabel(/^날짜 B/).fill(due);
-    await compare.getByLabel(/^날짜 B/).blur();
     await requested;
     await expect(admin.getByRole("tree", { name: /조직도$/ })).toHaveCount(0);
     const loading = await geometry();

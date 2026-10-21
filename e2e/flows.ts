@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { expect, test, type Browser, type BrowserContext, type BrowserContextOptions, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import type { clickCounter } from "./clicks";
 import { expectAccessible } from "./a11y";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
@@ -18,14 +18,13 @@ const contextOwners = new Map<BrowserContext, string>();
  * configured trusted proxy (CONSOLE_TRUSTED_PROXY_*: Vite, or the browser itself on localhost). Every sign-in
  * then has its own per-IP rate-limit bucket, as distinct users do, instead of all tests sharing 127.0.0.1.
  */
-export async function newContext(browser: Browser, contextOptions: Pick<BrowserContextOptions, "locale"> = {}) {
+export async function newContext(browser: Browser) {
   const owner = test.info().testId;
   // Finished tests must not keep their sessions and event streams alive; the worker's vendor is reused.
   for (const [context, prior] of contextOwners) {
     if (prior !== owner && context !== vendor?.context()) await context.close();
   }
   const context = await browser.newContext({
-    ...contextOptions,
     extraHTTPHeaders: { "x-forwarded-for": `10.${test.info().parallelIndex}.${process.pid % 256}.${(ipSeq = (ipSeq % 254) + 1)}` },
   });
   contextOwners.set(context, owner);
@@ -43,9 +42,9 @@ export const tenantSlugField = (scope: Page | Locator) => scope.getByLabel(/(?:�
 // (onboarding, recovery) pass true; everywhere else they are set-up steps.
 
 /** One-time code → passkey enrollment, as a first-time user does it. */
-export async function firstSignIn(browser: Browser, code: string, keep?: string, audit = false, contextOptions: Pick<BrowserContextOptions, "locale"> = {}): Promise<Page> {
+export async function firstSignIn(browser: Browser, code: string, keep?: string, audit = false): Promise<Page> {
   // Own context (not browser.newPage()): axe opens a helper page in the same context.
-  const page = await (await newContext(browser, contextOptions)).newPage();
+  const page = await (await newContext(browser)).newPage();
   const authn = await virtualAuthenticator(page);
   await page.goto("/login");
   await expect(page.getByLabel("일회용 코드")).toBeVisible();

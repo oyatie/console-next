@@ -24,7 +24,7 @@ export function DeptAddGovernedSheet({ place, onClose }: { place: Place; onClose
   const [name, setName] = useState("");
   const gov = useGovern();
   const taken = fold(name) !== "" && depts(parent).some((c) => fold(c.name) === fold(name));
-  const submit = useGovernSubmit(() => ({ kind: "NEW", target: { kind: "ORG_UNIT", ref: unitIdOf(parent), label: fold(name) }, title: t("orgChange.title.create", { name: fold(name) }), proposal: [createGovOp(parent, name)], select: parent.id }), gov);
+  const submit = useGovernSubmit(() => ({ kind: "NEW", target: { kind: "ORG_UNIT", ref: unitIdOf(parent), label: fold(name) }, title: t("orgChange.title.create", { name: fold(name) }), proposal: [createGovOp(parent, name)] }), gov);
   const missing = [!fold(name) && t("orgUnit.gov.missingName"), taken && t("orgUnit.add.taken", { parent: parent.name }), ...gov.missing].filter((x): x is string => Boolean(x));
   const reasonId = "dept-add-gov-reason";
   return (

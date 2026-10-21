@@ -4,7 +4,7 @@ import { go, kstDate } from "../flows";
 import { apiOf, bearerOf } from "../helpers/api";
 import { peopleWorld, pickBulk, registerAt } from "../helpers/people-fixes";
 import { hrAct } from "../record";
-import { fillDate, reasonBox, sheet, todayPreset } from "../sheet";
+import { fillDate, reasonBox, sheet } from "../sheet";
 
 test("solo: identically named workplaces keep their entity IDs; typed warnings survive receipts and reloads", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   test.setTimeout(300_000);
@@ -43,7 +43,7 @@ test("solo: identically named workplaces keep their entity IDs; typed warnings s
   const where = admin.getByRole("listbox", { name: "어디로" });
   await expect(where).not.toContainText("첫법인인사팀");
   await where.getByRole("option", { name: /^본사/ }).click();
-  await todayPreset(admin).click();
+  await admin.getByRole("button", { name: /^오늘 \d{2}-\d{2}/ }).click();
   await admin.getByRole("radiogroup", { name: /^사유/ }).getByRole("radio").first().locator("xpath=ancestor::label[1]").click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("본사로 복귀");
   await admin.getByRole("button", { name: /^1명 전보 · 오늘 반영/ }).click();

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { fixedTermQuery } from "../api";
 import { Button } from "../../../ui/button/button";
-import { DateField } from "../../../ui/date/date-field";
+import { DateChips } from "../../../ui/date/date-chips";
 import { endPresets, periodPresets } from "../domain/presets";
 import { fmtDayShort } from "../present";
 import s from "./lifecycle.module.css";
@@ -12,11 +12,10 @@ import s from "./lifecycle.module.css";
  * in one press (shown resolved); single-date suggestions stay for a custom period. Nothing is chosen
  * until pressed.
  */
-export function RenewalFields({ employeeId, contractEnd, start, today, bounds, end, onEnd, onPeriod, error, locked }: {
+export function RenewalFields({ employeeId, contractEnd, start, bounds, end, onEnd, onPeriod, error, locked }: {
   employeeId: string;
   contractEnd: string | null | undefined;
   start: string;
-  today: string;
   bounds: { min?: string; max?: string };
   end: string;
   onEnd: (date: string) => void;
@@ -44,7 +43,7 @@ export function RenewalFields({ employeeId, contractEnd, start, today, bounds, e
           ))}
         </div>
       )}
-      <DateField label={t("lifecycle.renewal.end")} required today={today} presets={presets} value={end} onChange={onEnd} min={start || undefined} error={error} showErrors={error != null} />
+      <DateChips label={t("lifecycle.renewal.end")} required presets={presets} value={end} onChange={onEnd} min={start || undefined} error={error} showErrors={error != null} />
         </>
       )}
     </>

@@ -2,7 +2,6 @@
   "$comment": "EN-5: external npm packages any package.json may name. Adding one needs owner approval; remove entries when a dependency is dropped. Workspace packages (@console/*) are always allowed.",
   "allow": [
     "@axe-core/playwright",
-    "@internationalized/date",
     "@playwright/test",
     "@tanstack/react-query",
     "@tanstack/react-router",

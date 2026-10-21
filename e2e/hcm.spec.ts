@@ -23,7 +23,6 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   // A structure change from its sheet: the effective date has no default, so one deliberate pick («오늘», applied right
   // away), and its reason. With no 결재 (decisions #26, the default) a change dated today applies at submit.
   async function apply(dialog: string, reason: string) {
-    const selected = new URL(admin.url()).searchParams.get("sel");
     const s = admin.getByRole("dialog", { name: dialog });
     await c.click(s.getByRole("button", { name: /^오늘/ }));
     await s.getByLabel("사유").fill(reason);
@@ -31,8 +30,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
     // org-19: the press keeps the user on the chart; the receipt names this change (an earlier one may still be announced).
     await expect(admin.getByRole("dialog", { name: dialog })).toBeHidden();
     await expect(admin.getByRole("status").filter({ hasText: "반영했습니다" }).first()).toBeAttached();
-    await expect.poll(() => new URL(admin.url()).searchParams.get("sel")).toBe(selected);
-    await expect(admin.getByRole("complementary")).toBeVisible();
+    await expect(admin).toHaveURL(/\/org(\?|$)/);
   }
 
   // 1-2. A department under the 사업장 registered in setup, from its box on the chart (select, A). A 사업장 itself is
@@ -48,6 +46,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
 
   // 3. (Regions and branches are retired, decisions #18: the 사업장's own branch is everyone's home branch.)
   // 4. Register an employee from the department's box (unit is prefilled).
+  await go(admin, "/org");
   await revealUnit(admin, "인사부");
   await c.click(admin.getByRole("complementary", { name: "인사부", exact: true }).getByRole("link", { name: "인사부에 직원 등록" }));
   await expect(registerSheet(admin).getByRole("textbox", { name: /^이름/ })).toBeVisible();

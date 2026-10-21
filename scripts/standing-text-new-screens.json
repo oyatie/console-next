@@ -54,13 +54,5 @@
     "LEGAL": 0,
     "RECEIPT": 2,
     "EXPLANATION": 0
-  },
-  "apps/web/src/features/people/ui/exit-notice.tsx#ExitGuardFields": {
-    "FACT": 10,
-    "REFUSAL": 8,
-    "EMPTY": 0,
-    "LEGAL": 12,
-    "RECEIPT": 0,
-    "EXPLANATION": 0
   }
 }

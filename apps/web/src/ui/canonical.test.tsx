@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { beforeAll, expect, test } from "vitest";
 import { renderToStaticMarkup as html } from "react-dom/server";
-import { loadCatalog, t } from "@console/i18n";
+import { loadCatalog } from "@console/i18n";
 import { ActionBar } from "./action-bar/action-bar";
 import { buttonClass } from "./button/button-class";
 import { Button, IconButton } from "./button/button";
@@ -17,43 +17,9 @@ import { Banner } from "./banner/banner";
 import { ItemList } from "./item-list/item-list";
 import { Legend } from "./legend/legend";
 import { Skeleton } from "./skeleton/skeleton";
-import { DateField, DateInput } from "./date/date-field";
 
 beforeAll(() => loadCatalog("ko"));
 const [x, y, z] = ["x", "y", "z"];
-
-test("date consequences and preset refusal reasons stay in one visible field hint", () => {
-  const markup = html(<DateField label={x} required value="2026-10-20" today="2026-10-20" minFrom={{ date: "2026-10-01", reason: y }} max="2026-10-31" basis="basis" echo={z} onChange={() => undefined} presets={[{ label: "earlier", date: "2026-09-30" }]} />);
-  const hint = markup.match(/<p data-hint="field" id="([^"]+)"[^>]*>([\s\S]*?)<\/p>/)!;
-  expect(hint).not.toBeNull();
-  expect(hint[2]).toContain("basis");
-  expect(hint[2]).toContain(y);
-  expect(hint[2]).toContain(z);
-  expect(hint[0]).not.toContain("hidden");
-  expect(markup.match(/data-hint="field"/g)).toHaveLength(1);
-  expect(markup.match(/<input\b[^>]*>/)![0]).toContain(`aria-describedby="${hint[1]}"`);
-  expect(markup).toContain(`aria-disabled="true" aria-describedby="${hint[1]}"`);
-  const blocked = html(<DateField label={x} required value="" today="2026-10-20" disabledDates={["2026-10-21"]} presets={[{ label: "blocked", date: "2026-10-21" }]} onChange={() => undefined} />);
-  expect(blocked).toMatch(/<p data-hint="field"[^>]*>.*선택할 수 없는 날짜입니다/);
-  expect(blocked).not.toContain('hidden=""');
-});
-
-test("blocked selected dates expose a visible field error", () => {
-  const markup = html(<DateField label={x} required value="2026-10-21" today="2026-10-20" disabledDates={["2026-10-21"]} onChange={() => undefined} />);
-  expect(markup).toContain('aria-invalid="true"');
-  expect(markup).toMatch(/<p id="[^"]+-error"[^>]*>선택할 수 없는 날짜입니다/);
-});
-
-test("a date input announces a visible validation error and retains its caller's description", () => {
-  const markup = html(<DateInput label={x} value="2026-02-30" today="2026-10-20" onChange={() => undefined} aria-describedby="caller-help" />);
-  const input = markup.match(/<input\b[^>]*>/)![0];
-  const error = markup.match(/<div id="([^"]+)" role="alert"[^>]*>([\s\S]*?)<\/div>/)!;
-  expect(input).toContain(`aria-describedby="caller-help ${error[1]}"`);
-  expect(input).toContain('aria-invalid="true"');
-  expect(input).toContain(`aria-label="${x}"`);
-  expect(error[0]).not.toContain("hidden");
-  expect(error[2]).toContain(t("uiDate.bad.day", { month: 2, day: 30 }));
-});
 
 test("a banner present on load is silent; one raised by an action is announced by its urgency", () => {
   expect(html(<Banner tone="warn">{x}</Banner>)).not.toMatch(/role=/);
@@ -162,9 +128,4 @@ test("a docked receipt is still one polite status region", async () => {
   const { Receipt } = await import("./receipt/receipt");
   const docked = html(<Receipt placement="docked" state="recorded" message={x} />);
   expect(docked).toMatch(/^<div role="status" class="[^"]+ [^"]+"/);
-});
-
-test("a required-field error keeps the typed date's specific correction visible", () => {
-  const markup = html(<DateField label={x} required value="2026-13-01" today="2026-10-20" error={y} onChange={() => undefined} />);
-  expect(markup).toMatch(/role="alert"[^>]*>13월은 올바르지 않습니다/);
 });

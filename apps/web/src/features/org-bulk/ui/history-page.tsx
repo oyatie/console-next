@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { CalendarClock, ChevronRight, Network } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtDate, fmtDateTime } from "@console/i18n/format";
+import { fmtDate, fmtDateTimeShort } from "@console/i18n/format";
 import { ORG_CHANGE_STATUS, labeled } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { Check, ToggleButton } from "../../../ui/button/button";
@@ -81,7 +81,7 @@ function targetText(r: FeedRow) {
 }
 
 const columns = (): Column<FeedRow>[] => [
-  { header: t("orgHistory.col.at"), fit: true, cell: (r) => <span className="num">{fmtDateTime(r.at)}</span> },
+  { header: t("orgHistory.col.at"), fit: true, cell: (r) => <span className="num">{fmtDateTimeShort(r.at)}</span> },
   { header: t("orgHistory.col.target"), cell: (r) => <strong>{targetText(r)}</strong> },
   {
     header: t("orgHistory.col.kind"),

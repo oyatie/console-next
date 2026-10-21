@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDateTimeShort } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
@@ -114,7 +114,7 @@ function History({ rows }: { rows: Entry[] | { entry: Entry }[] }) {
             {e.undone && <> · {t("attendanceRecords.day.undone")}</>}
           </>
         ),
-        end: <span className="muted">{e.created_by_name} {fmtDateTime(e.created_at)}</span>,
+        end: <span className="muted">{e.created_by_name} {fmtDateTimeShort(e.created_at)}</span>,
       }))}
     />
   );

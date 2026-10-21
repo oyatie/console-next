@@ -2,7 +2,6 @@ import { useId } from "react";
 import { Lock, MapPin } from "lucide-react";
 import type { LegalEntity, WorkplaceKind } from "@console/api/pending";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
 import { EntityError } from "./entity-error";
 import { AddressField } from "../../../ui/address-field/address-field";
 import { Button } from "../../../ui/button/button";
@@ -92,7 +91,7 @@ function Foot({ c, e, setup }: { c: WorkplaceCreate; e: LegalEntity; setup: bool
   ].filter(Boolean);
   return (
     <>
-      <span>{future ? t("workplace.create.consequenceFuture", { entity: entityName(e), name: c.w.name.trim(), date: fmtDate(c.w.openedOn) }) : t("workplace.create.consequence", { entity: entityName(e), name: c.w.name.trim() })}</span>
+      <span>{future ? t("workplace.create.consequenceFuture", { entity: entityName(e), name: c.w.name.trim(), date: c.w.openedOn.slice(5) }) : t("workplace.create.consequence", { entity: entityName(e), name: c.w.name.trim() })}</span>
       <span className="muted">
         {todo.length > 0 && t("workplace.create.todo", { items: todo.join(" · ") })}
         {setup && ` ${t("workplace.create.undoable")}`}

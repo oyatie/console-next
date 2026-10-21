@@ -1,7 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { clickCounter } from "../clicks";
-import { koDate, kstDate, registerEmployee } from "../flows";
+import { kstDate, registerEmployee } from "../flows";
 import { staffedTenant } from "../setup-flows";
 import { fillDate, reasonBox, sheet } from "../sheet";
 import { reasonChip } from "../helpers/lifecycle";
@@ -36,7 +36,7 @@ test("exit report: a later reservation is named first and withdrawn in place; a 
   await fillDate(transfer, move);
   await reasonChip(transfer, "업무 필요").click();
   await reasonBox(transfer).fill("채용팀 합류");
-  await transfer.getByRole("button", { name: `전보 예약 · ${koDate(move)} 시행`, exact: true }).click();
+  await transfer.getByRole("button", { name: `전보 예약 · ${move.slice(5)} 시행`, exact: true }).click();
   await expect(history.getByText(/정예약을 채용팀으로 전보하도록 예약했습니다/)).toBeVisible();
 
   // The report: the reservation after the last working day is named first, with its own withdrawal.
@@ -45,7 +45,7 @@ test("exit report: a later reservation is named first and withdrawn in place; a 
   const report = admin.getByRole("dialog", { name: /퇴직 보고/ });
   await fillDate(report, kstDate(10), "마지막 근무일");
   const first = report.getByRole("status").filter({ hasText: "먼저 정리할 것 1건" });
-  await expect(first).toContainText(`${koDate(move)} 전보 예약이 남아 있습니다`);
+  await expect(first).toContainText(`${move.slice(5)} 전보 예약이 남아 있습니다`);
   await expectAccessible(admin, "E5-exit: a reservation to settle first");
   await c.click(first.getByRole("button", { name: "예약 취소" }));
   const cancel = sheet(admin, "전보 예약 취소");

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDateTimeShort } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
 import { Chip } from "../../../ui/chip";
 import { Table } from "../../../ui/table";
@@ -26,7 +26,7 @@ export function RecentRuns() {
               columns={[
                 { header: t("import.runs.col.file"), cell: (r) => r.source_filename },
                 { header: t("import.runs.col.status"), cell: (r) => <Chip tone={STATUS_TONE[r.status]}>{statusLabel(r.status)}</Chip>, fit: true },
-                { header: t("import.runs.col.applied"), cell: (r) => <span className="num">{r.applied_at ? fmtDateTime(r.applied_at) : "—"}</span>, fit: true },
+                { header: t("import.runs.col.applied"), cell: (r) => <span className="num">{r.applied_at ? fmtDateTimeShort(r.applied_at) : "—"}</span>, fit: true },
                 { header: t("import.runs.col.counts"), cell: (r) => <span className="num">{t("import.runs.counts", { inserted: r.inserted, updated: r.updated })}</span>, fit: true, wide: true },
               ]}
             />

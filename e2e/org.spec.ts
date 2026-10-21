@@ -33,7 +33,7 @@ test.fixme("an org change is drafted, submitted from its page, rejected with a r
 
   // Re-dating starts from an empty date: nothing is chosen for the user.
   await admin.getByRole("button", { name: "시행일·사유 수정" }).click();
-  await expect(admin.getByRole("textbox", { name: /^시행일/ })).toHaveValue("");
+  await expect(admin.locator('input[type="date"]')).toHaveValue("");
   await admin.getByRole("button", { name: /^다음 주 월요일/ }).click();
   await admin.getByRole("button", { name: "초안 저장" }).click();
   await expect(admin.getByRole("status").filter({ hasText: "초안을 고쳤습니다" })).toBeVisible();

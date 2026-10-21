@@ -1,9 +1,9 @@
 // Labels for the access screens: domains, levels, reasons and states by catalog id (never the server key), one-line role
 // summaries, and the scope as every consequence names it.
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
 import { codeText } from "../../lib/labels";
 import type { Level } from "./domain/grid";
+import { todayKst } from "../../lib/pure/today";
 import { lastDay } from "./domain/grants";
 import { find, reach, type OrgNode, type Scope } from "./domain/scope";
 import type { AccessRoleLine, AccessScope } from "./api";
@@ -38,15 +38,15 @@ export const scopeText = (roots: readonly OrgNode[], s: AccessScope) => (reach(r
 
 /** "go-live ~ last day" for a grant waiting for go-live, else its first day; an open end reads "from ...". */
 export function periodText(g: { valid_from: string; valid_to?: string | null; enforcement: string }) {
-  const from = g.enforcement === "PREPARED" ? t("access.period.golive") : fmtDate(g.valid_from);
+  const from = g.enforcement === "PREPARED" ? t("access.period.golive") : todayKst(new Date(g.valid_from));
   const to = lastDay(g.valid_to);
-  return to ? t("access.period", { from, to: fmtDate(to) }) : t("access.period.open", { from });
+  return to ? t("access.period", { from, to }) : t("access.period.open", { from });
 }
 
 /** "until <date>" or "no end date" from an exclusive wire end. */
 export const untilText = (validTo: string | null | undefined) => {
   const d = lastDay(validTo);
-  return d ? t("access.until", { date: fmtDate(d) }) : t("access.until.none");
+  return d ? t("access.until", { date: d }) : t("access.until.none");
 };
 
 /** A person in a list, told apart from a namesake by employee number (decision #25); the RRN never appears. */

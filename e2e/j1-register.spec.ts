@@ -1,8 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
-import { go, koDate, kstDate, registerEmployee, registerSheet, submitRegistration } from "./flows";
-import { todayPreset } from "./sheet";
+import { go, registerEmployee, registerSheet, submitRegistration } from "./flows";
 import { staffedTenant } from "./setup-flows";
 
 // J1 인원 등록 (spec employee-ux E3): the sheet over the roster, nothing preselected, errors only after a commit
@@ -23,27 +22,18 @@ test("J1 register: the sheet asks for nothing in advance, names every gap on com
 
   // A commit attempt names every gap, moves to the first, and keeps what was typed; 13월 is named as such.
   await s.getByRole("textbox", { name: /^생년월일/ }).fill("1999.11.03");
-  await s.getByRole("textbox", { name: /^생년월일/ }).blur();
-  await expect(s.getByRole("textbox", { name: /^생년월일/ })).toHaveValue(koDate("1999-11-03"));
+  await expect(s).toContainText("1999년 11월 3일");
+  await c.click(s.getByRole("button", { name: "직접", exact: true }));
   await s.getByRole("textbox", { name: /^입사일/ }).fill("2026-13-01");
   await c.click(s.getByRole("button", { name: /^등록하고 다음 사람/ }));
   await expect(s.getByRole("alert").filter({ hasText: "2개를 수정해야 등록됩니다" })).toBeVisible();
-  await expect(s).toContainText("13월은 올바르지 않습니다.");
+  await expect(s).toContainText("13월은 없습니다");
   await expect(s.getByRole("textbox", { name: /^이름/ })).toBeFocused();
-  await expect(s.getByRole("textbox", { name: /^생년월일/ })).toHaveValue(koDate("1999-11-03"));
+  await expect(s.getByRole("textbox", { name: /^생년월일/ })).toHaveValue("1999.11.03");
   await expectAccessible(admin, "J1: register sheet with errors");
-  // 20271012 is read as a date too; a future date registers the person as 입사 예정.
-  const hired = s.getByRole("textbox", { name: /^입사일/ });
-  await hired.fill("20261115");
-  await todayPreset(s).click();
-  await expect(hired).toHaveValue(koDate(kstDate()));
-  await hired.fill("2026-13-01");
-  await hired.blur();
-  await hired.fill("20271012");
-  // A real commit click must blur and commit the draft before registration reads it.
-  await s.getByRole("button", { name: /^등록하고 다음 사람/ }).click();
-  await expect(s.getByRole("alert").filter({ hasText: "1개를 수정해야 등록됩니다" })).toBeVisible();
-  await expect(hired).toHaveValue(koDate("2027-10-12"));
+  // 20261012 is read as a date too; a future date registers the person as 입사 예정.
+  await s.getByRole("textbox", { name: /^입사일/ }).fill("20271012");
+  await expect(s).toContainText("2027년 10월 12일 (화)");
   await expect(s).toContainText("입사 예정");
   await s.getByRole("button", { name: /^닫기$/ }).click();
   c.done("J1 explore");

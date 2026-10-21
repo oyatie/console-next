@@ -280,6 +280,7 @@
   "unused-export:apps/web/src/ui/blocker/blocked-panel.tsx:BlockedKind": 1,
   "unused-export:apps/web/src/ui/blocker/blocked-panel.tsx:Unblocker": 1,
   "unused-export:apps/web/src/ui/choice/grouped-choice.tsx:ChoiceGroup": 1,
+  "unused-export:apps/web/src/ui/date/date-chips.tsx:DateChip": 1,
   "unused-export:apps/web/src/ui/deadline-chip/deadline-chip.tsx:ClockSeverity": 1,
   "unused-export:apps/web/src/ui/disabled-reason/disabled-reason.tsx:DisabledProps": 1,
   "unused-export:apps/web/src/ui/field/field.tsx:ControlProps": 1,

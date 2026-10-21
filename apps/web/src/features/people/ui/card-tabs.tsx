@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { t } from "@console/i18n";
-import { fmtDate, fmtDateTime } from "@console/i18n/format";
+import { fmtDate, fmtStamp } from "@console/i18n/format";
 import { actor } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
@@ -73,7 +73,7 @@ function Ledger({ c, onAct }: { c: Card; onAct: (act: string) => void }) {
           rows={shown}
           rowId={(r) => r.id}
           columns={[
-            { header: t("empCard.ledger.at"), cell: (r) => <span className={s.num}>{fmtDateTime(r.at)}</span>, fit: true },
+            { header: t("empCard.ledger.at"), cell: (r) => <span className={s.num}>{fmtStamp(r.at)}</span>, fit: true },
             { header: t("empCard.ledger.from"), cell: (r) => <span className={s.num}>{r.from ? fmtDate(r.from) : "—"}</span>, fit: true },
             { header: t("empCard.ledger.kind"), cell: (r) => <Chip tone={tone[r.kind]}>{t(`empCard.ledger.kind.${r.kind}`)}</Chip>, fit: true },
             { header: t("empCard.ledger.what"), cell: (r) => <b>{r.what}</b> },

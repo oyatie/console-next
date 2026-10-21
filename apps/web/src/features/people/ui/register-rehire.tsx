@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Building2, Lock } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { fmtDate, fmtNumber } from "@console/i18n/format";
+import { fmtNumber } from "@console/i18n/format";
 import { label } from "../../../lib/labels";
 import { CommandError } from "../../../lib/react/command-error";
 import { useCommand } from "../../../lib/react/command";
@@ -16,8 +16,9 @@ import { entitiesRef, orgStructureRef } from "../../../reference/entity/api";
 import { Button } from "../../../ui/button/button";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Chip } from "../../../ui/chip";
-import { DateField } from "../../../ui/date/date-field";
+import { DateChips } from "../../../ui/date/date-chips";
 import { datePresets } from "../../../ui/date/date-text";
+import { DateField } from "../../../ui/date/date-field";
 import { Field, TextInput } from "../../../ui/field/field";
 import { Kbd } from "../../../ui/kbd/kbd";
 import { MaskedField } from "../../../ui/masked-field/masked-field";
@@ -86,7 +87,7 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
         gaps.length > 0 ? (
           <b className={tried ? s.err : undefined}>{t("register.foot.todo", { n: gaps.length, list: gaps.map((g) => t(`register.field.${g === "unit" ? "unit" : g === "end" ? "contractEnd" : g}`)).join(" · ") })}</b>
         ) : (
-          <b>{t("register.rehire.foot", { name: e.name, place: place ? placeText(units, place).split(" › ").slice(1).join(" › ") : "", type: label(TYPE, f.type!), status, date: fmtDate(f.hire), number: e.employee_number ?? "—" })}</b>
+          <b>{t("register.rehire.foot", { name: e.name, place: place ? placeText(units, place).split(" › ").slice(1).join(" › ") : "", type: label(TYPE, f.type!), status, date: f.hire.slice(5), number: e.employee_number ?? "—" })}</b>
         )
       }
       actions={
@@ -120,7 +121,7 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
           {tried && !f.unit && <span className={s.err}>{t("register.err.unit")}</span>}
         </div>
         <div className={s.termsRow}>
-          <DateField label={t("register.hire")} required today={today} min={minHire} presets={datePresets(today, ["nextMonday", "nextMonthFirst"])} value={f.hire} onChange={(v) => set("hire", v)} echo={f.hire ? t(f.hire > today ? "register.hire.future" : "register.hire.past") : undefined} error={tried && !f.hire ? t("register.err.hire") : tried && minHire && f.hire < minHire ? dateRefusal : undefined} showErrors={tried} />
+          <DateChips label={t("register.hire")} required min={minHire} presets={datePresets(today, ["nextMonday", "nextMonthFirst"])} value={f.hire} onChange={(v) => set("hire", v)} echo={f.hire ? t(f.hire > today ? "register.hire.future" : "register.hire.past") : undefined} error={tried && !f.hire ? t("register.err.hire") : tried && minHire && f.hire < minHire ? dateRefusal : undefined} showErrors={tried} />
           <ChoiceField label={t("register.type")} required look="chips" options={EMPLOYMENT_TYPES.map((v) => ({ value: v, label: label(TYPE, v) }))} value={f.type} onChange={(v) => set("type", v as EmploymentType)} error={tried && !f.type ? t("register.err.type") : undefined} />
         </div>
         {f.type === "CONTRACT" && <DateField label={t("register.contractEnd")} required today={today} min={f.hire || undefined} value={f.end} onChange={(v) => set("end", v)} error={tried && !f.end ? t("register.err.contractEnd") : undefined} />}

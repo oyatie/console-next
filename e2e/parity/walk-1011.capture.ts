@@ -20,6 +20,7 @@ test("parity 1011: minimum unplaced registration and named passkey sign-in", asy
   await s.getByRole("textbox", { name: /^이름/ }).fill("미배치직원");
   await pressRegister(a);
   await expect(s.getByRole("alert")).toContainText("입사일");
+  await s.getByRole("button", { name: "직접", exact: true }).click();
   await s.getByRole("textbox", { name: /^입사일/ }).fill(kstDate());
   await pressRegister(a);
   await expect(receiptOf(a, "미배치직원")).toBeVisible();

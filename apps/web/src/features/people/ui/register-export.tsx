@@ -57,7 +57,7 @@ export function RegisterExport({ onClose }: { onClose: () => void }) {
         <Card label={t("empDoc.reg.options")}>
           <SiteRail groups={groups} value={site} onChange={setSite} />
           <div>
-            <ChipChoice label={t("empDoc.reg.asOf")} value="today" onChange={() => undefined} options={[{ value: "today", label: t("empDoc.reg.asOf.today", { date: fmtDate(todayKst()) }) }, { value: "monthEnd", label: t("empDoc.reg.asOf.monthEnd"), disabled: true }, { value: "typed", label: t("empDoc.reg.asOf.typed"), disabled: true }]} />
+            <ChipChoice label={t("empDoc.reg.asOf")} value="today" onChange={() => undefined} options={[{ value: "today", label: t("empDoc.reg.asOf.today", { date: todayKst().slice(5).replace("-", "-") }) }, { value: "monthEnd", label: t("empDoc.reg.asOf.monthEnd"), disabled: true }, { value: "typed", label: t("empDoc.reg.asOf.typed"), disabled: true }]} />
             <p className={s.s12}><Lock size={11} aria-hidden /> {t("empDoc.reg.asOfLocked")}</p>
           </div>
           <Card look="outline">

@@ -3,7 +3,6 @@ import { tg } from "@console/i18n/gallery";
 import { EMPLOYMENT_TYPE, label } from "../../lib/labels";
 import { ActionBar } from "../../ui/action-bar/action-bar";
 import { Button, Check, Form } from "../../ui/button/button";
-import { DateInput } from "../../ui/date/date-input";
 import { Field, TextInput } from "../../ui/field/field";
 import { SelectInput } from "../../ui/field/select-input";
 import { TextArea } from "../../ui/field/text-area";
@@ -27,7 +26,7 @@ export default function Forms() {
               </SelectInput>
             )}
           </Field>
-          <Field label={tg("form.date")} required>{(p) => <DateInput {...p} value="2026-10-01" onChange={() => undefined} />}</Field>
+          <Field label={tg("form.date")} required>{(p) => <TextInput {...p} type="date" defaultValue="2026-10-01" />}</Field>
           <Field label={tg("form.number")} required={false} error={tg("form.numberError")}>{(p) => <TextInput {...p} defaultValue="HK 0001" />}</Field>
         </div>
         <Field label={tg("form.note")} required={false}>{(p) => <TextArea {...p} defaultValue={tg("empty.reason")} />}</Field>

@@ -1,4 +1,3 @@
-import { useLayoutEffect, useRef } from "react";
 import { Building2, MapPin, Network } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
@@ -58,14 +57,8 @@ export function BulkWhere({ kind, units, titles = [], from, site, entity, hidden
   /** Each person's title is picked on their row: this field only fills the people left without one. */
   positionOptional?: boolean;
 }) {
-  const pane = useRef<HTMLElement>(null);
-  // Keep the pre-read tree's space until a kind is chosen: its entity filter can shrink after the people arrive.
-  useLayoutEffect(() => {
-    const el = pane.current!;
-    el.style.minHeight = kind === null ? `${el.getBoundingClientRect().height}px` : "";
-  });
   return (
-    <section ref={pane} className={s.pane} aria-labelledby="bulk-where">
+    <section className={s.pane} aria-labelledby="bulk-where">
       <div className={s.paneHead}>
         <h2 id="bulk-where" className={s.paneTitle}>{kind === "PROMOTE" ? t("bulk.page.position") : t("bulk.page.where")}</h2>
         <small>{kind === "PROMOTE" ? t("bulk.page.positionNote") : t("bulk.page.whereNote", { n: count })}</small>

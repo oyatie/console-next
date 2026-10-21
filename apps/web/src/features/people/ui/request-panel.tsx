@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDateTimeShort } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { Button, Form } from "../../../ui/button/button";
@@ -42,7 +42,7 @@ export function RequestPanel({ r, subject, hr, onClose, onDecided }: { r: Change
         <dt>{t("requests.col.subject")}</dt>
         <dd>{subject ? <Link to="/people/$id" params={{ id: subject.id }} search={{}}>{subjectText(r, subject)}</Link> : subjectText(r, subject)}</dd>
         <dt>{t("requests.col.at")}</dt>
-        <dd className="num">{fmtDateTime(r.created_at)}{mine ? ` · ${t("requests.mine")}` : ""}</dd>
+        <dd className="num">{fmtDateTimeShort(r.created_at)}{mine ? ` · ${t("requests.mine")}` : ""}</dd>
         <dt>{t("requests.col.reason")}</dt>
         <dd>{r.reason_code}</dd>
         {r.note && (
@@ -55,7 +55,7 @@ export function RequestPanel({ r, subject, hr, onClose, onDecided }: { r: Change
           <>
             <dt>{t("requests.decided")}</dt>
             <dd>
-              <span className="num">{fmtDateTime(r.decided_at)}</span> · {r.decision_reason_code ?? "—"}
+              <span className="num">{fmtDateTimeShort(r.decided_at)}</span> · {r.decision_reason_code ?? "—"}
               {r.decision_note ? ` · ${r.decision_note}` : ""}
             </dd>
           </>

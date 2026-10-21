@@ -4,7 +4,6 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { AlertTriangle, Check, ClipboardPaste, Eye, Upload } from "lucide-react";
 import type { ChecklistStep } from "@console/api/pending";
 import { t } from "@console/i18n";
-import { fmtNumber } from "@console/i18n/format";
 import { codeText } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
 import { checklistRef } from "../api";
@@ -39,7 +38,7 @@ export function SetupPanel({ s, first, fixLink }: { s: Structure; first?: boolea
       {!first && (
         <dl className={css.kpis}>
           {([["people", s.root.headcount], ["entities", s.counts.entities], ["sites", s.counts.sites], ["depts", s.counts.depts]] as const).map(([k, v]) => (
-            <div key={k} className={css.kpi}><dt>{t(`structure.setup.kpi.${k}`)}</dt><dd className="num">{fmtNumber(v)}</dd></div>
+            <div key={k} className={css.kpi}><dt>{t(`structure.setup.kpi.${k}`)}</dt><dd className="num">{v.toLocaleString()}</dd></div>
           ))}
         </dl>
       )}

@@ -1,6 +1,5 @@
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
 import { addDays } from "../../../ui/date/days";
 import { SelectInput } from "../../../ui/field/select-input";
 import { Table } from "../../../ui/table";
@@ -28,7 +27,7 @@ export function RenewTable({ people, choices, onChoice, refused, months, tried }
     const c = choices[e.id];
     if (!end) return t("renew.next.noEnd");
     if (c === "renew") return t("renew.next.renew", { end: renewedEnd(end, months) });
-    if (c === "convert") return t("renew.next.convert", { date: fmtDate(addDays(end, 1)) });
+    if (c === "convert") return t("renew.next.convert", { date: addDays(end, 1).slice(5) });
     return c === "leave" ? t("renew.next.leave") : "—";
   };
   return (

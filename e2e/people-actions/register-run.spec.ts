@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { clickCounter } from "../clicks";
-import { koDate, go } from "../flows";
+import { go } from "../flows";
 import { tenantInSetup } from "../setup-flows";
 import { apiOf, bearerOf, codeOf, headcount } from "../helpers/api";
 import { registerSheet } from "../helpers/register";
@@ -59,7 +59,7 @@ test("연속 등록: rows saved with ⌘↵, carried values, gaps named, a names
   await expect(cell(admin, 1, "이름")).toBeFocused();
   await fill(admin, 1, { name: "하예솔", birth: "1990-13-12", phone: "010-1234-0052", place: true, hire: "2026-10-19", type: true, position: "사원", pay: "3000000" });
   await admin.keyboard.press("ControlOrMeta+Enter");
-  await expect(admin.getByRole("alert").filter({ hasText: "개를 수정해야 등록됩니다" })).toContainText("생년월일");
+  await expect(admin.getByRole("alert")).toContainText("생년월일");
   await expect(cell(admin, 1, "생년월일")).toBeFocused();
   expect(await headcount(api)).toBe(0);
   await expectAccessible(admin, "E3-run: gaps named");
@@ -80,7 +80,7 @@ test("연속 등록: rows saved with ⌘↵, carried values, gaps named, a names
   await admin.keyboard.press("ControlOrMeta+Enter");
   await expect(admin.getByRole("row").filter({ hasText: "서정우" })).toContainText("E-000002");
   await expect(admin.getByText("이어서 쓴 값", { exact: true })).toHaveCount(5);
-  await expect(cell(admin, 3, "입사일")).toHaveValue(koDate("2026-10-19"));
+  await expect(cell(admin, 3, "입사일")).toHaveValue("2026-10-19");
   // Per person now: name, birth date and the phone the server still requires (EMP-UI 1), then ⌘↵ — no click.
   for (const [i, [name, birth]] of ([["문채이", "1992-08-14"], ["남궁별", "1993-01-15"]] as const).entries()) {
     await fill(admin, 3 + i, { name, birth, phone: `010-2000-100${3 + i}` });

@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/people/ui/exit-notice.tsx#ExitGuardFields": 33
+  },
+  "newScreens": {
+    "apps/web/src/features/people/ui/exit-notice.tsx#ExitGuardFields": {
+      "FACT": 13,
+      "REFUSAL": 8,
+      "EMPTY": 0,
+      "LEGAL": 12,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

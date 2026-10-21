@@ -6,8 +6,7 @@ import { ProtectedPeriods } from "./exit-protection";
 import { t } from "@console/i18n";
 import { Field, TextInput } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
-import { DateField } from "../../../ui/date/date-field";
-import { todayKst } from "../../../lib/pure/today";
+import { DateChips } from "../../../ui/date/date-chips";
 import { addDays } from "../../../ui/date/days";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { noticeMissing, protectedLines, type NoticeDraft } from "../domain/exits";
@@ -37,7 +36,7 @@ export function ExitGuardFields({ c, reason, onReason, involuntary, noticeRequir
     <Field label={t("exit.notice.reason_text")} required error={error("reason_text")}>
       {(p) => <TextArea {...p} maxLength={1000} value={value.reason_text} onChange={(e) => onChange({ ...value, reason_text: e.target.value })} />}
     </Field>
-    <DateField today={todayKst()} label={t("exit.notice.served_on")} required value={value.served_on} onChange={(served_on) => onChange({ ...value, served_on })} max={addDays(exitDate, 1)} showErrors={tried} error={error("served_on")} />
+    <DateChips presets={[]} label={t("exit.notice.served_on")} required value={value.served_on} onChange={(served_on) => onChange({ ...value, served_on })} max={addDays(exitDate, 1)} showErrors={tried} error={error("served_on")} />
     <ChoiceField label={t("exit.notice.method")} required value={value.method || null} options={METHODS.map((method) => ({ value: method, label: t(`exit.notice.method.${method}`) }))} onChange={(method) => onChange({ ...value, method })} error={error("method")} />
     <Field label={t("exit.notice.evidence_ref")} required error={error("evidence_ref")}>
       {(p) => <TextInput {...p} maxLength={1000} value={value.evidence_ref} onChange={(e) => onChange({ ...value, evidence_ref: e.target.value })} />}

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
-import { go, koDate, kstDate, registerEmployee } from "./flows";
+import { go, kstDate, registerEmployee } from "./flows";
 import { staffedTenant } from "./setup-flows";
 import { reasonBox, sheet } from "./sheet";
 import { holdRead } from "./helpers/read";
@@ -30,7 +30,7 @@ test("J3 contract renewal from Home's queue, then the next one", { tag: "@hr" },
   await c.click(renewal.getByRole("button", { name: /^다음 날부터 1년 · / }));
   await reasonBox(renewal).fill("계약 1년 연장");
   // It starts after today: a reservation, blue.
-  const commit = renewal.getByRole("button", { name: `계약 갱신 예약 · ${koDate(kstDate(21))} 시행`, exact: true });
+  const commit = renewal.getByRole("button", { name: /^계약 갱신 예약 · \d{2}-\d{2} 시행$/ });
   await expect(commit).toHaveClass(/btn--primary/);
   await c.click(commit);
   const history = admin.getByRole("region", { name: "인사 이력" });

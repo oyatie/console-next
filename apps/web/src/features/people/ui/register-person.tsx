@@ -1,7 +1,6 @@
 import { t } from "@console/i18n";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Field, TextInput } from "../../../ui/field/field";
-import { DateInput } from "../../../ui/date/date-input";
 import { fmtLongDay, typedProblem } from "../../../ui/date/date-text";
 import { parseTyped } from "../../../ui/date/days";
 import type { Draft, Gap } from "../domain/register";
@@ -27,7 +26,7 @@ export function RegisterPerson({ d, set, shown }: { d: Draft; set: Set; shown: R
         hint={"date" in birth ? <span className={s.ok}>{fmtLongDay(birth.date, false)}</span> : shown.has("birth") ? undefined : t("register.birth.hint")}
         error={shown.has("birth") ? (typedProblem(birth) ?? undefined) : undefined}
       >
-        {(p) => <DateInput {...p} className="num" value={d.birth} onDraftChange={(v) => set("birth", v)} onChange={(v) => set("birth", v)} />}
+        {(p) => <TextInput {...p} className="num" inputMode="numeric" placeholder="YYYY-MM-DD" value={d.birth} onChange={(e) => set("birth", e.target.value)} />}
       </Field>
       <Field
         label={t("register.rrn")}

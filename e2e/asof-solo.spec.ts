@@ -98,12 +98,10 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   await expect(name).toBeHidden();
   await expect(admin.getByRole("heading", { name: "주식회사 시점상사", level: 1 })).toBeVisible();
   await control.getByLabel(/^기준일/).fill(due);
-  await control.getByLabel(/^기준일/).blur();
   await expect(admin.getByRole("heading", { name: "주식회사 미래상사", level: 1 })).toBeVisible();
   await expect(control).toContainText(`${koDate(due)} 기준 · 예정`);
   await expect(admin.getByRole("button", { name: /수정/ })).toHaveCount(0);
   await control.getByLabel(/^기준일/).fill(yesterday);
-  await control.getByLabel(/^기준일/).blur();
   await expect(admin.getByRole("heading", { name: "주식회사 시점상사", level: 1 })).toBeVisible();
   await expect(control).toContainText("그날 등록증에 적힌 값");
   await expect(control).toContainText("읽기 전용");
@@ -134,7 +132,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   await sales.getByRole("button", { name: "이름 변경" }).click();
   const rename = sheet(admin, "영업팀 이름 변경");
   await rename.getByRole("textbox", { name: /^새 이름/ }).fill("국내영업팀");
-  await rename.getByRole("textbox", { name: /^시행일/ }).fill(due);
+  await rename.getByLabel(/^시행일/).and(rename.locator('input[type="date"]')).fill(due);
   await rename.getByRole("textbox", { name: /^사유/ }).fill("영업 조직 이름 정리");
   await rename.getByRole("button", { name: /^예약 · / }).click();
   const receipt = admin.getByRole("status").filter({
@@ -146,7 +144,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   await admin.keyboard.press("a");
   const create = sheet(admin, "부서 신설");
   await create.getByLabel("부서 이름").fill("미래팀");
-  await create.getByRole("textbox", { name: /^시행일/ }).fill(due);
+  await create.getByLabel(/^시행일/).and(create.locator('input[type="date"]')).fill(due);
   await create.getByLabel("사유").fill("미래 사업 준비");
   await create.getByRole("button", { name: /^예약 · / }).click();
   await expect(receipt).toContainText("미래팀 신설");
@@ -154,7 +152,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   const ending = await openUnit(admin, "종료팀");
   await ending.getByRole("button", { name: "부서 폐지", exact: true }).click();
   const dissolve = sheet(admin, "종료팀 폐지");
-  await dissolve.getByRole("textbox", { name: /^시행일/ }).fill(due);
+  await dissolve.getByLabel(/^시행일/).and(dissolve.locator('input[type="date"]')).fill(due);
   await dissolve.getByLabel("사유").fill("한시 조직 종료");
   await dissolve.getByRole("button", { name: /^예약 · / }).click();
   await expect(receipt).toContainText("종료팀 폐지");
@@ -168,7 +166,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   // Keyboard-only date walk: next change → future, previous change → today, knowledge toggle → clear.
   await control.getByRole("button", { name: "다음 변경일" }).focus();
   await admin.keyboard.press("Enter");
-  await expect(control.getByLabel(/^기준일/)).toHaveValue(koDate(due));
+  await expect(control.getByLabel(/^기준일/)).toHaveValue(due);
   await expect(box(admin, "종료팀")).toHaveCount(0);
   await findBox(admin, "국내영업팀");
   await expect(box(admin, "국내영업팀")).toHaveAttribute("data-scheduled", "true");
@@ -194,12 +192,12 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   const proposal = admin.getByRole("region", { name: "본사 아래에 부서 신설", exact: true });
   await expect(proposal).toBeVisible();
   await expect(proposal.getByRole("term").filter({ hasText: "상위 조직" }).locator("xpath=following-sibling::dd[1]")).toContainText("본사");
-  await expect(proposal.getByRole("textbox", { name: /^시행일/ })).toHaveValue(koDate(due));
+  await expect(proposal.getByLabel(/^시행일/).and(proposal.locator('input[type="date"]'))).toHaveValue(due);
   await proposal.getByRole("button", { name: "제안 닫기", exact: true }).click();
   await expect(proposal).toHaveCount(0);
   expect(draftWrites).toEqual([]);
   admin.off("request", observeDraftWrites);
-  await expect(control.getByLabel(/^기준일/)).toHaveValue(koDate(due));
+  await expect(control.getByLabel(/^기준일/)).toHaveValue(due);
   await revealUnit(admin, "본사");
   await admin.keyboard.press("a");
   await expect(admin.getByRole("dialog")).toHaveCount(0);
@@ -227,7 +225,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   await exporting.getByRole("button", { name: "취소", exact: true }).click();
   await control.getByRole("button", { name: "이전 변경일" }).focus();
   await admin.keyboard.press("Enter");
-  await expect(control.getByLabel(/^기준일/)).toHaveValue(koDate(today));
+  await expect(control.getByLabel(/^기준일/)).toHaveValue(today);
   await control.getByRole("button", { name: "알려진 시점 선택" }).focus();
   await admin.keyboard.press("Space");
   await expect(control.getByLabel(/^알려진 시점/)).toBeVisible();
@@ -236,14 +234,13 @@ test("solo ops reads past and projected records, preserves known-at corrections 
 
   // The same date control follows chart, list and outline. A past deep link cannot open a write sheet.
   await control.getByLabel(/^기준일/).fill(yesterday);
-  await control.getByLabel(/^기준일/).blur();
   await expect(control).toContainText(`${koDate(yesterday)} 기준 · 과거`);
   await expect(admin.getByRole("button", { name: "가져오기", exact: true })).toHaveCount(0);
   await admin.getByRole("group", { name: "보기", exact: true }).getByRole("button", { name: "목록", exact: true }).click();
-  await expect(control.getByLabel(/^기준일/)).toHaveValue(koDate(yesterday));
+  await expect(control.getByLabel(/^기준일/)).toHaveValue(yesterday);
   await expect(admin.getByRole("button", { name: /위로|아래로|부서장 지정|함께 수정/ })).toHaveCount(0);
   await admin.getByRole("group", { name: "보기", exact: true }).getByRole("button", { name: "아웃라인", exact: true }).click();
-  await expect(control.getByLabel(/^기준일/)).toHaveValue(koDate(yesterday));
+  await expect(control.getByLabel(/^기준일/)).toHaveValue(yesterday);
   await expect(admin.getByRole("button", { name: "목록 붙여넣기" })).toHaveCount(0);
   await expect(admin.getByRole("textbox", { name: /새 부서|이름/ })).toHaveCount(0);
   await control.getByRole("button", { name: "오늘", exact: true }).focus();
@@ -256,9 +253,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   const results = admin.getByRole("region", { name: "이 기간의 조직 변경", exact: true });
   await compare.getByRole("button", { name: "기준일 비교", exact: true }).click();
   await compare.getByLabel(/^날짜 A/).fill(today);
-  await compare.getByLabel(/^날짜 A/).blur();
   await compare.getByLabel(/^날짜 B/).fill(due);
-  await compare.getByLabel(/^날짜 B/).blur();
   await findBox(admin, "국내영업팀");
   await expect(box(admin, "국내영업팀")).toHaveAttribute("data-diff", /\brenamed\b/);
   await findBox(admin, "미래팀");
@@ -280,13 +275,11 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   admin.on("request", observe);
   const committed = admin.url();
   await compare.getByLabel(/^날짜 B/).fill("");
-  await compare.getByLabel(/^날짜 B/).blur();
   await expect(compare).toContainText("올바른 날짜를 선택하십시오");
   await expect(compare.getByRole("button", { name: "날짜 B 선택" })).toBeVisible();
   await expect(admin).toHaveURL(committed);
   await expect(box(admin, "미래팀")).toHaveAttribute("data-diff", /\bnew\b/);
   await compare.getByLabel(/^날짜 B/).fill(yesterday);
-  await compare.getByLabel(/^날짜 B/).blur();
   await expect(compare).toContainText("날짜 B는 날짜 A와 같거나 이후여야 합니다");
   await expect(admin).toHaveURL(committed);
   await expect(box(admin, "국내영업팀")).toHaveAttribute("data-diff", /\brenamed\b/);
@@ -296,7 +289,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   await expectAccessible(admin, "as-of: projected compare with invalid-date remedy, light and dark");
   await compare.getByRole("button", { name: "날짜 B 선택" }).focus();
   await admin.keyboard.press("Enter");
-  await expect(compare.getByLabel(/^날짜 B/)).toHaveValue(koDate(today));
+  await expect(compare.getByLabel(/^날짜 B/)).toHaveValue(today);
   await expect(results).toContainText("두 날짜 사이에 조직 구조가 바뀌지 않았습니다");
   await expect(box(admin, "미래팀")).toHaveCount(0);
   await findBox(admin, "영업팀");

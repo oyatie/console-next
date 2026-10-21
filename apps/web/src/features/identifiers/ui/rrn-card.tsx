@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDateTimeShort } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { reasonCodesQuery, useNeedsNote } from "../../../lib/reason-codes";
@@ -58,7 +58,7 @@ export function RrnCard({ employeeId }: { employeeId: string }) {
       }
     >
       <p className="muted">
-        {s?.recorded && s.recorded_at ? t("identifiers.rrn.recorded", { at: fmtDateTime(s.recorded_at), source: t(`identifiers.rrn.source.${s.source ?? "IMPORT"}`) }) : t("identifiers.rrn.why")}
+        {s?.recorded && s.recorded_at ? t("identifiers.rrn.recorded", { at: fmtDateTimeShort(s.recorded_at), source: t(`identifiers.rrn.source.${s.source ?? "IMPORT"}`) }) : t("identifiers.rrn.why")}
       </p>
       {asking && (
         <div className="form">

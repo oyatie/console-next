@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
+import { todayKst } from "../../../lib/pure/today";
 import { accessRequestsQuery, closeAccessRequest, type AccessRequest } from "../../../reference/authz/api";
 import { Button } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
@@ -35,7 +35,7 @@ export function AccessRequests({ accounts, onGrant }: { accounts: readonly Accou
           { header: t("access.col.person"), cell: (r) => r.requester_name ?? who(r)?.display_name ?? "" },
           { header: t("accessGrants.requests.screen"), cell: (r) => <span className="code">{r.screen}</span> },
           { header: t("accessGrants.requests.why"), cell: (r) => [t(`common.denied.reason.${r.reason_code}`), r.note].filter(Boolean).join(" · ") },
-          { header: t("accessGrants.requests.when"), fit: true, cell: (r) => fmtDateTime(r.created_at) },
+          { header: t("accessGrants.requests.when"), fit: true, cell: (r) => todayKst(new Date(r.created_at)) },
           {
             header: <span className="sr-only">{t("access.roles.col.actions")}</span>,
             fit: true,

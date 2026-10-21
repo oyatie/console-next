@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDateTimeShort } from "@console/i18n/format";
 import { todayKst } from "../../../lib/pure/today";
 import { PERIOD_LOCK_DOMAIN } from "../../../lib/labels";
 import type { Domain, PeriodLock } from "../api";
@@ -31,7 +31,7 @@ export function MonthStrip({ locks, onShowLock, onLockMonth, onRelocked }: { loc
   const label = (d: Domain, c: Cell) => {
     const name = `${domainText(d)} ${monthText(c.month)}`;
     if (c.state === "locked") return t("periodLocks.strip.locked", { name, lock: closedText(c.lock) });
-    if (c.state === "unlocked") return t("periodLocks.strip.unlocked", { name, at: fmtDateTime(c.relockAt), days: daysLeft(c.relockAt, now) });
+    if (c.state === "unlocked") return t("periodLocks.strip.unlocked", { name, at: fmtDateTimeShort(c.relockAt), days: daysLeft(c.relockAt, now) });
     return t("periodLocks.strip.open", { name });
   };
   const act = (d: Domain, c: Cell) => (c.state === "locked" ? onShowLock(c.lock.id) : c.state === "unlocked" ? relockButton(c.lock.id) : onLockMonth(d, c.month));
@@ -79,7 +79,7 @@ export function MonthStrip({ locks, onShowLock, onLockMonth, onRelocked }: { loc
         <ul className={s.open} aria-label={t("periodLocks.strip.reopened")}>
           {reopened.map((c) => (
             <li key={c.lock.id} id={`pl-open-${c.lock.id}`}>
-              <span>{t("periodLocks.strip.relocks", { lock: closedText(c.lock), at: fmtDateTime(c.relockAt), days: daysLeft(c.relockAt, now) })}</span>
+              <span>{t("periodLocks.strip.relocks", { lock: closedText(c.lock), at: fmtDateTimeShort(c.relockAt), days: daysLeft(c.relockAt, now) })}</span>
               <RelockButton lock={c.lock} onLocked={onRelocked} />
             </li>
           ))}

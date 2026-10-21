@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDateTimeShort } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
@@ -33,7 +33,7 @@ export function LayerHistory({ kind, id, onCancel }: { kind: ScopeKind; id: stri
               { header: t("attendanceSchedule.history.col.period"), cell: (l) => <span className="num">{period(l)}</span> },
               { header: t("attendanceSchedule.history.col.reason"), cell: (l) => <>{t(`attendance.reason.${l.reason}`)}{l.evidence_ref && <><br /><span className="muted">{l.evidence_ref}</span></>}</> },
               { header: t("attendanceSchedule.history.col.state"), cell: (l) => <><Chip tone={TONE[l.state]}>{t(`attendance.state.${l.state}`)}</Chip>{l.cancel_reason && <><br /><span className="muted">{l.cancel_reason}</span></>}</>, fit: true },
-              { header: t("attendanceSchedule.history.col.by"), cell: (l) => <span className="muted">{t("attendanceSchedule.history.by", { name: l.created_by_name, at: fmtDateTime(l.created_at), version: l.version })}</span> },
+              { header: t("attendanceSchedule.history.col.by"), cell: (l) => <span className="muted">{t("attendanceSchedule.history.by", { name: l.created_by_name, at: fmtDateTimeShort(l.created_at), version: l.version })}</span> },
               {
                 header: t("attendanceSchedule.history.col.actions"),
                 fit: true,

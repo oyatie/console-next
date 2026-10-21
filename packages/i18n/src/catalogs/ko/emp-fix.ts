@@ -14,6 +14,7 @@ export const koEmpFix = {
   "empFix.field.job": "직무",
   "empFix.field.family": "직군",
   "empFix.field.employment_type": "고용형태",
+  "empFix.datePlaceholder": "2019-03-04",
   "empFix.newAddress": "새 주소",
   "empFix.registerItem": "명부 항목 {no}",
   "empFix.second": "두 번째 사람 확인",

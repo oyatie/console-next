@@ -1,6 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDateTimeShort } from "@console/i18n/format";
 import { failureText } from "../../../lib/refusal";
 import { Button } from "../../../ui/button/button";
 import { errorOperation } from "../api/record";
@@ -18,9 +18,9 @@ export function RosterError({ error, kept, at, failedAt, onRetry, retrying }: { 
     <div className={s.listError}>
     <Banner tone="danger" live="assertive" actions={<Button onClick={onRetry} aria-disabled={retrying || undefined}><RefreshCw size={14} aria-hidden /> {t("roster.error.retry")}</Button>}>
       <span>
-        <b>{t("roster.error.title")}</b> {t("roster.error.why", { why: failureText(error), at: fmtDateTime(new Date(failedAt)) })}
+        <b>{t("roster.error.title")}</b> {t("roster.error.why", { why: failureText(error), at: fmtDateTimeShort(new Date(failedAt)) })}
         {op && <> · <span className="code">{op}</span></>}
-        {kept ? ` · ${t("roster.error.kept", { at: fmtDateTime(new Date(at)) })}` : ` · ${t("roster.error.none")}`}
+        {kept ? ` · ${t("roster.error.kept", { at: fmtDateTimeShort(new Date(at)) })}` : ` · ${t("roster.error.none")}`}
       </span>
     </Banner>
     </div>

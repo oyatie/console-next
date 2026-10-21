@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { fmtDate, fmtDateTime, fmtNumber } from "@console/i18n/format";
+import { fmtDate, fmtNumber } from "@console/i18n/format";
 import { EMPLOYMENT_TYPE, ID_TYPE, PAY_UNIT, PROBATION_STATE, WORKER_CLASS, label, labeled } from "../../../lib/labels";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
@@ -74,7 +74,7 @@ function Probation({ f, name }: { f: Facts; name: string }) {
   });
   const line =
     m.probation_state === "CONFIRMED" && m.probation_confirmed_at
-      ? t("facts.probation.confirmed", { date: fmtDateTime(m.probation_confirmed_at) })
+      ? t("facts.probation.confirmed", { date: fmtDate(m.probation_confirmed_at) })
       : end && m.probation_state === "OVERDUE"
         ? t("facts.probation.overdue", { date: fmtDate(end) })
         : end

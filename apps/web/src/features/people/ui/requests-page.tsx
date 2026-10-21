@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDateTimeShort } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { Button, ToggleButton } from "../../../ui/button/button";
@@ -47,7 +47,7 @@ export function RequestsPage() {
       header: t("requests.col.at"),
       cell: (r) => (
         <>
-          <span className="num">{fmtDateTime(r.created_at)}</span> {r.requested_by === mySub() && <Chip>{t("requests.mine")}</Chip>}
+          <span className="num">{fmtDateTimeShort(r.created_at)}</span> {r.requested_by === mySub() && <Chip>{t("requests.mine")}</Chip>}
         </>
       ),
       fit: true,

@@ -10,7 +10,6 @@
   "dependencies": {
     "@console/api": "*",
     "@console/tokens": "*",
-    "@internationalized/date": "^3.12.4",
     "@tanstack/react-query": "^5.104.0",
     "@tanstack/react-router": "^1.170.40",
     "lucide-react": "^1.49.0",

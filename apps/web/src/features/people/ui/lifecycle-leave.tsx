@@ -2,7 +2,7 @@ import { t } from "@console/i18n";
 import { LEAVE_TYPE, label } from "../../../lib/labels";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import type { ReactNode } from "react";
-import { DateField } from "../../../ui/date/date-field";
+import { DateChips } from "../../../ui/date/date-chips";
 import { addDays } from "../../../ui/date/days";
 import { returnPresets } from "../domain/presets";
 import { returnRequired } from "../domain/leave";
@@ -13,9 +13,8 @@ import s from "./lifecycle.module.css";
  * A leave's type (required, nothing chosen until the user picks) and expected return: required for childcare leave
  * (Equal Employment Act Art. 19) and maternity leave (Labor Standards Act Art. 74), optional otherwise (BW-13; the server refuses the same).
  */
-export function LeaveFields({ start, today, type, onType, returnDate, onReturn, typeError, returnError, locked, startSlot, tried }: {
+export function LeaveFields({ start, type, onType, returnDate, onReturn, typeError, returnError, locked, startSlot, tried }: {
   start: string;
-  today: string;
   type: string | null;
   onType: (type: string | null) => void;
   returnDate: string;
@@ -45,10 +44,9 @@ export function LeaveFields({ start, today, type, onType, returnDate, onReturn, 
         {locked ? (
           <p className={s.fact}>{returnDate ? t("lifecycle.leave.returnLocked", { date: fmtDayShort(returnDate) }) : t("lifecycle.leave.noReturn")}</p>
         ) : (
-          <DateField
+          <DateChips
             label={t("lifecycle.leave.return")}
             required={returnRequired(type)}
-            today={today}
             error={returnError}
             showErrors={tried}
             value={returnDate}

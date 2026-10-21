@@ -17,7 +17,7 @@ test("check-toolchain-pins: stable pins match the root and fuzz stays on nightly
 test("check-toolchain-pins rejects planted mismatches", () => run("node", ["--test", "scripts/check-toolchain-pins.test.mjs"]));
 test("check-ds: no new raw controls, hand-written DS classes, control restyles or literal sizes (ratchet)", () => run("node", ["scripts/check-ds.mjs"]));
 test("tsconfig.pure: domain rings and neutral packages compile without DOM", () => run("node_modules/.bin/tsc", ["-p", "apps/web/tsconfig.pure.json"]), 60000);
-test("ai-quality: clones, error masking, test behavior, dead code and dependency evidence (ratchet)", () => run("node", ["scripts/check-ai-quality.mjs"]), 120000);
+test("ai-quality: clones, error masking, test behavior, dead code and dependency evidence (ratchet)", () => run("node", ["scripts/check-ai-quality.mjs"]), 60000);
 test("check-entity-names: an entity's name is read only through the one presentation (0h)", () => run("node", ["scripts/check-entity-names.mjs"]), 60000);
 // Planted control: the gate refuses an entity's name read straight off its state, in either form and off a response's
 // record, and passes a workplace's.

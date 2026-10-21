@@ -48,7 +48,7 @@ export const koAttendanceHolidays = {
   "attendanceHolidays.holidaySheet.scope": "적용할 곳",
   "attendanceHolidays.holidaySheet.basis": "근거",
   "attendanceHolidays.holidaySheet.ref": "조항",
-  "attendanceHolidays.holidaySheet.ref.example": "제38조 ② · 2026. 09. 20. 변경 신고",
+  "attendanceHolidays.holidaySheet.ref.example": "제38조 ② · 2026-09-20 변경 신고",
   "attendanceHolidays.holidaySheet.pick": "{field} 선택",
   "attendanceHolidays.holidaySheet.first": "{date} · {people} · 그날 소정 근무일이던 사람은 약정휴일로 바뀌고 소정 근무일에서 빠집니다",
   "attendanceHolidays.holidaySheet.overlap": "공휴일과 겹치는 날: {list} · 그날에는 쉬는 날이 늘지 않습니다",

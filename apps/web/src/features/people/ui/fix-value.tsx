@@ -2,7 +2,6 @@ import { t } from "@console/i18n";
 import { EMPLOYMENT_TYPE, label } from "../../../lib/labels";
 import { AddressField } from "../../../ui/address-field/address-field";
 import { ChipChoice } from "../../../ui/choice/chip-choice";
-import { DateInput } from "../../../ui/date/date-input";
 import { TextInput } from "../../../ui/field/field";
 import { useAddressSearch } from "../../../reference/entity/ui/use-address-search";
 import { maskedAddress } from "../domain/card";
@@ -41,6 +40,5 @@ export function FixValue({ c, field, value, onChange, focus }: { c: Card; field:
         printed={c.register.data?.address ? maskedAddress(c.register.data.address) : undefined}
       />
     );
-  if (field.endsWith("date")) return <DateInput label={name} required value={typeof value === "string" ? value : ""} onDraftChange={onChange} onChange={onChange} inputRef={focus ? focusOnce : undefined} />;
-  return <TextInput aria-label={name} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} ref={focus ? focusOnce : undefined} />;
+  return <TextInput aria-label={name} inputMode={field.endsWith("date") ? "numeric" : undefined} placeholder={field.endsWith("date") ? t("empFix.datePlaceholder") : undefined} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} ref={focus ? focusOnce : undefined} />;
 }

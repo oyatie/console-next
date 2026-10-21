@@ -138,10 +138,8 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await expect.poll(() => admin.locator("html").getAttribute("data-register-printed")).toContain("S-1");
   await expect.poll(() => admin.locator("html").getAttribute("data-register-printed")).toContain("김신고");
   await admin.getByRole("textbox", { name: /^기준일/ }).fill(kstDate(-21));
-  await admin.getByRole("textbox", { name: /^기준일/ }).blur();
   await expect(admin.getByText("이 기준일의 근로자 명부가 없습니다", { exact: true })).toBeVisible();
   await admin.getByRole("textbox", { name: /^기준일/ }).fill(kstDate());
-  await admin.getByRole("textbox", { name: /^기준일/ }).blur();
   await admin.getByRole("link", { name: /김신고 · 주소 확인 필요/ }).click();
   await expect(admin.getByRole("dialog")).toBeVisible();
   await expect(admin.getByRole("dialog")).toContainText("주소");

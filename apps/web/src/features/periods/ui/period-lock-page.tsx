@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDateTimeShort } from "@console/i18n/format";
 import { focusSoon } from "../../../lib/react/announce";
 import { QueryState } from "../../../lib/react/query-state";
 import { EmptyState } from "../../../ui/empty-state";
@@ -79,7 +79,7 @@ export function PeriodLockPage() {
   const unlockDone = (l: PeriodLock, out: UnlockOutcome) => {
     setUnlocking(null);
     const until = out.lock.relockAt ?? out.request?.relockAt;
-    const relock = until ? t("periodLocks.unlock.relocksAt", { at: fmtDateTime(until) }) : undefined;
+    const relock = until ? t("periodLocks.unlock.relocksAt", { at: fmtDateTimeShort(until) }) : undefined;
     if (out.status === "PENDING_SECOND_PERSON") return recorded("periodLocks.unlockPending", l, out.request?.requestedAt ?? l.lockedAt, relock);
     unlocked.current = l.id;
     setView("active");
@@ -108,7 +108,7 @@ export function PeriodLockPage() {
           </Button>
         }
       />
-      {receipt && <Receipt state="recorded" message={receipt.message} meta={fmtDateTime(receipt.at)} />}
+      {receipt && <Receipt state="recorded" message={receipt.message} meta={fmtDateTimeShort(receipt.at)} />}
       {/* One loading card until the locks land: the form opens above the list when none is active, and the list
           must not be on screen first, under a pointer, to be pushed down by it. */}
       {refused && failedWith(locks.error, 403) ? <Card><EmptyState title={t("periodLocks.denied.title")} reason={t("periodLocks.denied.reason")} /></Card> : locks.isPending || reasons.isPending || refused ? <Card><QueryState q={locks}>{() => null}</QueryState></Card> : (

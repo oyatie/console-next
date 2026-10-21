@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { clickCounter } from "./clicks";
-import { koDate, kstDate, option } from "./flows";
+import { kstDate, option } from "./flows";
 import { tenantWithExecutive } from "./setup-flows";
 
 // The last finished month and the current one in Korea, as YYYY-MM, and how the app names a month.
@@ -51,14 +51,13 @@ test("period locks: month lock, overlap blocked with fixes, unlock with a reason
   await option(admin, "기간 방식", "기간 직접 지정").click();
   await admin.getByLabel(/^시작일/).fill(`${lastMonth}-15`);
   await admin.getByLabel(/^종료일/).fill(`${thisMonth}-15`);
-  await admin.getByLabel(/^종료일/).blur();
   await expect(admin.getByText(/겹칩니다/)).toBeVisible();
   await expect(admin.getByRole("button", { name: /^급여 [^·]* 잠금$/ })).toHaveAttribute("aria-disabled", "true");
   await expectAccessible(admin, "period locks (overlap blocked)");
   await admin.getByRole("button", { name: "기존 잠금 보기" }).click();
   await expect(row.getByRole("button", { name: /잠금 해제/ })).toBeFocused();
   await admin.getByRole("button", { name: /부터로 변경$/ }).click();
-  await expect(admin.getByLabel(/^시작일/)).toHaveValue(koDate(`${thisMonth}-01`));
+  await expect(admin.getByLabel(/^시작일/)).toHaveValue(`${thisMonth}-01`);
   await expect(admin.getByText(/겹칩니다/)).toBeHidden();
 
   // Esc with input only arms; a second Esc closes the card, and reopening it keeps the input.
@@ -70,7 +69,7 @@ test("period locks: month lock, overlap blocked with fixes, unlock with a reason
   const open = admin.getByRole("button", { name: "새 기간 잠금" });
   await expect(open).toBeFocused();
   await open.click();
-  await expect(start).toHaveValue(koDate(`${thisMonth}-01`));
+  await expect(start).toHaveValue(`${thisMonth}-01`);
 
   await atPhoneWidth(admin, () => fits(admin, "period locks"));
 

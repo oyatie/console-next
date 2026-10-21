@@ -1,6 +1,4 @@
 // Calendar-date arithmetic on `YYYY-MM-DD` strings (business dates, no clock, no time zone).
-import { i18n, type Locale } from "@console/i18n";
-
 const DAY = 86_400_000;
 
 export const utc = (d: string) => Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)));
@@ -40,13 +38,10 @@ export const nextMonday = (d: string) => addDays(d, ((8 - new Date(utc(d)).getUT
 export type Typed = { date: string } | { empty: true } | { bad: "format" } | { bad: "month"; month: number } | { bad: "day"; month: number; day: number };
 
 /** A date as people type it: 2026-10-12, 2026.10.12, 2026/10/12, 2026. 10. 12. or 20261012. */
-export function parseTyped(text: string, locale: Locale = i18n.locale): Typed {
+export function parseTyped(text: string): Typed {
   const s = text.trim();
   if (!s) return { empty: true };
-  const clean = s.replace(/\s+/g, " ");
-  const yearFirst = /^(\d{4})[-./\s]+(\d{1,2})[-./\s]+(\d{1,2})\.?$/.exec(clean) ?? /^(\d{4})(\d{2})(\d{2})$/.exec(clean);
-  const monthFirst = locale === "en" && !yearFirst ? /^(\d{1,2})[-./](\d{1,2})[-./](\d{4})$/.exec(clean) : null;
-  const m = yearFirst ?? (monthFirst ? [monthFirst[0], monthFirst[3], monthFirst[1], monthFirst[2]] : null);
+  const m = /^(\d{4})[-./\s]*(\d{1,2})[-./\s]*(\d{1,2})\.?$/.exec(s.replace(/\s+/g, " ")) ?? /^(\d{4})(\d{2})(\d{2})$/.exec(s);
   if (!m) return { bad: "format" };
   const [y, mo, d] = [m[1]!, Number(m[2]), Number(m[3])];
   if (mo < 1 || mo > 12) return { bad: "month", month: mo };

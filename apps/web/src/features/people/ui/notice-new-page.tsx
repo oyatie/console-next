@@ -8,7 +8,7 @@ import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
-import { DateField } from "../../../ui/date/date-field";
+import { DateChips } from "../../../ui/date/date-chips";
 import { datePresets } from "../../../ui/date/date-text";
 import { EmptyState } from "../../../ui/empty-state";
 import { Field, TextInput } from "../../../ui/field/field";
@@ -59,7 +59,7 @@ export function NoticeNewPage() {
         <Field label={t("notice.field.title")} required error={tried && gaps.title ? t("notice.missing.title") : undefined}>
           {(p) => <TextInput {...p} maxLength={TITLE_MAX} value={title} onChange={(e) => setTitle(e.target.value)} />}
         </Field>
-        <DateField label={t("notice.field.date")} required today={today} presets={datePresets(today, ["today"])} value={date} onChange={setDate} echo={date ? t("notice.field.dateEcho") : undefined} error={tried && gaps.date ? t("notice.missing.date") : undefined} showErrors={tried} />
+        <DateChips label={t("notice.field.date")} required presets={datePresets(today, ["today"])} value={date} onChange={setDate} echo={date ? t("notice.field.dateEcho") : undefined} error={tried && gaps.date ? t("notice.missing.date") : undefined} showErrors={tried} />
         <Field label={t("notice.field.note")} required={false}>
           {(p) => <TextArea {...p} maxLength={NOTE_MAX} value={note} onChange={(e) => setNote(e.target.value)} />}
         </Field>

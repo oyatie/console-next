@@ -1,17 +1,20 @@
-import { isMessageId, t } from "@console/i18n";
-import { fmtDate, fmtDateTime, fmtMonth, fmtWeekday } from "@console/i18n/format";
+import { i18n, isMessageId, t } from "@console/i18n";
+import { fmtDateTimeShort } from "@console/i18n/format";
 import { clock, duration, nextDay, workMinutes, type Shift } from "./domain/minutes";
 import type { PageState } from "./domain/month-state";
 import type { DaySpec } from "./domain/pattern";
 import type { BoardRow, ContractualHoliday, Entry, Pattern } from "./api";
 
-/** A month label with its year. */
-export const monthText = (d: string) => fmtMonth(d);
-/** A full business date. */
-export const dayText = (d: string) => fmtDate(d);
-/** A weekday label for the attendance calendar. */
-export const weekdayText = (d: string) => fmtWeekday(d);
-export const dateText = (d: string) => fmtDate(d, { weekday: "short" });
+const fmtDay = (options: Intl.DateTimeFormatOptions) => (d: string) =>
+  new Intl.DateTimeFormat(i18n.locale === "ko" ? "ko-KR" : "en-US", { timeZone: "UTC", ...options }).format(new Date(`${d.length === 7 ? `${d}-15` : d}T00:00:00Z`));
+/** A month by name, e.g. "October 2026". */
+export const monthText = fmtDay({ year: "numeric", month: "long" });
+/** Month and day, e.g. "November 1". */
+export const dayText = fmtDay({ month: "long", day: "numeric" });
+/** The short weekday name. */
+export const weekdayText = fmtDay({ weekday: "short" });
+/** "2026-11-01 (Sun)": a date in a field echo or a table. */
+export const dateText = (d: string) => `${d} (${weekdayText(d)})`;
 
 /** A clock with the next-day mark: "06:00 (+1)". */
 export const clockText = (min: number) => (nextDay(min) ? t("attendancePatterns.clock.next", { time: clock(min) }) : clock(min));
@@ -74,7 +77,7 @@ export function problemText(row: BoardRow): string {
 export function monthStateText(state: PageState, month: string) {
   const m = monthText(month);
   if (state.state === "REOPENED") {
-    return { text: state.relockAt ? t("attendanceRecords.month.reopened", { month: m, at: fmtDateTime(state.relockAt) }) : t("attendanceRecords.month.reopenedOpenEnded", { month: m }), link: t("attendanceRecords.month.locks"), unlock: undefined };
+    return { text: state.relockAt ? t("attendanceRecords.month.reopened", { month: m, at: fmtDateTimeShort(state.relockAt) }) : t("attendanceRecords.month.reopenedOpenEnded", { month: m }), link: t("attendanceRecords.month.locks"), unlock: undefined };
   }
   return { text: t(state.lockId ? "attendanceRecords.month.closed" : "attendanceRecords.month.closedNoLock", { month: m }), link: t(state.lockId ? "attendanceRecords.month.requestUnlock" : "attendanceRecords.month.locks"), unlock: state.lockId ?? undefined };
 }

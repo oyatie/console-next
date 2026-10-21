@@ -80,7 +80,6 @@ export function LifecycleWhat({ detail, kind, v, set, today, bounds, lastLeave, 
         {kind === "LEAVE_OF_ABSENCE" && (
           <LeaveFields
             start={v.date}
-            today={today}
             startSlot={dateSlot}
             tried={tried}
             type={v.leaveType}
@@ -104,7 +103,6 @@ export function LifecycleWhat({ detail, kind, v, set, today, bounds, lastLeave, 
             employeeId={e.id}
             contractEnd={contractEnd}
             start={v.date}
-            today={today}
             bounds={bounds}
             end={v.endDate}
             onEnd={(endDate) => set({ endDate })}
