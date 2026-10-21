@@ -232,6 +232,13 @@ impl AppConfig {
         // INF-06: the published dev OTP never boots, whatever the cookie setting.
         crate::coldstart_guard::refuse_dev_literal(coldstart_otp.as_deref())
             .map_err(AppError::Config)?;
+        // B7 strict: a release build never serves dev authentication.
+        crate::coldstart_guard::refuse_dev_auth(
+            vars.contains_key("CONSOLE_DEV_AUTH"),
+            cfg!(feature = "dev-auth"),
+            crate::coldstart_guard::BuildProfile::current(),
+        )
+        .map_err(AppError::Config)?;
 
         Ok(Self {
             role,
@@ -279,5 +286,27 @@ impl AppConfig {
             production_service_principal_hmac_key,
             web_dist: non_empty(vars.get("CONSOLE_WEB_DIST")).map(std::path::PathBuf::from),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config::AppConfig;
+
+    #[test]
+    fn from_pairs_applies_dev_auth_guard_for_active_build_profile() {
+        let result = AppConfig::from_pairs([("CONSOLE_DEV_AUTH", "true")]);
+
+        if cfg!(debug_assertions) {
+            assert!(result.is_ok(), "debug builds allow the dev-auth marker");
+        } else {
+            let error = result.expect_err("release builds must reject the dev-auth marker");
+            assert!(
+                error
+                    .to_string()
+                    .contains("dev authentication is not allowed in a non-development build"),
+                "unexpected config error: {error}"
+            );
+        }
     }
 }
