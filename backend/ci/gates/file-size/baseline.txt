@@ -28,7 +28,7 @@ app/tests/evaluation_cycle_api.rs	1301
 app/tests/facilities_pilot_story.rs	652
 app/tests/field_visit_api.rs	804
 app/tests/hr_attendance_manager_scope.rs	367
-app/tests/hr_attendance_self_read.rs	343
+app/tests/hr_attendance_self_read.rs	330
 app/tests/hr_lifecycle_stage_d.rs	2271
 app/tests/hr_people_create_api.rs	1154
 app/tests/logistics_pilot_story.rs	593
@@ -62,7 +62,7 @@ app/tests/workorder_api.rs	1451
 ci/gates/audit-coverage/src/lib.rs	444
 ci/gates/audit-coverage/tests/gate_detects_violation.rs	450
 ci/gates/layer-boundary/src/lib.rs	431
-ci/gates/layer-boundary/tests/gate_detects_violation.rs	968
+ci/gates/layer-boundary/tests/gate_detects_violation.rs	948
 ci/gates/migration-safety/src/lib.rs	452
 ci/gates/migration-safety/tests/gate_detects_violation.rs	372
 ci/gates/personal-data-classification/src/lib.rs	1255
@@ -130,7 +130,7 @@ crates/governance/rest/src/lib.rs	366
 crates/identity/adapter-postgres/tests/subject_authz_versions_freshness_rls.rs	481
 crates/identity/application/src/org.rs	426
 crates/identity/rest/tests/authentication_locking.rs	862
-crates/identity/rest/tests/org_setup.rs	4115
+crates/identity/rest/tests/org_setup.rs	4072
 crates/inbox/adapter-postgres/src/lib.rs	346
 crates/inbox/adapter-postgres/tests/inbox_docs_rls_surfaces_as_runtime_role.rs	345
 crates/inbox/rest/tests/api.rs	693
@@ -219,7 +219,7 @@ crates/platform/auth/src/refresh.rs	635
 crates/platform/auth/src/webauthn.rs	607
 crates/platform/auth/tests/credential_identity.rs	425
 crates/platform/auth/tests/jwt_es256.rs	485
-crates/platform/auth/tests/session_locking.rs	443
+crates/platform/auth/tests/session_locking.rs	411
 crates/platform/auth/tests/webauthn_contention.rs	953
 crates/platform/authz-rest/src/lib.rs	505
 crates/platform/authz-rest/src/store.rs	741
