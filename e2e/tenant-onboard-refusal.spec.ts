@@ -93,7 +93,7 @@ test("a response lost before any status still finds the tenant it opened, by the
   await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
   const receipt = v.locator("#tenants-receipt");
   await expect(receipt).toContainText("개설되었지만 응답이 끊겨 코드를 받지 못했습니다");
-  await expect(receipt).toContainText(name); // its particle reads 은(는) after a repeat's "-r1"
+  await expect(receipt).toContainText(name); // its particle follows the name's last character (a repeat's "-r1")
   await expect(receipt).toContainText(`회사 도메인 ${slug}`);
   await expect(receipt).not.toContainText(decoy);
   await expect(v.getByRole("complementary", { name })).toContainText(slug);

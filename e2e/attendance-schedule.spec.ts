@@ -46,7 +46,7 @@ test("근무 일정: first run → pattern → assign with preview → cancel be
   await s.getByRole("combobox", { name: /^근무 유형/ }).selectOption({ label: "공장 주간 08–17" });
   await s.getByRole("textbox", { name: /^적용 시작일/ }).fill(next);
   await chooseRadio(s, /기본 일정/);
-  await expect(s.getByText("2명 · 공장 주간 08–17으로(로) 바뀝니다")).toBeVisible();
+  await expect(s.getByText("2명 · 공장 주간 08–17로 바뀝니다")).toBeVisible();
   await expect(s.getByText("마감된 달 · 해당 없음")).toBeVisible();
   await expectAccessible(admin, "assign sheet with preview");
   await s.getByRole("button", { name: /^2명에게 .+부터 적용$/ }).click();
