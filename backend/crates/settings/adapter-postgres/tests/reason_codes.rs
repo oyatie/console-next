@@ -33,6 +33,8 @@ fn add(label: &str, requires_note: bool) -> AddReasonCode {
         label_ko: label.to_owned(),
         label_en: None,
         requires_note,
+        involuntary: false,
+        notice_required: false,
         sort: None,
     }
 }

@@ -74,6 +74,8 @@ pub(crate) async fn check_purpose(
                 code: purpose.code.clone(),
                 requires_note: row.try_get("requires_note")?,
                 active: row.try_get("active")?,
+                involuntary: false,
+                notice_required: false,
             });
         }
     }

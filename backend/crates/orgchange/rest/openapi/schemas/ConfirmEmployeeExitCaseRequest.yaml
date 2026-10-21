@@ -15,6 +15,35 @@ properties:
     type: string
     maxLength: 1000
     nullable: true
+  exit_reason_code:
+    type: string
+    description: HR tier only. Validated exit_reason code; replaces the case's reason when supplied.
+      Required at HR confirmation when the case has no reason. The HQ tier refuses this field.
+  dismissal_notice:
+    type: object
+    additionalProperties: false
+    description: HR tier only. Required for a reason whose catalog entry requires written notice under
+      근로기준법 제27조. Missing or blank evidence, or service after the statutory exit date, is 422
+      notice_evidence_missing. Ignored for other reasons; the HQ tier refuses this field.
+    properties:
+      reason_text:
+        type: string
+      served_on:
+        description: Delivery date; blank input reaches the notice_evidence_missing refusal.
+        oneOf:
+        - type: string
+          format: date
+        - type: string
+          pattern: '^\s*$'
+      method:
+        description: A listed method, or blank input for the notice_evidence_missing refusal.
+        oneOf:
+        - type: string
+          enum: [IN_PERSON_SIGNED, CERTIFIED_MAIL, ELECTRONIC]
+        - type: string
+          pattern: '^\s*$'
+      evidence_ref:
+        type: string
   signoffs:
     $ref: '#/components/schemas/EmployeeLifecycleSignoffs'
     description: HR tier only (ignored by the HQ tier). TERMINATE requires all four acknowledgements —

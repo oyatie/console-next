@@ -1,6 +1,6 @@
 type: object
 additionalProperties: false
-required: [code, system, requires_note, active, label_ko, label_en]
+required: [code, system, requires_note, involuntary, notice_required, active, label_ko, label_en]
 properties:
   code:
     type: string
@@ -9,6 +9,12 @@ properties:
     description: A code-defined system code (label from the frontend catalog) rather than a tenant code.
   requires_note:
     type: boolean
+  involuntary:
+    type: boolean
+    description: Dismissal-like protected-period class, derived from the reason reference.
+  notice_required:
+    type: boolean
+    description: Written dismissal notice required; implies involuntary.
   active:
     type: boolean
   label_ko:

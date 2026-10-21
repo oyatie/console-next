@@ -6970,7 +6970,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm an employee exit case for HR/HQ review
-         * @description HR tier (hq_confirmation=false) moves REPORTED to HR_CONFIRMED and records the TERMINATE lifecycle event that exits the employee; it requires all four signoffs (422 lifecycle_signoff_required naming the first missing one). HQ tier (hq_confirmation=true) moves HR_CONFIRMED to HQ_CONFIRMED and must be a different actor than the HR confirmer (403). With a complete settlement_input an HQ-confirmed case becomes SETTLEMENT_READY. Any other starting state is 409 invalid_transition; see EmployeeExitCaseStatus. A case whose effective_exit_date is after today (KST) is confirmed ahead: the TERMINATE event is SCHEDULED (exit_event_state) and exits the employee on that date; reject/cancel before then withdraws it (no EXIT_REVERSAL). Like any lifecycle event, the TERMINATE must leave the employee's later SCHEDULED events valid, which an exit never does: 409 lifecycle_schedule_conflict (error.refusals names each pending event) until they are cancelled. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person). Nobody records an HR act on their own record, whatever they hold; another holder in scope, or the ops account, records it. The ops account passes only when no other active account holds the act over the employee, and that pass is audited as authz.own_record.break_glass with review_required (people-self-33).
+         * @description HR requires an exit_reason_code from the case or body (422 exit_reason_required). A body code replaces the reported reason. Involuntary reasons are refused with 409 exit_protected_period when the statutory exit date (effective_exit_date + one day) is protected. Reasons marked notice_required also require written dismissal_notice delivery facts (422 notice_evidence_missing). HQ refuses both fields (422 validation). Scheduled exits recheck protection and notice before effect; refusals become APPLY_FAILED with the stable code. HR tier (hq_confirmation=false) moves REPORTED to HR_CONFIRMED and records the TERMINATE lifecycle event that exits the employee; it requires all four signoffs (422 lifecycle_signoff_required naming the first missing one). HQ tier (hq_confirmation=true) moves HR_CONFIRMED to HQ_CONFIRMED and must be a different actor than the HR confirmer (403). With a complete settlement_input an HQ-confirmed case becomes SETTLEMENT_READY. Any other starting state is 409 invalid_transition; see EmployeeExitCaseStatus. A case whose effective_exit_date is after today (KST) is confirmed ahead: the TERMINATE event is SCHEDULED (exit_event_state) and exits the employee on that date; reject/cancel before then withdraws it (no EXIT_REVERSAL). Like any lifecycle event, the TERMINATE must leave the employee's later SCHEDULED events valid, which an exit never does: 409 lifecycle_schedule_conflict (error.refusals names each pending event) until they are cancelled. 403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person). Nobody records an HR act on their own record, whatever they hold; another holder in scope, or the ops account, records it. The ops account passes only when no other active account holds the act over the employee, and that pass is audited as authz.own_record.break_glass with review_required (people-self-33).
          */
         post: operations["confirmEmployeeExitCase"];
         delete?: never;
@@ -16309,6 +16309,17 @@ export interface components {
              */
             hq_confirmation: boolean;
             note?: string | null;
+            /** @description HR tier only. Validated exit_reason code; replaces the case's reason when supplied. Required at HR confirmation when the case has no reason. The HQ tier refuses this field. */
+            exit_reason_code?: string;
+            /** @description HR tier only. Required for a reason whose catalog entry requires written notice under 근로기준법 제27조. Missing or blank evidence, or service after the statutory exit date, is 422 notice_evidence_missing. Ignored for other reasons; the HQ tier refuses this field. */
+            dismissal_notice?: {
+                reason_text?: string;
+                /** @description Delivery date; blank input reaches the notice_evidence_missing refusal. */
+                served_on?: string;
+                /** @description A listed method, or blank input for the notice_evidence_missing refusal. */
+                method?: ("IN_PERSON_SIGNED" | "CERTIFIED_MAIL" | "ELECTRONIC") | string;
+                evidence_ref?: string;
+            };
             /** @description HR tier only (ignored by the HQ tier). TERMINATE requires all four acknowledgements — privacy_notice_ack, korean_labor_law_ack, payroll_cutoff_ack, retirement_settlement_ack; a missing one is 422 lifecycle_signoff_required naming it. */
             signoffs?: components["schemas"]["EmployeeLifecycleSignoffs"];
             settlement_input?: components["schemas"]["ExitSettlementInput"] | null;
@@ -16781,7 +16792,7 @@ export interface components {
             to_job_title_id?: components["schemas"]["Uuid"] | null;
             /** @description TRANSFER and PROMOTE only (422 otherwise). A BW-07 code of lifecycle_transfer / lifecycle_promote (422 reason_code_invalid / reason_note_required); comment is its note. A PROMOTE from a ranked title to a lower grade_rank needs DISCIPLINARY_DEMOTION (422 demotion_reason_required). */
             reason_code?: string | null;
-            /** @description LEAVE_OF_ABSENCE only. YYYY-MM-DD, on or after effective_date. Required for CHILDCARE and MATERNITY (422 leave_return_date_required). */
+            /** @description LEAVE_OF_ABSENCE only. YYYY-MM-DD, on or after effective_date. Required for CHILDCARE and MATERNITY (422 leave_return_date_required); optional for WORK_INJURY (산재 요양). */
             expected_return_date?: string | null;
             /** @description CONTRACT_RENEWAL (required), or an EMPLOYMENT_TYPE_CHANGE to CONTRACT (required, the new contract's end; MR-24). YYYY-MM-DD, on or after effective_date. A renewal that takes fixed-term service past the statutory limit (기간제법 §4①, the register's FIXED_TERM_MAX_YEARS; 육아휴직 not counted) is 409 fixed_term_limit unless exception_id admits it. Over the limit on the hire-date fallback (no contract history) is allowed and flagged by GET /api/v1/employees/{id}/fixed-term. */
             contract_end_date?: string | null;
@@ -16800,10 +16811,10 @@ export interface components {
             /** @description Required with replaces_event_id (422 reason_code_required). A lifecycle_cancel code. */
             replace_reason_code?: string | null;
             /**
-             * @description Required for LEAVE_OF_ABSENCE (422 leave_type_required; leave_type_invalid for another value); 422 on any other event.
+             * @description Required for LEAVE_OF_ABSENCE (422 leave_type_required; leave_type_invalid for another value); 422 on any other event. WORK_INJURY is 산재 요양 and does not require expected_return_date.
              * @enum {string|null}
              */
-            leave_type?: "CHILDCARE" | "MATERNITY" | "ILLNESS" | "PERSONAL" | "OTHER" | null;
+            leave_type?: "CHILDCARE" | "MATERNITY" | "WORK_INJURY" | "ILLNESS" | "PERSONAL" | "OTHER" | null;
             /**
              * Format: date
              * @description YYYY-MM-DD. A date after today (KST) schedules the event. Before the employee's hire date is 422 effective_date_before_hire (BW-11).
@@ -18040,7 +18051,7 @@ export interface components {
             can_cancel: boolean;
             can_report_exit: boolean;
         };
-        /** @description Optional fields are omitted (not null) when absent, except the `*_name` actor display names, which are always present and null when the actor is unset or unknown. exit_reason_code (BE-EMP-UI) is the report's 퇴직 사유, omitted when none was given. */
+        /** @description Optional fields are omitted (not null) when absent. Required nullable fields are always present; `*_name` actor display names are null when the actor is unset or unknown. exit_reason_code (BE-EMP-UI) is the case's 퇴직 사유, omitted when none was given. */
         EmployeeExitCase: {
             id: components["schemas"]["Uuid"];
             employee_id: components["schemas"]["Uuid"];
@@ -18056,8 +18067,34 @@ export interface components {
             /** @description YYYY-MM-DD */
             effective_exit_date: string;
             site_manager_note: string;
-            /** @description BE-EMP-UI. The report's 퇴직 사유 (BW-07 exit_reason code); omitted when none was given. */
+            /** @description BE-EMP-UI. The case's 퇴직 사유 (BW-07 exit_reason code); omitted when none was given. */
             exit_reason_code?: string;
+            /** @description Derived from the reason catalog; never stored on the case. */
+            readonly involuntary: boolean;
+            /** @description Derived from the reason catalog; whether written dismissal notice is required. */
+            readonly notice_required: boolean;
+            readonly dismissal_notice: {
+                reason_text: string;
+                /** Format: date */
+                served_on: string;
+                /** @enum {string} */
+                method: "IN_PERSON_SIGNED" | "CERTIFIED_MAIL" | "ELECTRONIC";
+                evidence_ref: string;
+            } | null;
+            /** @description Protected leave periods computed from lifecycle events and the statutory register. */
+            readonly protected_periods: {
+                /** Format: uuid */
+                lifecycle_event_id: string;
+                leave_type: string;
+                /** Format: date */
+                leave_from: string;
+                /** Format: date */
+                leave_until: string | null;
+                /** Format: date */
+                protected_until: string | null;
+                instrument: string | null;
+                article: string | null;
+            }[];
             reported_by: components["schemas"]["Uuid"];
             /** @description Display name of `reported_by`, resolved server-side within the tenant; null when unset or unknown. */
             reported_by_name: string | null;
@@ -18722,10 +18759,10 @@ export interface components {
             expected_return_date?: string | null;
             contract_end_date?: string | null;
             /**
-             * @description LEAVE_OF_ABSENCE only; absent when not given. Omitted for callers without employee_directory_manage (ILLNESS and MATERNITY reveal health information, 개보법 제23조).
+             * @description LEAVE_OF_ABSENCE only; absent when not given. WORK_INJURY is 산재 요양. Omitted for callers without employee_directory_manage (ILLNESS, MATERNITY and WORK_INJURY reveal health information, 개보법 제23조).
              * @enum {string}
              */
-            leave_type?: "CHILDCARE" | "MATERNITY" | "ILLNESS" | "PERSONAL" | "OTHER";
+            leave_type?: "CHILDCARE" | "MATERNITY" | "WORK_INJURY" | "ILLNESS" | "PERSONAL" | "OTHER";
             /** @description Present when the event was recorded by a bulk appointment (POST /api/v1/employees/lifecycle-events/bulk). */
             batch_id?: components["schemas"]["Uuid"];
             /**
@@ -25053,6 +25090,10 @@ export interface components {
             /** @description A code-defined system code (label from the frontend catalog) rather than a tenant code. */
             system: boolean;
             requires_note: boolean;
+            /** @description Dismissal-like protected-period class, derived from the reason reference. */
+            involuntary: boolean;
+            /** @description Written dismissal notice required; implies involuntary. */
+            notice_required: boolean;
             active: boolean;
             /** @description Tenant codes only. */
             label_ko: string | null;
@@ -25065,6 +25106,16 @@ export interface components {
             label_ko: string;
             label_en?: string | null;
             requires_note: boolean;
+            /**
+             * @description Only exit_reason may be involuntary. Invalid classes are 422 reason_class_invalid.
+             * @default false
+             */
+            involuntary: boolean;
+            /**
+             * @description Only exit_reason; requires involuntary=true.
+             * @default false
+             */
+            notice_required: boolean;
             /** Format: int32 */
             sort?: number | null;
         };
@@ -26744,6 +26795,10 @@ export interface components {
             label_ko: string;
             label_en: string | null;
             requires_note: boolean;
+            /** @description Dismissal-like protected-period class, derived from the reason reference. */
+            involuntary: boolean;
+            /** @description Written dismissal notice required; implies involuntary. */
+            notice_required: boolean;
             active: boolean;
             /** Format: int32 */
             sort: number;
@@ -41730,13 +41785,13 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description Invalid transition, or lifecycle_schedule_conflict naming the employee's pending SCHEDULED events. */
+            /** @description Invalid transition, exit_protected_period naming protected periods, or lifecycle_schedule_conflict naming the employee's pending SCHEDULED events. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["LifecycleScheduleConflictBody"];
+                    "application/json": components["schemas"]["LifecycleScheduleConflictBody"] | components["schemas"]["ErrorBody"];
                 };
             };
             422: components["responses"]["ValidationError"];

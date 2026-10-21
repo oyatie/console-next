@@ -78,6 +78,7 @@ impl HrService {
         let exit_case = with_audits::<_, _, HrError>(&self.pool, org, |tx| {
         Box::pin(async move {
             let context = load_exit_case_context(tx, org_uuid, case_id, true).await?;
+            let mut involuntary = false;
             let mut hq_second_person = None;
             let mut step_up_assertion = None;
 
@@ -92,6 +93,9 @@ impl HrService {
                         ))
                     })?;
                 own_record_guard(tx, org, actor, context.employee_id, Feature::ExitCaseHqConfirm).await?;
+                if body.exit_reason_code.is_some() || body.dismissal_notice.is_some() {
+                    return Err(HrError::validation("exit reason and dismissal notice belong to HR confirmation"));
+                }
                 let routed = approval_routes_in_tx(tx.as_mut(), org, SettingKey::ApprovalPolicyExit)
                     .await
                     .map_err(HrError::from_kernel)?;
@@ -143,6 +147,11 @@ impl HrService {
                         "HR confirmation requires a REPORTED exit case",
                     )));
                 }
+                let class = super::reason::confirmation_reason(tx, org, &context, body.exit_reason_code.as_deref()).await?;
+                super::guards::check_exit_guards(tx.as_mut(), org, context.employee_id, &context.effective_exit_date, &class, body.dismissal_notice.as_ref(), "confirm").await?;
+                let notice = super::notice::checked_notice(class.notice_required, body.dismissal_notice, super::guards::termination_date(&context.effective_exit_date)?)?;
+                super::notice::save_facts(tx, org_uuid, case_id, &class.code, notice.as_ref()).await?;
+                involuntary = class.involuntary;
                 // HR confirmation is the exit: it records the TERMINATE event
                 // (the only route to EXITED) that a later reject/cancel reverses.
                 insert_confirmed_exit_lifecycle_event(
@@ -190,7 +199,7 @@ impl HrService {
             let mut events = if body.hq_confirmation {
                 Vec::new()
             } else {
-                end_leaver_access(tx, org, actor, &context).await?
+                end_leaver_access(tx, org, actor, &context, involuntary).await?
             };
             upsert_exit_settlement_package(tx, org_uuid, case_id, body.settlement_input.clone())
                 .await?;
@@ -204,6 +213,9 @@ impl HrService {
                     "exit_case_id": case_id,
                     "hq_confirmation": body.hq_confirmation,
                     "status": &exit_case.status,
+                    "involuntary": exit_case.involuntary,
+                    "notice_required": exit_case.notice_required,
+                    "dismissal_notice": &exit_case.dismissal_notice,
                     "exit_lifecycle_event_id": exit_lifecycle_event_id,
                     // decisions #26 item d: who stood as the HQ second person.
                     "hq_second_person": hq_second_person.map(|p| match p {
@@ -225,16 +237,20 @@ impl HrService {
     }
 }
 
-/// End the leaver's access at the instant `exit.access.revoke_mode.voluntary`
-/// names (the case carries no voluntary/involuntary mark yet).
+/// End access at the instant configured for the validated reason class.
 async fn end_leaver_access(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
     actor: UserId,
     context: &ExitCaseContext,
+    involuntary: bool,
 ) -> Result<Vec<AuditEvent>, HrError> {
     let now = OffsetDateTime::now_utc();
-    let key = SettingKey::ExitAccessRevokeModeVoluntary;
+    let key = if involuntary {
+        SettingKey::ExitAccessRevokeModeInvoluntary
+    } else {
+        SettingKey::ExitAccessRevokeModeVoluntary
+    };
     let resolved = resolve_in_tx(tx.as_mut(), org, &[key], None, now)
         .await
         .map_err(HrError::from_kernel)?;

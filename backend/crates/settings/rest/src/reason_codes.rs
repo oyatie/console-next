@@ -83,6 +83,10 @@ struct AddRequest {
     label_en: Option<String>,
     requires_note: bool,
     #[serde(default)]
+    involuntary: bool,
+    #[serde(default)]
+    notice_required: bool,
+    #[serde(default)]
     sort: Option<i32>,
 }
 
@@ -98,6 +102,8 @@ async fn add(
         label_ko: body.label_ko,
         label_en: body.label_en,
         requires_note: body.requires_note,
+        involuntary: body.involuntary,
+        notice_required: body.notice_required,
         sort: body.sort,
     };
     let view = state

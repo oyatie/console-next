@@ -67,13 +67,26 @@ impl HrService {
                     IdempotencyClaim::Fresh => {}
                 }
                 // After the claim: a replay answers what was recorded.
-                let exit_reason_code = checked_exit_reason(
+                let exit_reason = checked_exit_reason(
                     tx,
                     org,
                     body.exit_reason_code.as_deref(),
                     &site_manager_note,
                 )
                 .await?;
+                if let Some(class) = &exit_reason {
+                    super::guards::check_exit_guards(
+                        tx.as_mut(),
+                        org,
+                        body.employee_id,
+                        &effective_exit_date,
+                        class,
+                        None,
+                        "report",
+                    )
+                    .await?;
+                }
+                let exit_reason_code = exit_reason.as_ref().map(|r| &r.code);
                 let exited: bool = sqlx::query_scalar(
                 "SELECT employment_status = 'EXITED' FROM employees WHERE org_id = $1 AND id = $2",
             )
@@ -142,7 +155,7 @@ impl HrService {
                 .bind(&effective_exit_date)
                 .bind(&site_manager_note)
                 .bind(*actor.as_uuid())
-                .bind(&exit_reason_code)
+                .bind(exit_reason_code)
                 .fetch_optional(tx.as_mut())
                 .await?;
                 // PEOPLE-B: an open case already exists (the partial unique

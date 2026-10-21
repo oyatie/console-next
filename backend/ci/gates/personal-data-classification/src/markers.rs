@@ -8,7 +8,7 @@ use std::{
 /// Parse classifications from ordinary comments and fully bounded table loops.
 #[must_use]
 pub fn parse_markers(files: &[PathBuf]) -> Vec<Marker> {
-    let mut markers = Vec::new();
+    let mut markers: Vec<Marker> = Vec::new();
     for file in files {
         let Ok(content) = fs::read_to_string(file) else {
             continue;
@@ -25,7 +25,17 @@ pub fn parse_markers(files: &[PathBuf]) -> Vec<Marker> {
             let Some(marker) = read_marker(statement, file) else {
                 continue;
             };
-            markers.push(marker);
+            // A later migration may refresh prose while retaining the exact classification.
+            if let Some(previous) = markers.iter_mut().find(|previous| {
+                previous.table == marker.table
+                    && previous.column == marker.column
+                    && previous.tokens == marker.tokens
+                    && previous.file != marker.file
+            }) {
+                *previous = marker;
+            } else {
+                markers.push(marker);
+            }
         }
     }
     markers
@@ -80,4 +90,55 @@ fn read_marker(statement: &[Tok], file: &Path) -> Option<Marker> {
         note,
         file: file.to_path_buf(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    fn files(second: &str, same_file: bool) -> std::io::Result<Vec<PathBuf>> {
+        let dir = std::env::temp_dir().join(format!(
+            "pd-comment-update-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir_all(&dir)?;
+        let first = "COMMENT ON COLUMN events.leave_type IS 'pd:personal,sensitive/health — MATERNITY reveals health';";
+        let a = dir.join("0001.sql");
+        if same_file {
+            fs::write(&a, format!("{first}\n{second}"))?;
+            return Ok(vec![a]);
+        }
+        let b = dir.join("0002.sql");
+        fs::write(&a, first)?;
+        fs::write(&b, second)?;
+        Ok(vec![a, b])
+    }
+    #[test]
+    fn a_later_migration_can_refresh_the_note_without_reclassifying() -> std::io::Result<()> {
+        let files = files(
+            "COMMENT ON COLUMN events.leave_type IS 'pd:personal,sensitive/health — MATERNITY and WORK_INJURY reveal health';",
+            false,
+        )?;
+        let markers = parse_markers(&files);
+        assert_eq!(markers.len(), 1);
+        assert!(markers[0].note.contains("WORK_INJURY"));
+        assert_eq!(markers[0].file, files[1]);
+        Ok(())
+    }
+    #[test]
+    fn a_changed_class_or_a_duplicate_in_one_migration_still_reaches_validation()
+    -> std::io::Result<()> {
+        assert_eq!(
+            parse_markers(&files(
+                "COMMENT ON COLUMN events.leave_type IS 'pd:none — downgraded';",
+                false
+            )?)
+            .len(),
+            2
+        );
+        assert_eq!(parse_markers(&files("COMMENT ON COLUMN events.leave_type IS 'pd:personal,sensitive/health — duplicate';",true)?).len(),2);
+        Ok(())
+    }
 }

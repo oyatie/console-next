@@ -54,6 +54,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   const sheet = admin.getByRole("dialog");
   await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(0));
   await sheet.getByLabel("퇴직 경위").fill("개인 사정");
+  await sheet.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
   await sheet.getByRole("button", { name: "퇴직 보고" }).click();
   await expect(exitPanel).toContainText("보고됨");
   await exitPanel.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();

@@ -106,6 +106,8 @@ fn tenant(code: &str, requires_note: bool, active: bool) -> TenantCode {
     TenantCode {
         code: code.to_owned(),
         requires_note,
+        involuntary: false,
+        notice_required: false,
         active,
     }
 }
@@ -232,4 +234,49 @@ fn only_governance_domains_are_closed_to_tenant_codes() {
     assert!(!ReasonDomain::Exception.tenant_extensible());
     let open = ReasonDomain::ALL.iter().filter(|d| d.tenant_extensible());
     assert_eq!(open.count(), ReasonDomain::ALL.len() - 1);
+}
+
+#[test]
+fn exit_classes_are_pinned_and_tenant_classes_survive_validation() {
+    let codes = ReasonDomain::ExitReason.system_codes();
+    let flagged = |notice| {
+        codes
+            .iter()
+            .filter(|c| {
+                if notice {
+                    c.notice_required
+                } else {
+                    c.involuntary
+                }
+            })
+            .map(|c| c.code)
+            .collect::<HashSet<_>>()
+    };
+    assert_eq!(
+        flagged(false),
+        HashSet::from([
+            "DISCIPLINARY_DISMISSAL",
+            "REDUNDANCY_DISMISSAL",
+            "ADVISED_RESIGNATION_BUSINESS",
+            "ADVISED_RESIGNATION_FAULT"
+        ])
+    );
+    assert_eq!(
+        flagged(true),
+        HashSet::from(["DISCIPLINARY_DISMISSAL", "REDUNDANCY_DISMISSAL"])
+    );
+    for domain in ReasonDomain::ALL {
+        for c in domain.system_codes() {
+            assert!(!c.notice_required || c.involuntary);
+            assert!(!c.involuntary || *domain == ReasonDomain::ExitReason);
+        }
+    }
+    let code = tenant_code(Uuid::new_v4());
+    let row = TenantCode {
+        involuntary: true,
+        notice_required: true,
+        ..tenant(&code, false, true)
+    };
+    let valid = validate_reason(ReasonDomain::ExitReason, &code, None, &[row]).unwrap();
+    assert!(valid.involuntary && valid.notice_required);
 }

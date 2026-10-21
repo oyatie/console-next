@@ -1,5 +1,6 @@
 // Exit cases: which step a user can take, where the case stands, and what a recorded step looks like.
 import type { components } from "@console/api/schema";
+import { addDays, isDate } from "../../../ui/date/days";
 
 type Case = components["schemas"]["EmployeeExitCase"];
 type Status = Case["status"];
@@ -95,3 +96,15 @@ export function effectOf(key: Key | "submit", c: Case): Effect | null {
  */
 export const blockingSchedules = (events: readonly LifecycleEvent[], exitDate: string) =>
   events.filter((x) => x.state === "SCHEDULED" && x.event_type !== "TERMINATE" && x.effective_date > exitDate);
+
+
+export type ProtectedPeriod = Case["protected_periods"][number];
+export type NoticeDraft = { reason_text: string; served_on: string; method: string; evidence_ref: string };
+export const EMPTY_NOTICE: NoticeDraft = { reason_text: "", served_on: "", method: "", evidence_ref: "" };
+/** Advisory completeness only; the server checks legal applicability and the delivery evidence again. */
+export function noticeMissing(draft: NoticeDraft, lastWorkingDay: string): (keyof NoticeDraft)[] {
+  return (["reason_text", "served_on", "method", "evidence_ref"] as const).filter((key) =>
+    !draft[key].trim() || (key === "served_on" && (!isDate(draft.served_on) || draft.served_on > addDays(lastWorkingDay, 1))));
+}
+/** Dates and citations belong to the server; this view never calculates protected periods. */
+export const protectedLines = (c: Pick<Case, "protected_periods">): readonly ProtectedPeriod[] => c.protected_periods ?? [];

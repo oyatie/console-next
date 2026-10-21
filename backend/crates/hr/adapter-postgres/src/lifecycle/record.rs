@@ -52,7 +52,7 @@ pub async fn apply_lifecycle_head<H: LifecycleApplyHooks<PgConnection>>(
     hooks
         .before_apply(tx.as_mut(), &hook_event)
         .await
-        .map_err(HrError::from_kernel)?;
+        .map_err(super::title_reason::coded)?;
     // The Employment owner's statement, inside this transaction. See
     // [`create_employee_core`] for why the DML is not held here.
     employment::apply_employment_change(
@@ -104,7 +104,7 @@ pub async fn apply_lifecycle_head<H: LifecycleApplyHooks<PgConnection>>(
     hooks
         .after_apply(tx.as_mut(), &hook_event)
         .await
-        .map_err(HrError::from_kernel)
+        .map_err(super::title_reason::coded)
 }
 
 /// Records one already-prepared lifecycle event inside the caller's

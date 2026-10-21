@@ -79,7 +79,7 @@ export const SETTLEMENT_STATUS = toned<S["EmployeeExitSettlementPackage"]["statu
 /** The kinds of action an employee's next (scheduled) event can be. */
 export const LIFECYCLE_EVENT = values<NonNullable<S["Employee"]["next_event"]>["event_type"]>("lifecycleEvent", ["TRANSFER", "PROMOTE", "LEAVE_OF_ABSENCE", "RETURN_FROM_LEAVE", "CONTRACT_RENEWAL", "TERMINATE"]);
 export const LIFECYCLE_STATE = toned<S["EmployeeLifecycleEvent"]["state"]>("lifecycleState", { SCHEDULED: "info", APPLIED: "ok", APPLY_FAILED: "danger", CANCELLED: "neutral" });
-export const LEAVE_TYPE = values<NonNullable<S["EmployeeLifecycleEvent"]["leave_type"]>>("leaveType", ["CHILDCARE", "MATERNITY", "ILLNESS", "PERSONAL", "OTHER"]);
+export const LEAVE_TYPE = values<NonNullable<S["EmployeeLifecycleEvent"]["leave_type"]>>("leaveType", ["CHILDCARE", "MATERNITY", "WORK_INJURY", "ILLNESS", "PERSONAL", "OTHER"]);
 export const PERIOD_LOCK_DOMAIN = values<S["PeriodLock"]["domain"]>("periodLockDomain", ["payroll", "accounting"]);
 export const IMPORT_ROW_STATUS = toned("importRowStatus", { CANDIDATE: "ok", PRESERVED: "warn", ERROR: "danger" });
 // Employment facts, contracts and onboarding (EMP-MODEL).

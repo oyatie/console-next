@@ -34,3 +34,8 @@ export const useReasonCodesReady = (domain: ReasonDomain | null) => {
   const q = useQuery({ ...reasonCodesQuery(domain ?? "lifecycle_cancel"), enabled: domain !== null });
   return domain !== null && q.isSuccess && reasonOptions(domain, q.data.items).length > 0;
 };
+
+
+/** The selected reason reference owns its class; callers never maintain their own code lists. */
+export const useExitClass = (code: string | null) =>
+  useQuery(reasonCodesQuery("exit_reason")).data?.items.find((e) => e.code === code);

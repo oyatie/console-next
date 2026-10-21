@@ -174,7 +174,7 @@ impl World {
     pub async fn report(&self, who: &Principal, employee: Uuid) -> Result<Uuid, HrError> {
         let body: ReportEmployeeExitCaseRequest = serde_json::from_value(json!({
             "employee_id": employee, "effective_exit_date": "2026-12-31",
-            "site_manager_note": "본인 사정으로 퇴사",
+            "site_manager_note": "본인 사정으로 퇴사", "exit_reason_code": "PERSONAL",
         }))
         .unwrap();
         let (_, case) = self

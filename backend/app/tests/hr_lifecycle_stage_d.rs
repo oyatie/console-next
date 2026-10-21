@@ -81,7 +81,7 @@ impl Ctx {
                 Some(json!({
                     "employee_id": employee,
                     "effective_exit_date": date,
-                    "site_manager_note": "무단결근 보고",
+                    "site_manager_note": "무단결근 보고", "exit_reason_code": "PERSONAL",
                 })),
             )
             .await;
@@ -1253,7 +1253,7 @@ async fn idempotency_key_replays_and_conflicts(pool: PgPool) {
     let report = json!({
         "employee_id": emp,
         "effective_exit_date": "2026-06-30",
-        "site_manager_note": "무단결근 보고",
+        "site_manager_note": "무단결근 보고", "exit_reason_code": "PERSONAL",
     });
     let key = "stage-d-exit-case-key-0001";
     let (status, created) = ctx

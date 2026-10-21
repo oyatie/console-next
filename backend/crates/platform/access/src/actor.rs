@@ -193,6 +193,8 @@ pub(crate) async fn validate_reason(
                 code: code.to_owned(),
                 requires_note: row.try_get("requires_note")?,
                 active: row.try_get("active")?,
+                involuntary: false,
+                notice_required: false,
             });
         }
     }

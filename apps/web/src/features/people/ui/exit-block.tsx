@@ -14,7 +14,7 @@ import { usePageActive } from "../../../lib/react/page-active";
 import { QueryState } from "../../../lib/react/query-state";
 import { EXIT_CASE_STATUS, LIFECYCLE_STATE, labeled } from "../../../lib/labels";
 import { useCan } from "../../../reference/authz/ui/use-can";
-import { exitCasesQuery } from "../api";
+import { caseQuery, exitCasesQuery } from "../api";
 import { whoLine } from "../present";
 import { isClosed, isForward, type BackKey, type ForwardKey } from "../domain/exits";
 import { StepForm } from "./exit-axis";
@@ -167,8 +167,13 @@ function ActSheet({ act, want, target, employee, canReport, loaded, onClose, onD
     );
   if (report) return <ReportForm employee={employee} onClose={onClose} onDone={onDone} />;
   const sheet = { title: t(`exit.action.${key!}`), subtitle: whoLine(employee), onClose };
-  if (key && isForward(key)) return <StepForm k={key} c={target!} sheet={sheet} onDone={onDone} />;
+  if (key && isForward(key)) return <CaseStep k={key} c={target!} sheet={sheet} onDone={onDone} />;
   return <CloseForm c={target!} reject={key === "reject_exit"} onClose={onClose} onDone={onDone} />;
+}
+
+function CaseStep({ c, ...props }: { c: Case; k: ForwardKey; sheet: { title: string; subtitle: string; onClose: () => void }; onDone: (message: string) => void }) {
+  const detail = useQuery({ ...caseQuery(c.id), placeholderData: c });
+  return <StepForm {...props} c={detail.data ?? c} />;
 }
 
 const NONE = { forward: null, back: [] as BackKey[] };

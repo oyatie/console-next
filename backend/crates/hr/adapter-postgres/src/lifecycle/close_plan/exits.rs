@@ -53,7 +53,7 @@ pub(crate) async fn checked_reason(
         ));
     }
     match validate_reason_code(tx, org, ReasonDomain::ExitReason, code, Some(NOTE)).await {
-        Ok(()) => Ok(Ok(code.to_owned())),
+        Ok(_) => Ok(Ok(code.to_owned())),
         Err(e) if e.status.is_client_error() => Ok(Err(
             json!({ "employee_id": employee, "code": e.code, "message": e.message }),
         )),

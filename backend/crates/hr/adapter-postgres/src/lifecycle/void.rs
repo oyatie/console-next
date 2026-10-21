@@ -332,4 +332,5 @@ pub(super) async fn check_void_reason(
         note,
     )
     .await
+    .map(|_| ())
 }

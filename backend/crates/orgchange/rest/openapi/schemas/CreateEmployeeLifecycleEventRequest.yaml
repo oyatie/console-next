@@ -106,7 +106,7 @@ properties:
     type: string
     nullable: true
     description: LEAVE_OF_ABSENCE only. YYYY-MM-DD, on or after effective_date. Required for CHILDCARE and
-      MATERNITY (422 leave_return_date_required).
+      MATERNITY (422 leave_return_date_required); optional for WORK_INJURY (산재 요양).
   contract_end_date:
     type: string
     nullable: true
@@ -165,8 +165,8 @@ properties:
   leave_type:
     type: [string, 'null']
     description: Required for LEAVE_OF_ABSENCE (422 leave_type_required; leave_type_invalid for another value);
-      422 on any other event.
-    enum: [CHILDCARE, MATERNITY, ILLNESS, PERSONAL, OTHER, null]
+      422 on any other event. WORK_INJURY is 산재 요양 and does not require expected_return_date.
+    enum: [CHILDCARE, MATERNITY, WORK_INJURY, ILLNESS, PERSONAL, OTHER, null]
   effective_date:
     type: string
     format: date

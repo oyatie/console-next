@@ -1,6 +1,6 @@
 type: object
 additionalProperties: false
-required: [domain, code, label_ko, label_en, requires_note, active, sort]
+required: [domain, code, label_ko, label_en, requires_note, involuntary, notice_required, active, sort]
 properties:
   domain:
     type: string
@@ -13,6 +13,12 @@ properties:
     nullable: true
   requires_note:
     type: boolean
+  involuntary:
+    type: boolean
+    description: Dismissal-like protected-period class, derived from the reason reference.
+  notice_required:
+    type: boolean
+    description: Written dismissal notice required; implies involuntary.
   active:
     type: boolean
   sort:

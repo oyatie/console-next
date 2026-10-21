@@ -7030,7 +7030,7 @@ E-001,홍길동,본사,2026-07-01,abc
                 absence_alert_id,
                 effective_exit_date: "2026-06-30".to_owned(),
                 site_manager_note: "branch provenance test".to_owned(),
-                exit_reason_code: None,
+                exit_reason_code: Some("PERSONAL".into()),
             };
 
         let forged = report_employee_exit_case(
@@ -7203,7 +7203,7 @@ E-001,홍길동,본사,2026-07-01,abc
                 absence_alert_id: None,
                 effective_exit_date: "2026-06-30".to_owned(),
                 site_manager_note: "무단결근 3일 — 이탈 보고".to_owned(),
-                exit_reason_code: None,
+                exit_reason_code: Some("PERSONAL".into()),
             }),
         )
         .await
@@ -7218,6 +7218,8 @@ E-001,홍길동,본사,2026-07-01,abc
             Extension(hr_principal.clone()),
             Path(case_id),
             Json(ConfirmEmployeeExitCaseRequest {
+                exit_reason_code: None,
+                dismissal_notice: None,
                 hq_confirmation: false,
                 note: None,
                 settlement_input: None,
@@ -7239,6 +7241,8 @@ E-001,홍길동,본사,2026-07-01,abc
             Extension(hq_principal.clone()),
             Path(case_id),
             Json(ConfirmEmployeeExitCaseRequest {
+                exit_reason_code: None,
+                dismissal_notice: None,
                 hq_confirmation: true,
                 note: None,
                 settlement_input: None,

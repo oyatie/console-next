@@ -38,7 +38,7 @@ pub async fn validate_reason_in_tx(
     let mut tenant = Vec::new();
     if is_tenant_code(code) {
         let row = sqlx::query(
-            "SELECT requires_note, active FROM reason_codes
+            "SELECT requires_note, active, involuntary, notice_required FROM reason_codes
               WHERE org_id = $1 AND domain = $2 AND code = $3",
         )
         .bind(org.as_uuid())
@@ -52,6 +52,8 @@ pub async fn validate_reason_in_tx(
                 code: code.to_owned(),
                 requires_note: row.try_get("requires_note").map_err(db_error)?,
                 active: row.try_get("active").map_err(db_error)?,
+                involuntary: row.try_get("involuntary").map_err(db_error)?,
+                notice_required: row.try_get("notice_required").map_err(db_error)?,
             });
         }
     }
@@ -65,6 +67,8 @@ pub struct CatalogEntry {
     pub code: String,
     pub system: bool,
     pub requires_note: bool,
+    pub involuntary: bool,
+    pub notice_required: bool,
     pub active: bool,
     pub label_ko: Option<String>,
     pub label_en: Option<String>,
@@ -84,7 +88,8 @@ impl PgSettingsStore {
         let tenant = with_org_conn(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let rows = sqlx::query(
-                    "SELECT domain, code, label_ko, label_en, requires_note, active, sort
+                    "SELECT domain, code, label_ko, label_en, requires_note, active, sort,
+                            involuntary, notice_required
                        FROM reason_codes
                       WHERE org_id = $1 AND domain = $2
                       ORDER BY sort, created_at",
@@ -105,6 +110,8 @@ impl PgSettingsStore {
             code: c.code.to_owned(),
             system: true,
             requires_note: c.requires_note,
+            involuntary: c.involuntary,
+            notice_required: c.notice_required,
             active: true,
             label_ko: None,
             label_en: None,
@@ -119,6 +126,8 @@ impl PgSettingsStore {
             code: t.code,
             system: false,
             requires_note: t.requires_note,
+            involuntary: t.involuntary,
+            notice_required: t.notice_required,
             active: t.active,
             label_ko: Some(t.label_ko),
             label_en: t.label_en,

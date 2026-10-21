@@ -108,12 +108,14 @@ impl HrService {
                     case_id: Some(case_id),
                     ..ExitCaseFilters::default()
                 };
-                let item = load_exit_cases(tx, &scope, &filters, 1, 0)
+                let mut item = load_exit_cases(tx, &scope, &filters, 1, 0)
                     .await?
                     .pop()
                     .ok_or_else(|| {
                         HrError::from_kernel(KernelError::not_found("exit case not found"))
                     })?;
+                super::guards::case_protection(tx.as_mut(), *reader.org_id.as_uuid(), &mut item)
+                    .await?;
                 let me = actor_employee_id(tx, &reader).await?;
                 let event = access_event_on(
                     &reader,

@@ -104,6 +104,7 @@ export const koEnum = {
   "enum.settlementStatus.SUBMITTED": "상신됨",
   "enum.leaveType.CHILDCARE": "육아휴직",
   "enum.leaveType.MATERNITY": "출산휴가",
+  "enum.leaveType.WORK_INJURY": "산재 요양",
   "enum.leaveType.ILLNESS": "질병휴직",
   "enum.leaveType.PERSONAL": "개인 사유",
   "enum.leaveType.OTHER": "기타",

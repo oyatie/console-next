@@ -5,6 +5,7 @@ import { User } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { Chip } from "../../../ui/chip";
 import { Button } from "../../../ui/button/button";
 import { DateChips } from "../../../ui/date/date-chips";
 import { addDays } from "../../../ui/date/days";
@@ -13,7 +14,7 @@ import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { Banner } from "../../../ui/banner/banner";
 import { ReasonCodeField } from "../../../reference/reason/ui/reason-code-field";
-import { reasonCodesQuery, reasonLabel } from "../../../lib/reason-codes";
+import { reasonCodesQuery, reasonLabel, useExitClass } from "../../../lib/reason-codes";
 import { useDraft } from "../../../lib/react/use-draft";
 import { eventsQuery, reportExit } from "../api";
 import { OpsExitNote } from "./account-link-card";
@@ -40,6 +41,7 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
   });
   const { date, note, reason } = draft.value;
   const reasonsRead = !reasons.isPending;
+  const exitClass = useExitClass(reason);
   const [tried, setTried] = useState(false);
   const formId = useId();
   const navigate = route.useNavigate();
@@ -112,6 +114,7 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
             recorded on the card after the exit. */}
         {/* Drawn once the list has landed, with the field under it: twenty chips arriving late pushed it down. */}
         {reasonsRead && <ReasonCodeField domain="exit_reason" look="chips" required={false} label={t("exit.field.reason")} value={reason} onChange={(nextReason) => draft.set({ ...draft.value, reason: nextReason })} hint={t("exit.field.reason.hint")} />}
+        {exitClass?.involuntary && <Chip tone="warn">{t("exit.class.involuntary")}</Chip>}
         {reasonsRead && <Field
           label={t("exit.field.circumstances")}
           hint={t("exit.field.count", { count: note.length, max: NOTE_MAX })}

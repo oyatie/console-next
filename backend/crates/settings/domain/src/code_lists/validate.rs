@@ -20,6 +20,8 @@ pub const TENANT_CODE_PREFIX: &str = "T_";
 pub struct TenantCode {
     pub code: String,
     pub requires_note: bool,
+    pub involuntary: bool,
+    pub notice_required: bool,
     pub active: bool,
 }
 
@@ -29,6 +31,8 @@ pub struct ValidReason {
     pub domain: ReasonDomain,
     pub code: String,
     pub note: Option<String>,
+    pub involuntary: bool,
+    pub notice_required: bool,
 }
 
 /// A checked new tenant code (labels trimmed).
@@ -39,6 +43,8 @@ pub struct NewTenantCode {
     pub label_ko: String,
     pub label_en: Option<String>,
     pub requires_note: bool,
+    pub involuntary: bool,
+    pub notice_required: bool,
 }
 
 /// Parse a domain string from the wire.
@@ -63,16 +69,16 @@ pub fn validate_reason(
     note: Option<&str>,
     tenant: &[TenantCode],
 ) -> Result<ValidReason, ReasonError> {
-    let requires_note = domain
+    let (requires_note, involuntary, notice_required) = domain
         .system_codes()
         .iter()
         .find(|c| c.code == code)
-        .map(|c| c.requires_note)
+        .map(|c| (c.requires_note, c.involuntary, c.notice_required))
         .or_else(|| {
             tenant
                 .iter()
                 .find(|t| t.active && t.code == code && is_tenant_code(code))
-                .map(|t| t.requires_note)
+                .map(|t| (t.requires_note, t.involuntary, t.notice_required))
         })
         .ok_or_else(|| ReasonError::CodeInvalid {
             domain,
@@ -92,6 +98,8 @@ pub fn validate_reason(
         domain,
         code: code.to_owned(),
         note: note.map(str::to_owned),
+        involuntary,
+        notice_required,
     })
 }
 
@@ -121,6 +129,8 @@ pub fn check_new_tenant_code(
         label_ko: label(label_ko, "label_ko")?,
         label_en: label_en.map(|l| label(l, "label_en")).transpose()?,
         requires_note,
+        involuntary: false,
+        notice_required: false,
     })
 }
 

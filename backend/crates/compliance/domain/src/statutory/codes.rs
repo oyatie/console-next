@@ -41,8 +41,15 @@ pub const MANAGERIAL_DISMISSAL_CONSULT_DAYS: &str = "MANAGERIAL_DISMISSAL_CONSUL
 /// 근로기준법 §28②: months after a dismissal within which 구제신청 may be filed (LC-B3).
 pub const UNFAIR_DISMISSAL_CLAIM_MONTHS: &str = "UNFAIR_DISMISSAL_CLAIM_MONTHS";
 
+/// 근로기준법 §23②: protection after work-injury or maternity leave.
+pub const DISMISSAL_PROTECTION_TAIL_DAYS: &str = "DISMISSAL_PROTECTION_TAIL_DAYS";
+/// 남녀고용평등법 §19③: protection ends with childcare leave.
+pub const CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS: &str = "CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS";
+
 /// Every statutory rule code, in migration order.
-pub const ALL: [&str; 36] = [
+pub const ALL: [&str; 38] = [
+    DISMISSAL_PROTECTION_TAIL_DAYS,
+    CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS,
     FINAL_PAY_DUE_DAYS,
     LATE_WAGE_INTEREST_ANNUAL_RATE,
     DISMISSAL_NOTICE_DAYS,

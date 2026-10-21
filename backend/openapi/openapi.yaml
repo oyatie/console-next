@@ -14159,6 +14159,11 @@ paths:
       operationId: confirmEmployeeExitCase
       summary: Confirm an employee exit case for HR/HQ review
       description: >-
+        HR requires an exit_reason_code from the case or body (422 exit_reason_required). A body code replaces
+        the reported reason. Involuntary reasons are refused with 409 exit_protected_period when the statutory
+        exit date (effective_exit_date + one day) is protected. Reasons marked notice_required also require
+        written dismissal_notice delivery facts (422 notice_evidence_missing). HQ refuses both fields (422 validation).
+        Scheduled exits recheck protection and notice before effect; refusals become APPLY_FAILED with the stable code.
         HR tier (hq_confirmation=false) moves REPORTED to HR_CONFIRMED and records the TERMINATE lifecycle event
         that exits the employee; it requires all four signoffs (422 lifecycle_signoff_required naming the first
         missing one). HQ tier (hq_confirmation=true) moves HR_CONFIRMED to HQ_CONFIRMED and must be a
@@ -14193,11 +14198,13 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
-          description: Invalid transition, or lifecycle_schedule_conflict naming the employee's pending SCHEDULED events.
+          description: Invalid transition, exit_protected_period naming protected periods, or lifecycle_schedule_conflict naming the employee's pending SCHEDULED events.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LifecycleScheduleConflictBody'
+                anyOf:
+                - $ref: '#/components/schemas/LifecycleScheduleConflictBody'
+                - $ref: '#/components/schemas/ErrorBody'
         '422':
           $ref: '#/components/responses/ValidationError'
   /api/v1/hr/exit-cases/{id}/reject:
@@ -34101,6 +34108,35 @@ components:
           type: string
           maxLength: 1000
           nullable: true
+        exit_reason_code:
+          type: string
+          description: HR tier only. Validated exit_reason code; replaces the case's reason when supplied.
+            Required at HR confirmation when the case has no reason. The HQ tier refuses this field.
+        dismissal_notice:
+          type: object
+          additionalProperties: false
+          description: HR tier only. Required for a reason whose catalog entry requires written notice under
+            근로기준법 제27조. Missing or blank evidence, or service after the statutory exit date, is 422
+            notice_evidence_missing. Ignored for other reasons; the HQ tier refuses this field.
+          properties:
+            reason_text:
+              type: string
+            served_on:
+              description: Delivery date; blank input reaches the notice_evidence_missing refusal.
+              oneOf:
+              - type: string
+                format: date
+              - type: string
+                pattern: '^\s*$'
+            method:
+              description: A listed method, or blank input for the notice_evidence_missing refusal.
+              oneOf:
+              - type: string
+                enum: [IN_PERSON_SIGNED, CERTIFIED_MAIL, ELECTRONIC]
+              - type: string
+                pattern: '^\s*$'
+            evidence_ref:
+              type: string
         signoffs:
           $ref: '#/components/schemas/EmployeeLifecycleSignoffs'
           description: HR tier only (ignored by the HQ tier). TERMINATE requires all four acknowledgements —
@@ -34815,7 +34851,7 @@ components:
           type: string
           nullable: true
           description: LEAVE_OF_ABSENCE only. YYYY-MM-DD, on or after effective_date. Required for CHILDCARE and
-            MATERNITY (422 leave_return_date_required).
+            MATERNITY (422 leave_return_date_required); optional for WORK_INJURY (산재 요양).
         contract_end_date:
           type: string
           nullable: true
@@ -34874,8 +34910,8 @@ components:
         leave_type:
           type: [string, 'null']
           description: Required for LEAVE_OF_ABSENCE (422 leave_type_required; leave_type_invalid for another value);
-            422 on any other event.
-          enum: [CHILDCARE, MATERNITY, ILLNESS, PERSONAL, OTHER, null]
+            422 on any other event. WORK_INJURY is 산재 요양 and does not require expected_return_date.
+          enum: [CHILDCARE, MATERNITY, WORK_INJURY, ILLNESS, PERSONAL, OTHER, null]
         effective_date:
           type: string
           format: date
@@ -37404,9 +37440,9 @@ components:
           type: boolean
     EmployeeExitCase:
       type: object
-      description: Optional fields are omitted (not null) when absent, except the `*_name` actor display names, which are
-        always present and null when the actor is unset or unknown. exit_reason_code (BE-EMP-UI) is the report's 퇴직
-        사유, omitted when none was given.
+      description: Optional fields are omitted (not null) when absent. Required nullable fields are always present;
+        `*_name` actor display names are null when the actor is unset or unknown. exit_reason_code (BE-EMP-UI) is the
+        case's 퇴직 사유, omitted when none was given.
       required:
       - id
       - employee_id
@@ -37414,6 +37450,10 @@ components:
       - company
       - status
       - effective_exit_date
+      - involuntary
+      - notice_required
+      - dismissal_notice
+      - protected_periods
       - site_manager_note
       - reported_by
       - reported_by_name
@@ -37455,7 +37495,56 @@ components:
           type: string
         exit_reason_code:
           type: string
-          description: BE-EMP-UI. The report's 퇴직 사유 (BW-07 exit_reason code); omitted when none was given.
+          description: BE-EMP-UI. The case's 퇴직 사유 (BW-07 exit_reason code); omitted when none was given.
+        involuntary:
+          type: boolean
+          readOnly: true
+          description: Derived from the reason catalog; never stored on the case.
+        notice_required:
+          type: boolean
+          readOnly: true
+          description: Derived from the reason catalog; whether written dismissal notice is required.
+        dismissal_notice:
+          type: [object, 'null']
+          readOnly: true
+          required: [reason_text, served_on, method, evidence_ref]
+          properties:
+            reason_text:
+              type: string
+            served_on:
+              type: string
+              format: date
+            method:
+              type: string
+              enum: [IN_PERSON_SIGNED, CERTIFIED_MAIL, ELECTRONIC]
+            evidence_ref:
+              type: string
+        protected_periods:
+          type: array
+          readOnly: true
+          description: Protected leave periods computed from lifecycle events and the statutory register.
+          items:
+            type: object
+            required: [lifecycle_event_id, leave_type, leave_from, leave_until, protected_until, instrument, article]
+            properties:
+              lifecycle_event_id:
+                type: string
+                format: uuid
+              leave_type:
+                type: string
+              leave_from:
+                type: string
+                format: date
+              leave_until:
+                type: [string, 'null']
+                format: date
+              protected_until:
+                type: [string, 'null']
+                format: date
+              instrument:
+                type: [string, 'null']
+              article:
+                type: [string, 'null']
         reported_by:
           $ref: '#/components/schemas/Uuid'
         reported_by_name:
@@ -38890,9 +38979,9 @@ components:
           nullable: true
         leave_type:
           type: string
-          enum: [CHILDCARE, MATERNITY, ILLNESS, PERSONAL, OTHER]
-          description: LEAVE_OF_ABSENCE only; absent when not given. Omitted for callers without
-            employee_directory_manage (ILLNESS and MATERNITY reveal health information, 개보법 제23조).
+          enum: [CHILDCARE, MATERNITY, WORK_INJURY, ILLNESS, PERSONAL, OTHER]
+          description: LEAVE_OF_ABSENCE only; absent when not given. WORK_INJURY is 산재 요양. Omitted for callers without
+            employee_directory_manage (ILLNESS, MATERNITY and WORK_INJURY reveal health information, 개보법 제23조).
         batch_id:
           $ref: '#/components/schemas/Uuid'
           description: Present when the event was recorded by a bulk appointment (POST /api/v1/employees/lifecycle-events/bulk).
@@ -51626,7 +51715,7 @@ components:
     ReasonCatalogEntry:
       type: object
       additionalProperties: false
-      required: [code, system, requires_note, active, label_ko, label_en]
+      required: [code, system, requires_note, involuntary, notice_required, active, label_ko, label_en]
       properties:
         code:
           type: string
@@ -51635,6 +51724,12 @@ components:
           description: A code-defined system code (label from the frontend catalog) rather than a tenant code.
         requires_note:
           type: boolean
+        involuntary:
+          type: boolean
+          description: Dismissal-like protected-period class, derived from the reason reference.
+        notice_required:
+          type: boolean
+          description: Written dismissal notice required; implies involuntary.
         active:
           type: boolean
         label_ko:
@@ -51668,6 +51763,14 @@ components:
           maxLength: 60
         requires_note:
           type: boolean
+        involuntary:
+          type: boolean
+          default: false
+          description: Only exit_reason may be involuntary. Invalid classes are 422 reason_class_invalid.
+        notice_required:
+          type: boolean
+          default: false
+          description: Only exit_reason; requires involuntary=true.
         sort:
           type: integer
           format: int32
@@ -55521,7 +55624,7 @@ components:
     TenantReasonCode:
       type: object
       additionalProperties: false
-      required: [domain, code, label_ko, label_en, requires_note, active, sort]
+      required: [domain, code, label_ko, label_en, requires_note, involuntary, notice_required, active, sort]
       properties:
         domain:
           type: string
@@ -55534,6 +55637,12 @@ components:
           nullable: true
         requires_note:
           type: boolean
+        involuntary:
+          type: boolean
+          description: Dismissal-like protected-period class, derived from the reason reference.
+        notice_required:
+          type: boolean
+          description: Written dismissal notice required; implies involuntary.
         active:
           type: boolean
         sort:

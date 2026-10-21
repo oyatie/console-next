@@ -18,6 +18,7 @@ async function reportExit(page: Page, name: string, date: string) {
   const s = page.getByRole("dialog", { name: "퇴직 보고", exact: true }).filter({ hasText: name });
   await s.getByRole("textbox", { name: /^마지막 근무일/ }).fill(date);
   await s.getByLabel("퇴직 경위").fill("개인 사정");
+  await s.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
   await s.getByRole("button", { name: /퇴직 보고$/ }).click();
   return s;
 }

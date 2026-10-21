@@ -6,9 +6,9 @@ use console_hr_domain::lifecycle::event::{
 };
 use console_kernel_core::{KernelError, OrgId};
 use console_settings_domain::code_lists::{
-    ReasonDomain, TenantCode, is_tenant_code, validate_reason,
+    ReasonDomain, TenantCode, ValidReason, is_tenant_code, validate_reason,
 };
-use sqlx::{Postgres, Row};
+use sqlx::{PgConnection, Postgres, Row};
 use uuid::Uuid;
 
 use super::classification::check_demotion;
@@ -100,24 +100,26 @@ pub async fn validate_lifecycle_reason(
             ));
         }
     };
-    validate_reason_code(tx, org, domain, code, Some(&transition.comment)).await
+    validate_reason_code(tx, org, domain, code, Some(&transition.comment))
+        .await
+        .map(|_| ())
 }
 
 /// A BW-07 code of `domain` (system, or the tenant's active one) with its note.
 pub async fn validate_reason_code(
-    tx: &mut sqlx::Transaction<'_, Postgres>,
+    tx: &mut PgConnection,
     org: OrgId,
     domain: ReasonDomain,
     code: &str,
     note: Option<&str>,
-) -> Result<(), HrError> {
+) -> Result<ValidReason, HrError> {
     // the tenant-code lookup mirrors settings-adapter's
     // validate_reason_in_tx (an adapter → adapter edge is forbidden); both
     // collapse into one call once ADR-006 moves it to platform/db.
     let mut tenant = Vec::new();
     if is_tenant_code(code) {
         let row = sqlx::query(
-            "SELECT requires_note, active FROM reason_codes \
+            "SELECT requires_note, active, involuntary, notice_required FROM reason_codes \
              WHERE org_id = $1 AND domain = $2 AND code = $3",
         )
         .bind(org.as_uuid())
@@ -130,10 +132,10 @@ pub async fn validate_reason_code(
                 code: code.to_owned(),
                 requires_note: row.try_get("requires_note")?,
                 active: row.try_get("active")?,
+                involuntary: row.try_get("involuntary")?,
+                notice_required: row.try_get("notice_required")?,
             });
         }
     }
-    validate_reason(domain, code, note, &tenant)
-        .map(|_| ())
-        .map_err(|error| coded(error.into()))
+    validate_reason(domain, code, note, &tenant).map_err(|error| coded(error.into()))
 }

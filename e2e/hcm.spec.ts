@@ -191,6 +191,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await c.click(admin.getByRole("button", { name: "퇴직 보고" }));
   await admin.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(0));
   await admin.getByLabel("퇴직 경위").fill("개인 사유 퇴직");
+  await admin.getByRole("dialog").getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
   await c.click(admin.getByRole("dialog").getByRole("button", { name: "퇴직 보고" }));
   await c.click(admin.getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
   await expectAccessible(admin, "exit: HR confirmation dialog");

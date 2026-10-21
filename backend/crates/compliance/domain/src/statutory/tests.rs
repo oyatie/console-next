@@ -271,3 +271,27 @@ fn ins_deadline_keys_answer_from_the_bw30_rows_and_nothing_else() {
     );
     assert!(codes::ALL.contains(&"ins.deadline.acquire.nps"));
 }
+
+#[test]
+fn dismissal_protection_codes_and_migration_check_stay_in_sync() {
+    let sql = include_str!("../../../../platform/db/migrations/20261021084358333_exit_guards.sql");
+    let check = sql
+        .split("statutory_rules_code_check CHECK (code IN (")
+        .nth(1)
+        .unwrap()
+        .split(")) NOT VALID")
+        .next()
+        .unwrap();
+    let listed = check
+        .split(',')
+        .map(|c| c.trim().trim_matches('\''))
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(listed, codes::ALL.into_iter().collect());
+    for code in [
+        codes::DISMISSAL_PROTECTION_TAIL_DAYS,
+        codes::CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS,
+    ] {
+        assert!(sql.contains(code));
+    }
+    assert!(sql.contains("노무사 검토 전"));
+}

@@ -4,7 +4,14 @@
 use console_kernel_core::KernelError;
 
 /// Built-in leave types (0245 CHECK list).
-pub const LEAVE_TYPES: [&str; 5] = ["CHILDCARE", "MATERNITY", "ILLNESS", "PERSONAL", "OTHER"];
+pub const LEAVE_TYPES: [&str; 6] = [
+    "CHILDCARE",
+    "MATERNITY",
+    "WORK_INJURY",
+    "ILLNESS",
+    "PERSONAL",
+    "OTHER",
+];
 
 /// 육아휴직 (남녀고용평등법 §19) and 출산전후휴가 (근로기준법 §74) end on a
 /// known date, so the return date is required.
@@ -27,7 +34,7 @@ pub fn check_leave_facts(
     };
     if !LEAVE_TYPES.contains(&leave_type) {
         return Err(KernelError::validation(
-            "leave_type must be CHILDCARE, MATERNITY, ILLNESS, PERSONAL, or OTHER",
+            "leave_type must be CHILDCARE, MATERNITY, WORK_INJURY, ILLNESS, PERSONAL, or OTHER",
         )
         .with_code("leave_type_invalid")
         .with_field("leave_type"));

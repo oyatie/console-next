@@ -48,48 +48,99 @@ pub trait LifecycleApplyHooks<Tx: ?Sized + Send>: Sync {
     ) -> impl Future<Output = Result<(), KernelError>> + Send;
 }
 
-/// Whether a TERMINATE event may apply now (EXIT-owned, filled in this file).
-///
+/// Facts checked before a TERMINATE can change the employee; no database types.
+pub struct TerminationFacts<'a> {
+    pub involuntary: bool,
+    pub notice_required: bool,
+    pub notice: Option<console_hr_domain::exits::protection::NoticeFacts<'a>>,
+    pub protected_periods: &'a [console_hr_domain::exits::protection::ProtectedPeriod],
+    pub termination_date: Date,
+}
+
 /// # Errors
-///
-/// Always, until EXIT implements it: a TERMINATE must not apply on an
-/// unchecked exit case (fail closed). Callers must roll back.
-pub async fn terminate_may_apply<Tx: ?Sized>(
-    _tx: &mut Tx,
-    _event: &LifecycleApplyEvent<'_>,
-) -> Result<(), KernelError> {
-    Err(KernelError::internal(
-        "the TERMINATE predicate is not implemented; refusing to apply the termination",
-    ))
+/// Coded refusals for a missing case, a protected period, or missing notice.
+pub fn terminate_may_apply(facts: Option<&TerminationFacts<'_>>) -> Result<(), KernelError> {
+    use console_hr_domain::exits::protection::notice_missing;
+    let facts = facts.ok_or_else(|| {
+        KernelError::conflict("an exit case is required for termination")
+            .with_code("exit_case_required")
+    })?;
+    if facts.involuntary
+        && facts
+            .protected_periods
+            .iter()
+            .any(|p| p.blocks(facts.termination_date))
+    {
+        return Err(
+            KernelError::conflict("dismissal is blocked during a protected leave period")
+                .with_code("exit_protected_period"),
+        );
+    }
+    if facts.notice_required && !notice_missing(facts.notice, facts.termination_date).is_empty() {
+        return Err(
+            KernelError::validation("written dismissal notice evidence is required")
+                .with_code("notice_evidence_missing"),
+        );
+    }
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use std::pin::pin;
-    use std::task::{Context, Poll, Waker};
-
+    use super::*;
+    use console_hr_domain::exits::protection::{NoticeFacts, ProtectedPeriod};
     use time::macros::date;
 
-    use super::*;
-
     #[test]
-    fn terminate_predicate_stub_fails_closed() {
-        let event = LifecycleApplyEvent {
-            org_id: OrgId::from_uuid(Uuid::nil()),
-            event_id: Uuid::nil(),
-            employee_id: Uuid::nil(),
-            event_type: "TERMINATE",
-            effective_date: date!(2026 - 10 - 04),
-        };
-        let mut tx = ();
-        let mut future = pin!(terminate_may_apply(&mut tx, &event));
-        let mut cx = Context::from_waker(Waker::noop());
-        let Poll::Ready(result) = future.as_mut().poll(&mut cx) else {
-            panic!("the stub must not suspend");
-        };
-        assert!(
-            result.is_err(),
-            "TERMINATE must refuse until EXIT implements the predicate"
+    fn termination_requires_a_case_checks_protection_and_preserves_voluntary_exits() {
+        assert_eq!(
+            terminate_may_apply(None).unwrap_err().code,
+            Some("exit_case_required")
         );
+        let periods = [ProtectedPeriod {
+            lifecycle_event_id: Uuid::nil(),
+            leave_type: "WORK_INJURY".into(),
+            leave_from: date!(2026 - 01 - 01),
+            leave_until: None,
+            protected_until: None,
+            instrument: Some("근로기준법".into()),
+            article: Some("제23조제2항".into()),
+        }];
+        let mut facts = TerminationFacts {
+            involuntary: true,
+            notice_required: false,
+            notice: None,
+            protected_periods: &periods,
+            termination_date: date!(2026 - 04 - 30),
+        };
+        assert_eq!(
+            terminate_may_apply(Some(&facts)).unwrap_err().code,
+            Some("exit_protected_period")
+        );
+        facts.involuntary = false;
+        assert!(terminate_may_apply(Some(&facts)).is_ok());
+        facts.involuntary = true;
+        facts.protected_periods = &[];
+        assert!(
+            terminate_may_apply(Some(&facts)).is_ok(),
+            "권고사직 has no notice requirement"
+        );
+        facts.notice_required = true;
+        assert_eq!(
+            terminate_may_apply(Some(&facts)).unwrap_err().code,
+            Some("notice_evidence_missing")
+        );
+        facts.notice = Some(NoticeFacts {
+            reason_text: "사유",
+            served_on: Some(date!(2026 - 05 - 01)),
+            method: "CERTIFIED_MAIL",
+            evidence_ref: "receipt",
+        });
+        assert_eq!(
+            terminate_may_apply(Some(&facts)).unwrap_err().code,
+            Some("notice_evidence_missing")
+        );
+        facts.notice.as_mut().unwrap().served_on = Some(date!(2026 - 04 - 30));
+        assert!(terminate_may_apply(Some(&facts)).is_ok());
     }
 }

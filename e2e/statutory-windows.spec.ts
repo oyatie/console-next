@@ -16,7 +16,7 @@ test("hire today, prepare next month's exit, and resolve truthful not-applicable
   const hire=kstDate();const exit=nextMonthDay(hire,0);const futureExit=nextMonthDay(exit,28);
   await registerEmployee(admin,{name:"신고기간직원",number:"SW-1",hired:hire,unit:"본사"});
   await admin.getByRole("button",{name:"퇴직 보고",exact:true}).click();
-  let dialog=admin.getByRole("dialog");await dialog.getByRole("textbox",{name:/^마지막 근무일/}).fill(futureExit);await dialog.getByLabel("퇴직 경위").fill("다음 달 계약 종료");await dialog.getByRole("button",{name:/퇴직 보고$/}).click();await expect(dialog).toBeHidden();
+  let dialog=admin.getByRole("dialog");await dialog.getByRole("textbox",{name:/^마지막 근무일/}).fill(futureExit);await dialog.getByLabel("퇴직 경위").fill("다음 달 계약 종료");await dialog.getByRole("radiogroup",{name:/^퇴직 사유/}).getByText("개인 사정",{exact:true}).click();await dialog.getByRole("button",{name:/퇴직 보고$/}).click();await expect(dialog).toBeHidden();
   const exitPanel=admin.getByRole("region",{name:"퇴직",exact:true});await exitPanel.getByRole("button",{name:"인사 확인하고 퇴직 처리"}).click();
   dialog=admin.getByRole("dialog");await signOff(dialog.getByRole("group",{name:"확인 사항"}));await dialog.getByRole("button",{name:/인사 확인하고/}).click();await expect(dialog).toBeHidden();
   const href=await exitPanel.getByRole("link",{name:"퇴직 건 열기"}).getAttribute("href");await go(admin,href!);await admin.getByRole("region",{name:/지금/}).getByRole("button",{name:"본사 퇴직 확인"}).click();

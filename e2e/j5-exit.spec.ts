@@ -27,6 +27,7 @@ async function reportAndConfirm(admin: Page, c: ReturnType<typeof clickCounter>,
   }
   await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(0));
   await sheet.getByLabel("퇴직 경위").fill(reason);
+  await sheet.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
   await c.click(sheet.getByRole("button", { name: "퇴직 보고" }));
   await expect(exitPanel(admin)).toContainText("보고됨");
   await c.click(exitPanel(admin).getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
@@ -193,6 +194,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await c.click(admin.getByRole("button", { name: "퇴직 보고" }));
   await admin.getByRole("textbox", { name: /^마지막 근무일/ }).fill(exitOn);
   await admin.getByLabel("퇴직 경위").fill("계약 만료 예정");
+  await admin.getByRole("dialog").getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
   await c.click(admin.getByRole("dialog").getByRole("button", { name: "퇴직 보고" }));
   await c.click(exitPanel(admin).getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
   await expect(admin.getByRole("dialog")).toContainText(`${koDate(exitOn)}자로 퇴직 처리하도록 예약합니다`);
@@ -240,6 +242,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await c.click(admin.getByRole("button", { name: "퇴직 보고" }));
   await admin.getByRole("textbox", { name: /^마지막 근무일/ }).fill(leaveOn);
   await admin.getByLabel("퇴직 경위").fill("이직 확정");
+  await admin.getByRole("dialog").getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
   await c.click(admin.getByRole("dialog").getByRole("button", { name: "퇴직 보고" }));
   await c.click(exitPanel(admin).getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
   await confirmAsHr(admin, c);

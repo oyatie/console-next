@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { components } from "@console/api/schema";
-import { blockingSchedules, effectOf, forwardStep, stepStates, usableActions } from "./exits";
+import { blockingSchedules, noticeMissing, protectedLines, effectOf, forwardStep, stepStates, usableActions } from "./exits";
 
 type Case = components["schemas"]["EmployeeExitCase"];
 type LifecycleEvent = components["schemas"]["EmployeeLifecycleEvent"];
@@ -44,4 +44,19 @@ test("only scheduled non-exit records after the exit date block HR confirmation"
   const ev = (id: string, x: Partial<LifecycleEvent>) => ({ id, state: "SCHEDULED", event_type: "TRANSFER", effective_date: "2026-12-01", ...x }) as LifecycleEvent;
   const events = [ev("after", {}), ev("before", { effective_date: "2026-11-01" }), ev("exit", { event_type: "TERMINATE" }), ev("done", { state: "APPLIED" })];
   expect(blockingSchedules(events, "2026-11-30").map((x) => x.id)).toEqual(["after"]);
+});
+
+
+test("notice evidence lists exactly the missing fields and refuses service after the statutory exit date", () => {
+  const empty = { reason_text: " ", served_on: "", method: "", evidence_ref: "" };
+  expect(noticeMissing(empty, "2026-04-30")).toEqual(["reason_text", "served_on", "method", "evidence_ref"]);
+  const full = { reason_text: "해고 사유", served_on: "2026-05-01", method: "CERTIFIED_MAIL", evidence_ref: "receipt-1" };
+  expect(noticeMissing(full, "2026-04-30")).toEqual([]);
+  expect(noticeMissing({ ...full, served_on: "2026-05-02" }, "2026-04-30")).toEqual(["served_on"]);
+  expect(noticeMissing({ ...full, evidence_ref: " " }, "2026-04-30")).toEqual(["evidence_ref"]);
+});
+
+test("protected lines preserve the server's dates and citation without recalculating a tail", () => {
+  const p = { lifecycle_event_id: "leave-1", leave_type: "MATERNITY", leave_from: "2026-01-01", leave_until: "2026-03-31", protected_until: "2026-05-03", instrument: "근로기준법", article: "제23조제2항" };
+  expect(protectedLines(exitCase({ protected_periods: [p] }))).toEqual([p]);
 });
