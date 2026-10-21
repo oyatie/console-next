@@ -186,7 +186,15 @@ async fn check_inner(
                 valid_to: *valid_to,
                 effective_in_setup: *effective_in_setup,
             };
-            let after = state.enforcement(phase, now);
+            let delayed =
+                crate::pending::deadline(tx, org, *role_id, &console_kernel_core::FixedClock(now))
+                    .await?
+                    .is_some();
+            let after = if delayed {
+                Enforcement::Scheduled
+            } else {
+                state.enforcement(phase, now)
+            };
             let gains = if after == Enforcement::Enforced {
                 effects(&lines, &scope_json(kind, node))
             } else {

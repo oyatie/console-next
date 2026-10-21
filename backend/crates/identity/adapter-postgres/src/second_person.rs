@@ -223,7 +223,11 @@ pub async fn second_person_fact_in_tx(
             confirmed.insert(row.clone());
         }
     }
-    Ok(count_second_persons(rows, &confirmed))
+    let fact = count_second_persons(rows, &confirmed);
+    tracing::debug!(business_event="authz.second_person.resolved", org=%query.org,
+        feature=query.feature.as_str(), eligible=fact.other_eligible_holders,
+        review_flags=fact.review_flags.len(), "second-person fact resolved");
+    Ok(fact)
 }
 
 /// Whether `grants` hold the feature over the act's scope (org-wide: all).
@@ -286,5 +290,84 @@ mod tests {
         let this_grant = (c, "SYSTEM_ROLE".to_owned(), "SUPER_ADMIN".to_owned());
         let fact = count_second_persons(rows, &BTreeSet::from([this_grant]));
         assert_eq!(fact.other_eligible_holders, 3);
+    }
+}
+
+/// What a live holder must be able to do. Case-age/notice eligibility remains
+/// the separate D0.2 fact above; current-holder checks must not borrow that age.
+#[derive(Clone, Copy)]
+pub enum HolderCapability {
+    Feature {
+        feature: Feature,
+        branch: Option<BranchId>,
+    },
+    OrgChangeDecide,
+    AccessAdmin,
+}
+
+/// Identity's transaction-bound implementation of the application holder port.
+pub struct PgHolderResolver<'a, 't> {
+    pub tx: &'a mut Transaction<'t, Postgres>,
+    pub org: OrgId,
+    pub capability: HolderCapability,
+    pub exclude_account: Option<Uuid>,
+    pub exclude_employee: Option<Uuid>,
+    pub include_ops: bool,
+    pub now: OffsetDateTime,
+}
+
+impl console_identity_application::holders::HolderResolver for PgHolderResolver<'_, '_> {
+    async fn resolve(&mut self) -> Result<BTreeSet<Uuid>, KernelError> {
+        use console_platform_authz::access::{AccessSlice, Domain, Level, NodePath, action_group};
+        let accounts: Vec<Uuid> = sqlx::query_scalar(
+            "SELECT u.id FROM users u WHERE u.org_id=$1 AND u.is_active
+               AND ($2::uuid IS NULL OR u.id <> $2)
+               AND ($3::uuid IS NULL OR u.employee_id IS DISTINCT FROM $3)
+               AND ($4 OR NOT u.is_tenant_ops)
+               AND (u.is_tenant_ops OR EXISTS (SELECT 1 FROM access_grants g
+                    WHERE g.org_id=u.org_id AND g.account_id=u.id AND g.status='ACTIVE'
+                      AND g.valid_from <= $5 AND (g.valid_to IS NULL OR g.valid_to > $5)))
+             ORDER BY u.id FOR SHARE OF u",
+        )
+        .bind(self.org.as_uuid())
+        .bind(self.exclude_account)
+        .bind(self.exclude_employee)
+        .bind(self.include_ops)
+        .bind(self.now)
+        .fetch_all(self.tx.as_mut())
+        .await
+        .map_err(db_error)?;
+        let mut holders = BTreeSet::new();
+        for account in accounts {
+            let subject = load_access_subject(self.tx, self.org, account, self.now).await?;
+            let holds = match self.capability {
+                HolderCapability::Feature { feature, branch } => {
+                    subject.is_ops
+                        || project(&subject).grants.iter().any(|g| {
+                            g.feature == feature
+                                && g.permission == PermissionLevel::Allow
+                                && branch.map_or(g.branch_scope == BranchScope::All, |b| {
+                                    g.branch_scope.allows(b)
+                                })
+                        })
+                }
+                HolderCapability::OrgChangeDecide | HolderCapability::AccessAdmin => {
+                    let (domain, level) = match self.capability {
+                        HolderCapability::OrgChangeDecide => (Domain::Org, Level::Approve),
+                        _ => (Domain::Access, Level::Edit),
+                    };
+                    AccessSlice::compile(&subject)
+                        .and_then(|s| {
+                            s.allows(&action_group(domain, level), &NodePath::tenant(self.org))
+                        })
+                        .unwrap_or(false)
+                }
+            };
+            if holds {
+                holders.insert(account);
+            }
+        }
+        tracing::debug!(business_event="authz.holders.resolved", org=%self.org, holders=holders.len(), "current holders resolved");
+        Ok(holders)
     }
 }

@@ -124,3 +124,38 @@ async fn a_correction_replaces_the_event_on_its_date(pool: PgPool) {
             .unwrap();
     assert_eq!(status, "ON_LEAVE");
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn sensitive_correction_accepts_an_independent_current_holder(pool: PgPool) {
+    let f = fixture(pool).await;
+    let leave = |date: &str| {
+        serde_json::from_value(json!({
+        "event_type": "LEAVE_OF_ABSENCE", "leave_type": "PERSONAL", "effective_date": "2026-09-01",
+        "expected_return_date": date, "comment": "정정",
+        "signoffs": {"privacy_notice_ack": true, "korean_labor_law_ack": true, "payroll_cutoff_ack": true}
+    })).unwrap()
+    };
+    let original = f.record(leave("2026-12-01")).await.unwrap();
+    let event: Uuid = original["id"].as_str().unwrap().parse().unwrap();
+    let other = Uuid::new_v4();
+    sqlx::query("INSERT INTO users (id, org_id, display_name, roles, is_tenant_ops) VALUES ($1,$2,'다른 담당자','{}',true)")
+        .bind(other).bind(f.principal.org_id.as_uuid()).execute(&f.owner).await.unwrap();
+    let p = console_platform_authz::Principal::new(
+        console_kernel_core::UserId::from_uuid(other),
+        f.principal.org_id,
+        Default::default(),
+        console_kernel_core::BranchScope::All,
+    )
+    .with_tenant_ops(true);
+    let body = CorrectLifecycleEventRequest {
+        replacement: leave("2026-12-15"),
+        reason_code: "INPUT_ERROR".into(),
+        note: None,
+    };
+    let fixed =
+        f.hr.correct_lifecycle_event(p, f.employee, event, body)
+            .await
+            .unwrap();
+    assert_eq!(fixed.expected_return_date.as_deref(), Some("2026-12-15"));
+    assert_eq!(fixed.voids_event_id, Some(event));
+}

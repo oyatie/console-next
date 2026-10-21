@@ -37,8 +37,8 @@ export const storedScope = (s: AccessScope, roots: readonly OrgNode[] = []) =>
 export const scopeText = (roots: readonly OrgNode[], s: AccessScope) => (reach(roots, s) == null ? storedScope(s, roots) : scopeLabel(roots, s));
 
 /** "go-live ~ last day" for a grant waiting for go-live, else its first day; an open end reads "from ...". */
-export function periodText(g: { valid_from: string; valid_to?: string | null; enforcement: string }) {
-  const from = g.enforcement === "PREPARED" ? t("access.period.golive") : fmtDate(g.valid_from);
+export function periodText(g: { valid_from: string; valid_to?: string | null; activates_at?: string | null; enforcement: string }) {
+  const from = g.enforcement === "PREPARED" ? t("access.period.golive") : todayKst(new Date(g.activates_at ?? g.valid_from));
   const to = lastDay(g.valid_to);
   return to ? t("access.period", { from, to: fmtDate(to) }) : t("access.period.open", { from });
 }

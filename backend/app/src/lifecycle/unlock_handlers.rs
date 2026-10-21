@@ -26,8 +26,8 @@ use super::period_lock_view::load_period_lock;
 use super::period_locks::authorize_period_lock_manage;
 use super::period_unlock::{
     ApprovePeriodUnlockRequest, SETTING_KEYS, UnlockPath, UnlockPeriodLockRequest, approve_payload,
-    binding, coded, int_setting, request_json, second_person, unlock_event, unlock_path,
-    unlock_payload, verify_step_up,
+    binding, coded, int_setting, request_json, second_person, unlock_admitted, unlock_event,
+    unlock_path, unlock_payload, verify_step_up,
 };
 use super::sole_holder_unlock::{SoleHolderUnlock, record_sole_holder_exception};
 use super::unlock_decision::{decider_stands, open_request};
@@ -90,9 +90,8 @@ pub(super) async fn unlock_period_lock(
                 settings.get(&SettingKey::AuthzSoleHolderMode),
                 Some(Ok(resolved)) if matches!(resolved.value, SettingValue::Code("step_up_notice_review"))
             );
-            let path = unlock_path(fact.other_eligible_holders, sole_holder_refuse);
-            // Refuse before the step-up, so a refused unlock spends no ceremony.
-            if path == UnlockPath::Refused {
+            // Admission is a separate Cedar decision; no assertion has been verified yet.
+            if !unlock_admitted(&user.to_string(), &org.to_string(), fact.other_eligible_holders, sole_holder_refuse) {
                 return Err(coded(
                     StatusCode::CONFLICT,
                     "period_unlock_sole_holder_refused",
@@ -102,6 +101,11 @@ pub(super) async fn unlock_period_lock(
             let payload = unlock_payload(lock_id, &reason.code, &body.relock_at);
             let step_up =
                 verify_step_up(verifier.as_ref(), tx, body.step_up, user, &binding(lock_id, &payload)).await?;
+            // This fact is true only after verify_step_up returned a bound assertion.
+            let path = unlock_path(&user.to_string(), &org.to_string(), fact.other_eligible_holders, sole_holder_refuse, true);
+            if path == UnlockPath::Refused {
+                return Err(coded(StatusCode::CONFLICT, "period_unlock_sole_holder_refused", "기간 잠금 해제가 허용되지 않았습니다"));
+            }
             let (status, outcome, event) = if path == UnlockPath::SecondPerson {
                     let (request, superseded) = open_unlock_request_in_tx(tx, &NewUnlockRequest {
                         org_id: *org.as_uuid(), lock_id, requested_by: user,

@@ -37,6 +37,7 @@ export type AccessGrant = {
   scope: AccessScope;
   valid_from: Ts;
   valid_to?: Ts | null;
+  activates_at?: Ts | null;
   effective_in_setup: boolean;
   enforcement: Enforcement;
   reason_code: string;

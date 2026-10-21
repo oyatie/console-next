@@ -13852,6 +13852,11 @@ export interface components {
             valid_from: components["schemas"]["Timestamp"];
             /** @description Exclusive end; null = open-ended. */
             valid_to?: components["schemas"]["Timestamp"] | null;
+            /**
+             * Format: date-time
+             * @description Pending elevated grant's configured activation deadline; null after activation or cancellation.
+             */
+            activates_at?: string | null;
             /** @description 「설정 단계부터 적용」 — enforced during SETUP too. */
             effective_in_setup: boolean;
             enforcement: components["schemas"]["AccessEnforcement"];

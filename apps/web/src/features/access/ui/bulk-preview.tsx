@@ -36,7 +36,7 @@ export function BulkPreview({ preview, accounts, role, scope, end, pending, erro
   const ok = preview.items.length - preview.refused;
   const who = (id: string) => accounts.find((a) => a.id === id);
   const noKey = preview.items.filter((i) => i.outcome === "OK" && who(i.account_id)?.has_passkey === false).map((i) => accountLabel(who(i.account_id), i.account_id));
-  const from = preview.items.some((i) => i.enforcement_after === "PREPARED") ? t("access.period.golive") : t("access.period.now");
+  const from = preview.items.some((i) => i.enforcement_after === "SCHEDULED") ? enforcementText("SCHEDULED") : preview.items.some((i) => i.enforcement_after === "PREPARED") ? t("access.period.golive") : t("access.period.now");
   const stats = [
     [t("access.bulk.stat.ok"), t("access.count", { count: ok })],
     [t("access.bulk.stat.skipped"), t("access.count", { count: preview.refused })],

@@ -12,6 +12,26 @@
 /// `console-orgchange-adapter-postgres` → canonical and deletes the `#[path]`
 /// exception below).
 pub const NAMED_EDGES: &[(&str, &str, &str)] = &[
+    (
+        "console-platform-access",
+        "console-identity-adapter-postgres",
+        "F8: resolve live access administrators through identity's in-transaction holder port",
+    ),
+    (
+        "console-platform-access",
+        "console-settings-adapter-postgres",
+        "F8: resolve the configured sole-admin activation delay in the grant transaction",
+    ),
+    (
+        "console-hr-adapter-postgres",
+        "console-identity-adapter-postgres",
+        "F8: identity's HolderResolver port evaluates live holders in the HR write transaction",
+    ),
+    (
+        "console-onboarding-adapter-postgres",
+        "console-identity-adapter-postgres",
+        "F8: identity's HolderResolver port evaluates live org deciders in the setup transaction",
+    ),
     // Pre-existing since fork 86fa08c (crates/platform/realtime/Cargo.toml):
     (
         "console-platform-realtime",

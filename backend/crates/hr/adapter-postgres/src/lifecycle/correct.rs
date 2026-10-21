@@ -60,11 +60,54 @@ fn audit(
 
 /// Who may confirm a correction that moves a date or the pay is Cedar's
 /// (second person when another holder exists, else step-up; BW-11 #5).
-// deny (fail closed) until F-CEDAR's second-person/step-up arm for
-// lifecycle corrections lands; a correction that keeps those facts runs now.
-fn authorize_sensitive_correction(_principal: &Principal) -> Result<(), HrError> {
+async fn authorize_sensitive_correction(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    principal: &Principal,
+    employee: Uuid,
+    event: Uuid,
+) -> Result<(), HrError> {
+    use console_identity_adapter_postgres::second_person::{HolderCapability, PgHolderResolver};
+    use console_identity_application::holders::HolderResolver;
+    use console_platform_authz::cedar_pbac::actions::independent_people;
+    let creator: Uuid = sqlx::query_scalar(
+        "SELECT created_by FROM employee_lifecycle_events WHERE org_id=$1 AND id=$2",
+    )
+    .bind(principal.org_id.as_uuid())
+    .bind(event)
+    .fetch_one(tx.as_mut())
+    .await?;
+    let actor = *principal.user_id.as_uuid();
+    let independent = independent_people::authorized_in_tx(tx, Some(creator), actor).await?;
+    if independent {
+        let branch: Option<Uuid> =
+            sqlx::query_scalar("SELECT home_branch_id FROM employees WHERE org_id=$1 AND id=$2")
+                .bind(principal.org_id.as_uuid())
+                .bind(employee)
+                .fetch_one(tx.as_mut())
+                .await?;
+        for feature in APPOINTMENT_KEYS {
+            let holders = PgHolderResolver {
+                tx,
+                org: principal.org_id,
+                capability: HolderCapability::Feature {
+                    feature,
+                    branch: branch.map(console_kernel_core::BranchId::from_uuid),
+                },
+                exclude_account: Some(creator),
+                exclude_employee: Some(employee),
+                include_ops: true,
+                now: OffsetDateTime::now_utc(),
+            }
+            .resolve()
+            .await
+            .map_err(HrError::from_kernel)?;
+            if holders.contains(&actor) {
+                return Ok(());
+            }
+        }
+    }
     Err(coded(
-        KernelError::forbidden("a correction that changes a date or the pay needs a second person")
+        KernelError::forbidden("날짜를 바꾸는 정정은 다른 권한자가 기록해야 합니다")
             .with_code("second_person_required"),
     ))
 }
@@ -220,7 +263,7 @@ impl HrService {
                 if transition.contract_end_date != date(original.contract_end_date)
                     || transition.expected_return_date != date(original.expected_return_date)
                 {
-                    authorize_sensitive_correction(&principal)?;
+                    authorize_sensitive_correction(tx, &principal, employee_id, event_id).await?;
                 }
                 // The undo of a 전근 is its own assignment command (E-S3b).
                 let undo = (*actor.as_uuid(), Uuid::new_v4());

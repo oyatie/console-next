@@ -3,12 +3,13 @@
 //! on one employee calls [`own_record_guard`] once, after its own door and
 //! before it writes anything. Cedar decides; nothing here permits.
 
+use console_identity_adapter_postgres::second_person::{HolderCapability, PgHolderResolver};
+use console_identity_application::holders::HolderResolver;
 use console_kernel_core::{
-    AuditAction, AuditEvent, BranchId, BranchScope, KernelError, OrgId, TraceContext, UserId,
+    AuditAction, AuditEvent, BranchId, KernelError, OrgId, TraceContext, UserId,
 };
-use console_platform_authz::access::{load_access_subject, project};
+use console_platform_authz::Feature;
 use console_platform_authz::cedar_pbac::actions::own_record::{OwnRecordFacts, decide};
-use console_platform_authz::{Feature, PermissionLevel};
 use console_platform_db::insert_audit_event;
 use http::StatusCode;
 use serde_json::json;
@@ -163,31 +164,20 @@ async fn other_holders(
             .fetch_optional(tx.as_mut())
             .await?
             .flatten();
-    let accounts: Vec<Uuid> = sqlx::query_scalar(
-        "SELECT DISTINCT g.account_id FROM access_grants g \
-           JOIN users u ON u.org_id = g.org_id AND u.id = g.account_id \
-          WHERE g.org_id = $1 AND g.status = 'ACTIVE' AND u.is_active AND NOT u.is_tenant_ops \
-            AND g.account_id <> $2 AND u.employee_id IS DISTINCT FROM $3",
-    )
-    .bind(org_uuid)
-    .bind(actor.as_uuid())
-    .bind(employee)
-    .fetch_all(tx.as_mut())
-    .await?;
-    let now = OffsetDateTime::now_utc();
-    let mut count = 0;
-    for account in accounts {
-        let subject = load_access_subject(tx, org, account, now)
-            .await
-            .map_err(HrError::from_kernel)?;
-        let reaches = project(&subject).grants.iter().any(|g| {
-            g.feature == feature
-                && g.permission == PermissionLevel::Allow
-                && branch.map_or(g.branch_scope == BranchScope::All, |b| {
-                    g.branch_scope.allows(BranchId::from_uuid(b))
-                })
-        });
-        count += i64::from(reaches);
+    let holders = PgHolderResolver {
+        tx,
+        org,
+        capability: HolderCapability::Feature {
+            feature,
+            branch: branch.map(BranchId::from_uuid),
+        },
+        exclude_account: Some(*actor.as_uuid()),
+        exclude_employee: Some(employee),
+        include_ops: false,
+        now: OffsetDateTime::now_utc(),
     }
-    Ok(count)
+    .resolve()
+    .await
+    .map_err(HrError::from_kernel)?;
+    Ok(i64::try_from(holders.len()).unwrap_or(i64::MAX))
 }

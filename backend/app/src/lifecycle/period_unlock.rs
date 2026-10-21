@@ -16,14 +16,7 @@
 //! - unlock: `PERIOD_UNLOCK\n{lockId}\n{reasonCode}\n{relockAt as sent}`, object `lockId`;
 //! - approve: `PERIOD_UNLOCK_APPROVE\n{requestId}`, object `requestId`.
 //!
-//! Who may approve or reject is Cedar's `period_unlock_decide`
-//! (`unlock_decision.rs`). Whether a request waits or the sole holder unlocks
-//! is still this guard (as in EXIT's confirm); its Cedar arm needs its own
-//! `Feature::PeriodUnlock`, because `period_lock_manage` also gates list and
-//! lock; drafted:
-//! `forbid(principal, action == Action::"period_unlock", resource)
-//!  when { context.actor_is_requester }
-//!  unless { context.other_eligible_holders == 0 && context.step_up };`
+//! Both the waiting/solo decision and who may approve are Cedar decisions.
 
 use axum::http::StatusCode;
 use console_identity_adapter_postgres::second_person::{
@@ -94,14 +87,58 @@ pub(super) enum UnlockPath {
     Refused,
 }
 
-pub(super) fn unlock_path(other_eligible_holders: i64, sole_holder_refuse: bool) -> UnlockPath {
-    if other_eligible_holders > 0 {
+pub(super) fn unlock_path(
+    user: &str,
+    org: &str,
+    other_eligible_holders: i64,
+    sole_holder_refuse: bool,
+    step_up: bool,
+) -> UnlockPath {
+    use console_platform_authz::cedar_pbac::actions::period_unlock::{Intent, UnlockFacts, decide};
+    let f = UnlockFacts {
+        actor_is_requester: true,
+        other_eligible_holders,
+        step_up,
+        sole_holder_allowed: !sole_holder_refuse,
+        intent: Intent::Wait,
+    };
+    if decide(user, org, org, f) {
         UnlockPath::SecondPerson
-    } else if sole_holder_refuse {
-        UnlockPath::Refused
-    } else {
+    } else if decide(
+        user,
+        org,
+        org,
+        UnlockFacts {
+            intent: Intent::Unlock,
+            ..f
+        },
+    ) {
         UnlockPath::SoleHolderReview
+    } else {
+        UnlockPath::Refused
     }
+}
+
+/// Admission refuses an unavailable solo path without consuming a ceremony.
+pub(super) fn unlock_admitted(
+    user: &str,
+    org: &str,
+    other_eligible_holders: i64,
+    sole_holder_refuse: bool,
+) -> bool {
+    use console_platform_authz::cedar_pbac::actions::period_unlock::{Intent, UnlockFacts, decide};
+    decide(
+        user,
+        org,
+        org,
+        UnlockFacts {
+            actor_is_requester: true,
+            other_eligible_holders,
+            step_up: false,
+            sole_holder_allowed: !sole_holder_refuse,
+            intent: Intent::Request,
+        },
+    )
 }
 
 /// A request's state as the lock list shows it: decided, or still open and
@@ -284,9 +321,15 @@ mod tests {
 
     #[test]
     fn a_second_person_wins_and_a_sole_holder_follows_the_mode() {
-        assert_eq!(unlock_path(1, true), UnlockPath::SecondPerson);
-        assert_eq!(unlock_path(0, false), UnlockPath::SoleHolderReview);
-        assert_eq!(unlock_path(0, true), UnlockPath::Refused);
+        assert_eq!(
+            unlock_path("u", "o", 1, true, true),
+            UnlockPath::SecondPerson
+        );
+        assert_eq!(
+            unlock_path("u", "o", 0, false, true),
+            UnlockPath::SoleHolderReview
+        );
+        assert_eq!(unlock_path("u", "o", 0, true, true), UnlockPath::Refused);
     }
 
     #[test]

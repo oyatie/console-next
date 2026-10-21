@@ -30031,6 +30031,10 @@ components:
           - $ref: '#/components/schemas/Timestamp'
           - type: 'null'
           description: Exclusive end; null = open-ended.
+        activates_at:
+          type: [string, 'null']
+          format: date-time
+          description: Pending elevated grant's configured activation deadline; null after activation or cancellation.
         effective_in_setup:
           type: boolean
           description: 「설정 단계부터 적용」 — enforced during SETUP too.

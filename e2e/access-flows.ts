@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, type Page } from "@playwright/test";
+import { activatePendingGrants } from "./second-person-fixture";
+import { bearerOf } from "./helpers/api";
 import { expectAccessible } from "./a11y";
 import { chooseRadio, go, stepUp, takeCode } from "./flows";
 
@@ -40,7 +43,8 @@ async function ensureRole(admin: Page, access: Access) {
  * Grants `name` the tenant role for `access` over 회사 전체 (or the scope row `scope` names, e.g. one 법인) for a year — from
  * the setup phase when the tenant is still in it — through the 권한 부여 sheet, with the admin's passkey.
  */
-export async function grantAccess(admin: Page, name: string, access: Access, scope = /^전체/) {
+export async function grantAccess(admin: Page, name: string, access: Access, scope = /^전체/, activate = true) {
+  const token = bearerOf(admin);
   await ensureRole(admin, access);
   const FULL = ROLE[access].name;
   await go(admin, "/access/grants");
@@ -66,6 +70,7 @@ export async function grantAccess(admin: Page, name: string, access: Access, sco
   // Preview, passkey and apply are three round trips: allowed longer than one assertion under a loaded slot.
   await sheet.getByRole("button", { name: "패스키로 확인하고 부여 1건 저장" }).click();
   await expect(admin.getByRole("status").filter({ hasText: `${name}님에게 부여 1건을 저장했습니다` })).toBeVisible({ timeout: 20_000 });
+  if (activate) await activatePendingGrants(admin, token);
   // this is set-up plumbing for the calling spec, whose own screens are what its stability checks judge; the
   // grant sheet's stability is access-roles.spec's subject. Shifts recorded here are dropped, not charged to the caller.
   await admin.evaluate(() => void window.__shifts?.splice(0));

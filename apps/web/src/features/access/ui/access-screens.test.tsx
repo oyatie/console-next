@@ -1,8 +1,9 @@
 import { beforeAll, expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { loadCatalog } from "@console/i18n";
+import { t, loadCatalog } from "@console/i18n";
 import type { AccessEffectiveEntry, AccessGrant, AccessGrantPreview, Account } from "../api";
 import { grantLines } from "../../../reference/authz/present";
+import { periodText } from "../present";
 import { BulkPreview } from "./bulk-preview";
 import { GrantState } from "./grants-page";
 import { EnforcementChip } from "./holder";
@@ -55,4 +56,25 @@ test("ROL-M2: a held role's edit shows what each domain gains and loses before t
   expect(html).toContain("저장하면 바뀌는 것");
   expect(html).toContain("더함: 조회");
   expect(html).toContain("더함: 내보내기");
+});
+
+
+test("F8: a pending grant shows its configured activation date", () => {
+  const pending = grant({ valid_from: "2026-10-01T00:00:00Z", activates_at: "2026-10-03T00:00:00Z", enforcement: "SCHEDULED" });
+  expect(periodText(pending)).toContain("2026-10-03");
+  expect(periodText(pending)).not.toContain("2026-10-01");
+});
+
+test("F8: bulk delayed grants never promise application today", () => {
+  const preview: AccessGrantPreview = { receipt_id: "r", phase: "OPERATING", step_up_required: true, refused: 0, accounts_affected: 1,
+    items: [{ index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED" }] };
+  const props = { preview, accounts: [], role: "역할", scope: "전체", end: "2027-04-08", pending: false, error: null, onBack: () => {}, onDropRefused: () => {}, onApply: () => {} };
+  const html = renderToStaticMarkup(<BulkPreview {...props} />);
+  expect(html).not.toContain("오늘 ~");
+  expect(html).toContain("시작 전");
+});
+
+test("F8: the HQ tier explains that it reviews an already recorded exit", () => {
+  expect(t("exit.step.HQ_CONFIRMED")).toContain("사후 검토");
+  expect(t("exit.hq.consequence", { name: "김직원", date: "2026-10-03" })).toContain("이미 처리된");
 });
