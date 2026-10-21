@@ -141,7 +141,7 @@ pub(crate) async fn update_user(
     headers: HeaderMap,
     Path(id): Path<uuid::Uuid>,
     Json(body): Json<UpdateUserRequest>,
-) -> Result<impl IntoResponse, RestError> {
+) -> Result<axum::response::Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
     let target_id = UserId::from_uuid(id);
 
@@ -153,6 +153,29 @@ pub(crate) async fn update_user(
         .get_user(target_id, &account_scope(&principal))
         .await
         .map_err(RestError::from_store)?;
+    if body
+        .employee_id
+        .is_some_and(|requested| requested != target.employee_id)
+        || body.account_link_request_id.is_some()
+    {
+        let started = std::time::Instant::now();
+        let trace = TraceContext::generate();
+        let result = change_account_link(&state, &principal, target_id, body, trace.clone()).await;
+        let outcome = match &result {
+            Ok(response) if response.status() == StatusCode::ACCEPTED => "pending",
+            Ok(_) => "approved",
+            Err(_) => "refused",
+        };
+        metrics::counter!("identity_account_link_total", "outcome" => outcome).increment(1);
+        metrics::histogram!("identity_account_link_duration_seconds", "outcome" => outcome)
+            .record(started.elapsed().as_secs_f64());
+        return match result {
+            Ok(response) => Ok(response),
+            Err(error) => {
+                Err(account_link_refusal(&state, principal.user_id, target_id, trace, error).await)
+            }
+        };
+    }
     if body.roles.is_some() || body.branch_ids.is_some() {
         refuse_ops_target(target.is_tenant_ops)?;
     }
@@ -215,7 +238,8 @@ pub(crate) async fn update_user(
         }
     }
 
-    let summary = state
+    let trace = TraceContext::generate();
+    let result = state
         .store
         .update_user(UpdateUserCommand {
             actor: principal.user_id,
@@ -227,10 +251,112 @@ pub(crate) async fn update_user(
             roles: roles.as_ref().map(role_db_strings),
             branch_ids: body.branch_ids,
             preview_receipt_id,
-            trace: TraceContext::generate(),
+            trace: trace.clone(),
             occurred_at: OffsetDateTime::now_utc(),
         })
+        .await;
+    let summary = match result {
+        Ok(summary) => summary,
+        Err(error) => {
+            let error = RestError::from_store(error);
+            return Err(if error.code == "account_link_approval_required" {
+                account_link_refusal(&state, principal.user_id, target_id, trace, error).await
+            } else {
+                error
+            });
+        }
+    };
+    Ok(Json(summary).into_response())
+}
+
+async fn change_account_link(
+    state: &IdentityRestState,
+    principal: &console_platform_authz::Principal,
+    target: UserId,
+    body: UpdateUserRequest,
+    trace: TraceContext,
+) -> Result<axum::response::Response, RestError> {
+    if body.display_name.is_some()
+        || body.phone.is_some()
+        || body.team.is_some()
+        || body.roles.is_some()
+        || body.branch_ids.is_some()
+    {
+        return Err(RestError::validation(
+            "직원 연결 변경은 다른 계정 정보와 나누어 요청하십시오",
+        ));
+    }
+    if body.employee_id.is_none() {
+        return Err(RestError::validation("employee_id is required"));
+    }
+    crate::policy::step_up::verify_step_up(
+        state,
+        principal,
+        body.step_up,
+        "직원 연결 변경은 내 패스키로 본인 확인을 해야 합니다",
+    )
+    .await
+    .map_err(|mut error| {
+        if error.code == "passkey_step_up_required" {
+            error.code = "step_up_required";
+        }
+        if error.code == "unauthorized" {
+            error.code = "step_up_failed";
+            error.message =
+                "패스키를 확인하지 못했습니다. 내 패스키로 다시 확인하십시오".to_owned();
+        }
+        error
+    })?;
+    let result = state
+        .store
+        .change_account_link(
+            UpdateUserCommand {
+                actor: principal.user_id,
+                user_id: target,
+                employee_id: body.employee_id,
+                display_name: None,
+                phone: None,
+                team: None,
+                roles: None,
+                branch_ids: None,
+                preview_receipt_id: None,
+                trace,
+                occurred_at: OffsetDateTime::now_utc(),
+            },
+            body.account_link_request_id,
+        )
         .await
         .map_err(RestError::from_store)?;
-    Ok(Json(summary))
+    if result
+        .account_link
+        .as_ref()
+        .is_some_and(|request| request.status == "PENDING")
+    {
+        Ok((StatusCode::ACCEPTED, Json(result)).into_response())
+    } else {
+        Ok(Json(result.user).into_response())
+    }
+}
+
+async fn account_link_refusal(
+    state: &IdentityRestState,
+    actor: UserId,
+    target: UserId,
+    trace: TraceContext,
+    mut error: RestError,
+) -> RestError {
+    if let Err(audit_error) = state
+        .store
+        .record_account_link_refusal(actor, target, trace.clone(), error.code)
+        .await
+    {
+        error = RestError::from_store(audit_error);
+    }
+    tracing::warn!(
+        code = error.code,
+        reference = trace.trace_id(),
+        "account link refused"
+    );
+    error.message = format!("{} (reference={})", error.message, trace.trace_id());
+    error
 }

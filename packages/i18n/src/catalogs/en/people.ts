@@ -106,6 +106,8 @@ export const enPeople: Partial<Record<keyof typeof koPeople, string>> = {
   "people.homeBranch.branch": "Branch",
   "people.homeBranch.assigned": "Home branch set to {branch}",
   "people.account.title": "Sign-in account",
+  "people.account.waiting": "Awaiting confirmation",
+  "people.account.pending": "Awaiting confirmation: {account} → {employee} · Requested by {requester}",
   "people.account.unlink": "Unlink account",
   "people.account.invite": "Invite account",
   "people.account.link": "Link account",

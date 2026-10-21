@@ -25491,7 +25491,16 @@ paths:
       tags:
         - users
       operationId: updateUser
-      summary: Update a user's profile, roles, and branch memberships
+      summary: Update a user's profile or request an independently approved employee link
+      description: >-
+        Employee link changes, including unlinking, require a fresh passkey assertion (428 step_up_required;
+        401 step_up_failed for an invalid assertion). The first request returns 202 and leaves the binding unchanged.
+        Another eligible natural person explicitly approves the stored request with account_link_request_id
+        and their own fresh assertion. Cedar refuses self-targets with account_link_self_forbidden and
+        ineligible or non-independent approvals with account_link_second_person_required.
+        A stale, superseded or already-decided request returns 409 account_link_stale.
+        Refusals include a support reference. Requests and approvals are audited and notify the affected account.
+        Submit binding changes separately from other profile or permission edits.
       security:
       - bearerAuth: []
       parameters:
@@ -25515,10 +25524,45 @@ paths:
                 $ref: '#/components/schemas/UserSummary'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '202':
+          description: Awaiting independent approval; the returned user still has the current employee link.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UserSummary'
+                - type: object
+                  required: [account_link]
+                  properties:
+                    account_link:
+                      type: object
+                      required: [request_id, status, requested_by, requester_name, user_id, employee_id]
+                      properties:
+                        request_id:
+                          type: string
+                          format: uuid
+                        status:
+                          type: string
+                          enum: [PENDING]
+                        requested_by:
+                          type: string
+                          format: uuid
+                        requester_name:
+                          type: string
+                        user_id:
+                          type: string
+                          format: uuid
+                        employee_id:
+                          type: [string, 'null']
+                          format: uuid
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
         '422':
           $ref: '#/components/responses/ValidationError'
         '503':
@@ -55101,6 +55145,7 @@ components:
         display_name:
           type: string
         employee_id:
+          description: A changed link requests a pending identity-binding change; it requires step_up and an independent eligible approver. An unchanged value is a no-op.
           type:
           - string
           - 'null'
@@ -55124,6 +55169,12 @@ components:
           description: Required when `roles` or `branch_ids` is present; confirms the caller reviewed the policy assignment/account-scope preview.
         preview_receipt_id:
           $ref: '#/components/schemas/Uuid'
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
+        account_link_request_id:
+          type: string
+          format: uuid
+          description: Explicitly approve this stored pending link request. The employee_id must match its frozen proposal. The requester and affected account cannot approve.
     UpdateWorkOrderIntakeRequest:
       type: object
       minProperties: 1

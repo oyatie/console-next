@@ -12195,7 +12195,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update a user's profile, roles, and branch memberships */
+        /**
+         * Update a user's profile or request an independently approved employee link
+         * @description Employee link changes, including unlinking, require a fresh passkey assertion (428 step_up_required; 401 step_up_failed for an invalid assertion). The first request returns 202 and leaves the binding unchanged. Another eligible natural person explicitly approves the stored request with account_link_request_id and their own fresh assertion. Cedar refuses self-targets with account_link_self_forbidden and ineligible or non-independent approvals with account_link_second_person_required. A stale, superseded or already-decided request returns 409 account_link_stale. Refusals include a support reference. Requests and approvals are audited and notify the affected account. Submit binding changes separately from other profile or permission edits.
+         */
         patch: operations["updateUser"];
         trace?: never;
     };
@@ -26756,7 +26759,10 @@ export interface components {
         };
         UpdateUserRequest: {
             display_name?: string;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description A changed link requests a pending identity-binding change; it requires step_up and an independent eligible approver. An unchanged value is a no-op.
+             */
             employee_id?: string | null;
             phone?: string | null;
             team?: components["schemas"]["Team"];
@@ -26765,6 +26771,12 @@ export interface components {
             /** @description Required when `roles` or `branch_ids` is present; confirms the caller reviewed the policy assignment/account-scope preview. */
             preview_acknowledged?: boolean;
             preview_receipt_id?: components["schemas"]["Uuid"];
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
+            /**
+             * Format: uuid
+             * @description Explicitly approve this stored pending link request. The employee_id must match its frozen proposal. The requester and affected account cannot approve.
+             */
+            account_link_request_id?: string;
         };
         UpdateWorkOrderIntakeRequest: {
             symptom?: string;
@@ -52262,10 +52274,35 @@ export interface operations {
                     "application/json": components["schemas"]["UserSummary"];
                 };
             };
+            /** @description Awaiting independent approval; the returned user still has the current employee link. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSummary"] & {
+                        account_link: {
+                            /** Format: uuid */
+                            request_id: string;
+                            /** @enum {string} */
+                            status: "PENDING";
+                            /** Format: uuid */
+                            requested_by: string;
+                            requester_name: string;
+                            /** Format: uuid */
+                            user_id: string;
+                            /** Format: uuid */
+                            employee_id: string | null;
+                        };
+                    };
+                };
+            };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
+            428: components["responses"]["PreconditionRequired"];
             /** @description JWT verification is not configured. */
             503: {
                 headers: {

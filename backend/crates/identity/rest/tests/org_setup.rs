@@ -43,6 +43,9 @@ use webauthn_authenticator_rs::softpasskey::SoftPasskey;
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
 
+#[path = "org_setup/account_link_guard.rs"]
+mod account_link_guard;
+
 struct Harness {
     private_pem: String,
     public_pem: String,

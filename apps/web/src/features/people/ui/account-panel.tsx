@@ -6,6 +6,7 @@ import type { components } from "@console/api/schema";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button";
+import { Banner } from "../../../ui/banner/banner";
 import { Chip } from "../../../ui/chip";
 import { Dialog } from "../../../ui/dialog";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
@@ -123,20 +124,36 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
   const found = useQuery({ ...get("/api/v1/employees", { params: { query: { search: query.trim(), limit: 20 } } }), enabled: admin && query.trim() !== "" });
   const options = found.data?.items ?? [];
   const link = useCommand({
-    run: (employeeId: string | null) => checkedOnAccount(u.id, () => linkAccount(u.id, employeeId), holdsLink(employeeId)),
+    run: ({ employeeId, requestId }: { employeeId: string | null; requestId?: string }) => checkedOnAccount(u.id, () => linkAccount(u.id, employeeId, requestId), holdsLink(employeeId)),
     invalidates: [...INVALIDATES, "/api/v1/employees"],
     onSuccess: (r) =>
-      onRecorded(r.employee_name ? t("accounts.employee.linked", { name: u.display_name, employee: r.employee_name }) : t("accounts.employee.unlinked", { name: u.display_name })),
+      onRecorded("account_link" in r ? t("people.account.waiting") : r.employee_name ? t("accounts.employee.linked", { name: u.display_name, employee: r.employee_name }) : t("accounts.employee.unlinked", { name: u.display_name })),
   });
+  const pending = link.data && "account_link" in link.data ? link.data.account_link : undefined;
+  const canChange = admin && u.id !== mySub();
+  if (pending) return <>
+    <Banner tone="info" live="polite"
+      title={t("people.account.pending", {
+        account: u.display_name,
+        employee: pending.employee_id ? options.find((e) => e.id === pending.employee_id)?.name ?? "" : t("accounts.unlinked"),
+        requester: pending.requester_name,
+      })}
+      actions={canChange && pending.requested_by !== mySub() && <Button disabled={link.isPending}
+        onClick={() => link.mutate({ employeeId: pending.employee_id, requestId: pending.request_id })}>
+        {t("uiOverrideSheet.stepUp", { action: t("org.change.step.APPROVED") })}
+      </Button>}
+    />
+    <PasskeyError error={link.error} />
+  </>;
   if (u.employee_id)
     return (
       <div className="row">
         <Link to="/people/$id" params={{ id: u.employee_id }}>{u.employee_number ? t("accounts.employee.code", { name: u.employee_name ?? "", number: u.employee_number }) : u.employee_name}</Link>
-        {admin && <Button variant="ghost" disabled={link.isPending} onClick={() => link.mutate(null)}>{t("accounts.employee.unlink")}</Button>}
-        <CommandError error={link.error} />
+        {canChange && <Button variant="ghost" disabled={link.isPending} onClick={() => link.mutate({ employeeId: null })}>{t("uiOverrideSheet.stepUp", { action: t("accounts.employee.unlink") })}</Button>}
+        <PasskeyError error={link.error} />
       </div>
     );
-  if (!admin) return <Muted>{t("accounts.unlinked")}</Muted>;
+  if (!canChange) return <Muted>{t("accounts.unlinked")}</Muted>;
   return (
     <>
       <ServerPicker
@@ -152,9 +169,9 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
       />
       {tried && picked === null && <span className="field__error" role="alert">{t("accounts.employee.pickError")}</span>}
       <div className="row">
-        <Button disabled={link.isPending} onClick={() => (setTried(true), picked && link.mutate(picked))}>{t("accounts.employee.link")}</Button>
+        <Button disabled={link.isPending} onClick={() => (setTried(true), picked && link.mutate({ employeeId: picked }))}>{t("uiOverrideSheet.stepUp", { action: t("accounts.employee.link") })}</Button>
       </div>
-      <CommandError error={link.error} />
+      <PasskeyError error={link.error} />
     </>
   );
 }

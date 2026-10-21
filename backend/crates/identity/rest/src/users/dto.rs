@@ -53,6 +53,12 @@ pub(crate) struct UpdateUserRequest {
     /// Server-issued impact-preview receipt for the exact role/scope edit.
     #[serde(default)]
     pub(crate) preview_receipt_id: Option<Uuid>,
+    /// Fresh assertion of the caller's own passkey for a changed identity binding.
+    #[serde(default)]
+    pub(crate) step_up: Option<PolicyStepUpAssertionRequest>,
+    /// Explicit approval of the exact stored proposal; absent requests a change.
+    #[serde(default)]
+    pub(crate) account_link_request_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize)]

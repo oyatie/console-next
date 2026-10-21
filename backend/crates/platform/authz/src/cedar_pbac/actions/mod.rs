@@ -29,6 +29,7 @@ pub mod tenant_go_live;
 // --- lane: EMP-RECORD ---
 pub mod employee_restricted_record;
 // --- lane: UX-R2 GUARDS ---
+pub mod account_link;
 pub mod own_record;
 // --- lane: CX-upstream-ports ---
 pub mod independent_people;
