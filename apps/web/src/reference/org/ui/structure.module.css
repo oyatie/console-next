@@ -58,3 +58,4 @@
 .tbl tr[data-tone="danger"] td { background: var(--danger-bg); }
 .tbl tr[data-tone="warn"] td { background: var(--warn-bg); }
 .order { display: inline-flex; align-items: center; gap: var(--space-1); }
+.joinerRow { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }

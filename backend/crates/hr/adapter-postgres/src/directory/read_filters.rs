@@ -178,8 +178,12 @@ impl EmployeeListFilters {
             builder.push(")");
         }
         if let Some(org_unit_id) = self.org_unit_id {
-            builder.push(" AND e.org_unit_id = ");
+            // The org-unit preview also includes legacy UUID-text placements.
+            builder.push(" AND (e.org_unit_id = ");
             builder.push_bind(org_unit_id);
+            builder.push(" OR e.org_unit = ");
+            builder.push_bind(org_unit_id);
+            builder.push("::text)");
         }
         if !self.employee_numbers.is_empty() {
             builder.push(" AND e.employee_number = ANY(");

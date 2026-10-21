@@ -4,6 +4,7 @@
 //! query with exclusions (A4), and the 근로자 명부 export layout (SC-HRR-003).
 
 mod fixtures;
+mod membership;
 mod register;
 #[path = "../support/mod.rs"]
 mod support;
