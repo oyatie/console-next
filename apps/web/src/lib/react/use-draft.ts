@@ -1,29 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { session } from "@console/api";
+// The draft owner and live-draft registry sit in draft-owner.ts so the shell's session watcher
+// (auth/idle.ts, on the initial load) does not pull the draft hook into the entry bundle.
+import { DRAFT_PREFIX as PREFIX, activeDrafts as active } from "./draft-owner";
+export { syncDraftPrincipal } from "./draft-owner";
 
 type Fields = Record<string, string | null>;
 type Problem = "unreadable" | "unavailable" | null;
-const PREFIX = "console.draft:";
-const OWNER = "console.draft.principal";
-const active = new Map<string, { principal: string; text: () => string }>();
 
 export const draftKey = (principal: string, route: string, record: string, form: string) => PREFIX + JSON.stringify([principal, route, record, form]);
-
-/** Called before the new account's screen can render; an ended session still owns its drafts. */
-export function syncDraftPrincipal(principal: string | null) {
-  for (const [key, draft] of active) if (draft.principal !== principal) active.delete(key);
-  try {
-    if (principal !== null && sessionStorage.getItem(OWNER) === principal) return null;
-    for (const key of Object.keys(sessionStorage)) if (key.startsWith(PREFIX)) sessionStorage.removeItem(key);
-    if (principal) sessionStorage.setItem(OWNER, principal);
-    else sessionStorage.removeItem(OWNER);
-    return null;
-  } catch {
-    // Storage may be blocked; account-scoped keys and the live principal still prevent disclosure.
-    return "unavailable" as const;
-  }
-}
 
 export function readDraft<T extends Fields>(key: string, initial: T): { base: T; yours: T; restored: boolean; problem: Problem } {
   const empty = { base: initial, yours: initial, restored: false };
