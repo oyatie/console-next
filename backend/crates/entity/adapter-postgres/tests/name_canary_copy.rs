@@ -41,7 +41,7 @@ async fn head(owner: &PgPool, reg: Uuid) -> (i32, Option<String>, String, i64) {
 async fn legacy_name_is_not_copied_on_close_replay_or_reopen(owner: PgPool) {
     let (store, actor) = tenant(&owner, Uuid::new_v4(), "legacy-name").await;
     let entity = store
-        .create_entity(&cmd(&actor), corporation("주식회사 가나", "110111-0012345"))
+        .create_entity(&cmd(&actor), corporation("주식회사 가나", "000211-0123459"))
         .await
         .unwrap()
         .record

@@ -138,7 +138,7 @@ async fn legacy_null_individual_reads_fallback_but_revision_keeps_null(pool: PgP
 async fn corporate_legacy_copy_is_cleared_without_a_history_change(pool: PgPool) {
     let (store, actor) = tenant(&pool, Uuid::new_v4(), "corporate").await;
     let id = store
-        .create_entity(&cmd(&actor), corporation("주식회사 가나", "110111-0012345"))
+        .create_entity(&cmd(&actor), corporation("주식회사 가나", "000211-0123459"))
         .await
         .unwrap()
         .record
