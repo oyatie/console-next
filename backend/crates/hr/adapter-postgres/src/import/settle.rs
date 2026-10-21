@@ -183,6 +183,14 @@ pub async fn settle_chunk(
                 record_import_facts(tx, org_uuid, *actor.as_uuid(), run_id, &keys).await?;
             let setup =
                 record_setup_facts(tx, org_uuid, *actor.as_uuid(), run_id, (&keys, last)).await?;
+            crate::import::effects::assign_home_branches(
+                tx,
+                org_uuid,
+                *actor.as_uuid(),
+                run_id,
+                &keys,
+            )
+            .await?;
             crate::import::effects::capture_heads(tx, org_uuid, run_id, &keys).await?;
             if last {
                 sqlx::query(

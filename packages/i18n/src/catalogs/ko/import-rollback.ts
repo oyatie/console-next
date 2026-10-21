@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const koImportRollback = {
+  "import.rollback.homeBranch": "지점",
+  "import.rollback.branchUnset": "미지정",
   "import.runs.title": "최근 가져오기",
   "import.runs.col.file": "파일",
   "import.runs.col.status": "상태",

@@ -32,6 +32,12 @@ use crate::requests::create::{NewChangeRequest, insert_change_request_in_tx};
 use crate::{HrError, HrService};
 use console_settings_domain::code_lists::ReasonDomain;
 
+struct Loaded {
+    heads: std::collections::BTreeMap<Uuid, crate::corrections::LockedEmployee>,
+    preview: RollbackPreview,
+    routed: bool,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RollbackRequest {

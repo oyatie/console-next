@@ -8,7 +8,7 @@ use serde_json::json;
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
-use super::{RollbackOutcome, event, plan::Loaded};
+use super::{Loaded, RollbackOutcome, event};
 use crate::{
     HrError,
     corrections::{LedgerMeta, apply_fields_in_tx},
@@ -30,18 +30,19 @@ pub(super) async fn apply(
     let p = &loaded.preview;
     let mut audits = Vec::new();
     for row in p.rows.iter().filter(|r| !r.inserted) {
-        if row.fields.is_empty() {
+        let fields: Vec<_> = row
+            .fields
+            .iter()
+            .filter(|f| f.field != "home_branch_id")
+            .map(|f| (f.field.clone(), f.before.clone()))
+            .collect();
+        if fields.is_empty() {
             continue;
         }
         let head = loaded
             .heads
             .get(&row.employee_id)
             .ok_or_else(|| HrError::internal("locked import head missing"))?;
-        let fields: Vec<_> = row
-            .fields
-            .iter()
-            .map(|f| (f.field.clone(), f.before.clone()))
-            .collect();
         let meta = LedgerMeta {
             import_run_id: Some(run),
             reason_code: "IMPORT_ROLLBACK",

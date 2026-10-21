@@ -11,6 +11,8 @@ import { workbook } from "../helpers/import-layouts";
 import { settled } from "../helpers/import-queue";
 import { letGrantsAge } from "../second-person-fixture";
 import { PORTS } from "../slot";
+import { shot } from "../shots";
+import { forgetResize } from "../stability";
 
 test("J-ONB-19: the applied run opens with file, actor, time and stored counts from recent imports", { tag: ["@hr", "@negative"] }, async ({ browser }) => {
   test.setTimeout(240_000);
@@ -206,4 +208,38 @@ test("OPERATING rollback waits for another holder and reaches done through the l
   await expect(admin).toHaveURL(new RegExp(`/people/import\\?run=${run}$`));
   await expectAccessible(admin, "rollback approved live without reload, light and dark");
   expect(await headcount(api)).toBe(0);
+});
+
+test("a clean twelve-row 사업장 import has no 지점 미지정 chips and its rollback restores the roster", { tag: ["@hr", "@negative"] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  const { admin } = await tenantInSetup(browser, "rollbackbranch", "지점가져오기", false, "본점");
+  const api = apiOf(admin, bearerOf(admin));
+  const before = await headcount(api);
+  const run = await applyRoster(admin, "지점명부.xlsx", [
+    [...rosterHeader, "사업장"],
+    ...Array.from({ length: 12 }, (_, n) => [`BR-${n + 1}`, `지점직원${n + 1}`, "2020-03-02", "정규직", "사원", "본점"]),
+  ]);
+  expect(await headcount(api)).toBe(before + 12);
+  await go(admin, "/people");
+  await expect(admin.getByText("지점직원1", { exact: true })).toBeVisible();
+  for (const width of [1440, 390]) {
+    await admin.setViewportSize({ width, height: 960 });
+    await forgetResize(admin);
+    for (const theme of ["light", "dark"] as const) {
+      await admin.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
+      await expect(admin.getByRole("button", { name: /지점 미지정/ })).toHaveText(/지점 미지정\s*0$/);
+      await expectAccessible(admin, `imported home branches ${width} ${theme}`);
+      await shot(admin, `people--import-home-branch--${width}-${theme}`);
+    }
+  }
+  await admin.setViewportSize({ width: 1440, height: 960 });
+  await admin.locator("html").evaluate(el => { el.dataset.theme = "light"; });
+  await go(admin, `/people/import?run=${run}`);
+  const panel = rollbackPanel(admin);
+  await panel.getByRole("checkbox").press("Space");
+  await panel.getByRole("button", { name: /^되돌리기(?: 실행)?$/, exact: true }).click();
+  await expect(panel.getByRole("status")).toContainText(/되돌렸습니다/);
+  expect(await headcount(api)).toBe(before);
+  await go(admin, "/people/import");
+  await expect(admin.getByRole("region", { name: "최근 가져오기" }).getByRole("row").filter({ hasText: "지점명부.xlsx" })).toContainText("되돌림");
 });

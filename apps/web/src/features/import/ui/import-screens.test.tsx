@@ -264,3 +264,9 @@ test("a forbidden rollback preview uses the shared denied state and offers no ex
   expect(out).toContain(t("common.denied.title.plain"));
   expect(out).not.toMatch(/<button[^>]*>되돌리기<\/button>/);
 });
+
+ test("rollback names the home branch being cleared instead of exposing its field code", () => {
+  const out = rollbackScreen(recordedRun, { ...rollbackPlan, rows: [{ employee_id: "matched", employee_number: "HB-01", inserted: false, fields: [{ field: "home_branch_id", current: "본점", before: null }], effects: ["home_branch_set"] }] });
+  expect(out).toContain("지점: 본점 → 미지정");
+  expect(out).not.toContain("home_branch");
+});

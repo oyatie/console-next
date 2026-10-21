@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! A bounded set of reads builds the inverse and its dependency proof.
 
+use super::{Loaded, RollbackPreview, coded};
+use crate::{HrError, import::caps::settings_in_tx};
 use console_hr_domain::import::rollback::{self, Blocker, BlockerKind, InverseField, InverseRow};
 use console_kernel_core::tenant_phase::admit_write;
 use console_kernel_core::{TenantPhase, WriteClass};
@@ -10,15 +12,6 @@ use serde_json::Value;
 use sqlx::{Postgres, Row, Transaction};
 use time::{Duration, OffsetDateTime, format_description::well_known::Rfc3339};
 use uuid::Uuid;
-
-use super::{RollbackPreview, coded};
-use crate::{HrError, import::caps::settings_in_tx};
-
-pub(super) struct Loaded {
-    pub heads: std::collections::BTreeMap<Uuid, crate::corrections::LockedEmployee>,
-    pub preview: RollbackPreview,
-    pub routed: bool,
-}
 
 pub(super) async fn load(
     tx: &mut Transaction<'_, Postgres>,
@@ -106,6 +99,8 @@ pub(super) async fn load(
         p.employee_id IS NOT NULL AS has_profile,p.phone_e164,p.employment_type,p.base_pay::text AS base_pay,p.pay_unit, \
         to_char(p.probation_end_date,'YYYY-MM-DD') AS probation_end_date,p.probation_confirmed_at IS NOT NULL AS probation_confirmed, \
         to_jsonb(p) AS profile, s.outcome, s.before, s.source_key, \
+        (SELECT b.name FROM import_run_effects f JOIN branches b ON b.org_id=f.org_id AND b.id=e.home_branch_id \
+          WHERE f.org_id=e.org_id AND f.run_id=$2 AND f.employee_id=e.id AND f.effect='home_branch_set') AS imported_branch, \
         COALESCE((SELECT jsonb_agg(f.effect ORDER BY f.effect) FROM import_run_effects f \
             WHERE f.org_id=e.org_id AND f.run_id=$2 AND f.employee_id=e.id AND f.effect<>'head_settled'),'[]') AS effects \
         FROM employees e LEFT JOIN employee_employment_profiles p ON p.org_id=e.org_id AND p.employee_id=e.id \
@@ -183,6 +178,13 @@ pub(super) async fn load(
                 )?,
             );
         }
+        if let Some(branch) = head.try_get::<Option<String>, _>("imported_branch")? {
+            fields.push(InverseField {
+                field: "home_branch_id".into(),
+                current: Some(branch),
+                before: None,
+            });
+        }
         let effects: Value = head.try_get("effects")?;
         inverse.push(InverseRow {
             employee_id: id,
@@ -221,6 +223,8 @@ pub(super) async fn load(
             SELECT 1 FROM data_import_runs ir CROSS JOIN LATERAL jsonb_array_elements(ir.dry_run_summary->'rows') pr(row) \
             CROSS JOIN LATERAL jsonb_array_elements(COALESCE(pr.row->'diff','[]')) df(change) \
             WHERE ir.org_id=$1 AND ir.id=$2 AND pr.row->>'employee_id'=p.id::TEXT AND df.change->>'field'=c.field))) OR \
+        EXISTS(SELECT 1 FROM import_run_effects f JOIN employees e ON e.org_id=f.org_id AND e.id=f.employee_id \
+          WHERE f.org_id=$1 AND f.run_id=$2 AND f.employee_id=p.id AND f.effect='home_branch_set' AND e.home_branch_id IS DISTINCT FROM f.target_id) OR \
         EXISTS(SELECT 1 FROM import_run_effects f JOIN employee_employment_profiles ep ON ep.org_id=f.org_id AND ep.employee_id=f.target_id \
           WHERE f.org_id=$1 AND f.run_id=$2 AND f.employee_id=p.id AND f.effect='profile_created' AND f.target_digest IS DISTINCT FROM encode(sha256(convert_to(to_jsonb(ep)::text,'UTF8')),'hex')) OR \
         EXISTS(SELECT 1 FROM import_run_effects f JOIN employee_register_facts rf ON rf.org_id=f.org_id AND rf.employee_id=f.target_id \

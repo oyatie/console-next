@@ -12,7 +12,7 @@ CREATE TABLE import_run_effects (
   org_id UUID NOT NULL REFERENCES organizations(id),
   run_id UUID NOT NULL,
   employee_id UUID NOT NULL,
-  effect TEXT NOT NULL CHECK (effect IN ('profile_created','rrn_recorded','placed','employment_opened','onboard_scheduled','setup_leave','register_fact','ledger','head_settled')),
+  effect TEXT NOT NULL CHECK (effect IN ('profile_created','rrn_recorded','placed','employment_opened','onboard_scheduled','setup_leave','register_fact','ledger','home_branch_set','head_settled')),
   target_id UUID NOT NULL,
   target_digest TEXT NULL CHECK (target_digest IS NULL OR target_digest ~ '^[0-9a-f]{64}$'),
   created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
@@ -161,6 +161,55 @@ END $$;
 ALTER FUNCTION leave_api.employee_import_rollback_audit_required() OWNER TO console_leave_definer;
 CREATE CONSTRAINT TRIGGER employee_import_rollback_audit_required AFTER UPDATE ON data_import_runs
  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION leave_api.employee_import_rollback_audit_required();
+-- Import evidence replaces the form-create audit required by set_employee_home_branch_create.
+-- The routing write, provenance and audit share the settle transaction (no post-commit orphan).
+GRANT INSERT ON import_run_effects TO console_leave_definer;
+CREATE FUNCTION leave_api.set_employee_import_home_branch(
+ p_org UUID,p_run UUID,p_employee UUID,p_actor UUID,p_trace TEXT,p_span TEXT
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET row_security=on AS $$
+DECLARE v_branch UUID; v_old_updated TIMESTAMPTZ;
+BEGIN
+ IF p_org IS DISTINCT FROM NULLIF(current_setting('app.current_org',true),'')::UUID THEN
+   RAISE EXCEPTION 'leave_write.context_required' USING ERRCODE='42501';
+ END IF;
+ PERFORM leave_api.assert_context(p_org,p_actor,p_trace,p_span);
+ PERFORM leave_api.assert_employee_directory_manager(p_org,p_actor);
+ IF NOT EXISTS (SELECT 1 FROM public.data_import_runs r WHERE r.org_id=p_org AND r.id=p_run
+    AND r.entity_type='employee_hr' AND r.status='APPLIED' AND r.applied_by=p_actor
+    AND NOT r.rollback_ledger_complete AND (
+      EXISTS(SELECT 1 FROM public.import_run_row_snapshots s WHERE s.org_id=p_org AND s.run_id=p_run AND s.employee_id=p_employee)
+      OR EXISTS(SELECT 1 FROM pg_catalog.jsonb_array_elements(r.dry_run_summary->'rows') pr(row)
+                WHERE pr.row->>'employee_id'=p_employee::TEXT))) THEN
+   RETURN NULL;
+ END IF;
+ SELECT e.updated_at INTO v_old_updated FROM public.employees e
+ WHERE e.org_id=p_org AND e.id=p_employee AND e.home_branch_id IS NULL
+   AND e.employment_status IN ('ACTIVE','ON_LEAVE') FOR UPDATE;
+ IF NOT FOUND OR EXISTS(SELECT 1 FROM public.import_run_effects f WHERE f.org_id=p_org
+    AND f.run_id=p_run AND f.employee_id=p_employee AND f.effect='home_branch_set') THEN RETURN NULL; END IF;
+ SELECT w.default_branch_id INTO v_branch FROM public.employment_assignments a
+ JOIN public.workplaces w ON w.org_id=a.org_id AND w.id=a.workplace_id
+ WHERE a.org_id=p_org AND a.employee_id=p_employee AND a.superseded_at IS NULL
+   AND a.valid_from <= (now() AT TIME ZONE 'Asia/Seoul')::DATE
+   AND (a.valid_to IS NULL OR a.valid_to > (now() AT TIME ZONE 'Asia/Seoul')::DATE);
+ IF v_branch IS NULL THEN RETURN NULL; END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_branch::TEXT,166));
+ IF NOT EXISTS(SELECT 1 FROM public.branches WHERE org_id=p_org AND id=v_branch AND deactivated_at IS NULL) THEN
+   RAISE EXCEPTION 'leave_home_branch.active_branch_required' USING ERRCODE='P0001';
+ END IF;
+ UPDATE public.employees SET home_branch_id=v_branch,updated_at=now() WHERE org_id=p_org AND id=p_employee;
+ INSERT INTO public.import_run_effects(org_id,run_id,employee_id,effect,target_id)
+ VALUES(p_org,p_run,p_employee,'home_branch_set',v_branch);
+ INSERT INTO public.audit_events(actor,action,target_type,target_id,branch_id,before_snap,after_snap,trace_id,span_id,occurred_at,org_id)
+ VALUES(p_actor,'employee.home_branch_set','employee',p_employee::TEXT,v_branch,
+   jsonb_build_object('home_branch_id',NULL,'updated_at',v_old_updated),
+   jsonb_build_object('home_branch_id',v_branch,'updated_at',now(),'import_run_id',p_run),p_trace,p_span,statement_timestamp(),p_org);
+ RETURN v_branch;
+END $$;
+ALTER FUNCTION leave_api.set_employee_import_home_branch(UUID,UUID,UUID,UUID,TEXT,TEXT) OWNER TO console_leave_definer;
+REVOKE ALL ON FUNCTION leave_api.set_employee_import_home_branch(UUID,UUID,UUID,UUID,TEXT,TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION leave_api.set_employee_import_home_branch(UUID,UUID,UUID,UUID,TEXT,TEXT) TO console_rt;
+
 -- Deletions are limited to the exact records this run created; history is untouched.
 GRANT SELECT,DELETE ON employee_employment_profiles,employee_register_facts,employee_rrn TO console_leave_definer;
 CREATE FUNCTION leave_api.remove_employee_import_effects(p_org UUID,p_run UUID)
@@ -172,6 +221,9 @@ BEGIN
     AND xmin=pg_catalog.pg_current_xact_id()::xid) THEN
    RAISE EXCEPTION 'import_run_not_applied' USING ERRCODE='42501';
  END IF;
+ UPDATE public.employees e SET home_branch_id=NULL,updated_at=now()
+ FROM public.import_run_effects f WHERE f.org_id=p_org AND f.run_id=p_run AND f.effect='home_branch_set'
+   AND e.org_id=f.org_id AND e.id=f.employee_id AND e.home_branch_id=f.target_id;
  DELETE FROM public.employee_employment_profiles p USING public.import_run_effects f
  WHERE f.org_id=p_org AND f.run_id=p_run AND f.effect='profile_created'
    AND p.org_id=f.org_id AND p.employee_id=f.target_id;

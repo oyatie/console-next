@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const enImportRollback = {
+  "import.rollback.homeBranch": "Home branch",
+  "import.rollback.branchUnset": "Unassigned",
   "import.runs.title": "Recent imports",
   "import.runs.col.file": "File",
   "import.runs.col.status": "Status",

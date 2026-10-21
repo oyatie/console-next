@@ -83,8 +83,8 @@ function Execute({ run, plan, onChanged }: { run: ImportRun; plan: RollbackPrevi
       <h4><Link to="/people/$id" params={{ id: row.employee_id }} search={{}}>{row.employee_number ?? t("import.rows.unnumbered")}</Link></h4>
       {row.inserted && <p>{t("import.rollback.void")}</p>}
       <ul className={s.lines}>
-        {row.fields.map((field) => <li key={field.field}>{t("import.rows.change", { field: fieldLabel(field.field), before: value(field.current), after: value(field.before) })}</li>)}
-        {row.effects.filter((effect) => effect !== "ledger" && effect !== "head_settled").map((effect) => <li key={effect}>{t("import.rollback.removeEffect", { effect: label("effect", effect) })}</li>)}
+        {row.fields.map((field) => <li key={field.field}>{t("import.rows.change", { field: fieldLabel(field.field), before: value(field.current), after: field.field === "home_branch_id" ? t("import.rollback.branchUnset") : value(field.before) })}</li>)}
+        {row.effects.filter((effect) => effect !== "ledger" && effect !== "head_settled" && effect !== "home_branch_set").map((effect) => <li key={effect}>{t("import.rollback.removeEffect", { effect: label("effect", effect) })}</li>)}
       </ul>
     </section>)}
     {blocked && <>
