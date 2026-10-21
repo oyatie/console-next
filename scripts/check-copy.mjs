@@ -10,6 +10,8 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { IntlMessageFormat } from "intl-messageformat";
+import { applyJosa, resolveJosa } from "../packages/i18n/src/josa.ts";
 
 const HANGUL = /[ㄱ-ㆎ가-힣]/;
 const CATALOGS = "packages/i18n/src/catalogs";
@@ -106,6 +108,28 @@ export function checkTerms(entries, allow, rules = TERM_RULES) {
 }
 const TERMS_ALLOW = "scripts/copy-terms-allow.json";
 
+// 4. Runtime-output check: formatted text must not render written particle alternatives
+//    (「이(가)」, 「을(를)」, etc.). josa() and resolveJosa() pick the particle by phonology;
+//    rendered copy must never display unresolved fallback particles.
+export const RUNTIME_JOSA_RE = /(이\(가\)|가\(이\)|을\(를\)|를\(을\)|은\(는\)|는\(은\)|과\(와\)|와\(과\)|\(으\)로|아\(야\)|야\(아\)|\((?:을|를|이|가|은|는|으|으로|로|과|와)\))/;
+
+export function checkRuntimeOutput(input) {
+  const items = Array.isArray(input) ? input : [input];
+  const problems = [];
+  for (const item of items) {
+    const text = typeof item === "string" ? item : (item?.text ?? "");
+    const where = typeof item === "object" && item?.where ? `${item.where}: ` : "";
+    for (const line of text.split("\n")) {
+      const trimmed = line.trim();
+      const m = trimmed.match(RUNTIME_JOSA_RE);
+      if (m) {
+        problems.push(`${where}punct.조사: rendered particle alternative 「${m[0]}」 in: ${trimmed.slice(0, 80)}`);
+      }
+    }
+  }
+  return problems;
+}
+
 // Locale catalogs include every value, even acronym-only copy; mixed-language files keep only Hangul values.
 export const copyEntries = (file, text) =>
   text.split("\n").flatMap((line) => {
@@ -148,8 +172,30 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   problems.push(...checkTerms(entries, JSON.parse(readFileSync(TERMS_ALLOW, "utf8")).allow));
   const enEntries = walk(`${CATALOGS}/en`).flatMap((f) => copyEntries(f, readFileSync(f, "utf8")));
   problems.push(...checkTerms(enEntries, [], EN_TERM_RULES));
+  // Exercise catalog messages as well as all particle pairs, even without output paths.
+  const message = "{word|이가} {word|을를} {word|은는} {word|과와} {word|으로로} {word|아야} · {word}이(가) {word}을(를) {word}(으)로";
+  const runtimeEntries = [{ id: "runtime", text: message }, ...entries.filter(({ text }) => /\{\w+\|/.test(text) || RUNTIME_JOSA_RE.test(text))];
+  for (const word of ["HK-0001", "E-000002", "ABC", "abc", "URL", "IBM", "VPN", "Unit", "Hub", "정하늘", "윤바다"]) {
+    for (const { id, text } of runtimeEntries) {
+      const values = Object.fromEntries([...text.matchAll(/\{(\w+)(?:,\s*(number|plural|selectordinal|date|time)\b)?/g)]
+        .map(([, key, numeric]) => [key, numeric ? 2 : word]));
+      const rendered = new IntlMessageFormat(applyJosa(text, values), "ko").format(values);
+      problems.push(...checkRuntimeOutput({ where: `${id} (${word})`, text: resolveJosa(String(rendered)) }));
+    }
+  }
+  for (const arg of process.argv.slice(2)) {
+    try {
+      const st = statSync(arg);
+      const files = st.isDirectory() ? walk(arg).filter((f) => f.endsWith(".txt")) : [arg];
+      for (const f of files) {
+        problems.push(...checkRuntimeOutput({ where: f, text: readFileSync(f, "utf8") }));
+      }
+    } catch (error) {
+      problems.push(`${arg}: cannot check runtime output: ${error.message}`);
+    }
+  }
   if (problems.length) {
-    console.error(`copy: ${problems.length} problem(s):\n${problems.join("\n")}`);
+    process.stderr.write(`copy: ${problems.length} problem(s):\n${problems.join("\n")}\n`);
     process.exit(1);
   }
 }

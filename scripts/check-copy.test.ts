@@ -1,6 +1,10 @@
 // Unused-catalog and word halves of the copy gate; `npm run lint` runs the gate itself on the real tree.
-import { expect, test } from "vitest";
-import { EN_TERM_RULES, TERM_RULES, catalogIds, checkTerms, checkUnused, copyEntries } from "./check-copy.mjs";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { afterAll, expect, test } from "vitest";
+import { EN_TERM_RULES, TERM_RULES, catalogIds, checkRuntimeOutput, checkTerms, checkUnused, copyEntries } from "./check-copy.mjs";
 
 const src = [`t("org.title"); t(\`exit.action.\${k}\`); const id = \`org.change.event.\${e.action}\`;`];
 
@@ -124,4 +128,120 @@ test.each(["ko/test.ts", "en/test.ts"])("reads acronym-only values in %s, ignori
 
 test("English law rules preserve English copy outside legal names", () => {
   expect(checkTerms(copyEntries("en/test.ts", '"law.help": "HR users can edit the company record!",'), [], EN_TERM_RULES)).toEqual([]);
+});
+
+test("runtime-output check fails on a rendered 이(가)/을(를)", () => {
+  const problems = checkRuntimeOutput([
+    "같은 곳에 부서1이(가) 이미 있습니다",
+    "부서3을(를) 추가했습니다",
+    "전체 0명이(가) 선택되었습니다",
+    "HK-0001을 추가했습니다",
+    "E-000002로 변경했습니다",
+  ]);
+  expect(problems).toHaveLength(3);
+  expect(problems[0]).toContain("이(가)");
+  expect(problems[1]).toContain("을(를)");
+  expect(problems[2]).toContain("이(가)");
+});
+
+test("runtime-output check passes when particles are resolved cleanly", () => {
+  expect(checkRuntimeOutput(["HK-0001을 전보합니다", "E-000002로 바꿨습니다", "ABC를 등록했습니다"])).toEqual([]);
+});
+
+test.each([
+  "이(가)", "가(이)", "을(를)", "를(을)", "은(는)", "는(은)",
+  "과(와)", "와(과)", "(으)로", "으로(로)", "아(야)", "야(아)",
+])("runtime-output check rejects each particle fallback: %s", (written) => {
+  const problems = checkRuntimeOutput(`Ω${written}`);
+  expect(problems).toHaveLength(1);
+  expect(problems[0]).toContain("punct.조사");
+  expect(problems[0]).toContain(`Ω${written}`);
+});
+
+const cliDirs: string[] = [];
+afterAll(() => cliDirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
+
+function runtimeCli() {
+  const root = fileURLToPath(new URL("..", import.meta.url));
+  const dir = mkdtempSync(path.join(root, ".copy-cli-"));
+  cliDirs.push(dir);
+  for (const p of ["scripts", "apps/web/src", "apps/web/public", "packages/api/src", "packages/i18n/src/catalogs/ko", "packages/i18n/src/catalogs/en", "output/nested"])
+    mkdirSync(path.join(dir, p), { recursive: true });
+  const catalogs = Object.fromEntries(["structure", "people"].map((name) => {
+    const file = `packages/i18n/src/catalogs/ko/${name}.ts`;
+    const entries = copyEntries(file, readFileSync(path.join(root, file), "utf8")).filter(({ text }) => /\{\w+\|/.test(text));
+    return [file, `export const fixture = ${JSON.stringify(Object.fromEntries(entries.map(({ id, text }) => [id, text])), null, 2)};`];
+  }));
+  catalogs["packages/i18n/src/catalogs/ko/runtime.ts"] = `export const fixture = ${JSON.stringify({
+    "runtime.mixed": "mixed: {name|을를} · {note} · {total, number} · {count, plural, =2 {두 건} other {#건}}",
+  }, null, 2)};`;
+  for (const [file, text] of Object.entries({
+    "package.json": '{"type":"module"}',
+    "scripts/check-copy.mjs": readFileSync(path.join(root, "scripts/check-copy.mjs"), "utf8"),
+    "scripts/copy-unused-baseline.json": '{"unused":[]}',
+    "scripts/copy-terms-allow.json": '{"allow":[]}',
+    "apps/web/public/chunk-guard.js": "",
+    "output/clean.txt": "HK-0001을 등록했습니다",
+    "output/nested/broken.txt": "HK-0001이(가) 있습니다\nABC을(를) 등록했습니다",
+    ...catalogs,
+    "apps/web/src/readers.ts": Object.values(catalogs).flatMap(catalogIds).map((id) => `t(${JSON.stringify(id)})`).join("\n"),
+  })) writeFileSync(path.join(dir, file), text);
+  const josaFile = path.join(dir, "packages/i18n/src/josa.ts");
+  const josaSource = readFileSync(path.join(root, "packages/i18n/src/josa.ts"), "utf8");
+  writeFileSync(josaFile, josaSource);
+  const cli = (...args: string[]) => spawnSync(process.execPath, [path.join(dir, "scripts/check-copy.mjs"), ...args], { cwd: dir, encoding: "utf8" });
+  return { cli, josaFile, josaSource };
+}
+
+test("CLI formats mixed text and numeric ICU slots correctly", () => {
+  const { cli, josaFile, josaSource } = runtimeCli();
+  // Capture the formatted fixture at the existing particle-resolution boundary.
+  writeFileSync(josaFile, josaSource.replace("export function resolveJosa(text: string): string {",
+    'export function resolveJosa(text: string): string {\n  if (text.startsWith("mixed:")) process.stdout.write(text + "\\n");'));
+  const result = cli();
+  expect(result.status, result.stderr).toBe(0);
+  expect(result.stdout.split("\n")).toEqual(expect.arrayContaining([
+    "mixed: HK-0001을 · HK-0001 · 2 · 두 건",
+    "mixed: ABC를 · ABC · 2 · 두 건",
+    "mixed: 정하늘을 · 정하늘 · 2 · 두 건",
+  ]));
+});
+
+test("CLI checks rendered files and nested directories and refuses invalid output paths", () => {
+  const { cli } = runtimeCli();
+  const clean = cli("output/clean.txt");
+  expect(clean.status, clean.stderr).toBe(0);
+  for (const arg of ["output/nested/broken.txt", "output"]) {
+    const result = cli(arg);
+    expect(result.status, result.stderr).toBe(1);
+    expect(result.stderr).toContain("output/nested/broken.txt: punct.조사");
+    expect(result.stderr).toContain("이(가)");
+    expect(result.stderr).toContain("을(를)");
+  }
+  for (const arg of ["missing.txt", "--unknown"]) {
+    const result = cli(arg);
+    expect(result.status, result.stderr).toBe(1);
+    expect(result.stderr).toContain(`${arg}: cannot check runtime output:`);
+    expect(result.stderr).toContain("ENOENT");
+  }
+});
+
+test("CLI checks production particle output without paths", () => {
+  const { cli, josaFile, josaSource } = runtimeCli();
+  const clean = cli();
+  expect(clean.status, clean.stderr).toBe(0);
+  // Plant the pre-fix digit fallback in the production helper, without touching the working tree.
+  writeFileSync(josaFile, josaSource.replace("return DIGIT_READING[Number(ch)];", "return undefined;"));
+  const result = cli();
+  expect(result.status, result.stderr).toBe(1);
+  expect(result.stderr).toContain("runtime (HK-0001): punct.조사");
+});
+
+test("default CLI catches unresolved particles in real catalog receipts and refusals", () => {
+  const { cli, josaFile, josaSource } = runtimeCli();
+  writeFileSync(josaFile, josaSource.replace("const word = latin.toLowerCase();", 'const word = latin.toLowerCase();\n  if (word === "unit") return undefined;'));
+  const result = cli();
+  expect(result.status, result.stderr).toBe(1);
+  for (const id of ["structure.receipt.created", "structure.edit.clash", "people.title.inactive"])
+    expect(result.stderr).toContain(`${id} (Unit): punct.조사`);
 });
