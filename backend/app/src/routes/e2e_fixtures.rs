@@ -12,9 +12,12 @@ const TERMS_REVISED: &str =
     "Revised E2E service terms fixture. This is a test document, not a published contract.";
 
 pub(super) fn router(pool: PgPool) -> Router {
-    Router::new()
-        .route("/__e2e/terms", post(publish_terms))
-        .with_state(pool)
+    let router = Router::new().route("/__e2e/terms", post(publish_terms));
+    #[cfg(feature = "e2e-test-support")]
+    let router = router
+        .route("/__e2e/ops-recovery/operator", post(recovery_operator))
+        .route("/__e2e/ops-recovery/elapse", post(recovery_elapse));
+    router.with_state(pool)
 }
 
 #[derive(Deserialize)]
@@ -134,4 +137,55 @@ mod route_tests {
         .unwrap();
         assert_eq!(audit_rows, 1);
     }
+}
+
+#[cfg(feature = "e2e-test-support")]
+#[derive(Deserialize)]
+struct RecoveryOperatorRequest {
+    name: String,
+}
+#[cfg(feature = "e2e-test-support")]
+async fn recovery_operator(
+    State(pool): State<PgPool>,
+    Json(body): Json<RecoveryOperatorRequest>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let id=with_audits(&pool,OrgId::platform(),move |tx| Box::pin(async move {
+        let id:uuid::Uuid=sqlx::query_scalar("INSERT INTO users(org_id,display_name,roles) VALUES($1,$2,ARRAY['SUPER_ADMIN']) RETURNING id")
+            .bind(OrgId::platform().as_uuid()).bind(body.name).fetch_one(tx.as_mut()).await?;
+        let event=AuditEvent::new(None,AuditAction::new("e2e.ops_recovery.operator").map_err(|err|DbError::CodeIssuance(err.to_string()))?,"user",id.to_string(),TraceContext::generate(),OffsetDateTime::now_utc()).with_org(OrgId::platform());
+        Ok::<_,DbError>((id,vec![event]))
+    })).await.map_err(|_|StatusCode::INTERNAL_SERVER_ERROR)?;
+    let issue = console_platform_provisioning::BootstrapCredentialStore
+        .issue_for_zero_credential_user(
+            &pool,
+            None,
+            id,
+            OrgId::platform(),
+            OffsetDateTime::now_utc(),
+            time::Duration::minutes(10),
+        )
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(
+        serde_json::json!({"id":id,"otp":issue.token.as_str()}),
+    ))
+}
+#[cfg(feature = "e2e-test-support")]
+#[derive(Deserialize)]
+struct RecoveryElapseRequest {
+    org_id: uuid::Uuid,
+    id: uuid::Uuid,
+}
+#[cfg(feature = "e2e-test-support")]
+async fn recovery_elapse(
+    State(pool): State<PgPool>,
+    Json(body): Json<RecoveryElapseRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let org = OrgId::from_uuid(body.org_id);
+    with_audits(&pool,org,move |tx|Box::pin(async move {
+        let changed=sqlx::query("UPDATE ops_recovery_requests SET hold_until=clock_timestamp()-interval '1 second' WHERE org_id=$1 AND id=$2 AND approved_by IS NOT NULL AND issued_at IS NULL AND cancelled_at IS NULL")
+            .bind(body.org_id).bind(body.id).execute(tx.as_mut()).await?.rows_affected();
+        let event=AuditEvent::new(None,AuditAction::new("e2e.ops_recovery.elapse").map_err(|err|DbError::CodeIssuance(err.to_string()))?,"ops_recovery_request",body.id.to_string(),TraceContext::generate(),OffsetDateTime::now_utc()).with_org(org);
+        Ok::<_,DbError>((changed,vec![event]))
+    })).await.map_err(|_|StatusCode::INTERNAL_SERVER_ERROR).and_then(|changed|if changed==1 {Ok(StatusCode::NO_CONTENT)}else{Err(StatusCode::NOT_FOUND)})
 }

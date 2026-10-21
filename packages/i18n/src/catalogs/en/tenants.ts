@@ -65,7 +65,7 @@ export const enTenants: Partial<Record<keyof typeof koTenants, string>> = {
   "tenants.reissue": "Confirm with a passkey and reissue the admin code",
   "tenants.reissue.consequence": "Issues a new sign-in code for {org}’s first admin. Any code issued before stops working immediately. Nothing is issued if the admin has already enrolled a passkey. You confirm it’s you with your passkey first; this is recorded in the audit log.",
   "tenants.reissue.precondition": "A code can be reissued only until the admin registers a passkey",
-  "tenants.reissue.enrolled": "{org}’s admin has already registered a passkey, so no new code is issued. If the admin loses their device, another super admin in the customer account recovers it.",
+  "tenants.reissue.enrolled": "{org}’s admin has already registered a passkey, so no new code is issued. Request governed ops account recovery from the vendor after identity proofing and wait through the recovery hold.",
   "tenants.reissue.inactive": "{org} or its first admin account is not active, so no code can be issued.",
   "tenants.status.suspend": "Suspend {org}",
   "tenants.status.suspend.consequence": "No {org} account can sign in, and anyone signed in is stopped at their next request. Data stays as it is, and you can resume at any time.",

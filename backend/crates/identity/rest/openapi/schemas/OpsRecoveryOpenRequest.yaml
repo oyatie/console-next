@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [id, authoriser_role, authoriser_name, proofing_method, evidence_ref]
+properties:
+  id:
+    type: string
+    format: uuid
+  authoriser_role:
+    type: string
+    enum: [REPRESENTATIVE, SECURITY_CONTACT]
+  authoriser_name:
+    type: string
+    minLength: 1
+    maxLength: 100
+  proofing_method:
+    type: string
+    description: Identity-proofing method code from the operator runbook.
+    minLength: 1
+    maxLength: 100
+  evidence_ref:
+    type: string
+    description: Controller authorization reference. Never include a resident registration number.
+    minLength: 1
+    maxLength: 200
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'

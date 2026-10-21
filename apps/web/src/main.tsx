@@ -85,8 +85,8 @@ watchSession(queryClient, () => {
 });
 
 // The shell's one event stream follows the principal (registered after watchSession, so a new principal's
-// cache is already dropped when it opens). Only a full app session streams: a one-time-code (enrollment) or
-// vendor platform token is refused there. A session lost in use keeps its stream until re-auth decides.
+// cache is already dropped when it opens). Full tenant and platform sessions use their own readers.
+// An enrollment session does not stream; a lost session keeps its stream until re-auth decides.
 let streaming: string | null = null;
 // A sign-out (not a session lost in use), or a reload after the server ended the session for inactivity, pauses the
 // sign-in field's autofill in this tab (auth/sign-in-id.ts): nobody is signed back in by the first suggestion.
@@ -96,7 +96,7 @@ session.subscribe(() => {
   if ((signedIn && !session.token) || session.ended === IDLE_EXPIRED) pauseAutofill();
   signedIn = Boolean(session.token);
   const next = session.token ? (session.claims?.sub ?? null) : null;
-  const streams = next && session.stage === "app" && !session.claims?.platform ? next : null;
+  const streams = next && session.stage === "app" ? next : null;
   if (streams === streaming) return;
   streaming = streams;
   if (streams) openLive(queryClient);

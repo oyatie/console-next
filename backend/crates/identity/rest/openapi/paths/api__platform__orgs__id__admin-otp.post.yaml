@@ -9,7 +9,7 @@ description: Recovery for a lost or expired onboarding code while the tenant is 
   passkey (403 passkey_required) and send a fresh `step_up` assertion of it (ceremony from `passkey/login/start`);
   without one, or with an assertion that fails or belongs to someone else, it returns 401 and no code is minted. 404 when the tenant or an active SUPER_ADMIN does not exist; 409
   admin_already_enrolled once any SUPER_ADMIN of the tenant holds or ever registered a passkey (the tenant then
-  recovers through its own credential reset), and 409 conflict when the tenant or the admin account is not active.
+  requires the governed ops-recovery flow with controller proof, a second operator and a hold), and 409 conflict when the tenant or the admin account is not active.
 security:
 - bearerAuth: []
 parameters:

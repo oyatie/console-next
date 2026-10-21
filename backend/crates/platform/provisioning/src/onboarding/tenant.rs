@@ -117,7 +117,7 @@ impl PlatformProvisioner {
     /// tenant is missing (`NotFound`) or not ACTIVE (`Conflict`), when it has
     /// no active SUPER_ADMIN (`NotFound`), and once ANY of its SUPER_ADMINs
     /// holds or ever registered a passkey (`UserAlreadyHasPasskey`): the tenant
-    /// is then past onboarding and recovery is its own credential reset.
+    /// is then past onboarding and ops recovery requires the governed flow.
     /// Audited to the target org; the OTP never is.
     pub async fn reissue_tenant_admin_otp(
         &self,
@@ -148,18 +148,7 @@ impl PlatformProvisioner {
             .await?;
         // Past onboarding once any SUPER_ADMIN holds a passkey or ever
         // registered one (the register audit survives a later reset).
-        let enrolled: bool = sqlx::query_scalar(
-            "SELECT EXISTS (\
-                 SELECT 1 FROM users u \
-                 WHERE u.org_id = $1 AND 'SUPER_ADMIN' = ANY(u.roles) AND (\
-                     EXISTS (SELECT 1 FROM auth_webauthn_credentials c WHERE c.user_id = u.id) \
-                     OR EXISTS (SELECT 1 FROM audit_events a \
-                                WHERE a.org_id = $1 AND a.action = 'auth.passkey.register' \
-                                  AND a.actor = u.id)))",
-        )
-        .bind(org_id)
-        .fetch_one(tx.as_mut())
-        .await?;
+        let enrolled = crate::platform::admin_enrolled_tx(&mut tx, org_id).await?;
         if enrolled {
             return Err(ProvisioningError::UserAlreadyHasPasskey);
         }

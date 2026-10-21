@@ -68,7 +68,7 @@ export const koTenants = {
   "tenants.reissue": "패스키로 확인하고 관리자 코드 재발급",
   "tenants.reissue.consequence": "{org} 첫 관리자의 새 로그인 코드를 발급합니다. 이전에 발급한 코드는 바로 쓸 수 없게 됩니다. 관리자가 이미 패스키를 등록했다면 발급하지 않습니다. 발급하기 전에 패스키로 본인임을 한 번 더 확인하며, 감사 기록에 남습니다.",
   "tenants.reissue.precondition": "관리자가 패스키를 등록하기 전까지만 재발급할 수 있습니다",
-  "tenants.reissue.enrolled": "{org} 관리자가 이미 패스키를 등록해 코드를 다시 발급하지 않습니다. 관리자가 기기를 잃으면 고객 계정 안의 다른 최고 관리자가 복구합니다.",
+  "tenants.reissue.enrolled": "{org} 관리자가 이미 패스키를 등록해 코드를 다시 발급하지 않습니다. 공급사에 본인 확인 후 운영 계정 복구를 요청하고 대기 기간을 거쳐야 합니다.",
   "tenants.reissue.inactive": "{org} 또는 첫 관리자 계정이 운영 중이 아니라 발급할 수 없습니다.",
   // Status
   "tenants.status.suspend": "{org} 이용 정지",

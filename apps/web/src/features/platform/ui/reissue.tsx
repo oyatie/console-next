@@ -9,8 +9,7 @@ import s from "./tenants.module.css";
 
 /**
  * Replaces the first admin's sign-in code while that admin has no passkey (the previous code stops
- * working). The server refuses for good once any super admin of the tenant ever enrolled a passkey, so
- * that refusal turns the button into a stated block, and the precondition is said before the first press.
+ * working). The server fact disables this control once the ops account enrolls; governed recovery is beside it.
  */
 export function Reissue({ org, enrolled, onEnrolled, onIssued }: { org: Org; enrolled: boolean; onEnrolled: () => void; onIssued: (r: Issued) => void }) {
   const reissue = useCommand({
@@ -33,10 +32,9 @@ export function Reissue({ org, enrolled, onEnrolled, onIssued }: { org: Org; enr
         <DisabledReason control={(p) => <Button {...p}>{label}</Button>} reason={t("tenants.reissue.enrolled", { org: org.name })} />
       ) : (
         <>
-          <p className={s.note}>{t("tenants.reissue.consequence", { org: org.name })}</p>
+          <p id="tenant-code-pre" className={s.note}>{t("tenants.reissue.consequence", { org: org.name })} {t("tenants.reissue.precondition")}</p>
           {conflict(reissue.error) ? <div className="alert" role="alert">{t("tenants.reissue.inactive", { org: org.name })}</div> : <PasskeyError error={reissue.error} />}
           <Button aria-describedby="tenant-code-pre" disabled={reissue.isPending} onClick={() => reissue.mutate(undefined)}>{label}</Button>
-          <p id="tenant-code-pre" className={s.note}>{t("tenants.reissue.precondition")}</p>
         </>
       )}
     </section>

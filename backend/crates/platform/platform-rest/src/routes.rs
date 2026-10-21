@@ -4,6 +4,16 @@ use crate::{
     PLATFORM_VIEW_AS_EXIT_PATH, PLATFORM_VIEW_AS_START_PATH, TENANT_DOMAIN_REQUEST_PATH,
 };
 
+pub const PLATFORM_OPS_RECOVERY_PATH: &str = "/api/platform/orgs/{id}/ops-recovery";
+pub const PLATFORM_OPS_RECOVERY_APPROVE_PATH: &str =
+    "/api/platform/orgs/{id}/ops-recovery/{rid}/approve";
+pub const PLATFORM_OPS_RECOVERY_ISSUE_PATH: &str =
+    "/api/platform/orgs/{id}/ops-recovery/{rid}/issue";
+pub const PLATFORM_OPS_RECOVERY_CANCEL_PATH: &str =
+    "/api/platform/orgs/{id}/ops-recovery/{rid}/cancel";
+pub const TENANT_OPS_RECOVERY_PATH: &str = "/api/v1/tenant/ops-recovery";
+pub const TENANT_OPS_RECOVERY_CANCEL_PATH: &str = "/api/v1/tenant/ops-recovery/{rid}/cancel";
+
 pub const PLATFORM_COMPANY_DOMAIN_PATH: &str = "/api/platform/company-domain";
 pub const PLATFORM_ORGS_PATH: &str = "/api/platform/orgs";
 pub const PLATFORM_ORG_PATH_TEMPLATE: &str = "/api/platform/orgs/{id}";
@@ -24,6 +34,12 @@ pub struct PlatformRouteOperation {
 }
 
 pub const PLATFORM_ROUTE_PATHS: &[&str] = &[
+    PLATFORM_OPS_RECOVERY_PATH,
+    PLATFORM_OPS_RECOVERY_APPROVE_PATH,
+    PLATFORM_OPS_RECOVERY_ISSUE_PATH,
+    PLATFORM_OPS_RECOVERY_CANCEL_PATH,
+    TENANT_OPS_RECOVERY_PATH,
+    TENANT_OPS_RECOVERY_CANCEL_PATH,
     TENANT_DOMAIN_REQUEST_PATH,
     PLATFORM_COMPANY_DOMAIN_PATH,
     PLATFORM_ORGS_PATH,
@@ -48,6 +64,34 @@ pub const PLATFORM_ROUTE_PATHS: &[&str] = &[
 /// lockstep with `router` and `view_as::routes`; `backend/app/tests/openapi_drift.rs`
 /// fails CI when any `/api/platform/*` operation here is missing from OpenAPI.
 pub const PLATFORM_ROUTE_OPERATIONS: &[PlatformRouteOperation] = &[
+    PlatformRouteOperation {
+        method: "GET",
+        path: PLATFORM_OPS_RECOVERY_PATH,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: PLATFORM_OPS_RECOVERY_PATH,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: PLATFORM_OPS_RECOVERY_APPROVE_PATH,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: PLATFORM_OPS_RECOVERY_ISSUE_PATH,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: PLATFORM_OPS_RECOVERY_CANCEL_PATH,
+    },
+    PlatformRouteOperation {
+        method: "GET",
+        path: TENANT_OPS_RECOVERY_PATH,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: TENANT_OPS_RECOVERY_CANCEL_PATH,
+    },
     PlatformRouteOperation {
         method: "GET",
         path: TENANT_DOMAIN_REQUEST_PATH,

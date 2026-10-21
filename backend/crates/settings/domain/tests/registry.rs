@@ -10,7 +10,7 @@ use std::collections::HashSet;
 /// section switches + PEOPLE-A's two `people.void_*` + D26's five
 /// `approval.policy.*` + IMPORT-2's eight `import.*` + BE-MIG's
 /// `import.apply.max_rows` + PERF-BE's six `db.pool.*`.
-const EXPECTED_KEYS: usize = 34 + 17 + 1 + 1 + 1 + 10 + 2 + 5 + 8 + 1 + 6 + 3;
+const EXPECTED_KEYS: usize = 34 + 17 + 1 + 1 + 1 + 10 + 2 + 5 + 8 + 1 + 6 + 3 + 2;
 
 #[test]
 fn roster_has_every_key_once_and_round_trips() {
@@ -98,5 +98,23 @@ fn legal_floors_sit_on_the_code_default() {
             assert_eq!(min, Some(v), "{name}");
             assert_eq!(def.looser_when, LooserWhen::Lower, "{name}");
         }
+    }
+}
+
+#[test]
+fn ops_recovery_settings_are_platform_only_and_keep_the_voice_code_cap() {
+    for (wire, min, max, default) in [
+        ("ops_recovery.hold_hours", 24, 168, 72),
+        ("ops_recovery.code_ttl_minutes", 5, 10, 10),
+    ] {
+        let key: SettingKey = wire.parse().unwrap();
+        assert!(SettingKey::ALL.contains(&key));
+        let def = key.def();
+        assert_eq!(def.governance, Governance::PlatformOnly);
+        assert!(
+            matches!(def.kind,SettingKind::Int{min:Some(lower),max:Some(upper),..} if lower==min && upper==max)
+        );
+        assert_eq!(def.default, Some(SettingValue::Int(default)));
+        assert!(!def.in_range(SettingValue::Int(max + 1)));
     }
 }

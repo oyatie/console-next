@@ -1,5 +1,5 @@
 // Vendor tier: tenant organizations, their usage rollup, and the lifecycle commands on them.
-import { ApiError, api, assertPasskey, unwrap } from "@console/api";
+import { ApiError, api, assertPasskey, assertBoundPasskey, session, unwrap } from "@console/api";
 import type { components } from "@console/api/schema";
 import { COMMAND_NOT_APPLIED } from "../../lib/react/command";
 import { LANDED, landed } from "../../lib/react/landed";
@@ -9,7 +9,7 @@ export type Org = components["schemas"]["PlatformOrg"];
 export type OrgStatus = Org["status"];
 export type Health = components["schemas"]["PlatformTenantHealth"];
 /** A first-admin code to hand over: from onboarding or a reissue. */
-export type Issued = { org: string; otp: string; expiresAt: string };
+export type Issued = { org: string; otp: string; expiresAt: string; recoveryMinutes?: number };
 /** A recorded command's receipt, shown once at the top of the page. */
 export type Recorded = { message: string; meta?: string };
 
@@ -73,3 +73,24 @@ export const verifyDomainChange = async (org: Org, slug: string) => {
   if (fresh?.slug !== slug) return COMMAND_NOT_APPLIED;
   return fresh;
 };
+
+export type OpsRecoveryRead = NonNullable<Awaited<ReturnType<ReturnType<typeof recoveryQuery>["queryFn"]>>>;
+export type RecoveryCommand = { action: "open"; authoriser_role: "REPRESENTATIVE" | "SECURITY_CONTACT"; authoriser_name: string; proofing_method: string; evidence_ref: string } | { action: "approve" } | { action: "issue" } | { action: "cancel"; reason: string };
+export const recoveryQuery = (id: string) => get("/api/platform/orgs/{id}/ops-recovery", { params: { path: { id } } });
+
+const recoveryProof = (orgId: string, id: string, command: RecoveryCommand) => assertBoundPasskey("OPERATOR_RECOVERY", id,
+  JSON.stringify([orgId, id, command.action, command.action === "open" ? command.authoriser_role : "", command.action === "open" ? command.authoriser_name : "", command.action === "open" ? command.proofing_method : "", command.action === "open" ? command.evidence_ref : "", command.action === "cancel" ? command.reason : ""]));
+
+export async function recoveryWrite(org: Org, requestId: string, command: RecoveryCommand, key: string) {
+  // The command key is stable across retries, including opening a request before its id exists.
+  const id = command.action === "open" ? key : requestId;
+  const step_up = await recoveryProof(org.id, id, command);
+  const params = { path: { id: org.id, rid: id }, header: { "Idempotency-Key": key } };
+  if (command.action === "open") { const { action: _, ...evidence } = command; return unwrap(api.POST("/api/platform/orgs/{id}/ops-recovery", { params, body: { id, ...evidence, step_up } })); }
+  if (command.action === "approve") return unwrap(api.POST("/api/platform/orgs/{id}/ops-recovery/{rid}/approve", { params, body: { step_up } }));
+  if (command.action === "issue") return unwrap(api.POST("/api/platform/orgs/{id}/ops-recovery/{rid}/issue", { params, body: { step_up } }));
+  return unwrap(api.POST("/api/platform/orgs/{id}/ops-recovery/{rid}/cancel", { params, body: { step_up, reason: command.reason } }));
+}
+
+
+export const operatorId = () => session.claims?.sub;

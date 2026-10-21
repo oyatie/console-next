@@ -177,3 +177,4 @@ impl ActionBundle {
 pub mod command_outcome;
 
 pub mod company_domain_request;
+pub mod ops_recovery_decide;

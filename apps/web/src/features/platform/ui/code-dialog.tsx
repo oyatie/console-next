@@ -15,7 +15,7 @@ export function CodeDialog({ issued, onClose }: { issued: Issued | null; onClose
     <Dialog open={issued !== null} title={t("tenants.code.title")} onClose={onClose} dismissable={false}>
       {issued && (
         <>
-          <span>{t("tenants.code.for", { org: issued.org, at: fmtDateTime(issued.expiresAt) })}</span>
+          <p>{t("tenants.code.for", { org: issued.org, at: fmtDateTime(issued.expiresAt) })} {issued.recoveryMinutes ? <>{t("opsRecovery.issued", { minutes: issued.recoveryMinutes })} {t("opsRecovery.codeLost")}</> : t("tenants.next.lost")} {t("tenants.code.closeNote")}</p>
           <div className="secret" aria-label={t("common.oneTimeCode")}>{issued.otp}</div>
           {/* What happens after the hand-over, so the vendor can tell the admin what to expect. */}
           <section aria-labelledby="tenant-next" className="form">
@@ -25,9 +25,7 @@ export function CodeDialog({ issued, onClose }: { issued: Issued | null; onClose
               <li>{t("tenants.next.signIn")}</li>
               <li>{t("tenants.next.setup")}</li>
             </ol>
-            <span className="muted">{t("tenants.next.lost")}</span>
           </section>
-          <span className="muted">{t("tenants.code.closeNote")}</span>
           <div className="form__actions">
             <Button onClick={() => copy(issued.otp)}>{t("common.copyCode")}</Button>
             <Button variant="primary" onClick={onClose}>{t("tenants.code.close")}</Button>

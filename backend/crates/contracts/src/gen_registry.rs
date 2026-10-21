@@ -5318,6 +5318,7 @@ const IDENTITY_FRAGMENT_EXTERNAL: &[&str] = &[
     "ErrorBody",
     "FieldError",
     "MobilePasskeyStepUpBinding",
+    "MobilePasskeyStepUpEnvelope",
     "MobileStepUpActionKind",
     "OrgChangeApprovalRoleKey",
     "OrgChangeApprovalStep",
@@ -5499,6 +5500,50 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
             method: "post",
             body: include_str!(
                 "../../identity/rest/openapi/paths/api__platform__orgs__id__admin-otp.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/platform/orgs/{id}/ops-recovery",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__platform__orgs__id__ops-recovery.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__platform__orgs__id__ops-recovery.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/platform/orgs/{id}/ops-recovery/{rid}/approve",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__platform__orgs__id__ops-recovery__rid__approve.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/platform/orgs/{id}/ops-recovery/{rid}/cancel",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__platform__orgs__id__ops-recovery__rid__cancel.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/platform/orgs/{id}/ops-recovery/{rid}/issue",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__platform__orgs__id__ops-recovery__rid__issue.post.yaml"
             ),
         }],
     },
@@ -6329,6 +6374,24 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/tenant/ops-recovery",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__tenant__ops-recovery.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/tenant/ops-recovery/{rid}/cancel",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__tenant__ops-recovery__rid__cancel.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/users",
         operations: &[
             Operation {
@@ -6749,6 +6812,22 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "OpsAccount",
         body: include_str!("../../identity/rest/openapi/schemas/OpsAccount.yaml"),
+    },
+    NamedYaml {
+        name: "OpsRecoveryCancelRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/OpsRecoveryCancelRequest.yaml"),
+    },
+    NamedYaml {
+        name: "OpsRecoveryOpenRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/OpsRecoveryOpenRequest.yaml"),
+    },
+    NamedYaml {
+        name: "OpsRecoveryRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/OpsRecoveryRequest.yaml"),
+    },
+    NamedYaml {
+        name: "OpsRecoveryState",
+        body: include_str!("../../identity/rest/openapi/schemas/OpsRecoveryState.yaml"),
     },
     NamedYaml {
         name: "OpsUsageEntry",

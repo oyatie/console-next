@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 
+use crate::ChangeReader;
 use console_kernel_core::{MessageId, OrgId};
-use console_platform_authz::Principal;
 use time::OffsetDateTime;
 
 use crate::event::{HelloData, ResetData, ResetReason};
@@ -31,13 +31,14 @@ impl PgRealtimeHub {
     /// `hello` or replay.
     pub async fn connect_stream(
         self: &Arc<Self>,
-        reader: Principal,
+        reader: impl Into<ChangeReader>,
         from: StreamFrom,
     ) -> RealtimeConnection {
+        let reader = reader.into();
         let principal = RealtimePrincipal {
-            user_id: reader.user_id,
-            branch_scope: reader.branch_scope.clone(),
-            org_id: reader.org_id,
+            user_id: reader.user_id(),
+            branch_scope: reader.branch_scope(),
+            org_id: reader.org_id(),
         };
         let plan = self.pool.is_some().then_some(ReplayPlan {
             last_message_id: from.last_message_id,
@@ -114,7 +115,7 @@ impl PgRealtimeHub {
     /// Fans one woken transaction out to every change-stream slot of `org`,
     /// each filtered and coalesced under its own reader.
     pub(crate) async fn dispatch_changes(&self, org: OrgId, rows: &[ChangeRow]) {
-        let readers: Vec<(uuid::Uuid, Arc<Principal>)> = {
+        let readers: Vec<(uuid::Uuid, Arc<ChangeReader>)> = {
             let connections = self.connections.lock().await;
             connections
                 .iter()
@@ -151,7 +152,7 @@ impl PgRealtimeHub {
         }
     }
 
-    async fn reader_of(&self, connection_id: uuid::Uuid) -> Option<Arc<Principal>> {
+    async fn reader_of(&self, connection_id: uuid::Uuid) -> Option<Arc<ChangeReader>> {
         let connections = self.connections.lock().await;
         connections.get(&connection_id)?.reader.clone()
     }

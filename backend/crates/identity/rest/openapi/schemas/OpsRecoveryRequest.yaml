@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [id, target_user_id, requested_by, requested_by_name, opened_at, approved_by, hold_until, cancelled_by, cancelled_by_name, cancelled_at, cancel_reason, issued_at]
+properties:
+  id:
+    type: string
+    format: uuid
+  target_user_id:
+    type: string
+    format: uuid
+  requested_by:
+    type: string
+    format: uuid
+  requested_by_name:
+    type: string
+    nullable: true
+  opened_at:
+    type: string
+    format: date-time
+  approved_by:
+    type: string
+    format: uuid
+    nullable: true
+  hold_until:
+    type: string
+    format: date-time
+    nullable: true
+  cancelled_by:
+    type: string
+    format: uuid
+    nullable: true
+  cancelled_by_name:
+    type: string
+    nullable: true
+  cancelled_at:
+    type: string
+    format: date-time
+    nullable: true
+  cancel_reason:
+    type: string
+    nullable: true
+  issued_at:
+    type: string
+    format: date-time
+    nullable: true
+  authoriser_role:
+    type: string
+  authoriser_name:
+    type: string
+  proofing_method:
+    type: string
+  evidence_ref:
+    type: string

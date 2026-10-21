@@ -117,4 +117,7 @@ mod perf;
 #[macro_use]
 mod attendance;
 
-roster!([] found, pa_ent, ent_capture, emp_record, people_a, d26, import2, mig, perf, attendance);
+#[macro_use]
+mod ops_recovery;
+
+roster!([] found, pa_ent, ent_capture, emp_record, people_a, d26, import2, mig, perf, attendance, ops_recovery);

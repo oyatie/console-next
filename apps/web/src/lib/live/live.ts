@@ -119,8 +119,8 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
     const d = (data ?? {}) as { type?: unknown; id?: unknown; at?: unknown; wide?: unknown };
     if (event === "reset") return later(() => queue(ALL), jitter(RESET_JITTER_MAX_MS));
     if (event !== "change" || typeof d.type !== "string") return;
-    // Import jobs continue after the write's answer; their progress is never an already-shown echo.
-    if (d.type !== "import_run" && ownWrite(qc)) return;
+    // Imports keep running and recovery has other actors: a recent write cannot suppress their next step.
+    if (d.type !== "import_run" && d.type !== "ops_recovery" && ownWrite(qc)) return;
     const id = str(d.id);
     const record = matchRecord(d.type, id);
     if (record && id && shownWhere(qc, record)) {

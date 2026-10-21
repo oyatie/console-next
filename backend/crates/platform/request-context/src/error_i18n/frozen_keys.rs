@@ -193,6 +193,15 @@ scope_node_closed
 access_request_note_required
 access_request_not_found
 access_request_closed
+ops_recovery_no_second_operator
+ops_recovery_not_enrolled
+ops_recovery_already_open
+ops_recovery_sod_requester
+ops_recovery_shared_authenticator
+ops_recovery_not_approved
+ops_recovery_hold_active
+ops_recovery_cancelled
+ops_recovery_evidence_identifier
 [STATUS_LABELS]
 ACTIVE
 ON_LEAVE

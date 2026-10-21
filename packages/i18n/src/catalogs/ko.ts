@@ -1,3 +1,4 @@
+import { koOpsRecovery } from "./ko/ops-recovery";
 import { koStatutory } from "./ko/statutory";
 import { koRequestOutcome } from "./ko/request-outcome";
 // Source catalog for the screens (Korean first); other locales translate these ids. Sign-in,
@@ -220,6 +221,7 @@ export const ko = {
   ...koEmpRec,
   ...koEmpDoc,
   ...koPeopleJump,
+  ...koOpsRecovery,
 } as const;
 
 export type ScreenMessageId = keyof typeof ko;

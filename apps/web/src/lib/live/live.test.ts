@@ -207,3 +207,13 @@ test("the shell sees the stream state, and closing leaves it offline", () => {
   expect(liveStatus.get().state).toBe("offline");
   expect(fake.closed).toBeGreaterThan(0);
 });
+
+
+test("recovery changes from the other operator survive this tab's recent-write window", async () => {
+  const query = get("/api/platform/orgs/{id}/ops-recovery", { params: { path: { id: "o1" } } });
+  await load(query);
+  await qc.getMutationCache().build(qc, { mutationFn: async () => 1 }).execute(undefined);
+  frame("change", { type: "ops_recovery", id: "r1" });
+  await vi.advanceTimersByTimeAsync(250);
+  expect(isInvalidated(qc, query)).toBe(true);
+});

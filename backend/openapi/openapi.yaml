@@ -1327,7 +1327,7 @@ paths:
         passkey (403 passkey_required) and send a fresh `step_up` assertion of it (ceremony from `passkey/login/start`);
         without one, or with an assertion that fails or belongs to someone else, it returns 401 and no code is minted. 404 when the tenant or an active SUPER_ADMIN does not exist; 409
         admin_already_enrolled once any SUPER_ADMIN of the tenant holds or ever registered a passkey (the tenant then
-        recovers through its own credential reset), and 409 conflict when the tenant or the admin account is not active.
+        requires the governed ops-recovery flow with controller proof, a second operator and a hold), and 409 conflict when the tenant or the admin account is not active.
       security:
       - bearerAuth: []
       parameters:
@@ -1359,6 +1359,320 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/platform/orgs/{id}/ops-recovery:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [platform]
+      operationId: readPlatformOpsRecovery
+      summary: Governed same-holder ops recovery
+      description: Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Current recovery state or command receipt.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request, state, ops_enrolled, second_operator_available, active_accounts, recovery_available, ops_has_passkey, hold_hours, code_ttl_minutes]
+                properties:
+                  request:
+                    nullable: true
+                    allOf:
+                    - $ref: '#/components/schemas/OpsRecoveryRequest'
+                  state:
+                    nullable: true
+                    allOf:
+                    - $ref: '#/components/schemas/OpsRecoveryState'
+                  recovery_available:
+                    type: boolean
+                  ops_has_passkey:
+                    type: boolean
+                  ops_enrolled:
+                    type: boolean
+                  second_operator_available:
+                    type: boolean
+                  active_accounts:
+                    type: integer
+                  hold_hours:
+                    type: integer
+                  code_ttl_minutes:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers.
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [platform]
+      operationId: openPlatformOpsRecovery
+      summary: Governed same-holder ops recovery
+      description: Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpsRecoveryOpenRequest'
+      responses:
+        '200':
+          description: Current recovery state or command receipt.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id, expires_at]
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  otp:
+                    type: string
+                    description: Shown once; omitted on an idempotent replay. Never logged or audited.
+                  expires_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers.
+  /api/platform/orgs/{id}/ops-recovery/{rid}/approve:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [platform]
+      operationId: approvePlatformOpsRecovery
+      summary: Governed same-holder ops recovery
+      description: Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: rid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                step_up:
+                  $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+      responses:
+        '200':
+          description: Current recovery state or command receipt.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id, expires_at]
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  otp:
+                    type: string
+                    description: Shown once; omitted on an idempotent replay. Never logged or audited.
+                  expires_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers.
+  /api/platform/orgs/{id}/ops-recovery/{rid}/cancel:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [platform]
+      operationId: cancelPlatformOpsRecovery
+      summary: Governed same-holder ops recovery
+      description: Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: rid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpsRecoveryCancelRequest'
+      responses:
+        '200':
+          description: Current recovery state or command receipt.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id, expires_at]
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  otp:
+                    type: string
+                    description: Shown once; omitted on an idempotent replay. Never logged or audited.
+                  expires_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers.
+  /api/platform/orgs/{id}/ops-recovery/{rid}/issue:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [platform]
+      operationId: issuePlatformOpsRecovery
+      summary: Governed same-holder ops recovery
+      description: Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: rid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                step_up:
+                  $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+      responses:
+        '200':
+          description: Current recovery state or command receipt.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id, expires_at]
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  otp:
+                    type: string
+                    description: Shown once; omitted on an idempotent replay. Never logged or audited.
+                  expires_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers.
   /api/platform/tenant-context:
     post:
       tags:
@@ -25301,6 +25615,114 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '422':
           description: Invalid requested company domain
+  /api/v1/tenant/ops-recovery:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [platform]
+      operationId: readTenantOpsRecovery
+      summary: Governed same-holder ops recovery
+      description: Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Current recovery state or command receipt.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request, state, ops_enrolled, second_operator_available, active_accounts, recovery_available, ops_has_passkey, hold_hours, code_ttl_minutes]
+                properties:
+                  request:
+                    nullable: true
+                    allOf:
+                    - $ref: '#/components/schemas/OpsRecoveryRequest'
+                  state:
+                    nullable: true
+                    allOf:
+                    - $ref: '#/components/schemas/OpsRecoveryState'
+                  recovery_available:
+                    type: boolean
+                  ops_has_passkey:
+                    type: boolean
+                  ops_enrolled:
+                    type: boolean
+                  second_operator_available:
+                    type: boolean
+                  active_accounts:
+                    type: integer
+                  hold_hours:
+                    type: integer
+                  code_ttl_minutes:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers.
+  /api/v1/tenant/ops-recovery/{rid}/cancel:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [platform]
+      operationId: cancelTenantOpsRecovery
+      summary: Governed same-holder ops recovery
+      description: Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: rid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpsRecoveryCancelRequest'
+      responses:
+        '200':
+          description: Current recovery state or command receipt.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id, expires_at]
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  otp:
+                    type: string
+                    description: Shown once; omitted on an idempotent replay. Never logged or audited.
+                  expires_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers.
   /api/v1/users:
     get:
       tags:
@@ -39491,6 +39913,14 @@ components:
               type: string
             message:
               type: string
+            support_ref:
+              type: string
+              format: uuid
+              description: Support reference for a governed ops recovery refusal.
+            hold_until:
+              type: string
+              format: date-time
+              description: Hold boundary on an ops_recovery_hold_active refusal.
             trace_id:
               type: string
               description: Present on a 5xx. The server-side trace id to quote to operators; the message is then generic and the detail stays in the server log.
@@ -44457,6 +44887,16 @@ components:
           enum:
           - operations_passkey_approval_decision
           - operations_passkey_poll_vote
+          - passkey_step_up_exit_confirm
+          - passkey_step_up_exit_rescind
+          - passkey_step_up_elevated_grant
+          - passkey_step_up_period_unlock
+          - passkey_step_up_identity_merge
+          - passkey_step_up_exception_decide
+          - passkey_step_up_settings_change
+          - passkey_step_up_credential_reset
+          - passkey_step_up_tenant_offboard
+          - passkey_step_up_operator_recovery
         replay_attempt:
           type:
           - integer
@@ -44464,6 +44904,12 @@ components:
           format: int32
           minimum: 1
           description: Null for an immediate online action; 1-based for queued replay attempts.
+        payload_hash:
+          type:
+          - string
+          - 'null'
+          pattern: '^[a-f0-9]{64}$'
+          description: Required for BW-29 actions including OPERATOR_RECOVERY; SHA-256 of the command payload.
     MobilePasskeyStepUpEnvelope:
       type: object
       required:
@@ -44503,6 +44949,16 @@ components:
       enum:
       - APPROVAL_DECISION
       - POLL_VOTE
+      - EXIT_CONFIRM
+      - EXIT_RESCIND
+      - ELEVATED_GRANT
+      - PERIOD_UNLOCK
+      - IDENTITY_MERGE
+      - EXCEPTION_DECIDE
+      - SETTINGS_CHANGE
+      - CREDENTIAL_RESET
+      - TENANT_OFFBOARD
+      - OPERATOR_RECOVERY
     MobileVotePollRequest:
       type: object
       required:
@@ -45552,6 +46008,105 @@ components:
           type: integer
           format: int32
           minimum: 0
+    OpsRecoveryCancelRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 200
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+    OpsRecoveryOpenRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [id, authoriser_role, authoriser_name, proofing_method, evidence_ref]
+      properties:
+        id:
+          type: string
+          format: uuid
+        authoriser_role:
+          type: string
+          enum: [REPRESENTATIVE, SECURITY_CONTACT]
+        authoriser_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        proofing_method:
+          type: string
+          description: Identity-proofing method code from the operator runbook.
+          minLength: 1
+          maxLength: 100
+        evidence_ref:
+          type: string
+          description: Controller authorization reference. Never include a resident registration number.
+          minLength: 1
+          maxLength: 200
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+    OpsRecoveryRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [id, target_user_id, requested_by, requested_by_name, opened_at, approved_by, hold_until, cancelled_by, cancelled_by_name, cancelled_at, cancel_reason, issued_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        target_user_id:
+          type: string
+          format: uuid
+        requested_by:
+          type: string
+          format: uuid
+        requested_by_name:
+          type: string
+          nullable: true
+        opened_at:
+          type: string
+          format: date-time
+        approved_by:
+          type: string
+          format: uuid
+          nullable: true
+        hold_until:
+          type: string
+          format: date-time
+          nullable: true
+        cancelled_by:
+          type: string
+          format: uuid
+          nullable: true
+        cancelled_by_name:
+          type: string
+          nullable: true
+        cancelled_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancel_reason:
+          type: string
+          nullable: true
+        issued_at:
+          type: string
+          format: date-time
+          nullable: true
+        authoriser_role:
+          type: string
+        authoriser_name:
+          type: string
+        proofing_method:
+          type: string
+        evidence_ref:
+          type: string
+    OpsRecoveryState:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: string
+      enum: [WAITING_APPROVAL, HOLD, READY, ISSUED, CANCELLED]
     OpsSummary:
       type: object
       required:

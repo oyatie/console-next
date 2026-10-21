@@ -884,7 +884,7 @@
       "body_type": "ConfirmEmployeeExitCaseRequest",
       "body_struct_file": "backend/crates/hr/adapter-postgres/src/exits/types.rs",
       "body_struct": "ConfirmEmployeeExitCaseRequest",
-      "schema_sha256": "a30b851287ed44ffe2b4fc6caba60d79258729a4cb1bd28d44891e6971898cb0",
+      "schema_sha256": "fa17b7ed22b3404d35a9b84e9b163bc54b9b95dd11cae72d83656e941e0c7244",
       "status": "resolved"
     },
     {

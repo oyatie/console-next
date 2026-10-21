@@ -639,9 +639,93 @@ export interface paths {
         put?: never;
         /**
          * Reissue the tenant admin's one-time code (platform vendor tier)
-         * @description Recovery for a lost or expired onboarding code while the tenant is still onboarding. Mints a fresh one-time code for the tenant's first active SUPER_ADMIN (the earliest-created one), revoking any code still open so only the new one redeems. Returned exactly once; audited to the tenant as platform.tenant.admin_otp.reissue (never the code). Platform token with tenant-onboarding authority required. The caller must have an enrolled passkey (403 passkey_required) and send a fresh `step_up` assertion of it (ceremony from `passkey/login/start`); without one, or with an assertion that fails or belongs to someone else, it returns 401 and no code is minted. 404 when the tenant or an active SUPER_ADMIN does not exist; 409 admin_already_enrolled once any SUPER_ADMIN of the tenant holds or ever registered a passkey (the tenant then recovers through its own credential reset), and 409 conflict when the tenant or the admin account is not active.
+         * @description Recovery for a lost or expired onboarding code while the tenant is still onboarding. Mints a fresh one-time code for the tenant's first active SUPER_ADMIN (the earliest-created one), revoking any code still open so only the new one redeems. Returned exactly once; audited to the tenant as platform.tenant.admin_otp.reissue (never the code). Platform token with tenant-onboarding authority required. The caller must have an enrolled passkey (403 passkey_required) and send a fresh `step_up` assertion of it (ceremony from `passkey/login/start`); without one, or with an assertion that fails or belongs to someone else, it returns 401 and no code is minted. 404 when the tenant or an active SUPER_ADMIN does not exist; 409 admin_already_enrolled once any SUPER_ADMIN of the tenant holds or ever registered a passkey (the tenant then requires the governed ops-recovery flow with controller proof, a second operator and a hold), and 409 conflict when the tenant or the admin account is not active.
          */
         post: operations["reissuePlatformOrgAdminOtp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/orgs/{id}/ops-recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Governed same-holder ops recovery
+         * @description Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+         */
+        get: operations["readPlatformOpsRecovery"];
+        put?: never;
+        /**
+         * Governed same-holder ops recovery
+         * @description Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+         */
+        post: operations["openPlatformOpsRecovery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/orgs/{id}/ops-recovery/{rid}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Governed same-holder ops recovery
+         * @description Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+         */
+        post: operations["approvePlatformOpsRecovery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/orgs/{id}/ops-recovery/{rid}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Governed same-holder ops recovery
+         * @description Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+         */
+        post: operations["cancelPlatformOpsRecovery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/orgs/{id}/ops-recovery/{rid}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Governed same-holder ops recovery
+         * @description Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+         */
+        post: operations["issuePlatformOpsRecovery"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12145,6 +12229,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tenant/ops-recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Governed same-holder ops recovery
+         * @description Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+         */
+        get: operations["readTenantOpsRecovery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/ops-recovery/{rid}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Governed same-holder ops recovery
+         * @description Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+         */
+        post: operations["cancelTenantOpsRecovery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -19213,6 +19337,16 @@ export interface components {
             error: {
                 code: string;
                 message: string;
+                /**
+                 * Format: uuid
+                 * @description Support reference for a governed ops recovery refusal.
+                 */
+                support_ref?: string;
+                /**
+                 * Format: date-time
+                 * @description Hold boundary on an ops_recovery_hold_active refusal.
+                 */
+                hold_until?: string;
                 /** @description Present on a 5xx. The server-side trace id to quote to operators; the message is then generic and the detail stays in the server log. */
                 trace_id?: string;
                 /** @description Present when an operation has an uncertain admission or external outcome. */
@@ -21886,12 +22020,14 @@ export interface components {
             action_kind: components["schemas"]["MobileStepUpActionKind"];
             object_id: components["schemas"]["Uuid"];
             /** @enum {string} */
-            reason_key: "operations_passkey_approval_decision" | "operations_passkey_poll_vote";
+            reason_key: "operations_passkey_approval_decision" | "operations_passkey_poll_vote" | "passkey_step_up_exit_confirm" | "passkey_step_up_exit_rescind" | "passkey_step_up_elevated_grant" | "passkey_step_up_period_unlock" | "passkey_step_up_identity_merge" | "passkey_step_up_exception_decide" | "passkey_step_up_settings_change" | "passkey_step_up_credential_reset" | "passkey_step_up_tenant_offboard" | "passkey_step_up_operator_recovery";
             /**
              * Format: int32
              * @description Null for an immediate online action; 1-based for queued replay attempts.
              */
             replay_attempt: number | null;
+            /** @description Required for BW-29 actions including OPERATOR_RECOVERY; SHA-256 of the command payload. */
+            payload_hash?: string | null;
         };
         MobilePasskeyStepUpEnvelope: {
             binding: components["schemas"]["MobilePasskeyStepUpBinding"];
@@ -21909,7 +22045,7 @@ export interface components {
             binding: components["schemas"]["MobilePasskeyStepUpBinding"];
         };
         /** @enum {string} */
-        MobileStepUpActionKind: "APPROVAL_DECISION" | "POLL_VOTE";
+        MobileStepUpActionKind: "APPROVAL_DECISION" | "POLL_VOTE" | "EXIT_CONFIRM" | "EXIT_RESCIND" | "ELEVATED_GRANT" | "PERIOD_UNLOCK" | "IDENTITY_MERGE" | "EXCEPTION_DECIDE" | "SETTINGS_CHANGE" | "CREDENTIAL_RESET" | "TENANT_OFFBOARD" | "OPERATOR_RECOVERY";
         MobileVotePollRequest: {
             selected_option_ids: components["schemas"]["Uuid"][];
             step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
@@ -22388,6 +22524,51 @@ export interface components {
             /** Format: int32 */
             active_assignments: number;
         };
+        OpsRecoveryCancelRequest: {
+            reason: string;
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
+        OpsRecoveryOpenRequest: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            authoriser_role: "REPRESENTATIVE" | "SECURITY_CONTACT";
+            authoriser_name: string;
+            /** @description Identity-proofing method code from the operator runbook. */
+            proofing_method: string;
+            /** @description Controller authorization reference. Never include a resident registration number. */
+            evidence_ref: string;
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
+        OpsRecoveryRequest: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            target_user_id: string;
+            /** Format: uuid */
+            requested_by: string;
+            requested_by_name: string | null;
+            /** Format: date-time */
+            opened_at: string;
+            /** Format: uuid */
+            approved_by: string | null;
+            /** Format: date-time */
+            hold_until: string | null;
+            /** Format: uuid */
+            cancelled_by: string | null;
+            cancelled_by_name: string | null;
+            /** Format: date-time */
+            cancelled_at: string | null;
+            cancel_reason: string | null;
+            /** Format: date-time */
+            issued_at: string | null;
+            authoriser_role?: string;
+            authoriser_name?: string;
+            proofing_method?: string;
+            evidence_ref?: string;
+        };
+        /** @enum {string} */
+        OpsRecoveryState: "WAITING_APPROVAL" | "HOLD" | "READY" | "ISSUED" | "CANCELLED";
         OpsSummary: {
             funnel: components["schemas"]["OpsFunnel"];
             /** Format: int32 */
@@ -29058,6 +29239,240 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    readPlatformOpsRecovery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current recovery state or command receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        request: components["schemas"]["OpsRecoveryRequest"] | null;
+                        state: components["schemas"]["OpsRecoveryState"] | null;
+                        recovery_available: boolean;
+                        ops_has_passkey: boolean;
+                        ops_enrolled: boolean;
+                        second_operator_available: boolean;
+                        active_accounts: number;
+                        hold_hours: number;
+                        code_ttl_minutes: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    openPlatformOpsRecovery: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpsRecoveryOpenRequest"];
+            };
+        };
+        responses: {
+            /** @description Current recovery state or command receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        request_id: string;
+                        /** @description Shown once; omitted on an idempotent replay. Never logged or audited. */
+                        otp?: string;
+                        /** Format: date-time */
+                        expires_at: string | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    approvePlatformOpsRecovery: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+                };
+            };
+        };
+        responses: {
+            /** @description Current recovery state or command receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        request_id: string;
+                        /** @description Shown once; omitted on an idempotent replay. Never logged or audited. */
+                        otp?: string;
+                        /** Format: date-time */
+                        expires_at: string | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cancelPlatformOpsRecovery: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpsRecoveryCancelRequest"];
+            };
+        };
+        responses: {
+            /** @description Current recovery state or command receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        request_id: string;
+                        /** @description Shown once; omitted on an idempotent replay. Never logged or audited. */
+                        otp?: string;
+                        /** Format: date-time */
+                        expires_at: string | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    issuePlatformOpsRecovery: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+                };
+            };
+        };
+        responses: {
+            /** @description Current recovery state or command receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        request_id: string;
+                        /** @description Shown once; omitted on an idempotent replay. Never logged or audited. */
+                        otp?: string;
+                        /** Format: date-time */
+                        expires_at: string | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     startPlatformTenantContext: {
@@ -52058,6 +52473,93 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             /** @description Invalid requested company domain */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readTenantOpsRecovery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current recovery state or command receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        request: components["schemas"]["OpsRecoveryRequest"] | null;
+                        state: components["schemas"]["OpsRecoveryState"] | null;
+                        recovery_available: boolean;
+                        ops_has_passkey: boolean;
+                        ops_enrolled: boolean;
+                        second_operator_available: boolean;
+                        active_accounts: number;
+                        hold_hours: number;
+                        code_ttl_minutes: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cancelTenantOpsRecovery: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpsRecoveryCancelRequest"];
+            };
+        };
+        responses: {
+            /** @description Current recovery state or command receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        request_id: string;
+                        /** @description Shown once; omitted on an idempotent replay. Never logged or audited. */
+                        otp?: string;
+                        /** Format: date-time */
+                        expires_at: string | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers. */
             422: {
                 headers: {
                     [name: string]: unknown;

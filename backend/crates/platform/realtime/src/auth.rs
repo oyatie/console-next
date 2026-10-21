@@ -8,11 +8,10 @@ use axum::response::{IntoResponse, Response};
 use axum::{Extension, Json};
 use console_kernel_core::{ErrorKind, ErrorType};
 use console_platform_auth::JwtVerifier;
-use console_platform_authz::Principal;
 use console_platform_request_context::RequestContextError;
 use serde::Serialize;
 
-use crate::{PgRealtimeHub, RealtimePrincipal};
+use crate::{ChangeReader, PgRealtimeHub, RealtimePrincipal};
 
 #[derive(Debug, Clone)]
 pub struct RealtimeRestState {
@@ -57,9 +56,9 @@ pub(crate) async fn principal_from_token(
 ) -> Result<RealtimePrincipal, RealtimeApiError> {
     let principal = reader_from_token(state, token).await?;
     Ok(RealtimePrincipal {
-        user_id: principal.user_id,
-        branch_scope: principal.branch_scope,
-        org_id: principal.org_id,
+        user_id: principal.user_id(),
+        branch_scope: principal.branch_scope(),
+        org_id: principal.org_id(),
     })
 }
 
@@ -68,7 +67,7 @@ pub(crate) async fn principal_from_token(
 pub(crate) async fn reader_from_token(
     state: &RealtimeRestState,
     token: &str,
-) -> Result<Principal, RealtimeApiError> {
+) -> Result<ChangeReader, RealtimeApiError> {
     let verifier = state.jwt_verifier.as_ref().ok_or_else(|| {
         RealtimeApiError::new(
             StatusCode::SERVICE_UNAVAILABLE,
@@ -83,8 +82,27 @@ pub(crate) async fn reader_from_token(
             "realtime database is not configured",
         )
     })?;
+    let claims = verifier
+        .verify_access_token(token)
+        .map_err(|_| RealtimeApiError::unauthorized("invalid bearer token"))?;
+    if claims.platform {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::AUTHORIZATION,
+            format!("Bearer {token}")
+                .parse()
+                .map_err(|_| RealtimeApiError::unauthorized("invalid bearer token"))?,
+        );
+        return console_platform_request_context::resolve_platform_principal(
+            verifier, pool, &headers,
+        )
+        .await
+        .map(ChangeReader::Platform)
+        .map_err(realtime_error_from_request_context);
+    }
     console_platform_request_context::resolve_principal_from_bearer_token(verifier, pool, token)
         .await
+        .map(ChangeReader::from)
         .map_err(realtime_error_from_request_context)
 }
 
