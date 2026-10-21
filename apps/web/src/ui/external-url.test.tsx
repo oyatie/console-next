@@ -29,7 +29,8 @@ beforeAll(async () => {
     configFile: false,
     cacheDir: ".cache/external-url-test",
     logLevel: "error",
-    server: { host: "127.0.0.1", port: 0, fs: { allow: [resolve("."), realpathSync("node_modules/pretendard")] } },
+    // No watcher or HMR: other suites write under the repo root, and a reload mid-case left the page without renderUrl.
+    server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), realpathSync("node_modules/pretendard")] } },
     plugins: [{
       name: "external-url-test",
       resolveId: (id) => id === "/external-url-test.js" ? "\0external-url-test" : undefined,
