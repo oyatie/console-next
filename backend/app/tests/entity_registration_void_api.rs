@@ -214,7 +214,7 @@ async fn void_registration_refuses_when_in_use_by_workplace(pool: PgPool) {
         .await;
     assert_eq!(status, StatusCode::CONFLICT, "{status} {body}");
     assert_eq!(code(&body), "record_in_use");
-    assert_eq!(body["error"]["remedy"], "move_workplaces_first");
+    assert_eq!(body["error"]["reasons"], json!(["move_workplaces_first"]));
 
     // Registration must not be voided
     let is_voided: bool = sqlx::query_scalar(
@@ -266,7 +266,7 @@ async fn void_registration_refuses_outside_setup_phase(pool: PgPool) {
         .await;
     assert_eq!(status, StatusCode::CONFLICT, "{status} {body}");
     assert_eq!(code(&body), "phase_not_setup");
-    assert_eq!(body["error"]["remedy"], "close_record_instead");
+    assert_eq!(body["error"]["reasons"], json!(["close_record_instead"]));
 
     // Registration must remain active (not voided)
     let is_voided: bool = sqlx::query_scalar(
