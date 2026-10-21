@@ -3,7 +3,10 @@
 
 use console_entity_application::{Actor, CreateWorkplace, WorkplaceRevision};
 use console_entity_domain::Refusal;
-use console_entity_domain::workplace::{WorkplaceContext, validate_workplace};
+use console_entity_domain::workplace::{WorkplaceContext, validate_workplace_resolved};
+use console_entity_domain::workplace_registration::{
+    ResolvedReferenceCode, WorkplaceRegistrationAnswer,
+};
 use console_kernel_core::AuditEvent;
 use serde_json::json;
 use uuid::Uuid;
@@ -16,6 +19,80 @@ use crate::workplace_kind::usable_kind;
 use crate::workplace_revision::{insert_insurance, insert_revision};
 use crate::{Admitted, PgEntityError, RevisionMeta, Tx, audit, today_kst};
 
+pub(crate) fn registration_answer(
+    registration: Option<Uuid>,
+    reason: Option<&str>,
+) -> WorkplaceRegistrationAnswer {
+    if registration.is_some() {
+        WorkplaceRegistrationAnswer::Registered
+    } else if reason.is_some() {
+        WorkplaceRegistrationAnswer::NotRequired
+    } else {
+        WorkplaceRegistrationAnswer::Later
+    }
+}
+
+pub(crate) fn answer_event(
+    actor: &Actor,
+    admitted: Admitted,
+    workplace: Uuid,
+    from: Option<WorkplaceRegistrationAnswer>,
+    to: WorkplaceRegistrationAnswer,
+) -> Result<AuditEvent, PgEntityError> {
+    audit(
+        actor,
+        "workplace.registration_answer.changed",
+        "workplace",
+        workplace,
+        admitted,
+        json!({ "from": from.map(WorkplaceRegistrationAnswer::as_str), "to": to.as_str() }),
+    )
+}
+
+pub(crate) fn observe_answer(answer: WorkplaceRegistrationAnswer) {
+    metrics::counter!("workplace_registration_answer", "answer" => answer.as_str()).increment(1);
+}
+
+fn resolved_reason(
+    input: &console_entity_domain::workplace::WorkplaceInput,
+) -> Result<Option<ResolvedReferenceCode>, PgEntityError> {
+    if input.registration_id.is_some() {
+        return Ok(None);
+    }
+    let Some(raw) = input.not_registered_reason.as_ref() else {
+        return Ok(None);
+    };
+    let Some(code) = raw
+        .code
+        .as_deref()
+        .map(str::trim)
+        .filter(|code| !code.is_empty())
+    else {
+        return Ok(None);
+    };
+    let resolved = console_refdata::resolve(
+        console_refdata::WORKPLACE_NOT_REGISTERED_REASON_KEY,
+        code,
+        raw.version.as_deref(),
+    )
+    .map_err(|error| {
+        let code = match error {
+            console_refdata::ResolveError::RetiredVersion => "reference_version_retired",
+            console_refdata::ResolveError::UnknownCode
+            | console_refdata::ResolveError::UnknownList
+            | console_refdata::ResolveError::Unavailable => "invalid_option",
+        };
+        Refusal::field("not_registered_reason", code)
+    })?;
+    Ok(Some(ResolvedReferenceCode {
+        code: resolved.code.code.to_owned(),
+        label: resolved.code.label.to_owned(),
+        list_key: resolved.list.key.to_owned(),
+        version: resolved.list.version.unwrap_or_default().to_owned(),
+        abstract_workplace: resolved.code.abstract_workplace.unwrap_or(false),
+    }))
+}
+
 /// Create a 사업장 under `entity` inside the caller's transaction (the
 /// one-by-one create and the bulk batch share it).
 pub(crate) async fn create_workplace_in_tx(
@@ -25,7 +102,7 @@ pub(crate) async fn create_workplace_in_tx(
     entity: Uuid,
     cmd: &CreateWorkplace,
     port: &dyn OrgUnitSetupWritePort,
-) -> Result<(Uuid, AuditEvent), PgEntityError> {
+) -> Result<(Uuid, Vec<AuditEvent>), PgEntityError> {
     let facts = lock_entity(tx, entity).await?;
     let today = today_kst(tx).await?;
     let (of_other, reg_address) =
@@ -35,14 +112,16 @@ pub(crate) async fn create_workplace_in_tx(
         registration_is_unit_taxation_of_other: of_other,
         creating: true,
     };
-    let draft = validate_workplace(&cmd.input, ctx, today)?;
+    let reason = resolved_reason(&cmd.input)?;
+    let draft = validate_workplace_resolved(&cmd.input, ctx, today, reason.as_ref())?;
     let kind = usable_kind(tx, cmd.kind_code.as_deref(), None).await?;
     let branch =
         default_branch(tx, entity, &facts.name, &draft.name, cmd.default_branch_id).await?;
     let id: Uuid = sqlx::query_scalar(
         "INSERT INTO workplaces (org_id, legal_entity_id, registration_id, sub_serial, default_branch_id, \
-           created_change_mode, created_by, kind_code, not_registered_reason_code, not_registered_reason_label, not_registered_reason_version, is_abstract) \
-         VALUES (NULLIF(current_setting('app.current_org', true), '')::uuid, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
+           created_change_mode, created_by, kind_code, not_registered_reason_code, not_registered_reason_label, \
+           not_registered_reason_list_key, not_registered_reason_version, is_abstract) \
+         VALUES (NULLIF(current_setting('app.current_org', true), '')::uuid, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id",
     )
     .bind(entity)
     .bind(draft.registration_id)
@@ -53,6 +132,12 @@ pub(crate) async fn create_workplace_in_tx(
     .bind(&kind)
     .bind(draft.not_registered_reason.as_ref().map(|r| r.code.as_str()))
     .bind(draft.not_registered_reason.as_ref().map(|r| r.label.as_str()))
+    .bind(
+        draft
+            .not_registered_reason
+            .as_ref()
+            .map(|r| r.list_key.as_str()),
+    )
     .bind(draft.not_registered_reason.as_ref().map(|r| r.version.as_str()))
     .bind(draft.is_abstract)
     .fetch_one(tx.as_mut())
@@ -90,7 +175,9 @@ pub(crate) async fn create_workplace_in_tx(
         admitted,
         json!({ "legal_entity_id": entity, "name": draft.name, "default_branch_id": branch, "org_unit_id": site, "kind_code": kind }),
     )?;
-    Ok((id, event))
+    let answer = answer_event(actor, admitted, id, None, draft.registration_answer)?;
+    observe_answer(draft.registration_answer);
+    Ok((id, vec![event, answer]))
 }
 
 /// Append a full-state revision of 사업장 `id` inside the caller's
@@ -102,10 +189,16 @@ pub(crate) async fn revise_workplace_in_tx(
     id: Uuid,
     rev: WorkplaceRevision,
     port: &dyn OrgUnitSetupWritePort,
-) -> Result<(Uuid, AuditEvent), PgEntityError> {
+) -> Result<(Uuid, Vec<AuditEvent>), PgEntityError> {
     let env = crate::revision_envelope(&rev)?;
     let (effective_from, reason) = (env.effective_from, env.reason);
     let (entity, registration, version) = lock_workplace(tx, id).await?;
+    let before_reason: Option<String> =
+        sqlx::query_scalar("SELECT not_registered_reason_code FROM workplaces WHERE id = $1")
+            .bind(id)
+            .fetch_one(tx.as_mut())
+            .await?;
+    let before_answer = registration_answer(registration, before_reason.as_deref());
     crate::ensure_version(env.expected_version, version)?;
     let facts = lock_entity(tx, entity).await?;
     let today = today_kst(tx).await?;
@@ -120,7 +213,8 @@ pub(crate) async fn revise_workplace_in_tx(
         registration_is_unit_taxation_of_other: of_other,
         creating: false,
     };
-    let draft = validate_workplace(&input, ctx, today)?;
+    let resolved_reason = resolved_reason(&input)?;
+    let draft = validate_workplace_resolved(&input, ctx, today, resolved_reason.as_ref())?;
     // MR-18: the 종사업장 일련번호 moves with its registration link, as a dated change.
     let serial: Option<String> =
         sqlx::query_scalar("SELECT sub_serial FROM workplaces WHERE id = $1")
@@ -158,7 +252,7 @@ pub(crate) async fn revise_workplace_in_tx(
     sqlx::query(
         "UPDATE workplaces SET needs_confirmation = false, \
            not_registered_reason_code = $2, not_registered_reason_label = $3, \
-           not_registered_reason_version = $4, is_abstract = $5 \
+           not_registered_reason_list_key = $4, not_registered_reason_version = $5, is_abstract = $6 \
          WHERE id = $1",
     )
     .bind(id)
@@ -173,6 +267,12 @@ pub(crate) async fn revise_workplace_in_tx(
             .not_registered_reason
             .as_ref()
             .map(|r| r.label.as_str()),
+    )
+    .bind(
+        draft
+            .not_registered_reason
+            .as_ref()
+            .map(|r| r.list_key.as_str()),
     )
     .bind(
         draft
@@ -198,7 +298,18 @@ pub(crate) async fn revise_workplace_in_tx(
         version + 1,
     )
     .await?;
-    Ok((entity, event))
+    let mut events = vec![event];
+    if before_answer != draft.registration_answer {
+        events.push(answer_event(
+            actor,
+            admitted,
+            id,
+            Some(before_answer),
+            draft.registration_answer,
+        )?);
+        observe_answer(draft.registration_answer);
+    }
+    Ok((entity, events))
 }
 
 /// Void 사업장 `id` (setup undo) inside the caller's transaction.

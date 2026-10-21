@@ -9,6 +9,8 @@ pub(crate) static CODES: LazyLock<Vec<Code>> = LazyLock::new(|| {
             code: r.code,
             label: r.label,
             parent_label: None,
+            citation_url: None,
+            abstract_workplace: None,
             biz_kinds: Some(r.biz_kinds.clone()),
             head_office: Some(r.head_office),
         })

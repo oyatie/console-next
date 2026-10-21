@@ -53,7 +53,7 @@ export function WorkplaceCreateSheet({ e, kinds, setup, onClose, onSaved }: { e:
       </div>
       {kinds && <KindChoice kinds={kinds} value={c.kind} onChange={c.setKind} headOffice={head ? workplaceName(head) : undefined} />}
       <RegistrationChoice e={e} c={c} />
-      {!own && !c.w.isAbstract && (
+      {!own && !(c.mode === "NOT_REQUIRED" && c.w.isAbstract) && (
         <AddressField label={t("workplace.create.address")} required value={c.w.address} onChange={(v) => c.set("address", v && search.withCodes(v))} query={search.query} onQueryChange={search.setQuery} hits={search.hits} loading={search.loading} problem={search.problem}>
           <DistrictPick a={c.w.address} onChange={(a) => c.set("address", a)} />
         </AddressField>

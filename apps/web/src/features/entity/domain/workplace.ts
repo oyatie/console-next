@@ -47,6 +47,8 @@ export type WpProblem = "required" | "insuranceNoLength" | "subSerial" | "emailI
 /** What the screen knows: whether the head office question applies (the entity's head office is not settled). */
 export type WpFacts = { askHeadOffice: boolean; showRequired: boolean };
 
+export const abstractFromReason = (reason?: { isAbstract?: boolean }) => reason?.isAbstract ?? false;
+
 /** The insurance rows the choice stands for: the shortcut fills statuses; numbers are typed where needed. */
 export function rowsFor(d: Pick<WorkplaceDraft, "insurance" | "rows">): InsuranceRow[] {
   const all = (status: InsuranceStatus) => d.rows.map((r) => ({ ...r, status }));
@@ -88,7 +90,8 @@ export function workplaceProblems(d: WorkplaceDraft, f: WpFacts): Partial<Record
   }
   // A certificate of its own brings the address and opening date; otherwise they are asked here.
   // An abstract workplace has no address.
-  if ((d.regMode === "UNIT_TAXATION_SUB" || d.regMode === "LATER" || d.regMode === "NOT_REQUIRED") && !d.isAbstract) {
+  const abstract = d.regMode === "NOT_REQUIRED" && d.isAbstract;
+  if ((d.regMode === "UNIT_TAXATION_SUB" || d.regMode === "LATER" || d.regMode === "NOT_REQUIRED") && !abstract) {
     need("address", d.address !== null);
   }
   if (d.regMode === "UNIT_TAXATION_SUB" || d.regMode === "LATER" || d.regMode === "NOT_REQUIRED") {
@@ -123,15 +126,16 @@ const rowCode = (r: InsuranceRow): Partial<InsurerInput> => (r.code && r.insurer
 export function planWorkplace(d: WorkplaceDraft, f: { corp: boolean; registrationId: string | null; openedOn?: string; headOffice: boolean | null }): CreateWorkplaceRequest {
   const own = d.regMode === "NEW" || d.regMode === "EXISTING";
   const notReq = d.regMode === "NOT_REQUIRED";
+  const abstract = notReq && d.isAbstract;
   return {
     name: d.name.trim(),
     registration_id: d.regMode === "LATER" || notReq ? null : f.registrationId,
     sub_serial: d.regMode === "UNIT_TAXATION_SUB" ? d.subSerial : null,
     reg_mode: d.regMode ?? undefined,
-    not_registered_reason: notReq && d.notRegisteredReason ? { code: d.notRegisteredReason.code } : null,
-    is_abstract: d.isAbstract,
+    not_registered_reason: notReq && d.notRegisteredReason ? { code: d.notRegisteredReason.code, version: d.notRegisteredReason.version } : null,
+    is_abstract: abstract,
     same_address_as_registration: own,
-    address: own || d.isAbstract || !d.address ? null : krAddress(d.address),
+    address: own || abstract || !d.address ? null : krAddress(d.address),
     opened_on: own ? f.openedOn! : d.openedOn,
     phone: d.phone ? phoneE164(d.phone) : null,
     email: d.email.trim() || null,

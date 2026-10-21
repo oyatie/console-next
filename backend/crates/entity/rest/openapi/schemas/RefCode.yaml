@@ -17,3 +17,12 @@ properties:
     type:
     - string
     - 'null'
+  citation_url:
+    type:
+    - string
+    - 'null'
+    format: uri
+  abstract_workplace:
+    type:
+    - boolean
+    - 'null'

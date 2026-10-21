@@ -7,6 +7,7 @@ export const registrationOf = (e: LegalEntity, id?: string | null) => (id ? e.re
 /** The representative workplace's certificate, else the first one. */
 export const primaryRegistration = (e: LegalEntity) => registrationOf(e, e.workplaces.find((w) => w.is_primary)?.registration_id) ?? e.registrations[0];
 export const headcount = (e: LegalEntity) => e.workplaces.reduce((n, w) => n + w.headcount, 0);
+export const registrationTodo = (w: Workplace) => w.registration_todo;
 /** Certificates entered for the entity that no workplace holds yet (the first one, until its workplace exists). */
 export const unheld = (e: LegalEntity) => e.registrations.filter((r) => !r.holder_workplace_id && !r.closed_on);
 /** The entity's unit-taxation registration, whose sub-workplaces carry a serial. */
@@ -81,10 +82,16 @@ export function workplaceInput(e: LegalEntity, w: Workplace): WorkplaceInput | n
   const c = w.current;
   if (!c || !c.opened_on) return null;
   const holds = Boolean(w.registration_id) && registrationOf(e, w.registration_id)?.holder_workplace_id === w.id;
+  const reason = w.not_registered_reason ?? c.not_registered_reason;
   return {
     name: c.name,
     registration_id: w.registration_id ?? null,
     sub_serial: w.sub_serial ?? null,
+    reg_mode: w.registration_id ? "EXISTING" : reason ? "NOT_REQUIRED" : "LATER",
+    not_registered_reason: reason
+      ? { code: reason.code, version: reason.version }
+      : null,
+    is_abstract: w.is_abstract ?? c.is_abstract ?? false,
     same_address_as_registration: holds,
     address: holds ? null : (c.address ?? null),
     mail_address: c.mail_address ?? null,

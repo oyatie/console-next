@@ -6,6 +6,7 @@ required:
 - is_head_office
 - needs_confirmation
 - can_manage
+- registration_todo
 - insurance
 - withholding
 - headcount
@@ -32,6 +33,9 @@ properties:
     - type: 'null'
   is_abstract:
     type: boolean
+  registration_todo:
+    type: boolean
+    description: True only while the workplace has neither a registration nor a completed not-required answer.
   filing_registration_id:
     type:
     - string

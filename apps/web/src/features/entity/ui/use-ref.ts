@@ -27,7 +27,7 @@ export function useCodeSearch(key: RefListKey, title?: string) {
   const r = useQuery({ ...codesQuery(key, q), retry: false, placeholderData: keepPreviousData });
   const info = head.data?.list;
   const list: CodeList = { title: info?.title ?? title ?? t(`entity.list.${key as "tax_office" | "nts_industry_code"}`), version: info?.version ?? undefined, loaded: info?.status === "LOADED" };
-  const options: CodeOption[] = (r.data?.items ?? []).map((i) => ({ code: i.code, label: i.label, context: i.parent_label ?? undefined }));
+  const options: CodeOption[] = (r.data?.items ?? []).map((i) => ({ code: i.code, label: i.label, context: i.parent_label ?? undefined, isAbstract: i.abstract_workplace ?? undefined }));
   return { query, setQuery, list, options, loading: r.isFetching, ready: r.isSuccess };
 }
 

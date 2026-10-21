@@ -3,6 +3,7 @@ import type { KrAddress, LegalEntity, Workplace } from "@console/api/pending";
 import {
   addressLine, entityInput, headcount, headOfficeSettled, primaryRegistration, registrationInput,
   samePlace, unheld, unitRegistration, workplaceInput, workplaceName,
+  registrationTodo,
 } from "./view";
 
 // The server's shapes are wide; each fixture states only what view.ts reads.
@@ -135,6 +136,7 @@ describe("the current state as the input a dated revision sends", () => {
     const held = workplaceInput(e, e.workplaces[0]!);
     expect(held).toEqual({
       name: "본사", registration_id: "r1", sub_serial: null, same_address_as_registration: true, address: null, mail_address: wpState.mail_address,
+      reg_mode: "EXISTING", not_registered_reason: null, is_abstract: false,
       opened_on: "2019-03-04", representative_name: "김대표", main_product: "SW", phone: "+8221110000", fax: "+8221110001", mobile: "+821012345678",
       email: "hq@ganada.example", is_construction_site: false, withholding_mode: "OWN", bulk_filed_on: "2020-01-01", independent_lsa_unit: true, independent_lsa_evidence: "별도 취업규칙",
       status: "ACTIVE", status_since: "2019-03-04", status_until: null,
@@ -143,12 +145,32 @@ describe("the current state as the input a dated revision sends", () => {
     const bare = wp({ registration_id: null, sub_serial: "0001", current: { name: "지점", opened_on: "2026-09-01", is_construction_site: true, status: "ACTIVE" } });
     expect(workplaceInput(e, bare)).toEqual({
       name: "지점", registration_id: null, sub_serial: "0001", same_address_as_registration: false, address: null, mail_address: null,
+      reg_mode: "LATER", not_registered_reason: null, is_abstract: false,
       opened_on: "2026-09-01", representative_name: null, main_product: null, phone: null, fax: null, mobile: null, email: null,
       is_construction_site: true, withholding_mode: null, bulk_filed_on: null, independent_lsa_unit: null, independent_lsa_evidence: null, status: "ACTIVE", status_since: null, status_until: null,
     });
     expect(workplaceInput(e, wp({ registration_id: "gone" }))).toMatchObject({ same_address_as_registration: false, address: hq });
     expect(workplaceInput(e, wp({ current: { ...wpState, opened_on: null } }))).toBeNull();
     expect(workplaceInput(e, wp({ current: undefined }))).toBeNull();
+  });
+
+  test("an exempt or abstract answer survives every full-state revision", () => {
+    const reason = { code: "REMOTE_TELEWORK", label: "주소 없는 원격 근무지 묶음", version: "2026-10-22" };
+    const exempt = wp({
+      registration_id: null,
+      not_registered_reason: reason,
+      is_abstract: true,
+      current: { ...wpState, address: null, not_registered_reason: reason, is_abstract: true },
+    });
+    expect(workplaceInput(entity(), exempt)).toMatchObject({
+      registration_id: null,
+      reg_mode: "NOT_REQUIRED",
+      not_registered_reason: { code: "REMOTE_TELEWORK", version: "2026-10-22" },
+      is_abstract: true,
+      address: null,
+    });
+    expect(registrationTodo({ ...exempt, registration_todo: false })).toBe(false);
+    expect(registrationTodo(wp({ registration_todo: true }))).toBe(true);
   });
 });
 

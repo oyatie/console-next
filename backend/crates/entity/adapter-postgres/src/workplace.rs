@@ -105,7 +105,7 @@ impl PgEntityStore {
                     return Ok((replay(tx, done).await?, vec![]));
                 }
                 let admitted = admit(tx, WriteClass::EntityStructure).await?;
-                let (id, event) =
+                let (id, events) =
                     create_workplace_in_tx(tx, &actor, admitted, entity, &cmd, port.as_ref())
                         .await?;
                 let today = today_kst(tx).await?;
@@ -125,7 +125,7 @@ impl PgEntityStore {
                     warnings: Vec::<Warning>::new(),
                     change_mode: admitted.mode.as_str().into(),
                 };
-                Ok((saved, vec![event]))
+                Ok((saved, events))
             })
         })
         .await
@@ -156,7 +156,7 @@ impl PgEntityStore {
                     return Ok((replay(tx, done).await?, vec![]));
                 }
                 let admitted = admit(tx, WriteClass::EntityStructure).await?;
-                let (entity, event) =
+                let (entity, events) =
                     revise_workplace_in_tx(tx, &actor, admitted, id, rev, port.as_ref()).await?;
                 let today = today_kst(tx).await?;
                 finish(
@@ -176,7 +176,7 @@ impl PgEntityStore {
                         warnings: Vec::new(),
                         change_mode: admitted.mode.as_str().into(),
                     },
-                    vec![event],
+                    events,
                 ))
             })
         })

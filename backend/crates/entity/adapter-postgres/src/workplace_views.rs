@@ -116,6 +116,9 @@ pub(crate) async fn views_at(
         let is_abstract: bool = r
             .try_get::<Option<bool>, _>("is_abstract")?
             .unwrap_or(false);
+        let registration_id: Option<Uuid> = r.try_get("registration_id")?;
+        let registration_todo =
+            registration_id.is_none() && not_registered_reason.is_none() && !is_abstract;
         let filing_registration_id: Option<Uuid> = r.try_get("filing_registration_id")?;
         let current = match version {
             None => None,
@@ -186,10 +189,11 @@ pub(crate) async fn views_at(
             read: point.stamp(),
             id,
             legal_entity_id: entity,
-            registration_id: r.try_get("registration_id")?,
+            registration_id,
             sub_serial: r.try_get("sub_serial")?,
             not_registered_reason,
             is_abstract,
+            registration_todo,
             filing_registration_id,
             default_branch_id: r.try_get("default_branch_id")?,
             kind_code: r.try_get("kind_code")?,

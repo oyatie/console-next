@@ -94,7 +94,7 @@ test("the request trims what was typed, holds no certificate when later, and sen
 });
 
 test("등록 대상 아님 (NOT_REQUIRED) requires statutory reason, and abstract workplace omits address", () => {
-  const reason = { code: "REMOTE_TELEWORK", label: "원격·재택근무", version: "2026-10-21" };
+  const reason = { code: "REMOTE_TELEWORK", label: "주소 없는 원격 근무지 묶음", version: "2026-10-22" };
   // Without reason: required
   expect(workplaceProblems(base({ regMode: "NOT_REQUIRED", notRegisteredReason: null }), facts).notRegisteredReason).toBe("required");
   // With reason: valid
@@ -110,9 +110,20 @@ test("등록 대상 아님 (NOT_REQUIRED) requires statutory reason, and abstrac
   expect(plannedAbstract).toMatchObject({
     registration_id: null,
     reg_mode: "NOT_REQUIRED",
-    not_registered_reason: { code: "REMOTE_TELEWORK" },
+    not_registered_reason: { code: "REMOTE_TELEWORK", version: "2026-10-22" },
     is_abstract: true,
     address: null,
+  });
+});
+
+test("abstract state is ignored after leaving NOT_REQUIRED mode", () => {
+  const stale = base({ regMode: "LATER", isAbstract: true, address: null });
+  expect(workplaceProblems(stale, facts).address).toBe("required");
+  expect(plan(stale)).toMatchObject({ reg_mode: "LATER", is_abstract: false, address: null });
+
+  expect(plan(base({ regMode: "UNIT_TAXATION_SUB", subSerial: "0001", isAbstract: true }))).toMatchObject({
+    registration_id: "r1",
+    is_abstract: false,
   });
 });
 

@@ -28,7 +28,6 @@ export const koWorkplace = {
   "workplace.regMode.hint.NOT_REQUIRED": "하치장, 임시사업장, 원격·재택 등 법령상 사업자등록 의무가 없는 사업장",
   "workplace.regMode.hint.LATER": "사람을 배치하기 전까지만 비워 둘 수 있습니다",
   "workplace.field.notRegisteredReason": "등록 미대상 사유",
-  "workplace.field.isAbstract": "실체 없는 사업장 (원격·파견 등 주소 없음)",
   "workplace.field.subSerial": "종사업장 일련번호",
   "workplace.field.subSerialHint": "등록증 부표의 4자리 번호 (0001부터)",
   "workplace.field.openedOn": "개설일",

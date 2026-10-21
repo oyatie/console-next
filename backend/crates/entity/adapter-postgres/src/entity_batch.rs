@@ -175,7 +175,7 @@ async fn run(
                     step["op"] = json!(item.op);
                     step["legal_entity_id"] = json!(done.entity);
                     steps.push(step);
-                    events.push(done.event);
+                    events.extend(done.events);
                 }
             }
             Err(OpErr::Fatal(err)) => return Err(err),

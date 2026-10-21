@@ -13,10 +13,12 @@ console-entity-domain.workspace = true
 console-orgchange-domain.workspace = true
 console-kernel-core.workspace = true
 console-platform-db.workspace = true
+console-refdata = { path = "../../refdata/lists" }
 console-settings-domain = { path = "../../settings/domain" }
 serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
+metrics.workspace = true
 thiserror.workspace = true
 time.workspace = true
 uuid.workspace = true

@@ -43,6 +43,7 @@ export const enSetup: Record<keyof typeof koSetup, string> = {
   "setup.golive.start": "Start operations",
   "setup.golive.blocked": "Finish {count, plural, one {# item} other {# items}} above to start",
   "setup.golive.done": "Operations started at {at}",
+  "setup.golive.registrationTodo": "Registration answer pending",
   "setup.group.operations": "How you operate",
   "setup.terms.accept": "Accept the terms for the customer account",
   "setup.terms.done": "Terms accepted for the customer account",

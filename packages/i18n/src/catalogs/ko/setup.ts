@@ -42,6 +42,7 @@ export const koSetup = {
   "setup.golive.start": "운영 시작",
   "setup.golive.blocked": "시작 전에 할 일 {count, number}건을 마치면 시작할 수 있습니다",
   "setup.golive.done": "{at}에 운영을 시작했습니다",
+  "setup.golive.registrationTodo": "사업자등록 답변 대기",
   "setup.group.operations": "운영 방식",
   "setup.terms.accept": "고객 계정을 대표해 이용약관 동의",
   "setup.terms.done": "고객 계정의 이용약관 동의를 기록했습니다",

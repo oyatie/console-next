@@ -30,6 +30,7 @@ pub struct Item {
     pub code: &'static str,
     pub count: Option<i64>,
     pub remedy: Option<&'static str>,
+    pub support_ref: Option<&'static str>,
     pub records: Vec<Record>,
 }
 
@@ -38,6 +39,7 @@ fn item(code: &'static str, count: i64, remedy: &'static str) -> Item {
         code,
         count: Some(count),
         remedy: Some(remedy),
+        support_ref: None,
         records: Vec::new(),
     }
 }
@@ -118,11 +120,13 @@ pub fn preview(f: &SetupFacts, records: &Records) -> Preview {
         ));
     }
     if f.staffed_workplaces_without_registration > 0 {
-        blockers.push(item(
+        let mut missing = item(
             "staffed_workplace_without_registration",
             f.staffed_workplaces_without_registration,
             "attach_registration",
-        ));
+        );
+        missing.support_ref = Some("workplace_registration_answer");
+        blockers.push(missing);
     }
     if f.org_units == 0 {
         blockers.push(item("no_department", 0, "add_department"));

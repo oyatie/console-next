@@ -7,6 +7,7 @@
 ALTER TABLE workplaces
     ADD COLUMN not_registered_reason_code TEXT NULL,
     ADD COLUMN not_registered_reason_label TEXT NULL,
+    ADD COLUMN not_registered_reason_list_key TEXT NULL,
     ADD COLUMN not_registered_reason_version TEXT NULL,
     ADD COLUMN is_abstract BOOLEAN NOT NULL DEFAULT false;
 
@@ -14,18 +15,31 @@ ALTER TABLE workplaces
     ADD CONSTRAINT workplaces_registration_or_reason CHECK (registration_id IS NULL OR not_registered_reason_code IS NULL),
     ADD CONSTRAINT workplaces_not_registered_reason_shape CHECK (
         (not_registered_reason_code IS NULL) = (not_registered_reason_label IS NULL)
+        AND (not_registered_reason_code IS NULL) = (not_registered_reason_list_key IS NULL)
         AND (not_registered_reason_code IS NULL) = (not_registered_reason_version IS NULL)
     ),
-    ADD CONSTRAINT workplaces_abstract_no_registration CHECK (NOT is_abstract OR registration_id IS NULL);
+    ADD CONSTRAINT workplaces_abstract_no_registration CHECK (
+        NOT is_abstract OR (registration_id IS NULL AND not_registered_reason_code IS NOT NULL)
+    );
 
 COMMENT ON COLUMN workplaces.not_registered_reason_code IS 'pd:none — statutory reason code why workplace is not registered';
 COMMENT ON COLUMN workplaces.not_registered_reason_label IS 'pd:none — label of statutory reason why workplace is not registered';
+COMMENT ON COLUMN workplaces.not_registered_reason_list_key IS 'pd:none — reference list that supplied the statutory reason';
 COMMENT ON COLUMN workplaces.not_registered_reason_version IS 'pd:none — refdata list version of statutory reason';
 COMMENT ON COLUMN workplaces.is_abstract IS 'pd:none — true if workplace is abstract (has no address and no registration)';
+
+GRANT UPDATE (
+    not_registered_reason_code,
+    not_registered_reason_label,
+    not_registered_reason_list_key,
+    not_registered_reason_version,
+    is_abstract
+) ON workplaces TO console_rt;
 
 ALTER TABLE workplace_revisions
     ADD COLUMN not_registered_reason_code TEXT NULL,
     ADD COLUMN not_registered_reason_label TEXT NULL,
+    ADD COLUMN not_registered_reason_list_key TEXT NULL,
     ADD COLUMN not_registered_reason_version TEXT NULL,
     ADD COLUMN is_abstract BOOLEAN NOT NULL DEFAULT false;
 
@@ -35,15 +49,17 @@ ALTER TABLE workplace_revisions
         change_mode = 'MIGRATION' OR ((is_abstract OR address_id IS NOT NULL) AND opened_on IS NOT NULL)
     ),
     ADD CONSTRAINT workplace_revisions_abstract_no_address CHECK (
-        NOT is_abstract OR (address_id IS NULL AND NOT same_address_as_registration)
+        NOT is_abstract OR address_id IS NULL
     ),
     ADD CONSTRAINT workplace_revisions_reason_shape CHECK (
         (not_registered_reason_code IS NULL) = (not_registered_reason_label IS NULL)
+        AND (not_registered_reason_code IS NULL) = (not_registered_reason_list_key IS NULL)
         AND (not_registered_reason_code IS NULL) = (not_registered_reason_version IS NULL)
     );
 
 COMMENT ON COLUMN workplace_revisions.not_registered_reason_code IS 'pd:none — statutory reason code why workplace is not registered';
 COMMENT ON COLUMN workplace_revisions.not_registered_reason_label IS 'pd:none — label of statutory reason why workplace is not registered';
+COMMENT ON COLUMN workplace_revisions.not_registered_reason_list_key IS 'pd:none — reference list that supplied the statutory reason';
 COMMENT ON COLUMN workplace_revisions.not_registered_reason_version IS 'pd:none — refdata list version of statutory reason';
 COMMENT ON COLUMN workplace_revisions.is_abstract IS 'pd:none — true if workplace is abstract (has no address and no registration)';
 

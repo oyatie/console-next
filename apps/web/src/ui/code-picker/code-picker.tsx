@@ -7,7 +7,7 @@ import { Marker } from "../field/field";
 import css from "../server-picker/server-picker.module.css";
 import s from "./code-picker.module.css";
 
-export type CodeOption = { code: string; label: string; context?: string };
+export type CodeOption = { code: string; label: string; context?: string; isAbstract?: boolean };
 /** An official code list as the server serves it: its title, version, and whether it is loaded. */
 export type CodeList = { title: string; version?: string; loaded: boolean };
 

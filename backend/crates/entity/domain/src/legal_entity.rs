@@ -29,6 +29,9 @@ pub struct CodeRef {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CodeInput {
     pub code: Option<String>,
+    /// Optional optimistic list version. A stale supplied version is refused;
+    /// N-1 clients may omit it and receive the current server-stamped value.
+    pub version: Option<String>,
 }
 
 /// The list version stamped while no reference list is loaded: the code is

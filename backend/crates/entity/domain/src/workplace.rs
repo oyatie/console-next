@@ -7,7 +7,10 @@ use uuid::Uuid;
 use crate::address::{AddressInput, KrAddress, validate_address};
 use crate::codes::{BizKind, OperatingStatus, WithholdingMode};
 use crate::insurance::{InsuranceDraft, InsuranceSetupInput, validate_insurance_setup};
-use crate::refusal::{Issues, NOT_APPLICABLE, REQUIRED, Refusal};
+use crate::refusal::{INVALID_OPTION, Issues, NOT_APPLICABLE, REQUIRED, Refusal};
+use crate::workplace_registration::{
+    RegistrationMode, ResolvedReferenceCode, WorkplaceRegistrationAnswer,
+};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WorkplaceInput {
@@ -55,7 +58,8 @@ pub struct WorkplaceDraft {
     pub name: String,
     pub registration_id: Option<Uuid>,
     pub sub_serial: Option<SubWorkplaceSerial>,
-    pub not_registered_reason: Option<crate::legal_entity::CodeRef>,
+    pub registration_answer: WorkplaceRegistrationAnswer,
+    pub not_registered_reason: Option<ResolvedReferenceCode>,
     pub is_abstract: bool,
     pub address: WorkplaceAddress,
     pub mail_address: Option<KrAddress>,
@@ -94,6 +98,17 @@ pub fn validate_workplace(
     ctx: WorkplaceContext,
     today: time::Date,
 ) -> Result<WorkplaceDraft, Refusal> {
+    validate_workplace_resolved(input, ctx, today, None)
+}
+
+/// Validate with a reference value resolved by the use case from the current
+/// loaded list. The domain never invents a label or list version.
+pub fn validate_workplace_resolved(
+    input: &WorkplaceInput,
+    ctx: WorkplaceContext,
+    today: time::Date,
+    resolved_reason: Option<&ResolvedReferenceCode>,
+) -> Result<WorkplaceDraft, Refusal> {
     let mut is = Issues::default();
     let name = is.text("name", input.name.as_deref(), 200, true);
     let sub_serial = is.parsed(
@@ -105,38 +120,76 @@ pub fn validate_workplace(
     if sub_serial.is_some() && !ctx.registration_is_unit_taxation_of_other {
         is.push("sub_serial", NOT_APPLICABLE);
     }
-    let is_abstract = input.is_abstract.unwrap_or(false);
+    let mode = is.choice(
+        "reg_mode",
+        input.reg_mode.as_deref(),
+        false,
+        RegistrationMode::parse,
+    );
+    let registration_answer = if input.registration_id.is_some() {
+        if input.not_registered_reason.is_some() {
+            is.push("not_registered_reason", NOT_APPLICABLE);
+        }
+        if matches!(
+            mode,
+            Some(RegistrationMode::NotRequired | RegistrationMode::Later)
+        ) {
+            is.push("registration_id", NOT_APPLICABLE);
+        }
+        WorkplaceRegistrationAnswer::Registered
+    } else if mode.is_some_and(RegistrationMode::is_registered) {
+        is.push("registration_id", REQUIRED);
+        WorkplaceRegistrationAnswer::Registered
+    } else if mode == Some(RegistrationMode::NotRequired)
+        || (mode.is_none() && input.not_registered_reason.is_some())
+    {
+        WorkplaceRegistrationAnswer::NotRequired
+    } else {
+        if input.not_registered_reason.is_some() {
+            is.push("not_registered_reason", NOT_APPLICABLE);
+        }
+        WorkplaceRegistrationAnswer::Later
+    };
+    let not_registered_reason = if registration_answer == WorkplaceRegistrationAnswer::NotRequired {
+        match input
+            .not_registered_reason
+            .as_ref()
+            .and_then(|reason| reason.code.as_deref())
+            .map(str::trim)
+            .filter(|code| !code.is_empty())
+        {
+            None => {
+                is.push("not_registered_reason", REQUIRED);
+                None
+            }
+            Some(code) => match resolved_reason.filter(|resolved| resolved.code == code) {
+                Some(reason) => Some(reason.clone()),
+                None => {
+                    is.push("not_registered_reason", INVALID_OPTION);
+                    None
+                }
+            },
+        }
+    } else {
+        None
+    };
+    let is_abstract = not_registered_reason
+        .as_ref()
+        .is_some_and(|reason| reason.abstract_workplace);
+    if input.is_abstract.is_some_and(|value| value != is_abstract) {
+        is.push("is_abstract", INVALID_OPTION);
+    }
+    if input.is_abstract == Some(true)
+        && registration_answer != WorkplaceRegistrationAnswer::NotRequired
+    {
+        is.push("is_abstract", NOT_APPLICABLE);
+    }
     if is_abstract && input.registration_id.is_some() {
         is.push("registration_id", NOT_APPLICABLE);
     }
     if is_abstract && input.sub_serial.is_some() {
         is.push("sub_serial", NOT_APPLICABLE);
     }
-
-    let is_reg_mode_not_required = input.reg_mode.as_deref() == Some("NOT_REQUIRED");
-    if is_reg_mode_not_required && input.registration_id.is_some() {
-        is.push("registration_id", NOT_APPLICABLE);
-    }
-
-    let not_registered_reason =
-        if input.registration_id.is_some() && input.not_registered_reason.is_some() {
-            is.push("not_registered_reason", NOT_APPLICABLE);
-            None
-        } else if is_reg_mode_not_required {
-            crate::workplace_registration::validate_not_registered_reason(
-                &mut is,
-                "not_registered_reason",
-                input.not_registered_reason.as_ref(),
-            )
-        } else if let Some(raw) = input.not_registered_reason.as_ref() {
-            crate::workplace_registration::validate_not_registered_reason(
-                &mut is,
-                "not_registered_reason",
-                Some(raw),
-            )
-        } else {
-            None
-        };
 
     let address = if is_abstract {
         if input.address.is_some() || input.same_address_as_registration {
@@ -236,6 +289,7 @@ pub fn validate_workplace(
             name: name?,
             registration_id: input.registration_id,
             sub_serial,
+            registration_answer,
             not_registered_reason,
             is_abstract,
             address: address?,

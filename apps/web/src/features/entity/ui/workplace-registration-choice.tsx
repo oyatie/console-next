@@ -1,13 +1,12 @@
 import { t } from "@console/i18n";
 import type { LegalEntity } from "@console/api/pending";
 import { FORMATS } from "../../../lib/pure/formats";
-import { Check } from "../../../ui/button/button";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { MaskedField } from "../../../ui/masked-field/masked-field";
 import { SectionConfirm } from "../../../ui/section-confirm/section-confirm";
 import { PickOne } from "../../../reference/entity/ui/pick-one";
 import { entityName } from "../../../reference/entity/domain/names";
-import type { RegMode, WorkplaceDraft, WpProblem } from "../domain/workplace";
+import { abstractFromReason, type RegMode, type WorkplaceDraft, type WpProblem } from "../domain/workplace";
 import { sectionTitle } from "../present";
 import { AddressSection } from "./address-section";
 import { BusinessSection } from "./business-section";
@@ -93,17 +92,12 @@ export function RegistrationChoice({ e, c, modes = MODES, required = false }: { 
             label={t("workplace.field.notRegisteredReason")}
             required
             value={c.w.notRegisteredReason ?? null}
-            onChange={(v) => {
+            onChange={(v, reason) => {
               set("notRegisteredReason", v);
-              if (v?.code === "REMOTE_TELEWORK" || v?.code === "DISPATCH_CLIENT_SITE" || v?.code === "PROJECT_SITE_CLUSTER") {
-                set("isAbstract", true);
-              }
+              set("isAbstract", abstractFromReason(reason));
             }}
             error={c.problems.notRegisteredReason ? t(`workplace.problem.${c.problems.notRegisteredReason}`) : undefined}
           />
-          <Check checked={c.w.isAbstract ?? false} onChange={(v) => set("isAbstract", v)}>
-            {t("workplace.field.isAbstract")}
-          </Check>
         </>
       )}
     </>

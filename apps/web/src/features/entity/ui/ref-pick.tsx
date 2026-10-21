@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { CodeRef, RefListKey } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { CodePicker } from "../../../ui/code-picker/code-picker";
+import type { CodeOption } from "../../../ui/code-picker/code-picker";
 import { Field, TextInput } from "../../../ui/field/field";
 import { codeRef } from "../domain/capture";
 import { useCodeSearch } from "./use-ref";
@@ -17,7 +18,7 @@ export function RefPick({ listKey, label, required, value, onChange, hint, error
   label: string;
   required: boolean;
   value: CodeRef | null;
-  onChange: (v: CodeRef | null) => void;
+  onChange: (v: CodeRef | null, option?: CodeOption) => void;
   hint?: ReactNode;
   error?: ReactNode;
   /** Store the label with its parent (a district under its province), so the pick reads whole on its own. */
@@ -46,7 +47,7 @@ export function RefPick({ listKey, label, required, value, onChange, hint, error
         value={value?.code ?? null}
         onChange={(code) => {
           const o = code === null ? undefined : options.find((x) => x.code === code);
-          onChange(o ? (o.code === value?.code ? value : codeRef(o.code, qualified && o.context ? `${o.context} ${o.label}` : o.label, c.list.version)) : null);
+          onChange(o ? (o.code === value?.code ? value : codeRef(o.code, qualified && o.context ? `${o.context} ${o.label}` : o.label, c.list.version)) : null, o);
         }}
         loading={c.loading}
         error={error}

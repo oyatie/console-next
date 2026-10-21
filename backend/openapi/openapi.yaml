@@ -33939,16 +33939,19 @@ components:
           description: Why the business goes on (kept in the audit row).
     CodeInput:
       type: object
-      description: 'A reference-list value as sent: the code only. The server stamps label and list version (UNVERIFIED
-        while no list is loaded); any label or version sent is ignored.'
+      description: A reference-list value as sent. The server resolves the code and stamps its label and current list version; a supplied stale version is refused.
       required:
       - code
       properties:
         code:
           type: string
           maxLength: 20
-          pattern: ^[A-Ua-u]?[0-9]{2,5}$
-          description: KSIC code (optional section letter, then 2–5 digits).
+        version:
+          type:
+          - string
+          - 'null'
+          maxLength: 40
+          description: The list version the choice came from; omitted by N-1 clients.
     CodeRef:
       type: object
       description: 'A reference-list value: code + label + list version, stamped by the server. version UNVERIFIED
@@ -42168,6 +42171,11 @@ components:
           type:
           - string
           - 'null'
+        support_ref:
+          type:
+          - string
+          - 'null'
+          description: Stable support lookup key for this readiness fact.
         records:
           description: The records the line counts (count equals their number where the line is per record), so the fix opens on that record.
           type: array
@@ -52674,6 +52682,15 @@ components:
           type:
           - string
           - 'null'
+        citation_url:
+          type:
+          - string
+          - 'null'
+          format: uri
+        abstract_workplace:
+          type:
+          - boolean
+          - 'null'
     RefCodePage:
       type: object
       required:
@@ -58709,6 +58726,7 @@ components:
       - is_head_office
       - needs_confirmation
       - can_manage
+      - registration_todo
       - insurance
       - withholding
       - headcount
@@ -58735,6 +58753,9 @@ components:
           - type: 'null'
         is_abstract:
           type: boolean
+        registration_todo:
+          type: boolean
+          description: True only while the workplace has neither a registration nor a completed not-required answer.
         filing_registration_id:
           type:
           - string
@@ -59122,6 +59143,7 @@ components:
           type:
           - boolean
           - 'null'
+          description: Derived from the selected not-registered reason and checked by the server.
         same_address_as_registration:
           type: boolean
         address:

@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { loadCatalog } from "@console/i18n";
 import type { LegalEntity } from "@console/api/pending";
+import { abstractFromReason } from "../domain/workplace";
 import { RegistrationChoice } from "./workplace-registration-choice";
 
 beforeAll(() => loadCatalog("ko"));
@@ -42,7 +43,7 @@ test("RegistrationChoice renders all modes including 등록 대상 아님 (NOT_R
   expect(html).toContain("나중에 연결");
 });
 
-test("When mode is NOT_REQUIRED, reason field and abstract checkbox are displayed", () => {
+test("When mode is NOT_REQUIRED, the reason field is displayed", () => {
   const c = makeChoiceState({
     mode: "NOT_REQUIRED",
     w: { regMode: "NOT_REQUIRED", registrationId: null, subSerial: "", notRegisteredReason: null, isAbstract: false },
@@ -54,5 +55,11 @@ test("When mode is NOT_REQUIRED, reason field and abstract checkbox are displaye
   );
   expect(html).toContain("등록 대상 아님");
   expect(html).toContain("등록 미대상 사유");
-  expect(html).toContain("실체 없는 사업장");
+  expect(html).not.toContain("실체 없는 사업장");
+});
+
+test("abstract default comes from reference data, not reason-code literals", () => {
+  expect(abstractFromReason({ isAbstract: true })).toBe(true);
+  expect(abstractFromReason({ isAbstract: false })).toBe(false);
+  expect(abstractFromReason(undefined)).toBe(false);
 });

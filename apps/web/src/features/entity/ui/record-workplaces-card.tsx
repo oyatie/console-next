@@ -6,7 +6,7 @@ import { fmtNumber } from "@console/i18n/format";
 import { labeled, RECORD_STATUS } from "../../../lib/labels";
 import { Chip } from "../../../ui/chip";
 import { Table } from "../../../ui/table";
-import { addressLine, headcount, registrationOf } from "../domain/view";
+import { addressLine, headcount, registrationOf, registrationTodo } from "../domain/view";
 import s from "./record.module.css";
 import { Muted } from "../../../ui/muted/muted";
 
@@ -59,7 +59,7 @@ export function WorkplacesCard({ e }: { e: LegalEntity }) {
               fit: true,
               cell: (w) => {
                 const r = registrationOf(e, w.registration_id);
-                if (!r?.current) return <Chip tone="warn">{t("entityRecord.workplaces.noCert")}</Chip>;
+                if (!r?.current) return registrationTodo(w) ? <Chip tone="warn">{t("entityRecord.workplaces.noCert")}</Chip> : <Chip tone="neutral">{w.not_registered_reason?.label ?? "—"}</Chip>;
                 const st = labeled(RECORD_STATUS, r.current.status);
                 return <Chip tone={st.tone}>{st.label}</Chip>;
               },

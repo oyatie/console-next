@@ -29,7 +29,6 @@ export const enWorkplace: Record<keyof typeof koWorkplace, string> = {
   "workplace.regMode.hint.NOT_REQUIRED": "Workplace exempt from registration by law (depot, temporary site, remote work, etc.)",
   "workplace.regMode.hint.LATER": "Can stay empty only until someone is placed there",
   "workplace.field.notRegisteredReason": "Reason for exemption",
-  "workplace.field.isAbstract": "Abstract workplace (remote/dispatch without fixed address)",
   "workplace.field.subSerial": "Sub-workplace serial",
   "workplace.field.subSerialHint": "The 4-digit number in the certificate annex (from 0001)",
   "workplace.field.openedOn": "Opened on",

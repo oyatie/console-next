@@ -55,14 +55,19 @@ pub struct Code {
     pub label: &'static str,
     pub parent_label: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub citation_url: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub abstract_workplace: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub biz_kinds: Option<Vec<&'static str>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub head_office: Option<bool>,
 }
 
 const ADMIN_REGION_TSV: &str = include_str!("../data/admin_region-2026-10-01.tsv");
+pub const WORKPLACE_NOT_REGISTERED_REASON_KEY: &str = "workplace_not_registered_reason";
 const WORKPLACE_NOT_REGISTERED_REASON_TSV: &str =
-    include_str!("../data/workplace-not-registered-reason-2026-10-21.tsv");
+    include_str!("../data/workplace-not-registered-reason-2026-10-22.tsv");
 
 const fn empty(key: &'static str, status: ListStatus, reason: &'static str) -> ListInfo {
     ListInfo {
@@ -106,16 +111,16 @@ pub const LISTS: &[ListInfo] = &[
         reason: None,
     },
     ListInfo {
-        key: "workplace_not_registered_reason",
-        title: Some("사업자등록 제외 사유"),
-        version: Some("2026-10-21"),
+        key: WORKPLACE_NOT_REGISTERED_REASON_KEY,
+        title: Some("사업자등록 미대상 사유"),
+        version: Some("2026-10-22"),
         status: ListStatus::Loaded,
         source: Some(Source {
-            title: "부가가치세법 및 관계법령 사업장 정의 규정",
-            url: "https://www.law.go.kr/법령/부가가치세법",
-            retrieved_on: "2026-10-21",
-            sha256: "b2db64271ea854377647d1c50931ab0a9e216e442fee409e1f132a0ff8abab56",
-            derivation: "부가가치세법, 파견근로자 보호 등에 관한 법률, 국민건강보험법 규정 사유 정리",
+            title: "부가가치세법 제6조(납세지)",
+            url: "https://law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1032154331",
+            retrieved_on: "2026-10-22",
+            sha256: "3ce3ff3ee06a4f9b189ebd538f12f1902c50cb92d1f7b878bcccd5da7402098f",
+            derivation: "제6조제5항제1호·제2호와 고정된 장소를 사업장으로 정한 제6조제2항을 코드화; 각 행의 citation_url은 해당 조문",
         }),
         reason: None,
     },
@@ -141,7 +146,7 @@ pub const LISTS: &[ListInfo] = &[
 
 static ADMIN_REGION: LazyLock<Vec<Code>> = LazyLock::new(|| parse_tsv(ADMIN_REGION_TSV));
 static WORKPLACE_NOT_REGISTERED_REASON: LazyLock<Vec<Code>> =
-    LazyLock::new(|| parse_tsv(WORKPLACE_NOT_REGISTERED_REASON_TSV));
+    LazyLock::new(|| parse_workplace_reason_tsv(WORKPLACE_NOT_REGISTERED_REASON_TSV));
 
 fn parse_tsv(raw: &'static str) -> Vec<Code> {
     raw.lines()
@@ -155,6 +160,8 @@ fn parse_tsv(raw: &'static str) -> Vec<Code> {
                 code,
                 label,
                 parent_label: parent,
+                citation_url: None,
+                abstract_workplace: None,
                 biz_kinds: None,
                 head_office: None,
             })
@@ -162,11 +169,61 @@ fn parse_tsv(raw: &'static str) -> Vec<Code> {
         .collect()
 }
 
+fn parse_workplace_reason_tsv(raw: &'static str) -> Vec<Code> {
+    raw.lines()
+        .filter(|line| !line.is_empty())
+        .filter_map(|line| {
+            let mut columns = line.split('\t');
+            Some(Code {
+                code: columns.next()?,
+                label: columns.next()?,
+                parent_label: None,
+                citation_url: columns.next(),
+                abstract_workplace: columns.next().and_then(|value| value.parse().ok()),
+                biz_kinds: None,
+                head_office: None,
+            })
+        })
+        .collect()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResolveError {
+    UnknownList,
+    Unavailable,
+    RetiredVersion,
+    UnknownCode,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedCode {
+    pub list: ListInfo,
+    pub code: Code,
+}
+
+/// Resolve an input code against the one loaded version. A caller may omit
+/// the version for an N-1 client; a supplied stale version is never restamped.
+pub fn resolve(key: &str, code: &str, version: Option<&str>) -> Result<ResolvedCode, ResolveError> {
+    let list = info(key).ok_or(ResolveError::UnknownList)?;
+    if list.status != ListStatus::Loaded {
+        return Err(ResolveError::Unavailable);
+    }
+    if version.is_some_and(|version| Some(version) != list.version) {
+        return Err(ResolveError::RetiredVersion);
+    }
+    let code = codes(key)
+        .iter()
+        .find(|candidate| candidate.code == code)
+        .cloned()
+        .ok_or(ResolveError::UnknownCode)?;
+    Ok(ResolvedCode { list, code })
+}
+
 fn codes(key: &str) -> &'static [Code] {
     match key {
         "admin_region" => &ADMIN_REGION,
         "brn_classification" => &brn::CODES,
-        "workplace_not_registered_reason" => &WORKPLACE_NOT_REGISTERED_REASON,
+        WORKPLACE_NOT_REGISTERED_REASON_KEY => &WORKPLACE_NOT_REGISTERED_REASON,
         _ => &[],
     }
 }
@@ -253,12 +310,55 @@ mod tests {
     fn workplace_not_registered_reason_is_loaded_and_searchable() {
         let (list, all) = search("workplace_not_registered_reason", "", usize::MAX).unwrap();
         assert_eq!(list.status, ListStatus::Loaded);
-        assert_eq!(all.len(), 6);
+        assert_eq!(list.version, Some("2026-10-22"));
+        assert_eq!(all.len(), 3, "only reasons supported by VAT Act article 6");
         let depot = all.iter().find(|c| c.code == "VAT_DEPOT").unwrap();
-        assert_eq!(depot.label, "하치장 (재화 보관·관리 장소)");
-        assert_eq!(depot.parent_label, Some("부가가치세법 시행령 제8조 제1항"));
-        let (_, telework) = search("workplace_not_registered_reason", "재택", 10).unwrap();
-        assert_eq!(telework.len(), 1);
-        assert_eq!(telework[0].code, "REMOTE_TELEWORK");
+        assert_eq!(depot.label, "하치장");
+        assert_eq!(depot.parent_label, None);
+        assert_eq!(depot.abstract_workplace, Some(false));
+        assert!(
+            depot
+                .citation_url
+                .unwrap()
+                .starts_with("https://www.law.go.kr/")
+        );
+        let remote = all.iter().find(|c| c.code == "REMOTE_TELEWORK").unwrap();
+        assert_eq!(remote.abstract_workplace, Some(true));
+        let source = list.source.unwrap();
+        assert_eq!(
+            source.sha256,
+            "3ce3ff3ee06a4f9b189ebd538f12f1902c50cb92d1f7b878bcccd5da7402098f"
+        );
+        assert_ne!(
+            source.sha256, "2d2b3b98d40e3ab3c1ab96a8e8b78afcc813e7cb3e54733c8cab24b59b647ba8",
+            "the source hash is the retrieved official page, not the derived TSV"
+        );
+
+        let current = resolve(
+            "workplace_not_registered_reason",
+            "VAT_DEPOT",
+            Some("2026-10-22"),
+        )
+        .unwrap();
+        assert_eq!(
+            (current.list.key, current.code.label),
+            ("workplace_not_registered_reason", "하치장")
+        );
+        assert_eq!(
+            resolve(
+                "workplace_not_registered_reason",
+                "VAT_DEPOT",
+                Some("2026-10-21")
+            ),
+            Err(ResolveError::RetiredVersion),
+        );
+        assert_eq!(
+            resolve(
+                "workplace_not_registered_reason",
+                "DISPATCH_CLIENT_SITE",
+                Some("2026-10-22")
+            ),
+            Err(ResolveError::UnknownCode),
+        );
     }
 }

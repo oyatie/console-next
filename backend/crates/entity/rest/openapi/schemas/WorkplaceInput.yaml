@@ -36,6 +36,7 @@ properties:
     type:
     - boolean
     - 'null'
+    description: Derived from the selected not-registered reason and checked by the server.
   same_address_as_registration:
     type: boolean
   address:

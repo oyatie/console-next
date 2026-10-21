@@ -199,3 +199,77 @@ async fn unknown_records_are_not_found_with_their_code(pool: PgPool) {
         refused(&pool, &ctx, method, &uri, body, StatusCode::NOT_FOUND, want).await;
     }
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn an_abstract_workplace_registration_change_is_a_typed_refusal(pool: PgPool) {
+    let (org, user) = tenant(&pool, ADMIN).await;
+    let admin = ctx(&pool, org, user, ADMIN, None).await;
+    let (entity, ..) = structure(&admin).await;
+    let registration = registration_of(&pool, &entity).await;
+    let uri = format!("/api/v1/legal-entities/{entity}/workplaces");
+    let (status, created) = admin
+        .call(
+            "POST",
+            &uri,
+            Some(json!({
+                "name": "주소 없는 근무지 묶음",
+                "reg_mode": "NOT_REQUIRED",
+                "not_registered_reason": { "code": "REMOTE_TELEWORK", "version": "2026-10-22" },
+                "is_abstract": true,
+                "opened_on": "2021-01-04",
+                "is_head_office": false,
+                "kind_code": "BRANCH",
+                "insurance": { "shortcut": "NONE_YET" }
+            })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{created}");
+    let workplace = created["record"]["id"].as_str().unwrap();
+    refused(
+        &pool,
+        &admin,
+        "POST",
+        &format!("/api/v1/workplaces/{workplace}/registration-changes"),
+        Some(json!({
+            "registration_id": registration,
+            "effective_from": today_kst(),
+            "reason_code": "REGISTRATION_ATTACHED"
+        })),
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "abstract_workplace_not_registrable",
+    )
+    .await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn workplace_reason_codes_and_versions_are_resolved_by_the_server(pool: PgPool) {
+    let (org, user) = tenant(&pool, ADMIN).await;
+    let admin = ctx(&pool, org, user, ADMIN, None).await;
+    let (entity, ..) = structure(&admin).await;
+    let uri = format!("/api/v1/legal-entities/{entity}/workplaces");
+    for (code_value, version, refusal) in [
+        ("NO_SUCH_REASON", "2026-10-22", "invalid_option"),
+        ("VAT_DEPOT", "2026-10-21", "reference_version_retired"),
+    ] {
+        refused(
+            &pool,
+            &admin,
+            "POST",
+            &uri,
+            Some(json!({
+                "name": "거절 대상",
+                "reg_mode": "NOT_REQUIRED",
+                "not_registered_reason": { "code": code_value, "version": version },
+                "is_abstract": false,
+                "address": address(),
+                "opened_on": "2021-01-04",
+                "is_head_office": false,
+                "kind_code": "BRANCH",
+                "insurance": { "shortcut": "NONE_YET" }
+            })),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            refusal,
+        )
+        .await;
+    }
+}
