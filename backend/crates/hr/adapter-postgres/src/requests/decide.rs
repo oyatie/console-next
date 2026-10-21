@@ -177,6 +177,9 @@ impl HrService {
                     })),
                 );
                 events.push(event);
+                if kind == ChangeRequestKind::ImportRollback && decision != ChangeRequestDecision::Apply {
+                    events.push(crate::import::rollback::request_closed_event(&principal, &closed)?);
+                }
                 Ok((closed, events))
             })
         })

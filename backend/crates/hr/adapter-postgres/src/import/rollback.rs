@@ -3,6 +3,7 @@
 
 #[path = "rollback_execute.rs"]
 mod execute;
+pub(crate) use execute::request_closed_event;
 #[path = "rollback_plan.rs"]
 mod plan;
 

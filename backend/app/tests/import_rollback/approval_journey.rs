@@ -186,3 +186,62 @@ async fn rollback_http_run_policy_and_step_up_refusal_matrix(pool: PgPool) {
         );
     }
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn declined_or_withdrawn_rollback_requests_refresh_the_run_without_reversing_it(
+    pool: PgPool,
+) {
+    for decision in ["DECLINE", "WITHDRAW"] {
+        let i = import_fixture::importer(pool.clone()).await;
+        let second = user(&pool, i.org(), "SUPER_ADMIN").await;
+        for id in [i.f.principal.user_id, second] {
+            eligible_holder(&i, id).await;
+        }
+        let run = applied_run(&i).await;
+        import_policy(&i, true, false).await;
+        let keys = keys();
+        let service = router(&pool, &keys).await;
+        let requester = Caller {
+            service: service.clone(),
+            token: Some(token(&pool, &keys, i.org(), i.f.principal.user_id, "SUPER_ADMIN").await),
+        };
+        let other = Caller {
+            service,
+            token: Some(token(&pool, &keys, i.org(), second, "SUPER_ADMIN").await),
+        };
+        let record = format!("/api/v1/employee-import-runs/{run}");
+        let preview = requester
+            .call("POST", &format!("{record}/rollback/preview"), None)
+            .await
+            .1;
+        let (status, request) = requester.call("POST", &format!("{record}/rollback"), Some(serde_json::json!({"preview_digest":preview["preview_digest"],"acknowledged":true,"reason_code":"WRONG_FILE"}))).await;
+        assert_eq!(status, StatusCode::ACCEPTED, "{request}");
+        let id = request["request_id"].as_str().unwrap();
+        let actor = if decision == "WITHDRAW" {
+            &requester
+        } else {
+            &other
+        };
+        let (status, closed) = actor
+            .call(
+                "POST",
+                &format!("/api/v1/change-requests/{id}/decide"),
+                Some(serde_json::json!({"decision":decision,"reason_code":"REVIEWED"})),
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK, "{closed}");
+        let (_, current) = requester.call("GET", &record, None).await;
+        assert_eq!(current["status"], "APPLIED");
+        assert!(current["rollback"]["pending_request"].is_null());
+        assert_eq!(current["allowed"], serde_json::json!(["preview_rollback"]));
+        assert_eq!(
+            rollback_frames(&i, run).await,
+            [
+                "data_import.rollback_request",
+                "data_import.rollback_request_closed"
+            ]
+        );
+        let count:i64=sqlx::query_scalar("SELECT count(*) FROM audit_events WHERE org_id=$1 AND target_id=$2 AND action='data_import.rollback'").bind(i.org()).bind(run.to_string()).fetch_one(&pool).await.unwrap();
+        assert_eq!(count, 0);
+    }
+}

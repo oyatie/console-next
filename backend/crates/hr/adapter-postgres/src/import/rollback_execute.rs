@@ -122,3 +122,17 @@ pub(super) async fn apply(
         audits,
     ))
 }
+
+/// Closing a pending request changes the derived run status and must reach open result screens.
+pub(crate) fn request_closed_event(
+    principal: &Principal,
+    request: &crate::requests::ChangeRequestResponse,
+) -> Result<AuditEvent, HrError> {
+    event(
+        principal,
+        request.subject_id,
+        "data_import.rollback_request_closed",
+        json!({"request_id":request.id,"status":request.status,"requester":request.requested_by,
+            "actor":principal.user_id,"reason_code":request.decision_reason_code,"digest":request.payload["preview_digest"]}),
+    )
+}

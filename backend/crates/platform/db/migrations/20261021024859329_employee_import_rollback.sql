@@ -54,7 +54,8 @@ CREATE UNIQUE INDEX change_requests_import_rollback_open_idx
  ON change_requests(org_id,subject_id) WHERE kind='IMPORT_ROLLBACK' AND status='OPEN';
 INSERT INTO realtime_topic_map(target_type,action,resource_type,carries_id) VALUES
  ('data_import_run','data_import.rollback_request','import_run',true),
- ('data_import_run','data_import.rollback','import_run',true);
+ ('data_import_run','data_import.rollback','import_run',true),
+ ('data_import_run','data_import.rollback_request_closed','import_run',true);
 CREATE OR REPLACE FUNCTION leave_api.employee_import_run_writer_guard()
 RETURNS TRIGGER LANGUAGE plpgsql SET search_path = pg_catalog AS $$
 BEGIN

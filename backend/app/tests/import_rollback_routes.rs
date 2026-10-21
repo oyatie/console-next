@@ -296,7 +296,7 @@ async fn eligible_holder(i: &import_fixture::Importer, id: console_kernel_core::
 }
 
 async fn rollback_frames(i: &import_fixture::Importer, run: Uuid) -> Vec<String> {
-    sqlx::query_scalar("SELECT a.action FROM resource_changes c JOIN audit_events a ON a.id=c.audit_event_id WHERE c.org_id=$1 AND c.resource_type='import_run' AND c.resource_id=$2 AND a.action IN ('data_import.rollback_request','data_import.rollback') ORDER BY c.seq")
+    sqlx::query_scalar("SELECT a.action FROM resource_changes c JOIN audit_events a ON a.id=c.audit_event_id WHERE c.org_id=$1 AND c.resource_type='import_run' AND c.resource_id=$2 AND a.action IN ('data_import.rollback_request','data_import.rollback_request_closed','data_import.rollback') ORDER BY c.seq")
         .bind(i.org()).bind(run.to_string()).fetch_all(&i.owner).await.unwrap()
 }
 
