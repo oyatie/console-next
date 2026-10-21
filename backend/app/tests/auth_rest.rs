@@ -1869,9 +1869,9 @@ async fn device_login_failures_preserve_proof_and_poll_permit(pool: PgPool) {
     assert_eq!(poll_replay.status(), StatusCode::UNAUTHORIZED);
 }
 
-/// Initial enrollment does not attest consent; the legacy endpoint and history remain compatible.
+/// Initial enrollment requires privacy and terms consent before passkey registration can begin.
 #[sqlx::test(migrator = "MIGRATOR")]
-async fn first_passkey_enrollment_does_not_require_privacy_terms(pool: PgPool) {
+async fn first_passkey_enrollment_requires_privacy_terms(pool: PgPool) {
     let signing_key = SigningKey::random(&mut OsRng);
     let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
     let public_key_pem = signing_key
@@ -1935,7 +1935,8 @@ async fn first_passkey_enrollment_does_not_require_privacy_terms(pool: PgPool) {
         json!({ "username": "privacy.user", "display_name": "Privacy User" }),
     )
     .await;
-    assert_eq!(blocked.status(), StatusCode::OK);
+    let blocked_body: Value = blocked.into_json(StatusCode::FORBIDDEN).await;
+    assert_eq!(blocked_body["error"]["code"], "privacy_consent_required");
 
     let bundled_or_partial_consent = post_raw(
         service.clone(),
@@ -1963,6 +1964,69 @@ async fn first_passkey_enrollment_does_not_require_privacy_terms(pool: PgPool) {
     )
     .await;
     assert_ne!(allowed.ceremony_id, Uuid::nil());
+}
+
+/// Status endpoint under DB fault returns 500, not false-negative accepted: false (P1-9 / P1-4).
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn privacy_consent_status_returns_500_under_db_fault(pool: PgPool) {
+    let signing_key = SigningKey::random(&mut OsRng);
+    let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
+    let public_key_pem = signing_key
+        .verifying_key()
+        .to_public_key_pem(LineEnding::LF)
+        .unwrap();
+    let branch_id = seed_branch(&pool, "Privacy Fault Region", "Privacy Fault Branch").await;
+    let user_id = seed_user_with_branch(
+        &pool,
+        "Privacy Fault User",
+        "010-1234-0017",
+        "MECHANIC",
+        branch_id,
+    )
+    .await;
+    let service = build_router(
+        app_state(
+            pool.clone(),
+            private_key_pem.to_string(),
+            public_key_pem.clone(),
+        )
+        .unwrap(),
+    );
+
+    let issue = BootstrapCredentialStore
+        .issue_for_zero_credential_user(
+            &pool,
+            None,
+            *user_id.as_uuid(),
+            OrgId::one(),
+            OffsetDateTime::now_utc(),
+            Duration::hours(24),
+        )
+        .await
+        .unwrap();
+    let redeem: OtpRedeemResponse = post_json(
+        service.clone(),
+        "/api/v1/auth/otp/redeem",
+        None,
+        json!({ "otp": issue.token.as_str() }),
+        StatusCode::OK,
+    )
+    .await;
+
+    // Drop audit_events table to cause a DB fault when checking consent
+    sqlx::query("DROP TABLE audit_events CASCADE")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let res = post_raw(
+        service.clone(),
+        "/api/v1/auth/privacy-consent/status",
+        Some(&redeem.access_token),
+        json!({}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 /// The one-time code is consumed on PASSKEY REGISTRATION, not on redeem. A redeem

@@ -42,6 +42,15 @@ export const tenantSlugField = (scope: Page | Locator) => scope.getByLabel(/(?:�
 // `audit`: run axe on the screens a helper passes through. Only the specs that test those screens
 // (onboarding, recovery) pass true; everywhere else they are set-up steps.
 
+/** Accepts required privacy notice and terms checkboxes unconditionally on /setup-passkey. */
+export async function acceptConsent(page: Page) {
+  const privacyCheck = page.getByRole("checkbox", { name: /개인정보 수집·이용/ });
+  const termsCheck = page.getByRole("checkbox", { name: /서비스 이용약관/ });
+  await expect(privacyCheck).toBeVisible();
+  await privacyCheck.check();
+  await termsCheck.check();
+}
+
 /** One-time code → passkey enrollment, as a first-time user does it. */
 export async function firstSignIn(browser: Browser, code: string, keep?: string, audit = false, contextOptions: Pick<BrowserContextOptions, "locale"> = {}): Promise<Page> {
   // Own context (not browser.newPage()): axe opens a helper page in the same context.
@@ -50,11 +59,11 @@ export async function firstSignIn(browser: Browser, code: string, keep?: string,
   await page.goto("/login");
   await expect(page.getByLabel("일회용 코드")).toBeVisible();
   if (audit) await expectAccessible(page, "login");
-  const enroll = page.getByRole("button", { name: "패스키 등록", exact: true, disabled: false });
   await page.getByLabel("일회용 코드").fill(code);
   await page.getByRole("button", { name: "코드로 로그인" }).click();
+  await acceptConsent(page);
+  const enroll = page.getByRole("button", { name: /동의하고 패스키 등록|패스키 등록/, disabled: false });
   await expect(enroll).toBeVisible();
-  await expect(page.getByRole("checkbox")).toHaveCount(0);
   if (audit) await expectAccessible(page, "setup passkey");
   await enroll.click();
   // Enrollment ends the code session and signs in with the new passkey.

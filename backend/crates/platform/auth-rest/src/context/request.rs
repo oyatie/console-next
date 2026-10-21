@@ -60,7 +60,8 @@ pub(crate) async fn authenticated_user_context(
     services: &AuthServices,
     headers: &HeaderMap,
 ) -> Result<(Uuid, OrgId), RestError> {
-    user_context(pool, services, headers, false).await
+    let (user_id, org_id, _) = user_context(pool, services, headers, false).await?;
+    Ok((user_id, org_id))
 }
 
 /// [`authenticated_user_context`] that also admits an OTP enrollment session
@@ -69,7 +70,7 @@ pub(crate) async fn enrollment_user_context(
     pool: &PgPool,
     services: &AuthServices,
     headers: &HeaderMap,
-) -> Result<(Uuid, OrgId), RestError> {
+) -> Result<(Uuid, OrgId, bool), RestError> {
     user_context(pool, services, headers, true).await
 }
 
@@ -78,7 +79,7 @@ pub(crate) async fn user_context(
     services: &AuthServices,
     headers: &HeaderMap,
     allow_enrollment: bool,
-) -> Result<(Uuid, OrgId), RestError> {
+) -> Result<(Uuid, OrgId, bool), RestError> {
     let token = bearer_token(headers)?;
     let claims = services
         .jwt_verifier
@@ -101,7 +102,7 @@ pub(crate) async fn user_context(
     if claims.enrollment && !allow_enrollment {
         return Err(RestError::passkey_required());
     }
-    Ok((*user.as_uuid(), org))
+    Ok((*user.as_uuid(), org, claims.enrollment))
 }
 
 pub(crate) fn session_family_from_headers(

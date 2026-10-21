@@ -46,7 +46,7 @@ pub(crate) async fn enroll_handoff(
 ) -> Result<Json<EnrollHandoffResponse>, RestError> {
     let services = state.services()?;
     // SELF-ONLY: user + org are taken from the verified token, never the body.
-    let (user_id, org_id) = enrollment_user_context(&state.pool, services, &headers).await?;
+    let (user_id, org_id, _) = enrollment_user_context(&state.pool, services, &headers).await?;
 
     // Step-up gate: an already-enrolled user MUST assert an existing passkey (UV)
     // before a fresh enrollment handoff is minted; a user with zero passkeys is

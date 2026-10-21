@@ -1,0 +1,79 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { expect, test } from "@playwright/test";
+import { newContext, takeCode, tenantSlugField, unique, vendorPage, go } from "./flows";
+
+// PV1: Privacy notice and consent before the first personal-data field (P0)
+// On first sign-in the privacy notice is shown and acknowledged before any personal-data field renders.
+// Commit is disabled until both [필수] items are checked. First visit shows no false error.
+
+test("on /setup-passkey no personal-data input exists until notice acknowledged and both [필수] items checked", { tag: "@privacy" }, async ({ browser }) => {
+  const companyDomain = unique("pvsol");
+  const v = await vendorPage(browser);
+  await go(v, "/platform");
+  await v.getByRole("button", { name: "고객 계정 개설" }).click();
+  await v.getByLabel("고객 이름").fill("개인정보테스트");
+  await tenantSlugField(v).fill(companyDomain);
+  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  const code = await takeCode(v);
+
+  const page = await (await newContext(browser)).newPage();
+  await page.goto("/login");
+
+  // False error regression check (#44): fresh visit shows no error banner
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator(".banner--danger, [role='alert']")).toHaveCount(0);
+
+  // Enter one-time code to reach enrollment screen
+  await page.getByLabel("일회용 코드").fill(code);
+  await page.getByRole("button", { name: "코드로 로그인" }).click();
+
+  // On /setup-passkey
+  await page.waitForURL(/\/setup-passkey/);
+
+  // 1. Commit button is disabled until both required checkboxes are checked
+  const commit = page.getByRole("button", { name: /패스키 등록/ });
+  await expect(commit).toBeVisible();
+  await expect(commit).toBeDisabled();
+
+  // 2. Both [필수] consent items exist and start unchecked
+  const checkboxes = page.getByRole("checkbox");
+  await expect(checkboxes).toHaveCount(2);
+
+  const privacyCheck = page.getByRole("checkbox", { name: /개인정보 수집·이용/ });
+  const termsCheck = page.getByRole("checkbox", { name: /서비스 이용약관/ });
+  await expect(privacyCheck).toBeVisible();
+  await expect(termsCheck).toBeVisible();
+  await expect(privacyCheck).not.toBeChecked();
+  await expect(termsCheck).not.toBeChecked();
+
+  // 3. Policy URL appears as plain text until WEB-PRIVACY #17 publishes
+  await expect(page.getByText("https://cosskorea.com/privacy")).toBeVisible();
+
+  // 4. No personal data inputs exist in the DOM
+  await expect(page.getByLabel(/^이름/)).toHaveCount(0);
+  await expect(page.getByLabel(/주민등록번호/)).toHaveCount(0);
+  await expect(page.getByLabel(/생년월일/)).toHaveCount(0);
+  await expect(page.getByLabel(/전화번호/)).toHaveCount(0);
+
+  // 5. Checking only one box keeps commit disabled
+  await privacyCheck.check();
+  await expect(commit).toBeDisabled();
+
+  // 6. Checking both enables the commit button
+  await termsCheck.check();
+  await expect(commit).toBeEnabled();
+});
+
+test("fresh sign-in shows no false error on first visit (issue #44 regression)", { tag: "@privacy" }, async ({ browser }) => {
+  const page = await (await newContext(browser)).newPage();
+  await page.goto("/login");
+  await page.waitForLoadState("domcontentloaded");
+  await expect(page.getByLabel("일회용 코드")).toBeVisible();
+
+  // Wait a moment for any conditional autofill ceremony to resolve/settle
+  await page.waitForTimeout(500);
+
+  // Must not display any error banner
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByText("패스키 인증을 완료하지 못했습니다")).toHaveCount(0);
+});

@@ -15,6 +15,28 @@ use console_kernel_core::UserId;
 use console_platform_db::with_audit;
 use time::OffsetDateTime;
 
+pub(crate) const PRIVACY_CONSENT_REQUIRED_CODE: &str = "privacy_consent_required";
+
+/// Verifies that the required privacy notice and terms have been accepted by this user
+/// in this organization. If not yet accepted, refuses with `privacy_consent_required` (403).
+/// Returns the timestamp of acceptance when valid.
+pub(crate) async fn ensure_privacy_consent_accepted(
+    pool: &sqlx::PgPool,
+    org_id: console_kernel_core::OrgId,
+    user_id: uuid::Uuid,
+) -> Result<OffsetDateTime, RestError> {
+    let accepted_at = required_privacy_consent_accepted_at(pool, org_id, user_id).await?;
+    match accepted_at {
+        Some(at) => Ok(at),
+        None => Err(RestError {
+            status: axum::http::StatusCode::FORBIDDEN,
+            code: PRIVACY_CONSENT_REQUIRED_CODE,
+            message: "required privacy notice must be accepted before personal data write"
+                .to_string(),
+        }),
+    }
+}
+
 /// Read whether the authenticated user has accepted the current required
 /// first-login privacy/terms notice. Served as POST instead of GET to stay within
 /// the auth router's existing verb/import surface and avoid changing generated
@@ -24,7 +46,7 @@ pub(crate) async fn privacy_consent_status(
     headers: HeaderMap,
 ) -> Result<Json<PrivacyConsentStatusResponse>, RestError> {
     let services = state.services()?;
-    let (user_id, org_id) = enrollment_user_context(&state.pool, services, &headers).await?;
+    let (user_id, org_id, _) = enrollment_user_context(&state.pool, services, &headers).await?;
     let accepted_at = required_privacy_consent_accepted_at(&state.pool, org_id, user_id).await?;
     Ok(Json(PrivacyConsentStatusResponse {
         policy_version: REQUIRED_PRIVACY_TERMS_VERSION,
@@ -42,7 +64,7 @@ pub(crate) async fn accept_privacy_consent(
     Json(body): Json<PrivacyConsentAcceptRequest>,
 ) -> Result<Json<PrivacyConsentStatusResponse>, RestError> {
     let services = state.services()?;
-    let (user_id, org_id) = enrollment_user_context(&state.pool, services, &headers).await?;
+    let (user_id, org_id, _) = enrollment_user_context(&state.pool, services, &headers).await?;
     if body.policy_version != REQUIRED_PRIVACY_TERMS_VERSION {
         return Err(RestError::bad_request(
             "unsupported privacy consent version",

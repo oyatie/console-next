@@ -2,7 +2,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { josa } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
-import { tenantSlugField, firstSignIn, go, newContext, option, stepUp, takeCode, unique, vendorPage } from "./flows";
+import { acceptConsent, tenantSlugField, firstSignIn, go, newContext, option, stepUp, takeCode, unique, vendorPage } from "./flows";
 
 // AUTH-ID (decisions #33; docs/design/sign-in-identifier.md): the sign-in ID 아이디@도메인. It is handed over with the
 // one-time code; identifier-first sign-in names the account's passkeys (a security key without a resident credential
@@ -171,9 +171,9 @@ test("sign-in ID: a security key without a resident credential enrols, signs in 
   await page.goto("/login");
   await page.getByLabel("일회용 코드").fill(code);
   await page.getByRole("button", { name: "코드로 로그인" }).click();
-  const enroll = page.getByRole("button", { name: "패스키 등록", exact: true });
+  await acceptConsent(page);
+  const enroll = page.getByRole("button", { name: /동의하고 패스키 등록|패스키 등록/ });
   await expect(enroll).toBeVisible();
-  await expect(page.getByRole("checkbox")).toHaveCount(0);
   // residentKey "preferred": the key keeps no resident credential, and the sign-in right after names it by ID.
   await enroll.click();
   await signedIn(page);

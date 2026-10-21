@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { KeyRound, LogOut } from "lucide-react";
-import { ApiError, lastSignInId, lastSignInProfile, loginWithPasskey, logout, PASSKEY_ENROLLED, passkeyAutofill, redeemOtp, registerPasskey, session } from "@console/api";
+import { acceptConsent, ApiError, consentStatus, lastSignInId, lastSignInProfile, loginWithPasskey, logout, PASSKEY_ENROLLED, passkeyAutofill, PRIVACY_POLICY_URL, redeemOtp, registerPasskey, session } from "@console/api";
 import { t } from "@console/i18n";
 import { signInError } from "../lib/refusal";
 import { Banner } from "../ui/banner/banner";
-import { Button, Form } from "../ui/button/button";
+import { Button, Check, Form } from "../ui/button/button";
 import { Field, TextInput } from "../ui/field/field";
 import { PageHead } from "../ui/page-head/page-head";
 import { IDLE_EXPIRED } from "./idle";
@@ -28,7 +28,7 @@ const passkeyRecovery = (e: unknown): Recovery => (signInError(e) === null ? "pa
  * renewed before its ceremony expires, aborted before any modal ceremony (a pending one makes the next fail). Not
  * started after a sign-out or a failed sign-in in this tab (auth/sign-in-id.ts) until the next sign-in.
  */
-function useAutofill(signedIn: () => Promise<void>, failed: (e: unknown) => void) {
+function useAutofill(signedIn: () => Promise<void>) {
   const pending = useRef<AbortController | null>(null);
   // Set once a modal ceremony starts or the screen leaves: a start still awaiting the feature check then stays out.
   const stopped = useRef(false);
@@ -47,8 +47,8 @@ function useAutofill(signedIn: () => Promise<void>, failed: (e: unknown) => void
       await loginWithPasskey({ mediation: "conditional", signal: ctl.signal, onStart });
       await signedIn();
     } catch (e) {
-      // A dismissed or aborted autofill is no error; a refused one is.
-      if (!ctl.signal.aborted && signInError(e) !== null) failed(e);
+      void e;
+      // Conditional autofill is passive: failures are never displayed as error banners (issue #44).
     } finally {
       clearTimeout(renew);
       if (pending.current === ctl) pending.current = null;
@@ -96,7 +96,7 @@ export function Login() {
     resumeAutofill();
     await nav({ to: session.stage === "enroll" ? "/setup-passkey" : session.claims?.platform ? "/platform" : "/" });
   };
-  const abortAutofill = useAutofill(signedIn, (e) => setError(signInError(e)));
+  const abortAutofill = useAutofill(signedIn);
   const run = async (fn: () => Promise<void>, onFail: (e: unknown) => Recovery) => {
     abortAutofill();
     setBusy(true);
@@ -205,11 +205,40 @@ export function SetupPasskey() {
   const nav = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [termsConsent, setTermsConsent] = useState(false);
+  const [policyVersion, setPolicyVersion] = useState<string>("");
+  const [alreadyAccepted, setAlreadyAccepted] = useState(false);
+
+  useEffect(() => {
+    consentStatus()
+      .then((s) => {
+        setPolicyVersion(s.policy_version);
+        if (s.accepted) {
+          setAlreadyAccepted(true);
+          setPrivacyConsent(true);
+          setTermsConsent(true);
+        }
+      })
+      .catch((e) => {
+        void e;
+      });
+  }, []);
+
+  const isAppSession = session.stage === "app";
 
   const enroll = async () => {
+    if (!privacyConsent || !termsConsent) return;
     setBusy(true);
     setError(null);
     try {
+      if (!alreadyAccepted && policyVersion) {
+        await acceptConsent(policyVersion);
+      }
+      if (isAppSession) {
+        await nav({ to: session.claims?.platform ? "/platform" : "/" });
+        return;
+      }
       const signInId = await registerPasskey();
       if (signInId) rememberDomain(signInId.split("@")[1]!);
       await nav({ to: session.claims?.platform ? "/platform" : "/" });
@@ -222,13 +251,46 @@ export function SetupPasskey() {
       setBusy(false);
     }
   };
+
   return (
     <main className="auth">
       <div className="card auth__card">
         <PageHead title={t("auth.setup.title")} />
         {error && <Banner tone="danger" live="assertive">{error}</Banner>}
-        <Button variant="primary" disabled={busy} onClick={enroll}>
-          <KeyRound size={16} aria-hidden /> {t("auth.setup.register")}
+        <div className="form">
+          <Check checked={privacyConsent} onChange={setPrivacyConsent}>
+            <div>
+              <div>{t("auth.setup.consent.privacy")}</div>
+              <details className="muted">
+                <summary>{t("auth.setup.consent.disclosure")}</summary>
+                <div>
+                  <div><strong>{t("auth.setup.consent.privacy.title")}</strong></div>
+                  <div>{t("auth.setup.consent.privacy.p1")}</div>
+                  <div>{t("auth.setup.consent.privacy.p2")}</div>
+                  <div>{t("auth.setup.consent.privacy.p3")}</div>
+                  <div>{t("auth.setup.consent.privacy.p4")}</div>
+                </div>
+              </details>
+            </div>
+          </Check>
+          <Check checked={termsConsent} onChange={setTermsConsent}>
+            <div>
+              <div>{t("auth.setup.consent.terms")}</div>
+              <details className="muted">
+                <summary>{t("auth.setup.consent.disclosure")}</summary>
+                <div>
+                  <div><strong>{t("auth.setup.consent.terms.title")}</strong></div>
+                  <div>{t("auth.setup.consent.terms.p1")}</div>
+                  <div>{t("auth.setup.consent.terms.p2")}</div>
+                  <div>{t("auth.setup.consent.terms.p3")}</div>
+                </div>
+              </details>
+            </div>
+          </Check>
+          <div className="muted">{PRIVACY_POLICY_URL}</div>
+        </div>
+        <Button variant="primary" disabled={busy || !privacyConsent || !termsConsent} onClick={enroll}>
+          <KeyRound size={16} aria-hidden /> {isAppSession ? t("auth.setup.consent.continue") : t("auth.setup.register")}
         </Button>
         {/* Ends the one-time-code session; the sign-in screen takes a passkey or another code. */}
         <Button variant="ghost" disabled={busy} onClick={() => void logout()}>

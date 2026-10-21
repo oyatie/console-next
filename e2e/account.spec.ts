@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectAccessible, fits } from "./a11y";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { clickCounter } from "./clicks";
-import { go, newContext, passkeyLogin, vendorPage } from "./flows";
+import { acceptConsent, go, newContext, passkeyLogin, vendorPage } from "./flows";
 import { inviteAccount } from "./access-flows";
 import { tenantWithExecutive } from "./setup-flows";
 import { openTenant } from "./helpers/tenant";
@@ -141,10 +141,10 @@ test("a refused sign-in right after enrollment lands on the login screen, and th
   });
   await page.goto("/login");
   await page.getByLabel("일회용 코드").fill(code);
-  const agree = page.getByRole("button", { name: "패스키 등록" });
   await page.getByRole("button", { name: "코드로 로그인" }).click();
+  await acceptConsent(page);
+  const agree = page.getByRole("button", { name: /동의하고 패스키 등록|패스키 등록/ });
   await expect(agree).toBeVisible();
-  await expect(page.getByRole("checkbox")).toHaveCount(0);
   await agree.click();
   // A next step, not an error: announced as a status, with no alert.
   await expect(page.getByRole("status").filter({ hasText: "패스키를 등록했지만 이어서 로그인하지 못했습니다" })).toBeVisible();

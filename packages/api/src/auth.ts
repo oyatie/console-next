@@ -99,6 +99,17 @@ export async function logout() {
   session.set(null);
 }
 
+export const PRIVACY_POLICY_URL = "https://cosskorea.com/privacy";
+
 export type ConsentStatus = components["schemas"]["PrivacyConsentStatusResponse"];
-/** Historical account acceptance, retained for the account history; enrollment never depends on it. */
+/** Read required privacy/terms acceptance status for the authenticated or enrollment session. */
 export const consentStatus = () => authPost<ConsentStatus>("/api/v1/auth/privacy-consent/status", undefined, true);
+
+/** Accept required privacy collection and terms of service before credential enrollment. */
+export const acceptConsent = (policy_version: string) =>
+  authPost<ConsentStatus>(
+    "/api/v1/auth/privacy-consent/accept",
+    { policy_version, privacy_collection: true, terms_of_service: true },
+    true,
+  );
+

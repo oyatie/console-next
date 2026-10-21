@@ -149,14 +149,27 @@ async fn enrollment_session_is_refused_outside_the_enrollment_surface(owner: PgP
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
     assert_eq!(body["error"]["code"], "passkey_required");
-    // decision #3: first enrollment never attests privacy or service terms.
-    for path in [
+    // First enrollment requires privacy/terms consent before passkey registration can begin.
+    let (status, body) = send(
+        &app,
+        "POST",
         "/api/v1/auth/passkey/register/start",
+        Some(token),
+        Some(json!({})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+    assert_eq!(body["error"]["code"], "privacy_consent_required");
+
+    let (status, body) = send(
+        &app,
+        "POST",
         "/api/v1/auth/passkey/enroll-handoff",
-    ] {
-        let (status, body) = send(&app, "POST", path, Some(token), Some(json!({}))).await;
-        assert_eq!(status, StatusCode::OK, "{path}: {body}");
-    }
+        Some(token),
+        Some(json!({})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
     let consents: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM audit_events WHERE actor = $1 AND action = 'privacy.required_accept'",
     )
