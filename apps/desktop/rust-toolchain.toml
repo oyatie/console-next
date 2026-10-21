@@ -1,3 +1,6 @@
 [toolchain]
+# Pinned to stable 1.99.0 (official channel manifest checked 2026-09-12).
+# Kept in lockstep with monorepo root rust-toolchain.toml.
 channel = "1.99.0"
 targets = ["x86_64-pc-windows-msvc"]
+
