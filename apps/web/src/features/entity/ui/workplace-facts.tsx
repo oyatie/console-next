@@ -5,6 +5,7 @@ import type { LegalEntity, Workplace } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { codeText, labeled, RECORD_STATUS } from "../../../lib/labels";
+import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { RowActions } from "../../../ui/record-actions/record-actions";
 import { useRecordLock } from "./use-record-lock";
@@ -16,6 +17,7 @@ import { kindsQuery } from "../api";
 import { addressLine, registrationOf, workplaceName } from "../domain/view";
 import { INFO_LABEL, kindName, withholdingText } from "../present";
 import { AttachHost } from "./workplace-attach-sheet";
+import { WorkplaceRegistrationChangeHost } from "./workplace-registration-change";
 import { WorkplaceCodeEdit } from "./workplace-code-edit";
 import { WorkplaceEdit } from "./workplace-edit";
 import type { InfoKey } from "./workplace-edit-fields";
@@ -23,7 +25,7 @@ import { WorkplaceMoveSheet } from "./workplace-move-sheet";
 import { WorkplaceStatusSheet } from "./workplace-status";
 import { Muted } from "../../../ui/muted/muted";
 
-type Open = { k: "info"; field: InfoKey; clear?: boolean } | { k: "move" | "status" | "attach" | "code" } | { k: "kind" | "primary" };
+type Open = { k: "info"; field: InfoKey; clear?: boolean } | { k: "move" | "status" | "attach" | "code" | "changeReg" } | { k: "kind" | "primary" };
 
 export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEntity; w: Workplace; place?: Place; onAct?: (a: StructureAct) => void; onHistory: () => void }) {
   const [state, setOpen] = useState<Open | null>(null);
@@ -88,6 +90,15 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
           // the one certificate reissue sheet on the entity page.
           act: (
             <div className="row">
+              {manage && !why && !reg.closed_on && (
+                <Button
+                  variant="link"
+                  onClick={() => setOpen({ k: "changeReg" })}
+                  aria-label={t("workplace.regChange.action")}
+                >
+                  {t("workplace.regChange.action")}
+                </Button>
+              )}
               {manage && !why && !reg.closed_on && <Link to="/org/entities/$id" params={{ id: e.id }} search={{ wp: w.id, reissue: reg.id }} className="link" aria-label={t("entityReissue.actionOf", { brn: reg.brn?.display ?? "" })}>{t("entityReissue.action")}</Link>}
               {place && <Link to="/org/entities/$id" params={{ id: e.id }} className="link">{t("orgStructure.open")}</Link>}
             </div>
@@ -120,6 +131,7 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
       {open?.k === "move" && <WorkplaceMoveSheet e={e} w={w} onClose={close} />}
       {open?.k === "status" && <WorkplaceStatusSheet e={e} w={w} onClose={close} />}
       {open?.k === "attach" && <AttachHost entityId={e.id} workplaceId={w.id} onClose={close} />}
+      {open?.k === "changeReg" && <WorkplaceRegistrationChangeHost entityId={e.id} workplaceId={w.id} onClose={close} />}
     </>
   );
 }
