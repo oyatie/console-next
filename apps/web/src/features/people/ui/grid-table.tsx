@@ -1,17 +1,15 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
+import { useEffectEvent, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import { AlertTriangle } from "lucide-react";
 import { t } from "@console/i18n";
-import { parseTsv, type Cell, type GridField } from "../domain/grid";
+import { parseTsv, TYPES, type Cell, type GridField } from "../domain/grid";
 import { TextInput } from "../../../ui/field/field";
 import { refusedText } from "../present";
 import { label as enumLabel } from "../../../lib/labels";
-import { TYPES } from "../domain/grid";
 import { narrow } from "../domain/grid-choices";
 import s from "./grid.module.css";
 import k from "./grid-input.module.css";
 import m from "./grid-table.module.css";
 
-const ROW_HEIGHT = 36;
 const DEFAULT_VISIBLE = 25;
 const DEFAULT_OVERSCAN = 10;
 
@@ -29,8 +27,9 @@ const pickable = (f: GridField, text: string) => narrow(choiceWords(f), text);
 const viewport = (grid: HTMLDivElement) => {
   let scroller: HTMLElement | null = grid.parentElement;
   while (scroller && !(scroller.scrollHeight > scroller.clientHeight && /auto|scroll/.test(getComputedStyle(scroller).overflowY))) scroller = scroller.parentElement;
-  const top = scroller ? Math.max(0, scroller.getBoundingClientRect().top + scroller.clientTop) : 0;
-  const bottom = scroller ? Math.min(window.innerHeight, scroller.getBoundingClientRect().top + scroller.clientTop + scroller.clientHeight) : window.innerHeight;
+  const padding = getComputedStyle(scroller ?? document.documentElement);
+  const top = (scroller ? Math.max(0, scroller.getBoundingClientRect().top + scroller.clientTop) : 0) + (parseFloat(padding.scrollPaddingTop) || 0);
+  const bottom = (scroller ? Math.min(window.innerHeight, scroller.getBoundingClientRect().top + scroller.clientTop + scroller.clientHeight) : window.innerHeight) - (parseFloat(padding.scrollPaddingBottom) || 0);
   const rowsTop = grid.getBoundingClientRect().top + grid.clientTop + (grid.firstElementChild?.firstElementChild?.getBoundingClientRect().height ?? 0);
   return { scroller: scroller ?? window, top, bottom, rowsTop };
 };
@@ -52,17 +51,8 @@ const nextCell = (key: string, r: number, c: number, rc: number, cc: number, ctr
  * one; an error says why under it, with a near value Enter takes.
  */
 export function GridTable({
-  rows,
-  columns,
-  label,
-  onCell,
-  statusOf,
-  fieldLabel,
-  suggestionOf,
-  activeCell,
-  onActiveChange,
-  visibleRows = DEFAULT_VISIBLE,
-  overscan = DEFAULT_OVERSCAN,
+  rows, columns, label, onCell, statusOf, fieldLabel, suggestionOf, activeCell, onActiveChange,
+  visibleRows = DEFAULT_VISIBLE, overscan = DEFAULT_OVERSCAN,
 }: {
   rows: readonly GridRow[];
   columns: readonly GridField[];
@@ -73,8 +63,7 @@ export function GridTable({
   suggestionOf: (c: Cell) => string | undefined;
   activeCell?: At | null;
   onActiveChange?: (at: At | null) => void;
-  visibleRows?: number;
-  overscan?: number;
+  visibleRows?: number; overscan?: number;
 }) {
   const [uncontrolledActive, setUncontrolledActive] = useState<At | null>(null);
   const active = activeCell !== undefined ? activeCell : uncontrolledActive;
@@ -87,35 +76,15 @@ export function GridTable({
   const [opt, setOpt] = useState(0);
   const [range, setRange] = useState<Range>(null);
   const input = useRef<HTMLInputElement>(null);
-  const focusPending = useRef(false);
+  const focusPending = useRef(false), parkingFocus = useRef(false);
   const editingNow = useRef<At | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const [rowHeight, setRowHeight] = useState(1);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportRows, setViewportRows] = useState(visibleRows);
 
-  useEffect(() => {
-    const onScroll = () => {
-      if (!gridRef.current) return;
-      const { top, bottom, rowsTop } = viewport(gridRef.current);
-      if (input.current && editingNow.current) {
-        const bounds = input.current.getBoundingClientRect();
-        if (bounds.bottom <= top || bounds.top >= bottom) input.current.blur();
-      }
-      setScrollTop(Math.max(0, Math.min(rows.length * ROW_HEIGHT, top - rowsTop)));
-      setViewportRows(Math.max(visibleRows, Math.ceil((bottom - top) / ROW_HEIGHT) + 1));
-    };
-    onScroll();
-    // Scroll does not bubble; capture also observes the document and any scrollable ancestor.
-    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll, true);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, [visibleRows, rows.length]);
-
   const windowSize = viewportRows + overscan;
-  const first = Math.max(0, Math.min(rows.length - windowSize, Math.floor(scrollTop / ROW_HEIGHT) - Math.floor(overscan / 2)));
+  const first = Math.max(0, Math.min(rows.length - windowSize, Math.floor(scrollTop / rowHeight) - Math.floor(overscan / 2)));
   const last = Math.min(rows.length, first + windowSize);
 
   const enterAfterIme = useRef(false);
@@ -128,12 +97,12 @@ export function GridTable({
     focusPending.current = true;
     if (gridRef.current) {
       const { scroller, top, bottom, rowsTop } = viewport(gridRef.current);
-      const cellTop = rowsTop + active.r * ROW_HEIGHT;
-      const delta = cellTop < top ? cellTop - top : Math.max(0, cellTop + ROW_HEIGHT - bottom);
+      const cellTop = rowsTop + active.r * rowHeight;
+      const delta = cellTop < top ? cellTop - top : Math.max(0, cellTop + rowHeight - bottom);
       scroller.scrollBy({ top: delta, behavior: "instant" });
       setScrollTop(Math.max(0, top - rowsTop + delta));
     }
-  }, [active, validActive]);
+  }, [active, validActive, rowHeight]);
   // Scrolling may need a second render to mount the requested cell's input.
   useLayoutEffect(() => {
     if (focusPending.current && input.current) {
@@ -182,6 +151,40 @@ export function GridTable({
     setTyped("");
     if (to) move(to.r, to.c);
   };
+  const onScroll = useEffectEvent((minimum: number, count: number) => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    const height = parseFloat(getComputedStyle(grid).getPropertyValue("--row-h"));
+    const { top, bottom, rowsTop } = viewport(grid);
+    if (input.current && document.activeElement === input.current) {
+      const bounds = input.current.getBoundingClientRect();
+      if (bounds.bottom <= top || bounds.top >= bottom) {
+        leave(true);
+        parkingFocus.current = true;
+        grid.focus({ preventScroll: true });
+        parkingFocus.current = false;
+      }
+    }
+    setRowHeight(height);
+    setScrollTop(Math.max(0, Math.min(count * height, top - rowsTop)));
+    setViewportRows(Math.max(minimum, Math.ceil((bottom - top) / height) + 1));
+  });
+  useLayoutEffect(() => {
+    const update = () => onScroll(visibleRows, rows.length);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(gridRef.current!.firstElementChild!.firstElementChild!);
+    observer.observe(gridRef.current!.parentElement!);
+    // Scroll does not bubble; capture also observes the document and any scrollable ancestor.
+    window.addEventListener("scroll", update, { passive: true, capture: true });
+    window.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [visibleRows, rows.length]);
+
   const nav = (e: KeyboardEvent<HTMLElement>, r: number, c: number) => {
     if (!rows[r]?.cells[c] || !columns[c]) return;
     const key = e.key;
@@ -236,8 +239,8 @@ export function GridTable({
 
   const at = active && rows[active.r]?.cells[active.c];
   return (
-    <div ref={gridRef} className={s.grid} role="grid" tabIndex={0} onKeyDown={onGridKeyDown}
-      onFocus={(e) => e.target === e.currentTarget && move(active?.r ?? 0, active?.c ?? 0)}
+    <div ref={gridRef} className={`${s.grid} ${m.grid}`} role="grid" tabIndex={active ? -1 : 0} onKeyDown={onGridKeyDown}
+      onFocus={(e) => e.target === e.currentTarget && !parkingFocus.current && !active && move(0, 0)}
       aria-label={label} aria-rowcount={rows.length + 1} data-cols={columns.length}>
       <div role="row" aria-rowindex={1} className={s.head}>
         <span role="columnheader" className={s.n}>{t("bulkGrid.col.row")}</span>
@@ -246,7 +249,7 @@ export function GridTable({
         {columns.map((f) => <span key={f.key} role="columnheader" className={s.colHead}>{fieldLabel(f)}<span className={s.tag} data-cls={f.cls}>{t(`bulkGrid.tag.${f.cls}`)}</span></span>)}
         <span role="columnheader">{t("bulkGrid.col.status")}</span>
       </div>
-      {first > 0 && <svg height={first * ROW_HEIGHT} className={m.spacer} aria-hidden />}
+      {first > 0 && <svg height={first * rowHeight} className={m.spacer} aria-hidden />}
       {rows.slice(first, last).map((row, idx) => {
         const r = first + idx;
         const st = statusOf(row);
@@ -266,8 +269,7 @@ export function GridTable({
               const listId = `${id(r, c)}-options`;
               return (
                 <span
-                  key={f.key} id={id(r, c)} role="gridcell" tabIndex={!active && r === 0 && c === 0 ? 0 : -1}
-                  aria-label={cellName} aria-invalid={bad || undefined} className={`${s.cell} ${k.cell}`}
+                  key={f.key} id={id(r, c)} role="gridcell" tabIndex={-1} aria-label={cellName} aria-invalid={bad || undefined} className={`${s.cell} ${k.cell}`}
                   data-changed={changed || undefined} data-bad={bad || undefined} data-range={inRange(r, c) || undefined}
                   data-editing={isEditing || undefined} onPaste={(e) => paste(e, r, c)}
                   onFocus={(e) => e.target === e.currentTarget && (same(active, r, c) ? input.current?.focus() : setActive({ r, c }))}
@@ -305,7 +307,7 @@ export function GridTable({
           </div>
         );
       })}
-      {last < rows.length && <svg height={(rows.length - last) * ROW_HEIGHT} className={m.spacer} aria-hidden />}
+      {last < rows.length && <svg height={(rows.length - last) * rowHeight} className={m.spacer} aria-hidden />}
       {at && "bad" in at && active && (
         <div className={s.tip} role="status">
           <AlertTriangle size={14} aria-hidden />

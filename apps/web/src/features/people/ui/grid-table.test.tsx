@@ -1,13 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { chromium, type Browser, type Page } from "@playwright/test";
-import { createServer, type ViteDevServer } from "vite";
-import react from "@vitejs/plugin-react";
-import { realpathSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { loadCatalog } from "@console/i18n";
 import { GridTable, type GridRow } from "./grid-table";
+import { page, server, setupGridFixture, mount, expectWindowAt } from "./grid-table.test-fixture";
 import type { GridField } from "../domain/grid";
 
 const columns: readonly GridField[] = [
@@ -21,124 +16,7 @@ const rows2000: readonly GridRow[] = Array.from({ length: 2000 }, (_, i) => ({
   cells: [{ keep: true }, { keep: true }, { keep: true }],
 }));
 
-let server: ViteDevServer;
-let browser: Browser;
-let page: Page;
-let errors: string[];
-
-beforeAll(async () => {
-  await loadCatalog("en");
-  // Mount the real component and GridPage styles; no backend or server-rendered event simulation.
-  const entry = `
-    import { useState } from 'react';
-    import { createRoot } from 'react-dom/client';
-    import { i18n, loadCatalog } from '@console/i18n';
-    import { GridTable } from '/apps/web/src/features/people/ui/grid-table';
-    import { GridPage } from '/apps/web/src/features/people/ui/grid-page';
-    import { bulkSelection } from '/apps/web/src/features/people/ui/use-bulk-selection';
-    import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-    import { createMemoryHistory, createRootRoute, createRouter, RouterContextProvider } from '@tanstack/react-router';
-    import { configure } from '@console/api';
-    import { webPlatform } from '@console/api/web';
-    import s from '/apps/web/src/features/people/ui/grid-page.module.css';
-    import '/apps/web/src/app.css';
-    await loadCatalog('en');
-    i18n.set('en');
-    function Fixture() {
-      const [rows, setRows] = useState(${JSON.stringify(rows2000)});
-      const [activeCell, setActiveCell] = useState(null);
-      const [activeChanges, setActiveChanges] = useState(0);
-      const bounded = new URLSearchParams(location.search).has('bounded');
-      return <div className={s.page}>
-        <header style={{height: 240, flexShrink: 0}}><button onClick={() => setRows([])}>Filter empty</button></header>
-        <div id="scroller" className={s.gridWrap} style={bounded ? {height: 600, flexShrink: 0} : undefined}>
-          <GridTable rows={rows} columns={${JSON.stringify(columns)}} label="People grid"
-            activeCell={activeCell} onActiveChange={at => {setActiveCell(at); setActiveChanges(n => n + 1);}}
-            onCell={(id, col, text) => setRows(rows => rows.map(row => row.id === id ? {...row, typed: row.typed.map((value, i) => i === col ? text : value)} : row))}
-            statusOf={() => ({tone: 'same', text: 'Same'})}
-            fieldLabel={f => f.key} suggestionOf={() => undefined} />
-        </div><button id="after" data-active={JSON.stringify(activeCell)} data-active-changes={activeChanges}>After grid</button>
-      </div>;
-    }
-    const isPage = new URLSearchParams(location.search).has('page');
-    const router = createRouter({routeTree: createRootRoute(), history: createMemoryHistory({initialEntries: ['/']})});
-    bulkSelection.set(new Map(${JSON.stringify(rows2000.map((row) => [row.id, row.name]))}));
-    configure(webPlatform);
-    createRoot(document.getElementById('root')).render(isPage
-      ? <QueryClientProvider client={new QueryClient()}><RouterContextProvider router={router}><GridPage /></RouterContextProvider></QueryClientProvider>
-      : <Fixture />);
-  `;
-  server = await createServer({
-    configFile: false, root: process.cwd(), cacheDir: ".cache/grid-table-test-vite",
-    plugins: [react(), {
-      name: "grid-table-test-fixture",
-      enforce: "pre",
-      resolveId: (id, importer) => id === "/__grid-test.tsx" ? id
-        : id === "./use-grid-data" && importer?.endsWith("/grid-page.tsx") ? "/__grid-data.ts" : undefined,
-      load: (id) => id === "/__grid-test.tsx" ? entry : id === "/__grid-data.ts" ? `
-        const people = ${JSON.stringify(rows2000.map((row) => ({ id: row.id, employee_number: row.number, name: row.name, job: "Developer", updated_at: "2026-10-20T00:00:00Z" })))};
-        export const useGridData = () => ({people, value: (i, key) => key === 'sex' ? 'MALE' : people[i][key], ready: true, updatedAt: i => people[i].updated_at});
-      ` : undefined,
-      configureServer(vite) {
-        vite.middlewares.use((req, res, next) => {
-          if (req.url?.split("?")[0] !== "/__grid-test") return next();
-          void vite.transformIndexHtml("/__grid-test", '<!doctype html><html><body><div id="root"></div><script type="module" src="/__grid-test.tsx"></script></body></html>')
-            .then((html) => { res.setHeader("Content-Type", "text/html"); res.end(html); }).catch(next);
-        });
-      },
-    }],
-    server: { host: "127.0.0.1", port: 0, fs: { allow: [process.cwd(), dirname(realpathSync(resolve("node_modules/pretendard")))] } },
-  });
-  await server.listen();
-  browser = await chromium.launch({ headless: true });
-  // Load the virtual entry's dependencies before timing individual interactions.
-  const warmup = await browser.newPage();
-  try {
-    await warmup.goto(`${server.resolvedUrls!.local[0]}__grid-test`);
-    await warmup.getByRole("grid").waitFor();
-  } finally {
-    await warmup.close();
-  }
-}, 30_000);
-
-afterAll(async () => {
-  await browser?.close();
-  await server?.close();
-});
-beforeEach(async () => {
-  page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-  errors = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-});
-afterEach(async () => {
-  await page?.close();
-  expect(errors).toEqual([]);
-});
-
-async function mount(bounded = false) {
-  await page.goto(`${server.resolvedUrls!.local[0]}__grid-test${bounded ? "?bounded" : ""}`);
-  await page.getByRole("grid").waitFor();
-}
-
-async function expectWindowAt(row: number) {
-  await expect.poll(() => page.getByRole("rowheader").allTextContents()).toContain(String(row));
-  expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
-  // Check geometry, not just DOM presence: the rendered rows must cover the viewport.
-  const coverage = await page.evaluate(() => {
-    const wrapper = document.getElementById("scroller")!;
-    const bounds = wrapper.getBoundingClientRect();
-    const top = Math.max(0, bounds.top + wrapper.clientTop);
-    const bottom = Math.min(innerHeight, bounds.top + wrapper.clientTop + wrapper.clientHeight);
-    const cells = [...document.querySelectorAll('[role="rowheader"]')];
-    const first = cells[0]!.getBoundingClientRect();
-    const last = cells.at(-1)!.getBoundingClientRect();
-    return { coversTop: first.top <= top, coversBottom: last.bottom >= bottom, visible: cells.some((cell) => {
-      const rect = cell.getBoundingClientRect();
-      return rect.bottom > top && rect.top < bottom;
-    }) };
-  });
-  expect(coverage).toEqual({ coversTop: true, coversBottom: true, visible: true });
-}
+setupGridFixture(rows2000, columns);
 
 test("component test at 2,000 rows: rendered row elements <= visible + overscan", async () => {
   const markup = renderToStaticMarkup(<GridTable rows={rows2000} columns={columns} label="People grid"
@@ -151,9 +29,9 @@ test("component test at 2,000 rows: rendered row elements <= visible + overscan"
 
 test("document scrolling renders the visible rows with the GridPage wrapper", async () => {
   await mount();
-  await page.evaluate(() => window.scrollTo(0, 7200));
+  await page.evaluate(() => window.scrollTo(0, 8000));
   await expectWindowAt(200);
-  await page.evaluate(() => window.scrollTo(0, 36000));
+  await page.evaluate(() => window.scrollTo(0, 40000));
   await expectWindowAt(1000);
 });
 
@@ -161,9 +39,12 @@ test("focused row does not pin rendering during parent scrolling", async () => {
   await mount(true);
   await page.locator("#grid-0-0").focus();
   await expect.poll(() => page.locator("#grid-0-0 input").evaluate((el) => el === document.activeElement)).toBe(true);
-  await page.locator("#scroller").evaluate((el) => { el.scrollTop = 36000; });
+  await page.locator("#scroller").evaluate((el) => { el.scrollTop = 40000; });
   await expectWindowAt(1000);
-  await page.locator("#scroller").evaluate((el) => { el.scrollTop = 7200; });
+  expect(await page.getByRole("grid").evaluate((el) => el === document.activeElement)).toBe(true);
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(() => page.locator("#grid-1-0 input").evaluate((el) => el === document.activeElement)).toBe(true);
+  await page.locator("#scroller").evaluate((el) => { el.scrollTop = 8000; });
   await expectWindowAt(200);
 });
 
@@ -172,8 +53,9 @@ test("scrolling an edited cell out of view keeps its draft", async () => {
   await page.locator("#grid-0-2").focus();
   await page.keyboard.press("F2");
   await page.locator("#grid-0-2 input").fill("Updated draft");
-  await page.locator("#scroller").evaluate((el) => { el.scrollTop = 36000; });
+  await page.locator("#scroller").evaluate((el) => { el.scrollTop = 40000; });
   await expectWindowAt(1000);
+  expect(await page.getByRole("grid").evaluate((el) => el === document.activeElement)).toBe(true);
   await page.locator("#scroller").evaluate((el) => { el.scrollTop = 0; });
   await expect.poll(() => page.locator("#grid-0-2").textContent()).toBe("Updated draft");
 });
@@ -315,4 +197,57 @@ test("GridPage First error reaches an unmounted stale_record refusal", async () 
   expect(await page.locator("#grid-999-2").count()).toBe(0);
   await page.getByRole("button", { name: "Fix errors first" }).click();
   await expect.poll(() => page.evaluate(() => document.activeElement?.closest('[role="gridcell"]')?.id)).toBe("grid-999-2");
+});
+
+test("Shift+Tab leaves the grid's single tab stop", async () => {
+  await mount(true);
+  await page.locator("#grid-0-0").focus();
+  await expect.poll(() => page.locator("#grid-0-0 input").evaluate((el) => el === document.activeElement)).toBe(true);
+  await page.keyboard.press("Shift+Tab");
+  expect(await page.evaluate(() => document.activeElement?.closest('[role="grid"]'))).toBeNull();
+  expect(await page.getByRole("button", { name: "Filter empty" }).evaluate((el) => el === document.activeElement)).toBe(true);
+  await page.keyboard.press("Tab");
+  await expect.poll(() => page.locator("#grid-0-0 input").evaluate((el) => el === document.activeElement)).toBe(true);
+  await page.keyboard.press("Tab");
+  expect(await page.locator("#after").evaluate((el) => el === document.activeElement)).toBe(true);
+});
+
+test("density changes keep virtual spacers aligned with rows", async () => {
+  await mount(true);
+  for (const [density, height] of [["regular", 40], ["compact", 32], ["regular", 40]] as const) {
+    await page.locator("#scroller").evaluate((el, value) => { el.setAttribute("data-density", value); }, density);
+    await expect.poll(() => page.getByRole("rowheader").first().evaluate((el) => el.getBoundingClientRect().height)).toBe(height);
+    await page.locator("#grid-0-0").focus();
+    await page.keyboard.press("Control+End");
+    await expect.poll(() => page.locator("#grid-1999-2 input").evaluate((el) => el === document.activeElement)).toBe(true);
+    expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
+    await expect.poll(() => page.locator("#grid-1999-2").evaluate((el) => {
+      const bounds = el.getBoundingClientRect();
+      const wrapper = document.getElementById("scroller")!.getBoundingClientRect();
+      return bounds.bottom <= wrapper.bottom && bounds.top >= wrapper.top;
+    })).toBe(true);
+    await page.locator("#scroller").evaluate((el, value) => { el.scrollTop = 1000 * value; }, height);
+    await expectWindowAt(1000);
+    await page.getByRole("grid").focus();
+    await page.keyboard.press("Control+Home");
+    await expect.poll(() => page.locator("#grid-0-0 input").evaluate((el) => el === document.activeElement)).toBe(true);
+  }
+});
+
+test("GridPage keeps the last focused cell above the footer and its header in view", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}__grid-test?page`);
+  await page.getByRole("grid").focus();
+  await page.keyboard.press("Control+End");
+  await expect.poll(() => page.locator("#grid-1999-2 input").evaluate((el) => el === document.activeElement)).toBe(true);
+  const bounds = await page.locator("#grid-1999-2").evaluate((el) => {
+    const cell = el.getBoundingClientRect();
+    const bar = document.querySelector('footer')!.getBoundingClientRect();
+    const header = document.querySelector('[role="columnheader"]')!.getBoundingClientRect();
+    return { cellBottom: cell.bottom, cellTop: cell.top, barTop: bar.top, barBottom: bar.bottom, headerTop: header.top, headerBottom: header.bottom };
+  });
+  expect(bounds.cellBottom).toBeLessThanOrEqual(bounds.barTop);
+  expect(bounds.barBottom).toBeLessThanOrEqual(800);
+  expect(bounds.headerTop).toBeGreaterThanOrEqual(0);
+  expect(bounds.headerBottom).toBeLessThanOrEqual(bounds.cellTop);
+  expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
 });

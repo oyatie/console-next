@@ -7,6 +7,9 @@
 
 /* Keep rendered rows the same height as their virtual spacers. */
 .row > span {
-  height: calc(var(--target) + var(--space-1));
+  height: var(--row-h);
   min-height: 0;
 }
+
+[data-density="compact"] .grid { --row-h: var(--row-h-compact); }
+.grid [role="columnheader"] { height: var(--row-h); }
