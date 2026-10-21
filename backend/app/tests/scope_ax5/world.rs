@@ -6,7 +6,9 @@
 //! no legacy role, each granted 인사 실무 over one scope node.
 #![allow(dead_code)]
 
-use console_kernel_core::{FixedClock, OrgId, kr::synthetic};
+use console_kernel_core::FixedClock;
+use console_kernel_core::OrgId;
+use console_kernel_core::kr::synthetic;
 use console_platform_test_support::soft_passkey::SoftKey;
 use http::StatusCode;
 use serde_json::{Value, json};

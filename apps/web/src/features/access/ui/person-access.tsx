@@ -16,7 +16,7 @@ import { orgStructureRef } from "../../../reference/entity/api";
 import { LEVELS } from "../domain/grid";
 import type { OrgNode } from "../domain/scope";
 import { effectiveQuery, grantsQuery, type AccessEffectiveEntry, type AccessGrant } from "../api";
-import { domainText, levelText, scopeText, untilText } from "../present";
+import { domainText, levelText, periodText, scopeText, untilText } from "../present";
 import { AccessHead } from "./access-head";
 import { GrantChange, type ChangeMode } from "./grant-change";
 import { GrantSheet } from "./grant-sheet";
@@ -126,7 +126,7 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
                   <li key={g.id}>
                     <span className={s.stack}>
                       <strong>{g.role_name_ko}</strong>
-                      <span className={s.src}>{scopeText(roots, g.scope)} · {untilText(g.valid_to)}</span>
+                      <span className={s.src}>{scopeText(roots, g.scope)} · {periodText(g)}</span>
                     </span>
                     <span className={s.actions}>
                       <Button variant="ghost" aria-label={t("access.change.end.label", { name: g.account_display_name ?? "", role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "end" })}>{t("access.change.mode.end")}</Button>

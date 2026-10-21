@@ -16,10 +16,10 @@ import { orgStructureRef } from "../../../reference/entity/api";
 import { blankLine, grantOp, missing, ready, startProblem, type DraftLine, type Start } from "../domain/grants";
 import type { OrgNode } from "../domain/scope";
 import { ACCESS_READS, applyGrants, previewGrants, type AccessGrantPreview, type Batch, type AccessCatalog, type AccessGrant, type AccessRole, type Account } from "../api";
-import { enforcementText, scheduledText, scopeLabel } from "../present";
+import { enforcementText, grantDoneText, scheduledText, scopeLabel } from "../present";
 import { PersonHead } from "./holder";
 import { GrantLine } from "./grant-line";
-import { CurrentGrants, StartPick } from "./grant-sheet-parts";
+import { CurrentGrants, GrantPreviewSummary, StartPick } from "./grant-sheet-parts";
 import { ScopeSheet } from "./scope-picker";
 import { Refused, refusalsOf } from "./use-grant-batch";
 import { useReasons } from "./use-reasons";
@@ -53,12 +53,11 @@ export function GrantSheet({ account, me, ops, cat, roles, setup, onClose, onGra
   const [reason, setReason] = useState<Reason>({ code: null, memo: "" });
   const [tried, setTried] = useState(false);
   const [picking, setPicking] = useState<string | null>(null);
-  const message = () => t("access.grant.done", { name: account?.display_name ?? "", count: lines.length });
   const [preview, setPreview] = useState<AccessGrantPreview | null>(null);
   const run = useCommand({
     run: (receipt: string, key: string) => applyGrants(receipt, key),
     invalidates: ACCESS_READS,
-    onSuccess: (out) => onGranted(message(), out.items, out.operation_id),
+    onSuccess: (out) => onGranted(grantDoneText(account?.display_name ?? "", out.items), out.items, out.operation_id),
   });
   const check = useCommand({
     run: async (batch: Batch) => {
@@ -136,7 +135,7 @@ export function GrantSheet({ account, me, ops, cat, roles, setup, onClose, onGra
         </>
       }
     >
-      {!preview && <>
+      {preview ? <GrantPreviewSummary items={preview.items} named={named} /> : <>
         {blocked && <Banner tone="danger">{t(`access.grant.blocked.${blocked}`)} · {t(`access.grant.blocked.${blocked}.why`)}</Banner>}
         {!roles.length && <Banner>{t("access.grant.noRoles")}</Banner>}
         <CurrentGrants accountId={account.id} />

@@ -2,6 +2,173 @@
 //! Refusal and lockout properties with pending grants.
 use super::*;
 
+async fn pending_grant(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    org: OrgId,
+    actor: Uuid,
+    target: Uuid,
+    role: Uuid,
+    kind: NodeKind,
+    node_id: Option<Uuid>,
+) -> (Uuid, OffsetDateTime) {
+    let row = GrantRow {
+        id: Uuid::new_v4(),
+        account_id: target,
+        role_id: role,
+        kind,
+        node_id,
+        valid_from: OffsetDateTime::now_utc(),
+        valid_to: None,
+        revoked: false,
+        effective_in_setup: true,
+    };
+    insert(
+        tx,
+        org,
+        &NewGrant {
+            row: &row,
+            change_mode: "SETUP",
+            reason_code: "PROMOTION_OR_REASSIGNMENT",
+            reason_note: None,
+            granted_by: actor,
+        },
+    )
+    .await
+    .unwrap();
+    let due = sqlx::query_scalar(
+        "SELECT activates_at FROM user_role_grants_pending WHERE org_id=$1 AND grant_id=$2",
+    )
+    .bind(org.as_uuid())
+    .bind(row.id)
+    .fetch_one(tx.as_mut())
+    .await
+    .unwrap();
+    (row.id, due)
+}
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn pending_activation_refuses_an_inactive_target(pool: PgPool) {
+    use console_kernel_core::FixedClock;
+    let (org, actor, target, role) = fixture(&pool).await;
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let (grant, due) =
+        pending_grant(&mut tx, org, actor, target, role, NodeKind::Tenant, None).await;
+    sqlx::query("UPDATE users SET is_active=false WHERE id=$1")
+        .bind(target)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let error = crate::pending::activate_in_tx(&mut tx, org, grant, &FixedClock(due))
+        .await
+        .unwrap_err();
+    assert_eq!(error.code, "grant_ended");
+    tx.rollback().await.unwrap();
+}
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn pending_activation_refuses_when_no_active_ops_holder_remains(pool: PgPool) {
+    use console_kernel_core::FixedClock;
+    let (org, actor, target, role) = fixture(&pool).await;
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let (grant, due) =
+        pending_grant(&mut tx, org, actor, target, role, NodeKind::Tenant, None).await;
+    sqlx::query("UPDATE users SET is_tenant_ops=false WHERE id=$1")
+        .bind(actor)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let error = crate::pending::activate_in_tx(&mut tx, org, grant, &FixedClock(due))
+        .await
+        .unwrap_err();
+    assert_eq!(error.code, "access_denied");
+    tx.rollback().await.unwrap();
+}
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn pending_activation_refuses_an_inactive_grantor_with_another_ops_holder(pool: PgPool) {
+    use console_kernel_core::FixedClock;
+    let (org, actor, target, role) = fixture(&pool).await;
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let (grant, due) =
+        pending_grant(&mut tx, org, actor, target, role, NodeKind::Tenant, None).await;
+    sqlx::query("UPDATE users SET is_tenant_ops=false WHERE id=$1")
+        .bind(actor)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO users (id,org_id,display_name,roles,is_tenant_ops) VALUES ($1,$2,'후임 관리자','{}',true)")
+        .bind(Uuid::new_v4())
+        .bind(org.as_uuid())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE users SET is_active=false WHERE id=$1")
+        .bind(actor)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let error = crate::pending::activate_in_tx(&mut tx, org, grant, &FixedClock(due))
+        .await
+        .unwrap_err();
+    assert_eq!(error.code, "access_denied");
+    tx.rollback().await.unwrap();
+}
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn pending_activation_refuses_a_scope_closed_while_waiting(pool: PgPool) {
+    use console_kernel_core::FixedClock;
+    let (org, actor, target, role) = fixture(&pool).await;
+    let entity = Uuid::new_v4();
+    sqlx::query("INSERT INTO legal_entities (org_id,id,needs_confirmation,created_change_mode) VALUES ($1,$2,true,'MIGRATION')")
+        .bind(org.as_uuid())
+        .bind(entity)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let (grant, due) = pending_grant(
+        &mut tx,
+        org,
+        actor,
+        target,
+        role,
+        NodeKind::LegalEntity,
+        Some(entity),
+    )
+    .await;
+    sqlx::query("UPDATE legal_entities SET closed_on=CURRENT_DATE,close_reason_code='DISSOLVED' WHERE org_id=$1 AND id=$2")
+        .bind(org.as_uuid())
+        .bind(entity)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let error = crate::pending::activate_in_tx(&mut tx, org, grant, &FixedClock(due))
+        .await
+        .unwrap_err();
+    assert_eq!(error.code, "scope_node_closed");
+    tx.rollback().await.unwrap();
+}
+
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn pending_grant_rechecks_grantor_and_does_not_replace_the_last_ops_holder(pool: PgPool) {
     use console_kernel_core::FixedClock;

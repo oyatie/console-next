@@ -1,11 +1,12 @@
 import { beforeAll, expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { fmtStamp } from "@console/i18n/format";
 import type { AccessEffectiveEntry, AccessGrant, AccessGrantPreview, Account } from "../api";
 import { grantLines } from "../../../reference/authz/present";
-import { periodText } from "../present";
+import { grantDoneText, periodText, scheduledText } from "../present";
 import { BulkPreview } from "./bulk-preview";
+import { GrantPreviewSummary } from "./grant-sheet-parts";
 import { GrantState } from "./grants-page";
 import { EnforcementChip } from "./holder";
 import { RoleDiff } from "./role-diff";
@@ -91,4 +92,33 @@ test("F8: scheduled preview shows the server deadline without promising immediat
       expect(html).not.toContain("보안 대기");
     }
   }
+});
+
+test("F8: the confirm sheet body repeats each scheduled line and its server activation time", () => {
+  const at = "2026-10-03T02:34:00Z";
+  const items: AccessGrantPreview["items"] = [
+    { index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED", activates_at: at },
+  ];
+  const html = renderToStaticMarkup(<GrantPreviewSummary items={items} named={["인사 담당 (전체)"]} />);
+  expect(html).toContain("인사 담당 (전체)");
+  expect(html).toContain(fmtStamp(at));
+  expect(html).toContain("적용");
+});
+
+test("F8: scheduled grants use truthful copy before and after save", () => {
+  const at = "2026-10-03T02:34:00Z";
+  const item: AccessGrantPreview["items"][number] = {
+    index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED", activates_at: at,
+  };
+  expect(scheduledText(item)).toContain(`보안 대기 · ${fmtStamp(at)}부터 적용`);
+  const done = grantDoneText("김부장", [grant({ enforcement: "SCHEDULED", activates_at: at })]);
+  expect(done).toContain(fmtStamp(at));
+  expect(done).toContain("적용");
+});
+
+test("F8: operating and compose copy never promises immediate application before preview", () => {
+  expect(t("access.phase.operating")).not.toContain("즉시");
+  expect(t("access.grant.consequence.now", { name: "김부장", grants: "인사 담당" })).not.toContain("지금부터");
+  expect(t("accessGrants.start.NOW")).not.toContain("즉시");
+  expect(t("accessGrants.start.NOW.hint")).not.toContain("저장하는 순간부터");
 });

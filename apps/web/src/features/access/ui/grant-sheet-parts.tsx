@@ -3,8 +3,8 @@ import { t } from "@console/i18n";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { DateField } from "../../../ui/date/date-field";
 import { startProblem, type Start } from "../domain/grants";
-import { grantsQuery } from "../api";
-import { scopeText, untilText } from "../present";
+import { grantsQuery, type PreviewItem } from "../api";
+import { enforcementText, periodText, scheduledText, scopeText } from "../present";
 import { useOrgRoots } from "./use-org-roots";
 import s from "./access.module.css";
 
@@ -19,10 +19,24 @@ export function CurrentGrants({ accountId }: { accountId: string }) {
       {held.isPending ? <span className="muted" role="status">{t("common.loading")}</span>
         : items.length ? (
           <ul className="list-plain">
-            {items.map((g) => <li key={g.id}><strong>{g.role_name_ko}</strong> · {scopeText(roots, g.scope)} · {untilText(g.valid_to)}</li>)}
+            {items.map((g) => <li key={g.id}><strong>{g.role_name_ko}</strong> · {scopeText(roots, g.scope)} · {periodText(g)}</li>)}
           </ul>
         ) : <span className="muted">{t("accessGrants.current.none")}</span>}
     </div>
+  );
+}
+
+/** Read-only consequence in the confirmation step; the form stays in state behind the edit action. */
+export function GrantPreviewSummary({ items, named }: { items: readonly PreviewItem[]; named: readonly string[] }) {
+  return (
+    <ul className="list-plain">
+      {items.map((item) => (
+        <li key={item.index} className={s.stack}>
+          <strong>{named[item.index]}</strong>
+          <span className="muted">{scheduledText(item) ?? enforcementText(item.enforcement_after ?? "")}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

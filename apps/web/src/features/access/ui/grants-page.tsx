@@ -15,9 +15,8 @@ import { SearchField } from "../../../ui/search/search-field";
 import { SelectField } from "../../../ui/select/select-field";
 import { Table } from "../../../ui/table";
 import { ENDING_DAYS, filterGrants } from "../domain/grant-filter";
-import { lastDay } from "../domain/grants";
 import { grantsQuery, type AccessGrant, type Account } from "../api";
-import { scopeText } from "../present";
+import { periodText, scopeText } from "../present";
 import { AccessHead } from "./access-head";
 import { AccessRequests } from "./access-requests";
 import { AccountPick } from "./account-pick";
@@ -96,7 +95,7 @@ export function GrantsPage({ role }: { role?: string }) {
                   { header: t("access.col.person"), cell: (g) => <Holder g={g} /> },
                   { header: t("access.col.role"), cell: (g) => g.role_name_ko },
                   { header: t("access.col.scope"), cell: (g) => scopeText(roots, g.scope) },
-                  { header: t("accessGrants.col.end"), fit: true, cell: (g) => lastDay(g.valid_to) ?? t("access.until.none") },
+                  { header: t("access.col.until"), fit: true, cell: (g) => periodText(g) },
                   { header: t("access.col.passkey"), fit: true, cell: (g) => t(g.account_has_passkey ? "accessGrants.passkey.yes" : "accessGrants.passkey.no") },
                   { header: t("access.col.state"), cell: (g) => <GrantState g={g} fresh={fresh.has(g.id)} /> },
                   {
