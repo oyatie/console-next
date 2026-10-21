@@ -62,7 +62,7 @@ test("BL-013: solo rail, equal paths, J/K, 2,000 applied people and a prepared r
   await go(admin, "/setup/go-live");
   const breakdown = admin.getByRole("table", { name: "법인 · 사업장별 인원" });
   await expect(breakdown).toContainText("1,982");
-  await expect(breakdown.getByRole("row").filter({ hasText: "사업장 · 본사" }).getByRole("cell").nth(2)).toHaveText("1");
+  await expect(breakdown.getByRole("row").filter({ hasText: "사업장 · 본사" }).getByRole("cell").nth(2)).toHaveText("2"); // 본사 and the setup 부서
   await expect(admin.getByRole("table", { name: "운영 시작부터 적용되는 역할" })).toContainText("테스트 사용자");
   await expect(admin.getByRole("main")).toContainText("준비된 권한 1건");
 });

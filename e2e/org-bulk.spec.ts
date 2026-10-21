@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
 import { go } from "./flows";
-import { tenantInSetup } from "./setup-flows";
+import { SETUP_DEPARTMENT, tenantInSetup } from "./setup-flows";
 
 // S7 목록 붙여넣기 and S9 변경 내역 from an empty tenant, through the UI only: a list under a 법인 makes a new 사업장
 // (its statutory questions answered, nothing preselected) and 부서 at any depth; a clash is renamed in place; one
@@ -95,6 +95,9 @@ test("paste a list under a 법인, undo it whole, and undo the rest from the his
   await expect(kind("되돌림")).toHaveCount(3);
   await table.getByRole("button", { name: "법인·사업장 1건 되돌리기", disabled: false }).click();
   await expect(kind("되돌림")).toHaveCount(4);
+  // The setup helper's own 부서 is a change of this tenant too: undone, nothing undoable is left.
+  await table.getByRole("button", { name: `${SETUP_DEPARTMENT} 되돌리기` }).click();
+  await expect(kind("되돌림")).toHaveCount(5);
   await page.getByRole("checkbox", { name: "되돌릴 수 있는 것만" }).check();
   await expect(page.getByRole("status").filter({ hasText: "조건에 맞는 변경이 없습니다." })).toBeVisible();
 });

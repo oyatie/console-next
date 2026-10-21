@@ -124,6 +124,9 @@ pub fn preview(f: &SetupFacts, records: &Records) -> Preview {
             "attach_registration",
         ));
     }
+    if f.org_units == 0 {
+        blockers.push(item("no_department", 0, "add_department"));
+    }
     if !f.org_change_route_resolvable() {
         blockers.push(item("no_org_change_approver", 0, "invite_executive"));
     }
@@ -259,6 +262,7 @@ pub fn backstop(
         (f.phase_is_setup, "phase"),
         (f.entities_ready(), "entities_ready"),
         (f.primary_workplaces_ready(), "primary_workplaces_ready"),
+        (f.org_units > 0, "org_units"),
         (
             f.org_change_route_resolvable(),
             "org_change_route_resolvable",

@@ -17,7 +17,8 @@ export async function addDepartments(page: Page, parent: string, names: readonly
   for (const name of names) {
     await input.fill(name);
     await input.press("Enter");
-    await expect(box(page, name)).toBeVisible();
+    // The new box lands with the save's re-read: a state wait, however long the save takes under host load.
+    await box(page, name).waitFor();
     await expect(input).toBeEnabled();
   }
   await input.press("Escape");

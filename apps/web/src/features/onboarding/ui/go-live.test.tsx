@@ -1,7 +1,8 @@
 import { createMemoryHistory, createRootRoute, createRouter, RouterContextProvider } from "@tanstack/react-router";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { i18n, loadCatalog } from "@console/i18n";
+import type { GoLiveItem } from "@console/api/pending";
 import { ApiError } from "../api";
 import { GoLive } from "./go-live";
 
@@ -9,7 +10,7 @@ const state = vi.hoisted(() => ({
   readError: null as unknown, commandError: null as unknown, updated: 100, submitted: 200,
   fetching: false, fetched: true, mutate: vi.fn(),
   data: {
-    phase: "SETUP", digest: "preview", line_digests: {}, blockers: [],
+    phase: "SETUP", digest: "preview", line_digests: {}, blockers: [] as GoLiveItem[],
     warnings: [{ code: "sole_holder", count: 0, remedy: null, records: [] }], becomes_governed: [],
     breakdown: [{ kind: "workplace", id: "site", legal_entity_id: "entity", name: "Head Office", people: 1982, units: 31 }], roles_becoming_active: [], access_admin_holders: [], hr_accounts_with_no_grant: [],
     facts: { entities: 1, workplaces: 1, org_units: 2, employees: 2000, employees_starting_later: 0,
@@ -27,10 +28,36 @@ vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({
 vi.mock("../../../lib/react/command", async (original) => ({ ...(await original<typeof import("../../../lib/react/command")>()), useCommand: () => ({
   error: state.commandError, isPending: false, submittedAt: state.submitted, mutate: state.mutate,
 }) }));
-beforeAll(() => loadCatalog("ko"));
-afterEach(() => { state.readError = null; state.commandError = null; state.updated = 100; state.fetching = false; state.fetched = true; state.mutate.mockClear(); });
+beforeAll(() => Promise.all([loadCatalog("ko"), loadCatalog("en")]));
+afterEach(() => { i18n.set("ko"); state.readError = null; state.commandError = null; state.updated = 100; state.fetching = false; state.fetched = true; state.data.blockers = []; state.data.facts.org_units = 2; state.mutate.mockClear(); });
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/setup/go-live"] }) });
 const render = () => renderToStaticMarkup(<RouterContextProvider router={router}><GoLive /></RouterContextProvider>);
+
+test("a missing department blocks launch and links to adding one until the preview is ready", () => {
+  state.data.facts.org_units = 0;
+  state.data.blockers = [{ code: "no_department", count: 0, remedy: "add_department", records: [] }];
+  const blocked = render();
+  expect(blocked).toContain("등록된 부서가 없습니다");
+  expect(blocked).toContain('href="/org"');
+  expect(blocked).toContain("부서 추가");
+  expect(blocked).toContain('aria-disabled="true"');
+  expect(blocked).not.toContain('<button type="button" class="btn btn--primary">운영 시작</button>');
+  state.data.facts.org_units = 1;
+  state.data.blockers = [];
+  expect(render()).toContain('<button type="button" class="btn btn--primary">운영 시작</button>');
+  expect(state.mutate).not.toHaveBeenCalled();
+});
+
+test("a missing department renders its blocker and remedy in English", () => {
+  i18n.set("en");
+  state.data.facts.org_units = 0;
+  state.data.blockers = [{ code: "no_department", count: 0, remedy: "add_department", records: [] }];
+  const blocked = render();
+  expect(blocked).toContain("No department registered");
+  expect(blocked).toContain("Add a department");
+  expect(blocked).toContain('href="/org"');
+  expect(blocked).toContain('aria-disabled="true"');
+});
 
 test("arrival waits for the fresh preview before showing cached records or launch controls", () => {
   state.fetched = false; state.fetching = true;

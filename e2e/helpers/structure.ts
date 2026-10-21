@@ -26,6 +26,19 @@ export async function openUnit(page: Page, name: string, c: C = plain) {
   return panel(page, name);
 }
 
+/** Deletes a never-used 부서 from its panel's 삭제 · 폐지 sheet (in setup or after go-live, CRUD: decided by use). */
+export async function deleteUnusedDept(page: Page, name: string, c: C = plain) {
+  const p = await openUnit(page, name, c);
+  const selected = new URL(page.url()).searchParams.get("sel");
+  await c.click(p.locator("#act-dept-delete"));
+  const s = sheet(page, `${name} 삭제 · 폐지`);
+  await c.click(s.getByRole("button", { name: `${name} 삭제` }));
+  await expect(s).toBeHidden();
+  await expect(box(page, name)).toHaveCount(0);
+  // The chart then selects the parent: a navigation that would undo one a caller makes before it lands.
+  await page.waitForURL((u) => u.searchParams.get("sel") !== selected && !u.searchParams.has("act"));
+}
+
 /** 사업장 추가 for the 법인 `entity`, from its record (the chart's own 「+ 새 사업장」 slot is the chart's). */
 export async function addWorkplaceFromEntity(page: Page, entity: RegExp, c: C = plain) {
   await go(page, "/org/entities");

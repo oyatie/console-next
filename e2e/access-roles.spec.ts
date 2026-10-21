@@ -82,7 +82,8 @@ test("pilot roles: no presets, a role made in setup, granted for go-live, enforc
   // AX-5 (governance-22): a 부서 subtree is a scope now, so no 「not yet」 note.
   await expect(scope.getByText(/부서만 따로 맡기는 범위는 아직 적용할 수 없어/)).toHaveCount(0);
   await scope.getByRole("treegrid", { name: "법인·사업장·부서" }).getByRole("row", { name: /주식회사 권한상사/ }).click();
-  await expect(scope.getByText("포함됨")).toBeVisible();
+  // Every unit below the 법인 (its 사업장 and the setup 부서) is marked as included.
+  await expect(scope.getByText("포함됨")).toHaveCount(2);
   await scope.getByRole("button", { name: "이 범위로 설정" }).click();
   await sheet.getByRole("button", { name: /^1년/ }).click();
   await chooseRadio(sheet, /^운영 시작과 함께/);

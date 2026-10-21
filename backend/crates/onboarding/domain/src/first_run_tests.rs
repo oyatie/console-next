@@ -45,6 +45,7 @@ fn unplaced_people_are_a_warning_and_change_the_digest() {
         terms_accepted: true,
         entities: 1,
         workplaces: 1,
+        org_units: 1,
         access_admin_holders: 1,
         employees: 2000,
         ..SetupFacts::default()
