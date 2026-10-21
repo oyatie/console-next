@@ -37,6 +37,7 @@ beforeAll(async () => {
         import { createElement, Fragment } from 'react';
         import { createRoot } from 'react-dom/client';
         import { flushSync } from 'react-dom';
+        import { createMemoryHistory, createRootRoute, createRouter, RouterContextProvider } from '@tanstack/react-router';
         import { loadCatalog, i18n } from '@console/i18n';
         ${component}
         import { Announcer } from '/apps/web/src/ui/announcer.tsx';
@@ -44,11 +45,13 @@ beforeAll(async () => {
         import '/apps/web/src/app.css';
         await Promise.all([loadCatalog('ko'), loadCatalog('en')]);
         const root = createRoot(document.getElementById('root'));
+        // The shell's Announcer reads the route pathname, so it mounts inside a memory router here.
+        const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ['/'] }) });
         window.renderUrl = (props, locale = 'ko') => {
           i18n.set(locale);
           flushSync(() => root.render(createElement(Fragment, null,
             createElement(Component, props, props.href),
-            createElement(Announcer, { bind: bindAnnouncer }),
+            createElement(RouterContextProvider, { router }, createElement(Announcer, { bind: bindAnnouncer })),
           )));
         };
       ` : undefined,
