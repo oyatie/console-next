@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { fmtDateTimeShort } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
 import { todayKst } from "../../../lib/pure/today";
 import { Card } from "../../../ui/card/card";
@@ -94,7 +94,7 @@ function DayLine({ day }: { day: Day }) {
 function MonthStateChip({ state, month }: { state: PageState; month: string }) {
   const { link, unlock } = monthStateText(state, month);
   const label = state.state === "CLOSED" ? t("attendanceRecords.card.closed", { month: monthText(month) })
-    : state.relockAt ? t("attendanceRecords.card.reopened", { at: fmtDateTimeShort(state.relockAt) }) : t("attendanceRecords.card.reopenedOpenEnded");
+    : state.relockAt ? t("attendanceRecords.card.reopened", { at: fmtDateTime(state.relockAt) }) : t("attendanceRecords.card.reopenedOpenEnded");
   return (
     <>
       <Chip tone={state.state === "CLOSED" ? "info" : "warn"}>{label}</Chip>

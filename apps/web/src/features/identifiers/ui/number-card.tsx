@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { fmtDate, fmtDateTimeShort } from "@console/i18n/format";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { todayKst } from "../../../lib/pure/today";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
@@ -55,7 +55,7 @@ export function NumberCard({ employee }: { employee: Employee }) {
             { header: t("identifiers.history.col.effective"), cell: (c) => <span className="num">{fmtDate(c.effective_date)}</span>, fit: true },
             { header: t("identifiers.history.col.change"), cell: (c) => <span className="code">{t("identifiers.history.change", { from: c.from_number ?? t("identifiers.number.none"), to: c.to_number })}</span> },
             { header: t("identifiers.history.col.reason"), cell: (c) => reasonLabel(DOMAIN, c.reason_code) },
-            { header: t("identifiers.history.col.state"), cell: (c) => (c.undone_at ? t("identifiers.history.undone", { at: fmtDateTimeShort(c.undone_at) }) : c.batch_id ? t("identifiers.history.batch") : t("identifiers.history.one")), wide: true },
+            { header: t("identifiers.history.col.state"), cell: (c) => (c.undone_at ? t("identifiers.history.undone", { at: fmtDateTime(c.undone_at) }) : c.batch_id ? t("identifiers.history.batch") : t("identifiers.history.one")), wide: true },
           ]}
         />
       )}

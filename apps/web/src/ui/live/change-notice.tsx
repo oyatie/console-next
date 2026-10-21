@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { t } from "@console/i18n";
-import { fmtDateTimeShort } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import { onRecordChange, type RecordChange } from "../../lib/live/live";
 import s from "./live.module.css";
 
@@ -16,7 +16,7 @@ export function ChangeNotice() {
   if (!change) return null;
   return (
     <div className={`notice ${s.notice}`} role="status">
-      <span>{t("live.notice.changed_elsewhere", { time: fmtDateTimeShort(change.at) })}</span>
+      <span>{t("live.notice.changed_elsewhere", { time: fmtDateTime(change.at) })}</span>
       <button className="btn btn--ghost" onClick={() => setChange(null)}>{t("live.notice.dismiss")}</button>
     </div>
   );

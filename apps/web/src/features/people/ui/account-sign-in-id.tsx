@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isMessageId, t } from "@console/i18n";
-import { fmtDate, fmtDateTimeShort } from "@console/i18n/format";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { todayKst } from "../../../lib/pure/today";
 import { announce } from "../../../lib/react/announce";
 import { useCommand } from "../../../lib/react/command";
@@ -129,7 +129,7 @@ function History({ id }: { id: string }) {
             { header: t("accounts.signInId.col.by"), cell: (r) => r.assigned_by_name ?? t("accounts.signInId.by.system") },
             {
               header: t("accounts.signInId.col.state"),
-              cell: (r) => (r.state === "ALIAS" && r.alias_until ? t("accounts.signInId.state.ALIAS", { until: fmtDateTimeShort(r.alias_until) }) : t(`accounts.signInId.state.${r.state}`)),
+              cell: (r) => (r.state === "ALIAS" && r.alias_until ? t("accounts.signInId.state.ALIAS", { until: fmtDateTime(r.alias_until) }) : t(`accounts.signInId.state.${r.state}`)),
               wide: true,
             },
           ]}

@@ -1,0 +1,27 @@
+{
+  "baseline": {
+    "apps/web/src/features/access/ui/access-routes.tsx#GrantsScreen": 120,
+    "apps/web/src/features/access/ui/access-routes.tsx#PersonScreen": 110,
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#AttendancePage": 138,
+    "apps/web/src/features/entity/ui/entity-routes.tsx#EntitiesScreen": 128,
+    "apps/web/src/features/entity/ui/entity-routes.tsx#EntityScreen": 277,
+    "apps/web/src/features/entity/ui/entity-routes.tsx#NewEntityScreen": 107,
+    "apps/web/src/features/identifiers/ui/identifiers-page.tsx#IdentifiersPage": 62,
+    "apps/web/src/features/identifiers/ui/numbering-page.tsx#NumberingPage": 72,
+    "apps/web/src/features/org-bulk/ui/bulk-edit-page.tsx#BulkEditPage": 51,
+    "apps/web/src/features/org-bulk/ui/import-page.tsx#ImportPage": 102,
+    "apps/web/src/features/org-bulk/ui/paste-page.tsx#PastePage": 98,
+    "apps/web/src/features/org/OrgChange.tsx#OrgChange": 145,
+    "apps/web/src/features/org/ui/bulk-move-page.tsx#BulkMovePage": 55,
+    "apps/web/src/features/people/ui/bulk-page.tsx#BulkPage": 82,
+    "apps/web/src/features/people/ui/card-page.tsx#EmployeeCard": 447,
+    "apps/web/src/features/people/ui/exit-page.tsx#ExitCasePage": 96,
+    "apps/web/src/features/people/ui/notice-new-page.tsx#NoticeNewPage": 25,
+    "apps/web/src/features/people/ui/people-route.tsx#PeopleRoute": 221,
+    "apps/web/src/features/people/ui/register-route.tsx#RegisterRoute": 84,
+    "apps/web/src/features/periods/ui/period-lock-page.tsx#PeriodLockPage": 90,
+    "apps/web/src/features/statutory/ui/statutory-page.tsx#StatutoryPage": 46,
+    "apps/web/src/routes/home-screen.tsx#HomeScreen": 235,
+    "apps/web/src/routes/org-screen.tsx#OrgScreen": 303
+  }
+}

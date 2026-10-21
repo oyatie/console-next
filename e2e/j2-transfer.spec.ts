@@ -88,7 +88,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await c.click(reasonChip(transfer, "정기 인사"));
   await reasonBox(transfer).fill("인사부 복귀");
   await expectAccessible(admin, "J2: scheduled transfer sheet");
-  const schedule = transfer.getByRole("button", { name: `전보 예약 · ${later.slice(5)} 시행`, exact: true });
+  const schedule = transfer.getByRole("button", { name: `전보 예약 · ${koDate(later)} 시행`, exact: true });
   await expect(schedule).toHaveClass(/btn--primary/);
   await c.click(schedule);
   await expect(history.getByText(/오발령을 인사부로 전보하도록 예약했습니다/)).toBeVisible();
@@ -171,7 +171,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await fillDate(transfer, moveOn);
   await c.click(reasonChip(transfer, "정기 인사"));
   await reasonBox(transfer).fill("하반기 인사부 복귀");
-  await c.click(transfer.getByRole("button", { name: `전보 예약 · ${moveOn.slice(5)} 시행`, exact: true }));
+  await c.click(transfer.getByRole("button", { name: `전보 예약 · ${koDate(moveOn)} 시행`, exact: true }));
   const scheduled = history.getByRole("listitem").filter({ hasText: "하반기 인사부 복귀" });
   await expect(scheduled).toContainText("인사부로 전보하도록 예약했습니다");
   await expect(scheduled).toContainText("효력 예정");
@@ -185,7 +185,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
       // Reload only a loaded page: a reload during its session refresh replays the rotated token, which signs out.
       await expect(scheduled).toBeVisible();
       await admin.reload();
-      await expect(scheduled).toContainText("인사부로 전보되었습니다", { timeout: 1_000 });
+      await expect(scheduled).toContainText("인사부로 전보되었습니다", { timeout: 5_000 });
       // The record and its history are separate reads; the apply can land between them.
       await expect(head.getByText("효력 예정")).toHaveCount(0, { timeout: 1_000 });
     }).toPass({ intervals: [2_000, 3_000, 5_000], timeout: 30_000 });

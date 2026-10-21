@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Building2, CalendarDays, Info, Lock } from "lucide-react";
 import type { LegalEntity } from "@console/api/pending";
 import { t } from "@console/i18n";
-import { fmtDate, fmtDateTimeShort } from "@console/i18n/format";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { onRecordChange } from "../../../lib/live/live";
 import { useCommand } from "../../../lib/react/command";
 import { Banner } from "../../../ui/banner/banner";
@@ -57,8 +57,6 @@ export type Act = {
   close: () => void;
   remove: () => void;
 };
-
-const mmdd = (d: string) => d.slice(5);
 
 /**
  * edit on a recorded fact (spec S3-revise, D7, D10): change (REV) or correction (COR) is chosen first, with nothing preselected; a change
@@ -195,8 +193,8 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
             label={t("entityRecord.revise.when")}
             required
             options={[
-              { value: "today", label: t("entityRecord.revise.today", { d: mmdd(today) }) },
-              { value: "nextMonth", label: t("entityRecord.revise.nextMonth", { d: mmdd(nextMonthFirst(today)) }) },
+              { value: "today", label: t("entityRecord.revise.today", { d: fmtDate(today) }) },
+              { value: "nextMonth", label: t("entityRecord.revise.nextMonth", { d: fmtDate(nextMonthFirst(today)) }) },
               { value: "typed", label: t("entityRecord.revise.typed") },
             ]}
             value={when}
@@ -217,14 +215,14 @@ export function ReviseSheet<V>({ e: opened, spec, phase, onClose }: { e: LegalEn
           <h3 id="periods" className={s.subhead}>{t("entityRecord.revise.periods")}</h3>
           <ul className={s.periods}>
             {keepsOldPeriod(chosen, since) && <li><span className="num">{t("entityRecord.revise.range", { from: fmtDate(since), to: fmtDate(dayBefore(chosen)) })}</span><span className={s.old}>{spec.current}</span><Chip tone="neutral">{t("entityRecord.revise.nowTag")}</Chip></li>}
-            <li><b className="num">{t("entityRecord.revise.openRange", { from: fmtDate(chosen) })}</b><b>{newText}</b>{chosen > today ? <Chip tone="info"><CalendarDays size={12} aria-hidden /> {t("entityRecord.revise.scheduled", { d: mmdd(chosen) })}</Chip> : <Chip tone="ok">{t("entityRecord.revise.fromToday")}</Chip>}</li>
+            <li><b className="num">{t("entityRecord.revise.openRange", { from: fmtDate(chosen) })}</b><b>{newText}</b>{chosen > today ? <Chip tone="info"><CalendarDays size={12} aria-hidden /> {t("entityRecord.revise.scheduled", { d: fmtDate(chosen) })}</Chip> : <Chip tone="ok">{t("entityRecord.revise.fromToday")}</Chip>}</li>
           </ul>
         </section>
       )}
       {stale && <Conflict entityId={e.id} owner={owner} read={read} subject={entityName(e)} mine={newText} fresh={fresh} onReapply={reapply} onDrop={onClose} />}
       {/* worst-case-33 (#27): another tab or person saved this record while the sheet is open; say so before a save meets the
           conflict. Last in the body, so its arrival moves nothing on screen. */}
-      {moved && !save.isPending && !save.error && !stale && !rebased && <Banner tone="warn" live="polite">{t("entityRecord.conflict.movedUnder", { time: fmtDateTimeShort(moved) })}</Banner>}
+      {moved && !save.isPending && !save.error && !stale && !rebased && <Banner tone="warn" live="polite">{t("entityRecord.conflict.movedUnder", { time: fmtDateTime(moved) })}</Banner>}
     </Sheet>
   );
 }

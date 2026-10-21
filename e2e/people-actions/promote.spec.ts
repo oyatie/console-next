@@ -1,4 +1,5 @@
 import { addTitle } from "../helpers/titles";
+import { todayPreset } from "../sheet";
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { go, registerEmployee } from "../flows";
@@ -40,7 +41,7 @@ test("bulk promotion: a suggestion per person, never applied until accepted; the
   await expect(admin.getByRole("combobox", { name: "이주임의 새 직위" })).toContainText("대리 제안");
   // One picked by hand, the rest still open: the commit names the gap and records nothing.
   await admin.getByRole("combobox", { name: "박사원의 새 직위" }).selectOption({ label: "대리" });
-  await admin.getByRole("button", { name: /^오늘 \d{2}-\d{2}/ }).click();
+  await todayPreset(admin).click();
   await admin.getByRole("radiogroup", { name: /^사유/ }).getByRole("radio").first().locator("xpath=ancestor::label[1]").click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("정기 승진");
   await admin.getByRole("button", { name: /^3명 승진 · 오늘 반영/ }).click();

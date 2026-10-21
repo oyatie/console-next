@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "@console/i18n";
-import { fmtDateTimeShort } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { Checks } from "../../../ui/choice/checks";
@@ -122,7 +122,7 @@ export function SaveDock({ drafts, rows, month, onClose, onSaved, onFocusCell }:
               current: c.current ? t("attendanceRecords.conflict.current", { value: entryText(c.current.kind, c.current.segments), evidence: t(`attendanceRecords.evidence.${c.current.evidence_kind}`) }) : t("attendanceRecords.conflict.baseEmpty"),
               mine: c.mine,
               actor: c.current?.created_by_name,
-              at: c.current ? fmtDateTimeShort(c.current.created_at) : "",
+              at: c.current ? fmtDateTime(c.current.created_at) : "",
             };
           })}
           choices={choices}

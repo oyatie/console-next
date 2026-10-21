@@ -91,7 +91,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   await pressRegister(admin);
   await expect(sheet.getByRole("alert")).toContainText("수정해야 등록됩니다");
   await expect(sheet.getByRole("alert")).toContainText("1개를 수정해야 등록됩니다 · 입사일");
-  await expect(sheet.getByRole("group", { name: "입사일 빠른 선택" }).getByRole("button").first()).toBeFocused();
+  await expect(sheet.getByRole("textbox", { name: /^입사일/ })).toBeFocused();
   await fillRegister(admin, { name: "김직원", unit: "영업팀", hired: kstDate() }, c);
   await expectAccessible(admin, "register employee (placement)");
   await pressRegister(admin, false, c);
@@ -137,13 +137,15 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   await findPressable(admin, "본사");
   await c.click(box(admin, "본사"));
   await admin.keyboard.press("a");
+  const selectedParent = new URL(admin.url()).searchParams.get("sel");
   const proposal = admin.getByRole("dialog", { name: "부서 신설" });
   await proposal.getByLabel("부서 이름").fill("마케팅팀");
   await c.click(proposal.getByRole("button", { name: /^오늘/ }));
   await proposal.getByLabel("사유").fill("마케팅 기능 신설");
   await c.click(proposal.getByRole("button", { name: "반영 · 항목 1개" }));
   // org-19: the user stays on the chart; the receipt names the change and links its record.
-  await expect(admin).toHaveURL(/\/org(\?|$)/);
+  await expect.poll(() => new URL(admin.url()).searchParams.get("sel")).toBe(selectedParent);
+  await expect(admin.getByRole("complementary", { name: "본사", exact: true })).toBeVisible();
   await expect(admin.getByRole("status").filter({ hasText: "마케팅팀 신설을 반영했습니다" }).first()).toBeVisible();
   c.done("org change after go-live: record and apply");
   // The chart opens at 사업장 depth; the find brings the new 부서 into view inside 본사.

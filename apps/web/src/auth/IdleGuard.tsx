@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, refresh, session } from "@console/api";
-import { i18n, t } from "@console/i18n";
+import { t } from "@console/i18n";
+import { fmtDateTime } from "@console/i18n/format";
 import { chunk } from "../lib/chunk-guard";
 import { get } from "../lib/query";
 import { Banner } from "../ui/banner/banner";
@@ -97,7 +98,7 @@ function IdleWarning() {
   return (
     <div className={s.warning}>
       <Banner tone="warn" live="assertive" actions={<Button onClick={stay}>{t("idle.warn.stay")}</Button>}>
-        {t("idle.warn.body", { time: new Date(at).toLocaleTimeString(i18n.locale === "ko" ? "ko-KR" : "en-US", { hour: "numeric", minute: "2-digit" }) })}
+        {t("idle.warn.body", { time: fmtDateTime(new Date(at).toISOString()) })}
       </Banner>
     </div>
   );

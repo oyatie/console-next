@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Building2, CalendarDays, ChevronLeft, ChevronRight, ChevronRight as Sep, FileText, MapPin, MoreHorizontal, MoveRight, Pencil, Printer, UserPlus, Users } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { EMPLOYEE_STATUS, EMPLOYMENT_TYPE, LIFECYCLE_EVENT, label, labeled } from "../../../lib/labels";
 import { focusSoon } from "../../../lib/react/announce";
 import { todayKst } from "../../../lib/pure/today";
@@ -73,7 +73,7 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
   const p = c.planned;
   // What the reservation does, in the words of the field it changes (duty title: foreman), else the act's name.
   const next = p
-    ? { date: p.effective_date, what: plannedWhat(p, c.title), by: p.created_by_name && t("empCard.next.by", { who: p.created_by_name, date: fmtDate(p.created_at.slice(0, 10)) }) }
+    ? { date: p.effective_date, what: plannedWhat(p, c.title), by: p.created_by_name && t("empCard.next.by", { who: p.created_by_name, date: fmtDateTime(p.created_at) }) }
     : e.next_event && { date: e.next_event.effective_date, what: label(LIFECYCLE_EVENT, e.next_event.event_type), by: null };
   return (
     <Band as="header" className={s.head}>

@@ -1,30 +1,16 @@
-import { useId, type ReactNode, type Ref } from "react";
-import { i18n, t } from "@console/i18n";
+import { Fragment, type ReactNode, type Ref } from "react";
+import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { Field } from "../field/field";
-import { daysBetween, inBounds, isDate, nextWeekday, utc } from "./days";
+import { inBounds, isDate, nextWeekday } from "./days";
+import { DateInput } from "./date-input";
 import s from "./date.module.css";
 
+export { DateInput } from "./date-input";
 export type DatePreset = { label: string; date: string };
 
-const dayFormat = (options: Intl.DateTimeFormatOptions) => (d: string) =>
-  new Intl.DateTimeFormat(i18n.locale === "ko" ? "ko-KR" : "en-US", { timeZone: "UTC", ...options }).format(utc(d));
-/** Month, day and weekday, e.g. "Sun, Nov 1" in English. */
-const fmtDay = dayFormat({ month: "long", day: "numeric", weekday: "short" });
-const fmtWeekday = dayFormat({ weekday: "long" });
-
-/**
- * A business date (components.html §5). Empty until the user picks: there is no default, because the
- * date changes the outcome. `min`/`max` are the server's bounds and `basis` says why (a closed period,
- * the hire date); a date outside them shows `outOfRange` under the field with `remedy` (e.g. a backdating
- * request). Presets show the date they resolve to; put the immediate value last, never first. The
- * echo repeats the pick as weekday and D-n against `today` (the business date, from lib/pure/today).
- * `suggestWeekday` adds a weekend notice with a one-click change; it never changes the value itself.
- * `minFrom` is the server's earliest date for this act and why (a loosening applies 24 h after approval):
- * it tightens `min`, its reason joins the bounds line and is the error for an earlier pick, and presets
- * outside the bounds stay visible but inert, described by that line.
- */
-export function DateField({ label, required, value, onChange, today, min: floor, minFrom, max, basis, presets, suggestWeekday = false, error, remedy, inputRef }: {
+/** A business date (components.html §5): keyboard entry and an accessible calendar, with one shared set of bounds and presets. */
+export function DateField({ label, required, value, onChange, today, min: floor, minFrom, max, disabledDates, basis, note, echo, presets, suggestWeekday = false, error, remedy, inputRef, showErrors = true }: {
   label: string;
   required: boolean;
   /** `YYYY-MM-DD`, or "" while empty. */
@@ -34,48 +20,41 @@ export function DateField({ label, required, value, onChange, today, min: floor,
   min?: string;
   minFrom?: { date: string; reason: ReactNode };
   max?: string;
+  disabledDates?: readonly string[];
   basis?: ReactNode;
+  note?: ReactNode;
+  echo?: ReactNode;
   presets?: readonly DatePreset[];
   suggestWeekday?: boolean;
   error?: ReactNode;
   remedy?: ReactNode;
   inputRef?: Ref<HTMLInputElement>;
+  showErrors?: boolean;
 }) {
-  const boundsId = useId();
   const min = minFrom && (!floor || minFrom.date > floor) ? minFrom.date : floor;
   const why = minFrom && min === minFrom.date ? minFrom.reason : undefined;
   const filled = isDate(value);
+  const disabled = new Set((disabledDates ?? []).filter(isDate));
   const out = filled && !inBounds(value, min, max);
+  const unavailable = filled && (out || disabled.has(value));
   const next = filled && suggestWeekday ? nextWeekday(value) : null;
-  const shown = error ?? (out ? (why != null && min !== undefined && value < min ? why : t("uiDate.outOfRange")) : undefined);
-  const days = filled ? daysBetween(today, value) : 0;
-  const relative = days === 0 ? t("uiDate.today") : days > 0 ? t("uiDate.ahead", { days }) : t("uiDate.ago", { days: -days });
-  const range =
-    min && max ? t("uiDate.bounds", { min: fmtDate(min), max: fmtDate(max) })
-    : min ? t("uiDate.bounds.from", { min: fmtDate(min) })
-    : max ? t("uiDate.bounds.until", { max: fmtDate(max) })
-    : null;
-  const notes = [basis, why].filter((n) => n != null);
-  const hint = filled || range || notes.length > 0 ? (
-    <span className={s.lines}>
-      {filled && <span className={s.echo}>{fmtDay(value)}<span className={s.rel}>{relative}</span></span>}
-      {(range || notes.length > 0) && (
-        <span id={boundsId} className={s.bounds}>
-          {range}
-          {notes.map((n, i) => (range || i > 0 ? <span key={i} className={s.sep}>{n}</span> : <span key={i}>{n}</span>))}
-        </span>
-      )}
-    </span>
-  ) : undefined;
+  const shown = error ?? (unavailable ? (out && why != null && min !== undefined && value < min ? why : out ? t("uiDate.outOfRange") : t("uiDate.disabled")) : undefined);
+  const details = [
+    filled ? echo : null,
+    basis,
+    why,
+    !why && presets?.some((pr) => !inBounds(pr.date, min, max)) ? t("uiDate.outOfRange") : null,
+    disabled.size > 0 ? t("uiDate.disabled") : null,
+  ].filter((detail) => detail != null);
   return (
     <div className={s.date}>
-      <Field label={label} required={required} hint={hint} error={shown == null ? undefined : <>{shown}{remedy != null && <span className={s.remedy}>{remedy}</span>}</>}>
+      <Field label={label} required={required} tag={note} hint={details.length > 0 ? details.map((detail, i) => <Fragment key={i}>{i > 0 && " · "}{detail}</Fragment>) : undefined} error={shown == null ? undefined : <>{shown}{remedy != null && <span className={s.remedy}>{remedy}</span>}</>}>
         {(p) => (
           <div className={s.row}>
             {presets && presets.length > 0 && (
               <div role="group" aria-label={t("uiDate.presets", { label })} className={s.presets}>
                 {presets.map((pr) => {
-                  const off = !inBounds(pr.date, min, max);
+                  const off = !inBounds(pr.date, min, max) || disabled.has(pr.date);
                   return (
                     <button
                       key={pr.date}
@@ -83,24 +62,38 @@ export function DateField({ label, required, value, onChange, today, min: floor,
                       className={s.preset}
                       aria-pressed={value === pr.date}
                       aria-disabled={off || undefined}
-                      aria-describedby={off ? boundsId : undefined}
+                      aria-describedby={off ? p["aria-describedby"] : undefined}
                       onClick={() => !off && onChange(pr.date)}
                     >
                       {pr.label}
-                      <span className={s.resolved}>{fmtDay(pr.date)}</span>
+                      <span className={s.resolved}>{fmtDate(pr.date, { weekday: "short" })}</span>
                     </button>
                   );
                 })}
               </div>
             )}
-            <input {...p} ref={inputRef} type="date" className={`field__input ${s.input}`} value={value} min={min} max={max} onChange={(e) => onChange(e.target.value)} />
+            <DateInput
+              id={p.id}
+              value={value}
+              onChange={onChange}
+              required={p.required}
+              today={today}
+              min={min}
+              minReason={why}
+              max={max}
+              disabledDates={disabledDates}
+              aria-describedby={p["aria-describedby"]}
+              aria-invalid={p["aria-invalid"]}
+              inputRef={inputRef}
+              showErrors={showErrors && (shown == null || !filled)}
+            />
           </div>
         )}
       </Field>
       {next && (
         <p className={s.suggest}>
-          {t("uiDate.weekend", { day: fmtWeekday(value), next: fmtDay(next) })}
-          <button type="button" className="link" onClick={() => onChange(next)}>{t("uiDate.weekend.use", { next: fmtDay(next) })}</button>
+          {t("uiDate.weekend", { day: fmtDate(value, { weekday: "long" }), next: fmtDate(next, { weekday: "short" }) })}
+          <button type="button" className="link" onClick={() => onChange(next)}>{t("uiDate.weekend.use", { next: fmtDate(next, { weekday: "short" }) })}</button>
         </p>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { EMPLOYMENT_TYPE, LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
@@ -36,7 +36,7 @@ export function CardSpine({ c, onAct, onLedger, onHistory }: { c: Card; onAct: (
   const sorted = [...all].sort((a, b) => b.effective_date.localeCompare(a.effective_date));
   const items: SpineItem[] = view === "fixes" ? [] : sorted.map((x) => {
     const { title, detail } = describeEvent(x, e.name, byId);
-    const by = x.created_by_name && t("empCard.next.by", { who: x.created_by_name, date: fmtDate(x.created_at.slice(0, 10)) });
+    const by = x.created_by_name && t("empCard.next.by", { who: x.created_by_name, date: fmtDateTime(x.created_at) });
     return {
       key: x.id,
       tone: tone(x),

@@ -1,5 +1,5 @@
 import { expect, type Page } from "@playwright/test";
-import { go, kstDate } from "../flows";
+import { go, koDate, kstDate } from "../flows";
 import { fillRegister, openRegistered, pressRegister, receiptOf } from "../helpers/register";
 import { signOff } from "../sheet";
 import { frame, shot } from "./shot";
@@ -37,7 +37,6 @@ export async function captureE5(page: Page) {
     const box = sheet(page).getByRole("combobox", { name: "어디로" });
     await box.fill("생산3팀");
     await page.getByRole("option", { name: /생산3팀/ }).click();
-    await sheet(page).getByRole("button", { name: "직접", exact: true }).click();
     await sheet(page).getByRole("textbox", { name: /^언제부터/ }).fill(kstDate(13));
     const reason = sheet(page).getByRole("radiogroup", { name: /사유 분류/ });
     if (await reason.isVisible()) await reason.getByRole("radio").first().locator("xpath=ancestor::label[1]").click();
@@ -114,7 +113,7 @@ export async function captureE5(page: Page) {
     const reason = sheet(page).getByRole("radiogroup", { name: /사유 분류/ });
     if (await reason.isVisible()) await reason.getByRole("radio").first().locator("xpath=ancestor::label[1]").click();
     await sheet(page).getByRole("textbox", { name: /사유 메모|^사유/ }).fill("라인 재배치");
-    await sheet(page).getByRole("button", { name: /예약 · \d{2}-\d{2} 시행/ }).click();
+    await sheet(page).getByRole("button", { name: `전보 예약 · ${koDate(kstDate(50))} 시행`, exact: true }).click();
     await expect(page.getByRole("dialog")).toBeHidden({ timeout: 15_000 });
     await act(page, contract, "exit.report");
     await sheet(page).getByRole("button", { name: /^계약 종료일/ }).click();

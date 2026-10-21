@@ -29,7 +29,7 @@ export function SecJob({ c, onFix, onAct, onTab, onContract }: { c: Card; onFix:
   const items = c.events.data?.items ?? [];
   const { title, planned: p } = c;
   // The field a reservation changes carries it: "foreman from 11-01" (MM-DD: the year is the head's).
-  const plan = (to: string | undefined) => to && p && <> <Tag kind="plan">{t("empCard.planned.to", { date: p.effective_date.slice(5), to })}</Tag></>;
+  const plan = (to: string | undefined) => to && p && <> <Tag kind="plan">{t("empCard.planned.to", { date: fmtDate(p.effective_date), to })}</Tag></>;
   const appointed = since(items, "APPOINT");
   const k = d.classification;
   const status = labeled(EMPLOYEE_STATUS, e.status ?? "UNKNOWN");

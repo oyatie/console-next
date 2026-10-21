@@ -145,7 +145,7 @@ export function BulkPage() {
     { key: "check", label: t("bulk.page.step.check"), state: done ? ("done" as const) : whereDone ? ("current" as const) : ("waiting" as const) },
     { key: "commit", label: t(when === "future" ? "bulk.page.step.schedule" : "bulk.page.step.apply"), state: done ? ("current" as const) : ("waiting" as const) },
   ];
-  const commit = !kind ? t("bulk.page.commit.none", { n: ok.length, kind: t("bulk.title") }) : t(`bulk.page.commit.${when === "future" ? "future" : when === "past" ? "past" : when === "today" ? "now" : "none"}`, { n: ok.length, kind: kindWord, date: date.slice(5) });
+  const commit = !kind ? t("bulk.page.commit.none", { n: ok.length, kind: t("bulk.title") }) : t(`bulk.page.commit.${when === "future" ? "future" : when === "past" ? "past" : when === "today" ? "now" : "none"}`, { n: ok.length, kind: kindWord, date: fmtDate(date) });
   return (
     <div className={s.page}>
       <PageHead

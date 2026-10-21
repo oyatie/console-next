@@ -2,12 +2,13 @@ import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { useNeedsNote, useReasonCodesReady } from "../../../lib/reason-codes";
 import { keepsKey } from "../../../lib/react/command";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
-import { DateChips } from "../../../ui/date/date-chips";
+import { DateField } from "../../../ui/date/date-field";
 import { inBounds } from "../../../ui/date/days";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { User } from "lucide-react";
@@ -162,7 +163,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
     correcting ? t("lifecycle.commit.correct", { date: fmtDayShort(v0.date), action })
     : locked ? t("lifecycle.commit.change", { date: fmtDayShort(v0.date), action })
     : when === "none" ? t("lifecycle.commit.none", { action })
-    : when === "future" ? t("lifecycle.commit.future", { date: v0.date.slice(5), action })
+    : when === "future" ? t("lifecycle.commit.future", { date: fmtDate(v0.date), action })
     : when === "today" ? t("lifecycle.commit.today", { action: verb })
     : t("lifecycle.commit.past", { date: fmtDayShort(v0.date), action: verb });
   const show = (k: keyof typeof missing) => tried && missing[k];
@@ -206,10 +207,10 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
         locked ? (
           <LockedDate date={v0.date} correcting={Boolean(correcting)} onRebook={() => onOpen(`cancel:${from!.id}`)} />
         ) : (
-          <DateChips
+          <DateField
             label={t(kind === "LEAVE_OF_ABSENCE" ? "lifecycle.leave.start" : "lifecycle.date")}
             required
-
+            today={today}
             value={v0.date}
             onChange={(date) => set({ date })}
             {...b}

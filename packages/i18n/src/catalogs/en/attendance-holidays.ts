@@ -47,7 +47,7 @@ export const enAttendanceHolidays: Partial<Record<keyof typeof koAttendanceHolid
   "attendanceHolidays.holidaySheet.scope": "Applies to",
   "attendanceHolidays.holidaySheet.basis": "Basis",
   "attendanceHolidays.holidaySheet.ref": "Article",
-  "attendanceHolidays.holidaySheet.ref.example": "Art. 38 ② · reported 2026-09-20",
+  "attendanceHolidays.holidaySheet.ref.example": "Art. 38 ② · reported 09/20/2026",
   "attendanceHolidays.holidaySheet.pick": "Choose {field}",
   "attendanceHolidays.holidaySheet.first": "{date} · {people} · people with a scheduled work day then get a company holiday instead",
   "attendanceHolidays.holidaySheet.overlap": "Falls on a public holiday: {list} · no extra day off then",

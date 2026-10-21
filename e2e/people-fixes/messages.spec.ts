@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
-import { go, kstDate, option } from "../flows";
+import { go, koDate, kstDate, option } from "../flows";
 import { apiOf, bearerOf, codeOf } from "../helpers/api";
 import { peopleWorld, registerAt } from "../helpers/people-fixes";
 import { fillDate, signOff } from "../sheet";
@@ -39,7 +39,7 @@ test("solo: a contract overlap names its period and opens that contract's correc
   await expectAccessible(admin, "people: overlap names the existing contract");
   await overlapping.getByRole("button", { name: /계약 정정$/ }).click();
   const correction = admin.getByRole("form", { name: /^계약 정정/ });
-  await expect(correction.getByLabel(/^계약 시작일/)).toHaveValue(kstDate(-100));
+  await expect(correction.getByLabel(/^계약 시작일/)).toHaveValue(koDate(kstDate(-100)));
   await correction.getByRole("textbox", { name: /^임금/ }).fill("3100000");
   await correction.getByRole("button", { name: "정정 기록" }).click();
   await expect(correction).toBeHidden();
