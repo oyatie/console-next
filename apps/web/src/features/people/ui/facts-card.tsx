@@ -12,6 +12,8 @@ import type { Facts } from "../domain/facts";
 import { confirmProbation, factsQuery } from "../api";
 import { FactsForm } from "./facts-form";
 import { Muted } from "../../../ui/muted/muted";
+import { maskedBirth } from "../domain/card";
+import { MaskedValue } from "./masked-value";
 
 type Employee = components["schemas"]["Employee"];
 
@@ -39,7 +41,7 @@ function FactsView({ f, name, onEdit }: { f: Facts; name: string; onEdit: () => 
   return (
     <>
       <dl className="kv">
-        <dt>{t("facts.birthDate")}</dt><dd className="num">{f.birth_date ? fmtDate(f.birth_date) : notSet}</dd>
+        <dt>{t("facts.birthDate")}</dt><dd className="num">{f.birth_date ? <MaskedValue masked={maskedBirth()} value={fmtDate(f.birth_date)} field={t("facts.birthDate")} who={name} /> : notSet}</dd>
         <dt>{t("facts.workEmail")}</dt><dd>{f.work_email ?? notSet}</dd>
         <dt>{t("facts.idType")}</dt><dd>{f.id_type ? label(ID_TYPE, f.id_type) : notSet}</dd>
         {m && (
