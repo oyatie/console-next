@@ -70,8 +70,14 @@ pub(super) async fn check_all(
 ) -> AccessResult<Vec<Checked>> {
     let mut out: Vec<Checked> = Vec::with_capacity(ops.len());
     let mut touched = BTreeSet::new();
+    let deadline = if ops.iter().any(|op| matches!(op, Op::Grant { .. })) {
+        crate::pending::sole_admin_deadline(tx, actor.org(), &console_kernel_core::FixedClock(now))
+            .await?
+    } else {
+        None
+    };
     for (i, op) in ops.iter().enumerate() {
-        let mut c = check(tx, actor, phase, now, i, op).await?;
+        let mut c = check(tx, actor, phase, now, i, op, deadline).await?;
         let repeat = match (op, &c.write) {
             (Op::Revoke { grant_id } | Op::SetEnd { grant_id, .. }, _) => {
                 !touched.insert(*grant_id)

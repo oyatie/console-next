@@ -25,6 +25,23 @@ async fn change_mode(tx: &mut Transaction<'_, Postgres>, org: OrgId) -> AccessRe
     })
 }
 
+async fn refuse_delayed_elevation(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    added: &[LineOut],
+) -> AccessResult<()> {
+    if crate::pending::deadline_for_lines(tx, org, added, &console_kernel_core::SystemClock)
+        .await?
+        .is_some()
+    {
+        return Err(AccessError::conflict(
+            "held_role_elevation_delayed",
+            "권한 적용 대기 시간이 필요합니다. 새 역할을 만들고 권한을 부여해 주세요",
+        ));
+    }
+    Ok(())
+}
+
 /// (domain, level) pairs of `new` that `old` does not have.
 fn added(old: &[LineOut], new: &[LineOut]) -> Vec<LineOut> {
     new.iter()
@@ -142,13 +159,15 @@ pub async fn update(
                 ));
             }
             let lines = new_lines.unwrap_or_else(|| role.lines.clone());
-            actor.require_holds(&added(&role.lines, &lines), &actor.tenant())?;
+            let added = added(&role.lines, &lines);
+            actor.require_holds(&added, &actor.tenant())?;
             let holders = if lines == role.lines {
                 Vec::new()
             } else {
                 store::live_holders(tx, org, id).await?
             };
             if !holders.is_empty() {
+                refuse_delayed_elevation(tx, org, &added).await?;
                 let code = body.reason_code.as_deref().ok_or_else(|| {
                     AccessError::invalid(
                         "reason_code_invalid",
@@ -201,7 +220,12 @@ pub async fn set_status(
                 return Err(AccessError::stale(role.version));
             }
             match (role.status.as_str(), body.status.as_str()) {
-                ("DRAFT", "ACTIVE") => {}
+                ("DRAFT", "ACTIVE") => {
+                    actor.require_holds(&role.lines, &actor.tenant())?;
+                    if !store::live_holders(tx, org, id).await?.is_empty() {
+                        refuse_delayed_elevation(tx, org, &role.lines).await?;
+                    }
+                }
                 ("ACTIVE", "RETIRED") => {
                     let code = body.reason_code.as_deref().ok_or_else(|| {
                         AccessError::invalid(

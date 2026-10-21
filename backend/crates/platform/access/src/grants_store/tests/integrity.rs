@@ -111,10 +111,17 @@ async fn self_grant_and_grantor_ceiling_refusals_have_no_writes(pool: PgPool) {
         .execute(tx.as_mut())
         .await
         .unwrap();
-    let self_refused =
-        crate::grant_ops::check(&mut tx, &a, TenantPhase::Operating, now, 0, &op(actor))
-            .await
-            .unwrap();
+    let self_refused = crate::grant_ops::check(
+        &mut tx,
+        &a,
+        TenantPhase::Operating,
+        now,
+        0,
+        &op(actor),
+        None,
+    )
+    .await
+    .unwrap();
     assert_eq!(self_refused.item["refusal"]["code"], "self_grant_forbidden");
     let low = Principal::new(
         UserId::from_uuid(target),

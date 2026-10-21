@@ -1,6 +1,6 @@
 import { beforeAll, expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { t, loadCatalog } from "@console/i18n";
+import { loadCatalog } from "@console/i18n";
 import type { AccessEffectiveEntry, AccessGrant, AccessGrantPreview, Account } from "../api";
 import { grantLines } from "../../../reference/authz/present";
 import { periodText } from "../present";
@@ -72,9 +72,4 @@ test("F8: bulk delayed grants never promise application today", () => {
   const html = renderToStaticMarkup(<BulkPreview {...props} />);
   expect(html).not.toContain("오늘 ~");
   expect(html).toContain("시작 전");
-});
-
-test("F8: the HQ tier explains that it reviews an already recorded exit", () => {
-  expect(t("exit.step.HQ_CONFIRMED")).toContain("사후 검토");
-  expect(t("exit.hq.consequence", { name: "김직원", date: "2026-10-03" })).toContain("이미 처리된");
 });

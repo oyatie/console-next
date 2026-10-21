@@ -10,6 +10,13 @@ use sqlx::PgPool;
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../db/migrations");
 
 async fn fixture(pool: &PgPool) -> (OrgId, Uuid, Uuid, Uuid) {
+    let (org, actor, target, role) = fixture_in_setup(pool).await;
+    sqlx::query("UPDATE tenant_phase SET phase='OPERATING', go_live_at=now(), go_live_by=$2, go_live_preview_digest=repeat('a',64) WHERE org_id=$1")
+        .bind(org.as_uuid()).bind(actor).execute(pool).await.unwrap();
+    (org, actor, target, role)
+}
+
+async fn fixture_in_setup(pool: &PgPool) -> (OrgId, Uuid, Uuid, Uuid) {
     let org = OrgId::from_uuid(Uuid::new_v4());
     sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2, 'Grant delay test')")
         .bind(org.as_uuid())
@@ -251,3 +258,5 @@ async fn cancelled_pending_grant_never_activates(pool: PgPool) {
 mod adversarial;
 mod boundaries;
 mod integrity;
+
+mod revisions;

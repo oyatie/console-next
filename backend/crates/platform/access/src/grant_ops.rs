@@ -21,6 +21,7 @@ pub(crate) struct Checked {
     pub refused: bool,
     /// The new grant apply inserts (grant operations only).
     pub write: Option<GrantRow>,
+    pub activates_at: Option<OffsetDateTime>,
 }
 
 fn refused(code: &'static str, message: &str) -> AccessError {
@@ -50,6 +51,7 @@ pub(crate) async fn check(
     now: OffsetDateTime,
     index: usize,
     op: &Op,
+    deadline: Option<OffsetDateTime>,
 ) -> AccessResult<Checked> {
     let (name, account, grant) = match op {
         Op::Grant {
@@ -60,7 +62,7 @@ pub(crate) async fn check(
         Op::Revoke { grant_id } => ("revoke", Uuid::nil(), Some(*grant_id)),
         Op::SetEnd { grant_id, .. } => ("set_end", Uuid::nil(), Some(*grant_id)),
     };
-    match check_inner(tx, actor, phase, now, op).await {
+    match check_inner(tx, actor, phase, now, op, deadline).await {
         Ok(ok) => Ok(ok),
         Err(e) if !e.is_refusal() => Err(e),
         Err(e) => Ok(Checked {
@@ -72,6 +74,7 @@ pub(crate) async fn check(
             }),
             refused: true,
             write: None,
+            activates_at: None,
         }),
     }
     .map(|mut c| {
@@ -120,6 +123,7 @@ async fn check_inner(
     phase: TenantPhase,
     now: OffsetDateTime,
     op: &Op,
+    deadline: Option<OffsetDateTime>,
 ) -> AccessResult<Checked> {
     let org = actor.org();
     match op {
@@ -186,11 +190,12 @@ async fn check_inner(
                 valid_to: *valid_to,
                 effective_in_setup: *effective_in_setup,
             };
-            let delayed =
-                crate::pending::deadline(tx, org, *role_id, &console_kernel_core::FixedClock(now))
-                    .await?
-                    .is_some();
-            let after = if delayed {
+            let activates_at = deadline.filter(|_| {
+                lines
+                    .iter()
+                    .any(|l| l.levels.iter().any(|lv| *lv != Level::View))
+            });
+            let after = if activates_at.is_some() {
                 Enforcement::Scheduled
             } else {
                 state.enforcement(phase, now)
@@ -204,6 +209,7 @@ async fn check_inner(
                 item: json!({ "account_id": account_id, "grant_id": grant_id, "enforcement_after": after, "gains": gains, "losses": [] }),
                 refused: false,
                 write: Some(row),
+                activates_at,
             })
         }
         Op::Revoke { grant_id } | Op::SetEnd { grant_id, .. } => {
@@ -281,6 +287,7 @@ async fn check_inner(
                 item: json!({ "account_id": row.account_id, "grant_id": grant_id, "enforcement_after": after, "gains": gains, "losses": losses }),
                 refused: false,
                 write: None,
+                activates_at: None,
             })
         }
     }

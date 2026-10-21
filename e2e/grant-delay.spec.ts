@@ -3,10 +3,11 @@ import { expect, test } from "@playwright/test";
 import { grantAccess } from "./access-flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { activatePendingGrants } from "./second-person-fixture";
-import { tenantInSetup } from "./setup-flows";
+import { startOperations, tenantInSetup } from "./setup-flows";
 
 test("a sole admin's elevated grant waits for the configured deadline", { tag: ["@access", "@regression"] }, async ({ browser }) => {
   const { admin } = await tenantInSetup(browser, "grantdelay", "권한대기", false, "본점", "none");
+  await startOperations(admin);
   const token = bearerOf(admin);
   await grantAccess(admin, "이임원", "full", /^전체/, false);
   const api = apiOf(admin, token);
@@ -21,4 +22,16 @@ test("a sole admin's elevated grant waits for the configured deadline", { tag: [
   expect(Date.parse(before[0]!.activates_at!)).toBeGreaterThan(Date.now());
   await activatePendingGrants(admin, token);
   expect((await read())[0]!.enforcement).toBe("ENFORCED");
+});
+
+
+test("setup grants apply immediately before operations start", { tag: ["@access", "@regression"] }, async ({ browser }) => {
+  const { admin } = await tenantInSetup(browser, "setupgrant", "설정권한", false, "본점", "none");
+  await grantAccess(admin, "이임원", "full", /^전체/, false);
+  const response = await apiOf(admin, bearerOf(admin))("/access/grants");
+  expect(response.ok()).toBeTruthy();
+  const grants = await response.json() as { enforcement: string; activates_at?: string | null }[];
+  expect(grants).toHaveLength(1);
+  expect(grants[0]!.enforcement).toBe("ENFORCED");
+  expect(grants[0]!.activates_at).toBeNull();
 });

@@ -148,9 +148,19 @@ fn overlap_conflict(err: sqlx::Error) -> AccessError {
     }
 }
 
+#[cfg(test)]
 pub(crate) async fn insert(tx: Tx<'_, '_>, org: OrgId, g: &NewGrant<'_>) -> AccessResult<()> {
     let activates_at =
         crate::pending::deadline(tx, org, g.row.role_id, &console_kernel_core::SystemClock).await?;
+    insert_with_deadline(tx, org, g, activates_at).await
+}
+
+pub(crate) async fn insert_with_deadline(
+    tx: Tx<'_, '_>,
+    org: OrgId,
+    g: &NewGrant<'_>,
+    activates_at: Option<OffsetDateTime>,
+) -> AccessResult<()> {
     let node = g.row.node_id;
     let pick = |k: NodeKind| if g.row.kind == k { node } else { None };
     sqlx::query(

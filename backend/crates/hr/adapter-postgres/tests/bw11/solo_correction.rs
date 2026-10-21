@@ -12,6 +12,9 @@ use uuid::Uuid;
 
 use crate::{Fixture, fixture};
 
+#[path = "../../../../identity/adapter-postgres/tests/second_person_support/mod.rs"]
+mod second_person_support;
+
 fn body(date: &str) -> CorrectLifecycleEventRequest {
     serde_json::from_value(json!({
         "replacement": {
@@ -149,15 +152,26 @@ async fn another_holder_prevents_the_recorders_solo_correction(pool: PgPool) {
     let f = solo(pool).await;
     let event = original(&f).await;
     let other = Uuid::new_v4();
-    sqlx::query("INSERT INTO users (id,org_id,display_name,roles) VALUES ($1,$2,'다른 담당자',ARRAY['SUPER_ADMIN'])")
-        .bind(other).bind(f.principal.org_id.as_uuid()).execute(&f.owner).await.unwrap();
     sqlx::query(
-        "UPDATE authz_grant_ledger SET occurred_at=occurred_at-interval '400 days' WHERE org_id=$1",
+        "INSERT INTO users (id,org_id,display_name,roles) VALUES ($1,$2,'다른 담당자','{}')",
     )
+    .bind(other)
     .bind(f.principal.org_id.as_uuid())
     .execute(&f.owner)
     .await
     .unwrap();
+    second_person_support::access::grant(
+        &f.owner,
+        *f.principal.org_id.as_uuid(),
+        *f.principal.user_id.as_uuid(),
+        other,
+        second_person_support::access::Grant {
+            domain: "hr_basic",
+            level: "edit",
+            ..second_person_support::access::CLOSE
+        },
+    )
+    .await;
     let err =
         f.hr.correct_lifecycle_event(
             f.principal.clone(),
@@ -197,8 +211,8 @@ async fn another_holder_prevents_the_recorders_solo_correction(pool: PgPool) {
 async fn refuse_mode_keeps_a_solo_correction_closed(pool: PgPool) {
     let f = solo(pool).await;
     let event = original(&f).await;
-    sqlx::query("INSERT INTO tenant_setting_overrides (org_id,key,value,set_by,reason_code) VALUES ($1,'authz.sole_holder.mode','\"refuse\"',$2,'F8')")
-        .bind(f.principal.org_id.as_uuid()).bind(f.principal.user_id.as_uuid()).execute(&f.owner).await.unwrap();
+    sqlx::query("INSERT INTO tenant_setting_overrides (org_id,key,value,set_by,reason_code,effective_from) VALUES ($1,'authz.sole_holder.mode','\"refuse\"',$2,'F8',$3)")
+        .bind(f.principal.org_id.as_uuid()).bind(f.principal.user_id.as_uuid()).bind(time::OffsetDateTime::now_utc() - time::Duration::days(1)).execute(&f.owner).await.unwrap();
     let err =
         f.hr.correct_lifecycle_event(
             f.principal.clone(),

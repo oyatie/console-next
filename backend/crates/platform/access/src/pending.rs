@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Governed sole-admin elevation. Pending grants neither authorize nor count.
 use console_identity_adapter_postgres::second_person::{HolderCapability, PgHolderResolver};
-use console_identity_application::holders::HolderResolver;
-use console_kernel_core::{AuditAction, AuditEvent, Clock, OrgId, TraceContext, UserId};
+use console_kernel_core::{
+    AuditAction, AuditEvent, Clock, OrgId, TenantPhase, TraceContext, UserId,
+};
 use console_platform_authz::access::{
-    AccessSlice, Domain, Level, action_group, load_access_subject,
+    AccessSlice, Domain, Level, action_group, load_access_subject, load_tenant_phase,
 };
 use console_settings_adapter_postgres::resolve_in_tx;
 use console_settings_domain::SettingKey;
@@ -14,6 +15,7 @@ use uuid::Uuid;
 
 use crate::{AccessError, AccessResult, actor::node_path};
 
+#[cfg(test)]
 pub(crate) async fn deadline(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
@@ -24,10 +26,30 @@ pub(crate) async fn deadline(
         .await?
         .ok_or_else(|| AccessError::not_found("role_not_found", "no such role"))?;
     let lines = crate::roles_store::lines_of(tx, org, role, version).await?;
+    deadline_for_lines(tx, org, &lines, clock).await
+}
+
+pub(crate) async fn deadline_for_lines(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    lines: &[crate::LineOut],
+    clock: &dyn Clock,
+) -> AccessResult<Option<OffsetDateTime>> {
     if !lines
         .iter()
         .any(|l| l.levels.iter().any(|level| *level != Level::View))
     {
+        return Ok(None);
+    }
+    sole_admin_deadline(tx, org, clock).await
+}
+
+pub(crate) async fn sole_admin_deadline(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    clock: &dyn Clock,
+) -> AccessResult<Option<OffsetDateTime>> {
+    if load_tenant_phase(tx, org).await? == TenantPhase::Setup {
         return Ok(None);
     }
     let now = clock.now();
@@ -40,7 +62,7 @@ pub(crate) async fn deadline(
         include_ops: true,
         now,
     }
-    .resolve()
+    .resolve_at_most(2)
     .await?;
     if holders.len() > 1 {
         return Ok(None);
