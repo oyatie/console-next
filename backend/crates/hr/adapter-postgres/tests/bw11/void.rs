@@ -89,7 +89,7 @@ async fn a_correction_replaces_the_event_on_its_date(pool: PgPool) {
     let p = || f.principal.clone();
     let moved = leave("PERSONAL", json!({"effective_date": "2026-09-02"}));
     assert_eq!(
-        f.hr.correct_lifecycle_event(p(), f.employee, event, correct(moved))
+        f.hr.correct_lifecycle_event(p(), f.employee, event, correct(moved), None)
             .await
             .unwrap_err()
             .status,
@@ -97,15 +97,21 @@ async fn a_correction_replaces_the_event_on_its_date(pool: PgPool) {
     );
     let dated = leave("PERSONAL", json!({"expected_return_date": "2026-12-01"}));
     let refused =
-        f.hr.correct_lifecycle_event(p(), f.employee, event, correct(dated))
+        f.hr.correct_lifecycle_event(p(), f.employee, event, correct(dated), None)
             .await
             .unwrap_err();
     assert_eq!(refused.code, "second_person_required");
 
     let fixed =
-        f.hr.correct_lifecycle_event(p(), f.employee, event, correct(leave("ILLNESS", json!({}))))
-            .await
-            .unwrap();
+        f.hr.correct_lifecycle_event(
+            p(),
+            f.employee,
+            event,
+            correct(leave("ILLNESS", json!({}))),
+            None,
+        )
+        .await
+        .unwrap();
     assert_eq!(
         (fixed.leave_type.as_deref(), fixed.voids_event_id),
         (Some("ILLNESS"), Some(event))
@@ -138,22 +144,23 @@ async fn sensitive_correction_accepts_an_independent_current_holder(pool: PgPool
     let original = f.record(leave("2026-12-01")).await.unwrap();
     let event: Uuid = original["id"].as_str().unwrap().parse().unwrap();
     let other = Uuid::new_v4();
-    sqlx::query("INSERT INTO users (id, org_id, display_name, roles, is_tenant_ops) VALUES ($1,$2,'다른 담당자','{}',true)")
+    sqlx::query("INSERT INTO users (id, org_id, display_name, roles, is_tenant_ops) VALUES ($1,$2,'다른 담당자',ARRAY['SUPER_ADMIN'],true)")
         .bind(other).bind(f.principal.org_id.as_uuid()).execute(&f.owner).await.unwrap();
     let p = console_platform_authz::Principal::new(
         console_kernel_core::UserId::from_uuid(other),
         f.principal.org_id,
-        Default::default(),
+        std::collections::BTreeSet::from([console_platform_authz::Role::SuperAdmin]),
         console_kernel_core::BranchScope::All,
     )
     .with_tenant_ops(true);
     let body = CorrectLifecycleEventRequest {
-        replacement: leave("2026-12-15"),
+        replacement: serde_json::to_value(leave("2026-12-15")).unwrap(),
         reason_code: "INPUT_ERROR".into(),
         note: None,
+        step_up: None,
     };
     let fixed =
-        f.hr.correct_lifecycle_event(p, f.employee, event, body)
+        f.hr.correct_lifecycle_event(p, f.employee, event, body, None)
             .await
             .unwrap();
     assert_eq!(fixed.expected_return_date.as_deref(), Some("2026-12-15"));

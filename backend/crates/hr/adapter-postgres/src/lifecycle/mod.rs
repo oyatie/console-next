@@ -21,6 +21,7 @@ pub mod requests;
 // --- lane: LIFE ---
 pub mod classification;
 pub mod correct;
+mod correction_authorization;
 pub mod fixed_term;
 pub mod group_transfer;
 pub mod guards;

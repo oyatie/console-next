@@ -8,6 +8,7 @@ use console_hr_adapter_postgres::HrService;
 use console_hr_adapter_postgres::lifecycle::correct::CorrectLifecycleEventRequest;
 use console_hr_adapter_postgres::lifecycle::types::EmployeeLifecycleEventResponse;
 use console_hr_adapter_postgres::lifecycle::void::{RescindLifecycleEventRequest, RescindOutcome};
+use console_platform_auth::PasskeyService;
 use console_platform_authz::Principal;
 use uuid::Uuid;
 
@@ -25,48 +26,63 @@ pub const LIFECYCLE_VOID_ROUTE_PATHS: &[&str] = &[
     BATCH_RESCIND_PATH_TEMPLATE,
 ];
 
-pub fn router(service: HrService) -> Router {
+#[derive(Clone)]
+struct VoidState {
+    service: HrService,
+    passkeys: Option<PasskeyService>,
+}
+
+pub fn router(service: HrService, passkeys: Option<PasskeyService>) -> Router {
     Router::new()
         .route(RESCIND_PATH_TEMPLATE, post(rescind))
         .route(CORRECT_PATH_TEMPLATE, post(correct))
         .route(BATCH_RESCIND_PATH_TEMPLATE, post(rescind_batch))
-        .with_state(service)
+        .with_state(VoidState { service, passkeys })
 }
 
 async fn rescind(
-    State(service): State<HrService>,
+    State(state): State<VoidState>,
     Extension(principal): Extension<Principal>,
     Path((employee_id, event_id)): Path<(Uuid, Uuid)>,
     Json(request): Json<RescindLifecycleEventRequest>,
 ) -> Result<Json<RescindOutcome>, HrApiError> {
     Ok(Json(
-        service
+        state
+            .service
             .rescind_lifecycle_event(principal, employee_id, event_id, request)
             .await?,
     ))
 }
 
 async fn correct(
-    State(service): State<HrService>,
+    State(state): State<VoidState>,
     Extension(principal): Extension<Principal>,
     Path((employee_id, event_id)): Path<(Uuid, Uuid)>,
     Json(request): Json<CorrectLifecycleEventRequest>,
 ) -> Result<Json<EmployeeLifecycleEventResponse>, HrApiError> {
     Ok(Json(
-        service
-            .correct_lifecycle_event(principal, employee_id, event_id, request)
+        state
+            .service
+            .correct_lifecycle_event(
+                principal,
+                employee_id,
+                event_id,
+                request,
+                state.passkeys.as_ref(),
+            )
             .await?,
     ))
 }
 
 async fn rescind_batch(
-    State(service): State<HrService>,
+    State(state): State<VoidState>,
     Extension(principal): Extension<Principal>,
     Path(batch_id): Path<Uuid>,
     Json(request): Json<RescindLifecycleEventRequest>,
 ) -> Result<Json<Vec<RescindOutcome>>, HrApiError> {
     Ok(Json(
-        service
+        state
+            .service
             .rescind_lifecycle_batch(principal, batch_id, request)
             .await?,
     ))

@@ -8951,8 +8951,17 @@ paths:
       description: The same voidability rules as rescind. The employee is restored and the replacement (same
         event_type and effective_date, else 422) is recorded in the same transaction with voids_event_id naming the
         original, which then shows voided_by. A replacement that changes contract_end_date or expected_return_date
-        needs a second person (Cedar; until that rule is enabled it is 403 second_person_required). Audited as
-        employee.lifecycle.correct plus employee.lifecycle.record.
+        needs an independent current holder. The original recorder may instead use the governed solo path
+        only when no other eligible holder exists and authz.sole_holder.mode is step_up_notice_review
+        (otherwise 403 second_person_required). The solo path requires a passkey step_up envelope
+        (401 step_up_required when absent, step_up_failed when invalid; 503 step_up_unavailable when
+        WebAuthn is not configured). Its binding is EXCEPTION_DECIDE on the original event_id, with
+        the action's expected reason_key and a SHA-256 payload_hash over UTF-8 compact JSON, recursively
+        sorted by key, of {operation, employee_id, replacement, reason_code, note}. operation is
+        employee.lifecycle.correct; replacement is the complete object as sent, reason_code and note
+        are trimmed, and an absent note is null. The assertion is verified and consumed in the correction
+        transaction. Audited as employee.lifecycle.correct plus employee.lifecycle.record; a solo
+        correction records review_required and step_up_assertion_id in the correction audit.
       security:
       - bearerAuth: []
       parameters:
@@ -8983,6 +8992,8 @@ paths:
                 note:
                   type: [string, 'null']
                   maxLength: 1000
+                step_up:
+                  $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
       responses:
         '200':
           description: The replacement event.
@@ -8990,6 +9001,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmployeeLifecycleEvent'
+        '401':
+          description: A solo correction needs a valid payload-bound passkey assertion.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -8998,6 +9015,12 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '503':
+          description: Passkey verification is not configured for a solo correction.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/employees/{id}/lifecycle-events/{event_id}/rescind:
     post:
       tags:
