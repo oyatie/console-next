@@ -24,6 +24,38 @@ async fn phase(pool: &PgPool, org: Uuid) -> String {
         .unwrap()
 }
 
+/// 운영 시작 needs a 부서 (LMG-ORG-6); the workplace's own unit is not one.
+async fn department(pool: &PgPool, org: Uuid, actor: console_kernel_core::UserId, parent: &str) {
+    let id = Uuid::new_v4();
+    let attributes =
+        json!({ "kind": "department", "name": "인사팀", "status": "active", "parent_id": parent });
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org', $1, true)")
+        .bind(org.to_string())
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO org_units (org_id, id) VALUES ($1, $2)")
+        .bind(org)
+        .bind(id)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO org_unit_revisions (org_id, org_unit_id, version, command_id, actor_id, \
+         payload_digest, attributes, receipt) VALUES ($1, $2, 1, gen_random_uuid(), $3, \
+         decode(repeat('ab', 32), 'hex'), $4, '{}')",
+    )
+    .bind(org)
+    .bind(id)
+    .bind(actor.as_uuid())
+    .bind(attributes)
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+}
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn the_legacy_one_shot_import_is_gone_and_a_non_holder_is_forbidden_first(pool: PgPool) {
     let (org, owner) = tenant(&pool, ADMIN).await;
@@ -52,6 +84,7 @@ async fn go_live_refuses_a_non_holder_a_stale_preview_and_a_second_time(pool: Pg
     let mut passkey = SoftKey::enroll(&pool, OrgId::from_uuid(org), owner).await;
     let ctx = ctx(&pool, org, owner, ADMIN, None).await;
     let (_, _, branch, unit) = structure(&ctx).await;
+    department(&pool, org, owner, &unit).await;
     let (status, _) = ctx
         .call(
             "POST",
