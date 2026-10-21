@@ -13,6 +13,8 @@ required:
   - rolled_back_by
   - rollback_reason_code
   - rollback_note
+  - rollback
+  - allowed
 properties:
   id:
     $ref: '#/components/schemas/Uuid'
@@ -20,7 +22,7 @@ properties:
     type: string
   status:
     type: string
-    enum: [PREVIEWED, DRY_RUN, APPLIED, FAILED, ROLLED_BACK]
+    enum: [PREVIEWED, DRY_RUN, APPLIED, FAILED, ROLLBACK_REQUESTED, ROLLED_BACK]
   apply_job_state:
     type: string
     nullable: true
@@ -86,3 +88,38 @@ properties:
   rollback_note:
     type: string
     nullable: true
+  rollback:
+    type: object
+    required: [mode, window_until, window_days, pending_request, refusal_code]
+    properties:
+      refusal_code:
+        type: string
+        nullable: true
+      mode:
+        type: string
+        enum: [SETUP, GOVERNED]
+      window_until:
+        type: string
+        format: date-time
+        nullable: true
+      window_days:
+        type: integer
+        minimum: 1
+      pending_request:
+        type: object
+        nullable: true
+        required: [id, requested_by, created_at]
+        properties:
+          id:
+            $ref: '#/components/schemas/Uuid'
+          requested_by:
+            $ref: '#/components/schemas/Uuid'
+          created_at:
+            type: string
+            format: date-time
+  allowed:
+    type: array
+    description: Server-authorized actions, after Cedar authorization and current run eligibility.
+    items:
+      type: string
+      enum: [preview_rollback]

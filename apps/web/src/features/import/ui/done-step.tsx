@@ -12,12 +12,14 @@ import type { ImportReport } from "../domain/contract";
 import { ReconcilePanel } from "./reconcile-panel";
 import { RegisterGaps } from "./register-gaps";
 import { JobStep } from "./job-step";
+import { RollbackPanel } from "./rollback-panel";
 
 /** What apply wrote. Differences import never writes stay with their own flows (appointment, exit, correction). */
 export function DoneStep({ report, runId }: { report?: ImportReport; runId: string }) {
   const run = useQuery({ ...runQuery(runId), refetchOnMount: "always" });
   const navigate = useNavigate();
-  const completed = useCallback(() => void run.refetch(), [run.refetch]);
+  const { refetch } = run;
+  const completed = useCallback(() => void refetch(), [refetch]);
   const restart = useCallback(() => void navigate({ to: "/people/import", search: {} }), [navigate]);
   if (run.data?.apply_job_state && run.data.apply_job_state !== "done") {
     return <JobStep runId={runId} onDone={completed} onFailed={restart} />;
@@ -43,6 +45,7 @@ export function DoneStep({ report, runId }: { report?: ImportReport; runId: stri
       </div>
     </section>
     {report?.register_gaps && <RegisterGaps gaps={report.register_gaps} />}
+    {run.data && ["APPLIED", "ROLLBACK_REQUESTED", "ROLLED_BACK"].includes(run.data.status) && <RollbackPanel run={run.data} onChanged={completed} />}
     {run.data?.status === "APPLIED" && <ReconcilePanel runId={runId} />}
     </>
   );

@@ -10,6 +10,9 @@ use uuid::Uuid;
 
 use crate::harness::{decisions, importer, table};
 
+#[path = "rollback_support.rs"]
+mod support;
+use support::*;
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn run_record_keeps_the_stored_counts_after_an_imported_person_exits(pool: PgPool) {
     let i = importer(pool).await;
@@ -209,7 +212,25 @@ async fn run_reads_require_org_wide_employee_manage_even_with_a_valid_run_id(poo
         );
         assert_eq!(
             i.f.hr
-                .import_run(principal, Uuid::new_v4())
+                .import_run(principal.clone(), Uuid::new_v4())
+                .await
+                .unwrap_err()
+                .status
+                .as_u16(),
+            403
+        );
+        assert_eq!(
+            i.f.hr
+                .preview_import_rollback(principal.clone(), Uuid::new_v4())
+                .await
+                .unwrap_err()
+                .status
+                .as_u16(),
+            403
+        );
+        assert_eq!(
+            i.f.hr
+                .rollback_import(principal, Uuid::new_v4(), command("unused"), None, SOLO)
                 .await
                 .unwrap_err()
                 .status
@@ -218,3 +239,12 @@ async fn run_reads_require_org_wide_employee_manage_even_with_a_valid_run_id(poo
         );
     }
 }
+
+#[path = "rollback_1_journey.rs"]
+mod rollback_1_journey;
+
+#[path = "rollback_2_journey.rs"]
+mod rollback_2_journey;
+
+#[path = "rollback_3_journey.rs"]
+mod rollback_3_journey;

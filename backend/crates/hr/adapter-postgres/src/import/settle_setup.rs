@@ -31,6 +31,7 @@ async fn setup_leave(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org: Uuid,
     actor: Uuid,
+    run: Uuid,
     employee: Uuid,
     leave: &Value,
 ) -> Result<bool, HrError> {
@@ -49,6 +50,7 @@ async fn setup_leave(
     if exists {
         return Ok(false);
     }
+    let event = Uuid::new_v4();
     sqlx::query(
         "INSERT INTO employee_lifecycle_events (id, org_id, employee_id, event_type, from_status, \
            to_status, effective_date, comment, signoffs, created_by, state, leave_type, \
@@ -56,7 +58,7 @@ async fn setup_leave(
          VALUES ($1, $2, $3, 'LEAVE_OF_ABSENCE', 'ACTIVE', 'ON_LEAVE', $4, $5, '{}'::jsonb, $6, \
            'APPLIED', $7, $8::DATE)",
     )
-    .bind(Uuid::new_v4())
+    .bind(event)
     .bind(org)
     .bind(employee)
     .bind(start)
@@ -81,6 +83,7 @@ async fn setup_leave(
         effective_date: start,
     };
     apply_employment_change(tx, org, employee, change).await?;
+    crate::import::effects::record(tx, org, run, employee, "setup_leave", event).await?;
     Ok(true)
 }
 
@@ -130,7 +133,7 @@ pub async fn record_setup_facts(
         }
         if let (Some(employee), leave) = (people.get(key), &row["new_person"]["leave"])
             && !leave.is_null()
-            && setup_leave(tx, org, actor, *employee, leave).await?
+            && setup_leave(tx, org, actor, run, *employee, leave).await?
         {
             recorded.leaves += 1;
         }

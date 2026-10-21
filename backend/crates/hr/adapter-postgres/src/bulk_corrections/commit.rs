@@ -180,7 +180,8 @@ impl HrService {
                     }
                     let now: Vec<_> = p.writes.iter().filter(|(_, path)| *path != FieldPath::SecondPerson).map(|(pair, _)| pair.clone()).collect();
                     if !now.is_empty() {
-                        let meta = LedgerMeta { reason_code: &reason, note: note.as_deref(), corrected_by: me, change_request_id: None, review_required: review, batch_id: Some(job) };
+                        let meta = LedgerMeta {
+                        import_run_id: None, reason_code: &reason, note: note.as_deref(), corrected_by: me, change_request_id: None, review_required: review, batch_id: Some(job) };
                         apply_fields_in_tx(tx, org_uuid, p.row.employee_id, head, &now, &meta).await?;
                     }
                     let later: Map<String, Value> = p.writes.iter().filter(|(_, path)| *path == FieldPath::SecondPerson).map(|((f, v), _)| (f.clone(), json!(v))).collect();

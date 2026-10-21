@@ -22,6 +22,7 @@ mod setup_delete;
 mod void;
 
 pub use apply::apply_requested_void_in_tx;
+pub(crate) use apply::{void_event, void_in_tx};
 
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;

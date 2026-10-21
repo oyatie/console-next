@@ -21,10 +21,11 @@ pub enum ChangeRequestKind {
     PolicyQuestion,
     /// MR-26 등록 취소, filed only by `POST /employees/{id}/void`.
     EmployeeVoid,
+    ImportRollback,
 }
 
 impl ChangeRequestKind {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::ProfileCorrection,
         Self::IdentityReview,
         Self::AccessRequest,
@@ -33,6 +34,7 @@ impl ChangeRequestKind {
         Self::AccessExplanation,
         Self::PolicyQuestion,
         Self::EmployeeVoid,
+        Self::ImportRollback,
     ];
 
     #[must_use]
@@ -46,6 +48,7 @@ impl ChangeRequestKind {
             Self::AccessExplanation => "ACCESS_EXPLANATION",
             Self::PolicyQuestion => "POLICY_QUESTION",
             Self::EmployeeVoid => "EMPLOYEE_VOID",
+            Self::ImportRollback => "IMPORT_ROLLBACK",
         }
     }
 
@@ -68,6 +71,7 @@ impl ChangeRequestKind {
     pub const fn subject_types(self) -> &'static [&'static str] {
         match self {
             Self::ProfileCorrection | Self::IdentityReview | Self::EmployeeVoid => &["EMPLOYEE"],
+            Self::ImportRollback => &["DATA_IMPORT_RUN"],
             Self::AccessRequest | Self::AccessExplanation => &["USER_ACCOUNT"],
             Self::PolicyQuestion => &["ORGANIZATION"],
             Self::ScopeAction | Self::Other => {

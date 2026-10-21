@@ -6144,6 +6144,127 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/v1/employee-import-runs/{run_id}/rollback:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [employees]
+      operationId: rollbackEmployeeImport
+      summary: Reverse the acknowledged employee import
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeImportRollbackRequest'
+      responses:
+        '200':
+          description: Run reversed atomically; an exact idempotency replay returns this original outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeImportRollbackOutcome'
+        '202':
+          description: IMPORT_ROLLBACK request filed for a different eligible holder through change-requests decide.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeImportRollbackOutcome'
+        '401':
+          description: Rollback refused before any changes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: Rollback refused before any changes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: Rollback refused before any changes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: Rollback refused before any changes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Rollback refused before any changes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/v1/employee-import-runs/{run_id}/rollback/preview:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [employees]
+      operationId: previewEmployeeImportRollback
+      summary: Preview the inverse employee import plan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: Inverse plan and blockers; nothing written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeImportRollbackPreview'
+        '401':
+          description: Rollback refused before any changes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: Rollback refused before any changes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: Rollback refused before any changes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: Rollback refused before any changes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Rollback refused before any changes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/employee-number-rules:
     delete:
       tags:
@@ -33722,10 +33843,10 @@ components:
           $ref: '#/components/schemas/Uuid'
         kind:
           type: string
-          enum: [PROFILE_CORRECTION, IDENTITY_REVIEW, ACCESS_REQUEST, SCOPE_ACTION, OTHER, ACCESS_EXPLANATION, POLICY_QUESTION, EMPLOYEE_VOID]
+          enum: [PROFILE_CORRECTION, IDENTITY_REVIEW, ACCESS_REQUEST, SCOPE_ACTION, OTHER, ACCESS_EXPLANATION, POLICY_QUESTION, EMPLOYEE_VOID, IMPORT_ROLLBACK]
         subject_type:
           type: string
-          enum: [EMPLOYEE, USER_ACCOUNT, BRANCH, ORGANIZATION]
+          enum: [EMPLOYEE, USER_ACCOUNT, BRANCH, ORGANIZATION, DATA_IMPORT_RUN]
         subject_id:
           $ref: '#/components/schemas/Uuid'
         payload:
@@ -38981,6 +39102,123 @@ components:
                     type: array
                     items:
                       type: string
+    EmployeeImportRollbackOutcome:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [run_id, status, request_id, review_required, rolled_back_at]
+      properties:
+        run_id:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          type: string
+          enum: [ROLLED_BACK, ROLLBACK_REQUESTED]
+        request_id:
+          type: string
+          format: uuid
+          nullable: true
+        review_required:
+          type: boolean
+        rolled_back_at:
+          type: string
+          format: date-time
+          nullable: true
+    EmployeeImportRollbackPreview:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [run_id, mode, basis, window_until, window_days, rows, blockers, preview_digest, allowed]
+      properties:
+        run_id:
+          $ref: '#/components/schemas/Uuid'
+        mode:
+          type: string
+          enum: [SETUP, GOVERNED]
+        basis:
+          type: string
+          enum: [DIRECT, STEP_UP, SECOND_PERSON]
+        window_until:
+          type: string
+          format: date-time
+          nullable: true
+        window_days:
+          type: integer
+        preview_digest:
+          type: string
+        allowed:
+          type: array
+          items:
+            type: string
+        rows:
+          type: array
+          items:
+            type: object
+            required: [employee_id, employee_number, inserted, fields, effects]
+            properties:
+              employee_id:
+                $ref: '#/components/schemas/Uuid'
+              employee_number:
+                type: string
+                nullable: true
+              inserted:
+                type: boolean
+              fields:
+                type: array
+                items:
+                  type: object
+                  required: [field, current, before]
+                  properties:
+                    field:
+                      type: string
+                    current:
+                      type: string
+                      nullable: true
+                    before:
+                      type: string
+                      nullable: true
+              effects:
+                type: array
+                items:
+                  type: string
+        blockers:
+          type: array
+          items:
+            type: object
+            required: [employee_id, employee_number, kind, field, record, since]
+            properties:
+              employee_id:
+                $ref: '#/components/schemas/Uuid'
+              employee_number:
+                type: string
+                nullable: true
+              kind:
+                type: string
+                enum: [work_record, changed_since, later_run, account_linked]
+              field:
+                type: string
+                nullable: true
+              record:
+                type: string
+              since:
+                type: string
+    EmployeeImportRollbackRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [preview_digest, acknowledged]
+      properties:
+        preview_digest:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+        acknowledged:
+          type: boolean
+        reason_code:
+          type: string
+          nullable: true
+        note:
+          type: string
+          maxLength: 1000
+          nullable: true
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     EmployeeImportRun:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
@@ -38997,6 +39235,8 @@ components:
         - rolled_back_by
         - rollback_reason_code
         - rollback_note
+        - rollback
+        - allowed
       properties:
         id:
           $ref: '#/components/schemas/Uuid'
@@ -39004,7 +39244,7 @@ components:
           type: string
         status:
           type: string
-          enum: [PREVIEWED, DRY_RUN, APPLIED, FAILED, ROLLED_BACK]
+          enum: [PREVIEWED, DRY_RUN, APPLIED, FAILED, ROLLBACK_REQUESTED, ROLLED_BACK]
         apply_job_state:
           type: string
           nullable: true
@@ -39070,6 +39310,41 @@ components:
         rollback_note:
           type: string
           nullable: true
+        rollback:
+          type: object
+          required: [mode, window_until, window_days, pending_request, refusal_code]
+          properties:
+            refusal_code:
+              type: string
+              nullable: true
+            mode:
+              type: string
+              enum: [SETUP, GOVERNED]
+            window_until:
+              type: string
+              format: date-time
+              nullable: true
+            window_days:
+              type: integer
+              minimum: 1
+            pending_request:
+              type: object
+              nullable: true
+              required: [id, requested_by, created_at]
+              properties:
+                id:
+                  $ref: '#/components/schemas/Uuid'
+                requested_by:
+                  $ref: '#/components/schemas/Uuid'
+                created_at:
+                  type: string
+                  format: date-time
+        allowed:
+          type: array
+          description: Server-authorized actions, after Cedar authorization and current run eligibility.
+          items:
+            type: string
+            enum: [preview_rollback]
     EmployeeImportRunPage:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object

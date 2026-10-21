@@ -1,10 +1,11 @@
-import { beforeAll, expect, test } from "vitest";
+import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRouter, RouterContextProvider } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import type { components } from "@console/api/schema";
-import { loadCatalog } from "@console/i18n";
+import { ApiError } from "../api";
+import { loadCatalog, t } from "@console/i18n";
 import type { ImportDryRun, ImportPreview, ImportRow, ReviewItem } from "../domain/contract";
 import { initialPicks } from "../domain/steps";
 import { PreviewStep } from "./preview-step";
@@ -13,7 +14,15 @@ import { RowDetail } from "./row-detail";
 import { ValueTable } from "./value-table";
 import { DoneStep } from "./done-step";
 import { RecentRuns } from "./recent-runs";
-import { applyJobQuery, runQuery, runsQuery } from "../api";
+import { RollbackPanel } from "./rollback-panel";
+import { applyJobQuery, runQuery, runsQuery, type ImportRun, type RollbackPreview } from "../api";
+
+const rollbackState = vi.hoisted(() => ({ acknowledged: false }));
+vi.mock("react", async (original) => {
+  const react = await original<typeof import("react")>();
+  return { ...react, useState: (initial: unknown) => rollbackState.acknowledged && Array.isArray(initial) && initial.length === 0 ? [["acknowledged"], vi.fn()] : react.useState(initial) };
+});
+afterEach(() => { rollbackState.acknowledged = false; });
 
 // The screens rendered from answers shaped as the server publishes them (generated schema), so a wording or a
 // branch that the contract drives is checked without a server.
@@ -137,6 +146,7 @@ const recordedRun: components["schemas"]["EmployeeImportRun"] = {
   apply_summary: { input_rows: 12, inserted: 10, updated: 1, skipped: 1, companies: [] },
   rolled_back_at: null, rolled_back_by: null, rollback_reason_code: null, rollback_note: null,
   apply_job_state: null,
+  rollback: { mode: "SETUP", window_until: null, window_days: 14, pending_request: null, refusal_code: null }, allowed: ["preview_rollback"],
 };
 
 function recordedScreen(node: ReactNode, items = [recordedRun], jobState: "settling" | "failed" | null = null) {
@@ -177,4 +187,80 @@ test("APPLIED while settlement is unfinished or failed stays on the existing job
     expect(out).not.toContain("명부를 반영했습니다");
     expect(out).toContain(state === "settling" ? "배치와 고용 정보를 기록하는 중입니다" : "반영하지 못했습니다");
   }
+});
+
+const rollbackPlan: RollbackPreview = {
+  run_id: recordedRun.id, mode: "SETUP", basis: "DIRECT", window_until: null, window_days: 14,
+  preview_digest: "a".repeat(64), allowed: ["rollback"], blockers: [],
+  rows: [
+    { employee_id: "person-new", employee_number: "E-0002", inserted: true, fields: [], effects: ["profile_created", "rrn_recorded"] },
+    { employee_id: "person-existing", employee_number: "E-0001", inserted: false, fields: [{ field: "job", current: "After", before: "Before" }], effects: [] },
+  ],
+};
+
+function rollbackScreen(run: ImportRun = recordedRun, plan = rollbackPlan, error?: ApiError) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, retryOnMount: false, staleTime: Infinity } } });
+  const queryKey = ["/api/v1/employee-import-runs/{run_id}/rollback/preview", { path: { run_id: run.id } }];
+  client.setQueryData(queryKey, plan);
+  if (error) client.getQueryCache().find({ queryKey })!.setState({ data: undefined, error, status: "error" });
+  const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
+  return renderToStaticMarkup(<RouterContextProvider router={router}><QueryClientProvider client={client}><RollbackPanel run={run} onChanged={noop} /></QueryClientProvider></RouterContextProvider>);
+}
+
+test("rollback preview lists the inverse and keeps execution disabled until acknowledged", () => {
+  const out = rollbackScreen();
+  expect(out).toContain("After → Before");
+  expect(out).toContain(t("import.rollback.void"));
+  expect(out).toContain('href="/people/person-existing"');
+  expect(out).toContain(t("import.rollback.acknowledged"));
+  expect(out).toContain('type="checkbox"');
+  expect(out).toMatch(/<button[^>]*(?:disabled|aria-disabled="true")[^>]*>[\s\S]*?되돌리기/);
+  expect(out).not.toContain(t("import.rollback.reason"));
+});
+
+test("acknowledging the current rollback preview arms the setup command", () => {
+  rollbackState.acknowledged = true;
+  const out = rollbackScreen();
+  expect(out).toMatch(/<input[^>]*type="checkbox"[^>]*checked=""/);
+  expect(out).toContain(`<button type="button" class="btn btn--primary">${t("import.rollback.execute")}</button>`);
+});
+
+test("pending rollback shows its filing time and offers no requester decision controls", () => {
+  const out = rollbackScreen({ ...recordedRun, status: "ROLLBACK_REQUESTED", allowed: [], rollback: { ...recordedRun.rollback, pending_request: { id: "request-1", requested_by: "actor", created_at: "2026-10-01T03:00:00Z" } } });
+  expect(out).toContain(t("import.rollback.wait"));
+  expect(out).toMatch(/GMT\+9|KST|한국 표준시/);
+  expect(out).not.toContain("<button");
+  expect(out).not.toContain(t("import.rollback.acknowledge"));
+});
+
+test("rolled-back run shows the completing actor and zoned time", () => {
+  const out = rollbackScreen({ ...recordedRun, status: "ROLLED_BACK", allowed: [], rolled_back_at: "2026-10-01T04:00:00Z", rolled_back_by: { id: "decider", name: "결정테스트" } });
+  expect(out).toContain(t("import.rollback.done"));
+  expect(out).toContain("결정테스트");
+  expect(out).not.toContain("<button");
+});
+
+test.each(["work_record", "changed_since", "later_run", "account_linked"] as const)("a %s blocker disables the whole rollback and links to its employee", (kind) => {
+  rollbackState.acknowledged = true;
+  const out = rollbackScreen(recordedRun, { ...rollbackPlan, allowed: [], blockers: [{ employee_id: "blocked-person", employee_number: "E-0042", kind, field: null, record: "/people/blocked-person", since: "2026-10-01T03:00:00Z" }] });
+  expect(out).toContain(t("import.rollback.blocked"));
+  expect(out).toContain('href="/people/blocked-person"');
+  expect(out).toContain("E-0042");
+  expect(out).toMatch(/<button[^>]*(?:disabled|aria-disabled="true")/);
+  expect(out).not.toContain('type="checkbox"');
+});
+
+test("a closed rollback window shows the server's date and a per-record correction route", () => {
+  const out = rollbackScreen({ ...recordedRun, allowed: [], rollback: { ...recordedRun.rollback, mode: "GOVERNED", refusal_code: "import_rollback_window_closed", window_until: "2026-10-15T02:00:00Z", window_days: 14 } });
+  expect(out).toContain(t("import.rollback.closed"));
+  expect(out).toMatch(/GMT\+9|KST|한국 표준시/);
+  expect(out).toContain('href="/people"');
+  expect(out).not.toContain("7일");
+  expect(out).not.toContain("<button");
+});
+
+test("a forbidden rollback preview uses the shared denied state and offers no execution", () => {
+  const out = rollbackScreen(recordedRun, rollbackPlan, new ApiError(403, "scope_tenant_wide_only", "denied"));
+  expect(out).toContain(t("common.denied.title.plain"));
+  expect(out).not.toMatch(/<button[^>]*>되돌리기<\/button>/);
 });

@@ -61,6 +61,7 @@ export function RequestPanel({ r, subject, hr, onClose, onDecided }: { r: Change
           </>
         )}
       </dl>
+      {r.kind === "IMPORT_ROLLBACK" && <p><Link to="/people/import" search={{ run: r.subject_id }}>{t("import.rollback.reviewRun")}</Link></p>}
       {changes.length > 0 && (
         <section aria-labelledby="rq-changes">
           <h3 id="rq-changes" className="panel__title">{t("requests.changes")}</h3>
@@ -104,7 +105,7 @@ function Decide({ r, choices, onDecided }: { r: ChangeRequest; choices: Decision
         </div>
       )}
       {tried && !decision && <p className="field__error">{t("requests.decision.missing")}</p>}
-      {decision && <p className="muted">{t(`requests.consequence.${decision}`)}</p>}
+      {decision && <p className="muted">{t(r.kind === "IMPORT_ROLLBACK" && decision === "APPLY" ? "import.rollback.applyConsequence" : `requests.consequence.${decision}`)}</p>}
       <Field label={t("requests.decision.reason")} required hint={t("lifecycle.reason.count", { count: reason.length, max: REASON_MAX })} error={tried && !reason.trim() ? t("lifecycle.reason.missing") : undefined}>
         {(p) => <TextInput {...p} value={reason} maxLength={REASON_MAX} onChange={(e) => (run.reset(), setReason(e.target.value))} />}
       </Field>

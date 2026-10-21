@@ -20,4 +20,5 @@ macro_rules! import2 { ([$($acc:tt)*] $($rest:tt)*) => { roster! { [$($acc)*
     ImportEmployeeNumberUnnumbered => "import.employee_number.unnumbered" = D::code(UNNUMBERED_MODES, "assign_by_rule", Higher);
     // Days a never-applied run keeps its sealed 주민등록번호 rows.
     ImportStagedIdentityTtlDays => "import.staged_identity.ttl_days" = D::int(Days, Some(1), Some(30), 7, Higher);
+    ImportRollbackWindowDays => "import.rollback.window_days" = D::int(Days, Some(1), Some(30), 14, Higher);
 ] $($rest)* } }; }

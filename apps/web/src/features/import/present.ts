@@ -2,7 +2,7 @@ import { LEAVE_TYPE, label } from "../../lib/labels";
 // Words for the import contract's codes. Every enum on screen goes through here, never the raw code.
 import { i18n, isMessageId, t } from "@console/i18n";
 import type { Classification, ImportDeferred, ImportOutcome, ImportRow, ReasonCatalogEntry, ReviewItem, SheetStatus } from "./domain/contract";
-import type { ImportRunStatus } from "./domain/pending";
+import type { ImportRun } from "./api";
 
 type Tone = "ok" | "warn" | "danger" | "info" | "neutral";
 
@@ -25,7 +25,7 @@ export const OUTCOME_TONE: Record<ImportOutcome, Tone> = {
 };
 export const outcomeLabel = (o: ImportOutcome) => t(`import.outcome.${o}`);
 
-type RunStatus = ImportRunStatus | "PREVIEWED" | "FAILED";
+type RunStatus = ImportRun["status"] | "PREVIEW";
 export const STATUS_TONE: Record<RunStatus, Tone> = { PREVIEW: "neutral", PREVIEWED: "neutral", DRY_RUN: "neutral", APPLIED: "ok", FAILED: "danger", ROLLBACK_REQUESTED: "warn", ROLLED_BACK: "neutral" };
 export const statusLabel = (s: RunStatus) => s === "FAILED" ? t("importJob.failed") : t(`import.status.${s === "PREVIEWED" ? "PREVIEW" : s}`);
 

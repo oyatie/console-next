@@ -170,6 +170,24 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/employee-import-runs/{run_id}/rollback",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__employee-import-runs__run_id__rollback.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/employee-import-runs/{run_id}/rollback/preview",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__employee-import-runs__run_id__rollback__preview.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employee-number-rules",
         operations: &[
             Operation {
@@ -1383,6 +1401,18 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "EmployeeImportReviewQueue",
         body: include_str!("../openapi/schemas/EmployeeImportReviewQueue.yaml"),
+    },
+    NamedYaml {
+        name: "EmployeeImportRollbackOutcome",
+        body: include_str!("../openapi/schemas/EmployeeImportRollbackOutcome.yaml"),
+    },
+    NamedYaml {
+        name: "EmployeeImportRollbackPreview",
+        body: include_str!("../openapi/schemas/EmployeeImportRollbackPreview.yaml"),
+    },
+    NamedYaml {
+        name: "EmployeeImportRollbackRequest",
+        body: include_str!("../openapi/schemas/EmployeeImportRollbackRequest.yaml"),
     },
     NamedYaml {
         name: "EmployeeImportRun",

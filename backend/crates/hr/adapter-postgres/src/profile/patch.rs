@@ -204,6 +204,7 @@ impl HrService {
                 }
                 let head = lock_employee(tx, org_uuid, employee_id).await?;
                 let meta = LedgerMeta {
+                        import_run_id: None,
                     reason_code: FIRST_RECORD,
                     note: None,
                     corrected_by: *actor.as_uuid(),

@@ -190,6 +190,7 @@ impl HrService {
                     head.updated_at
                 } else {
                     let meta = LedgerMeta {
+                        import_run_id: None,
                         reason_code: &reason,
                         note: note.as_deref(),
                         corrected_by: me,

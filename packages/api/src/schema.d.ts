@@ -3596,6 +3596,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/employee-import-runs/{run_id}/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reverse the acknowledged employee import */
+        post: operations["rollbackEmployeeImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employee-import-runs/{run_id}/rollback/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview the inverse employee import plan */
+        post: operations["previewEmployeeImportRollback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/employee-number-rules": {
         parameters: {
             query?: never;
@@ -16039,9 +16073,9 @@ export interface components {
         ChangeRequest: {
             id: components["schemas"]["Uuid"];
             /** @enum {string} */
-            kind: "PROFILE_CORRECTION" | "IDENTITY_REVIEW" | "ACCESS_REQUEST" | "SCOPE_ACTION" | "OTHER" | "ACCESS_EXPLANATION" | "POLICY_QUESTION" | "EMPLOYEE_VOID";
+            kind: "PROFILE_CORRECTION" | "IDENTITY_REVIEW" | "ACCESS_REQUEST" | "SCOPE_ACTION" | "OTHER" | "ACCESS_EXPLANATION" | "POLICY_QUESTION" | "EMPLOYEE_VOID" | "IMPORT_ROLLBACK";
             /** @enum {string} */
-            subject_type: "EMPLOYEE" | "USER_ACCOUNT" | "BRANCH" | "ORGANIZATION";
+            subject_type: "EMPLOYEE" | "USER_ACCOUNT" | "BRANCH" | "ORGANIZATION" | "DATA_IMPORT_RUN";
             subject_id: components["schemas"]["Uuid"];
             payload: {
                 [key: string]: unknown;
@@ -18755,11 +18789,60 @@ export interface components {
                 };
             }[];
         };
+        EmployeeImportRollbackOutcome: {
+            run_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            status: "ROLLED_BACK" | "ROLLBACK_REQUESTED";
+            /** Format: uuid */
+            request_id: string | null;
+            review_required: boolean;
+            /** Format: date-time */
+            rolled_back_at: string | null;
+        };
+        EmployeeImportRollbackPreview: {
+            run_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            mode: "SETUP" | "GOVERNED";
+            /** @enum {string} */
+            basis: "DIRECT" | "STEP_UP" | "SECOND_PERSON";
+            /** Format: date-time */
+            window_until: string | null;
+            window_days: number;
+            preview_digest: string;
+            allowed: string[];
+            rows: {
+                employee_id: components["schemas"]["Uuid"];
+                employee_number: string | null;
+                inserted: boolean;
+                fields: {
+                    field: string;
+                    current: string | null;
+                    before: string | null;
+                }[];
+                effects: string[];
+            }[];
+            blockers: {
+                employee_id: components["schemas"]["Uuid"];
+                employee_number: string | null;
+                /** @enum {string} */
+                kind: "work_record" | "changed_since" | "later_run" | "account_linked";
+                field: string | null;
+                record: string;
+                since: string;
+            }[];
+        };
+        EmployeeImportRollbackRequest: {
+            preview_digest: string;
+            acknowledged: boolean;
+            reason_code?: string | null;
+            note?: string | null;
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
         EmployeeImportRun: {
             id: components["schemas"]["Uuid"];
             source_filename: string;
             /** @enum {string} */
-            status: "PREVIEWED" | "DRY_RUN" | "APPLIED" | "FAILED" | "ROLLED_BACK";
+            status: "PREVIEWED" | "DRY_RUN" | "APPLIED" | "FAILED" | "ROLLBACK_REQUESTED" | "ROLLED_BACK";
             /**
              * @description APPLIED is stored before settlement finishes. A job that is not done must stay on the apply job screen. Null denotes a legacy inline apply without a job.
              * @enum {string|null}
@@ -18791,6 +18874,22 @@ export interface components {
             } | null;
             rollback_reason_code: string | null;
             rollback_note: string | null;
+            rollback: {
+                refusal_code: string | null;
+                /** @enum {string} */
+                mode: "SETUP" | "GOVERNED";
+                /** Format: date-time */
+                window_until: string | null;
+                window_days: number;
+                pending_request: {
+                    id: components["schemas"]["Uuid"];
+                    requested_by: components["schemas"]["Uuid"];
+                    /** Format: date-time */
+                    created_at: string;
+                } | null;
+            };
+            /** @description Server-authorized actions, after Cedar authorization and current run eligibility. */
+            allowed: "preview_rollback"[];
         };
         EmployeeImportRunPage: {
             items: components["schemas"]["EmployeeImportRun"][];
@@ -34601,6 +34700,155 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    rollbackEmployeeImport: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                run_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmployeeImportRollbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Run reversed atomically; an exact idempotency replay returns this original outcome. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeImportRollbackOutcome"];
+                };
+            };
+            /** @description IMPORT_ROLLBACK request filed for a different eligible holder through change-requests decide. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeImportRollbackOutcome"];
+                };
+            };
+            /** @description Rollback refused before any changes. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Rollback refused before any changes. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Rollback refused before any changes. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Rollback refused before any changes. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Rollback refused before any changes. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    previewEmployeeImportRollback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Inverse plan and blockers; nothing written. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeImportRollbackPreview"];
+                };
+            };
+            /** @description Rollback refused before any changes. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Rollback refused before any changes. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Rollback refused before any changes. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Rollback refused before any changes. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Rollback refused before any changes. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     listEmployeeNumberRules: {

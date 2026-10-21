@@ -125,11 +125,45 @@ pub async fn settle_chunk(
                             today_kst(),
                         )
                         .await?;
+                        let event: Uuid = sqlx::query_scalar(
+                            "SELECT id FROM employee_lifecycle_events \
+                             WHERE org_id = $1 AND employee_id = $2 \
+                               AND event_type = 'ONBOARD'",
+                        )
+                        .bind(org_uuid)
+                        .bind(id)
+                        .fetch_one(tx.as_mut())
+                        .await?;
+                        crate::import::effects::record(
+                            tx,
+                            org_uuid,
+                            run_id,
+                            *id,
+                            "onboard_scheduled",
+                            event,
+                        )
+                        .await?;
                         scheduled += 1;
                     }
                     "EXITED" => {}
                     _ => match employment::appoint_legacy_head_in_tx(tx, org, actor, *id).await {
-                        Ok(Some(_)) => appointed += 1,
+                        Ok(Some(receipt)) => {
+                            let employment: Uuid =
+                                serde_json::from_value(receipt.result()["employment_id"].clone())
+                                    .map_err(|_| {
+                                    HrError::internal("appointment receipt has no employment id")
+                                })?;
+                            crate::import::effects::record(
+                                tx,
+                                org_uuid,
+                                run_id,
+                                *id,
+                                "employment_opened",
+                                employment,
+                            )
+                            .await?;
+                            appointed += 1;
+                        }
                         Ok(None) => {}
                         // The owner refused before writing anything (blank
                         // company, hire date in a closed period, unknown
@@ -149,6 +183,17 @@ pub async fn settle_chunk(
                 record_import_facts(tx, org_uuid, *actor.as_uuid(), run_id, &keys).await?;
             let setup =
                 record_setup_facts(tx, org_uuid, *actor.as_uuid(), run_id, (&keys, last)).await?;
+            crate::import::effects::capture_heads(tx, org_uuid, run_id, &keys).await?;
+            if last {
+                sqlx::query(
+                    "UPDATE data_import_runs SET rollback_ledger_complete = true \
+                     WHERE org_id = $1 AND id = $2",
+                )
+                .bind(org_uuid)
+                .bind(run_id)
+                .execute(tx.as_mut())
+                .await?;
+            }
             let bound = people.iter().filter(|p| p.4.is_some()).count();
             let audit = AuditEvent::new(
                 Some(actor),

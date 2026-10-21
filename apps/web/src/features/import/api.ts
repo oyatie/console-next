@@ -3,8 +3,13 @@ import { api, ApiError, unwrap } from "@console/api";
 import { get } from "../../lib/query";
 import { REFUSED_BEFORE_WRITE } from "../../lib/react/command";
 import type { ApplyJob, ImportDecisions, ImportPreview, ImportReport } from "./domain/contract";
-import type { ImportRun } from "./domain/pending";
+import type { components } from "@console/api/schema";
+export type ImportRun = components["schemas"]["EmployeeImportRun"];
+export type RollbackPreview = components["schemas"]["EmployeeImportRollbackPreview"];
+export type RollbackRequest = components["schemas"]["EmployeeImportRollbackRequest"];
 import { HEAD_BYTES, workbookKind } from "./domain/workbook";
+
+export { ApiError, assertBoundPasskey } from "@console/api";
 
 const idem = (key: string) => ({ header: { "Idempotency-Key": key } });
 
@@ -89,19 +94,15 @@ export const lostAnswer = (e: unknown) => !(e instanceof ApiError) || e.status =
 
 export const excludeReasonsQuery = get("/api/v1/reason-codes", { params: { query: { domain: EXCLUDE_REASONS } } });
 
-// Run history is served; rollback commands remain unmounted until their governed write path is available.
-type Raw = Record<"GET" | "POST", (path: string, init?: { body?: unknown; params?: { header?: Record<string, string> } }) => Promise<{ data?: unknown; error?: unknown; response: Response }>>;
-const raw = () => api as unknown as Raw;
+// Run records and inverse commands share the generated API contract.
 export const RUNS = "/api/v1/employee-import-runs";
 export const ROLLBACK_REASONS = "import_rollback";
-export const MEMO_MAX = 500;
 export const runsQuery = get(RUNS);
 export const runQuery = (id: string) => get("/api/v1/employee-import-runs/{run_id}", { params: { path: { run_id: id } } });
 export const rollbackReasonsQuery = get("/api/v1/reason-codes", { params: { query: { domain: ROLLBACK_REASONS } } });
-export const requestRollback = (id: string, reason: { code: string; memo: string }, key: string) =>
-  unwrap(raw().POST(`${RUNS}/${id}/rollback`, { params: idem(key), body: { reason_code: reason.code, memo: reason.memo || null } })) as Promise<ImportRun>;
-export const decideRollback = (id: string, decision: "APPROVE" | "REFUSE", key: string) =>
-  unwrap(raw().POST(`${RUNS}/${id}/rollback/decision`, { params: idem(key), body: { decision } })) as Promise<ImportRun>;
+export const previewRollback = (id: string) => unwrap(api.POST("/api/v1/employee-import-runs/{run_id}/rollback/preview", { params: { path: { run_id: id } } }));
+export const requestRollback = (id: string, body: RollbackRequest, key: string) =>
+  unwrap(api.POST("/api/v1/employee-import-runs/{run_id}/rollback", { params: { path: { run_id: id }, ...idem(key) }, body }));
 
 // --- the migration check: the applied run checked row by row and signed off (spec E7-reconcile/-row/-signoff, BE-EMP-UI §5) ---
 const onRun = (runId: string) => ({ path: { run_id: runId } });

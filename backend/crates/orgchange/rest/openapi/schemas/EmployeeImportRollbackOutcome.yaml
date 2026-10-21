@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [run_id, status, request_id, review_required, rolled_back_at]
+properties:
+  run_id:
+    $ref: '#/components/schemas/Uuid'
+  status:
+    type: string
+    enum: [ROLLED_BACK, ROLLBACK_REQUESTED]
+  request_id:
+    type: string
+    format: uuid
+    nullable: true
+  review_required:
+    type: boolean
+  rolled_back_at:
+    type: string
+    format: date-time
+    nullable: true
