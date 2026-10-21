@@ -205,11 +205,12 @@ async fn auth_command_expand_preserves_populated_0231_database(pool: PgPool) {
         .await
         .unwrap();
 
-    // 20261013153727436's family activity columns (INF-03) postdate 0231: left out.
+    // 20261013153727436's family activity columns (INF-03) and the ops-recovery OTP columns
+    // (20261021002934225: single_use, redeemed_at) postdate 0231: left out.
     let before: serde_json::Value = sqlx::query_scalar(
         "SELECT jsonb_build_object( \
          'account',(SELECT to_jsonb(a) FROM auth_security.account_state a WHERE account_id=$1), \
-         'otp',(SELECT to_jsonb(b) FROM auth_bootstrap_credentials b WHERE id=$2), \
+         'otp',(SELECT to_jsonb(b) - 'single_use' - 'redeemed_at' FROM auth_bootstrap_credentials b WHERE id=$2), \
          'family',(SELECT to_jsonb(f) - 'last_activity_at' - 'idle_timeout_minutes' FROM auth_refresh_token_families f WHERE id=$3))",
     )
     .bind(account)
@@ -224,7 +225,7 @@ async fn auth_command_expand_preserves_populated_0231_database(pool: PgPool) {
     let after: serde_json::Value = sqlx::query_scalar(
         "SELECT jsonb_build_object( \
          'account',(SELECT to_jsonb(a) FROM auth_security.account_state a WHERE account_id=$1), \
-         'otp',(SELECT to_jsonb(b) FROM auth_bootstrap_credentials b WHERE id=$2), \
+         'otp',(SELECT to_jsonb(b) - 'single_use' - 'redeemed_at' FROM auth_bootstrap_credentials b WHERE id=$2), \
          'family',(SELECT to_jsonb(f) - 'last_activity_at' - 'idle_timeout_minutes' FROM auth_refresh_token_families f WHERE id=$3))",
     )
     .bind(account)
@@ -241,7 +242,7 @@ async fn auth_command_expand_preserves_populated_0231_database(pool: PgPool) {
     let after_retry: serde_json::Value = sqlx::query_scalar(
         "SELECT jsonb_build_object( \
          'account',(SELECT to_jsonb(a) FROM auth_security.account_state a WHERE account_id=$1), \
-         'otp',(SELECT to_jsonb(b) FROM auth_bootstrap_credentials b WHERE id=$2), \
+         'otp',(SELECT to_jsonb(b) - 'single_use' - 'redeemed_at' FROM auth_bootstrap_credentials b WHERE id=$2), \
          'family',(SELECT to_jsonb(f) - 'last_activity_at' - 'idle_timeout_minutes' FROM auth_refresh_token_families f WHERE id=$3))",
     )
     .bind(account)
