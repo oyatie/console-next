@@ -95,6 +95,7 @@ export const koBulk = {
   "bulk.commit.PROMOTE.past": "{count, plural, other {#명}} {date}자 승진 처리 (지난 날짜)",
   "bulk.missing": "{count, plural, other {#개}} 항목을 채워야 합니다",
   "bulk.errorsLeft": "오류 {count, plural, other {#줄}}을 수정하거나 제외해야 기록할 수 있습니다",
+  "bulk.noTargets": "발령할 직원이 없습니다. 직원 목록에서 선택하거나 사번이 있는 줄을 붙여 넣으십시오.",
   "bulk.retryWithout": "거부된 {count, plural, other {#명}} 제외 후 다시 시도",
   "bulk.refused.title": "{count, plural, other {#명}}이 거부되어 이 발령은 기록되지 않았습니다",
   "bulk.refusal.not_found": "찾을 수 없는 직원입니다",

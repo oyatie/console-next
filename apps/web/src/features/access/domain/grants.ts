@@ -53,3 +53,13 @@ export const blankLine = (key: string): DraftLine => ({ key, role_id: null, scop
 export type Start = { when: string | null; date: string };
 /** Whether the start still blocks a save: none chosen, or a date that is missing or before today. */
 export const startProblem = (v: Start, today: string) => !v.when || (v.when === "DATE" && (!v.date || v.date < today));
+
+/** One refusal for both the bulk preview control and its submit guard. */
+export function bulkBlock(v: { picked: number; gaps: readonly Missing[]; setup: boolean; when: string | null; reason: { code: string | null; memo: string } }) {
+  if (!v.picked) return { id: "access.bulk.pick.missing" } as const;
+  if (v.gaps[0]) return { id: `access.grant.missing.${v.gaps[0]}` } as const;
+  if (v.setup && !v.when) return { id: "access.grant.when.missing" } as const;
+  if (!v.reason.code) return { id: "uiReason.pick", params: { label: "access.grant.reason" } } as const;
+  if (v.reason.code === "OTHER" && !v.reason.memo.trim()) return { id: "uiReason.memoRequired" } as const;
+  return null;
+}

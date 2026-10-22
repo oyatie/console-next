@@ -93,6 +93,7 @@ export const enBulk = {
   "bulk.commit.PROMOTE.past": "Promote {count, plural, one {# employee} other {# employees}} as of {date} (past date)",
   "bulk.missing": "{count, plural, one {# field} other {# fields}} to complete",
   "bulk.errorsLeft": "Fix or exclude {count, plural, one {# line} other {# lines}} with errors to record",
+  "bulk.noTargets": "There are no employees to appoint. Select employees from the roster or paste rows with employee numbers.",
   "bulk.retryWithout": "Retry without the {count, plural, one {# refused employee} other {# refused employees}}",
   "bulk.refused.title": "{count, plural, one {# employee was} other {# employees were}} refused, so this assignment wasn’t recorded",
   "bulk.refusal.not_found": "Employee not found",

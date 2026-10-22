@@ -16,7 +16,7 @@ import { PasskeyError } from "../../../lib/react/passkey-error";
 import { createAccount, employeeQuery } from "../api";
 import { useFocusInvalid } from "./use-focus-invalid";
 import { useIssueCode, type Issued } from "./use-issue-code";
-import { LOGIN_MAX, loginProblem, normalizeLogin, suggestLogin } from "../domain/sign-in-id";
+import { inviteBlock, LOGIN_MAX, loginProblem, normalizeLogin, suggestLogin } from "../domain/sign-in-id";
 import { Muted } from "../../../ui/muted/muted";
 
 type Employee = components["schemas"]["Employee"];
@@ -81,21 +81,13 @@ export function InviteSheet({ employeeId, onClose, onIssued, onOpenAccount }: {
       issue.mutate(target);
     },
   });
-  const missing = (displayName === "" ? 1 : 0) + (loginError ? 1 : 0);
-  const blockedWhy = !created
-    ? (!nonEmployee && who == null
-      ? t("accounts.invite.pickWho")
-      : displayName === ""
-        ? t("accounts.invite.pickName")
-        : missing > 0
-          ? t("accounts.missing", { count: missing })
-          : null)
-    : null;
+  const block = inviteBlock({ created: created !== null, nonEmployee, who: who !== null, name: displayName, login: loginValue, existing: !!existing, checking: linked.isFetching });
+  const blockedWhy = block ? t(block) : null;
   const commit = () => {
     setTried(true);
     if (created) return issue.mutate(created);
-    if (missing > 0) return focusInvalid();
-    if (!existing && !linked.isFetching) create.mutate(undefined);
+    if (block) return focusInvalid();
+    create.mutate(undefined);
   };
   const pending = create.isPending || issue.isPending;
   const consequence =

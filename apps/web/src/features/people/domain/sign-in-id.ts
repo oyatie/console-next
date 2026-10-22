@@ -15,6 +15,18 @@ export function loginProblem(raw: string): "empty" | "nonAscii" | "invalid" | nu
   return LOGIN.test(login) && !/[._-]{2}/.test(login) ? null : "invalid";
 }
 
+/** Invite validation also guards the account write; a created account only retries its code. */
+export function inviteBlock(v: { created: boolean; nonEmployee: boolean; who: boolean; name: string; login: string; existing: boolean; checking: boolean }) {
+  if (v.created) return null;
+  if (!v.nonEmployee && !v.who) return "accounts.invite.pickWho";
+  if (!v.name.trim()) return "accounts.invite.pickName";
+  const login = v.login.trim() ? loginProblem(v.login) : null;
+  if (login && login !== "empty") return `accounts.signInId.problem.${login}` as const;
+  if (v.existing) return "accounts.invite.exists";
+  if (v.who && v.checking) return "accounts.invite.checking";
+  return null;
+}
+
 /** The first reason a change cannot be saved, in the order the form reads; `null` when it can. */
 export function changeProblem(c: { current: string | null; next: string; date: string; today: string; reason: string | null; needsNote: boolean; note: string }) {
   const login = loginProblem(c.next);

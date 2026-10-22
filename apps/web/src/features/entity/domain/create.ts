@@ -7,7 +7,7 @@ import { CORP_CHECK_DIGIT_UNTIL, corpRegNoChecksumOk, FORMATS, phoneE164, validE
 import type { Draft } from "./draft";
 import { brnChecksumOff, brnWarnings, brnNeedsLook, type BrnClass } from "./brn";
 import { krAddress } from "./plan";
-import { entityName } from "../../../reference/entity/domain/names";
+import { entityName, latinName, personName } from "../../../reference/entity/domain/names";
 
 export type WizardStep = "basics" | "certificate" | "registry" | "review";
 /** A corporation also types its registry extract (registry and representatives); the others go straight to the review. */
@@ -89,6 +89,16 @@ export function entityGaps(d: Draft): EntityGap[] {
 }
 const namedReps = (d: Draft) => d.representatives.map((n) => n.trim()).filter(Boolean);
 const headOfficeAddress = (d: Draft) => (d.headOffice === "SAME" ? d.businessAddress : d.headOfficeAddress);
+
+/** The quick sheet shares this refusal between its save controls and command guard. */
+export function quickBlock(d: Draft) {
+  if (personName(d.name, d.representatives)) return "entity.refusal.legal_name_is_person";
+  if (d.displayName.trim() && personName(d.displayName.trim(), d.representatives)) return "entity.refusal.display_name_is_person";
+  if (d.englishName.trim() && !latinName(d.englishName.trim())) return "entity.refusal.english_name_not_latin";
+  if (d.englishName.trim() && personName(d.englishName.trim(), d.representatives)) return "entity.refusal.english_name_is_person";
+  if (!d.bizKind || !d.name.trim() || !d.representatives.some((n) => n.trim())) return "entityQuick.hold.basics";
+  return entityGaps(d).length ? "entityQuick.hold.corp" : null;
+}
 
 /** The entity as the server records it from whatever the draft holds (call only once `entityGaps` is empty). */
 export function entityBody(d: Draft): LegalEntityInput {

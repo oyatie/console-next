@@ -20,7 +20,7 @@ import { unitsQuery } from "../../../reference/org/api";
 import { UnitPicker } from "../../../reference/org/ui/unit-picker";
 import { ReasonCodeField } from "../../../reference/reason/ui/reason-code-field";
 import { reasonCodesQuery, useReasonCodesReady } from "../../../lib/reason-codes";
-import { groupRows, monthEnd, nextMonthFirst, whenOf, type Kind, type Row } from "../domain/bulk";
+import { bulkBlock, groupRows, monthEnd, nextMonthFirst, whenOf, type Kind, type Row } from "../domain/bulk";
 import { jobTitlesQuery, type BulkRequest } from "../api";
 import { bulkDemotion, bulkPromotion } from "../domain/bulk-promotion";
 import { DEMOTION_REASON } from "../domain/titles";
@@ -103,7 +103,7 @@ export function BulkSheet({ source, matching, onClose, onDone }: {
   const unitName = all.find((u) => u.id === d.unitId)?.name;
 
   const missing = {
-    targets: (paste ? !d.text.trim() : count === 0) ? t("bulk.paste.missing") : undefined,
+    targets: paste && !d.text.trim() ? t("bulk.paste.missing") : undefined,
     kind: !d.kind ? t("bulk.kind.missing") : undefined,
     unit: d.kind === "TRANSFER" && !perLine && !d.unitId ? t("bulk.unit.missing") : undefined,
     position: d.kind === "PROMOTE" && !perLine && !d.position.trim() ? t("bulk.position.missing") : undefined,
@@ -113,12 +113,9 @@ export function BulkSheet({ source, matching, onClose, onDone }: {
     comment: !d.comment.trim() ? t("bulk.reason.missing") : undefined,
   };
   const missingCount = Object.values(missing).filter(Boolean).length;
-  const blockedWhy =
-    count === 0 || missingCount > 0
-      ? t("bulk.missing", { count: Math.max(1, missingCount) })
-      : errorLines > 0
-        ? t("bulk.errorsLeft", { count: errorLines })
-        : null;
+  const hasTargets = paste ? resolved.lines.length > 0 : source.picked.size > 0;
+  const block = bulkBlock({ missingCount, errorLines, count, checking: (hasTargets && !resolved.ready) || !titlesQ.isSuccess, failed: resolved.failed, progress: resolved.progress });
+  const blockedWhy = block ? t(block.id, block.params) : null;
   const shown = (m: string | undefined) => (tried ? m : undefined);
 
   const batches = (rs: Row[]): BulkRequest[] =>
@@ -133,7 +130,7 @@ export function BulkSheet({ source, matching, onClose, onDone }: {
     }));
   const submit = () => {
     setTried(true);
-    if (missingCount || errorLines || count === 0 || !resolved.ready || !titlesQ.isSuccess) {
+    if (block) {
       // The first field to fix, else the first line to fix.
       requestAnimationFrame(() => document.getElementById(bodyId)?.querySelector<HTMLElement>('[aria-invalid="true"], [data-invalid] input, [data-missing] input, [data-tone="danger"] button')?.focus());
       return;

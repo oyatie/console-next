@@ -128,7 +128,7 @@
 "apps/web/src/features/people/ui/bulk-exit-sheet.tsx": {"dsClass":1},
 "apps/web/src/features/people/ui/bulk-page.module.css": {"restyle":28,"literal":4},
 "apps/web/src/features/people/ui/bulk-sheet.tsx": {"dsClass":4},
-"apps/web/src/features/people/ui/bulk.module.css": {"restyle":12},
+"apps/web/src/features/people/ui/bulk.module.css": {"restyle":10},
 "apps/web/src/features/people/ui/company-mappings.tsx": {"dsClass":3},
 "apps/web/src/features/people/ui/contract-form.tsx": {"dsClass":1},
 "apps/web/src/features/people/ui/contracts-card.tsx": {"dsClass":2},
