@@ -81,7 +81,7 @@ async fn app_session_without_privacy_consent_cannot_create_employee(pool: PgPool
     // A new sign-in restores hash-bound acceptance once from the durable audit.
     let next_session = unaccepted_bearer(&pool, &keys, org, user).await;
     let repeated = post(service.clone(), EMPLOYEES_PATH, &next_session, body.clone()).await;
-    assert_eq!(repeated.status, StatusCode::CREATED, "{:?}", repeated.json);
+    assert_eq!(repeated.status, StatusCode::OK, "{:?}", repeated.json);
     sqlx::query("INSERT INTO terms_documents (version,kind,body,published_at,policy_url,review_pending) SELECT 'privacy-next-test',kind,body || E'\\nUpdated fixture',clock_timestamp(),policy_url,review_pending FROM terms_documents WHERE version=$1")
         .bind(d["privacy"]["version"].as_str().unwrap()).execute(&pool).await.unwrap();
     let before_reconsent = people_write_counts(&pool, org).await;

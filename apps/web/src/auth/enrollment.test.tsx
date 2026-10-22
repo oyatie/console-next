@@ -6,9 +6,9 @@ import { SetupPasskey } from "./Login";
 
 vi.mock("@console/api", async (importOriginal) => ({ ...await importOriginal<typeof import("@console/api")>(), session: { stage: "enroll", claims: null } }));
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn(), getRouteApi: () => ({ useSearch: () => ({}) }) }));
-const query = vi.hoisted(() => ({ pending: false, failed: false }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: query.pending || query.failed ? undefined : { accepted: false, policy_version: "2026-10", version: "service-v1", sha256: "a".repeat(64), body: "Store service terms exact text", privacy: { version: "notice-v1", sha256: "b".repeat(64), body: "Store notice exact text 휴대전화번호", policy_url: "https://cosskorea.com/privacy", review_pending: true } }, isPending: query.pending, isError: query.failed }) }));
-beforeEach(() => { query.pending = false; query.failed = false; });
+const query = vi.hoisted(() => ({ pending: false, failed: false, fetched: true }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: query.pending || query.failed ? undefined : { accepted: false, policy_version: "2026-10", version: "service-v1", sha256: "a".repeat(64), body: "Store service terms exact text", privacy: { version: "notice-v1", sha256: "b".repeat(64), body: "Store notice exact text 휴대전화번호", policy_url: "https://cosskorea.com/privacy", review_pending: true } }, isFetchedAfterMount: query.fetched && !query.pending, isPending: query.pending, isError: query.failed }) }));
+beforeEach(() => { query.pending = false; query.failed = false; query.fetched = true; });
 beforeAll(() => loadCatalog("ko"));
 
 test("first sign-in requires privacy notice and terms consent before passkey enrollment", () => {
@@ -58,4 +58,11 @@ test("pending documents keep required confirmations disabled", () => {
   expect(html).toContain('role="status"');
   expect(html).toContain('type="checkbox"');
   expect(html).toMatch(/<input[^>]*disabled/);
+});
+
+test("cached consent text cannot stand in for a fresh document read", () => {
+  query.fetched = false;
+  const html = renderToStaticMarkup(<SetupPasskey />);
+  expect(html).not.toContain("Store notice exact text");
+  expect(html).toContain('role="status"');
 });
