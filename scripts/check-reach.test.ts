@@ -13,7 +13,7 @@ const lifecycle = {
 };
 const via = [{ role: "button", name: "비상연락처 추가" }];
 const reach = (["create", "update", "end"] as const).map((op) => ({ record: "HR.employee.emergency_contact", op, page: "card", via }));
-const tree = { lifecycle, reach, baseline: [], facts: [{ label: "비상연락처" }], untracked: [], labels: new Map([["비상연락처", "card"]]), units: new Set(["ra-x"]) };
+const tree = { lifecycle, reach, baseline: [], facts: [{ label: "비상연락처" }], untracked: [], labels: new Map([["비상연락처", "card"]]) };
 
 test("required: MVP Org/HR cells naming a backend operation, never a by-design one or a non-MVP module", () => {
   expect(required(lifecycle).map((p: { op: string }) => p.op)).toEqual(["create", "update", "end"]);
@@ -37,12 +37,11 @@ test("a baselined gap passes while the base has it; a reached or unrequired entr
   expect(check(gap)).toEqual([expect.stringMatching(/has no lane naming its unit/)]);
 });
 
-test("planted: a lane names an open unit of the queue; a prose lane, a closed unit, or no queue at all fails", () => {
-  const at = (lane: string, units: Set<string> | null = tree.units) => check({ ...tree, reach: reach.slice(1), baseline: [{ record: "HR.employee.emergency_contact", op: "create", lane }], previous: {}, units });
+test("a baseline names its lane without requiring a private queue; a prose lane fails", () => {
+  const at = (lane: string) => check({ ...tree, reach: reach.slice(1), baseline: [{ record: "HR.employee.emergency_contact", op: "create", lane }], previous: {} });
   expect(at("unit: ra-x (orchestra; reach from the record page)")).toEqual([]);
   expect(at("existing: PEOPLE-W-13 (docs/plans/ideal-work/people.md:464)")).toEqual([expect.stringMatching(/has no lane naming its unit/)]);
-  expect(at("unit: cx-people-capability")).toEqual([expect.stringMatching(/names unit cx-people-capability, which is not open in the queue/)]);
-  expect(at("unit: ra-x", null)).toEqual([expect.stringMatching(/lanes NOT CHECKED: no orchestra queue/)]);
+  expect(at("unit: cx-people-capability")).toEqual([]);
 });
 
 test("planted: the baseline only shrinks against the base: a gap baselined instead of reached, or listed twice, fails", () => {
