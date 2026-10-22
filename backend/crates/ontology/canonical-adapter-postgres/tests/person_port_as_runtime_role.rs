@@ -25,7 +25,7 @@
 //! the `JoinHandle`, so `Runtime::block_on` on the main thread is still driving.
 //!
 //! IMMUTABILITY IS THE TRIGGER, AND ONLY THE TRIGGER. There is no second layer:
-//! `ops/postgres-reconcile-topology.sh` runs `ALTER DEFAULT PRIVILEGES FOR ROLE
+//! `scripts/ci/postgres-reconcile-topology.sh` runs `ALTER DEFAULT PRIVILEGES FOR ROLE
 //! console_app IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES
 //! TO console_rt` BEFORE migrations, so in the deployed database `console_rt`
 //! DOES hold UPDATE on `person_revisions` — migration 0213 says so in its own

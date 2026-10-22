@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+# Reviewed synthetic controls only; never add a client-specific exception.
+value a7e062c80aa9 -- Unallocated 000-prefix CRN refusal/checksum fixture; not a resident number.
+value b81ba21cde14 -- Unallocated 000-prefix CRN refusal/checksum fixture; not a resident number.
+value b7dd108c8ca9 -- Unallocated 000-prefix CRN refusal/checksum fixture; not a resident number.
+value d006c7c3d649 -- Unallocated 000-prefix CRN refusal/checksum fixture; not a resident number.
+value 27aed3cda18c -- Existing single-letter work-email unit-test placeholder in facts.test.ts.
+binary backend/fuzz/corpus/entity-bodies/seed-001 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/entity-bodies/seed-008 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/import-mapping/seed-000 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/import-mapping/seed-001 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/import-mapping/seed-002 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/import-mapping/seed-003 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/json-patch/seed-000 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/json-patch/seed-001 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/json-patch/seed-002 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/json-patch/seed-003 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/json-patch/seed-004 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/json-patch/seed-005 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/json-patch/seed-006 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/xlsx-read/seed-003 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+binary backend/fuzz/corpus/xlsx-read/seed-004 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
+value e4956ff67a25 -- Public upstream OpenSSL ARMv8 AES GCM BSD attribution embedded by the linker; not application data.
+value 06c15e4bd4b8 -- Public elliptic MIT author credit bundled by ExcelJS; retained upstream attribution, not application data.

@@ -50,7 +50,7 @@
 //! `canonical_org_structure_row_immutable` trigger), so a revision is never
 //! edited: `Revise` appends `MAX(version) + 1`. The TRIGGER is the whole of that
 //! enforcement, not a privilege — 0215's own header records that
-//! `ops/postgres-reconcile-topology.sh` grants `console_rt` UPDATE on every
+//! `scripts/ci/postgres-reconcile-topology.sh` grants `console_rt` UPDATE on every
 //! table a migration creates before those `GRANT` lines run.
 //!
 //! # Synchronous port, async driver
