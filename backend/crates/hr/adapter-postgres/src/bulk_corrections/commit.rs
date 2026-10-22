@@ -115,12 +115,13 @@ impl HrService {
                 let fresh = preview(&planned, &reason, note.as_deref())?;
                 if fresh.preview_digest != expected {
                     return Err(HrError {
+                        errors: None,
                         status: StatusCode::CONFLICT,
                         code: "rows_changed_since_preview",
                         message: "the employees changed since the preview; nothing was written. Preview again".to_owned(),
                         // Every row as it stands now (outcome, values, code); the
                         // client previews again for a new digest.
-                        refusals: Some(serde_json::to_value(&fresh.rows).map_err(|_| HrError::internal("preview serialization failed"))?),
+                        refusals: Some(Box::new(serde_json::to_value(&fresh.rows).map_err(|_| HrError::internal("preview serialization failed"))?)),
                     });
                 }
                 if fresh.counts.change + fresh.counts.pending == 0 {

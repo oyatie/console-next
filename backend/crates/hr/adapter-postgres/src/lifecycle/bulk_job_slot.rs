@@ -30,6 +30,7 @@ impl DriverSlot {
             })
             .map(|_| Self(()))
             .map_err(|_| HrError {
+                errors: None,
                 status: http::StatusCode::SERVICE_UNAVAILABLE,
                 code: "bulk_lifecycle_busy",
                 message: format!(

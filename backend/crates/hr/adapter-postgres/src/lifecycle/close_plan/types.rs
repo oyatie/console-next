@@ -127,6 +127,7 @@ pub struct WorkplaceClosePlanView {
 pub(crate) fn entity_error(error: PgEntityError) -> HrError {
     match error {
         PgEntityError::Refused(r) => HrError {
+            errors: None,
             status: match r.kind {
                 ErrorKind::Validation => StatusCode::UNPROCESSABLE_ENTITY,
                 ErrorKind::NotFound => StatusCode::NOT_FOUND,
@@ -138,7 +139,7 @@ pub(crate) fn entity_error(error: PgEntityError) -> HrError {
             code: r.code,
             message: r.message,
             refusals: (!r.fields.is_empty() || r.remedy.is_some())
-                .then(|| json!([{ "fields": r.fields.iter().map(|f| json!({ "field": f.field, "code": f.code })).collect::<Vec<_>>(), "remedy": r.remedy }])),
+                .then(|| json!([{ "fields": r.fields.iter().map(|f| json!({ "field": f.field, "code": f.code })).collect::<Vec<_>>(), "remedy": r.remedy }])).map(Box::new),
         },
         PgEntityError::Db(error) => {
             tracing::error!(%error, "workplace close: entity store fault");
@@ -150,18 +151,20 @@ pub(crate) fn entity_error(error: PgEntityError) -> HrError {
 /// 422 naming every line (or missing line) that refused, nothing written.
 pub(crate) fn plan_refused(code: &'static str, refusals: Vec<Value>) -> HrError {
     HrError {
+        errors: None,
         status: StatusCode::UNPROCESSABLE_ENTITY,
         code,
         message: format!(
             "{} lines of the close plan cannot be applied; nothing was changed",
             refusals.len()
         ),
-        refusals: Some(Value::Array(refusals)),
+        refusals: Some(Box::new(Value::Array(refusals))),
     }
 }
 
 pub(crate) fn conflict(code: &'static str, message: &str) -> HrError {
     HrError {
+        errors: None,
         status: StatusCode::CONFLICT,
         code,
         message: message.to_owned(),
@@ -172,9 +175,10 @@ pub(crate) fn conflict(code: &'static str, message: &str) -> HrError {
 /// 422 on one request field (`closed_on`).
 pub(crate) fn field(name: &str, code: &'static str) -> HrError {
     HrError {
+        errors: None,
         status: http::StatusCode::UNPROCESSABLE_ENTITY,
         code,
         message: format!("{name}: {code}"),
-        refusals: Some(json!([{ "field": name, "code": code }])),
+        refusals: Some(Box::new(json!([{ "field": name, "code": code }]))),
     }
 }

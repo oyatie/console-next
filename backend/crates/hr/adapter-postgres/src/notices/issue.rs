@@ -28,10 +28,11 @@ const OPERATION: &str = "appointment_notice.issue";
 
 fn refused(status: StatusCode, code: &'static str, message: &str, refusals: Value) -> HrError {
     HrError {
+        errors: None,
         status,
         code,
         message: message.to_owned(),
-        refusals: Some(refusals),
+        refusals: Some(Box::new(refusals)),
     }
 }
 

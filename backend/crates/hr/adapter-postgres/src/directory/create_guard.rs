@@ -207,6 +207,7 @@ pub async fn reserve_create_key(
 /// message is the shared one).
 pub fn registration_key_reused() -> HrError {
     HrError {
+        errors: None,
         status: http::StatusCode::CONFLICT,
         code: "idempotency_key_reused",
         message: IDEMPOTENCY_KEY_REUSED.to_owned(),

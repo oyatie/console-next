@@ -206,6 +206,7 @@ mod tests {
     #[test]
     fn a_busy_refusal_carries_retry_after_and_others_do_not() {
         let busy = refusal(HrError {
+            errors: None,
             status: StatusCode::SERVICE_UNAVAILABLE,
             code: "import_apply_busy",
             message: String::new(),
@@ -219,6 +220,7 @@ mod tests {
             Some("15")
         );
         let conflict = refusal(HrError {
+            errors: None,
             status: StatusCode::CONFLICT,
             code: "apply_in_progress",
             message: String::new(),

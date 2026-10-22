@@ -4,7 +4,7 @@
 
 use console_hr_domain::profile::enums::EmploymentType;
 use console_hr_domain::text::{normalize_enum_text, normalize_optional_text, parse_yyyy_mm_dd};
-use console_kernel_core::kr::PhoneE164;
+use console_kernel_core::{KernelError, kr::PhoneE164};
 
 use crate::HrError;
 use crate::directory::create_facts::{RawEmployeeFacts, normalize_employee_facts};
@@ -14,9 +14,11 @@ use crate::idempotency::normalize_idempotency_key;
 pub fn required_employee_text(value: String, field: &str) -> Result<String, HrError> {
     let normalized = value.trim().to_owned();
     if normalized.is_empty() || normalized.len() > 200 {
-        return Err(HrError::validation(format!(
+        return Err(KernelError::validation(format!(
             "{field} is required and must be 200 characters or fewer"
-        )));
+        ))
+        .with_field(field)
+        .into());
     }
     Ok(normalized)
 }

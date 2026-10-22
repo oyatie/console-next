@@ -69,6 +69,7 @@ pub type CsvChunks = mpsc::Receiver<Result<String, HrError>>;
 /// 422 `export_purpose_required`: no 용도, or one outside [`EXPORT_PURPOSES`].
 pub fn export_purpose_required() -> HrError {
     HrError {
+        errors: None,
         status: StatusCode::UNPROCESSABLE_ENTITY,
         code: "export_purpose_required",
         message: "export_purpose is required: AUDIT_RESPONSE, INTERNAL_REVIEW, \

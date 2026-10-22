@@ -145,6 +145,7 @@ pub fn parse_fields(section: Section, raw: serde_json::Value) -> Result<RecordFi
 /// 409 `record_version_conflict`: the entry moved on since the editor read it.
 pub(crate) fn version_conflict(current: i64) -> HrError {
     HrError {
+        errors: None,
         status: http::StatusCode::CONFLICT,
         code: "record_version_conflict",
         message: format!("the entry is at version {current}; reload it and apply the change again"),

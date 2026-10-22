@@ -121,6 +121,7 @@ async fn by_number(
         .map(Json)
         .ok_or_else(|| {
             HrApiError(HrError {
+                errors: None,
                 status: StatusCode::NOT_FOUND,
                 code: "not_found",
                 message: "no employee has or had that 사번".to_owned(),

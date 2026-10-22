@@ -101,7 +101,7 @@ impl Fixture {
         (
             e.status.as_u16(),
             e.code.to_owned(),
-            e.refusals.unwrap_or(Value::Null),
+            *e.refusals.unwrap_or_default(),
         )
     }
 
@@ -118,7 +118,7 @@ impl Fixture {
                 (
                     e.status.as_u16(),
                     e.code.to_owned(),
-                    e.refusals.unwrap_or(Value::Null),
+                    *e.refusals.unwrap_or_default(),
                 )
             })
     }

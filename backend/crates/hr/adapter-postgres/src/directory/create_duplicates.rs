@@ -119,13 +119,14 @@ pub fn admit_duplicates<'a>(
     });
     if !covered {
         return Err(HrError {
+            errors: None,
             status: http::StatusCode::CONFLICT,
             code: "duplicate_candidate",
             message: format!(
                 "{} people on file may be this person; register again as one of them, or confirm a different person",
                 candidates.len()
             ),
-            refusals: Some(json!(candidates)),
+            refusals: Some(Box::new(json!(candidates))),
         });
     }
     Ok(duplicate_override)

@@ -231,6 +231,7 @@ impl HrService {
                 }
                 if !refused.is_empty() {
                     return Err(HrError {
+                        errors: None,
                         status: StatusCode::UNPROCESSABLE_ENTITY,
                         code: "bulk_register_facts_refused",
                         message: format!(
@@ -238,7 +239,7 @@ impl HrService {
                             refused.len(),
                             outcomes.len()
                         ),
-                        refusals: Some(Value::Array(refused)),
+                        refusals: Some(Box::new(Value::Array(refused))),
                     });
                 }
                 let meta = LedgerMeta {

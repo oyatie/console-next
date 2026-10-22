@@ -49,10 +49,11 @@ pub async fn active_org_units_by_name(
 
 pub(crate) fn conflict(code: &'static str, message: &str, refusals: Value) -> HrError {
     HrError {
+        errors: None,
         status: http::StatusCode::CONFLICT,
         code,
         message: message.to_owned(),
-        refusals: Some(refusals),
+        refusals: Some(Box::new(refusals)),
     }
 }
 
@@ -179,10 +180,11 @@ pub(crate) async fn check_and_build(
         .collect();
     if !unsettled.is_empty() {
         return Err(HrError {
+            errors: None,
             status: http::StatusCode::UNPROCESSABLE_ENTITY,
             code: "import_unresolved",
             message: "every row must be resolved or excluded before apply".to_owned(),
-            refusals: Some(json!(unsettled)),
+            refusals: Some(Box::new(json!(unsettled))),
         });
     }
     let decisions: Decisions = serde_json::from_value(decisions)
@@ -205,6 +207,7 @@ impl HrService {
     /// flow instead.
     pub fn import_workbook_gone(&self) -> HrError {
         HrError {
+            errors: None,
             status: http::StatusCode::GONE,
             code: "legacy_import_removed",
             message: "use POST /api/v1/employees/import/preview, then dry-run and apply".to_owned(),

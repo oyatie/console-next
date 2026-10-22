@@ -1998,10 +1998,7 @@ async fn read_periodised_upload(
     {
         match field.name() {
             Some("file") => {
-                let name = field
-                    .file_name()
-                    .map(ToOwned::to_owned)
-                    .unwrap_or_else(|| default_filename.to_owned());
+                let name = field.file_name().unwrap_or(default_filename).to_owned();
                 if !accept(&name.to_ascii_lowercase()) {
                     return Err(HrError::validation(accept_message));
                 }
@@ -2013,6 +2010,7 @@ async fn read_periodised_upload(
                 {
                     if (buffer.len() + chunk.len()) as u64 > max_bytes {
                         return Err(HrError {
+                            errors: None,
                             status: StatusCode::PAYLOAD_TOO_LARGE,
                             code: "import_file_too_large",
                             message: "uploaded file exceeds the maximum import size".to_owned(),

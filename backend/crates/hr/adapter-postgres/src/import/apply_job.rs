@@ -54,6 +54,7 @@ impl DriverSlot {
             })
             .map(|_| Self(()))
             .map_err(|_| HrError {
+                errors: None,
                 status: http::StatusCode::SERVICE_UNAVAILABLE,
                 code: "import_apply_busy",
                 message: format!(
@@ -215,12 +216,13 @@ pub async fn require_row_limit(
         .ok_or_else(|| HrError::internal("import.apply.max_rows did not resolve"))?;
     if rows > max {
         return Err(HrError {
+            errors: None,
             status: http::StatusCode::UNPROCESSABLE_ENTITY,
             code: "import_row_limit",
             message: format!(
                 "the run has {rows} rows; at most {max} are applied at once (import.apply.max_rows); split the file"
             ),
-            refusals: Some(json!([{ "max": max, "rows": rows }])),
+            refusals: Some(Box::new(json!([{ "max": max, "rows": rows }]))),
         });
     }
     Ok(())

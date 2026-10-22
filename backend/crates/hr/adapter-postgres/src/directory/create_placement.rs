@@ -97,10 +97,10 @@ pub fn branch_refused() -> HrError {
         "home_branch_not_workplace",
         "the home branch is the 사업장's own branch; move the person with a 전보 to change it",
     );
-    error.refusals = Some(serde_json::json!([{
+    error.refusals = Some(Box::new(serde_json::json!([{
         "field": "home_branch_id",
         "code": "home_branch_not_workplace",
-    }]));
+    }])));
     error
 }
 

@@ -93,6 +93,7 @@ pub struct ChangeRequestPage {
 
 fn refusal(status: StatusCode, code: &'static str, message: &str) -> HrError {
     HrError {
+        errors: None,
         status,
         code,
         message: message.to_owned(),

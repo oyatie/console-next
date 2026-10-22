@@ -50,10 +50,11 @@ fn error(
     refusals: Option<Value>,
 ) -> HrError {
     HrError {
+        errors: None,
         status,
         code,
         message: message.to_owned(),
-        refusals,
+        refusals: refusals.map(Box::new),
     }
 }
 

@@ -66,24 +66,15 @@ test("a named server refusal focuses once and its summary link returns to the fi
   const admin = await soloTenant(browser, "reg-server-field", "서버검증");
   await setupCompany(admin, "서버검증", "본사");
   await go(admin, "/people/new");
-  await fillRegister(admin, { name: "김검증", hired: kstDate() });
-
-  await admin.route("**/api/v1/employees", (route) => route.request().method() === "POST"
-    ? route.fulfill({
-        status: 422,
-        contentType: "application/json",
-        body: JSON.stringify({
-          error: {
-            code: "validation_failed",
-            message: "validation failed",
-            operation_id: "op-server-field",
-            errors: [{ field: "name", code: "name_invalid" }],
-          },
-        }),
-      })
-    : route.continue(), { times: 1 });
-
+  // The client accepts a non-empty name; the real server enforces its text bound.
+  await fillRegister(admin, { name: "김".repeat(201), hired: kstDate() });
+  const refused = admin.waitForResponse((response) => response.url().endsWith("/api/v1/employees") && response.request().method() === "POST");
   await pressRegister(admin);
+  const response = await refused;
+  expect(response.status()).toBe(422);
+  const body = await response.json();
+  expect(body.error.errors).toEqual([{ field: "name", code: "validation" }]);
+  expect(body.error.operation_id).toEqual(expect.any(String));
   const sheet = registerSheet(admin);
   const name = sheet.getByRole("textbox", { name: /^이름/ });
   const phone = sheet.getByLabel("휴대전화");

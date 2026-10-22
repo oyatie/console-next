@@ -22,6 +22,7 @@ use http::StatusCode;
 
 pub(super) fn refusal(status: StatusCode, code: &'static str, message: &str) -> HrError {
     HrError {
+        errors: None,
         status,
         code,
         message: message.to_owned(),

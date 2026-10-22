@@ -43,6 +43,7 @@ const FIRST_RECORD: &str = "FIRST_RECORD";
 
 pub(crate) fn refusal_error(refusal: &Refusal) -> HrError {
     HrError {
+        errors: None,
         status: StatusCode::from_u16(refusal.status).unwrap_or(StatusCode::CONFLICT),
         code: refusal.code,
         message: format!(
@@ -50,7 +51,7 @@ pub(crate) fn refusal_error(refusal: &Refusal) -> HrError {
             refusal.code,
             refusal.errors.len()
         ),
-        refusals: serde_json::to_value(&refusal.errors).ok(),
+        refusals: serde_json::to_value(&refusal.errors).ok().map(Box::new),
     }
 }
 
@@ -188,6 +189,7 @@ impl HrService {
                     changes.iter().filter(|(_, _, recorded)| *recorded).map(|(field, _, _)| *field).collect();
                 if !recorded.is_empty() {
                     return Err(HrError {
+                        errors: None,
                         status: StatusCode::CONFLICT,
                         code: CORRECTION_REQUIRED,
                         message: format!(

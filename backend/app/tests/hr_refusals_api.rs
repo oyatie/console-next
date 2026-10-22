@@ -153,3 +153,28 @@ async fn go_live_refuses_a_non_holder_a_stale_preview_and_a_second_time(pool: Pg
     assert_eq!(again["error"]["code"], "phase_not_setup");
     assert_eq!(phase(&pool, org).await, "OPERATING");
 }
+
+/// A real registration refusal names the input and leaves no employee behind.
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn registration_field_refusal_reaches_the_real_route(pool: PgPool) {
+    let (org, owner) = tenant(&pool, ADMIN).await;
+    let admin = ctx(&pool, org, owner, ADMIN, None).await;
+    let (_, _, branch, unit) = structure(&admin).await;
+    let mut request = employee_body("FIELD-1", &branch, &unit);
+    request["name"] = json!("김".repeat(201));
+    for _ in 0..2 {
+        let (status, body) = admin
+            .call("POST", "/api/v1/employees", Some(request.clone()))
+            .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+        assert_eq!(body["error"]["code"], "validation");
+        assert_eq!(
+            body["error"]["errors"],
+            json!([
+                { "field": "name", "code": "validation" }
+            ])
+        );
+        assert!(body["error"]["operation_id"].is_string(), "{body}");
+        assert_eq!(count(&pool, "employees", org).await, 0);
+    }
+}

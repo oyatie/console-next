@@ -3,7 +3,7 @@
 app/src/action_inbox.rs	532
 app/src/cedar_parity.rs	313
 app/src/collaboration.rs	1501
-app/src/hr.rs	3583
+app/src/hr.rs	3581
 app/src/objects.rs	2008
 app/src/office.rs	892
 app/src/workbench.rs	660

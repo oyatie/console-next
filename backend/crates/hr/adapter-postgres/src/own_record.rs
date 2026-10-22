@@ -22,12 +22,15 @@ use crate::HrError;
 #[must_use]
 pub fn own_record_forbidden() -> HrError {
     HrError {
+        errors: None,
         status: StatusCode::FORBIDDEN,
         code: "own_record_forbidden",
         message: "nobody records an HR act on their own record; another holder in scope, \
                   or the ops account, records it"
             .to_owned(),
-        refusals: Some(json!([{ "rule": "own_record", "remedy": "another_holder_or_ops" }])),
+        refusals: Some(Box::new(
+            json!([{ "rule": "own_record", "remedy": "another_holder_or_ops" }]),
+        )),
     }
 }
 

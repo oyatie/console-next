@@ -17,6 +17,7 @@ use super::HrError;
 
 fn refused(code: &'static str, message: &str) -> HrError {
     HrError {
+        errors: None,
         status: StatusCode::UNPROCESSABLE_ENTITY,
         code,
         message: message.to_owned(),

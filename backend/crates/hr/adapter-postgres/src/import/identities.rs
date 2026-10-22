@@ -71,6 +71,7 @@ pub async fn require_fresh_run(
     .unwrap_or(false);
     if expired {
         return Err(HrError {
+            errors: None,
             status: http::StatusCode::CONFLICT,
             code: "import_run_expired",
             message: "the run is older than import.staged_identity.ttl_days; upload the file again"

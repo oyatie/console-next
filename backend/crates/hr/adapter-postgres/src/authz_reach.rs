@@ -82,10 +82,11 @@ pub fn holds_scoped(principal: &Principal, feature: Feature) -> bool {
 /// existence leak); it names only what the caller holds.
 pub fn out_of_scope(principal: &Principal, feature: Feature) -> HrError {
     HrError {
+        errors: None,
         status: StatusCode::FORBIDDEN,
         code: "out_of_scope",
         message: "this is outside the scope this account holds".to_owned(),
-        refusals: Some(held_scopes(principal, feature)),
+        refusals: Some(Box::new(held_scopes(principal, feature))),
     }
 }
 
@@ -93,10 +94,11 @@ pub fn out_of_scope(principal: &Principal, feature: Feature) -> HrError {
 /// caller holds the key only over part of it.
 pub fn scope_tenant_wide_only(principal: &Principal, feature: Feature) -> HrError {
     HrError {
+        errors: None,
         status: StatusCode::FORBIDDEN,
         code: "scope_tenant_wide_only",
         message: "this works on the whole tenant; a grant over 전체 is needed".to_owned(),
-        refusals: Some(held_scopes(principal, feature)),
+        refusals: Some(Box::new(held_scopes(principal, feature))),
     }
 }
 

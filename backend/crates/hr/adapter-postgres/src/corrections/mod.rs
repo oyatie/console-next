@@ -103,6 +103,7 @@ pub(crate) fn refusal(
     message: impl Into<String>,
 ) -> HrError {
     HrError {
+        errors: None,
         status,
         code,
         message: message.into(),

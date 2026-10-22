@@ -64,6 +64,7 @@ pub fn router(hr: HrService, photos: Option<PhotoStore>) -> Router {
 
 fn refusal(status: StatusCode, code: &'static str, message: &str) -> HrApiError {
     HrApiError(HrError {
+        errors: None,
         status,
         code,
         message: message.to_owned(),

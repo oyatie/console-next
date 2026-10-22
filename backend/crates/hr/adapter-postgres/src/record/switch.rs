@@ -102,6 +102,7 @@ pub(crate) async fn require_enabled(
 /// 409 `record_section_disabled`.
 pub(crate) fn disabled(section: Section) -> HrError {
     HrError {
+        errors: None,
         status: http::StatusCode::CONFLICT,
         code: "record_section_disabled",
         message: format!(

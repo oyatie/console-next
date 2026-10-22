@@ -247,6 +247,7 @@ pub async fn check_fixed_term_renewal(
     }
     let Some(exception_id) = exception_id else {
         return Err(HrError {
+            errors: None,
             status: http::StatusCode::CONFLICT,
             code: "fixed_term_limit",
             message: format!(
