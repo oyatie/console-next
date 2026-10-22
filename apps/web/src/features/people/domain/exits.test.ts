@@ -7,11 +7,11 @@ type LifecycleEvent = components["schemas"]["EmployeeLifecycleEvent"];
 const exitCase = (x: Partial<Case>) => ({ next_actions: [], exit_event_state: null, status: "REPORTED", ...x }) as unknown as Case;
 const keys = (...k: string[]) => k.map((key) => ({ key })) as never;
 
-test("a failed exit offers only rejecting or cancelling, never HQ confirmation or settlement", () => {
+test("a failed HR-confirmed exit offers only rejecting, never cancellation, HQ confirmation or settlement", () => {
   const all = () => true;
   const next = keys("confirm_exit_hq", "prepare_settlement", "reject_exit", "cancel_exit");
-  expect(usableActions(exitCase({ next_actions: next, exit_event_state: "APPLY_FAILED" }), all)).toEqual(["reject_exit", "cancel_exit"]);
-  expect(usableActions(exitCase({ next_actions: next, exit_event_state: "APPLIED" }), all)).toEqual(["confirm_exit_hq", "prepare_settlement", "reject_exit", "cancel_exit"]);
+  expect(usableActions(exitCase({ status: "HR_CONFIRMED", next_actions: next, exit_event_state: "APPLY_FAILED" }), all)).toEqual(["reject_exit"]);
+  expect(usableActions(exitCase({ status: "HR_CONFIRMED", next_actions: keys("confirm_exit_hq", "reject_exit"), exit_event_state: "APPLIED" }), all)).toEqual(["confirm_exit_hq", "reject_exit"]);
 });
 
 test("the forward step is the first step that moves the case on, whoever holds it", () => {

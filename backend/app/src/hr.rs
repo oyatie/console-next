@@ -1373,9 +1373,9 @@ async fn reject_employee_exit_case(
     Ok(Json(case.await?))
 }
 
-/// `POST /hr/exit-cases/{id}/cancel`: the report is withdrawn before HQ
-/// confirmation (REPORTED or HR_CONFIRMED). The reporter's capability suffices
-/// while REPORTED; once HR confirmed it takes the HR confirmation capability.
+/// `POST /hr/exit-cases/{id}/cancel`: withdraw a REPORTED case before HR
+/// confirmation. The reporter or HR confirmation capability suffices; after HR
+/// confirmation the report cannot be cancelled (409 exit_cancel_after_hr_confirmation).
 async fn cancel_employee_exit_case(
     State(state): State<HrState>,
     Extension(principal): Extension<Principal>,

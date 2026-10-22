@@ -19,7 +19,7 @@ export function useCaseActions(c: Case) {
   const routed = usePolicyRouted("exit");
   // people-self-33: nobody acts on their own record (the server refuses own_record_forbidden).
   const usable = useOwnRecord(c.employee_id) ? [] : usableActions(c, can);
-  // A scheduled exit that failed to apply moves no further: only rejecting or cancelling is left.
+  // A scheduled exit that failed to apply moves no further: only rejecting is left.
   const next = c.exit_event_state === "APPLY_FAILED" ? null : forwardStep(c);
   const sameActor = next === "confirm_exit_hq" && usable.includes(next) && hqNeedsSomeoneElse(routed, c.hr_confirmed_by, mySub());
   const forward = next && usable.includes(next) && !sameActor ? next : null;

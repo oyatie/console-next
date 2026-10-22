@@ -33,6 +33,7 @@ async function reportAndConfirm(admin: Page, c: ReturnType<typeof clickCounter>,
   await c.click(exitPanel(admin).getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
   await confirmAsHr(admin, c, opts);
   await expect(exitPanel(admin)).toContainText("인사 확인됨");
+  await expect(exitPanel(admin).getByRole("button", { name: "퇴직 보고 취소" })).toHaveCount(0);
 }
 
 /** HR confirmation needs all four statements, each ticked on its own; the server refuses it otherwise. */
@@ -188,7 +189,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await expect(cardVerbs(admin).getByRole("button", { name: "발령" })).toBeVisible();
 
   // 5. An exit confirmed ahead of its date is scheduled: the employee stays employed and the record
-  // says when they leave; cancelling the case before then withdraws it.
+  // says when they leave; rejecting the case with a reason before then withdraws it.
   await registerEmployee(admin, { name: "예정퇴직", number: "J5-0003", hired: "2025-02-03" });
   const exitOn = kstDate(10);
   await c.click(admin.getByRole("button", { name: "퇴직 보고" }));
@@ -211,19 +212,23 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await expectAccessible(admin, "J5: scheduled exit");
   expect(c.done("J5 report + confirm a future exit")).toBeLessThanOrEqual(8);
 
-  // While the executive has the HQ step open with a memo typed, HR cancels the case: on the next read the form
+  // While the executive has the HQ step open with a memo typed, HR rejects the case: on the next read the form
   // stays, read-only, saying who did it, and the memo stays readable (not a journey click).
   const caseHref = await exitPanel(admin).getByRole("link", { name: "퇴직 건 열기" }).getAttribute("href");
   await exec.goto(caseHref!);
+  await expect(exec.getByRole("button", { name: "퇴직 보고 취소" })).toHaveCount(0);
   const open = exec.getByRole("region", { name: /지금/ });
   await open.getByLabel("확인 메모").fill("계약 종료 서류 확인 중");
 
-  await c.click(exitPanel(admin).getByRole("button", { name: "퇴직 보고 취소" }));
-  const withdraw = admin.getByRole("dialog", { name: "퇴직 보고 취소" });
+  await expect(exitPanel(admin).getByRole("button", { name: "퇴직 보고 취소" })).toHaveCount(0);
+  await c.click(exitPanel(admin).getByRole("button", { name: "퇴직 반려" }));
+  const withdraw = admin.getByRole("dialog", { name: "퇴직 반려" });
   await expect(withdraw).toContainText(`${koDate(exitOn)}자 퇴직 예약을 거둡니다`);
-  await withdraw.getByLabel("취소 사유").fill("계약 연장 합의");
-  await c.click(withdraw.getByRole("button", { name: "퇴직 보고 취소" }));
-  await expect(exitPanel(admin)).toContainText("취소됨");
+  await withdraw.getByRole("button", { name: "퇴직 반려" }).click();
+  await expect(withdraw.getByRole("textbox", { name: /^반려 사유/ })).toBeFocused();
+  await withdraw.getByLabel("반려 사유").fill("계약 연장 합의");
+  await c.click(withdraw.getByRole("button", { name: "퇴직 반려" }));
+  await expect(exitPanel(admin)).toContainText("반려됨");
   await expect(head(admin, "예정퇴직").getByText("효력 예정")).toHaveCount(0);
   expect(c.done("J5 withdraw the scheduled exit")).toBeLessThanOrEqual(2);
 
@@ -233,7 +238,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await expect(open.getByRole("button", { name: "본사 퇴직 확인" })).toHaveCount(0);
   await expectAccessible(exec, "J5: a step someone else took while the form was open");
   await open.getByRole("button", { name: "지금 단계 보기" }).click();
-  await expect(exitPanel(exec)).toContainText("취소됨");
+  await expect(exitPanel(exec)).toContainText("반려됨");
 
   // 6. A scheduled exit that is not withdrawn applies on its date (a background run, on a date the test moves the
   // backend's apply clock to): the employee is exited then, and the history says when it took effect.

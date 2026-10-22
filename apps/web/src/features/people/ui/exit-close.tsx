@@ -14,9 +14,9 @@ type Case = components["schemas"]["EmployeeExitCase"];
 const REASON_MAX = 1000;
 
 /**
- * Reject (any open state) or cancel (before HQ confirmation), always in a sheet with its reason, never inline
- * beside a forward decision. Once the exit applied, closing the case restores the employee; a scheduled
- * exit is withdrawn.
+ * Reject (any open state) or cancel (before HR confirmation), always in a sheet with its reason, never inline
+ * beside a forward decision. Rejection after the exit applied records a compensating event; rejection of a
+ * scheduled exit withdraws it.
  */
 export function CloseForm({ c, reject, onClose, onDone }: { c: Case; reject: boolean; onClose: () => void; onDone: (message: string) => void }) {
   const [reason, setReason] = useState("");
@@ -29,8 +29,8 @@ export function CloseForm({ c, reject, onClose, onDone }: { c: Case; reject: boo
     run: () => closeExit(c.id, reject, reason.trim()),
     onSuccess: () => onDone(t(reject ? "exit.rejected" : "exit.cancelled", { name })),
   });
-  const exited = c.exit_event_state ? c.exit_event_state === "APPLIED" : Boolean(c.hr_confirmed_at);
-  const scheduled = c.exit_event_state === "SCHEDULED";
+  const exited = reject && (c.exit_event_state ? c.exit_event_state === "APPLIED" : Boolean(c.hr_confirmed_at));
+  const scheduled = reject && c.exit_event_state === "SCHEDULED";
   const missing = reason.trim() ? 0 : 1;
   const action = t(reject ? "exit.action.reject_exit" : "exit.action.cancel_exit");
   return (

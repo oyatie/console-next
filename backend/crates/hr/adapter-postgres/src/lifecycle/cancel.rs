@@ -64,7 +64,7 @@ impl HrService {
                 }
                 if owned_by_exit_case {
                     return Err(lifecycle_refusal(
-                        "a scheduled exit is withdrawn by cancelling or rejecting its exit case",
+                        "an HR-confirmed scheduled exit is withdrawn by rejecting its exit case",
                     ));
                 }
                 // Later events that only apply after this one (a return after

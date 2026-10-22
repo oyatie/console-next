@@ -19,7 +19,7 @@ use crate::{HrError, HrService};
 
 impl HrService {
     /// Close an exit case as REJECTED or CANCELLED. When HR confirmation already
-    /// exited the employee, a compensating EXIT_REVERSAL lifecycle event restores
+    /// exited the employee, rejection records a compensating EXIT_REVERSAL restoring
     /// the status the exit replaced, in the same audited transaction. A linked
     /// absence alert reopens so the absence can be handled again.
     pub async fn close_exit_case(
@@ -54,9 +54,8 @@ impl HrService {
                 )
             } else {
                 (
-                    holds(Feature::ExitCaseHrConfirm)
-                        || (context.status == "REPORTED" && holds(Feature::ExitCaseReport)),
-                    &["REPORTED", "HR_CONFIRMED"],
+                    holds(Feature::ExitCaseHrConfirm) || holds(Feature::ExitCaseReport),
+                    &["REPORTED"],
                 )
             };
             if !authorized {
@@ -83,12 +82,21 @@ impl HrService {
             if follows {
                 return Err(follows_group_transfer());
             }
+            if !rejecting && matches!(context.status.as_str(),
+                "HR_CONFIRMED" | "HQ_CONFIRMED" | "SETTLEMENT_READY" | "APPROVAL_DRAFTED" | "SUBMITTED") {
+                return Err(HrError {
+                    status: http::StatusCode::CONFLICT,
+                    code: "exit_cancel_after_hr_confirmation",
+                    message: "an HR-confirmed exit report cannot be cancelled; reject with a reason where available, otherwise request a governed correction".to_owned(),
+                    refusals: None,
+                });
+            }
             if !open_states.contains(&context.status.as_str()) {
                 return Err(HrError::from_kernel(KernelError::invalid_transition(
                     if rejecting {
                         "only an open exit case (REPORTED through APPROVAL_DRAFTED) can be rejected"
                     } else {
-                        "only a REPORTED or HR_CONFIRMED exit case can be cancelled"
+                        "only a REPORTED exit case can be cancelled"
                     },
                 )));
             }

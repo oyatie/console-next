@@ -2,7 +2,7 @@ tags:
   - hr
 operationId: cancelEmployeeExitCase
 summary: Cancel an employee exit report
-description: Moves a REPORTED or HR_CONFIRMED case to CANCELLED. While REPORTED the reporter capability (exit_case_report) or exit_case_hr_confirm suffices; once HR_CONFIRMED it takes exit_case_hr_confirm (403 otherwise). A case the HR confirmation already exited is reversed with a compensating EXIT_REVERSAL lifecycle event in the same audited transaction; a still-SCHEDULED exit is withdrawn instead (its TERMINATE event becomes CANCELLED).
+description: Withdraws a REPORTED case before HR confirmation. The reporter capability (exit_case_report) or exit_case_hr_confirm is required. After HR confirmation, cancellation is refused with 409 exit_cancel_after_hr_confirmation, including scheduled and applied exits; nothing is changed. Reject the case with a reason instead. A cancellation never reverses an effective exit.
   403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person). Nobody records an HR act on their own record, whatever they hold; another holder in scope, or the ops account, records it. The ops account passes only when no other active account holds the act over the employee, and that pass is audited as authz.own_record.break_glass with review_required (people-self-33).
 security:
 - bearerAuth: []

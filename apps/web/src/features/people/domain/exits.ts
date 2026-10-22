@@ -20,12 +20,12 @@ const NEEDS: Record<Key, Grant[]> = {
 /**
  * The case's next actions (from the server's state machine) that this user holds a grant for. A
  * scheduled exit that failed to apply left the employee employed: confirming or settling it would
- * record an exit that never happened, so only rejecting or cancelling (then reporting again) is offered.
+ * record an exit that never happened, so only rejecting (then reporting again) is offered.
  */
 export const usableActions = (c: Case, can: (f: Grant) => boolean) =>
   c.next_actions
     .map((a) => a.key)
-    .filter((k) => NEEDS[k].some(can) && (c.exit_event_state !== "APPLY_FAILED" || k === "cancel_exit" || k === "reject_exit"));
+    .filter((k) => NEEDS[k].some(can) && (c.exit_event_state !== "APPLY_FAILED" || k === "reject_exit"));
 
 /** Steps that move the case on; the rest (reject, cancel) close it. */
 export const FORWARD_KEYS = ["confirm_exit", "confirm_exit_hq", "prepare_settlement"] as const satisfies readonly Key[];

@@ -258,9 +258,9 @@ async fn a_group_transfer_that_failed_to_apply_leaves_a_case_that_closes_alone(p
         reason: "전적 무산".to_owned(),
     };
     let closed =
-        f.hr.close_exit_case(f.principal.clone(), case, body, "CANCELLED")
+        f.hr.close_exit_case(f.principal.clone(), case, body, "REJECTED")
             .await
             .unwrap();
-    assert_eq!(closed.status, "CANCELLED");
+    assert_eq!(closed.status, "REJECTED");
     assert_eq!(f.packages().await, 0);
 }
