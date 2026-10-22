@@ -31,20 +31,20 @@ const EXTERNAL_SCHEMAS: &[&str] = &[
 
 const PATHS: &[PathItem] = &[
     PathItem {
-        path: "/api/v1/business-registrations/{registrationId}/end-options",
-        operations: &[Operation {
-            method: "get",
-            body: include_str!(
-                "../openapi/paths/api__v1__business-registrations__registrationId__end-options.get.yaml"
-            ),
-        }],
-    },
-    PathItem {
         path: "/api/v1/business-registrations/{registrationId}",
         operations: &[Operation {
             method: "put",
             body: include_str!(
                 "../openapi/paths/api__v1__business-registrations__registrationId.put.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/business-registrations/{registrationId}/end-options",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../openapi/paths/api__v1__business-registrations__registrationId__end-options.get.yaml"
             ),
         }],
     },
@@ -547,10 +547,6 @@ const PATHS: &[PathItem] = &[
 
 const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
-        name: "RegistrationEndOptions",
-        body: include_str!("../openapi/schemas/RegistrationEndOptions.yaml"),
-    },
-    NamedYaml {
         name: "AddressDetailOption",
         body: include_str!("../openapi/schemas/AddressDetailOption.yaml"),
     },
@@ -901,6 +897,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "RefListSource",
         body: include_str!("../openapi/schemas/RefListSource.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationEndOptions",
+        body: include_str!("../openapi/schemas/RegistrationEndOptions.yaml"),
     },
     NamedYaml {
         name: "RegistrationInput",
