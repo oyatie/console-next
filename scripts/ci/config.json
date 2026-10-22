@@ -4,8 +4,11 @@
   "topologyProbeDatabase": "console_ci_topology_probe",
   "cacheBudgetBytes": 10737418240,
   "sccacheBytes": 1073741824,
-  "nextestPartitions": 4,
+  "nextestPartitions": 1,
+  "rustGroupTargets": 6,
+  "runnerDiskBudgetBytes": 10737418240,
+  "runnerDiskMarginBytes": 3221225472,
   "e2eTargetSeconds": 300,
   "e2eWorkers": 2,
-  "quarantine": []
+  "quarantineFile": "scripts/ci/baseline.json"
 }

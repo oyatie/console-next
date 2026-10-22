@@ -1,3 +1,4 @@
+import { syntheticPhone } from "../../scripts/check-fixture-ids.mjs";
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { clickCounter } from "../clicks";
@@ -83,7 +84,7 @@ test("연속 등록: rows saved with ⌘↵, carried values, gaps named, a names
   await expect(cell(admin, 3, "입사일")).toHaveValue(koDate("2026-10-19"));
   // Per person now: name, birth date and the phone the server still requires (EMP-UI 1), then ⌘↵ — no click.
   for (const [i, [name, birth]] of ([["문채이", "1992-08-14"], ["남궁별", "1993-01-15"]] as const).entries()) {
-    await fill(admin, 3 + i, { name, birth, phone: `010-2000-100${3 + i}` });
+    await fill(admin, 3 + i, { name, birth, phone: syntheticPhone(1003 + i) });
     await admin.keyboard.press("ControlOrMeta+Enter");
     await expect(admin.getByRole("row").filter({ hasText: name })).toContainText(`E-00000${3 + i}`);
   }

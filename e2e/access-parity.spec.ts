@@ -1,3 +1,4 @@
+import { syntheticPhone } from "../scripts/check-fixture-ids.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { expect, test, type Browser, type Locator, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
@@ -28,7 +29,7 @@ async function shot(page: Page, name: string) {
 let phone = 0;
 /** An employee through the register form (two 법인: the employer is chosen), then the account invite from their record. */
 async function person(browser: Browser, admin: Page, name: string, entity: string, unit: string, signIn: boolean) {
-  const id = await registerAt(admin, name, entity, unit, `010-2345-${String(6000 + ++phone)}`);
+  const id = await registerAt(admin, name, entity, unit, syntheticPhone(6000 + ++phone));
   await admin.getByRole("button", { name: "계정 초대" }).click();
   const sheet = admin.getByRole("dialog", { name: "계정 초대" });
   // No role and no 지점 (governance-01): the account holds nothing until a grant.

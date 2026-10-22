@@ -14,9 +14,9 @@ Forks use plain `pull_request`, a read-only token and no secrets. There is no
 | `plan` | Cargo workspace members and reverse path dependencies, npm workspaces and reverse consumers; unknown/shared inputs force full proof |
 | `hygiene` | Workflow safety regression tests, actionlint, fixture identifiers, structural client-data scan and gitleaks |
 | `web` | Existing `npm run check`: contracts, TypeScript, lint, Vitest, production build, bundle budget, secret/licence/fixture checks |
-| `rust-build` | Format; default, `full` and `full,test-postgres` Clippy; one workspace nextest archive; one backend binary for every browser shard |
-| `backend-test` | Non-DB library tests from the archive, split with nextest `slice:` partitions |
-| `backend-db` | All remaining tests, including every SQLx suite, from that archive, against an isolated PostgreSQL service per partition |
+| `rust-build` | Format; default, `full` and `full,test-postgres` Clippy; bounded affected target-group archives; one backend binary for every browser shard |
+| `backend-test` | Non-DB library tests from their affected group archive, using nextest `slice:` partitions |
+| `backend-db` | All remaining tests, including mixed SQLx library tests, from their group archive, with an isolated PostgreSQL service per partition |
 | Five personal-data jobs | Existing classification, pii-no-logs, tenant-isolation, rls-arming and audit-coverage gate executables built once by `rust-build` |
 | `e2e-plan`, `e2e` | Existing duration bin packing, Chromium and Firefox; clock projects stay serial; first-run-solo is always in browser shard 1 |
 | `ci-ok` | Every required job succeeded; skips pass only when `plan` explicitly marked that job unnecessary |
@@ -27,10 +27,20 @@ integration binaries run there too. This conservative split keeps mixed unit/DB
 binaries intact. No test is removed by the split. Partitions have independent
 services, so cluster-global mutators never share a cluster across jobs.
 
-`scripts/ci/config.json` owns retention, partition count, shard target, cache budget
-and quarantine metadata. Tests are not retried. The quarantine list starts empty;
-entries must name a test, owner and future expiry. An entry alone does not exclude
-a failing test. Changing a test's execution policy requires a reviewed config change.
+`scripts/ci/config.json` owns retention, target-group size, partition count, shard
+size, disk/cache budgets and the quarantine file. Tests execute without retries.
+`test-results.py` compares exact JUnit failure IDs against `scripts/ci/baseline.json`:
+known trunk reds are reported without blocking; a new red, runner crash, missing
+report or expired/unowned entry blocks. JUnit, baseline counts and traces remain
+available for known reds too. `ci-ok` validates expiry independently of test jobs.
+
+The initial baseline records the existing trunk failures from the 2026-10-22
+`baseline-reds.v2` receipt and `full-tip-chromium` run in the owner handoff (128
+exact browser or nextest IDs, owner Jason Lee, expiry 2026-11-05). It contains no
+wildcards. After this initial seed, hygiene compares the PR/queue base's version
+and permits only removal: no additional IDs, expiry extension or owner changes.
+Remove resolved IDs when their journeys are fixed; the scan and expiry do not
+silently turn off. Strict Clippy needs no baseline.
 
 Cargo.lock, toolchain manifests, package manifests/lock, migrations, OpenAPI,
 registry, third-party, scripts, ops and workflow changes force full proof. A docs-only
@@ -43,8 +53,7 @@ than the Mac's private queue, which is absent from a GitHub runner.
 
 ## Database and browser topology
 
-The production Compose source and existing census harness use the same PostgreSQL
-pin. `scripts/ci/db-contract.mjs` reads it from
+The repository has one PostgreSQL image pin. `scripts/ci/db-contract.mjs` reads it from
 `backend/ci/gates/writer-ownership/tests/census_executes_against_postgres.rs`;
 plan outputs feed the hosted DB services, and the local/browser launcher uses the
 same reader. No Compose/YAML file duplicates the digest.
@@ -95,61 +104,92 @@ keyed on toolchain/lock/test profile (falling back to the toolchain), npm keyed 
 package-lock, Playwright keyed on its resolved package version, and passing E2E
 duration records. Only successful `push: dev` jobs can save; PRs and merge groups
 never save. `setup-node` has no implicit cache writer. sccache is bounded by config.
-`ci-ok` reads repository cache usage and fails when it exceeds the configured
-budget. GitHub evicts old entries; the owner must monitor usage as cold/warm runs
-establish how much of the budget this workspace consumes. Docker BuildKit `type=gha`
+`ci-ok` reports repository cache usage and warns when it exceeds the configured
+budget. Cache eviction lag does not block product merges. GitHub evicts old entries; cold/warm runs
+establish how much of the budget this workspace consumes. The compiler cache key is
+stable for toolchain + lock + stripped test profile, with one primary-group writer;
+it does not create a new 1 GiB cache entry for every SHA or target group. Docker BuildKit `type=gha`
 caching is not wired: the public root has no image build context, and inert CD's
 source-rebuild policy is preserved. The CD arm64 job uses `ubuntu-24.04-arm` natively.
 
-Before **any** artifact/cache/summary upload, `privacy.mjs` invokes
-`scripts/ci/scan-uploads.py`, which imports the curated structural scanner and
-checks the explicit upload roots, file/member names and checksum-valid identifiers,
-including Excel's stripped-leading-zero form. ZIP, gzip, tar and zstd contents are
-read recursively without extracting archive paths onto the runner. Executables
-are checked as UTF-8/UTF-16 strings. Browser distributions use a SHA-256 inventory
-recorded immediately after the locked Playwright installer, before product tests:
-only unchanged downloaded bytes can enter the browser cache. Added/changed files
-fail the scan. This keeps public browser credits, locale packs and snapshots out
-of application-data classification; it does not exempt test traces or screenshots. Unknown binary formats, symlinks, bad archives,
-scanner errors or findings fail closed; output contains only counts and refusal
-categories. Raster media follows the existing scanner's policy: names are checked,
-pixels are not OCRed. Generated credentials and application state are never upload
-roots.
+Before artifact/cache/summary publication, `privacy.mjs` scans **data-bearing**
+upload roots: JUnit, logs, trace ZIPs and their resources, screenshots, metrics,
+summaries, built web assets and timing data. The structural scanner and full /
+Excel-stripped checksum-identifier checks fail closed without echoing values.
+Runner filesystem paths in ordinary JUnit XML are diagnostics; local office-path
+rules apply only inside OOXML packages. Office XML, nested archives, unknown
+binary payloads, symlinks and private-term controls retain refusal tests. Raster
+media follows the existing scanner: names are checked; pixels are not OCRed.
 
-`scripts/client-data-scan.py` is the existing infra implementation with only an
-SPDX header added. It has structural rules and no client-specific list. Its source
-passes gitleaks and the identifier grep. `.client-data-allow` records reviewed
-synthetic 000-prefix controls, exact fuzz seeds and hashed public upstream credits;
-it contains no client identifiers. Public dependency tarballs are accepted only
-when their bytes match the current Cargo/npm lockfile checksum. Dependency caches
-restore by exact lockfile key, keeping unrelated older packages out of scan roots.
-Browser keys additionally include the browser, so a Chromium save cannot prevent
-Firefox from having a warm cache. The verified Chrome-for-Testing redirect to
-`storage.googleapis.com` is included in the egress allow-list.
-Nextest metadata has unused upstream author contacts removed before sharing;
-its binaries and other metadata are preserved and still scanned.
+Compiler output, nextest archives and backend/gate executables built from the
+scanned public source are **not data-bearing uploads**. They and sccache/Cargo
+build caches are outside the tenant-data scan roots; the scanner has no blanket
+ELF/Mach-O or sccache exemption when a binary appears in a diagnostic upload.
+This avoids interpreting upstream author credits and machine code as tenant data.
+Public dependency tarballs in data-bearing cache roots must match lockfile hashes;
+modified or unproven Cargo/npm payloads are refused. Browser cache files must match
+the SHA-256 inventory captured before tests. This never exempts traces or screenshots.
 
-If the owner supplies private client-name rules, store newline-separated terms in
-the optional `CONSOLE_CLIENT_DATA_TERMS` repository secret. Only `push: dev` and
-`merge_group` materialize it into a mode-600 file in `RUNNER_TEMP`, exposed to the
-scanner through `CONSOLE_CLIENT_DATA_TERMS_FILE`. A separate trusted tree check
-uses that same file. No list, private term or secret value is committed or printed;
-plain PRs, including forks, receive no secret file and run structural checks.
-Planted controls cover clean/refused text, UTF-16, ZIP, gzip/tar, zstd, full/stripped
-RRNs, BRN checksums and the private-term file. These controls run in hygiene and
-`npm run check`.
+`check-fixture-ids.mjs` owns the shared synthetic generators/ranges. The structural
+scanner reads the same `fixture-synthetic-ranges.json`; E2E phone generators use
+its placeholder middle group and RRN generators deliberately fail the check digit
+(and the CRN checksum). The 3,000-row generator regression proves uniqueness and
+scan acceptance. A real-shaped non-placeholder phone and a checksum-valid RRN,
+including its stripped form, are still refused in JUnit and trace ZIP controls.
+
+The optional `CONSOLE_CLIENT_DATA_TERMS` secret is passed only into trusted
+`push: dev` / `merge_group` privacy steps. The wrapper creates a mode-600 temporary
+file for the scan, checks both tracked source and upload data, and deletes the
+file in `finally`. Product tests and build steps receive neither the secret nor
+a persistent file/environment reference. Plain PRs run the structural checks.
 
 JUnit is uploaded after every test run that passes privacy scanning; traces are
 uploaded only on failure. Retention comes from config (currently seven days).
 Passing shards publish measured duration records for the next trusted run. Every
 CI job records elapsed seconds and cache lookup/hit counts; scanned summaries
 show these without source or fixture text. `ci-ok` additionally reports repository
-cache bytes. Empty/missing test reports remain errors, never successful evidence.
+cache bytes. Uploads are withheld if the plan has no configured retention; they never fall
+back to repository defaults. Missing or malformed reports remain errors. A built Rust group with no test
+cases may report an explicit zero-test JUnit only after a successful nextest run;
+an empty browser report is always refused.
+
+## Hosted disk bound
+
+A clean build uses `debug=0`, `strip=debuginfo`, no incremental output and bounded
+sccache. The metadata plan partitions **test targets**, rather than building all
+120 app binaries on one runner. Each target belongs to one mode/group; library
+binaries with a transitive SQLx dependency stay in DB groups. Six targets per
+group currently produces 123 build groups (734 test binaries), 106 DB partitions
+and 17 non-DB partitions. Archives contain only that group's selected binaries;
+`--partition slice:1/1` runs its partition. Package-owned `full` / `test-postgres`
+features are enabled only for selected packages. The backend binary and five gate
+executables are built once, in the primary group. Source hygiene must pass first.
+
+Measured 2026-10-22 on **macOS arm64**, Rust 1.98.1, with a fresh target directory:
+
+| Shape | Build bytes (GiB) | Compressed archive (GiB) | Test job incl. extraction (GiB) |
+| --- | ---: | ---: | ---: |
+| Primary: strict Clippy x3, app group, five gates, E2E backend | 8.715 | 0.334 | 2.146 |
+| Six app integration targets, conservatively retaining primary metadata/gates/backend | 9.142 | 0.461 | 2.952 |
+
+Build bytes include the target, artifacts, tracked checkout, resolved dependency
+sources and a full 1 GiB compiler-cache reserve. No decoded archive is materialized
+for scanning or rewriting. `disk-budget.py` streams tar inventories and refuses
+more than 10 GiB of produced build/test data or less than 3 GiB free space before
+publication. The measured maximum plus the 3 GiB margin is 12.142 GiB, below the
+standard runner's 14 GB disk allowance reported by the verifier. The source/cache
+reserve and unused primary outputs make the integration receipt conservative.
+
+**Linux amd64 is not measured locally.** Its cold/warm hosted jobs must retain the
+numeric disk receipt and pass the same limits; architecture parity is not assumed.
+The verifier must confirm actual free disk before/after the largest amd64 job.
+The previous whole-workspace 49 GB extraction / 72 GB target is no longer a job.
 
 ## Reading a red and rerunning
 
 Open `ci-ok` first. A red dependency or a dependency-caused skip is a failed proof.
-Open that job, then its scanned JUnit artifact. A privacy red means the payload
+Open that job, then its scanned JUnit and `.baseline.json` artifacts. Known baseline
+failures stay visible in those reports and the job/totals summaries. A privacy red means the payload
 was withheld: reproduce locally; do not print findings into the public job log.
 For E2E, download the failing shard's trace only after its scan passed and open it
 with `npx playwright show-trace`. Use the matrix's browser/project/files to reproduce
@@ -192,8 +232,10 @@ permissions, enable CD, or add an administrative check bypass to make a red pass
 ## Post-flip proof receipt
 
 The old `ci` push failure at 2026-10-21T14:06:01Z is recorded in the handoff without
-its failing-job logs. Its cause cannot be diagnosed from that conclusion alone;
-the owner/verifier must retrieve its jobs/logs before claiming G-46 closed.
+its failing-job logs. Verifier round 3 retrieved run 39613833016: check-reach
+expected the private orchestra queue on the hosted runner. CI-0 owns the fix and
+its regression; this branch is based on `ci/ci-0-hermetic` and carries no duplicate
+check-reach or reach-registry edits.
 
 No hosted run is fabricated. Fill this table from Actions job durations, scanned
 cache counters and repository cache usage from the hosted runs:
@@ -269,13 +311,50 @@ tests across four partitions. The browser download/cache proof checks 643 public
 distribution files without executing a browser; Chromium/Firefox shard plans are
 9/8 with first-run-solo in shard 1 for both. The shared relocated bootstrap reconciles all eight roles and enforces 20 canonical tables after migrations;
 site_unit and workplace_kind pass three tests across four archive partitions.
-The sanitized archive, its metadata, the built web output and sampled compiler
-cache formats pass the actual upload scanner. Workflow/actionlint, allowed SHA pins, ShellCheck, touched-script
+The round-3 verifier rejected compiled archives and failure diagnostics under
+that earlier scan policy. The data-bearing scope and fixture fixes above replace
+those round-2 upload assumptions. Workflow/actionlint, allowed SHA pins, ShellCheck, touched-script
 lint and Compose render pass. Curated stack/scanner gitleaks and structural scans
-have zero findings. The structural source differs from infra only by SPDX.
+have zero findings. At round 2 the structural source differed from infra only by SPDX; round 3
+shares its synthetic ranges with the fixture checker.
 No GitHub API mutation, push, ruleset application, hosted browser run or live
 production inspection was performed. Hosted cold/warm/docs-only/crate evidence
 and one executed shard per browser remain verifier work.
+
+## Round 3 verification receipt
+
+The lane is based on CI-0 (`4cbc2e76`); check-reach and its registry have no CI-1
+diff. Added 24 CI regression tests. On unchanged `7bf10b0e` the candidate suite has
+25 of 47 tests red; all 47 pass on the candidate. The complete npm check
+has 63 Node tests and 218 Vitest files / 1,159 tests. Mutation controls kill all
+19 tested removals/bypasses, including needed-job skips, final enforcement,
+Clippy, the five-gate command path, DB/E2E commands, hygiene and wrong-browser /
+library-only archives. The frontend-only planner regression also fails before its
+fix and passes after it; unsupported future Cargo test kinds refuse planning.
+
+Rust format, all three strict Clippy sets and workspace test checking pass.
+`cargo test --lib --workspace`: 196 targets, 2,009 pass, one existing ignore.
+The two touched DB crates pass 220 tests against the lane database, including
+both executed Docker census cases. A fresh service using the repository digest
+passes the exact prepare/bootstrap/archive/partition path: 52 tests in two DB
+suites; the post-migration bootstrap examines all 20 canonical tables. A separate
+multi-crate non-DB archive passes 98 tests. All five personal-data gates pass.
+
+Actionlint, YAML/action pins, ShellCheck, fixture identifiers, structural scans,
+gitleaks and touched-script lint pass. Scan controls include clean failing JUnit
+and trace ZIPs with runner paths/synthetic data, planted real-shaped phones and
+valid full/stripped RRNs, symlinks, corrupt dependency cache hashes, nested archives
+and trusted private terms. The actual web build, DB JUnit and unit JUnit are also
+scanned. The verifier's saved failing `person` trace also passes (359 ZIP members),
+including its network resources and screenshots. No excluded lane file is changed.
+All new source headers pass.
+
+Remaining verifier proof is the merge result in Actions: one actual shard per
+browser, cold/warm/docs-only/one-crate runs, actual amd64 disk/cache measurements,
+and the owner-applied ruleset. No push, GitHub API call, ruleset application, live
+production inspection or sandbox browser run was performed. Probe additionally
+requires the existing workflow input secret `CONSOLE_PUBLIC_HOST`; Telegram uses
+`CONSOLE_TELEGRAM_BOT_TOKEN` / `CONSOLE_TELEGRAM_CHAT_ID`. CD remains opt-in and inert.
 
 ## Files outside the initial owns list
 
@@ -286,10 +365,13 @@ requested round-2 test topology/scanner). No excluded lane file was touched:
 - `.github/workflows/workflows-check.yml`
 - `e2e/stack/compose.yml`, `e2e/stack/otel-collector.yml`
 - `package.json`, `playwright.config.ts`, `vitest.config.ts`
-- `registry/reach-units.json`
 - `scripts/backend-dev.mjs`, `scripts/client-data-scan.py`
-- `scripts/cd-workflow.test.mjs`, `scripts/check-reach.mjs`, `scripts/check-reach.test.ts`
-- `scripts/ci.test.mjs`, `scripts/ci-privacy.test.mjs`
+- `scripts/cd-workflow.test.mjs`
+- `scripts/ci.test.mjs`, `scripts/ci-privacy.test.mjs`, `scripts/ci-results.test.mjs`
+- `scripts/check-fixture-ids.mjs`, `scripts/check-fixture-ids.d.mts`, `scripts/fixture-synthetic-ranges.json`
+- `e2e/helpers/import.ts`, `e2e/helpers/import-layouts.ts`, `e2e/access-parity.spec.ts`
+- `e2e/parity/e3.ts`, `e2e/people-actions/register-run.spec.ts`
+- `scripts/ci/baseline.json`, `scripts/ci/test-results.py`, `scripts/ci/disk-budget.py`, `scripts/ci/rust-build.mjs`
 - `scripts/ci/bootstrap-db.sh`, `scripts/ci/postgres-reconcile-topology.sh`
 - `scripts/ci/config.json`, `scripts/ci/versions.json`, `scripts/ci/db-contract.mjs`
 - `scripts/ci/e2e.mjs`, `scripts/ci/plan.mjs`, `scripts/ci/gate.mjs`

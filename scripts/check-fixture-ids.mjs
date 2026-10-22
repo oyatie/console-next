@@ -10,6 +10,20 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
+export const syntheticRanges = JSON.parse(readFileSync(new URL("./fixture-synthetic-ranges.json", import.meta.url), "utf8"));
+
+export function syntheticPhone(index) {
+  if (!Number.isInteger(index) || index < 0 || index > 9999) throw new Error("synthetic phone index outside four-digit range");
+  return `010-${syntheticRanges.phoneMiddle.find((value) => value.length === 4)}-${String(index).padStart(4, "0")}`;
+}
+
+export function syntheticRrn(body) {
+  if (!/^\d{12}$/.test(body)) throw new Error("synthetic RRN body must have twelve digits");
+  const crnCheck = (10 - [...body].reduce((sum, digit, i) => sum + Number(digit) * (1 + i % 2), 0) % 10) % 10;
+  const digit = [...Array(10).keys()].find((value) => value !== crnCheck && !rrnChecksumValid(body + value));
+  return `${body.slice(0, 6)}-${body.slice(6)}${digit}`;
+}
+
 const RRN = /(?<!\d)(\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))-?([1-8]\d{6})(?!\d)/g;
 const W = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5];
 // 11–12 digits, no leading zero, an optional Excel ".0" (pii.rs is_stripped_zero_rrn).
