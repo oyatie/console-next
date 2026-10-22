@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { fillDate } from "./sheet";
 import { fmtDate } from "@console/i18n/format";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
@@ -69,7 +70,7 @@ test("the record: 변경 from a date, 정정 of the period in force, 정정만, 
   await admin.getByRole("button", { name: "개업연월일 정정" }).click();
   const opened = sheet(admin, "개업연월일 수정");
   await expect(opened.getByText(/이 칸은 정정만 합니다/)).toBeVisible();
-  await opened.getByRole("textbox", { name: /^개업연월일/ }).fill("2020-03-03");
+  await fillDate(opened, "2020-03-03", "개업연월일");
   await opened.getByRole("button", { name: "정정 기록" }).click();
   await expect(opened).toBeHidden();
 
