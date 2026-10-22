@@ -1,3 +1,6 @@
+import { t } from "@console/i18n";
+import { InboxCommand } from "../features/org/ui/inbox-command";
+import { AddPasskey } from "../features/onboarding/ui/add-passkey";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Home } from "../features/home/Home";
@@ -18,5 +21,10 @@ export function HomeScreen() {
   const pending = !settled && !ready;
   if (!pending && !settled) setSettled(true);
   useLiveHold(pending);
-  return <Home setup={(c) => <SetupHome c={c} />} setupPending={pending} />;
+  return <Home setup={(c) => <SetupHome c={c} />} setupPending={pending} action={(item) => {
+    const link = item.links[0];
+    if (link?.kind === "account") return <AddPasskey count={1} primary label={t("account.second.add")} focusAfter="inbox-title" />;
+    if (link?.kind === "org_change" && item.context?.command) return <InboxCommand id={link.id} command={item.context.command} />;
+    return null;
+  }} />;
 }

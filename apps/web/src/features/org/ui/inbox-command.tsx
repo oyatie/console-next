@@ -11,8 +11,8 @@ import { ORG_READS, unitsQuery } from "../../../reference/org/api";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { Dialog } from "../../../ui/dialog";
-import { changeCommands, changeQuery } from "../../org/api";
-import { EffectuateConsequence } from "../../org/ui/effectuate-consequence";
+import { changeCommands, changeQuery } from "../api";
+import { EffectuateConsequence } from "./effectuate-consequence";
 
 /** The inbox keeps its inline verbs; the record supplies the current step and application consequence. */
 export function InboxCommand({ id, command }: { id: string; command: "approve" | "effectuate" }) {

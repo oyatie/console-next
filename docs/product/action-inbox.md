@@ -123,10 +123,13 @@ The same scale regression on starting tip `91127130` measured **312.708583 ms** 
 proofs in the disposable base worktree: **22** web assertions fail; the grant
 journey fails on absent disclosure; the partial-source journey returns **500**;
 the capability/count metadata assertions fail. Focused mutation proofs kill the
-source-exclusion, deadline, failure-kind and period-unlock pre-guard mutations.
-The standing-text pin is regenerated for the restored facts and verbs: **64**,
+source-exclusion, deadline, failure-kind, ops-notice and period-unlock pre-guard mutations.
+The standing-text pin is regenerated for the restored facts and verbs: **63**,
 still below train/fix-r1's **234** (dev **248**). No original capability is
 removed to meet the earlier, incomplete implementation's **52**-block pin.
+The org command stays in its owning feature; the route composes it and inline
+passkey registration into Home. Grant scope text uses the shared access reference
+formatter without requiring a separate organization-tree read.
 The lane evidence directory is `lanes/eco-g2-inbox/round2-logs/`.
 
 ## Change inventory
@@ -148,8 +151,6 @@ Round 2. Generated contracts are regenerated with their repository tools.
 - `apps/web/src/features/home/ui/change-rows.tsx`
 - `apps/web/src/features/home/ui/coverage-notice.tsx`
 - `apps/web/src/features/home/ui/grant-notices.tsx`
-- `apps/web/src/features/home/ui/inbox-command.test.tsx`
-- `apps/web/src/features/home/ui/inbox-command.tsx`
 - `apps/web/src/features/home/ui/inbox.test.ts`
 - `apps/web/src/features/home/ui/no-work.tsx`
 - `apps/web/src/features/home/ui/people-rows.tsx`
@@ -202,6 +203,8 @@ No excluded lane file is edited.
 - `apps/web/src/features/onboarding/ui/add-passkey.tsx`
 - `apps/web/src/features/org/OrgChange.tsx`
 - `apps/web/src/features/org/ui/effectuate-consequence.tsx`
+- `apps/web/src/features/org/ui/inbox-command.test.tsx`
+- `apps/web/src/features/org/ui/inbox-command.tsx`
 - `apps/web/src/features/people/Employee.tsx`
 - `apps/web/src/features/people/api.ts`
 - `apps/web/src/lib/live/live.test.ts`

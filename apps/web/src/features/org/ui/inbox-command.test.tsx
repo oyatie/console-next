@@ -5,6 +5,7 @@ import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import type { components } from "@console/api/schema";
 import { loadCatalog, t } from "@console/i18n";
 import { APPROVAL_ROLE, label } from "../../../lib/labels";
+import { get, readIdentity } from "../../../lib/query";
 import type { Button } from "../../../ui/button/button";
 import { InboxCommand } from "./inbox-command";
 
@@ -18,13 +19,14 @@ const state = vi.hoisted(() => ({
   decide: vi.fn(), effectuate: vi.fn(), focus: vi.fn(), mutate: vi.fn(), reads: [] as string[],
 }));
 vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useState: () => [state.open, (open: boolean) => { state.open = open; }] }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: (query: { queryKey: unknown[] }) => {
-  state.reads.push(String(query.queryKey[0]));
-  if (query.queryKey[0] === "/api/v1/org-units") return { data: state.units, isSuccess: !!state.units && !state.unitsFailed, isFetchedAfterMount: state.unitsFresh, isFetching: state.unitsFetching, error: state.unitsFailed ? new Error("headcount unavailable") : null };
+vi.mock("@tanstack/react-query", async (original) => ({ ...await original<typeof import("@tanstack/react-query")>(), useQuery: (query: Parameters<typeof readIdentity>[0]) => {
+  const path = String(JSON.parse(readIdentity(query))[0]);
+  state.reads.push(path);
+  if (path === "/api/v1/org-units") return { data: state.units, isSuccess: !!state.units && !state.unitsFailed, isFetchedAfterMount: state.unitsFresh, isFetching: state.unitsFetching, error: state.unitsFailed ? new Error("headcount unavailable") : null };
   return { data: state.detail, isSuccess: !!state.detail, isPending: !state.detail, isFetching: state.fetching, error: null, refetch: vi.fn() };
 } }));
-vi.mock("../../org/api", () => ({
-  changeQuery: (id: string) => ({ queryKey: ["/api/v1/org-changes/{id}", id] }),
+vi.mock("../api", () => ({
+  changeQuery: (id: string) => get("/api/v1/org-changes/{id}", { params: { path: { id } } }),
   changeCommands: (id: string) => ({ decide: (...args: unknown[]) => state.decide(id, ...args), effectuate: () => state.effectuate(id) }),
 }));
 vi.mock("../../../lib/react/announce", () => ({ focusSoon: (...args: unknown[]) => state.focus(...args) }));
@@ -33,7 +35,7 @@ vi.mock("../../../lib/react/command", () => ({ useCommand: (options: Command) =>
   return { mutate: state.mutate, isPending: state.pending, error: state.error };
 } }));
 vi.mock("../../../lib/react/command-error", () => ({ CommandError: ({ error }: { error: unknown }) => error ? createElement("div", { role: "alert" }, String(error)) : null }));
-vi.mock("../../org/ui/effectuate-consequence", () => ({ EffectuateConsequence: ({ d, headcount }: { d: Detail; headcount?: unknown }) => { state.snapshots.push(headcount); return createElement("span", null, t("org.change.effectuate.apply", { code: d.code })); } }));
+vi.mock("./effectuate-consequence", () => ({ EffectuateConsequence: ({ d, headcount }: { d: Detail; headcount?: unknown }) => { state.snapshots.push(headcount); return createElement("span", null, t("org.change.effectuate.apply", { code: d.code })); } }));
 vi.mock("../../../ui/dialog", () => ({ Dialog: ({ open, children }: { open: boolean; children: ReactNode }) => open ? createElement("div", { role: "dialog" }, children) : null }));
 vi.mock("../../../ui/button/button", async (original) => {
   const actual = await original<typeof import("../../../ui/button/button")>();
