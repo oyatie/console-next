@@ -165,7 +165,7 @@ export const koExit = {
   "exit.close.consequence.scheduled": "{name}의 퇴직 절차를 닫고 {date}자 퇴직 예약을 거둡니다. 재직 상태는 그대로입니다. 되돌릴 수 없고 감사 기록에 남습니다.",
   "exit.eventState.SCHEDULED": "{date}에 퇴직 처리가 반영됩니다. 그때까지 {name|은는} 재직 상태입니다.",
   "exit.eventState.APPLY_FAILED": "{date}에 퇴직 처리를 반영하지 못해 {name|은는} 재직 상태입니다. 직원의 인사 이력에서 사유를 확인한 뒤, 이 퇴직 건을 반려하고 다시 보고하십시오.",
-  "exit.error.exit_cancel_after_hr_confirmation": "인사 확인 뒤에는 퇴직 보고를 취소할 수 없습니다. 반려할 수 있는 단계라면 사유를 남겨 반려하고, 그 밖에는 인사 담당자에게 정정을 요청하십시오.",
+  "exit.error.exit_cancel_after_hr_confirmation": "인사 확인 뒤에는 퇴직 보고를 취소할 수 없습니다. 사유를 남겨 반려하십시오.",
   "exit.rejected": "{name}의 퇴직을 반려했습니다",
   "exit.cancelled": "{name}의 퇴직 보고를 취소했습니다",
   "exit.report.first": "먼저 정리할 것 {n, number}건",

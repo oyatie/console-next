@@ -94,7 +94,7 @@ export const enExit: Partial<Record<keyof typeof koExit, string>> = {
   "exit.close.consequence.scheduled": "Closes {name}’s exit process and withdraws the exit scheduled for {date}. Their employment is unchanged. This can’t be undone and is recorded in the audit log.",
   "exit.eventState.SCHEDULED": "The exit takes effect on {date}; {name} stays employed until then.",
   "exit.eventState.APPLY_FAILED": "The exit could not take effect on {date}, so {name} is still employed. Check the reason in the employee’s history, then reject this exit case and report it again.",
-  "exit.error.exit_cancel_after_hr_confirmation": "An HR-confirmed exit report cannot be cancelled. Reject with a reason where offered; otherwise ask HR for a governed correction.",
+  "exit.error.exit_cancel_after_hr_confirmation": "An HR-confirmed exit report cannot be cancelled. Reject it with a reason.",
   "exit.list.col.next": "Next step",
   "exit.list.count": "{count, plural, one {# exit case} other {# exit cases}}",
   "exit.list.chips": "Status",

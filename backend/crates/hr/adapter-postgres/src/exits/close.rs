@@ -87,7 +87,7 @@ impl HrService {
                 return Err(HrError {
                     status: http::StatusCode::CONFLICT,
                     code: "exit_cancel_after_hr_confirmation",
-                    message: "an HR-confirmed exit report cannot be cancelled; reject with a reason where available, otherwise request a governed correction".to_owned(),
+                    message: "an HR-confirmed exit report cannot be cancelled; reject it with a reason".to_owned(),
                     refusals: None,
                 });
             }

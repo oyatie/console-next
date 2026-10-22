@@ -101,7 +101,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   // The case page puts the HQ step's form inline at the current step and focuses it.
   const hq = exec.getByRole("region", { name: /지금/ });
   await expect(hq.getByRole("heading", { name: "지금 · 본사 확인" })).toBeFocused();
-  await expect(hq).toContainText("반려만 할 수 있으며");
+  await expect(hq).toContainText("사유를 남겨 반려할 수 있으며");
   await expect(hq).toContainText("개인 사정으로 사직");
   await expectAccessible(exec, "J5: HQ confirmation at the current step");
   await c.click(hq.getByRole("button", { name: "본사 퇴직 확인" }));
@@ -197,12 +197,24 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await admin.getByLabel("퇴직 경위").fill("계약 만료 예정");
   await admin.getByRole("dialog").getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
   await c.click(admin.getByRole("dialog").getByRole("button", { name: "퇴직 보고" }));
+  // A report withdrawal left open must follow another tab's HR confirmation through SSE, even while sheets hold list refreshes.
+  const otherHr = await admin.context().newPage();
+  await otherHr.goto(new URL(admin.url()).pathname);
+  await exitPanel(otherHr).getByRole("button", { name: "퇴직 보고 취소" }).click();
+  const staleCancel = otherHr.getByRole("dialog", { name: "퇴직 보고 취소" });
+  await staleCancel.getByLabel("취소 사유").fill("담당자 확인 중");
   await c.click(exitPanel(admin).getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
   await expect(admin.getByRole("dialog")).toContainText(`${koDate(exitOn)}자로 퇴직 처리하도록 예약합니다`);
   // A scheduled exit can still be withdrawn, so its button is blue and names the date.
   await expect(admin.getByRole("dialog").getByRole("button", { name: /인사 확인하고 .* 퇴직 예약/ })).toHaveClass(/btn--primary/);
   await expectAccessible(admin, "J5: HR confirmation of a future exit");
   await confirmAsHr(admin, c);
+  await expect(staleCancel).toContainText("이 조치는 지금 할 수 없습니다");
+  await expect(staleCancel.getByRole("button", { name: "퇴직 보고 취소" })).toHaveCount(0);
+  await expect(staleCancel).not.toContainText("아직 퇴직 처리 전이라 재직 상태는 그대로입니다");
+  await expect(staleCancel).toContainText("담당자 확인 중");
+  await staleCancel.getByRole("button", { name: "돌아가기", exact: true }).click();
+  await otherHr.close();
   await expect(exitPanel(admin)).toContainText("효력 예정");
   await expect(exitPanel(admin)).toContainText(`${koDate(exitOn)}에 퇴직 처리가 반영됩니다`);
   await expect(head(admin, "예정퇴직").getByText("재직", { exact: true })).toBeVisible();

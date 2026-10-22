@@ -15,7 +15,7 @@ async fn snapshot(pool: &PgPool, w: &World) -> Value {
     .unwrap()
 }
 
-async fn refuse_cancel(pool: &PgPool, hq: bool, future: bool) {
+async fn refuse_cancel(pool: &PgPool, status: &str, future: bool) {
     let w = live(pool).await;
     let on = console_hr_adapter_postgres::clock::today_kst()
         + Duration::days(if future { 10 } else { -1 });
@@ -35,7 +35,7 @@ async fn refuse_cancel(pool: &PgPool, hq: bool, future: bool) {
         assert_eq!(status, "EXITED");
     }
     let id = c["id"].as_str().unwrap().parse().unwrap();
-    if hq {
+    if status != "HR_CONFIRMED" {
         w.hr.confirm_exit_case(
             w.hr(w.hr_two),
             None,
@@ -44,6 +44,14 @@ async fn refuse_cancel(pool: &PgPool, hq: bool, future: bool) {
         )
         .await
         .unwrap();
+    }
+    if matches!(status, "SETTLEMENT_READY" | "APPROVAL_DRAFTED") {
+        sqlx::query("UPDATE employee_exit_cases SET status=$2 WHERE id=$1")
+            .bind(id)
+            .bind(status)
+            .execute(pool)
+            .await
+            .unwrap();
     }
     let before = snapshot(pool, &w).await;
     let error =
@@ -86,20 +94,30 @@ async fn reported_can_be_cancelled_by_the_reporter(pool: PgPool) {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn hr_confirmed_scheduled_cannot_be_cancelled(pool: PgPool) {
-    refuse_cancel(&pool, false, true).await;
+    refuse_cancel(&pool, "HR_CONFIRMED", true).await;
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn exited_cannot_be_cancelled(pool: PgPool) {
-    refuse_cancel(&pool, false, false).await;
+    refuse_cancel(&pool, "HR_CONFIRMED", false).await;
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn hq_confirmed_cannot_be_cancelled(pool: PgPool) {
-    refuse_cancel(&pool, true, false).await;
+    refuse_cancel(&pool, "HQ_CONFIRMED", false).await;
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn hq_confirmed_scheduled_cannot_be_cancelled(pool: PgPool) {
-    refuse_cancel(&pool, true, true).await;
+    refuse_cancel(&pool, "HQ_CONFIRMED", true).await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn settlement_ready_cannot_be_cancelled(pool: PgPool) {
+    refuse_cancel(&pool, "SETTLEMENT_READY", false).await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn approval_drafted_cannot_be_cancelled(pool: PgPool) {
+    refuse_cancel(&pool, "APPROVAL_DRAFTED", false).await;
 }
