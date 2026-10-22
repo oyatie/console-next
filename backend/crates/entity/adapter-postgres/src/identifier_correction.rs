@@ -27,7 +27,7 @@ use crate::governed::{
 use crate::{Admitted, PgEntityError, PgEntityStore, Tx, audit, read_phase};
 
 mod pending;
-use pending::{pending, save_pending};
+use pending::{pending, save_pending, validate_evidence};
 
 pub type Gate = Option<Arc<dyn GovernedCorrectionPort>>;
 
@@ -235,11 +235,12 @@ impl PgEntityStore {
                 }
                 let new_kind = if c.field == IdentifierField::BizKind { Some(c.value.clone()) } else { kind.clone() };
                 crate::name_evidence::correct_classification(tx, id, new_kind.as_deref().and_then(BizKind::parse), None).await?;
-                let (_, attached) = attach_in_tx(tx, &actor, c.document_id, id, None).await?;
+                validate_evidence(tx, c.document_id, id, None).await?;
                 let (admitted, exception) = match admit_correction(tx, &c, CorrectionSubject::LegalEntity(id), gate, &actor, by_ops(&input)).await? {
                     CorrectionAdmission::Immediate(admitted, exception) => (admitted, exception),
-                    CorrectionAdmission::Pending(exception) => return save_pending(tx, &actor, exception, &input, attached).await,
+                    CorrectionAdmission::Pending(exception) => return save_pending(tx, &actor, exception, &input).await,
                 };
+                let (_, attached) = attach_in_tx(tx, &actor, c.document_id, id, None).await?;
                 for (field, old, new) in &rows {
                     let row = LedgerRow { entity: id, registration: None, field: *field, old: *old, new: *new };
                     ledger(tx, &actor, &c, admitted, exception, row).await?;
@@ -301,11 +302,12 @@ impl PgEntityStore {
                 }
                 let kind: Option<String> = sqlx::query_scalar("SELECT biz_kind FROM legal_entities WHERE id = $1 FOR UPDATE").bind(entity).fetch_one(tx.as_mut()).await?;
                 crate::name_evidence::correct_classification(tx, entity, kind.as_deref().and_then(BizKind::parse), Some((id, &c.value))).await?;
-                let (_, attached) = attach_in_tx(tx, &actor, c.document_id, entity, Some(id)).await?;
+                validate_evidence(tx, c.document_id, entity, Some(id)).await?;
                 let (admitted, exception) = match admit_correction(tx, &c, CorrectionSubject::BusinessRegistration(id), gate, &actor, by_ops(&input)).await? {
                     CorrectionAdmission::Immediate(admitted, exception) => (admitted, exception),
-                    CorrectionAdmission::Pending(exception) => return save_pending(tx, &actor, exception, &input, attached).await,
+                    CorrectionAdmission::Pending(exception) => return save_pending(tx, &actor, exception, &input).await,
                 };
+                let (_, attached) = attach_in_tx(tx, &actor, c.document_id, entity, Some(id)).await?;
                 // A check of the old number never vouches for the new one (lane corrections #10).
                 let row = LedgerRow { entity, registration: Some(id), field: IdentifierField::Brn, old: old.as_deref(), new: Some(&c.value) };
                 ledger(tx, &actor, &c, admitted, exception, row).await?;

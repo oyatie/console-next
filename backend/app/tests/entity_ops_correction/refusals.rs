@@ -138,14 +138,14 @@ async fn newly_granted_holder_cannot_approve_or_decline(owner: PgPool) {
     for decision in ["APPROVE", "DECLINE"] {
         let (status, refused) = send(
             &s.service,
-            &format!("/api/v1/exceptions/{id}/decide"),
+            &format!("/api/v1/governed-exceptions/{id}/decide"),
             &newcomer.token,
             Some(&key()),
             json!({"decision":decision, "reason_code":"SECOND_PERSON_VERIFIED", "step_up":proof}),
         )
         .await;
         assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
-        assert_eq!(refused["error"]["code"], "exception_decide is not allowed");
+        assert_eq!(refused["error"]["code"], "exception_decide_forbidden");
         unchanged(&owner, id).await;
     }
 }
@@ -174,14 +174,14 @@ async fn eligibility_uses_stored_requester_and_case_creation(owner: PgPool) {
     let proof = step_up_with_binding(&owner, &s.svc, &mut s.approver, binding).await;
     let (status, refused) = send(
         &s.service,
-        &format!("/api/v1/exceptions/{id}/decide"),
+        &format!("/api/v1/governed-exceptions/{id}/decide"),
         &s.approver.token,
         Some(&key()),
         json!({"decision":"APPROVE", "reason_code":"SECOND_PERSON_VERIFIED", "step_up":proof}),
     )
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
-    assert_eq!(refused["error"]["code"], "exception_decide is not allowed");
+    assert_eq!(refused["error"]["code"], "exception_decide_forbidden");
     unchanged(&owner, id).await;
 }
 
@@ -210,14 +210,14 @@ async fn eligible_holder_with_branch_scoped_session_cannot_decide(owner: PgPool)
     for decision in ["APPROVE", "DECLINE"] {
         let (status, refused) = send(
             &s.service,
-            &format!("/api/v1/exceptions/{id}/decide"),
+            &format!("/api/v1/governed-exceptions/{id}/decide"),
             &token,
             Some(&key()),
             json!({"decision":decision, "reason_code":"SECOND_PERSON_VERIFIED", "step_up":proof}),
         )
         .await;
         assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
-        assert_eq!(refused["error"]["code"], "exception_decide is not allowed");
+        assert_eq!(refused["error"]["code"], "exception_decide_forbidden");
         unchanged(&owner, id).await;
     }
 }
@@ -235,7 +235,7 @@ async fn identifier_decision_route_refuses_other_rules(owner: PgPool) {
     let proof = step_up_with_binding(&owner, &s.svc, &mut s.approver, binding).await;
     let (status, refused) = send(
         &s.service,
-        &format!("/api/v1/exceptions/{id}/decide"),
+        &format!("/api/v1/governed-exceptions/{id}/decide"),
         &s.approver.token,
         Some(&key()),
         json!({"decision":"APPROVE", "reason_code":"SECOND_PERSON_VERIFIED", "step_up":proof}),

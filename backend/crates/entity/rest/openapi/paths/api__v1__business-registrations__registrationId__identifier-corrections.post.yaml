@@ -33,7 +33,7 @@ responses:
         schema:
           $ref: '#/components/schemas/SavedBusinessRegistration'
   '202':
-    description: A second eligible holder must decide the persisted PENDING exception. Bind EXCEPTION_DECIDE to exception_id and payload_hash, then POST /api/v1/exceptions/{exception_id}/decide.
+    description: A second eligible holder must decide the persisted PENDING exception. Bind EXCEPTION_DECIDE to exception_id and payload_hash, then POST /api/v1/governed-exceptions/{exception_id}/decide.
     content:
       application/json:
         schema:

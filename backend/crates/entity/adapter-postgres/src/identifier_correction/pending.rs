@@ -1,6 +1,27 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Persist and replay the pending receipt without applying the correction.
 use super::*;
+
+pub(super) async fn validate_evidence(
+    tx: &mut Tx<'_>,
+    id: Uuid,
+    entity: Uuid,
+    registration: Option<Uuid>,
+) -> Result<(), PgEntityError> {
+    let doc = match crate::documents::one(tx, id, true).await {
+        Err(PgEntityError::Refused(r)) if r.code == "document_not_found" => {
+            return Err(Refusal::field("document_id", "document_not_found").into());
+        }
+        other => other?,
+    };
+    let registration = registration
+        .filter(|_| doc.kind == console_entity_domain::document::DocumentKind::BizRegCert);
+    if doc.attached_elsewhere(entity, registration) {
+        return Err(Refusal::field("document_id", "document_attached_elsewhere").into());
+    }
+    Ok(())
+}
+
 pub(super) async fn pending<T>(
     tx: &mut Tx<'_>,
     exception_id: Uuid,
@@ -23,8 +44,10 @@ pub(super) async fn save_pending<T>(
     actor: &Actor,
     exception_id: Uuid,
     input: &IdentifierCorrectionInput,
-    attached: Option<AuditEvent>,
 ) -> Result<(CorrectionOutcome<T>, Vec<AuditEvent>), PgEntityError> {
+    let c = validate_correction(input, input.field.as_deref() == Some("brn"))?;
+    let mut proposal = serde_json::to_value(c.governed_payload())?;
+    proposal["reason_code"] = json!(c.reason.as_str());
     finish(
         tx,
         actor,
@@ -46,9 +69,7 @@ pub(super) async fn save_pending<T>(
     .with_org(actor.org)
     .with_snapshots(
         None,
-        Some(json!({ "status": "PENDING", "requested_by": actor.user })),
+        Some(json!({ "status": "PENDING", "requested_by": actor.user, "proposal": proposal })),
     );
-    let mut events: Vec<_> = attached.into_iter().collect();
-    events.push(event);
-    Ok((pending(tx, exception_id, input).await?, events))
+    Ok((pending(tx, exception_id, input).await?, vec![event]))
 }

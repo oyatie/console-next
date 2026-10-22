@@ -10,6 +10,7 @@ import { Table } from "../../../ui/table";
 import { checklistRef, entitiesAt } from "../../../reference/entity/api";
 import { todayKst } from "../../../lib/pure/today";
 import { headcount, primaryRegistration } from "../domain/view";
+import { CorrectionRegister } from "./correction-register";
 import { QuickAdd } from "./entity-quick-add";
 import { UnattachedWorkplaces } from "./unattached-workplaces";
 import { AsOfBand } from "./asof-band";
@@ -86,6 +87,7 @@ export function EntityList() {
         </QueryState>
       </section>
       {/* Below the list: arriving with the read, it never pushes the table down (layout shift budget). */}
+      {!readOnly && <CorrectionRegister />}
       {list.data && <UnattachedWorkplaces entities={list.data.items} />}
       {!readOnly && <QuickAdd open={add === true} onClose={() => void navigate({ search: (s) => ({ ...s, add: undefined }) })} />}
     </div>

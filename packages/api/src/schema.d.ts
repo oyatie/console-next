@@ -4933,6 +4933,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/entity-identifier-corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the identifier-correction register and its proposed evidence */
+        get: operations["listEntityIdentifierCorrections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/entity-identifier-corrections/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the identifier-correction register and its proposed evidence */
+        get: operations["getEntityIdentifierCorrection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/entity-identifier-corrections/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record an independent controller review of a sole-holder correction */
+        post: operations["reviewEntityIdentifierCorrection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/entity-setup/batches": {
         parameters: {
             query?: never;
@@ -5881,23 +5932,6 @@ export interface paths {
         get: operations["getEvidenceProcessingStatus"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/exceptions/{id}/decide": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Decide a pending identifier-correction exception */
-        post: operations["decideIdentifierCorrectionException"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21109,6 +21143,46 @@ export interface components {
         };
         /** @enum {string} */
         IaciBusinessForm: "CONTINUING" | "FIXED_TERM";
+        IdentifierCorrectionCase: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            entity_id: string;
+            entity_name: string;
+            /** Format: uuid */
+            subject_id: string;
+            /** @enum {string} */
+            subject_type: "LEGAL_ENTITY" | "BUSINESS_REGISTRATION";
+            /** @enum {string} */
+            status: "PENDING" | "APPROVED" | "DECLINED" | "RECORDED" | "EXPIRED" | "APPLIED";
+            requester_name?: string;
+            decision_note?: string | null;
+            review_note?: string | null;
+            /** Format: uuid */
+            requested_by: string;
+            payload_hash: string;
+            proposal: components["schemas"]["IdentifierCorrectionRequest"] | null;
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            review_due_at: string | null;
+            /** Format: date-time */
+            reviewed_at: string | null;
+            /** Format: date-time */
+            consumed_at: string | null;
+            can_apply: boolean;
+            /** @description Present on the detail read; uses the decision resolver and stored requester and case time. */
+            can_decide?: boolean;
+            /** @description Present on the detail read for an independent controller. */
+            can_review?: boolean;
+        };
+        IdentifierCorrectionCasePage: {
+            items: components["schemas"]["IdentifierCorrectionCase"][];
+            /** Format: int64 */
+            next_offset: number | null;
+        };
         /** @enum {string} */
         IdentifierCorrectionReason: "TYPO_AT_ENTRY" | "REGISTRY_DIFFERS" | "OTHER_EVIDENCED";
         IdentifierCorrectionRequest: {
@@ -33645,7 +33719,7 @@ export interface operations {
                     "application/json": components["schemas"]["SavedBusinessRegistration"];
                 };
             };
-            /** @description A second eligible holder must decide the persisted PENDING exception. Bind EXCEPTION_DECIDE to exception_id and payload_hash, then POST /api/v1/exceptions/{exception_id}/decide. */
+            /** @description A second eligible holder must decide the persisted PENDING exception. Bind EXCEPTION_DECIDE to exception_id and payload_hash, then POST /api/v1/governed-exceptions/{exception_id}/decide. */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -38649,6 +38723,143 @@ export interface operations {
             };
         };
     };
+    listEntityIdentifierCorrections: {
+        parameters: {
+            query?: {
+                entity_id?: string;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Correction cases ordered by post-review due date, then newest creation and ID; status and permissions are projected at read time. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentifierCorrectionCasePage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Organization-wide entity or structure management access required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No correction in this tenant matches the ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getEntityIdentifierCorrection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Correction cases ordered by post-review due date, then newest creation and ID; status and permissions are projected at read time. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentifierCorrectionCasePage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Organization-wide entity or structure management access required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No correction in this tenant matches the ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reviewEntityIdentifierCorrection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    note: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Append-only audit sign-off committed; a retry returns the same reviewed state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        status: "REVIEWED";
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Requester, contributor, or a caller without the approving permission or organization-wide session. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Exception not found in this tenant. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description exception_not_recorded; only sole-holder recorded exceptions accept post-review. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description validation_failed; a review note is required. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listEntitySetupBatches: {
         parameters: {
             query?: never;
@@ -40750,73 +40961,6 @@ export interface operations {
             };
         };
     };
-    decideIdentifierCorrectionException: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @description APPROVE or DECLINE (lowercase also accepted). */
-                    decision: string;
-                    reason_code: string;
-                    note?: string | null;
-                    /** @description Approval requires a verified EXCEPTION_DECIDE assertion bound to this exception ID and its stored fingerprint (the pending receipt's payload_hash). */
-                    step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"] | null;
-                };
-            };
-        };
-        responses: {
-            /** @description Decision and its actor snapshots committed with an audit event. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: uuid */
-                        id: string;
-                        /** @enum {string} */
-                        status: "APPROVED" | "DECLINED";
-                    };
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            /** @description Requester, contributor, missing approving permission, or absent or mismatched approval step-up. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Exception not found in the caller's tenant. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Exception is expired or no longer pending. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid decision, reason, or request shape. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     getDailyStatusExport: {
         parameters: {
             query: {
@@ -42301,8 +42445,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description APPROVE or DECLINE (lowercase also accepted). */
-                    decision: string;
+                    /** @enum {string} */
+                    decision: "APPROVE" | "DECLINE";
                     reason_code: string;
                     note?: string | null;
                     /** @description Approval requires a verified EXCEPTION_DECIDE assertion bound to this exception ID and its stored fingerprint (the pending receipt's payload_hash). */
@@ -44915,7 +45059,7 @@ export interface operations {
                     "application/json": components["schemas"]["SavedLegalEntity"];
                 };
             };
-            /** @description A second eligible holder must decide the persisted PENDING exception. Bind EXCEPTION_DECIDE to exception_id and payload_hash, then POST /api/v1/exceptions/{exception_id}/decide. */
+            /** @description A second eligible holder must decide the persisted PENDING exception. Bind EXCEPTION_DECIDE to exception_id and payload_hash, then POST /api/v1/governed-exceptions/{exception_id}/decide. */
             202: {
                 headers: {
                     [name: string]: unknown;

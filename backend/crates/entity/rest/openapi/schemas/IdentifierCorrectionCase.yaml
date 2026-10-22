@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [id, entity_id, entity_name, subject_id, subject_type, status, requested_by, payload_hash, proposal, expires_at, created_at, review_due_at, reviewed_at, consumed_at, can_apply]
+properties:
+  id: { type: string, format: uuid }
+  entity_id: { type: string, format: uuid }
+  entity_name: { type: string }
+  subject_id: { type: string, format: uuid }
+  subject_type: { type: string, enum: [LEGAL_ENTITY, BUSINESS_REGISTRATION] }
+  status: { type: string, enum: [PENDING, APPROVED, DECLINED, RECORDED, EXPIRED, APPLIED] }
+  requester_name: { type: string }
+  decision_note: { type: [string, 'null'] }
+  review_note: { type: [string, 'null'] }
+  requested_by: { type: string, format: uuid }
+  payload_hash: { type: string, pattern: '^[a-f0-9]{64}$' }
+  proposal:
+    oneOf:
+    - $ref: '#/components/schemas/IdentifierCorrectionRequest'
+    - type: 'null'
+  expires_at: { type: string, format: date-time }
+  created_at: { type: string, format: date-time }
+  review_due_at: { type: [string, 'null'], format: date-time }
+  reviewed_at: { type: [string, 'null'], format: date-time }
+  consumed_at: { type: [string, 'null'], format: date-time }
+  can_apply: { type: boolean }
+  can_decide: { type: boolean, description: Present on the detail read; uses the decision resolver and stored requester and case time. }
+  can_review: { type: boolean, description: Present on the detail read for an independent controller. }

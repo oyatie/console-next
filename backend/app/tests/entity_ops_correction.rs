@@ -30,11 +30,15 @@ fn key() -> String {
 }
 
 async fn upload(service: &axum::Router, token: &str) -> Uuid {
+    upload_tag(service, token, "d26").await
+}
+
+async fn upload_tag(service: &axum::Router, token: &str, tag: &str) -> Uuid {
     let b = "d26boundary";
     let body = format!(
         "--{b}\r\nContent-Disposition: form-data; name=\"kind\"\r\n\r\nCORP_REGISTRY_EXTRACT\r\n\
          --{b}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"등기사항전부증명서.pdf\"\r\n\
-         Content-Type: application/pdf\r\n\r\n%PDF-1.7 d26\r\n--{b}--\r\n"
+         Content-Type: application/pdf\r\n\r\n%PDF-1.7 {tag}\r\n--{b}--\r\n"
     );
     let request = Request::builder()
         .method("POST")

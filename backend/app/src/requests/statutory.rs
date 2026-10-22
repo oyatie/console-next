@@ -3,7 +3,7 @@ use console_compliance_adapter_postgres::PgComplianceStore;
 use console_hr_adapter_postgres::{HrService, statutory::FilingQuery};
 use console_platform_authz::Principal;
 use console_platform_db::command_outcomes::CommandOutcome;
-use console_platform_request_context::record_access::{self, outcome::ReadFuture};
+use console_platform_request_context::record_access::outcome::ReadFuture;
 use serde_json::Value;
 use sqlx::PgPool;
 use std::collections::BTreeMap;
@@ -18,7 +18,7 @@ pub(crate) fn read_outcome<'a>(
         if handles(&out.touched) {
             readable_result(pool, p, out.result.as_mut()).await
         } else {
-            record_access::all_readable(pool, p, &out.touched).await
+            crate::entity_wiring::read_correction_outcome(pool, p, out).await
         }
     })
 }

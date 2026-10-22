@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [entity]
+operationId: reviewEntityIdentifierCorrection
+summary: Record an independent controller review of a sole-holder correction
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema: { type: string, format: uuid }
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [note]
+        properties:
+          note: { type: string, minLength: 1, maxLength: 1000 }
+responses:
+  '200':
+    description: Append-only audit sign-off committed; a retry returns the same reviewed state.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [id, status]
+          properties:
+            id: { type: string, format: uuid }
+            status: { type: string, enum: [REVIEWED] }
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Requester, contributor, or a caller without the approving permission or organization-wide session.
+  '404':
+    description: Exception not found in this tenant.
+  '409':
+    description: exception_not_recorded; only sole-holder recorded exceptions accept post-review.
+  '422':
+    description: validation_failed; a review note is required.

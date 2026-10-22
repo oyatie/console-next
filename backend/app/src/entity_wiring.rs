@@ -22,9 +22,11 @@ use console_ontology_canonical_adapter_postgres::org_unit::{
 use console_platform_auth::{JwtVerifier, PasskeyService};
 use sqlx::PgPool;
 
+mod correction_register;
 mod corrections;
 mod exceptions;
 use corrections::GovernedIdentifierCorrections;
+pub(crate) use exceptions::read_correction_outcome;
 
 struct CanonicalOrgUnitSetupPort;
 

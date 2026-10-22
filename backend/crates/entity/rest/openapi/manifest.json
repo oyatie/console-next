@@ -38,14 +38,20 @@
     "/api/v1/entity-documents/{id}/content": [
       "get"
     ],
+    "/api/v1/entity-identifier-corrections": [
+      "get"
+    ],
+    "/api/v1/entity-identifier-corrections/{id}": [
+      "get"
+    ],
+    "/api/v1/entity-identifier-corrections/{id}/review": [
+      "post"
+    ],
     "/api/v1/entity-setup/batches": [
       "get",
       "post"
     ],
     "/api/v1/entity-setup/batches/{batchId}/undo": [
-      "post"
-    ],
-    "/api/v1/exceptions/{id}/decide": [
       "post"
     ],
     "/api/v1/governed-exceptions/{id}/decide": [
@@ -230,6 +236,8 @@
     "EntitySetupResult",
     "FormattedValue",
     "IaciBusinessForm",
+    "IdentifierCorrectionCase",
+    "IdentifierCorrectionCasePage",
     "IdentifierCorrectionReason",
     "IdentifierCorrectionRequest",
     "InsuranceRelation",

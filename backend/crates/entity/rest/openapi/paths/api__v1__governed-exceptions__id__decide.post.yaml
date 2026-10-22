@@ -20,7 +20,7 @@ requestBody:
         properties:
           decision:
             type: string
-            description: APPROVE or DECLINE (lowercase also accepted).
+            enum: [APPROVE, DECLINE]
           reason_code: { type: string }
           note: { type: [string, 'null'] }
           step_up:

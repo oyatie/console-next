@@ -24,10 +24,10 @@ use console_platform_auth::{
 use console_platform_authz::{Action, Feature, authorize_capability};
 use sqlx::PgPool;
 #[derive(Clone)]
-struct EntityWiringState {
-    pool: PgPool,
-    jwt: Option<JwtVerifier>,
-    passkeys: Option<PasskeyService>,
+pub(super) struct EntityWiringState {
+    pub(super) pool: PgPool,
+    pub(super) jwt: Option<JwtVerifier>,
+    pub(super) passkeys: Option<PasskeyService>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -39,22 +39,20 @@ struct DecideExceptionRequest {
     step_up: Option<serde_json::Value>,
 }
 
-async fn decide_exception(
-    State(state): State<EntityWiringState>,
-    Path(id): Path<uuid::Uuid>,
-    headers: HeaderMap,
-    body: Result<Json<DecideExceptionRequest>, axum::extract::rejection::JsonRejection>,
-) -> Response {
+pub(super) async fn principal(
+    state: &EntityWiringState,
+    headers: &HeaderMap,
+) -> Result<console_platform_authz::Principal, Response> {
     let Some(verifier) = state.jwt.as_ref() else {
-        return (
+        return Err((
             StatusCode::SERVICE_UNAVAILABLE,
             Json(serde_json::json!({"error": {"code": "unavailable", "message": "JWT verifier is unavailable"}})),
-        ).into_response();
+        ).into_response());
     };
     let principal = match console_platform_request_context::resolve_principal(
         verifier,
         &state.pool,
-        &headers,
+        headers,
     )
     .await
     {
@@ -72,8 +70,22 @@ async fn decide_exception(
                 }
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal"),
             };
-            return (status, Json(serde_json::json!({"error": {"code": code, "message": "authentication failed"}}))).into_response();
+            return Err((status, Json(serde_json::json!({"error": {"code": code, "message": "authentication failed"}}))).into_response());
         }
+    };
+
+    Ok(principal)
+}
+
+async fn decide_exception(
+    State(state): State<EntityWiringState>,
+    Path(id): Path<uuid::Uuid>,
+    headers: HeaderMap,
+    body: Result<Json<DecideExceptionRequest>, axum::extract::rejection::JsonRejection>,
+) -> Response {
+    let principal = match principal(&state, &headers).await {
+        Ok(principal) => principal,
+        Err(error) => return error,
     };
 
     let Json(body) = match body {
@@ -110,14 +122,7 @@ async fn decide_exception(
             if stored.rule != RuleCode::EntityIdentifierCorrection {
                 return Err(KernelError::forbidden("exception_rule_unsupported").into());
             }
-            let excluded = correction_contributors(tx, stored.subject_type, stored.subject_id).await?;
-            let contributed = excluded.contains(&principal.user_id);
-            let min_grant_age = min_grant_age_days(tx, stored.org_id).await;
-            let fact = second_person_fact_in_tx(tx, &SecondPersonQuery {
-                org: stored.org_id, feature: Feature::OrgChangeApply, branch: None,
-                requester: stored.requested_by, excluded, case_created_at: stored.created_at,
-                min_grant_age_days: min_grant_age,
-            }).await?;
+            let (contributed, holds_permission) = decision_facts(tx, &stored, &principal).await?;
             let binding = MobilePasskeyStepUpBinding::bound(
                 MobileStepUpActionKind::ExceptionDecide, stored.id, stored.fingerprint.clone(),
             );
@@ -128,9 +133,6 @@ async fn decide_exception(
                 Some(passkeys.verify_and_record_step_up_in_tx(tx, envelope, *principal.user_id.as_uuid(), &binding)
                     .await.map_err(|_| KernelError::forbidden("step_up_required"))?)
             } else { None };
-            let holds_permission = principal.branch_scope == console_kernel_core::BranchScope::All
-                && fact.eligible.contains(principal.user_id.as_uuid())
-                && authorize_capability(&principal, Action::new(Feature::OrgChangeApply)).is_ok();
             let input = ExceptionDecision {
                 decision, decider: &principal, contributed, holds_permission,
                 step_up_assertion_id, reason_code: &body.reason_code, note: body.note.as_deref(),
@@ -161,7 +163,46 @@ async fn decide_exception(
         .into_response()
 }
 
-fn decision_error(error: KernelError) -> Response {
+pub(super) async fn decision_facts(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    stored: &console_governance_adapter_postgres::exception::StoredException,
+    principal: &console_platform_authz::Principal,
+) -> Result<(bool, bool), KernelError> {
+    let excluded = correction_contributors(tx, stored.subject_type, stored.subject_id).await?;
+    let contributed = excluded.contains(&principal.user_id);
+    let min_grant_age_days = min_grant_age_days(tx, stored.org_id).await?;
+    let fact = second_person_fact_in_tx(
+        tx,
+        &SecondPersonQuery {
+            org: stored.org_id,
+            feature: Feature::OrgChangeApply,
+            branch: None,
+            requester: stored.requested_by,
+            excluded,
+            case_created_at: if stored.status
+                == console_governance_domain::exception::ExceptionStatus::Recorded
+            {
+                time::OffsetDateTime::now_utc()
+            } else {
+                stored.created_at
+            },
+            min_grant_age_days,
+        },
+    )
+    .await?;
+    let holds = principal.branch_scope == console_kernel_core::BranchScope::All
+        && fact.eligible.contains(principal.user_id.as_uuid())
+        && authorize_capability(principal, Action::new(Feature::OrgChangeApply)).is_ok();
+    Ok((contributed, holds))
+}
+
+pub(super) fn decision_error(mut error: KernelError) -> Response {
+    if error.kind == ErrorKind::Forbidden
+        && error.code.is_none()
+        && error.message == "exception_decide is not allowed"
+    {
+        error.code = Some("exception_decide_forbidden");
+    }
     let status = match error.kind {
         ErrorKind::Validation => StatusCode::UNPROCESSABLE_ENTITY,
         ErrorKind::NotFound => StatusCode::NOT_FOUND,
@@ -172,7 +213,7 @@ fn decision_error(error: KernelError) -> Response {
     (status, Json(serde_json::json!({"error": {"code": error.code.unwrap_or(error.message.as_str()), "message": error.message}}))).into_response()
 }
 
-pub(super) fn read_correction_outcome<'a>(
+pub(crate) fn read_correction_outcome<'a>(
     pool: &'a PgPool,
     principal: &'a console_platform_authz::Principal,
     outcome: &'a mut console_platform_db::command_outcomes::CommandOutcome,
@@ -248,8 +289,10 @@ pub(super) fn router(
     jwt: Option<JwtVerifier>,
     passkeys: Option<PasskeyService>,
 ) -> Router {
-    Router::new()
-        .route("/api/v1/exceptions/{id}/decide", post(decide_exception))
+    let verifier = jwt.clone();
+    let command_pool = pool.clone();
+    let router = Router::new()
+        .merge(super::correction_register::router())
         .route(
             "/api/v1/governed-exceptions/{id}/decide",
             post(decide_exception),
@@ -258,5 +301,6 @@ pub(super) fn router(
             pool,
             jwt,
             passkeys,
-        })
+        });
+    console_platform_request_context::with_request_context(router, verifier, command_pool)
 }

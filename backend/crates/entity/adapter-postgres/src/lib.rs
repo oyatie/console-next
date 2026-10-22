@@ -34,6 +34,7 @@ mod governed;
 mod history;
 mod history_diff;
 mod identifier_correction;
+pub mod identifier_correction_register;
 mod insurance;
 mod legal_entity;
 mod legal_entity_revision;

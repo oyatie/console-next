@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+mod maturity;
+mod maturity_refusals;
+mod maturity_settings;
 #[path = "refusals.rs"]
 mod refusals;
 #[path = "setup.rs"]
@@ -18,7 +21,7 @@ async fn acceptance_crud_g101_second_person_on_entity_identifier_correction(owne
         doc,
     } = setup::setup(&owner).await;
     let uri = format!("/api/v1/legal-entities/{entity}/identifier-corrections");
-    let fix = json!({ "field": "crn", "value": "110111-0012345", "document_id": doc, "reason_code": "REGISTRY_DIFFERS" });
+    let fix = json!({ "field": "crn", "value": FIXED, "document_id": doc, "reason_code": "REGISTRY_DIFFERS" });
     let line = format!("ENTITY_IDENTIFIER_CORRECTION\ncrn\n{FIXED}\n{doc}");
     let kind = MobileStepUpActionKind::ExceptionDecide;
 
@@ -104,7 +107,7 @@ async fn acceptance_crud_g101_second_person_on_entity_identifier_correction(owne
         )
     );
 
-    let decide_uri = format!("/api/v1/exceptions/{exc_id}/decide");
+    let decide_uri = format!("/api/v1/governed-exceptions/{exc_id}/decide");
 
     // Refusal test 1: Requester cannot decide their own exception (decider != requester).
     let ops_step_up = step_up_with_binding(&owner, &svc, &mut ops, binding.clone()).await;
@@ -224,7 +227,7 @@ async fn acceptance_crud_g101_second_person_on_entity_identifier_correction(owne
     )
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
-    assert_eq!(refused["error"]["code"], "exception_decide is not allowed");
+    assert_eq!(refused["error"]["code"], "exception_decide_forbidden");
     // A decline also requires permission, even though it needs no step-up.
     let (status, refused) = send(
         &service,
@@ -235,7 +238,7 @@ async fn acceptance_crud_g101_second_person_on_entity_identifier_correction(owne
     )
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
-    assert_eq!(refused["error"]["code"], "exception_decide is not allowed");
+    assert_eq!(refused["error"]["code"], "exception_decide_forbidden");
     assert_eq!(count(&owner, "SELECT COUNT(*) FROM audit_events WHERE target_type='governed_exception' AND action='exception.decide' AND target_id=$1::text", exc_id).await, 0);
     let state: String = sqlx::query_scalar("SELECT status FROM governed_exceptions WHERE id=$1")
         .bind(exc_id)
@@ -243,30 +246,6 @@ async fn acceptance_crud_g101_second_person_on_entity_identifier_correction(owne
         .await
         .unwrap();
     assert_eq!(state, "PENDING");
-
-    // A refusal by an eligible second person is audited and never admits the write.
-    let mine = step_up_as(&owner, &svc, &mut ops, kind, entity, &line).await;
-    let mut second_request = fix.clone();
-    second_request["step_up"] = mine;
-    let (status, pending) = send(&service, &uri, &ops.token, Some(&key()), second_request).await;
-    assert_eq!(status, StatusCode::ACCEPTED, "{pending}");
-    let declined_id: Uuid = pending["exception_id"].as_str().unwrap().parse().unwrap();
-    let (status, declined) = send(
-        &service,
-        &format!("/api/v1/exceptions/{declined_id}/decide"),
-        &approver.token,
-        Some(&key()),
-        json!({"decision":"DECLINE", "reason_code":"NOT_VERIFIED"}),
-    )
-    .await;
-    assert_eq!(status, StatusCode::OK, "{declined}");
-    assert_eq!(declined["status"], "DECLINED");
-    assert_eq!(count(&owner, "SELECT COUNT(*) FROM audit_events WHERE action='exception.decide' AND target_id=$1::text AND after_snap->>'status'='DECLINED'", declined_id).await, 1);
-    let mut rejected_fix = fix.clone();
-    rejected_fix["exception_id"] = json!(declined_id);
-    let (status, refused) = send(&service, &uri, &ops.token, Some(&key()), rejected_fix).await;
-    assert_eq!(status, StatusCode::CONFLICT, "{refused}");
-    assert_eq!(refused["error"]["code"], "exception_not_approved");
 
     // Success test: Approver decides with step-up.
     let approver_step_up = step_up_with_binding(&owner, &svc, &mut approver, binding.clone()).await;

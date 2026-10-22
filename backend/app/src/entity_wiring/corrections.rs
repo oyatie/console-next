@@ -48,25 +48,28 @@ fn step_up_failed() -> KernelError {
 pub(super) async fn min_grant_age_days(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     org: OrgId,
-) -> i32 {
-    let keys = [SettingKey::AuthzSecondPersonMinGrantAge];
-    match resolve_in_tx(
+) -> Result<i32, KernelError> {
+    let key = SettingKey::AuthzSecondPersonMinGrantAge;
+    let resolved = resolve_in_tx(
         tx.as_mut(),
         org,
-        &keys,
+        &[key],
         None,
         time::OffsetDateTime::now_utc(),
     )
-    .await
-    {
-        Ok(resolved) => match resolved.get(&SettingKey::AuthzSecondPersonMinGrantAge) {
-            Some(Ok(r)) => match r.value {
-                SettingValue::Int(days) => i32::try_from(days).unwrap_or(7),
-                _ => 7,
-            },
-            _ => 7,
+    .await?;
+    match resolved.get(&key) {
+        Some(Ok(value)) => match value.value {
+            SettingValue::Int(days) => i32::try_from(days).map_err(|_| {
+                KernelError::internal("authz.second_person.min_grant_age is out of range")
+            }),
+            _ => Err(KernelError::internal(
+                "authz.second_person.min_grant_age is not a number",
+            )),
         },
-        _ => 7,
+        _ => Err(KernelError::internal(
+            "authz.second_person.min_grant_age did not resolve",
+        )),
     }
 }
 
@@ -142,7 +145,7 @@ impl GovernedCorrectionPort for GovernedIdentifierCorrections {
                 .await
                 .map_err(|_| step_up_failed())?;
             let settings = exception_settings(tx, cover.org).await?;
-            let min_grant_age = min_grant_age_days(tx, cover.org).await;
+            let min_grant_age = min_grant_age_days(tx, cover.org).await?;
             let excluded = correction_contributors(tx, subject_type, subject_id).await?;
             let fact = second_person_fact_in_tx(
                 tx,
@@ -157,6 +160,17 @@ impl GovernedCorrectionPort for GovernedIdentifierCorrections {
                 },
             )
             .await?;
+            if console_entity_adapter_postgres::identifier_correction_register::has_open_conn(
+                tx.as_mut(),
+                subject_id,
+            )
+            .await?
+            {
+                return Err(KernelError::conflict(
+                    "an identifier correction is awaiting completion",
+                )
+                .with_code("identifier_correction_pending"));
+            }
             let other_eligible_holders = u64::try_from(fact.other_eligible_holders).unwrap_or(0);
             let request = ExceptionRequest {
                 rule: RuleCode::EntityIdentifierCorrection,

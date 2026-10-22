@@ -4821,7 +4821,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SavedBusinessRegistration'
         '202':
-          description: A second eligible holder must decide the persisted PENDING exception. Bind EXCEPTION_DECIDE to exception_id and payload_hash, then POST /api/v1/exceptions/{exception_id}/decide.
+          description: A second eligible holder must decide the persisted PENDING exception. Bind EXCEPTION_DECIDE to exception_id and payload_hash, then POST /api/v1/governed-exceptions/{exception_id}/decide.
           content:
             application/json:
               schema:
@@ -10928,6 +10928,104 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/entity-identifier-corrections:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [entity]
+      operationId: listEntityIdentifierCorrections
+      summary: Read the identifier-correction register and its proposed evidence
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: entity_id
+        in: query
+        schema: { type: string, format: uuid }
+      - name: offset
+        in: query
+        schema: { type: integer, format: int64, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: Correction cases ordered by post-review due date, then newest creation and ID; status and permissions are projected at read time.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentifierCorrectionCasePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Organization-wide entity or structure management access required.
+        '404':
+          description: No correction in this tenant matches the ID.
+  /api/v1/entity-identifier-corrections/{id}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [entity]
+      operationId: getEntityIdentifierCorrection
+      summary: Read the identifier-correction register and its proposed evidence
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Correction cases ordered by post-review due date, then newest creation and ID; status and permissions are projected at read time.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentifierCorrectionCasePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Organization-wide entity or structure management access required.
+        '404':
+          description: No correction in this tenant matches the ID.
+  /api/v1/entity-identifier-corrections/{id}/review:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [entity]
+      operationId: reviewEntityIdentifierCorrection
+      summary: Record an independent controller review of a sole-holder correction
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [note]
+              properties:
+                note: { type: string, minLength: 1, maxLength: 1000 }
+      responses:
+        '200':
+          description: Append-only audit sign-off committed; a retry returns the same reviewed state.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [REVIEWED] }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Requester, contributor, or a caller without the approving permission or organization-wide session.
+        '404':
+          description: Exception not found in this tenant.
+        '409':
+          description: exception_not_recorded; only sole-holder recorded exceptions accept post-review.
+        '422':
+          description: validation_failed; a review note is required.
   /api/v1/entity-setup/batches:
     get:
       tags:
@@ -12357,58 +12455,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/v1/exceptions/{id}/decide:
-    post:
-      tags: [entity]
-      operationId: decideIdentifierCorrectionException
-      summary: Decide a pending identifier-correction exception
-      security:
-      - bearerAuth: []
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [decision, reason_code]
-              properties:
-                decision:
-                  type: string
-                  description: APPROVE or DECLINE (lowercase also accepted).
-                reason_code: { type: string }
-                note: { type: [string, 'null'] }
-                step_up:
-                  oneOf:
-                  - $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
-                  - type: 'null'
-                  description: Approval requires a verified EXCEPTION_DECIDE assertion bound to this exception ID and its stored fingerprint (the pending receipt's payload_hash).
-      responses:
-        '200':
-          description: Decision and its actor snapshots committed with an audit event.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [id, status]
-                properties:
-                  id: { type: string, format: uuid }
-                  status: { type: string, enum: [APPROVED, DECLINED] }
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          description: Requester, contributor, missing approving permission, or absent or mismatched approval step-up.
-        '404':
-          description: Exception not found in the caller's tenant.
-        '409':
-          description: Exception is expired or no longer pending.
-        '422':
-          description: Invalid decision, reason, or request shape.
   /api/v1/exports/daily-status:
     get:
       tags:
@@ -13829,6 +13875,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/governed-exceptions/{id}/decide:
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags: [entity]
       operationId: decideGovernedIdentifierCorrectionException
       summary: Decide a pending identifier-correction exception
@@ -13850,7 +13897,7 @@ paths:
               properties:
                 decision:
                   type: string
-                  description: APPROVE or DECLINE (lowercase also accepted).
+                  enum: [APPROVE, DECLINE]
                 reason_code: { type: string }
                 note: { type: [string, 'null'] }
                 step_up:
@@ -16598,7 +16645,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SavedLegalEntity'
         '202':
-          description: A second eligible holder must decide the persisted PENDING exception. Bind EXCEPTION_DECIDE to exception_id and payload_hash, then POST /api/v1/exceptions/{exception_id}/decide.
+          description: A second eligible holder must decide the persisted PENDING exception. Bind EXCEPTION_DECIDE to exception_id and payload_hash, then POST /api/v1/governed-exceptions/{exception_id}/decide.
           content:
             application/json:
               schema:
@@ -44253,6 +44300,44 @@ components:
       enum:
       - CONTINUING
       - FIXED_TERM
+    IdentifierCorrectionCase:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [id, entity_id, entity_name, subject_id, subject_type, status, requested_by, payload_hash, proposal, expires_at, created_at, review_due_at, reviewed_at, consumed_at, can_apply]
+      properties:
+        id: { type: string, format: uuid }
+        entity_id: { type: string, format: uuid }
+        entity_name: { type: string }
+        subject_id: { type: string, format: uuid }
+        subject_type: { type: string, enum: [LEGAL_ENTITY, BUSINESS_REGISTRATION] }
+        status: { type: string, enum: [PENDING, APPROVED, DECLINED, RECORDED, EXPIRED, APPLIED] }
+        requester_name: { type: string }
+        decision_note: { type: [string, 'null'] }
+        review_note: { type: [string, 'null'] }
+        requested_by: { type: string, format: uuid }
+        payload_hash: { type: string, pattern: '^[a-f0-9]{64}$' }
+        proposal:
+          oneOf:
+          - $ref: '#/components/schemas/IdentifierCorrectionRequest'
+          - type: 'null'
+        expires_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        review_due_at: { type: [string, 'null'], format: date-time }
+        reviewed_at: { type: [string, 'null'], format: date-time }
+        consumed_at: { type: [string, 'null'], format: date-time }
+        can_apply: { type: boolean }
+        can_decide: { type: boolean, description: Present on the detail read; uses the decision resolver and stored requester and case time. }
+        can_review: { type: boolean, description: Present on the detail read for an independent controller. }
+    IdentifierCorrectionCasePage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [items, next_offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IdentifierCorrectionCase'
+        next_offset: { type: [integer, 'null'], format: int64 }
     IdentifierCorrectionReason:
       type: string
       enum:
