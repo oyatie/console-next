@@ -261,7 +261,6 @@ export const koEntityRecord = {
   "entityRecord.revise.issuedHint": "발급일이 개업연월일보다 앞서면 저장되지 않습니다. 등록증의 발급일이 틀렸다면 함께 정정하십시오.",
   "entityRecord.corrections.title": "번호 정정 · 사후 검토",
   "entityRecord.corrections.detail": "번호 정정 요청",
-  "entityRecord.corrections.help": "승인을 기다리는 정정과 적용할 정정을 확인합니다. 단독 권한으로 기록한 정정은 사후 검토 기한 순으로 표시합니다.",
   "entityRecord.corrections.empty": "번호 정정 요청과 사후 검토할 기록이 없습니다.",
   "entityRecord.corrections.refresh": "새로고침",
   "entityRecord.corrections.subject": "정정 대상",

@@ -65,7 +65,7 @@ export function IdentifierSheet({ e: opened, field, registrationId, operating, o
       wide
       title={t("entityRecord.id.title", { field: t(`entityRecord.id.field.${field}`) })}
       subtitle={<><span className={s.kicker}><FileText size={14} aria-hidden /> {where}</span>{t("entityRecord.id.now", { value: old?.display ?? "—" })}</>}
-      notice={<>{save.error && <Link to="/org/entities" hash="identifier-corrections" onClick={onClose}>{t("entityRecord.corrections.track")}</Link>}{pendingException && <p>{t("entityRecord.id.pending", { field: t(`entityRecord.id.field.${field}`) })} <Link to="/org/entities" hash="identifier-corrections" onClick={onClose}>{t("entityRecord.corrections.track")}</Link></p>}<EntityError error={upload.error ?? save.error} historyHref={`/org/entities/${encodeURIComponent(e.id)}?tab=history#history`} own={(code) => (code === "identifier_correction_needs_exception" ? t("entityRecord.id.needsOps") : undefined)} /></>}
+      notice={<>{save.error && <Link to="/org/entities" hash="identifier-corrections" onClick={onClose}>{t("entityRecord.corrections.track")}</Link>}<EntityError error={upload.error ?? save.error} historyHref={`/org/entities/${encodeURIComponent(e.id)}?tab=history#history`} own={(code) => (code === "identifier_correction_needs_exception" ? t("entityRecord.id.needsOps") : undefined)} /></>}
       consequence={
         complete ? (
           <span><span className={s.old}>{old?.display}</span>{ARROW}<b>{fmt.display(value)}</b> {t(operating ? "entityRecord.id.consequenceOperating" : "entityRecord.id.consequenceSetup")}</span>
@@ -80,7 +80,7 @@ export function IdentifierSheet({ e: opened, field, registrationId, operating, o
         </>
       }
     >
-      <p className="notice"><Info size={14} aria-hidden /> {t(operating ? "entityRecord.id.noticeOperating" : "entityRecord.id.noticeSetup")}</p>
+      <p className="notice"><Info size={14} aria-hidden /> {pendingException ? <>{t("entityRecord.id.pending", { field: t(`entityRecord.id.field.${field}`) })} <Link to="/org/entities" hash="identifier-corrections" onClick={onClose}>{t("entityRecord.corrections.track")}</Link></> : t(operating ? "entityRecord.id.noticeOperating" : "entityRecord.id.noticeSetup")}</p>
       <MaskedField
         label={t("entityRecord.id.right")}
         required

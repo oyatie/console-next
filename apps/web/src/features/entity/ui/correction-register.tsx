@@ -8,7 +8,11 @@ import { QueryState } from "../../../lib/react/query-state";
 import { useCommand } from "../../../lib/react/command";
 import { BIZ_KIND, label } from "../../../lib/labels";
 import { FORMATS } from "../../../lib/pure/formats";
+import { SectionHead } from "../../../ui/card/section-head";
+import { ActionBar } from "../../../ui/action-bar/action-bar";
+import { buttonClass } from "../../../ui/button/button-class";
 import { Button } from "../../../ui/button/button";
+import { EmptyState } from "../../../ui/empty-state";
 import { Chip } from "../../../ui/chip";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
@@ -30,23 +34,22 @@ export function CorrectionRegister({ entityId }: { entityId?: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const q = useQuery({ ...correctionRegisterQuery(entityId, offsets.at(-1)), retry: false, refetchOnMount: "always" });
   return (
-    <section className="card" id="identifier-corrections" aria-label={t("entityRecord.corrections.title")}>
-      <div className="toolbar">
-        <h2 className="toolbar__title">{t("entityRecord.corrections.title")}</h2>
-        <Button onClick={() => void q.refetch()} disabled={q.isFetching}>{t("entityRecord.corrections.refresh")}</Button>
-      </div>
-      <p className="muted">{t("entityRecord.corrections.help")}</p>
-      <QueryState q={q} empty={(data) => data.items.length ? null : <p>{t("entityRecord.corrections.empty")}</p>}>
+    <section id="identifier-corrections" aria-labelledby="identifier-corrections-title">
+      <SectionHead level={2} id="identifier-corrections-title"
+        tools={<Button onClick={() => void q.refetch()} disabled={q.isFetching}>{t("entityRecord.corrections.refresh")}</Button>}>
+        {t("entityRecord.corrections.title")}
+      </SectionHead>
+      <QueryState q={q} empty={(data) => data.items.length ? null : <EmptyState title={t("entityRecord.corrections.empty")} reason={null} />}>
         {(data) => <>
           <Table label={t("entityRecord.corrections.title")} rows={data.items} rowId={(r) => r.id} onSelect={setSelected} columns={[
             { header: t("entityRecord.corrections.subject"), cell: (r) => <>{r.entity_name} · {fieldText(r)} <b>{valueText(r)}</b></> },
             { header: t("entityRecord.corrections.state"), cell: (r) => <Chip tone={r.status === "PENDING" || r.status === "RECORDED" && !r.reviewed_at ? "warn" : "neutral"}>{statusText(r)}</Chip>, fit: true },
             { header: t("entityRecord.corrections.due"), cell: (r) => fmtDateTimeShort(r.review_due_at ?? r.expires_at), fit: true },
           ]} />
-          <div className="toolbar">
+          <ActionBar actions={<>
             <Button disabled={offsets.length === 1} onClick={() => setOffsets((pages) => pages.slice(0, -1))}>{t("entityRecord.corrections.previous")}</Button>
             <Button disabled={data.next_offset === null} onClick={() => data.next_offset !== null && setOffsets((pages) => [...pages, data.next_offset!])}>{t("entityRecord.corrections.next")}</Button>
-          </div>
+          </>} />
         </>}
       </QueryState>
       {selected && <CorrectionDetail key={selected} id={selected} onClose={() => setSelected(null)} />}
@@ -73,7 +76,7 @@ function CorrectionDetail({ id, onClose }: { id: string; onClose: () => void }) 
   });
   const busy = command.isPending;
   return (
-    <Sheet open onClose={onClose} pending={busy} title={t("entityRecord.corrections.detail")} subtitle={r?.entity_name}
+    <Sheet open onClose={onClose} pending={busy} title={t("entityRecord.corrections.detail")}
       notice={<EntityError error={command.error} own={(code) => correctionRefusal(code)} />}
       consequence={r && t(r.can_apply ? "entityRecord.corrections.applyHelp" : r.can_review ? "entityRecord.corrections.reviewHelp" : "entityRecord.corrections.decisionHelp")}
       actions={<>
@@ -90,15 +93,16 @@ function CorrectionDetail({ id, onClose }: { id: string; onClose: () => void }) 
           const item = data.items[0]!;
           return <>
             <KeyValue label={t("entityRecord.corrections.detail")} items={[
+              { key: "entity", label: t("entityRecord.corrections.subject"), value: item.entity_name },
               { key: "field", label: fieldText(item), value: valueText(item) },
               { key: "state", label: t("entityRecord.corrections.state"), value: statusText(item) },
               { key: "requester", label: t("entityRecord.corrections.requester"), value: item.requester_name ?? "—" },
               { key: "created", label: t("entityRecord.corrections.created"), value: fmtDateTimeShort(item.created_at) },
               { key: "due", label: t("entityRecord.corrections.due"), value: fmtDateTimeShort(item.review_due_at ?? item.expires_at) },
+              ...(item.decision_note || item.review_note ? [{ key: "note", label: t("entityRecord.corrections.note"), value: item.review_note ?? item.decision_note }] : []),
               ...(item.proposal ? [{ key: "reason", label: t("entityRecord.id.reason"), value: t(`entityRecord.id.reason.${item.proposal.reason_code}`) }] : []),
             ]} />
-            {(item.decision_note || item.review_note) && <p>{t("entityRecord.corrections.note")}: {item.review_note ?? item.decision_note}</p>}
-            <Link to="/org/entities/$id" params={{ id: item.entity_id }} className="btn" onClick={onClose}>{t("entityRecord.corrections.openRecord")}</Link>
+            <Link to="/org/entities/$id" params={{ id: item.entity_id }} className={buttonClass()} onClick={onClose}>{t("entityRecord.corrections.openRecord")}</Link>
             {item.proposal && <ProposedEvidence id={item.proposal.document_id} />}
             {(item.can_decide || item.can_review) && <Field label={t("entityRecord.corrections.note")} required={Boolean(item.can_review)}>
               {(props) => <TextArea {...props} value={note} maxLength={1000} onChange={(event) => setNote(event.target.value)} disabled={busy} />}

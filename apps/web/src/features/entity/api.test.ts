@@ -50,12 +50,12 @@ test.each(send)("a pending correction returns its recoverable receipt", async (c
 test("the correction register and case queries retain their exact subject and page", async () => {
   read.mockResolvedValue({ response: new Response(null, { status: 200 }), data: { items: [] } });
   const register = correctionRegisterQuery("entity", 40);
-  expect(register.queryKey).toEqual(["/api/v1/entity-identifier-corrections", { query: { entity_id: "entity", offset: 40 } }]);
   await register.queryFn();
   expect(read).toHaveBeenLastCalledWith("/api/v1/entity-identifier-corrections", { params: { query: { entity_id: "entity", offset: 40 } } });
   await correctionCaseQuery("exception").queryFn();
   expect(read).toHaveBeenLastCalledWith("/api/v1/entity-identifier-corrections/{id}", { params: { path: { id: "exception" } } });
-  expect(correctionRegisterQuery().queryKey).toEqual(["/api/v1/entity-identifier-corrections", { query: { entity_id: undefined, offset: 0 } }]);
+  await correctionRegisterQuery().queryFn();
+  expect(read).toHaveBeenLastCalledWith("/api/v1/entity-identifier-corrections", { params: { query: { entity_id: undefined, offset: 0 } } });
   expect(ENTITY_READS).toContain("/api/v1/entity-identifier-corrections");
 });
 

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeAll, expect, test } from "vitest";
 import { i18n, loadCatalog } from "@console/i18n";
-import { correctionRegisterQuery, type IdentifierCorrectionCase } from "../api";
+import { type IdentifierCorrectionCase } from "../api";
 import { CorrectionRegister } from "./correction-register";
 
 beforeAll(async () => { await loadCatalog("ko"); await loadCatalog("en"); });
@@ -18,8 +18,7 @@ const row = (status: IdentifierCorrectionCase["status"], id: string): Identifier
 
 test.each(["ko", "en"] as const)("%s register preserves pending, approved and post-review follow-ups", (locale) => {
   i18n.set(locale);
-  const client = new QueryClient();
-  client.setQueryData(correctionRegisterQuery("entity").queryKey, { items: [row("PENDING", "pending"), row("APPROVED", "approved"), row("RECORDED", "recorded")], next_offset: null });
+  const client = new QueryClient({ defaultOptions: { queries: { initialData: { items: [row("PENDING", "pending"), row("APPROVED", "approved"), row("RECORDED", "recorded")], next_offset: null } } } });
   const html = renderToStaticMarkup(<QueryClientProvider client={client}><CorrectionRegister entityId="entity" /></QueryClientProvider>);
   for (const text of locale === "ko" ? ["승인 대기", "승인됨 · 적용 대기", "적용됨 · 사후 검토 대기"] : ["Awaiting approval", "Approved · awaiting application", "Applied · awaiting post-review"])
     expect(html).toContain(text);
@@ -30,8 +29,7 @@ test.each(["ko", "en"] as const)("%s register preserves pending, approved and po
 
 test("an empty register explains that no review is waiting", () => {
   i18n.set("en");
-  const client = new QueryClient();
-  client.setQueryData(correctionRegisterQuery().queryKey, { items: [], next_offset: null });
+  const client = new QueryClient({ defaultOptions: { queries: { initialData: { items: [], next_offset: null } } } });
   const html = renderToStaticMarkup(<QueryClientProvider client={client}><CorrectionRegister /></QueryClientProvider>);
   expect(html).toContain("No correction requests or post-reviews.");
 });

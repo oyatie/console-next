@@ -261,7 +261,6 @@ export const enEntityRecord = {
   "entityRecord.revise.issuedHint": "It is not saved while the issue date is before the opening date. If the certificate’s issue date is wrong, correct it here too.",
   "entityRecord.corrections.title": "Number corrections · post-review",
   "entityRecord.corrections.detail": "Number correction request",
-  "entityRecord.corrections.help": "Review pending corrections and apply approved requests. Sole-holder corrections appear in post-review due order.",
   "entityRecord.corrections.empty": "No correction requests or post-reviews.",
   "entityRecord.corrections.refresh": "Refresh",
   "entityRecord.corrections.subject": "Correction",
