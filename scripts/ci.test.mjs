@@ -53,6 +53,7 @@ test("merge-group CLI forces full proof even when the event supplies a docs-only
     assert.equal(result.status, 0, result.stderr);
     const values = Object.fromEntries(readFileSync(output, "utf8").trim().split("\n").map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]));
     assert.equal(values.full, "true");
+    assert.equal(JSON.parse(values.build).full, true);
     assert.ok(Object.values(JSON.parse(values.required)).every(Boolean));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
@@ -174,6 +175,7 @@ test("duration shards cover every file once and reserve solo for shard one", asy
   assert.ok(jobs.length > 1);
   assert.ok(jobs[0].files.includes("first-run-solo.spec.ts"));
   assert.deepEqual(jobs.flatMap((job) => job.files).sort(), tests.map((t) => t.file).sort());
+  for (const job of jobs) assert.equal(job.est, Math.round(40 + job.files.length * 400 / 2), "reserving solo must preserve measured bin sizes");
 });
 
 test("upload scan rejects valid identifiers and accepts mismatched checksums", () => {
@@ -199,7 +201,7 @@ test("all three Clippy feature sets keep -D warnings", () => {
     assert.ok(matches.length > 0, `missing strict ${features || "default"} lint`);
     for (const { name, job, step } of matches) {
       mandatory(job, name, ["needs.plan.outputs.backend == 'true'", "needs.plan.outputs.backend == 'true' || needs.plan.outputs.e2e == 'true'"]);
-      mandatory(step, command, "needs.plan.outputs.backend == 'true' && matrix.primary");
+      mandatory(step, command, "needs.plan.outputs.backend == 'true'");
     }
   }
 });
@@ -276,10 +278,16 @@ test("job metrics count fallback cache hits", () => {
     mkdirSync(path.join(dir, "scripts/ci"), { recursive: true });
     const file = path.join(dir, "scripts/ci/config.json");
     writeFileSync(file, JSON.stringify(config));
-    const env = { ...process.env, CI_CACHE_TOTAL: "0", CI_STARTED_AT: String(Math.floor(Date.now() / 1000) - 1), CI_STEPS: JSON.stringify({ registry: { outputs: { "cache-hit": "false", "cache-matched-key": "older-key" } }, npm: { outputs: { "cache-hit": "true" } } }) };
+    mkdirSync(path.join(dir, ".cache/ci/e2e-results"), { recursive: true });
+    writeFileSync(path.join(dir, ".cache/ci/e2e-results/junit.baseline.json"), JSON.stringify({ baselineReds: [], newReds: [], fixed: [["playwright", "chromium", "fixture", "fixed"]] }));
+    const env = { ...process.env, CI_CACHE_TOTAL: "0", CI_STARTED_AT: String(Math.floor(Date.now() / 1000) - 1), CI_STEPS: JSON.stringify({ plan: { outputs: { budget: JSON.stringify({ jobs: 38, minutes: 206 }) } }, registry: { outputs: { "cache-hit": "false", "cache-matched-key": "older-key" } }, npm: { outputs: { "cache-hit": "true" } } }) };
     assert.equal(spawnSync("node", [script], { cwd: dir, env, encoding: "utf8" }).status, 0);
     const report = JSON.parse(readFileSync(path.join(dir, ".cache/ci/metrics.json"), "utf8"));
     assert.equal(report.cacheHits, 2);
     assert.equal(report.cacheLookups, 2);
+    assert.equal(report.fixed, 1);
+    const summary = readFileSync(path.join(dir, ".cache/ci/summary.md"), "utf8");
+    assert.match(summary, /1 fixed \(remove from baseline\)/);
+    assert.ok(summary.includes(`38/${config.maxJobs} jobs, 206/${config.maxTotalMinutes}`));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

@@ -4,11 +4,36 @@
   "topologyProbeDatabase": "console_ci_topology_probe",
   "cacheBudgetBytes": 10737418240,
   "sccacheBytes": 1073741824,
-  "nextestPartitions": 1,
-  "rustGroupTargets": 6,
-  "runnerDiskBudgetBytes": 10737418240,
+  "nextestPartitions": {
+    "unit": 2,
+    "db": 8
+  },
+  "runnerDiskBudgetBytes": 47244640256,
   "runnerDiskMarginBytes": 3221225472,
   "e2eTargetSeconds": 300,
   "e2eWorkers": 2,
-  "quarantineFile": "scripts/ci/baseline.json"
+  "quarantineFile": "scripts/ci/baseline.json",
+  "e2eMaxShards": 18,
+  "maxJobs": 40,
+  "maxTotalMinutes": 220,
+  "jobMinutes": {
+    "plan": 2,
+    "hygiene": 3,
+    "gate": 2,
+    "web": 8,
+    "build": 50,
+    "unit": 3,
+    "db": 5,
+    "privacyGate": 1,
+    "e2ePlan": 2,
+    "e2eSetup": 0.5
+  },
+  "runnerUnusedPaths": [
+    "/usr/local/lib/android",
+    "/usr/share/dotnet",
+    "/opt/ghc",
+    "/usr/share/swift",
+    "/opt/hostedtoolcache/CodeQL"
+  ],
+  "e2eTimingsSeed": "scripts/ci/e2e-timings.json"
 }

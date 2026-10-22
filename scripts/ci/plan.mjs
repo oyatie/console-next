@@ -4,38 +4,39 @@ import { appendFileSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dbContract, postgresImage } from "./db-contract.mjs";
-import { createHash } from "node:crypto";
 
-export function rustGroups(crates, app, size, packages = []) {
-  if (!Number.isInteger(size) || size < 1) throw new Error("invalid Rust group size");
-  if (packages.length) {
-    const db = dbCrates(packages);
-    const kinds = ["lib", "bin", "test", "bench", "example"];
-    for (const pkg of packages.filter((p) => crates.includes(p.name))) {
-      if ((pkg.targets ?? []).some((t) => t.test && !t.kind.some((kind) => kinds.includes(kind)))) throw new Error("unsupported Cargo test target; update the CI target planner");
-    }
-    const targets = [...packages].sort((a, b) => (a.name === app ? -1 : b.name === app ? 1 : a.name.localeCompare(b.name)))
-      .filter((pkg) => crates.includes(pkg.name)).flatMap((pkg) => (pkg.targets ?? []).filter((t) => t.test).map((t) => ({
-        crate: pkg.name, target: t.name, kind: t.kind[0], mode: t.kind.includes("lib") && !db.has(pkg.name) ? "unit" : "db",
-      })));
-    const groups = [];
-    // Separate modes, but pool small crates: each target is built and archived once.
-    for (const mode of ["db", "unit"]) {
-      const selected = targets.filter((target) => target.mode === mode);
-      for (let i = 0; i < selected.length; i += size) {
-        const batch = selected.slice(i, i + size);
-        const names = [...new Set(batch.map((t) => t.crate))];
-        const features = names.flatMap((name) => ["full", "test-postgres"].filter((feature) => Object.hasOwn(packages.find((p) => p.name === name).features ?? {}, feature)).map((feature) => `${name}/${feature}`)).join(",");
-        groups.push({ group: createHash("sha256").update(JSON.stringify(batch)).digest("hex").slice(0, 12), crates: names, targets: batch, modes: [mode], features, primary: groups.length === 0 });
-      }
-    }
-    if (groups.length > 256) throw new Error("Rust build matrix exceeds Actions limit");
-    return groups;
+const privacyGates = ["personal-data-classification", "pii-no-logs", "tenant-isolation", "rls-arming", "audit-coverage"];
+
+export function rustBuild(crates, packages) {
+  const selected = packages.filter((pkg) => crates.includes(pkg.name));
+  const db = [...dbCrates(packages)].filter((name) => crates.includes(name)).sort();
+  const unitFilter = `kind(lib)${db.length ? ` & not (${db.map((name) => `package(=${name})`).join(" + ")})` : ""}`;
+  return {
+    crates: [...crates].sort(),
+    features: selected.flatMap((pkg) => ["full", "test-postgres"].filter((f) => Object.hasOwn(pkg.features ?? {}, f)).map((f) => `${pkg.name}/${f}`)).join(","),
+    unitFilter, dbFilter: `not (${unitFilter})`,
+  };
+}
+
+export function planBudget(plan, config, shards) {
+  const queue = JSON.parse(readFileSync(new URL("../../.github/rulesets/dev.json", import.meta.url), "utf8")).rules.find((rule) => rule.type === "merge_queue");
+  if (config.maxTotalMinutes >= queue.parameters.check_response_timeout_minutes) throw new Error("CI minute budget must be below the merge-queue timeout");
+  const estimates = config.jobMinutes;
+  const jobs = [estimates.plan, estimates.hygiene, estimates.gate];
+  if (plan.web || plan.e2e) jobs.push(estimates.web);
+  if (plan.backend || plan.e2e) jobs.push(estimates.build);
+  if (plan.backend) {
+    jobs.push(...Array(privacyGates.length).fill(estimates.privacyGate));
+    for (const mode of ["unit", "db"]) if (plan[mode]) jobs.push(...Array(config.nextestPartitions[mode]).fill(estimates[mode]));
   }
-  const rest = [...crates].filter((name) => name !== app).sort();
-  const groups = crates.includes(app) ? [[app]] : [];
-  for (let i = 0; i < rest.length; i += size) groups.push(rest.slice(i, i + size));
-  return groups.map((names, index) => ({ group: createHash("sha256").update(names.join("\n")).digest("hex").slice(0, 12), crates: names, targets: [], modes: [], features: "", primary: index === 0 }));
+  if (plan.e2e) {
+    jobs.push(estimates.e2ePlan);
+    jobs.push(...(shards ?? Array(config.e2eMaxShards).fill({ est: config.e2eTargetSeconds })).map((job) => estimates.e2eSetup + job.est / 60));
+  }
+  const minutes = Math.ceil(jobs.reduce((a, b) => a + b, 0));
+  if (jobs.length > config.maxJobs) throw new Error("CI plan exceeds job budget");
+  if (!Number.isFinite(minutes) || minutes > config.maxTotalMinutes) throw new Error("CI plan exceeds summed minute budget");
+  return { jobs: jobs.length, minutes };
 }
 
 export function dbCrates(packages) {
@@ -75,7 +76,7 @@ export function requiredJobs(plan) {
     "backend-db": plan.db ?? plan.backend,
     "e2e-plan": plan.e2e,
     e2e: plan.e2e,
-    ...Object.fromEntries(["personal-data-classification", "pii-no-logs", "tenant-isolation", "rls-arming", "audit-coverage"].map((name) => [name, plan.backend])),
+    ...Object.fromEntries(privacyGates.map((name) => [name, plan.backend])),
     hygiene: true,
   };
 }
@@ -99,11 +100,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const pin = postgresImage();
   const config = JSON.parse(readFileSync("scripts/ci/config.json", "utf8"));
   const app = cargo.find((pkg) => path.relative(root, path.dirname(pkg.manifest_path)) === "backend/app")?.name;
-  const groups = rustGroups(plan.backend ? plan.crates : plan.e2e ? [app] : [], app, config.rustGroupTargets, plan.backend ? cargo : []);
-  const matrix = (mode) => ({ include: groups.filter((group) => group.modes.includes(mode)).flatMap((group) => Array.from({ length: config.nextestPartitions }, (_, i) => ({ group: group.group, partition: i + 1 }))) });
-  plan.unit = plan.backend && matrix("unit").include.length > 0;
-  plan.db = plan.backend && matrix("db").include.length > 0;
+  const build = { ...rustBuild(plan.backend ? plan.crates : plan.e2e ? [app] : [], cargo), full: plan.full };
+  const db = dbCrates(cargo);
+  const targets = cargo.filter((p) => plan.crates.includes(p.name)).flatMap((p) => (p.targets ?? []).filter((t) => t.test).map((t) => t.kind.includes("lib") && !db.has(p.name) ? "unit" : "db"));
+  plan.unit = plan.backend && targets.includes("unit");
+  plan.db = plan.backend && targets.includes("db");
+  const matrix = (mode) => ({ include: plan[mode] ? Array.from({ length: config.nextestPartitions[mode] }, (_, i) => ({ partition: i + 1 })) : [] });
+  const budget = planBudget(plan, config);
   const browserVersion = JSON.parse(readFileSync("package-lock.json", "utf8")).packages["node_modules/@playwright/test"].version;
-  const outputs = { ...plan, base: base ?? "", buildMatrix: { include: groups }, unitMatrix: matrix("unit"), dbMatrix: matrix("db"), required: requiredJobs(plan), postgres: pin, retention: config.retentionDays, partitions: Array.from({ length: config.nextestPartitions }, (_, i) => i + 1), browserVersion, testAdmin: dbContract().admin, database: config.database };
+  const outputs = { ...plan, base: base ?? "", build: build, budget, unitMatrix: matrix("unit"), dbMatrix: matrix("db"), required: requiredJobs(plan), postgres: pin, retention: config.retentionDays, browserVersion, testAdmin: dbContract().admin, database: config.database };
   for (const [key, value] of Object.entries(outputs)) appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${typeof value === "object" ? JSON.stringify(value) : value}\n`);
 }

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { load } from "js-yaml";
+import "./ci-regressions.test.mjs";
 
 test("JUnit baseline reports known reds, refuses new reds, crashes, missing proof and expired quarantine", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-baseline-"));
@@ -58,14 +59,30 @@ test("the trunk baseline can shrink but cannot grow, change owner/expiry, or mov
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("Rust package groups cover affected crates once and isolate the application", async () => {
-  const { rustGroups } = await import("./ci/plan.mjs");
-  const groups = rustGroups(["z", "app", "a", "b", "c"], "app", 2);
-  assert.deepEqual(groups[0].crates, ["app"]);
-  assert.deepEqual(groups.flatMap((group) => group.crates).sort(), ["a", "app", "b", "c", "z"]);
-  assert.equal(groups.filter((group) => group.primary).length, 1);
-  assert.ok(groups.every((group) => group.crates.length <= 2));
-  assert.deepEqual(rustGroups([], undefined, 2), []);
+test("one archive covers the affected Rust closure with disjoint DB and unit filters", async () => {
+  const { rustBuild } = await import("./ci/plan.mjs");
+  const packages = [
+    { name: "db", dependencies: [{ name: "sqlx" }], features: {} },
+    { name: "app", dependencies: [{ name: "db" }], features: { full: [], "test-postgres": [] } },
+    { name: "plain", dependencies: [], features: {} },
+  ];
+  const build = rustBuild(["app", "db", "plain"], packages);
+  assert.deepEqual(build.crates, ["app", "db", "plain"]);
+  assert.equal(build.features, "app/full,app/test-postgres");
+  assert.equal(build.unitFilter, "kind(lib) & not (package(=app) + package(=db))");
+  assert.equal(build.dbFilter, `not (${build.unitFilter})`);
+});
+
+test("plan refuses excess jobs and summed minutes including browser shards", async () => {
+  const { planBudget } = await import("./ci/plan.mjs");
+  const c = JSON.parse(readFileSync(new URL("./ci/config.json", import.meta.url), "utf8"));
+  const p = { backend: true, web: true, e2e: true, unit: true, db: true };
+  const proof = planBudget(p, c, [{ est: 300 }, { est: 300 }]);
+  assert.ok(proof.jobs < 50);
+  assert.ok(proof.minutes < 240);
+  assert.throws(() => planBudget(p, { ...c, maxJobs: proof.jobs - 1 }, [{ est: 300 }, { est: 300 }]), /job budget/);
+  assert.throws(() => planBudget(p, { ...c, maxTotalMinutes: proof.minutes - 1 }, [{ est: 300 }, { est: 300 }]), /minute budget/);
+  assert.ok(planBudget({ backend: false, web: false, e2e: false }, c, []).minutes < proof.minutes);
 });
 
 test("frontend-only plans build the E2E backend without scheduling Rust test jobs", () => {
@@ -84,7 +101,7 @@ test("frontend-only plans build the E2E backend without scheduling Rust test job
     assert.equal(values.e2e, "true");
     assert.equal(values.unit, "false");
     assert.equal(values.db, "false");
-    assert.equal(JSON.parse(values.buildMatrix).include.length, 1);
+    assert.equal(JSON.parse(values.build).crates.length, 1);
     assert.deepEqual(JSON.parse(values.unitMatrix).include, []);
     assert.deepEqual(JSON.parse(values.dbMatrix).include, []);
     const required = JSON.parse(values.required);
@@ -94,39 +111,26 @@ test("frontend-only plans build the E2E backend without scheduling Rust test job
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("target groups retain mixed DB libraries and integration tests, bounded with no duplicate targets", async () => {
-  const { rustGroups } = await import("./ci/plan.mjs");
-  const pkg = (name, dependencies, targets) => ({ name, dependencies, targets, features: name === "app" ? { full: [], "test-postgres": [] } : {} });
-  const target = (name, kind) => ({ name, kind: [kind], test: true });
-  const packages = [pkg("data", [{ name: "sqlx" }], [target("data", "lib"), target("contract", "test")]), pkg("app", [{ name: "data" }], [target("app", "lib"), target("one", "test"), target("two", "test")]), pkg("plain", [], [target("plain", "lib"), target("integration", "test")])];
-  const groups = rustGroups(packages.map((p) => p.name), "app", 2, packages);
-  const targets = groups.flatMap((group) => group.targets);
-  assert.equal(targets.length, 7);
-  assert.equal(new Set(targets.map((t) => `${t.crate}:${t.target}`)).size, targets.length);
-  assert.ok(groups.every((group) => group.targets.length <= 2 && group.modes.length === 1));
-  assert.equal(targets.find((t) => t.crate === "data" && t.kind === "lib").mode, "db");
-  assert.equal(targets.find((t) => t.crate === "app" && t.kind === "lib").mode, "db");
-  assert.equal(targets.find((t) => t.crate === "plain" && t.kind === "lib").mode, "unit");
-  assert.equal(targets.find((t) => t.target === "integration").mode, "db");
-  for (const group of groups) for (const feature of group.features.split(",").filter(Boolean)) assert.ok(group.crates.includes(feature.split("/")[0]));
-  assert.ok(groups.find((group) => group.crates.includes("app")).features.includes("app/full"));
-  assert.throws(() => rustGroups(["future"], undefined, 2, [pkg("future", [], [target("future", "unknown-kind")])]), /unsupported Cargo test target/);
-});
-
-test("test archives and caches use bounded stripped builds and only the selected group", () => {
+test("archive consumers share the single stripped build and use partitions", () => {
   const wf = load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
   const build = wf.jobs["rust-build"];
   assert.equal(build.env.CARGO_PROFILE_TEST_DEBUG, "0");
-  assert.equal(build.env.CARGO_PROFILE_TEST_STRIP, "debuginfo");
-  assert.equal(build.env.CARGO_INCREMENTAL, "0");
-  assert.ok(build.strategy.matrix.includes("buildMatrix"));
-  assert.ok(build.steps.some((step) => step.run?.includes("scripts/ci/rust-build.mjs")));
-  for (const [name, mode] of [["backend-test", "unit"], ["backend-db", "db"]]) {
-    const job = wf.jobs[name];
-    const download = job.steps.find((step) => step.uses?.startsWith("actions/download-artifact"));
-    assert.equal(download.with.name, `rust-tests-${mode}-${'${{ matrix.group }}'}`);
-    assert.ok(job.strategy.matrix.includes(`${mode}Matrix`));
+  assert.equal(build.env.CARGO_PROFILE_TEST_STRIP, "symbols");
+  assert.equal(build.strategy, undefined);
+  const queue = JSON.parse(readFileSync(new URL("../.github/rulesets/dev.json", import.meta.url), "utf8")).rules.find((r) => r.type === "merge_queue");
+  const config = JSON.parse(readFileSync(new URL("./ci/config.json", import.meta.url), "utf8"));
+  assert.ok(config.maxTotalMinutes < queue.parameters.check_response_timeout_minutes);
+  for (const name of ["backend-test", "backend-db"]) {
+    const download = wf.jobs[name].steps.find((s) => s.uses?.startsWith("actions/download-artifact"));
+    assert.equal(download.with.name, "rust-tests");
   }
+  const runner = readFileSync(new URL("./ci/rust-tests.mjs", import.meta.url), "utf8");
+  assert.match(runner, /--archive-file/);
+  assert.match(runner, /--partition/);
+  assert.doesNotMatch(runner, /nextest", "archive/);
+  const e2e = wf.jobs.e2e;
+  assert.equal(e2e.env.E2E_PREBUILT, "1");
+  for (const name of ["backend-binary", "web-dist"]) assert.ok(e2e.steps.some((s) => s.with?.name === name));
 });
 
 test("Firefox retains the global server-expiry exclusion", () => {
@@ -198,23 +202,19 @@ test("Rust runner refuses invalid mode and partition before invoking Cargo", () 
   }
 });
 
-test("archive commands build their planned lib, bin and integration targets", () => {
+test("archive command builds all selected packages in one Cargo invocation", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-archive-command-"));
   try {
     mkdirSync(path.join(dir, "backend"));
     const capture = path.join(dir, "args.json");
-    writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nrequire('node:fs').writeFileSync(process.env.CAPTURE,JSON.stringify(process.argv.slice(2)));\n`, { mode: 0o700 });
-    const targets = ["lib", "bin", "test", "test"].map((kind, i) => ({ crate: i % 2 ? "a" : "b", kind, target: `target_${i}`, mode: "db" }));
-    const group = { crates: ["a", "b"], targets, modes: ["db"], features: "app/full,app/test-postgres" };
-    const result = spawnSync("node", [new URL("./ci/rust-build.mjs", import.meta.url).pathname], { cwd: path.join(dir, "backend"), encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, CAPTURE: capture, CI_RUST_GROUP: JSON.stringify(group) } });
+    writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nrequire('node:fs').appendFileSync(process.env.CAPTURE,JSON.stringify(process.argv.slice(2))+'\\n');\n`, { mode: 0o700 });
+    const result = spawnSync("node", [new URL("./ci/rust-build.mjs", import.meta.url).pathname], { cwd: path.join(dir, "backend"), encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, CAPTURE: capture, CI_RUST_BUILD: JSON.stringify({ crates: ["a", "b"], features: "a/full" }) } });
     assert.equal(result.status, 0, result.stderr);
-    const args = JSON.parse(readFileSync(capture, "utf8"));
-    assert.equal(args.filter((arg) => arg === "--lib").length, 1);
-    assert.equal(args.filter((arg) => arg === "--test").length, 2);
-    assert.equal(args.filter((arg) => arg === "--bin").length, 1);
-    assert.ok(!args.includes("--all-targets"));
-    const filter = args[args.indexOf("-E") + 1];
-    for (const target of targets) assert.ok(filter.includes(`binary(=${target.target})`));
+    const calls = readFileSync(capture, "utf8").trim().split("\n").map(JSON.parse);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0].slice(0, 2), ["nextest", "archive"]);
+    assert.ok(calls[0].includes("--tests"));
+    assert.deepEqual(calls[0].filter((arg, i, args) => args[i - 1] === "-p"), ["a", "b"]);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -222,9 +222,9 @@ test("duration plan assigns only Firefox to its Firefox leg", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-browser-plan-"));
   try {
     const output = path.join(dir, "outputs");
-    const result = spawnSync("node", ["scripts/ci/e2e.mjs", "plan"], { encoding: "utf8", env: { ...process.env, GITHUB_OUTPUT: output, E2E_SERVED: "1" } });
+    const result = spawnSync("node", ["scripts/ci/e2e.mjs", "plan"], { encoding: "utf8", env: { ...process.env, GITHUB_OUTPUT: output, E2E_SERVED: "1", E2E_TIMINGS_FILE: path.join(dir, "timings.json") } });
     assert.equal(result.status, 0, result.stderr);
-    const jobs = JSON.parse(readFileSync(output, "utf8").trim().replace(/^matrix=/, "")).include;
+    const jobs = JSON.parse(readFileSync(output, "utf8").split("\n").find((line) => line.startsWith("matrix=")).slice(7)).include;
     assert.ok(jobs.some((job) => job.browser === "firefox"));
     for (const job of jobs) assert.equal(job.project === "firefox", job.browser === "firefox");
     for (const browser of ["chromium", "firefox"]) assert.ok(jobs.find((job) => job.browser === browser && job.shard === 1).files.includes("first-run-solo.spec.ts"));
@@ -238,8 +238,10 @@ test("browser runner reports baselined failures and publishes a trace flag only 
     mkdirSync(path.join(dir, "node_modules/.bin"), { recursive: true });
     const config = readFileSync(new URL("./ci/config.json", import.meta.url), "utf8");
     writeFileSync(path.join(dir, "scripts/ci/config.json"), config);
-    symlinkSync(new URL("./ci/test-results.py", import.meta.url).pathname, path.join(dir, "scripts/ci/test-results.py"));
+    writeFileSync(path.join(dir, "scripts/ci/baseline.json"), "[]");
+    copyFileSync(new URL("./ci/test-results.py", import.meta.url), path.join(dir, "scripts/ci/test-results.py"));
     const entry = JSON.parse(readFileSync(new URL("./ci/baseline.json", import.meta.url), "utf8")).find((e) => e.kind === "playwright" && e.context === "chromium");
+    writeFileSync(path.join(dir, "scripts/ci/baseline.json"), JSON.stringify([entry]));
     const escape = (text) => text.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
     const junit = `<testsuites><testsuite errors="0"><testcase classname="${escape(entry.suite)}" name="${escape(entry.test)}"><failure>synthetic failure</failure></testcase></testsuite></testsuites>`;
     writeFileSync(path.join(dir, "node_modules/.bin/playwright"), `#!${process.execPath}\nconst f=require('node:fs');f.mkdirSync('.cache/ci/e2e-results',{recursive:true});f.writeFileSync('.cache/ci/e2e-results/junit.xml',${JSON.stringify(junit)});if(process.env.TRACE_FIXTURE==='1'){f.mkdirSync('test-results',{recursive:true});f.writeFileSync('test-results/trace.zip','fixture');}process.exit(1);\n`, { mode: 0o700 });
@@ -259,12 +261,15 @@ test("Rust runner reads nextest's workspace JUnit and refuses stale reports", ()
     mkdirSync(path.join(dir, "backend"));
     mkdirSync(path.join(dir, "scripts/ci"), { recursive: true });
     writeFileSync(path.join(dir, "scripts/ci/config.json"), readFileSync(new URL("./ci/config.json", import.meta.url)));
-    symlinkSync(new URL("./ci/test-results.py", import.meta.url).pathname, path.join(dir, "scripts/ci/test-results.py"));
+    copyFileSync(new URL("./ci/test-results.py", import.meta.url), path.join(dir, "scripts/ci/test-results.py"));
+    writeFileSync(path.join(dir, "scripts/ci/disk-budget.py"), "# synthetic disk receipt\n");
     const entry = JSON.parse(readFileSync(new URL("./ci/baseline.json", import.meta.url), "utf8")).find((e) => e.kind === "nextest" && e.context === "db");
+    writeFileSync(path.join(dir, "scripts/ci/baseline.json"), JSON.stringify([entry]));
     const junit = `<testsuites><testsuite errors="0"><testcase classname="${entry.suite}" name="${entry.test}"><failure>fixture failure</failure></testcase></testsuite></testsuites>`;
-    writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nconst f=require('node:fs');if(process.env.NO_JUNIT!=='1'){f.mkdirSync('target/nextest/ci',{recursive:true});f.writeFileSync('target/nextest/ci/junit.xml',${JSON.stringify(junit)});process.exit(100);}\n`, { mode: 0o700 });
-    const run = (missing) => spawnSync("node", [new URL("./ci/rust-tests.mjs", import.meta.url).pathname, "db", "1"], { cwd: path.join(dir, "backend"), encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, NO_JUNIT: missing ? "1" : "0" } });
-    assert.equal(run(false).status, 0);
+    writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nconst f=require('node:fs');if(process.argv.includes('list')){process.stdout.write(JSON.stringify({'rust-suites':{[process.env.SUITE]:{testcases:{[process.env.TEST]:{}}}}}));process.exit(0);}if(process.env.NO_JUNIT!=='1'){f.mkdirSync('target/nextest/ci',{recursive:true});f.writeFileSync('target/nextest/ci/junit.xml',${JSON.stringify(junit)});process.exit(100);}\n`, { mode: 0o700 });
+    const run = (missing) => spawnSync("node", [new URL("./ci/rust-tests.mjs", import.meta.url).pathname, "db", "1"], { cwd: path.join(dir, "backend"), encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, CI_RUST_BUILD: JSON.stringify({ crates: [entry.suite.split("::")[0]], dbFilter: "all()" }), SUITE: entry.suite, TEST: entry.test, NO_JUNIT: missing ? "1" : "0" } });
+    const result = run(false);
+    assert.equal(result.status, 0, result.stderr + result.stdout);
     assert.equal(run(true).status, 1);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
