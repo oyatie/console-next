@@ -30,7 +30,7 @@ pub struct SetupFacts {
     pub entities_without_primary_workplace: i64,
     pub workplaces: i64,
     pub workplaces_incomplete: i64,
-    /// 사업장 with people assigned but no 사업자등록 (blocks; challenge B-3.3).
+    /// Unanswered registration prompts for staffed workplaces; never a go-live blocker.
     pub staffed_workplaces_without_registration: i64,
     pub empty_workplaces_without_registration: i64,
     pub org_units: i64,
@@ -93,13 +93,12 @@ impl SetupFacts {
             && self.registrations_needing_confirmation == 0
     }
 
-    /// Every entity has a complete 대표 사업장; every staffed 사업장 has a registration.
+    /// Every entity has a complete 대표 사업장. Registration answers are optional.
     #[must_use]
     pub fn primary_workplaces_ready(&self) -> bool {
         self.workplaces > 0
             && self.entities_without_primary_workplace == 0
             && self.workplaces_incomplete == 0
-            && self.staffed_workplaces_without_registration == 0
     }
 
     /// An org change after go-live can complete: it needs no approval

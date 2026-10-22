@@ -47,9 +47,9 @@ export function WorkplaceAttachSheet({ e, w, onClose }: { e: LegalEntity; w: Wor
         <>
           <Button onClick={onClose}>{t("orgStructure.cancel")}</Button>
           {c.ready ? (
-            <Button variant="primary" onClick={() => c.save.mutate(undefined)} disabled={c.save.isPending}>{t("entityOps.attach.save")}</Button>
+            <Button variant="primary" onClick={() => c.save.mutate(undefined)} disabled={c.save.isPending}>{t(c.mode === "NOT_REQUIRED" ? "entity.edit.save" : "entityOps.attach.save")}</Button>
           ) : (
-            <Button variant="primary" aria-disabled aria-describedby={FOOT_ID} onClick={() => undefined}>{t("entityOps.attach.save")}</Button>
+            <Button variant="primary" aria-disabled aria-describedby={FOOT_ID} onClick={() => undefined}>{t(c.mode === "NOT_REQUIRED" ? "entity.edit.save" : "entityOps.attach.save")}</Button>
           )}
         </>
       }
@@ -69,5 +69,5 @@ function Foot({ c, name }: { c: WorkplaceAttach; name: string }) {
         <Lock size={14} aria-hidden /> {t(c.mode === null ? "entityOps.attach.pickWay" : c.since > c.today ? "entityOps.attach.future" : "entityOps.attach.fillFirst")}
       </span>
     );
-  return <span>{t("entityOps.attach.consequence", { name, date: fmtDate(c.since) })}</span>;
+  return <span>{t(c.mode === "NOT_REQUIRED" ? "workplace.answer.consequence" : "entityOps.attach.consequence", { name, date: fmtDate(c.since) })}</span>;
 }

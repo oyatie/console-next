@@ -274,3 +274,11 @@ pub use compare::*;
 
 mod structure_views;
 pub use structure_views::*;
+
+/// The outer reference-data owner resolves a new pick; stored stamps stay valid on revision.
+pub type WorkplaceReferenceResolver = fn(
+    &console_entity_domain::legal_entity::CodeInput,
+) -> Result<
+    console_entity_domain::workplace_registration::ResolvedReferenceCode,
+    console_entity_domain::Refusal,
+>;

@@ -1547,7 +1547,6 @@ dependencies = [
  "console-orgchange-domain",
  "console-platform-db",
  "console-platform-test-support",
- "console-refdata",
  "console-settings-domain",
  "metrics",
  "serde",

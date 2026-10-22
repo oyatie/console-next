@@ -82,6 +82,7 @@ pub(crate) struct OpCtx<'a> {
     pub effective_from: Option<&'a str>,
     pub reason_code: Option<&'a str>,
     pub refs: &'a HashMap<String, Uuid>,
+    pub references: Option<console_entity_application::WorkplaceReferenceResolver>,
     pub port: &'a dyn OrgUnitSetupWritePort,
 }
 
@@ -177,7 +178,8 @@ pub(crate) async fn exec(
                 kind_code: None,
             };
             let (id, events) =
-                create_workplace_in_tx(tx, actor, admitted, entity, &cmd, ctx.port).await?;
+                create_workplace_in_tx(tx, actor, admitted, entity, &cmd, ctx.port, ctx.references)
+                    .await?;
             Ok(created("workplace", id, entity, Vec::new(), events))
         }
         REVISE_WORKPLACE => {
@@ -192,7 +194,8 @@ pub(crate) async fn exec(
                     .ok_or_else(|| Refusal::not_found("workplace_not_found"))?;
             let before = workplace_state(tx, entity, id).await?;
             let (_, events) =
-                revise_workplace_in_tx(tx, actor, admitted, id, rev, ctx.port).await?;
+                revise_workplace_in_tx(tx, actor, admitted, id, rev, ctx.port, ctx.references)
+                    .await?;
             if op.is_primary == Some(true) || op.is_head_office == Some(true) {
                 set_roles_on_create(
                     tx,

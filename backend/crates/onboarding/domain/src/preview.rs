@@ -119,15 +119,6 @@ pub fn preview(f: &SetupFacts, records: &Records) -> Preview {
             "complete_workplace",
         ));
     }
-    if f.staffed_workplaces_without_registration > 0 {
-        let mut missing = item(
-            "staffed_workplace_without_registration",
-            f.staffed_workplaces_without_registration,
-            "attach_registration",
-        );
-        missing.support_ref = Some("workplace_registration_answer");
-        blockers.push(missing);
-    }
     if f.org_units == 0 {
         blockers.push(item("no_department", 0, "add_department"));
     }
@@ -176,12 +167,6 @@ pub fn preview(f: &SetupFacts, records: &Records) -> Preview {
         "registration_unverified",
         f.registrations_unverified,
         "verify_registration",
-    );
-    warn(
-        f.empty_workplaces_without_registration > 0,
-        "workplace_without_registration",
-        f.empty_workplaces_without_registration,
-        "attach_registration",
     );
     warn(
         f.unmapped_assignments > 0,

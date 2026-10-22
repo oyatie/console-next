@@ -3,15 +3,15 @@ import { t } from "@console/i18n";
 import type { CodeRef, LegalEntity, Workplace } from "@console/api/pending";
 import { FORMATS } from "../../../lib/pure/formats";
 import { useCommand } from "../../../lib/react/command";
-import { addRegistration, changeRegistration, ENTITY_READS, readVersion, reviseEntity, stepKey } from "../api";
+import { addRegistration, changeRegistration, ENTITY_READS, readVersion, reviseEntity, reviseWorkplace, stepKey } from "../api";
 import { planRegistration } from "../domain/plan";
-import { entityInput, unheld, unitRegistration, workplaceName } from "../domain/view";
+import { entityInput, unheld, unitRegistration, workplaceInput, workplaceName } from "../domain/view";
 import type { RegMode } from "../domain/workplace";
 import { useEntityDraft } from "./use-entity-draft";
 import type { VatUnit } from "./use-workplace-create";
 
-/** The ways a workplace with no certificate gets one: its own (typed), one the entity holds free, or a unit-taxation serial. */
-export const ATTACH_MODES: readonly RegMode[] = ["NEW", "EXISTING", "UNIT_TAXATION_SUB"];
+/** Resolve an unanswered workplace with a registration or a not-required answer. */
+export const ATTACH_MODES: readonly RegMode[] = ["NEW", "EXISTING", "UNIT_TAXATION_SUB", "NOT_REQUIRED"];
 type Fields = { regMode: RegMode | null; registrationId: string | null; subSerial: string; notRegisteredReason?: CodeRef | null; isAbstract?: boolean };
 
 /**
@@ -40,11 +40,22 @@ export function useWorkplaceAttach(e: LegalEntity, wp: Workplace, onDone: () => 
     (mode !== "NEW" || planned?.ok === true) &&
     (mode !== "EXISTING" || chosen !== undefined) &&
     (mode !== "UNIT_TAXATION_SUB" || (unit !== undefined && !problems.subSerial)) &&
+    (mode !== "NOT_REQUIRED" || (Boolean(w.notRegisteredReason) && workplaceInput(e, wp) !== null)) &&
     (!askVat || vat !== null) &&
     since !== "" &&
     since <= reg.today;
   const save = useCommand({
     run: async (_: undefined, key: string) => {
+      if (mode === "NOT_REQUIRED") {
+        const base = workplaceInput(e, wp);
+        if (!base || !w.notRegisteredReason) throw new Error(t("entityOps.status.restricted"));
+        return reviseWorkplace(key, wp.id, {
+          ...base, reg_mode: "NOT_REQUIRED", not_registered_reason: { code: w.notRegisteredReason.code, version: w.notRegisteredReason.version },
+          is_abstract: w.isAbstract ?? false, address: w.isAbstract ? null : base.address,
+          same_address_as_registration: false, effective_from: since,
+          reason_code: "REGISTRATION_ANSWER_CHANGED", expected_version: readVersion(wp),
+        });
+      }
       let registrationId = mode === "EXISTING" ? (chosen?.id ?? null) : (unit?.id ?? null);
       if (mode === "NEW") {
         if (!planned?.ok) throw new Error("unreachable: planned before submit");
@@ -65,7 +76,7 @@ export function useWorkplaceAttach(e: LegalEntity, wp: Workplace, onDone: () => 
     },
     invalidates: ENTITY_READS,
     settle: true,
-    announce: () => t("entityOps.attach.saved", { name: workplaceName(wp) }),
+    announce: () => t(mode === "NOT_REQUIRED" ? "workplace.edit.saved" : "entityOps.attach.saved", { name: workplaceName(wp) }),
     onSuccess: onDone,
   });
   return { w, set, mode, free, unit, chosen, reg, askVat, vat, setVat, problems, since, from, setFrom, ready, save, today: reg.today };

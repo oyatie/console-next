@@ -82,7 +82,7 @@ export function workplaceInput(e: LegalEntity, w: Workplace): WorkplaceInput | n
   const c = w.current;
   if (!c || !c.opened_on) return null;
   const holds = Boolean(w.registration_id) && registrationOf(e, w.registration_id)?.holder_workplace_id === w.id;
-  const reason = w.not_registered_reason ?? c.not_registered_reason;
+  const reason = w.not_registered_reason;
   return {
     name: c.name,
     registration_id: w.registration_id ?? null,
@@ -91,7 +91,7 @@ export function workplaceInput(e: LegalEntity, w: Workplace): WorkplaceInput | n
     not_registered_reason: reason
       ? { code: reason.code, version: reason.version }
       : null,
-    is_abstract: w.is_abstract ?? c.is_abstract ?? false,
+    is_abstract: w.is_abstract ?? false,
     same_address_as_registration: holds,
     address: holds ? null : (c.address ?? null),
     mail_address: c.mail_address ?? null,

@@ -172,6 +172,15 @@ describe("the current state as the input a dated revision sends", () => {
     expect(registrationTodo({ ...exempt, registration_todo: false })).toBe(false);
     expect(registrationTodo(wp({ registration_todo: true }))).toBe(true);
   });
+  test("a linked registration supersedes an exempt revision's stale answer", () => {
+    const stale = { code: "VAT_DEPOT", label: "하치장", version: "2026-10-21" };
+    const linked = wp({ registration_id: "r1", not_registered_reason: null, is_abstract: false,
+      current: { ...wpState, not_registered_reason: stale } });
+    expect(workplaceInput(entity(), linked)).toMatchObject({
+      reg_mode: "EXISTING", registration_id: "r1", not_registered_reason: null,
+    });
+  });
+
 });
 
 test("individual registration revisions carry the certificate name, corporations omit it", () => {

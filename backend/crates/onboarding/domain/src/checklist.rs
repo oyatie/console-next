@@ -119,9 +119,7 @@ pub fn checklist(f: &SetupFacts) -> Checklist {
         workplace.state = Blocked;
         workplace.remedy = Some("create_legal_entity");
     } else if f.workplaces > 0 {
-        let gaps = f.entities_without_primary_workplace
-            + f.workplaces_incomplete
-            + f.staffed_workplaces_without_registration;
+        let gaps = f.entities_without_primary_workplace + f.workplaces_incomplete;
         workplace.state = if gaps > 0 { Attention } else { Done };
         if gaps > 0 {
             workplace.remedy = Some("complete_workplace");

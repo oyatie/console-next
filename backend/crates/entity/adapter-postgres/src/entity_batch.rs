@@ -54,10 +54,27 @@ impl PgEntityStore {
         batch: EntitySetupBatch,
         port: Arc<dyn OrgUnitSetupWritePort>,
     ) -> Result<EntitySetupResult, PgEntityError> {
+        self.entity_setup_batch_with_references(actor, batch, port, None)
+            .await
+    }
+    /// Preview or apply with the outer reference-data owner.
+    /// # Errors
+    /// Shape, domain, stale-preview or database errors.
+    pub async fn entity_setup_batch_with_references(
+        &self,
+        actor: &Actor,
+        batch: EntitySetupBatch,
+        port: Arc<dyn OrgUnitSetupWritePort>,
+        references: Option<console_entity_application::WorkplaceReferenceResolver>,
+    ) -> Result<EntitySetupResult, PgEntityError> {
         let actor = actor.clone();
         if batch.dry_run {
             return with_org_rollback(&self.pool, actor.org, move |tx| {
-                Box::pin(async move { Ok(run(tx, &actor, &batch, port.as_ref()).await?.result) })
+                Box::pin(async move {
+                    Ok(run(tx, &actor, &batch, port.as_ref(), references)
+                        .await?
+                        .result)
+                })
             })
             .await;
         }
@@ -67,7 +84,7 @@ impl PgEntityStore {
                 if let Some(done) = claim(tx, &actor, "entity_setup.apply", request).await? {
                     return Ok((replay(tx, done, &batch).await?, vec![]));
                 }
-                let mut run = run(tx, &actor, &batch, port.as_ref()).await?;
+                let mut run = run(tx, &actor, &batch, port.as_ref(), references).await?;
                 let id: Uuid = sqlx::query_scalar(
                     "INSERT INTO entity_setup_batches (org_id, command_id, kind, change_mode, steps, roles, actor_id) \
                      VALUES (NULLIF(current_setting('app.current_org', true), '')::uuid, $1, 'APPLY', $2, $3, $4, $5) \
@@ -97,6 +114,7 @@ async fn run(
     actor: &Actor,
     batch: &EntitySetupBatch,
     port: &dyn OrgUnitSetupWritePort,
+    references: Option<console_entity_application::WorkplaceReferenceResolver>,
 ) -> Result<Run, PgEntityError> {
     let admitted = admit(tx, WriteClass::EntityStructure).await?;
     let today = today_kst(tx).await?;
@@ -133,6 +151,7 @@ async fn run(
             reason_code: batch.reason_code.as_deref(),
             refs: &refs,
             port,
+            references,
         };
         sqlx::query("SAVEPOINT entity_setup_op")
             .execute(tx.as_mut())

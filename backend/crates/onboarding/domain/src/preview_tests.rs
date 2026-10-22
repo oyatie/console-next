@@ -93,13 +93,13 @@ fn regression_company_49_no_line_about_a_capability_that_does_not_exist() {
 #[test]
 fn regression_company_53_each_line_carries_its_records_and_they_are_in_the_digest() {
     let f = SetupFacts {
-        staffed_workplaces_without_registration: 1,
+        workplaces_incomplete: 1,
         insurance_not_established_with_people: 1,
         ..ready()
     };
     let mut r = Records::new();
     r.insert(
-        "staffed_workplace_without_registration".to_owned(),
+        "workplace_incomplete".to_owned(),
         vec![workplace("w4", "오송공장")],
     );
     r.insert(
@@ -115,7 +115,7 @@ fn regression_company_53_each_line_carries_its_records_and_they_are_in_the_diges
         .unwrap();
     assert_eq!((ins.count, ins.records.len()), (Some(1), 1));
     r.insert(
-        "staffed_workplace_without_registration".to_owned(),
+        "workplace_incomplete".to_owned(),
         vec![workplace("w5", "평택공장")],
     );
     assert_ne!(preview(&f, &r).digest, p.digest);
@@ -200,11 +200,15 @@ fn every_blocker_names_its_fix_and_changes_the_digest() {
         staffed_workplaces_without_registration: 1,
         ..ready()
     };
-    assert_eq!(
-        preview(&staffed, &Records::new()).blockers[0].code,
-        "staffed_workplace_without_registration"
+    let p = preview(&staffed, &Records::new());
+    assert!(p.blockers.is_empty());
+    assert!(
+        !p.warnings
+            .iter()
+            .any(|item| item.code.contains("without_registration"))
     );
-    // An empty 사업장 without a registration is only a warning (B-3.3).
+    assert!(staffed.primary_workplaces_ready());
+    // Empty and staffed workplaces share the same optional registration answer.
     let empty_wp = SetupFacts {
         empty_workplaces_without_registration: 1,
         ..ready()

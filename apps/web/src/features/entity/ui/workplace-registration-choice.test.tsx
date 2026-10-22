@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { loadCatalog } from "@console/i18n";
 import type { LegalEntity } from "@console/api/pending";
 import { abstractFromReason } from "../domain/workplace";
+import { ATTACH_MODES } from "./use-workplace-attach";
 import { RegistrationChoice } from "./workplace-registration-choice";
 
 beforeAll(() => loadCatalog("ko"));
@@ -62,4 +63,10 @@ test("abstract default comes from reference data, not reason-code literals", () 
   expect(abstractFromReason({ isAbstract: true })).toBe(true);
   expect(abstractFromReason({ isAbstract: false })).toBe(false);
   expect(abstractFromReason(undefined)).toBe(false);
+});
+
+test("existing unanswered workplaces can choose NOT_REQUIRED", () => {
+  expect(ATTACH_MODES).toContain("NOT_REQUIRED");
+  const html = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><RegistrationChoice e={mockEntity} c={makeChoiceState()} modes={ATTACH_MODES} required /></QueryClientProvider>);
+  expect(html).toContain("등록 대상 아님");
 });

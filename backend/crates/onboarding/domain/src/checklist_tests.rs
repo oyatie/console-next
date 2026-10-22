@@ -255,8 +255,7 @@ fn company_text_is_placement_work_not_a_separate_setup_step() {
 }
 
 #[test]
-fn workplace_step_done_when_exempt_from_registration_and_blocked_when_staffed_without_registration()
-{
+fn workplace_step_done_even_when_staffed_without_registration() {
     let base = SetupFacts {
         phase_is_setup: true,
         terms_accepted: true,
@@ -277,7 +276,7 @@ fn workplace_step_done_when_exempt_from_registration_and_blocked_when_staffed_wi
     };
     let c_unreg = checklist(&unreg);
     let wp_unreg = c_unreg.steps.iter().find(|s| s.key == "workplace").unwrap();
-    assert_eq!(wp_unreg.state, StepState::Attention);
-    assert_eq!(wp_unreg.remedy, Some("complete_workplace"));
-    assert_eq!(wp_unreg.count, Some(1));
+    assert_eq!(wp_unreg.state, StepState::Done);
+    assert_eq!(wp_unreg.remedy, None);
+    assert_eq!(wp_unreg.count, None);
 }

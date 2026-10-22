@@ -147,21 +147,18 @@ async fn exempt_workplaces_are_finished_while_later_is_counted_with_support(owne
 
     let preview = store.preview(&actor).await.unwrap();
     assert_eq!(preview.facts.staffed_workplaces_without_registration, 1);
-    assert_eq!(preview.facts.workplace_registration_todo, 1);
-    let blocker = preview
-        .blockers
-        .iter()
-        .find(|item| item.code == "staffed_workplace_without_registration")
-        .unwrap();
     assert_eq!(
-        blocker
-            .records
-            .iter()
-            .map(|r| r.id.clone())
-            .collect::<Vec<_>>(),
-        vec![later.to_string()]
+        preview.facts.staffed_workplaces_without_registration
+            + preview.facts.empty_workplaces_without_registration,
+        1
     );
-    assert_eq!(blocker.support_ref, Some("workplace_registration_answer"));
+    assert!(
+        !preview
+            .blockers
+            .iter()
+            .chain(&preview.warnings)
+            .any(|item| item.code.contains("without_registration"))
+    );
     assert!(
         preview
             .blockers

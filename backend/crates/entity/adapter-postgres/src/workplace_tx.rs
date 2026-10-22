@@ -4,9 +4,6 @@
 use console_entity_application::{Actor, CreateWorkplace, WorkplaceRevision};
 use console_entity_domain::Refusal;
 use console_entity_domain::workplace::{WorkplaceContext, validate_workplace_resolved};
-use console_entity_domain::workplace_registration::{
-    ResolvedReferenceCode, WorkplaceRegistrationAnswer,
-};
 use console_kernel_core::AuditEvent;
 use serde_json::json;
 use uuid::Uuid;
@@ -19,79 +16,10 @@ use crate::workplace_kind::usable_kind;
 use crate::workplace_revision::{insert_insurance, insert_revision};
 use crate::{Admitted, PgEntityError, RevisionMeta, Tx, audit, today_kst};
 
-pub(crate) fn registration_answer(
-    registration: Option<Uuid>,
-    reason: Option<&str>,
-) -> WorkplaceRegistrationAnswer {
-    if registration.is_some() {
-        WorkplaceRegistrationAnswer::Registered
-    } else if reason.is_some() {
-        WorkplaceRegistrationAnswer::NotRequired
-    } else {
-        WorkplaceRegistrationAnswer::Later
-    }
-}
-
-pub(crate) fn answer_event(
-    actor: &Actor,
-    admitted: Admitted,
-    workplace: Uuid,
-    from: Option<WorkplaceRegistrationAnswer>,
-    to: WorkplaceRegistrationAnswer,
-) -> Result<AuditEvent, PgEntityError> {
-    audit(
-        actor,
-        "workplace.registration_answer.changed",
-        "workplace",
-        workplace,
-        admitted,
-        json!({ "from": from.map(WorkplaceRegistrationAnswer::as_str), "to": to.as_str() }),
-    )
-}
-
-pub(crate) fn observe_answer(answer: WorkplaceRegistrationAnswer) {
-    metrics::counter!("workplace_registration_answer", "answer" => answer.as_str()).increment(1);
-}
-
-fn resolved_reason(
-    input: &console_entity_domain::workplace::WorkplaceInput,
-) -> Result<Option<ResolvedReferenceCode>, PgEntityError> {
-    if input.registration_id.is_some() {
-        return Ok(None);
-    }
-    let Some(raw) = input.not_registered_reason.as_ref() else {
-        return Ok(None);
-    };
-    let Some(code) = raw
-        .code
-        .as_deref()
-        .map(str::trim)
-        .filter(|code| !code.is_empty())
-    else {
-        return Ok(None);
-    };
-    let resolved = console_refdata::resolve(
-        console_refdata::WORKPLACE_NOT_REGISTERED_REASON_KEY,
-        code,
-        raw.version.as_deref(),
-    )
-    .map_err(|error| {
-        let code = match error {
-            console_refdata::ResolveError::RetiredVersion => "reference_version_retired",
-            console_refdata::ResolveError::UnknownCode
-            | console_refdata::ResolveError::UnknownList
-            | console_refdata::ResolveError::Unavailable => "invalid_option",
-        };
-        Refusal::field("not_registered_reason", code)
-    })?;
-    Ok(Some(ResolvedReferenceCode {
-        code: resolved.code.code.to_owned(),
-        label: resolved.code.label.to_owned(),
-        list_key: resolved.list.key.to_owned(),
-        version: resolved.list.version.unwrap_or_default().to_owned(),
-        abstract_workplace: resolved.code.abstract_workplace.unwrap_or(false),
-    }))
-}
+#[path = "workplace_tx/registration_answer.rs"]
+mod registration;
+use registration::resolved_reason;
+pub(crate) use registration::{answer_event, observe_answer, registration_answer};
 
 /// Create a 사업장 under `entity` inside the caller's transaction (the
 /// one-by-one create and the bulk batch share it).
@@ -102,6 +30,7 @@ pub(crate) async fn create_workplace_in_tx(
     entity: Uuid,
     cmd: &CreateWorkplace,
     port: &dyn OrgUnitSetupWritePort,
+    references: Option<console_entity_application::WorkplaceReferenceResolver>,
 ) -> Result<(Uuid, Vec<AuditEvent>), PgEntityError> {
     let facts = lock_entity(tx, entity).await?;
     let today = today_kst(tx).await?;
@@ -112,7 +41,7 @@ pub(crate) async fn create_workplace_in_tx(
         registration_is_unit_taxation_of_other: of_other,
         creating: true,
     };
-    let reason = resolved_reason(&cmd.input)?;
+    let reason = resolved_reason(&cmd.input, None, references)?;
     let draft = validate_workplace_resolved(&cmd.input, ctx, today, reason.as_ref())?;
     let kind = usable_kind(tx, cmd.kind_code.as_deref(), None).await?;
     let branch =
@@ -189,16 +118,16 @@ pub(crate) async fn revise_workplace_in_tx(
     id: Uuid,
     rev: WorkplaceRevision,
     port: &dyn OrgUnitSetupWritePort,
+    references: Option<console_entity_application::WorkplaceReferenceResolver>,
 ) -> Result<(Uuid, Vec<AuditEvent>), PgEntityError> {
     let env = crate::revision_envelope(&rev)?;
     let (effective_from, reason) = (env.effective_from, env.reason);
     let (entity, registration, version) = lock_workplace(tx, id).await?;
-    let before_reason: Option<String> =
-        sqlx::query_scalar("SELECT not_registered_reason_code FROM workplaces WHERE id = $1")
-            .bind(id)
-            .fetch_one(tx.as_mut())
-            .await?;
-    let before_answer = registration_answer(registration, before_reason.as_deref());
+    let before_reason = registration::stored_reason(tx, id).await?;
+    let before_answer = registration_answer(
+        registration,
+        before_reason.as_ref().map(|r| r.code.as_str()),
+    );
     crate::ensure_version(env.expected_version, version)?;
     let facts = lock_entity(tx, entity).await?;
     let today = today_kst(tx).await?;
@@ -213,7 +142,7 @@ pub(crate) async fn revise_workplace_in_tx(
         registration_is_unit_taxation_of_other: of_other,
         creating: false,
     };
-    let resolved_reason = resolved_reason(&input)?;
+    let resolved_reason = resolved_reason(&input, before_reason.as_ref(), references)?;
     let draft = validate_workplace_resolved(&input, ctx, today, resolved_reason.as_ref())?;
     // MR-18: the 종사업장 일련번호 moves with its registration link, as a dated change.
     let serial: Option<String> =

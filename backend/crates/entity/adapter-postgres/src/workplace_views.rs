@@ -129,17 +129,21 @@ pub(crate) async fn views_at(
                 let rev_is_abstract: bool = r
                     .try_get::<Option<bool>, _>("rev_is_abstract")?
                     .unwrap_or(is_abstract);
-                let rev_reason = match r.try_get::<Option<String>, _>("rev_reason_code")? {
-                    Some(code) => Some(console_entity_domain::legal_entity::CodeRef {
-                        code,
-                        label: r
-                            .try_get::<Option<String>, _>("rev_reason_label")?
-                            .unwrap_or_default(),
-                        version: r
-                            .try_get::<Option<String>, _>("rev_reason_version")?
-                            .unwrap_or_default(),
-                    }),
-                    None => not_registered_reason.clone(),
+                let rev_reason = if registration_id.is_some() {
+                    None
+                } else {
+                    match r.try_get::<Option<String>, _>("rev_reason_code")? {
+                        Some(code) => Some(console_entity_domain::legal_entity::CodeRef {
+                            code,
+                            label: r
+                                .try_get::<Option<String>, _>("rev_reason_label")?
+                                .unwrap_or_default(),
+                            version: r
+                                .try_get::<Option<String>, _>("rev_reason_version")?
+                                .unwrap_or_default(),
+                        }),
+                        None => not_registered_reason.clone(),
+                    }
                 };
                 Some(WorkplaceState {
                     version,

@@ -14,7 +14,7 @@ import type { Place, StructureAct } from "../../../reference/org/domain/structur
 import { Facts, type Fact } from "../../../reference/org/ui/panel-shell";
 import { OrderButtons } from "../../../reference/org/ui/order-buttons";
 import { kindsQuery } from "../api";
-import { addressLine, registrationOf, workplaceName } from "../domain/view";
+import { addressLine, registrationOf, registrationTodo, workplaceName } from "../domain/view";
 import { INFO_LABEL, kindName, withholdingText } from "../present";
 import { AttachHost } from "./workplace-attach-sheet";
 import { WorkplaceRegistrationChangeHost } from "./workplace-registration-change";
@@ -60,6 +60,7 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
   const none = <Muted>{t("entityOps.info.none")}</Muted>;
   const info = (field: InfoKey, value: string | null | undefined) => row(INFO_LABEL[field](), value || none, { k: "info", field }, { clear: field !== "name" && Boolean(value) && field });
   const reg = registrationOf(e, w.registration_id);
+  const filing = registrationOf(e, w.filing_registration_id);
   const primary = e.workplaces.find((x) => x.is_primary);
   const head = e.workplaces.find((x) => x.id === e.head_office_workplace_id);
   const roles = [w.is_primary && t("workplace.primary"), w.is_head_office && t("workplace.headOffice")].filter(Boolean).join(" · ");
@@ -71,7 +72,9 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
   const rows: (Fact | false)[] = [
     info("name", workplaceName(w)),
     row(t("workplace.create.kind"), w.kind_code ? kindName(kinds, w.kind_code) : <Muted>{t("workplace.kind.unset")}</Muted>, { k: "kind" }, { hint: t("workplace.kind.labelOnly") }),
-    row(t("workplace.create.address"), addressLine(c?.address) || <Muted>{t("workplace.incomplete")}</Muted>, { k: "move" }),
+    w.is_abstract
+      ? { label: t("workplace.create.address"), value: w.not_registered_reason?.label ?? none }
+      : row(t("workplace.create.address"), addressLine(c?.address) || <Muted>{t("workplace.incomplete")}</Muted>, { k: "move" }),
     row(
       t("workplace.field.status"),
       <span className="row">
@@ -104,7 +107,13 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
             </div>
           ),
         }
-      : row(t("workplace.field.regMode"), <Chip tone="warn">{t("workplace.noRegistration")}</Chip>, { k: "attach" }, { add: true }),
+      : registrationTodo(w)
+        ? row(t("workplace.field.regMode"), t("workplace.registration.prompt"), { k: "attach" }, { add: true })
+        : { label: t("workplace.field.regMode"), value: w.not_registered_reason?.label ?? none },
+    !reg && {
+      label: t("workplace.filing.entityBasis"),
+      value: filing?.brn?.display ?? none,
+    },
     row(t("workplace.field.openedOn"), <span className="num">{c?.opened_on ? fmtDate(c.opened_on) : "—"}</span>, { k: "info", field: "openedOn" }, { hint: t("entityRecord.action.cor") }),
     info("representative", c?.representative_name),
     info("product", c?.main_product),
