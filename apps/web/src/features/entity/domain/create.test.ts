@@ -56,3 +56,8 @@ test("the side checklist counts 14 corporate items, with a warned CRN as entered
   expect(items.find((i) => i.key === "unitTaxation")?.state).toBe("todo");
   expect(itemsDone(items)).toBe(13);
 });
+
+test("individual certificate body sends the printed trade name; a corporation omits it", () => {
+  expect(registrationBody(corp({ bizKind: "INDIVIDUAL", name: " 가나상회 ", unitTaxation: false }))).toHaveProperty("trade_name", "가나상회");
+  expect(registrationBody(corp({ unitTaxation: false }))).not.toHaveProperty("trade_name");
+});

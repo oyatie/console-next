@@ -9,4 +9,7 @@ export const koUiField = {
   "uiField.override": "수정",
   "uiField.override.label": "{label} 직접 수정",
   "uiField.revert": "자동 값으로 다시 계산",
+  "uiField.copyUrlFailed": "주소를 복사하지 못했습니다. 주소를 선택해 직접 복사하십시오.",
+  "uiField.copyUrl": "주소 복사",
+  "uiField.copiedUrl": "주소를 복사했습니다",
 } as const;

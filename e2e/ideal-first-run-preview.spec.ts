@@ -6,6 +6,7 @@ import { setupCompany, setupRail, startOperations } from "./setup-flows";
 import { chooseWorkbook } from "./helpers/import";
 import { plain, workbook } from "./helpers/import-layouts";
 import { keyboardActivate, probeActions } from "./helpers/first-run";
+import { addDepartments } from "./structure-flows";
 
 // Each journey begins with an empty UI-created tenant and only its contracting administrator.
 test("BL-014: unplaced is a warning, stale preview re-arms, and operating Home keeps placement", { tag: "@first-run" }, async ({ browser }, info) => {
@@ -87,7 +88,9 @@ test("BL-016: setup and seven-day operating bands persist across routes in a key
   await keyboardActivate(setupRail(admin).getByRole("link", { name: "사업장 등록" }).first());
   await registerWorkplace(admin, "단계정밀", "본사", false, keyboard);
   await go(admin, "/");
-  await keyboardActivate(setupRail(admin).getByRole("button", { name: "부서 없이 진행" }));
+  await keyboardActivate(setupRail(admin).getByRole("link", { name: "부서 추가" }).first());
+  await addDepartments(admin, "본사", ["단계지원팀"]);
+  await go(admin, "/");
   await keyboardActivate(setupRail(admin).getByRole("button", { name: "직원은 나중에" }));
   await keyboardActivate(setupRail(admin).getByRole("button", { name: "담당자는 나중에" }));
   await expect(setupRail(admin)).toContainText("운영 시작 후에도 운영 계정 혼자 처리합니다");

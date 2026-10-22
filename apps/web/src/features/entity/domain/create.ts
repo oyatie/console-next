@@ -123,6 +123,7 @@ export function entityBody(d: Draft): LegalEntityInput {
 export function registrationBody(d: Draft): RegistrationInput | null {
   if (isFounding(d) || !registrationReady(d)) return null;
   return {
+    ...(d.bizKind === "INDIVIDUAL" ? { trade_name: d.name.trim() } : {}),
     brn: d.brn,
     classification_reason: d.classificationReason.trim() || null,
     opened_on: d.openedOn,

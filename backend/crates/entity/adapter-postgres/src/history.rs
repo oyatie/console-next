@@ -1,12 +1,5 @@
-//! Dated history of a 법인, 사업자등록 or 사업장: every revision with what it
-//! changed against the state in force on its date (newest first).
-//!
-//! Each revision row is read whole (`to_jsonb`) minus bookkeeping columns,
-//! with addresses as text and child lists as arrays, then diffed in Rust.
-//! Restricted personal fields (대표자, 임원, 공동사업자, a 사업장's 대표자 name)
-//! are left out for callers without the write permission, so their changes
-//! are not listed either.
-
+//! Dated record history, diffed against the state in force on each revision date.
+//! Restricted personal fields are omitted unless the caller may write them.
 use console_entity_application::{Actor, RevisionEntry};
 use console_entity_domain::Refusal;
 use console_platform_db::with_org_conn;
@@ -21,7 +14,7 @@ use crate::{PgEntityError, PgEntityStore, Tx};
 /// Bookkeeping columns: never listed as a change.
 const META: &str = "ARRAY['org_id','id','legal_entity_id','registration_id','workplace_id','insurer','version',\
     'command_id','effective_from','change_mode','reason_code','actor_id','payload_digest','settings_snapshot',\
-    'created_at','trade_name','head_office_address_id','business_address_id','address_id','mail_address_id']";
+    'created_at','head_office_address_id','business_address_id','address_id','mail_address_id']";
 
 /// One address as display text (road address, then 상세).
 const ADDR: &str = "(SELECT a.road_addr_part1 || COALESCE(', ' || a.detail, '') FROM entity_addresses a WHERE a.id = {})";
@@ -69,7 +62,6 @@ fn sql(record: Record) -> String {
             ),
         ),
     };
-    // The N-1 copy a 법인명 change appends (revision_copy::append_renamed_registrations) changes nothing a person sees.
     let skip = match record {
         Record::Registration => format!(
             "AND r.reason_code <> '{}'",
@@ -77,10 +69,17 @@ fn sql(record: Record) -> String {
         ),
         _ => String::new(),
     };
+    let meta = if matches!(record, Record::Registration) {
+        format!(
+            "{META} || CASE WHEN (SELECT e.biz_kind FROM legal_entities e JOIN business_registrations b ON b.legal_entity_id=e.id WHERE b.id=r.registration_id) = 'INDIVIDUAL' THEN ARRAY[]::text[] ELSE ARRAY['trade_name'] END"
+        )
+    } else {
+        META.to_owned()
+    };
     let rows = format!(
         "SELECT '' AS chain, r.version, r.effective_from, r.created_at, r.change_mode, r.reason_code, \
                 u.display_name AS actor_name, r.actor_id, \
-                (to_jsonb(r) - {META}) || jsonb_build_object({extra}) AS state, NULL::jsonb AS before_state \
+                (to_jsonb(r) - ({meta})) || jsonb_build_object({extra}) AS state, NULL::jsonb AS before_state \
          FROM {table} r LEFT JOIN users u ON u.id = r.actor_id WHERE r.{key} = $1 {skip} UNION ALL {}",
         ledger(record)
     );

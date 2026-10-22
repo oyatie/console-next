@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - employees
+operationId: getCertificate
+summary: getCertificate
+description: >-
+  Cedar certificate action: tenant equality and server-computed HR grant; scope is checked in the transaction.
+  Issue/reissue refuse ineligible and expired-retention employees before numbering. Issued facts are
+  immutable. Errors include a support trace_id.
+security:
+  - bearerAuth: []
+responses:
+  '200':
+    description: Certificate operation result
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/Certificate'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    description: not_found; absent and foreign objects are concealed
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: >-
+      certificate_settings_required, certificate_retention_expired, certificate_ineligible,
+      certificate_facts_missing, certificate_numbers_exhausted, certificate_state_conflict or conflicting
+      intent
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: certificate_invalid or validation; no business side effect
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+parameters:
+  - name: id
+    in: path
+    required: true
+    schema:
+      type: string
+      format: uuid

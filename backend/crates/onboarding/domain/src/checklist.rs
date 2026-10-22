@@ -135,11 +135,11 @@ pub fn checklist(f: &SetupFacts) -> Checklist {
     steps.push(workplace);
 
     let mut org = step("org", "operations", Todo, "add_department");
-    org.skippable = true;
+    org.skippable = false;
     if f.workplaces == 0 {
         org.state = Blocked;
         org.remedy = Some("create_workplace");
-    } else if f.org_units > 0 || f.org_step_skipped {
+    } else if f.org_units > 0 {
         org.state = Done;
         org.count = Some(f.org_units);
     }
@@ -213,9 +213,9 @@ pub fn checklist(f: &SetupFacts) -> Checklist {
     let mut golive = step("golive", "people", Todo, "open_go_live_preview");
     if !f.phase_is_setup {
         golive.state = Done;
-    } else if let Some(first) = p.blockers.first() {
+    } else if !p.blockers.is_empty() {
         golive.state = Blocked;
-        golive.remedy = first.remedy;
+        golive.remedy = p.blockers.first().and_then(|b| b.remedy);
         golive.count = Some(i64::try_from(p.blockers.len()).unwrap_or(i64::MAX));
     }
     steps.push(golive);

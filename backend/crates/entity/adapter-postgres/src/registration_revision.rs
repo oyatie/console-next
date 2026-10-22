@@ -35,7 +35,7 @@ pub(crate) async fn insert_revision(
            tax_office_label, tax_type, status, status_since, status_until, change_mode, reason_code, actor_id, payload_digest, \
            settings_snapshot, command_id, classification_reason, evidence_document_id) \
          VALUES (NULLIF(current_setting('app.current_org', true), '')::uuid, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, \
-           $14,$15,$16,$17,$18,$19,$20,$21,$22,$23, sha256(convert_to($24::jsonb::text, 'UTF8')), $25, $26, CASE WHEN $27 THEN $28 ELSE (SELECT classification_reason FROM business_registration_revisions WHERE registration_id = $1 ORDER BY effective_from DESC, version DESC LIMIT 1) END, $29) RETURNING id",
+           $14,$15,$16,$17,$18,$19,$20,$21,$22,$23, sha256(convert_to($24::jsonb::text, 'UTF8')), $25, $26, CASE WHEN $27 THEN $28 ELSE (SELECT classification_reason FROM business_registration_revisions WHERE registration_id = $1 ORDER BY (effective_from <= $3) DESC, effective_from DESC, version DESC LIMIT 1) END, $29) RETURNING id",
     )
     .bind(id)
     .bind(m.version)
@@ -148,12 +148,15 @@ pub(crate) async fn revise_registration_in_tx(
 > {
     let env = crate::revision_envelope(rev)?;
     let (effective_from, reason) = (env.effective_from, env.reason);
+    // Inherit the facts in force on this date; use the latest only if none precedes it.
     let head = sqlx::query(
         "SELECT legal_entity_id, brn, voided_at IS NOT NULL AS voided, \
+           (SELECT trade_name FROM business_registration_revisions r WHERE r.registration_id = h.id ORDER BY (effective_from <= $2) DESC, effective_from DESC, version DESC LIMIT 1) AS trade_name, \
            (SELECT COALESCE(max(version), 0) FROM business_registration_revisions r WHERE r.registration_id = h.id) AS version \
          FROM business_registrations h WHERE id = $1 FOR UPDATE",
     )
     .bind(id)
+    .bind(effective_from)
     .fetch_optional(tx.as_mut())
     .await?
     .ok_or_else(|| Refusal::not_found("registration_not_found"))?;
@@ -168,9 +171,11 @@ pub(crate) async fn revise_registration_in_tx(
         new_certificate(tx, doc, entity, id).await?;
     }
     let today = today_kst(tx).await?;
+    let head_trade_name: Option<String> = head.try_get("trade_name")?;
     let ctx = EntityContext {
         biz_kind: facts.biz_kind,
         entity_name: &facts.name,
+        head_trade_name: Some(head_trade_name.as_deref()),
     };
     let (draft, warnings) = validate_registration(&rev.input, ctx, today)?;
     crate::name_evidence::revise_classification(tx, entity, id, facts.biz_kind, &draft).await?;

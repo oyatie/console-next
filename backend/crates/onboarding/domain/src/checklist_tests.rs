@@ -43,15 +43,15 @@ fn an_empty_tenant_starts_at_the_certificate_and_blocks_downstream_with_fixes() 
 }
 
 #[test]
-fn regression_w10_skipping_org_and_deferring_people_complete_their_steps() {
+fn regression_w10_org_units_and_deferring_people_complete_their_steps() {
     let f = SetupFacts {
         phase_is_setup: true,
         terms_accepted: true,
         entities: 1,
         registrations: 1,
         workplaces: 1,
+        org_units: 1,
         org_change_approvers: 1,
-        org_step_skipped: true,
         employees_step_deferred: true,
         access_admin_holders: 1,
         ..SetupFacts::default()
@@ -172,4 +172,63 @@ fn regression_governance_07_a_security_contact_that_cannot_be_recorded_is_never_
         }),
         Some(StepState::Done)
     );
+}
+
+#[test]
+fn department_is_required_at_go_live_both_ways() {
+    for org_step_skipped in [false, true] {
+        let base = SetupFacts {
+            phase_is_setup: true,
+            terms_accepted: true,
+            entities: 1,
+            registrations: 1,
+            workplaces: 1,
+            access_admin_holders: 1,
+            org_change_approvers: 1,
+            employees_step_deferred: true,
+            org_step_skipped,
+            ..SetupFacts::default()
+        };
+
+        // When org_units == 0: org is required (not skippable), and blocks go-live
+        let zero_org = checklist(&SetupFacts {
+            org_units: 0,
+            ..base
+        });
+        let org_step = zero_org.steps.iter().find(|s| s.key == "org").unwrap();
+        assert!(!org_step.skippable, "부서 item is required, not skippable");
+        assert_ne!(
+            org_step.state,
+            StepState::Done,
+            "부서 is not done when 0 units"
+        );
+        let golive_step = zero_org.steps.iter().find(|s| s.key == "golive").unwrap();
+        assert_eq!(
+            golive_step.state,
+            StepState::Blocked,
+            "0 부서 blocks go-live"
+        );
+        assert_eq!(
+            golive_step.remedy,
+            Some("add_department"),
+            "remedy directs to adding a department"
+        );
+        assert_eq!(golive_step.count, Some(1));
+
+        // When org_units > 0: org is done, and does not block go-live
+        let with_org = checklist(&SetupFacts {
+            org_units: 2,
+            ..base
+        });
+        let org_step_ok = with_org.steps.iter().find(|s| s.key == "org").unwrap();
+        assert!(!org_step_ok.skippable, "부서 item is required");
+        assert_eq!(org_step_ok.state, StepState::Done);
+        assert_eq!(org_step_ok.count, Some(2));
+        let golive_ok = with_org.steps.iter().find(|s| s.key == "golive").unwrap();
+        assert_eq!(
+            golive_ok.state,
+            StepState::Todo,
+            "positive 부서 allows go-live preview"
+        );
+    }
 }

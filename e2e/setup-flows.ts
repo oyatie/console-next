@@ -208,7 +208,13 @@ export async function homeRail(page: Page) {
   return setupRail(page);
 }
 
-/** The entity `name` and its workplace `workplace`, each opened from the setup rail. Ends on the entity's page. */
+/** The 부서 every setup helper adds under its first workplace: one is required before 운영 시작 (MVP requirement #4). */
+export const SETUP_DEPARTMENT = "기획관리팀";
+
+/**
+ * The entity `name`, its workplace `workplace` and one 부서 under it, each opened from the setup rail. Ends on the
+ * entity's page.
+ */
 export async function setupCompany(admin: Page, name: string, workplace = "본점") {
   await go(admin, "/");
   await setupRail(admin).getByRole("link", { name: "법인 등록" }).first().click();
@@ -219,6 +225,9 @@ export async function setupCompany(admin: Page, name: string, workplace = "본�
   await expect(add).toHaveAttribute("href", /\/workplaces\/new$/);
   await add.click();
   await registerWorkplace(admin, name, workplace);
+  await go(admin, "/");
+  await setupRail(admin).getByRole("link", { name: "부서 추가" }).first().click();
+  await addDepartments(admin, workplace, [SETUP_DEPARTMENT]);
   await go(admin, entityPage);
   await expect(admin.getByRole("heading", { name: new RegExp(name), level: 1 })).toBeVisible();
 }

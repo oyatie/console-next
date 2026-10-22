@@ -23,3 +23,7 @@
   .well { padding: 0; background: none; }
   .paper[data-size="a4"] { width: 100%; border: 0; box-shadow: none; }
 }
+
+.seal { align-self: flex-end; text-align: end; }
+.sealImage { display: block; max-width: calc(var(--space-6) * 5); max-height: calc(var(--space-6) * 5); object-fit: contain; }
+.voided { border: var(--space-1) double var(--ink); padding: var(--space-3); font-size: var(--text-lg); font-weight: var(--fw-strong); text-align: center; }

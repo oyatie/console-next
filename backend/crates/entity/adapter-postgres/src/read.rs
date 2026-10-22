@@ -120,7 +120,7 @@ pub(crate) async fn entities_at(
     };
     for e in &mut entities {
         e.name_reviews = reviews.remove(&e.id).unwrap_or_default();
-        // 법인명/상호 has one stored source: every registration's ① is the entity's name.
+        // Only individual certificates own their 상호; legacy NULL uses the entity name.
         let name = e
             .current
             .as_ref()
@@ -131,7 +131,9 @@ pub(crate) async fn entities_at(
             .iter_mut()
             .filter_map(|r| r.current.as_mut())
         {
-            r.trade_name.clone_from(&name);
+            if e.biz_kind != Some(BizKind::Individual) || r.trade_name.is_empty() {
+                r.trade_name.clone_from(&name);
+            }
         }
         e.identity_problems = console_entity_application::name_evidence::identity_problems(e);
     }

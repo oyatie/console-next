@@ -148,35 +148,8 @@ impl GateResult {
 // Entry points.
 // ===========================================================================
 
-pub fn check_workspace(workspace_dir: &Path) -> Result<GateResult, String> {
-    let mut result = GateResult::default();
-
-    let migration_files = collect_migration_files(workspace_dir)?;
-    check_migrations(migration_files, &mut result);
-
-    let rust_files = collect_rust_files(workspace_dir)?;
-    check_audit_tx_guc_bind(&rust_files, &mut result);
-
-    Ok(result)
-}
-
-/// Check a migrations directory in isolation (used by the unit tests).
-///
-/// `root` is a directory that CONTAINS a `migrations/` subdirectory (the scan
-/// descends into it), mirroring `check_workspace`'s discovery.
-#[must_use]
-pub fn check_migrations_root(root: &Path) -> GateResult {
-    let mut result = GateResult::default();
-    match collect_migration_files(root) {
-        Ok(files) => check_migrations(files, &mut result),
-        Err(e) => result.violations.push(Violation {
-            kind: ViolationKind::ScanError,
-            file: root.to_path_buf(),
-            detail: e,
-        }),
-    }
-    result
-}
+mod inputs;
+pub use inputs::{check_migrations_root, check_workspace};
 
 // ===========================================================================
 // Per-table evidence aggregated across all migration files.

@@ -41,7 +41,7 @@ export function entityFields(e: LegalEntity) {
   return {
     displayName: text(t("entityCreate.field.displayName"), registry, "display_name", c?.display_name ?? ""),
     englishName: text(t("entity.name.english"), registry, "english_name", c?.english_name ?? ""),
-    name: text(t(e.biz_kind === "CORPORATION" ? "entityRecord.field.corpName" : "entityRecord.field.tradeName"), cert, "name", c?.name ?? "", true),
+    name: text(t(e.biz_kind === "CORPORATION" ? "entityRecord.field.corpName" : e.biz_kind === "INDIVIDUAL" ? "entityCreate.field.orgName" : "entityRecord.field.tradeName"), e.biz_kind === "INDIVIDUAL" ? t("entityRecord.registry.titleOther") : cert, "name", c?.name ?? "", e.biz_kind !== "INDIVIDUAL"),
     representatives: {
       label: t("entityRecord.field.representatives"), group: registry, owner: { kind: "entity" }, reissue: true,
       current: reps.join(", ") + (reps.length > 1 && c?.representation_mode ? ` (${label(REPRESENTATION, c.representation_mode)})` : ""),

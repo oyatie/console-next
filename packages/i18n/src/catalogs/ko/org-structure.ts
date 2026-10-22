@@ -19,6 +19,8 @@ export const koOrgStructure = {
   "orgStructure.stat.depts": "부서",
   "orgStructure.members.none": "바로 배치된 사람이 없습니다",
   "orgStructure.members.all": "직원 목록에서 전체 {count, number}명",
+  "orgStructure.members.joinersRestricted": "입사 예정 인원을 보려면 직원 목록 조회 권한이 필요합니다",
+  "orgStructure.members.joinersFailed": "입사 예정 인원을 불러오지 못했습니다",
   "orgStructure.wp.roles": "본점 · 대표",
   "orgStructure.wp.notRoles": "아님 · 대표 사업장은 {primary}, 본점은 {head}",
   "orgStructure.wp.ownCert": "이 사업장 등록증",

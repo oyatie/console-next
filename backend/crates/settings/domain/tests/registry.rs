@@ -10,7 +10,7 @@ use std::collections::HashSet;
 /// section switches + PEOPLE-A's two `people.void_*` + D26's five
 /// `approval.policy.*` + IMPORT-2's eight `import.*` + BE-MIG's
 /// `import.apply.max_rows` + PERF-BE's six `db.pool.*`.
-const EXPECTED_KEYS: usize = 34 + 17 + 1 + 1 + 1 + 10 + 2 + 5 + 8 + 1 + 6 + 3 + 2;
+const EXPECTED_KEYS: usize = 34 + 17 + 1 + 1 + 1 + 10 + 2 + 5 + 8 + 1 + 6 + 3 + 2 + 1;
 
 #[test]
 fn roster_has_every_key_once_and_round_trips() {

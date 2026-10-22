@@ -128,7 +128,8 @@ pub struct RegistrationState {
     /// The as-of date is before the first record: this is that first record
     /// (INTEG-3), shown so the screen is never blank before 개업일.
     pub before_first_record: bool,
-    /// The entity's name (derived, never stored on the registration).
+    /// INDIVIDUAL: the certificate's own 상호 (legacy NULL falls back to the entity name).
+    /// Other kinds: the entity's 법인명, derived.
     pub trade_name: String,
     pub classification_reason: Option<String>,
     #[serde(with = "crate::iso_date::option")]

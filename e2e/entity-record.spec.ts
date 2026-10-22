@@ -3,7 +3,7 @@ import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
 import { go, kstDate, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
-import { REGISTRATION_FIXTURES, registerEntity, staffedTenant, tenantWithExecutive, brnDisplay } from "./setup-flows";
+import { REGISTRATION_FIXTURES, registerEntity, SECOND, staffedTenant, brnDisplay } from "./setup-flows";
 
 // The 법인 record (spec S3), from an empty tenant through the UI only: every fact with its one verb, 변경 vs 정정
 // with nothing preselected (and the dated change shown as scheduled), a 정정만 fact, the 사업자등록번호 correction in
@@ -103,9 +103,12 @@ test("법인 종료 after 운영 시작: blockers first and the date locked; a n
   await expect(blocked.getByRole("button", { name: "법인 종료" })).toHaveAttribute("aria-disabled", "true");
   await expectAccessible(staffed.admin, "S3 close: blocked");
 
-  // Never used: one 사업장, no 부서, nobody ever placed — after go-live it is deleted, not closed (CRUD: decided by use),
-  // and the record says why 폐업 is not the way. regression: only 「법인 종료 계획 보기」 was offered after go-live.
-  const { admin } = await tenantWithExecutive(browser, "cs-close", "새온바이오");
+  // Never used: a second 법인 entered after go-live, no 사업장, no 부서, nobody ever placed — it is deleted, not closed
+  // (CRUD: decided by use), and the record says why 폐업 is not the way. regression: only 「법인 종료 계획 보기」 was
+  // offered after go-live. (A tenant's first 법인 always holds a 부서 by then: 운영 시작 requires one.)
+  const { admin } = staffed;
+  await go(admin, "/org/entities/new");
+  await registerEntity(admin, "새온바이오", false, undefined, SECOND);
   await go(admin, "/org/entities");
   await admin.getByRole("row", { name: /새온바이오/ }).click();
   await expect(admin.getByRole("button", { name: "법인 종료 계획 보기" })).toHaveCount(0);

@@ -68,7 +68,7 @@ ci/gates/migration-safety/tests/gate_detects_violation.rs	372
 ci/gates/personal-data-classification/src/lib.rs	1255
 ci/gates/personal-data-classification/tests/gate_detects_violation.rs	1364
 ci/gates/pii-no-logs/src/lib.rs	399
-ci/gates/tenant-isolation/src/lib.rs	798
+ci/gates/tenant-isolation/src/lib.rs	779
 ci/gates/writer-ownership/src/lib.rs	924
 ci/gates/writer-ownership/tests/census_executes_against_postgres.rs	1804
 ci/gates/writer-ownership/tests/gate_detects_violation.rs	2266
@@ -204,7 +204,7 @@ crates/payroll/adapter-postgres/src/pay_run.rs	535
 crates/payroll/adapter-postgres/tests/pay_run_port_as_runtime_role.rs	1190
 crates/payroll/adapter-postgres/tests/payroll_lifecycle_rls_as_runtime_role.rs	417
 crates/payroll/adapter-postgres/tests/payroll_rls_surfaces_as_runtime_role.rs	393
-crates/payroll/domain/src/lib.rs	1429
+crates/payroll/domain/src/lib.rs	1400
 crates/payroll/rest/src/lib.rs	398
 crates/payroll/rest/src/lifecycle.rs	615
 crates/payroll/rest/src/payslip_draft.rs	371

@@ -55,6 +55,7 @@ export function registrationInput(e: LegalEntity, id: string): RegistrationInput
   const c = r?.current;
   if (!r || !c || !c.opened_on || !c.business_address || c.unit_taxation == null || !c.tax_office_label || !c.tax_type) return null;
   return {
+    ...(e.biz_kind === "INDIVIDUAL" ? { trade_name: c.trade_name } : {}),
     brn: r.brn?.value ?? null,
     classification_reason: c.classification_reason,
     opened_on: c.opened_on,

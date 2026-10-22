@@ -46,6 +46,7 @@ export function RosterHead({ headcount, manage, status, review, onView, actions,
           <>
             <Link className={buttonClass()} to="/people/import"><Upload size={16} aria-hidden /> {t("roster.head.import")}</Link>
             {actions}
+            <Link className={buttonClass()} to="/people/certificates" search={{}}>{t("empDoc.certificate.register")}</Link>
             <Link className={buttonClass()} from="/people" to="/people" search={(prev) => ({ ...prev, export: "register" })}><FileText size={16} aria-hidden /> {t("roster.head.register")}</Link>
             <Link className={buttonClass()} from="/people" to="/people" search={(prev) => ({ ...prev, bulk: "paste" })}><FileSpreadsheet size={16} aria-hidden /> {t("bulk.openPaste")}</Link>
             <MenuButton

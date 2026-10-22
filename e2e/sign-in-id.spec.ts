@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { josa } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { tenantSlugField, firstSignIn, go, newContext, option, stepUp, takeCode, unique, vendorPage } from "./flows";
@@ -115,7 +116,7 @@ test("sign-in ID: a rename keeps the old ID signing in, the history shows both, 
   await admin.evaluate(() => void window.__shifts?.splice(0));
   await expectAccessible(admin, "sign-in ID change form");
   await panel.getByRole("button", { name: "아이디 저장" }).click();
-  await expect(panel.getByRole("status")).toContainText(`이개명님의 아이디를 lee.new@${domain}으로(로) 변경했습니다`);
+  await expect(panel.getByRole("status")).toContainText(`이개명님의 아이디를 ${josa(`lee.new@${domain}`, "으로로")} 변경했습니다`);
   await panel.getByRole("button", { name: "아이디 이력" }).click();
   const history = panel.getByRole("table", { name: "아이디 이력" });
   await expect(history.getByRole("row", { name: new RegExp(`lee.new@${domain}.*현재`) })).toBeVisible();

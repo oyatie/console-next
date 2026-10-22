@@ -27,6 +27,7 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
   const f = registrationFields(r);
   const ef = entityFields(e);
   const corp = e.biz_kind === "CORPORATION";
+  const name = e.biz_kind === "INDIVIDUAL" ? f.tradeName : ef.name;
   const holder = e.workplaces.find((w) => w.id === r.holder_workplace_id);
   const status = c ? labeled(RECORD_STATUS, c.status) : null;
   const reps = e.current?.representatives;
@@ -64,8 +65,7 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
           <span className={s.line}><span className="code">{r.brn?.display ?? "—"}</span></span>
           <span className={`${s.line} ${s.sub}`}>{t(operating ? "entityRecord.cert.brnLocked" : "entityRecord.cert.brnSetup")}</span>
         </FactRow>
-        {/* Item 1 is the legal name itself (one stored source): the row shows the value its edit changes. */}
-        <FactRow no={1} label={ef.name.label} wide action={fix(ef.name)}>{e.current?.name ?? "—"}</FactRow>
+        <FactRow no={1} label={name.label} wide action={fix(name)}>{name.current}</FactRow>
         <FactRow no={2} label={t(corp ? "entityRecord.field.representatives" : "entityRecord.field.owner")} action={fix(ef.representatives)}>{reps ? reps.join(", ") || "—" : t("entity.field.restricted")}</FactRow>
         <FactRow no={3} label={t("entityRecord.field.openedOn")} action={{ kind: "cor", onPress: () => act.field(f.openedOn) }}><span className="num">{c?.opened_on ? fmtDate(c.opened_on) : "—"}</span></FactRow>
         {corp ? (

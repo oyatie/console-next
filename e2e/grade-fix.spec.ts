@@ -66,7 +66,7 @@ test("wrong-kind, inactive and missing catalog IDs are refused visibly without c
   await correct.getByRole("button", { name: "직급 추가", exact: true }).click();
   await correct.getByRole("textbox", { name: "새 직급 이름", exact: true }).fill("Inactive");
   await correct.getByRole("button", { name: "추가", exact: true }).click();
-  await expect(correct).toContainText("Inactive은(는) 사용 중지된 항목입니다");
+  await expect(correct).toContainText("Inactive는 사용 중지된 항목입니다");
   await expect(correct.getByRole("radio", { name: "Inactive", exact: true })).toHaveCount(0);
   await correct.getByRole("button", { name: "다시 사용하고 선택", exact: true }).click();
   await expect(correct.getByRole("radio", { name: "Inactive", exact: true })).toBeChecked();

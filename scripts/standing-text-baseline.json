@@ -30,7 +30,7 @@
   "apps/web/src/features/org/OrgChange.tsx#OrgChanges": 31,
   "apps/web/src/features/org/ui/bulk-move-page.tsx#BulkMovePage": 61,
   "apps/web/src/features/people/ui/bulk-page.tsx#BulkPage": 85,
-  "apps/web/src/features/people/ui/card-page.tsx#EmployeeCard": 460,
+  "apps/web/src/features/people/ui/card-page.tsx#EmployeeCard": 458,
   "apps/web/src/features/people/ui/exit-list.tsx#ExitCaseList": 51,
   "apps/web/src/features/people/ui/exit-page.tsx#ExitCasePage": 102,
   "apps/web/src/features/people/ui/grid-page.tsx#GridPage": 68,
@@ -51,5 +51,7 @@
   "apps/web/src/features/statutory/ui/statutory-page.tsx#StatutoryPage": 52,
   "apps/web/src/routes/home-screen.tsx#HomeScreen": 247,
   "apps/web/src/routes/org-screen.tsx#OrgScreen": 309,
-  "apps/web/src/features/company-domain/ui/domain-page.tsx#default": 32
+  "apps/web/src/features/company-domain/ui/domain-page.tsx#default": 32,
+  "apps/web/src/features/people/ui/certificate-page.tsx#CertificatePage": 38,
+  "apps/web/src/features/people/ui/certificates-page.tsx#CertificatesPage": 55
 }

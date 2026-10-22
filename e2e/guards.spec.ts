@@ -113,12 +113,12 @@ test("nobody acts on their own record, the ops account keeps its sign-in path, a
     await empno.getByRole("radiogroup", { name: /언제부터/ }).getByText("오늘부터", { exact: true }).click();
     await reasonChip(empno, "사번 체계 변경", "사유").click();
     await empno.getByRole("button", { name: "사번 변경", exact: true }).click();
-    await expect(admin.getByText("사번을 HB-1001으로(로) 변경했습니다")).toBeVisible();
+    await expect(admin.getByText("사번을 HB-1001로 변경했습니다")).toBeVisible();
 
     await registerEmployee(admin, { name: "최자동", unit: "인사부" });
     await expect(admin.getByRole("main")).toContainText("E-000002");
     await submitRegistration(admin, { name: "정수동", number: "E-000001", unit: "인사부" });
-    await expect(admin.getByRole("alert")).toContainText("사번 E-000001은(는) 예전 사번으로 묶여 있습니다 · 다른 사번을 쓰거나, 비워 두면 다음 사번을 자동으로 부여합니다");
+    await expect(admin.getByRole("alert")).toContainText("사번 E-000001은 예전 사번으로 묶여 있습니다 · 다른 사번을 쓰거나, 비워 두면 다음 사번을 자동으로 부여합니다");
     await expect(admin.getByRole("alert")).not.toContainText("요청을 처리하지 못했습니다");
     await shot(admin, "rec02-register-after");
   });

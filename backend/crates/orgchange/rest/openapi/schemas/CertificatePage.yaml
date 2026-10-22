@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+  - items
+  - next_cursor
+properties:
+  items:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [id, employee_id, certificate_no, name, kind, purpose, issued_at, voided_at, replaces_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        employee_id:
+          type: string
+          format: uuid
+        certificate_no:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [EMPLOYMENT, CAREER, EXIT]
+        purpose:
+          type: string
+        issued_at:
+          type: string
+          format: date-time
+        voided_at:
+          type: [string, 'null']
+          format: date-time
+        replaces_id:
+          type: [string, 'null']
+          format: uuid
+  next_cursor:
+    type:
+      - string
+      - 'null'

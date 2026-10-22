@@ -5,7 +5,10 @@
 //! silently estimate tax-table values. Production payroll release remains gated
 //! by licensed 노무사/세무사 validation artifacts.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
+pub mod minimum_wage;
 pub mod severance_window;
+
+pub use minimum_wage::*;
 
 use console_kernel_core::KernelError;
 use time::Date;
@@ -202,16 +205,6 @@ pub struct MonthlyBaseLimit {
     pub period: EffectivePeriod,
     pub minimum_won: i64,
     pub maximum_won: i64,
-    pub instrument: Instrument,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MinimumWageRate {
-    pub period: EffectivePeriod,
-    pub hourly_won: i64,
-    /// 10,320 × 8. OURS, not the Minister's — the 고시 carries no daily figure.
-    pub daily_8h_won: i64,
-    pub monthly_209h_won: i64,
     pub instrument: Instrument,
 }
 
@@ -1068,24 +1061,6 @@ pub fn national_pension_base_limits() -> Vec<MonthlyBaseLimit> {
     ]
 }
 
-#[must_use]
-pub fn minimum_wage_rates() -> Vec<MinimumWageRate> {
-    vec![MinimumWageRate {
-        period: EffectivePeriod::new(date!(2026 - 01 - 01), Some(date!(2027 - 01 - 01))),
-        hourly_won: 10_320,
-        daily_8h_won: 82_560,
-        monthly_209h_won: 2_156_880,
-        instrument: Instrument {
-            name_ko: "2026년 적용 최저임금 고시",
-            article_ko: "1. 모든 산업 시간급 10,320원 · 월환산액 2,156,880원(209시간) · 2. 사업의 종류별 구분 없이 모든 사업장에 동일하게 적용 · 3. 적용기간 2026.1.1.~2026.12.31.",
-            promulgation_ko: "고용노동부고시 제2025-47호 (발령 2025. 8. 5.)",
-            enforced_on: date!(2026 - 01 - 01),
-            url: "https://www.law.go.kr/행정규칙/2026년 적용 최저임금 고시",
-            retrieved_on: statutory_instruments_retrieved_on(),
-        },
-    }]
-}
-
 /// 소득세법 시행령 별표 2 — the instrument step 1 refuses to guess at.
 ///
 /// FOUR rows for one calendar year, because the 별표 carries its OWN 시행일자,
@@ -1258,13 +1233,6 @@ pub fn national_pension_limit_on(day: Date) -> Result<MonthlyBaseLimit, KernelEr
         .into_iter()
         .find(|limit| limit.period.contains(day))
         .ok_or_else(|| KernelError::validation(format!("missing pension base limit for {day}")))
-}
-
-pub fn minimum_wage_on(day: Date) -> Result<MinimumWageRate, KernelError> {
-    minimum_wage_rates()
-        .into_iter()
-        .find(|rate| rate.period.contains(day))
-        .ok_or_else(|| KernelError::validation(format!("missing minimum wage for {day}")))
 }
 
 pub fn withholding_table_instrument_on(day: Date) -> Result<Instrument, KernelError> {
@@ -3476,5 +3444,46 @@ mod tests {
             days_covered >= 300,
             "sweep only produced {days_covered} drafts — it cannot be proving much"
         );
+    }
+
+    #[test]
+    fn minimum_wage_on_2027_01_01_returns_2027_gosi_figures_and_promulgation() {
+        let rate = minimum_wage_on(date!(2027 - 01 - 01)).unwrap();
+        assert_eq!(rate.hourly_won, 10_700);
+        assert_eq!(rate.daily_8h_won, 85_600);
+        assert_eq!(rate.monthly_209h_won, 2_236_300);
+        assert!(
+            rate.instrument
+                .promulgation_ko
+                .contains("고용노동부고시 제2026-60호")
+        );
+    }
+
+    #[test]
+    fn minimum_wage_on_2026_12_31_retains_2026_hourly_rate() {
+        let rate = minimum_wage_on(date!(2026 - 12 - 31)).unwrap();
+        assert_eq!(rate.hourly_won, 10_320);
+    }
+
+    #[test]
+    fn minimum_wage_rates_are_contiguous_through_2027_12_31() {
+        let rates = minimum_wage_rates();
+        for pair in rates.windows(2) {
+            assert_eq!(pair[0].period.to_exclusive, Some(pair[1].period.from));
+        }
+        assert!(minimum_wage_on(date!(2027 - 12 - 31)).is_ok());
+    }
+
+    #[test]
+    fn minimum_wage_hint_source_resolves_mid_2027() {
+        assert!(minimum_wage_on(date!(2027 - 06 - 30)).is_ok());
+    }
+
+    #[test]
+    fn every_minimum_wage_row_satisfies_daily_8h_and_monthly_209h_identities() {
+        for row in minimum_wage_rates() {
+            assert_eq!(row.daily_8h_won, row.hourly_won * 8);
+            assert_eq!(row.monthly_209h_won, row.hourly_won * 209);
+        }
     }
 }

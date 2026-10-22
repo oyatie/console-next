@@ -17,6 +17,7 @@ pub(crate) fn ready() -> SetupFacts {
         entities: 1,
         registrations: 1,
         workplaces: 1,
+        org_units: 1,
         org_change_approvers: 1,
         org_change_routed: true,
         employees: 1,
@@ -32,6 +33,33 @@ fn workplace(id: &str, name: &str) -> Record {
         id: id.to_owned(),
         name: name.to_owned(),
         legal_entity_id: "e1".to_owned(),
+    }
+}
+
+#[test]
+fn department_is_required_by_preview_and_backstop_even_after_a_legacy_skip() {
+    for org_change_routed in [false, true] {
+        for org_step_skipped in [false, true] {
+            let mut f = SetupFacts {
+                org_units: 0,
+                org_step_skipped,
+                org_change_routed,
+                ..ready()
+            };
+            let missing = preview(&f, &Records::new());
+            assert_eq!(
+                missing.blockers,
+                vec![item("no_department", 0, "add_department")]
+            );
+            assert!(!missing.warnings.iter().any(|w| w.code == "no_department"));
+            assert_eq!(backstop(&f, true, true, true, true), vec!["org_units"]);
+
+            f.org_units = 1;
+            let present = preview(&f, &Records::new());
+            assert!(present.blockers.is_empty());
+            assert!(backstop(&f, true, true, true, true).is_empty());
+            assert_ne!(missing.digest, present.digest);
+        }
     }
 }
 
@@ -147,6 +175,7 @@ fn every_blocker_names_its_fix_and_changes_the_digest() {
             "terms_not_accepted",
             "no_access_admin",
             "no_legal_entity",
+            "no_department",
             "no_org_change_approver"
         ]
     );

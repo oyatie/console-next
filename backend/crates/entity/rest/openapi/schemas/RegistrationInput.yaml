@@ -8,6 +8,10 @@ required:
 - tax_office_label
 - tax_type
 properties:
+  trade_name:
+    type: [string, 'null']
+    maxLength: 200
+    description: '개인사업자: 사업자등록증 ① 상호 as printed; ignored for 법인. Absent on create defaults to the entity name; absent on revise preserves the stored value.'
   classification_reason:
     type: [string, 'null']
     maxLength: 1000

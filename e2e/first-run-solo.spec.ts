@@ -60,16 +60,12 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   await expectAccessible(admin, "entity workplaces");
   expect(c.done("second workplace (own registration)")).toBeLessThanOrEqual(BUDGET.branch);
 
-  // 4. Departments are optional (decisions #14): each 사업장 is a unit of its own, so skipping them says people go
-  //    straight to the 사업장, and the register form offers it (no dead end). Departments can still be added.
+  // 4. At least one 부서 is required before 운영 시작 (MVP requirement #4): the rail offers no skip, only 부서 추가.
+  //    The org is built on the chart: select the 사업장 (one click), A, the name, Enter.
   await go(admin, "/");
-  await expect(rail).toContainText("배치 가능 · 사업장 · 부서");
-  await c.click(rail.getByRole("button", { name: "부서 없이 진행" }));
-  await c.click(rail.getByRole("link", { name: "직원 등록" }).first());
-  await registerSheet(admin).getByRole("combobox", { name: "둘 곳" }).fill("판교");
-  await expect(admin.getByRole("option", { name: /판교지점/ })).toBeVisible();
-  // The org is built on the chart: select the 사업장 (one click), A, the name, Enter.
-  await go(admin, "/org");
+  await expect(rail.getByRole("button", { name: "부서 없이 진행" })).toHaveCount(0);
+  await c.click(rail.getByRole("link", { name: "부서 추가" }).first());
+  await expect(admin).toHaveURL(/\/org(\?|$)/);
   await expect(admin.getByRole("dialog")).toHaveCount(0);
   for (const [place, unit] of [["본사", "영업팀"], ["판교지점", "개발팀"]] as const) {
     await findPressable(admin, place);
@@ -77,6 +73,12 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
     await addDepartments(admin, place, [unit]);
   }
   await expectAccessible(admin, "setup org");
+  // A person may still be placed straight on a 사업장: the register form offers it (no dead end).
+  await go(admin, "/");
+  await c.click(rail.getByRole("link", { name: "직원 등록" }).first());
+  await registerSheet(admin).getByRole("combobox", { name: "둘 곳" }).fill("판교");
+  await expect(admin.getByRole("option", { name: /› 판교지점 \d+명$/ })).toBeVisible();
+  await go(admin, "/"); // leave the probe's sheet: step 5 opens a fresh one
   expect(c.done("org: two departments, applied at once")).toBeLessThanOrEqual(BUDGET.org);
 
   // 5. The first employee, placed by id: the one entity is a fact; the workplace is chosen (no default).

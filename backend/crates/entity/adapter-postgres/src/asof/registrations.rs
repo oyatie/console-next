@@ -20,7 +20,7 @@ pub(crate) async fn registrations(
 ) -> Result<HashMap<Uuid, Vec<RegistrationView>>, PgEntityError> {
     let heads = sqlx::query(
         "SELECT h.*, h.identity_locked_at IS NOT NULL AS locked, r.id AS rev_id, r.version, r.effective_from, \
-                r.classification_reason, r.opened_on, r.business_address_id, r.unit_taxation, r.tax_type, r.tax_office_code, \
+                r.trade_name, r.classification_reason, r.opened_on, r.business_address_id, r.unit_taxation, r.tax_type, r.tax_office_code, \
                 r.tax_office_label, r.issue_reason_kind, r.issue_reason_sub, r.issue_reason_as_printed, \
                 r.cert_issued_on, r.e_invoice_email, r.liquor_license_no, r.production_factor, r.status, \
                 r.status_since, r.status_until, r.change_mode, r.effective_from > $2 AS before_first \
@@ -68,8 +68,10 @@ pub(crate) async fn registrations(
                     version: r.try_get("version")?,
                     effective_from: r.try_get("effective_from")?,
                     before_first_record: r.try_get("before_first")?,
-                    // Derived from the entity's name in `read::entities`: one stored source.
-                    trade_name: String::new(),
+                    // Legacy NULL falls back to the entity name in `read::entities`.
+                    trade_name: r
+                        .try_get::<Option<String>, _>("trade_name")?
+                        .unwrap_or_default(),
                     classification_reason: if personal {
                         r.try_get("classification_reason")?
                     } else {

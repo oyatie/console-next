@@ -29,6 +29,7 @@ fn input() -> RegistrationInput {
 const CTX: EntityContext<'static> = EntityContext {
     biz_kind: Some(BizKind::Corporation),
     entity_name: "주식회사 가나",
+    head_trade_name: None,
 };
 
 #[test]
@@ -38,7 +39,19 @@ fn the_registration_name_is_the_entitys_and_a_sent_one_is_ignored() {
     json["trade_name"] = "NURI".into();
     let sent: RegistrationInput = serde_json::from_value(json).unwrap();
     let (draft, warnings) = validate_registration(&sent, CTX, date!(2026 - 10 - 02)).unwrap();
-    assert_eq!(draft.trade_name, "주식회사 가나");
+    assert_eq!(draft.trade_name, None);
+    assert!(warnings.is_empty());
+}
+
+#[test]
+fn individual_registration_draft_retains_trade_name() {
+    let ctx = EntityContext {
+        biz_kind: Some(BizKind::Individual),
+        entity_name: "가나상회",
+        head_trade_name: None,
+    };
+    let (draft, warnings) = validate_registration(&input(), ctx, date!(2026 - 10 - 02)).unwrap();
+    assert_eq!(draft.trade_name, Some("가나상회".into()));
     assert!(warnings.is_empty());
 }
 
@@ -129,4 +142,80 @@ fn the_unverified_reason_enum_is_exactly_the_table_check() {
         UnverifiedReason::parse("NOT_CHECKED"),
         Some(UnverifiedReason::NotChecked)
     );
+}
+
+#[test]
+fn individual_create_records_the_printed_trade_name() {
+    let mut json = serde_json::to_value(input()).unwrap();
+    json["trade_name"] = "가나상회 2호점".into();
+    let sent = serde_json::from_value(json).unwrap();
+    let ctx = EntityContext {
+        biz_kind: Some(BizKind::Individual),
+        ..CTX
+    };
+    let (draft, _) = validate_registration(&sent, ctx, date!(2026 - 10 - 02)).unwrap();
+    assert_eq!(draft.trade_name.as_deref(), Some("가나상회 2호점"));
+}
+
+fn validate_individual_name(name: String) -> Result<(RegistrationDraft, Vec<Warning>), Refusal> {
+    let mut json = serde_json::to_value(input()).unwrap();
+    json["trade_name"] = name.into();
+    let sent = serde_json::from_value(json).unwrap();
+    let ctx = EntityContext {
+        biz_kind: Some(BizKind::Individual),
+        ..CTX
+    };
+    validate_registration(&sent, ctx, date!(2026 - 10 - 02))
+}
+
+#[test]
+fn individual_trade_name_blank_is_required() {
+    let err = validate_individual_name("  ".into()).unwrap_err();
+    assert!(
+        err.fields
+            .iter()
+            .any(|f| f.field == "trade_name" && f.code == "required")
+    );
+}
+
+#[test]
+fn individual_trade_name_counts_characters_at_the_limit() {
+    let err = validate_individual_name("한".repeat(201)).unwrap_err();
+    assert!(
+        err.fields
+            .iter()
+            .any(|f| f.field == "trade_name" && f.code == "too_long")
+    );
+    assert_eq!(
+        validate_individual_name("한".repeat(200))
+            .unwrap()
+            .0
+            .trade_name,
+        Some("한".repeat(200))
+    );
+}
+
+#[test]
+fn individual_trade_name_may_be_the_owners_name() {
+    assert_eq!(
+        validate_individual_name("홍길동".into())
+            .unwrap()
+            .0
+            .trade_name
+            .as_deref(),
+        Some("홍길동")
+    );
+}
+
+#[test]
+fn individual_revision_preserves_the_heads_own_name_or_legacy_null() {
+    for stored in [Some("독립 상호"), None] {
+        let ctx = EntityContext {
+            biz_kind: Some(BizKind::Individual),
+            head_trade_name: Some(stored),
+            ..CTX
+        };
+        let (draft, _) = validate_registration(&input(), ctx, date!(2026 - 10 - 02)).unwrap();
+        assert_eq!(draft.trade_name.as_deref(), stored);
+    }
 }

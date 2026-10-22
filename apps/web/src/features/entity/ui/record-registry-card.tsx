@@ -26,8 +26,7 @@ export function RegistryCard({ e, act }: { e: LegalEntity; act: Act }) {
       </div>
       <div className={s.facts}>
         {/* The optional short and English names, each its own row and its own edit. */}
-        {/* With a certificate, its item 1 is where the legal name is shown and edited (one row, one place). */}
-        {e.registrations.length === 0 && <FactRow label={f.name.label} wide action={{ kind: "fix", onPress: () => act.field(f.name) }}>{c?.name || "—"}</FactRow>}
+        {(e.biz_kind === "INDIVIDUAL" || e.registrations.length === 0) && <FactRow label={f.name.label} wide action={{ kind: "fix", onPress: () => act.field(f.name) }}>{c?.name || "—"}</FactRow>}
         <FactRow label={f.displayName.label} action={{ kind: "fix", onPress: () => act.field(f.displayName) }}>{c?.display_name || "—"}</FactRow>
         <FactRow label={f.englishName.label} action={{ kind: "fix", onPress: () => act.field(f.englishName) }}>{c?.english_name || "—"}</FactRow>
         {corp && (

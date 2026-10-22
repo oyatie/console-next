@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { go, kstDate, option, registerEmployee } from "./flows";
-import { sheet, signOff } from "./sheet";
-import { startOperations, tenantInSetup } from "./setup-flows";
+import { fillDate, sheet, signOff } from "./sheet";
+import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "./setup-flows";
+import { deleteUnusedDept } from "./helpers/structure";
 import { box, leaveScreen } from "./structure-flows";
 import { shot } from "./shots";
 
@@ -59,6 +60,8 @@ test(`regression: after the only person's exit (${lastDay}) the 법인 counts no
   await expect(admin.getByRole("treeitem", { name: /퇴직회사, 법인,/ })).toHaveAccessibleName(/, 1명(?:,|$)/);
   await go(admin, "/org");
   await expect(box(admin, "본사")).toHaveAccessibleName(/, 0명(?:,|$)/);
+  // The 부서 운영 시작 required, never used, is deleted: an open 부서 would keep the 법인 from closing too.
+  await deleteUnusedDept(admin, SETUP_DEPARTMENT);
 
   // The 법인 list and record count nobody; the close has no 재직자 blocker and 종료일 opens.
   await leaveScreen(admin);
@@ -72,7 +75,7 @@ test(`regression: after the only person's exit (${lastDay}) the 법인 counts no
   s = sheet(admin, "법인 종료");
   await expect(s).not.toContainText("재직자");
   await option(admin, "종료 사유", "해산").click();
-  await s.getByRole("textbox", { name: /^종료일/ }).fill(kstDate(0));
+  await fillDate(s, kstDate(0), "종료일");
   const confirm = s.getByRole("button", { name: "법인 종료", exact: true });
   await expect(confirm).toHaveClass(/btn--danger/);
   await expect(confirm).not.toHaveAttribute("aria-disabled", "true");

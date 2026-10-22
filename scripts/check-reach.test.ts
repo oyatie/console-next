@@ -1,10 +1,10 @@
-import { spawnSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { expect, test } from "vitest";
 // @ts-expect-error: a plain .mjs script, typed by its use here
-import { check, editableLabels, required } from "./check-reach.mjs";
+import { check, editableLabels, required, operationGaps, checkOperations, lowerOperations, releasePackages, operationsAtBase } from "./check-reach.mjs";
 
 const cell = (be: string[], st = "ok") => ({ st, be });
 const lifecycle = {
@@ -81,6 +81,16 @@ test("planted: a new editable row with no surfaces mapped fails; a lock mark and
 test("the repository's own tree passes the gate", () => {
   const r = spawnSync("node", ["scripts/check-reach.mjs"], { encoding: "utf8" });
   expect(r.status, r.stderr).toBe(0);
+}, 30_000);
+
+
+const plantedOp = "GET /api/v1/employees/parity-probe";
+const paritySpec = { paths: {
+  "/api/v1/employees/parity-probe": { get: {} },
+  "/api/v1/payroll-runs": { get: {} },
+} };
+const parity = (files: [string, string][] = []) => operationGaps({
+  spec: paritySpec, files, crates: new Map([[plantedOp, "hr"], ["GET /api/v1/payroll-runs", "payroll"]]), releaseCrates: new Set(["hr"]),
 });
 
 test("a hosted checkout proves reachability without a private queue or home pointer", () => {
@@ -90,3 +100,125 @@ test("a hosted checkout proves reachability without a private queue or home poin
   });
   expect(r.status, r.stderr).toBe(0);
 });
+const allowance = { lane: "P1b", reason: "Employee card delivery, units/mvp-completion/plan.md" };
+
+test("operations: an uncalled MVP OpenAPI operation is refused with METHOD path, even if a test calls it", () => {
+  const files: [string, string][] = [["apps/web/src/parity.test.ts", `api.GET("/api/v1/employees/parity-probe")`]];
+  expect(checkOperations({ gaps: parity(files), operations: {} })).toEqual([expect.stringContaining(`operation-unreachable: ${plantedOp}`)]);
+  expect(parity()).toEqual([plantedOp]);
+});
+
+test("operations: generated client, literal fetch and same-file constant calls reach only the matching method", () => {
+  for (const source of [
+    `api.GET("/api/v1/employees/parity-probe")`,
+    `fetch('/api/v1/employees/parity-probe?limit=1')`,
+    `const PROBE = "/api/v1/employees/parity-probe"; get(PROBE)`,
+    `api.GET(flag ? "/api/v1/employees/parity-probe" : "/api/v1/employees/other")`,
+  ]) expect(parity([["apps/web/src/probe.ts", source]])).toEqual([]);
+  expect(parity([["apps/web/src/probe.ts", `api.POST("/api/v1/employees/parity-probe")`]])).toEqual([plantedOp]);
+});
+
+test("operations: types, comments, cache keys, gallery and spec files never count as calls", () => {
+  for (const source of [
+    `type Probe = paths["/api/v1/employees/parity-probe"];`,
+    `// api.GET("/api/v1/employees/parity-probe")`,
+    `const READS = ["/api/v1/employees/parity-probe"];`,
+    `read("/api/v1/employees/parity-probe", () => null)`,
+  ]) expect(parity([["apps/web/src/probe.ts", source]])).toEqual([plantedOp]);
+  for (const file of ["apps/web/src/probe.spec.ts", "apps/web/src/probe.gallery.tsx", "apps/web/src/__tests__/probe.ts", "packages/api/src/schema.d.ts"])
+    expect(parity([[file, `api.GET("/api/v1/employees/parity-probe")`]])).toEqual([plantedOp]);
+});
+
+test("operations: every allowance needs a lane and reason; valid owned debt passes", () => {
+  for (const bad of [{ reason: allowance.reason }, { lane: allowance.lane }, { lane: " ", reason: " " }]) {
+    expect(checkOperations({ gaps: [plantedOp], operations: { [plantedOp]: bad } })).toEqual([expect.stringContaining(`operation-owner: ${plantedOp}`)]);
+  }
+  expect(checkOperations({ gaps: [plantedOp], operations: { [plantedOp]: allowance }, previous: { [plantedOp]: allowance } })).toEqual([]);
+});
+
+test("operations: adding an allowance after the base is refused; initial seeding and shrinking pass", () => {
+  expect(checkOperations({ gaps: [plantedOp], operations: { [plantedOp]: allowance }, previous: {} })).toEqual([expect.stringContaining(`operations: ${plantedOp}: baseline must only shrink`)]);
+  expect(checkOperations({ gaps: [], operations: {}, previous: { [plantedOp]: allowance } })).toEqual([]);
+});
+
+test("operations: --lower removes an allowance once its operation is called or deleted and retains deferred non-MVP debt", () => {
+  const deferred = "GET /api/v1/payroll-runs";
+  const operations = { [plantedOp]: allowance, [deferred]: allowance };
+  const allUncalled = operationGaps({ spec: paritySpec, files: [["apps/web/src/probe.ts", `api.GET("/api/v1/employees/parity-probe")`]], crates: new Map(), releaseCrates: undefined });
+  expect(checkOperations({ gaps: [], operations: { [plantedOp]: allowance }, uncalled: allUncalled })).toEqual([expect.stringContaining(`operation-stale: ${plantedOp}`)]);
+  expect(lowerOperations(operations, allUncalled)).toEqual({ [deferred]: allowance });
+});
+
+test("operations: parameter calls prefer literal endpoints and never reach the sibling static path", () => {
+  const spec = { paths: { "/api/v1/employees/{id}": { get: {} }, "/api/v1/employees/facets": { get: {} } } };
+  expect(operationGaps({ spec, files: [["apps/web/src/probe.ts", 'get(`/api/v1/employees/${id}`)']], crates: new Map() })).toEqual(["GET /api/v1/employees/facets"]);
+  expect(operationGaps({ spec, files: [["apps/web/src/probe.ts", 'api.GET("/api/v1/employees/facets")']], crates: new Map() })).toEqual(["GET /api/v1/employees/{id}"]);
+});
+
+test("operations: release packages follow default features and optional dependency activation", () => {
+  const app = { features: { default: ["mvp"], mvp: ["attendance"], attendance: ["dep:console-attendance-rest"], full: ["payroll"] }, dependencies: [
+    { name: "console-hr-rest", optional: false }, { name: "console-attendance-rest", optional: true }, { name: "console-payroll-rest", optional: true },
+  ] };
+  expect([...releasePackages(app)]).toEqual(["console-hr-rest", "console-attendance-rest"]);
+});
+
+
+test("operations: the CLI rejects a removed release-operation allowance against a committed base", () => {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), "reach-cli-")));
+  try {
+    for (const dir of ["scripts/quality", "apps/web"]) mkdirSync(path.join(root, dir), { recursive: true });
+    for (const file of ["check-reach.mjs", "backlog-claims.mjs", "backlog-sources.mjs", "quality/ratchet.mjs", "reach-baseline.json"]) copyFileSync(`scripts/${file}`, path.join(root, "scripts", file));
+    for (const dir of ["node_modules", "backend", "docs", "e2e", "packages", "registry", "apps/web/src", "apps/web/public"]) symlinkSync(path.resolve(dir), path.join(root, dir), "dir");
+    for (const args of [["init"], ["add", "scripts/reach-baseline.json"], ["-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test: seed reach baseline"]]) {
+      const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+      expect(result.status, result.stderr).toBe(0);
+    }
+    const run = () => spawnSync("node", [path.join(root, "scripts/check-reach.mjs"), "--base", "HEAD"], { encoding: "utf8" });
+    const clean = run();
+    expect(clean.status, clean.stderr).toBe(0);
+    const data = JSON.parse(readFileSync(path.join(root, "scripts/reach-baseline.json"), "utf8"));
+    const op = "GET /api/v1/attendance/week52";
+    delete data.operations[op];
+    writeFileSync(path.join(root, "scripts/reach-baseline.json"), JSON.stringify(data));
+    const planted = run();
+    expect(planted.status, planted.stderr).toBe(1);
+    expect(planted.stderr).toContain(`operation-unreachable: ${op}`);
+    data.operations[op] = allowance;
+    data.operations[plantedOp] = allowance;
+    writeFileSync(path.join(root, "scripts/reach-baseline.json"), JSON.stringify(data));
+    const grown = run();
+    expect(grown.status, grown.stderr).toBe(1);
+    expect(grown.stderr).toContain(`operations: ${plantedOp}: baseline must only shrink`);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}, 30_000);
+
+test("operations: the --lower CLI persists removal of newly called debt without dropping record gaps", () => {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), "reach-cli-")));
+  try {
+    for (const dir of ["scripts/quality", "apps/web/public"]) mkdirSync(path.join(root, dir), { recursive: true });
+    for (const file of ["check-reach.mjs", "backlog-claims.mjs", "backlog-sources.mjs", "quality/ratchet.mjs"]) copyFileSync(`scripts/${file}`, path.join(root, "scripts", file));
+    for (const dir of ["node_modules", "backend", "docs", "e2e", "packages", "registry"]) symlinkSync(path.resolve(dir), path.join(root, dir), "dir");
+    symlinkSync(path.resolve("apps/web/src"), path.join(root, "apps/web/src"), "dir");
+    const data = JSON.parse(readFileSync("scripts/reach-baseline.json", "utf8"));
+    const records = Array.isArray(data) ? data : data.records;
+    const op = "GET /api/v1/attendance/me/week52";
+    writeFileSync(path.join(root, "scripts/reach-baseline.json"), JSON.stringify({ records, operations: { [op]: allowance } }));
+    writeFileSync(path.join(root, "apps/web/public/probe.js"), 'fetch("/api/v1/attendance/me/week52")');
+    const result = spawnSync("node", [path.join(root, "scripts/check-reach.mjs"), "--lower"], { encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(readFileSync(path.join(root, "scripts/reach-baseline.json"), "utf8"))).toEqual({ records, operations: {} });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}, 30_000);
+
+
+test("operations: initial seeding is limited to uncalled operations already present at the base", () => {
+  const previous = operationsAtBase("HEAD");
+  const existing = Object.keys(previous)[0]!;
+  expect(existing).toBeDefined();
+  expect(checkOperations({ gaps: [existing], operations: { [existing]: allowance }, previous })).toEqual([]);
+  expect(checkOperations({ gaps: [plantedOp], operations: { [plantedOp]: allowance }, previous })).toEqual([expect.stringContaining(`operations: ${plantedOp}: baseline must only shrink`)]);
+}, 30_000);

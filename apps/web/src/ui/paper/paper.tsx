@@ -29,3 +29,11 @@ export const PaperFoot = ({ children }: { children: ReactNode }) => <span classN
 export const PaperId = ({ photo, children }: { photo: ReactNode; children: ReactNode }) => (
   <div className={s.id}><span className={s.photo} aria-hidden>{photo}</span>{children}</div>
 );
+
+/** The issuer and its immutable seal image on a printable document. */
+export const PaperSeal = ({ label, image, children }: { label: string; image?: string | null; children?: ReactNode }) => (
+  <div className={s.seal} data-paper-seal>{children}{image && <img className={s.sealImage} src={image} alt={label} />}</div>
+);
+
+/** A void mark remains visible on paper and names the recorded reason. */
+export const PaperVoid = ({ children }: { children: ReactNode }) => <div className={s.voided} data-paper-void>{children}</div>;

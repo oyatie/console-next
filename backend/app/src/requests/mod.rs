@@ -15,7 +15,9 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
+mod certificates;
 mod recovery;
+pub(crate) use certificates::read_outcome as read_certificate_outcome;
 mod statutory;
 pub(crate) use recovery::tick;
 pub(crate) use statutory::read_outcome as read_filing_outcome;
@@ -91,7 +93,7 @@ async fn read(pool: PgPool, p: Principal, key: String) -> Result<Json<Value>, Ap
         return Err(missing());
     };
     let mut out = out;
-    let readable = statutory::read_outcome(&pool, &p, &mut out).await;
+    let readable = certificates::read_outcome(&pool, &p, &mut out).await;
     let owner = out.actor_id == *p.user_id.as_uuid();
     if !command_outcome::decide(
         &p.user_id.to_string(),

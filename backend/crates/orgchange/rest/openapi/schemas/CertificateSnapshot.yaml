@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+  - name
+  - issuer
+  - seal_text
+properties:
+  name:
+    type: string
+  issuer:
+    type: string
+  seal_text:
+    type: string
+  period:
+    type: object
+    additionalProperties: false
+    required:
+      - from
+      - to
+    properties:
+      from:
+        type: string
+        format: date
+      to:
+        type: string
+        format: date
+  duty:
+    type: string
+  position:
+    type: string
+  birth:
+    type: string
+    format: date
+  wage:
+    type: object
+    additionalProperties: false
+    required:
+      - won
+      - unit
+    properties:
+      won:
+        type: string
+      unit:
+        type: string
+  seal_png:
+    type:
+      - string
+      - 'null'
+    description: >-
+      Optional PNG data URL; validated bytes, size and dimensions. Clearing settings does not change
+      previously issued snapshots.

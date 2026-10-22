@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { go, option } from "./flows";
-import { addWorkplaceFromEntity } from "./helpers/structure";
-import { pickKind, tenantInSetup, typeAddress } from "./setup-flows";
+import { addWorkplaceFromEntity, deleteUnusedDept } from "./helpers/structure";
+import { pickKind, SETUP_DEPARTMENT, tenantInSetup, typeAddress } from "./setup-flows";
 import { addDepartments, box, revealUnit } from "./structure-flows";
 
 // The chart's order and the list's conditions (S2-chart-menu, S11-invalid-move, S2-registry), from an empty tenant:
@@ -26,6 +26,8 @@ const top = async (page: Page, name: string) => (await box(page, name).boundingB
 
 test("order on the chart and the list's conditions", { tag: "@org" }, async ({ browser }) => {
   const { admin } = await tenantInSetup(browser, "order", "순서회사");
+  // This walk orders its own two 부서 under 본점: the setup helper's 부서 (sorted between 가팀 and 나팀) goes first.
+  await deleteUnusedDept(admin, SETUP_DEPARTMENT);
   const add = await addWorkplaceFromEntity(admin, /순서회사/);
   await add.getByLabel("사업장 이름").fill("판교지점");
   await pickKind(add);

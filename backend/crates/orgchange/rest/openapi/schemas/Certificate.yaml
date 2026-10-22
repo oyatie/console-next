@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+  - id
+  - employee_id
+  - certificate_no
+  - kind
+  - items
+  - purpose
+  - snapshot
+  - replaces_id
+  - issued_by
+  - issued_at
+  - voided_at
+  - void_reason
+properties:
+  id:
+    type: string
+    format: uuid
+  employee_id:
+    type: string
+    format: uuid
+  certificate_no:
+    type: string
+  kind:
+    type: string
+    enum:
+      - EMPLOYMENT
+      - CAREER
+      - EXIT
+  items:
+    type: array
+    items:
+      type: string
+      enum:
+        - period
+        - duty
+        - position
+        - wage
+        - birth
+  purpose:
+    type: string
+  snapshot:
+    $ref: '#/components/schemas/CertificateSnapshot'
+  replaces_id:
+    type:
+      - string
+      - 'null'
+    format: uuid
+  issued_by:
+    type: string
+    format: uuid
+  issued_at:
+    type: string
+    format: date-time
+  voided_at:
+    type:
+      - string
+      - 'null'
+    format: date-time
+  void_reason:
+    type:
+      - string
+      - 'null'

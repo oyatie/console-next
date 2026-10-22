@@ -111,7 +111,7 @@ dependencies = [
 
 [[package]]
 name = "console-entity-domain"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "console-kernel-core",
  "serde",

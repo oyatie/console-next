@@ -244,27 +244,35 @@ async fn a_setup_undo_restores_the_exact_records_once_and_never_blindly(owner: P
     );
 }
 
-/// 0h N-1: the 법인's registration head `trade_name` (what the previous release reads).
-async fn trade_name(owner: &PgPool, f: &Fixture) -> String {
-    sqlx::query_scalar(
-        "SELECT r.trade_name FROM business_registration_revisions r JOIN business_registrations b ON b.id = r.registration_id \
-         WHERE b.legal_entity_id = $1 ORDER BY r.effective_from DESC, r.version DESC LIMIT 1",
+/// The registration reads the 법인명 without storing a copy in any revision.
+async fn assert_registration_name(owner: &PgPool, f: &Fixture, expected: &str) {
+    let stored: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM business_registration_revisions r JOIN business_registrations b ON b.id = r.registration_id \
+         WHERE b.legal_entity_id = $1 AND r.trade_name IS NOT NULL",
     )
     .bind(f.entity)
     .fetch_one(owner)
     .await
-    .unwrap()
+    .unwrap();
+    assert_eq!(stored, 0, "no revision stores a copy of the 법인명");
+    let view = f.store.get_entity(&f.actor, f.entity, true).await.unwrap();
+    assert_eq!(view.current.as_ref().unwrap().name, expected);
+    assert_eq!(
+        view.registrations[0].current.as_ref().unwrap().trade_name,
+        expected
+    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn a_sheet_rename_and_its_undo_carry_the_name_to_the_registration(owner: PgPool) {
+async fn a_sheet_rename_and_undo_derive_the_registration_name_without_storing_it(owner: PgPool) {
     let f = fixture(&owner).await;
+    assert_registration_name(&owner, &f, "주식회사 가나").await;
     let v = version(&f).await;
     let applied = revise_a(&f, corporation("주식회사 누리", "000211-0006241"), v).await;
-    assert_eq!(trade_name(&owner, &f).await, "주식회사 누리");
+    assert_registration_name(&owner, &f, "주식회사 누리").await;
     f.store
         .undo_entity_setup_batch(&cmd(&f.actor), applied.batch_id.unwrap(), port())
         .await
         .unwrap();
-    assert_eq!(trade_name(&owner, &f).await, "주식회사 가나");
+    assert_registration_name(&owner, &f, "주식회사 가나").await;
 }

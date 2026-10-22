@@ -284,55 +284,8 @@ fn violation(kind: ViolationKind, seam: &DetectedSeam, detail: String) -> Violat
     }
 }
 
-pub fn git_root(dir: &Path) -> Result<PathBuf, String> {
-    let out = std::process::Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(dir)
-        .output()
-        .map_err(|e| format!("failed to run git rev-parse: {e}"))?;
-    if !out.status.success() {
-        return Err("git rev-parse --show-toplevel failed".to_owned());
-    }
-    Ok(PathBuf::from(
-        String::from_utf8_lossy(&out.stdout).trim().to_owned(),
-    ))
-}
-
-pub fn git_tracked_files(root: &Path) -> Result<Vec<PathBuf>, String> {
-    let out = std::process::Command::new("git")
-        .args(["ls-files"])
-        .current_dir(root)
-        .output()
-        .map_err(|e| format!("failed to run git ls-files: {e}"))?;
-    if !out.status.success() {
-        return Err("git ls-files failed".to_owned());
-    }
-    Ok(String::from_utf8_lossy(&out.stdout)
-        .lines()
-        .map(|line| root.join(line))
-        .collect())
-}
-
-pub fn collect_artifacts(repo_root: &Path) -> Result<Vec<TextArtifact>, String> {
-    let mut artifacts = Vec::new();
-    for path in git_tracked_files(repo_root)? {
-        let rel = match path.strip_prefix(repo_root) {
-            Ok(rel) => rel.to_path_buf(),
-            Err(_) => path.clone(),
-        };
-        if rel == Path::new(REGISTRY_REL_PATH) {
-            continue;
-        }
-        let Ok(contents) = std::fs::read_to_string(&path) else {
-            continue;
-        };
-        artifacts.push(TextArtifact {
-            path: rel,
-            contents,
-        });
-    }
-    Ok(artifacts)
-}
+mod inputs;
+pub use inputs::{collect_artifacts, git_root, git_tracked_files};
 
 #[cfg(test)]
 mod tests {

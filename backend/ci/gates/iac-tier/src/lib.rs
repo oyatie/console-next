@@ -25,7 +25,7 @@
 //!   that must come from Tier B instead.
 
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum IacTier {
@@ -180,69 +180,8 @@ pub fn audit(artifacts: &[IacArtifact]) -> GateResult {
 // Repo discovery + artifact collection
 // ---------------------------------------------------------------------------
 
-/// Resolve the git repository root containing `dir` (works from any subdir).
-pub fn git_root(dir: &Path) -> Result<PathBuf, String> {
-    let out = std::process::Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(dir)
-        .output()
-        .map_err(|e| format!("failed to run git rev-parse: {e}"))?;
-    if !out.status.success() {
-        return Err("git rev-parse --show-toplevel failed".to_owned());
-    }
-    Ok(PathBuf::from(
-        String::from_utf8_lossy(&out.stdout).trim().to_owned(),
-    ))
-}
-
-/// Lists git-tracked files under `root`, returned as absolute paths.
-pub fn git_tracked_files(root: &Path) -> Result<Vec<PathBuf>, String> {
-    let out = std::process::Command::new("git")
-        .args(["ls-files"])
-        .current_dir(root)
-        .output()
-        .map_err(|e| format!("failed to run git ls-files: {e}"))?;
-    if !out.status.success() {
-        return Err("git ls-files failed".to_owned());
-    }
-    Ok(String::from_utf8_lossy(&out.stdout)
-        .lines()
-        .map(|l| root.join(l))
-        .collect())
-}
-
-/// Walk the git-tracked files under `repo_root` and classify the ones that
-/// live in a known IaC tier directory into `IacArtifact`s. Everything else
-/// (docs, examples, `.gitignore`, non-manifest files) is skipped.
-pub fn collect_artifacts(repo_root: &Path) -> Result<Vec<IacArtifact>, String> {
-    let mut artifacts = Vec::new();
-    for path in git_tracked_files(repo_root)? {
-        let rel = path.strip_prefix(repo_root).unwrap_or(path.as_path());
-        let rel_str = rel.to_string_lossy();
-        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-
-        let tier = if (rel_str.starts_with("deploy/argocd/") || rel_str.starts_with("deploy/apps/"))
-            && matches!(ext, "yaml" | "yml")
-        {
-            Some(IacTier::TierAArgoCd)
-        } else if rel_str.starts_with("deploy/opentofu/") && matches!(ext, "tf" | "tofu") {
-            Some(IacTier::TierBOpenTofu)
-        } else {
-            None
-        };
-
-        let Some(tier) = tier else { continue };
-        let Ok(contents) = std::fs::read_to_string(&path) else {
-            continue; // binary/unreadable — not a text IaC artifact
-        };
-        artifacts.push(IacArtifact {
-            tier,
-            path: rel.to_path_buf(),
-            contents,
-        });
-    }
-    Ok(artifacts)
-}
+mod inputs;
+pub use inputs::{collect_artifacts, git_root, git_tracked_files};
 
 #[cfg(test)]
 mod tests {

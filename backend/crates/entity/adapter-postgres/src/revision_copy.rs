@@ -32,7 +32,7 @@ const REGISTRATION: &str = "WITH src AS (SELECT * FROM business_registration_rev
                         tax_office_label, tax_type, status, status_since, change_mode, reason_code, actor_id, payload_digest, \
                         settings_snapshot, command_id, classification_reason) \
                       SELECT org_id, registration_id, (SELECT max(version) + 1 FROM business_registration_revisions WHERE registration_id = $1), \
-                        GREATEST($2, effective_from), trade_name, opened_on, business_address_id, production_factor, issue_reason_kind, \
+                        GREATEST($2, effective_from), CASE WHEN (SELECT e.biz_kind FROM legal_entities e JOIN business_registrations b ON b.legal_entity_id = e.id WHERE b.id = $1) = 'INDIVIDUAL' THEN trade_name ELSE NULL END, opened_on, business_address_id, production_factor, issue_reason_kind, \
                         issue_reason_sub, issue_reason_as_printed, liquor_license_no, unit_taxation, e_invoice_email, cert_issued_on, \
                         tax_office_code, tax_office_label, tax_type, {STATUS}, {SINCE}, $3, $4, $5, \
                         sha256(convert_to(jsonb_build_object('{KEY}', version, 'status_since', $2::date)::text, 'UTF8')), $6, $7, classification_reason \
@@ -122,70 +122,20 @@ pub(crate) async fn append_copy(
     Ok(())
 }
 
-/// The reason the N-1 copy records; registration history leaves these rows out.
+/// The reason legacy N-1 name copies carry; registration history leaves these rows out.
 pub(crate) const LEGAL_NAME_DERIVED: &str =
     console_entity_domain::SystemReason::LegalNameDerived.as_str();
 
-/// Copy registration revision `$1` whole (every column, so nothing new is ever
-/// dropped), overriding what the new row must own.
-const RENAMED: &str = "INSERT INTO business_registration_revisions SELECT (jsonb_populate_record(NULL::business_registration_revisions, \
-     to_jsonb(r) || jsonb_build_object('id', gen_random_uuid(), 'created_at', now(), \
-       'version', (SELECT max(version) + 1 FROM business_registration_revisions WHERE registration_id = r.registration_id), \
-       'effective_from', GREATEST($2, r.effective_from), 'trade_name', $3::text, 'change_mode', $4::text, 'reason_code', $5::text, \
-       'actor_id', $6::uuid, 'command_id', $7::uuid, 'settings_snapshot', $8::jsonb, 'evidence_document_id', NULL, \
-       'payload_digest', sha256(convert_to(jsonb_build_object('renamed_from_version', r.version, 'trade_name', $3::text)::text, 'UTF8'))))).* \
-     FROM business_registration_revisions r WHERE r.id = $1 RETURNING id";
-
-/// N-1 canary consistency (0h): the binary derives every registration's ① from
-/// the 법인명, but the previous release still reads `trade_name`. A 법인명
-/// change therefore appends, in the same transaction, a copy of each live
-/// registration's head revision carrying the new name, dated with the rename.
-/// Goes away with the contract migration that drops `trade_name`.
+/// SS-001 / AD-F02c: a 법인명 change appends nothing to its registrations. The released
+/// binary derives every registration's ① from the entity at read time, so no reader of
+/// `trade_name` remains. Kept as a no-op until the contract step removes its callers.
 pub(crate) async fn append_renamed_registrations(
-    tx: &mut Tx<'_>,
-    entity: Uuid,
-    name: &str,
-    on: time::Date,
-    at: RevisionAt,
+    _tx: &mut Tx<'_>,
+    _entity: Uuid,
+    _name: &str,
+    _on: time::Date,
+    _at: RevisionAt,
 ) -> Result<(), PgEntityError> {
-    let heads: Vec<(Uuid, Uuid)> = sqlx::query_as(
-        "SELECT registration, head FROM (SELECT DISTINCT ON (b.id) b.id AS registration, r.id AS head, r.trade_name \
-           FROM business_registrations b JOIN business_registration_revisions r ON r.registration_id = b.id \
-           WHERE b.legal_entity_id = $1 AND b.voided_at IS NULL ORDER BY b.id, r.effective_from DESC, r.version DESC) h \
-         WHERE h.trade_name IS DISTINCT FROM $2",
-    )
-    .bind(entity)
-    .bind(name)
-    .fetch_all(tx.as_mut())
-    .await?;
-    for (registration, head) in heads {
-        let rev: Uuid = sqlx::query_scalar(RENAMED)
-            .bind(head)
-            .bind(on)
-            .bind(name)
-            .bind(at.admitted.mode.as_str())
-            .bind(LEGAL_NAME_DERIVED)
-            .bind(*at.actor.as_uuid())
-            .bind(crate::closure::per_record(at.command, registration))
-            .bind(at.admitted.snapshot())
-            .fetch_one(tx.as_mut())
-            .await?;
-        // 업태·종목 and 공동사업자 rows belong to a revision: carry them over.
-        for sql in [
-            "INSERT INTO business_registration_business_types (org_id, revision_id, seq, is_main, sector_as_printed, \
-               item_as_printed, nts_code, ksic_code, ksic_label, ksic_version) \
-             SELECT org_id, $2, seq, is_main, sector_as_printed, item_as_printed, nts_code, ksic_code, ksic_label, ksic_version \
-             FROM business_registration_business_types WHERE revision_id = $1",
-            "INSERT INTO business_registration_co_owners (org_id, revision_id, seq, name) \
-             SELECT org_id, $2, seq, name FROM business_registration_co_owners WHERE revision_id = $1",
-        ] {
-            sqlx::query(sql)
-                .bind(head)
-                .bind(rev)
-                .execute(tx.as_mut())
-                .await?;
-        }
-    }
     Ok(())
 }
 
