@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
+#[path = "../../../../../test-support/person_fixtures.rs"]
+mod people;
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn unlinked_target_can_be_linked_by_two_distinct_people(pool: PgPool) {
     let (h, actor, target, employee) = fixture(&pool).await;
-    #[path = "../../../../../test-support/person_fixtures.rs"]
-    mod people;
     people::bind_user_to_distinct_person(&pool, actor).await;
     let approver = aged_noticed_approver(&pool).await;
     let approver_employee = employee_link(&pool, approver).await.unwrap();
@@ -122,8 +123,6 @@ async fn fallback_decisions_have_immutable_evidence_and_scoped_actionable_review
     let (status, page) = send(&h, "GET", REVIEW, &foreign, None).await;
     assert_eq!(status, StatusCode::OK, "{page}");
     assert_eq!(page["total"], 0);
-    #[path = "../../../../../test-support/person_fixtures.rs"]
-    mod people;
     people::bind_user_to_distinct_person(&pool, actor).await;
     let (_, page) = send(&h, "GET", REVIEW, &token, None).await;
     assert_eq!(

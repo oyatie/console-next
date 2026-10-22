@@ -12,8 +12,7 @@ export function IdentityDecisionReviews({ page, onPage }: { page: components["sc
       <p>{t("home.identityDecisions.reason")}</p>
       <ul className="list-plain">{page.items.map((u) => (
         <li key={u.id} className="row">
-          <span className="grow">{u.display_name}</span>
-          <Link to="/people" search={{ view: "accounts", sel: u.id }}>{t("home.identityDecisions.open", { name: u.display_name })}</Link>
+          <Link className="grow" to="/people" search={{ view: "accounts", sel: u.id }}>{t("home.identityDecisions.open", { name: u.display_name })}</Link>
         </li>
       ))}</ul>
       <Pager offset={page.offset} limit={page.limit} total={page.total} onPage={onPage} />

@@ -154,7 +154,7 @@ RETURNS TRIGGER LANGUAGE plpgsql SET search_path = pg_catalog AS $$
 DECLARE maker UUID; checker UUID;
 BEGIN
     IF TG_TABLE_NAME='period_unlock_requests' THEN
-        IF NEW.outcome NOT IN ('APPROVED','REJECTED') THEN RETURN NEW; END IF;
+        IF NEW.outcome IS NULL OR NEW.outcome NOT IN ('APPROVED','REJECTED') THEN RETURN NEW; END IF;
         maker := NEW.requested_by; checker := NEW.decided_by;
     ELSE
         IF NEW.unlock_approved_by IS NULL THEN RETURN NEW; END IF;

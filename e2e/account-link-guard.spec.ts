@@ -8,12 +8,13 @@ import { fillRegister, openRegistered, pressRegister, receiptOf } from "./helper
 import { tenantInSetup } from "./setup-flows";
 
 test("employee account binding requires passkey and waits for a second person, including after reload", { tag: "@hr" }, async ({ browser }) => {
-  const { admin, exec } = await tenantInSetup(browser, "linkguard", "연결검증", false, "본점", "full");
+  const slug = "linkguard";
+  const { admin, exec } = await tenantInSetup(browser, slug, "연결검증", false, "본점", "full");
   await go(exec, "/");
   const notices = exec.getByRole("region", { name: "확인할 새 권한 1건" });
   await notices.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
   await expect(notices).toBeHidden();
-  letGrantsAge(unique("linkguard"), "이임원");
+  letGrantsAge(unique(slug), "이임원");
   await inviteAccount(admin, "연결대상", "none");
   const read = apiAs(admin);
   let authorization = "";
