@@ -136,7 +136,7 @@ mod projected_dispatch_coverage {
             panic!("expected a coded domain refusal: {error:?}");
         };
         assert_eq!(error.code, Some("legal_entity_record_required"));
-        assert!(error.message.contains("/org/entities"));
+        assert_eq!(error.message, "legal_entity_record_required");
     }
     #[tokio::test]
     async fn the_wired_registry_resolves_every_canonical_dispatch_target() {

@@ -169,7 +169,7 @@ fn legal_facts_require_the_legal_entity_record() {
     ] {
         let check = PgCompanyPort::preflight(&CompanyQuery { attributes });
         assert_eq!(check.code(), Some("legal_entity_record_required"));
-        assert!(check.blockers()[0].contains("/org/entities"));
+        assert_eq!(check.blockers(), &["legal_entity_record_required"]);
     }
 }
 
@@ -184,10 +184,9 @@ async fn a_second_legal_fact_writer_is_refused(owner: PgPool) {
         let error = execute(&port, command(org, actor, attributes))
             .await
             .unwrap_err();
-        assert_eq!(
-            error.into_kernel_error().code,
-            Some("legal_entity_record_required")
-        );
+        let error = error.into_kernel_error();
+        assert_eq!(error.code, Some("legal_entity_record_required"));
+        assert_eq!(error.message, "legal_entity_record_required");
     }
     for (table, sql) in [
         (

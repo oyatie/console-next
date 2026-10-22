@@ -4,7 +4,7 @@
   "tenant": "organizations.name is the tenant display-name owner. A tenant is not a legal entity.",
   "legal_facts": "Legal names are read from legal_entity_revisions; registration numbers from business_registrations. Entity revisions, corrections and confirmation retain their existing record UI.",
   "writers": {
-    "company.revise": "Fresh commands are refused with legal_entity_record_required and /org/entities. Matching N-1 command receipts still replay. No current production code writes company_revisions.",
+    "company.revise": "Fresh commands are refused with legal_entity_record_required; the web remedy map owns its route. Matching N-1 command receipts still replay. No current production code writes company_revisions.",
     "guard": "backend/ci/gates/writer-ownership/tests/archival_company.rs scans the former owner with the existing SQL parser; the existing gate also rejects other crates writing its archive."
   },
   "reader_inventory": [
@@ -69,17 +69,41 @@
     }
   ],
   "outside_brief_owns": [
+    "apps/web/src/features/people/api.ts",
+    "apps/web/src/features/people/ui/company-mappings.tsx",
+    "apps/web/src/features/people/ui/unplaced-page.tsx",
+    "backend/ci/gates/file-size/baseline.txt",
+    "backend/ci/gates/writer-ownership/tests/archival_company.rs",
+    "backend/crates/entity/adapter-postgres/tests/company_fact_migration.rs",
+    "backend/crates/onboarding/adapter-postgres/tests/company_fact_owner.rs",
+    "backend/crates/onboarding/domain/src/checklist.rs",
+    "backend/crates/onboarding/domain/src/checklist_tests.rs",
+    "backend/crates/onboarding/domain/src/preview.rs",
+    "backend/crates/onboarding/domain/src/preview_tests.rs",
+    "backend/crates/ontology/canonical-adapter-postgres/src/catalog.rs",
+    "backend/crates/ontology/canonical-adapter-postgres/tests/employment_port_as_runtime_role.rs",
+    "backend/crates/ontology/canonical-adapter-postgres/tests/org_unit_port_as_runtime_role.rs",
+    "backend/crates/ontology/canonical-domain/src/lib.rs",
+    "backend/crates/ontology/canonical-domain/src/preflight.rs",
+    "backend/crates/ontology/rest/src/lib.rs",
+    "backend/crates/ontology/rest/src/projected_preflight.rs",
+    "backend/crates/ontology/rest/tests/canonical_dispatch/company_fact_refusal.rs",
+    "backend/crates/ontology/rest/tests/canonical_dispatch_audit_as_runtime_role.rs",
+    "backend/crates/orgchange/adapter-postgres/src/org_unit/view.rs",
+    "backend/crates/orgchange/adapter-postgres/src/store/queries.rs",
+    "backend/crates/orgchange/adapter-postgres/tests/company_fact_owner.rs",
+    "backend/crates/orgchange/adapter-postgres/tests/org_reference_surface.rs",
     "backend/crates/payroll/adapter-postgres/tests/pay_run_port_as_runtime_role.rs",
     "backend/crates/payroll/rest/tests/api.rs",
     "backend/crates/payroll/rest/tests/payslip_draft_api.rs",
     "backend/crates/payroll/rest/tests/run_lifecycle_api.rs",
-    "backend/ci/gates/writer-ownership/tests/archival_company.rs",
-    "backend/ci/gates/file-size/baseline.txt",
+    "docs/product/company-fact-ownership.json",
+    "e2e/first-run-solo.spec.ts",
     "packages/i18n/src/catalogs/en/setup.ts",
     "packages/i18n/src/catalogs/ko/setup.ts",
     "scripts/copy-terms-allow.json",
     "scripts/ds-baseline.json",
     "scripts/standing-text.d/eco-g4-name.json"
   ],
-  "outside_owns_reason": "Payroll fixtures now expect the retired company action refusal; the remaining files enforce ownership or remove the retired page and copy from verification baselines."
+  "outside_owns_reason": "Conservative inventory outside the directly named company port, dispatch wiring, setup rail and route, and expansion migration. These files switch all readers, preserve receipt compatibility in dependent fixtures, prove ownership and remedies, move legacy text mapping to placement, or record and enforce the retired screen decision."
 }

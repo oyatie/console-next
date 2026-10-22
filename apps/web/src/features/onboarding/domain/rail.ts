@@ -29,6 +29,7 @@ const LINKS: Record<string, Fix> = {
   register_legal_entity: { to: "/org/entities/new" },
   create_legal_entity: { to: "/org/entities/new" },
   confirm_legal_entity: ENTITIES,
+  legal_entity_record_required: ENTITIES,
   confirm_registration: ENTITIES,
   verify_registration: ENTITIES,
   create_primary_workplace: ENTITIES,

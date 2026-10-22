@@ -58,12 +58,25 @@ async fn company_facts_are_copied_verified_and_retries_preserve_source(owner: Pg
     .await
     .unwrap();
     assert_eq!(provenance["source_revision_id"], source["id"]);
-    assert!(
-        sqlx::query("SELECT migrate_company_legal_facts()")
-            .execute(&console_platform_test_support::runtime_role_pool(&owner).await)
-            .await
-            .is_err(),
-        "runtime may not run cross-tenant migration"
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn runtime_cannot_execute_cross_tenant_company_fact_migration(owner: PgPool) {
+    let runtime = console_platform_test_support::runtime_role_pool(&owner).await;
+    let can_execute: bool = sqlx::query_scalar(
+        "SELECT has_function_privilege('migrate_company_legal_facts()', 'EXECUTE')",
+    )
+    .fetch_one(&runtime)
+    .await
+    .unwrap();
+    assert!(!can_execute, "the migration is owner-only");
+    let error = sqlx::query("SELECT migrate_company_legal_facts()")
+        .execute(&runtime)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error.as_database_error().unwrap().code().as_deref(),
+        Some("42501")
     );
 }
 

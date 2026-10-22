@@ -61,7 +61,7 @@ pub struct CompanyCommand {
 
 #[derive(Debug, thiserror::Error)]
 pub enum CompanyError {
-    #[error("legal_entity_record_required: /org/entities")]
+    #[error("{code}", code = crate::catalog::LEGAL_ENTITY_RECORD_REQUIRED)]
     LegalEntityRecordRequired,
     #[error("preflight blocked the command: {0:?}")]
     Blocked(Vec<String>),
@@ -107,8 +107,7 @@ impl PgCompanyPort {
         Self { pool, runtime }
     }
 
-    /// Latest `company_revisions` row for the armed tenant. No revision, an
-    /// invisible org, or unset RLS is `None` — never a fabricated head.
+    /// Current tenant display name. An invisible org yields no head.
     pub fn get(&self, org_id: OrgId) -> Result<Option<CompanyHead>, CompanyError> {
         self.runtime.block_on(self.read_head(*org_id.as_uuid()))
     }
@@ -199,10 +198,9 @@ impl CanonicalPort for PgCompanyPort {
     /// PURE: no `&self`, no IO, no persistence. A blocked preflight has written
     /// nothing, so it can never spend an approval.
     fn preflight(_query: &Self::Query) -> Preflight {
-        Preflight::blocked(vec![format!(
-            "{}: /org/entities",
-            crate::catalog::LEGAL_ENTITY_RECORD_REQUIRED
-        )])
+        Preflight::blocked(vec![
+            crate::catalog::LEGAL_ENTITY_RECORD_REQUIRED.to_owned(),
+        ])
         .with_code(crate::catalog::LEGAL_ENTITY_RECORD_REQUIRED)
     }
 
