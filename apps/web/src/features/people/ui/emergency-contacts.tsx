@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { getRouteApi } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
-import { t } from "@console/i18n";
+import { isMessageId, t } from "@console/i18n";
+import { fmtDateTime } from "@console/i18n/format";
+import { actor } from "../../../lib/labels";
 import { FORMATS, phoneE164, toDomestic } from "../../../lib/pure/formats";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
-import { Button, Check } from "../../../ui/button/button";
+import { Check } from "../../../ui/button/button";
 import { Field, TextInput } from "../../../ui/field/field";
 import { SelectInput } from "../../../ui/field/select-input";
 import { MaskedField } from "../../../ui/masked-field/masked-field";
@@ -29,6 +31,11 @@ const MAX = 3;
 const QUICK = "QUICK_EDIT";
 const EMERGENCY_CONTACT_REFUSAL_CODE = "emergency_contact_notice_unconfirmed";
 
+const basisLabel = (basis: string) => {
+  const key = `empContact.basis.${basis}`;
+  return t(isMessageId(key) ? key : "empContact.basis.unknown");
+};
+
 const toInput = ({ name, relation, phone, contact_notified }: Contact): Contact => ({ name, relation, phone, contact_notified: contact_notified ?? false });
 
 function buildEmergencyContactWrite(
@@ -43,7 +50,7 @@ function buildEmergencyContactWrite(
   const entry: Contact = { name: trimmed, relation: draft.relation, phone: e164, contact_notified: true };
   const clean = list.map(toInput);
   const contacts = at === null ? [...clean, entry] : clean.map((x, i) => (i === at ? entry : x));
-  return { ok: true, contacts: contacts.map((contact) => ({ ...contact, contact_notified: true })) };
+  return { ok: true, contacts };
 }
 
 /**
@@ -77,7 +84,7 @@ export function EmergencyContacts({ c, quick }: { c: Card; quick: Quick }) {
           <ul className={s.contacts} aria-label={label}>
             {list.map((x, i) => (
               <li key={`${x.relation}-${x.phone}-${i}`} className={s.contact}>
-                <span>{who(x)} · {maskedPhone(x.phone)}{x.basis && x.recorded_by && x.recorded_at ? ` · ${t("empContact.recorded", { basis: x.basis, label: x.basis_label ?? t("empContact.basis.label"), by: x.recorded_by, at: x.recorded_at })}` : ""}</span>
+                <span>{who(x)} · {maskedPhone(x.phone)}{x.basis && x.recorded_by && x.recorded_at ? ` · ${t("empContact.recorded", { basis: basisLabel(x.basis), label: t("empContact.basis.label"), by: actor(x.recorded_by_name), at: fmtDateTime(x.recorded_at) })}` : ""}</span>
                 {c.editable && (
                   <RowActions
                     field={t("empContact.of", { who: who(x) })}

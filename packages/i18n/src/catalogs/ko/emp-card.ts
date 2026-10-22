@@ -86,7 +86,7 @@ export const koEmpCard = {
   "empCard.none": "없음",
   "empCard.missing": "빠짐",
   "empCard.multi": "여러 칸 정정",
-  "empCard.personal.basis": "수집 근거: 근로계약 이행 · 개인 이메일·비상연락처·사진은 동의를 받아 적습니다",
+  "empCard.personal.basis": "수집 근거: 근로계약 이행 · 개인 이메일·사진은 동의를 받아 적습니다 · 비상연락처는 응급 상황 대비로 기록합니다 (검토 전 · 동의 기반 아님)",
   "empCard.f.name": "성명",
   "empCard.f.nameAlt": "성명 한자 · 영문",
   "empCard.f.nameEn": "영문 성명",

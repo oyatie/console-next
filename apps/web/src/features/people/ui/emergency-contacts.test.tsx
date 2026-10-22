@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { loadCatalog } from "@console/i18n";
+import { fmtStamp } from "@console/i18n/format";
+import { loadCatalog, t } from "@console/i18n";
 import type { Card } from "./use-card";
 import type { Quick } from "./use-quick";
 import { ContactSheet, EmergencyContacts } from "./emergency-contacts";
@@ -104,12 +105,19 @@ const quickStub: Quick = {
 } as unknown as Quick;
 
 describe("EmergencyContacts privacy basis and notification confirmation", () => {
+  test("the personal card describes emergency response without asking for contact consent", () => {
+    const basis = t("empCard.personal.basis");
+    expect(basis).toContain("비상연락처는 응급 상황 대비로 기록합니다");
+    expect(basis).toContain("검토 전 · 동의 기반 아님");
+    expect(basis).not.toContain("비상연락처·사진은 동의를 받아");
+  });
+
   test("renders conservative basis labelled 검토 전 (not consent) and requires confirmation that the contact was told", () => {
     const html = renderToStaticMarkup(<EmergencyContacts c={makeCard()} quick={quickStub} />);
     expect(html).toContain("검토 전");
     expect(html).toContain("동의 기반 아님");
     expect(html).toContain("연락처 당사자 안내 확인");
-    expect(html).toContain("직원이 저장할 모든 비상연락처 대상자에게 등록 사실을 알렸음을 확인했습니다");
+    expect(html).toContain("직원이 이 비상연락처 대상자에게 등록 사실을 알렸음을 확인했습니다");
     expect(html).toContain('type="checkbox"');
   });
 
@@ -149,7 +157,7 @@ describe("EmergencyContacts privacy basis and notification confirmation", () => 
 
   });
 
-  test("sends typed confirmation for the replacement list and strips server-owned evidence", () => {
+  test("preserves an untouched legacy contact and strips server-owned evidence", () => {
     const list = [{
       name: "이두리", relation: "PARENT" as const, phone: "+8221234567",
       basis: null, basis_label: null, contact_notified: false,
@@ -161,7 +169,7 @@ describe("EmergencyContacts privacy basis and notification confirmation", () => 
     );
     commandState.run?.();
     expect(correctEmployeeMock.mock.calls[0]?.[2]).toEqual({ emergency_contacts: [
-      { name: "이두리", relation: "PARENT", phone: "+8221234567", contact_notified: true },
+      { name: "이두리", relation: "PARENT", phone: "+8221234567", contact_notified: false },
       { name: "이하나", relation: "SPOUSE", phone: "+821012345678", contact_notified: true },
     ] });
   });
@@ -184,6 +192,7 @@ describe("EmergencyContacts privacy basis and notification confirmation", () => 
             phone: "+821012345678",
             basis: "VITAL_INTEREST_PENDING_COUNSEL",
             recorded_by: "00000000-0000-0000-0000-000000000099",
+            recorded_by_name: "김인사",
             recorded_at: "2026-10-20T05:00:00Z",
             contact_notified: true,
           },
@@ -191,9 +200,13 @@ describe("EmergencyContacts privacy basis and notification confirmation", () => 
         quick={quickStub}
       />,
     );
-    expect(html).toContain("VITAL_INTEREST_PENDING_COUNSEL");
+    expect(html).not.toContain("VITAL_INTEREST_PENDING_COUNSEL");
+    expect(html).toContain("응급 상황 대비");
     expect(html).toContain("검토 전");
-    expect(html).toContain("00000000-0000-0000-0000-000000000099");
-    expect(html).toContain("2026-10-20T05:00:00Z");
+    expect(html).not.toContain("00000000-0000-0000-0000-000000000099");
+    expect(html).toContain("김인사");
+    expect(html).not.toContain("2026-10-20T05:00:00Z");
+    expect(html).toContain(fmtStamp("2026-10-20T05:00:00Z"));
+    expect(html).toContain("Asia/Seoul");
   });
 });

@@ -39896,21 +39896,21 @@ components:
           description: Sent in any common form; answered in E.164.
         contact_notified:
           type: boolean
-          description: Employee confirmation that this contact was told. Must be true on saves (422 emergency_contact_notice_unconfirmed otherwise); false on historical unconfirmed reads.
+          description: Employee confirmation that this contact was told. Required for new or changed contacts (422 emergency_contact_notice_unconfirmed otherwise). Unchanged or restored historical contacts retain their stored confirmation.
         basis:
           type: string
           nullable: true
           readOnly: true
           description: Server-recorded basis; null for historical unconfirmed contacts.
-        basis_label:
-          type: string
-          nullable: true
-          readOnly: true
-          description: 검토 전 when a basis is recorded.
         recorded_by:
           type: string
           format: uuid
           readOnly: true
+        recorded_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+          description: Display name of the recorder; null if unavailable.
         recorded_at:
           type: string
           format: date-time

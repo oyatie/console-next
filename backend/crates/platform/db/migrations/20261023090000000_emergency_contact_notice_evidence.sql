@@ -7,9 +7,11 @@ ALTER TABLE employee_emergency_contacts
     ADD COLUMN basis TEXT NULL,
     ADD COLUMN contact_notified BOOLEAN NOT NULL DEFAULT false,
     ADD CONSTRAINT employee_emergency_contacts_notice_basis CHECK (
-        basis IS NOT DISTINCT FROM
-            CASE WHEN contact_notified THEN 'VITAL_INTEREST_PENDING_COUNSEL' END
+        (basis IS NOT NULL) = contact_notified
     );
+
+-- Reordering retained rows must not rewrite their evidence.
+GRANT UPDATE (seq) ON employee_emergency_contacts TO console_rt;
 
 COMMENT ON COLUMN employee_emergency_contacts.basis IS
     'pd:none — server-validated processing basis, 검토 전; NULL = no evidence';

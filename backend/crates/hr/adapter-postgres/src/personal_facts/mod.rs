@@ -17,8 +17,8 @@ pub mod read;
 pub(crate) mod store;
 
 use console_hr_domain::personal::{
-    EmergencyContactInput, PERSONAL_FIELDS, normalize_name_en, normalize_name_hanja,
-    normalize_nationality, validate_emergency_contacts,
+    EmergencyContactInput, PERSONAL_FIELDS, normalize_emergency_contacts, normalize_name_en,
+    normalize_name_hanja, normalize_nationality,
 };
 use console_hr_domain::profile::facts::normalize_email;
 use console_hr_domain::text::parse_yyyy_mm_dd;
@@ -86,10 +86,7 @@ fn emergency_contacts(value: &Value) -> Result<Option<String>, HrError> {
         other => other.clone(),
     };
     let rows: Vec<EmergencyContactInput> = serde_json::from_value(value).map_err(|_| shape())?;
-    for row in &rows {
-        store::ensure_emergency_contact_notice(row.contact_notified == Some(true))?;
-    }
-    let mut rows = validate_emergency_contacts(rows).map_err(HrError::from_kernel)?;
+    let mut rows = normalize_emergency_contacts(rows).map_err(HrError::from_kernel)?;
     if rows.is_empty() {
         return Ok(None);
     }
@@ -103,7 +100,7 @@ fn emergency_contacts(value: &Value) -> Result<Option<String>, HrError> {
 
 fn shape() -> HrError {
     HrError::validation(
-        "changes.emergency_contacts must be a list of {name, relation, phone, contact_notified: true} (relation: SPOUSE, PARENT, CHILD, SIBLING, RELATIVE or OTHER)",
+        "changes.emergency_contacts must be a list of {name, relation, phone} (relation: SPOUSE, PARENT, CHILD, SIBLING, RELATIVE or OTHER)",
     )
 }
 
@@ -156,17 +153,12 @@ mod tests {
     }
 
     #[test]
-    fn emergency_contacts_refuse_missing_null_or_false_notice_confirmation() {
-        for confirmation in [None, Some(Value::Null), Some(json!(false))] {
-            let mut contact =
-                json!({ "name": "이하나", "relation": "SPOUSE", "phone": "010-1234-5678" });
-            if let Some(confirmation) = confirmation {
-                contact["contact_notified"] = confirmation;
-            }
-            let err = normalize("emergency_contacts", &json!([contact])).unwrap_err();
-            assert_eq!(err.status, http::StatusCode::UNPROCESSABLE_ENTITY);
-            assert_eq!(err.code, "emergency_contact_notice_unconfirmed");
-        }
+    fn malformed_contacts_keep_the_frozen_shape_message() {
+        let err = normalize("emergency_contacts", &json!({"name": "wrong shape"})).unwrap_err();
+        assert_eq!(
+            err.message,
+            "changes.emergency_contacts must be a list of {name, relation, phone} (relation: SPOUSE, PARENT, CHILD, SIBLING, RELATIVE or OTHER)"
+        );
     }
 
     #[test]
