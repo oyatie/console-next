@@ -5,6 +5,7 @@ import { apiAs } from "./chaos";
 import type { Org, OpsRecoveryRead } from "../apps/web/src/features/platform/api";
 import { expectAccessible } from "./a11y";
 import { firstSignIn, go, takeCode, tenantSlugField, unique, vendorPage, vendorStepUp } from "./flows";
+import { clearShifts, forgetResize, recordShifts } from "./stability";
 
 async function selectTenant(page: Page, slug: string) {
   await go(page, "/platform");
@@ -93,4 +94,38 @@ test("governed ops recovery: two operators, tenant veto, hold and once-only reen
   await restored.context().close();
   await holder.context().close();
   await second.context().close();
+});
+
+// regression (train fix r1): the panel drew its ops-recovery read late above 상태 and 삭제, so every tenant opened moved
+// their buttons under a press already aimed at them (recovery.spec's tenant-panel check, red under load).
+test("regression: a tenant's late ops-recovery read does not move the panel's 상태 and 삭제 controls", { tag: ["@auth", "@regression"] }, async ({ browser }) => {
+  const vendor = await vendorPage(browser);
+  const slug = unique("ops-panel");
+  await go(vendor, "/platform");
+  await vendor.getByRole("button", { name: "고객 계정 개설", exact: true }).click();
+  await vendor.getByLabel("고객 이름").fill(unique("패널 고객"));
+  await tenantSlugField(vendor).fill(slug);
+  await vendor.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await takeCode(vendor);
+  // A fresh load with no tenant chosen (onboarding opened this one's panel), so its recovery read is not cached.
+  await vendor.goto("/platform");
+  await expect(vendor.getByRole("row").filter({ hasText: slug })).toBeVisible();
+  // The vendor page is shared by the worker's tests: tall enough that the sections stay in view (a block pushed off
+  // screen reads as resized and only scores), a late read on purpose, and no shifts carried in from earlier tests.
+  const size = vendor.viewportSize()!;
+  const read = /\/api\/platform\/orgs\/[^/]+\/ops-recovery$/;
+  await vendor.setViewportSize({ width: 1280, height: 1600 });
+  await vendor.route(read, async (route) => { await new Promise((r) => setTimeout(r, 1_000)); await route.continue(); });
+  try {
+    await forgetResize(vendor);
+    await vendor.evaluate(recordShifts);
+    await vendor.evaluate(clearShifts);
+    await vendor.getByRole("row").filter({ hasText: slug }).click();
+    await expect(vendor.getByRole("region", { name: "운영 계정(ops) 복구", exact: true })).toBeVisible();
+    await expectAccessible(vendor, "tenant panel after a late ops-recovery read");
+  } finally {
+    await vendor.unroute(read);
+    await vendor.setViewportSize(size);
+    await forgetResize(vendor);
+  }
 });
