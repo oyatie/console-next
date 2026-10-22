@@ -2,6 +2,12 @@ import { expect, test } from "vitest";
 import { lifecycleBody } from "./use-lifecycle-command";
 import { EMPTY } from "./use-lifecycle-draft";
 
+test("future response leave types cannot become unvalidated command values", () => {
+  const context = { employeeId: "employee", kind: "LEAVE_OF_ABSENCE" as const, pin: 3 };
+  expect(lifecycleBody({ ...EMPTY, leaveType: "FUTURE_LEAVE" }, context).leave_type).toBeUndefined();
+  expect(lifecycleBody({ ...EMPTY, leaveType: "WORK_INJURY" }, context).leave_type).toBe("WORK_INJURY");
+});
+
 test("promotions independently send grade and title ids; grade-only keeps the position", () => {
   const context = { employeeId: "employee", kind: "PROMOTE" as const, pin: 3 };
   const grade = lifecycleBody({ ...EMPTY, gradeId: "grade", date: "2026-10-12" }, context);

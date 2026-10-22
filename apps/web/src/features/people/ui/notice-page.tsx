@@ -1,10 +1,11 @@
+import { EnumValue } from "../../../ui/enum-value";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { Copy, Printer } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
-import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
+import { LEAVE_TYPE, LIFECYCLE_EVENT, label, labeled } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
 import { entitiesRef } from "../../../reference/entity/api";
 import { Button } from "../../../ui/button/button";
@@ -43,7 +44,7 @@ function Doc({ n }: { n: Notice }) {
   const text = [
     t("notice.doc.head"),
     t("notice.doc.no", { no: n.notice_no, date: fmtDate(n.notice_date) }),
-    ...parts.flatMap((p, i) => [t("notice.doc.section", { n: i + 1, kind: label(LIFECYCLE_EVENT, p.kind), count: p.lines.length }), ...p.lines.map((l) => [l.name, l.employee_number ?? "—", before(l), after(l)].join("\t"))]),
+    ...parts.flatMap((p, i) => [t("notice.doc.section", { n: i + 1, kind: label(LIFECYCLE_EVENT, p.kind), count: p.lines.length }), ...p.lines.map((l) => [l.name, l.employee_number ?? "—", before(l), [after(l), l.event.leave_type && labeled(LEAVE_TYPE, l.event.leave_type).code && label(LEAVE_TYPE, l.event.leave_type)].filter(Boolean).join(" · ")].join("\t"))]),
     t("notice.doc.foot", { date: fmtDate(n.notice_date), entity }),
   ].join("\n");
   return (
@@ -71,7 +72,7 @@ function Doc({ n }: { n: Notice }) {
                   { header: t("notice.doc.col.name"), cell: (l) => l.name },
                   { header: t("notice.doc.col.number"), cell: (l) => <span className="num">{l.employee_number ?? "—"}</span>, fit: true },
                   { header: t("notice.doc.col.before"), cell: before },
-                  { header: t("notice.doc.col.after"), cell: after },
+                  { header: t("notice.doc.col.after"), cell: (l) => <>{after(l)}{l.event.leave_type && labeled(LEAVE_TYPE, l.event.leave_type).code && <> · <EnumValue e={LEAVE_TYPE} value={l.event.leave_type} /></>}</> },
                 ]}
               />
             </div>

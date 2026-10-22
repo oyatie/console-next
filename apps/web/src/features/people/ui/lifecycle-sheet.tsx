@@ -1,3 +1,4 @@
+import { LEAVE_TYPE } from "../../../lib/labels";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
@@ -121,7 +122,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
   const missing = {
     unit: kind === "TRANSFER" && !v0.unit,
     position: kind === "PROMOTE" && !v0.gradeId && (catalog.length > 0 ? !v0.titleId : !v0.position.trim()),
-    leaveType: kind === "LEAVE_OF_ABSENCE" && !v0.leaveType,
+    leaveType: kind === "LEAVE_OF_ABSENCE" && !LEAVE_TYPE.values.some((type) => type === v0.leaveType),
     // A date outside what the server accepts is not sent: the date field says why beside it.
     returnDate: kind === "LEAVE_OF_ABSENCE" && !correcting && ((returnRequired(v0.leaveType) && !v0.returnDate) || (Boolean(v0.returnDate) && when !== "none" && v0.returnDate <= v0.date)),
     endDate: (kind === "CONTRACT_RENEWAL" || (kind === "EMPLOYMENT_TYPE_CHANGE" && v0.toType === "CONTRACT")) && (!v0.endDate || (when !== "none" && v0.endDate < v0.date)),

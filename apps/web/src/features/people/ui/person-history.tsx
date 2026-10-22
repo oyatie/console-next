@@ -1,3 +1,4 @@
+import { EnumCode } from "../../../ui/enum-value";
 import { OutcomeLink } from "../../../lib/react/outcome-link";
 import { ActorBadge } from "../../../ui/timeline-lanes/actor-badge";
 import { useState } from "react";
@@ -7,7 +8,7 @@ import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { focusSoon } from "../../../lib/react/announce";
 import { QueryState } from "../../../lib/react/query-state";
-import { actor } from "../../../lib/labels";
+import { LEAVE_TYPE, actor } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { Receipt } from "../../../ui/receipt/receipt";
@@ -66,7 +67,7 @@ export function PersonHistory({ employee, events, verbs, manage, today, done, on
       tone: TONE[x.event_type],
       title: v.title,
       state: due ? <Chip tone="warn">{t("person.history.dueToday")}</Chip> : v.state && <Chip tone={v.state.tone}>{v.state.label}</Chip>,
-      detail: v.detail,
+      detail: <>{v.detail} <EnumCode e={LEAVE_TYPE} value={x.leave_type} /></>,
       meta: <>{t("person.history.recorded", { actor: actor(x.created_by_name), at: fmtDateTime(x.created_at) })}<ActorBadge kind={x.actor_kind} /><OutcomeLink id={x.command_id} /></>,
       struck: x.state === "CANCELLED" || Boolean(x.voided_by),
       highlight: done?.eventId === x.id,

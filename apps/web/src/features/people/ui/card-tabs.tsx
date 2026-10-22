@@ -1,7 +1,8 @@
+import { EnumCode } from "../../../ui/enum-value";
 import { useState } from "react";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
-import { actor } from "../../../lib/labels";
+import { LEAVE_TYPE, actor } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { Table } from "../../../ui/table";
@@ -77,7 +78,7 @@ function Ledger({ c, onAct }: { c: Card; onAct: (act: string) => void }) {
             { header: t("empCard.ledger.from"), cell: (r) => <span className={s.num}>{r.from ? fmtDate(r.from) : "—"}</span>, fit: true },
             { header: t("empCard.ledger.kind"), cell: (r) => <Chip tone={tone[r.kind]}>{t(`empCard.ledger.kind.${r.kind}`)}</Chip>, fit: true },
             { header: t("empCard.ledger.what"), cell: (r) => <b>{r.what}</b> },
-            { header: t("empCard.ledger.change"), cell: (r) => r.change },
+            { header: t("empCard.ledger.change"), cell: (r) => <>{r.change} <EnumCode e={LEAVE_TYPE} value={r.event?.leave_type} /></> },
             { header: t("empCard.ledger.how"), cell: (r) => r.how, fit: true },
             { header: t("empCard.ledger.who"), cell: (r) => r.who, fit: true },
             { header: t("empCard.ledger.why"), cell: (r) => r.why || "—", wide: true },

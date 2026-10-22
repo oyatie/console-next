@@ -18447,8 +18447,7 @@ export interface components {
                 leave?: {
                     /** Format: date */
                     start_date: string;
-                    /** @enum {string} */
-                    leave_type: "CHILDCARE" | "MATERNITY" | "ILLNESS" | "PERSONAL" | "OTHER";
+                    leave_type: string;
                     /** Format: date */
                     expected_return_date?: string;
                 };
@@ -18758,11 +18757,8 @@ export interface components {
             to_position?: string | null;
             expected_return_date?: string | null;
             contract_end_date?: string | null;
-            /**
-             * @description LEAVE_OF_ABSENCE only; absent when not given. WORK_INJURY is 산재 요양. Omitted for callers without employee_directory_manage (ILLNESS, MATERNITY and WORK_INJURY reveal health information, 개보법 제23조).
-             * @enum {string}
-             */
-            leave_type?: "CHILDCARE" | "MATERNITY" | "WORK_INJURY" | "ILLNESS" | "PERSONAL" | "OTHER";
+            /** @description LEAVE_OF_ABSENCE only; absent when not given. WORK_INJURY is 산재 요양. Omitted for callers without employee_directory_manage (ILLNESS, MATERNITY and WORK_INJURY reveal health information, 개보법 제23조). */
+            leave_type?: string;
             /** @description Present when the event was recorded by a bulk appointment (POST /api/v1/employees/lifecycle-events/bulk). */
             batch_id?: components["schemas"]["Uuid"];
             /**
@@ -21414,8 +21410,7 @@ export interface components {
             branch_id: components["schemas"]["Uuid"];
             requester_user_id: components["schemas"]["Uuid"];
             subject_employee_id: components["schemas"]["Uuid"];
-            /** @enum {string} */
-            leave_type: "annual" | "half_day";
+            leave_type: string;
             /**
              * Format: double
              * @deprecated
@@ -21501,8 +21496,7 @@ export interface components {
             branch_id: components["schemas"]["Uuid"];
             requester_user_id: components["schemas"]["Uuid"];
             subject_employee_id: components["schemas"]["Uuid"];
-            /** @enum {string} */
-            leave_type: "annual" | "half_day";
+            leave_type: string;
             /** Format: double */
             days: number;
             /** Format: date */
@@ -22284,7 +22278,18 @@ export interface components {
                 [key: string]: unknown;
             };
             expires_at: components["schemas"]["Timestamp"];
-            binding: components["schemas"]["MobilePasskeyStepUpBinding"];
+            binding: {
+                action_kind: string;
+                object_id: components["schemas"]["Uuid"];
+                reason_key: string;
+                /**
+                 * Format: int32
+                 * @description Null for an immediate online action; 1-based for queued replay attempts.
+                 */
+                replay_attempt: number | null;
+                /** @description Required for BW-29 actions including OPERATOR_RECOVERY; SHA-256 of the command payload. */
+                payload_hash?: string | null;
+            };
         };
         /** @enum {string} */
         MobileStepUpActionKind: "APPROVAL_DECISION" | "POLL_VOTE" | "EXIT_CONFIRM" | "EXIT_RESCIND" | "ELEVATED_GRANT" | "PERIOD_UNLOCK" | "IDENTITY_MERGE" | "EXCEPTION_DECIDE" | "SETTINGS_CHANGE" | "CREDENTIAL_RESET" | "TENANT_OFFBOARD" | "OPERATOR_RECOVERY";
@@ -41791,7 +41796,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["LifecycleScheduleConflictBody"] | components["schemas"]["ErrorBody"];
+                    "application/json": components["schemas"]["LifecycleScheduleConflictBody"];
                 };
             };
             422: components["responses"]["ValidationError"];

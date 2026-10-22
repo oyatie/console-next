@@ -76,7 +76,7 @@ properties:
     nullable: true
   leave_type:
     type: string
-    enum: [CHILDCARE, MATERNITY, WORK_INJURY, ILLNESS, PERSONAL, OTHER]
+    x-extensible-enum: [CHILDCARE, MATERNITY, WORK_INJURY, ILLNESS, PERSONAL, OTHER]
     description: LEAVE_OF_ABSENCE only; absent when not given. WORK_INJURY is 산재 요양. Omitted for callers without
       employee_directory_manage (ILLNESS, MATERNITY and WORK_INJURY reveal health information, 개보법 제23조).
   batch_id:

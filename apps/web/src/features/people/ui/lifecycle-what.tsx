@@ -1,3 +1,4 @@
+import { EnumCode } from "../../../ui/enum-value";
 import type { ReactNode, RefObject } from "react";
 import { Network } from "lucide-react";
 import type { components } from "@console/api/schema";
@@ -96,7 +97,7 @@ export function LifecycleWhat({ detail, kind, v, set, today, bounds, lastLeave, 
           <p className={s.fact}>
             {!lastLeave ? t("lifecycle.return.factUnknown")
               : lastLeave.expected_return_date ? t("lifecycle.return.factPlanned", { from: lastLeave.effective_date, to: lastLeave.expected_return_date, type: lastLeave.leave_type ? label(LEAVE_TYPE, lastLeave.leave_type) : "—", unit: lastLeave.from_org_unit ?? lastLeave.to_org_unit ?? "—" })
-              : t("lifecycle.return.fact", { date: fmtDayShort(lastLeave.effective_date), type: lastLeave.leave_type ? label(LEAVE_TYPE, lastLeave.leave_type) : "—" })}
+              : t("lifecycle.return.fact", { date: fmtDayShort(lastLeave.effective_date), type: lastLeave.leave_type ? label(LEAVE_TYPE, lastLeave.leave_type) : "—" })} <EnumCode e={LEAVE_TYPE} value={lastLeave?.leave_type} />
           </p>
         )}
         {kind === "CONTRACT_RENEWAL" && (

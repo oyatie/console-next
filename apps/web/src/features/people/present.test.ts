@@ -5,6 +5,12 @@ import { employeeWarningText, describeEvent, fmtDay, hrConfirmedTitle, placeText
 
 beforeAll(() => loadCatalog("ko"));
 
+test.each(["APPLIED", "SCHEDULED", "CANCELLED", "APPLY_FAILED"] as const)("%s history keeps a future leave type readable", (state) => {
+  const described = describeEvent(event({ event_type: "LEAVE_OF_ABSENCE", leave_type: "FUTURE_LEAVE", state }), "Synthetic employee");
+  expect(described.detail).toContain("확인되지 않은 항목");
+  expect(described.detail).not.toContain("FUTURE_LEAVE");
+});
+
 const event = (x: Partial<LifecycleEvent>): LifecycleEvent =>
   ({
     id: "e1",

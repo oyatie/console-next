@@ -6,8 +6,8 @@ import { isMessageId, t } from "@console/i18n";
 
 type S = components["schemas"];
 type Tone = "ok" | "warn" | "danger" | "info" | "neutral";
-export type Labeled = { label: string; tone?: Tone };
-type Enum<V extends string = string> = { type: string; values: readonly V[]; tone?: Partial<Record<V, Tone>> };
+export type Labeled = { label: string; tone?: Tone; code?: string };
+export type Enum<V extends string = string> = { type: string; values: readonly V[]; tone?: Partial<Record<V, Tone>>; extensible?: boolean };
 
 const values = <V extends string>(type: string, v: readonly V[]): Enum<V> => ({ type, values: v });
 const toned = <V extends string>(type: string, tone: Record<V, Tone>): Enum<V> => ({ type, values: Object.keys(tone) as V[], tone });
@@ -79,7 +79,8 @@ export const SETTLEMENT_STATUS = toned<S["EmployeeExitSettlementPackage"]["statu
 /** The kinds of action an employee's next (scheduled) event can be. */
 export const LIFECYCLE_EVENT = values<NonNullable<S["Employee"]["next_event"]>["event_type"]>("lifecycleEvent", ["TRANSFER", "PROMOTE", "LEAVE_OF_ABSENCE", "RETURN_FROM_LEAVE", "CONTRACT_RENEWAL", "TERMINATE"]);
 export const LIFECYCLE_STATE = toned<S["EmployeeLifecycleEvent"]["state"]>("lifecycleState", { SCHEDULED: "info", APPLIED: "ok", APPLY_FAILED: "danger", CANCELLED: "neutral" });
-export const LEAVE_TYPE = values<NonNullable<S["EmployeeLifecycleEvent"]["leave_type"]>>("leaveType", ["CHILDCARE", "MATERNITY", "WORK_INJURY", "ILLNESS", "PERSONAL", "OTHER"]);
+export const LEAVE_TYPE = { ...values<NonNullable<S["CreateEmployeeLifecycleEventRequest"]["leave_type"]>>("leaveType", ["CHILDCARE", "MATERNITY", "WORK_INJURY", "ILLNESS", "PERSONAL", "OTHER"]), extensible: true };
+export const STEP_UP_ACTION = { ...values<S["MobileStepUpActionKind"]>("stepUpAction", ["APPROVAL_DECISION", "POLL_VOTE", "EXIT_CONFIRM", "EXIT_RESCIND", "ELEVATED_GRANT", "PERIOD_UNLOCK", "IDENTITY_MERGE", "EXCEPTION_DECIDE", "SETTINGS_CHANGE", "CREDENTIAL_RESET", "TENANT_OFFBOARD", "OPERATOR_RECOVERY"]), extensible: true };
 export const PERIOD_LOCK_DOMAIN = values<S["PeriodLock"]["domain"]>("periodLockDomain", ["payroll", "accounting"]);
 export const IMPORT_ROW_STATUS = toned("importRowStatus", { CANDIDATE: "ok", PRESERVED: "warn", ERROR: "danger" });
 // Employment facts, contracts and onboarding (EMP-MODEL).
@@ -95,7 +96,6 @@ const known = (e: Enum, v: string) => {
   const id = `enum.${e.type}.${v}`;
   return isMessageId(id) ? t(id) : null;
 };
-/** Unknown values render as-is rather than disappearing, so drift is visible. */
 // Legal entities, registrations and workplaces (pending contract).
 export const BIZ_KIND = values<P.BizKind>("bizKind", ["CORPORATION", "INDIVIDUAL", "ID_NUMBER_ORG"]);
 export const TAX_TYPE = values<P.NtsTaxType>("taxType", ["01", "02", "03", "04", "05", "06", "07"]);
@@ -110,9 +110,10 @@ export const VERIFICATION = toned<P.VerificationTier>("verification", { NONE: "n
 export const CHANGE_MODE = toned<P.ChangeMode>("changeMode", { SETUP: "info", GOVERNED: "neutral", SOLE_HOLDER: "warn", MIGRATION: "neutral" });
 export const UNVERIFIED_REASON = values<S["UnverifiedReason"]>("unverifiedReason", ["NOT_CHECKED", "NEW_REGISTRATION_PENDING", "SERVICE_UNAVAILABLE"]);
 
-export const label = (e: Enum, v: string) => known(e, v) ?? v;
+export const label = (e: Enum, v: string) => known(e, v) ?? (e.extensible ? t("enum.unknown") : v);
 export const labeled = (e: Enum, v: string): Labeled => {
   const text = known(e, v);
+  if (text === null && e.extensible) return { label: t("enum.unknown"), tone: "neutral", code: v };
   return text === null ? { label: v, tone: "warn" } : { label: text, tone: (e.tone as Record<string, Tone> | undefined)?.[v] };
 };
 
