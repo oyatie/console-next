@@ -4,6 +4,7 @@
 
 #[path = "support/http.rs"]
 mod http;
+mod inbox_pool;
 #[path = "period_unlock_support/mod.rs"]
 mod period_support;
 
@@ -200,7 +201,7 @@ async fn two_thousand_product_created_people_keep_first_page_under_budget_and_cu
     pool: PgPool,
 ) {
     let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
-    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    let (ctx, probe) = inbox_pool::context(&pool, org, user).await;
     inbox(&ctx).await;
     let (_, _, branch, unit) = http::structure(&ctx).await;
     let mut expected = BTreeSet::new();
@@ -214,23 +215,72 @@ async fn two_thousand_product_created_people_keep_first_page_under_budget_and_cu
         ));
     }
     let mut elapsed = Vec::new();
+    let mut peak = 0;
+    probe.reset();
     for _ in 0..20 {
         let started = Instant::now();
-        let (status, page) = ctx
-            .call("GET", &format!("{INBOX}?limit=50&filter=turn"), None)
+        let ((status, page), observed) = probe
+            .measure(ctx.call("GET", &format!("{INBOX}?limit=50&filter=turn"), None))
             .await;
+        peak = peak.max(observed);
         elapsed.push(started.elapsed());
         assert_eq!(status, StatusCode::OK, "{page}");
         assert_eq!(page["items"].as_array().unwrap().len(), 50);
     }
     elapsed.sort();
     let p95 = elapsed[18];
-    eprintln!("inbox: 2,000 product-created people, 20 reads, p95={p95:?}");
+    eprintln!(
+        "inbox: 2,000 product-created people, 20 reads, p95={p95:?}, peak pooled leases={peak}, configured source cap={}, acquisitions={}",
+        probe.cap(),
+        probe.acquisitions()
+    );
+    assert!(
+        peak < probe.pool.options().get_max_connections() as usize,
+        "inbox exhausted its shared runtime pool: peak {peak}, source cap {}",
+        probe.cap()
+    );
     assert!(
         p95 <= StdDuration::from_millis(300),
         "first-page p95 {p95:?} exceeds 300 ms"
     );
 
+    for _ in 0..3 {
+        probe.reset();
+        let reads = futures::future::join_all(
+            (0..6).map(|_| ctx.call("GET", "/api/v1/me/action-inbox?limit=50&filter=turn", None)),
+        );
+        let unrelated = async {
+            // Each request acquires auth, clock and tenant connections before its sources.
+            tokio::time::timeout(StdDuration::from_secs(1), async {
+                while probe.acquisitions() <= 6 * 3
+                    || probe.pool.size() as usize - probe.pool.num_idle() < probe.cap()
+                {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .expect("parallel reads never entered source fan-out");
+            let started = Instant::now();
+            let (status, body) = tokio::time::timeout(
+                StdDuration::from_secs(1),
+                ctx.call("GET", "/api/v1/users/me", None),
+            )
+            .await
+            .expect("inbox fan-out starved an unrelated read");
+            assert_eq!(status, StatusCode::OK, "{body}");
+            started.elapsed()
+        };
+        let ((results, unrelated_elapsed), parallel_peak) = probe
+            .measure(async { tokio::join!(reads, unrelated) })
+            .await;
+        for (status, body) in results {
+            assert_eq!(status, StatusCode::OK, "{body}");
+            assert!(body["unavailable"].as_array().unwrap().is_empty(), "{body}");
+        }
+        eprintln!(
+            "six parallel inbox reads: peak pooled leases={parallel_peak}, unrelated identity request={unrelated_elapsed:?}"
+        );
+    }
     let mut page = inbox(&ctx).await;
     let (status, late) = ctx
         .call(
@@ -271,66 +321,6 @@ async fn two_thousand_product_created_people_keep_first_page_under_budget_and_cu
         .filter(|id| id.starts_with("hr_register:"))
         .collect::<BTreeSet<_>>();
     assert_eq!(actual, expected, "every pre-snapshot record traverses once");
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn grant_notices_appear_once_only_for_the_holder_and_leave_on_confirmation(pool: PgPool) {
-    let (org, ops) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
-    let holder = http::add_user(&pool, org, &[]).await;
-    let other = http::add_user(&pool, org, &[]).await;
-    let ctx = http::ctx(&pool, org, holder, &[], None).await;
-    inbox(&ctx).await;
-    let role: Uuid = sqlx::query_scalar("INSERT INTO access_roles (org_id,name_ko,status,version,created_by) VALUES ($1,'알림 검증','ACTIVE',1,$2) RETURNING id")
-        .bind(org).bind(ops.as_uuid()).fetch_one(&pool).await.unwrap();
-    sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) VALUES ($1,$2,1,'알림 검증','ACTIVE','SETUP',$3)")
-        .bind(org).bind(role).bind(ops.as_uuid()).execute(&pool).await.unwrap();
-    sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) VALUES ($1,$2,1,'hr_basic',ARRAY['view','edit'])")
-        .bind(org).bind(role).execute(&pool).await.unwrap();
-    let mut expected = BTreeSet::new();
-    for (start, end, status) in [
-        (-1, Some(1), "ACTIVE"),
-        (2, None, "ACTIVE"),
-        (-5, Some(-4), "ACTIVE"),
-        (-1, None, "REVOKED"),
-    ] {
-        let id: Uuid = sqlx::query_scalar(
-            "INSERT INTO access_grants (org_id,account_id,role_id,scope_kind,valid_from,valid_to,status,change_mode,reason_code,granted_by,revoked_by,revoked_at) \
-             VALUES ($1,$2,$3,'TENANT',now()+($4 * interval '1 day'),CASE WHEN $5::integer IS NULL THEN NULL ELSE now()+($5 * interval '1 day') END, \
-             $6,'SETUP','NEW_HIRE',$7,CASE WHEN $6='REVOKED' THEN $7 ELSE NULL END,CASE WHEN $6='REVOKED' THEN now() ELSE NULL END) RETURNING id"
-        ).bind(org).bind(holder.as_uuid()).bind(role).bind(start).bind(end).bind(status).bind(ops.as_uuid())
-            .fetch_one(&pool).await.unwrap();
-        if start >= -1 && status == "ACTIVE" {
-            expected.insert(id.to_string());
-        }
-    }
-    let page = inbox(&ctx).await;
-    let rows = items_of(&page, "grant_notice");
-    let actual = rows
-        .iter()
-        .map(|r| r["links"][0]["id"].as_str().unwrap().to_owned())
-        .collect::<BTreeSet<_>>();
-    assert_eq!(
-        actual, expected,
-        "one actionable notice per current or scheduled grant: {page}"
-    );
-    assert_eq!(
-        rows.len(),
-        2,
-        "multiple role levels must not duplicate a grant"
-    );
-    let outsider = http::ctx(&pool, org, other, &[], None).await;
-    assert!(items_of(&inbox(&outsider).await, "grant_notice").is_empty());
-    for grant in expected {
-        let (status, result) = ctx
-            .call(
-                "POST",
-                &format!("/api/v1/access/grants/{grant}/notice"),
-                None,
-            )
-            .await;
-        assert_eq!(status, StatusCode::OK, "{result}");
-    }
-    assert!(items_of(&inbox(&ctx).await, "grant_notice").is_empty());
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

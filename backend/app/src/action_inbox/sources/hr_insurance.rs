@@ -52,6 +52,7 @@ pub(crate) async fn page(
         .items
         .into_iter()
         .map(|task| ActionInboxSourceItem {
+            context: None,
             id: format!(
                 "insurance_filing_{}_{}:{}",
                 task.kind, task.insurer, task.event_id

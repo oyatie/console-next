@@ -99,3 +99,22 @@ properties:
   days_remaining:
     type: [integer, 'null']
     description: Calendar days remaining in the source deadline's timezone, computed from the database clock.
+  context:
+    type: object
+    description: Source-owned facts for the row's command and informed grant confirmation.
+    properties:
+      command:
+        type: [string, 'null']
+        enum: [approve, effectuate, null]
+      drafter:
+        type: string
+      reason:
+        type: string
+      command_id:
+        type: [string, 'null']
+      grants:
+        type: array
+        items:
+          $ref: '#/components/schemas/AccessEffectiveEntry'
+      is_ops:
+        type: boolean

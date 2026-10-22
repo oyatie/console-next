@@ -38,16 +38,17 @@ vi.mock("@tanstack/react-query", async (original) => ({
   }),
   useInfiniteQuery: (options: Options) => { view.options = options; return { ...view.list, fetchNextPage: view.next, refetch: view.retry }; },
 }));
+vi.mock("./inbox-command", () => ({ InboxCommand: ({ id, command }: { id: string; command: string }) => createElement("button", { "data-command": command, "data-record": id }, command) }));
 vi.mock("../../../lib/react/command", () => ({ useCommand: () => ({}) }));
 vi.mock("../../../ui/button/button", async (original) => {
   const actual = await original<typeof import("../../../ui/button/button")>();
   return { ...actual, Button: (props: Parameters<typeof Button>[0]) => { view.buttons.push(props); return createElement(actual.Button, props); } };
 });
 const item = (id: string, extra: Partial<Item> = {}): Item => ({ id, kind: "register_review", lane: "turn", title: id, ref: "", urg: "wait", dueTone: "neutral", done: false, days_remaining: null, links: [{ kind: "employee", id }], ...extra });
-const page = (items: Item[], extra: Partial<Page> = {}): Page => ({ items, total: items.length, total_is_exact: true, next_cursor: null, ...extra });
+const page = (items: Item[], extra: Partial<Page> = {}): Page => ({ items, total: items.length, total_is_exact: true, next_cursor: null, unavailable: [], available_filters: ["turn", "waiting", "scheduled", "deadlines", "failures"], counts: {}, upcoming: [], has_work: true, quick_starts: [], as_of: "2026-10-23T00:00:00Z", ...extra });
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
 const html = () => renderToStaticMarkup(createElement(RouterContextProvider, { router } as Parameters<typeof RouterContextProvider>[0], createElement(() => Home({ setup: (c: Checklist) => createElement("div", { "data-testid": "inbox-setup" }, c.total) }))));
-const click = (label: string) => view.buttons.find((button) => button.children === label)!.onClick!({} as MouseEvent<HTMLButtonElement>);
+const click = (label: string) => view.buttons.find((button) => button.children === label || typeof button.children === "string" && button.children.startsWith(label + " "))!.onClick!({} as MouseEvent<HTMLButtonElement>);
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
   vi.restoreAllMocks(); vi.clearAllMocks();
@@ -127,4 +128,102 @@ test("an unregistered record kind stays readable without a guessed destination",
   expect(markup).toContain("future work");
   expect(markup).not.toContain("javascript:");
   expect(markup).not.toContain('href="/people/');
+});
+
+
+test("each filter shows its server count and an inexact lower bound", () => {
+  view.list.data = { pages: [page([item("work")], { counts: { turn: { total: 7, total_is_exact: true }, waiting: { total: 2, total_is_exact: false } } })] };
+  const markup = html();
+  expect(markup).toContain(`${t("home.inbox.filter.turn")} 7`);
+  expect(markup).toContain(`${t("home.inbox.filter.waiting")} 2+`);
+});
+
+test("one failed source keeps healthy rows, names the outage and offers retry with its support reference", () => {
+  view.list.data = { pages: [page([item("healthy work")], { total_is_exact: false, unavailable: [{ source: "hr_register", support_reference: "0123456789abcdef0123456789abcdef" }] })] };
+  const markup = html();
+  expect(markup).toContain("healthy work");
+  expect(markup).toContain("0123456789abcdef0123456789abcdef");
+  expect(markup).toContain(t("home.review.register"));
+  click(t("common.retry"));
+  expect(view.retry).toHaveBeenCalledOnce();
+});
+
+test("no work grant shows the honest account page without dead filters", () => {
+  view.list.data = { pages: [page([], { has_work: false })] };
+  const markup = html();
+  expect(markup).toContain(t("home.noWork.title"));
+  expect(markup).toContain('href="/account"');
+  expect(markup).not.toContain('aria-label="'+t("home.lanes")+'"');
+});
+
+test("empty turn offers permitted starts, next scheduled work and the as-of stamp", () => {
+  view.list.data = { pages: [page([], { quick_starts: ["register", "import", "org", "invite"], upcoming: [item("next change", { kind: "org_change_scheduled", lane: "scheduled", links: [{ kind: "org_change", id: "next" }] })] })] };
+  const markup = html();
+  for (const key of ["register", "import", "org", "invite"] as const) expect(markup).toContain(t(`home.tiles.${key}`));
+  expect(markup).toContain("next change");
+  expect(markup).toContain(t("home.next.title"));
+  expect(markup).toContain(t("home.asOf", { time: "2026. 10. 23. 오전 9:00" }).split(" ")[0]);
+});
+
+test("grant confirmation is preceded by scope, start/end and authority reach", () => {
+  view.list.data = { pages: [page([item("grant", { kind: "grant_notice", title: "notice role", links: [{ kind: "access", id: "g" }], context: { grants: [{ grant_id: "g", role_id: "r", role_name_ko: "notice role", domain: "hr_basic", level: "view", scope: { kind: "TENANT", node_id: null, include_descendants: true }, valid_from: "2026-01-01T00:00:00Z", valid_to: "2027-01-01T00:00:00Z", enforcement: "ENFORCED", caveats: [] }] } })])] };
+  const markup = html();
+  expect(markup).toContain(t("access.scope.tenant"));
+  expect(markup).toContain("2026");
+  expect(markup).toContain(t("accessCodes.domain.hr_basic"));
+  expect(markup.indexOf(t("access.scope.tenant"))).toBeLessThan(markup.indexOf(t("home.grantNotices.confirm", { role: "notice role" })));
+});
+
+test("only usable server filters are offered", () => {
+  view.list.data = { pages: [page([item("work")], { available_filters: ["turn", "deadlines"] })] };
+  const markup = html();
+  expect(markup).toContain(t("home.inbox.filter.deadlines"));
+  expect(markup).not.toContain(t("home.inbox.filter.waiting"));
+  expect(markup).not.toContain(t("home.inbox.filter.failures"));
+});
+
+test.each(["approve", "effectuate"] as const)("server command %s reaches the inline control beside the record link", (command) => {
+  view.list.data = { pages: [page([item("org", { kind: command === "approve" ? "org_change_approve" : "org_change_apply", links: [{kind:"org_change",id:"record"}], context: { command, drafter:"drafter", reason:"reason" } })])] };
+  const markup = html();
+  expect(markup).toContain(`data-command="${command}"`);
+  expect(markup).toContain('data-record="record"');
+  expect(markup).toContain('href="/org/changes/record"');
+  expect(markup).toContain("drafter");
+  expect(markup).toContain("reason");
+});
+
+test("waiting work retains its durable outcome link", () => {
+  view.list.data = { pages: [page([item("waiting", { kind:"org_change_waiting",lane:"waiting",context:{command_id:"outcome"} })])] };
+  expect(html()).toContain('href="/requests/outcome"');
+});
+
+
+test.each([["identity_review","identity"],["home_branch_review","branch"],["register_review","register"],["lifecycle_apply_failed","failed"]] as const)("%s keeps its filtered-directory entry verb", (kind, review) => {
+  view.list.data = { pages: [page([item("work", {kind})])] };
+  expect(html()).toContain(`/people?review=${review}`);
+});
+
+test("account security retains inline second-passkey registration and account navigation", () => {
+  view.list.data = { pages: [page([item("security", {kind:"account_security",links:[{kind:"account",id:"me"}],context:{is_ops:true}})])] };
+  const markup = html();
+  expect(markup).toContain(t("account.second.add"));
+  expect(markup).toContain(t("account.second.whyOps"));
+  expect(markup).toContain('href="/account"');
+});
+
+test.each([
+  ["org_change_draft", "org_change", "/org/changes/record"],
+  ["org_change_rejected", "org_change", "/org/changes/record"],
+  ["org_change_settle", "org_change", "/org/changes/record"],
+  ["org_change_waiting", "org_change", "/org/changes/record"],
+  ["org_change_scheduled", "org_change", "/org/changes/record"],
+  ["contract_renewal", "employee", "/people/record?act=CONTRACT_RENEWAL"],
+  ["hr_request", "change_request", "/people/requests?sel=record"],
+  ["hr_exit_confirm", "exit_case", "/people/exits/record?act=confirm_exit"],
+  ["hr_exit_confirm_hq", "exit_case", "/people/exits/record?act=confirm_exit_hq"],
+  ["hr_exit_settle", "exit_case", "/people/exits/record?act=prepare_settlement"],
+  ["period_unlock", "period_lock", "/people/period-locks?review=record"],
+] as const)("%s retains its resolving record or sheet verb", (kind, link, href) => {
+  view.list.data = { pages: [page([item("work", { kind, links: [{ kind: link, id: "record" }] })])] };
+  expect(html()).toContain(`href="${href}"`);
 });

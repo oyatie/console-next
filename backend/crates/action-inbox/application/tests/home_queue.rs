@@ -32,6 +32,7 @@ fn every_home_kind_carries_its_lane_and_database_deadline_days() {
         let page = merge_pages(
             vec![ActionInboxSourcePage {
                 items: vec![ActionInboxSourceItem {
+                    context: None,
                     id: format!("{kind}:00000000-0000-0000-0000-000000000001"),
                     kind: kind.into(),
                     ref_code: String::new(),
@@ -130,6 +131,7 @@ fn server_views_cross_nonmatching_pages_and_keep_the_admission_boundary() {
     let mut source = Source(
         (0..405)
             .map(|index| ActionInboxSourceItem {
+                context: None,
                 id: format!("org_change:{}", uuid::Uuid::from_u128(index + 1)),
                 kind: if index == 201 || index == 404 {
                     "org_change_waiting"

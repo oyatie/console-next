@@ -155,6 +155,7 @@ pub(crate) async fn page(
             Some(row.exit_date)
         };
         items.push(ActionInboxSourceItem {
+            context: None,
             id: format!("hr_exit:{}", row.id),
             kind: kind.into(),
             ref_code: row.exit_date.to_string(),

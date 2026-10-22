@@ -20,8 +20,8 @@ description: >-
   reassigned, or expired rows can disappear between page requests. Totals are
   recalculated from live membership admitted by `as_of`; `total_is_exact` is
   false when a source returns a bounded visible prefix or the selected view
-  has more pages. Source failures fail the whole request rather than returning a
-  deceptively partial queue.
+  has more pages. Source failures are named in unavailable with a support reference; healthy
+  sources remain usable and their totals are explicitly inexact.
 security:
 - bearerAuth: []
 parameters:
@@ -64,7 +64,7 @@ responses:
         schema:
           $ref: '#/components/schemas/ErrorBody'
   '500':
-    description: A source failed; no partial action-inbox response is returned.
+    description: The request clock or shared projection failed.
     content:
       application/json:
         schema:

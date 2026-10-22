@@ -73,6 +73,9 @@ pub async fn list_complete_action_inbox(
                     return Err(CompleteActionInboxError::TotalDrift);
                 }
                 return Ok(ActionInboxPage {
+                    unavailable: Vec::new(),
+                    counts: crate::filter::counts(&items, true),
+                    upcoming: Vec::new(),
                     items,
                     total,
                     total_is_exact: true,

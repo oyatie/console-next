@@ -61,15 +61,17 @@ test("one server queue supplies every Home filter and removes work resolved in a
 
   for (const [filter, label] of [["waiting", "기다리는 중"], ["scheduled", "예정"], ["deadlines", "기한 임박"], ["failures", "실패·예외"]] as const) {
     const reading = readFilter(reader, filter);
-    await inbox(reader).getByRole("button", { name: label, exact: true }).click();
+    const button = inbox(reader).getByRole("button", { name: new RegExp(`^${label} \\d+\\+?$`) });
+    await button.click();
     const response = await reading;
     expect(response.status()).toBe(200);
-    await expect(inbox(reader).getByRole("button", { name: label, exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(button).toHaveAttribute("aria-pressed", "true");
     const filtered = await response.json() as Inbox;
     if (filter === "waiting" || filter === "scheduled") expect(filtered.items.every((item) => item.lane === filter)).toBe(true);
   }
-  await inbox(reader).getByRole("button", { name: "내 차례", exact: true }).click();
-  await expect(inbox(reader).getByRole("button", { name: "내 차례", exact: true })).toHaveAttribute("aria-pressed", "true");
+  const turn = inbox(reader).getByRole("button", { name: /^내 차례 \d+\+?$/ });
+  await turn.click();
+  await expect(turn).toHaveAttribute("aria-pressed", "true");
   await expect(row).toHaveCount(1);
   await expectAccessible(reader, "업무함 at 1440px, light and dark");
   await reader.screenshot({ path: info.outputPath("inbox-1440.png"), fullPage: true });

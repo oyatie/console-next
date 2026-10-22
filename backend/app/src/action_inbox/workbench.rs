@@ -18,12 +18,17 @@ pub(crate) async fn read_workbench_action_inbox(
     principal: &Principal,
     as_of: OffsetDateTime,
     _limit: usize,
+    read_permits: std::sync::Arc<tokio::sync::Semaphore>,
 ) -> Result<WorkbenchActionInboxPage, WorkbenchSourceFailure> {
     let sources = PgActionInboxSources {
         pool: pool.clone(),
         principal: principal.clone(),
         setup: tokio::sync::OnceCell::new(),
         setup_created_at: as_of,
+        read_permits,
+        support_reference: crate::telemetry::current_trace_context()
+            .trace_id()
+            .to_owned(),
     };
     let page = list_complete_action_inbox(&sources, as_of)
         .await

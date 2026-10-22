@@ -41,6 +41,7 @@ impl PgActionInboxSources {
         let items = offers
             .into_iter()
             .map(|offer| ActionInboxSourceItem {
+                context: None,
                 id: format!("dispatch:{}", offer.dispatch_id),
                 kind: "dispatch".to_owned(),
                 ref_code: offer.request_no.clone(),
@@ -87,6 +88,7 @@ impl PgActionInboxSources {
         let items = tickets
             .into_iter()
             .map(|ticket| ActionInboxSourceItem {
+                context: None,
                 id: format!("support:{}", ticket.id),
                 kind: "support".to_owned(),
                 ref_code: ticket.id.to_string(),
@@ -135,6 +137,7 @@ impl PgActionInboxSources {
             .items
             .into_iter()
             .map(|row| ActionInboxSourceItem {
+                context: None,
                 id: format!("work:{}", row.id),
                 kind: "work".to_owned(),
                 ref_code: row.request_no.clone(),
@@ -185,6 +188,7 @@ impl PgActionInboxSources {
         let items = runs
             .into_iter()
             .map(|run| ActionInboxSourceItem {
+                context: None,
                 id: format!("payroll:{}", run.id),
                 kind: "payroll".to_owned(),
                 ref_code: run.source_label.clone(),
@@ -235,6 +239,7 @@ impl PgActionInboxSources {
         let items = requests
             .into_iter()
             .map(|request| ActionInboxSourceItem {
+                context: None,
                 id: format!("governance:{}", request.id),
                 kind: "governance".to_owned(),
                 ref_code: request.request_ref.to_string(),

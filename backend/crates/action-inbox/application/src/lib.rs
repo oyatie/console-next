@@ -52,6 +52,7 @@ pub struct ActionInboxLink {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActionInboxSourceItem {
+    pub context: Option<serde_json::Value>,
     pub id: String,
     pub kind: String,
     pub ref_code: String,
@@ -88,6 +89,8 @@ pub trait ActionInboxSourcePort: Send + Sync {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ActionInboxItem {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<serde_json::Value>,
     pub id: String,
     pub kind: String,
     pub urg: &'static str,
@@ -121,10 +124,19 @@ pub struct ActionInboxItem {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ActionInboxPage {
+    pub unavailable: Vec<ActionInboxSource>,
+    pub counts: std::collections::BTreeMap<&'static str, InboxCount>,
+    pub upcoming: Vec<ActionInboxItem>,
     pub items: Vec<ActionInboxItem>,
     pub total: usize,
     pub total_is_exact: bool,
     pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct InboxCount {
+    pub total: usize,
+    pub total_is_exact: bool,
 }
 
 #[derive(Debug)]
@@ -160,13 +172,28 @@ pub async fn list_action_inbox(
         after: cursor.as_ref().map(|cursor| cursor.position.clone()),
         limit,
     };
-    let pages = futures::future::try_join_all(
-        ActionInboxSource::ALL
-            .into_iter()
-            .map(|source| port.list_source_page(source, source_query.clone())),
-    )
-    .await?;
-    Ok(merge_pages(pages, now, as_of, cursor.as_ref(), limit))
+    let outcomes = futures::future::join_all(ActionInboxSource::ALL.into_iter().map(|source| {
+        let query = source_query.clone();
+        async move { (source, port.list_source_page(source, query).await) }
+    }))
+    .await;
+    let mut pages = Vec::new();
+    let mut unavailable = Vec::new();
+    for (source, outcome) in outcomes {
+        match outcome {
+            Ok(page) => pages.push(page),
+            Err(_) => unavailable.push(source),
+        }
+    }
+    let mut page = merge_pages(pages, now, as_of, cursor.as_ref(), limit);
+    if !unavailable.is_empty() {
+        page.total_is_exact = false;
+        for count in page.counts.values_mut() {
+            count.total_is_exact = false;
+        }
+    }
+    page.unavailable = unavailable;
+    Ok(page)
 }
 
 pub fn merge_pages(
@@ -191,6 +218,17 @@ pub fn merge_pages(
     if let Some(cursor) = cursor {
         items.retain(|item| item_after_cursor(item, cursor));
     }
+    let mut upcoming: Vec<_> = items
+        .iter()
+        .filter(|i| i.lane == "scheduled")
+        .cloned()
+        .collect();
+    upcoming.sort_by_key(|i| i.due);
+    upcoming.truncate(3);
+    let counts = filter::counts(
+        &items,
+        cursor.is_none() && total_is_exact && !source_has_more,
+    );
     let has_merged_more = items.len() > limit;
     items.truncate(limit);
     let next_cursor = (has_merged_more || source_has_more)
@@ -207,6 +245,9 @@ pub fn merge_pages(
         })
         .flatten();
     ActionInboxPage {
+        unavailable: Vec::new(),
+        counts,
+        upcoming,
         items,
         total,
         total_is_exact,
@@ -217,6 +258,7 @@ pub fn merge_pages(
 fn project_item(item: ActionInboxSourceItem, now: OffsetDateTime) -> ActionInboxItem {
     let (urg, due_tone) = urgency(item.due, now);
     ActionInboxItem {
+        context: item.context,
         lane: match item.kind.as_str() {
             "org_change_waiting" => "waiting",
             "org_change_scheduled" => "scheduled",
@@ -862,6 +904,7 @@ mod tests {
 
     fn item(kind: &'static str, id: u128, created_at: OffsetDateTime) -> ActionInboxSourceItem {
         ActionInboxSourceItem {
+            context: None,
             id: format!("{kind}:{}", Uuid::from_u128(id)),
             kind: kind.to_owned(),
             ref_code: format!("REF-{id}"),

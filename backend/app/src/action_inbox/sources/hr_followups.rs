@@ -113,6 +113,7 @@ pub(crate) async fn page(
                 .into_iter()
                 .take(query.limit)
                 .map(|(id, name, created_at, due)| ActionInboxSourceItem {
+                    context: None,
                     id: format!("{namespace}:{id}"),
                     kind: kind.into(),
                     ref_code: String::new(),
