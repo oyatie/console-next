@@ -17,6 +17,7 @@ import { opsQuery, tenantsQuery, type Health, type Issued, type Org, type Record
 import { VIEWS, inView, matches, type View } from "../domain/tenants";
 import { CodeDialog } from "./code-dialog";
 import { OnboardDialog } from "./onboard-form";
+import { SupportLookup } from "../../../lib/react/support-lookup";
 import { TenantPanel } from "./tenant-panel";
 import css from "./tenants.module.css";
 
@@ -111,6 +112,7 @@ export function TenantsPage() {
         )}
         {!empty && <Button variant="primary" onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>}
       </div>
+      <SupportLookup />
       {recorded && (
         <div id="tenants-receipt" tabIndex={-1}>
           <Receipt state="recorded" message={recorded.message} meta={recorded.meta} />

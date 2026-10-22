@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
+import { SupportLookup } from "../../../lib/react/support-lookup";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { Skeleton } from "../../../ui/skeleton/skeleton";
 import { claims, meQuery, passkeysQuery } from "../api";
@@ -35,6 +36,7 @@ export function MePage({ locale }: { locale: ReactNode }) {
           <ConsentCard />
           {!vendor && <OpsRecoveryNotice />}
           {!vendor && <MyAccessCard />}
+          {(vendor || me.data?.is_tenant_ops) && <SupportLookup />}
         </>
       )}
     </div>

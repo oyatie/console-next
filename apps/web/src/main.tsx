@@ -7,7 +7,8 @@ import { I18nProvider } from "react-aria-components";
 import { configure, session } from "@console/api";
 import { webPlatform } from "@console/api/web";
 import { i18n, loadCatalog, t } from "@console/i18n";
-import { crashed, loaded, reloadPage, started } from "./lib/chunk-guard";
+import { crashed, loaded, started } from "./lib/chunk-guard";
+import { CrashScreen } from "./lib/react/crash-screen";
 import { STALE_TIME_MS } from "./lib/freshness";
 import { queryDefaults } from "./lib/react/query-defaults";
 import { closeLive, openLive } from "./lib/live/live";
@@ -62,15 +63,7 @@ const router = createRouter({
   ),
   // A render error, or a lazy chunk still missing after the one reload (lib/chunk-guard). The button fetches
   // index.html afresh: a plain reload may revalidate a stale cached one that names the same missing chunks.
-  defaultErrorComponent: () => (
-    <main className="page">
-      <EmptyState
-        title={t("common.crashed.title")}
-        reason={t("common.crashed.reason")}
-        actions={<button className="btn btn--primary" onClick={reloadPage}>{t("common.crashed.action")}</button>}
-      />
-    </main>
-  ),
+  defaultErrorComponent: ({ error }) => <CrashScreen error={error} />,
 });
 declare module "@tanstack/react-router" {
   interface Register {

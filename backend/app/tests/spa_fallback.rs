@@ -95,7 +95,7 @@ async fn spa_is_served_as_fallback_with_cache_and_security_headers() {
     let (status, headers, body) = get(&app, "/api/v1/does-not-exist").await;
     assert_eq!(status, StatusCode::NOT_FOUND);
     assert_ne!(body, INDEX);
-    assert_eq!(headers[header::CONTENT_TYPE], "application/json");
+    assert_eq!(headers[header::CONTENT_TYPE], "application/problem+json");
     let json: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(json["error"]["code"], "not_found");
 

@@ -12,7 +12,10 @@ use crate::http::metrics::install_metrics_recorder;
 // Mounted as the fallback here: the OpenAPI census reads every route call in
 // every app source, and the real mount is `routes::ops`.
 fn router(web_dist: Option<&std::path::Path>) -> axum::Router {
-    axum::Router::new().fallback_service(super::post::<()>(web_dist))
+    let mut config = crate::AppConfig::from_pairs(std::iter::empty::<(&str, &str)>()).unwrap();
+    config.web_dist = web_dist.map(std::path::Path::to_path_buf);
+    let state = crate::AppState::new(config, crate::DatabaseDependency::NotConfigured).unwrap();
+    axum::Router::new().fallback_service(super::post::<()>(&state))
 }
 
 fn request(body: impl Into<Body>, ip: [u8; 4]) -> Request<Body> {
@@ -187,4 +190,81 @@ fn the_served_dist_publishes_its_build_info() {
     let _app = router(Some(&dist));
     std::fs::remove_dir_all(&dist).unwrap();
     assert!(rendered().contains(&format!("{WEB_BUILD_INFO}{{build=\"ceF1own\"}} 1")));
+}
+
+#[tokio::test]
+async fn a_beacon_carries_release_and_is_counted_per_release() {
+    install_metrics_recorder().unwrap();
+    let app = router(None);
+    let body = r#"{"kind":"error","build":"ceRel1","release":"v2026.10.20","route":"/people/:id","name":"TypeError"}"#;
+    let response = app
+        .clone()
+        .oneshot(request(body.to_owned(), [10, 0, 5, 1]))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    let needle =
+        format!("{CLIENT_ERRORS_BY_RELEASE_TOTAL}{{release=\"v2026.10.20\",kind=\"error\"}}");
+    let count: usize = rendered()
+        .lines()
+        .find(|line| line.starts_with(&needle))
+        .and_then(|line| line.rsplit(' ').next()?.parse().ok())
+        .unwrap_or(0);
+    assert_eq!(count, 1);
+}
+
+#[tokio::test]
+async fn release_labels_are_bounded_even_when_clients_send_distinct_releases() {
+    install_metrics_recorder().unwrap();
+    let app = router(None);
+    for i in 0..MAX_BUILDS + 3 {
+        let body = format!(
+            r#"{{"kind":"error","build":"boundedrel","release":"attacker-{i}","route":"/"}}"#
+        );
+        assert_eq!(
+            app.clone()
+                .oneshot(request(body, [10, 8, 8, 8]))
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::NO_CONTENT
+        );
+    }
+    let lines = rendered();
+    let releases: Vec<_> = lines
+        .lines()
+        .filter(|l| l.starts_with(CLIENT_ERRORS_BY_RELEASE_TOTAL) && l.contains("attacker-"))
+        .collect();
+    assert!(releases.len() <= MAX_BUILDS, "{releases:?}");
+    assert!(
+        lines
+            .lines()
+            .any(|l| l.starts_with(CLIENT_ERRORS_BY_RELEASE_TOTAL)
+                && l.contains("release=\"other\""))
+    );
+}
+
+#[tokio::test]
+async fn requesting_a_reference_does_not_count_a_phantom_boot_or_client_error() {
+    install_metrics_recorder().unwrap();
+    let app = router(None);
+    let mut req = request(
+        r#"{"kind":"reference","build":"referenceOnly","route":"/"}"#.to_owned(),
+        [10, 9, 7, 1],
+    );
+    req.headers_mut()
+        .insert("accept", HeaderValue::from_static("application/json"));
+    let response = app.oneshot(req).await.unwrap();
+    assert_eq!(response.status(), StatusCode::ACCEPTED);
+    assert!(
+        !rendered()
+            .lines()
+            .any(|line| line.starts_with(CLIENT_ERRORS_TOTAL) && line.contains("referenceOnly"))
+    );
+    assert!(
+        !rendered()
+            .lines()
+            .any(|line| line.starts_with(CLIENT_ERRORS_BY_RELEASE_TOTAL)
+                && line.contains("referenceOnly"))
+    );
 }

@@ -6,6 +6,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } 
 import { generateKeyPairSync, randomBytes } from "node:crypto";
 import http from "node:http";
 import path from "node:path";
+import { supportLogs } from "./e2e-support-logs.mjs";
 import { PORTS } from "../e2e/slot.ts";
 import { DEV_SECRETS_FILE, ensureDevSecrets } from "./dev-secrets.ts";
 
@@ -180,10 +181,16 @@ writeFileSync(path.join(CACHE, "backend.json"), JSON.stringify({ bin: BIN, binMt
 console.log(`backend: http://127.0.0.1:${PORT.backend}  platform cold-start code: coldstartOtp in ${DEV_SECRETS_FILE}`);
 // SIGUSR2 stops the API process and the next SIGUSR2 starts it again on the same database (a backend restart mid-flow,
 // e2e/chaos-restart.spec.ts). Without the signal nothing changes: the launcher exits with its API process.
+// Isolated E2E store: production always queries its configured VictoriaLogs service.
+const supportLogFixture = process.env.CONSOLE_EMAIL_STUB_MODE === "e2e" && !process.env.CONSOLE_SUPPORT_LOG_QUERY_URL ? await supportLogs() : null;
 let api = null;
 let up = true;
 const startApi = () => {
-  const child = spawn(BIN, [], { cwd: CONSOLE, env: appEnv("api"), stdio: "inherit" });
+  const child = spawn(BIN, [], { cwd: CONSOLE, env: { ...appEnv("api"), ...(supportLogFixture ? { CONSOLE_SUPPORT_LOG_QUERY_URL: supportLogFixture.url } : {}) }, stdio: supportLogFixture ? ["inherit", "pipe", "inherit"] : "inherit" });
+  if (supportLogFixture) {
+    child.stdout.pipe(process.stdout);
+    supportLogFixture.observe(child.stdout);
+  }
   child.on("exit", (c) => {
     if (!child.stopping) process.exit(c ?? 0);
     api = null;

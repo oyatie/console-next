@@ -24,6 +24,7 @@ use console_platform_request_context::rate_limit::{GLOBAL_TRIPS_TOTAL, ip_key};
 use serde::Deserialize;
 
 pub(crate) const CLIENT_ERRORS_TOTAL: &str = "console_client_errors_total";
+pub(crate) const CLIENT_ERRORS_BY_RELEASE_TOTAL: &str = "console_client_errors_by_release_total";
 pub(crate) const WEB_BUILD_INFO: &str = "console_web_build_info";
 pub(crate) const MAX_BODY_BYTES: usize = 2048;
 const WINDOW: Duration = Duration::from_secs(60);
@@ -42,6 +43,8 @@ struct Beacon {
     route: String,
     #[serde(default)]
     name: Option<String>,
+    #[serde(default)]
+    release: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -52,6 +55,7 @@ enum Kind {
     Resource,
     Preload,
     Boot,
+    Reference,
 }
 
 impl Kind {
@@ -62,6 +66,7 @@ impl Kind {
             Self::Resource => "resource",
             Self::Preload => "preload",
             Self::Boot => "boot",
+            Self::Reference => "reference",
         }
     }
 }
@@ -80,6 +85,10 @@ impl Beacon {
             && self.route.starts_with('/')
             && token(&self.route, 64, &['-', '/', ':', '.'])
             && self.name.as_deref().is_none_or(|name| token(name, 40, &[]))
+            && self
+                .release
+                .as_deref()
+                .is_none_or(|rel| token(rel, 80, &['-', '.', '_', ':']))
     }
 }
 
@@ -154,6 +163,8 @@ pub(crate) fn dist_build(index_html: &str) -> Option<&str> {
 struct Ingest {
     limiter: Arc<Mutex<Limiter>>,
     builds: Arc<Mutex<Builds>>,
+    releases: Arc<Mutex<Builds>>,
+    app: crate::state::AppState,
 }
 
 /// The handler, with its own small body cap (it wins over the global 2 MiB),
@@ -162,18 +173,23 @@ struct Ingest {
 /// caps are per replica; a shared (Postgres) bucket only if one
 /// replica's 1200/min ever matters.
 pub(crate) fn post<S: Clone + Send + Sync + 'static>(
-    web_dist: Option<&std::path::Path>,
+    app: &crate::state::AppState,
 ) -> MethodRouter<S> {
+    let web_dist = app.config.web_dist.as_deref();
     let mut builds = Builds::default();
+    let mut releases = Builds::default();
     let own = web_dist.and_then(|dist| std::fs::read_to_string(dist.join("index.html")).ok());
     if let Some(build) = own.as_deref().and_then(dist_build) {
         metrics::gauge!(WEB_BUILD_INFO, "build" => builds.label(build)).set(1.0);
+        releases.label(build);
     }
     axum::routing::post(ingest)
         .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
         .with_state(Ingest {
+            app: app.clone(),
             limiter: Arc::new(Mutex::new(Limiter::new(Instant::now()))),
             builds: Arc::new(Mutex::new(builds)),
+            releases: Arc::new(Mutex::new(releases)),
         })
 }
 
@@ -230,16 +246,47 @@ async fn ingest(
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .label(&beacon.build);
+    let release = ingest
+        .releases
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .label(beacon.release.as_deref().unwrap_or(&build));
     let kind = beacon.kind.as_str();
-    metrics::counter!(CLIENT_ERRORS_TOTAL, "kind" => kind, "build" => build.clone()).increment(1);
-    tracing::warn!(
-        target: "client_errors",
-        kind,
-        build = %build,
-        route = %beacon.route,
-        name = beacon.name.as_deref().unwrap_or("-"),
-        "client error beacon"
-    );
+    if !matches!(beacon.kind, Kind::Reference) {
+        metrics::counter!(CLIENT_ERRORS_TOTAL, "kind" => kind, "build" => build.clone())
+            .increment(1);
+        metrics::counter!(CLIENT_ERRORS_BY_RELEASE_TOTAL, "release" => release.clone(), "kind" => kind)
+        .increment(1);
+        tracing::warn!(
+            target: "client_errors",
+            kind,
+            build = %build,
+            release = %release,
+            route = %beacon.route,
+            name = beacon.name.as_deref().unwrap_or("-"),
+            "client error beacon"
+        );
+    }
+    if headers
+        .get(header::ACCEPT)
+        .is_some_and(|h| h == "application/json")
+    {
+        let trace_id = crate::telemetry::record_otel_ids(&tracing::Span::current());
+        let org =
+            super::support_reference::request_org(&ingest.app, headers.get(header::AUTHORIZATION));
+        let at = super::support_reference::issue(
+            &ingest.app,
+            org,
+            "/api/v1/client-errors",
+            &trace_id,
+            &trace_id,
+        );
+        return (
+            StatusCode::ACCEPTED,
+            Json(serde_json::json!({"support_ref": trace_id, "support_ref_at": at})),
+        )
+            .into_response();
+    }
     StatusCode::NO_CONTENT.into_response()
 }
 

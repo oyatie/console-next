@@ -253,6 +253,7 @@ impl AppConfig {
             ontology_command_database_url,
             platform_force_command_database_url,
             otlp_endpoint,
+            support_log_query_url: non_empty(vars.get("CONSOLE_SUPPORT_LOG_QUERY_URL")),
             jwt,
             auth_rest,
             storage,

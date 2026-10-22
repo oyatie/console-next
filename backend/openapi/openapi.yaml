@@ -1673,6 +1673,61 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           description: Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers.
+  /api/platform/support-references/{reference}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [system]
+      operationId: resolvePlatformSupportReference
+      summary: Resolve a server-issued support reference
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{32}$'
+      responses:
+        '200':
+          description: Diagnostic context authorized by the support_reference Cedar decision.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [support_ref, trace_id, release, route_template, org_id, support_ref_at]
+                properties:
+                  support_ref:
+                    type: string
+                    pattern: '^[0-9a-f]{32}$'
+                  trace_id:
+                    type: string
+                  release:
+                    type: string
+                  route_template:
+                    type: string
+                  org_id:
+                    type: string
+                    format: uuid
+                  support_ref_at:
+                    type: string
+                    format: date-time
+        '503':
+          description: The log store is unconfigured or unavailable; no database fallback.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: support_reference_cross_tenant_denied or support_reference_grant_required; no diagnostic data or business writes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: support_reference_not_found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/platform/tenant-context:
     post:
       tags:
@@ -5103,6 +5158,7 @@ paths:
         unhandled rejection, a failed bundle or stylesheet, a failed dynamic
         import or a boot that never rendered, with navigator.sendBeacon (any
         content type). A closed vocabulary only: no message, query or form value.
+        Recovery reference requests are not counted as errors.
         Counted in console_client_errors_total{kind,build}; capped per client IP
         and per process (429 + Retry-After).
       requestBody:
@@ -5116,7 +5172,7 @@ paths:
               properties:
                 kind:
                   type: string
-                  enum: [error, rejection, resource, preload, boot]
+                  enum: [error, rejection, resource, preload, boot, reference]
                 build:
                   type: string
                   pattern: '^[A-Za-z0-9_-]{1,16}$'
@@ -5127,7 +5183,25 @@ paths:
                 name:
                   type: string
                   pattern: '^[A-Za-z0-9_]{1,40}$'
+                release:
+                  type: string
+                  maxLength: 80
+                  pattern: '^[A-Za-z0-9._:-]+$'
       responses:
+        '202':
+          description: An Accept application/json request receives the server-issued diagnostic reference.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [support_ref, support_ref_at]
+                properties:
+                  support_ref:
+                    type: string
+                    pattern: '^[0-9a-f]{32}$'
+                  support_ref_at:
+                    type: string
+                    format: date-time
         '204':
           description: Counted.
         '400':
@@ -25551,6 +25625,61 @@ paths:
           $ref: '#/components/responses/NotFound'
         '503':
           description: Media storage is unavailable.
+  /api/v1/support-references/{reference}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [system]
+      operationId: resolveSupportReference
+      summary: Resolve a server-issued support reference
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{32}$'
+      responses:
+        '200':
+          description: Diagnostic context authorized by the support_reference Cedar decision.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [support_ref, trace_id, release, route_template, org_id, support_ref_at]
+                properties:
+                  support_ref:
+                    type: string
+                    pattern: '^[0-9a-f]{32}$'
+                  trace_id:
+                    type: string
+                  release:
+                    type: string
+                  route_template:
+                    type: string
+                  org_id:
+                    type: string
+                    format: uuid
+                  support_ref_at:
+                    type: string
+                    format: date-time
+        '503':
+          description: The log store is unconfigured or unavailable; no database fallback.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: support_reference_cross_tenant_denied or support_reference_grant_required; no diagnostic data or business writes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: support_reference_not_found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/support/intake:
     post:
       tags:
@@ -40683,15 +40812,19 @@ components:
               type: string
             support_ref:
               type: string
-              format: uuid
-              description: Support reference for a governed ops recovery refusal.
+              pattern: '^[0-9a-f]{32}$'
+              description: Request correlation id shared by the response, structured log and request span.
             hold_until:
               type: string
               format: date-time
               description: Hold boundary on an ops_recovery_hold_active refusal.
+            support_ref_at:
+              type: string
+              format: date-time
+              description: Server timestamp of the error response.
             trace_id:
               type: string
-              description: Present on a 5xx. The server-side trace id to quote to operators; the message is then generic and the detail stays in the server log.
+              description: Present on error responses. The server-side trace id to quote to operators; the message is then generic and the detail stays in the server log.
             operation_id:
               $ref: '#/components/schemas/Uuid'
               description: Present when an operation has an uncertain admission or external outcome.

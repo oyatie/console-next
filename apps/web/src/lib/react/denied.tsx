@@ -13,6 +13,7 @@ import { ReasonField } from "../../ui/reason/reason-field";
 import { reasonProblem, type Reason } from "../../ui/reason/reason";
 import { EmptyState } from "../../ui/empty-state";
 import { failureText } from "../refusal";
+import { SupportReference } from "./support-reference";
 import { CommandError } from "./command-error";
 import css from "./denied.module.css";
 import { useCommand } from "./command";
@@ -95,6 +96,7 @@ export function Denied({ screen, error, title, reason }: { screen?: string; erro
           <Link to="/" className={buttonClass("ghost")}>{t("common.denied.back")}</Link>
         </div>
         <RequestAccess screen={path} />
+        <SupportReference reference={error instanceof ApiError ? error.supportRef : undefined} at={error instanceof ApiError ? error.supportRefAt : undefined} />
         <section className={css.mine} aria-labelledby={mineId}>
           <strong id={mineId}>{t("common.denied.mine")}</strong>
           <Mine />

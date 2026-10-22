@@ -1,3 +1,4 @@
+import { koCommon } from "./ko/common";
 import { koOpsRecovery } from "./ko/ops-recovery";
 import { koStatutory } from "./ko/statutory";
 import { koRequestOutcome } from "./ko/request-outcome";
@@ -222,6 +223,7 @@ export const ko = {
   ...koEmpDoc,
   ...koPeopleJump,
   ...koOpsRecovery,
+  ...koCommon,
 } as const;
 
 export type ScreenMessageId = keyof typeof ko;

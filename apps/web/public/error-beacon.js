@@ -36,7 +36,7 @@
       seen.add(err);
     }
     sent++;
-    var body = { kind: kind, build: build(), route: route() };
+    var body = { kind: kind, build: build(), release: build(), route: route() };
     var name = err && typeof err === "object" ? err.name : undefined;
     if (typeof name === "string" && /^[A-Za-z0-9_]{1,40}$/.test(name)) body.name = name;
     var data = JSON.stringify(body);
@@ -47,6 +47,19 @@
       fetch(ENDPOINT, { method: "POST", body: data, keepalive: true }).catch(function () {});
     } catch {}
   }
+
+  // Recovery screens need a response; beacons continue to use the unload-safe 204 transport.
+  window.consoleErrorBeacon = {
+    reference: function (token) {
+      var headers = { "Accept": "application/json" };
+      if (token) headers.Authorization = "Bearer " + token;
+      return fetch(ENDPOINT, { method: "POST", headers: headers,
+        body: JSON.stringify({ kind: "reference", build: build(), release: build(), route: route() }) })
+        .then(function (r) { if (!r.ok) return null; return r.json(); })
+        .then(function (body) { return body && typeof body.support_ref === "string" ? body : null; })
+        .catch(function () { return null; });
+    },
+  };
 
   // Capture phase: a module script, modulepreload or stylesheet that failed to load (these do not bubble), and every
   // uncaught exception (target window).

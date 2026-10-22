@@ -1,5 +1,11 @@
 // Korean source for `tenants.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koTenants = {
+  "tenants.supportLookup.title": "지원 참조 번호 조회",
+  "tenants.supportLookup.reference": "전체 지원 참조 번호",
+  "tenants.supportLookup.action": "조회",
+  "tenants.supportLookup.trace": "추적 ID",
+  "tenants.supportLookup.release": "배포 버전",
+  "tenants.supportLookup.route": "요청 경로",
   // Platform: the list
   "tenants.title": "고객 계정",
   "tenants.create": "고객 계정 개설",

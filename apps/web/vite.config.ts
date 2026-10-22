@@ -17,5 +17,5 @@ export default defineConfig({
   // CONSOLE_WEB_PORT: an E2E slot other than 0 (e2e/slot.ts) serves on its own port, with its own dep cache
   // so two dev servers in one worktree never race on the same optimizer output.
   cacheDir: resolve(import.meta.dirname, `../../.cache/vite-${process.env.CONSOLE_WEB_PORT ?? "dev"}`),
-  server: { fs: { allow: [searchForWorkspaceRoot(process.cwd()), deps] }, port: Number(process.env.CONSOLE_WEB_PORT ?? 5173), strictPort: true, proxy: { "/api": { target: backend, ws: true } } },
+  server: { fs: { allow: [searchForWorkspaceRoot(process.cwd()), deps] }, port: Number(process.env.CONSOLE_WEB_PORT ?? 5173), strictPort: true, proxy: { "/api": { target: backend, ws: true }, "/__e2e": { target: backend } } },
 });

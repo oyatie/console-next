@@ -120,7 +120,9 @@ pub async fn localize(request: Request, next: Next) -> Response {
         .headers()
         .get(header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
-        .is_some_and(|v| v.starts_with("application/json"));
+        .is_some_and(|v| {
+            v.starts_with("application/json") || v.starts_with("application/problem+json")
+        });
     let is_error = response.status().is_client_error() || response.status().is_server_error();
     if !korean || !is_json || !(is_error || org_change) {
         return response;
@@ -142,6 +144,9 @@ pub async fn localize(request: Request, next: Next) -> Response {
             *message = korean_message(&code, message);
         }
         localize_refusals(error);
+    }
+    if json.get("title").is_some() {
+        json["title"] = json["error"]["message"].clone();
     }
     if org_change {
         localize_reasons(&mut json);

@@ -81,7 +81,8 @@ pub(super) async fn send(
 pub(super) fn code(result: (StatusCode, Value), status: StatusCode, code: &str) {
     assert_eq!(result.0, status, "{}", result.1);
     assert_eq!(result.1["error"]["code"], code);
-    assert!(result.1["error"]["support_ref"].is_string());
+    // The application response layer adds the request trace id; domain faces never mint another id.
+    assert!(result.1["error"].get("support_ref").is_none());
 }
 pub(super) async fn enrolled(h: &Harness, org: Uuid) -> UserId {
     let target: Uuid = sqlx::query_scalar("SELECT id FROM users WHERE org_id=$1 AND is_tenant_ops")
