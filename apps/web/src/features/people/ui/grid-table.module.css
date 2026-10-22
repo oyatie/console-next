@@ -13,3 +13,10 @@
 
 [data-density="compact"] .grid { --row-h: var(--row-h-compact); }
 .grid [role="columnheader"] { height: var(--row-h); }
+
+/* Keep the active cell's explanation in the viewport, including virtual rows. */
+.grid > [role="status"] {
+  position: sticky;
+  grid-column: 1 / -1;
+  justify-self: end;
+}

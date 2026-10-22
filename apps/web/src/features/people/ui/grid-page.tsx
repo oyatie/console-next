@@ -72,10 +72,15 @@ export function GridPage() {
   const cellsBy = (cls: "now" | "second") => rows.reduce((n, r) => n + r.cells.filter((c, i) => "send" in c && fields[i]!.cls === cls && r.typed[i] !== r.current[i]).length, 0);
   const errors = states.reduce((n, x) => n + x.errors, 0);
   const firstError = () => {
-    const r = rows.findIndex((row) => row.cells.some((cell) => "bad" in cell));
-    if (r < 0) return;
-    setFilter("all");
-    setActiveCell({ r, c: rows[r]!.cells.findIndex((cell) => "bad" in cell) });
+    let source = shown;
+    let r = source.findIndex((row) => row.cells.some((cell) => "bad" in cell));
+    if (r < 0) {
+      source = rows;
+      r = source.findIndex((row) => row.cells.some((cell) => "bad" in cell));
+      if (r < 0) return;
+      setFilter("all");
+    }
+    setActiveCell({ r, c: source[r]!.cells.findIndex((cell) => "bad" in cell) });
   };
 
   const body = () => ({

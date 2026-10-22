@@ -49,6 +49,10 @@ const nextCell = (key: string, r: number, c: number, rc: number, cc: number, ctr
  * Shift+↓ selects down a column and Ctrl+D fills it from its top cell, ⌘V pastes a spreadsheet block from the focused
  * cell (a blank keeps, ∅ clears), F8 goes to the next error. A changed cell shows the old value struck before the new
  * one; an error says why under it, with a near value Enter takes.
+ *
+ * r3:records-01: the focused cell holds one input from the moment it is focused, so typing (a Korean IME's composition
+ * included) lands in it before anything re-renders: no character is lost and the value committed is the one shown.
+ * r3:records-17: sex and employment type edit through their options (↑↓ and Enter, or type to narrow).
  */
 export function GridTable({
   rows, columns, label, onCell, statusOf, fieldLabel, suggestionOf, activeCell, onActiveChange,
@@ -77,6 +81,7 @@ export function GridTable({
   const [range, setRange] = useState<Range>(null);
   const input = useRef<HTMLInputElement>(null);
   const focusPending = useRef(false), parkingFocus = useRef(false);
+  // A blur during a move runs before re-render; handlers must read the edited cell synchronously.
   const editingNow = useRef<At | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [rowHeight, setRowHeight] = useState(1);
@@ -196,7 +201,7 @@ export function GridTable({
     if (["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "PageDown", "PageUp", "Home", "End"].includes(key)) {
       e.preventDefault();
       setRange(null);
-      const next = nextCell(key, r, c, rows.length, columns.length, e.ctrlKey || e.metaKey, visibleRows);
+      const next = nextCell(key, r, c, rows.length, columns.length, e.ctrlKey || e.metaKey, Math.max(1, viewportRows - 1));
       return move(next.r, next.c);
     }
     if (key === "F8") return (e.preventDefault(), nextError(r, c));
