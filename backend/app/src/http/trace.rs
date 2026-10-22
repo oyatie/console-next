@@ -34,6 +34,9 @@ pub(crate) fn http_trace_layer() -> TraceLayer<
                 version = ?request.version(),
                 trace_id = tracing::field::Empty,
                 span_id = tracing::field::Empty,
+                support_ref = tracing::field::Empty,
+                org_id = tracing::field::Empty,
+                release = tracing::field::Empty,
             )
         })
         .on_request(|request: &Request<Body>, span: &tracing::Span| {

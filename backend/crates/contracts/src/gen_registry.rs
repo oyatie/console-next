@@ -5548,6 +5548,15 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/platform/support-references/{reference}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__platform__support-references__reference.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/platform/tenant-context",
         operations: &[Operation {
             method: "post",
@@ -6353,6 +6362,15 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
             method: "get",
             body: include_str!(
                 "../../identity/rest/openapi/paths/api__v1__status__evidence.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/support-references/{reference}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__support-references__reference.get.yaml"
             ),
         }],
     },

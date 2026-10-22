@@ -104,12 +104,19 @@ async fn regression_a_legal_entity_grant_reaches_its_people_and_only_them(pool: 
     reads_refused(&w, &hr, &w.b1).await;
     let nobody = Uuid::new_v4().to_string();
     reads_refused(&w, &hr, &nobody).await;
-    let (_, b_body) = hr
+    let (_, mut b_body) = hr
         .call("GET", &format!("/api/v1/employees/{}", w.b1), None)
         .await;
-    let (_, none_body) = hr
+    let (_, mut none_body) = hr
         .call("GET", &format!("/api/v1/employees/{nobody}"), None)
         .await;
+    // Per-request correlation differs; the refusal's disclosed facts must remain identical.
+    for body in [&mut b_body, &mut none_body] {
+        let error = body["error"].as_object_mut().unwrap();
+        for field in ["trace_id", "support_ref", "support_ref_at"] {
+            error.remove(field);
+        }
+    }
     assert_eq!(b_body, none_body, "no existence leak");
 
     // Registration into A, never into B (nothing written).

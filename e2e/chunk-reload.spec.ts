@@ -1,3 +1,4 @@
+import { expectAccessible } from "./a11y";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { newContext, vendorPage } from "./flows";
 
@@ -49,6 +50,9 @@ test("a lazy screen chunk that stays missing reloads once, then shows the error 
   const docs = documents(page);
   await page.goto("/platform");
   await expect(page.getByRole("heading", { name: CRASHED })).toBeVisible();
+  await expect(page.locator("[data-support-reference]")).toBeVisible();
+  await expect(page.getByRole("button", { name: "지원 참조 번호 복사" })).toBeVisible();
+  await expectAccessible(page, "chunk recovery support reference");
   await settled(docs, 2); // one reload, no loop
   expect(busted(docs[1]!)).toBe(true);
   expect(tries).toBe(2);
@@ -102,6 +106,8 @@ test("an entry chunk that stays missing reloads once, then shows the static erro
   const docs = documents(page);
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: CRASHED })).toBeVisible();
+  await expect(page.locator("[data-support-reference]")).toBeVisible();
+  await expectAccessible(page, "stale entry support reference");
   await settled(docs, 2);
   expect(busted(docs[1]!)).toBe(true);
   await page.getByRole("button", { name: RELOAD }).click();

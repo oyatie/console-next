@@ -1,6 +1,12 @@
 import type { koTenants } from "../ko/tenants";
 
 export const enTenants: Partial<Record<keyof typeof koTenants, string>> = {
+  "tenants.supportLookup.title": "Support reference lookup",
+  "tenants.supportLookup.reference": "Full support reference",
+  "tenants.supportLookup.action": "Resolve reference",
+  "tenants.supportLookup.trace": "Trace ID",
+  "tenants.supportLookup.release": "Release",
+  "tenants.supportLookup.route": "Route template",
   "tenants.title": "Customer accounts",
   "tenants.create": "Open customer account",
   "tenants.empty.title": "No customer accounts opened",

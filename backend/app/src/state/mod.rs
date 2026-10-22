@@ -4,6 +4,7 @@ pub(crate) mod build;
 pub(crate) mod db;
 #[cfg(any(feature = "dispatch", feature = "support", feature = "mail"))]
 mod modules;
+mod support;
 
 use crate::config::AppConfig;
 #[cfg(feature = "mail")]
@@ -32,6 +33,8 @@ pub enum DatabaseDependency {
 #[derive(Clone)]
 pub struct AppState {
     pub(crate) config: AppConfig,
+    pub(crate) web_release: Arc<str>,
+    pub(crate) support_log_client: reqwest::Client,
     pub(crate) database: DatabaseDependency,
     /// Narrow command pool for leave mutations. It is intentionally separate
     /// from the general runtime pool so PostgreSQL grants remain the final,

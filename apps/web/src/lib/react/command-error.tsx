@@ -8,6 +8,7 @@ import { Button } from "../../ui/button/button";
 import { Chip } from "../../ui/chip";
 import { ErrorSummary, type ErrorSummaryItem } from "../../ui/error-summary";
 import { failureText } from "../refusal";
+import { SupportReference } from "./support-reference";
 import { outcomeUnknown, recoveryOf } from "./command";
 import { OutcomeLink } from "./outcome-link";
 
@@ -117,6 +118,7 @@ export function CommandError({
         {change.fields.length > 0 && <p>{t("requestOutcome.fields", { fields: labels.join(", ") })}</p>}
         {historyHref && change.audit_id && <p><Link to={historyHref as "/"}>{t("requestOutcome.history")}</Link></p>}
       </>)}
+      <SupportReference reference={api?.supportRef} at={api?.supportRefAt} />
       {children}
       <CommandReference requestKey={key} operationId={api?.operationId} />
     </Banner>

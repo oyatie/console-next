@@ -104,6 +104,19 @@ impl ActionBundle {
         resource_org: &str,
         facts: &[(&str, Fact)],
     ) -> Result<bool, String> {
+        self.decide_with_reasons(principal_id, principal_org, roles, resource_org, facts)
+            .map(|(allowed, _)| allowed)
+    }
+
+    /// Evaluate Cedar and return only annotations on the policies that decided it.
+    pub fn decide_with_reasons(
+        &self,
+        principal_id: &str,
+        principal_org: &str,
+        roles: &[&str],
+        resource_org: &str,
+        facts: &[(&str, Fact)],
+    ) -> Result<(bool, Vec<String>), String> {
         crate::cedar_stack::with_cedar_stack(|| {
             let uid = |ty: &str, id: &str| -> Result<EntityUid, String> {
                 let ty = EntityTypeName::from_str(ty).map_err(|e| e.to_string())?;
@@ -169,7 +182,18 @@ impl ActionBundle {
             if !errors.is_empty() {
                 return Err(errors.join("; "));
             }
-            Ok(response.decision() == Decision::Allow)
+            let mut reasons: Vec<String> = response
+                .diagnostics()
+                .reason()
+                .filter_map(|id| {
+                    self.policies
+                        .policy(id)?
+                        .annotation("reason")
+                        .map(str::to_owned)
+                })
+                .collect();
+            reasons.sort();
+            Ok((response.decision() == Decision::Allow, reasons))
         })
     }
 }
@@ -179,3 +203,4 @@ pub mod command_outcome;
 
 pub mod company_domain_request;
 pub mod ops_recovery_decide;
+pub mod support_reference;

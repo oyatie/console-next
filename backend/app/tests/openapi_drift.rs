@@ -3,7 +3,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr;
 
-use console_app::{AUDIT_ROUTE_PATH, CONFIGURED_ROUTE_SURFACES};
+use console_app::{
+    AUDIT_ROUTE_PATH, CONFIGURED_ROUTE_SURFACES, SUPPORT_REFERENCE_ROUTE_OPERATIONS,
+};
 use console_ontology_canonical_domain::DispatchTarget;
 use console_platform_rest::PLATFORM_ROUTE_OPERATIONS;
 
@@ -502,7 +504,7 @@ fn openapi_yaml_covers_platform_route_operations() {
         .collect();
     assert!(
         unexpected.is_empty(),
-        "OpenAPI YAML documents platform operations that are not in console_platform_rest::PLATFORM_ROUTE_OPERATIONS:\n{}",
+        "OpenAPI YAML documents platform operations that are not in the platform and application route operation inventories:\n{}",
         unexpected.join("\n")
     );
 }
@@ -546,6 +548,7 @@ fn missing_platform_route_operations(yaml: &str) -> Vec<String> {
     let openapi_operations = openapi_operation_keys(yaml);
     PLATFORM_ROUTE_OPERATIONS
         .iter()
+        .chain(SUPPORT_REFERENCE_ROUTE_OPERATIONS)
         .filter_map(|operation| {
             let key = (
                 normalize_path_parameters(operation.path),
@@ -563,6 +566,7 @@ fn missing_platform_route_operations(yaml: &str) -> Vec<String> {
 fn platform_route_operation_keys() -> BTreeSet<(String, String)> {
     PLATFORM_ROUTE_OPERATIONS
         .iter()
+        .chain(SUPPORT_REFERENCE_ROUTE_OPERATIONS)
         .map(|operation| {
             (
                 normalize_path_parameters(operation.path),

@@ -38,10 +38,7 @@ pub(super) fn base_router(state: &AppState) -> Router {
         .route(WELL_KNOWN_AASA_PATH, get(apple_app_site_association))
         .route(WELL_KNOWN_ASSETLINKS_PATH, get(android_assetlinks))
         // B-01: unauthenticated and DB-free, so it answers while the API sheds.
-        .route(
-            "/api/v1/client-errors",
-            client_errors::post(state.config.web_dist.as_deref()),
-        )
+        .route("/api/v1/client-errors", client_errors::post(state))
         // B-15: deployment config, read by the SPA at boot.
         .route("/api/v1/release-toggles", get(release_toggles))
         .with_state(state.clone())
@@ -61,7 +58,9 @@ pub(super) fn mount(deps: &TenantDeps<'_>) -> Router {
         state.jwt_verifier.clone(),
         pool.clone(),
     );
-    audit_router.merge(console_telemetry::router(
-        console_telemetry::ConsoleTelemetryState::new(pool.clone(), state.jwt_verifier.clone()),
-    ))
+    audit_router
+        .merge(crate::http::support_reference::router(state, pool))
+        .merge(console_telemetry::router(
+            console_telemetry::ConsoleTelemetryState::new(pool.clone(), state.jwt_verifier.clone()),
+        ))
 }

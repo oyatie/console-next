@@ -18,7 +18,12 @@ pub(super) fn router(pool: PgPool) -> Router {
     let router = router
         .route("/__e2e/ops-recovery/operator", post(recovery_operator))
         .route("/__e2e/ops-recovery/elapse", post(recovery_elapse));
-    router.with_state(pool)
+    router
+        .route(
+            "/__e2e/support-reference-failure",
+            post(support_reference_failure),
+        )
+        .with_state(pool)
 }
 
 #[derive(Deserialize)]
@@ -90,6 +95,11 @@ fn terms_body(version: &str) -> Option<&'static str> {
         return None;
     }
     Some(if number == 1 { TERMS_V1 } else { TERMS_REVISED })
+}
+
+// Only mounted by the explicit E2E stub configuration; exercises real error middleware and log correlation.
+async fn support_reference_failure() -> crate::http::error::ApiError {
+    crate::http::error::ApiError::internal("forced E2E support reference failure")
 }
 
 #[cfg(test)]

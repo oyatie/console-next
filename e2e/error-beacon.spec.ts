@@ -1,3 +1,5 @@
+import { expectAccessible } from "./a11y";
+import { vendorPage, unique, tenantSlugField } from "./flows";
 import { expect, test, type Page } from "@playwright/test";
 
 // B-01: a white screen, from any cause, reaches our own origin as a beacon (POST /api/v1/client-errors) instead of
@@ -6,7 +8,7 @@ import { expect, test, type Page } from "@playwright/test";
 // The entry is matched in both shapes: Vite dev serves sources, a build serves hashed assets.
 const ENTRY = /^\/(src\/main\.tsx|assets\/index-[\w-]+\.js)$/;
 const served = process.env.E2E_SERVED === "1";
-type Beacon = { kind: string; build: string; route: string; name?: string };
+type Beacon = { kind: string; release: string; build: string; route: string; name?: string };
 
 /** Every beacon the page posts, parsed. */
 function beacons(page: Page) {
@@ -33,9 +35,10 @@ test("an uncaught error and an unhandled rejection are reported by kind and name
   const error = got.find((b) => b.kind === "error")!;
   expect(error).toMatchObject({ route: "/login", name: "TypeError" });
   expectBuild(error);
+  expect(error.release).toBe(error.build);
   expect(got.find((b) => b.kind === "rejection")).toMatchObject({ route: "/login", name: "RangeError" });
   expect(JSON.stringify(got)).not.toMatch(/secret|홍길동|010/);
-  expect(Object.keys(error).sort()).toEqual(["build", "kind", "name", "route"]);
+  expect(Object.keys(error).sort()).toEqual(["build", "kind", "name", "release", "route"]);
 });
 
 test("an entry chunk that is gone is reported as a resource failure", async ({ page }) => {
@@ -67,4 +70,44 @@ test("an app that renders sends nothing", async ({ page }) => {
   await page.clock.fastForward(20_000);
   await page.waitForTimeout(500);
   expect(got).toEqual([]);
+});
+
+
+test("a real mutation 500 displays the same server reference that ops resolves to the trace", async ({ browser }) => {
+  const page = await vendorPage(browser);
+  await page.goto("/platform");
+  await page.getByRole("button", { name: "고객 계정 개설" }).click();
+  await page.getByLabel("고객 이름").fill(unique("지원참조회사"));
+  await tenantSlugField(page).fill(unique("supportref"));
+  let envelope: { support_ref: string; trace_id: string } | undefined;
+  await page.route("**/api/platform/orgs", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    const response = await route.fetch({ url: new URL("/__e2e/support-reference-failure", route.request().url()).href });
+    expect(response.status()).toBe(500);
+    envelope = (await response.json()).error;
+    return route.fulfill({ response });
+  });
+  await page.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  const panel = page.getByRole("dialog").getByRole("status").filter({ has: page.locator("[data-support-reference]") });
+  await expect(panel).toContainText("지원 참조 번호");
+  expect(envelope?.support_ref).toMatch(/^[0-9a-f]{32}$/);
+  await expect(panel.locator("[data-support-reference]")).toHaveAttribute("data-support-reference", envelope!.support_ref);
+  await expect(panel.getByText(`ref ${envelope!.support_ref.slice(0, 8)}`, { exact: true })).toBeVisible();
+  await expectAccessible(page, "mutation 500 with support reference");
+  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: (value: string) => { (window as Window & { copiedReference?: string }).copiedReference = value; return Promise.resolve(); } } }));
+  await panel.getByRole("button", { name: "지원 참조 번호 복사" }).click();
+  expect(await page.evaluate(() => (window as Window & { copiedReference?: string }).copiedReference)).toBe(`ref ${envelope!.support_ref}`);
+  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined }));
+  await panel.getByRole("button", { name: "지원 참조 번호 복사" }).click();
+  await expect(panel.getByText(`ref ${envelope!.support_ref}`, { exact: true })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "돌아가기", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByText("지원 참조 번호 조회", { exact: true }).click();
+  await page.getByLabel("전체 지원 참조 번호").fill(envelope!.support_ref);
+  await expect(async () => {
+    await page.getByRole("button", { name: "조회", exact: true }).click();
+    await expect(page.getByText(envelope!.trace_id, { exact: true })).toBeVisible();
+  }).toPass();
+  await expect(page.getByText("/__e2e/support-reference-failure", { exact: true })).toBeVisible();
+  await page.context().close();
 });

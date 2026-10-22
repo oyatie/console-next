@@ -85,3 +85,5 @@ pub use crate::telemetry::init_tracing;
 pub use routes::surfaces::{CONFIGURED_ROUTE_SURFACES, ConfiguredRouteSurface};
 
 mod schema_install;
+
+pub use http::support_reference::OPERATIONS as SUPPORT_REFERENCE_ROUTE_OPERATIONS;

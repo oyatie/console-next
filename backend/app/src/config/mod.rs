@@ -89,6 +89,8 @@ pub struct AppConfig {
     /// back to `console_rt`.
     pub platform_force_command_database_url: Option<String>,
     pub otlp_endpoint: Option<String>,
+    /// Server-only VictoriaLogs /select/logsql/query URL for Cedar-gated diagnostics.
+    pub support_log_query_url: Option<String>,
     pub jwt: Option<JwtVerifierConfig>,
     pub auth_rest: Option<AuthRestConfig>,
     pub storage: Option<S3StorageConfig>,

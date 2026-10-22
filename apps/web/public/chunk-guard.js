@@ -49,8 +49,8 @@
   // The static error screen (common.crashed.* in packages/i18n boot.ts; a test keeps them equal). Plain DOM with the
   // DS class names: the stylesheet may be what failed, so it reads unstyled too.
   var COPY = {
-    ko: ["화면을 표시하지 못했습니다", "새 버전이 배포되었거나 일시적인 오류일 수 있습니다. 페이지를 새로 고치십시오.", "페이지 새로 고침"],
-    en: ["Couldn’t show this screen", "A new version may have been released, or this may be a temporary error. Reload the page.", "Reload page"],
+    ko: ["화면을 표시하지 못했습니다", "새 버전이 배포되었거나 일시적인 오류일 수 있습니다. 페이지를 새로 고치십시오.", "페이지 새로 고침", "지원 참조 번호", "지원 참조 번호 복사", "지원 참조 번호를 복사했습니다", "복사하지 못했습니다. 지원 참조 번호를 선택해 직접 복사하십시오."],
+    en: ["Couldn’t show this screen", "A new version may have been released, or this may be a temporary error. Reload the page.", "Reload page", "Support reference", "Copy support reference", "Support reference copied", "Could not copy. Select and copy the full support reference."],
   };
   function fail() {
     if (document.getElementById("chunk-fallback")) return;
@@ -69,6 +69,36 @@
     button.textContent = c[2];
     button.addEventListener("click", reload);
     (document.body || document.documentElement).appendChild(main);
+    if (window.consoleErrorBeacon) window.consoleErrorBeacon.reference().then(function (receipt) {
+      if (!receipt) return;
+      var reference = receipt.support_ref;
+      var box = document.createElement("div");
+      box.setAttribute("data-support-reference", reference);
+      box.className = "muted";
+      var label = document.createElement("code");
+      label.textContent = c[3] + " ref " + reference.slice(0, 8);
+      label.title = "ref " + reference;
+      var time = document.createElement("time");
+      time.dateTime = receipt.support_ref_at;
+      time.textContent = receipt.support_ref_at ? receipt.support_ref_at.slice(0, 19).replace("T", " ") + " UTC" : "";
+      var copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "btn";
+      copy.textContent = c[4];
+      var status = document.createElement("span");
+      status.setAttribute("role", "status");
+      copy.addEventListener("click", function () {
+        if (!navigator.clipboard) { label.textContent = c[3] + " ref " + reference; status.textContent = c[6]; return; }
+        navigator.clipboard.writeText("ref " + reference).then(function () { status.textContent = c[5]; }, function () { label.textContent = c[3] + " ref " + reference; status.textContent = c[6]; });
+      });
+      box.appendChild(label);
+      box.appendChild(document.createTextNode(" · "));
+      box.appendChild(time);
+      box.appendChild(document.createTextNode(" · "));
+      box.appendChild(copy);
+      box.appendChild(status);
+      main.querySelector(".state").appendChild(box);
+    });
   }
 
   // The entry chunk, its static imports or its stylesheet failed: nothing bundled will run, so decide here. Once the
