@@ -17,6 +17,8 @@ pub const CONFINED_DEPS: &[(&str, &[&str])] = &[
     ("cedar-policy", &["console-platform-authz"]),
     ("calamine", &["console-platform-excel"]),
     ("umya-spreadsheet", &["console-platform-excel"]),
+    // stacker: =0.1.24, MIT OR Apache-2.0, rust-lang/stacker, already transitive via cedar-policy-core 4.11.2
+    ("stacker", &["console-platform-authz"]),
 ];
 
 /// (crate, external dep, reason). Pinned offenders found on 2026-10-02 by
@@ -154,6 +156,7 @@ pub fn layer_forbids(layer: &Layer) -> &'static [&'static str] {
         "cedar-policy",
         "calamine",
         "umya-spreadsheet",
+        "stacker",
         "utoipa",
         "lettre",
         "apalis",
@@ -343,6 +346,21 @@ mod tests {
             "console-app",
             "cedar-policy"
         ));
+    }
+
+    #[test]
+    fn stacker_is_confined_to_platform_authz() {
+        assert!(forbidden_external(
+            &Layer::Platform,
+            "console-platform-db",
+            "stacker"
+        ));
+        assert!(!forbidden_external(
+            &Layer::Platform,
+            "console-platform-authz",
+            "stacker"
+        ));
+        assert!(forbidden_external(&Layer::App, "console-app", "stacker"));
     }
 
     #[test]

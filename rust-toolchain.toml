@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+[toolchain]
+# Root Rust toolchain pin: stable 1.99.0 (official channel manifest checked 2026-09-12).
+# Unifies backend (MSRV 1.96) and apps/desktop Tauri shell (MSRV 1.99) onto a single stable channel across the monorepo.
+# CI and local builds must agree on this single stable pin.
+channel = "1.99.0"
+components = ["rustfmt", "clippy"]
+targets = ["x86_64-pc-windows-msvc"]

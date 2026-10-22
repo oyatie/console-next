@@ -230,34 +230,8 @@ workspace = true
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
-// Purity rule: domain layer forbids sqlx/axum/tokio as external deps
-// (Validated via classify + forbidden_external_deps; no real dep resolution
-//  needed — the gate enforces this at metadata parse time.)
-// ---------------------------------------------------------------------------
-
-#[test]
-fn gate_detects_domain_depending_on_sqlx() {
-    let layer = classify_crate(
-        "console-workorder-domain",
-        "/fake/ws/crates/workorder/domain/Cargo.toml",
-        "/fake/ws",
-    );
-    assert_eq!(layer, Layer::Domain);
-    let forbidden = layer.forbidden_external_deps();
-    assert!(
-        forbidden.contains(&"sqlx"),
-        "domain should forbid sqlx; got {forbidden:?}"
-    );
-    assert!(
-        forbidden.contains(&"axum"),
-        "domain should forbid axum; got {forbidden:?}"
-    );
-    assert!(
-        forbidden.contains(&"tokio"),
-        "domain should forbid tokio; got {forbidden:?}"
-    );
-}
+#[path = "gate_detects_violation/external_deps.rs"]
+mod external_deps;
 
 // ---------------------------------------------------------------------------
 // Manifest hygiene: missing console- prefix is detected

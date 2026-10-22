@@ -1,5 +1,6 @@
 [toolchain]
-# Pinned to stable 1.98.1 (official channel manifest checked 2026-09-12).
-# Bump deliberately; CI and local builds must agree.
-channel = "1.98.1"
+# Pinned to stable 1.99.0 (official channel manifest checked 2026-09-12).
+# Kept in lockstep with monorepo root rust-toolchain.toml.
+channel = "1.99.0"
 components = ["rustfmt", "clippy"]
+
