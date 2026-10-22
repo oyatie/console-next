@@ -43,6 +43,16 @@ test("appointment notices retain their existing omission of known leave reasons"
   expect(html).not.toContain("WORK_INJURY");
 });
 
+test("the appointment notice never prints a leave reason, known or unknown (pd:sensitive/health)", () => {
+  for (const code of ["WORK_INJURY", "FUTURE_LEAVE"]) {
+    reads.notice = notice(code);
+    const html = renderToStaticMarkup(<NoticePage />);
+    expect(html).not.toContain(code);
+    expect(html).not.toContain("확인되지 않은 항목");
+    expect(html).not.toContain("산재 요양");
+  }
+});
+
 test.each([
   ["history", () => <PersonHistory employee={c.e} events={c.events} verbs={[]} manage={false} today="2026-10-23" done={null} onAct={noop} onDismiss={noop} />],
   ["spine", () => <CardSpine c={c} onAct={noop} onLedger={noop} onHistory={noop} />],
@@ -52,10 +62,6 @@ test.each([
   ["protected periods", () => <ProtectedPeriods periods={[{ lifecycle_event_id: event.id, leave_type: event.leave_type!, leave_from: event.effective_date, leave_until: null, protected_until: null, instrument: null, article: null }]} />],
   ["leave correction", () => <LeaveFields start="2026-10-01" today="2026-10-23" type={event.leave_type!} onType={noop} returnDate="" onReturn={noop} tried={false} />],
   ["return from leave", () => <LifecycleWhat detail={c.d} kind="RETURN_FROM_LEAVE" v={{} as never} set={noop} today="2026-10-23" bounds={{}} lastLeave={event} contractEnd={null} show={() => false} correcting={false} what={{ current: null }} tried={false} />],
-  ["appointment notice", () => {
-    reads.notice = notice("FUTURE_LEAVE");
-    return <NoticePage />;
-  }],
 ] as const)("%s renders a future leave type as a neutral label and muted code", (_, screen) => {
   const html = renderToStaticMarkup(screen());
   expect(html).toContain("확인되지 않은 항목");
