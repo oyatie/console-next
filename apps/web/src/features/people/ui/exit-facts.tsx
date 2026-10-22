@@ -121,7 +121,7 @@ export function SettlementFigures({ pkg }: { pkg: Package }) {
   );
 }
 
-export function NoticeRecord({ notice }: { notice: NonNullable<Case["dismissal_notice"]> }) {
+function NoticeRecord({ notice }: { notice: NonNullable<Case["dismissal_notice"]> }) {
   return <section aria-label={t("exit.notice.title")}>
     <h3 className={s.groupTitle}>{t("exit.notice.title")}</h3>
     <KeyValue items={[

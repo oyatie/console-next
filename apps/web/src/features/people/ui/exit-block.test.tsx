@@ -1,17 +1,23 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { loadCatalog } from "@console/i18n";
 import { ExitCases } from "./exit-block";
 
 type Case = components["schemas"]["EmployeeExitCase"];
+const reads = vi.hoisted(() => ({ cases: [] as unknown[], detail: undefined as unknown }));
+// The list read has landed; the detail read is pending (placeholder) unless a detail is given.
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: (q: { read: string; placeholderData?: unknown }) => q.read === "cases"
+    ? { data: { items: reads.cases }, isSuccess: true }
+    : { data: reads.detail ?? q.placeholderData, isSuccess: reads.detail !== undefined },
+}));
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useNavigate: () => vi.fn() }), Link: () => null }));
 vi.mock("../../../reference/authz/ui/use-can", () => ({ useCan: () => () => true }));
 vi.mock("../api", () => ({
-  exitCasesQuery: () => ({ queryKey: ["cases"], queryFn: () => new Promise(() => {}) }),
-  caseQuery: (id: string) => ({ queryKey: ["case", id], queryFn: () => new Promise(() => {}) }),
+  exitCasesQuery: () => ({ read: "cases" }),
+  caseQuery: () => ({ read: "case" }),
 }));
 vi.mock("../present", () => ({ whoLine: () => "Synthetic employee" }));
 vi.mock("./use-case-actions", () => ({
@@ -26,13 +32,10 @@ vi.mock("./exit-facts", () => ({ RelDay: () => null }));
 beforeAll(() => loadCatalog("ko"));
 
 function sheet(detail?: Case) {
-  const client = new QueryClient();
   const c = { id: "case-1", status: "REPORTED", effective_exit_date: "2026-10-21", protected_periods: [] } as unknown as Case;
-  client.setQueryData(["cases"], { items: [c] });
-  if (detail) client.setQueryData(["case", c.id], detail);
-  const html = renderToStaticMarkup(<QueryClientProvider client={client}><ExitCases employee={{ id: "person-1", name: "Synthetic employee", status: "ACTIVE" } as components["schemas"]["Employee"]} act="exit.confirm_exit:case-1" /></QueryClientProvider>);
-  client.clear();
-  return html;
+  reads.cases = [c];
+  reads.detail = detail;
+  return renderToStaticMarkup(<ExitCases employee={{ id: "person-1", name: "Synthetic employee", status: "ACTIVE" } as components["schemas"]["Employee"]} act="exit.confirm_exit:case-1" />);
 }
 
 test("the HR sheet opens from its list row while the detail read is pending", () => {
