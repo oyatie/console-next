@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import { newContext, takeCode, tenantSlugField, unique, vendorPage, go } from "./flows";
+import { firstSignIn, newContext, takeCode, tenantSlugField, unique, vendorPage, go } from "./flows";
 
 // PV1: Privacy notice and consent before the first personal-data field (P0)
 // On first sign-in the privacy notice is shown and acknowledged before any personal-data field renders.
@@ -99,14 +99,24 @@ test("fresh sign-in shows no false error on first visit (issue #44 regression)",
 });
 
 test("unpublished consent documents show operator action and allow sign out", { tag: "@privacy" }, async ({ browser }) => {
-  const page = await vendorPage(browser);
+  const v = await vendorPage(browser);
+  await go(v, "/platform");
+  await v.getByRole("button", { name: "고객 계정 개설" }).click();
+  await v.getByLabel("고객 이름").fill("개인정보미공개테스트");
+  await tenantSlugField(v).fill(unique("pvunpublished"));
+  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  const page = await firstSignIn(browser, await takeCode(v));
   const unavailable = { status: 409, contentType: "application/json", body: JSON.stringify({ error: { code: "terms_not_published", message: "No terms published" } }) };
-  await page.route("**/api/v1/auth/privacy-consent/status", (route) => route.fulfill(unavailable));
-  await page.route("**/api/v1/onboarding/terms", (route) => route.fulfill(unavailable));
-  await page.goto("/platform");
-  await expect(page).toHaveURL(/\/setup-passkey/);
-  await expect(page.getByRole("alert")).toContainText("공개된 이용약관이 없습니다. 운영사에 문의하십시오.");
-  await expect(page.getByRole("button", { name: "동의하고 계속" })).toBeDisabled();
-  await page.getByRole("button", { name: "로그아웃" }).click();
-  await expect(page).toHaveURL(/\/login/);
+  try {
+    await page.route("**/api/v1/auth/privacy-consent/status", (route) => route.fulfill(unavailable));
+    await page.route("**/api/v1/onboarding/terms", (route) => route.fulfill(unavailable));
+    await go(page, "/people", true);
+    await expect(page).toHaveURL(/\/setup-passkey/);
+    await expect(page.getByRole("alert")).toContainText("공개된 이용약관이 없습니다. 운영사에 문의하십시오.");
+    await expect(page.getByRole("button", { name: "동의하고 계속" })).toBeDisabled();
+    await page.getByRole("button", { name: "로그아웃" }).click();
+    await expect(page).toHaveURL(/\/login/);
+  } finally {
+    await page.unrouteAll({ behavior: "wait" });
+  }
 });
