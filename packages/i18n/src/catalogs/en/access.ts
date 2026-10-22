@@ -142,7 +142,6 @@ export const enAccess: Partial<Record<keyof typeof koAccess, string>> = {
   "access.grants.none": "No grants",
   "access.grants.none.reason": "Find a person above and grant access. Without grants, nobody but the ops account can work.",
   "access.col.person": "Person",
-  "access.col.number": "Employee no.",
   "access.col.passkey": "Passkey",
   "access.col.role": "Role",
   "access.col.scope": "Scope",

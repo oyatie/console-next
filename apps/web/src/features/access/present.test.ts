@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, expect, test } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { accountLabel } from "./present";
 
 beforeAll(() => loadCatalog("ko"));
@@ -18,5 +18,5 @@ test("missing employee number uses primary placement, and missing all facts uses
 });
 
 test("an empty name never leaves an empty interpolation", () => {
-  expect(accountLabel({ id: "a", display_name: "  ", employee_number: "E-1" }, "a")).toBe("이름 없음 · E-1");
+  expect(accountLabel({ id: "a", display_name: "  ", employee_number: "E-1" }, "a")).toBe(`${t("people.label.unnamed")} · E-1`);
 });

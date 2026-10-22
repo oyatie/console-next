@@ -23,6 +23,7 @@ import { holdsActive, holdsLink } from "../domain/accounts";
 import { useIssueCode, type Issued } from "./use-issue-code";
 import { SignInId } from "./account-sign-in-id";
 import { personLabel } from "../../../reference/person/present";
+import { personOption } from "../../../reference/person/ui/person-option";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { Muted } from "../../../ui/muted/muted";
 
@@ -84,7 +85,7 @@ function Sections({ u, admin, onIssued, onRecorded }: { u: User; admin: boolean;
         ) : (
           <div className="row">
             <Link to="/access/people/$accountId" params={{ accountId: u.id }}>{t("accounts.access.view")}</Link>
-            {admin && u.is_active && <Link to="/access/people/$accountId" params={{ accountId: u.id }} search={{ grant: true }} className="btn">{t("accounts.access.grant")}</Link>}
+            {admin && u.is_active && <Link to="/access/people/$accountId" params={{ accountId: u.id }} search={{ grant: true }} className="btn" aria-label={t("people.label.grant", { name: personLabel(u).text })}>{t("accounts.access.grant")}</Link>}
           </div>
         )}
       </Section>
@@ -162,13 +163,14 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
         label={t("accounts.employee.pick")}
         query={query}
         onQueryChange={setQuery}
-        options={options.map((e) => ({ id: e.id, name: e.employee_number?.trim() ? personLabel(e).name : personLabel(e, options).text, display: <PersonLabel person={e} peers={options} />, code: e.employee_number?.trim() || undefined, status: e.status ? label(EMPLOYEE_STATUS, e.status) : undefined }))}
+        options={options.map((e) => ({ ...personOption(e, options), status: e.status ? label(EMPLOYEE_STATUS, e.status) : undefined }))}
         value={picked}
         onChange={setPicked}
         group={t("accounts.employee.group")}
         loading={found.isFetching}
         empty={t("accounts.employee.none")}
       />
+      {picked && <PersonLabel person={{ ...options.find((p) => p.id === picked), id: picked, employee_id: picked }} peers={options} />}
       {tried && picked === null && <span className="field__error" role="alert">{t("accounts.employee.pickError")}</span>}
       <div className="row">
         <Button disabled={link.isPending} onClick={() => (setTried(true), picked && link.mutate({ employeeId: picked }))}>{t("uiOverrideSheet.stepUp", { action: t("accounts.employee.link") })}</Button>

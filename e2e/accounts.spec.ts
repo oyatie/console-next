@@ -45,7 +45,7 @@ test("accounts: invite with no role, continue into 권한 부여, find the exist
   await expect(panel).toBeVisible();
 
   // 권한 부여 from the panel opens the grant sheet for this account.
-  await panel.getByRole("link", { name: "권한 부여" }).click();
+  await panel.getByRole("link", { name: /정하늘.*HK-4112.*권한 부여/ }).click();
   await expect(admin).toHaveURL(/\/access\/people\/[0-9a-f-]+/);
   await expect(admin.getByRole("dialog", { name: "권한 부여" })).toContainText("정하늘");
   await admin.getByRole("dialog", { name: "권한 부여" }).getByRole("button", { name: "취소" }).click();

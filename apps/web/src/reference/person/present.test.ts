@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, expect, test } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { personLabel } from "./present";
 
 beforeAll(() => loadCatalog("ko"));
@@ -22,7 +22,7 @@ test("missing number uses placement; blank facts, short or malformed sign-in IDs
   expect(personLabel({ id: "a", name: "Person", employee_number: " ", company: "Company", org_unit: "HR" }).detail).toBe("Company · HR");
   expect(personLabel({ id: "a", name: "Person", sign_in_id: "ab@example.test" }).detail).toBe("a••••@example.test");
   expect(personLabel({ id: "a", name: "Person", sign_in_id: "invalid" }).detail).toBe("a");
-  expect(personLabel({ id: "a", name: " ", employee_number: " " }).text).toBe("이름 없음 · a");
+  expect(personLabel({ id: "a", name: " ", employee_number: " " }).text).toBe(`${t("people.label.unnamed")} · a`);
 });
 
 test("colliding masks or identical employee facts remain distinguishable by stable id", () => {

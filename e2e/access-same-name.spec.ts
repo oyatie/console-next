@@ -49,7 +49,7 @@ test("account-only namesakes are distinguishable before bulk selection and each 
     const label = admin.getByText(new RegExp(`^w••••${suffix}@`));
     await expect(label).toHaveCount(1);
     const row = label.locator("xpath=ancestor::div[strong]/parent::div");
-    const action = row.getByRole("link", { name: "권한 부여", exact: true });
+    const action = row.getByRole("link", { name: new RegExp(`권한없음테스트.*w••••${suffix}@.*권한 부여`) });
     await expect(action).toHaveCount(1);
     const target = await action.getAttribute("href");
     expect(target).toMatch(/^\/access\/people\/[0-9a-f-]+\?grant=true$/);

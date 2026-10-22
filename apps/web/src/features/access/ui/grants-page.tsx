@@ -17,7 +17,7 @@ import { Table } from "../../../ui/table";
 import { ENDING_DAYS, filterGrants } from "../domain/grant-filter";
 import { grantsQuery, type AccessGrant, type Account } from "../api";
 import { accountLabel, grantPerson, periodText, scopeText } from "../present";
-import { PersonLabel } from "../../../reference/person/ui/person-label";
+import { PersonLabel, PersonRecordLink } from "../../../reference/person/ui/person-label";
 import { AccessHead } from "./access-head";
 import { AccessRequests } from "./access-requests";
 import { AccountPick } from "./account-pick";
@@ -85,7 +85,7 @@ export function GrantsPage({ role }: { role?: string }) {
                 rowId={(g) => g.id}
                 tone={(g) => (g.account_active ? undefined : "warn")}
                 columns={[
-                  { header: t("access.col.person"), cell: (g) => <Link to="/access/people/$accountId" params={{ accountId: g.account_id }}><PersonLabel person={grantPerson(g, ctx.accounts)} peers={ctx.accounts} /></Link> },
+                  { header: t("access.col.person"), cell: (g) => <><Link to="/access/people/$accountId" params={{ accountId: g.account_id }}><PersonLabel person={grantPerson(g, ctx.accounts)} peers={ctx.accounts} linked={false} /></Link> <PersonRecordLink person={grantPerson(g, ctx.accounts)} peers={ctx.accounts} /></> },
                   { header: t("access.col.role"), cell: (g) => g.role_name_ko },
                   { header: t("access.col.scope"), cell: (g) => scopeText(roots, g.scope) },
                   { header: t("access.col.until"), fit: true, cell: (g) => periodText(g) },

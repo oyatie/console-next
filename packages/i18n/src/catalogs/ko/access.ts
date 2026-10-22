@@ -146,7 +146,6 @@ export const koAccess = {
   "access.grants.none": "부여가 없습니다",
   "access.grants.none.reason": "위에서 사람을 찾아 권한을 부여하십시오. 부여가 없으면 운영 계정 말고는 아무도 일할 수 없습니다.",
   "access.col.person": "사람",
-  "access.col.number": "사번",
   "access.col.passkey": "패스키",
   "access.col.role": "역할",
   "access.col.scope": "범위",

@@ -55,7 +55,6 @@ export function BulkPreview({ preview, accounts, role, scope, end, pending, erro
         rowId={(i) => String(i.index)}
         columns={[
           { header: t("access.col.person"), cell: (i) => <PersonLabel person={who(i.account_id) ?? { id: i.account_id }} peers={accounts} /> },
-          { header: t("access.col.number"), fit: true, cell: (i) => who(i.account_id)?.employee_number ?? "" },
           { header: t("access.col.scope"), cell: () => scope },
           {
             header: t("access.col.result"),

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
+import { personOption } from "../../../reference/person/ui/person-option";
 import { peopleQuery } from "../api";
 
 /**
@@ -11,7 +12,8 @@ import { peopleQuery } from "../api";
 export function PersonScope({ onPerson }: { onPerson: (id: string) => void }) {
   const [query, setQuery] = useState("");
   const found = useQuery({ ...peopleQuery(query.trim()), enabled: query.trim().length > 0, placeholderData: keepPreviousData });
-  const options = (found.data?.items ?? []).map((e) => ({ id: e.id, name: e.name, code: e.employee_number ?? undefined }));
+  const people = found.data?.items ?? [];
+  const options = people.map((e) => personOption(e, people));
   return (
     <ServerPicker
       label={t("attendanceSchedule.person.find")}

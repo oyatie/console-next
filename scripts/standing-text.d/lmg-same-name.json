@@ -4,6 +4,7 @@
     "apps/web/src/features/access/ui/access-routes.tsx#GrantsScreen": 117,
     "apps/web/src/features/access/ui/access-routes.tsx#PersonScreen": 109,
     "apps/web/src/features/access/ui/access-routes.tsx#ReadyScreen": 40,
-    "apps/web/src/features/access/ui/access-routes.tsx#RolesScreen": 61
+    "apps/web/src/features/access/ui/access-routes.tsx#RolesScreen": 61,
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#AttendancePage": 137
   }
 }

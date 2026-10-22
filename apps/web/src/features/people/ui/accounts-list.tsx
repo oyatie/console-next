@@ -74,7 +74,6 @@ export function Accounts({ q, sel }: { q: string; sel?: string; onSelect?: (id?:
         </div>
         <LongTable
           label={t("accounts.table")}
-          density="compact"
           caption={total === undefined ? undefined : t("accounts.count", { count: total })}
           columns={columns(rows, sel)}
           rows={rows}
