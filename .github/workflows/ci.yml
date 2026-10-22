@@ -46,6 +46,9 @@ jobs:
           node-version-file: package.json
           cache: npm
       - run: npm ci --no-audit --no-fund
+      # Browser-backed unit tests (vitest + Playwright) need the pinned Chromium headless shell; caching is CI-1's.
+      - name: Chromium headless shell for browser-backed unit tests
+        run: npx playwright install --with-deps --only-shell chromium
       - run: npm run check
 
   backend:
