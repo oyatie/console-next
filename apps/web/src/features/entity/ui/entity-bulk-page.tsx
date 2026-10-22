@@ -113,7 +113,7 @@ function EntityBulkEditor({ paste, canAct }: { paste: boolean; canAct: boolean }
             busy={busy}
             records={heads}
             changes={dry?.items.find((x) => x.ref === String(r.line))?.changes}
-            error={refused.find((x) => x.ref === String(r.line))?.error?.message}
+            error={refused.find((x) => x.ref === String(r.line))?.error}
             set={(draft) => {
               if (busy) return;
               setRows(rows.map((x, j) => (j === i ? { ...x, draft } : x)));

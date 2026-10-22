@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Korean source for `entity.` ids (apps/web/src/features/entity). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koEntity = {
   "entity.list.title": "법인·사업장",
@@ -178,6 +179,8 @@ export const koEntity = {
   "entity.list.tax_office": "세무서",
   "entity.list.nts_industry_code": "국세청 업종코드",
   "entity.refusal.line": "{field}: {reason}",
+  "entity.history.field.effective_from": "변경일",
+  "entity.history.field.reason_code": "변경 사유",
   "entity.refusal.field": "입력한 값",
   "entity.refusal.other": "이 값은 받아들여지지 않았습니다",
   "entity.refusal.required": "필수 항목입니다",

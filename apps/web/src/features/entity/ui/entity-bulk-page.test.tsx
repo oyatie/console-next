@@ -6,7 +6,7 @@ import { loadCatalog } from "@console/i18n";
 import { emptyDraft } from "../domain/draft";
 import { EntityBulkPage } from "./entity-bulk-page";
 
-const harness = vi.hoisted(() => ({ states: [] as unknown[], commands: [] as { run: (input: undefined, key: string) => Promise<unknown> }[], batch: vi.fn() }));
+const harness = vi.hoisted(() => ({ states: [] as unknown[], commands: [] as { run: (input: undefined, key: string) => Promise<unknown> }[], batch: vi.fn(), rowErrors: [] as unknown[] }));
 vi.mock("react", async (original) => {
   const actual = await original<typeof import("react")>();
   return { ...actual, useState: (initial: unknown) => harness.states.length ? [harness.states.shift(), vi.fn()] : actual.useState(initial) };
@@ -19,15 +19,18 @@ vi.mock("../../../lib/react/command", () => ({ useCommand: (options: { run: (inp
 } }));
 vi.mock("../../../lib/react/command-error", () => ({ CommandError: () => null }));
 vi.mock("../../../reference/org/api/setup-batch", () => ({ BATCH_READS: [], entityBatch: harness.batch }));
-vi.mock("./bulk-entity-row", () => ({ BulkEntityRow: () => null }));
+vi.mock("./bulk-entity-row", () => ({ BulkEntityRow: ({ error }: { error: unknown }) => { harness.rowErrors.push(error); return null; } }));
 beforeAll(() => loadCatalog("ko"));
 
 test("preview and apply send the same revision date and person reason with the digest", async () => {
   const entity = { id: "11111111-1111-1111-1111-111111111111", biz_kind: "INDIVIDUAL", workplaces: [], registrations: [], current: { name: "Before", version: 3, representatives: ["Kim"] } };
   const rows = [{ line: 2, op: "REVISE_ENTITY", id: entity.id, draft: { ...emptyDraft(), name: "After" } }];
-  harness.states = ["", [], 0, 0, null, rows, { preview_digest: "proof", items: [] }, null, "2026-10-01", "주소 정정", [entity]];
+  const refusal = { code: "stale_revision", fields: [], message: "raw English server message" };
+  harness.states = ["", [], 0, 0, null, rows, { preview_digest: "proof", items: [{ ref: "2", outcome: "ERROR", error: refusal }] }, null, "2026-10-01", "주소 정정", [entity]];
   harness.commands = [];
+  harness.rowErrors = [];
   renderToStaticMarkup(<EntityBulkPage paste />);
+  expect(harness.rowErrors).toEqual([refusal]);
   await harness.commands[1]!.run(undefined, "preview");
   await harness.commands[2]!.run(undefined, "apply");
   expect(harness.batch).toHaveBeenNthCalledWith(1, expect.objectContaining({ dry_run: true, effective_from: "2026-10-01", reason_code: "주소 정정" }));

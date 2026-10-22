@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { EntitySetupItem, LegalEntity } from "@console/api/pending";
+import { ApiError } from "../api";
 import { changeLine } from "../present";
 import { entityName } from "../../../reference/entity/domain/names";
 import { Link } from "@tanstack/react-router";
@@ -11,6 +12,7 @@ import { BULK_OPERATIONS, bulkGaps, type BulkOp, type EntityRow } from "../domai
 import type { Draft } from "../domain/draft";
 import { KindAndName } from "./create-kind-and-name";
 import { AddressEdit } from "./record-address-edit";
+import { EntityError } from "./entity-error";
 
 export function BulkEntityRow({
   row,
@@ -24,7 +26,7 @@ export function BulkEntityRow({
   row: EntityRow;
   set: (d: Draft) => void;
   setRow?: (r: EntityRow) => void;
-  error?: string;
+  error?: EntitySetupItem["error"];
   changes?: EntitySetupItem["changes"];
   busy?: boolean;
   records?: readonly LegalEntity[];
@@ -51,6 +53,7 @@ export function BulkEntityRow({
   const named = d.representatives.filter((n) => n.trim()).length;
   const displayName = row.workplaceName || d.name || "";
   const opLabel = t(`setup.entityBulk.op.${op}`);
+  const refusal = error && Object.assign(new ApiError(422, error.code, t("entity.refusal.other")), { fields: error.fields });
 
   const opOptions = BULK_OPERATIONS.filter((o) => o !== "CREATE_WORKPLACE").map((o) => ({
     value: o,
@@ -63,7 +66,7 @@ export function BulkEntityRow({
         {opLabel} · {t("setup.entityBulk.row", { line: row.line, name: displayName })}
         {gaps.length > 0 && ` · ${t("setup.entityBulk.missing", { count: gaps.length })}`}
       </summary>
-      {error && <output role="alert">{error}</output>}
+      <EntityError error={refusal} />
       {changes && <output>{changes.map(changeLine).join(" · ")}</output>}
       {gaps.includes("record") && <output>{t("setup.entityBulk.recordNeeded")}</output>}
       {op === "CREATE_WORKPLACE" && <Link to="/org/paste">{t("setup.entityBulk.workplaceFlow")}</Link>}

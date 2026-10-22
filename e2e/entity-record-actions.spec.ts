@@ -4,6 +4,8 @@ import { expect, test, type Page } from "@playwright/test";
 import type { LegalEntity } from "@console/api/pending";
 import { go, kstDate, option } from "./flows";
 import { tenantInSetup } from "./setup-flows";
+import { apiAs } from "./chaos";
+import { fillDate } from "./sheet";
 
 async function readEntity(page: Page, id: string): Promise<LegalEntity> {
   const read = page.waitForResponse((r) => r.request().method() === "GET" && new URL(r.url()).pathname === `/api/v1/legal-entities/${id}`);
@@ -12,23 +14,35 @@ async function readEntity(page: Page, id: string): Promise<LegalEntity> {
 }
 
 async function load(page: Page, mode: "paste" | "import", rows: string[][]) {
+  await go(page, "/org");
+  await expect(page.getByRole("button", { name: "등록 미리보기" })).toHaveCount(0);
   await go(page, `/org/entities?bulk=${mode}`);
   if (mode === "paste") {
-    await page.getByLabel("법인 목록", { exact: true }).fill(rows.map((r) => r.join("\t")).join("\n"));
+    await page.getByRole("textbox", { name: "법인 목록" }).fill(rows.map((r) => r.join("\t")).join("\n"));
     await page.getByRole("button", { name: "열 연결", exact: true }).click();
   } else {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("기록");
     rows.forEach((r) => sheet.addRow(r));
-    await page.locator('input[type="file"]').setInputFiles({ name: "기록.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(await workbook.xlsx.writeBuffer()) });
+    const chooser = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "파일 선택" }).click();
+    await (await chooser).setFiles({ name: "기록.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(await workbook.xlsx.writeBuffer()) });
   }
   await page.getByRole("button", { name: "입력값 확인" }).click();
+}
+
+async function preview(page: Page) {
+  const response = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/v1/entity-setup/batches", { timeout: 60_000 });
+  await page.getByRole("button", { name: "등록 미리보기" }).click();
+  expect((await response).status()).toBe(200);
 }
 
 for (const mode of ["paste", "import"] as const) {
   test(`entity ${mode}: refusal, full-state revisions, create, receipt and undo @org`, async ({ browser }) => {
     const { admin: page } = await tenantInSetup(browser, `record${mode}`, "기록상사", false, "본사");
-    const id = new URL(page.url()).pathname.split("/").pop()!;
+    const read = apiAs(page);
+    await go(page, "/org");
+    const id = (await read<{ items: LegalEntity[] }>("/api/v1/legal-entities")).items[0]!.id;
     const before = await readEntity(page, id);
     const workplace = before.workplaces[0]!;
     const headers = ["법인 이름", "종류", "대표자", "작업 구분", "수정할 기록", "사업장 이름", "수정할 버전"];
@@ -39,19 +53,19 @@ for (const mode of ["paste", "import"] as const) {
     await expect(page.getByRole("link", { name: "사업장 등록 · 원천징수·보험 확인" })).toHaveAttribute("href", "/org/paste");
     await expect(page.getByRole("button", { name: "등록 미리보기" })).toHaveAttribute("aria-disabled", "true");
     await load(page, mode, [headers, [...revised.slice(0, -1), "999"]]);
-    await page.getByLabel("변경일", { exact: true }).fill(kstDate());
+    await fillDate(page.getByRole("main"), kstDate(), "변경일");
     await page.getByRole("textbox", { name: "변경 사유" }).fill("이름 변경");
-    await page.getByRole("button", { name: "등록 미리보기" }).click();
-    await expect(page.getByRole("alert").first()).toBeVisible();
+    await preview(page);
+    await expect(page.getByRole("alert").filter({ hasText: "다른 사람이 먼저 변경" })).toBeVisible();
     await expect(page.getByRole("button", { name: /기록 .*건 반영/ })).toHaveCount(0);
     await load(page, mode, rows);
-    const nameRow = page.locator("details").filter({ hasText: "새 본사" });
+    const nameRow = page.locator("details").filter({ hasText: "4행" });
     await nameRow.locator("summary").click();
-    await nameRow.getByRole("textbox", { name: "사업장 이름", exact: true }).fill("수정 본사");
-    await expect(nameRow.getByRole("textbox", { name: "사업장 이름", exact: true })).toHaveValue("수정 본사");
-    await page.getByLabel("변경일", { exact: true }).fill(kstDate());
+    await nameRow.getByRole("textbox", { name: /^사업장 이름/ }).fill("수정 본사");
+    await expect(nameRow.getByRole("textbox", { name: /^사업장 이름/ })).toHaveValue("수정 본사");
+    await fillDate(page.getByRole("main"), kstDate(), "변경일");
     await page.getByRole("textbox", { name: "변경 사유" }).fill("이름 변경");
-    await page.getByRole("button", { name: "등록 미리보기" }).click();
+    await preview(page);
     await expect(page.getByRole("button", { name: "기록 3건 반영" })).toBeVisible();
     await expect(nameRow).toContainText("본사 → 수정 본사");
     await page.getByRole("button", { name: "기록 3건 반영" }).click();
@@ -77,7 +91,9 @@ for (const mode of ["paste", "import"] as const) {
 
 test("registration change: unchanged hold, unlink through the dated sheet @org", async ({ browser }) => {
   const { admin: page } = await tenantInSetup(browser, "regchange", "등록상사", false, "본사");
-  const id = new URL(page.url()).pathname.split("/").pop()!;
+  const read = apiAs(page);
+  await go(page, "/org");
+  const id = (await read<{ items: LegalEntity[] }>("/api/v1/legal-entities")).items[0]!.id;
   const before = await readEntity(page, id);
   const workplace = before.workplaces[0]!;
   await go(page, `/org/entities/${id}?wp=${workplace.id}`);

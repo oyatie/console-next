@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import type { koEntity } from "../ko/entity";
 
 export const enEntity: Record<keyof typeof koEntity, string> = {
@@ -179,6 +180,8 @@ export const enEntity: Record<keyof typeof koEntity, string> = {
   "entity.list.tax_office": "Tax office",
   "entity.list.nts_industry_code": "NTS industry code",
   "entity.refusal.line": "{field}: {reason}",
+  "entity.history.field.effective_from": "Effective date",
+  "entity.history.field.reason_code": "Reason for change",
   "entity.refusal.field": "The value entered",
   "entity.refusal.other": "this value was not accepted",
   "entity.refusal.required": "required",
