@@ -33,7 +33,9 @@ export function SuspendSheet(p: {
   const suspend = !p.suspended;
   const [d, setD] = useState<StatusDraft>({ since: "", until: "", reason: null });
   const problems = statusProblems(d, suspend, { today, from: p.since });
-  const ready = Object.keys(problems).length === 0;
+  // A typed end the field refused is not "no end": the save waits until it is corrected or cleared.
+  const [untilInvalid, setUntilInvalid] = useState(false);
+  const ready = Object.keys(problems).length === 0 && !(suspend && untilInvalid);
   const save = useCommand({ run: (_: undefined, key: string) => p.save(d, key), invalidates: ENTITY_READS, settle: true, announce: () => t(suspend ? "entityOps.suspend.done" : "entityOps.resume.done", { name: p.name }), onSuccess: p.onClose });
   const verb = t(suspend ? "entityOps.suspend.action" : "entityOps.resume.action");
   const err = (k: keyof StatusDraft) => (problems[k] && problems[k] !== "required" ? t(`entityOps.status.problem.${problems[k]}`) : undefined);
@@ -60,11 +62,11 @@ export function SuspendSheet(p: {
         </>
       }
     >
-      <DateField label={t(suspend ? "entityOps.suspend.since" : "entityOps.resume.since")} required value={d.since} onChange={(v) => setD((x) => ({ ...x, since: v }))} today={today} max={today} min={p.since ?? undefined} error={err("since")} />
+      <DateField label={t(suspend ? "entityOps.suspend.since" : "entityOps.resume.since")} required value={d.since} onChange={(v) => setD((x) => ({ ...x, since: v }))} today={today} max={today} min={p.since ?? undefined} minReason={t("entityOps.status.problem.beforeCurrent")} maxReason={t("entityOps.status.problem.future")} error={err("since")} />
       {suspend && (
         <>
           <ChoiceField label={t("entityOps.suspend.reason")} required options={SUSPEND_REASONS.map((r) => ({ value: r, label: t(`entityOps.suspend.reason.${r}`) }))} value={d.reason} onChange={(v) => setD((x) => ({ ...x, reason: v as StatusDraft["reason"] }))} />
-          <DateField label={t("entityOps.suspend.until")} required={false} value={d.until} onChange={(v) => setD((x) => ({ ...x, until: v }))} today={today} min={d.since || undefined}  error={err("until")} />
+          <DateField label={t("entityOps.suspend.until")} required={false} value={d.until} onChange={(v) => setD((x) => ({ ...x, until: v }))} onInvalid={setUntilInvalid} today={today} min={d.since || undefined} minReason={t("entityOps.status.problem.untilBeforeSince")} error={err("until")} />
         </>
       )}
     </Sheet>

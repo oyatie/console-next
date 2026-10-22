@@ -12,17 +12,21 @@ import { typedProblem } from "./date-text";
 import s from "./date.module.css";
 
 /** The one keyboard-and-calendar date input used by DateField and fields that already own their label. */
-export function DateInput({ id, value, onChange, onDraftChange, required = false, today = todayKst(), min, minReason, max, disabledDates = [], label, className, disabled, showErrors = true, "aria-describedby": describedBy, "aria-invalid": ariaInvalid, inputRef, onBlur, onKeyDown }: {
+export function DateInput({ id, value, onChange, onDraftChange, onInvalid, required = false, today = todayKst(), min, minReason, max, maxReason, disabledDates = [], label, className, disabled, showErrors = true, "aria-describedby": describedBy, "aria-invalid": ariaInvalid, inputRef, onBlur, onKeyDown }: {
   id?: string;
   value: string;
   onChange: (value: string) => void;
   today?: string;
   /** Keep incomplete text in specialized import rows; ordinary fields only receive valid business dates. */
   onDraftChange?: (text: string) => void;
+  /** Whether the last committed text was refused (unreadable, outside the bounds, blocked): an optional field's form holds its save on it. */
+  onInvalid?: (invalid: boolean) => void;
   required?: boolean;
   min?: string;
   minReason?: ReactNode;
   max?: string;
+  /** Why a date after `max` is refused (the caller's rule), in place of the generic out-of-range line. */
+  maxReason?: ReactNode;
   disabledDates?: readonly string[];
   label?: string;
   className?: string;
@@ -48,7 +52,7 @@ export function DateInput({ id, value, onChange, onDraftChange, required = false
   const typedDate = "date" in parsed ? parsed.date : "";
   const unavailable = Boolean(typedDate && (!inBounds(typedDate, minimum, maximum) || blocked.has(typedDate)));
   const problem = showErrors && !editing
-    ? ("bad" in parsed ? typedProblem(parsed) : unavailable ? (blocked.has(typedDate) ? t("uiDate.disabled") : minimum && typedDate < minimum ? minReason ?? t("uiDate.outOfRange") : t("uiDate.outOfRange")) : undefined)
+    ? ("bad" in parsed ? typedProblem(parsed) : unavailable ? (blocked.has(typedDate) ? t("uiDate.disabled") : minimum && typedDate < minimum ? minReason ?? t("uiDate.outOfRange") : maximum && typedDate > maximum ? maxReason ?? t("uiDate.outOfRange") : t("uiDate.outOfRange")) : undefined)
     : undefined;
   const described = [describedBy, problem && errorId].filter(Boolean).join(" ") || undefined;
   const selected = isDate(value) ? parseDate(value) : null;
@@ -84,6 +88,7 @@ export function DateInput({ id, value, onChange, onDraftChange, required = false
     setText(formatted);
     emitDraft(next);
     emitValue(next);
+    onInvalid?.(false);
     setOpen(false);
   };
   const type = (draft: string) => {
@@ -97,10 +102,12 @@ export function DateInput({ id, value, onChange, onDraftChange, required = false
     dirty.current = false;
     setEditing(false);
     const result = parseTyped(text);
-    if ("date" in result && inBounds(result.date, minimum, maximum) && !blocked.has(result.date)) {
+    const ok = "date" in result && inBounds(result.date, minimum, maximum) && !blocked.has(result.date);
+    if (ok) {
       setText(fmtDateInput(result.date));
       emitValue(result.date);
     } else if (!onDraftChange) emitValue("");
+    onInvalid?.(!ok && text.trim() !== "");
   };
 
   return (

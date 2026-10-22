@@ -10,16 +10,22 @@ export { DateInput } from "./date-input";
 export type DatePreset = { label: string; date: string };
 
 /** A business date (components.html §5): keyboard entry and an accessible calendar, with one shared set of bounds and presets. */
-export function DateField({ label, required, value, onChange, today, min: floor, minFrom, max, disabledDates, basis, note, echo, presets, suggestWeekday = false, error, remedy, inputRef, showErrors = true }: {
+export function DateField({ label, required, value, onChange, onInvalid, today, min: floor, minFrom, minReason, max, maxReason, disabledDates, basis, note, echo, presets, suggestWeekday = false, error, remedy, inputRef, showErrors = true }: {
   label: string;
   required: boolean;
+  /** Whether the typed text was refused (see DateInput): an optional field's form holds its save on it. */
+  onInvalid?: (invalid: boolean) => void;
   /** `YYYY-MM-DD`, or "" while empty. */
   value: string;
   onChange: (value: string) => void;
   today: string;
   min?: string;
   minFrom?: { date: string; reason: ReactNode };
+  /** Why a date before `min` is refused (the caller's rule), in the error only; `minFrom` also states it beforehand. */
+  minReason?: ReactNode;
   max?: string;
+  /** Why a date after `max` is refused (e.g. 「오늘 이후 날짜는 기록할 수 없습니다」), shown in place of the generic line. */
+  maxReason?: ReactNode;
   disabledDates?: readonly string[];
   basis?: ReactNode;
   note?: ReactNode;
@@ -33,12 +39,13 @@ export function DateField({ label, required, value, onChange, today, min: floor,
 }) {
   const min = minFrom && (!floor || minFrom.date > floor) ? minFrom.date : floor;
   const why = minFrom && min === minFrom.date ? minFrom.reason : undefined;
+  const below = why ?? minReason;
   const filled = isDate(value);
   const disabled = new Set((disabledDates ?? []).filter(isDate));
   const out = filled && !inBounds(value, min, max);
   const unavailable = filled && (out || disabled.has(value));
   const next = filled && suggestWeekday ? nextWeekday(value) : null;
-  const shown = error ?? (unavailable ? (out && why != null && min !== undefined && value < min ? why : out ? t("uiDate.outOfRange") : t("uiDate.disabled")) : undefined);
+  const shown = error ?? (unavailable ? (out && below != null && min !== undefined && value < min ? below : out && maxReason != null && max !== undefined && value > max ? maxReason : out ? t("uiDate.outOfRange") : t("uiDate.disabled")) : undefined);
   const details = [
     filled ? echo : null,
     basis,
@@ -76,11 +83,13 @@ export function DateField({ label, required, value, onChange, today, min: floor,
               id={p.id}
               value={value}
               onChange={onChange}
+              onInvalid={onInvalid}
               required={p.required}
               today={today}
               min={min}
-              minReason={why}
+              minReason={below}
               max={max}
+              maxReason={maxReason}
               disabledDates={disabledDates}
               aria-describedby={p["aria-describedby"]}
               aria-invalid={p["aria-invalid"]}

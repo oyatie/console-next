@@ -121,9 +121,9 @@ export function ReissueSheet({ e: opened, r: openedReg, phase, onClose }: { e: L
         onChange={(x) => setReason(x as ReissueReason)}
       />
       <div className="grid-3">
-        <DateField label={t("entityRecord.field.issuedOn")} required value={issued} onChange={setIssued} today={today} max={today} />
+        <DateField label={t("entityRecord.field.issuedOn")} required value={issued} onChange={setIssued} today={today} max={today} maxReason={t("entityReissue.problem.future")} />
         {reason === "CERT_CHANGE_REPORT" && (
-          <DateField label={t("entityReissue.effectiveFrom")} required value={changedOn || issued} onChange={setChangedOn} today={today} max={today}
+          <DateField label={t("entityReissue.effectiveFrom")} required value={changedOn || issued} onChange={setChangedOn} today={today} max={today} maxReason={t("entityReissue.problem.future")}
             error={effectiveFromProblem} inputRef={effectiveFromRef} />
         )}
       </div>

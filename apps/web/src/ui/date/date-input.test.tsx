@@ -97,6 +97,38 @@ test("a typed date below minFrom shows the caller's reason", () => {
   expect(tree.props.children.at(-1).props.children).toBe("승인 후부터 적용됩니다");
 });
 
+// regression (train fix r1): a sheet's own rule for a date after `max` (「오늘 이후 날짜는 기록할 수 없습니다.」) was replaced by
+// the generic out-of-range line once typed dates outside the bounds stopped reaching the sheet.
+test("a typed date after max shows the caller's reason", () => {
+  const field = input({ max: "2026-10-01", maxReason: "오늘 이후 날짜는 기록할 수 없습니다." });
+  field.type("2026-10-02");
+  field.blur();
+  hooks.cursor = 0;
+  const tree = DateInput({ value: "", today: "2026-10-01", onChange: field.onChange, max: "2026-10-01", maxReason: "오늘 이후 날짜는 기록할 수 없습니다." });
+  expect(tree.props.children.at(-1).props.children).toBe("오늘 이후 날짜는 기록할 수 없습니다.");
+  expect(field.onChange).not.toHaveBeenCalledWith("2026-10-02");
+});
+
+// regression (train fix r1): an optional field emptied its refused text into "", so the 휴업 sheet saved without the end the
+// person had typed (before the start) while the field showed the error. onInvalid tells the form to hold the save.
+test("a refused commit reports invalid; a valid or cleared one reports valid", () => {
+  const onInvalid = vi.fn();
+  const refused = input({ min: "2026-10-01", onInvalid });
+  refused.type("2026-09-30");
+  refused.blur();
+  expect(onInvalid).toHaveBeenLastCalledWith(true);
+  expect(refused.onChange).toHaveBeenLastCalledWith("");
+  // Cleared by the person: nothing typed is nothing refused.
+  refused.render().props.onChange!({ target: { value: "" } } as never);
+  refused.blur();
+  expect(onInvalid).toHaveBeenLastCalledWith(false);
+  const valid = input({ min: "2026-10-01", onInvalid });
+  valid.type("2026-10-02");
+  valid.blur();
+  expect(onInvalid).toHaveBeenLastCalledWith(false);
+  expect(valid.onChange).toHaveBeenLastCalledWith("2026-10-02");
+});
+
 test("calendar picks refuse bounds and blocked dates and accept an available date", () => {
   const onChange = vi.fn();
   hooks.cursor = 0;
