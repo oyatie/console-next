@@ -4,6 +4,8 @@ properties:
   subject: { $ref: '#/components/schemas/PolicySimSubject' }
   checks:
     type: array
+    maxItems: 200
+    description: The encoded subject repeated across all checks must fit the policy bulk evaluation work limit (2 MiB). Over-limit requests are rejected without recording decisions.
     items:
       type: object
       required: [action, resource]

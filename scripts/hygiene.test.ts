@@ -1,6 +1,6 @@
 // Repo hygiene gates (security baseline rows 1 and 17.11), run by `npm test` inside `npm run check`.
 import { spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { randomInt } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -42,7 +42,7 @@ const gitleaks = (body: string, config: string[] = ["--config", path.join(root, 
     rmSync(dir, { recursive: true, force: true });
   }
 };
-const b62 = (n: number) => [...randomBytes(n)].map((x) => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[x % 62]).join("");
+const b62 = (n: number) => Array.from({ length: n }, () => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[randomInt(62)]).join("");
 
 // The canary is built at runtime so this file holds no token-shaped literal.
 test("the repo gitleaks config still catches a planted token (not an empty rule set)", () => {

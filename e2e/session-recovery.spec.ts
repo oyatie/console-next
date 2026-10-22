@@ -191,5 +191,5 @@ test("S23 passkey reset and S25 deactivation deliver their actual server reasons
   await expect(end.getByRole("button", { name: "패스키로 다시 로그인" })).toHaveCount(0);
   await again.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async () => { throw new Error("denied"); } } }));
   await end.getByRole("button", { name: "입력 내용 복사" }).click();
-  await expect(end.getByRole("textbox", { name: "입력 내용 복사" })).toHaveValue(new RegExp(note.replace(/[()]/g, "\\$&")));
+  await expect.poll(() => end.getByRole("textbox", { name: "입력 내용 복사" }).inputValue()).toContain(note);
 });

@@ -3,6 +3,7 @@ import { FileText, RefreshCw } from "lucide-react";
 import type { EntityDocument } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
+import { safeMediaUrl } from "../../../lib/media-url";
 import { EntityError } from "./entity-error";
 import { Button } from "../../../ui/button/button";
 import { FileDrop } from "../../../ui/file-drop/file-drop";
@@ -38,6 +39,7 @@ export function DocumentPane({ doc, onUploaded, initial }: { doc: EntityDocument
   // A server that does not keep documents yet: the local file stays beside the form, and the pane says it is not kept.
   const notKept = unserved(upload.error);
   const status = doc ? "KEPT" : upload.isPending ? "UPLOADING" : notKept ? "NOT_KEPT" : null;
+  const preview = safeMediaUrl(url, file?.type === "application/pdf" ? "document" : "image");
 
   if (!file)
     return (
@@ -61,12 +63,12 @@ export function DocumentPane({ doc, onUploaded, initial }: { doc: EntityDocument
         : null}
       </p>
       {!notKept && <EntityError error={upload.error} />}
-      {url && (file.type === "application/pdf" ? (
-        <object className={s.preview} data={url} type="application/pdf" aria-label={t("entity.doc.preview")}>
+      {preview && (file.type === "application/pdf" ? (
+        <object className={s.preview} data={preview} type="application/pdf" aria-label={t("entity.doc.preview")}>
           <p className="muted">{t("entity.doc.noPdfPreview")}</p>
         </object>
       ) : (
-        <img className={s.preview} src={url} alt={t("entity.doc.preview")} />
+        <img className={s.preview} src={preview} alt={t("entity.doc.preview")} />
       ))}
     </div>
   );

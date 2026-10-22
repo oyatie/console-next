@@ -638,7 +638,13 @@ function moduleScopes(
           const head = surface.slice(itemStart - start, index - start).join("");
           const authoredHead = source.slice(itemStart, index);
           const inlineModule = moduleHead(authoredHead, head, file, "{");
-          const useGroup = /^\s*(?:#\[[\s\S]*?\]\s*)*(?:pub(?:\s*\([^)]*\))?\s+)?use\s+(?:(?:(?:r#)?[A-Za-z_][A-Za-z0-9_]*)\s*::\s*)*$/.test(head);
+          let useStart = skipProjectedWhitespace(head, 0);
+          while (head.startsWith("#[", useStart)) {
+            const attribute = scanRustSyntax(head, { start: useStart + 1, rootDelimiter: "[" });
+            if (!attribute.valid) throw new Error(`cannot scan Rust use attributes ${file}: ${attribute.error}`);
+            useStart = skipProjectedWhitespace(head, attribute.closing + 1);
+          }
+          const useGroup = /^(?:pub(?:\s*\([^)]*\))?\s+)?use\s+(?:(?:(?:r#)?[A-Za-z_][A-Za-z0-9_]*)\s*::\s*)*$/.test(head.slice(useStart));
           if (inlineModule) {
             const pathBase = insideInline ? moduleDirectory : dirname(absoluteFile);
             const childDirectory = inlineModule.path === null

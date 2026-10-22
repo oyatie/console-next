@@ -25,6 +25,8 @@ uuid.workspace = true
 
 [dev-dependencies]
 console-platform-test-support = { workspace = true }
+p256.workspace = true
+tower.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [lints]

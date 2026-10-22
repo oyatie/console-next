@@ -12,7 +12,10 @@
 //! [`authoring::simulate`]: console_platform_authz::cedar_pbac::authoring::simulate
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod bulk;
+mod limits;
 mod store;
+use bulk::authorize_bulk;
 
 pub use store::{
     AttachObjectPolicyCommand, CatalogEntry, CreateDraftCommand, DecisionLogEntry, DecisionLogRow,
@@ -126,12 +129,6 @@ struct BulkCheck {
     purpose: Option<String>,
     #[serde(default)]
     field: Option<String>,
-}
-
-/// Per-check decisions, aligned by index with the request `checks`.
-#[derive(Debug, Serialize)]
-struct BulkDecisionResponse {
-    decisions: Vec<SimulationOutcome>,
 }
 
 // ---------------------------------------------------------------------------
@@ -332,41 +329,6 @@ async fn authorize(
     Ok(Json(DecisionResponse { outcome }))
 }
 
-async fn authorize_bulk(
-    State(state): State<CedarPolicyRestState>,
-    headers: HeaderMap,
-    Json(body): Json<BulkAuthorizeBody>,
-) -> Result<impl IntoResponse, RestError> {
-    let principal = authorize_admin(&state, &headers).await?;
-    // Load the enforced set ONCE, then evaluate every check against it.
-    let policies = state
-        .store
-        .load_enforced_policies()
-        .await
-        .map_err(RestError::from_store)?;
-    let BulkAuthorizeBody { subject, checks } = body;
-    let mut decisions = Vec::with_capacity(checks.len());
-    let mut entries = Vec::with_capacity(checks.len());
-    for check in checks {
-        let request = SimRequest {
-            subject: subject.clone(),
-            action: check.action,
-            resource: check.resource,
-            purpose: check.purpose,
-            field: check.field,
-        };
-        let outcome = simulate_policies(&policies, &request);
-        entries.push(decision_entry(&request, &outcome));
-        decisions.push(outcome);
-    }
-    state
-        .store
-        .record_decisions(*principal.user_id.as_uuid(), entries)
-        .await
-        .map_err(RestError::from_store)?;
-    Ok(Json(BulkDecisionResponse { decisions }))
-}
-
 #[derive(Debug, Deserialize)]
 struct DecisionsQuery {
     /// RFC3339 cursor: only decisions strictly after this instant. Absent ⇒ the
@@ -429,6 +391,7 @@ async fn authorize_admin(
 
 #[derive(Debug)]
 struct RestError {
+    code_override: Option<&'static str>,
     status: StatusCode,
     kind: ErrorKind,
     message: String,
@@ -438,6 +401,7 @@ impl RestError {
     fn unavailable(message: impl Into<String>) -> Self {
         Self {
             status: StatusCode::SERVICE_UNAVAILABLE,
+            code_override: None,
             kind: ErrorKind::Internal,
             message: message.into(),
         }
@@ -446,6 +410,7 @@ impl RestError {
     fn unauthorized(message: impl Into<String>) -> Self {
         Self {
             status: StatusCode::UNAUTHORIZED,
+            code_override: None,
             kind: ErrorKind::Forbidden,
             message: message.into(),
         }
@@ -454,6 +419,7 @@ impl RestError {
     fn internal(message: impl Into<String>) -> Self {
         Self {
             status: StatusCode::INTERNAL_SERVER_ERROR,
+            code_override: None,
             kind: ErrorKind::Internal,
             message: message.into(),
         }
@@ -462,6 +428,7 @@ impl RestError {
     fn from_kernel(error: KernelError) -> Self {
         Self {
             status: status_for_error_kind(error.kind),
+            code_override: None,
             kind: error.kind,
             message: error.message,
         }
@@ -516,6 +483,9 @@ impl RestError {
     }
 
     fn code(&self) -> &'static str {
+        if let Some(code) = self.code_override {
+            return code;
+        }
         self.kind.code()
     }
 }
