@@ -47,6 +47,14 @@ jobs:
         with:
           node-version-file: package.json
           package-manager-cache: false
+      - &npm-restore
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
+        id: npm
+        with:
+          path: .cache/npm
+          key: console-ci-npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - &npm-ci
+        run: npm ci --no-audit --no-fund
       - name: Affected Cargo and npm workspaces
         id: plan
         run: node scripts/ci/plan.mjs
@@ -104,14 +112,8 @@ jobs:
       - *checkout
       - *duration-start
       - *node
-      - &npm-restore
-        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
-        id: npm
-        with:
-          path: .cache/npm
-          key: console-ci-npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - &npm-ci
-        run: npm ci --no-audit --no-fund
+      - *npm-restore
+      - *npm-ci
       - run: bash scripts/ci/install-tools.sh gitleaks
       - name: actionlint
         run: >-
@@ -119,6 +121,8 @@ jobs:
           rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
       - name: Workflow regression and safety checks
         run: node --test scripts/ci.test.mjs scripts/ci-privacy.test.mjs scripts/ci-results.test.mjs scripts/cd-workflow.test.mjs scripts/dev-secrets.test.mjs scripts/check-repo-files.test.mjs
+      - name: Check hermetic repository inputs
+        run: node --test --test-name-pattern="check refuses" scripts/check-hermetic.test.mjs
       - name: Repository file policy
         run: node scripts/check-repo-files.mjs --full
       - name: Synthetic fixtures and repository secrets

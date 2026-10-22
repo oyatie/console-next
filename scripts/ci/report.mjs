@@ -29,5 +29,12 @@ writeFileSync(".cache/ci/summary.md", `\nTest baseline: ${reds.known} known reds
 const planned = Object.values(steps).find((step) => step.outputs?.budget)?.outputs.budget;
 if (planned) {
   const budget = JSON.parse(planned);
-  writeFileSync(".cache/ci/summary.md", `\nPlan budget: ${budget.jobs}/${config.maxJobs} jobs, ${budget.minutes}/${config.maxTotalMinutes} estimated job-minutes.\n`, { flag: "a" });
+  writeFileSync(".cache/ci/summary.md", `\nPlan budget: ${budget.jobs}/${config.maxJobs} jobs, ${budget.minutes}/${config.maxTotalMinutes} estimated job-minutes; timeout chain ${budget.wallMinutes}/${budget.queueMinutes} minutes.\n\nPredicted per-job minutes: ${JSON.stringify(budget.perJob)}\n`, { flag: "a" });
+}
+
+const entries = JSON.parse(readFileSync(config.quarantineFile, "utf8"));
+const flaky = entries.filter((entry) => entry.class === "flaky").length;
+writeFileSync(".cache/ci/summary.md", `\nFlaky quarantine: ${flaky}/${config.baselineMaxFlaky} entries (passes and failures accepted; evidence required).\n`, { flag: "a" });
+for (const entry of entries) {
+  if (Date.parse(entry.expires) - Date.now() <= 7 * 86400_000) writeFileSync(".cache/ci/summary.md", `\nExpiry D-7: ${entry.owner} / ${entry.suite} / ${entry.expires}.\n`, { flag: "a" });
 }

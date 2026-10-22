@@ -43,7 +43,7 @@ test("JUnit baseline reports known reds, refuses new reds, crashes, missing proo
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("the trunk baseline can shrink but cannot grow, change owner/expiry, or move", () => {
+test("the strict baseline can shrink or expire sooner but cannot grow, change owner, or move", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-baseline-ratchet-"));
   try {
     const config = JSON.parse(readFileSync(new URL("./ci/config.json", import.meta.url), "utf8"));
@@ -54,7 +54,7 @@ test("the trunk baseline can shrink but cannot grow, change owner/expiry, or mov
     assert.equal(run([...entries, { ...entries[0], test: "removed baseline red" }]).status, 0);
     assert.equal(run(entries.slice(1)).status, 1);
     assert.equal(run([{ ...entries[0], owner: "different owner" }, ...entries.slice(1)]).status, 1);
-    assert.equal(run([{ ...entries[0], expires: "2099-01-01" }, ...entries.slice(1)]).status, 1);
+    assert.equal(run([{ ...entries[0], expires: "2099-01-01" }, ...entries.slice(1)]).status, 0);
     assert.equal(run(entries, { ...config, quarantineFile: "renamed.json" }).status, 1);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
@@ -73,15 +73,21 @@ test("one archive covers the affected Rust closure with disjoint DB and unit fil
   assert.equal(build.dbFilter, `not (${build.unitFilter})`);
 });
 
-test("plan refuses excess jobs and summed minutes including browser shards", async () => {
+test("plan budgets the workflow timeout chain; job-minutes warn without blocking", async () => {
   const { planBudget } = await import("./ci/plan.mjs");
   const c = JSON.parse(readFileSync(new URL("./ci/config.json", import.meta.url), "utf8"));
   const p = { backend: true, web: true, e2e: true, unit: true, db: true };
-  const proof = planBudget(p, c, [{ est: 300 }, { est: 300 }]);
-  assert.ok(proof.jobs < 50);
-  assert.ok(proof.minutes < 240);
-  assert.throws(() => planBudget(p, { ...c, maxJobs: proof.jobs - 1 }, [{ est: 300 }, { est: 300 }]), /job budget/);
-  assert.throws(() => planBudget(p, { ...c, maxTotalMinutes: proof.minutes - 1 }, [{ est: 300 }, { est: 300 }]), /minute budget/);
+  const jobs = [{ browser: "chromium", shard: 1, est: 300 }, { browser: "firefox", shard: 1, est: 300 }];
+  const proof = planBudget(p, c, jobs);
+  assert.equal(proof.wallMinutes, 195);
+  assert.ok(proof.wallMinutes < proof.queueMinutes);
+  assert.equal(proof.perJob["e2e-chromium-1"], 5.5);
+  assert.throws(() => planBudget(p, { ...c, maxJobs: proof.jobs - 1 }, jobs), /job budget/);
+  assert.doesNotThrow(() => planBudget(p, { ...c, maxTotalMinutes: proof.minutes - 1 }, jobs));
+  const wf = load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
+  assert.throws(() => planBudget(p, c, [{ est: 60 * wf.jobs.e2e["timeout-minutes"] }]), /timeout headroom/);
+  wf.jobs["rust-build"]["timeout-minutes"] = proof.queueMinutes;
+  assert.throws(() => planBudget(p, c, jobs, wf.jobs), /merge-queue timeout/);
   assert.ok(planBudget({ backend: false, web: false, e2e: false }, c, []).minutes < proof.minutes);
 });
 
@@ -119,7 +125,7 @@ test("archive consumers share the single stripped build and use partitions", () 
   assert.equal(build.strategy, undefined);
   const queue = JSON.parse(readFileSync(new URL("../.github/rulesets/dev.json", import.meta.url), "utf8")).rules.find((r) => r.type === "merge_queue");
   const config = JSON.parse(readFileSync(new URL("./ci/config.json", import.meta.url), "utf8"));
-  assert.ok(config.maxTotalMinutes < queue.parameters.check_response_timeout_minutes);
+  assert.ok(queue.parameters.check_response_timeout_minutes > build["timeout-minutes"]);
   for (const name of ["backend-test", "backend-db"]) {
     const download = wf.jobs[name].steps.find((s) => s.uses?.startsWith("actions/download-artifact"));
     assert.equal(download.with.name, "rust-tests");
@@ -263,7 +269,7 @@ test("Rust runner reads nextest's workspace JUnit and refuses stale reports", ()
     writeFileSync(path.join(dir, "scripts/ci/config.json"), readFileSync(new URL("./ci/config.json", import.meta.url)));
     copyFileSync(new URL("./ci/test-results.py", import.meta.url), path.join(dir, "scripts/ci/test-results.py"));
     writeFileSync(path.join(dir, "scripts/ci/disk-budget.py"), "# synthetic disk receipt\n");
-    const entry = JSON.parse(readFileSync(new URL("./ci/baseline.json", import.meta.url), "utf8")).find((e) => e.kind === "nextest" && e.context === "db");
+    const entry = { kind: "nextest", context: "db", suite: "synthetic::db", test: "known red", owner: "Jason Lee", expires: "2099-01-01" };
     writeFileSync(path.join(dir, "scripts/ci/baseline.json"), JSON.stringify([entry]));
     const junit = `<testsuites><testsuite errors="0"><testcase classname="${entry.suite}" name="${entry.test}"><failure>fixture failure</failure></testcase></testsuite></testsuites>`;
     writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nconst f=require('node:fs');if(process.argv.includes('list')){process.stdout.write(JSON.stringify({'rust-suites':{[process.env.SUITE]:{testcases:{[process.env.TEST]:{}}}}}));process.exit(0);}if(process.env.NO_JUNIT!=='1'){f.mkdirSync('target/nextest/ci',{recursive:true});f.writeFileSync('target/nextest/ci/junit.xml',${JSON.stringify(junit)});process.exit(100);}\n`, { mode: 0o700 });
@@ -271,5 +277,82 @@ test("Rust runner reads nextest's workspace JUnit and refuses stale reports", ()
     const result = run(false);
     assert.equal(result.status, 0, result.stderr + result.stdout);
     assert.equal(run(true).status, 1);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("flaky quarantine accepts pass and failure only with disagreeing run receipts and a short expiry", () => {
+  const result = spawnSync("python3", ["-c", `import importlib.util,json,tempfile,datetime
+from pathlib import Path
+s=importlib.util.spec_from_file_location('results','scripts/ci/test-results.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+today=datetime.date.today();date=today.isoformat()
+e={'kind':'playwright','context':'chromium','suite':'synthetic.spec.ts','test':'flake','owner':'Jason Lee','class':'flaky','expires':(today+datetime.timedelta(days=3)).isoformat(),'evidence':[{'runId':'run-pass','date':date,'result':'passed'},{'runId':'run-fail','date':date,'result':'failed'}]}
+with tempfile.TemporaryDirectory() as d:
+ p=Path(d)/'baseline.json';j=Path(d)/'junit.xml'
+ p.write_text(json.dumps([e]));entries=m.baseline(p)
+ for failure,status in [('',0),('<failure/>',1)]:
+  j.write_text('<testsuites><testsuite><testcase classname="synthetic.spec.ts" name="flake">'+failure+'</testcase></testsuite></testsuites>')
+  assert m.check('playwright','chromium',j,status,entries)==0
+ for change in [{'evidence':[]},{'class':'unknown'},{'evidence':[dict(e['evidence'][0],runId=''),e['evidence'][1]]},{'evidence':[dict(e['evidence'][0],date=(today+datetime.timedelta(days=1)).isoformat()),e['evidence'][1]]},{'evidence':[e['evidence'][0]]},{'evidence':[e['evidence'][0],dict(e['evidence'][1],result='passed')]},{'expires':(today+datetime.timedelta(days=8)).isoformat()},{'evidence':[e['evidence'][0],dict(e['evidence'][1],runId='run-pass')]}]:
+  p.write_text(json.dumps([dict(e,**change)]))
+  try: m.baseline(p)
+  except ValueError: pass
+  else: raise AssertionError(change)
+ p.write_text(json.dumps([e]));m.CONFIG["baselineMaxFlaky"]=0
+ try: m.baseline(p)
+ except ValueError: pass
+ else: raise AssertionError("flake budget ignored")
+`], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
+test("expiry renewal needs a fresh run ID and cannot add IDs or change ownership", () => {
+  const result = spawnSync("python3", ["-c", `import importlib.util,datetime
+s=importlib.util.spec_from_file_location('results','scripts/ci/test-results.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+today=datetime.date.today();date=today.isoformat()
+e={'kind':'nextest','context':'unit','suite':'synthetic','test':'red','owner':'Jason Lee','class':'deterministic','expires':(today+datetime.timedelta(days=2)).isoformat()}
+new=dict(e,expires=(today+datetime.timedelta(days=9)).isoformat())
+receipt={'runId':'new-tip-run','date':date,'result':'failed'}
+m.validate_changes([dict(new,evidence=[receipt])],[e])
+m.validate_changes([dict(e,**{'class':'flaky','evidence':[receipt,dict(receipt,runId='pass-run',result='passed')]})],[e])
+m.validate_changes([dict(e,expires=(today+datetime.timedelta(days=1)).isoformat())],[e])
+for entries,old in [([new],[e]),([dict(new,evidence=[receipt])],[dict(e,evidence=[receipt])]),([dict(new,evidence=[dict(receipt,date=(today-datetime.timedelta(days=1)).isoformat())])],[e]),([dict(new,expires=(today+datetime.timedelta(days=30)).isoformat(),evidence=[receipt])],[e]),([dict(e,test='new')],[e]),([dict(e,owner='changed')],[e]),([dict(e,**{'class':'flaky'})],[e])]:
+ try: m.validate_changes(entries,old)
+ except ValueError: pass
+ else: raise AssertionError(entries)
+`], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
+test("served timings at twice the seed pack within the cap and report predicted minutes", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-slower-plan-"));
+  try {
+    const seed = JSON.parse(readFileSync(new URL("./ci/e2e-timings.json", import.meta.url), "utf8"));
+    const timings = path.join(dir, "timings.json");
+    writeFileSync(timings, JSON.stringify(Object.fromEntries(Object.entries(seed).filter(([k]) => k !== "_license").map(([k, v]) => [k, { ...v, s: v.s * 2 }]))));
+    const output = path.join(dir, "outputs");
+    const result = spawnSync("node", ["scripts/ci/e2e.mjs", "plan"], { encoding: "utf8", env: { ...process.env, GITHUB_OUTPUT: output, E2E_SERVED: "1", E2E_TIMINGS_FILE: timings } });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const config = JSON.parse(readFileSync(new URL("./ci/config.json", import.meta.url), "utf8"));
+    const jobs = JSON.parse(readFileSync(output, "utf8").split("\n").find((line) => line.startsWith("matrix=")).slice(7)).include;
+    assert.ok(jobs.length <= config.e2eMaxShards);
+    assert.match(result.stdout, /Predicted per-job minutes/);
+    for (const browser of ["chromium", "firefox"]) assert.ok(jobs.find((job) => job.browser === browser && job.shard === 1).files.includes("first-run-solo.spec.ts"));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+for (const runner of ["nextest", "playwright"]) test(`${runner} runner refuses a failed inventory even when its JSON is valid`, () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-inventory-exit-"));
+  try {
+    for (const sub of ["backend", "scripts/ci", "node_modules/.bin"]) mkdirSync(path.join(dir, sub), { recursive: true });
+    writeFileSync(path.join(dir, "scripts/ci/config.json"), readFileSync(new URL("./ci/config.json", import.meta.url)));
+    writeFileSync(path.join(dir, "scripts/ci/baseline.json"), "[]");
+    writeFileSync(path.join(dir, "scripts/ci/disk-budget.py"), "# synthetic disk receipt\n");
+    copyFileSync(new URL("./ci/test-results.py", import.meta.url), path.join(dir, "scripts/ci/test-results.py"));
+    writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nconst f=require('node:fs');if(process.argv.includes('list')){process.stdout.write(JSON.stringify({'rust-suites':{}}));process.exit(42);}f.mkdirSync('target/nextest/ci',{recursive:true});f.writeFileSync('target/nextest/ci/junit.xml','<testsuites tests="0" failures="0"/>');\n`, { mode: 0o700 });
+    const spec = { title: "synthetic", tests: [{ projectName: "parallel", expectedStatus: "passed" }] };
+    writeFileSync(path.join(dir, "node_modules/.bin/playwright"), `#!${process.execPath}\nprocess.stdout.write(${JSON.stringify(JSON.stringify({ suites: [{ file: "synthetic.spec.ts", specs: [spec] }] }))});process.exit(42);\n`, { mode: 0o700 });
+    const result = spawnSync("node", [new URL(`./ci/${runner === "nextest" ? "rust-tests" : "e2e"}.mjs`, import.meta.url).pathname, ...(runner === "nextest" ? ["unit", "1"] : ["plan"])], { cwd: runner === "nextest" ? path.join(dir, "backend") : dir, encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, CI_RUST_BUILD: JSON.stringify({ crates: [], full: true, unitFilter: "all()" }), GITHUB_OUTPUT: path.join(dir, "output") } });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, new RegExp(`${runner === "nextest" ? "nextest archive" : "Playwright"} inventory failed`));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
