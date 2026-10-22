@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
-import { idleOnServer, settled, sinceServerInput } from "./idle-fixture";
+import { idleOnServer, psql, settled, sinceServerInput } from "./idle-fixture";
 import { tenantInSetup } from "./setup-flows";
 import { box, revealUnit } from "./structure-flows";
 
@@ -279,4 +279,44 @@ test("a tab reloaded past the timeout lands on sign-in with the reason, and neve
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByText(`${IDLE_OUT}. 다시 로그인하십시오.`)).toBeVisible();
   expect(warned()).toBe(false);
+});
+
+/** Read the committed ledger under the same tenant as the browser journey. */
+function refreshAuditRows(slug: string) {
+  const output = psql(slug, `SELECT COALESCE(json_agg(json_build_object(
+    'action', action, 'source', source, 'outcome', outcome,
+    'family_session', session_id = target_id::uuid)), '[]'::json)
+    FROM audit_events WHERE org_id = current_setting('app.current_org')::uuid
+    AND action IN ('auth.refresh', 'auth.logout', 'auth.refresh.reuse_detected');`);
+  return JSON.parse(output.split("\n").find((line) => line.startsWith("["))!) as {
+    action: string; source: string; outcome: string; family_session: boolean | null;
+  }[];
+}
+
+test("refresh and logout commit allowed audit rows tied to their session family", { tag: ["@auth", "@regression"] }, async ({ browser }) => {
+  const { page, slug } = await tenantAdmin(browser, "auditallow", "접속기록주식회사");
+  const rotation = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/v1/auth/token/refresh");
+  await page.reload();
+  expect((await rotation).status()).toBe(200);
+  await page.getByRole("button", { name: "로그아웃" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  const rows = refreshAuditRows(slug);
+  expect(rows.map((row) => row.action)).toEqual(expect.arrayContaining(["auth.refresh", "auth.logout"]));
+  for (const row of rows) expect(row).toMatchObject({ source: "SYSTEM", outcome: "ALLOWED", family_session: true });
+});
+
+test("replaying a rotated refresh token commits a denied audit row for its session family", { tag: ["@auth", "@regression"] }, async ({ browser, request }) => {
+  const { page, slug } = await tenantAdmin(browser, "auditreuse", "재사용기록주식회사");
+  await settled(page);
+  const cookie = (await page.context().cookies()).find((entry) => entry.name === "console_refresh");
+  expect(cookie).toBeDefined();
+  const rotation = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/v1/auth/token/refresh");
+  await page.reload();
+  expect((await rotation).status()).toBe(200);
+  const refused = await request.post(new URL("/api/v1/auth/token/refresh", page.url()).href, { data: { refresh_token: cookie!.value } });
+  expect(refused.status()).toBe(401);
+  const rows = refreshAuditRows(slug);
+  const denied = rows.filter((row) => row.action === "auth.refresh.reuse_detected");
+  expect(denied).toEqual([{ action: "auth.refresh.reuse_detected", source: "SYSTEM", outcome: "DENIED", family_session: true }]);
+  for (const row of rows) expect(row.family_session).toBe(true);
 });

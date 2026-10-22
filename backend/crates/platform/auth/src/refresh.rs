@@ -6,7 +6,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::AuthError;
-use crate::refresh_audit::insert_audit_in_tx;
+use crate::refresh_audit::{insert_audit_in_tx, insert_refusal_audit_in_tx};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RefreshToken(String);
@@ -398,7 +398,7 @@ impl RefreshTokenStore {
             .bind(family_id)
             .execute(tx.as_mut())
             .await?;
-            insert_audit_in_tx(
+            insert_refusal_audit_in_tx(
                 tx,
                 OrgId::from_uuid(org_uuid),
                 user_id,
@@ -419,7 +419,7 @@ impl RefreshTokenStore {
 
         if used_at.is_some() || token_revoked_at.is_some() {
             revoke_family_for_reuse(tx, family_id, token_id, now).await?;
-            insert_audit_in_tx(
+            insert_refusal_audit_in_tx(
                 tx,
                 OrgId::from_uuid(org_uuid),
                 user_id,
@@ -453,7 +453,7 @@ impl RefreshTokenStore {
         let org = OrgId::from_uuid(org_uuid);
         if !crate::idle::check_refresh_in_tx(tx, org, family_id, last_activity_at, now).await? {
             let after = serde_json::json!({ "family_id": family_id, "revoked_reason": crate::idle::IDLE_TIMEOUT_REASON, "last_activity_at": last_activity_at });
-            insert_audit_in_tx(
+            insert_refusal_audit_in_tx(
                 tx,
                 org,
                 user_id,

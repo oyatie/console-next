@@ -133,6 +133,7 @@ pub fn for_event(mut context: AuditCommandContext, event: &AuditEvent) -> AuditC
         context.change_mode = explicit.change_mode.or(context.change_mode);
         context.reason_code = explicit.reason_code.clone().or(context.reason_code);
         context.command_id = explicit.command_id.or(context.command_id);
+        context.session_id = explicit.session_id.or(context.session_id);
         context.scope_ids.extend(&explicit.scope_ids);
         context
             .decision_snapshot
@@ -199,4 +200,36 @@ pub(crate) async fn prepare_transaction(
     )
     .with_org(org);
     crate::command_context::prepare(tx, &seed).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use console_kernel_core::{AuditAction, TraceContext};
+
+    #[test]
+    fn explicit_session_id_survives_for_event() -> Result<(), Box<dyn std::error::Error>> {
+        let inherited = uuid::Uuid::new_v4();
+        let explicit = uuid::Uuid::new_v4();
+        for session_id in [Some(explicit), None] {
+            let mut context = AuditCommandContext::for_actor(None);
+            context.session_id = Some(inherited);
+            let mut event_context = AuditCommandContext::for_actor(None);
+            event_context.session_id = session_id;
+            let event = AuditEvent::new(
+                None,
+                AuditAction::new("auth.refresh")?,
+                "auth_refresh_token_family",
+                explicit.to_string(),
+                TraceContext::generate(),
+                time::OffsetDateTime::now_utc(),
+            )
+            .with_command_context(event_context);
+            assert_eq!(
+                for_event(context, &event).session_id,
+                session_id.or(Some(inherited))
+            );
+        }
+        Ok(())
+    }
 }

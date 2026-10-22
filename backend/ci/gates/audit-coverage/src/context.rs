@@ -1,6 +1,113 @@
 //! Audit source and intent-key admission are owned by the two shared boundaries.
 use super::{GateResult, Violation, ViolationKind};
 use std::{fs, path::Path};
+
+pub(super) fn compute_test_mask(lines: &[&str]) -> Vec<bool> {
+    let production = production_source(&lines.join("\n"));
+    lines
+        .iter()
+        .zip(production.lines())
+        .map(|(original, production)| *original != production && production.trim().is_empty())
+        .collect()
+}
+
+fn production_source(source: &str) -> String {
+    let code = super::strip_comments_and_strings(source);
+    let code = code.as_bytes();
+    let mut production = source.as_bytes().to_vec();
+    let mut at = 0;
+    while at < code.len() {
+        if code[at..].starts_with(b"#[cfg(")
+            && let Some(attribute_end) = item_end(code, at + 1)
+            && cfg_without_test(&source[at + 6..attribute_end - 2]) == Some(false)
+            && let Some(end) = item_end(code, attribute_end)
+        {
+            for byte in &mut production[at..end] {
+                if *byte != b'\n' {
+                    *byte = b' ';
+                }
+            }
+            at = end;
+        } else {
+            at += 1;
+        }
+    }
+    String::from_utf8_lossy(&production).into_owned()
+}
+
+// Attributes, declarations and bodies end at their own delimiter, never a later item's brace.
+fn item_end(code: &[u8], from: usize) -> Option<usize> {
+    let mut depth = 0usize;
+    for (at, byte) in code.iter().enumerate().skip(from) {
+        match byte {
+            b'(' | b'[' | b'{' => depth += 1,
+            b')' | b']' | b'}' => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 && (*byte == b'}' || code[from] == b'[') {
+                    return Some(at + 1);
+                }
+            }
+            b';' if depth == 0 => return Some(at + 1),
+            _ => {}
+        }
+    }
+    None
+}
+
+fn cfg_without_test(predicate: &str) -> Option<bool> {
+    let predicate: String = super::strip_comments_and_strings(predicate)
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+    if predicate == "test" {
+        return Some(false);
+    }
+    let (operator, arguments) = predicate.split_once('(')?;
+    let arguments = arguments.strip_suffix(')')?;
+    let mut depth = 0i32;
+    let mut values = arguments
+        .split(|c| {
+            match c {
+                '(' => depth += 1,
+                ')' => depth -= 1,
+                _ => {}
+            }
+            c == ',' && depth == 0
+        })
+        .filter(|argument| !argument.is_empty())
+        .map(cfg_without_test);
+    match operator {
+        "not" => values.next()?.map(|value| !value),
+        "all" | "any" => {
+            let decisive = operator == "any";
+            let mut unknown = false;
+            for value in values {
+                if value == Some(decisive) {
+                    return Some(decisive);
+                }
+                unknown |= value.is_none();
+            }
+            (!unknown).then_some(!decisive)
+        }
+        _ => None,
+    }
+}
+
+pub(super) fn check_raw_insert(file: &Path, source: &str, result: &mut GateResult) {
+    if super::path_ends_with_repo_relative(file, "crates/platform/db/src/audit_write.rs") {
+        return;
+    }
+    let production = production_source(source);
+    if super::sql::contains_audit_insert(file, &production) {
+        result.violations.push(Violation {
+            kind: ViolationKind::MissingAuditEvent,
+            file: file.to_path_buf(),
+            function_name: None,
+            detail: "audit_events inserts must use the shared audit writer in crates/platform/db/src/audit_write.rs".into(),
+        });
+    }
+}
+
 pub(super) fn check(root: &Path, mut result: GateResult) -> GateResult {
     for (path, required) in [
         (
