@@ -69,7 +69,7 @@ ci/gates/personal-data-classification/tests/gate_detects_violation.rs	1364
 ci/gates/pii-no-logs/src/lib.rs	399
 ci/gates/tenant-isolation/src/lib.rs	779
 ci/gates/writer-ownership/src/lib.rs	748
-ci/gates/writer-ownership/tests/census_executes_against_postgres.rs	1804
+ci/gates/writer-ownership/tests/census_executes_against_postgres.rs	1791
 ci/gates/writer-ownership/tests/gate_detects_violation.rs	2266
 crates/attendance/adapter-postgres/src/lib.rs	1079
 crates/attendance/adapter-postgres/tests/cancel_substitution.rs	947
