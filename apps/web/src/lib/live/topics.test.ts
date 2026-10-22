@@ -10,6 +10,15 @@ test.each(["employee", "change_request", "exit_case"])("a %s change refreshes im
   expect(matches("/api/v1/employee-import-runs/{run_id}/rollback/preview", { path: { run_id: "run" } })).toBe(true);
 });
 
+test.each(["org_change", "period_lock", "legal_entity", "business_registration", "workplace", "org_unit", "entity_setup_batch", "employee", "exit_case", "change_request", "import_run", "user", "role", "tenant", "me"])("%s changes re-read the unified inbox for every filter and cursor page", (type) => {
+  for (const id of ["changed-record", null]) {
+    const matches = matchChange(type, id);
+    expect(matches("/api/v1/me/action-inbox", { query: { lane: "turn" } })).toBe(true);
+    expect(matches("/api/v1/me/action-inbox", { query: { lane: "waiting", cursor: "next-page" } })).toBe(true);
+  }
+
+});
+
 test("a change to one employee re-reads that employee and the lists, not another employee or other modules", () => {
   const m = matchChange("employee", "e1");
   expect(m("/api/v1/employees", { query: { limit: 100 } })).toBe(true);
@@ -111,4 +120,10 @@ test("recovery events re-read the vendor panel and tenant card only", () => {
   expect(m("/api/platform/orgs/{id}/ops-recovery", detail("o1"))).toBe(true);
   expect(m("/api/v1/tenant/ops-recovery", null)).toBe(true);
   expect(m("/api/v1/employees", null)).toBe(false);
+});
+
+ test("the account inbox hint invalidates only the queue", () => {
+  const match = matchChange("inbox", null);
+  expect(match("/api/v1/me/action-inbox", null)).toBe(true);
+  expect(match("/api/v1/employees", null)).toBe(false);
 });

@@ -217,3 +217,33 @@ test("recovery changes from the other operator survive this tab's recent-write w
   await vi.advanceTimersByTimeAsync(250);
   expect(isInvalidated(qc, query)).toBe(true);
 });
+
+test("the inbox resolves live even while the setup rail holds other reads", async () => {
+  const inbox = get("/api/v1/me/action-inbox", { params: { query: {} } });
+  let reads = 0;
+  const observer = new QueryObserver(qc, { ...inbox, queryFn: async () => { reads++; return {} as never; } });
+  const off = observer.subscribe(() => {});
+  await vi.advanceTimersByTimeAsync(0);
+  const initial = reads;
+  const release = holdLive();
+  frame("change", { type: "employee", id: "e1" });
+  await vi.advanceTimersByTimeAsync(250);
+  expect(reads).toBe(initial + 1);
+  expect(isInvalidated(qc, E1)).toBe(true);
+  off();
+  release();
+});
+
+test("an own write refreshes the inbox while record snapshots keep their echo hold", async () => {
+  const inbox = get("/api/v1/me/action-inbox", { params: { query: {} } });
+  let reads = 0;
+  const off = new QueryObserver(qc, { ...inbox, queryFn: async () => { reads++; return {} as never; } }).subscribe(() => {});
+  await vi.advanceTimersByTimeAsync(0);
+  const before = reads;
+  await qc.getMutationCache().build(qc, { mutationFn: async () => 1 }).execute(undefined);
+  frame("change", { type: "employee", id: "e1" });
+  await vi.advanceTimersByTimeAsync(250);
+  expect(reads).toBe(before + 1);
+  expect(stale()).toEqual([false, false, false, false]);
+  off();
+});

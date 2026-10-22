@@ -750,31 +750,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/platform/support-sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * list support session metadata
-         * @description Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
-         */
-        get: operations["listSupportSessionMetadata"];
-        put?: never;
-        /**
-         * request support session
-         * @description Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
-         */
-        post: operations["requestSupportSession"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/platform/support-sessions/{id}/approve": {
+    "/api/platform/tenant-context": {
         parameters: {
             query?: never;
             header?: never;
@@ -784,17 +760,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * approve support operator
-         * @description Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
+         * Start a writable platform-managed tenant context
+         * @description Mints a short-lived writable tenant token with SUPER_ADMIN for exactly one active tenant. Platform token and TenantManage authority required; the operator identity comes from the verified bearer token and the start is audited.
          */
-        post: operations["approveSupportOperator"];
+        post: operations["startPlatformTenantContext"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/platform/support-sessions/{id}/end": {
+    "/api/platform/tenant-context/exit": {
         parameters: {
             query?: never;
             header?: never;
@@ -804,17 +780,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * end operator support session
-         * @description Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
+         * End a writable platform-managed tenant context audit trail
+         * @description Records the platform.tenant_context.stop audit event. Called with the operator's real platform token after restoring the platform session.
          */
-        post: operations["endOperatorSupportSession"];
+        post: operations["exitPlatformTenantContext"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/platform/support-sessions/{id}/start": {
+    "/api/platform/view-as": {
         parameters: {
             query?: never;
             header?: never;
@@ -824,10 +800,30 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * start support session
-         * @description Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
+         * Start a read-only platform view-as session for one tenant
+         * @description Mints a short-lived tenant token pinned to the requested organization and role with view_as/read_only flags. Platform token and TenantHealthRead authority required; the operator identity comes from the verified bearer token.
          */
-        post: operations["startSupportSession"];
+        post: operations["startPlatformViewAs"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/view-as/exit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * End a read-only platform view-as session audit trail
+         * @description Records the platform.view_as.stop audit event. Called with the operator's real platform token, not the impersonation token.
+         */
+        post: operations["exitPlatformViewAs"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8515,7 +8511,7 @@ export interface paths {
         };
         /**
          * Unified action inbox for the authenticated principal
-         * @description One server-side fan-in of the caller's actionable items across every source that owns a person-scoped list: workflow/approval tasks awaiting the caller (the ?assignee=me path), pending P1 dispatch offers, support tickets assigned to the caller, and work orders assigned to the caller. Each source is queried through the exact predicate its own list endpoint uses, so the aggregate never widens visibility (deny-by-omission). Items are bucketed by urgency (now/today/wait) with a derived due tone. Fields the overview prototype carries but no backend source can supply are omitted (entity, amount, detail, files, stats, mailId); site/who/submitted are present only for the sources that carry them. Attendance exceptions are not aggregated (no exception object exists yet). Results use an immutable `(created_at, kind:id)` traversal key plus an `as_of` admission boundary, so rows created after the first page are excluded. Membership is deliberately live rather than a repeatable full-state snapshot: resolved, reassigned, or expired rows can disappear between page requests. Totals are recalculated from live membership admitted by `as_of`; `total_is_exact` is false when an authorization-filtered source reaches its bounded counting budget. Source failures fail the whole request rather than returning a deceptively partial queue.
+         * @description One server-side fan-in of the caller's actionable items across every source that owns a person-scoped list: workflow/approval tasks awaiting the caller (the ?assignee=me path), pending P1 dispatch offers, support tickets assigned to the caller, and work orders assigned to the caller. Each source is queried through the exact predicate its own list endpoint uses, so the aggregate never widens visibility (deny-by-omission). Items are bucketed by urgency (now/today/wait) with a derived due tone. Fields the overview prototype carries but no backend source can supply are omitted (entity, amount, detail, files, stats, mailId); site/who/submitted are present only for the sources that carry them. Attendance exceptions are not aggregated (no exception object exists yet). Results use an immutable `(created_at, kind:id)` traversal key plus an `as_of` admission boundary, so rows created after the first page are excluded. Membership is deliberately live rather than a repeatable full-state snapshot: resolved, reassigned, or expired rows can disappear between page requests. Totals are recalculated from live membership admitted by `as_of`; `total_is_exact` is false when a source returns a bounded visible prefix or the selected view has more pages. Source failures fail the whole request rather than returning a deceptively partial queue.
          */
         get: operations["listMyActionInbox"];
         put?: never;
@@ -12313,86 +12309,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/support-sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * list tenant support sessions
-         * @description Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
-         */
-        get: operations["listTenantSupportSessions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/support-sessions/active": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * active support sessions
-         * @description Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
-         */
-        get: operations["activeSupportSessions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/support-sessions/{id}/decision": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * decide tenant support session
-         * @description Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
-         */
-        post: operations["decideTenantSupportSession"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/support-sessions/{id}/end": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * end tenant support session
-         * @description Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
-         */
-        post: operations["endTenantSupportSession"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/support/intake": {
         parameters: {
             query?: never;
@@ -13499,22 +13415,6 @@ export interface paths {
         patch: operations["updateWorkplaceKind"];
         trace?: never;
     };
-    "/api/v1/workplaces": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["listWorkplaces"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/workplaces/{workplaceId}": {
         parameters: {
             query?: never;
@@ -14045,8 +13945,11 @@ export interface components {
             /** @description true = `include_descendants` must be true in the pilot. */
             descendants_only: boolean;
         };
-        /** @description Platform-fixed data domain (access-model §2.6). `discipline` is listed but not grantable. */
-        AccessDomain: string;
+        /**
+         * @description Platform-fixed data domain (access-model §2.6). `discipline` is listed but not grantable.
+         * @enum {string}
+         */
+        AccessDomain: "org" | "hr_basic" | "appointment" | "exit" | "attendance" | "pay" | "bank" | "evaluation" | "discipline" | "sensitive" | "documents" | "notice" | "access" | "audit" | "settings" | "exceptions" | "retention" | "tenant";
         AccessEffectLine: {
             domain: components["schemas"]["AccessDomain"];
             level: components["schemas"]["AccessLevel"];
@@ -14242,11 +14145,6 @@ export interface components {
             domain: components["schemas"]["AccessDomain"];
             levels: components["schemas"]["AccessLevel"][];
         };
-        AccessRoleLineInput: {
-            /** @enum {string} */
-            domain: "org" | "hr_basic" | "appointment" | "exit" | "attendance" | "pay" | "bank" | "evaluation" | "discipline" | "sensitive" | "documents" | "notice" | "access" | "audit" | "settings" | "exceptions" | "retention" | "tenant" | "support_access";
-            levels: components["schemas"]["AccessLevel"][];
-        };
         /** @enum {string} */
         AccessRoleStatus: "DRAFT" | "ACTIVE" | "RETIRED";
         AccessRoleVersion: {
@@ -14306,7 +14204,8 @@ export interface components {
         ActionInboxItem: {
             /** @description "{kind}:{uuid}" — source-namespaced so ids never collide. */
             id: string;
-            kind: string;
+            /** @enum {string} */
+            kind: "approval" | "dispatch" | "work" | "support" | "payroll" | "governance" | "org_change" | "org_change_approve" | "org_change_draft" | "org_change_apply" | "org_change_waiting" | "org_change_scheduled" | "org_change_rejected" | "org_change_settle" | "hr_exit" | "hr_exit_confirm" | "hr_exit_confirm_hq" | "hr_exit_settle" | "hr_lifecycle" | "lifecycle_apply_failed" | "hr_request" | "register_review" | "insurance_filing" | "identity_review" | "home_branch_review" | "contract_renewal" | "period_unlock" | "grant_notice" | "account_security" | "setup_entity" | "setup_workplace" | "setup_org" | "setup_approval" | "setup_people" | "setup_passkey" | "setup_employees" | "setup_roles" | "setup_golive";
             /** @enum {string} */
             urg: "now" | "today" | "wait";
             /** @description Source reference (work order request_no, ticket id, or the workflow run/object id). Not a canonical AP-/CS- object code. */
@@ -14320,6 +14219,13 @@ export interface components {
             submitted?: components["schemas"]["Timestamp"];
             links: components["schemas"]["ActionInboxLink"][];
             done: boolean;
+            /**
+             * @description Server-owned lane based on the actor and current action state.
+             * @enum {string}
+             */
+            lane: "turn" | "waiting" | "scheduled";
+            /** @description Calendar days remaining in the source deadline's timezone, computed from the database clock. */
+            days_remaining: number | null;
         };
         /** @description One server-ordered canonical source-object reference for an action-inbox item. Clients resolve only explicitly registered kind/id pairs; current browser-linkable kinds are approval_run, work_order, and support_ticket. Unknown kinds remain valid for forward compatibility and MUST stay inert until a client registry adds support. Clients MUST NOT accept a server URL or infer a destination from the enclosing item kind, item id, label, or a code prefix. */
         ActionInboxLink: {
@@ -14333,30 +14239,12 @@ export interface components {
             items: components["schemas"]["ActionInboxItem"][];
             /** @description Live visible item count across sources admitted by as_of; inspect total_is_exact before treating it as authoritative. */
             total: number;
-            /** @description False only when a bounded authorization-filtered count reached its scan budget. */
+            /** @description False when a source reports a bounded visible prefix or a filtered traversal has more pages; total is then a lower bound. */
             total_is_exact: boolean;
             /** @description Opaque cursor for the next immutable-keyset page, or null when exhausted. */
             next_cursor: string | null;
-        };
-        ActiveSupportSessions: {
-            sessions: {
-                /** Format: uuid */
-                id: string;
-                operator_label: string;
-                /** Format: date-time */
-                expires_at: string | null;
-            }[];
-            pending_count: number;
-            pending_approvals: {
-                /** Format: uuid */
-                id: string;
-                operator_label: string;
-                ticket_ref: string;
-                reason: string;
-                /** Format: date-time */
-                request_expires_at: string;
-            }[];
-            can_approve: boolean;
+            /** @description The authorized setup checklist, grouped once inside the queue on its first page. */
+            setup?: components["schemas"]["SetupChecklist"];
         };
         /** @enum {string} */
         ActorKind: "TENANT_USER" | "OPS_ACCOUNT" | "GROUP_ADMIN" | "SUPPORT_OPERATOR" | "SYSTEM";
@@ -16918,7 +16806,7 @@ export interface components {
              * @enum {string}
              */
             status: "DRAFT" | "ACTIVE";
-            lines: components["schemas"]["AccessRoleLineInput"][];
+            lines: components["schemas"]["AccessRoleLine"][];
         };
         CreateBranchRequest: {
             region_id: components["schemas"]["Uuid"];
@@ -22670,7 +22558,7 @@ export interface components {
             action_kind: components["schemas"]["MobileStepUpActionKind"];
             object_id: components["schemas"]["Uuid"];
             /** @enum {string} */
-            reason_key: "operations_passkey_approval_decision" | "operations_passkey_poll_vote" | "passkey_step_up_exit_confirm" | "passkey_step_up_exit_rescind" | "passkey_step_up_elevated_grant" | "passkey_step_up_period_unlock" | "passkey_step_up_identity_merge" | "passkey_step_up_exception_decide" | "passkey_step_up_settings_change" | "passkey_step_up_credential_reset" | "passkey_step_up_tenant_offboard" | "passkey_step_up_operator_recovery" | "passkey_step_up_support_session";
+            reason_key: "operations_passkey_approval_decision" | "operations_passkey_poll_vote" | "passkey_step_up_exit_confirm" | "passkey_step_up_exit_rescind" | "passkey_step_up_elevated_grant" | "passkey_step_up_period_unlock" | "passkey_step_up_identity_merge" | "passkey_step_up_exception_decide" | "passkey_step_up_settings_change" | "passkey_step_up_credential_reset" | "passkey_step_up_tenant_offboard" | "passkey_step_up_operator_recovery";
             /**
              * Format: int32
              * @description Null for an immediate online action; 1-based for queued replay attempts.
@@ -22706,7 +22594,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        MobileStepUpActionKind: "APPROVAL_DECISION" | "POLL_VOTE" | "EXIT_CONFIRM" | "EXIT_RESCIND" | "ELEVATED_GRANT" | "PERIOD_UNLOCK" | "IDENTITY_MERGE" | "EXCEPTION_DECIDE" | "SETTINGS_CHANGE" | "CREDENTIAL_RESET" | "TENANT_OFFBOARD" | "OPERATOR_RECOVERY" | "SUPPORT_SESSION";
+        MobileStepUpActionKind: "APPROVAL_DECISION" | "POLL_VOTE" | "EXIT_CONFIRM" | "EXIT_RESCIND" | "ELEVATED_GRANT" | "PERIOD_UNLOCK" | "IDENTITY_MERGE" | "EXCEPTION_DECIDE" | "SETTINGS_CHANGE" | "CREDENTIAL_RESET" | "TENANT_OFFBOARD" | "OPERATOR_RECOVERY";
         MobileVotePollRequest: {
             selected_option_ids: components["schemas"]["Uuid"][];
             step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
@@ -24709,6 +24597,9 @@ export interface components {
         };
         /** @enum {string} */
         PlatformAccountStatus: "ACTIVE" | "PENDING_SETUP" | "DEACTIVATED";
+        PlatformExitResponse: {
+            ended: boolean;
+        };
         PlatformGroup: {
             id: components["schemas"]["Uuid"];
             slug: string;
@@ -24796,6 +24687,19 @@ export interface components {
         };
         /** @enum {string} */
         PlatformOrgStatus: "ACTIVE" | "SUSPENDED" | "ARCHIVED";
+        PlatformTenantContextStartRequest: {
+            org_id: components["schemas"]["Uuid"];
+        };
+        PlatformTenantContextStartResponse: {
+            access_token: string;
+            /** @enum {string} */
+            token_type: "Bearer";
+            acting_org_id: components["schemas"]["Uuid"];
+            acting_org_name: string;
+            /** @enum {string} */
+            acting_role: "SUPER_ADMIN";
+            expires_at: components["schemas"]["Timestamp"];
+        };
         PlatformTenantHealth: {
             id: components["schemas"]["Uuid"];
             slug: string;
@@ -24825,6 +24729,19 @@ export interface components {
         };
         /** @enum {string} */
         PlatformTenantRole: "SUPER_ADMIN" | "ADMIN" | "MECHANIC" | "RECEPTIONIST" | "EXECUTIVE" | "MEMBER";
+        PlatformViewAsStartRequest: {
+            org_id: components["schemas"]["Uuid"];
+            role: components["schemas"]["PlatformTenantRole"];
+        };
+        PlatformViewAsStartResponse: {
+            access_token: string;
+            /** @enum {string} */
+            token_type: "Bearer";
+            acting_org_id: components["schemas"]["Uuid"];
+            acting_org_name: string;
+            acting_role: components["schemas"]["PlatformTenantRole"];
+            expires_at: components["schemas"]["Timestamp"];
+        };
         PolicyAssignmentPreviewResponse: {
             user_id: components["schemas"]["Uuid"];
             preview_receipt_id: components["schemas"]["Uuid"];
@@ -27098,100 +27015,8 @@ export interface components {
         };
         /** @enum {string} */
         SubstituteMatchKind: "exact_ton" | "nearest_above" | "unknown_ton_exact_text";
-        SupportAccessRecord: {
-            /** Format: uuid */
-            id: string;
-            method: string;
-            path: string;
-            /** Format: date-time */
-            at: string;
-        };
         SupportIntakeAck: {
             status: string;
-        };
-        SupportOperatorDecision: {
-            /** Format: uuid */
-            org_id: string;
-            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
-        };
-        SupportRefusal: {
-            type: string;
-            title: string;
-            status: number;
-            detail: string;
-            code: string;
-            error: {
-                code: string;
-                message: string;
-            };
-        };
-        SupportRequest: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            org_id: string;
-            ticket_ref: string;
-            reason_code: string;
-            reason: string;
-            scope: string[];
-            /** Format: int64 */
-            duration_seconds: number;
-            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
-        };
-        SupportSession: {
-            /** Format: uuid */
-            id: string;
-            operator_label: string;
-            ticket_ref: string;
-            reason_code: string;
-            reason: string;
-            scope: string[];
-            state: string;
-            masked: boolean;
-            /** Format: int64 */
-            requested_duration_seconds: number;
-            /** Format: int64 */
-            approved_duration_seconds: number | null;
-            /** Format: date-time */
-            requested_at: string;
-            /** Format: date-time */
-            request_expires_at: string;
-            /** Format: date-time */
-            expires_at: string | null;
-            /** Format: date-time */
-            tenant_approved_at: string | null;
-            decisions: components["schemas"]["SupportSessionDecision"][];
-            records: components["schemas"]["SupportAccessRecord"][];
-        };
-        SupportSessionDecision: {
-            actor_label: string;
-            decision: string;
-            /** Format: date-time */
-            at: string;
-        };
-        SupportSessionMetadata: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            org_id: string;
-            /** Format: uuid */
-            operator_ref: string;
-            state: string;
-            /** Format: date-time */
-            requested_at: string;
-            /** Format: date-time */
-            expires_at: string | null;
-        };
-        SupportSessions: {
-            sessions: components["schemas"]["SupportSession"][];
-            can_approve: boolean;
-        };
-        SupportTenantDecision: {
-            /** @enum {string} */
-            decision: "APPROVE" | "DENY";
-            /** Format: int64 */
-            approved_duration_seconds?: number;
-            reveal_classes?: "personal"[];
         };
         SupportTicketAcceptance: {
             id: components["schemas"]["Uuid"];
@@ -27594,7 +27419,7 @@ export interface components {
             name_ko?: string;
             name_en?: string | null;
             description?: string | null;
-            lines?: components["schemas"]["AccessRoleLineInput"][];
+            lines?: components["schemas"]["AccessRoleLine"][];
             /** @description Domain `role_change`; required when `lines` change on a held role. */
             reason_code?: string;
             reason_note?: string | null;
@@ -30374,85 +30199,60 @@ export interface operations {
             };
         };
     };
-    listSupportSessionMetadata: {
+    startPlatformTenantContext: {
         parameters: {
-            query: {
-                org_id: string;
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformTenantContextStartRequest"];
             };
+        };
+        responses: {
+            /** @description The short-lived writable tenant token and banner context. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformTenantContextStartResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    exitPlatformTenantContext: {
+        parameters: {
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Current support session state. */
+            /** @description The exit audit acknowledgement. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        sessions: components["schemas"]["SupportSessionMetadata"][];
-                    };
+                    "application/json": components["schemas"]["PlatformExitResponse"];
                 };
             };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
-    requestSupportSession: {
+    startPlatformViewAs: {
         parameters: {
             query?: never;
             header?: never;
@@ -30461,335 +30261,48 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SupportRequest"];
+                "application/json": components["schemas"]["PlatformViewAsStartRequest"];
             };
         };
         responses: {
-            /** @description Current support session state. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: uuid */
-                        id: string;
-                        state: string;
-                        /** Format: date-time */
-                        request_expires_at: string;
-                    };
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-        };
-    };
-    approveSupportOperator: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SupportOperatorDecision"];
-            };
-        };
-        responses: {
-            /** @description Current support session state. */
+            /** @description The short-lived read-only tenant token and banner context. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** Format: uuid */
-                        id: string;
-                        state: string;
-                    };
+                    "application/json": components["schemas"]["PlatformViewAsStartResponse"];
                 };
             };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
-    endOperatorSupportSession: {
+    exitPlatformViewAs: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                id: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** Format: uuid */
-                    org_id: string;
-                };
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Current support session state. */
+            /** @description The exit audit acknowledgement. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        ended: boolean;
-                    };
+                    "application/json": components["schemas"]["PlatformExitResponse"];
                 };
             };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-        };
-    };
-    startSupportSession: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SupportOperatorDecision"];
-            };
-        };
-        responses: {
-            /** @description Current support session state. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: uuid */
-                        id: string;
-                        access_token: string;
-                        token_type: string;
-                        /** Format: date-time */
-                        expires_at: string;
-                    };
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     reviewTargetChange: {
@@ -46190,6 +45703,8 @@ export interface operations {
     listMyActionInbox: {
         parameters: {
             query?: {
+                /** @description Server-owned view; ownership and deadlines are never merged or filtered in the browser. */
+                filter?: "all" | "turn" | "waiting" | "scheduled" | "deadlines" | "failures";
                 /** @description Page size, clamped server-side to 1..=200. */
                 limit?: number;
                 /** @description Opaque immutable-traversal cursor returned as `next_cursor` by the previous page. */
@@ -53995,316 +53510,6 @@ export interface operations {
             };
         };
     };
-    listTenantSupportSessions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Current support session state. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SupportSessions"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-        };
-    };
-    activeSupportSessions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Current support session state. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ActiveSupportSessions"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-        };
-    };
-    decideTenantSupportSession: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SupportTenantDecision"];
-            };
-        };
-        responses: {
-            /** @description Current support session state. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: uuid */
-                        id: string;
-                        decision: string;
-                    };
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-        };
-    };
-    endTenantSupportSession: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Current support session state. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        ended: boolean;
-                    };
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-            /** @description Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail closed. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["SupportRefusal"];
-                };
-            };
-        };
-    };
     submitSupportIntake: {
         parameters: {
             query?: never;
@@ -56630,37 +55835,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
-            };
-        };
-    };
-    listWorkplaces: {
-        parameters: {
-            query?: {
-                as_of?: string;
-                known_at?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Workplaces within the reader's granted scope. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WorkplaceList"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            /** @description Not permitted. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

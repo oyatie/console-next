@@ -93,7 +93,7 @@ inbox = ["dep:console-inbox-rest"]
 todos = ["dep:console-todos-adapter-postgres", "dep:console-todos-rest"]
 mail = ["dep:console-comms-adapter-imap", "dep:console-comms-adapter-postgres", "dep:console-comms-application", "dep:console-comms-rest"]
 notices = ["dep:console-notices-adapter-postgres", "dep:console-notices-rest"]
-workspace = ["dep:console-action-inbox-application", "dep:console-workflow-domain", "dep:console-workflow-runtime", "dep:console-workflow-runtime-adapter-postgres", "dep:console-dispatch-adapter-postgres", "dep:console-support-adapter-postgres", "dep:console-workorder-adapter-postgres", "dep:console-workorder-application", "dep:console-payroll-adapter-postgres", "dep:console-todos-adapter-postgres", "dep:croner", "dep:chrono-tz"]
+workspace = ["dep:console-workflow-domain", "dep:console-workflow-runtime", "dep:console-workflow-runtime-adapter-postgres", "dep:console-dispatch-adapter-postgres", "dep:console-support-adapter-postgres", "dep:console-workorder-adapter-postgres", "dep:console-workorder-application", "dep:console-payroll-adapter-postgres", "dep:console-todos-adapter-postgres", "dep:croner", "dep:chrono-tz"]
 office = []
 
 [dependencies]
@@ -114,7 +114,7 @@ console-comms-adapter-postgres = { workspace = true, optional = true }
 console-comms-application = { workspace = true, optional = true }
 console-comms-credential-cipher = { workspace = true }
 console-comms-rest = { workspace = true, optional = true }
-console-action-inbox-application = { workspace = true, optional = true }
+console-action-inbox-application = { workspace = true }
 console-benefit-adapter-postgres = { workspace = true, optional = true }
 console-benefit-rest = { workspace = true, optional = true }
 console-consulting-rest = { workspace = true, optional = true }
@@ -281,7 +281,7 @@ workspace = true
 
 [[test]]
 name = "action_inbox_api"
-required-features = ["workspace"]
+required-features = ["full"]
 
 [[test]]
 name = "attendance_persona_api"

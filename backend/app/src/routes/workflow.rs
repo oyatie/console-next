@@ -9,7 +9,7 @@ use super::TenantDeps;
 #[cfg(feature = "workspace")]
 pub(super) fn mount_workspace(router: Router, deps: &TenantDeps<'_>) -> Router {
     use crate::{
-        action_inbox, collaboration, objects, workbench, workbench_native, workflow_object_context,
+        collaboration, objects, workbench, workbench_native, workflow_object_context,
         workflow_studio,
     };
     let (state, pool) = (deps.state, deps.pool);
@@ -28,10 +28,6 @@ pub(super) fn mount_workspace(router: Router, deps: &TenantDeps<'_>) -> Router {
             collaboration::CollaborationState::new(pool.clone(), state.jwt_verifier.clone())
                 .with_passkey_step_up(state.policy_step_up.clone()),
         ))
-        .merge(action_inbox::router(action_inbox::ActionInboxState::new(
-            pool.clone(),
-            state.jwt_verifier.clone(),
-        )))
         .merge(workbench::router(workbench::WorkbenchState::new(
             std::sync::Arc::new(workbench_native::NativeWorkbenchReaders::new(pool.clone())),
             pool.clone(),

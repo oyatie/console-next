@@ -1,0 +1,410 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+//! The release router serves the same queue as Home, with no workspace opt-in.
+
+#[path = "support/http.rs"]
+mod http;
+#[path = "period_unlock_support/mod.rs"]
+mod period_support;
+
+use ::http::StatusCode;
+use serde_json::{Value, json};
+use sqlx::PgPool;
+use std::collections::BTreeSet;
+use std::time::{Duration as StdDuration, Instant};
+use time::Duration;
+use uuid::Uuid;
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn release_inbox_serves_solo_setup_and_filters_on_the_server(pool: PgPool) {
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter("error")
+        .with_test_writer()
+        .try_init();
+    let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    let (status, page) = ctx.call("GET", "/api/v1/me/action-inbox", None).await;
+    assert_eq!(status, StatusCode::OK, "{page}");
+    assert!(
+        page["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|i| i["kind"] == "setup_entity"),
+        "{page}"
+    );
+    for filter in ["waiting", "scheduled", "failures"] {
+        let (status, page) = ctx
+            .call(
+                "GET",
+                &format!("/api/v1/me/action-inbox?filter={filter}"),
+                None,
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK, "{page}");
+        assert!(
+            page["items"].as_array().unwrap().is_empty(),
+            "{filter}: {page}"
+        );
+    }
+    let (status, _) = ctx
+        .call("GET", "/api/v1/me/action-inbox?filter=unknown", None)
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn no_grants_exposes_no_source_names_or_counts(pool: PgPool) {
+    let (org, user) = http::tenant(&pool, &[]).await;
+    let ctx = http::ctx(&pool, org, user, &[], None).await;
+    let (status, page) = ctx.call("GET", "/api/v1/me/action-inbox", None).await;
+    assert_eq!(status, StatusCode::OK, "{page}");
+    assert!(page["items"].as_array().unwrap().is_empty(), "{page}");
+    assert_eq!(page["total"], 0);
+}
+
+const INBOX: &str = "/api/v1/me/action-inbox";
+
+async fn inbox(ctx: &http::Ctx) -> Value {
+    let (status, page) = ctx.call("GET", &format!("{INBOX}?limit=200"), None).await;
+    assert_eq!(status, StatusCode::OK, "{page}");
+    page
+}
+
+fn items_of<'a>(page: &'a Value, kind: &str) -> Vec<&'a Value> {
+    page["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|i| i["kind"] == kind)
+        .collect()
+}
+
+async fn followup_person(pool: &PgPool, org: Uuid, suffix: &str) -> Uuid {
+    sqlx::query_scalar(
+        "INSERT INTO employees (org_id,company,name,source_filename,source_sheet,source_row,source_key,employment_status,hire_date) \
+         VALUES ($1,'합성 회사',$2,'inbox.csv','people',1,$2,'ACTIVE','2026-01-02') RETURNING id"
+    ).bind(org).bind(format!("업무함-{suffix}")).fetch_one(pool).await.unwrap()
+}
+
+async fn assert_denied_source(pool: &PgPool, org: Uuid, kind: &str) {
+    let user = http::add_user(pool, org, &[]).await;
+    let viewer = http::ctx(pool, org, user, &[], None).await;
+    let page = inbox(&viewer).await;
+    assert!(
+        items_of(&page, kind).is_empty(),
+        "a refused {kind} must disclose no record: {page}"
+    );
+    assert_eq!(
+        page["total"], 0,
+        "a refused source must disclose no count: {page}"
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn identity_followups_match_home_and_denied_readers_see_none(pool: PgPool) {
+    let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    let employee = followup_person(&pool, org, "identity").await;
+    sqlx::query("UPDATE employees SET identity_review_required=true WHERE id=$1")
+        .bind(employee)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let page = inbox(&ctx).await;
+    let rows = items_of(&page, "identity_review");
+    assert_eq!(rows.len(), 1, "{page}");
+    assert_eq!(rows[0]["id"], format!("hr_identity:{employee}"));
+    assert_eq!(rows[0]["links"][0]["id"], employee.to_string());
+    assert_denied_source(&pool, org, "identity_review").await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn branch_followups_match_home_and_denied_readers_see_none(pool: PgPool) {
+    let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    let employee = followup_person(&pool, org, "branch").await;
+    let page = inbox(&ctx).await;
+    let rows = items_of(&page, "home_branch_review");
+    assert_eq!(rows.len(), 1, "{page}");
+    assert_eq!(rows[0]["id"], format!("hr_branch:{employee}"));
+    assert_denied_source(&pool, org, "home_branch_review").await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn renewals_use_the_tenant_window_and_denied_managers_see_none(pool: PgPool) {
+    let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    // Prove the read exists before writing the new setting on the fail-before base.
+    inbox(&ctx).await;
+    sqlx::query("INSERT INTO tenant_setting_overrides (org_id,key,value,set_by,reason_code) VALUES ($1,'hr.contract_soon_days','7',$2,'BW01')")
+        .bind(org).bind(user.as_uuid()).execute(&pool).await.unwrap();
+    let today = console_hr_domain::text::parse_yyyy_mm_dd(&http::today_kst()).unwrap();
+    let mut inside = Uuid::nil();
+    for (suffix, days) in [("near", 7), ("outside", 8)] {
+        let employee = followup_person(&pool, org, suffix).await;
+        if days == 7 {
+            inside = employee;
+        }
+        sqlx::query("INSERT INTO employee_employment_profiles (org_id,employee_id,employment_type,contract_start_date,contract_end_date,phone_e164,base_pay,idempotency_key,request_hash,created_by) VALUES ($1,$2,'CONTRACT',$3,$4,'+821012345678',0,$5,repeat('a',64),$6)")
+            .bind(org).bind(employee).bind(today - Duration::days(30))
+            .bind(today + Duration::days(days)).bind(format!("inbox-contract-{employee}")).bind(user.as_uuid())
+            .execute(&pool).await.unwrap();
+    }
+    let page = inbox(&ctx).await;
+    let rows = items_of(&page, "contract_renewal");
+    assert_eq!(rows.len(), 1, "{page}");
+    assert_eq!(rows[0]["id"], format!("hr_contract:{inside}"));
+    let due = rows[0]["due"].as_str().unwrap();
+    assert!(
+        due.starts_with(&(today + Duration::days(7)).to_string()),
+        "{due}"
+    );
+    assert_denied_source(&pool, org, "contract_renewal").await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_completed_setup_step_leaves_the_same_inbox_without_a_second_queue(pool: PgPool) {
+    let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    assert_eq!(items_of(&inbox(&ctx).await, "setup_org").len(), 1);
+    let (_, workplace, _, _) = http::structure(&ctx).await;
+    let (status, department) = ctx
+        .call(
+            "POST",
+            "/api/v1/org-structure/units",
+            Some(json!({"name":"업무함 검증 부서","workplace_id":workplace})),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{department}");
+    let page = inbox(&ctx).await;
+    assert!(items_of(&page, "setup_org").is_empty(), "{page}");
+    assert_eq!(
+        items_of(&page, "setup_entity").len(),
+        1,
+        "unverified registration remains outstanding"
+    );
+    assert_eq!(
+        page["setup"]["steps"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["key"] == "org")
+            .unwrap()["state"],
+        "done"
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn two_thousand_product_created_people_keep_first_page_under_budget_and_cursor_stable(
+    pool: PgPool,
+) {
+    let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    inbox(&ctx).await;
+    let (_, _, branch, unit) = http::structure(&ctx).await;
+    let mut expected = BTreeSet::new();
+    for index in 0..2_000 {
+        let body = http::employee_body(&format!("INBOX-{index:04}"), &branch, &unit);
+        let (status, created) = ctx.call("POST", "/api/v1/employees", Some(body)).await;
+        assert_eq!(status, StatusCode::CREATED, "person {index}: {created}");
+        expected.insert(format!(
+            "hr_register:{}",
+            created["employee"]["id"].as_str().unwrap()
+        ));
+    }
+    let mut elapsed = Vec::new();
+    for _ in 0..20 {
+        let started = Instant::now();
+        let (status, page) = ctx
+            .call("GET", &format!("{INBOX}?limit=50&filter=turn"), None)
+            .await;
+        elapsed.push(started.elapsed());
+        assert_eq!(status, StatusCode::OK, "{page}");
+        assert_eq!(page["items"].as_array().unwrap().len(), 50);
+    }
+    elapsed.sort();
+    let p95 = elapsed[18];
+    eprintln!("inbox: 2,000 product-created people, 20 reads, p95={p95:?}");
+    assert!(
+        p95 <= StdDuration::from_millis(300),
+        "first-page p95 {p95:?} exceeds 300 ms"
+    );
+
+    let mut page = inbox(&ctx).await;
+    let (status, late) = ctx
+        .call(
+            "POST",
+            "/api/v1/employees",
+            Some(http::employee_body("INBOX-LATE", &branch, &unit)),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{late}");
+    let late = late["employee"]["id"].as_str().unwrap();
+    let mut seen = BTreeSet::new();
+    for count in 0..200 {
+        for item in page["items"].as_array().unwrap() {
+            let id = item["id"].as_str().unwrap();
+            assert!(
+                !id.ends_with(late),
+                "post-snapshot insert entered the traversal: {id}"
+            );
+            assert!(seen.insert(id.to_owned()), "duplicate keyset item {id}");
+        }
+        let Some(cursor) = page["next_cursor"].as_str() else {
+            break;
+        };
+        assert!(
+            count < 199,
+            "cursor failed to finish within the known synthetic row budget"
+        );
+        let query = url::form_urlencoded::Serializer::new(String::new())
+            .append_pair("limit", "200")
+            .append_pair("cursor", cursor)
+            .finish();
+        let (status, next) = ctx.call("GET", &format!("{INBOX}?{query}"), None).await;
+        assert_eq!(status, StatusCode::OK, "{next}");
+        page = next;
+    }
+    let actual = seen
+        .into_iter()
+        .filter(|id| id.starts_with("hr_register:"))
+        .collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "every pre-snapshot record traverses once");
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn grant_notices_appear_once_only_for_the_holder_and_leave_on_confirmation(pool: PgPool) {
+    let (org, ops) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let holder = http::add_user(&pool, org, &[]).await;
+    let other = http::add_user(&pool, org, &[]).await;
+    let ctx = http::ctx(&pool, org, holder, &[], None).await;
+    inbox(&ctx).await;
+    let role: Uuid = sqlx::query_scalar("INSERT INTO access_roles (org_id,name_ko,status,version,created_by) VALUES ($1,'알림 검증','ACTIVE',1,$2) RETURNING id")
+        .bind(org).bind(ops.as_uuid()).fetch_one(&pool).await.unwrap();
+    sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) VALUES ($1,$2,1,'알림 검증','ACTIVE','SETUP',$3)")
+        .bind(org).bind(role).bind(ops.as_uuid()).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) VALUES ($1,$2,1,'hr_basic',ARRAY['view','edit'])")
+        .bind(org).bind(role).execute(&pool).await.unwrap();
+    let mut expected = BTreeSet::new();
+    for (start, end, status) in [
+        (-1, Some(1), "ACTIVE"),
+        (2, None, "ACTIVE"),
+        (-5, Some(-4), "ACTIVE"),
+        (-1, None, "REVOKED"),
+    ] {
+        let id: Uuid = sqlx::query_scalar(
+            "INSERT INTO access_grants (org_id,account_id,role_id,scope_kind,valid_from,valid_to,status,change_mode,reason_code,granted_by,revoked_by,revoked_at) \
+             VALUES ($1,$2,$3,'TENANT',now()+($4 * interval '1 day'),CASE WHEN $5::integer IS NULL THEN NULL ELSE now()+($5 * interval '1 day') END, \
+             $6,'SETUP','NEW_HIRE',$7,CASE WHEN $6='REVOKED' THEN $7 ELSE NULL END,CASE WHEN $6='REVOKED' THEN now() ELSE NULL END) RETURNING id"
+        ).bind(org).bind(holder.as_uuid()).bind(role).bind(start).bind(end).bind(status).bind(ops.as_uuid())
+            .fetch_one(&pool).await.unwrap();
+        if start >= -1 && status == "ACTIVE" {
+            expected.insert(id.to_string());
+        }
+    }
+    let page = inbox(&ctx).await;
+    let rows = items_of(&page, "grant_notice");
+    let actual = rows
+        .iter()
+        .map(|r| r["links"][0]["id"].as_str().unwrap().to_owned())
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        actual, expected,
+        "one actionable notice per current or scheduled grant: {page}"
+    );
+    assert_eq!(
+        rows.len(),
+        2,
+        "multiple role levels must not duplicate a grant"
+    );
+    let outsider = http::ctx(&pool, org, other, &[], None).await;
+    assert!(items_of(&inbox(&outsider).await, "grant_notice").is_empty());
+    for grant in expected {
+        let (status, result) = ctx
+            .call(
+                "POST",
+                &format!("/api/v1/access/grants/{grant}/notice"),
+                None,
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK, "{result}");
+    }
+    assert!(items_of(&inbox(&ctx).await, "grant_notice").is_empty());
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn pending_period_unlock_is_only_the_eligible_second_persons_work_and_leaves_on_decision(
+    pool: PgPool,
+) {
+    use console_kernel_core::{OrgId, UserId};
+    use console_platform_test_support::soft_passkey::passkey_service;
+    use time::OffsetDateTime;
+    use time::format_description::well_known::Rfc3339;
+
+    let (service, issuer) = period_support::router(&pool).await;
+    let svc = passkey_service();
+    let mut requester = period_support::admin(&pool, &svc, &issuer, "업무함 요청자").await;
+    let mut approver = period_support::admin(&pool, &svc, &issuer, "업무함 승인자").await;
+    let approver_ctx = http::Ctx {
+        service: service.clone(),
+        token: approver.token.clone(),
+        org: *OrgId::one().as_uuid(),
+        user: UserId::from_uuid(approver.id),
+        key: std::cell::Cell::new(Uuid::nil()),
+    };
+    inbox(&approver_ctx).await;
+    let (status, lock) = period_support::send(&service, period_support::LOCKS, &requester.token, None,
+        json!({"domain":"payroll","periodStart":"2026-06-01","periodEnd":"2026-06-30","reasonCode":"MONTHLY_PAYROLL_CLOSE"})).await;
+    assert_eq!(status, StatusCode::CREATED, "{lock}");
+    let lock: Uuid = lock["id"].as_str().unwrap().parse().unwrap();
+    let relock_at = (OffsetDateTime::now_utc() + Duration::days(3))
+        .format(&Rfc3339)
+        .unwrap();
+    let payload = format!("PERIOD_UNLOCK\n{lock}\nPAYROLL_ERROR\n{relock_at}");
+    let step_up = period_support::step_up(&pool, &svc, &mut requester, lock, &payload).await;
+    let unlock = format!("{}/{lock}/unlock", period_support::LOCKS);
+    let (status, pending) = period_support::send(
+        &service,
+        &unlock,
+        &requester.token,
+        None,
+        json!({"reasonCode":"PAYROLL_ERROR","relockAt":relock_at,"stepUp":step_up}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::ACCEPTED, "{pending}");
+    let request: Uuid = pending["request"]["id"].as_str().unwrap().parse().unwrap();
+    let page = inbox(&approver_ctx).await;
+    let rows = items_of(&page, "period_unlock");
+    assert_eq!(rows.len(), 1, "{page}");
+    assert_eq!(rows[0]["id"], format!("period_unlock:{request}"));
+    let requester_ctx = http::Ctx {
+        service: service.clone(),
+        token: requester.token.clone(),
+        org: *OrgId::one().as_uuid(),
+        user: UserId::from_uuid(requester.id),
+        key: std::cell::Cell::new(Uuid::nil()),
+    };
+    assert!(items_of(&inbox(&requester_ctx).await, "period_unlock").is_empty());
+    let none = http::add_user(&pool, *OrgId::one().as_uuid(), &[]).await;
+    let denied = http::ctx(&pool, *OrgId::one().as_uuid(), none, &[], None).await;
+    assert!(items_of(&inbox(&denied).await, "period_unlock").is_empty());
+    let proof = period_support::step_up(
+        &pool,
+        &svc,
+        &mut approver,
+        request,
+        &format!("PERIOD_UNLOCK_APPROVE\n{request}"),
+    )
+    .await;
+    let (status, result) = period_support::send(
+        &service,
+        &format!("{unlock}/approve"),
+        &approver.token,
+        None,
+        json!({"stepUp":proof}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{result}");
+    assert!(items_of(&inbox(&approver_ctx).await, "period_unlock").is_empty());
+}

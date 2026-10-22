@@ -19,12 +19,20 @@ description: >-
   deliberately live rather than a repeatable full-state snapshot: resolved,
   reassigned, or expired rows can disappear between page requests. Totals are
   recalculated from live membership admitted by `as_of`; `total_is_exact` is
-  false when an authorization-filtered source reaches its bounded counting
-  budget. Source failures fail the whole request rather than returning a
+  false when a source returns a bounded visible prefix or the selected view
+  has more pages. Source failures fail the whole request rather than returning a
   deceptively partial queue.
 security:
 - bearerAuth: []
 parameters:
+- name: filter
+  in: query
+  required: false
+  schema:
+    type: string
+    enum: [all, turn, waiting, scheduled, deadlines, failures]
+    default: all
+  description: Server-owned view; ownership and deadlines are never merged or filtered in the browser.
 - name: limit
   in: query
   required: false

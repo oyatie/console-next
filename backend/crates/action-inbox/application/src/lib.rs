@@ -1,13 +1,16 @@
 //! Source-neutral action inbox application boundary.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod complete;
+pub use complete::list_complete_action_inbox;
+mod filter;
+pub use filter::{InboxFilter, list_filtered_action_inbox};
 mod cursor;
 pub use cursor::{ActionInboxCursor, ActionInboxPosition, encode_cursor, parse_cursor};
 mod namespaced_id;
 mod source;
 pub use source::ActionInboxSource;
 
-use std::collections::HashSet;
 use std::future::Future;
 use std::pin::Pin;
 
@@ -31,6 +34,8 @@ pub struct ListActionInboxQuery {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActionInboxSourceQuery {
+    pub filter: InboxFilter,
+    pub require_exact_total: bool,
     pub now: OffsetDateTime,
     pub as_of: OffsetDateTime,
     pub after: Option<ActionInboxPosition>,
@@ -108,6 +113,8 @@ pub struct ActionInboxItem {
     pub submitted: Option<OffsetDateTime>,
     pub links: Vec<ActionInboxLink>,
     pub done: bool,
+    pub lane: &'static str,
+    pub days_remaining: Option<i64>,
     #[serde(skip)]
     pub created_at: OffsetDateTime,
 }
@@ -130,94 +137,6 @@ pub enum CompleteActionInboxError {
     DuplicateId,
 }
 
-/// Traverses the public immutable cursor API until the action set is complete.
-///
-/// This is intentionally separate from `list_action_inbox`: the public endpoint
-/// remains creation-order paginated, while consumers that apply a different
-/// deterministic ordering (such as Workbench urgency) must not rank only its
-/// first creation-order page. Every response must advertise the same exact
-/// total, and the traversal stops fail-closed at `MAX_COMPLETE_ITEMS`.
-pub async fn list_complete_action_inbox(
-    port: &dyn ActionInboxSourcePort,
-    now: OffsetDateTime,
-) -> Result<ActionInboxPage, CompleteActionInboxError> {
-    let mut cursor: Option<String> = None;
-    let mut seen_cursors = HashSet::new();
-    let mut seen_ids = HashSet::new();
-    let mut expected_total = None;
-    let mut items = Vec::new();
-    let mut page_count = 0;
-
-    loop {
-        if page_count == MAX_COMPLETE_PAGES {
-            return Err(CompleteActionInboxError::BudgetExceeded);
-        }
-        page_count += 1;
-        let request_cursor = cursor.take();
-        let page = list_action_inbox(
-            port,
-            ListActionInboxQuery {
-                limit: Some(MAX_PAGE_LIMIT),
-                cursor: request_cursor.clone(),
-            },
-            now,
-        )
-        .await
-        .map_err(CompleteActionInboxError::Source)?;
-        if !page.total_is_exact {
-            return Err(CompleteActionInboxError::TotalInexact);
-        }
-        match expected_total {
-            Some(total) if total != page.total => {
-                return Err(CompleteActionInboxError::TotalDrift);
-            }
-            Some(_) => {}
-            None if page.total > MAX_COMPLETE_ITEMS => {
-                return Err(CompleteActionInboxError::BudgetExceeded);
-            }
-            None => expected_total = Some(page.total),
-        }
-        for item in page.items {
-            if !seen_ids.insert(item.id.clone()) {
-                return Err(CompleteActionInboxError::DuplicateId);
-            }
-            items.push(item);
-            if items.len() > MAX_COMPLETE_ITEMS {
-                return Err(CompleteActionInboxError::BudgetExceeded);
-            }
-        }
-        match page.next_cursor {
-            Some(next) => {
-                ensure_new_cursor(request_cursor.as_deref(), &mut seen_cursors, &next)?;
-                cursor = Some(next);
-            }
-            None => {
-                let total = expected_total.ok_or(CompleteActionInboxError::TotalDrift)?;
-                if items.len() != total {
-                    return Err(CompleteActionInboxError::TotalDrift);
-                }
-                return Ok(ActionInboxPage {
-                    items,
-                    total,
-                    total_is_exact: true,
-                    next_cursor: None,
-                });
-            }
-        }
-    }
-}
-
-fn ensure_new_cursor(
-    request_cursor: Option<&str>,
-    seen_cursors: &mut HashSet<String>,
-    next_cursor: &str,
-) -> Result<(), CompleteActionInboxError> {
-    if request_cursor == Some(next_cursor) || !seen_cursors.insert(next_cursor.to_owned()) {
-        return Err(CompleteActionInboxError::RepeatedCursor);
-    }
-    Ok(())
-}
-
 pub async fn list_action_inbox(
     port: &dyn ActionInboxSourcePort,
     query: ListActionInboxQuery,
@@ -234,15 +153,19 @@ pub async fn list_action_inbox(
         .unwrap_or(DEFAULT_PAGE_LIMIT)
         .clamp(1, MAX_PAGE_LIMIT);
     let source_query = ActionInboxSourceQuery {
+        filter: InboxFilter::All,
+        require_exact_total: false,
         now,
         as_of,
         after: cursor.as_ref().map(|cursor| cursor.position.clone()),
         limit,
     };
-    let mut pages = Vec::with_capacity(ActionInboxSource::ALL.len());
-    for source in ActionInboxSource::ALL {
-        pages.push(port.list_source_page(source, source_query.clone()).await?);
-    }
+    let pages = futures::future::try_join_all(
+        ActionInboxSource::ALL
+            .into_iter()
+            .map(|source| port.list_source_page(source, source_query.clone())),
+    )
+    .await?;
     Ok(merge_pages(pages, now, as_of, cursor.as_ref(), limit))
 }
 
@@ -294,6 +217,15 @@ pub fn merge_pages(
 fn project_item(item: ActionInboxSourceItem, now: OffsetDateTime) -> ActionInboxItem {
     let (urg, due_tone) = urgency(item.due, now);
     ActionInboxItem {
+        lane: match item.kind.as_str() {
+            "org_change_waiting" => "waiting",
+            "org_change_scheduled" => "scheduled",
+            _ => "turn",
+        },
+        days_remaining: item.due.map(|due| {
+            let zone = time::UtcOffset::from_hms(9, 0, 0).unwrap_or(time::UtcOffset::UTC);
+            (due.to_offset(zone).date() - now.to_offset(zone).date()).whole_days()
+        }),
         id: item.id,
         kind: item.kind,
         urg,
@@ -369,6 +301,12 @@ mod tests {
                 ActionInboxSource::HrRequests,
                 ActionInboxSource::HrRegister,
                 ActionInboxSource::HrInsurance,
+                ActionInboxSource::HrIdentity,
+                ActionInboxSource::HrBranch,
+                ActionInboxSource::HrContract,
+                ActionInboxSource::PeriodUnlock,
+                ActionInboxSource::Setup,
+                ActionInboxSource::GrantNotice,
                 ActionInboxSource::SupportAccess,
             ]
         );
@@ -678,12 +616,12 @@ mod tests {
         let mut seen_cursors = HashSet::new();
 
         assert!(matches!(
-            ensure_new_cursor(Some("cursor-1"), &mut seen_cursors, "cursor-1"),
+            complete::ensure_new_cursor(Some("cursor-1"), &mut seen_cursors, "cursor-1"),
             Err(CompleteActionInboxError::RepeatedCursor)
         ));
-        assert!(ensure_new_cursor(None, &mut seen_cursors, "cursor-2").is_ok());
+        assert!(complete::ensure_new_cursor(None, &mut seen_cursors, "cursor-2").is_ok());
         assert!(matches!(
-            ensure_new_cursor(None, &mut seen_cursors, "cursor-2"),
+            complete::ensure_new_cursor(None, &mut seen_cursors, "cursor-2"),
             Err(CompleteActionInboxError::RepeatedCursor)
         ));
     }
@@ -912,8 +850,13 @@ mod tests {
             ActionInboxSource::HrLifecycle => "hr_lifecycle",
             ActionInboxSource::HrRequests => "hr_request",
             ActionInboxSource::HrRegister => "hr_register",
+            ActionInboxSource::HrIdentity => "hr_identity",
+            ActionInboxSource::HrBranch => "hr_branch",
+            ActionInboxSource::HrContract => "hr_contract",
+            ActionInboxSource::PeriodUnlock => "period_unlock",
+            ActionInboxSource::Setup => "setup_entity",
+            ActionInboxSource::GrantNotice => "grant_notice",
             ActionInboxSource::HrInsurance => "insurance_filing_ACQUIRE_NPS",
-            ActionInboxSource::SupportAccess => "support_access",
         }
     }
 

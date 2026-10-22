@@ -1,7 +1,6 @@
 // Period locks as every screen reads them (BW-15): the lock page manages them; Home lists the unlock requests waiting
 // for this person as their second person.
 import type { components } from "@console/api/schema";
-import { get } from "../../lib/query";
 
 export type PeriodLock = components["schemas"]["PeriodLock"];
 export type UnlockRequest = NonNullable<PeriodLock["unlockRequest"]>;
@@ -12,4 +11,3 @@ export type UnlockRequest = NonNullable<PeriodLock["unlockRequest"]>;
  * Cedar read of in-force locks (backend-followups, UX-R1-HOME), and a 403 here means "cannot check ahead", never "open".
  * Each lock carries its latest unlock request and whether the reader may decide it.
  */
-export const inForceLocksQuery = get("/api/v1/period-locks", { params: { query: { active: true, limit: 200 } } });

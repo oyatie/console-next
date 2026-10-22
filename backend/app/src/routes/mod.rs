@@ -243,6 +243,12 @@ pub fn build_router(state: AppState) -> Router {
             let r = comms::mount_mail(r, &deps);
             #[cfg(feature = "notices")]
             let r = comms::mount_notices(r, &deps);
+            let r = r.merge(crate::action_inbox::router(
+                crate::action_inbox::ActionInboxState::new(
+                    pool.clone(),
+                    state.jwt_verifier.clone(),
+                ),
+            ));
             // Workflow studio and the workspace.
             #[cfg(feature = "workspace")]
             let r = workflow::mount_workspace(r, &deps);

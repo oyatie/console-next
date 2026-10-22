@@ -28,12 +28,6 @@ const GENERATED = new Set(["packages/api/src/schema.d.ts"]);
 const BASELINE = {
   // from -> to
   imports: [
-    "apps/web/src/features/home/Home.tsx -> apps/web/src/features/org/OrgChange.tsx",
-    "apps/web/src/features/home/Home.tsx -> apps/web/src/features/org/api.ts",
-    "apps/web/src/features/home/Home.tsx -> apps/web/src/features/people/Employee.tsx",
-    "apps/web/src/features/home/Home.tsx -> apps/web/src/features/people/ExitCase.tsx",
-    "apps/web/src/features/home/Home.tsx -> apps/web/src/features/people/api.ts",
-    "apps/web/src/features/home/Home.tsx -> apps/web/src/features/people/domain/exits.ts",
   ],
   // file -> count of /\bqueryKey\b/ outside lib/query.ts
   queryKey: {},
@@ -45,7 +39,6 @@ const BASELINE = {
     "apps/web/src/features/home/Home.tsx",
     "apps/web/src/features/org/OrgChange.tsx",
     "apps/web/src/features/people/Accounts.tsx",
-    "apps/web/src/features/people/Employee.tsx",
     "apps/web/src/features/people/ExitCase.tsx",
     "apps/web/src/features/people/People.tsx",
     "apps/web/src/features/platform/Tenants.tsx",
