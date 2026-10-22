@@ -43,6 +43,11 @@ test("일정 없음: warning → filtered people → assign one person; month sa
   await go(admin, `/attendance?month=${month}`);
   await expect(admin.getByRole("grid", { name: "월간 근무표" })).toBeVisible();
   await expectAccessible(admin, "month with unscheduled rows and save shortcut");
+  await admin.getByRole("button", { name: "일정 지정", exact: true }).first().focus();
+  await admin.keyboard.press("Enter");
+  const monthAssign = sheet(admin, "근무 일정 지정");
+  await expect(monthAssign).toBeVisible();
+  await monthAssign.getByRole("button", { name: "닫기", exact: true }).last().click();
   const day = kstDate(0);
   await cellOf(admin, "윤하준", day).click();
   await admin.keyboard.type("9-18");

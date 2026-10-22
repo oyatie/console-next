@@ -201,7 +201,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
         ...(rows.some((r) => r.cells.some((c) => c.plan_kind === "NO_SCHEDULE")) ? [{
           key: "schedule", header: t("attendanceRecords.day.plan"), width: "name" as const,
           cell: (r: GridRow) => r.cells.some((c) => c.plan_kind === "NO_SCHEDULE") ? <>
-            {t("attendance.dayKind.NO_SCHEDULE")} <Button size="sm" onClick={() => act({ kind: "assign", row: r })}>{t("attendanceRecords.unscheduled.assign")}</Button>
+            {t("attendance.dayKind.NO_SCHEDULE")} <Button size="sm" onKeyDown={(e) => e.stopPropagation()} onClick={() => act({ kind: "assign", row: r })}>{t("attendanceRecords.unscheduled.assign")}</Button>
           </> : null,
         }] : []),
       ]}
