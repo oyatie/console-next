@@ -7,44 +7,50 @@ fn url(s: &str) -> Url {
 }
 
 #[test]
-fn external_accepts_off_origin_https_and_refuses_insecure_schemes_and_userinfo() {
-    // Accepts https off-origin without userinfo
+fn accepts_off_origin_https() {
     assert!(external(&url("https://evil.test/")));
     assert!(external(&url(
         "https://external.example.com/path?a=1#section"
     )));
+}
 
-    // Refuses insecure schemes
-    assert!(
-        !external(&url("http://plain.test/")),
-        "http must be refused"
-    );
-    assert!(
-        !external(&url("http://evil.test/path")),
-        "http with path must be refused"
-    );
-    assert!(!external(&url("mailto:a@b.test")), "mailto must be refused");
-    assert!(
-        !external(&url("file:///C:/Windows")),
-        "file must be refused"
-    );
-    assert!(
-        !external(&url("javascript:alert(1)")),
-        "javascript must be refused"
-    );
-    assert!(!external(&url("data:text/html,x")), "data must be refused");
+#[test]
+fn refuses_http() {
+    assert!(!external(&url("http://plain.test/")));
+    assert!(!external(&url("http://evil.test/path")));
+}
 
-    // Refuses https with userinfo (credentials)
-    assert!(
-        !external(&url("https://user:pw@evil.test/")),
-        "https with user and password must be refused"
-    );
-    assert!(
-        !external(&url("https://user@evil.test/")),
-        "https with user only must be refused"
-    );
-    assert!(
-        !external(&url("https://:pw@evil.test/")),
-        "https with password only must be refused"
-    );
+#[test]
+fn refuses_mailto() {
+    assert!(!external(&url("mailto:a@b.test")));
+}
+
+#[test]
+fn refuses_file() {
+    assert!(!external(&url("file:///C:/Windows")));
+}
+
+#[test]
+fn refuses_javascript() {
+    assert!(!external(&url("javascript:alert(1)")));
+}
+
+#[test]
+fn refuses_data() {
+    assert!(!external(&url("data:text/html,x")));
+}
+
+#[test]
+fn refuses_username_and_password() {
+    assert!(!external(&url("https://user:pw@evil.test/")));
+}
+
+#[test]
+fn refuses_username_only() {
+    assert!(!external(&url("https://user@evil.test/")));
+}
+
+#[test]
+fn refuses_password_only() {
+    assert!(!external(&url("https://:pw@evil.test/")));
 }

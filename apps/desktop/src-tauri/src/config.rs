@@ -288,7 +288,6 @@ mod tests {
         assert!(!same_origin(&c, &url("data:text/html,x")));
         assert!(external(&url("https://evil.test/")));
         assert!(!external(&url("mailto:a@b.test")));
-        assert!(!external(&url("http://evil.test/")));
         assert!(!external(&url("file:///C:/Windows")) && !external(&url("javascript:alert(1)")));
     }
 
