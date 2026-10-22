@@ -233,14 +233,20 @@ async fn legacy_offboard_waits_until_after_the_last_working_day(owner: PgPool) {
     let last_day = w.today.next_day().unwrap();
     w.confirm(last_day).await;
     // OFFBOARD is the legacy spelling of the exit-case writer's TERMINATE.
+    let mut tx = owner.begin().await.unwrap();
+    sqlx::query("SET LOCAL session_replication_role = replica")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
     sqlx::query(
         "UPDATE employee_lifecycle_events SET event_type='OFFBOARD', \
          scheduled_request=jsonb_set(scheduled_request,'{event_type}','\"OFFBOARD\"') WHERE employee_id=$1",
     )
     .bind(w.employee)
-    .execute(&owner)
+    .execute(tx.as_mut())
     .await
     .unwrap();
+    tx.commit().await.unwrap();
     assert_eq!(w.hr.apply_due(last_day).await.unwrap(), 0);
     w.boundary(&owner, last_day).await;
     assert_eq!(

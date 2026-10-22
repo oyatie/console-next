@@ -1,4 +1,4 @@
-//! Live counts and last-working-day membership stay distinct across every surface.
+//! Confirmed exits share live and dated membership through the last working day.
 use super::*;
 use console_entity_adapter_postgres::PgEntityStore;
 use console_entity_application::{Actor, ReadOptions};
@@ -56,7 +56,7 @@ async fn confirmed_exit_counts_agree_without_changing_dated_placement(owner: PgP
          VALUES ($1,$2,'TERMINATE','ACTIVE','EXITED',$5,$5,$3,'Confirmed exit',$4,'SCHEDULED') RETURNING id",
     ).bind(*actor.org.as_uuid()).bind(p).bind(today.to_string()).bind(*actor.user.as_uuid()).bind(site).fetch_one(&owner).await.unwrap();
     for (q, expected) in [
-        (ReadOptions::default(), 0),
+        (ReadOptions::default(), 1),
         (
             ReadOptions {
                 as_of: Some(today),

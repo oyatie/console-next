@@ -936,7 +936,7 @@ async fn scheduled_events_apply_on_their_date_or_record_the_refusal(pool: PgPool
     assert_eq!(status, StatusCode::OK, "{detail}");
     assert!(detail["employee"]["next_event"].is_null(), "{detail}");
 
-    // An exit confirmed ahead of its date exits the employee on that date.
+    // An exit confirmed ahead of its last working day applies the day after it.
     let case = ctx.report_exit_on(emp, &day(40)).await;
     let (status, body) = ctx
         .exit_action(&case, "confirm", &ctx.token, hr_confirm())
@@ -945,7 +945,7 @@ async fn scheduled_events_apply_on_their_date_or_record_the_refusal(pool: PgPool
     assert_eq!(body["exit_event_state"], "SCHEDULED");
     assert_eq!(head(emp).await.0, "ACTIVE");
     assert_eq!(
-        console_app::apply_due_lifecycle_events(&runner, today + Duration::days(40))
+        console_app::apply_due_lifecycle_events(&runner, today + Duration::days(41))
             .await
             .unwrap(),
         1
@@ -1646,7 +1646,7 @@ async fn scheduled_exit_settlement_waits_for_the_exit(pool: PgPool) {
     );
     // Once the exit applies, the settlement files.
     assert_eq!(
-        console_app::apply_due_lifecycle_events(&runner, today + Duration::days(14))
+        console_app::apply_due_lifecycle_events(&runner, today + Duration::days(15))
             .await
             .unwrap(),
         1
