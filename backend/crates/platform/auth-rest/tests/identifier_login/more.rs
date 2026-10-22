@@ -53,6 +53,7 @@ async fn an_alias_signs_in_within_its_grace_period(owner: PgPool) {
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_step_up_names_only_the_callers_own_keys(owner: PgPool) {
+    console_platform_test_support::seed_consent_documents(&owner).await;
     let (a, a_id) = account(&owner, "가").await;
     let mut a_key = SoftKey::enroll(&owner, OrgId::one(), a).await;
     let (b, _) = account(&owner, "나").await;
@@ -71,6 +72,43 @@ async fn a_step_up_names_only_the_callers_own_keys(owner: PgPool) {
         "reason_key": "passkey_step_up_period_unlock", "replay_attempt": null,
         "payload_hash": "0".repeat(64),
     });
+    let before: i64 = sqlx::query_scalar("SELECT count(*) FROM auth_webauthn_ceremonies")
+        .fetch_one(&owner)
+        .await
+        .unwrap();
+    let (status, refused) = post(
+        &app,
+        PASSKEY_STEP_UP_START_PATH,
+        Some(token),
+        Some(json!({ "binding": binding.clone() })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
+    assert_eq!(refused["error"]["code"], "privacy_consent_required");
+    let after: i64 = sqlx::query_scalar("SELECT count(*) FROM auth_webauthn_ceremonies")
+        .fetch_one(&owner)
+        .await
+        .unwrap();
+    assert_eq!(after, before, "refused step-up must create no ceremony");
+    let (status, consent) = post(
+        &app,
+        console_platform_auth_rest::PRIVACY_CONSENT_STATUS_PATH,
+        Some(token),
+        Some(json!({})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{consent}");
+    let (status, accepted) = post(
+        &app,
+        console_platform_auth_rest::PRIVACY_CONSENT_ACCEPT_PATH,
+        Some(token),
+        Some(
+            json!({ "privacy": consent["privacy"], "terms": consent["terms"],
+            "privacy_collection": true, "terms_of_service": true }),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{accepted}");
     let (status, bound) = post(
         &app,
         PASSKEY_STEP_UP_START_PATH,

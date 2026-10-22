@@ -326,8 +326,15 @@ pub async fn issue_session_token(
         )
         .await
         .expect("issue real test session family");
-    seed_consent_documents(pool).await;
-    seed_session_consent(pool, family.family_id).await;
+    // Fixture writes use the original SQLx owner credentials, without the request pool's SET ROLE hook.
+    let setup = PgPoolOptions::new()
+        .max_connections(1)
+        .connect_with(pool.connect_options().as_ref().clone())
+        .await
+        .expect("connect fixture owner");
+    seed_consent_documents(&setup).await;
+    seed_session_consent(&setup, family.family_id).await;
+    setup.close().await;
     issuer
         .issue_session_access_token(
             input,
