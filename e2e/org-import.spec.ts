@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { fillDate } from "./sheet";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
@@ -76,7 +77,7 @@ test("import an org sheet: columns, exact-only values, preview with an error row
   await addr.getByLabel("도로명주소").fill("경기도 평택시 포승읍 평택항로 100");
   await addr.getByLabel("우편번호 (5자리)").fill("17962");
   await c.click(addr.getByRole("button", { name: "이 주소로 저장" }));
-  await card.getByLabel("개설일").fill("2026-11-01");
+  await fillDate(card, "2026-11-01", "개설일");
   await expect(page.getByRole("button", { name: "8건 적용" })).toHaveAttribute("aria-disabled", "true");
   await expect(page.getByText("오류 1건을 수정하거나, 오류 행만 제외하고 적용할 수 있습니다.")).toBeVisible();
   await expectAccessible(page, "org import preview");

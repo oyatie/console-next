@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { fillDate } from "./sheet";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
 import { go } from "./flows";
@@ -49,7 +50,7 @@ test("paste a list under a 법인, undo it whole, and undo the rest from the his
   await c.click(radio(card, "원천징수 신고", "본점에서 함께 신고"));
   await c.click(radio(card, "4대보험", "모두 성립 · 번호는 나중에"));
   await typeAddress(card, c);
-  await card.getByLabel("개설일").fill("2026-10-01");
+  await fillDate(card, "2026-10-01", "개설일");
   await expect(card).toContainText("다 골랐습니다");
   await expect(page.getByText("사업장 1곳과 부서 7개를 추가합니다")).toBeVisible();
   await c.click(submit(page));

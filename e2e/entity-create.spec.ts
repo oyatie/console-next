@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { fillDate } from "./sheet";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
 import { go, option } from "./flows";
@@ -82,7 +83,7 @@ test("the certificate wizard refuses a taken number and a future date, warns on 
   await expect(admin.getByText(/이 번호는 이미 주식회사 새온정밀/)).toBeVisible();
   await expect(admin.getByRole("link", { name: "그 등록증 열기" })).toBeVisible();
   // R: a future 개업연월일. The foot counts and names both, and nothing can go on.
-  await admin.getByLabel("개업연월일").fill("2099-01-01");
+  await fillDate(admin, "2099-01-01", "개업연월일");
   await expect(foot).toHaveText(/수정할 칸 2개 · 등록번호, 개업연월일/);
   await expect(admin.getByRole("button", { name: "다음: 등기·대표자" })).toHaveAttribute("aria-disabled", "true");
   await expect(admin.getByRole("button", { name: "여기까지 저장" })).toHaveAttribute("aria-disabled", "true");
@@ -91,7 +92,7 @@ test("the certificate wizard refuses a taken number and a future date, warns on 
 
   await c.click(admin.getByRole("button", { name: "번호 다시 보기" }));
   await admin.getByLabel("사업자등록번호").fill(REGISTRATION_FIXTURES.second.brn);
-  await admin.getByLabel("개업연월일").fill("2024-09-01");
+  await fillDate(admin, "2024-09-01", "개업연월일");
   await expect(foot).toBeHidden();
   // W: a CRN whose check digit does not match only warns, and saving stays possible.
   await admin.getByRole("textbox", { name: /^법인등록번호/ }).fill(CRN_BAD_CHECK);

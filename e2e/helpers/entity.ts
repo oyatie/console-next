@@ -3,6 +3,7 @@ import { fmtDate } from "@console/i18n/format";
 import { go, kstDate, option } from "../flows";
 import { registerWorkplace } from "../setup-flows";
 import { fillRegister, openRegistered, pressRegister, receiptOf } from "./register";
+import { fillDate } from "../sheet";
 
 /**
  * On the 법인 record: opens 고치기 on one fact and chooses 변경 from `from` (today when omitted) or 정정, returning
@@ -20,7 +21,7 @@ export async function reviseFact(page: Page, field: string, verb: "rev" | "cor",
   if (!from || from === kstDate()) await option(page, "언제부터 바뀝니까", `오늘 (${fmtDate(kstDate())})`).click();
   else {
     await option(page, "언제부터 바뀝니까", "직접 입력").click();
-    await sheet.getByLabel("적용일").fill(from);
+    await fillDate(sheet, from, "적용일");
   }
   return sheet;
 }

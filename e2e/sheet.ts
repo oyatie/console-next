@@ -17,9 +17,9 @@ export function sheet(page: Page, name?: string | RegExp) {
 /** The free-text reason of a lifecycle sheet. */
 export const reasonBox = (s: Locator) => s.getByRole("textbox", { name: /^사유/ });
 /** A date field of a sheet by its label ("언제부터"/"시행일", "시작일", "복귀 예정일", "새 계약 종료일"). */
-export const dateBox = (s: Locator, label = "언제부터|시작일|시행일") => s.getByRole("textbox", { name: new RegExp(`^(${label})`) });
+export const dateBox = (s: Locator | Page, label = "언제부터|시작일|시행일") => s.getByRole("textbox", { name: new RegExp(`^(${label})`) });
 /** Types and commits the shared date field. */
-export async function fillDate(s: Locator, value: string, label?: string) {
+export async function fillDate(s: Locator | Page, value: string, label?: string) {
   const box = dateBox(s, label);
   await box.fill(value);
   await box.blur();
