@@ -18,18 +18,18 @@ register, and the renewal horizon uses `hr.contract_soon_days`.
 | Due approved change | OrgChange / org_change_apply | Inline consequence-confirmed application |
 | Own change awaiting someone else | OrgChange / org_change_waiting | Organization change, current step |
 | Future approved change | OrgChange / org_change_scheduled | Organization change, effective date |
-| HR/HQ exit confirmation and settlement | HrExit / hr_exit_confirm, hr_exit_confirm_hq, hr_exit_settle | Exit case at its next action |
+| HR/HQ exit confirmation and settlement | HrExit / hr_exit_confirm, hr_exit_confirm_hq, hr_exit_settle | Exit case at its next action (`j5-exit.spec.ts`, HQ confirmation / settlement / rejection) |
 | Failed scheduled action | HrLifecycle / lifecycle_apply_failed | Personnel card, failure reason |
 | Open correction request | HrRequests / hr_request | Change request selected by id |
 | Incomplete statutory register | HrRegister / register_review | Personnel card |
 | Identity confirmation | HrIdentity / identity_review | Personnel card |
 | Missing home branch | HrBranch / home_branch_review | Personnel card |
-| Contract ending in reminder window | HrContract / contract_renewal | Personnel card, renewal sheet |
+| Contract ending in reminder window | HrContract / contract_renewal | Personnel card, renewal sheet (`j3-renewal.spec.ts`) |
 | Pending insurance filing | HrInsurance / insurance_filing | Statutory filing panel |
-| Unlock needing a second person | PeriodUnlock / period_unlock | Period lock, selected request |
-| Unconfirmed own grant | GrantNotice / grant_notice | Inline notice confirmation |
-| Setup work | Setup / setup_* | Existing authorized setup rail, once inside 업무함 |
-| Operating account with one passkey | GrantNotice / account_security | Inline second-passkey registration and account link |
+| Unlock needing a second person | PeriodUnlock / period_unlock | Period lock, selected request (`period-unlock-approve.spec.ts`, live arrival / reject / approve) |
+| Unconfirmed own grant | GrantNotice / grant_notice | Inline notice confirmation (`period-unlock-approve.spec.ts`, disclosure / confirmation) |
+| Setup work | Setup / setup_* | Existing authorized setup rail, once inside 업무함 (`import-reds-layout.spec.ts`, arrival hold) |
+| Operating account with one passkey | GrantNotice / account_security | Inline second-passkey registration and account link (`setup-truth.spec.ts`, button / account link / removal; `d26-solo-exit.spec.ts`, sole remaining row) |
 
 The OrgChange and HrExit DB source tests cover each state and denial. The release
 journey tests cover setup, identity, branch, renewal policy, grant notices, unlocks,
@@ -100,7 +100,10 @@ an account could do from Home on `5b15c3a8`; no browser source queues are rebuil
 `action_inbox.source_concurrency` is a read-only process setting (default four),
 overridable by `CONSOLE_ACTION_INBOX_SOURCE_CONCURRENCY` within registry bounds.
 One semaphore is shared by all inbox and Workbench requests in an API process;
-its capacity leaves at least one connection below the actual runtime pool size.
+its source-future capacity is capped below the actual runtime pool size. This
+does not reserve connection leases: source/audit handoff can briefly retain more
+than one lease per permit. A settings-owned reserved floor plus validation of
+small runtime-pool plans remains a follow-up.
 The scale test measures actual pool leases and acquisitions as well as API latency.
 SQLx returns completed connections asynchronously, so leases can briefly exceed the
 number of active source futures. Six parallel reads must still let a separate
@@ -135,8 +138,8 @@ The lane evidence directory is `lanes/eco-g2-inbox/round2-logs/`.
 ## Change inventory
 
 The allowlist is `units/ecosystem/briefs/ECO-G2-INBOX.paths.json` in console-handoff.
-The paths below are the complete lane inventory against train/fix-r1, including
-Round 2. Generated contracts are regenerated with their repository tools.
+The paths below are the complete lane inventory against public dev, including
+Round 3 (the six original lane commits were rebased from train/fix-r1). Generated contracts are regenerated with their repository tools.
 
 ### Owned and shared contract paths
 
@@ -252,6 +255,11 @@ No excluded lane file is edited.
 - `backend/crates/settings/domain/tests/registry.rs`
 - `backend/crates/settings/domain/tests/sql_definitions.rs`
 - `docs/product/action-inbox.md`
+- `e2e/d26-solo-exit.spec.ts`
+- `e2e/import-reds-layout.spec.ts`
+- `e2e/j3-renewal.spec.ts`
+- `e2e/j5-exit.spec.ts`
+- `e2e/period-unlock-approve.spec.ts`
 - `e2e/home-truth.spec.ts`
 - `e2e/inbox-live.spec.ts`
 - `e2e/live.spec.ts`

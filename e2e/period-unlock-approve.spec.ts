@@ -49,7 +49,8 @@ test("period unlock: a second close authority refuses, then approves; the reques
   await go(exec, "/", true);
   await passkeyLogin(exec);
   await exec.reload(); // an open page learns of new access on its next load (access-hr-walk)
-  const notices = exec.getByRole("region", { name: "확인할 새 권한 1건" });
+  const inbox = exec.getByRole("region", { name: "업무함", exact: true });
+  const notices = inbox.getByRole("listitem").filter({ has: exec.getByRole("button", { name: "기간 마감 부여 확인 기록", exact: true }) });
   await expect(notices).toContainText("기간 마감 · 전체 ·", { timeout: 20_000 }); // Home holds its first frame until every read lands
   await expectAccessible(exec, "grant notice");
   await notices.getByRole("button", { name: "기간 마감 부여 확인 기록" }).click();
@@ -101,12 +102,12 @@ test("period unlock: a second close authority refuses, then approves; the reques
   expect(still.unlockRequest?.status).toBe("PENDING");
   await expect(row).toContainText("승인 대기");
 
-  // The second person, on Home all along, is told live (Home holds a change until asked), and refuses it with a reason,
+  // The second person, on Home all along, sees the request arrive live and refuses it with a reason,
   // after the requester's own-write window (OWN_ECHO_MS), as people do.
   await exec.waitForTimeout(OWN_ECHO_MS);
-  await exec.getByRole("button", { name: /^새 항목 \d+건/ }).click();
-  const queue = exec.getByRole("region", { name: "승인할 잠금 해제 1건" });
-  await queue.getByRole("link", { name: `급여 ${month} 해제 요청 검토` }).click();
+  const queue = inbox.getByRole("listitem").filter({ has: exec.locator(`a[href="${LOCKS}?review=${lock.id}"]`) });
+  await expect(queue).toContainText("잠금 해제");
+  await queue.getByRole("link", { name: "열기", exact: true }).click();
   const card = exec.getByRole("dialog", { name: `급여 ${month} 잠금 해제 요청` });
   await expect(card).toContainText("내 차례입니다");
   await expect(card).toContainText("운영 계정 ·");

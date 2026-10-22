@@ -45,7 +45,9 @@ test("a solo ops account registers a person and closes their exit alone, with no
   await expect(admin).toHaveURL(/\/$/);
   await routeReady(admin);
   await expect(setupRail(admin)).toBeHidden();
-  await expect(admin.getByRole("heading", { name: "처리하거나 확인할 일이 없습니다" })).toBeVisible();
+  const inbox = admin.getByRole("region", { name: "업무함", exact: true });
+  await expect(inbox.getByRole("listitem")).toHaveCount(1);
+  await expect(inbox.getByRole("button", { name: "두 번째 패스키 등록", exact: true })).toBeVisible();
   await expect(admin.getByRole("main")).not.toContainText(/결재|기안/);
 
   // Register, report the exit, and confirm it for HR: the employee leaves at once.
@@ -81,9 +83,10 @@ test("a solo ops account registers a person and closes their exit alone, with no
 
   // Home has nothing stuck on a second person: the case waits only on its settlement.
   await go(admin, "/");
-  const queue = admin.getByRole("region", { name: /처리할 퇴직/ });
+  const queue = inbox.getByRole("listitem").filter({ has: admin.locator(`a[href="${caseHref}?act=prepare_settlement"]`) });
   await expect(queue).toContainText("홀로퇴직");
-  await expect(queue).not.toContainText("본사 퇴직 확인 · 홀로퇴직");
+  await expect(queue.getByRole("link", { name: "퇴직 정산 결재 준비", exact: true })).toBeVisible();
+  await expect(inbox.getByRole("link", { name: "본사 퇴직 확인", exact: true })).toHaveCount(0);
 
   // decisions #26 item d: after go-live the ops account corrects a 사업자등록번호 itself, with its passkey.
   await go(admin, "/org/entities");
