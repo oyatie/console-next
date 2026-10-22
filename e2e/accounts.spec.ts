@@ -28,7 +28,7 @@ test("accounts: invite with no role, continue into 권한 부여, find the exist
   const panel = admin.getByRole("complementary", { name: "정하늘" });
   await expect(panel.getByRole("status")).toContainText("정하늘님의 계정을 생성하고 첫 로그인 코드를 발급했습니다");
   // Created already linked to the employee record (one request); access is a link, never a title.
-  await expect(panel.getByRole("link", { name: "정하늘 · HK-4112" })).toBeVisible();
+  await expect(panel.getByRole("link", { name: "정하늘 · HK-4112", exact: true })).toBeVisible();
   await expect(panel.getByRole("button", { name: "역할 변경" })).toHaveCount(0);
   await expect(panel.getByRole("link", { name: "이 사람이 할 수 있는 일" })).toBeVisible();
   await expect(admin.getByRole("row", { name: /정하늘/ })).toContainText("HK-4112");

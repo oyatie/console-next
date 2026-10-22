@@ -1,4 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
 .label { display: inline-flex; flex-direction: column; min-width: 0; max-width: 100%; vertical-align: middle; }
-.name { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.name { display: flex; flex-wrap: nowrap; min-width: 0; align-items: center; gap: var(--space-1); }
+.name > span { flex: none; }
+.text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

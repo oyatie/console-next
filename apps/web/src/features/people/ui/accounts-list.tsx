@@ -129,7 +129,7 @@ const columns = (peers: readonly Person[], open?: string): LongColumn<Person>[] 
     // The ops account is the one preset: named as such, never by a role title (company-17).
     cell: (p) => <>{p.id === open ? <strong aria-current="true"><PersonLabel person={p} peers={peers} /></strong> : <PersonLabel person={p} peers={peers} />}{p.is_tenant_ops && <> <Chip tone="info">{t("accounts.ops")}</Chip></>}</>,
     rowHeader: true,
-    width: "2fr",
+    width: "40%",
   },
   {
     id: "employee",

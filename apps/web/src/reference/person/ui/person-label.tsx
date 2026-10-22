@@ -8,8 +8,8 @@ import s from "./person-label.module.css";
 export function PersonLabel({ person, peers, linked = true }: { person: PersonIdentity; peers?: readonly PersonIdentity[]; linked?: boolean }) {
   const label = personLabel(person, peers);
   const content = <bdi className={s.label} title={label.text}>
-    <bdi className={s.name}>{label.name}{label.sameName && <Chip>{t("people.sameName.chip")}</Chip>}</bdi>
-    <bdi className={`${s.detail} muted`}>{label.detail}</bdi>
+    <bdi className={s.name}><bdi className={s.text}>{label.name}</bdi>{label.sameName && <Chip>{t("people.sameName.chip")}</Chip>}</bdi>
+    <bdi className={`${s.detail} t-xs muted`}>{label.detail}</bdi>
   </bdi>;
   return linked && person.employee_id ? <Link to="/people/$id" params={{ id: person.employee_id }}>{content}</Link> : content;
 }

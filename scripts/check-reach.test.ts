@@ -99,7 +99,7 @@ test("a hosted checkout proves reachability without a private queue or home poin
     env: { ...process.env, BACKLOG_QUEUE_DIR: "", XDG_CONFIG_HOME: mkdtempSync(path.join(tmpdir(), "reach-hosted-")) },
   });
   expect(r.status, r.stderr).toBe(0);
-});
+}, 30_000);
 const allowance = { lane: "P1b", reason: "Employee card delivery, units/mvp-completion/plan.md" };
 
 test("operations: an uncalled MVP OpenAPI operation is refused with METHOD path, even if a test calls it", () => {

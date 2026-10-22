@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test, type Page } from "@playwright/test";
-import { expectAccessible } from "./a11y";
+import { expect, test, type Locator, type Page } from "@playwright/test";
+import { atPhoneWidth, expectAccessible } from "./a11y";
 import { go, stepUp, takeCode } from "./flows";
 import { tenantInSetup } from "./setup-flows";
 
@@ -15,29 +15,52 @@ async function inviteNamesake(admin: Page, login: string) {
   await takeCode(admin);
 }
 
-test("account-only namesakes are distinguishable before bulk selection and each has one readiness action", { tag: "@access" }, async ({ browser }) => {
-  const { admin } = await tenantInSetup(browser, "access-namesakes", "구별상사", false, "본점", "none");
-  await inviteNamesake(admin, "worker1234");
-  await inviteNamesake(admin, "worker5678");
-
-  await go(admin, "/access/grants/bulk");
-  const people = admin.getByRole("region", { name: "부여할 사람" });
-  const rows = people.getByRole("row").filter({ hasText: "권한없음테스트" });
+async function expectDistinctRows(rows: Locator) {
   await expect(rows).toHaveCount(2);
   for (const suffix of ["1234", "5678"]) {
     const row = rows.filter({ hasText: `w••••${suffix}@` });
     await expect(row).toHaveCount(1);
     await expect(row).toContainText("동명이인");
     await expect(row).not.toContainText(`worker${suffix}`);
-    const visible = await row.getByText(new RegExp(`^w••••${suffix}@`)).evaluate((element, end) => {
+    const fits = await row.getByText(new RegExp(`^w••••${suffix}@`)).evaluate((element, end) => {
       const text = element.firstChild!;
       const start = text.textContent!.indexOf(end);
       const range = new Range();
       range.setStart(text, start);
       range.setEnd(text, start + end.length);
-      return range.getBoundingClientRect().right <= element.getBoundingClientRect().right;
+      const detail = element.getBoundingClientRect();
+      const name = element.previousElementSibling!.getBoundingClientRect();
+      const cell = element.closest('[role="rowheader"], [role="gridcell"]')!.getBoundingClientRect();
+      return { suffixFits: range.getBoundingClientRect().right <= detail.right, noOverlap: name.bottom <= detail.top,
+        nameFits: name.top >= cell.top, detailFits: detail.bottom <= cell.bottom };
     }, suffix);
-    expect(visible, "the distinguishing suffix fits before the row is selected").toBe(true);
+    expect(fits, "the distinguishing suffix fits and does not overlap the name or chip").toEqual({
+      suffixFits: true, noOverlap: true, nameFits: true, detailFits: true,
+    });
+  }
+}
+
+test("account-only namesakes are distinguishable before bulk selection and each has one readiness action", { tag: "@access" }, async ({ browser }) => {
+  const { admin } = await tenantInSetup(browser, "access-namesakes", "구별상사", false, "본점", "none");
+  await inviteNamesake(admin, "worker1234");
+  await inviteNamesake(admin, "worker5678");
+
+  await go(admin, "/people?view=accounts");
+  await atPhoneWidth(admin, async () => {
+    await expectDistinctRows(admin.getByRole("row").filter({ hasText: "권한없음테스트" }));
+    await expectAccessible(admin, "namesake accounts at 390px");
+  });
+
+  await go(admin, "/access/grants/bulk");
+  const people = admin.getByRole("region", { name: "부여할 사람" });
+  const rows = people.getByRole("row").filter({ hasText: "권한없음테스트" });
+  await atPhoneWidth(admin, async () => {
+    await expectDistinctRows(rows);
+    await expectAccessible(admin, "namesake bulk at 390px");
+  });
+  await expectDistinctRows(rows);
+  for (const suffix of ["1234", "5678"]) {
+    const row = rows.filter({ hasText: `w••••${suffix}@` });
     await row.getByRole("gridcell").first().click();
     await expect(row).toHaveAttribute("aria-selected", "true");
   }
@@ -66,6 +89,10 @@ test("account-only namesakes are distinguishable before bulk selection and each 
   await expect(options.filter({ hasText: "w••••1234@" })).toHaveCount(1);
   await expect(options.filter({ hasText: "w••••5678@" })).toHaveCount(1);
   await expectAccessible(admin, "namesake account picker");
+  await admin.getByRole("button", { name: "어두운 화면으로 전환", includeHidden: true }).click();
+  await expect(admin.locator("html")).toHaveAttribute("data-theme", "dark");
+  await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).clear();
+  await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill("권한없음테스트");
   await options.filter({ hasText: "w••••5678@" }).click();
   const sheet = admin.getByRole("dialog", { name: "권한 부여" });
   await expect(sheet).toContainText("w••••5678@");

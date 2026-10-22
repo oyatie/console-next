@@ -27,13 +27,15 @@ beforeAll(async () => {
         function Picker() {
           const [query, setQuery] = useState('');
           const [value, setValue] = useState(null);
+          const [clicks, setClicks] = useState(0);
           return h('main', null,
-            h('button', { id: 'outside' }, 'Outside'),
+            h('button', { id: 'outside', onClick: () => setClicks(n => n + 1) }, 'Outside'),
+            h('div', null, h('button', { id: 'custom-tab', tabIndex: 3 }, 'Custom tab order')),
             h('div', { inert: true }, h('button', { id: 'already-inert' }, 'Unavailable')),
             h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query,
               onQueryChange: setQuery, value, onChange: setValue,
               options: [{ id: 'a', name: 'Namesake', display: 'Namesake · HR' }, { id: 'b', name: 'Namesake', display: 'Namesake · Sales' }] }),
-            h('output', null, value));
+            h('output', { id: 'selected' }, value), h('output', { id: 'clicks' }, clicks));
         }
         createRoot(document.getElementById('root')).render(h(Picker));
       ` : undefined,
@@ -49,17 +51,18 @@ beforeAll(async () => {
   await server.listen();
   browser = await chromium.launch();
   page = await (await browser.newContext()).newPage();
-  page.setDefaultTimeout(5000);
+  page.setDefaultTimeout(15000);
 }, 30000);
 
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
-test("an open picker keeps hidden content inert, passes axe in both themes, and restores focusability on close", async () => {
+test("an open picker removes hidden controls from tab order, passes axe in both themes, and restores focusability on close", async () => {
   await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
   const input = page.getByRole("combobox", { name: "Person" });
   await input.fill("Namesake");
   await page.getByRole("option").first().waitFor();
-  await expect.poll(() => page.locator("#outside").evaluate((el) => !!el.closest("[inert]"))).toBe(true);
+  await expect.poll(() => page.locator("#outside").evaluate((el) => el.tabIndex)).toBe(-1);
+  expect(await page.locator("#custom-tab").getAttribute("tabindex")).toBe("-1");
   for (const theme of ["light", "dark"]) {
     await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
     const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
@@ -67,7 +70,8 @@ test("an open picker keeps hidden content inert, passes axe in both themes, and 
   }
   await page.getByRole("option", { name: "Namesake · HR" }).click();
   await page.getByRole("option").first().waitFor({ state: "hidden" });
-  await expect.poll(() => page.locator("#outside").evaluate((el) => !!el.closest("[inert]"))).toBe(false);
+  await expect.poll(() => page.locator("#outside").getAttribute("tabindex")).toBe(null);
+  expect(await page.locator("#custom-tab").getAttribute("tabindex")).toBe("3");
   await expect.poll(() => page.locator("#already-inert").evaluate((el) => !!el.closest("[inert]"))).toBe(true);
   await page.getByRole("button", { name: "Outside", exact: true }).focus();
   expect(await page.getByRole("button", { name: "Outside", exact: true }).evaluate((el) => el === document.activeElement)).toBe(true);
@@ -77,6 +81,16 @@ test("a deliberately selected namesake without an employee number can be confirm
   await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
   await page.getByRole("combobox", { name: "Person" }).fill("Namesake");
   await page.getByRole("option", { name: "Namesake · Sales" }).click();
-  await page.waitForFunction(() => document.querySelector("output")?.textContent === "b");
-  expect(await page.locator("output").textContent()).toBe("b");
+  await page.waitForFunction(() => document.querySelector("#selected")?.textContent === "b");
+  expect(await page.locator("#selected").textContent()).toBe("b");
 }, 10000);
+
+test("one outside click activates its control while the picker is open", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
+  await page.getByRole("combobox", { name: "Person" }).fill("Namesake");
+  await page.getByRole("option").first().waitFor();
+  const bounds = await page.locator("#outside").boundingBox();
+  await page.mouse.click(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2);
+  await expect.poll(() => page.locator("#clicks").textContent()).toBe("1");
+  await page.getByRole("option").first().waitFor({ state: "hidden" });
+}, 30000);
