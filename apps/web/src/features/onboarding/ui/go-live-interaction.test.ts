@@ -55,7 +55,11 @@ beforeAll(async () => {
   });
   await server.listen();
   browser = await chromium.launch();
-});
+  // First load pays Vite's transforms and dep optimisation; do it here so the test's 5 s budget measures only the interaction.
+  const warm = await browser.newPage();
+  await warm.goto(`${server.resolvedUrls!.local[0]}setup/go-live`, { waitUntil: "networkidle" }).catch(() => undefined);
+  await warm.close();
+}, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
 test("clicks cannot launch while blocked or refreshing; the remedy returns to a ready preview that submits once", async () => {
