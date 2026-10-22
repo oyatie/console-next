@@ -11,10 +11,7 @@ const state = vi.hoisted(() => ({
   run: undefined as undefined | ((input: { id: string | null; requestId?: string }) => Promise<unknown>),
   assertion: vi.fn(), patch: vi.fn(),
 }));
-vi.mock("@console/api", async (original) => ({ ...await original<object>(),
-  session: { claims: { sub: "01a15d08-533d-780f-8624-5284d9060bf9" } }, assertPasskey: state.assertion,
-  api: { PATCH: state.patch }, unwrap: async (r: Promise<unknown>) => r,
-}));
+vi.mock("@console/api", async (original) => (await import("./account-link-test-api")).accountLinkApi(await original<object>(), state));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({}) }));
 vi.mock("@tanstack/react-router", () => ({ Link: () => null, useNavigate: () => vi.fn() }));
 vi.mock("./use-linked-account", () => ({
