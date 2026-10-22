@@ -208,8 +208,8 @@ local measurements are sizing inputs, not hosted proof:
 
 | Setting | Provisional value | Source and headroom |
 |---|---:|---|
-| Job cap | 52 | Round-5 verifier full reservation 39 jobs; +33% |
-| Summed-minute warning budget | 300 | Round-5 planner 217 job-minutes; +38% |
+| Job cap | 60 | Round-6 full reservation 45 jobs (24 shard slots); +33%; round-5 measured plan was 39 |
+| Summed-minute warning budget | 320 | Round-6 full reservation 250 job-minutes; +28%; round-5 measured plan was 217 |
 | Browser shard cap | 24 | Round-5 CI-shaped seed plan 17 shards; +41%; slower timings repack |
 | Disk cap | 57 GiB | `r5-disk.json`: 42.376 GiB shared-build peak; +34.5% |
 | Free disk minimum | 3 GiB | Existing extraction reserve, additional to the measured build footprint |

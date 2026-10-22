@@ -79,6 +79,9 @@ test("plan budgets the workflow timeout chain; job-minutes warn without blocking
   const p = { backend: true, web: true, e2e: true, unit: true, db: true };
   const jobs = [{ browser: "chromium", shard: 1, est: 300 }, { browser: "firefox", shard: 1, est: 300 }];
   const proof = planBudget(p, c, jobs);
+  const reservation = planBudget(p, c);
+  assert.ok(c.maxJobs >= Math.ceil(reservation.jobs * 1.25));
+  assert.ok(c.maxTotalMinutes >= Math.ceil(reservation.minutes * 1.25));
   assert.equal(proof.wallMinutes, 195);
   assert.ok(proof.wallMinutes < proof.queueMinutes);
   assert.equal(proof.perJob["e2e-chromium-1"], 5.5);
