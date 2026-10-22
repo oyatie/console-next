@@ -78,7 +78,9 @@ impl HrService {
         let reach = hr_reach(&p, access::feature("certificate_read"))?;
         with_audits::<_,_,HrError>(&self.pool,p.org_id,move|tx|Box::pin(async move {
             let key=console_settings_domain::SettingKey::DisplayPageSize;
-            let resolved=console_platform_db::settings_read::resolve_in_tx(tx.as_mut(),p.org_id,&[key],None,time::OffsetDateTime::now_utc()).await?;
+            // Settings are stamped with the database clock, so read them as of the same clock.
+            let now: time::OffsetDateTime = sqlx::query_scalar("SELECT now()").fetch_one(tx.as_mut()).await?;
+            let resolved=console_platform_db::settings_read::resolve_in_tx(tx.as_mut(),p.org_id,&[key],None,now).await?;
             let size=match resolved.get(&key).and_then(|r|r.as_ref().ok()).map(|r|r.value) {
                 Some(console_settings_domain::SettingValue::Int(size))=>size,
                 _=>return Err(HrError::internal("display page size is not configured")),
