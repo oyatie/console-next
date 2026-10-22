@@ -24,8 +24,12 @@ test("a sole admin's elevated grant waits for the configured deadline", { tag: [
   expect(before).toHaveLength(1);
   expect(before[0]!.enforcement).toBe("SCHEDULED");
   expect(Date.parse(before[0]!.activates_at!)).toBeGreaterThan(Date.now());
+  const row = admin.getByRole("row", { name: /이임원/ });
+  await expect(row).toContainText("시작 전");
   await activatePendingGrants(admin, token);
   expect((await read())[0]!.enforcement).toBe("ENFORCED");
+  await expect(row).toContainText("적용 중");
+  await expect(row).not.toContainText("시작 전");
 });
 
 

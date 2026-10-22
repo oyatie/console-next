@@ -33,7 +33,6 @@
   "unused-export:apps/web/src/features/access/api.ts:ApplyGrantsOutcome": 1,
   "unused-export:apps/web/src/features/access/api.ts:EffectiveState": 1,
   "unused-export:apps/web/src/features/access/api.ts:Enforcement": 1,
-  "unused-export:apps/web/src/features/access/api.ts:PreviewItem": 1,
   "unused-export:apps/web/src/features/access/api.ts:RoleInput": 1,
   "unused-export:apps/web/src/features/access/api.ts:RoleReason": 1,
   "unused-export:apps/web/src/features/access/domain/grant-filter.ts:GrantFilter": 1,

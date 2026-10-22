@@ -44,6 +44,7 @@ const denied = (page: Page) => page.getByRole("region", { name: "이 화면에 �
 
 test("an HR worker granted 인사 실무 over one 법인 works inside it and is refused outside it, typed", { tag: ["@access", "@hr", "@regression"] }, async ({ browser }) => {
   const admin = await openTenant(browser, "axfive", "늘봄그룹");
+  const token = bearerOf(admin);
   await setupRail(admin).getByRole("link", { name: "법인 등록" }).first().click();
   await registerEntity(admin, "늘봄정밀");
   await firstWorkplace(admin, "늘봄정밀", "본사");
@@ -112,7 +113,7 @@ test("an HR worker granted 인사 실무 over one 법인 works inside it and is 
     await expect(sheet.getByText(fmtStamp(item.activates_at), { exact: false })).toBeVisible();
   }
   await stepUp(sheet, "패스키로 확인하고 부여 1건 저장", admin.getByRole("status").filter({ hasText: "김인사님에게 부여 1건을 저장했습니다" }));
-  await activatePendingGrants(admin, bearerOf(admin));
+  await activatePendingGrants(admin, token);
   // ROL-M4-grant-saved: a receipt with 되돌리기; then the request is closed as handled.
   await expect(admin.getByRole("status").filter({ hasText: "김인사님에게 부여 1건을 저장했습니다" }).getByRole("button", { name: "되돌리기" })).toBeVisible();
   await requests.getByRole("button", { name: "처리됨" }).click();
