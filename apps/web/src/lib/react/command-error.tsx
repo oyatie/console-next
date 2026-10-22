@@ -105,31 +105,18 @@ export function CommandError({
   }
 
   return (
-    <Banner
-      tone={checking ? "info" : "danger"}
-      live={live ?? (checking ? "polite" : "assertive")}
-      title={checking ? t("requestOutcome.checking") : undefined}
-      actions={finish && <Button variant="primary" onClick={finish}>{t("requestOutcome.check")}</Button>}
-    >
+    <Banner tone={checking ? "info" : "danger"} live={live ?? (checking ? "polite" : "assertive")} title={checking ? t("requestOutcome.checking") : undefined}
+      actions={finish && <Button variant="primary" onClick={finish}>{t("requestOutcome.check")}</Button>}>
       {api?.status === 0 ? t("common.networkError") : failureText(error, own)}
       {checking && <p>{t("requestOutcome.remedy")}</p>}
-      {change && (
-        change.redacted ? <p>{t("requestOutcome.other")}</p> : (
-          <>
-            <p>
-              {t("requestOutcome.changed", { actor, at: fmtDateTime(change.recorded_at) })}
-              {change.actor_kind === "OPS_ACCOUNT" && <Chip tone="warn">{t("timeline.state.emergency")}</Chip>}
-              {change.actor_kind === "SUPPORT_OPERATOR" && <Chip>{t("timeline.state.operator")}</Chip>}
-            </p>
-            {change.fields.length > 0 && <p>{t("requestOutcome.fields", { fields: labels.join(", ") })}</p>}
-            {historyHref && change.audit_id && (
-              <p>
-                <Link to={historyHref as "/"}>{t("requestOutcome.history")}</Link>
-              </p>
-            )}
-          </>
-        )
-      )}
+      {change && (change.redacted ? <p>{t("requestOutcome.other")}</p> : <>
+        <p>{t("requestOutcome.changed", { actor, at: fmtDateTime(change.recorded_at) })}
+          {change.actor_kind === "OPS_ACCOUNT" && <Chip tone="warn">{t("timeline.state.emergency")}</Chip>}
+          {change.actor_kind === "SUPPORT_OPERATOR" && <Chip>{t("timeline.state.operator")}</Chip>}
+        </p>
+        {change.fields.length > 0 && <p>{t("requestOutcome.fields", { fields: labels.join(", ") })}</p>}
+        {historyHref && change.audit_id && <p><Link to={historyHref as "/"}>{t("requestOutcome.history")}</Link></p>}
+      </>)}
       {children}
       <CommandReference requestKey={key} operationId={api?.operationId} />
     </Banner>

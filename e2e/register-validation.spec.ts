@@ -85,4 +85,9 @@ test("a named server refusal focuses once and its summary link returns to the fi
   await expect(phone).toBeFocused();
   await summary.getByRole("link", { name: /이름/ }).click();
   await expect(name).toBeFocused();
+  await name.fill("김".repeat(200));
+  const created = admin.waitForResponse((response) => response.url().endsWith("/api/v1/employees") && response.request().method() === "POST");
+  await pressRegister(admin);
+  expect((await created).status()).toBe(201);
+  await expect(sheet).toBeHidden();
 });

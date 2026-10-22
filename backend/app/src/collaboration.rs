@@ -3,9 +3,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
-use console_kernel_core::{
-    AuditAction, AuditEvent, BranchScope, ErrorKind, KernelError, TraceContext,
-};
+use console_kernel_core::{AuditAction, AuditEvent, BranchScope, KernelError, TraceContext};
 use console_platform_auth::{
     JwtVerifier, MobilePasskeyStepUpBinding, MobilePasskeyStepUpEnvelope,
     MobilePasskeyStepUpVerificationError, PasskeyService,

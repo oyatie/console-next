@@ -2,12 +2,12 @@
 # Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
 app/src/action_inbox.rs	532
 app/src/cedar_parity.rs	313
-app/src/collaboration.rs	1501
+app/src/collaboration.rs	1499
 app/src/hr.rs	3581
-app/src/objects.rs	2008
-app/src/office.rs	892
+app/src/objects.rs	2007
+app/src/office.rs	891
 app/src/workbench.rs	660
-app/src/workflow_object_context.rs	461
+app/src/workflow_object_context.rs	460
 app/src/workflow_studio.rs	7166
 app/tests/action_inbox_api.rs	1145
 app/tests/attendance_persona_api.rs	415

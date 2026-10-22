@@ -12,14 +12,13 @@ use axum::http::{StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Extension, Json, Router};
-use console_kernel_core::{BranchId, BranchScope, ErrorKind, KernelError};
+use console_kernel_core::{BranchId, BranchScope, KernelError};
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::{
     Action, Feature, PermissionLevel, Principal, authorize, authorize_org_wide, permission_for,
 };
 use console_platform_db::{DbError, with_org_conn};
 use serde::Serialize;
-use serde_json::json;
 use sqlx::{PgPool, Postgres, Row, Transaction};
 use time::OffsetDateTime;
 use url::form_urlencoded;

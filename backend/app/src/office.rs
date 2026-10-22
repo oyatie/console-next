@@ -39,9 +39,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use console_kernel_core::{
-    AuditAction, AuditEvent, ErrorKind, KernelError, OrgId, TraceContext, UserId,
-};
+use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
 use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
 use console_platform_db::{DbError, with_audit, with_audits, with_org_conn};
 use console_platform_storage::{PresignGetRequest, S3ObjectStore, SeaweedS3Storage};
@@ -723,6 +721,7 @@ fn verify_hs256<T: DeserializeOwned>(
         status: StatusCode::UNAUTHORIZED,
         code: "invalid_token",
         message: "token signature verification failed".to_owned(),
+        errors: None,
         retryable_conflict: false,
     })
 }

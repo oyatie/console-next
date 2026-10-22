@@ -177,4 +177,8 @@ async fn registration_field_refusal_reaches_the_real_route(pool: PgPool) {
         assert!(body["error"]["operation_id"].is_string(), "{body}");
         assert_eq!(count(&pool, "employees", org).await, 0);
     }
+    request["name"] = json!("김".repeat(200));
+    let (status, body) = admin.call("POST", "/api/v1/employees", Some(request)).await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    assert_eq!(count(&pool, "employees", org).await, 1);
 }

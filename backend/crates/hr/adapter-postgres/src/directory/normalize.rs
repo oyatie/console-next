@@ -13,7 +13,7 @@ use crate::idempotency::normalize_idempotency_key;
 
 pub fn required_employee_text(value: String, field: &str) -> Result<String, HrError> {
     let normalized = value.trim().to_owned();
-    if normalized.is_empty() || normalized.len() > 200 {
+    if normalized.is_empty() || normalized.chars().count() > 200 {
         return Err(KernelError::validation(format!(
             "{field} is required and must be 200 characters or fewer"
         ))
@@ -177,4 +177,22 @@ pub fn normalize_employee_base_pay(value: String) -> Result<String, HrError> {
     }
     let fraction = fraction.unwrap_or("0");
     Ok(format!("{whole}.{fraction:0<2}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::required_employee_text;
+
+    #[test]
+    fn required_text_counts_characters_after_trimming() {
+        for character in ["A", "김", "😀"] {
+            let text = character.repeat(200);
+            assert_eq!(
+                required_employee_text(format!(" {text} "), "name").ok(),
+                Some(text)
+            );
+            assert!(required_employee_text(character.repeat(201), "name").is_err());
+        }
+        assert!(required_employee_text(" \t\n ".to_owned(), "name").is_err());
+    }
 }

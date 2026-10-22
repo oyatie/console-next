@@ -15,7 +15,7 @@ use console_hr_adapter_postgres::directory::{
     audit::employee_create_audit, create_core::create_employee_core,
     home_branch::assign_home_branch_if_unset, normalize::normalize_create_employee_request,
 };
-use console_kernel_core::{ErrorKind, KernelError};
+use console_kernel_core::KernelError;
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
 use console_platform_db::{DbError, with_audits};
