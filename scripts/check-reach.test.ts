@@ -225,7 +225,8 @@ test("operations: initial seeding is limited to uncalled operations already pres
 }, 30_000);
 
 test("registration end is reached from the certificate menu; restoring its old baseline entry fails", () => {
-  const baseline = JSON.parse(readFileSync(new URL("./reach-baseline.json", import.meta.url), "utf8"));
+  const saved = JSON.parse(readFileSync(new URL("./reach-baseline.json", import.meta.url), "utf8"));
+  const baseline = Array.isArray(saved) ? saved : saved.records;
   const lifecycle = JSON.parse(readFileSync(new URL("../docs/product/record-lifecycle.json", import.meta.url), "utf8"));
   const entry = { record: "Entity.business_registration", op: "end", lane: "unit: crud-g10" };
   expect(baseline).not.toContainEqual(expect.objectContaining({ record: entry.record, op: entry.op }));
@@ -235,4 +236,9 @@ test("registration end is reached from the certificate menu; restoring its old b
   ] });
   const planted = check({ lifecycle, reach: REACH, baseline: [...baseline, entry], facts: [], untracked: [], labels: new Map(), units: new Set(baseline.map((b: { lane: string }) => b.lane.match(/unit: ([^ ]+)/)?.[1]).concat("crud-g10")) });
   expect(planted).toContainEqual(expect.stringMatching(/^baseline: Entity\.business_registration·end is now reached/));
+});
+
+test("registration void has no hidden-operation allowance", () => {
+  const baseline = JSON.parse(readFileSync(new URL("./reach-baseline.json", import.meta.url), "utf8"));
+  expect(baseline.operations ?? {}).not.toHaveProperty("POST /api/v1/business-registrations/{registrationId}/void");
 });
