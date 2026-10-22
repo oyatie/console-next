@@ -89,6 +89,7 @@ export function RegistrationChoice({ e, c, modes = MODES, required = false }: { 
         <>
           <RefPick
             listKey="workplace_not_registered_reason"
+            showCode={false}
             label={t("workplace.field.notRegisteredReason")}
             required
             value={c.w.notRegisteredReason ?? null}

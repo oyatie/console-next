@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { tenantSlugField, firstSignIn, go, kstDate, option, takeCode, unique, vendorPage } from "./flows";
@@ -17,6 +18,7 @@ const ACCOUNT = "새온그룹";
 /** Before/after evidence for the UX loop when E2E_SHOTS names a directory; nothing otherwise. */
 const shot = (page: Page, name: string) => (process.env.E2E_SHOTS ? page.screenshot({ path: `${process.env.E2E_SHOTS}/${name}.png`, fullPage: true }) : Promise.resolve());
 const ENTITY = "주식회사 새온정밀";
+test.beforeAll(() => loadCatalog("ko"));
 
 /** The next WebAuthn registration lands on a second device (the first holds this account's credential, which is excluded). */
 async function onSecondDevice(page: Page) {
@@ -110,11 +112,12 @@ test("go-live counts what the panels show and fixes each record in place; the te
   // hire-34: 재직 인원 2, the 입사 예정 said apart.
   await expect(main.getByRole("term").filter({ hasText: /^직원$/ }).locator("..").getByRole("definition")).toHaveText("2");
   await expect(main.getByRole("term").filter({ hasText: /^입사 예정$/ }).locator("..").getByRole("definition")).toHaveText("1");
-  // company-53: the blocker names 오송공장 and opens its fix on that record.
-  const staffed = main.getByRole("alert").filter({ hasText: "직원이 있는데 등록증이 없는 사업장 1곳" });
-  await expect(staffed).toBeVisible();
-  const attach = staffed.getByRole("link", { name: "등록증 연결 · 오송공장" });
-  await expect(attach).toHaveAttribute("href", new RegExp(`^${record}\\?wp=`));
+  // company-53: the insurance line names 오송공장 and opens its fix on that record.
+  const insurance = main.getByText(t("setup.golive.item.insurance_not_established_with_people", { count: 1 }), { exact: true });
+  await expect(insurance).toBeVisible();
+  const fix = main.getByRole("link", { name: t("setup.golive.fixOf", { fix: t("setup.fix.update_insurance"), name: "오송공장" }) });
+  await expect(fix).toHaveAttribute("href", new RegExp(`^${record}\\?wp=`));
+  await expect(main).not.toContainText(/등록증이 없는 (?:빈 )?사업장/);
   // company-49: one 사업장 short of all four insurers counts once; the contact store and the closing promise are gone.
   await expect(main).toContainText("직원이 있는데 4대보험이 성립하지 않은 사업장 1곳");
   await expect(main.getByRole("link", { name: "4대보험 확인 · 오송공장" })).toBeVisible();
@@ -134,16 +137,17 @@ test("go-live counts what the panels show and fixes each record in place; the te
   await start.focus();
   await admin.keyboard.press("Enter");
   await expect(admin).toHaveURL(/\/setup\/go-live$/);
-  await expect(main.getByRole("alert").filter({ hasText: "직원이 있는데 등록증이 없는 사업장 1곳" })).toBeVisible();
+  await expect(insurance).toBeVisible();
   await expectAccessible(admin, "go-live preview: blockers with their records");
   await shot(admin, "after-go-live-preview");
 
   // The fix opens on 오송공장's own record; back on the preview it is read again.
-  await attach.click();
+  await fix.click();
   await expect(admin).toHaveURL(new RegExp(`${record}\\?wp=`));
   await expect(admin.getByRole("heading", { name: new RegExp(ENTITY), level: 1 })).toBeVisible();
   await go(admin, "/setup/go-live");
-  await expect(main.getByRole("alert").filter({ hasText: "직원이 있는데 등록증이 없는 사업장 1곳" })).toBeVisible();
+  await expect(insurance).toBeVisible();
+  await expect(main).not.toContainText(/등록증이 없는 (?:빈 )?사업장/);
 
   // governance-20 / people-self-31: the rail adds the second passkey in one press, and the step is done.
   await go(admin, "/");

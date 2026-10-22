@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { box } from "./structure-flows";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
 import { chooseRadio, option } from "./flows";
 import { addWorkplaceFromEntity, openUnit, panel, sheet } from "./helpers/structure";
 import { pickKind, tenantInSetup, typeAddress } from "./setup-flows";
+test.beforeAll(() => loadCatalog("ko"));
 
 // S5 사업장 (final spec §1 S5, §4): the add sheet asks 종류 · 원천징수 · 4대보험 with nothing preselected and says
 // what is missing until they are answered; the panel shows the 4 insurance numbers apart; 대표 사업장 변경 is one
@@ -35,7 +37,7 @@ test("사업장: add with no defaults, the panel, change the representative work
   await expect(save).toHaveAccessibleDescription("남은 항목: 소재지");
   await typeAddress(admin, "소재지", "경기도 성남시 분당구 판교역로 166", "13529", c);
   await expect(add).toContainText("추가하면 주식회사 사업장구조 아래 판교지점 상자가 바로 생기고");
-  await expect(add).toContainText("할 일로 남는 것: 등록증 연결");
+  await expect(add).toContainText(t("workplace.create.todo.registration"));
   await expectAccessible(admin, "add workplace sheet (answered)");
   await c.click(save);
   await expect(add).toBeHidden();

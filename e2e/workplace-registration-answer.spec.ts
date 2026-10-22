@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { go, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { brnDisplay, pickKind, registerEntity, registerWorkplace, REGISTRATION_FIXTURES, typeAddress, workplaceSheet } from "./setup-flows";
+test.beforeAll(() => loadCatalog("ko"));
 
 for (const mode of ["exempt", "abstract", "later-to-exempt"] as const) {
   test(`${mode}: registration answers finish without warning and show the entity filing number`, { tag: ["@org", "@regression"] }, async ({ browser }) => {
@@ -22,7 +24,9 @@ for (const mode of ["exempt", "abstract", "later-to-exempt"] as const) {
     if (mode !== "later-to-exempt") {
       await expect(sheet.getByRole("button", { name: "사업장 추가", exact: true })).toHaveAttribute("aria-disabled", "true");
       await sheet.getByRole("combobox", { name: "등록 미대상 사유" }).fill(mode === "abstract" ? "원격" : "하치장");
-      await page.getByRole("option", { name: mode === "abstract" ? /REMOTE_TELEWORK/ : /VAT_DEPOT/ }).click();
+      const reason = page.getByRole("option", { name: mode === "abstract" ? "주소 없는 원격 근무지 묶음" : "하치장", exact: true });
+      await expect(reason).not.toContainText(/REMOTE_TELEWORK|VAT_DEPOT/);
+      await reason.click();
     }
     if (mode !== "abstract") await typeAddress(page, "소재지", "서울특별시 종로구 세종대로 209", "03171");
     else await expect(sheet.getByRole("group", { name: "소재지", exact: true })).toHaveCount(0);
@@ -39,7 +43,7 @@ for (const mode of ["exempt", "abstract", "later-to-exempt"] as const) {
       const attach = page.getByRole("dialog", { name: `${name} 등록증 연결` });
       await option(page, "사업자등록", "등록 대상 아님").click();
       await attach.getByRole("combobox", { name: "등록 미대상 사유" }).fill("하치장");
-      await page.getByRole("option", { name: /VAT_DEPOT/ }).click();
+      await page.getByRole("option", { name: "하치장", exact: true }).click();
       const revised = page.waitForResponse((r) => r.request().method() === "PUT" && /\/workplaces\/[^/]+$/.test(new URL(r.url()).pathname));
       await attach.getByRole("button", { name: "변경 저장", exact: true }).click();
       expect((await revised).ok()).toBe(true);
@@ -47,6 +51,8 @@ for (const mode of ["exempt", "abstract", "later-to-exempt"] as const) {
       await expect(page.getByRole("region", { name: "등록증을 연결하지 않은 사업장" })).toBeHidden();
     }
     await go(page, recordPath);
+    const row = page.getByRole("row", { name: new RegExp(name) });
+    await expect(row).toContainText(`${t("workplace.filing.entityBasis")} · ${brnDisplay(REGISTRATION_FIXTURES.primary.brn)}`);
     await page.getByRole("button", { name: /^사업장 \d/ }).click();
     await page.getByRole("row", { name: new RegExp(name) }).click();
     const panel = page.getByRole("complementary", { name });
@@ -57,7 +63,9 @@ for (const mode of ["exempt", "abstract", "later-to-exempt"] as const) {
     if (mode === "abstract") await expect(panel.getByRole("button", { name: "소재지 수정" })).toHaveCount(0);
     await expectAccessible(page, `${mode} panel`);
     await go(page, "/setup/go-live");
-    await expect(page.getByText("사업자등록이 없는 사업장", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: t("setup.golive.title"), level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: t("setup.golive.governed"), level: 2 })).toBeVisible();
+    await expect(page.getByRole("main")).not.toContainText(/등록증이 없는 (?:빈 )?사업장/);
     await expectAccessible(page, `${mode} go-live`);
   });
 }

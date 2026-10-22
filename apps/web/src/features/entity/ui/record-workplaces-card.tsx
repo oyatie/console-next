@@ -53,13 +53,16 @@ export function WorkplacesCard({ e }: { e: LegalEntity }) {
               ),
             },
             { header: t("entityRecord.workplaces.col.people"), cell: (w) => <b className="num">{fmtNumber(w.headcount)}</b>, fit: true },
-            { header: t("entityRecord.workplaces.col.brn"), cell: (w) => <span className="code">{registrationOf(e, w.registration_id ?? w.filing_registration_id)?.brn?.display ?? t("workplace.filing.entityBasis")}</span>, fit: true },
+            { header: t("entityRecord.workplaces.col.brn"), cell: (w) => {
+              const brn = registrationOf(e, w.registration_id ?? w.filing_registration_id)?.brn?.display;
+              return <span className="code">{w.registration_id ? brn ?? t("workplace.brnPending") : <>{t("workplace.filing.entityBasis")}{brn && ` · ${brn}`}</>}</span>;
+            }, fit: true },
             {
               header: t("entityRecord.workplaces.col.status"),
               fit: true,
               cell: (w) => {
                 const r = registrationOf(e, w.registration_id);
-                if (!r?.current) return registrationTodo(w) ? <Muted>{t("entityRecord.workplaces.noCert")}</Muted> : <Chip tone="neutral">{w.not_registered_reason?.label ?? "—"}</Chip>;
+                if (!r?.current) return registrationTodo(w) ? <Muted>{t("workplace.registration.prompt")}</Muted> : <Chip tone="neutral">{w.not_registered_reason?.label ?? "—"}</Chip>;
                 const st = labeled(RECORD_STATUS, r.current.status);
                 return <Chip tone={st.tone}>{st.label}</Chip>;
               },

@@ -93,7 +93,6 @@ export const enEntityRecord = {
   "entityRecord.workplaces.col.open": "Open",
   "entityRecord.workplaces.head": "Head office",
   "entityRecord.workplaces.primary": "Main workplace",
-  "entityRecord.workplaces.noCert": "No certificate linked",
   "entityRecord.workplaces.insDone": "{count, number} established",
   "entityRecord.workplaces.insPending": "{count, number} numbers to enter",
   "entityRecord.workplaces.insNone": "Not established",
