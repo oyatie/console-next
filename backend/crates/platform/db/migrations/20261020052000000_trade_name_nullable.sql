@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-Proprietary
 -- Single-source SS-001: 법인명/상호 has one stored source: legal_entity_revisions.name.
 -- Expand step: business_registration_revisions.trade_name is nullable and no longer
 -- stores a derived copy of 법인명 for corporations. Individual registrations retain 상호.

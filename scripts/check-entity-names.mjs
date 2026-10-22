@@ -15,7 +15,6 @@ const HOME = "apps/web/src/reference/entity/domain/names.ts";
 const ALLOW = {
   "apps/web/src/features/entity/domain/view.ts": [1, "a dated revision's input sends the 법인명 back"],
   "apps/web/src/features/entity/ui/record-entity-fields.tsx": [1, "the 법인명 field's own value, for its edit"],
-  "apps/web/src/features/entity/ui/record-cert-card.tsx": [1, "the certificate's item 1 is the 법인명"],
   "apps/web/src/features/entity/ui/record-registry-card.tsx": [1, "the 법인명 row (no certificate), beside the 약칭 and 영문명 rows"],
   "apps/web/src/features/entity/ui/name-correction-spec.tsx": [1, "a 법인명 correction keeps the old 법인명"],
   "apps/web/src/features/org-bulk/domain/values.ts": [1, "a pasted name is matched against every name fact"],
