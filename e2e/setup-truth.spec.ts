@@ -182,8 +182,10 @@ test("after go-live the only ops holder is asked for a second passkey on Home an
 
   // The single queue names account work; recovery guidance lives on its resolving record.
   const home = admin.getByRole("region", { name: "업무함", exact: true });
-  await expect(home.getByText("다른 기기에 패스키 하나 더", { exact: true })).toBeVisible();
-  await expect(home.getByRole("link", { name: "두 번째 패스키 등록", exact: true })).toHaveAttribute("href", "/account");
+  const security = home.getByRole("listitem").filter({ hasText: "다른 기기에 패스키 하나 더" });
+  await expect(security).toHaveCount(1);
+  await expect(security.getByRole("button", { name: "두 번째 패스키 등록", exact: true })).toBeVisible();
+  await expect(home.getByRole("link", { name: "내 계정", exact: true })).toHaveAttribute("href", "/account");
   await expectAccessible(admin, "Home after go-live: second passkey");
   await shot(admin, "after-home-operating-second-passkey");
 
@@ -204,5 +206,6 @@ test("after go-live the only ops holder is asked for a second passkey on Home an
   await expect(admin.locator("#acct-passkey-receipt")).toBeFocused();
   await go(admin, "/");
   await expect(admin.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(home.getByRole("link", { name: "두 번째 패스키 등록", exact: true })).toHaveCount(0);
+  await expect(home).toBeVisible();
+  await expect(security).toHaveCount(0);
 });

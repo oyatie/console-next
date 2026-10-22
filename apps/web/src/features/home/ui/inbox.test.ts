@@ -46,7 +46,7 @@ vi.mock("../../../ui/button/button", async (original) => {
 const item = (id: string, extra: Partial<Item> = {}): Item => ({ id, kind: "register_review", lane: "turn", title: id, ref: "", urg: "wait", dueTone: "neutral", done: false, days_remaining: null, links: [{ kind: "employee", id }], ...extra });
 const page = (items: Item[], extra: Partial<Page> = {}): Page => ({ items, total: items.length, total_is_exact: true, next_cursor: null, unavailable: [], available_filters: ["turn", "waiting", "scheduled", "deadlines", "failures"], counts: {}, upcoming: [], has_work: true, quick_starts: [], as_of: "2026-10-23T00:00:00Z", ...extra });
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
-const html = () => renderToStaticMarkup(createElement(RouterContextProvider, { router } as Parameters<typeof RouterContextProvider>[0], createElement(() => Home({ setup: (c: Checklist) => createElement("div", { "data-testid": "inbox-setup" }, c.total), action: (row: Item) => row.context?.command ? createElement("button", { "data-command": row.context.command, "data-record": row.links[0]?.id }, row.context.command) : row.kind === "account_security" ? createElement("button", null, t("account.second.add")) : null }))));
+const html = (setupPending = false) => renderToStaticMarkup(createElement(RouterContextProvider, { router } as Parameters<typeof RouterContextProvider>[0], createElement(() => Home({ setupPending, setup: (c: Checklist) => createElement("div", { "data-testid": "inbox-setup" }, c.total), action: (row: Item) => row.context?.command ? createElement("button", { "data-command": row.context.command, "data-record": row.links[0]?.id }, row.context.command) : row.kind === "account_security" ? createElement("button", null, t("account.second.add")) : null }))));
 const click = (label: string) => view.buttons.find((button) => button.children === label || typeof button.children === "string" && button.children.startsWith(label + " "))!.onClick!({} as MouseEvent<HTMLButtonElement>);
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
@@ -119,6 +119,19 @@ test("setup work uses its server checklist once inside the inbox", () => {
   expect(markup.match(/data-testid="inbox-setup"/g)).toHaveLength(1);
   expect(markup).not.toContain("duplicated setup");
   expect(markup.indexOf('id="inbox-title"')).toBeLessThan(markup.indexOf('data-testid="inbox-setup"'));
+});
+
+test("Home hides cached setup and work until the parent setup references settle", () => {
+  view.list.data = { pages: [page([item("cached work")], { setup: { phase: "SETUP", steps: [], done: 0, total: 1, go_live_at: null, summary: { people: 0, placed: 0, unplaced: 0, entity_unknown: 0, progress: 0 } } })] };
+  const pending = html(true);
+  expect(pending).toContain(t("common.loading"));
+  expect(pending).not.toContain('id="inbox-title"');
+  expect(pending).not.toContain('data-testid="inbox-setup"');
+  expect(pending).not.toContain("cached work");
+  const ready = html(false);
+  expect(ready).toContain('id="inbox-title"');
+  expect(ready).toContain('data-testid="inbox-setup"');
+  expect(ready).toContain("cached work");
 });
 
 test("an unregistered record kind stays readable without a guessed destination", () => {
@@ -225,4 +238,19 @@ test.each([
 ] as const)("%s retains its resolving record or sheet verb", (kind, link, href) => {
   view.list.data = { pages: [page([item("work", { kind, links: [{ kind: link, id: "record" }] })])] };
   expect(html()).toContain(`href="${href}"`);
+});
+
+
+test.each([
+  ["missing grant", undefined, false],
+  ["unnamed workplace", { kind: "WORKPLACE", node_id: "workplace", include_descendants: true }, false],
+  ["named workplace", { kind: "WORKPLACE", node_id: "workplace", node_name: "서울본사", include_descendants: true }, true],
+  ["tenant", { kind: "TENANT", node_id: null, include_descendants: true }, true],
+] as const)("grant confirmation requires disclosed scope: %s", (_name, scope, enabled) => {
+  const grants: components["schemas"]["AccessEffectiveEntry"][] = scope ? [{ grant_id: "g", role_id: "r", role_name_ko: "notice role", domain: "hr_basic", level: "view", scope, valid_from: "2026-01-01T00:00:00Z", valid_to: null, enforcement: "ENFORCED", caveats: [] }] : [];
+  view.list.data = { pages: [page([item("grant", { kind: "grant_notice", title: "notice role", links: [{ kind: "access", id: "g" }], context: { grants } })])] };
+  html();
+  const confirm = view.buttons.find((button) => button.children === t("home.grantNotices.confirm", { role: "notice role" }));
+  expect(confirm).toBeDefined();
+  expect(Boolean(confirm!.disabled)).toBe(!enabled);
 });

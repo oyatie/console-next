@@ -5,14 +5,14 @@ import { openTenant } from "./helpers/tenant";
 import { registerEntity, setupCompany } from "./setup-flows";
 import { addDepartments, revealUnit } from "./structure-flows";
 
-test("Home waits for the checklist arrival read before offering cached actions", async ({ browser }) => {
+test("Home waits for the inbox arrival read before offering cached setup actions", async ({ browser }) => {
   const admin = await openTenant(browser, "railarrival", "첫읽기");
   await admin.locator('[data-step][aria-current="step"]').getByRole("link", { name: "법인 등록", exact: true }).click();
   await registerEntity(admin, "첫읽기");
   let release!: () => void;
   let requested = false;
   const held = new Promise<void>((resolve) => { release = resolve; });
-  await admin.route("**/api/v1/onboarding/checklist", async (r) => {
+  await admin.route("**/api/v1/me/action-inbox?*", async (r) => {
     const response = await r.fetch();
     requested = true;
     await held;
@@ -26,7 +26,7 @@ test("Home waits for the checklist arrival read before offering cached actions",
     release();
   }
   await expect(admin.getByRole("heading", { name: "운영 준비", exact: true })).toBeVisible();
-  await expectAccessible(admin, "Home: checklist arrival read settled");
+  await expectAccessible(admin, "Home: inbox arrival read settled");
 });
 
 test("adding a department on a slow read keeps the next input and department actions in place", async ({ browser }) => {
