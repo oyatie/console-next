@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
 import { expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -86,8 +86,7 @@ test("refused outlines and group borders draw resolved 2px solid cues with >=3:1
       .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
   };
-  // The Ubuntu CI runner provides Chrome without installing Playwright's bundled browser.
-  const browser = await chromium.launch({ channel: existsSync(chromium.executablePath()) ? "chromium" : "chrome" });
+  const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
     const focus = { row: "b", col: "2" };
