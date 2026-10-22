@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { go, kstDate, registerEmployee } from "./flows";
+import { go, koDate, kstDate, registerEmployee } from "./flows";
 import { hrAct, openCard, openHistory } from "./record";
 import { staffedTenant } from "./setup-flows";
 import { reasonChip } from "./helpers/lifecycle";
@@ -107,7 +107,7 @@ test("lifecycle: correct and rescind the latest change, re-read a stale sheet, r
       await expect(transfer).toContainText(`${koMonthDay(on)} 전보 예약을 이 내용으로 변경합니다`);
       await reasonChip(transfer, "일정 변경", "변경 사유").click();
     }
-    await transfer.getByRole("button", { name: `전보 예약 · ${on.slice(5)} 시행`, exact: true }).click();
+    await transfer.getByRole("button", { name: `전보 예약 · ${koDate(on)} 시행`, exact: true }).click();
     await expect(history.getByRole("listitem").filter({ hasText: why })).toContainText("효력 예정");
   }
   await expect(history.getByRole("listitem").filter({ hasText: "인사부 복귀 예정" })).toHaveCount(0);
@@ -127,7 +127,7 @@ test("lifecycle: a renewal past the two-year fixed-term limit is refused with it
   await expect(renewal).toContainText("2년 한도");
   await expect(renewal).toContainText("단서 사유의 예외가 기록돼 있지 않으면 서버가 거부합니다");
   await reasonBox(renewal).fill("계약 1년 연장");
-  await renewal.getByRole("button", { name: /^계약 갱신 예약 · \d{2}-\d{2} 시행$/ }).click();
+  await renewal.getByRole("button", { name: `계약 갱신 예약 · ${koDate(kstDate(21))} 시행`, exact: true }).click();
   const refused = renewal.getByRole("alert");
   await expect(refused).toContainText("기간제 2년 한도를 넘습니다");
   await expect(refused).toContainText("휴직·파견 등으로 빈자리를");
@@ -135,7 +135,7 @@ test("lifecycle: a renewal past the two-year fixed-term limit is refused with it
   await expectAccessible(admin, "life: renewal refused past the fixed-term limit");
   await refused.getByRole("button", { name: "새 종료일 다시 선택" }).click();
   await fillDate(renewal, kstDate(25), "새 계약 종료일");
-  await renewal.getByRole("button", { name: /^계약 갱신 예약 · \d{2}-\d{2} 시행$/ }).click();
+  await renewal.getByRole("button", { name: `계약 갱신 예약 · ${koDate(kstDate(21))} 시행`, exact: true }).click();
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("status")).toContainText("기간이님의 계약 갱신을");
 });
 

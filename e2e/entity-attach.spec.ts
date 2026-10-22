@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { go, option } from "./flows";
+import { koDate, go, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { REGISTRATION_FIXTURES, pickKind, registerEntity, registerWorkplace, typeAddress, workplaceSheet, brnDisplay } from "./setup-flows";
 
@@ -57,7 +57,7 @@ test("a 사업장 added without a 등록증 gets its own from where the go-live 
   await expect(sheet.getByRole("button", { name: "등록증 연결" })).toHaveAttribute("aria-disabled", "true");
   await typeOwnCertificate(a, sheet);
   // The link dates from the certificate's 개업연월일 unless another day is chosen.
-  await expect(sheet.getByRole("textbox", { name: /^언제부터/ })).toHaveValue("2021-05-03");
+  await expect(sheet.getByRole("textbox", { name: /^언제부터/ })).toHaveValue(koDate("2021-05-03"));
   await expectAccessible(a, "attach registration sheet");
 
   // Negative: the server refuses the link (a date it cannot take); the words name the field and nothing is linked.

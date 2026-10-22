@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { t } from "@console/i18n";
-import { DateChips } from "../../../ui/date/date-chips";
+import { DateField } from "../../../ui/date/date-field";
 import { datePresets } from "../../../ui/date/date-text";
 import { Field, TextInput } from "../../../ui/field/field";
 import { Table } from "../../../ui/table";
@@ -35,7 +35,7 @@ export function BulkWhen({ kind, demotion = false, today, date, onDate, code, on
   return (
     <div className={s.side}>
       <Card titleId="bulk-when" title={t("bulk.page.when")}>
-        <DateChips label={t("bulk.page.date")} required  presets={datePresets(today, ["today", "nextMonday", "nextMonthFirst"])} value={date} onChange={onDate} echo={echo} error={shown.date} showErrors={tried} />
+        <DateField label={t("bulk.page.date")} required today={today} presets={datePresets(today, ["today", "nextMonday", "nextMonthFirst"])} value={date} onChange={onDate} echo={echo} error={shown.date} showErrors={tried} />
         {kind && (
           <ReasonCodeField key={kind} look="chips" domain={kind === "TRANSFER" ? "lifecycle_transfer" : "lifecycle_promote"} label={t("bulk.page.reason")} value={code} onChange={onCode} only={demotion ? [DEMOTION_REASON] : undefined} hint={demotion ? t("lifecycle.promote.demotion") : undefined} error={shown.code} />
         )}

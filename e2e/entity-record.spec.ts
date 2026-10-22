@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+import { fillDate } from "./sheet";
+import { fmtDate } from "@console/i18n/format";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
 import { go, kstDate, option } from "./flows";
@@ -42,7 +44,7 @@ test("the record: 변경 from a date, 정정 of the period in force, 정정만, 
   await expectAccessible(admin, "S3 revise sheet: initial");
   await option(admin, "무엇을 기록합니까", "대표자가 바뀌었습니다 · 변경").click();
   await expect(reps.getByRole("radiogroup", { name: /언제부터 바뀝니까/ }).getByRole("radio", { checked: true })).toHaveCount(0);
-  await option(admin, "언제부터 바뀝니까", `다음 달 1일 (${nextMonth().slice(5)})`).click();
+  await option(admin, "언제부터 바뀝니까", `다음 달 1일 (${fmtDate(nextMonth())})`).click();
   await reps.getByRole("button", { name: "대표자 선임" }).click();
   await reps.getByLabel("새 대표자 1 이름").fill("한지원");
   await expect(reps.getByRole("button", { name: "변경 기록" })).toHaveAttribute("aria-disabled", "true");
@@ -68,7 +70,7 @@ test("the record: 변경 from a date, 정정 of the period in force, 정정만, 
   await admin.getByRole("button", { name: "개업연월일 정정" }).click();
   const opened = sheet(admin, "개업연월일 수정");
   await expect(opened.getByText(/이 칸은 정정만 합니다/)).toBeVisible();
-  await opened.getByRole("textbox", { name: /^개업연월일/ }).fill("2020-03-03");
+  await fillDate(opened, "2020-03-03", "개업연월일");
   await opened.getByRole("button", { name: "정정 기록" }).click();
   await expect(opened).toBeHidden();
 

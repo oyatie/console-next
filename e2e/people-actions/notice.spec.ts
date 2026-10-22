@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { todayPreset } from "../sheet";
 import { expectAccessible } from "../a11y";
 import { go, registerEmployee } from "../flows";
 import { staffedTenant } from "../setup-flows";
@@ -29,7 +30,7 @@ test("notice: a bulk transfer's 발령 공고 takes the next number; the same ac
   await admin.getByRole("button", { name: "선택한 2명 일괄 발령" }).click();
   await admin.getByRole("group", { name: "무엇을" }).getByRole("button", { name: "전보" }).click();
   await admin.getByRole("listbox", { name: "어디로" }).getByRole("option", { name: /^채용팀/ }).click();
-  await admin.getByRole("button", { name: /^오늘 \d{2}-\d{2}/ }).click();
+  await todayPreset(admin).click();
   await admin.getByRole("radiogroup", { name: /^사유/ }).getByText("조직 개편", { exact: true }).click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("조직 개편");
   await admin.getByRole("button", { name: /^2명 전보 · 오늘 반영/ }).click();
@@ -43,7 +44,7 @@ test("notice: a bulk transfer's 발령 공고 takes the next number; the same ac
   await admin.getByRole("button", { name: /^발령 번호 받고 공고 작성/ }).click();
   await expect(admin.getByText("공고일을 선택하십시오")).toBeVisible();
   expect(((await (await api("/appointment-notices")).json()) as { items: unknown[] }).items).toHaveLength(0);
-  await admin.getByRole("button", { name: /^오늘 \d{2}-\d{2}/ }).click();
+  await todayPreset(admin).click();
   await expectAccessible(admin, "E5-notice: make");
   if (OUT) await shot(admin, "E5-notice");
   await admin.getByRole("button", { name: /^발령 번호 받고 공고 작성/ }).click();
@@ -60,7 +61,7 @@ test("notice: a bulk transfer's 발령 공고 takes the next number; the same ac
   // Made again from the same receipt (back, a second press): the page names the notice that already holds these acts.
   await admin.goBack();
   await expect(admin.getByRole("heading", { name: "발령 공고 작성", level: 1 })).toBeVisible();
-  await admin.getByRole("button", { name: /^오늘 \d{2}-\d{2}/ }).click();
+  await todayPreset(admin).click();
   await admin.getByRole("button", { name: /^발령 번호 받고 공고 작성/ }).click();
   await expect(admin.getByRole("alert")).toContainText(`이미 제${year}-0001호 공고에 들어 있는 발령`);
   await expect(admin.getByRole("heading", { name: "발령 공고 작성", level: 1 })).toBeVisible();

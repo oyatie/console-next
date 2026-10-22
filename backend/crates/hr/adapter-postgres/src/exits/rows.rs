@@ -103,6 +103,27 @@ pub fn exit_case_from_row(row: sqlx::postgres::PgRow) -> Result<EmployeeExitCase
     let case_id: Uuid = row.try_get("id")?;
     let status: String = row.try_get("status")?;
     let exit_reason_code: Option<String> = row.try_get("exit_reason_code")?;
+    let system_class = console_settings_domain::code_lists::ReasonDomain::ExitReason
+        .system_codes()
+        .iter()
+        .find(|c| Some(c.code) == exit_reason_code.as_deref());
+    let involuntary = system_class.map_or(row.try_get("involuntary")?, |c| c.involuntary);
+    let notice_required =
+        system_class.map_or(row.try_get("notice_required")?, |c| c.notice_required);
+    let dismissal_notice = row
+        .try_get::<Option<String>, _>("dismissal_notice_reason")?
+        .map(|reason_text| super::notice::DismissalNotice {
+            reason_text,
+            served_on: row
+                .get::<Option<String>, _>("dismissal_notice_served_on")
+                .unwrap_or_default(),
+            method: row
+                .get::<Option<String>, _>("dismissal_notice_method")
+                .unwrap_or_default(),
+            evidence_ref: row
+                .get::<Option<String>, _>("dismissal_notice_evidence_ref")
+                .unwrap_or_default(),
+        });
     let exit_event_state: Option<String> = row.try_get("exit_event_state")?;
     // A 전적 that failed to apply left an ordinary dead case: it closes alone.
     let follows_group_transfer = exit_reason_code.as_deref() == Some(GROUP_TRANSFER_EXIT_REASON)
@@ -122,6 +143,10 @@ pub fn exit_case_from_row(row: sqlx::postgres::PgRow) -> Result<EmployeeExitCase
         effective_exit_date: row.try_get("effective_exit_date")?,
         site_manager_note: row.try_get("site_manager_note")?,
         exit_reason_code,
+        involuntary,
+        notice_required,
+        dismissal_notice,
+        protected_periods: Vec::new(),
         reported_by: row.try_get("reported_by")?,
         reported_by_name: row.try_get("reported_by_name")?,
         hr_confirmed_by_name: row.try_get("hr_confirmed_by_name")?,

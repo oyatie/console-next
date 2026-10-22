@@ -130,8 +130,9 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 1920, height: 108
 
 async function pan(page: Page, viewport: Locator, dx: number, dy: number) {
   const draw = (await viewport.boundingBox())!, size = page.viewportSize()!;
-  const left = Math.max(draw.x + 4, 4), right = Math.min(draw.x + draw.width - 4, size.width - 4);
-  const top = Math.max(draw.y + 4, 4), bottom = Math.min(draw.y + draw.height - 4, size.height - 4);
+  // Whole pixels inside the drawing: a fractional edge let a rounded end point land half a pixel outside it.
+  const left = Math.ceil(Math.max(draw.x + 4, 4)), right = Math.floor(Math.min(draw.x + draw.width - 4, size.width - 4));
+  const top = Math.ceil(Math.max(draw.y + 4, 4)), bottom = Math.floor(Math.min(draw.y + draw.height - 4, size.height - 4));
   const start = await viewport.evaluate((el, bounds) => {
     const xMin = bounds.dx < 0 ? bounds.left - bounds.dx : bounds.left;
     const xMax = bounds.dx > 0 ? bounds.right - bounds.dx : bounds.right;

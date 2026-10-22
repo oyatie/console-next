@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { fmtDate, fmtNumber } from "@console/i18n/format";
+import { fmtDate, fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { EMPLOYMENT_TYPE, ID_TYPE, PAY_UNIT, PROBATION_STATE, WORKER_CLASS, label, labeled } from "../../../lib/labels";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
@@ -12,6 +12,8 @@ import type { Facts } from "../domain/facts";
 import { confirmProbation, factsQuery } from "../api";
 import { FactsForm } from "./facts-form";
 import { Muted } from "../../../ui/muted/muted";
+import { maskedBirth } from "../domain/card";
+import { MaskedValue } from "./masked-value";
 
 type Employee = components["schemas"]["Employee"];
 
@@ -39,7 +41,7 @@ function FactsView({ f, name, onEdit }: { f: Facts; name: string; onEdit: () => 
   return (
     <>
       <dl className="kv">
-        <dt>{t("facts.birthDate")}</dt><dd className="num">{f.birth_date ? fmtDate(f.birth_date) : notSet}</dd>
+        <dt>{t("facts.birthDate")}</dt><dd className="num">{f.birth_date ? <MaskedValue masked={maskedBirth()} value={fmtDate(f.birth_date)} field={t("facts.birthDate")} who={name} /> : notSet}</dd>
         <dt>{t("facts.workEmail")}</dt><dd>{f.work_email ?? notSet}</dd>
         <dt>{t("facts.idType")}</dt><dd>{f.id_type ? label(ID_TYPE, f.id_type) : notSet}</dd>
         {m && (
@@ -72,7 +74,7 @@ function Probation({ f, name }: { f: Facts; name: string }) {
   });
   const line =
     m.probation_state === "CONFIRMED" && m.probation_confirmed_at
-      ? t("facts.probation.confirmed", { date: fmtDate(m.probation_confirmed_at) })
+      ? t("facts.probation.confirmed", { date: fmtDateTime(m.probation_confirmed_at) })
       : end && m.probation_state === "OVERDUE"
         ? t("facts.probation.overdue", { date: fmtDate(end) })
         : end

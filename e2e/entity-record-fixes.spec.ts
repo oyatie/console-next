@@ -3,6 +3,7 @@ import { expectAccessible } from "./a11y";
 import { go, kstDate, koDate, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { registerEntity, registerWorkplace } from "./setup-flows";
+import { fillDate } from "./sheet";
 
 // LANE ENTITY-FIX: the 법인 record's dead ends found by the parity capture (S3, 2026-10-07), from an empty tenant
 // through the UI, each a regression test that failed on mvp 442d9d7a. A 법인 with an uploaded 등록증 and its 사업장:
@@ -65,10 +66,10 @@ test("sequential edits on a 법인 with a 등록증 and a 사업장 save one aft
   // (2) 개업연월일 정정 after a 발급일: the sheet holds the 발급일 too and says why before anything is sent.
   await a.getByRole("button", { name: "개업연월일 정정" }).click();
   const opened = sheet(a, "개업연월일 수정");
-  await opened.getByRole("textbox", { name: /^개업연월일/ }).fill("2020-03-03");
+  await fillDate(opened, "2020-03-03", "개업연월일");
   await expect(opened.getByText("발급일이 개업일보다 앞섭니다")).toBeVisible();
   await expect(opened.getByRole("button", { name: "정정 기록" })).toHaveAttribute("aria-disabled", "true");
-  await opened.getByRole("textbox", { name: /^발급일/ }).fill("2020-03-03");
+  await fillDate(opened, "2020-03-03", "발급일");
   await expect(opened.getByRole("button", { name: "정정 기록" })).not.toHaveAttribute("aria-disabled", "true");
   // Negative, at the UI: the server's own refusal (issued_before_opened) is worded by field, never the generic text,
   // and nothing changes. The request is sent with the old 발급일, as another screen or a stale form would.

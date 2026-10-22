@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
-import { fmtDate, fmtNumber } from "@console/i18n/format";
+import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { ToggleButton } from "../../../ui/button/button";
 import { RecordRows } from "../../../ui/record/rows";
 import { voidedQuery } from "../api/record";
@@ -35,9 +35,9 @@ export function VoidedList() {
         columns={[
           { header: t("people.col.number"), cell: (r) => <span className="code">{r.employee_number ?? "—"}</span> },
           { header: t("people.col.name"), cell: (r) => <b>{r.name}</b> },
-          { header: t("roster.voided.at"), cell: (r) => fmtDate(r.voided_at) },
+          { header: t("roster.voided.at"), cell: (r) => fmtDateTime(r.voided_at) },
           { header: t("roster.voided.why"), cell: (r) => tx(`empDoc.void.employee.reason.${r.void_reason_code}`) },
-          { header: t("roster.voided.pii"), cell: (r) => (r.pii_destroyed_at ? fmtDate(r.pii_destroyed_at) : t("roster.voided.piiKept")) },
+          { header: t("roster.voided.pii"), cell: (r) => (r.pii_destroyed_at ? fmtDateTime(r.pii_destroyed_at) : t("roster.voided.piiKept")) },
         ]}
       />
       )}

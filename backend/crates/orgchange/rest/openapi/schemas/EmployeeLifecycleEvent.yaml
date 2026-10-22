@@ -76,9 +76,9 @@ properties:
     nullable: true
   leave_type:
     type: string
-    enum: [CHILDCARE, MATERNITY, ILLNESS, PERSONAL, OTHER]
-    description: LEAVE_OF_ABSENCE only; absent when not given. Omitted for callers without
-      employee_directory_manage (ILLNESS and MATERNITY reveal health information, 개보법 제23조).
+    enum: [CHILDCARE, MATERNITY, WORK_INJURY, ILLNESS, PERSONAL, OTHER]
+    description: LEAVE_OF_ABSENCE only; absent when not given. WORK_INJURY is 산재 요양. Omitted for callers without
+      employee_directory_manage (ILLNESS, MATERNITY and WORK_INJURY reveal health information, 개보법 제23조).
   batch_id:
     $ref: '#/components/schemas/Uuid'
     description: Present when the event was recorded by a bulk appointment (POST /api/v1/employees/lifecycle-events/bulk).

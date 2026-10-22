@@ -1,6 +1,7 @@
 // What an account may do, in words every screen shares (governance-22): one line per grant — role · scope · until —
 // with its levels and the server's caveats. My access, the person-access view and the refused state all read it.
 import { isMessageId, t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { codeText } from "../../lib/labels";
 import { todayKst } from "../../lib/pure/today";
 import type { AccessEffectiveEntry } from "./api";
@@ -26,7 +27,7 @@ export const scopeName = (s: AccessEffectiveEntry["scope"], roots: readonly Node
 
 /** The last day an exclusive end still counts, or no end. */
 export const untilText = (to: string | null | undefined) =>
-  to ? t("access.until", { date: todayKst(new Date(Date.parse(to) - 1)) }) : t("access.until.none");
+  to ? t("access.until", { date: fmtDate(todayKst(new Date(Date.parse(to) - 1))) }) : t("access.until.none");
 
 export type GrantLine = { id: string; role: string; scope: string; until: string; state?: string; reach: string; caveats: string[] };
 

@@ -101,6 +101,8 @@ async fn force_removal_of_an_archived_tenant_clears_its_codes(pool: PgPool) {
                 label_ko: "정리 대상".to_owned(),
                 label_en: None,
                 requires_note: false,
+                involuntary: false,
+                notice_required: false,
                 sort: None,
             },
             (TraceContext::generate(), AuditRequestContext::default()),

@@ -26,7 +26,7 @@ export function CommandError({ error, children, own, historyHref, fieldLabel, li
   const checking = outcomeUnknown(error);
   const finish = checking && recover ? recoveryOf(error) : undefined;
   const key = api?.originalOperationId ?? api?.operationId ?? api?.requestKey;
-  const change = api?.status === 409 && !checking ? api.lastChange : undefined;
+  const change = api?.status === 409 && api.code === "stale_revision" && !checking ? api.lastChange : undefined;
   const fields = change?.fields.map(field => fieldLabel?.(field));
   const knownFields = fields?.filter((label): label is string => Boolean(label)) ?? [];
   const unnamed = (fields?.length ?? 0) - knownFields.length;

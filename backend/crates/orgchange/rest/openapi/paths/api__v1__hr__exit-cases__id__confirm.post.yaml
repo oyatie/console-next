@@ -3,6 +3,11 @@ tags:
 operationId: confirmEmployeeExitCase
 summary: Confirm an employee exit case for HR/HQ review
 description: >-
+  HR requires an exit_reason_code from the case or body (422 exit_reason_required). A body code replaces
+  the reported reason. Involuntary reasons are refused with 409 exit_protected_period when the statutory
+  exit date (effective_exit_date + one day) is protected. Reasons marked notice_required also require
+  written dismissal_notice delivery facts (422 notice_evidence_missing). HQ refuses both fields (422 validation).
+  Scheduled exits recheck protection and notice before effect; refusals become APPLY_FAILED with the stable code.
   HR tier (hq_confirmation=false) moves REPORTED to HR_CONFIRMED and records the TERMINATE lifecycle event
   that exits the employee; it requires all four signoffs (422 lifecycle_signoff_required naming the first
   missing one). HQ tier (hq_confirmation=true) moves HR_CONFIRMED to HQ_CONFIRMED and must be a
@@ -37,10 +42,12 @@ responses:
   '404':
     $ref: '#/components/responses/NotFound'
   '409':
-    description: Invalid transition, or lifecycle_schedule_conflict naming the employee's pending SCHEDULED events.
+    description: Invalid transition, exit_protected_period naming protected periods, or lifecycle_schedule_conflict naming the employee's pending SCHEDULED events.
     content:
       application/json:
         schema:
-          $ref: '#/components/schemas/LifecycleScheduleConflictBody'
+          anyOf:
+          - $ref: '#/components/schemas/LifecycleScheduleConflictBody'
+          - $ref: '#/components/schemas/ErrorBody'
   '422':
     $ref: '#/components/responses/ValidationError'

@@ -92,7 +92,7 @@ test("employee page: effective-date history, change a reservation, home-branch c
   await fillDate(transfer, on);
   await reasonChip(transfer, "정기 인사").click();
   await reasonBox(transfer).fill("인사부 복귀 예정");
-  await transfer.getByRole("button", { name: `전보 예약 · ${on.slice(5)} 시행`, exact: true }).click();
+  await transfer.getByRole("button", { name: `전보 예약 · ${koDate(on)} 시행`, exact: true }).click();
   await expect(next).toContainText(`${koDate(on)} 전보 예정`);
   await expect(history.getByRole("heading", { name: "예정", level: 3 })).toBeVisible();
   const reserved = history.getByRole("listitem").filter({ hasText: "인사부 복귀 예정" });

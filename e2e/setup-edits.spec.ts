@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { fillDate } from "./sheet";
 import { expectAccessible } from "./a11y";
 import { apiAs, soloTenant } from "./chaos";
 import { go, kstDate, option } from "./flows";
@@ -77,7 +78,7 @@ test("a 법인 changed twice ahead of its date keeps both changes", { tag: "@fir
       await expect(edit.getByRole("button", { name: "변경 기록" })).toHaveAttribute("aria-disabled", "true");
       await expectAccessible(admin, "entity change after a scheduled change");
       await option(admin, "언제부터 바뀝니까", "직접 입력").click();
-      await edit.getByLabel("적용일").fill(later);
+      await fillDate(edit, later, "적용일");
     }
     // The next change opens on what this one scheduled: wait for the entity's read to come back with it.
     const scheduledBefore = from === later ? 0 : 1;

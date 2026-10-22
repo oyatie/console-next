@@ -91,6 +91,68 @@ async fn labour_standards_rows_hand_over_to_the_new_slice_without_a_gap(pool: Pg
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn dismissal_protection_slices_keep_the_sourced_law_and_tail(pool: PgPool) {
+    let register = register(&pool).await;
+    for (code, tail, article, on, law, until) in [
+        (
+            codes::DISMISSAL_PROTECTION_TAIL_DAYS,
+            30,
+            "제23조제2항",
+            date!(2026 - 08 - 20),
+            "법률 제21373호",
+            Some(date!(2026 - 10 - 02)),
+        ),
+        (
+            codes::DISMISSAL_PROTECTION_TAIL_DAYS,
+            30,
+            "제23조제2항",
+            date!(2026 - 10 - 02),
+            "법률 제21857호",
+            Some(date!(2026 - 10 - 08)),
+        ),
+        (
+            codes::DISMISSAL_PROTECTION_TAIL_DAYS,
+            30,
+            "제23조제2항",
+            date!(2026 - 10 - 08),
+            "법률 제21533호",
+            None,
+        ),
+        (
+            codes::CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS,
+            0,
+            "제19조제3항",
+            date!(2026 - 08 - 20),
+            "법률 제21373호",
+            Some(date!(2026 - 09 - 18)),
+        ),
+        (
+            codes::CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS,
+            0,
+            "제19조제3항",
+            date!(2026 - 09 - 18),
+            "법률 제21476호",
+            None,
+        ),
+    ] {
+        let rule = register.rule(code, on).unwrap();
+        assert_eq!(rule.whole(StatutoryUnit::Days).unwrap(), tail);
+        let promulgation: String = sqlx::query_scalar(
+            "SELECT promulgation_ko FROM statutory_rules WHERE code=$1 AND effective_from=$2",
+        )
+        .bind(code)
+        .bind(rule.effective_from)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(promulgation, law);
+        assert_eq!(rule.effective_to_exclusive, until);
+        assert!(rule.citation.article_ko.starts_with(article));
+        assert!(rule.disposition.is_hold());
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn loss_codes_exist_only_where_a_source_was_read(pool: PgPool) {
     let register = register(&pool).await;
     let on = date!(2026 - 10 - 02);

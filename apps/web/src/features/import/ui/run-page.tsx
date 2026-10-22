@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
-import { fmtDateTimeShort } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
 import { Chip } from "../../../ui/chip";
 import { runQuery } from "../api";
@@ -31,7 +31,7 @@ export function ImportRunPage({ runId }: { runId: string }) {
                 <Chip tone={STATUS_TONE[r.status]}>{statusLabel(r.status)}</Chip>
               </div>
               <p className="muted">
-                {r.applied_at && r.applied_by ? t("import.run.applied", { name: r.applied_by.name, at: fmtDateTimeShort(r.applied_at) }) : t("import.run.notApplied")}
+                {r.applied_at && r.applied_by ? t("import.run.applied", { name: r.applied_by.name, at: fmtDateTime(r.applied_at) }) : t("import.run.notApplied")}
               </p>
               <RunSummary run={r} />
             </>

@@ -132,7 +132,8 @@ test("record card: a hire date corrected within budget, a taken number refused, 
   await expect(a.getByRole("group", { name: "소속" })).toContainText("2019. 03. 04.");
 
   // E2-reveal: 보기 → reason → 보기 (3, spec §5); without a reason it does not open.
-  await c.click(a.getByRole("button", { name: "생년월일 보기 · 사유를 선택합니다" }));
+  // FIN-DOB-MASK masks the birth date in 고용 기록 too; this walk reveals the 인적사항 one.
+  await c.click(a.getByRole("region", { name: "인적사항" }).getByRole("button", { name: "생년월일 보기 · 사유를 선택합니다" }));
   // Refused: no reason yet (the primary is aria-disabled but focusable, R9), so pressing it goes to the reasons.
   await a.getByRole("button", { name: "보기", exact: true }).press("Enter");
   await expect(a.getByRole("radiogroup", { name: /왜 봅니까/ }).getByRole("radio").first()).toBeFocused();

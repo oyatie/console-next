@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { fmtDate } from "@console/i18n/format";
 import { expectAccessible } from "./a11y";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { cellOf, officeSchedule, openMonth, pastWorkDay, pasteText } from "./helpers/attendance-records";
@@ -137,8 +138,9 @@ test("월간 근무표: type, refuse, fix, paste, save with 근거, undo, correc
   // A12-conflict: the three values side by side, the current one in Korean time, and no choice made for the person.
   await expect(save.getByRole("alert")).toContainText("저장하는 동안 1개 항목이 바뀌었습니다");
   await expect(save.getByRole("radiogroup", { name: /^황정우 .+에 쓸 값/ }).getByRole("radio", { checked: true })).toHaveCount(0);
-  const [, mo, dd] = kstDate(0).split("-").map(Number);
-  await expect(save.getByText(new RegExp(`${mo}\\. ${dd}\\. \\d{2}:\\d{2}에 바꿈`))).toBeVisible(); // Korean time, not UTC (regression)
+  // Korean time with its zone label, not UTC (regression): the shared fmtDateTime's date part, then hh:mm KST.
+  const today = fmtDate(kstDate(0)).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  await expect(save.getByText(new RegExp(`${today} \\d{2}:\\d{2} KST에 바꿈`))).toBeVisible();
   await expect(save.getByRole("button", { name: "1칸 저장" })).toHaveAttribute("aria-disabled", "true");
   await expectAccessible(admin, "conflict");
 

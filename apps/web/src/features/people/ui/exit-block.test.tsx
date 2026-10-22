@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { beforeAll, expect, test, vi } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import type { components } from "@console/api/schema";
+import { loadCatalog } from "@console/i18n";
+import { ExitCases } from "./exit-block";
+
+type Case = components["schemas"]["EmployeeExitCase"];
+const reads = vi.hoisted(() => ({ cases: [] as unknown[], detail: undefined as unknown }));
+// The list read has landed; the detail read is pending (placeholder) unless a detail is given.
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: (q: { read: string; placeholderData?: unknown }) => q.read === "cases"
+    ? { data: { items: reads.cases }, isSuccess: true }
+    : { data: reads.detail ?? q.placeholderData, isSuccess: reads.detail !== undefined },
+}));
+vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useNavigate: () => vi.fn() }), Link: () => null }));
+vi.mock("../../../reference/authz/ui/use-can", () => ({ useCan: () => () => true }));
+vi.mock("../api", () => ({
+  exitCasesQuery: () => ({ read: "cases" }),
+  caseQuery: () => ({ read: "case" }),
+}));
+vi.mock("../present", () => ({ whoLine: () => "Synthetic employee" }));
+vi.mock("./use-case-actions", () => ({
+  useOwnRecord: () => false,
+  useCaseActions: () => ({ next: "confirm_exit", forward: "confirm_exit", back: [], sameActor: false }),
+}));
+vi.mock("./exit-axis", () => ({ StepForm: ({ c }: { c: Case }) => <div role="dialog">{c.id}{c.protected_periods?.map((p) => <span key={p.lifecycle_event_id}>{p.article}</span>)}</div> }));
+vi.mock("./exit-close", () => ({ CloseForm: () => null }));
+vi.mock("./exit-report", () => ({ ReportForm: () => null }));
+vi.mock("./exit-facts", () => ({ RelDay: () => null }));
+
+beforeAll(() => loadCatalog("ko"));
+
+function sheet(detail?: Case) {
+  const c = { id: "case-1", status: "REPORTED", effective_exit_date: "2026-10-21", protected_periods: [] } as unknown as Case;
+  reads.cases = [c];
+  reads.detail = detail;
+  return renderToStaticMarkup(<ExitCases employee={{ id: "person-1", name: "Synthetic employee", status: "ACTIVE" } as components["schemas"]["Employee"]} act="exit.confirm_exit:case-1" />);
+}
+
+test("the HR sheet opens from its list row while the detail read is pending", () => {
+  expect(sheet()).toContain('role="dialog">case-1');
+});
+
+test("the HR sheet refines the list row with the authorized protected periods", () => {
+  const detail = { id: "case-1", protected_periods: [{ lifecycle_event_id: "leave-1", article: "제23조제2항" }] } as unknown as Case;
+  expect(sheet(detail)).toContain("제23조제2항");
+});

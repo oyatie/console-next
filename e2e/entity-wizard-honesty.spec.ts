@@ -3,6 +3,7 @@ import { expectAccessible } from "./a11y";
 import { go, kstDate, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { typeAddress } from "./setup-flows";
+import { fillDate } from "./sheet";
 import { shot } from "./shots";
 
 // UX-R3 STRUCT company-04/32: going back with a flagged 등록번호 never strands it — 다음 still leads on, and the foot's
@@ -41,7 +42,7 @@ test("regression: a flagged field is one press away from any step, and 설립등
   await a.getByRole("button", { name: "설립등기 입력" }).click();
   const founded = a.getByRole("dialog", { name: "설립등기 입력" });
   await founded.getByRole("textbox", { name: /^법인등록번호/ }).fill("0002110006241");
-  await founded.getByRole("textbox", { name: /^설립등기일/ }).fill(kstDate(-3));
+  await fillDate(founded, kstDate(-3), "설립등기일");
   await founded.getByRole("button", { name: "설립등기 기록" }).click();
   await expect(founded).toBeHidden({ timeout: 15_000 });
   const main = a.getByRole("main");

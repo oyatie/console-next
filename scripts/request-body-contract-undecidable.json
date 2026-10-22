@@ -576,7 +576,7 @@
       "body_type": "CreateEmployeeLifecycleEventRequest",
       "body_struct_file": "backend/crates/hr/adapter-postgres/src/lifecycle/requests.rs",
       "body_struct": "CreateEmployeeLifecycleEventRequest",
-      "schema_sha256": "b28c61ad9ce1148c9fdc425da163588c24451bcab64967c0ebc75d79480a9299",
+      "schema_sha256": "bb4a0012e02cef917fbc3d844176458f3d1344bdc93eb29dd5e670fe43084f8c",
       "status": "resolved"
     },
     {
@@ -884,7 +884,7 @@
       "body_type": "ConfirmEmployeeExitCaseRequest",
       "body_struct_file": "backend/crates/hr/adapter-postgres/src/exits/types.rs",
       "body_struct": "ConfirmEmployeeExitCaseRequest",
-      "schema_sha256": "fa17b7ed22b3404d35a9b84e9b163bc54b9b95dd11cae72d83656e941e0c7244",
+      "schema_sha256": "48bd3d19f58eafc7afc98788e85c924d362a74b59f67f7c8e10edf80329f2ef0",
       "status": "resolved"
     },
     {

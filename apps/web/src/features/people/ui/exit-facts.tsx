@@ -13,6 +13,7 @@ import { useCan } from "../../../reference/authz/ui/use-can";
 import { employeeQuery, eventsQuery } from "../api";
 import { byEffective, tenure } from "../domain/lifecycle";
 import { describeEvent } from "../present";
+import { KeyValue } from "../../../ui/key-value/key-value";
 import { ExitDeadlines } from "./exit-deadlines";
 import { useCaseActions } from "./use-case-actions";
 import s from "./exit.module.css";
@@ -71,6 +72,7 @@ export function CasePanel({ c }: { c: Case }) {
         {(served || (reader && person.isPending)) && <><dt>{t("exit.facts.tenure")}</dt><dd>{served ? t("exit.facts.tenure.value", served) : "\u00a0"}</dd></>}
       </dl>
       <CaseFacts c={c} />
+      {c.dismissal_notice && <NoticeRecord notice={c.dismissal_notice} />}
       <ExitDeadlines deadlines={c.settlement_deadlines} />
       {/* While this user prepares the settlement, the step's form shows the figures beside its inputs: once is enough. */}
       {c.settlement_package && forward !== "prepare_settlement" && <SettlementFigures pkg={c.settlement_package} />}
@@ -117,4 +119,16 @@ export function SettlementFigures({ pkg }: { pkg: Package }) {
       )}
     </section>
   );
+}
+
+function NoticeRecord({ notice }: { notice: NonNullable<Case["dismissal_notice"]> }) {
+  return <section aria-label={t("exit.notice.title")}>
+    <h3 className={s.groupTitle}>{t("exit.notice.title")}</h3>
+    <KeyValue items={[
+      { key: "reason_text", label: t("exit.notice.reason_text"), value: notice.reason_text },
+      { key: "served_on", label: t("exit.notice.served_on"), value: fmtDate(notice.served_on) },
+      { key: "method", label: t("exit.notice.method"), value: t(`exit.notice.method.${notice.method}`) },
+      { key: "evidence_ref", label: t("exit.notice.evidence_ref"), value: notice.evidence_ref },
+    ]} />
+  </section>;
 }

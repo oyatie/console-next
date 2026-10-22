@@ -15,12 +15,18 @@ pub struct SystemCode {
     pub code: &'static str,
     /// A note must accompany this code.
     pub requires_note: bool,
+    /// Dismissal-like: protected-period checks apply; not an employment-insurance category.
+    pub involuntary: bool,
+    /// Written dismissal notice is required (implies involuntary).
+    pub notice_required: bool,
 }
 
 /// "Other": last in every domain, always needs a note.
 pub const OTHER: SystemCode = SystemCode {
     code: "OTHER",
     requires_note: true,
+    involuntary: false,
+    notice_required: false,
 };
 
 /// A requested domain string that names no registered domain.
@@ -36,7 +42,9 @@ impl std::fmt::Display for UnknownDomain {
 impl std::error::Error for UnknownDomain {}
 
 macro_rules! reason_domains {
-    ($($variant:ident => $wire:literal [$($code:literal),* $(,)?];)+) => {
+    (@flag) => { false };
+    (@flag $value:literal) => { $value };
+    ($($variant:ident => $wire:literal [$($code:literal $(=> ($involuntary:literal, $notice_required:literal))?),* $(,)?];)+) => {
         /// A reason-code domain: the command family a reason belongs to.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
         pub enum ReasonDomain {
@@ -58,7 +66,7 @@ macro_rules! reason_domains {
                 match self {
                     $(Self::$variant => {
                         const CODES: &[SystemCode] = &[
-                            $(SystemCode { code: $code, requires_note: false },)*
+                            $(SystemCode { code: $code, requires_note: false, involuntary: reason_domains!(@flag $($involuntary)?), notice_required: reason_domains!(@flag $($notice_required)?) },)*
                             OTHER,
                         ];
                         CODES
@@ -107,8 +115,8 @@ reason_domains! {
         "PERSONAL", "FAMILY", "ILLNESS", "STUDY",
         "WORKING_CONDITIONS", "WAGE_ARREARS", "RELOCATION",
         "CLOSURE", "INSOLVENCY",
-        "ADVISED_RESIGNATION_BUSINESS", "REDUNDANCY_DISMISSAL",
-        "DISCIPLINARY_DISMISSAL", "ADVISED_RESIGNATION_FAULT",
+        "ADVISED_RESIGNATION_BUSINESS" => (true, false), "REDUNDANCY_DISMISSAL" => (true, true),
+        "DISCIPLINARY_DISMISSAL" => (true, true), "ADVISED_RESIGNATION_FAULT" => (true, false),
         "RETIREMENT_AGE", "CONTRACT_END", "PROJECT_END",
         "COVERAGE_EXCLUDED", "DUAL_EMPLOYMENT", "DEATH",
     ];

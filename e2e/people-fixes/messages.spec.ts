@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
-import { go, kstDate, option } from "../flows";
+import { go, koDate, kstDate, option } from "../flows";
 import { apiOf, bearerOf, codeOf } from "../helpers/api";
 import { peopleWorld, registerAt } from "../helpers/people-fixes";
 import { fillDate, signOff } from "../sheet";
@@ -39,7 +39,7 @@ test("solo: a contract overlap names its period and opens that contract's correc
   await expectAccessible(admin, "people: overlap names the existing contract");
   await overlapping.getByRole("button", { name: /계약 정정$/ }).click();
   const correction = admin.getByRole("form", { name: /^계약 정정/ });
-  await expect(correction.getByLabel(/^계약 시작일/)).toHaveValue(kstDate(-100));
+  await expect(correction.getByLabel(/^계약 시작일/)).toHaveValue(koDate(kstDate(-100)));
   await correction.getByRole("textbox", { name: /^임금/ }).fill("3100000");
   await correction.getByRole("button", { name: "정정 기록" }).click();
   await expect(correction).toBeHidden();
@@ -48,6 +48,7 @@ test("solo: a contract overlap names its period and opens that contract's correc
   const report = admin.getByRole("dialog", { name: /퇴직 보고/ });
   await fillDate(report, kstDate(-2), "마지막 근무일");
   await report.getByRole("textbox", { name: /^퇴직 경위/ }).fill("개인 사정");
+  await report.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
   await report.getByRole("button", { name: /퇴직 보고$/ }).click();
   await admin.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
   await signOff(admin.getByRole("dialog").getByRole("group", { name: "확인 사항" }));

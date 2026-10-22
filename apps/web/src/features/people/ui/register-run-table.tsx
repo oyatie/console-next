@@ -5,6 +5,7 @@ import { fmtNumber } from "@console/i18n/format";
 import { FORMATS } from "../../../lib/pure/formats";
 import { label } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
+import { DateInput } from "../../../ui/date/date-input";
 import { TextInput } from "../../../ui/field/field";
 import { SelectInput } from "../../../ui/field/select-input";
 import { Kbd } from "../../../ui/kbd/kbd";
@@ -74,7 +75,7 @@ export function RunTable(p: Props) {
         ),
     },
     col(t("register.run.col.birth"), (r) => r.birth || "—", () => (
-      <TextInput className="num" inputMode="numeric" placeholder="YYYY-MM-DD" aria-label={aria(t("register.run.col.birth"))} aria-invalid={bad("birth")} value={p.d.birth} onChange={(e) => p.set("birth", e.target.value)} />
+      <DateInput className="num" label={aria(t("register.run.col.birth"))} aria-invalid={bad("birth")} value={p.d.birth} onDraftChange={(v) => p.set("birth", v)} onChange={(v) => p.set("birth", v)} />
     )),
     col(t("register.run.col.number"), (r) => <span className="num">{r.number}</span>, () => (
       <TextInput className="num" placeholder={t("register.run.numberAuto")} aria-label={aria(t("register.run.col.number"))} value={p.d.number} onChange={(e) => (p.set("number", e.target.value), p.set("numberMode", e.target.value.trim() ? "manual" : "auto"))} />
@@ -86,7 +87,7 @@ export function RunTable(p: Props) {
           {EMPLOYMENT_TYPES.map((v) => <option key={v} value={v}>{label(TYPE, v)}</option>)}
         </SelectInput>
         {p.d.type === "CONTRACT" && (
-          <TextInput type="date" className="num" min={p.d.hire || undefined} aria-label={aria(t("register.contractEnd"))} aria-invalid={bad("contractEnd")} value={p.d.contractEnd} onChange={(e) => p.set("contractEnd", e.target.value)} />
+          <DateInput className="num" min={p.d.hire || undefined} label={aria(t("register.contractEnd"))} aria-invalid={bad("contractEnd")} value={p.d.contractEnd} onChange={(v) => p.set("contractEnd", v)} />
         )}
         {tag("type")}
       </span>
@@ -99,7 +100,7 @@ export function RunTable(p: Props) {
     )),
     col(t("register.run.col.hire"), (r) => <span className="num">{r.hire}</span>, () => (
       <span className={s.cell}>
-        <TextInput className="num" inputMode="numeric" placeholder="YYYY-MM-DD" aria-label={aria(t("register.run.col.hire"))} aria-invalid={bad("hire")} value={p.hireText} onChange={(e) => p.onHire(e.target.value)} onKeyDown={today} />
+        <DateInput className="num" label={aria(t("register.run.col.hire"))} aria-invalid={bad("hire")} value={p.hireText} onDraftChange={p.onHire} onChange={p.onHire} onKeyDown={today} />
         {tag("hire")}
       </span>
     ), true),

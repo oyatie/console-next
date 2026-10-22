@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { User } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { keepsKey } from "../../../lib/react/command";
 import { todayKst } from "../../../lib/pure/today";
 import { entitiesRef, orgStructureRef } from "../../../reference/entity/api";
@@ -12,7 +13,7 @@ import { useCan } from "../../../reference/authz/ui/use-can";
 import { BlockedPanel } from "../../../ui/blocker/blocked-panel";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
-import { DateChips } from "../../../ui/date/date-chips";
+import { DateField } from "../../../ui/date/date-field";
 import { inBounds } from "../../../ui/date/days";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { Sheet } from "../../../ui/sheet/sheet";
@@ -114,7 +115,7 @@ export function GroupTransferSheet({ d, events, head, units, act, offer, seed, c
   const commit =
     locked ? t("lifecycle.commit.change", { date: fmtDayShort(v0.date), action })
     : when === "none" ? t("lifecycle.commit.none", { action })
-    : when === "future" ? t("lifecycle.commit.future", { date: v0.date.slice(5), action })
+    : when === "future" ? t("lifecycle.commit.future", { date: fmtDate(v0.date), action })
     : when === "today" ? t("lifecycle.commit.today", { action })
     : t("lifecycle.commit.past", { date: fmtDayShort(v0.date), action });
   const code = run.isError && !checking ? refusalOf(run.error)?.code : undefined;
@@ -160,9 +161,10 @@ export function GroupTransferSheet({ d, events, head, units, act, offer, seed, c
   const dateSlot = locked ? (
     <LockedDate date={v0.date} correcting={false} onRebook={() => onOpen(`cancel:${seed!.from.id}`)} />
   ) : (
-    <DateChips
+    <DateField
       label={t("groupTransfer.date")}
       required
+      today={today}
       value={v0.date}
       onChange={(date) => set({ date })}
       {...b}

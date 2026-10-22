@@ -29,6 +29,8 @@ fn view(code: &str, active: bool) -> TenantCodeView {
         label_ko: "라벨".to_owned(),
         label_en: None,
         requires_note: false,
+        involuntary: false,
+        notice_required: false,
         active,
         sort: 0,
     }
@@ -46,7 +48,12 @@ impl ReasonCodeStore for Fake {
         _by: Actor,
     ) -> Result<TenantCodeView, KernelError> {
         self.writes += 1;
-        Ok(view(&code.code, true))
+        Ok(TenantCodeView {
+            domain: code.domain,
+            involuntary: code.involuntary,
+            notice_required: code.notice_required,
+            ..view(&code.code, true)
+        })
     }
 
     async fn update(
@@ -78,6 +85,8 @@ fn add(domain: &str, label: &str) -> AddReasonCode {
         label_ko: label.to_owned(),
         label_en: None,
         requires_note: false,
+        involuntary: false,
+        notice_required: false,
         sort: None,
     }
 }
@@ -188,4 +197,42 @@ async fn an_accepted_change_is_audited_with_before_and_after() {
     assert!(!after.active);
     assert_eq!(events[0].before.as_ref().unwrap()["active"], true);
     assert_eq!(events[0].after.as_ref().unwrap()["active"], false);
+}
+
+#[tokio::test]
+async fn invalid_reason_classes_refuse_before_authorization_or_storage() {
+    for (domain, involuntary, notice_required) in [
+        ("exit_reason", false, true),
+        ("lifecycle_transfer", true, false),
+        ("lifecycle_transfer", true, true),
+    ] {
+        let mut store = Fake::default();
+        let cmd = AddReasonCode {
+            involuntary,
+            notice_required,
+            ..add(domain, "합성")
+        };
+        assert_eq!(
+            coded(add_reason_code(&mut store, never, actor(), cmd, audit()).await),
+            "reason_class_invalid"
+        );
+        assert_eq!(store.writes, 0);
+    }
+}
+
+#[tokio::test]
+async fn an_added_exit_reason_keeps_its_class() {
+    let mut store = Fake::default();
+    let cmd = AddReasonCode {
+        involuntary: true,
+        notice_required: true,
+        ..add("exit_reason", "합성 해고")
+    };
+    let (view, events) = add_reason_code(&mut store, |_| Ok(()), actor(), cmd, audit())
+        .await
+        .unwrap();
+    assert!(view.involuntary && view.notice_required);
+    assert_eq!(view.domain, ReasonDomain::ExitReason);
+    assert_eq!(store.writes, 1);
+    assert_eq!(events.len(), 1);
 }

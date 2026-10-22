@@ -33,6 +33,10 @@ pub struct ConfirmEmployeeExitCaseRequest {
     #[serde(default)]
     pub hq_confirmation: bool,
     #[serde(default)]
+    pub exit_reason_code: Option<String>,
+    #[serde(default)]
+    pub dismissal_notice: Option<super::notice::DismissalNotice>,
+    #[serde(default)]
     pub note: Option<String>,
     #[serde(default)]
     pub settlement_input: Option<ExitSettlementInput>,
@@ -100,6 +104,10 @@ pub struct EmployeeExitCaseResponse {
     /// The report's 퇴직 사유 code; omitted when the report gave none.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exit_reason_code: Option<String>,
+    pub involuntary: bool,
+    pub notice_required: bool,
+    pub dismissal_notice: Option<super::notice::DismissalNotice>,
+    pub protected_periods: Vec<super::guards::ProtectedPeriodView>,
     pub reported_by: Uuid,
     /// Display names for the actor ids, resolved within the tenant; null when
     /// the actor is unset or unknown.
@@ -251,6 +259,7 @@ impl EmployeeExitCaseResponse {
     /// writes them, over this case's branch. Every case response passes here.
     #[must_use]
     pub fn for_reader(mut self, principal: &Principal) -> Self {
+        super::notice::mask_for_reader(&mut self, principal);
         let pay_reader =
             authorize_hr_scoped_write(principal, Feature::ExitSettlementManage, self.branch_id)
                 .is_ok();

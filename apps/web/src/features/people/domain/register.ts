@@ -17,7 +17,7 @@ export type Draft = {
   unitId: string;
   /** The workplace picked for a unit that is not under a registered one ("" until then). */
   workplaceId: string;
-  /** `YYYY-MM-DD` or "" (DateChips keeps unparsed text itself). */
+  /** `YYYY-MM-DD`, typed text, or "" while incomplete. */
   hire: string;
   hireTyped: boolean;
   type: EmploymentType | null;

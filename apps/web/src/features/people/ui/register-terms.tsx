@@ -1,7 +1,6 @@
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
 import { ChoiceField } from "../../../ui/choice/choice-field";
-import { DateChips } from "../../../ui/date/date-chips";
 import { DateField } from "../../../ui/date/date-field";
 import { datePresets } from "../../../ui/date/date-text";
 import { Field, TextInput } from "../../../ui/field/field";
@@ -22,9 +21,10 @@ export function RegisterTerms({ d, set, shown, today, tried }: { d: Draft; set: 
   return (
     <>
       <div className={s.termsRow}>
-        <DateChips
+        <DateField
           label={t("register.hire")}
           required
+          today={today}
           presets={datePresets(today, ["today", "nextMonday"])}
           value={d.hire}
           onChange={(v) => set("hire", v)}

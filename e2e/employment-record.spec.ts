@@ -32,6 +32,8 @@ test("employment record: checklist to facts, a contract and its correction, prob
   await expectAccessible(admin, "employment record form");
   await form.getByRole("button", { name: "고용 기록 저장" }).click();
   await expect(form).toBeHidden();
+  await expect(facts).toContainText("••••-••-••");
+  await expect(facts).not.toContainText("1990");
   await expect(facts).toContainText("hansusup@employment.example");
   await expect(facts).toContainText("주민등록번호");
   await expect(onboarding.getByRole("listitem").filter({ hasText: "생년월일 등록" })).toContainText("완료");

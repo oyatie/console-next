@@ -1,7 +1,7 @@
 // The server enforces the idle timeout. This module reports user activity and computes the warning shown by IdleGuard.
 import type { QueryClient } from "@tanstack/react-query";
 import { api, lastReported, lastTouch, session, touch } from "@console/api";
-import { syncDraftPrincipal } from "../lib/react/use-draft";
+import { syncDraftPrincipal } from "../lib/react/draft-owner";
 
 export const IDLE_KEY = "auth.idle_timeout_minutes";
 /** The server remains authoritative for expiry. */

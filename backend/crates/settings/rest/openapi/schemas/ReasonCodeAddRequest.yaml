@@ -15,6 +15,14 @@ properties:
     maxLength: 60
   requires_note:
     type: boolean
+  involuntary:
+    type: boolean
+    default: false
+    description: Only exit_reason may be involuntary. Invalid classes are 422 reason_class_invalid.
+  notice_required:
+    type: boolean
+    default: false
+    description: Only exit_reason; requires involuntary=true.
   sort:
     type: integer
     format: int32

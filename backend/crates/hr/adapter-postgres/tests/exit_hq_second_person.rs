@@ -86,7 +86,7 @@ async fn hr_confirmed(w: &World, employee: Uuid) -> Uuid {
                 absence_alert_id: None,
                 effective_exit_date: "2026-06-30".into(),
                 site_manager_note: "퇴직 의사 확인".into(),
-                exit_reason_code: None,
+                exit_reason_code: Some("PERSONAL".into()),
             },
         )
         .await

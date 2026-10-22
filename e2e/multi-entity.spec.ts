@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { fmtDate } from "@console/i18n/format";
 import { expectAccessible } from "./a11y";
 import { tenantSlugField, firstSignIn, go, kstDate, option, takeCode, unique, vendorPage } from "./flows";
 import { addDepartments } from "./structure-flows";
@@ -40,7 +41,7 @@ test("a group of two legal entities: each with its workplace and people, placed 
     await admin.getByRole("button", { name: "대표전화 수정" }).click();
     const edit = admin.getByRole("dialog", { name: "대표전화 수정" });
     await option(admin, "무엇을 기록합니까", "대표전화가 바뀌었습니다 · 변경").click();
-    await option(admin, "언제부터 바뀝니까", `오늘 (${kstDate().slice(5)})`).click();
+    await option(admin, "언제부터 바뀝니까", `오늘 (${fmtDate(kstDate())})`).click();
     await edit.getByRole("textbox", { name: /^대표전화/ }).fill(phone);
     await edit.getByRole("button", { name: "변경 기록" }).click();
     await expect(edit).toBeHidden();

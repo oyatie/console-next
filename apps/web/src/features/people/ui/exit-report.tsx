@@ -5,15 +5,17 @@ import { User } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { Chip } from "../../../ui/chip";
+import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
-import { DateChips } from "../../../ui/date/date-chips";
+import { DateField } from "../../../ui/date/date-field";
 import { addDays } from "../../../ui/date/days";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { Banner } from "../../../ui/banner/banner";
 import { ReasonCodeField } from "../../../reference/reason/ui/reason-code-field";
-import { reasonCodesQuery, reasonLabel } from "../../../lib/reason-codes";
+import { reasonCodesQuery, reasonLabel, useExitClass } from "../../../lib/reason-codes";
 import { useDraft } from "../../../lib/react/use-draft";
 import { eventsQuery, reportExit } from "../api";
 import { OpsExitNote } from "./account-link-card";
@@ -32,6 +34,7 @@ const NOTE_MAX = 1000;
  * who has left. The exit reason is recorded once the exit is in effect (backend-followups EMP-UI 14).
  */
 export function ReportForm({ employee, onClose, onDone }: { employee: Employee; onClose: () => void; onDone: (message: string) => void }) {
+  const today = todayKst();
   const reasons = useQuery(reasonCodesQuery("exit_reason"));
   const draft = useDraft({
     route: "/people/$id", record: employee.id, form: "exit.report",
@@ -40,6 +43,7 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
   });
   const { date, note, reason } = draft.value;
   const reasonsRead = !reasons.isPending;
+  const exitClass = useExitClass(reason);
   const [tried, setTried] = useState(false);
   const formId = useId();
   const navigate = route.useNavigate();
@@ -82,9 +86,10 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
     >
       <OpsExitNote employeeId={employee.id} search={employee.employee_number || employee.name} />
       <fieldset className={s.group} disabled={run.locked}>
-        <DateChips
+        <DateField
           label={t("exit.field.date")}
           required
+          today={today}
           presets={employee.contract_end_date ? [{ label: t("exit.field.date.contractEnd"), date: employee.contract_end_date }] : []}
           value={date}
           onChange={(nextDate) => draft.set({ ...draft.value, date: nextDate })}
@@ -99,7 +104,7 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
             <ul className={s.lines}>
               {later.map((x) => (
                 <li key={x.id} className={s.firstRow}>
-                  <span>{t("exit.report.firstItem", { date: x.effective_date.slice(5), action: label(LIFECYCLE_EVENT, x.event_type) })}</span>
+                  <span>{t("exit.report.firstItem", { date: fmtDate(x.effective_date), action: label(LIFECYCLE_EVENT, x.event_type) })}</span>
                   {/* The withdrawal opens over the record and its receipt comes back to this report. */}
                   <Button variant="ghost" onClick={() => void navigate({ search: { act: `cancel:${x.id}`, back: "exit.report" } })}>{t("exit.report.cancelFirst")}</Button>
                 </li>
@@ -112,6 +117,7 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
             recorded on the card after the exit. */}
         {/* Drawn once the list has landed, with the field under it: twenty chips arriving late pushed it down. */}
         {reasonsRead && <ReasonCodeField domain="exit_reason" look="chips" required={false} label={t("exit.field.reason")} value={reason} onChange={(nextReason) => draft.set({ ...draft.value, reason: nextReason })} hint={t("exit.field.reason.hint")} />}
+        {exitClass?.involuntary && <Chip tone="warn">{t("exit.class.involuntary")}</Chip>}
         {reasonsRead && <Field
           label={t("exit.field.circumstances")}
           hint={t("exit.field.count", { count: note.length, max: NOTE_MAX })}

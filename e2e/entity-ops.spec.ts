@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { fillDate } from "./sheet";
 import { expectAccessible } from "./a11y";
 import { go, kstDate, koDate, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
@@ -29,12 +30,12 @@ test("a 사업장 records 휴업 with its expected end, then 재개, and moves o
   // 휴업: start, reason, an optional expected end; an end before the start is held with its reason.
   await panel.getByRole("button", { name: "상태 수정" }).click();
   const suspend = dialog(a, "서울 본사 휴업");
-  await suspend.getByRole("textbox", { name: /^휴업 시작일/ }).fill(kstDate(0));
+  await fillDate(suspend, kstDate(0), "휴업 시작일");
   await option(a, "휴업 사유", "계절 사업").click();
-  await suspend.getByRole("textbox", { name: /^끝날 예정일/ }).fill(kstDate(-1));
+  await fillDate(suspend, kstDate(-1), "끝날 예정일");
   await expect(suspend.getByText("끝날 예정일은 시작일보다 앞설 수 없습니다")).toBeVisible();
   await expect(suspend.getByRole("button", { name: "휴업", exact: true })).toHaveAttribute("aria-disabled", "true");
-  await suspend.getByRole("textbox", { name: /^끝날 예정일/ }).fill(kstDate(90));
+  await fillDate(suspend, kstDate(90), "끝날 예정일");
   await expectAccessible(a, "workplace suspension sheet");
   await suspend.getByRole("button", { name: "휴업", exact: true }).click();
   await expect(suspend).toBeHidden({ timeout: 15_000 });
@@ -43,7 +44,7 @@ test("a 사업장 records 휴업 with its expected end, then 재개, and moves o
   await panel.getByRole("button", { name: "주생산품 수정" }).click();
   const during = dialog(a, "주생산품 수정");
   await during.getByRole("textbox", { name: /^주생산품/ }).fill("정밀부품");
-  await during.getByRole("textbox", { name: /^적용일/ }).fill(kstDate(0));
+  await fillDate(during, kstDate(0), "적용일");
   await option(a, "변경 사유", "연락처 변경").click();
   await during.getByRole("button", { name: "변경 저장" }).click();
   await expect(during).toBeHidden({ timeout: 15_000 });
@@ -53,7 +54,7 @@ test("a 사업장 records 휴업 with its expected end, then 재개, and moves o
   // 재개 closes it.
   await panel.getByRole("button", { name: "상태 수정" }).click();
   const resume = dialog(a, "서울 본사 재개");
-  await resume.getByRole("textbox", { name: /^다시 연 날/ }).fill(kstDate(0));
+  await fillDate(resume, kstDate(0), "다시 연 날");
   await resume.getByRole("button", { name: "재개", exact: true }).click();
   await expect(resume).toBeHidden({ timeout: 15_000 });
   await expect(panel.getByRole("definition").filter({ hasText: /^계속$/ })).toBeVisible();
@@ -64,7 +65,7 @@ test("a 사업장 records 휴업 with its expected end, then 재개, and moves o
   await expect(move.getByRole("button", { name: "기록" })).toHaveAttribute("aria-disabled", "true");
   await option(a, "무엇을 기록합니까", "이전했습니다").click();
   await typeAddress(a, "새 소재지", "서울특별시 서초구 강남대로 465", "06611");
-  await move.getByRole("textbox", { name: /^이전일/ }).fill(kstDate(0));
+  await fillDate(move, kstDate(0), "이전일");
   await expect(move).toContainText("사업자등록 정정, 이전등기, 4대보험 변경신고는 이 화면에서 하지 않습니다");
   await move.getByRole("button", { name: "기록" }).click();
   await expect(move).toBeHidden({ timeout: 15_000 });
@@ -83,7 +84,7 @@ test("a 사업장 records 휴업 with its expected end, then 재개, and moves o
     const info = dialog(a, `${field} 수정`);
     await expect(info.getByRole("textbox", { name: /^사업장 이름/ })).toHaveCount(0); // only the one fact
     await info.getByRole("textbox", { name: new RegExp(`^${field}`) }).fill(value);
-    await info.getByRole("textbox", { name: /^적용일/ }).fill(kstDate(0));
+    await fillDate(info, kstDate(0), "적용일");
     await option(a, "변경 사유", "연락처 변경").click();
     await expect(info.getByRole("button", { name: "변경 저장" })).not.toHaveAttribute("aria-disabled", "true");
     const saved = a.waitForResponse((r) => r.request().method() === "PUT" && /\/api\/v1\/workplaces\/[0-9a-f-]{36}$/.test(new URL(r.url()).pathname));
@@ -128,7 +129,7 @@ test("a wrong check digit is held until confirmed, and a 법인 is recorded whil
   await a.getByRole("button", { name: "설립등기 입력" }).click();
   const founded = dialog(a, "설립등기 입력");
   await founded.getByRole("textbox", { name: /^법인등록번호/ }).fill("0002110006241");
-  await founded.getByRole("textbox", { name: /^설립등기일/ }).fill(kstDate(0));
+  await fillDate(founded, kstDate(0), "설립등기일");
   await founded.getByRole("button", { name: "설립등기 기록" }).click();
   await expect(founded).toBeHidden({ timeout: 15_000 });
   await expect(a.getByRole("region", { name: "설립 중" })).toHaveCount(0);
@@ -152,7 +153,7 @@ test("a closed 법인 offers no edit verb, only 종료 정정, and a refused 정
   await a.getByRole("button", { name: "종료 정정" }).click();
   const fix = dialog(a, /종료 정정$/);
   await expect(fix.getByText("기록된 종료와 같습니다", { exact: false })).toBeVisible();
-  await fix.getByRole("textbox", { name: /^종료일/ }).fill(kstDate(-2));
+  await fillDate(fix, kstDate(-2), "종료일");
   await fix.getByRole("textbox", { name: /^정정 사유/ }).fill("폐업일을 잘못 적음");
   // Negative: the server refuses (a reason it cannot take); the words name it and the close stays as it was.
   await a.route(`**/api/v1/legal-entities/${id}/close`, (r) => r.fallback({ postData: JSON.stringify({ ...r.request().postDataJSON(), why: "" }) }));

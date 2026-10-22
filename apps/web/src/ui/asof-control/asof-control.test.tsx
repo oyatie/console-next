@@ -66,7 +66,7 @@ test("knowledge timestamp deep links remain exact and loading ribbon does not cl
   const knownAt = "2026-09-15T12:34:56+09:00";
   const html = render({ knownAt, value: "2026-09-01", loadingDates: true });
   expect(html).toContain(t("asof.known", { date: fmtDate("2026-09-01"), known: fmtDateTime(knownAt) }));
-  expect(html).toContain('value="2026-09-15"');
+  expect(html).toContain('value="2026. 09. 15."');
   expect(html).toContain('aria-busy="true"');
   expect(html).not.toContain(t("asof.noChanges"));
 });

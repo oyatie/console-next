@@ -119,6 +119,12 @@ pub fn exit_case_select_sql() -> &'static str {
         c.effective_exit_date::TEXT AS effective_exit_date,
         c.site_manager_note,
         c.exit_reason_code,
+        COALESCE(rc.involuntary, false) AS involuntary,
+        COALESCE(rc.notice_required, false) AS notice_required,
+        c.dismissal_notice_reason,
+        c.dismissal_notice_served_on::text AS dismissal_notice_served_on,
+        c.dismissal_notice_method,
+        c.dismissal_notice_evidence_ref,
         c.reported_by,
         c.reported_at,
         c.hr_confirmed_by,
@@ -165,6 +171,7 @@ pub fn exit_case_select_sql() -> &'static str {
     JOIN employees e
       ON e.id = c.employee_id
      AND e.org_id = c.org_id
+    LEFT JOIN reason_codes rc ON rc.org_id = c.org_id AND rc.domain = 'exit_reason' AND rc.code = c.exit_reason_code
     LEFT JOIN branches b
       ON b.id = c.branch_id
      AND b.org_id = c.org_id

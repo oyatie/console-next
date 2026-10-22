@@ -1,4 +1,5 @@
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import type { Draft, Gap } from "../domain/register";
 import s from "./register.module.css";
 
@@ -34,7 +35,7 @@ export function RegisterFoot({ d, gaps, tried, dup, place, status, setup }: { d:
     );
   return (
     <>
-      <b>{t("register.foot.ready", { name: d.name.trim(), place: place || t("register.where.none"), status, date: d.hire.slice(5), number: d.numberMode === "manual" ? d.number.trim() : t("register.foot.numberAuto") })}</b>
+      <b>{t("register.foot.ready", { name: d.name.trim(), place: place || t("register.where.none"), status, date: fmtDate(d.hire), number: d.numberMode === "manual" ? d.number.trim() : t("register.foot.numberAuto") })}</b>
       <span className={s.hint}>{t(setup ? "register.foot.readyHint" : "register.foot.readyHintOp")}</span>
     </>
   );

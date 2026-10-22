@@ -27,6 +27,31 @@ pub(super) const MESSAGES: &[(&str, &str)] = &[
         "reason must be at most 1000 characters",
         "사유는 1000자 이하여야 합니다.",
     ),
+    // Exit guard refusals
+    (
+        "dismissal is blocked during a protected leave period",
+        "휴직 보호기간에는 퇴직 처리할 수 없습니다.",
+    ),
+    (
+        "written dismissal notice evidence is required",
+        "해고 서면 통지 증빙을 입력하십시오.",
+    ),
+    (
+        "an exit reason is required for HR confirmation",
+        "퇴직 사유를 선택하십시오.",
+    ),
+    (
+        "an exit case is required for termination",
+        "퇴직 건을 먼저 보고하십시오.",
+    ),
+    (
+        "reason class is only valid for exit reasons and notice requires involuntary",
+        "퇴직 사유의 구분을 확인하십시오.",
+    ),
+    (
+        "exit reason and dismissal notice belong to HR confirmation",
+        "퇴직 사유와 서면 통지는 인사 확인에서만 기록할 수 있습니다.",
+    ),
     // Exit cases
     ("exit case not found", "퇴사 건을 찾을 수 없습니다."),
     (

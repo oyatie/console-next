@@ -5,6 +5,7 @@ import { hire, openClose } from "./helpers/close";
 import { firstWorkplace } from "./helpers/entity";
 import { addDepts } from "./helpers/structure";
 import { openTenant } from "./helpers/tenant";
+import { fillDate } from "./sheet";
 import { registerBranch, registerEntity, SECOND, startOperations, tenantInSetup } from "./setup-flows";
 
 // Decision #30 in a 사업장 close (LC-F4): someone whose move crosses 법인 is offered 전적 instead of a refusal. Their line
@@ -91,7 +92,7 @@ test("closing a 사업장 moves a person to another 법인 by 전적 with their 
 
   // The sheet: 개발팀 폐지, and 김전적 to 가온 › 기획팀 by 전적 with their consent and choices.
   const s = await openClose(admin, "판교지점");
-  await s.getByRole("textbox", { name: /^폐쇄일/ }).fill(kstDate());
+  await fillDate(s, kstDate(), "폐쇄일");
   await plan(admin, s, "개발팀 계획", "폐지");
   await plan(admin, s, "김전적 계획", "다른 법인으로 전적");
   const g = admin.getByRole("dialog", { name: "김전적님 전적" });
@@ -102,11 +103,11 @@ test("closing a 사업장 moves a person to another 법인 by 전적 with their 
   await g.getByRole("button", { name: "김전적이 갈 사업장 · 부서" }).click();
   await admin.getByRole("dialog", { name: "김전적이 갈 사업장 · 부서" }).getByRole("row", { name: /^기획팀/ }).click();
   await g.getByLabel(/^동의 증빙/).fill("전적 동의서 (김전적 서명본)");
-  await g.getByLabel(/^동의일/).fill(kstDate());
+  await fillDate(g, kstDate(), "동의일");
   await chooseRadio(g, /^퇴직금 지급/);
   await chooseRadio(g, /^남은 연차 수당 지급/);
   await chooseRadio(g, /^새 법인 근속은/);
-  await g.getByLabel(/^그룹 입사일/).fill(hired);
+  await fillDate(g, hired, "그룹 입사일");
   await expectAccessible(admin, "workplace close: a person's group transfer");
   await g.getByRole("button", { name: "확인" }).click();
   await expect(g).toBeHidden();

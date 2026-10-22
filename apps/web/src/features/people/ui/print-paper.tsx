@@ -1,5 +1,5 @@
 import { t } from "@console/i18n";
-import { fmtDate, fmtStamp } from "@console/i18n/format";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { EMPLOYMENT_TYPE, LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { PaperGrid, PaperTable } from "../../../ui/paper/paper-table";
@@ -29,7 +29,7 @@ export function PrintPaper({ c, parts, why, at }: { c: Card; parts: readonly str
   const phone = (d.employment ?? d.pending_employment)?.phone_e164;
   const reveal = (key: string, v: string) => (key === "birth" ? maskedBirth() : key === "address" && r?.address ? maskedAddress(r.address) : v);
   return (
-    <Paper size="a4" label={t("empDoc.print.preview")} watermark={t("empDoc.print.wm", { at: fmtStamp(at) })}>
+    <Paper size="a4" label={t("empDoc.print.preview")} watermark={t("empDoc.print.wm", { at: fmtDateTime(at) })}>
       <PaperHead title={t("empDoc.print.paperTitle")}><span className="grow" /><span>{t("empDoc.print.asOf", { entity: c.place.entity, date: fmtDate(todayKst()) })}</span></PaperHead>
       <PaperId photo={c.personal.data?.photo?.url ? t("empDoc.print.photo") : initial(e.name)}>
         <PaperGrid
@@ -60,7 +60,7 @@ export function PrintPaper({ c, parts, why, at }: { c: Card; parts: readonly str
         </>
       )}
       {has("records") && records.length > 0 && <><b>{t("empDoc.print.part.records")}</b><PaperGrid rows={records.map((x): [string, string] => [tx(`empRec.${x.section.toLowerCase()}`), Object.values(x.fields ?? {}).filter((v) => typeof v === "string").slice(0, 3).join(" · ")])} /></>}
-      <PaperFoot>{t("empDoc.print.foot", { at: fmtStamp(at), purpose: why ? tx(`empDoc.print.purpose.${why}`) : "—" })}</PaperFoot>
+      <PaperFoot>{t("empDoc.print.foot", { at: fmtDateTime(at), purpose: why ? tx(`empDoc.print.purpose.${why}`) : "—" })}</PaperFoot>
     </Paper>
   );
 }

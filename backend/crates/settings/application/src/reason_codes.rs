@@ -27,6 +27,8 @@ pub struct TenantCodeView {
     pub label_ko: String,
     pub label_en: Option<String>,
     pub requires_note: bool,
+    pub involuntary: bool,
+    pub notice_required: bool,
     pub active: bool,
     pub sort: i32,
 }
@@ -63,6 +65,8 @@ pub struct AddReasonCode {
     pub label_ko: String,
     pub label_en: Option<String>,
     pub requires_note: bool,
+    pub involuntary: bool,
+    pub notice_required: bool,
     pub sort: Option<i32>,
 }
 
@@ -91,13 +95,24 @@ where
     A: FnOnce(ReasonDomain) -> Result<(), KernelError> + Send,
 {
     let domain = parse_domain(&cmd.domain)?;
-    let new = check_new_tenant_code(
+    if (cmd.notice_required && !cmd.involuntary)
+        || (domain != ReasonDomain::ExitReason && (cmd.involuntary || cmd.notice_required))
+    {
+        return Err(KernelError::validation(
+            "reason class is only valid for exit reasons and notice requires involuntary",
+        )
+        .with_code("reason_class_invalid")
+        .with_field("involuntary"));
+    }
+    let mut new = check_new_tenant_code(
         domain,
         Uuid::new_v4(),
         &cmd.label_ko,
         cmd.label_en.as_deref(),
         cmd.requires_note,
     )?;
+    new.involuntary = cmd.involuntary;
+    new.notice_required = cmd.notice_required;
     authorize(domain)?;
     let now = store.now().await?;
     let view = store.insert(&new, cmd.sort.unwrap_or(0), actor).await?;

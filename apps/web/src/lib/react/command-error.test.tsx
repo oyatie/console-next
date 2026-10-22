@@ -55,6 +55,13 @@ test.each(["command_processing", "command_applied"])("%s remains checking and us
 const recordedAt = "2026-10-09T05:06:00Z";
 const latest = { actor_name: "latest actor", actor_kind: "OPS_ACCOUNT" as const, recorded_at: recordedAt, fields: ["unit", "parent"], audit_id: "audit-line-id", redacted: false };
 
+test.each(["exit_protected_period", "exit_case_required", "invalid_transition"])("%s omits generic 409 last-change copy", async (code) => {
+  const banner = await html(new ApiError(409, code, "refused", [], operation, true, [], { lastChange: { ...latest, redacted: true } }));
+  expect(banner).not.toContain(t("requestOutcome.other"));
+  expect(banner).not.toContain(t("requestOutcome.history"));
+  expect(banner).toContain(operation);
+});
+
 test("409 preserves refusal and children, then names actor/time/fields/badge and history", async () => {
   const error = new ApiError(409, "stale_revision", "record changed", [], operation, true, [], { lastChange: latest });
   const banner = await html(error, { children: <span>{callerRemedy}</span>, historyHref: "/structure/history#audit-line-id", fieldLabel: field => ({ unit: "organization unit", parent: "parent organization" })[field as "unit" | "parent"] });

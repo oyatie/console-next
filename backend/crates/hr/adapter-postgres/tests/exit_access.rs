@@ -140,7 +140,7 @@ impl World {
     async fn exit(&self, employee: Uuid, date: Date) -> Result<(), String> {
         let body: ReportEmployeeExitCaseRequest = serde_json::from_value(json!({
             "employee_id": employee, "effective_exit_date": date.to_string(),
-            "site_manager_note": "본인 사정으로 퇴사",
+            "site_manager_note": "본인 사정으로 퇴사", "exit_reason_code": "PERSONAL",
         }))
         .unwrap();
         let (_, case) = self

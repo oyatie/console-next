@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { fillDate } from "./sheet";
 import { expectAccessible } from "./a11y";
 import { go, kstDate, option } from "./flows";
 import { reviseFact } from "./helpers/entity";
@@ -52,13 +53,13 @@ test("a new 등록증 changing 대표자 and 소재지 is one dated change every
   await sheet.locator('input[type="file"]').setInputFiles(PDF("v2"));
   await expect(sheet.getByText("첨부함 · 사업자등록증-v2.pdf")).toBeVisible();
   await option(a, "발급 사유", "변경 · 정정신고로 다시 받음").click();
-  await sheet.getByRole("textbox", { name: /^발급일/ }).fill(kstDate());
+  await fillDate(sheet, kstDate(), "발급일");
   await expect(sheet.getByText("바뀐 항목을 하나 이상 선택하십시오")).toBeVisible();
   await expect(save).toHaveAttribute("aria-disabled", "true");
   // A change dated after today is refused where it is typed.
-  await sheet.getByRole("textbox", { name: /^적용일/ }).fill(kstDate(1));
+  await fillDate(sheet, kstDate(1), "적용일");
   await expect(sheet.getByText("오늘 이후 날짜는 기록할 수 없습니다.")).toBeVisible();
-  await sheet.getByRole("textbox", { name: /^적용일/ }).fill(kstDate());
+  await fillDate(sheet, kstDate(), "적용일");
 
   const facts = sheet.getByRole("group", { name: "바뀐 항목" });
   await facts.getByRole("button", { name: /^대표자/ }).click();
@@ -81,6 +82,7 @@ test("a new 등록증 changing 대표자 and 소재지 is one dated change every
   // With every value ready, an amendment before the registered state is refused before it can send a command.
   const effectiveFrom = sheet.getByRole("textbox", { name: /^적용일/ });
   await effectiveFrom.fill("2020-03-01");
+  await effectiveFrom.blur();
   await expect(sheet.getByText(/지금 등록증 내용은 .*부터입니다/)).toBeVisible();
   await expect(effectiveFrom).toHaveAttribute("aria-invalid", "true");
   await expect(save).toHaveAttribute("aria-disabled", "true");
@@ -88,6 +90,7 @@ test("a new 등록증 changing 대표자 and 소재지 is one dated change every
   await expect(effectiveFrom).toBeFocused();
   expect(reissuePosts, "an invalid earlier date sends no reissue").toBe(0);
   await effectiveFrom.fill(kstDate());
+  await effectiveFrom.blur();
 
   // Negative: the server refuses (a body it cannot take); the words name it and nothing changed.
   await a.route(path, (r) => r.fallback({ postData: JSON.stringify({ ...r.request().postDataJSON(), effective_from: "2999-01-01" }) }));
@@ -157,9 +160,10 @@ test("a reissue cannot hide a scheduled 본점 move", { tag: ["@org", "@regressi
 
   await sheet.locator('input[type="file"]').setInputFiles(PDF("v2"));
   await option(a, "발급 사유", "변경 · 정정신고로 다시 받음").click();
-  await sheet.getByRole("textbox", { name: /^발급일/ }).fill(kstDate());
+  await fillDate(sheet, kstDate(), "발급일");
   const effectiveFrom = sheet.getByRole("textbox", { name: /^적용일/ });
   await effectiveFrom.fill(kstDate());
+  await effectiveFrom.blur();
   const facts = sheet.getByRole("group", { name: "바뀐 항목" });
   await facts.getByRole("button", { name: /^대표자/ }).click();
   await sheet.getByRole("button", { name: "홍길동 퇴임" }).click();
@@ -214,7 +218,7 @@ test("the first 등록증 entry reuses the original already attached to the 법�
   await expect(kept.getByRole("radio", { checked: true })).toHaveCount(1);
   await sheet.getByLabel("사업자등록번호").fill("0001234560");
   await sheet.getByLabel("상호").fill("새온공방");
-  await sheet.getByLabel("개업연월일").fill("2021-05-03");
+  await fillDate(sheet, "2021-05-03", "개업연월일");
   await typeAddress(a, "사업장 소재지", "서울특별시 마포구 월드컵북로 21", "03995");
   await sheet.getByRole("textbox", { name: /^업태/ }).fill("제조업");
   await sheet.getByRole("textbox", { name: /^종목/ }).fill("목공");
@@ -222,7 +226,7 @@ test("the first 등록증 entry reuses the original already attached to the 법�
   await sheet.getByLabel("과세유형").selectOption({ label: "일반과세자" });
   await sheet.getByLabel("관할 세무서 (등록증 표기)").fill("마포세무서");
   await option(a, "발급 사유", "신규").click();
-  await sheet.getByRole("textbox", { name: /^발급일/ }).fill("2021-05-03");
+  await fillDate(sheet, "2021-05-03", "발급일");
   await pickKind(sheet);
   await option(a, "원천징수 신고 사업장", "이 사업장에서 신고").click();
   await option(a, "이 사업장이 주된 사업장입니까", "주된 사업장").click();
@@ -260,7 +264,7 @@ test.fixme("the 사업장 holding the certificate shows the 소재지 the reissu
   const sheet = a.getByRole("dialog", { name: "등록증 재발급·정정" });
   await sheet.locator('input[type="file"]').setInputFiles(PDF("v2"));
   await option(a, "발급 사유", "변경 · 정정신고로 다시 받음").click();
-  await sheet.getByRole("textbox", { name: /^발급일/ }).fill(kstDate());
+  await fillDate(sheet, kstDate(), "발급일");
   await sheet.getByRole("group", { name: "바뀐 항목" }).getByRole("button", { name: /^사업장 소재지/ }).click();
   await sheet.getByRole("group", { name: "사업장 소재지", exact: true }).getByRole("button", { name: "주소 다시 찾기" }).click();
   await typeAddress(a, "사업장 소재지", BUSAN, "48058");

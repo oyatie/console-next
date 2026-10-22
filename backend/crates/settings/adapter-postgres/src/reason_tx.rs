@@ -18,6 +18,8 @@ pub(crate) fn view(row: &PgRow) -> Result<TenantCodeView, KernelError> {
         label_ko: row.try_get("label_ko").map_err(db_error)?,
         label_en: row.try_get("label_en").map_err(db_error)?,
         requires_note: row.try_get("requires_note").map_err(db_error)?,
+        involuntary: row.try_get("involuntary").map_err(db_error)?,
+        notice_required: row.try_get("notice_required").map_err(db_error)?,
         active: row.try_get("active").map_err(db_error)?,
         sort: row.try_get("sort").map_err(db_error)?,
     })
@@ -44,9 +46,11 @@ impl ReasonCodeStore for PgReasonTx<'_, '_> {
     ) -> Result<TenantCodeView, KernelError> {
         let row = sqlx::query(
             "INSERT INTO reason_codes
-                 (org_id, domain, code, label_ko, label_en, requires_note, sort, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-             RETURNING domain, code, label_ko, label_en, requires_note, active, sort",
+                 (org_id, domain, code, label_ko, label_en, requires_note, sort, created_by,
+                  involuntary, notice_required)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             RETURNING domain, code, label_ko, label_en, requires_note, active, sort,
+                       involuntary, notice_required",
         )
         .bind(self.org.as_uuid())
         .bind(code.domain.as_str())
@@ -56,6 +60,8 @@ impl ReasonCodeStore for PgReasonTx<'_, '_> {
         .bind(code.requires_note)
         .bind(sort)
         .bind(by.user.as_uuid())
+        .bind(code.involuntary)
+        .bind(code.notice_required)
         .fetch_one(self.tx.as_mut())
         .await
         .map_err(|e| match &e {
@@ -77,7 +83,8 @@ impl ReasonCodeStore for PgReasonTx<'_, '_> {
         sort: Option<i32>,
     ) -> Result<Option<(TenantCodeView, TenantCodeView)>, KernelError> {
         let before = sqlx::query(
-            "SELECT domain, code, label_ko, label_en, requires_note, active, sort
+            "SELECT domain, code, label_ko, label_en, requires_note, active, sort,
+                    involuntary, notice_required
                FROM reason_codes
               WHERE org_id = $1 AND domain = $2 AND code = $3
                 FOR UPDATE",
@@ -95,7 +102,8 @@ impl ReasonCodeStore for PgReasonTx<'_, '_> {
             "UPDATE reason_codes
                 SET active = coalesce($4, active), sort = coalesce($5, sort)
               WHERE org_id = $1 AND domain = $2 AND code = $3
-             RETURNING domain, code, label_ko, label_en, requires_note, active, sort",
+             RETURNING domain, code, label_ko, label_en, requires_note, active, sort,
+                       involuntary, notice_required",
         )
         .bind(self.org.as_uuid())
         .bind(domain.as_str())

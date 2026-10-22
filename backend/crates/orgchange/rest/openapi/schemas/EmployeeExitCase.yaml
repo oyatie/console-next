@@ -1,7 +1,7 @@
 type: object
-description: Optional fields are omitted (not null) when absent, except the `*_name` actor display names, which are
-  always present and null when the actor is unset or unknown. exit_reason_code (BE-EMP-UI) is the report's 퇴직
-  사유, omitted when none was given.
+description: Optional fields are omitted (not null) when absent. Required nullable fields are always present;
+  `*_name` actor display names are null when the actor is unset or unknown. exit_reason_code (BE-EMP-UI) is the
+  case's 퇴직 사유, omitted when none was given.
 required:
 - id
 - employee_id
@@ -9,6 +9,10 @@ required:
 - company
 - status
 - effective_exit_date
+- involuntary
+- notice_required
+- dismissal_notice
+- protected_periods
 - site_manager_note
 - reported_by
 - reported_by_name
@@ -50,7 +54,56 @@ properties:
     type: string
   exit_reason_code:
     type: string
-    description: BE-EMP-UI. The report's 퇴직 사유 (BW-07 exit_reason code); omitted when none was given.
+    description: BE-EMP-UI. The case's 퇴직 사유 (BW-07 exit_reason code); omitted when none was given.
+  involuntary:
+    type: boolean
+    readOnly: true
+    description: Derived from the reason catalog; never stored on the case.
+  notice_required:
+    type: boolean
+    readOnly: true
+    description: Derived from the reason catalog; whether written dismissal notice is required.
+  dismissal_notice:
+    type: [object, 'null']
+    readOnly: true
+    required: [reason_text, served_on, method, evidence_ref]
+    properties:
+      reason_text:
+        type: string
+      served_on:
+        type: string
+        format: date
+      method:
+        type: string
+        enum: [IN_PERSON_SIGNED, CERTIFIED_MAIL, ELECTRONIC]
+      evidence_ref:
+        type: string
+  protected_periods:
+    type: array
+    readOnly: true
+    description: Protected leave periods computed from lifecycle events and the statutory register.
+    items:
+      type: object
+      required: [lifecycle_event_id, leave_type, leave_from, leave_until, protected_until, instrument, article]
+      properties:
+        lifecycle_event_id:
+          type: string
+          format: uuid
+        leave_type:
+          type: string
+        leave_from:
+          type: string
+          format: date
+        leave_until:
+          type: [string, 'null']
+          format: date
+        protected_until:
+          type: [string, 'null']
+          format: date
+        instrument:
+          type: [string, 'null']
+        article:
+          type: [string, 'null']
   reported_by:
     $ref: '#/components/schemas/Uuid'
   reported_by_name:

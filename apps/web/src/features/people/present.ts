@@ -1,13 +1,12 @@
 // How people's lifecycle events and exit steps read: codes to message ids and words.
 import type { components } from "@console/api/schema";
-import { i18n, isMessageId, t, type MessageId } from "@console/i18n";
+import { isMessageId, t, type MessageId } from "@console/i18n";
 import { fmtDate, fmtDateTime, fmtKrw } from "@console/i18n/format";
 import { EMPLOYMENT_TYPE, LEAVE_TYPE, LIFECYCLE_EVENT, LIFECYCLE_STATE, actor, label, labeled, type Labeled } from "../../lib/labels";
 import { phoneDisplay } from "../../lib/pure/formats";
 import type { ChangeRequest, LifecycleEvent } from "./api";
 import { FIELDS, type Field } from "./domain/corrections";
 import type { Kind, Row } from "./domain/bulk";
-import { todayKst } from "../../lib/pure/today";
 import { reasonLabel } from "../../lib/reason-codes";
 import { continuityShape } from "./domain/group-transfer";
 import { daysBetween, type VerbWhy } from "./domain/lifecycle";
@@ -107,23 +106,12 @@ export const hrConfirmedTitle = (state: Case["exit_event_state"]) =>
 /** The registration's system comment (written by the server in English) reads as the act; any other comment as written. */
 const commentText = (c: string) => (c === "Created through People & Workforce" ? t("person.event.systemComment.created") : c);
 
-const day = (options: Intl.DateTimeFormatOptions) => (d: string) =>
-  new Intl.DateTimeFormat(i18n.locale === "ko" ? "ko-KR" : "en-US", { timeZone: "UTC", ...options }).format(Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10))));
-const thisYear = day({ month: "long", day: "numeric", weekday: "short" });
-const otherYearEn = day({ year: "numeric", month: "long", day: "numeric", weekday: "short" });
-// ICU ko with a year drops the parentheses around the weekday, which then runs into the sentence's ending;
-// so the ko weekday is appended in parentheses, as the no-year form already shows it (present.test.ts).
-const otherYear = (d: string) => (i18n.locale === "ko" ? `${shortOtherYear(d)} (${weekday(d)})` : otherYearEn(d));
-/** A business date in sentences and the next box: month, day and weekday, with the year only when it is not this year (KST). */
-export const fmtDay = (d: string) => (d.slice(0, 4) === todayKst().slice(0, 4) ? thisYear(d) : otherYear(d));
-const shortThisYear = day({ month: "long", day: "numeric" });
-const shortOtherYear = day({ year: "numeric", month: "long", day: "numeric" });
-/** A business date on a button or a fact line: month and day, with the year only when it is not this year (KST). */
-export const fmtDayShort = (d: string) => (d.slice(0, 4) === todayKst().slice(0, 4) ? shortThisYear(d) : shortOtherYear(d));
-const weekday = day({ weekday: "short" });
-/** The history gutter: MM.dd (weekday) within this year, yyyy.MM.dd before or after it. */
-export const fmtGutter = (d: string, today: string) =>
-  d.slice(0, 4) === today.slice(0, 4) ? `${d.slice(5, 7)}.${d.slice(8, 10)} (${weekday(d)})` : d.replaceAll("-", ".");
+/** A business date in sentences and the next box, with its weekday. */
+export const fmtDay = (d: string) => fmtDate(d, { weekday: "short" });
+/** A business date without a weekday. */
+export const fmtDayShort = (d: string) => fmtDate(d);
+/** The history gutter uses the same full business-date format as every other surface. */
+export const fmtGutter = (d: string, _today: string) => fmtDate(d, { weekday: "short" });
 /** Distance from today, in the date field's words: D-n, today, n days ago. */
 export const fmtRel = (d: string, today: string) => relDays(daysBetween(today, d));
 

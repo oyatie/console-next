@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { todayPreset } from "./sheet";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
 import { go, koDate, kstDate, registerEmployee } from "./flows";
@@ -47,7 +48,7 @@ test("J6 bulk transfer: a refused person is named and nothing is recorded; retry
   // @regression: a long check pushed the row's 빼기 out of the people pane (it scrolled sideways); the check wraps now.
   const sideways = await admin.getByRole("table", { name: /지금 → 새 위치/ }).evaluate((t) => t.parentElement!.scrollWidth - t.parentElement!.clientWidth);
   expect(sideways).toBeLessThanOrEqual(1);
-  await c.click(admin.getByRole("button", { name: /^오늘 \d{2}-\d{2}/ }));
+  await c.click(todayPreset(admin));
   await c.click(admin.getByRole("radiogroup", { name: /^사유/ }).getByText("조직 개편", { exact: true }));
   await admin.getByRole("textbox", { name: /^메모/ }).fill("조직 개편");
   await expectAccessible(admin, "J6: bulk workspace ready");

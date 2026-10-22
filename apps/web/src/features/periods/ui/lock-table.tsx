@@ -1,6 +1,6 @@
 import { LockOpen } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtDateTimeShort } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import { reasonLabel, type ReasonDomain } from "../../../lib/reason-codes";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
@@ -56,9 +56,9 @@ export function LockTable({ label, rows, view, now, onUnlock, onRequest, onReloc
           header: t("periodLocks.col.unlock"),
           cell: (l) => (
             <>
-              <span className={`num ${s.nowrap}`}>{fmtDateTimeShort(l.unlockedAt)}</span>
+              <span className={`num ${s.nowrap}`}>{fmtDateTime(l.unlockedAt)}</span>
               <p className={s.reason}>{reasonText("period_unlock", l.unlockReasonCode, l.unlockReason)}</p>
-              {l.relockAt && <p className={s.reason}>{t("periodLocks.unlock.relocksAt", { at: fmtDateTimeShort(l.relockAt) })}</p>}
+              {l.relockAt && <p className={s.reason}>{t("periodLocks.unlock.relocksAt", { at: fmtDateTime(l.relockAt) })}</p>}
               {l.unlockApprovedBy && <p className={s.reason}>{t("periodLocks.unlock.approved")}</p>}
               {l.unlockReviewRequired && <Chip tone="warn">{t("periodLocks.unlock.reviewChip")}</Chip>}
               {l.relockAt && <RelockButton lock={l} onLocked={onRelocked} />}
@@ -73,7 +73,7 @@ export function LockTable({ label, rows, view, now, onUnlock, onRequest, onReloc
       cell: (l) => (
         <>
           {reasonText("period_lock", l.reasonCode, l.reason)}
-          {l.unlockedAt && l.relockAt && <p className={s.reason}>{t("periodLocks.relocked", { at: fmtDateTimeShort(l.relockAt) })}</p>}
+          {l.unlockedAt && l.relockAt && <p className={s.reason}>{t("periodLocks.relocked", { at: fmtDateTime(l.relockAt) })}</p>}
         </>
       ),
       wide: true,

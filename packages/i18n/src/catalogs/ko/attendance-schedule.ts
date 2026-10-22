@@ -64,7 +64,7 @@ export const koAttendanceSchedule = {
   "attendanceSchedule.assign.oneDay": "{date} 하루만 대신 근무합니다",
   "attendanceSchedule.assign.reason": "사유",
   "attendanceSchedule.assign.evidence": "근거 문서",
-  "attendanceSchedule.assign.evidence.example": "육아기 근로시간 단축 신청서 2026-10-02",
+  "attendanceSchedule.assign.evidence.example": "육아기 근로시간 단축 신청서 2026. 10. 02.",
   "attendanceSchedule.assign.rotation": "회전 시작일",
   "attendanceSchedule.assign.rotationFor": "{name} 회전 시작일 (1일째)",
   "attendanceSchedule.assign.start": "출근 시각",

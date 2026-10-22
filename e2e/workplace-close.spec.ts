@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { fillDate } from "./sheet";
 import { expectAccessible } from "./a11y";
 import { go, kstDate, registerSheet } from "./flows";
 import { hire, openClose } from "./helpers/close";
@@ -37,7 +38,7 @@ test("regression: a staffed workplace closes today in one act by its plan (compa
   await expect(commit).toHaveAttribute("aria-disabled", "true");
   await expect(commit).toHaveAccessibleDescription("폐쇄일을 선택하면 닫을 수 있습니다.");
   await expect(commit).toHaveClass(/btn--danger/); // company-13: the irreversible commit is the danger action
-  await s.getByRole("textbox", { name: /^폐쇄일/ }).fill(kstDate());
+  await fillDate(s, kstDate(), "폐쇄일");
   await expect(commit).toHaveAccessibleDescription(/개발팀 부서의 계획이 남았습니다/);
   await shot(admin, "after-01-plan-empty");
   // A person's own row offers 전적 to another 법인 (one person at a time: each consents for themself); "all" does not.
@@ -99,7 +100,7 @@ test("a refused plan names who and why and changes nothing; a later close is sch
 
   // Today: 박신입's placement starts today, so they cannot move today. The server refuses the whole plan, naming them.
   let s = await openClose(admin, "판교지점");
-  await s.getByRole("textbox", { name: /^폐쇄일/ }).fill(kstDate());
+  await fillDate(s, kstDate(), "폐쇄일");
   await s.getByRole("button", { name: "모두 본사로" }).click();
   await s.getByRole("button", { name: "판교지점 폐쇄" }).click();
   await expect(s.getByRole("alert")).toContainText("박신입: 배치가 폐쇄일에 시작돼 그날 전근할 수 없습니다");
@@ -111,7 +112,7 @@ test("a refused plan names who and why and changes nothing; a later close is sch
 
   // Tomorrow: scheduled; nothing moves before the day. The reopened sheet shows the planned close, not a second plan.
   s = await openClose(admin, "판교지점");
-  await s.getByRole("textbox", { name: /^폐쇄일/ }).fill(kstDate(1));
+  await fillDate(s, kstDate(1), "폐쇄일");
   await s.getByRole("button", { name: "모두 본사로" }).click();
   await expect(s.getByRole("contentinfo").or(s)).toContainText("그 전에는 아무것도 바뀌지 않습니다");
   await s.getByRole("button", { name: "판교지점 폐쇄" }).click();
@@ -123,7 +124,7 @@ test("a refused plan names who and why and changes nothing; a later close is sch
   await s.getByRole("button", { name: "폐쇄 계획 취소" }).click();
 
   // Planned again, both leaving (폐업): their exits open now (마지막 근무일 today), and the close waits for them.
-  await s.getByRole("textbox", { name: /^폐쇄일/ }).fill(kstDate(1));
+  await fillDate(s, kstDate(1), "폐쇄일");
   await plan(admin, s, "개발팀 계획", "폐지");
   await plan(admin, s, "개발팀 2명 모두의 계획", "퇴직 · 폐업");
   await expect(s).toContainText("퇴직 2명 (폐업 2 · 도산 0)");

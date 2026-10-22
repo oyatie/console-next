@@ -104,6 +104,7 @@ export const enEnum: Partial<Record<keyof typeof koEnum, string>> = {
   "enum.settlementStatus.SUBMITTED": "Submitted",
   "enum.leaveType.CHILDCARE": "Childcare",
   "enum.leaveType.MATERNITY": "Maternity",
+  "enum.leaveType.WORK_INJURY": "Work-injury care",
   "enum.leaveType.ILLNESS": "Illness",
   "enum.leaveType.PERSONAL": "Personal",
   "enum.leaveType.OTHER": "Other",

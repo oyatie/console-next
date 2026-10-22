@@ -10,49 +10,19 @@
 //!
 //! The TERMINATE predicate (`terminate_may_apply`) is EXIT's: its
 //! `before_apply` calls it for `TERMINATE`. LIFE does not call the predicate
-//! itself, so the fail-closed stub cannot refuse exits before EXIT lands.
+//! itself; every TERMINATE now passes through EXIT's fail-closed implementation.
 
 use console_hr_application::lifecycle::hooks::{LifecycleApplyEvent, LifecycleApplyHooks};
 use console_hr_domain::text::parse_yyyy_mm_dd;
-use console_kernel_core::{KernelError, OrgId};
+use console_kernel_core::OrgId;
 use sqlx::PgConnection;
 use uuid::Uuid;
 
 use crate::HrError;
 
-/// Hooks that do nothing: the placeholder until EXIT's impl is on trunk.
-#[derive(Debug, Clone, Copy)]
-pub struct NoLifecycleHooks;
-
-impl LifecycleApplyHooks<PgConnection> for NoLifecycleHooks {
-    async fn before_apply(
-        &self,
-        _tx: &mut PgConnection,
-        _event: &LifecycleApplyEvent<'_>,
-    ) -> Result<(), KernelError> {
-        Ok(())
-    }
-
-    async fn after_apply(
-        &self,
-        _tx: &mut PgConnection,
-        _event: &LifecycleApplyEvent<'_>,
-    ) -> Result<(), KernelError> {
-        Ok(())
-    }
-
-    async fn on_rescind(
-        &self,
-        _tx: &mut PgConnection,
-        _event: &LifecycleApplyEvent<'_>,
-    ) -> Result<(), KernelError> {
-        Ok(())
-    }
-}
-
-/// THE SWAP POINT: INTEG replaces this (type and value) with EXIT's
-/// `LifecycleApplyHooks<PgConnection>` impl when LIFE and EXIT meet on trunk.
-pub const LIFECYCLE_HOOKS: NoLifecycleHooks = NoLifecycleHooks;
+/// EXIT checks every TERMINATE immediately before its effect.
+pub const LIFECYCLE_HOOKS: crate::exits::hooks::ExitLifecycleHooks =
+    crate::exits::hooks::ExitLifecycleHooks;
 
 /// The hook event for one ledger row; `effective_date` is the stored
 /// `YYYY-MM-DD` text.
