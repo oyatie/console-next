@@ -1,3 +1,3 @@
 type: object
-required: [name, people, normal, marks, rows, hidden]
-properties: { workplace_id: { $ref: '#/components/schemas/Uuid', nullable: true }, unit_id: { $ref: '#/components/schemas/Uuid', nullable: true }, name: { type: string }, people: { type: integer }, normal: { type: integer }, marks: { $ref: '#/components/schemas/AttendanceMarkCounts' }, rows: { type: array, items: { $ref: '#/components/schemas/AttendanceBoardRow' } }, hidden: { type: integer, description: clean rows folded (펼치기) } }
+required: [name, people, normal, no_schedule, marks, rows, hidden]
+properties: { workplace_id: { $ref: '#/components/schemas/Uuid', nullable: true }, unit_id: { $ref: '#/components/schemas/Uuid', nullable: true }, name: { type: string }, people: { type: integer }, normal: { type: integer }, no_schedule: { type: integer }, marks: { $ref: '#/components/schemas/AttendanceMarkCounts' }, rows: { type: array, items: { $ref: '#/components/schemas/AttendanceBoardRow' } }, hidden: { type: integer, description: clean rows folded (펼치기) } }

@@ -2801,6 +2801,7 @@ paths:
         - { name: workplace_id, in: query, required: false, schema: { $ref: '#/components/schemas/Uuid' } }
         - { name: unit_id, in: query, required: false, description: open this 부서 group (all its rows), schema: { $ref: '#/components/schemas/Uuid' } }
         - { name: issues_only, in: query, required: false, schema: { type: boolean } }
+        - { name: no_schedule_only, in: query, required: false, description: show only people without a resolved schedule; counts remain for the whole scope, schema: { type: boolean } }
       responses:
         '200': { description: Board, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceDayBoard' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -31511,8 +31512,8 @@ components:
       - OUTSOURCE_RESULT
     AttendanceBoardGroup:
       type: object
-      required: [name, people, normal, marks, rows, hidden]
-      properties: { workplace_id: { $ref: '#/components/schemas/Uuid', nullable: true }, unit_id: { $ref: '#/components/schemas/Uuid', nullable: true }, name: { type: string }, people: { type: integer }, normal: { type: integer }, marks: { $ref: '#/components/schemas/AttendanceMarkCounts' }, rows: { type: array, items: { $ref: '#/components/schemas/AttendanceBoardRow' } }, hidden: { type: integer, description: clean rows folded (펼치기) } }
+      required: [name, people, normal, no_schedule, marks, rows, hidden]
+      properties: { workplace_id: { $ref: '#/components/schemas/Uuid', nullable: true }, unit_id: { $ref: '#/components/schemas/Uuid', nullable: true }, name: { type: string }, people: { type: integer }, normal: { type: integer }, no_schedule: { type: integer }, marks: { $ref: '#/components/schemas/AttendanceMarkCounts' }, rows: { type: array, items: { $ref: '#/components/schemas/AttendanceBoardRow' } }, hidden: { type: integer, description: clean rows folded (펼치기) } }
     AttendanceBoardRow:
       type: object
       required: [employee_id, name, own, day, month_state]

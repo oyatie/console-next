@@ -90,6 +90,7 @@ pub(crate) struct DaysQuery {
     workplace_id: Option<Uuid>,
     unit_id: Option<Uuid>,
     issues_only: Option<bool>,
+    no_schedule_only: Option<bool>,
 }
 
 async fn days(
@@ -103,6 +104,7 @@ async fn days(
         workplace_id: q.workplace_id,
         unit_id: q.unit_id,
         issues_only: q.issues_only.unwrap_or(false),
+        no_schedule_only: q.no_schedule_only.unwrap_or(false),
     };
     Ok(Json(
         s.store

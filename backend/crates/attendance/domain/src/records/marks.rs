@@ -15,7 +15,7 @@ pub enum Mark {
     NoRecord,
     /// ▲ 출근 without 퇴근 (퇴근 누락).
     MissingOut,
-    /// ▲ time recorded for someone with no 근무 일정: nothing can be recognised.
+    /// ▲ no resolved 근무 일정, whether or not time has been recorded.
     NoSchedule,
     /// ◆ a stay past the shift over the notice minutes, with no 승인 (잔류).
     UnapprovedExcess,
@@ -81,12 +81,15 @@ pub fn marks(
     t: Thresholds,
 ) -> Vec<Mark> {
     let mut out = Vec::new();
+    if day == DayKind::NoSchedule {
+        out.push(Mark::NoSchedule);
+    }
     let work_day = day == DayKind::Work || holiday_work;
     match recorded {
         Recorded::Nothing if past && work_day => out.push(Mark::NoRecord),
         Recorded::ClockInOnly => out.push(Mark::MissingOut),
         Recorded::Absent if work_day => out.push(Mark::Absent),
-        Recorded::Times if day == DayKind::NoSchedule => out.push(Mark::NoSchedule),
+        Recorded::Times if day == DayKind::NoSchedule => {}
         // A 휴일 counts only through a 승인, even on a 교대 that runs through it.
         Recorded::Times if day != DayKind::Work && rec.recorded > rec.recognised => {
             out.push(Mark::WorkOnRestDay)

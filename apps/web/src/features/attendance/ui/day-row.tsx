@@ -16,7 +16,7 @@ import s from "./records.module.css";
  * one verb. A missing clock-out or a missing day is typed in place: the draft waits for the save, which asks for the
  * evidence once for every row. The own row and a closed month's row are read-only.
  */
-export function DayRow({ row, draft, onDraft, onOpen }: { row: BoardRow; draft?: Draft; onDraft: (value: string | null) => void; onOpen: () => void }) {
+export function DayRow({ row, draft, onDraft, onOpen, onAssign }: { row: BoardRow; draft?: Draft; onDraft: (value: string | null) => void; onOpen: () => void; onAssign: () => void }) {
   const mark = row.day.marks[0] as MarkCode | undefined;
   const tone = mark ? MARK_TONE[mark] : undefined;
   const start = row.day.entry?.kind === "CLOCK_IN_ONLY" ? row.day.entry.segments[0]?.start : undefined;
@@ -32,7 +32,9 @@ export function DayRow({ row, draft, onDraft, onOpen }: { row: BoardRow; draft?:
       </span>
       <DayBar day={row.day} />
       <span>{mark && <span className="sr-only">{t(`attendanceRecords.mark.${mark}`)} </span>}{problemText(row)}</span>
-      {inline ? (
+      {row.day.plan.kind === "NO_SCHEDULE" ? (
+        <Button size="sm" onClick={onAssign}>{t("attendanceRecords.unscheduled.assign")}</Button>
+      ) : inline ? (
         <Field label={t(start !== undefined ? "attendanceRecords.board.out" : "attendanceRecords.board.record", { name: row.name })} required={false} error={state && !state.ok ? refusalText(state.code) : undefined}>
           {(p) => (
             <TextInput

@@ -14459,6 +14459,7 @@ export interface components {
             name: string;
             people: number;
             normal: number;
+            no_schedule: number;
             marks: components["schemas"]["AttendanceMarkCounts"];
             rows: components["schemas"]["AttendanceBoardRow"][];
             /** @description clean rows folded (펼치기) */
@@ -30847,6 +30848,8 @@ export interface operations {
                 /** @description open this 부서 group (all its rows) */
                 unit_id?: components["schemas"]["Uuid"];
                 issues_only?: boolean;
+                /** @description show only people without a resolved schedule; counts remain for the whole scope */
+                no_schedule_only?: boolean;
             };
             header?: never;
             path?: never;

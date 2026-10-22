@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { PersonDayGrid, type DayColumn } from "../../../ui/person-day-grid/person-day-grid";
+import { Button } from "../../../ui/button/button";
 import { at, indexOf, rectIn, type Range } from "../../../ui/person-day-grid/range";
 import type { GridRow } from "../api";
 import { cellShape, toneCounts } from "../domain/day";
@@ -22,6 +23,7 @@ type Editing = { value: string; key: string; base: string | null; own: boolean; 
 export type GridAct =
   | { kind: "day"; row: GridRow; day: number }
   | { kind: "void"; row: GridRow; day: number }
+  | { kind: "assign"; row: GridRow }
   | { kind: "save" }
   | { kind: "month"; step: -1 | 1 }
   | { kind: "note"; message: string };
@@ -196,6 +198,12 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
             {r.own && <span className="muted"> {t("attendanceRecords.grid.ownTag")}</span>}
           </>
         ) },
+        ...(rows.some((r) => r.cells.some((c) => c.plan_kind === "NO_SCHEDULE")) ? [{
+          key: "schedule", header: t("attendanceRecords.day.plan"), width: "name" as const,
+          cell: (r: GridRow) => r.cells.some((c) => c.plan_kind === "NO_SCHEDULE") ? <>
+            {t("attendance.dayKind.NO_SCHEDULE")} <Button size="sm" onClick={() => act({ kind: "assign", row: r })}>{t("attendanceRecords.unscheduled.assign")}</Button>
+          </> : null,
+        }] : []),
       ]}
       days={columns}
       tail={[

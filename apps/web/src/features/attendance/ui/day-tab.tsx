@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { getRouteApi } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { QueryState } from "../../../lib/react/query-state";
 import { todayKst } from "../../../lib/pure/today";
@@ -22,6 +22,8 @@ import { DayRow } from "./day-row";
 import { MonthStateBanner } from "./month-state-banner";
 import { SaveDock } from "./save-dock";
 import { ScopePicker } from "./scope-picker";
+import { PersonScheduleSheet } from "./person-schedule-sheet";
+import type { AssignTarget } from "./assign-sheet";
 import { useDrafts } from "./use-drafts";
 import { useOnline } from "./use-online";
 import s from "./records.module.css";
@@ -37,12 +39,13 @@ export function DayTab() {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const date = search.date ?? addDays(todayKst(), -1);
-  const board = useQuery(dayBoardQuery(date, search.wp, search.unit, search.issues));
+  const board = useQuery(dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled));
   const store = useDrafts(`day:${date}`);
   const online = useOnline();
   const [save, setSave] = useState(false);
   const [open, setOpen] = useState<{ id: string; own: boolean } | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [assign, setAssign] = useState<AssignTarget | null>(null);
   const feedback = [note, store.problem && t(`attendanceRecords.drafts.${store.problem}`)].filter(Boolean).join(" · ");
   const go = (patch: Record<string, unknown>) => void navigate({ search: (x) => ({ ...x, ...patch }) });
   const drafts = Object.keys(store.drafts).length;
@@ -59,6 +62,7 @@ export function DayTab() {
           <IconButton size="sm" label={t("attendanceRecords.toolbar.nextDay")} onClick={() => go({ date: addDays(date, 1) })}><ChevronRight size={16} aria-hidden /></IconButton>
         </div>
         <ToggleButton size="sm" pressed={!!search.issues} onClick={() => go({ issues: search.issues ? undefined : true })}>{t("attendanceRecords.board.issuesOnly")}</ToggleButton>
+        <ToggleButton size="sm" pressed={!!search.unscheduled} onClick={() => go({ unscheduled: search.unscheduled ? undefined : true })}>{t("attendanceRecords.unscheduled.only")}</ToggleButton>
         <ToggleButton size="sm" pressed={!search.detail} onClick={() => go({ detail: undefined })}>{t("attendanceRecords.board.simple")}</ToggleButton>
         <ToggleButton size="sm" pressed={!!search.detail} onClick={() => go({ detail: true })}>{t("attendanceRecords.board.detail")}</ToggleButton>
         <span role="status">{t("attendanceRecords.toolbar.unsaved", { count: drafts, refused: 0 })}</span>
@@ -80,10 +84,10 @@ export function DayTab() {
                   </p>
                   {!ledger.adds && <Banner tone="warn">{t("attendanceRecords.board.ledgerGap")}</Banner>}
                   {search.detail ? (
-                    <DayDetail board={b} store={store} />
+                    <DayDetail board={b} store={store} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                   ) : !b.groups.length ? (
-                    search.issues ? (
-                      <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.board.noIssues")} actions={<Button onClick={() => go({ issues: undefined, wp: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />
+                    search.issues || search.unscheduled ? (
+                      <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.board.noIssues")} actions={<Button onClick={() => go({ issues: undefined, unscheduled: undefined, wp: undefined, unit: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />
                     ) : (
                       <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} />
                     )
@@ -92,11 +96,11 @@ export function DayTab() {
                       <Card
                         key={`${g.workplace_id}-${g.unit_id}`}
                         title={g.name}
-                        meta={t("attendanceRecords.board.groupMeta", { people: g.people, normal: g.normal, blocking: g.marks.blocking, decision: g.marks.decision })}
+                        meta={<>{t("attendanceRecords.board.groupMeta", { people: g.people, normal: g.normal, unscheduled: g.no_schedule, blocking: g.marks.blocking, decision: g.marks.decision })}{g.no_schedule > 0 && <> · <Link to="/attendance" search={{ tab: "day", date, wp: g.workplace_id ?? undefined, unit: g.unit_id ?? undefined, unscheduled: true }}>{t("attendanceRecords.unscheduled.view", { count: g.no_schedule })}</Link></>}</>}
                         tools={g.hidden > 0 && g.unit_id ? <Button size="sm" variant="ghost" onClick={() => go({ unit: g.unit_id })}>{t("attendanceRecords.board.expand", { count: g.hidden })}</Button> : undefined}
                       >
                         {g.rows.map((r) => (
-                          <DayRow key={r.employee_id} row={r} draft={store.drafts[cellKey(r.employee_id, date)]} onDraft={(v) => store.put(cellKey(r.employee_id, date), v ? { value: v, base: baseOf(store.drafts, cellKey(r.employee_id, date), r.day.entry?.id ?? null) } : null)} onOpen={() => setOpen({ id: r.employee_id, own: r.own })} />
+                          <DayRow key={r.employee_id} row={r} draft={store.drafts[cellKey(r.employee_id, date)]} onDraft={(v) => store.put(cellKey(r.employee_id, date), v ? { value: v, base: baseOf(store.drafts, cellKey(r.employee_id, date), r.day.entry?.id ?? null) } : null)} onOpen={() => setOpen({ id: r.employee_id, own: r.own })} onAssign={() => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                         ))}
                       </Card>
                     ))
@@ -127,6 +131,7 @@ export function DayTab() {
           );
         }}
       </QueryState>
+      {assign && <PersonScheduleSheet target={assign} onClose={() => setAssign(null)} onAssigned={(message) => (setAssign(null), setNote(message))} />}
     </div>
   );
 }

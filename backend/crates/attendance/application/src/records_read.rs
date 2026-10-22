@@ -106,6 +106,7 @@ pub struct BoardGroup {
     pub name: String,
     pub people: i64,
     pub normal: i64,
+    pub no_schedule: i64,
     pub marks: MarkCounts,
     /// Issue rows first; clean rows only when the group is opened.
     pub rows: Vec<BoardRow>,
