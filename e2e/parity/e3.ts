@@ -1,6 +1,9 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { go } from "../flows";
 import { shot } from "./shot";
+import { syntheticPhone } from "../../scripts/check-fixture-ids.mjs";
+
+let phone = 0;
 
 // E3 registration frames, driven through the UI on the parity world (world-b.ts).
 
@@ -30,7 +33,7 @@ export async function fillRegister(page: Page, who = { name: "임하람", birth:
   await pickPlace(page, who.unit);
   await s.getByRole("button", { name: /^다음 주 월요일/ }).click();
   await chip(s, /^고용형태/, "정규직").click();
-  await s.getByRole("textbox", { name: /^휴대전화/ }).fill(`010${String(Math.floor(Math.random() * 1e8)).padStart(8, "0")}`);
+  await s.getByRole("textbox", { name: /^휴대전화/ }).fill(syntheticPhone(++phone));
   await s.getByRole("textbox", { name: /^직위/ }).fill("사원");
   await s.getByRole("textbox", { name: /^기본급/ }).fill("3000000");
 }
@@ -79,7 +82,7 @@ export async function captureE3Run(page: Page) {
     const n = i + 1;
     await runCell(page, n, "이름").fill(name);
     await runCell(page, n, "생년월일").fill(birth);
-    await runCell(page, n, "휴대전화").fill(`0102300${String(1000 + n)}`);
+    await runCell(page, n, "휴대전화").fill(syntheticPhone(1000 + n));
     if (n === 1) {
       await page.getByRole("combobox", { name: "1번째 사람 고용형태" }).selectOption({ label: "정규직" });
       await page.getByRole("combobox", { name: "1번째 사람 둘 곳" }).pressSequentially("조립1");

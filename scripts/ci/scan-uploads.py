@@ -68,17 +68,21 @@ def public_dependency(file):
         lock = tomllib.loads((ROOT / "backend/Cargo.lock").read_text())
         with file.open("rb") as stream:
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
-        return any(p.get("checksum") == digest and p.get("source", "").startswith("registry+")
-                   and file.name == f"{p['name']}-{p['version']}.crate" for p in lock["package"])
+        if not any(p.get("checksum") == digest and p.get("source", "").startswith("registry+")
+                   and file.name == f"{p['name']}-{p['version']}.crate" for p in lock["package"]):
+            raise Refusal("Cargo cache checksum mismatch")
+        return True
     if "/_cacache/content-v2/sha512/" in name:
         lock = json.loads((ROOT / "package-lock.json").read_text())
         with file.open("rb") as stream:
             digest = "sha512-" + base64.b64encode(hashlib.file_digest(stream, "sha512").digest()).decode()
-        return any(p.get("integrity") == digest for p in lock["packages"].values())
+        if not any(p.get("integrity") == digest for p in lock["packages"].values()):
+            raise Refusal("npm cache checksum mismatch")
+        return True
     return False
 
 
-def scan(stream, name, depth=0, compiler_cache=False):
+def scan(stream, name, depth=0, office=False):
     if depth > 8:
         raise Refusal("archive nesting exceeds limit")
     text_hits(name)
@@ -92,17 +96,18 @@ def scan(stream, name, depth=0, compiler_cache=False):
             if proc.returncode:
                 raise Refusal("invalid zstd payload")
             decoded.seek(0)
-            scan(decoded, name + ".decoded", depth + 1, compiler_cache)
+            scan(decoded, name + ".decoded", depth + 1, office)
         return
     if head.startswith(b"\x1f\x8b"):
         with gzip.GzipFile(fileobj=stream) as zipped, tempfile.TemporaryFile() as decoded:
             while chunk := zipped.read(1024 * 1024):
                 decoded.write(chunk)
             decoded.seek(0)
-            scan(decoded, name + ".decoded", depth + 1, compiler_cache)
+            scan(decoded, name + ".decoded", depth + 1, office)
         return
     if head.startswith(rules.ZIP_MAGIC):
         with zipfile.ZipFile(stream) as archive:
+            office = office or "[Content_Types].xml" in archive.namelist()
             for entry in archive.infolist():
                 text_hits(entry.filename)
                 if entry.is_dir():
@@ -113,7 +118,7 @@ def scan(stream, name, depth=0, compiler_cache=False):
                     while chunk := member.read(1024 * 1024):
                         decoded.write(chunk)
                     decoded.seek(0)
-                    scan(decoded, entry.filename, depth + 1, compiler_cache)
+                    scan(decoded, entry.filename, depth + 1, office)
         return
     if head[257:262] == b"ustar":
         with tarfile.open(fileobj=stream, mode="r|*") as archive:
@@ -128,7 +133,7 @@ def scan(stream, name, depth=0, compiler_cache=False):
                     while chunk := member.read(1024 * 1024):
                         decoded.write(chunk)
                     decoded.seek(0)
-                    scan(decoded, entry.name, depth + 1, compiler_cache)
+                    scan(decoded, entry.name, depth + 1, office)
         return
     # The structural scanner deliberately does not OCR raster media; it checks names.
     if rules.is_media(head):
@@ -136,23 +141,16 @@ def scan(stream, name, depth=0, compiler_cache=False):
     encoding = "utf-16" if head.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8"
     decoder = codecs.getincrementaldecoder(encoding)(errors="replace")
     binary = b"\0" in head and encoding != "utf-16"
-    known_binary = head.startswith((b"\x7fELF", b"MZ", b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf", b"!<arch>\n", b"BC\xc0\xde", b"PACK", b"\x03\x02\x00\x00\x00etag:"))
-    # sccache's version-1 preprocessor metadata is bincode; object entries are ZIP/zstd above.
-    known_binary = known_binary or (compiler_cache and head[:1] == b"\x01")
-    if binary and not known_binary:
+    if binary:
         raise Refusal("unsupported binary payload")
     overlap = ""
     while chunk := stream.read(1024 * 1024):
         text = overlap + decoder.decode(chunk).replace("\0", "\n")
-        # Compiler output is scanned as strings, rather than treating compressed bytes as identifiers.
         if name.endswith((".xml", ".rels")):
             text = rules.TAG.sub(rules._tag, text)
-            if rules.LOCAL_PATH.search(text):
+            if office and rules.LOCAL_PATH.search(text):
                 raise Refusal("local office path")
         text_hits(text)
-        if binary:
-            for offset in (0, 1):
-                text_hits(chunk[offset:].decode("utf-16le", "replace").replace("\0", "\n"))
         overlap = text[-4096:]
     text_hits(overlap + decoder.decode(b"", final=True))
 
@@ -170,7 +168,7 @@ def walk(file):
             counts["publicDependencies"] += 1
             return
         with file.open("rb") as stream:
-            scan(stream, file.name, compiler_cache="sccache" in file.parts)
+            scan(stream, file.name)
     else:
         raise Refusal("non-regular upload")
 

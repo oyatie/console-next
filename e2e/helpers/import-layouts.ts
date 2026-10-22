@@ -1,17 +1,16 @@
 import ExcelJS from "exceljs";
+import { syntheticRrn } from "../../scripts/check-fixture-ids.mjs";
 
 // Workbooks laid out the way HR teams actually keep them (IMPORT-2, decisions #25): a title and a blank line above the
 // header, synonym labels, a sheet whose labels no catalog knows, a notes sheet, an empty sheet, 재직/휴직 columns.
-// Every value is generated; resident registration numbers are synthetic (valid shape and check digit only).
+// Every value is generated; resident registration numbers keep their shape and fail the checksum.
 
 const pad = (n: number, w: number) => String(n).padStart(w, "0");
 
-/** A synthetic 주민등록번호 for a birth date and gender digit, with a valid check digit (never a real person's). */
+/** A synthetic 주민등록번호 for a birth date and gender digit, with an invalid check digit. */
 export function rrn(birth: string, gender: 1 | 2 | 3 | 4, serial: number) {
   const body = `${birth.slice(2, 4)}${birth.slice(5, 7)}${birth.slice(8, 10)}${gender}${pad(serial % 100000, 5)}`;
-  const weights = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5];
-  const sum = [...body].reduce((s, d, i) => s + Number(d) * weights[i]!, 0);
-  return `${body.slice(0, 6)}-${body.slice(6)}${(11 - (sum % 11)) % 10}`;
+  return syntheticRrn(body);
 }
 
 /** One person as a 인사 명부 row carries them. Empty strings are empty cells. */

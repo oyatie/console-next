@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { load } from "js-yaml";
+import { rrnChecksumValid } from "./check-fixture-ids.mjs";
 
 const root = new URL("../", import.meta.url);
 const workflow = () => load(readFileSync(new URL(".github/workflows/ci.yml", root), "utf8"));
 
 test("public test topology has no restricted paths or production services", () => {
-  const tracked = spawnSync("git", ["diff", "cutover/preflip-r2", "--name-only", "--diff-filter=ACMR", "-z"], { encoding: "utf8" }).stdout.split("\0");
-  assert.deepEqual(tracked.filter((file) => /^(ops|tools|deploy)\//.test(file)), []);
+  const tracked = spawnSync("git", ["ls-files", "-z", "--", "ops/", "tools/", "deploy/"], { encoding: "utf8", cwd: root });
+  assert.equal(tracked.status, 0, tracked.stderr);
+  assert.deepEqual(tracked.stdout.split("\0").filter(Boolean), ["deploy/SECRETS.md"]);
   const stack = load(readFileSync(new URL("e2e/stack/compose.yml", root), "utf8"));
   assert.deepEqual(Object.keys(stack.services).sort(), ["mailpit", "otel-collector", "postgres", "postgres-topology", "seaweedfs"]);
   assert.equal(stack.services.postgres.image, "${CONSOLE_POSTGRES_IMAGE:?}");
@@ -54,17 +56,84 @@ test("clean upload payload passes the existing structural and checksum gates", (
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("private terms are supplied only to trusted runs in a temporary environment file", () => {
+test("private terms are scoped to upload scans on trusted runs", () => {
   for (const job of Object.values(workflow().jobs)) {
-    const step = job.steps.find((s) => s.name === "Prepare optional trusted client-data rules");
-    assert.ok(step);
-    assert.match(step.if, /github.event_name == 'merge_group'/);
-    assert.match(step.if, /github.event_name == 'push' && github.ref == 'refs\/heads\/dev'/);
-    assert.doesNotMatch(step.if, /pull_request/);
-    assert.equal(step.env.CLIENT_DATA_TERMS, "${{ secrets.CONSOLE_CLIENT_DATA_TERMS }}");
-    assert.match(step.run, /umask 077/);
-    assert.match(step.run, /CONSOLE_CLIENT_DATA_TERMS_FILE=/);
+    const scans = job.steps.filter((step) => step.run?.includes("scripts/ci/privacy.mjs"));
+    assert.ok(scans.length);
+    for (const step of scans) {
+      const terms = step.env?.CLIENT_DATA_TERMS;
+      assert.equal(typeof terms, "string");
+      assert.match(terms, /github.event_name == 'merge_group'/);
+      assert.match(terms, /github.event_name == 'push' && github.ref == 'refs\/heads\/dev'/);
+      assert.match(terms, /secrets.CONSOLE_CLIENT_DATA_TERMS/);
+      assert.match(terms, /\|\| ''/);
+      assert.doesNotMatch(terms, /pull_request/);
+    }
+    for (const step of job.steps.filter((candidate) => !scans.includes(candidate))) {
+      assert.equal(step.env?.CLIENT_DATA_TERMS, undefined);
+      assert.doesNotMatch(step.run ?? "", /CONSOLE_CLIENT_DATA_TERMS_FILE|client-data-terms/);
+    }
   }
+});
+
+test("upload scan roots include data-bearing artifacts without compiler output", () => {
+  assert.ok(workflow().jobs["rust-build"].needs.includes("hygiene"), "public-source checks must pass before compiled artifacts can publish");
+  for (const [name, job] of Object.entries(workflow().jobs)) {
+    const scan = job.steps.find((step) => step.run?.includes("scripts/ci/privacy.mjs"));
+    assert.ok(scan, name);
+    assert.doesNotMatch(scan.run, /\.cache\/ci\/build(?:[\s/]|$)|\.cache\/sccache(?:[\s/]|$)/, name);
+    for (const target of scan.run.matchAll(/(?:backend\/target\/nextest|\.cache\/ci\/extracted\/target\/nextest)[^\s]*/g)) {
+      assert.match(target[0], /(?:\.xml|\.baseline\.json)$/, `${name}: ${target[0]}`);
+    }
+  }
+});
+
+test("trusted private terms scan the tree as well as clean upload contents", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-private-tree-"));
+  try {
+    writeFileSync(path.join(dir, "summary.md"), "tests passed\n");
+    const result = spawnSync("node", ["scripts/ci/privacy.mjs", dir], {
+      encoding: "utf8", env: { ...process.env, CLIENT_DATA_TERMS: "spdx-license-identifier" },
+    });
+    assert.equal(result.status, 1, result.stderr);
+    assert.ok(!(result.stdout + result.stderr).toLowerCase().includes("spdx-license-identifier"));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("failing JUnit and Playwright traces upload runner paths and synthetic fixtures", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-failing-evidence-"));
+  try {
+    const prefix = [0, 1, 0, 1, 0, 1, 3, 2, 4, 6, 8, 0].join("");
+    const rrn = [...Array(10).keys()].map((digit) => prefix + digit).find((value) => !rrnChecksumValid(value));
+    assert.ok(rrn);
+    const fixtures = { phone: ["010", "1234", "5678"].join("-"), rrn, brn: ["000", "12", "34567"].join("-") };
+    writeFileSync(path.join(dir, "junit.xml"), `<testsuite failures="1"><testcase name="synthetic fixture"><failure>at /home/runner/work/console-next/e2e/fixture.ts:12\n${JSON.stringify(fixtures)}</failure></testcase></testsuite>`);
+    const trace = { type: "resource-snapshot", snapshot: { request: { url: "https://console.invalid/api/fixtures", postData: JSON.stringify(fixtures) }, response: { status: 400 } } };
+    const zipped = spawnSync("python3", ["-c", "import sys,zipfile\nwith zipfile.ZipFile(sys.argv[1],'w') as z:z.writestr('resources/network.trace',sys.argv[2])", path.join(dir, "trace.zip"), JSON.stringify(trace)], { encoding: "utf8" });
+    assert.equal(zipped.status, 0, zipped.stderr);
+    const result = spawnSync("node", ["scripts/ci/privacy.mjs", dir], { encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("data-bearing JUnit and trace archives still refuse real-shaped phone and valid RRN controls", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-real-evidence-"));
+  try {
+    const prefix = [0, 1, 0, 1, 0, 1, 3, 2, 4, 6, 8, 0].join("");
+    const rrn = [...Array(10).keys()].map((digit) => prefix + digit).find(rrnChecksumValid);
+    const phone = [[0, 1, 0], [5, 8, 2, 6], [7, 4, 9, 3]].map((group) => group.join("")).join("-");
+    for (const control of [phone, rrn]) {
+      assert.ok(control);
+      writeFileSync(path.join(dir, "junit.xml"), `<testsuite failures="1"><failure>${control}</failure></testsuite>`);
+      const zipped = spawnSync("python3", ["-c", "import sys,zipfile\nwith zipfile.ZipFile(sys.argv[1],'w') as z:z.writestr('resources/network.trace',sys.argv[2])", path.join(dir, "trace.zip"), JSON.stringify({ postData: control })], { encoding: "utf8" });
+      assert.equal(zipped.status, 0, zipped.stderr);
+      for (const file of ["junit.xml", "trace.zip"]) {
+        const result = spawnSync("node", ["scripts/ci/privacy.mjs", path.join(dir, file)], { encoding: "utf8" });
+        assert.equal(result.status, 1, file);
+        assert.ok(!(result.stdout + result.stderr).includes(control));
+      }
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test("upload scanner inspects archives, encodings and private terms without echoing controls", () => {
@@ -99,7 +168,7 @@ test("upload scanner inspects archives, encodings and private terms without echo
     mkdirSync(path.join(dir, "sccache"));
     const prefix = Buffer.from([1, 0, 0, 0, 0, 0]);
     writeFileSync(path.join(dir, "sccache", "entry"), Buffer.concat([prefix, Buffer.from("harmless metadata")]));
-    assert.equal(run("sccache/entry").status, 0);
+    assert.equal(run("sccache/entry").status, 1);
     writeFileSync(path.join(dir, "sccache", "entry"), Buffer.concat([prefix, Buffer.from(control)]));
     assert.equal(run("sccache/entry").status, 1);
     const browsers = path.join(dir, "public-browsers");
@@ -111,6 +180,38 @@ test("upload scanner inspects archives, encodings and private terms without echo
     assert.equal(run("public-browsers", provenance).status, 0);
     writeFileSync(path.join(browsers, "distribution.bin"), control);
     assert.equal(run("public-browsers", provenance).status, 1);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("uploads refuse symlinks, unverified dependency caches, non-regular members and excessive nesting", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-upload-boundaries-"));
+  try {
+    writeFileSync(path.join(dir, "clean.txt"), "safe fixture");
+    symlinkSync(path.join(dir, "clean.txt"), path.join(dir, "link"));
+    const locked = spawnSync("python3", ["-c", "import tomllib\np=next(p for p in tomllib.load(open('backend/Cargo.lock','rb'))['package'] if p.get('source','').startswith('registry+'));print(p['name']+'-'+p['version']+'.crate')"], { encoding: "utf8" });
+    assert.equal(locked.status, 0, locked.stderr);
+    const controls = ["link", `.cargo/registry/cache/control/${locked.stdout.trim()}`, "npm/_cacache/content-v2/sha512/aa/bb/control"];
+    for (const file of controls.slice(1)) {
+      mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+      writeFileSync(path.join(dir, file), "safe fixture with no lockfile proof");
+    }
+    const result = spawnSync("python3", ["-c", `import io,sys,tarfile,zipfile
+from pathlib import Path
+p=Path(sys.argv[1])
+with tarfile.open(p/'symlink.tar','w') as t:
+ i=tarfile.TarInfo('clean');i.type=tarfile.SYMTYPE;i.linkname='clean.txt';t.addfile(i)
+data=b'safe fixture'
+for _ in range(10):
+ b=io.BytesIO()
+ with zipfile.ZipFile(b,'w') as z:z.writestr('nested.zip',data)
+ data=b.getvalue()
+(p/'deep.zip').write_bytes(data)
+`, dir], { encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    for (const file of [...controls, "symlink.tar", "deep.zip"]) {
+      const scan = spawnSync("node", ["scripts/ci/privacy.mjs", path.join(dir, file)], { encoding: "utf8" });
+      assert.equal(scan.status, 1, file);
+    }
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

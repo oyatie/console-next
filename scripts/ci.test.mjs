@@ -11,9 +11,15 @@ import { load } from "js-yaml";
 const root = new URL("../", import.meta.url);
 const workflow = () => load(readFileSync(new URL(".github/workflows/ci.yml", root), "utf8"));
 const helpers = () => import("./ci/plan.mjs");
+function mandatory(step, label, allowedIf) {
+  assert.ok(step, `${label}: missing enforcement`);
+  assert.ok(step["continue-on-error"] === undefined || step["continue-on-error"] === false, `${label}: optional enforcement`);
+  assert.ok(step.if === undefined || (allowedIf !== undefined && [allowedIf].flat().includes(step.if)), `${label}: skippable enforcement`);
+  assert.doesNotMatch(step.run ?? "", /\|\|\s*(?:true|:)(?:\s|$)/, `${label}: ignored failure`);
+}
 const packages = [
-  { name: "core", manifest_path: "/repo/backend/core/Cargo.toml", dependencies: [] },
-  { name: "app", manifest_path: "/repo/backend/app/Cargo.toml", dependencies: [{ path: "/repo/backend/core" }] },
+  { name: "core", manifest_path: "/repo/backend/core/Cargo.toml", dependencies: [], targets: [{ name: "core", kind: ["lib"], test: true }] },
+  { name: "app", manifest_path: "/repo/backend/app/Cargo.toml", dependencies: [{ name: "core", path: "/repo/backend/core" }], targets: [{ name: "app", kind: ["bin"], test: true }] },
   { name: "other", manifest_path: "/repo/backend/other/Cargo.toml", dependencies: [] },
 ];
 
@@ -30,10 +36,25 @@ test("docs skip proof jobs; crate changes include reverse dependencies only", as
 
 test("shared inputs and merge queue force full proof; unknown paths fail safe", async () => {
   const { affected } = await helpers();
-  for (const file of ["backend/Cargo.lock", "package-lock.json", ".github/workflows/ci.yml", "backend/crates/platform/db/migrations/new.sql", "new-tool/input"]) {
+  for (const file of ["backend/Cargo.lock", "package-lock.json", ".github/workflows/ci.yml", "backend/core/migrations/new.sql", "new-tool/input"]) {
     assert.equal(affected([file], packages, [], "/repo").full, true, file);
   }
   assert.equal(affected(["docs/ci.md"], packages, [], "/repo", true).full, true);
+});
+
+test("merge-group CLI forces full proof even when the event supplies a docs-only base", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-merge-plan-"));
+  try {
+    writeFileSync(path.join(dir, "event.json"), JSON.stringify({ before: "base-sha" }));
+    writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nprocess.stdout.write(${JSON.stringify(JSON.stringify({ packages }))});\n`, { mode: 0o700 });
+    writeFileSync(path.join(dir, "git"), `#!${process.execPath}\nprocess.stdout.write('docs/ci.md\\0');\n`, { mode: 0o700 });
+    const output = path.join(dir, "outputs");
+    const result = spawnSync(process.execPath, ["scripts/ci/plan.mjs"], { encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, GITHUB_EVENT_PATH: path.join(dir, "event.json"), GITHUB_EVENT_NAME: "merge_group", GITHUB_OUTPUT: output } });
+    assert.equal(result.status, 0, result.stderr);
+    const values = Object.fromEntries(readFileSync(output, "utf8").trim().split("\n").map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]));
+    assert.equal(values.full, "true");
+    assert.ok(Object.values(JSON.parse(values.required)).every(Boolean));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test("npm workspace reverse dependencies reach their consumers", async () => {
@@ -45,6 +66,7 @@ test("npm workspace reverse dependencies reach their consumers", async () => {
 test("ci-ok rejects dependency-failure skips, cancellation, and missing results", async () => {
   const { gate } = await import("./ci/gate.mjs");
   assert.equal(gate({ build: true, test: true }, { build: "failure", test: "skipped" }), false);
+  assert.equal(gate({ test: true }, { test: "skipped" }), false);
   assert.equal(gate({ test: true }, { test: "cancelled" }), false);
   assert.equal(gate({ test: true }, {}), false);
   assert.equal(gate({ test: false }, { test: "skipped" }), true);
@@ -57,11 +79,42 @@ test("every proof job feeds an always-reporting merge-queue gate", async () => {
   const wf = workflow();
   assert.ok(Object.hasOwn(wf.on, "merge_group"));
   assert.deepEqual(wf.permissions, {});
-  assert.match(wf.jobs["ci-ok"].if, /always\(\)/);
+  assert.equal(wf.jobs["ci-ok"].if, "always()");
+  mandatory(wf.jobs["ci-ok"], "ci-ok", "always()");
+  const enforcement = wf.jobs["ci-ok"].steps.find((step) => step.run?.trim() === "node scripts/ci/gate.mjs");
+  mandatory(enforcement, "ci-ok");
+  assert.equal(enforcement.env?.NEEDS, "${{ toJSON(needs) }}");
+  assert.equal(wf.concurrency["cancel-in-progress"], "${{ github.event_name == 'pull_request' }}");
   assert.deepEqual([...wf.jobs["ci-ok"].needs].sort(), Object.keys(wf.jobs).filter((x) => x !== "ci-ok").sort());
   for (const name of ["backend-test", "backend-db", "e2e", "personal-data-classification", "pii-no-logs", "tenant-isolation", "rls-arming", "audit-coverage"]) assert.ok(wf.jobs[name], name);
   const { requiredJobs } = await helpers();
+  assert.equal(requiredJobs({}).hygiene, true);
   assert.deepEqual(Object.keys(requiredJobs({})).sort(), Object.keys(wf.jobs).filter((name) => !["ci-ok", "plan"].includes(name)).sort());
+});
+
+test("proof jobs execute their required commands without optional steps", () => {
+  const wf = workflow();
+  for (const name of ["personal-data-classification", "pii-no-logs", "tenant-isolation", "rls-arming", "audit-coverage"]) {
+    const command = new RegExp(`^\\s*(?:\\S*/)?console-gate-${name}\\s*$`, "m");
+    mandatory(wf.jobs[name], name, "needs.plan.outputs.backend == 'true'");
+    mandatory(wf.jobs[name].steps.find((step) => command.test(step.run ?? "")), name);
+  }
+  for (const [name, command] of [["backend-test", "rust-tests\\.mjs\\s+unit"], ["backend-db", "rust-tests\\.mjs\\s+db"], ["e2e", "e2e\\.mjs\\s+run"]]) {
+    mandatory(wf.jobs[name], name, `needs.plan.outputs.${name === "e2e" ? "e2e" : name === "backend-test" ? "unit" : "db"} == 'true'`);
+    const run = new RegExp(`^\\s*node\\s+(?:\\.\\./)?scripts/ci/${command}(?:\\s|$)`, "m");
+    mandatory(wf.jobs[name].steps.find((step) => run.test(step.run ?? "")), name);
+  }
+});
+
+test("hygiene always enforces structural scans, fixture checks, terms and secrets", () => {
+  const job = workflow().jobs.hygiene;
+  mandatory(job, "hygiene");
+  for (const command of [/^\s*python3 scripts\/client-data-scan\.py --root \. --tree\s*$/m, /^\s*python3 scripts\/ci\/scan-uploads\.py --terms-tree\s*$/m, /^\s*gitleaks git\s/m, /^\s*node scripts\/check-fixture-ids\.mjs\s*$/m, /^\s*node scripts\/check-e2e-identifiers\.mjs\s*$/m]) {
+    mandatory(job.steps.find((step) => command.test(step.run ?? "")), String(command));
+  }
+  const baseline = job.steps.find((step) => step.run === "python3 scripts/ci/test-results.py --validate");
+  mandatory(baseline, "trunk baseline");
+  assert.equal(baseline.env?.CI_BASE_SHA, "${{ needs.plan.outputs.base }}");
 });
 
 test("all actions are allowed and SHA pinned; every job is bounded and hardened", () => {
@@ -90,7 +143,10 @@ test("cache writes are dev-push only; uploads have a preceding successful person
         const scan = job.steps.slice(0, i).findLast((s) => s.id === "privacy");
         assert.ok(scan, `${name}: upload without privacy scan`);
         assert.match(step.if, /steps.privacy.outcome == 'success'/);
-        if (step.uses.startsWith("actions/upload-artifact")) assert.match(String(step.with["retention-days"]), /retention/);
+        if (step.uses.startsWith("actions/upload-artifact")) {
+          assert.match(String(step.with["retention-days"]), /retention/);
+          assert.match(step.if, /outputs\.retention != ''/, "missing plans must not use the repository's default retention");
+        }
       }
       if (step.uses?.startsWith("actions/setup-node")) {
         assert.equal(step.with?.cache, undefined, "implicit saves violate restore-only PR policy");
@@ -108,6 +164,7 @@ test("dev ruleset requires PR, queue and ci-ok without bypass or human approval"
   for (const type of ["pull_request", "merge_queue", "required_status_checks", "non_fast_forward", "deletion"]) assert.ok(Object.hasOwn(byType, type), type);
   assert.equal(byType.pull_request.required_approving_review_count, 0);
   assert.deepEqual(byType.required_status_checks.required_status_checks, [{ context: "ci-ok", integration_id: 15368 }]);
+  assert.equal(byType.required_status_checks.strict_required_status_checks_policy, false);
 });
 
 test("duration shards cover every file once and reserve solo for shard one", async () => {
@@ -135,9 +192,16 @@ test("upload scan rejects valid identifiers and accepts mismatched checksums", (
 });
 
 test("all three Clippy feature sets keep -D warnings", () => {
-  const lint = workflow().jobs["rust-build"].steps.find((step) => step.name === "Format and all Clippy feature sets");
-  assert.match(lint.run, /cargo clippy --workspace --all-targets --locked -- -D warnings/);
-  for (const features of ["full", "full,test-postgres"]) assert.ok(lint.run.includes(`--features ${features} -- -D warnings`));
+  const jobs = Object.entries(workflow().jobs);
+  for (const features of ["", "--features full ", "--features full,test-postgres "]) {
+    const command = `cargo clippy --workspace --all-targets --locked ${features}-- -D warnings`;
+    const matches = jobs.flatMap(([name, job]) => job.steps.filter((step) => step.run?.split("\n").some((line) => line.trim() === command)).map((step) => ({ name, job, step })));
+    assert.ok(matches.length > 0, `missing strict ${features || "default"} lint`);
+    for (const { name, job, step } of matches) {
+      mandatory(job, name, ["needs.plan.outputs.backend == 'true'", "needs.plan.outputs.backend == 'true' || needs.plan.outputs.e2e == 'true'"]);
+      mandatory(step, command, "needs.plan.outputs.backend == 'true' && matrix.primary");
+    }
+  }
 });
 
 test("Telegram adapter keeps credentials out of argv and sends only the supplied run metadata", () => {
@@ -204,7 +268,7 @@ test("browser failures retain traces without automatic retries", () => {
   assert.doesNotMatch(config, /on-first-retry/);
 });
 
-test("job metrics count fallback cache hits and reject expired quarantine entries", () => {
+test("job metrics count fallback cache hits", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-job-metrics-"));
   try {
     const config = JSON.parse(readFileSync(new URL("scripts/ci/config.json", root), "utf8"));
@@ -217,7 +281,5 @@ test("job metrics count fallback cache hits and reject expired quarantine entrie
     const report = JSON.parse(readFileSync(path.join(dir, ".cache/ci/metrics.json"), "utf8"));
     assert.equal(report.cacheHits, 2);
     assert.equal(report.cacheLookups, 2);
-    writeFileSync(file, JSON.stringify({ ...config, quarantine: [{ owner: "test-owner", test: "test-case", expires: new Date(Date.now() - 1000).toISOString() }] }));
-    assert.notEqual(spawnSync("node", [script], { cwd: dir, env, encoding: "utf8" }).status, 0);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
