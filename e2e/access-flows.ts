@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { fmtStamp } from "@console/i18n/format";
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expect, type Page } from "@playwright/test";
 import { activatePendingGrants } from "./second-person-fixture";
 import { bearerOf } from "./helpers/api";
@@ -64,9 +65,9 @@ export async function grantAccess(admin: Page, name: string, access: Access, sco
   await pick.getByRole("row", { name: scope }).first().click();
   await pick.getByRole("button", { name: "이 범위로 설정" }).click();
   await sheet.getByRole("button", { name: /^1년/ }).click();
-  // 적용 시작: from setup while the tenant is in it; once operating, on save (nothing is preselected).
+  // 적용 시작: from setup while the tenant is in it; once operating, as soon as permitted (nothing is preselected).
   if (await sheet.getByRole("radio", { name: /^설정 단계부터/ }).count()) await chooseRadio(sheet, /^설정 단계부터/);
-  else await chooseRadio(sheet, /^저장 즉시/);
+  else await chooseRadio(sheet, new RegExp(`^${ko["accessGrants.start.NOW"]}`));
   await chooseRadio(sheet, /^업무 배정·변경/);
   // Preview, passkey and apply are three round trips: allowed longer than one assertion under a loaded slot.
   const previewResponse = admin.waitForResponse((r) => r.url().endsWith("/access/grants/preview") && r.request().method() === "POST");

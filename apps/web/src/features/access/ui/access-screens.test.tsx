@@ -94,15 +94,15 @@ test("F8: scheduled preview shows the server deadline without promising immediat
   }
 });
 
-test("F8: the confirm sheet body repeats each scheduled line and its server activation time", () => {
+test("F8: the confirm sheet body lists grants without repeating the footer deadline", () => {
   const at = "2026-10-03T02:34:00Z";
   const items: AccessGrantPreview["items"] = [
     { index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED", activates_at: at },
   ];
   const html = renderToStaticMarkup(<GrantPreviewSummary items={items} named={["인사 담당 (전체)"]} />);
   expect(html).toContain("인사 담당 (전체)");
-  expect(html).toContain(fmtStamp(at));
-  expect(html).toContain("적용");
+  expect(html).not.toContain(fmtStamp(at));
+  expect(html).not.toContain("보안 대기");
 });
 
 test("F8: scheduled grants use truthful copy before and after save", () => {

@@ -4,7 +4,7 @@ import { ChoiceField } from "../../../ui/choice/choice-field";
 import { DateField } from "../../../ui/date/date-field";
 import { startProblem, type Start } from "../domain/grants";
 import { grantsQuery, type PreviewItem } from "../api";
-import { enforcementText, periodText, scheduledText, scopeText } from "../present";
+import { periodText, scopeText } from "../present";
 import { useOrgRoots } from "./use-org-roots";
 import s from "./access.module.css";
 
@@ -26,14 +26,13 @@ export function CurrentGrants({ accountId }: { accountId: string }) {
   );
 }
 
-/** Read-only consequence in the confirmation step; the form stays in state behind the edit action. */
+/** Read-only composed lines; the confirmation footer states their activation deadline. */
 export function GrantPreviewSummary({ items, named }: { items: readonly PreviewItem[]; named: readonly string[] }) {
   return (
     <ul className="list-plain">
       {items.map((item) => (
         <li key={item.index} className={s.stack}>
           <strong>{named[item.index]}</strong>
-          <span className="muted">{scheduledText(item) ?? enforcementText(item.enforcement_after ?? "")}</span>
         </li>
       ))}
     </ul>

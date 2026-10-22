@@ -97,36 +97,58 @@ async fn pending_activation_refuses_when_no_active_ops_holder_remains(pool: PgPo
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn pending_activation_refuses_an_inactive_grantor_with_another_ops_holder(pool: PgPool) {
     use console_kernel_core::FixedClock;
-    let (org, actor, target, role) = fixture(&pool).await;
-    let mut tx = pool.begin().await.unwrap();
-    sqlx::query("SELECT set_config('app.current_org',$1,true)")
-        .bind(org.to_string())
-        .execute(tx.as_mut())
-        .await
-        .unwrap();
-    let (grant, due) =
-        pending_grant(&mut tx, org, actor, target, role, NodeKind::Tenant, None).await;
-    sqlx::query("UPDATE users SET is_tenant_ops=false WHERE id=$1")
-        .bind(actor)
-        .execute(tx.as_mut())
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO users (id,org_id,display_name,roles,is_tenant_ops) VALUES ($1,$2,'후임 관리자','{}',true)")
+    for active in [true, false] {
+        let (org, actor, target, role) = fixture(&pool).await;
+        let mut tx = pool.begin().await.unwrap();
+        sqlx::query("SELECT set_config('app.current_org',$1,true)")
+            .bind(org.to_string())
+            .execute(tx.as_mut())
+            .await
+            .unwrap();
+        let (grant, due) =
+            pending_grant(&mut tx, org, actor, target, role, NodeKind::Tenant, None).await;
+        // The grantor retains Org and Access authority, so only the active-account guard can refuse.
+        sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) VALUES ($1,$2,1,'access','{view,edit}')")
+        .bind(org.as_uuid()).bind(role).execute(tx.as_mut()).await.unwrap();
+        sqlx::query("UPDATE users SET is_tenant_ops=false WHERE id=$1")
+            .bind(actor)
+            .execute(tx.as_mut())
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO users (id,org_id,display_name,roles,is_tenant_ops) VALUES ($1,$2,'후임 관리자','{}',true)")
         .bind(Uuid::new_v4())
         .bind(org.as_uuid())
         .execute(tx.as_mut())
         .await
         .unwrap();
-    sqlx::query("UPDATE users SET is_active=false WHERE id=$1")
-        .bind(actor)
-        .execute(tx.as_mut())
-        .await
-        .unwrap();
-    let error = crate::pending::activate_in_tx(&mut tx, org, grant, &FixedClock(due))
-        .await
-        .unwrap_err();
-    assert_eq!(error.code, "access_denied");
-    tx.rollback().await.unwrap();
+        sqlx::query("INSERT INTO access_grants (org_id,account_id,role_id,scope_kind,valid_from,effective_in_setup,change_mode,reason_code,granted_by)
+            SELECT $1,$2,$3,'TENANT',now(),true,'SETUP','PROMOTION_OR_REASSIGNMENT',id FROM users WHERE org_id=$1 AND is_tenant_ops")
+            .bind(org.as_uuid()).bind(actor).bind(role).execute(tx.as_mut()).await.unwrap();
+        sqlx::query("UPDATE users SET is_active=$2 WHERE id=$1")
+            .bind(actor)
+            .bind(active)
+            .execute(tx.as_mut())
+            .await
+            .unwrap();
+        let result = crate::pending::activate_in_tx(&mut tx, org, grant, &FixedClock(due)).await;
+        assert_eq!(
+            load_access_subject(&mut tx, org, target, due)
+                .await
+                .unwrap()
+                .grants
+                .len(),
+            usize::from(active)
+        );
+        let activated: bool = sqlx::query_scalar("SELECT activated_at IS NOT NULL FROM user_role_grants_pending WHERE org_id=$1 AND grant_id=$2")
+        .bind(org.as_uuid()).bind(grant).fetch_one(tx.as_mut()).await.unwrap();
+        assert_eq!(activated, active);
+        if active {
+            result.unwrap();
+        } else {
+            assert_eq!(result.unwrap_err().code, "access_denied");
+        }
+        tx.rollback().await.unwrap();
+    }
 }
 
 #[sqlx::test(migrator = "MIGRATOR")]

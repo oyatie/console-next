@@ -1,9 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
+import { ko } from "../packages/i18n/src/catalogs/ko";
+import { fmtStamp } from "@console/i18n/format";
 import { expectAccessible } from "./a11y";
 import { chooseRadio, firstSignIn, go, stepUp, takeCode } from "./flows";
 import { firstWorkplace, registerAt } from "./helpers/entity";
+import { bearerOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { registerEntity, SECOND, setupRail, startOperations } from "./setup-flows";
+import { activatePendingGrants } from "./second-person-fixture";
 import { addDepartments } from "./structure-flows";
 import { shot } from "./parity/shot";
 import { hrItem, hrMenu, openHistory } from "./record";
@@ -95,12 +99,20 @@ test("an HR worker granted 인사 실무 over one 법인 works inside it and is 
   await pick.getByRole("row", { name: /주식회사 늘봄정밀/ }).first().click();
   await pick.getByRole("button", { name: "이 범위로 설정" }).click();
   await sheet.getByRole("button", { name: /^1년/ }).click();
-  await chooseRadio(sheet, /^저장 즉시/);
+  await chooseRadio(sheet, new RegExp(`^${ko["accessGrants.start.NOW"]}`));
   await chooseRadio(sheet, /^업무 배정·변경/);
   // ROL-M4-grant-person: what a narrower-than-tenant HR grant reaches is said before it is saved.
   await expect(sheet).toContainText("그 범위 안 사람만 보고 일합니다");
   await snap(admin, "after-grant-sheet");
+  const previewResponse = admin.waitForResponse((r) => r.url().endsWith("/access/grants/preview") && r.request().method() === "POST");
+  await sheet.getByRole("button", { name: "패스키로 확인하고 부여 1건 저장" }).click();
+  const preview = await (await previewResponse).json() as { items: { enforcement_after: string; activates_at?: string }[] };
+  for (const item of preview.items) {
+    expect(item.enforcement_after).toBe("SCHEDULED");
+    await expect(sheet.getByText(fmtStamp(item.activates_at), { exact: false })).toBeVisible();
+  }
   await stepUp(sheet, "패스키로 확인하고 부여 1건 저장", admin.getByRole("status").filter({ hasText: "김인사님에게 부여 1건을 저장했습니다" }));
+  await activatePendingGrants(admin, bearerOf(admin));
   // ROL-M4-grant-saved: a receipt with 되돌리기; then the request is closed as handled.
   await expect(admin.getByRole("status").filter({ hasText: "김인사님에게 부여 1건을 저장했습니다" }).getByRole("button", { name: "되돌리기" })).toBeVisible();
   await requests.getByRole("button", { name: "처리됨" }).click();
