@@ -19,7 +19,7 @@
 //! panics inside an async context. A `spawn_blocking` thread is not one.
 //!
 //! IMMUTABILITY IS THE TRIGGER, AND ONLY THE TRIGGER.
-//! `ops/postgres-reconcile-topology.sh` runs `ALTER DEFAULT PRIVILEGES FOR ROLE
+//! `scripts/ci/postgres-reconcile-topology.sh` runs `ALTER DEFAULT PRIVILEGES FOR ROLE
 //! console_app … GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO console_rt`
 //! BEFORE migrations, so in the deployed database `console_rt` DOES hold UPDATE
 //! on `employment_revisions` — 0214's own header says so.

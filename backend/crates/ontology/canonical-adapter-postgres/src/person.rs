@@ -45,7 +45,7 @@
 //! `employee_person_bindings`.
 //!
 //! The TRIGGER is the whole of that enforcement, not a privilege:
-//! `ops/postgres-reconcile-topology.sh` grants `console_rt` UPDATE and DELETE on
+//! `scripts/ci/postgres-reconcile-topology.sh` grants `console_rt` UPDATE and DELETE on
 //! every table a migration creates, which 0213's own header states, so the
 //! runtime role holds UPDATE on `person_revisions` in the deployed database.
 //!

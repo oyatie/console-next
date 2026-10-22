@@ -1,81 +1,272 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-# Checks on every push to dev and every pull request (public-readiness H-4): the web workspace and the backend
-# workspace, each standalone. Fork pull requests run with a read-only token and no secrets (plain pull_request,
-# never pull_request_target); the repository setting "Require approval for all outside collaborators" gates them.
-# web runs `npm run check`: the client-contract check against backend/openapi, typecheck, lint, unit tests, build,
-# bundle budget, gitleaks over the whole history and the build, licence headers on added files, fixture ids
-# (checksum-valid RRNs, whole or Excel-stripped) and the npm licence gate.
-# Not here yet: cargo test, the backend's database tests and the browser E2E suite. Most backend test binaries hold
-# #[sqlx::test] cases that need the Postgres topology and compose stack in ops/, which the public snapshot does not
-# carry yet; they are added once those files are curated. clippy --all-targets still compiles every test.
+# ci-ok is the only required check; merge_group always proves the full merge result.
 name: ci
-on:
+"on":
   push:
-    branches: [dev]
-  pull_request:
+    branches:
+      - dev
+  pull_request: null
+  merge_group:
+    types:
+      - checks_requested
 permissions: {}
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
+env:
+  NPM_CONFIG_CACHE: ${{ github.workspace }}/.cache/npm
 jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - &harden-runner
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
+        with:
+          egress-policy: block
+          allowed-endpoints: >-
+            github.com:443 api.github.com:443 codeload.github.com:443 objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443 *.actions.githubusercontent.com:443 *.blob.core.windows.net:443
+            registry.npmjs.org:443 static.rust-lang.org:443 index.crates.io:443 static.crates.io:443 crates.io:443
+            registry-1.docker.io:443 auth.docker.io:443 production.cloudflare.docker.com:443 ghcr.io:443
+            pkg-containers.githubusercontent.com:443 cdn.playwright.dev:443 playwright.download.prss.microsoft.com:443
+            storage.googleapis.com:443
+            archive.ubuntu.com:80 azure.archive.ubuntu.com:80 security.ubuntu.com:80
+      - &checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - &client-data-terms
+        name: Prepare optional trusted client-data rules
+        if: github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')
+        env:
+          CLIENT_DATA_TERMS: ${{ secrets.CONSOLE_CLIENT_DATA_TERMS }}
+        run: |-
+          umask 077
+          printf '%s' "$CLIENT_DATA_TERMS" >"$RUNNER_TEMP/client-data-terms"
+          echo "CONSOLE_CLIENT_DATA_TERMS_FILE=$RUNNER_TEMP/client-data-terms" >>"$GITHUB_ENV"
+      - &duration-start
+        name: Start duration measurement
+        run: echo "CI_STARTED_AT=$(date +%s)" >>"$GITHUB_ENV"
+      - &node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: package.json
+          package-manager-cache: false
+      - name: Affected Cargo and npm workspaces
+        id: plan
+        run: node scripts/ci/plan.mjs
+      - &job-metrics
+        name: Record duration and cache hits
+        if: always()
+        env:
+          CI_STEPS: ${{ toJSON(steps) }}
+        run: node scripts/ci/report.mjs
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
+      - name: Publish scanned summary
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-plan
+          path: .cache/ci/metrics.json
+          retention-days: ${{ steps.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    outputs:
+      full: ${{ steps.plan.outputs.full }}
+      crates: ${{ steps.plan.outputs.crates }}
+      workspaces: ${{ steps.plan.outputs.workspaces }}
+      backend: ${{ steps.plan.outputs.backend }}
+      web: ${{ steps.plan.outputs.web }}
+      e2e: ${{ steps.plan.outputs.e2e }}
+      required: ${{ steps.plan.outputs.required }}
+      postgres: ${{ steps.plan.outputs.postgres }}
+      retention: ${{ steps.plan.outputs.retention }}
+      partitions: ${{ steps.plan.outputs.partitions }}
+      browserVersion: ${{ steps.plan.outputs.browserVersion }}
+      testAdmin: ${{ steps.plan.outputs.testAdmin }}
+      database: ${{ steps.plan.outputs.database }}
+  hygiene:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - *harden-runner
+      - *checkout
+      - *client-data-terms
+      - *duration-start
+      - *node
+      - &npm-restore
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
+        id: npm
+        with:
+          path: .cache/npm
+          key: console-ci-npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - &npm-ci
+        run: npm ci --no-audit --no-fund
+      - run: bash scripts/ci/install-tools.sh gitleaks
+      - name: actionlint
+        run: >-
+          docker run --rm -v "${PWD}:/repo" -w /repo
+          rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+      - name: Workflow regression and safety checks
+        run: node --test scripts/ci.test.mjs scripts/ci-privacy.test.mjs scripts/cd-workflow.test.mjs scripts/dev-secrets.test.mjs
+      - name: Synthetic fixtures and repository secrets
+        run: |-
+          node scripts/check-fixture-ids.mjs
+          node scripts/check-e2e-identifiers.mjs
+          gitleaks git --redact --no-banner --config .gitleaks.toml --log-opts=HEAD .
+      - name: Structural client-data scan
+        run: |-
+          python3 scripts/client-data-scan.py --root . --tree
+          python3 scripts/ci/scan-uploads.py --terms-tree
+      - *job-metrics
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/npm
+      - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
+        if: >-
+          success() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.privacy.outcome == 'success' &&
+          steps.npm.outputs.cache-hit != 'true'
+        with:
+          path: .cache/npm
+          key: console-ci-npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Publish scanned summary
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-hygiene
+          path: .cache/ci/metrics.json
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    needs:
+      - plan
   web:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
     steps:
-      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
-        with:
-          egress-policy: audit
-      # Full history: the ratchet tests (scripts/gates.test.ts ai-quality) diff against the dev branch.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - name: local dev branch for the ratchet base
+      - *harden-runner
+      - *checkout
+      - *client-data-terms
+      - *duration-start
+      - *node
+      - *npm-restore
+      - *npm-ci
+      - run: bash scripts/ci/install-tools.sh gitleaks
+      - name: Ratchet base
         run: git rev-parse --verify -q refs/heads/dev >/dev/null || git branch dev origin/dev
-      # npm run secrets and scripts/hygiene.test.ts need the real scanner (pinned release, checksum-verified).
-      - name: gitleaks 8.30.1
-        run: |
-          curl -sSfL -o /tmp/gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
-          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tgz" | sha256sum -c -
-          sudo tar -xzf /tmp/gitleaks.tgz -C /usr/local/bin gitleaks
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version-file: package.json
-          cache: npm
-      - run: npm ci --no-audit --no-fund
-      # Browser-backed unit tests (vitest + Playwright) need the pinned Chromium headless shell; caching is CI-1's.
-      - name: Chromium headless shell for browser-backed unit tests
-        run: npx playwright install --with-deps --only-shell chromium
       - run: npm run check
-
-  backend:
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 120
+      - *job-metrics
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/npm apps/web/dist
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: success() && steps.privacy.outcome == 'success'
+        with:
+          name: web-dist
+          path: apps/web/dist
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+      - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
+        if: >-
+          success() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.privacy.outcome == 'success' &&
+          steps.npm.outputs.cache-hit != 'true'
+        with:
+          path: .cache/npm
+          key: console-ci-npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Publish scanned summary
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-web
+          path: .cache/ci/metrics.json
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    needs:
+      - plan
+    if: needs.plan.outputs.web == 'true' || needs.plan.outputs.e2e == 'true'
+  rust-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
     permissions:
       contents: read
-    defaults:
-      run:
-        working-directory: backend
-    env:
-      SQLX_OFFLINE: "true"
-      CARGO_TERM_COLOR: always
     steps:
-      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+      - *harden-runner
+      - *checkout
+      - *client-data-terms
+      - *duration-start
+      - *node
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
+        id: registry
         with:
-          egress-policy: audit
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+          path: |-
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: console-ci-cargo-${{ runner.os }}-${{ hashFiles('backend/Cargo.lock') }}
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
+        id: compiler
         with:
-          persist-credentials: false
-      # backend/rust-toolchain.toml pins the toolchain; rustup on the runner installs it on first use.
-      # Workspace members only: --all would also format the vendored path dependencies in third-party/.
-      - run: cargo fmt --check
-      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      # Clippy fills the registry first so the release commands below can run offline.
-      # Same discovery, build and no-argument execution as console-infra's code-gates image stage.
+          path: .cache/sccache
+          key: >-
+            console-ci-sccache-${{ runner.os }}-${{ hashFiles('backend/rust-toolchain.toml', 'scripts/ci/versions.json') }}-${{
+            hashFiles('backend/Cargo.lock') }}-test-${{ github.sha }}
+          restore-keys: >-
+            console-ci-sccache-${{ runner.os }}-${{ hashFiles('backend/rust-toolchain.toml', 'scripts/ci/versions.json') }}-${{
+            hashFiles('backend/Cargo.lock') }}-test-
+
+            console-ci-sccache-${{ runner.os }}-${{ hashFiles('backend/rust-toolchain.toml', 'scripts/ci/versions.json') }}-
+      - run: |-
+          bash scripts/ci/install-tools.sh nextest sccache cargo-deny
+          echo "SCCACHE_CACHE_SIZE=$(jq -r .sccacheBytes scripts/ci/config.json)" >>"$GITHUB_ENV"
+      - name: Format and all Clippy feature sets
+        if: needs.plan.outputs.backend == 'true'
+        run: |-
+          cd backend
+          cargo fmt --check
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo clippy --workspace --all-targets --locked --features full -- -D warnings
+          cargo clippy --workspace --all-targets --locked --features full,test-postgres -- -D warnings
+      - name: Compile the test workspace once
+        if: needs.plan.outputs.backend == 'true'
+        run: >-
+          mkdir -p .cache/ci/build/tests
+
+          cd backend
+
+          cargo metadata --format-version 1 --locked --features full,test-postgres > ../.cache/ci/build/tests/metadata.json
+
+          cargo nextest archive --workspace --all-targets --locked --features full,test-postgres --archive-file
+          ../.cache/ci/build/tests/workspace.tar.zst
+
+          python3 ../scripts/ci/sanitize-nextest.py ../.cache/ci/build/tests/workspace.tar.zst ../.cache/ci/build/tests/metadata.json
       - name: Backend code gates (release parity)
+        if: needs.plan.outputs.backend == 'true'
+        working-directory: backend
         shell: bash
         run: |
           pkgs="$(sed -n 's/^name = "\(console-gate-[a-z0-9-]*\)"$/\1/p' ci/gates/*/Cargo.toml | sort -u)"
@@ -89,3 +280,690 @@ jobs:
           done
           echo "Backend code gates: ${SECONDS}s"
           exit "$failed"
+      - name: Build the five privacy gates
+        if: needs.plan.outputs.backend == 'true'
+        run: >-
+          cd backend
+
+          cargo build --locked -p console-gate-personal-data-classification -p console-gate-pii-no-logs -p
+          console-gate-tenant-isolation -p console-gate-rls-arming -p console-gate-audit-coverage
+
+          mkdir -p ../.cache/ci/build/gates
+
+          for gate in personal-data-classification pii-no-logs tenant-isolation rls-arming audit-coverage; do cp
+          "target/debug/console-gate-$gate" ../.cache/ci/build/gates/; done
+      - name: Build the backend once for every browser shard
+        if: needs.plan.outputs.e2e == 'true'
+        run: |-
+          cd backend
+          cargo build --locked -p console-app --features full,e2e-test-support
+          mkdir -p ../.cache/ci/build/backend
+          cp target/debug/console-app ../.cache/ci/build/backend/console-app
+      - *job-metrics
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: >-
+          node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/ci/build .cache/sccache
+          ~/.cargo/registry/index ~/.cargo/registry/cache ~/.cargo/git/db
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.backend == 'true'
+        with:
+          name: rust-tests
+          path: .cache/ci/build/tests
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.backend == 'true'
+        with:
+          name: privacy-gates
+          path: .cache/ci/build/gates
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.e2e == 'true'
+        with:
+          name: backend-binary
+          path: .cache/ci/build/backend
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+      - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
+        if: >-
+          success() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.privacy.outcome == 'success' &&
+          steps.registry.outputs.cache-hit != 'true'
+        with:
+          path: |-
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: console-ci-cargo-${{ runner.os }}-${{ hashFiles('backend/Cargo.lock') }}
+      - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
+        if: >-
+          success() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.privacy.outcome == 'success' &&
+          steps.compiler.outputs.cache-hit != 'true'
+        with:
+          path: .cache/sccache
+          key: >-
+            console-ci-sccache-${{ runner.os }}-${{ hashFiles('backend/rust-toolchain.toml', 'scripts/ci/versions.json') }}-${{
+            hashFiles('backend/Cargo.lock') }}-test-${{ github.sha }}
+      - name: Publish scanned summary
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-rust-build
+          path: .cache/ci/metrics.json
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    needs:
+      - plan
+    if: needs.plan.outputs.backend == 'true' || needs.plan.outputs.e2e == 'true'
+    env:
+      SQLX_OFFLINE: "true"
+      CARGO_INCREMENTAL: "0"
+      RUSTC_WRAPPER: sccache
+      SCCACHE_DIR: ${{ github.workspace }}/.cache/sccache
+  backend-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - *harden-runner
+      - *checkout
+      - *client-data-terms
+      - *duration-start
+      - *node
+      - run: bash scripts/ci/install-tools.sh nextest
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: rust-tests
+          path: .cache/ci
+      - name: Non-DB unit suites from the shared archive
+        env:
+          PARTITION: ${{ matrix.partition }}
+        run: |-
+          cd backend
+          node ../scripts/ci/rust-tests.mjs unit "$PARTITION"
+      - *job-metrics
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: >-
+          node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json backend/target/nextest
+          .cache/ci/extracted/target/nextest
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: backend-test-junit-${{ matrix.partition }}
+          path: |-
+            backend/target/nextest/ci/junit.xml
+            .cache/ci/extracted/target/nextest/ci/junit.xml
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+      - name: Publish scanned summary
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-backend-test-${{ matrix.partition }}
+          path: .cache/ci/metrics.json
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    needs:
+      - plan
+      - rust-build
+    if: needs.plan.outputs.backend == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: ${{ fromJSON(needs.plan.outputs.partitions) }}
+    env:
+      SQLX_OFFLINE: "true"
+      AFFECTED_CRATES: ${{ needs.plan.outputs.crates }}
+  backend-db:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - *harden-runner
+      - *checkout
+      - *client-data-terms
+      - *duration-start
+      - *node
+      - name: Generate isolated test credentials
+        env:
+          PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+          PG_ADMIN_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.partition }}
+        run: node scripts/ci/prepare-db.mjs
+      - name: Reconcile production role topology
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: bash scripts/ci/bootstrap-db.sh "$PG_CONTAINER" "$RUNNER_TEMP/db.container.env"
+      - run: bash scripts/ci/install-tools.sh nextest
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: rust-tests
+          path: .cache/ci
+      - name: Every DB suite from the shared archive
+        env:
+          PARTITION: ${{ matrix.partition }}
+        run: |-
+          cd backend
+          node ../scripts/ci/rust-tests.mjs db "$PARTITION"
+      - *job-metrics
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: >-
+          node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json backend/target/nextest
+          .cache/ci/extracted/target/nextest
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: backend-db-junit-${{ matrix.partition }}
+          path: |-
+            backend/target/nextest/ci/junit.xml
+            .cache/ci/extracted/target/nextest/ci/junit.xml
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+      - name: Publish scanned summary
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-backend-db-${{ matrix.partition }}
+          path: .cache/ci/metrics.json
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    needs:
+      - plan
+      - rust-build
+    if: needs.plan.outputs.backend == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: ${{ fromJSON(needs.plan.outputs.partitions) }}
+    env:
+      SQLX_OFFLINE: "true"
+      AFFECTED_CRATES: ${{ needs.plan.outputs.crates }}
+    services:
+      postgres:
+        image: ${{ needs.plan.outputs.postgres }}
+        env:
+          POSTGRES_USER: ${{ needs.plan.outputs.testAdmin }}
+          POSTGRES_DB: ${{ needs.plan.outputs.database }}
+          POSTGRES_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.partition }}
+        ports:
+          - 127.0.0.1::5432
+        options: >-
+          --health-cmd "pg_isready -U ${{ needs.plan.outputs.testAdmin }} -d ${{ needs.plan.outputs.database }}" --health-interval
+          5s --health-timeout 5s --health-retries 20
+  personal-data-classification:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - *harden-runner
+      - *checkout
+      - *client-data-terms
+      - *duration-start
+      - *node
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: privacy-gates
+          path: .cache/ci/gates
+      - name: Enforce personal-data-classification
+        run: |-
+          chmod +x .cache/ci/gates/console-gate-personal-data-classification
+          cd backend
+          ../.cache/ci/gates/console-gate-personal-data-classification
+      - *job-metrics
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
+      - name: Publish scanned summary
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-personal-data-classification
+          path: .cache/ci/metrics.json
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    needs:
+      - plan
+      - rust-build
+    if: needs.plan.outputs.backend == 'true'
+  pii-no-logs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - *harden-runner
+      - *checkout
+      - *client-data-terms
+      - *duration-start
+      - *node
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: privacy-gates
+          path: .cache/ci/gates
+      - name: Enforce pii-no-logs
+        run: |-
+          chmod +x .cache/ci/gates/console-gate-pii-no-logs
+          cd backend
+          ../.cache/ci/gates/console-gate-pii-no-logs
+      - *job-metrics
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
+      - name: Publish scanned summary
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-pii-no-logs
+          path: .cache/ci/metrics.json
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    needs:
+      - plan
+      - rust-build
+    if: needs.plan.outputs.backend == 'true'
+  tenant-isolation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - *harden-runner
+      - *checkout
+      - *client-data-terms
+      - *duration-start
+      - *node
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: privacy-gates
+          path: .cache/ci/gates
+      - name: Enforce tenant-isolation
+        run: |-
+          chmod +x .cache/ci/gates/console-gate-tenant-isolation
+          cd backend
+          ../.cache/ci/gates/console-gate-tenant-isolation
+      - *job-metrics
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
+      - name: Publish scanned summary
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-tenant-isolation
+          path: .cache/ci/metrics.json
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    needs:
+      - plan
+      - rust-build
+    if: needs.plan.outputs.backend == 'true'
+  rls-arming:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - *harden-runner
+      - *checkout
+      - *client-data-terms
+      - *duration-start
+      - *node
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: privacy-gates
+          path: .cache/ci/gates
+      - name: Enforce rls-arming
+        run: |-
+          chmod +x .cache/ci/gates/console-gate-rls-arming
+          cd backend
+          ../.cache/ci/gates/console-gate-rls-arming
+      - *job-metrics
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
+      - name: Publish scanned summary
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-rls-arming
+          path: .cache/ci/metrics.json
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    needs:
+      - plan
+      - rust-build
+    if: needs.plan.outputs.backend == 'true'
+  audit-coverage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - *harden-runner
+      - *checkout
+      - *client-data-terms
+      - *duration-start
+      - *node
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: privacy-gates
+          path: .cache/ci/gates
+      - name: Enforce audit-coverage
+        run: |-
+          chmod +x .cache/ci/gates/console-gate-audit-coverage
+          cd backend
+          ../.cache/ci/gates/console-gate-audit-coverage
+      - *job-metrics
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
+      - name: Publish scanned summary
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-audit-coverage
+          path: .cache/ci/metrics.json
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    needs:
+      - plan
+      - rust-build
+    if: needs.plan.outputs.backend == 'true'
+  e2e-plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - *harden-runner
+      - *checkout
+      - *client-data-terms
+      - *duration-start
+      - *node
+      - *npm-restore
+      - *npm-ci
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
+        id: timings
+        with:
+          path: .cache/e2e-timings
+          key: console-ci-e2e-timings-${{ runner.os }}-${{ github.sha }}
+          restore-keys: console-ci-e2e-timings-${{ runner.os }}-
+      - name: Duration-based browser shard inventory
+        id: shards
+        env:
+          E2E_TIMINGS_FILE: ${{ github.workspace }}/.cache/e2e-timings/timings.json
+          E2E_SERVED: "1"
+        run: node scripts/ci/e2e.mjs plan
+      - *job-metrics
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
+      - name: Publish scanned summary
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-e2e-plan
+          path: .cache/ci/metrics.json
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    needs:
+      - plan
+    if: needs.plan.outputs.e2e == 'true'
+    outputs:
+      matrix: ${{ steps.shards.outputs.matrix }}
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - *harden-runner
+      - *checkout
+      - *client-data-terms
+      - *duration-start
+      - *node
+      - *npm-restore
+      - *npm-ci
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: console-ci-browsers-${{ runner.os }}-${{ needs.plan.outputs.browserVersion }}-${{ matrix.browser }}
+          restore-keys: console-ci-browsers-${{ runner.os }}-${{ needs.plan.outputs.browserVersion }}-${{ matrix.browser }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: backend-binary
+          path: .cache/ci/backend
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: web-dist
+          path: apps/web/dist
+      - name: Install browser and system dependencies
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: |-
+          node_modules/.bin/playwright install --with-deps "$BROWSER"
+          python3 scripts/ci/public-browser-cache.py ~/.cache/ms-playwright "$RUNNER_TEMP/public-browsers.json"
+          echo "CONSOLE_PUBLIC_BROWSER_MANIFEST_FILE=$RUNNER_TEMP/public-browsers.json" >>"$GITHUB_ENV"
+          chmod +x "$CONSOLE_APP_BIN"
+      - name: Run the measured shard
+        env:
+          SHARD: ${{ toJSON(matrix) }}
+        run: node scripts/ci/e2e.mjs run
+      - *job-metrics
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: >-
+          node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/ci/e2e-results test-results
+          ~/.cache/ms-playwright
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: e2e-results-${{ matrix.browser }}-${{ matrix.shard }}
+          path: .cache/ci/e2e-results
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: failure() && steps.privacy.outcome == 'success'
+        with:
+          name: e2e-traces-${{ matrix.browser }}-${{ matrix.shard }}
+          path: test-results
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+      - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
+        if: >-
+          success() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.privacy.outcome == 'success' &&
+          steps.browsers.outputs.cache-hit != 'true'
+        with:
+          path: ~/.cache/ms-playwright
+          key: console-ci-browsers-${{ runner.os }}-${{ needs.plan.outputs.browserVersion }}-${{ matrix.browser }}
+      - name: Publish scanned summary
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-e2e-${{ matrix.browser }}-${{ matrix.shard }}
+          path: .cache/ci/metrics.json
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    needs:
+      - plan
+      - e2e-plan
+      - web
+      - rust-build
+    if: needs.plan.outputs.e2e == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.e2e-plan.outputs.matrix) }}
+    env:
+      E2E_SERVED: "1"
+      E2E_PREBUILT: "1"
+      E2E_REPORTER: dot,junit
+      E2E_TIMINGS_FILE: ${{ github.workspace }}/.cache/ci/e2e-results/timings.json
+      PLAYWRIGHT_JUNIT_OUTPUT_FILE: .cache/ci/e2e-results/junit.xml
+      CONSOLE_APP_BIN: ${{ github.workspace }}/.cache/ci/backend/console-app
+      CONSOLE_POSTGRES_IMAGE: ${{ needs.plan.outputs.postgres }}
+  ci-ok:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - *harden-runner
+      - *checkout
+      - *client-data-terms
+      - *duration-start
+      - *node
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
+        id: timings
+        with:
+          path: .cache/e2e-timings
+          key: console-ci-e2e-timings-${{ runner.os }}-${{ github.sha }}
+          restore-keys: console-ci-e2e-timings-${{ runner.os }}-
+      - name: Enforce required results and plan-authorized skips
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: node scripts/ci/gate.mjs
+      - name: Collect job metrics and passing test durations
+        if: always() && needs.e2e.result == 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: e2e-results-*
+          path: .cache/ci/e2e-collected
+      - name: Merge measured durations
+        if: always() && needs.e2e.result == 'success'
+        run: >-
+          node --input-type=module - <<'NODE'
+
+          import {mkdirSync,readdirSync,readFileSync,writeFileSync} from 'node:fs';
+
+          const dir='.cache/ci/e2e-collected';
+
+          const combined=Object.assign({},
+          ...readdirSync(dir).map((file)=>JSON.parse(readFileSync(dir+'/'+file+'/timings.json','utf8'))));
+
+          mkdirSync('.cache/e2e-timings',{recursive:true});
+
+          writeFileSync('.cache/e2e-timings/timings.json',JSON.stringify(combined));
+
+          NODE
+      - name: Collect completed job metrics
+        if: always() && needs.plan.result == 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: metrics-*
+          path: .cache/ci/job-metrics
+      - name: Record duration and cache hits
+        if: always()
+        env:
+          CI_STEPS: ${{ toJSON(steps) }}
+          CI_CACHE_TOTAL: "1"
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/report.mjs
+      - name: Personal-data scan before any upload
+        id: privacy
+        if: always()
+        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/e2e-timings
+      - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
+        if: >-
+          success() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.privacy.outcome == 'success' &&
+          steps.timings.outputs.cache-hit != 'true' && needs.e2e.result == 'success'
+        with:
+          path: .cache/e2e-timings
+          key: console-ci-e2e-timings-${{ runner.os }}-${{ github.sha }}
+      - name: Publish scanned totals
+        if: always() && steps.privacy.outcome == 'success'
+        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always() && steps.privacy.outcome == 'success'
+        with:
+          name: metrics-ci-ok
+          path: .cache/ci/metrics.json
+          retention-days: ${{ needs.plan.outputs.retention }}
+          if-no-files-found: error
+          include-hidden-files: true
+          overwrite: true
+    if: always()
+    needs:
+      - plan
+      - hygiene
+      - web
+      - rust-build
+      - backend-test
+      - backend-db
+      - personal-data-classification
+      - pii-no-logs
+      - tenant-isolation
+      - rls-arming
+      - audit-coverage
+      - e2e-plan
+      - e2e
