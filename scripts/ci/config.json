@@ -14,8 +14,8 @@
   "e2eWorkers": 2,
   "quarantineFile": "scripts/ci/baseline.json",
   "e2eMaxShards": 24,
-  "maxJobs": 52,
-  "maxTotalMinutes": 300,
+  "maxJobs": 60,
+  "maxTotalMinutes": 320,
   "jobMinutes": {
     "plan": 2,
     "hygiene": 3,
