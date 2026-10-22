@@ -46,6 +46,8 @@ responses:
     content:
       application/json:
         schema:
-          $ref: '#/components/schemas/LifecycleScheduleConflictBody'
+          anyOf:
+          - $ref: '#/components/schemas/LifecycleScheduleConflictBody'
+          - $ref: '#/components/schemas/ErrorBody'
   '422':
     $ref: '#/components/responses/ValidationError'

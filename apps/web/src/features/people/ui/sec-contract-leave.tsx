@@ -1,9 +1,8 @@
-import { EnumValue } from "../../../ui/enum-value";
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
-import { LEAVE_TYPE } from "../../../lib/labels";
+import { LEAVE_TYPE, label } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
 import { RecordSection, SectionLine } from "../../../ui/record/record-section";
 import { RecordRows } from "../../../ui/record/rows";
@@ -44,7 +43,7 @@ export function SecLeave({ c, act }: { c: Card; act?: string }) {
           columns={[
             { header: t("empCard.leave.kind"), cell: () => <b>{t("empCard.leave.leave")}</b> },
             { header: t("empCard.leave.from"), cell: (x) => <span className={s.num}>{fmtDate(x.effective_date)}{x.expected_return_date && ` ~ ${fmtDate(x.expected_return_date)}`}</span> },
-            { header: t("empCard.leave.reason"), cell: (x) => (x.leave_type ? <EnumValue e={LEAVE_TYPE} value={x.leave_type} /> : "—") },
+            { header: t("empCard.leave.reason"), cell: (x) => (x.leave_type ? label(LEAVE_TYPE, x.leave_type) : "—") },
             { header: t("empCard.leave.back"), cell: (x) => { const r = back(x); return r ? t("empCard.leave.returned", { date: fmtDate(r.effective_date) }) : t("empCard.leave.out"); } },
           ]}
         />

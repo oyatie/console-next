@@ -1,4 +1,3 @@
-import { LEAVE_TYPE } from "../../../lib/labels";
 import { useCommand } from "../../../lib/react/command";
 import { get } from "../../../lib/query";
 import { correctEvent, eventsQuery, recordLifecycleEvent, type LifecycleEvent, type LifecycleRequest } from "../api";
@@ -48,7 +47,7 @@ export function lifecycleBody(v: Draft, c: Context): LifecycleRequest {
     to_job_id: kind === "APPOINT" && v.jobId ? v.jobId : undefined,
     to_job_family_id: kind === "APPOINT" && v.familyId ? v.familyId : undefined,
     to_employment_type: kind === "EMPLOYMENT_TYPE_CHANGE" ? (v.toType as LifecycleRequest["to_employment_type"]) : undefined,
-    leave_type: kind === "LEAVE_OF_ABSENCE" && v.leaveType ? LEAVE_TYPE.values.find((type) => type === v.leaveType) : undefined,
+    leave_type: kind === "LEAVE_OF_ABSENCE" && v.leaveType ? (v.leaveType as LifecycleEvent["leave_type"]) : undefined,
   };
   // A correction is checked against the record it replaces, not against the version pins.
   if (c.corrects) return body;

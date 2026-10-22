@@ -1,6 +1,5 @@
-import { EnumValue } from "../../../ui/enum-value";
 import { t } from "@console/i18n";
-import { LEAVE_TYPE, label, labeled } from "../../../lib/labels";
+import { LEAVE_TYPE, label } from "../../../lib/labels";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import type { ReactNode } from "react";
 import { DateField } from "../../../ui/date/date-field";
@@ -40,7 +39,6 @@ export function LeaveFields({ start, today, type, onType, returnDate, onReturn, 
         value={type}
         onChange={onType}
         error={typeError}
-        footer={type && labeled(LEAVE_TYPE, type).code && <EnumValue e={LEAVE_TYPE} value={type} />}
       />
       <div className={s.pair}>
         {startSlot}

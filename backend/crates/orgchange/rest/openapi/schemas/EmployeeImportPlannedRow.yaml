@@ -80,7 +80,7 @@ properties:
             format: date
           leave_type:
             type: string
-            x-extensible-enum: [CHILDCARE, MATERNITY, ILLNESS, PERSONAL, OTHER]
+            enum: [CHILDCARE, MATERNITY, ILLNESS, PERSONAL, OTHER]
           expected_return_date:
             type: string
             format: date

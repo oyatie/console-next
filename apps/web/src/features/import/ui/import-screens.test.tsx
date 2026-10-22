@@ -8,7 +8,6 @@ import { initialPicks } from "../domain/steps";
 import { PreviewStep } from "./preview-step";
 import { ReviewResolve } from "./review-resolve";
 import { RowDetail } from "./row-detail";
-import { ValueTable } from "./value-table";
 
 // The screens rendered from answers shaped as the server publishes them (generated schema), so a wording or a
 // branch that the contract drives is checked without a server.
@@ -16,23 +15,6 @@ import { ValueTable } from "./value-table";
 beforeAll(() => loadCatalog("ko"));
 const html = (node: ReactNode) => renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}>{node}</QueryClientProvider>);
 const noop = () => undefined;
-
-test.each(["review", "value links"] as const)("future leave choices render in %s", (place) => {
-  const item = { id: "future", reason: "remembered", decision: "leave_type_map", value: "Synthetic leave", rows: 1, blocking: false, resolution: { decision: "leave_type_map", key: "Synthetic leave", choices: ["FUTURE_LEAVE"] } } as unknown as ReviewItem;
-  const dry = { rows: [], review: { items: [item] }, remembered: [], decisions: { leave_type_map: { "Synthetic leave": "FUTURE_LEAVE" } } } as unknown as ImportDryRun;
-  const props = { dry, picks: initialPicks(), busy: false, onResolve: noop, onSheets: noop };
-  const rendered = html(place === "review" ? <ReviewResolve item={item} {...props} /> : <ValueTable sel={null} onSel={noop} {...props} />);
-  expect(rendered).toContain("확인되지 않은 항목");
-  expect(rendered).toContain('<span class="chip chip--neutral">FUTURE_LEAVE</span>');
-});
-
-test("imported future leave types keep a neutral label and a muted code", () => {
-  const r = { sheet: "Synthetic sheet", row: 1, name: "Synthetic employee", outcome: "insert", new_person: { leave: { start_date: "2026-10-01", leave_type: "FUTURE_LEAVE" } } } as ImportRow;
-  const rendered = html(<RowDetail r={r} />);
-  expect(rendered).toContain("확인되지 않은 항목");
-  expect(rendered).toContain('<span class="chip chip--neutral">FUTURE_LEAVE</span>');
-  expect(rendered.split("FUTURE_LEAVE")).toHaveLength(2);
-});
 
 const preview: ImportPreview = {
   run_id: "r1",

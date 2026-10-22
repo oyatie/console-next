@@ -64,7 +64,7 @@ export function describeEvent(x: LifecycleEvent, name: string, byId: (id: string
           ? t("people.event.detail.superseded", { date, comment })
           : t("people.event.detail.cancelled", { date, actor: actor(x.cancelled_by_name), at: fmtDateTime(x.cancelled_at), reason: x.cancel_reason ?? "—" })
       : t("people.event.detail.failed", { date, reason: failureReason(x) });
-    return { title: t(`people.event.scheduled.${kind}`, v), detail: x.leave_type && labeled(LEAVE_TYPE, x.leave_type).code ? `${detail} · ${label(LEAVE_TYPE, x.leave_type)}` : detail, state: labeled(LIFECYCLE_STATE, x.state) };
+    return { title: t(`people.event.scheduled.${kind}`, v), detail, state: labeled(LIFECYCLE_STATE, x.state) };
   }
   // A scheduled action that took effect did so on its date, by the scheduler: the recorder only scheduled it.
   const title =

@@ -25,7 +25,7 @@ properties:
     $ref: '#/components/schemas/Uuid'
   leave_type:
     type: string
-    x-extensible-enum: [annual, half_day]
+    enum: [annual, half_day]
   days:
     type: number
     format: double

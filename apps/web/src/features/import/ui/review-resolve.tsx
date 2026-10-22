@@ -1,5 +1,3 @@
-import { LEAVE_TYPE } from "../../../lib/labels";
-import { EnumCode } from "../../../ui/enum-value";
 import { t } from "@console/i18n";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
@@ -45,7 +43,7 @@ export function ReviewResolve({ item, dry, picks, busy, onResolve, onSheets }: {
         <div className={s.choices} role="group" aria-label={t("importReview.choose", { value: item.value ?? "" })}>
           {res.choices.map((c) => (
             <ToggleButton key={c} pressed={held === c} disabled={busy} onClick={() => onResolve(withChoice(picks, res.decision as "status_map", res.key, c))}>
-              {choiceLabel(res.decision, c)} {res.decision === "leave_type_map" && <EnumCode e={LEAVE_TYPE} value={c} />}
+              {choiceLabel(res.decision, c)}
             </ToggleButton>
           ))}
         </div>

@@ -1,5 +1,3 @@
-import { STEP_UP_ACTION, label as enumLabel } from "../../lib/labels";
-import { EnumCode } from "../enum-value";
 import type { ReactNode } from "react";
 import { Button } from "react-aria-components";
 import { Flag, KeyRound, ShieldCheck } from "lucide-react";
@@ -74,7 +72,7 @@ export function OverrideSheet(p: {
           {binding.confirmedAt ? <ShieldCheck aria-hidden="true" /> : <KeyRound aria-hidden="true" />}
           <span>
             {binding.confirmedAt ? t("uiOverrideSheet.stepUp.done", { at: binding.confirmedAt }) : t("uiOverrideSheet.stepUp.owed")}
-            <span className={css.bind}>{t("uiOverrideSheet.binding", { action: enumLabel(STEP_UP_ACTION, binding.action), hash: binding.hash })} <EnumCode e={STEP_UP_ACTION} value={binding.action} /></span>
+            <span className={css.bind}>{t("uiOverrideSheet.binding", { action: binding.action, hash: binding.hash })}</span>
           </span>
         </div>
       )}

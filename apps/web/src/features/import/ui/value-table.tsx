@@ -1,5 +1,3 @@
-import { LEAVE_TYPE } from "../../../lib/labels";
-import { EnumCode } from "../../../ui/enum-value";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { entitiesRef } from "../../../reference/entity/api";
@@ -51,7 +49,7 @@ export function ValueTable({ dry, picks, busy, sel, onSel, onResolve, onSheets }
       const e = entities.find((candidate) => candidate.workplaces.some((w) => w.id === v));
       return e ? <EntityName entity={e} /> : "—";
     }
-    return <>{choiceLabel(d, v)} {d === "leave_type_map" && <EnumCode e={LEAVE_TYPE} value={v} />}</>;
+    return choiceLabel(d, v);
   };
   const why = (r: ValueRow) =>
     heldAnswer(picks, r.item) != null ? <Chip tone="info">{t("importValues.why.chosen")}</Chip>
