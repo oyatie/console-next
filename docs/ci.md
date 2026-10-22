@@ -510,5 +510,20 @@ The planner control raises an actual workflow job timeout past the queue deadlin
 Touched files are CI-owned: workflow, docs/ci.md, scripts/ci-privacy.test.mjs,
 scripts/ci-results.test.mjs, scripts/ci.test.mjs, scripts/ci/{baseline,config}.json and
 scripts/ci/{e2e,plan,report}.mjs plus test-results.py and disk-budget.py.
+The only file outside CI owns is generated
+`backend/ci/gates/file-size/baseline.txt`: `console-gate-file-size --write-baseline`
+lowers the stale census-test pin from 1,804 to 1,791 lines. The ratchet failed
+before regeneration and then passed (2,193 files, 303 pins, zero violations).
 No ops files were added; the existing curated topology scripts stay unchanged.
 The orchestrator must collect hosted receipts before enabling the ruleset.
+
+Round-6 local receipts: `npm run check` passes 1,159 web and 96 Node CI tests;
+all three exact Clippy commands, format, workspace test compilation, five
+personal-data gates, quality ratchet, actionlint and both gitleaks configurations
+are green. Both hermetic tests pass, including clean-clone `npm run check`.
+The updated results tests fail 5/26 on prior tip `b3f1095e` and 26/26 on public
+base `5b0e2514`; all 26 pass on the tip. Each of the three reported mutation
+survivors is now killed individually in the lane's detached proof worktree.
+Logs and run IDs are under the owner's lane receipts (`r6-*.log`). Hosted/browser
+execution remains verifier/orchestrator work; the unmodified 90-minute cold
+Rust timeout and all sizing caps require the first hosted receipts.
