@@ -202,7 +202,7 @@ pub(crate) async fn contact_plan(
         "SELECT id, jsonb_build_object('name', name, 'relation', relation, \
          'phone', phone_e164, 'contact_notified', contact_notified) \
          FROM employee_emergency_contacts WHERE org_id = $1 AND employee_id = $2 \
-         ORDER BY (voided_at IS NULL) DESC, created_at DESC, id",
+         ORDER BY (voided_at IS NULL) DESC, voided_at DESC, seq, created_at DESC, id",
     )
     .bind(org)
     .bind(employee_id)

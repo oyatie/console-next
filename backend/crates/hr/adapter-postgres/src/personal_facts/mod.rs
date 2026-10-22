@@ -12,6 +12,14 @@
 //! request stores it and the decision re-normalizes it); `None` clears the
 //! item back to 미입력; the 비상연락처 list is its JSON.
 
+//! Every write must use the governed correction paths, with routing facts from the caller.
+//! A shortcut that supplied its own second-person routing must stay unavailable.
+//!
+//! ```compile_fail
+//! use console_hr_adapter_postgres::HrService;
+//! let _ = HrService::record_emergency_contacts;
+//! ```
+
 pub mod photo;
 pub mod read;
 pub(crate) mod store;
