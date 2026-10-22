@@ -124,6 +124,9 @@ proofs in the disposable base worktree: **22** web assertions fail; the grant
 journey fails on absent disclosure; the partial-source journey returns **500**;
 the capability/count metadata assertions fail. Focused mutation proofs kill the
 source-exclusion, deadline, failure-kind and period-unlock pre-guard mutations.
+The standing-text pin is regenerated for the restored facts and verbs: **64**,
+still below train/fix-r1's **234** (dev **248**). No original capability is
+removed to meet the earlier, incomplete implementation's **52**-block pin.
 The lane evidence directory is `lanes/eco-g2-inbox/round2-logs/`.
 
 ## Change inventory
