@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, truncateSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, truncateSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -13,7 +13,7 @@ const samples = [
   ["private-ops-docs", ["docs/ops/x.md", "docs/ops/mvp-build.md/x"], ["docs/ops/mvp-build.md", "docs/x.md"]],
   ["private-ops", ["ops/x.yaml", "ops/nested/x.yaml"], ["deploy/x.yaml", "scripts/ci/postgres-reconcile-topology.sh"]],
   ["environment", [".env", ".env.local", "app/.env.example", "app/.ENV.prod", ".env.d/x", "app/.env.d/x"], ["app/env.example", "app/x.env"]],
-  ["bundle", ["x.bundle", "app/x.bundle"], ["app/x.bundle.mjs"]],
+  ["bundle", [".bundle", "x.bundle", "app/x.bundle"], ["app/x.bundle.mjs"]],
   ["key-material", ["x.pem", "x.key", "x.p12", "x.pfx", "id_rsa", "app/id_rsa.pub", "id_ed25519", "app/id_ed25519.pub"], ["app/keys.md", "app/x.pem.md"]],
   ["terraform-state", ["x.tfstate", "app/x.tfstate.backup"], ["app/x.tf", "app/tfstate.md"]],
   ["database-file", ["x.sqlite", "app/x.dump"], ["app/x.sql", "app/x.sqlite.rs"]],
@@ -135,4 +135,27 @@ test("npm check and always-running hygiene enforce the guard before ci-ok", () =
   assert.ok(hygiene.steps.some((item) => item.run?.includes("node --test ") && item.run.includes("scripts/check-repo-files.test.mjs")));
   assert.ok(wf.jobs.web.steps.some((item) => item.run === "npm run check"));
   assert.ok(wf.jobs["ci-ok"].needs.includes("hygiene"));
+});
+
+for (const [file, rule] of [[".github/.env", "environment"], ["x/.ssh/id_rsa", "key-material"], [".config/x.pem", "key-material"], ["tools/.x", "private-tools"], ["ops/.x/a.yaml", "private-ops"], ["dir/.x/a.pdf", "personal-data-document"]]) {
+  test(`hidden segments: ${file} is refused in both CLI modes`, (t) => {
+    const { git, write, commit, run } = repository(t);
+    write("safe.txt"); commit(); git("checkout", "-qb", "feature");
+    write(file); commit();
+    for (const mode of ["dev", "--full"]) {
+      const result = run(mode);
+      assert.equal(result.status, 1, result.stdout);
+      assert.ok(result.stderr.includes(rule), result.stderr);
+    }
+  });
+}
+
+test("diff mode checks a regular file changed to a symlink", (t) => {
+  const { dir, git, write, commit, run } = repository(t);
+  write(".env.preexisting"); commit(); git("checkout", "-qb", "feature");
+  rmSync(path.join(dir, ".env.preexisting"));
+  symlinkSync("safe.txt", path.join(dir, ".env.preexisting")); commit();
+  const result = run("dev");
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /environment/);
 });

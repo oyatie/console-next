@@ -231,3 +231,17 @@ test("shared nextest metadata removes upstream contacts and preserves executable
     assert.equal(verify.status, 0, verify.stderr);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test("Office archives refuse local paths while clean Office XML passes", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-office-path-"));
+  try {
+    for (const local of [false, true]) {
+      const office = path.join(dir, "control.xlsx");
+      const result = spawnSync("python3", ["-c", "import sys,zipfile\nwith zipfile.ZipFile(sys.argv[1],'w') as z:\n z.writestr('[Content_Types].xml','<Types/>')\n z.writestr('docProps/app.xml',sys.argv[2])", office, local ? "<path>/Users/synthetic/Documents/source.xlsx</path>" : "<path>synthetic.xlsx</path>"], { encoding: "utf8" });
+      assert.equal(result.status, 0, result.stderr);
+      const scan = spawnSync("node", ["scripts/ci/privacy.mjs", office], { encoding: "utf8" });
+      assert.equal(scan.status, local ? 1 : 0, scan.stderr);
+      if (local) assert.match(scan.stderr, /local office path/);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
