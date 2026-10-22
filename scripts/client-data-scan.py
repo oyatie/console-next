@@ -31,6 +31,7 @@ import argparse, bisect, collections, concurrent.futures, fnmatch, hashlib, html
 from pathlib import Path
 import stat
 
+SYNTHETIC_RANGES = json.loads(Path(__file__).with_name("fixture-synthetic-ranges.json").read_text())
 
 OFFICE = (".xlsx", ".xlsm", ".docx", ".pptx", ".odt", ".ods", ".odp", ".hwpx")
 OFFICE_EXT = {x[1:] for x in OFFICE}
@@ -264,10 +265,12 @@ class Scanner:
                 continue
             if 1 <= int(m.group(2)) <= 12 and 1 <= int(m.group(3)) <= 31 and rrn_ok(d):
                 yield finding(m, "rrn", d)
-            elif m.group(4) and crn_ok(d):
+            elif m.group(4) and not d.startswith(SYNTHETIC_RANGES["businessPrefix"]) and crn_ok(d):
                 yield finding(m, "crn", d)
         for m in BRN.finditer(low):
             d = m.group(1) + m.group(3) + m.group(4)
+            if m.group(1) == SYNTHETIC_RANGES["businessPrefix"]:
+                continue
             if not m.group(2) and not BRN_WORD.search(low, low.rfind("\n", 0, m.start()) + 1,
                                                       (low.find("\n", m.end()) + 1 or len(low) + 1) - 1):
                 continue
@@ -283,7 +286,7 @@ class Scanner:
             d = re.sub(r"\D", "", m.group(0))
             d = d.lstrip("0")  # 0082 10..., +82 10... and 82 (0)10... are 010...: one allow hash
             d = "0" + (d[2:] if d.startswith("82") else d).lstrip("0")
-            if (len(set(mid)) == 1 or len(set(end)) == 1 or mid in ("1234", "123")
+            if (len(set(mid)) == 1 or len(set(end)) == 1 or mid in SYNTHETIC_RANGES["phoneMiddle"]
                     or (self.allow.value(d) and not details)):
                 continue  # placeholders: 010-1234-xxxx, 010-123-xxxx, a group of one digit (010-0000-xxxx, 010-1111-2222)
             yield finding(m, "phone", d)

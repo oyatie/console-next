@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { spawnSync } from "node:child_process";
-import { appendFileSync, closeSync, mkdirSync, openSync, readFileSync } from "node:fs";
+import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { listedTests, plan, readTimings } from "../e2e-timings.mjs";
 
@@ -35,7 +35,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     try {
       const result = spawnSync("node_modules/.bin/playwright", ["test", ...job.files.map((file) => `e2e/${file}`), "--project", job.project, "--no-deps"], { stdio: ["ignore", log, log], env: { ...process.env, E2E_XBROWSER: job.browser === "firefox" ? "1" : "0", E2E_WORKERS: String(config.e2eWorkers) } });
       process.stdout.write(`Playwright exited ${result.status ?? 1}; details require the upload privacy scan.\n`);
-      process.exitCode = result.status ?? 1;
+      if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `traces=${existsSync("test-results") && readdirSync("test-results", { recursive: true }).some((file) => String(file).endsWith(".zip"))}\n`);
+      const proof = spawnSync("python3", ["scripts/ci/test-results.py", "playwright", job.browser, process.env.PLAYWRIGHT_JUNIT_OUTPUT_FILE ?? ".cache/ci/e2e-results/junit.xml", String(result.status ?? -1)], { stdio: "inherit" });
+      process.exitCode = proof.status ?? 1;
     } finally { closeSync(log); }
   } else throw new Error("expected plan or run");
 }

@@ -39,15 +39,6 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - &client-data-terms
-        name: Prepare optional trusted client-data rules
-        if: github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')
-        env:
-          CLIENT_DATA_TERMS: ${{ secrets.CONSOLE_CLIENT_DATA_TERMS }}
-        run: |-
-          umask 077
-          printf '%s' "$CLIENT_DATA_TERMS" >"$RUNNER_TEMP/client-data-terms"
-          echo "CONSOLE_CLIENT_DATA_TERMS_FILE=$RUNNER_TEMP/client-data-terms" >>"$GITHUB_ENV"
       - &duration-start
         name: Start duration measurement
         run: echo "CI_STARTED_AT=$(date +%s)" >>"$GITHUB_ENV"
@@ -68,12 +59,14 @@ jobs:
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: &scan-terms
+          CLIENT_DATA_TERMS: ${{ (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) && secrets.CONSOLE_CLIENT_DATA_TERMS || '' }}
         run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
       - name: Publish scanned summary
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && steps.plan.outputs.retention != ''
         with:
           name: metrics-plan
           path: .cache/ci/metrics.json
@@ -92,6 +85,12 @@ jobs:
       postgres: ${{ steps.plan.outputs.postgres }}
       retention: ${{ steps.plan.outputs.retention }}
       partitions: ${{ steps.plan.outputs.partitions }}
+      base: ${{ steps.plan.outputs.base }}
+      unit: ${{ steps.plan.outputs.unit }}
+      db: ${{ steps.plan.outputs.db }}
+      buildMatrix: ${{ steps.plan.outputs.buildMatrix }}
+      unitMatrix: ${{ steps.plan.outputs.unitMatrix }}
+      dbMatrix: ${{ steps.plan.outputs.dbMatrix }}
       browserVersion: ${{ steps.plan.outputs.browserVersion }}
       testAdmin: ${{ steps.plan.outputs.testAdmin }}
       database: ${{ steps.plan.outputs.database }}
@@ -103,7 +102,6 @@ jobs:
     steps:
       - *harden-runner
       - *checkout
-      - *client-data-terms
       - *duration-start
       - *node
       - &npm-restore
@@ -120,7 +118,7 @@ jobs:
           docker run --rm -v "${PWD}:/repo" -w /repo
           rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
       - name: Workflow regression and safety checks
-        run: node --test scripts/ci.test.mjs scripts/ci-privacy.test.mjs scripts/cd-workflow.test.mjs scripts/dev-secrets.test.mjs
+        run: node --test scripts/ci.test.mjs scripts/ci-privacy.test.mjs scripts/ci-results.test.mjs scripts/cd-workflow.test.mjs scripts/dev-secrets.test.mjs
       - name: Synthetic fixtures and repository secrets
         run: |-
           node scripts/check-fixture-ids.mjs
@@ -130,10 +128,15 @@ jobs:
         run: |-
           python3 scripts/client-data-scan.py --root . --tree
           python3 scripts/ci/scan-uploads.py --terms-tree
+      - name: Validate the owned trunk baseline
+        env:
+          CI_BASE_SHA: ${{ needs.plan.outputs.base }}
+        run: python3 scripts/ci/test-results.py --validate
       - *job-metrics
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: *scan-terms
         run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/npm
       - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
         if: >-
@@ -146,7 +149,7 @@ jobs:
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
           name: metrics-hygiene
           path: .cache/ci/metrics.json
@@ -164,7 +167,6 @@ jobs:
     steps:
       - *harden-runner
       - *checkout
-      - *client-data-terms
       - *duration-start
       - *node
       - *npm-restore
@@ -177,9 +179,10 @@ jobs:
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: *scan-terms
         run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/npm apps/web/dist
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: success() && steps.privacy.outcome == 'success'
+        if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
           name: web-dist
           path: apps/web/dist
@@ -198,7 +201,7 @@ jobs:
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
           name: metrics-web
           path: .cache/ci/metrics.json
@@ -217,7 +220,6 @@ jobs:
     steps:
       - *harden-runner
       - *checkout
-      - *client-data-terms
       - *duration-start
       - *node
       - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
@@ -234,36 +236,30 @@ jobs:
           path: .cache/sccache
           key: >-
             console-ci-sccache-${{ runner.os }}-${{ hashFiles('backend/rust-toolchain.toml', 'scripts/ci/versions.json') }}-${{
-            hashFiles('backend/Cargo.lock') }}-test-${{ github.sha }}
+            hashFiles('backend/Cargo.lock') }}-test-stripped
           restore-keys: >-
             console-ci-sccache-${{ runner.os }}-${{ hashFiles('backend/rust-toolchain.toml', 'scripts/ci/versions.json') }}-${{
-            hashFiles('backend/Cargo.lock') }}-test-
+            hashFiles('backend/Cargo.lock') }}-test-stripped-
 
             console-ci-sccache-${{ runner.os }}-${{ hashFiles('backend/rust-toolchain.toml', 'scripts/ci/versions.json') }}-
       - run: |-
           bash scripts/ci/install-tools.sh nextest sccache cargo-deny
           echo "SCCACHE_CACHE_SIZE=$(jq -r .sccacheBytes scripts/ci/config.json)" >>"$GITHUB_ENV"
       - name: Format and all Clippy feature sets
-        if: needs.plan.outputs.backend == 'true'
+        if: needs.plan.outputs.backend == 'true' && matrix.primary
         run: |-
           cd backend
           cargo fmt --check
           cargo clippy --workspace --all-targets --locked -- -D warnings
           cargo clippy --workspace --all-targets --locked --features full -- -D warnings
           cargo clippy --workspace --all-targets --locked --features full,test-postgres -- -D warnings
-      - name: Compile the test workspace once
+      - name: Compile and archive this affected target group once
         if: needs.plan.outputs.backend == 'true'
-        run: >-
-          mkdir -p .cache/ci/build/tests
-
+        env:
+          CI_RUST_GROUP: ${{ toJSON(matrix) }}
+        run: |-
           cd backend
-
-          cargo metadata --format-version 1 --locked --features full,test-postgres > ../.cache/ci/build/tests/metadata.json
-
-          cargo nextest archive --workspace --all-targets --locked --features full,test-postgres --archive-file
-          ../.cache/ci/build/tests/workspace.tar.zst
-
-          python3 ../scripts/ci/sanitize-nextest.py ../.cache/ci/build/tests/workspace.tar.zst ../.cache/ci/build/tests/metadata.json
+          node ../scripts/ci/rust-build.mjs
       - name: Backend code gates (release parity)
         if: needs.plan.outputs.backend == 'true'
         working-directory: backend
@@ -281,7 +277,7 @@ jobs:
           echo "Backend code gates: ${SECONDS}s"
           exit "$failed"
       - name: Build the five privacy gates
-        if: needs.plan.outputs.backend == 'true'
+        if: needs.plan.outputs.backend == 'true' && matrix.primary
         run: >-
           cd backend
 
@@ -293,46 +289,45 @@ jobs:
           for gate in personal-data-classification pii-no-logs tenant-isolation rls-arming audit-coverage; do cp
           "target/debug/console-gate-$gate" ../.cache/ci/build/gates/; done
       - name: Build the backend once for every browser shard
-        if: needs.plan.outputs.e2e == 'true'
+        if: needs.plan.outputs.e2e == 'true' && matrix.primary
         run: |-
           cd backend
           cargo build --locked -p console-app --features full,e2e-test-support
           mkdir -p ../.cache/ci/build/backend
           cp target/debug/console-app ../.cache/ci/build/backend/console-app
+      - name: Check build and extraction disk budgets
+        run: python3 scripts/ci/disk-budget.py
       - *job-metrics
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: *scan-terms
         run: >-
-          node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/ci/build .cache/sccache
-          ~/.cargo/registry/index ~/.cargo/registry/cache ~/.cargo/git/db
+          node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/ci/disk.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.backend == 'true'
+        if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.backend == 'true' && needs.plan.outputs.retention != ''
         with:
-          name: rust-tests
-          path: .cache/ci/build/tests
+          name: rust-tests-${{ matrix.modes[0] }}-${{ matrix.group }}
+          path: .cache/ci/build/tests/${{ matrix.modes[0] }}
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
           include-hidden-files: true
-          overwrite: true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.backend == 'true'
+        if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.backend == 'true' && matrix.primary && needs.plan.outputs.retention != ''
         with:
           name: privacy-gates
           path: .cache/ci/build/gates
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
           include-hidden-files: true
-          overwrite: true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.e2e == 'true'
+        if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.e2e == 'true' && matrix.primary && needs.plan.outputs.retention != ''
         with:
           name: backend-binary
           path: .cache/ci/build/backend
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
           include-hidden-files: true
-          overwrite: true
       - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
         if: >-
           success() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.privacy.outcome == 'success' &&
@@ -346,19 +341,19 @@ jobs:
       - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
         if: >-
           success() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.privacy.outcome == 'success' &&
-          steps.compiler.outputs.cache-hit != 'true'
+          steps.compiler.outputs.cache-hit != 'true' && matrix.primary
         with:
           path: .cache/sccache
           key: >-
             console-ci-sccache-${{ runner.os }}-${{ hashFiles('backend/rust-toolchain.toml', 'scripts/ci/versions.json') }}-${{
-            hashFiles('backend/Cargo.lock') }}-test-${{ github.sha }}
+            hashFiles('backend/Cargo.lock') }}-test-stripped
       - name: Publish scanned summary
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
-          name: metrics-rust-build
+          name: metrics-rust-build-${{ matrix.group }}
           path: .cache/ci/metrics.json
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
@@ -366,10 +361,18 @@ jobs:
           overwrite: true
     needs:
       - plan
+      - hygiene
     if: needs.plan.outputs.backend == 'true' || needs.plan.outputs.e2e == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.buildMatrix) }}
     env:
       SQLX_OFFLINE: "true"
       CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      CARGO_PROFILE_TEST_STRIP: debuginfo
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_DEV_STRIP: debuginfo
       RUSTC_WRAPPER: sccache
       SCCACHE_DIR: ${{ github.workspace }}/.cache/sccache
   backend-test:
@@ -380,13 +383,12 @@ jobs:
     steps:
       - *harden-runner
       - *checkout
-      - *client-data-terms
       - *duration-start
       - *node
       - run: bash scripts/ci/install-tools.sh nextest
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: rust-tests
+          name: rust-tests-unit-${{ matrix.group }}
           path: .cache/ci
       - name: Non-DB unit suites from the shared archive
         env:
@@ -398,16 +400,17 @@ jobs:
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: *scan-terms
         run: >-
-          node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json backend/target/nextest
-          .cache/ci/extracted/target/nextest
+          node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json backend/target/nextest/ci/junit.xml
+          backend/target/nextest/ci/junit.baseline.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
-          name: backend-test-junit-${{ matrix.partition }}
+          name: backend-test-junit-${{ matrix.group }}-${{ matrix.partition }}
           path: |-
             backend/target/nextest/ci/junit.xml
-            .cache/ci/extracted/target/nextest/ci/junit.xml
+            backend/target/nextest/ci/junit.baseline.json
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
           include-hidden-files: true
@@ -416,9 +419,9 @@ jobs:
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
-          name: metrics-backend-test-${{ matrix.partition }}
+          name: metrics-backend-test-${{ matrix.group }}-${{ matrix.partition }}
           path: .cache/ci/metrics.json
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
@@ -427,11 +430,10 @@ jobs:
     needs:
       - plan
       - rust-build
-    if: needs.plan.outputs.backend == 'true'
+    if: needs.plan.outputs.unit == 'true'
     strategy:
       fail-fast: false
-      matrix:
-        partition: ${{ fromJSON(needs.plan.outputs.partitions) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.unitMatrix) }}
     env:
       SQLX_OFFLINE: "true"
       AFFECTED_CRATES: ${{ needs.plan.outputs.crates }}
@@ -443,7 +445,6 @@ jobs:
     steps:
       - *harden-runner
       - *checkout
-      - *client-data-terms
       - *duration-start
       - *node
       - name: Generate isolated test credentials
@@ -458,7 +459,7 @@ jobs:
       - run: bash scripts/ci/install-tools.sh nextest
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: rust-tests
+          name: rust-tests-db-${{ matrix.group }}
           path: .cache/ci
       - name: Every DB suite from the shared archive
         env:
@@ -470,16 +471,17 @@ jobs:
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: *scan-terms
         run: >-
-          node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json backend/target/nextest
-          .cache/ci/extracted/target/nextest
+          node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json backend/target/nextest/ci/junit.xml
+          backend/target/nextest/ci/junit.baseline.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
-          name: backend-db-junit-${{ matrix.partition }}
+          name: backend-db-junit-${{ matrix.group }}-${{ matrix.partition }}
           path: |-
             backend/target/nextest/ci/junit.xml
-            .cache/ci/extracted/target/nextest/ci/junit.xml
+            backend/target/nextest/ci/junit.baseline.json
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
           include-hidden-files: true
@@ -488,9 +490,9 @@ jobs:
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
-          name: metrics-backend-db-${{ matrix.partition }}
+          name: metrics-backend-db-${{ matrix.group }}-${{ matrix.partition }}
           path: .cache/ci/metrics.json
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
@@ -499,14 +501,12 @@ jobs:
     needs:
       - plan
       - rust-build
-    if: needs.plan.outputs.backend == 'true'
+    if: needs.plan.outputs.db == 'true'
     strategy:
       fail-fast: false
-      matrix:
-        partition: ${{ fromJSON(needs.plan.outputs.partitions) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.dbMatrix) }}
     env:
       SQLX_OFFLINE: "true"
-      AFFECTED_CRATES: ${{ needs.plan.outputs.crates }}
     services:
       postgres:
         image: ${{ needs.plan.outputs.postgres }}
@@ -527,7 +527,6 @@ jobs:
     steps:
       - *harden-runner
       - *checkout
-      - *client-data-terms
       - *duration-start
       - *node
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
@@ -543,12 +542,13 @@ jobs:
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: *scan-terms
         run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
       - name: Publish scanned summary
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
           name: metrics-personal-data-classification
           path: .cache/ci/metrics.json
@@ -568,7 +568,6 @@ jobs:
     steps:
       - *harden-runner
       - *checkout
-      - *client-data-terms
       - *duration-start
       - *node
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
@@ -584,12 +583,13 @@ jobs:
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: *scan-terms
         run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
       - name: Publish scanned summary
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
           name: metrics-pii-no-logs
           path: .cache/ci/metrics.json
@@ -609,7 +609,6 @@ jobs:
     steps:
       - *harden-runner
       - *checkout
-      - *client-data-terms
       - *duration-start
       - *node
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
@@ -625,12 +624,13 @@ jobs:
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: *scan-terms
         run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
       - name: Publish scanned summary
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
           name: metrics-tenant-isolation
           path: .cache/ci/metrics.json
@@ -650,7 +650,6 @@ jobs:
     steps:
       - *harden-runner
       - *checkout
-      - *client-data-terms
       - *duration-start
       - *node
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
@@ -666,12 +665,13 @@ jobs:
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: *scan-terms
         run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
       - name: Publish scanned summary
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
           name: metrics-rls-arming
           path: .cache/ci/metrics.json
@@ -691,7 +691,6 @@ jobs:
     steps:
       - *harden-runner
       - *checkout
-      - *client-data-terms
       - *duration-start
       - *node
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
@@ -707,12 +706,13 @@ jobs:
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: *scan-terms
         run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
       - name: Publish scanned summary
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
           name: metrics-audit-coverage
           path: .cache/ci/metrics.json
@@ -732,7 +732,6 @@ jobs:
     steps:
       - *harden-runner
       - *checkout
-      - *client-data-terms
       - *duration-start
       - *node
       - *npm-restore
@@ -753,12 +752,13 @@ jobs:
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: *scan-terms
         run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
       - name: Publish scanned summary
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
           name: metrics-e2e-plan
           path: .cache/ci/metrics.json
@@ -779,7 +779,6 @@ jobs:
     steps:
       - *harden-runner
       - *checkout
-      - *client-data-terms
       - *duration-start
       - *node
       - *npm-restore
@@ -807,6 +806,7 @@ jobs:
           echo "CONSOLE_PUBLIC_BROWSER_MANIFEST_FILE=$RUNNER_TEMP/public-browsers.json" >>"$GITHUB_ENV"
           chmod +x "$CONSOLE_APP_BIN"
       - name: Run the measured shard
+        id: browser-run
         env:
           SHARD: ${{ toJSON(matrix) }}
         run: node scripts/ci/e2e.mjs run
@@ -814,11 +814,12 @@ jobs:
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: *scan-terms
         run: >-
           node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/ci/e2e-results test-results
           ~/.cache/ms-playwright
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
           name: e2e-results-${{ matrix.browser }}-${{ matrix.shard }}
           path: .cache/ci/e2e-results
@@ -827,7 +828,7 @@ jobs:
           include-hidden-files: true
           overwrite: true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: failure() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && steps.browser-run.outputs.traces == 'true' && needs.plan.outputs.retention != ''
         with:
           name: e2e-traces-${{ matrix.browser }}-${{ matrix.shard }}
           path: test-results
@@ -846,7 +847,7 @@ jobs:
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
           name: metrics-e2e-${{ matrix.browser }}-${{ matrix.shard }}
           path: .cache/ci/metrics.json
@@ -880,7 +881,6 @@ jobs:
     steps:
       - *harden-runner
       - *checkout
-      - *client-data-terms
       - *duration-start
       - *node
       - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
@@ -932,6 +932,7 @@ jobs:
       - name: Personal-data scan before any upload
         id: privacy
         if: always()
+        env: *scan-terms
         run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/e2e-timings
       - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
         if: >-
@@ -944,7 +945,7 @@ jobs:
         if: always() && steps.privacy.outcome == 'success'
         run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success'
+        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
           name: metrics-ci-ok
           path: .cache/ci/metrics.json
