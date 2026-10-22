@@ -95,29 +95,11 @@ test("nobody acts on their own record, the ops account keeps its sign-in path, a
     await shot(admin, "gov02-ops-panel-after");
     await expectAccessible(admin, "ops account panel: own reset refused with its fix");
 
-    // governance-03: the ops account linked to 이직원; their exit is reported and confirmed by the HR worker (the ops
-    // account is now 이직원's own record, and another holder exists), each sheet saying so up front, nothing blocked.
-    await panel.getByRole("combobox", { name: "연결할 직원" }).fill("이직원");
-    await admin.getByRole("option", { name: /이직원/ }).first().click();
-    await panel.getByRole("button", { name: "직원 연결" }).click();
-    await expect(panel.getByRole("link", { name: /이직원/ })).toBeVisible();
-    const note = "이 사람은 운영 계정을 쓰고 있습니다 · 퇴직 후에도 운영 계정은 남습니다";
-    await go(hr, other);
-    await hr.getByRole("button", { name: "퇴직 보고" }).click();
-    const report = hr.getByRole("dialog");
-    await expect(report.getByText(note)).toBeVisible();
-    await report.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(30));
-    await report.getByLabel("퇴직 경위").fill("본인 사정");
-    await shot(hr, "gov03-exit-report-after");
-    await report.getByRole("button", { name: "퇴직 보고" }).click();
-    const confirmVerb = hr.getByRole("region", { name: "퇴직", exact: true }).getByRole("button", { name: "인사 확인하고 퇴직 처리" });
-    await expect(confirmVerb).toBeVisible();
-    // The person page's own first-load shifts are the set-up (see above); the confirm sheet and its note are judged.
-    await hr.evaluate(() => void window.__shifts?.splice(0));
-    await confirmVerb.click();
-    await expect(hr.getByRole("dialog").getByText(note)).toBeVisible();
-    await shot(hr, "gov03-exit-confirm-after");
-    await expectAccessible(hr, "exit confirm of the ops account's person: the ops note");
+    // K1 (account-link guard): one's own account is never linked by oneself; another holder requests it with a passkey
+    // and a second person approves (e2e/account-link-guard.spec.ts). The sole ops account's panel offers no link.
+    // ponytail: the ops-exit note (accounts.ops.exitNote) needs that two-admin world here; it is not walked meanwhile.
+    await expect(panel.getByRole("combobox", { name: "연결할 직원" })).toHaveCount(0);
+    await expect(panel.getByRole("button", { name: /직원 연결/ })).toHaveCount(0);
   });
 
   await test.step("records-02: the auto 사번 skips a retired one; a taken one is named with its remedy", async () => {
