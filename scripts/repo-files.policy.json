@@ -1,0 +1,30 @@
+{
+  "_license": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "maxFileBytes": 5000000,
+  "curatedTopologyFiles": [
+    "e2e/stack/compose.yml",
+    "e2e/stack/otel-collector.yml",
+    "scripts/ci/postgres-reconcile-topology.sh"
+  ],
+  "rules": [
+    { "id": "private-tools", "paths": ["tools/**"], "allow": [] },
+    { "id": "private-ops-docs", "paths": ["docs/ops/**"], "allow": ["docs/ops/mvp-build.md"] },
+    {
+      "id": "private-ops",
+      "paths": ["ops/**"],
+      "allow": [],
+      "reason": "Round 3 relocated the curated topology files listed above out of ops; no tracked ops files remain."
+    },
+    { "id": "environment", "paths": ["**/.env*", "**/.env*/**"], "allow": [] },
+    { "id": "bundle", "paths": ["**/*.bundle"], "allow": [] },
+    { "id": "key-material", "paths": ["**/*.pem", "**/*.key", "**/*.p12", "**/*.pfx", "**/id_rsa*", "**/id_ed25519*"], "allow": [] },
+    { "id": "terraform-state", "paths": ["**/*.tfstate*"], "allow": [] },
+    { "id": "database-file", "paths": ["**/*.sqlite", "**/*.dump"], "allow": [] },
+    {
+      "id": "spreadsheet",
+      "paths": ["**/*.xls", "**/*.xlsx"],
+      "allow": ["backend/crates/platform/excel/templates/**", "**/tests/fixtures/**", "backend/fuzz/regressions/**"]
+    },
+    { "id": "personal-data-document", "paths": ["**/*.hwp", "**/*.hwpx", "**/*.pdf", "**/*.doc", "**/*.docx", "**/*.zip"], "allow": [] }
+  ]
+}

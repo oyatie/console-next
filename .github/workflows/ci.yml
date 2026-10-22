@@ -118,7 +118,9 @@ jobs:
           docker run --rm -v "${PWD}:/repo" -w /repo
           rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
       - name: Workflow regression and safety checks
-        run: node --test scripts/ci.test.mjs scripts/ci-privacy.test.mjs scripts/ci-results.test.mjs scripts/cd-workflow.test.mjs scripts/dev-secrets.test.mjs
+        run: node --test scripts/ci.test.mjs scripts/ci-privacy.test.mjs scripts/ci-results.test.mjs scripts/cd-workflow.test.mjs scripts/dev-secrets.test.mjs scripts/check-repo-files.test.mjs
+      - name: Repository file policy
+        run: node scripts/check-repo-files.mjs --full
       - name: Synthetic fixtures and repository secrets
         run: |-
           node scripts/check-fixture-ids.mjs
