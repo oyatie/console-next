@@ -1,7 +1,8 @@
+import { EnumCode } from "../../../ui/enum-value";
 import { useState } from "react";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
-import { EMPLOYMENT_TYPE, LIFECYCLE_EVENT, label } from "../../../lib/labels";
+import { EMPLOYMENT_TYPE, LEAVE_TYPE, LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { Segmented } from "../../../ui/button/segmented";
@@ -41,7 +42,7 @@ export function CardSpine({ c, onAct, onLedger, onHistory }: { c: Card; onAct: (
       key: x.id,
       tone: tone(x),
       when: <>{fmtDate(x.effective_date)} {x.state === "SCHEDULED" && <Tag kind="plan">{t("empCard.spine.planned")}</Tag>} {x.batch_id && <Tag>{t("empCard.spine.batch")}</Tag>}</>,
-      what: <b>{eventLine(x, c.title) ?? title}</b>,
+      what: <b>{eventLine(x, c.title) ?? title} <EnumCode e={LEAVE_TYPE} value={x.leave_type} /></b>,
       // The ribbon's verbs on the default view (trunk's person page had them there): withdraw a reservation, record a failed one
       // again, correct or rescind the latest change in force.
       meta: x.state === "SCHEDULED" && cancellable(x) ? (

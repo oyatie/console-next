@@ -1,3 +1,4 @@
+import { LEAVE_TYPE, label } from "../../lib/labels";
 // Words for the import contract's codes. Every enum on screen goes through here, never the raw code.
 import { i18n, isMessageId, t } from "@console/i18n";
 import type { Classification, ImportDeferred, ImportOutcome, ImportRow, ReasonCatalogEntry, ReviewItem, SheetStatus } from "./domain/contract";
@@ -37,7 +38,7 @@ export const routeLabel = (r: ImportDeferred["route"]) => known(`import.route.${
 export const refusalLabel = (code: string) => known(`import.refusal.${code}`, code);
 export const employmentTypeLabel = (code: string) => known(`enum.employmentType.${code}`, code);
 export const employeeStatusLabel = (code: string) => known(`enum.employeeStatus.${code}`, code);
-export const leaveTypeLabel = (code: string) => known(`import.leaveType.${code}`, code);
+export const leaveTypeLabel = (code: string) => known(`import.leaveType.${code}`, label(LEAVE_TYPE, code));
 export const matchedLabel = (m: NonNullable<ImportRow["matched_by"]>) => known(`import.matched.${m}`, m);
 export const numberSourceLabel = (s: string) => known(`import.numberSource.${s}`, s);
 

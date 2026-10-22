@@ -1,6 +1,7 @@
+import { EnumCode } from "../../../ui/enum-value";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
-import { EMPLOYMENT_TYPE, LIFECYCLE_EVENT, label } from "../../../lib/labels";
+import { EMPLOYMENT_TYPE, LEAVE_TYPE, LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { PaperGrid, PaperTable } from "../../../ui/paper/paper-table";
 import { initial, maskedAddress, maskedBirth, maskedPhone } from "../domain/card";
@@ -55,7 +56,7 @@ export function PrintPaper({ c, parts, why, at }: { c: Card; parts: readonly str
           <PaperTable
             label={t("empCard.tab.events")}
             head={[t("empDoc.print.col.from"), t("empDoc.print.col.act"), t("empDoc.print.col.what")]}
-            rows={events.map((x) => ({ id: x.id, cells: [fmtDate(x.effective_date), `${label(LIFECYCLE_EVENT, x.event_type)}${x.state === "SCHEDULED" ? ` ${t("empDoc.print.planned")}` : ""}`, eventWhat(x, c.title) || x.comment || "—"] }))}
+            rows={events.map((x) => ({ id: x.id, cells: [fmtDate(x.effective_date), `${label(LIFECYCLE_EVENT, x.event_type)}${x.state === "SCHEDULED" ? ` ${t("empDoc.print.planned")}` : ""}`, <>{eventWhat(x, c.title) || x.comment || "—"} <EnumCode e={LEAVE_TYPE} value={x.leave_type} /></>] }))}
           />
         </>
       )}
