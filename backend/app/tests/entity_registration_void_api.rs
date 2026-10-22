@@ -238,6 +238,14 @@ async fn void_registration_refuses_with_phase_not_setup_after_go_live(pool: PgPo
     let mut passkey = SoftKey::enroll(&pool, OrgId::from_uuid(org), owner).await;
     let (entity, _, branch, unit) = structure(&admin).await;
     let reg = registration_of(&pool, &entity).await;
+    let (status, department) = admin
+        .call(
+            "POST",
+            "/api/v1/org-structure/units",
+            Some(json!({ "name": "인사팀", "parent_org_unit_id": unit })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{department}");
     let (status, person) = admin
         .call(
             "POST",
