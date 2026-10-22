@@ -133,4 +133,4 @@ test("refused outlines and group borders draw resolved 2px solid cues with >=3:1
   } finally {
     await browser.close();
   }
-});
+}, 30_000); // launches a real browser: the 5 s default measured the launch, not the contrast check
