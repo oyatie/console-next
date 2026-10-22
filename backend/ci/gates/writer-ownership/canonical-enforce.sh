@@ -1,29 +1,16 @@
 #!/usr/bin/env bash
 # Canonical writer-ownership enforcement against a MIGRATED database.
 #
-# The reconcile's canonical census can only see the tables that exist when it
-# runs. Every automated path -- tools/ci/cargo_needs_postgres.sh,
-# tools/lanes/pgtest.sh, .github/workflows/image-release.yml -- runs the
-# reconcile BEFORE migrations, so the census saw zero canonical tables and
-# returned NULL unconditionally. That is a structural no-op, not a pass.
-#
-# WHICH OF THOSE THREE THIS SCRIPT IS ACTUALLY WIRED INTO, because listing three
-# paths above and covering two is the same false-claim-about-a-control this
-# script exists to remove:
-#     tools/ci/cargo_needs_postgres.sh   COVERED
-#     tools/lanes/pgtest.sh              COVERED
-#     .github/workflows/image-release.yml  COVERED
-# image-release.yml invokes this script against a disposable probe database
-# inside the release postgres container after the published image has applied
-# migrations (console-soe). The pre-migration reconcile step remains a topology
-# smoke only; post-migration canonical enforcement is this script.
+# The GitHub Actions bootstrap (scripts/ci/bootstrap-db.sh) runs this after
+# role reconciliation. The executed census tests exercise the same enforcement.
+# A pre-migration census sees zero canonical tables and cannot count as proof.
 #
 # This is the post-migration half: a disposable probe database inside an
 # already-running container, migrated with the real migration set, then handed
 # to the reconcile again with CONSOLE_TOPOLOGY_REQUIRE_CANONICAL_TABLES=1 so
 # that examining zero canonical tables FAILS instead of passing silently.
 #
-# The caller must already have copied ops/postgres-reconcile-topology.sh to
+# The caller must already have copied scripts/ci/postgres-reconcile-topology.sh to
 # /topology.sh and its environment to /topology.env in the container.
 #
 # usage: canonical-enforce.sh <repo_root> <container> <probe_db>

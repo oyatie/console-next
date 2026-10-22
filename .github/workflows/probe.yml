@@ -5,9 +5,7 @@
 # cached) and the module entry it names under /assets/, so a pass means the
 # Cloudflare edge, the tunnel, the host and the release's assets answer (a page
 # whose entry chunk 404s is the 2026-10-08 white screen).
-# On failure it e-mails the owner through the ONS ticket topic: on a new outage,
-# then at most hourly while it lasts, so a long outage stays inside the 1,000
-# free ONS e-mails a month.
+# Failures notify Telegram on a new outage and at most hourly while it lasts.
 # Limits, stated:
 #   - GitHub runs schedules from the default branch only, best effort (often
 #     10-30 min late at busy times), and disables them after 60 days without a
@@ -17,11 +15,8 @@
 #   - One vantage point (a GitHub runner); the edge may challenge runner IPs, so
 #     a page with the host healthy is a false positive (console-infra RUNBOOK.md, alarm-probe).
 #   - HTTP only; a real browser load of sign-in is the next step (B-06 phase 2).
-# Setup (CD-9): repository secret PROBE_URL = https://<public host> (masked in
-# logs). Environment `probe` (deployment branches: dev) with console-ci-notify's
-# OCI_CONFIG (a [DEFAULT] profile without key_file) and OCI_API_KEY, and
-# ONS_TOPIC_ID. console-ci-notify may only publish to the alert topics: no deploy
-# key, no registry credential, no console-infra checkout.
+# Repository secrets: PROBE_URL, CONSOLE_PUBLIC_HOST (egress allow-list).
+# Environment `probe`: CONSOLE_TELEGRAM_BOT_TOKEN, CONSOLE_TELEGRAM_CHAT_ID.
 name: probe
 on:
   schedule:
@@ -43,7 +38,10 @@ jobs:
     steps:
       - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443 api.github.com:443 codeload.github.com:443
+            ${{ secrets.CONSOLE_PUBLIC_HOST }}:443
       - name: GET / and its module entry (edge, tunnel, host, assets)
         env:
           URL: ${{ secrets.PROBE_URL }}
@@ -69,26 +67,24 @@ jobs:
     runs-on: ubuntu-24.04-arm
     environment: probe
     timeout-minutes: 10
-    permissions: {}
+    permissions:
+      contents: read
     steps:
       - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
         with:
-          egress-policy: audit
-      # The official OCI CLI image, pinned by digest (multi-arch index of tag 20261007).
-      - name: Notify the owner (ONS, console-ci-notify)
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443 api.github.com:443 codeload.github.com:443
+            api.telegram.org:443
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/ci/notify-telegram.sh
+          sparse-checkout-cone-mode: false
+      - name: Notify the owner (Telegram)
         env:
-          OCI_CONFIG: ${{ secrets.OCI_CONFIG }}
-          OCI_API_KEY: ${{ secrets.OCI_API_KEY }}
-          ONS_TOPIC_ID: ${{ secrets.ONS_TOPIC_ID }}
+          CONSOLE_TELEGRAM_BOT_TOKEN: ${{ secrets.CONSOLE_TELEGRAM_BOT_TOKEN }}
+          CONSOLE_TELEGRAM_CHAT_ID: ${{ secrets.CONSOLE_TELEGRAM_CHAT_ID }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          umask 077
-          d="${RUNNER_TEMP}/oci"; mkdir -p "${d}"
-          printf '%s\n' "${OCI_API_KEY}" >"${d}/key.pem"
-          printf '%s\nkey_file=/oci/key.pem\n' "${OCI_CONFIG}" >"${d}/config"
-          docker run --rm --user "$(id -u):$(id -g)" -v "${d}:/oci:ro" -e OCI_CLI_CONFIG_FILE=/oci/config \
-            -e OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING=True \
-            ghcr.io/oracle/oci-cli:20261007@sha256:48884d8710d30356cac71c7aa678873a97c53c594fefdf2724c80270f3ca563b \
-            ons message publish --auth api_key --topic-id "${ONS_TOPIC_ID}" --title "console probe failed" \
-            --body "GET / or its module entry under /assets/ failed from a GitHub runner (edge, tunnel, host or release assets). console-infra RUNBOOK.md, alarm-probe. ${RUN_URL}" >/dev/null
-          rm -rf "${d}"
+          printf 'Run %s.\n' "${RUN_URL}" | scripts/ci/notify-telegram.sh send page page "console probe failed"

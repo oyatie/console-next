@@ -48,7 +48,7 @@
 //! unit legitimately absorbs several legacy records.
 //!
 //! The TRIGGER is the whole of that enforcement, not a privilege:
-//! `ops/postgres-reconcile-topology.sh` grants `console_rt` UPDATE and DELETE on
+//! `scripts/ci/postgres-reconcile-topology.sh` grants `console_rt` UPDATE and DELETE on
 //! every table a migration creates, which 0215's own header states, so the
 //! runtime role holds UPDATE on `org_unit_revisions` in the deployed database.
 //!

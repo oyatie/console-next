@@ -1,0 +1,11 @@
+{
+  "retentionDays": 7,
+  "database": "console_test",
+  "topologyProbeDatabase": "console_ci_topology_probe",
+  "cacheBudgetBytes": 10737418240,
+  "sccacheBytes": 1073741824,
+  "nextestPartitions": 4,
+  "e2eTargetSeconds": 300,
+  "e2eWorkers": 2,
+  "quarantine": []
+}

@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-# Checks workflow changes with actionlint (with shellcheck).
+# Checks workflow changes with actionlint (with shellcheck) and the CD workflow's
+# safety properties.
 name: workflows-check
 on:
   pull_request:
-    paths: [".github/**"]
+    paths: [".github/**", "scripts/cd-workflow.test.mjs"]
   push:
     branches: [dev]
-    paths: [".github/**"]
+    paths: [".github/**", "scripts/cd-workflow.test.mjs"]
 permissions: {}
 jobs:
   workflows:
@@ -17,9 +18,21 @@ jobs:
     steps:
       - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443 api.github.com:443 codeload.github.com:443
+            registry.npmjs.org:443 registry-1.docker.io:443 auth.docker.io:443
+            production.cloudflare.docker.com:443
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: actionlint
         run: docker run --rm -v "${PWD}:/repo" -w /repo rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: package.json
+          package-manager-cache: false
+      - name: CD workflow properties
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          node --test scripts/cd-workflow.test.mjs scripts/ci.test.mjs

@@ -73,14 +73,14 @@ export default defineConfig({
       ],
   // Both projects share the visual baselines (no project name in the file name).
   snapshotPathTemplate: "{snapshotDir}/{testFileDir}/{testFileName}-snapshots/{arg}{-snapshotSuffix}{ext}",
-  // CI: one retry, but a test that passes only on retry still fails the run.
-  retries: process.env.CI ? 1 : 0,
+  // A flaky failure stays visible; quarantine requires an owner and expiry in CI config.
+  retries: 0,
   failOnFlakyTests: !!process.env.CI,
   use: {
     baseURL: origin,
     locale: "ko-KR",
     timezoneId: "Asia/Seoul",
-    trace: process.env.CI ? "on-first-retry" : { mode: "retain-on-failure", screenshots: false },
+    trace: { mode: "retain-on-failure", screenshots: false },
   },
   webServer: [
     {

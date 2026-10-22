@@ -2397,7 +2397,7 @@ fn measured_tip_has_exactly_the_ratcheted_dual_writers() -> Result<(), Box<dyn s
 /// `!block.contains(…)` assertion can fail on text the block does not contain.
 fn canonical_block() -> Result<String, Box<dyn std::error::Error>> {
     let script = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../../ops/postgres-reconcile-topology.sh");
+        .join("../../../../scripts/ci/postgres-reconcile-topology.sh");
     let text =
         fs::read_to_string(&script).map_err(|error| format!("{}: {error}", script.display()))?;
     let (_, rest) = text
@@ -2444,7 +2444,7 @@ fn marked_list(block: &str, marker: &str) -> Result<Vec<String>, Box<dyn std::er
     Ok(found)
 }
 
-/// `ops/postgres-reconcile-topology.sh` carries the same table roster, because
+/// `scripts/ci/postgres-reconcile-topology.sh` carries the same table roster, because
 /// SQL cannot import a Rust constant. This binds the two: a seventh object key
 /// that never reaches the database half fails here.
 #[test]
@@ -3002,7 +3002,7 @@ fn a_permitted_crate_that_writes_nothing_is_stale() -> Result<(), Box<dyn std::e
 /// The shared roster is DISJOINT from the owned-table registry, and that is
 /// deliberate.
 ///
-/// The executed PostgreSQL census in `ops/postgres-reconcile-topology.sh`
+/// The executed PostgreSQL census in `scripts/ci/postgres-reconcile-topology.sh`
 /// derives its roster from `ObjectKey::owned_tables()` and examines exactly
 /// those twenty tables. The shared store is governed by the STATIC half only.
 /// Pinning the disjointness makes that asymmetry a declared property rather than
