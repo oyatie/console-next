@@ -20,11 +20,17 @@ async function admin(browser: Browser, name: string, slug: string): Promise<Page
 // UX-R1 ENTITY company-15: a list the product does not bundle is never promised ("not loaded yet"); the printed code is
 // typed instead, said to be unchecked, and never blocks.
 const notLoaded = async (page: Page, field: string) => {
-  const box = page.getByRole("textbox", { name: new RegExp(`^${field.replace(/[()]/g, "\\$&")}`) });
+  const box = page.getByRole("textbox", { name: new RegExp(`^${field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`) });
   await expect(box).toBeVisible();
   await expect(box).toHaveAccessibleDescription(/코드 목록을 제공하지 않아 적힌 코드를 그대로 입력합니다/);
   await expect(page.getByText(/목록을 아직 불러오지 않았습니다|목록이 준비되면/)).toHaveCount(0);
 };
+
+test("capture: unchecked field labels containing regex characters match literally", async ({ page }) => {
+  const field = "코드 [문서] \\ (안내)";
+  await page.setContent('<input aria-label="코드 [문서] \\ (안내)" aria-describedby="hint"><p id="hint">코드 목록을 제공하지 않아 적힌 코드를 그대로 입력합니다</p>');
+  await notLoaded(page, field);
+});
 
 test("capture: the district comes from the bundled list, other lists say they are not loaded and never block", { tag: "@org" }, async ({ browser }) => {
   const a = await admin(browser, "캡처솔루션", "capture");

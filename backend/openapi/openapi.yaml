@@ -22595,6 +22595,11 @@ paths:
             schema: { $ref: '#/components/schemas/BulkAuthorizeBody' }
       responses:
         '200': { description: per-check decisions (index-aligned with checks), content: { application/json: { schema: { $ref: '#/components/schemas/BulkDecisionResponse' } } } }
+        '422':
+          description: 'policy_bulk_limit: too many checks or excessive repeated subject data; no decisions are recorded'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorBody' }
   /api/v1/policy/catalog:
     get:
       operationId: listPolicyCatalog
@@ -32938,6 +32943,8 @@ components:
         subject: { $ref: '#/components/schemas/PolicySimSubject' }
         checks:
           type: array
+          maxItems: 200
+          description: The encoded subject repeated across all checks must fit the policy bulk evaluation work limit (2 MiB). Over-limit requests are rejected without recording decisions.
           items:
             type: object
             required: [action, resource]

@@ -9,3 +9,8 @@ requestBody:
       schema: { $ref: '#/components/schemas/BulkAuthorizeBody' }
 responses:
   '200': { description: per-check decisions (index-aligned with checks), content: { application/json: { schema: { $ref: '#/components/schemas/BulkDecisionResponse' } } } }
+  '422':
+    description: 'policy_bulk_limit: too many checks or excessive repeated subject data; no decisions are recorded'
+    content:
+      application/json:
+        schema: { $ref: '#/components/schemas/ErrorBody' }

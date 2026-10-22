@@ -6,7 +6,6 @@
   "clone:apps/web/src/features/attendance/ui/crew-members-sheet.tsx:apps/web/src/features/attendance/ui/crew-sheet.tsx:ad0493302563ba1214ba": 1,
   "clone:apps/web/src/features/entity/ui/workplace-actions.tsx:apps/web/src/features/org/ui/dept-actions.tsx:207110763b06ac7d94de": 1,
   "clone:apps/web/src/features/org/ui/dept-add-governed-sheet.tsx:apps/web/src/features/org/ui/dept-rename-governed-sheet.tsx:126cc4e30da2ca446bac": 1,
-  "dead-file:apps/web/src/features/entity/ui/document-pane.tsx": 1,
   "dead-file:apps/web/src/features/people/ui/duplicate-candidates.tsx": 1,
   "dead-file:apps/web/src/features/people/ui/use-active-branches.ts": 1,
   "empty-catch:apps/web/src/auth/idle.ts:8ea48c20b19a6f568de2": 1,
