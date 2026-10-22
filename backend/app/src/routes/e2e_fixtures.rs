@@ -13,7 +13,8 @@ const TERMS_REVISED: &str =
 
 pub(super) fn router(pool: PgPool) -> Router {
     let router = Router::new().route("/__e2e/terms", post(publish_terms));
-    #[cfg(feature = "e2e-test-support")]
+    // Mounted like every other E2E fixture: in a debug build or the explicit E2E support binary (the module itself is
+    // compiled only there) and, at run time, only with the E2E stub mail mode (platform.rs).
     let router = router
         .route("/__e2e/ops-recovery/operator", post(recovery_operator))
         .route("/__e2e/ops-recovery/elapse", post(recovery_elapse));
@@ -103,6 +104,27 @@ mod tests {
             assert_eq!(terms_body(invalid), None, "accepted {invalid}");
         }
     }
+
+    // regression (train fix r1): the ops-recovery fixtures were mounted only with `e2e-test-support`, so the debug
+    // binary every E2E run uses answered 404 and e2e/ops-recovery.spec.ts could never start. A malformed body is
+    // refused by the JSON extractor before the (lazy, never connected) pool is touched; an unmounted route is a 404.
+    #[tokio::test]
+    async fn ops_recovery_fixtures_are_mounted_in_the_e2e_debug_build() {
+        use tower::ServiceExt;
+        let pool = sqlx::PgPool::connect_lazy("postgres://fixture@127.0.0.1:1/none").unwrap();
+        for uri in ["/__e2e/ops-recovery/operator", "/__e2e/ops-recovery/elapse"] {
+            let request = http::Request::post(uri)
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(axum::body::Body::from("{}"))
+                .unwrap();
+            let status = super::router(pool.clone())
+                .oneshot(request)
+                .await
+                .unwrap()
+                .status();
+            assert_eq!(status, http::StatusCode::UNPROCESSABLE_ENTITY, "{uri}");
+        }
+    }
 }
 
 #[cfg(all(test, feature = "e2e-test-support"))]
@@ -139,12 +161,10 @@ mod route_tests {
     }
 }
 
-#[cfg(feature = "e2e-test-support")]
 #[derive(Deserialize)]
 struct RecoveryOperatorRequest {
     name: String,
 }
-#[cfg(feature = "e2e-test-support")]
 async fn recovery_operator(
     State(pool): State<PgPool>,
     Json(body): Json<RecoveryOperatorRequest>,
@@ -170,13 +190,11 @@ async fn recovery_operator(
         serde_json::json!({"id":id,"otp":issue.token.as_str()}),
     ))
 }
-#[cfg(feature = "e2e-test-support")]
 #[derive(Deserialize)]
 struct RecoveryElapseRequest {
     org_id: uuid::Uuid,
     id: uuid::Uuid,
 }
-#[cfg(feature = "e2e-test-support")]
 async fn recovery_elapse(
     State(pool): State<PgPool>,
     Json(body): Json<RecoveryElapseRequest>,
