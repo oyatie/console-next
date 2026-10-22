@@ -39,6 +39,7 @@ export function CommandError({
   own,
   historyHref,
   fieldLabel,
+  fieldReason,
   live,
   recover = true,
   onFocusField,
@@ -53,6 +54,7 @@ export function CommandError({
   /** The caller's record-history route; never shown for redacted metadata. */
   historyHref?: string;
   fieldLabel?: (field: string) => string | null | undefined;
+  fieldReason?: (field: string, code: string) => string | undefined;
   live?: "polite" | "assertive";
   onFocusField?: (field: string) => void;
   formId?: string;
@@ -77,7 +79,7 @@ export function CommandError({
       const label = fe.field ? fieldLabel?.(fe.field) : undefined;
       const byCode = `common.failed.code.${fe.code}`;
       const outcome = `requestOutcome.code.${fe.code}`;
-      const fallback = fe.code;
+      const fallback = fieldReason?.(fe.field, fe.code) ?? t("common.failed.code.validation");
       const codeText = mine ?? (isMessageId(byCode) ? t(byCode) : isMessageId(outcome) ? t(outcome) : fallback);
       const message = label && !codeText.includes(label) ? `${label}: ${codeText}` : codeText;
       return {
@@ -88,18 +90,17 @@ export function CommandError({
     });
 
     return (
-      <div className="command-error-summary">
-        <ErrorSummary
-          errors={summaryItems}
-          title={t("requestOutcome.title")}
-          focusKey={error}
-          formId={formId}
-          formFields={formFields}
-          onFocusField={onFocusField}
-        />
+      <ErrorSummary
+        errors={summaryItems}
+        title={t("common.validation.title")}
+        focusKey={error}
+        formId={formId}
+        formFields={formFields}
+        onFocusField={onFocusField}
+      >
         {children}
         <CommandReference requestKey={key} operationId={api?.operationId} />
-      </div>
+      </ErrorSummary>
     );
   }
 

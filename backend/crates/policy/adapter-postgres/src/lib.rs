@@ -40,11 +40,7 @@ impl PgPolicyError {
     pub const fn kind(&self) -> ErrorKind {
         match self {
             Self::Domain(error) => error.kind,
-            Self::Db(DbError::Unavailable(_)) => ErrorKind::Unavailable,
-            Self::Db(DbError::Sqlx(sqlx::Error::RowNotFound)) => ErrorKind::NotFound,
-            Self::Db(DbError::Sqlx(_))
-            | Self::Db(DbError::Serialize(_))
-            | Self::Db(DbError::CodeIssuance(_)) => ErrorKind::Internal,
+            Self::Db(error) => error.kind(),
         }
     }
 }

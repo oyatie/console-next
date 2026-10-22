@@ -2,6 +2,7 @@
 
 use std::cell::Cell;
 
+use console_kernel_core::ErrorKind;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -32,6 +33,15 @@ impl DbError {
             let _ = POOL_TIMED_OUT.try_with(|seen| seen.set(true));
         }
         Self::from(err)
+    }
+
+    #[must_use]
+    pub const fn kind(&self) -> ErrorKind {
+        match self {
+            Self::Unavailable(_) => ErrorKind::Unavailable,
+            Self::Sqlx(sqlx::Error::RowNotFound) => ErrorKind::NotFound,
+            _ => ErrorKind::Internal,
+        }
     }
 
     #[must_use]
@@ -70,7 +80,7 @@ pub async fn watch_pool_timeouts<F: std::future::Future>(f: F) -> (F::Output, bo
 mod tests {
     use super::{DbError, watch_pool_timeouts};
     use crate::with_org_conn;
-    use console_kernel_core::OrgId;
+    use console_kernel_core::{ErrorKind, OrgId};
     use sqlx::PgPool;
     use sqlx::postgres::PgPoolOptions;
 
@@ -87,6 +97,27 @@ mod tests {
             ))),
             DbError::Unavailable(_)
         ));
+    }
+
+    #[test]
+    fn database_kind_distinguishes_unavailability_from_other_failures() {
+        for error in [
+            sqlx::Error::PoolTimedOut,
+            sqlx::Error::Io(std::io::Error::from(std::io::ErrorKind::ConnectionReset)),
+        ] {
+            assert_eq!(DbError::from(error).kind(), ErrorKind::Unavailable);
+        }
+        assert_eq!(
+            DbError::from(sqlx::Error::RowNotFound).kind(),
+            ErrorKind::NotFound
+        );
+        for error in [
+            DbError::from(sqlx::Error::Protocol("bad frame".into())),
+            DbError::from(serde_json::from_str::<bool>("invalid").unwrap_err()),
+            DbError::CodeIssuance("no rule".into()),
+        ] {
+            assert_eq!(error.kind(), ErrorKind::Internal);
+        }
     }
 
     /// regression (PERF-BE): a helper that timed out on the pool marks the

@@ -46,14 +46,12 @@ impl PgDocsError {
     pub fn kind(&self) -> ErrorKind {
         match self {
             Self::Domain(error) => error.kind,
-            Self::Db(DbError::Sqlx(sqlx::Error::RowNotFound)) => ErrorKind::NotFound,
             Self::Db(DbError::Sqlx(sqlx::Error::Database(error)))
                 if error.code().is_some_and(|code| code == "23505") =>
             {
                 ErrorKind::Conflict
             }
-            Self::Db(DbError::Unavailable(_)) => ErrorKind::Unavailable,
-            Self::Db(_) => ErrorKind::Internal,
+            Self::Db(error) => error.kind(),
         }
     }
 }

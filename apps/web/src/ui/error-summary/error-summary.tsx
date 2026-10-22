@@ -22,6 +22,7 @@ export type ErrorSummaryItem = {
 type ErrorSummaryProps = {
   /** Summary heading text. Defaults to localized title. */
   title?: ReactNode;
+  children?: ReactNode;
   /** List of errors to summarize. */
   errors: ErrorSummaryItem[];
   /** Whether to automatically move focus to the first invalid field on mount. Defaults to true. */
@@ -47,6 +48,7 @@ type ErrorSummaryProps = {
  */
 export function ErrorSummary({
   title,
+  children,
   errors,
   autoFocus = true,
   focusKey = errors,
@@ -107,7 +109,7 @@ export function ErrorSummary({
       <div className={s.head}>
         <CircleAlert className={s.icon} size={18} aria-hidden />
         <h2 id={titleId} className={s.title}>
-          {shown(title) ? title : t("requestOutcome.title")}
+          {shown(title) ? title : t("common.validation.title")}
         </h2>
       </div>
       <div className={s.body}>
@@ -146,6 +148,7 @@ export function ErrorSummary({
             );
           })}
         </ul>
+        {children}
       </div>
     </div>
   );

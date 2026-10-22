@@ -38,9 +38,7 @@ impl PgIntegrityError {
     pub const fn kind(&self) -> ErrorKind {
         match self {
             Self::Domain(e) => e.kind,
-            Self::Db(DbError::Sqlx(sqlx::Error::RowNotFound)) => ErrorKind::NotFound,
-            Self::Db(DbError::Unavailable(_)) => ErrorKind::Unavailable,
-            Self::Db(_) => ErrorKind::Internal,
+            Self::Db(error) => error.kind(),
         }
     }
 }

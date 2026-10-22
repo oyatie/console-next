@@ -186,7 +186,8 @@ test("adversarial: validation refusal on server-only field shows in summary with
   });
   expect(markup).toContain('data-component="error-summary"');
   expect(markup).not.toContain('href="#server_nonce"');
-  expect(markup).toContain("nonce_expired");
+  expect(markup).not.toContain("nonce_expired");
+  expect(markup).toContain(t("common.failed.code.validation"));
 });
 
 test("409 field details remain a Banner with change facts and support reference", async () => {
@@ -225,3 +226,10 @@ test("503 field-shaped details remain a Banner with retry guidance", async () =>
 });
 
 
+
+test("a non-stale 409 never displays supplied last-change facts", async () => {
+  const error = new ApiError(409, "idempotency_key_reused", "already used", [], operation, true, [], { lastChange: latest });
+  const markup = await html(error);
+  expect(markup).not.toContain(latest.actor_name);
+  expect(markup).not.toContain(t("requestOutcome.changed", { actor: latest.actor_name, at: fmtDateTime(recordedAt) }));
+});

@@ -17,7 +17,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::{get, post},
 };
-use console_kernel_core::{ErrorKind, KernelError};
+use console_kernel_core::KernelError;
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
 use console_platform_request_context::RequestContextError;
@@ -708,17 +708,11 @@ impl RestError {
     }
 
     fn kernel(error: KernelError) -> Self {
-        let (status, code) = match error.kind {
-            ErrorKind::Validation => (StatusCode::UNPROCESSABLE_ENTITY, "validation"),
-            ErrorKind::NotFound => (StatusCode::NOT_FOUND, "not_found"),
-            ErrorKind::Forbidden => (StatusCode::FORBIDDEN, "forbidden"),
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => {
-                (StatusCode::CONFLICT, "conflict")
-            }
-            ErrorKind::Unavailable => (StatusCode::SERVICE_UNAVAILABLE, "unavailable"),
-            ErrorKind::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "internal"),
-        };
-        Self::new(status, code, error.message)
+        Self::new(
+            StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            error.code.unwrap_or(error.kind.code()),
+            error.message,
+        )
     }
 
     fn store(error: PgRecruitingError) -> Self {

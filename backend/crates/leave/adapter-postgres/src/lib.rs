@@ -123,9 +123,7 @@ impl PgLeaveError {
             Self::MissingHomeBranch | Self::ChargeReviewRequired(_) => ErrorKind::Conflict,
             Self::ConcurrentModification => ErrorKind::Conflict,
             Self::CommandUnavailable => ErrorKind::Internal,
-            Self::Db(DbError::Sqlx(sqlx::Error::RowNotFound)) => ErrorKind::NotFound,
-            Self::Db(DbError::Unavailable(_)) => ErrorKind::Unavailable,
-            Self::Db(_) => ErrorKind::Internal,
+            Self::Db(error) => error.kind(),
         }
     }
 }

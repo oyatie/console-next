@@ -1022,16 +1022,14 @@ impl RestError {
     }
 
     fn from_kernel(error: KernelError) -> Self {
-        match error.kind {
-            ErrorKind::Validation => Self::validation(error.message),
-            ErrorKind::Forbidden => Self::forbidden(error.message),
-            ErrorKind::NotFound => Self::new(StatusCode::NOT_FOUND, "not_found", error.message),
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => {
-                Self::new(StatusCode::CONFLICT, "conflict", error.message)
-            }
-            ErrorKind::Unavailable => Self::unavailable(error.message),
-            ErrorKind::Internal => Self::internal("internal server error"),
+        if error.kind == ErrorKind::Internal {
+            return Self::internal("internal server error");
         }
+        Self::new(
+            StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            error.code.unwrap_or(error.kind.code()),
+            error.message,
+        )
     }
 
     fn from_service(error: MailServiceError) -> Self {
