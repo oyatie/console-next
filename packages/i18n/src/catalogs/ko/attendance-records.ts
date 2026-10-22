@@ -33,7 +33,7 @@ export const koAttendanceRecords = {
   "attendanceRecords.fix.use": "{value} 입력",
   "attendanceRecords.selection.count": "{people, number}명 × {days, number}일 = {cells, number}칸 · 한 번에 10,000칸까지 저장합니다",
   "attendanceRecords.selection.over": "{people, number}명 × {days, number}일 = {cells, number}칸 · 한 번에 10,000칸까지 저장하므로 넘는 칸은 10,000칸씩 나누어 묶음마다 따로 저장합니다",
-  "attendanceRecords.fill.done": "소정대로 {filled, number}칸을 초안으로 입력했습니다 · 휴일·휴무 {rest, number} · 이미 기록 {recorded, number} · 본인·마감 {locked, number}칸은 건너뛰었습니다",
+  "attendanceRecords.fill.done": "소정대로 {filled, number}칸을 초안으로 입력했습니다 · 일정 없음 {unscheduled, number} · 휴일·휴무 {rest, number} · 이미 기록 {recorded, number} · 본인·마감 {locked, number}칸은 건너뛰었습니다",
   "attendanceRecords.paste.matched": "붙여넣은 {rows, number}행을 사번으로 맞췄습니다 · 일치 {matched, number} · 없음 {missing, number} · 본인 줄 {locked, number}칸은 입력하지 않았습니다",
   "attendanceRecords.paste.needsNumber": "여러 줄을 붙여넣으려면 첫 열에 사번이 있어야 합니다 · 이름으로는 맞추지 않습니다",
   "attendanceRecords.grammar.hint": "9-18 · 9:30-18:15 · 22-6+ (다음 날 퇴근) · 9-12,13-18 (외출) · 7:52- (출근만) · = (소정대로) · x (결근) · o (외근) · 출장",

@@ -33,7 +33,7 @@ export const enAttendanceRecords: Partial<Record<keyof typeof koAttendanceRecord
   "attendanceRecords.fix.use": "Use {value}",
   "attendanceRecords.selection.count": "{people, number} people × {days, number} days = {cells, number} cells · up to 10,000 cells per save",
   "attendanceRecords.selection.over": "{people, number} people × {days, number} days = {cells, number} cells · over 10,000 cells are saved in batches of 10,000",
-  "attendanceRecords.fill.done": "Drafted {filled, number} cells as scheduled · skipped rest days {rest, number} · already recorded {recorded, number} · own or closed {locked, number}",
+  "attendanceRecords.fill.done": "Drafted {filled, number} cells as scheduled · skipped no schedule {unscheduled, number} · rest days {rest, number} · already recorded {recorded, number} · own or closed {locked, number}",
   "attendanceRecords.paste.matched": "Matched {rows, number} pasted rows by employee number · matched {matched, number} · not found {missing, number} · own row {locked, number} left out",
   "attendanceRecords.paste.needsNumber": "To paste several rows, the first column must be the employee number · names are never matched",
   "attendanceRecords.grammar.hint": "9-18 · 9:30-18:15 · 22-6+ (ends next day) · 9-12,13-18 (time away) · 7:52- (in only) · = (as scheduled) · x (absent) · o (outside work)",

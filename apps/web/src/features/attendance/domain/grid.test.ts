@@ -7,8 +7,15 @@ test("fill as scheduled drafts only empty work days and counts every skip", () =
   const cells = [cell("a|1", "WORK"), cell("a|2", "WEEKLY_HOLIDAY"), cell("b|1", "WORK", "e1"), cell("c|1", "WORK", null, true), cell("d|1", "WORK")];
   const r = fillSchedule(cells, {});
   expect(r.filled).toBe(2);
-  expect(r.skipped).toEqual({ rest: 1, recorded: 1, locked: 1 });
+  expect(r.skipped).toEqual({ rest: 1, recorded: 1, locked: 1, unscheduled: 0 });
   expect(r.drafts["a|1"]).toEqual({ value: "=", base: null });
+});
+
+test("fill as scheduled distinguishes unscheduled people from rest days and locked rows", () => {
+  const r = fillSchedule([cell("scheduled|1", "WORK"), cell("unscheduled|1", "NO_SCHEDULE"), cell("rest|1", "REST_DAY")], {});
+  expect(r.drafts).toEqual({ "scheduled|1": { value: "=", base: null } });
+  expect(r.filled).toBe(1);
+  expect(r.skipped).toEqual({ rest: 1, recorded: 0, locked: 0, unscheduled: 1 });
 });
 
 test("one value fills a selection with each cell's base, skipping the own row", () => {

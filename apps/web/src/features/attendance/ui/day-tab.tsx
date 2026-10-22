@@ -13,7 +13,7 @@ import { EmptyState } from "../../../ui/empty-state";
 import { ItemList } from "../../../ui/item-list/item-list";
 import { addDays } from "../../../ui/date/days";
 import { dayBoardQuery, type DayBoard } from "../api";
-import { baseOf, cellKey, ledgerParts } from "../domain/grid";
+import { baseOf, cellKey, fillSchedule, ledgerParts } from "../domain/grid";
 import { closed, pageState } from "../domain/month-state";
 import { dateText, refusalText } from "../present";
 import { DayDetail } from "./day-detail";
@@ -114,11 +114,11 @@ export function DayTab() {
                       key: `${g.workplace_id}-${g.unit_id}`,
                       text: t("attendanceRecords.rail.groupLine", { name: g.name, blocking: g.marks.blocking }),
                       end: (
-                        <Button size="sm" onClick={() => {
-                          const empty = g.rows.filter((r) => !r.own && !closed(r.month_state) && r.day.marks.includes("NO_RECORD"));
-                          store.set({ ...store.drafts, ...Object.fromEntries(empty.map((r) => [cellKey(r.employee_id, date), { value: "=", base: baseOf(store.drafts, cellKey(r.employee_id, date), null) }])) });
-                          setNote(t("attendanceRecords.fill.done", { filled: empty.length, rest: 0, recorded: 0, locked: g.rows.length - empty.length }));
-                        }}>{t("attendanceRecords.rail.asScheduled")}</Button>
+                        g.rows.some((r) => r.day.marks.includes("NO_RECORD")) ? <Button size="sm" onClick={() => {
+                          const result = fillSchedule(g.rows.map((r) => ({ key: cellKey(r.employee_id, date), planKind: r.day.plan.kind, entryId: r.day.entry?.id ?? null, own: r.own, closed: closed(r.month_state) })), store.drafts);
+                          store.set(result.drafts);
+                          setNote(t("attendanceRecords.fill.done", { filled: result.filled, ...result.skipped }));
+                        }}>{t("attendanceRecords.rail.asScheduled")}</Button> : g.no_schedule > 0 ? <Link to="/attendance" search={{ tab: "day", date, wp: g.workplace_id ?? undefined, unit: g.unit_id ?? undefined, unscheduled: true }}>{t("attendanceRecords.unscheduled.view", { count: g.no_schedule })}</Link> : undefined
                       ),
                     }))}
                   />
