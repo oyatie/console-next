@@ -21,7 +21,9 @@ export function SupportLookup() {
     finally { setPending(false); }
   };
   return <details><summary>{t("tenants.supportLookup.title")}</summary><Form className="form" onSubmit={() => void resolve()}>
-    <Field label={t("tenants.supportLookup.reference")} required={null}>{(control) => <TextInput {...control} value={reference} onChange={(e) => setReference(e.target.value)} />}</Field>
+    <Field label={t("tenants.supportLookup.reference")} required={null}>{(control) => <TextInput {...control} value={reference} onChange={(e) => setReference(e.target.value)} onKeyDown={(e) => {
+      if (e.key === "Enter" && !(e.nativeEvent.isComposing || e.keyCode === 229) && !pending && reference.trim()) e.currentTarget.form?.requestSubmit();
+    }} />}</Field>
     <Button type="submit" disabled={pending || !reference.trim()}>{t("tenants.supportLookup.action")}</Button>
     {error ? <div role="alert">{failureText(error)}</div> : null}
     {result && <dl aria-live="polite">

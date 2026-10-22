@@ -60,21 +60,22 @@ pub(crate) fn request_org(
 }
 
 pub(crate) fn issue(
-    state: &AppState,
     org: OrgId,
     route: &str,
+    release: &str,
     reference: &str,
     trace_id: &str,
+    kind: &str,
+    name: Option<&str>,
 ) -> String {
     let at = OffsetDateTime::now_utc()
         .format(&Rfc3339)
         .unwrap_or_default();
-    let release = state.web_release.as_ref();
     let span = tracing::Span::current();
     span.record("support_ref", reference);
     span.record("release", release);
     span.record("org_id", org.to_string());
-    tracing::warn!(support_ref = reference, trace_id, release, route_template = route,
+    tracing::warn!(support_ref = reference, trace_id, release, route_template = route, kind, name = name.unwrap_or("-"),
         org_id = %org, support_ref_at = %at, "support reference");
     at
 }
@@ -119,25 +120,32 @@ fn authorize(actor: &str, org: OrgId, target: OrgId, grant: bool) -> Result<(), 
 }
 
 async fn read(state: &AppState, reference: &str) -> Result<Value, ApiError> {
-    if reference.len() != 32
+    if ![8, 32].contains(&reference.len())
         || !reference.bytes().all(|c| c.is_ascii_hexdigit())
-        || reference.bytes().all(|c| c == b'0')
+        || (reference.len() == 32 && reference.bytes().all(|c| c == b'0'))
     {
         return Err(not_found());
     }
+    let reference = reference.to_ascii_lowercase();
+    let short = reference.len() == 8;
     let endpoint = state
         .config
         .support_log_query_url
         .as_ref()
         .ok_or_else(|| ApiError::service_unavailable("Support log store is not configured"))?;
     // Only a validated correlation id enters LogsQL; return metadata, never log payloads.
-    let query = format!(
-        "fields.support_ref:=\"{reference}\" | fields fields.support_ref, fields.trace_id, fields.release, fields.route_template, fields.org_id, fields.support_ref_at"
-    );
+    let fields = "fields.support_ref, fields.trace_id, fields.release, fields.route_template, fields.org_id, fields.support_ref_at";
+    let query = if short {
+        format!("fields.support_ref:=\"{reference}\"* | uniq by ({fields})")
+    } else {
+        format!("fields.support_ref:=\"{reference}\" | fields {fields}")
+    };
     let mut url = url::Url::parse(endpoint)
         .map_err(|_| ApiError::service_unavailable("Invalid support log endpoint"))?;
-    url.query_pairs_mut()
-        .extend_pairs([("query", query.as_str()), ("limit", "1")]);
+    url.query_pairs_mut().extend_pairs([
+        ("query", query.as_str()),
+        ("limit", if short { "2" } else { "1" }),
+    ]);
     let response = state
         .support_log_client
         .get(url)
@@ -147,11 +155,12 @@ async fn read(state: &AppState, reference: &str) -> Result<Value, ApiError> {
         .error_for_status()
         .map_err(store_error)?;
     let body = response.text().await.map_err(store_error)?;
-    let line = body
-        .lines()
-        .next()
-        .filter(|s| !s.is_empty())
-        .ok_or_else(not_found)?;
+    let mut lines = body.lines().filter(|s| !s.is_empty());
+    let line = lines.next().ok_or_else(not_found)?;
+    // A short display reference is useful only when it identifies exactly one failure.
+    if lines.next().is_some() {
+        return Err(not_found());
+    }
     let fields: Value = serde_json::from_str(line).map_err(|_| {
         ApiError::service_unavailable("Support log store returned invalid metadata")
     })?;
@@ -172,7 +181,12 @@ async fn read(state: &AppState, reference: &str) -> Result<Value, ApiError> {
             })?;
         result[key] = value.into();
     }
-    if result["support_ref"] != reference {
+    let stored_ref = result["support_ref"].as_str().ok_or_else(not_found)?;
+    if stored_ref.len() != 32
+        || !stored_ref.bytes().all(|c| c.is_ascii_hexdigit())
+        || stored_ref.bytes().all(|c| c == b'0')
+        || !stored_ref.starts_with(&reference)
+    {
         return Err(not_found());
     }
     Ok(result)

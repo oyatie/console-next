@@ -4,6 +4,10 @@ use super::*;
 
 use console_kernel_core::{BranchScope, UserId};
 use console_platform_authz::{EffectiveFeatureGrant, PermissionLevel};
+
+#[cfg(feature = "test-postgres")]
+#[path = "support_reference_platform_tests.rs"]
+mod platform;
 #[test]
 fn diagnostic_grant_comes_from_tenant_configuration_without_a_support_role() {
     let org = OrgId::new();

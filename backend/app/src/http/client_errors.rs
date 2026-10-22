@@ -275,11 +275,13 @@ async fn ingest(
         let org =
             super::support_reference::request_org(&ingest.app, headers.get(header::AUTHORIZATION));
         let at = super::support_reference::issue(
-            &ingest.app,
             org,
-            "/api/v1/client-errors",
+            &beacon.route,
+            &release,
             &trace_id,
             &trace_id,
+            kind,
+            beacon.name.as_deref(),
         );
         return (
             StatusCode::ACCEPTED,

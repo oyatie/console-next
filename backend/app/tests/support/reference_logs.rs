@@ -70,7 +70,10 @@ async fn query(
     Query(args): Query<HashMap<String, String>>,
 ) -> String {
     reads.fetch_add(1, Ordering::Relaxed);
-    assert_eq!(args.get("limit").unwrap(), "1");
+    let selector = args["query"].split_once(" | ").unwrap().0;
+    let prefix = selector.ends_with('*');
+    assert_eq!(args.get("limit").unwrap(), if prefix { "2" } else { "1" });
+    let mut rows = Vec::new();
     let raw = String::from_utf8(logs.0.lock().unwrap().clone()).unwrap();
     for line in raw.lines() {
         let event: Value = serde_json::from_str(line).unwrap();
@@ -79,7 +82,11 @@ async fn query(
             continue;
         };
         if fields["message"] == "support reference"
-            && args["query"].starts_with(&format!("fields.support_ref:=\"{reference}\" | fields "))
+            && if prefix {
+                selector == format!("fields.support_ref:=\"{}\"*", &reference[..8])
+            } else {
+                selector == format!("fields.support_ref:=\"{reference}\"")
+            }
         {
             let mut projected = serde_json::json!({});
             for key in [
@@ -92,8 +99,14 @@ async fn query(
             ] {
                 projected[format!("fields.{key}")] = fields[key].clone();
             }
-            return projected.to_string() + "\n";
+            let row = projected.to_string() + "\n";
+            if !rows.contains(&row) {
+                rows.push(row);
+            }
+            if rows.len() == if prefix { 2 } else { 1 } {
+                break;
+            }
         }
     }
-    String::new()
+    rows.concat()
 }

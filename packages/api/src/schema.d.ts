@@ -739,7 +739,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Resolve a server-issued support reference */
+        /** Resolve a full support reference or an unambiguous eight-character display reference */
         get: operations["resolvePlatformSupportReference"];
         put?: never;
         post?: never;
@@ -12180,7 +12180,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Resolve a server-issued support reference */
+        /** Resolve a full support reference or an unambiguous eight-character display reference */
         get: operations["resolveSupportReference"];
         put?: never;
         post?: never;

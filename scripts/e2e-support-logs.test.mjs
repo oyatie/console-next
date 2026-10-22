@@ -18,6 +18,12 @@ test("lookup reads real structured metadata and omits payloads", async () => {
     assert.equal(row["fields.trace_id"], ref);
     assert.equal(row["fields.route_template"], "/forced");
     assert.equal(Object.keys(row).length, 6);
+    url.search = new URLSearchParams({ query: `fields.support_ref:="${ref.slice(0, 8)}"* | uniq by (fields.trace_id)`, limit: "2" });
+    assert.equal((await (await fetch(url)).json())["fields.support_ref"], ref);
+    const other = ref.slice(0, 8) + "f".repeat(24);
+    stream.write(JSON.stringify({ fields: { message: "support reference", support_ref: other, trace_id: other } }) + "\n");
+    const collisions = (await (await fetch(url)).text()).trim().split("\n").map(JSON.parse);
+    assert.equal(collisions.length, 2);
     assert.equal((await fetch(store.url)).status, 400);
   } finally { reader.close(); stream.end(); await store.close(); }
 });

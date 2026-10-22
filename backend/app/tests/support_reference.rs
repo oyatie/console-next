@@ -13,6 +13,9 @@ use sqlx::PgPool;
 use tracing::instrument::WithSubscriber;
 use uuid::Uuid;
 
+#[path = "support/reference_beacons.rs"]
+mod beacons;
+
 async fn ctx(
     pool: &PgPool,
     org: Uuid,
@@ -179,10 +182,14 @@ async fn support_reference_not_found_and_invalid_input_have_no_audit_side_effect
     let (org, user) = support::tenant(&pool, &["SUPER_ADMIN"]).await;
     let caller = ctx(&pool, org, user, &["SUPER_ADMIN"], &store).await;
     let before = total_audits(&pool).await;
-    for reference in [
-        "not-a-reference",
-        "00000000000000000000000000000000",
-        "0123456789abcdef0123456789abcdef",
+    for (reference, reads) in [
+        ("not-a-reference", 0),
+        ("0123456g", 0),
+        ("0123456", 0),
+        ("00000000", 1),
+        ("ffffffff", 2),
+        ("00000000000000000000000000000000", 2),
+        ("0123456789abcdef0123456789abcdef", 3),
     ] {
         let (status, body) = caller
             .call(
@@ -195,6 +202,10 @@ async fn support_reference_not_found_and_invalid_input_have_no_audit_side_effect
         assert_eq!(body["error"]["code"], "support_reference_not_found");
         assert!(body.get("release").is_none());
         assert_eq!(
+            store.reads.load(std::sync::atomic::Ordering::Relaxed),
+            reads
+        );
+        assert_eq!(
             total_audits(&pool).await,
             before,
             "{:?}",
@@ -204,5 +215,4 @@ async fn support_reference_not_found_and_invalid_input_have_no_audit_side_effect
                 .unwrap()
         );
     }
-    assert_eq!(store.reads.load(std::sync::atomic::Ordering::Relaxed), 1);
 }
