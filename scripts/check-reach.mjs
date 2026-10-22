@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Checks that MVP Org/HR operations are reachable and editable rows map to catalog facts.
 // Browser tests cover registered paths; baseline gaps are ratcheted against the base commit.
 // Usage: node scripts/check-reach.mjs [--lower]
@@ -51,7 +52,7 @@ function ratchet(name, keys, base) {
   return [...repeated, ...(base ? baselineGrowth(counts([...new Set(keys)]), counts(base)).map((p) => `${name}: ${p} (new against the base; reach or map it instead)`) : [])];
 }
 
-export function check({ lifecycle, reach, baseline, facts, untracked, labels, catalog = new Set(), previous = {} }) {
+export function check({ lifecycle, reach, baseline, facts, untracked, labels, catalog = new Set(), previous = {}, units }) {
   const problems = [];
   const known = new Set(lifecycle.records.map((r) => r.id));
   const need = new Map(required(lifecycle).map((p) => [pairKey(p.record, p.op), p]));
@@ -66,6 +67,7 @@ export function check({ lifecycle, reach, baseline, facts, untracked, labels, ca
     listed.add(k);
     const unit = laneUnit(b.lane);
     if (!unit) problems.push(`baseline: ${k} has no lane naming its unit (「unit: <id> …」)`);
+    else if (units && !units.has(unit)) problems.push(`baseline: ${k} names unit ${unit}, which is not registered in registry/reach-units.json`);
     if (reached.has(k)) problems.push(`baseline: ${k} is now reached (REACH has it); remove it (node scripts/check-reach.mjs --lower)`);
     else if (!need.has(k)) problems.push(`baseline: ${k} is no longer required; remove it (node scripts/check-reach.mjs --lower)`);
   }
@@ -77,6 +79,7 @@ export function check({ lifecycle, reach, baseline, facts, untracked, labels, ca
     if (!catalog.has(u)) problems.push(`facts: untracked 「${u}」 is no editable row nor a catalog text; remove it`);
     else if (ACTION.test(u)) problems.push(`facts: untracked 「${u}」 is an action's name, not a fact a row edits; remove it`);
   }
+  if (!units && baseline.length) problems.push("baseline: lanes NOT CHECKED: no versioned reach-unit registry");
   const mapped = new Set([...facts.map((f) => f.label), ...untracked]);
   for (const [label, where] of labels) if (!mapped.has(label)) problems.push(`facts: editable row 「${label}」 (${where}) has no FACTS entry with its surfaces, nor an UNTRACKED line`);
   for (const u of untracked) if (facts.some((f) => f.label === u)) problems.push(`facts: 「${u}」 is in FACTS and UNTRACKED; remove it from UNTRACKED`);
@@ -93,6 +96,13 @@ function koCatalog() {
   const present = readFileSync(path.join(ROOT, "apps/web/src/features/entity/present.ts"), "utf8");
   for (const m of present.matchAll(/^\s*(\w+): \(\) => t\("([\w.]+)"\)/gm)) ko.set(`INFO:${m[1]}`, ko.get(m[2]));
   return ko;
+}
+
+function registeredUnits() {
+  // The public gate's debt owners are reviewed with the code, without a private Mac queue.
+  const units = JSON.parse(readFileSync(path.join(ROOT, "registry/reach-units.json"), "utf8"));
+  if (!Array.isArray(units) || units.some((unit) => typeof unit !== "string" || laneUnit(`unit: ${unit}`) !== unit) || new Set(units).size !== units.length) throw new Error("invalid reach-unit registry");
+  return new Set(units);
 }
 
 async function atBaseOf(base) {
@@ -115,7 +125,7 @@ async function main() {
   const baseline = JSON.parse(readFileSync(basePath, "utf8"));
   const files = walk(path.join(ROOT, "apps/web/src")).map((f) => [path.relative(ROOT, f), readFileSync(f, "utf8")]);
   const ko = koCatalog();
-  const tree = { lifecycle, reach: REACH, baseline, facts: FACTS, untracked: UNTRACKED, labels: editableLabels(files, ko), catalog: new Set(ko.values()) };
+  const tree = { lifecycle, reach: REACH, baseline, facts: FACTS, untracked: UNTRACKED, labels: editableLabels(files, ko), catalog: new Set(ko.values()), units: registeredUnits() };
   if (process.argv.includes("--lower")) {
     const need = new Set(required(lifecycle).map((p) => pairKey(p.record, p.op)));
     const reached = new Set(REACH.map((e) => pairKey(e.record, e.op)));

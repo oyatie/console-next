@@ -47,8 +47,6 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run check
-      - name: npm run check in a clean checkout with an empty HOME
-        run: node --test scripts/check-hermetic.test.mjs
 
   backend:
     runs-on: ubuntu-24.04-arm

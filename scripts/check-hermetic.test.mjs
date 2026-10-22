@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Run separately from npm test: this integration test invokes the entire npm run check gate.
+// The clean clone tests committed HEAD; commit changes before running it.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -9,7 +10,47 @@ import test from "node:test";
 
 const repo = path.resolve(import.meta.dirname, "..");
 
-test("npm run check is hermetic; restoring the private queue dependency fails", { timeout: 900_000 }, (t) => {
+function assertRepoInputs(root) {
+  const { scripts } = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
+  const commands = new Set(["check"]);
+  const files = new Set();
+  const localState = /\/Users\/|\/home\/|\/private\/tmp\b|console-handoff|\bhomedir\s*\(/;
+  for (const name of commands) {
+    const command = scripts[name];
+    assert.equal(typeof command, "string", `missing npm script: ${name}`);
+    assert.doesNotMatch(command, localState, `npm ${name} depends on host state`);
+    for (const [, nested] of command.matchAll(/\bnpm\s+(?:run\s+)?([\w:-]+)/g)) commands.add(nested);
+    for (const [file] of command.matchAll(/\bscripts\/[\w./-]+\.(?:mjs|ts)\b/g)) files.add(path.join(root, file));
+  }
+  for (const file of files) {
+    const source = readFileSync(file, "utf8");
+    assert.doesNotMatch(source, localState, `${path.relative(root, file)} depends on host state`);
+    for (const [, spec] of source.matchAll(/(?:\bfrom\s*|^\s*import\s*)["'](\.[^"']+\.(?:mjs|ts))["']/gm)) files.add(path.resolve(path.dirname(file), spec));
+  }
+}
+
+test("check refuses absolute host paths in its commands and imported helpers", (t) => {
+  assertRepoInputs(repo);
+  const root = mkdtempSync(path.join(tmpdir(), "check-inputs-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(path.join(root, "scripts"));
+  const manifest = path.join(root, "package.json");
+  const scripts = { check: "npm run gate", gate: "node scripts/gate.mjs" };
+  writeFileSync(manifest, JSON.stringify({ scripts }));
+  writeFileSync(path.join(root, "scripts/gate.mjs"), 'import "./helper.mjs";\n');
+  const helper = path.join(root, "scripts/helper.mjs");
+  writeFileSync(helper, "");
+  assertRepoInputs(root);
+  for (const source of ['readFileSync("/Users/runner/private-state");', 'readFileSync("/home/runner/private-state");', 'readFileSync("/private/tmp/private-state");', 'readFileSync("../console-handoff/state");', 'readFileSync(homedir() + "/state");']) {
+    writeFileSync(helper, source);
+    assert.throws(() => assertRepoInputs(root), /scripts\/helper.mjs depends on host state/);
+  }
+  writeFileSync(helper, "");
+  writeFileSync(manifest, JSON.stringify({ scripts: { ...scripts, gate: "node /Users/runner/gate.mjs" } }));
+  assert.throws(() => assertRepoInputs(root), /npm gate depends on host state/);
+});
+
+test("npm run check is hermetic; restoring a home-state dependency fails", { timeout: 900_000 }, (t) => {
   const dir = mkdtempSync(path.join(tmpdir(), "console-check-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const checkout = path.join(dir, "checkout");
@@ -34,13 +75,15 @@ test("npm run check is hermetic; restoring the private queue dependency fails", 
   const status = run("git", ["status", "--porcelain"]);
   succeeds(status);
   assert.equal(status.stdout, "", "start from a clean checkout");
+  assertRepoInputs(checkout);
   succeeds(run("npm", ["run", "check"]));
 
   const reach = path.join(checkout, "scripts/check-reach.mjs");
   const source = readFileSync(reach, "utf8");
   const boundary = source.indexOf("\n") + 1;
-  writeFileSync(reach, source.slice(0, boundary) + 'import { queueDirDefault as privateQueue } from "./backlog-claims.mjs";\nif (!privateQueue()) throw new Error("hermetic negative control: missing orchestra queue");\n' + source.slice(boundary));
+  writeFileSync(reach, source.slice(0, boundary) + 'import { homedir } from "node:os";\nreadFileSync(path.join(homedir(), ".config/console-orchestra/queue-dir"), "utf8");\n' + source.slice(boundary));
+  assert.throws(() => assertRepoInputs(checkout), /scripts\/check-reach.mjs depends on host state/);
   const refused = run("npm", ["run", "check"]);
   assert.equal(refused.status, 1, refused.stdout + refused.stderr);
-  assert.match(refused.stderr, /hermetic negative control: missing orchestra queue/);
+  assert.match(refused.stderr, /ENOENT.*console-orchestra\/queue-dir/);
 });
