@@ -26,11 +26,11 @@ const fixtureRoots = [];
 // and source-derived re-export/Option resolution. Any route, body, or accepted enum value change fails
 // until this snapshot is deliberately re-derived.
 const LIVE_CENSUS = Object.freeze({
-  population: 412,
-  resolved: 174,
+  population: 416,
+  resolved: 178,
   skipped: 238,
-  enumCandidates: 82,
-  enumResolved: 67,
+  enumCandidates: 83,
+  enumResolved: 68,
   enumSkipped: 15,
 });
 
