@@ -2,10 +2,15 @@
 // Usage: node scripts/check-repo-files.mjs [base-ref | --full]. Default: the PR base, or dev locally.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { matchesGlob } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const policy = JSON.parse(readFileSync(new URL("./repo-files.policy.json", import.meta.url), "utf8"));
+
+// The policy uses only *, ** and literal paths; hidden segments follow the same rules.
+function matchesGlob(file, glob) {
+  const pattern = glob.split(/(\*\*\/|\*\*|\*)/).map((part) => part === "**/" ? "(?:.*/)?" : part === "**" ? ".*" : part === "*" ? "[^/]*" : part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("");
+  return new RegExp(`^${pattern}$`, "s").test(file);
+}
 
 export function fileProblems(file, bytes) {
   const problems = policy.rules.filter((rule) => rule.paths.some((glob) => matchesGlob(file.toLowerCase(), glob)) && !rule.allow.some((glob) => matchesGlob(file, glob))).map((rule) => rule.id);

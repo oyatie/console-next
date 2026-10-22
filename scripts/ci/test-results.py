@@ -24,7 +24,8 @@ def baseline(file):
         if (any(not isinstance(entry.get(field), str) or not entry[field].strip()
                 for field in ("kind", "context", "suite", "test", "owner", "expires"))
                 or datetime.date.fromisoformat(entry["expires"]) <= datetime.date.today()
-                or key(entry) in ids):
+                or key(entry) in ids
+                or (entry["kind"] == "playwright" and "first-run-solo.spec.ts" in entry["suite"])):
             raise ValueError("invalid, duplicate or expired baseline entry")
         ids.add(key(entry))
     return ids
@@ -44,19 +45,47 @@ def check(kind, context, file, status, entries):
         raise ValueError("JUnit failures do not match the completed run")
     if status and not failed:
         raise ValueError("runner failed without accounted test failures")
-    ids = set()
-    for case in failed:
+    def case_key(case):
         suite = case.get("classname", "")
         if kind == "playwright":
             suite = suite.replace("\\", "/").removeprefix("e2e/")
-        title = re.sub(r"(?: @[\w-]+)+$", "", case.get("name", ""))
-        ids.add((kind, context, suite, title))
+        return (kind, context, suite, re.sub(r"(?: @[\w-]+)+$", "", case.get("name", "")))
+    ids = {case_key(case) for case in failed}
+    passed = {case_key(case) for case in cases if case.find("failure") is None and case.find("skipped") is None}
     fresh = ids - entries
-    # The report contains IDs only; failure text stays behind the upload scan.
-    report = {"tests": len(cases), "baselineReds": sorted(ids & entries), "newReds": sorted(fresh)}
+    fixed = passed & entries
+    # Only this shard's executed cases can recover; inventory checks catch deleted tests.
+    report = {"tests": len(cases), "baselineReds": sorted(ids & entries), "newReds": sorted(fresh), "fixed": sorted(fixed)}
     file.with_suffix(".baseline.json").write_text(json.dumps(report))
-    print(f"test baseline: {len(cases)} tests, {len(ids & entries)} known reds, {len(fresh)} new reds")
-    return 1 if fresh else 0
+    print(f"test baseline: {len(cases)} tests, {len(ids & entries)} known reds, {len(fresh)} new reds, {len(fixed)} fixed")
+    if fixed:
+        print("test baseline: fixed tests; remove from baseline")
+    return 1 if fresh or fixed else 0
+
+
+def inventory(kind, context, report, entries):
+    if kind == "nextest":
+        present = {(kind, context, suite, name) for suite, value in report["rust-suites"].items() for name in value["testcases"]}
+    elif kind == "playwright":
+        present = set()
+        def walk(suite, file, titles):
+            for spec in suite.get("specs", []):
+                title = re.sub(r"(?: @[\w-]+)+$", "", " › ".join([*titles, spec["title"]]))
+                present.add((kind, context, file, title))
+            for child in suite.get("suites", []):
+                walk(child, file, [*titles, child["title"]])
+        for suite in report["suites"]:
+            walk(suite, suite["file"].replace("\\", "/").removeprefix("e2e/"), [])
+    else:
+        raise ValueError("unknown test inventory")
+    packages = json.loads(os.environ.get("CI_BASELINE_CRATES", "null"))
+    expected = {entry for entry in entries if entry[:2] == (kind, context)
+                and (kind != "nextest" or packages is None or entry[2].split("::")[0] in packages)}
+    absent = expected - present
+    if absent:
+        print(f"test baseline: {len(absent)} absent tests; remove from baseline")
+        raise ValueError("baseline test no longer exists")
+
 
 
 if __name__ == "__main__":
@@ -83,6 +112,9 @@ if __name__ == "__main__":
                                     cwd=ROOT, capture_output=True).returncode:
                     raise ValueError("baseline base commit unavailable")
             print(f"test baseline: {len(entries)} owned, unexpired entries")
+        elif sys.argv[1:2] == ["--inventory"]:
+            _, kind, context, source, *custom = sys.argv[1:]
+            inventory(kind, context, json.loads(Path(source).read_text()), baseline(Path(custom[0]) if custom else file))
         else:
             kind, context, junit, status, *custom = sys.argv[1:]
             entries = baseline(Path(custom[0]) if custom else file)

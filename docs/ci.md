@@ -14,9 +14,9 @@ Forks use plain `pull_request`, a read-only token and no secrets. There is no
 | `plan` | Cargo workspace members and reverse path dependencies, npm workspaces and reverse consumers; unknown/shared inputs force full proof |
 | `hygiene` | Workflow safety regression tests, actionlint, fixture identifiers, structural client-data scan and gitleaks |
 | `web` | Existing `npm run check`: contracts, TypeScript, lint, Vitest, production build, bundle budget, secret/licence/fixture checks |
-| `rust-build` | Format; default, `full` and `full,test-postgres` Clippy; bounded affected target-group archives; one backend binary for every browser shard |
-| `backend-test` | Non-DB library tests from their affected group archive, using nextest `slice:` partitions |
-| `backend-db` | All remaining tests, including mixed SQLx library tests, from their group archive, with an isolated PostgreSQL service per partition |
+| `rust-build` | Format; default, `full` and `full,test-postgres` Clippy; one affected-workspace test archive per architecture; one backend binary for every browser shard |
+| `backend-test` | Non-DB library tests from the shared archive, using nextest `slice:` partitions |
+| `backend-db` | All remaining tests, including mixed SQLx library tests, from the shared archive, with an isolated PostgreSQL service per partition |
 | Five personal-data jobs | Existing classification, pii-no-logs, tenant-isolation, rls-arming and audit-coverage gate executables built once by `rust-build` |
 | `e2e-plan`, `e2e` | Existing duration bin packing, Chromium and Firefox; clock projects stay serial; first-run-solo is always in browser shard 1 |
 | `ci-ok` | Every required job succeeded; skips pass only when `plan` explicitly marked that job unnecessary |
@@ -27,16 +27,20 @@ integration binaries run there too. This conservative split keeps mixed unit/DB
 binaries intact. No test is removed by the split. Partitions have independent
 services, so cluster-global mutators never share a cluster across jobs.
 
-`scripts/ci/config.json` owns retention, target-group size, partition count, shard
+`scripts/ci/config.json` owns retention, partition counts, plan job/minute ceilings, shard
 size, disk/cache budgets and the quarantine file. Tests execute without retries.
 `test-results.py` compares exact JUnit failure IDs against `scripts/ci/baseline.json`:
-known trunk reds are reported without blocking; a new red, runner crash, missing
-report or expired/unowned entry blocks. JUnit, baseline counts and traces remain
+known trunk reds are reported without blocking while they still fail. A recovered
+test blocks with “fixed: remove from baseline”; a deleted test blocks during the
+nextest or Playwright inventory check. Unrelated partitions do not count as fixes.
+A new red, runner crash, missing report or expired/unowned entry blocks. JUnit, baseline counts and traces remain
 available for known reds too. `ci-ok` validates expiry independently of test jobs.
 
 The initial baseline records the existing trunk failures from the 2026-10-22
-`baseline-reds.v2` receipt and `full-tip-chromium` run in the owner handoff (128
-exact browser or nextest IDs, owner Jason Lee, expiry 2026-11-05). It contains no
+`baseline-reds.v2` receipt and `full-tip-chromium` run in the owner handoff (owner Jason Lee,
+expiry 2026-11-05). Round 5 removes the passing first-run-solo, register-run and
+two-entities journeys, plus stale Rust/browser IDs. First-run-solo cannot be
+quarantined. It contains no
 wildcards. After this initial seed, hygiene compares the PR/queue base's version
 and permits only removal: no additional IDs, expiry extension or owner changes.
 Remove resolved IDs when their journeys are fixed; the scan and expiry do not
@@ -153,37 +157,45 @@ back to repository defaults. Missing or malformed reports remain errors. A built
 cases may report an explicit zero-test JUnit only after a successful nextest run;
 an empty browser report is always refused.
 
-## Hosted disk bound
+## Shared build and disk bound
 
-A clean build uses `debug=0`, `strip=debuginfo`, no incremental output and bounded
-sccache. The metadata plan partitions **test targets**, rather than building all
-120 app binaries on one runner. Each target belongs to one mode/group; library
-binaries with a transitive SQLx dependency stay in DB groups. Six targets per
-group currently produces 123 build groups (734 test binaries), 106 DB partitions
-and 17 non-DB partitions. Archives contain only that group's selected binaries;
-`--partition slice:1/1` runs its partition. Package-owned `full` / `test-postgres`
-features are enabled only for selected packages. The backend binary and five gate
-executables are built once, in the primary group. Source hygiene must pass first.
+`rust-build` has no matrix. One `cargo nextest archive --tests` invocation compiles
+all affected packages with their `full,test-postgres` features. Every DB and unit
+partition downloads that same immutable archive and uses `--archive-file`, a
+complementary mode filter and `--partition slice:N/total`. Library binaries with a
+transitive SQLx dependency remain in DB partitions, together with every integration
+binary. No partition invokes a compiler. The five gate executables and the E2E
+backend binary are built once alongside the archive; the web job produces one dist.
 
-Measured 2026-10-22 on **macOS arm64**, Rust 1.98.1, with a fresh target directory:
+The full plan is one build, two non-DB partitions and eight DB partitions, replacing
+123 builds and 123 test jobs. Browser shards reuse both prebuilt outputs. The
+checked-in timing seed contains only observed served-test durations and timestamps;
+new trusted dev-push timing caches override it. Regenerate it from the autoshard
+record with `E2E_SERVED=1 GITHUB_OUTPUT=/tmp/ci-plan node scripts/ci/e2e.mjs seed`.
+The current measured inventory gives 17 browser shards, about five minutes each,
+including first-run-solo in shard 1 of each browser.
 
-| Shape | Build bytes (GiB) | Compressed archive (GiB) | Test job incl. extraction (GiB) |
-| --- | ---: | ---: | ---: |
-| Primary: strict Clippy x3, app group, five gates, E2E backend | 8.715 | 0.334 | 2.146 |
-| Six app integration targets, conservatively retaining primary metadata/gates/backend | 9.142 | 0.461 | 2.952 |
+The initial plan reserves at most 18 browser shards. Both planners reject more
+than 40 jobs or 220 estimated job-minutes; the latter must remain below the ruleset's
+240-minute response deadline. The current full reservation is 39 jobs / 218 minutes;
+the measured browser plan is 38 jobs / 206 minutes. These summed estimates include
+compilation, setup, proof and reporting. They are not observed wall time: jobs run
+concurrently. Each job retains its own timeout, and `ci-ok` fails if either planner
+fails. Expected cold wall time is 65–100 minutes; warm is 30–55 minutes; docs-only
+is 3–8 minutes. Hosted receipts must confirm those estimates before ruleset cutover.
 
-Build bytes include the target, artifacts, tracked checkout, resolved dependency
-sources and a full 1 GiB compiler-cache reserve. No decoded archive is materialized
-for scanning or rewriting. `disk-budget.py` streams tar inventories and refuses
-more than 10 GiB of produced build/test data or less than 3 GiB free space before
-publication. The measured maximum plus the 3 GiB margin is 12.142 GiB, below the
-standard runner's 14 GB disk allowance reported by the verifier. The source/cache
-reserve and unused primary outputs make the integration receipt conservative.
+Debug information and incremental builds are disabled. The shared archive needs
+more disk than the former six-target groups, so the disposable hosted build runner
+removes only the unused SDK directories listed in config (Android, .NET, GHC,
+Swift and CodeQL). `disk-budget.py` counts checkout, resolved dependency sources,
+a full compiler-cache reserve, artifacts and peak extraction, then refuses more
+than 40 GiB or less than 3 GiB free before publication. The disk-budget workflow
+step is mandatory and regression-tested. Extraction jobs need the shared archive's
+expanded size too; their hosted disk receipts must pass before the check is enabled.
 
-**Linux amd64 is not measured locally.** Its cold/warm hosted jobs must retain the
-numeric disk receipt and pass the same limits; architecture parity is not assumed.
-The verifier must confirm actual free disk before/after the largest amd64 job.
-The previous whole-workspace 49 GB extraction / 72 GB target is no longer a job.
+The old six-target arm64 receipts (9.142 GiB maximum) do not prove the new shared
+archive bound. The Round 5 arm64 receipt is recorded below; Linux amd64 and actual
+hosted free-space measurements remain required on the first Actions run.
 
 ## Repository file policy
 
@@ -376,6 +388,42 @@ production inspection or sandbox browser run was performed. Probe additionally
 requires the existing workflow input secret `CONSOLE_PUBLIC_HOST`; Telegram uses
 `CONSOLE_TELEGRAM_BOT_TOKEN` / `CONSOLE_TELEGRAM_CHAT_ID`. CD remains opt-in and inert.
 
+## Round 5 proof and scope
+
+The shared archive contains all 734 test binaries (plus 13 required non-test
+executables). Its inventory has 1,106 non-DB and 3,524 DB test cases; the filters
+are complementary. The full inventory removed the four named obsolete Rust IDs plus the retired
+`actual_0227_upgrade_preserves_every_account_key_and_family` baseline ID. Both browser inventories
+validate the remaining baseline. It now has 110 exact IDs, and any executed pass
+or deleted ID makes the required check red until that entry is removed.
+
+On macOS arm64, the complete symbol-stripped build, gates and backend measured
+42.376 GiB; the shared archive is 7.227 GiB compressed and 28.243 GiB expanded;
+test-job peak including checkout is 35.517 GiB. The receipt also counts prior
+local archive remnants and library-test outputs, conservatively beyond the
+hosted build's outputs. These measurements justify the 44 GiB cap, with a
+separate 3 GiB free-space margin. Stripping symbols preserves test names and
+JUnit IDs; native backtraces have fewer symbol names. Hosted amd64 must retain
+its own receipt and pass the free-space checks after unused SDK removal.
+
+Local checks: full `npm run check` (1,159 web tests and 90 Node CI checks), format,
+all three strict Clippy sets, workspace test compilation, 2,009 library tests
+(1 existing ignored), all five personal-data gates, actionlint, structural scan,
+gitleaks, both browser inventories and the 17-shard timing plan. The regression checks fail 71/74 on public base `5b0e2514`; a detached
+`457b0111` checkout isolates 20/74 Round 5 failures (all 90 controls pass on the tip). Both non-DB archive partitions pass all 1,106 tests from the shared archive. The
+two DB suites pass all 52 tests across eight partitions after the exact pinned
+service preparation and topology bootstrap. JUnit IDs reconcile against the full
+inventory with no gaps or duplicates across partitions.
+No hosted or sandbox browser run is claimed.
+
+Round 5 changes outside the brief's workflow/docs/file-guard owns are the required
+CI helpers and their tests only (no excluded file is changed):
+
+- `scripts/ci.test.mjs`, `scripts/ci-privacy.test.mjs`, `scripts/ci-results.test.mjs`, `scripts/ci-regressions.test.mjs`
+- `scripts/ci/baseline.json`, `scripts/ci/config.json`, `scripts/ci/e2e-timings.json`
+- `scripts/ci/plan.mjs`, `scripts/ci/e2e.mjs`, `scripts/ci/report.mjs`
+- `scripts/ci/rust-build.mjs`, `scripts/ci/rust-tests.mjs`, `scripts/ci/test-results.py`, `scripts/ci/disk-budget.py`
+
 ## Files outside the initial owns list
 
 These support the workflow and its required proof (including the explicitly
@@ -387,14 +435,14 @@ requested round-2 test topology/scanner). No excluded lane file was touched:
 - `package.json`, `playwright.config.ts`, `vitest.config.ts`
 - `scripts/backend-dev.mjs`, `scripts/client-data-scan.py`
 - `scripts/cd-workflow.test.mjs`
-- `scripts/ci.test.mjs`, `scripts/ci-privacy.test.mjs`, `scripts/ci-results.test.mjs`
+- `scripts/ci.test.mjs`, `scripts/ci-privacy.test.mjs`, `scripts/ci-results.test.mjs`, `scripts/ci-regressions.test.mjs`
 - `scripts/check-fixture-ids.mjs`, `scripts/check-fixture-ids.d.mts`, `scripts/fixture-synthetic-ranges.json`
 - `e2e/helpers/import.ts`, `e2e/helpers/import-layouts.ts`, `e2e/access-parity.spec.ts`
 - `e2e/parity/e3.ts`, `e2e/people-actions/register-run.spec.ts`
 - `scripts/ci/baseline.json`, `scripts/ci/test-results.py`, `scripts/ci/disk-budget.py`, `scripts/ci/rust-build.mjs`
 - `scripts/ci/bootstrap-db.sh`, `scripts/ci/postgres-reconcile-topology.sh`
 - `scripts/ci/config.json`, `scripts/ci/versions.json`, `scripts/ci/db-contract.mjs`
-- `scripts/ci/e2e.mjs`, `scripts/ci/plan.mjs`, `scripts/ci/gate.mjs`
+- `scripts/ci/e2e.mjs`, `scripts/ci/e2e-timings.json`, `scripts/ci/plan.mjs`, `scripts/ci/gate.mjs`
 - `scripts/ci/install-tools.sh`, `scripts/ci/notify-telegram.sh`, `scripts/ci/prepare-db.mjs`
 - `scripts/ci/privacy.mjs`, `scripts/ci/scan-uploads.py`, `scripts/ci/sanitize-nextest.py`
 - `scripts/ci/public-browser-cache.py`
