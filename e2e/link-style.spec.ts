@@ -20,8 +20,9 @@ const declared = readdirSync(ROUTES)
   .flatMap((l) => [...l.matchAll(/path: "(\/[^"]*)"/g)].map((m) => m[1]!));
 // Not shell screens: the sign-in pages are walked signed out below, the vendor console with the vendor, the
 // passkey enrolment only exists mid sign-in, and the gallery is dev-only (visual.spec.ts audits it).
-// A 발령 공고 exists only after a bulk batch; people-actions/notice.spec walks the notice page itself.
-const ELSEWHERE = new Set(["/login", "/setup-passkey", "/platform", "/_gallery", "/people/notices/$noticeId"]);
+// A 발령 공고 exists only after a bulk batch; people-actions/notice.spec walks the notice page itself. An issued
+// 증명서 exists only after issuance (its register opens rows, not links); certificates.spec walks and audits it.
+const ELSEWHERE = new Set(["/login", "/setup-passkey", "/platform", "/_gallery", "/people/notices/$noticeId", "/people/certificates/$certificateId"]);
 const statics = new Set(declared.filter((p) => !p.includes("$")));
 /** A dynamic route's matcher: any value for its params, but never a static path (/people/new is not /people/$id). */
 const pattern = (p: string) => {
