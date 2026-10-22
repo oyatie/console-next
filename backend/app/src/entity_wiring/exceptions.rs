@@ -2,9 +2,9 @@
 //! Decisions and requester receipts for pending identifier-correction exceptions.
 use super::corrections::{correction_contributors, governance_kernel, min_grant_age_days};
 use axum::{
-    Json, Router,
+    Extension, Json, Router,
     extract::{Path, State},
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
     response::{IntoResponse, Response},
     routing::post,
 };
@@ -21,12 +21,11 @@ use console_platform_auth::{
     JwtVerifier, MobilePasskeyStepUpBinding, MobilePasskeyStepUpEnvelope, MobileStepUpActionKind,
     PasskeyService,
 };
-use console_platform_authz::{Action, Feature, authorize_capability};
+use console_platform_authz::{Action, Feature, Principal, authorize_capability};
 use sqlx::PgPool;
 #[derive(Clone)]
 pub(super) struct EntityWiringState {
     pub(super) pool: PgPool,
-    pub(super) jwt: Option<JwtVerifier>,
     pub(super) passkeys: Option<PasskeyService>,
 }
 
@@ -39,55 +38,12 @@ struct DecideExceptionRequest {
     step_up: Option<serde_json::Value>,
 }
 
-pub(super) async fn principal(
-    state: &EntityWiringState,
-    headers: &HeaderMap,
-) -> Result<console_platform_authz::Principal, Response> {
-    let Some(verifier) = state.jwt.as_ref() else {
-        return Err((
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({"error": {"code": "unavailable", "message": "JWT verifier is unavailable"}})),
-        ).into_response());
-    };
-    let principal = match console_platform_request_context::resolve_principal(
-        verifier,
-        &state.pool,
-        headers,
-    )
-    .await
-    {
-        Ok(p) => p,
-        Err(e) => {
-            let (status, code) = match e {
-                console_platform_request_context::RequestContextError::MissingBearer
-                | console_platform_request_context::RequestContextError::InvalidToken
-                | console_platform_request_context::RequestContextError::InvalidClaim(_) => {
-                    (StatusCode::UNAUTHORIZED, "unauthorized")
-                }
-                console_platform_request_context::RequestContextError::WrongTokenTier
-                | console_platform_request_context::RequestContextError::AccessScope(_) => {
-                    (StatusCode::FORBIDDEN, "forbidden")
-                }
-                _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal"),
-            };
-            return Err((status, Json(serde_json::json!({"error": {"code": code, "message": "authentication failed"}}))).into_response());
-        }
-    };
-
-    Ok(principal)
-}
-
 async fn decide_exception(
     State(state): State<EntityWiringState>,
     Path(id): Path<uuid::Uuid>,
-    headers: HeaderMap,
+    Extension(principal): Extension<Principal>,
     body: Result<Json<DecideExceptionRequest>, axum::extract::rejection::JsonRejection>,
 ) -> Response {
-    let principal = match principal(&state, &headers).await {
-        Ok(principal) => principal,
-        Err(error) => return error,
-    };
-
     let Json(body) = match body {
         Ok(body) => body,
         Err(error) => {
@@ -297,10 +253,6 @@ pub(super) fn router(
             "/api/v1/governed-exceptions/{id}/decide",
             post(decide_exception),
         )
-        .with_state(EntityWiringState {
-            pool,
-            jwt,
-            passkeys,
-        });
+        .with_state(EntityWiringState { pool, passkeys });
     console_platform_request_context::with_request_context(router, verifier, command_pool)
 }

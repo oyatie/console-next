@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! The entity correction inbox and controller review, using the same second-person facts as decisions.
 use super::corrections::governance_kernel;
-use super::exceptions::{EntityWiringState, decision_error, decision_facts, principal};
+use super::exceptions::{EntityWiringState, decision_error, decision_facts};
 use axum::{
-    Json, Router,
+    Extension, Json, Router,
     extract::{Path, Query, State},
-    http::HeaderMap,
     response::{IntoResponse, Response},
     routing::{get, post},
 };
@@ -49,30 +48,26 @@ fn may_read(p: &Principal) -> Result<(), KernelError> {
 
 async fn list(
     State(state): State<EntityWiringState>,
-    headers: HeaderMap,
+    Extension(p): Extension<Principal>,
     Query(query): Query<RegisterQuery>,
 ) -> Response {
-    read(state, headers, query, None).await
+    read(state, p, query, None).await
 }
 
 async fn detail(
     State(state): State<EntityWiringState>,
-    headers: HeaderMap,
+    Extension(p): Extension<Principal>,
     Path(id): Path<Uuid>,
 ) -> Response {
-    read(state, headers, RegisterQuery::default(), Some(id)).await
+    read(state, p, RegisterQuery::default(), Some(id)).await
 }
 
 async fn read(
     state: EntityWiringState,
-    headers: HeaderMap,
+    p: Principal,
     query: RegisterQuery,
     id: Option<Uuid>,
 ) -> Response {
-    let p = match principal(&state, &headers).await {
-        Ok(p) => p,
-        Err(error) => return error,
-    };
     if let Err(error) = may_read(&p) {
         return decision_error(error);
     }
@@ -156,14 +151,10 @@ struct ReviewRequest {
 
 async fn review(
     State(state): State<EntityWiringState>,
-    headers: HeaderMap,
+    Extension(p): Extension<Principal>,
     Path(id): Path<Uuid>,
     Json(body): Json<ReviewRequest>,
 ) -> Response {
-    let p = match principal(&state, &headers).await {
-        Ok(p) => p,
-        Err(error) => return error,
-    };
     if body.note.trim().is_empty() || body.note.chars().count() > 1000 {
         return decision_error(
             KernelError::validation("review note is required and must fit the decision note")
