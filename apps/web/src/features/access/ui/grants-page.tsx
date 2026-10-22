@@ -16,7 +16,8 @@ import { SelectField } from "../../../ui/select/select-field";
 import { Table } from "../../../ui/table";
 import { ENDING_DAYS, filterGrants } from "../domain/grant-filter";
 import { grantsQuery, type AccessGrant, type Account } from "../api";
-import { periodText, scopeText } from "../present";
+import { accountLabel, grantPerson, periodText, scopeText } from "../present";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { AccessHead } from "./access-head";
 import { AccessRequests } from "./access-requests";
 import { AccountPick } from "./account-pick";
@@ -27,14 +28,6 @@ import { GrantUndo } from "./grant-undo";
 import { useAccessContext } from "./use-access-context";
 import { useOrgRoots } from "./use-org-roots";
 import s from "./access.module.css";
-
-/** Who holds it: the name (to their access page), then employee number · unit on a second line (mockup M7). */
-const Holder = ({ g }: { g: AccessGrant }) => (
-  <span className={s.stack}>
-    <Link to="/access/people/$accountId" params={{ accountId: g.account_id }}>{g.account_display_name ?? g.account_id}</Link>
-    <span className={s.src}>{[g.account_employee_number, g.account_unit].filter(Boolean).join(" · ")}</span>
-  </span>
-);
 
 /** The grant's state; a grant on a deactivated account reads paused with its fix (people-self-46), never in effect. */
 export const GrantState = ({ g, fresh }: { g: AccessGrant; fresh: boolean }) =>
@@ -92,7 +85,7 @@ export function GrantsPage({ role }: { role?: string }) {
                 rowId={(g) => g.id}
                 tone={(g) => (g.account_active ? undefined : "warn")}
                 columns={[
-                  { header: t("access.col.person"), cell: (g) => <Holder g={g} /> },
+                  { header: t("access.col.person"), cell: (g) => <Link to="/access/people/$accountId" params={{ accountId: g.account_id }}><PersonLabel person={grantPerson(g, ctx.accounts)} peers={ctx.accounts} /></Link> },
                   { header: t("access.col.role"), cell: (g) => g.role_name_ko },
                   { header: t("access.col.scope"), cell: (g) => scopeText(roots, g.scope) },
                   { header: t("access.col.until"), fit: true, cell: (g) => periodText(g) },
@@ -103,8 +96,8 @@ export function GrantsPage({ role }: { role?: string }) {
                     fit: true,
                     cell: (g) => (
                       <span className={s.actions}>
-                        <Button variant="ghost" aria-label={t("access.change.end.label", { name: g.account_display_name ?? "", role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "end" })}>{t("access.change.mode.end")}</Button>
-                        <Button variant="ghost-danger" aria-label={t("access.change.revoke.label", { name: g.account_display_name ?? "", role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "revoke" })}>{t("access.change.mode.revoke")}</Button>
+                        <Button variant="ghost" aria-label={t("access.change.end.label", { name: accountLabel(grantPerson(g, ctx.accounts), g.account_id, ctx.accounts), role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "end" })}>{t("access.change.mode.end")}</Button>
+                        <Button variant="ghost-danger" aria-label={t("access.change.revoke.label", { name: accountLabel(grantPerson(g, ctx.accounts), g.account_id, ctx.accounts), role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "revoke" })}>{t("access.change.mode.revoke")}</Button>
                       </span>
                     ),
                   },

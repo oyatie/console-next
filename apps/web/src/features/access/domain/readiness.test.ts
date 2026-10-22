@@ -26,3 +26,13 @@ test("a second person who manages access clears the note; only ops gives the no-
   expect(readiness([ops], [], "o").map((c) => c.code)).toEqual(["ops_full", "no_accounts"]);
   expect(blocking(readiness([ops], [], "o"))).toBe(0);
 });
+
+test("readiness checks one signing-in account per person, retaining distinct namesakes", () => {
+  const old = { ...acct("old", "Namesake", { has_passkey: false }), employee_id: "person-1" };
+  const current = { ...acct("current", "Namesake"), employee_id: "person-1" };
+  const other = { ...acct("other", "Namesake"), employee_id: "person-2" };
+  const checks = readiness([ops, old, current, other, other], [], ops.id);
+  expect(checks.filter((c) => "account" in c).map((c) => "account" in c && c.account.id)).toEqual(["current", "other"]);
+  expect(blocking(checks)).toBe(2);
+  expect(blocking(readiness([ops, old, current], [g("current", "PREPARED")], ops.id))).toBe(0);
+});

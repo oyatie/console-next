@@ -22,6 +22,8 @@ import { checkedOnAccount, linkAccount, mySub, resetPasskeys, setAccountActive }
 import { holdsActive, holdsLink } from "../domain/accounts";
 import { useIssueCode, type Issued } from "./use-issue-code";
 import { SignInId } from "./account-sign-in-id";
+import { personLabel } from "../../../reference/person/present";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { Muted } from "../../../ui/muted/muted";
 
 /** The facts the panel shows: a directory row or the account read on its own (which adds only `phone`). */
@@ -160,7 +162,7 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
         label={t("accounts.employee.pick")}
         query={query}
         onQueryChange={setQuery}
-        options={options.map((e) => ({ id: e.id, name: e.name, code: e.employee_number ?? undefined, status: e.status ? label(EMPLOYEE_STATUS, e.status) : undefined, context: e.org_unit ?? undefined }))}
+        options={options.map((e) => ({ id: e.id, name: e.employee_number?.trim() ? personLabel(e).name : personLabel(e, options).text, display: <PersonLabel person={e} peers={options} />, code: e.employee_number?.trim() || undefined, status: e.status ? label(EMPLOYEE_STATUS, e.status) : undefined }))}
         value={picked}
         onChange={setPicked}
         group={t("accounts.employee.group")}

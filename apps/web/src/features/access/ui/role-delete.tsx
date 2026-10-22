@@ -13,7 +13,8 @@ import { ReasonField } from "../../../ui/reason/reason-field";
 import { reasonProblem, type Reason } from "../../../ui/reason/reason";
 import { Table } from "../../../ui/table";
 import { ACCESS_READS, accountsQuery, applyGrants, grantsQuery, previewGrants, removeRole, rolesQuery, type AccessGrant, type AccessRole, type GrantOp } from "../api";
-import { periodText, storedScope } from "../present";
+import { grantPerson, periodText, storedScope } from "../present";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { AccountText } from "./holder";
 import { RolePick } from "./role-pick";
 import { Refused, refusalsOf } from "./use-grant-batch";
@@ -94,7 +95,7 @@ export function RoleDelete({ role, onClose, onDeleted }: { role: AccessRole | nu
                 rows={d.items}
                 rowId={(g) => g.id}
                 columns={[
-                  { header: t("access.col.holder"), cell: (g) => { const a = who(g); return a ? <AccountText a={a} /> : (g.account_display_name ?? ""); } },
+                  { header: t("access.col.holder"), cell: (g) => { const a = who(g); return a ? <AccountText a={a} peers={accounts.data?.items} /> : <PersonLabel person={grantPerson(g, accounts.data?.items ?? [])} peers={accounts.data?.items} />; } },
                   { header: t("access.col.scope"), cell: (g) => storedScope(g.scope, roots) },
                   { header: t("access.col.until"), fit: true, cell: (g) => periodText(g) },
                 ]}

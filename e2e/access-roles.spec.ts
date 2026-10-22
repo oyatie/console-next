@@ -104,7 +104,7 @@ test("pilot roles: no presets, a role made in setup, granted for go-live, enforc
   await expectAccessible(admin, "go-live readiness");
 
   // The person view: what the grant will allow, and from when.
-  await admin.getByRole("link", { name: "김인사" }).first().click();
+  await admin.getByRole("link", { name: /^김인사/ }).first().click();
   await expect(admin.getByRole("heading", { name: "김인사님이 할 수 있는 일" })).toBeVisible();
   await expect(admin.getByRole("listitem").filter({ hasText: "인사 조회" })).toBeVisible();
   await expect(admin.getByRole("region", { name: "김인사님이 할 수 있는 일" })).toContainText("운영 시작부터 적용");

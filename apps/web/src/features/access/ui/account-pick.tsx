@@ -3,6 +3,8 @@ import { t } from "@console/i18n";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
 import { pickable } from "../domain/accounts";
 import type { Account } from "../api";
+import { personLabel } from "../../../reference/person/present";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
 
 function Picker({ accounts, loading, onPick }: { accounts: readonly Account[]; loading: boolean; onPick: (a: Account) => void }) {
   const [q, setQ] = useState("");
@@ -14,7 +16,7 @@ function Picker({ accounts, loading, onPick }: { accounts: readonly Account[]; l
       label={t("access.grants.pick")}
       query={q}
       onQueryChange={setQ}
-      options={hits.map((a) => ({ id: a.id, name: a.display_name, code: a.employee_number ?? `#${a.id.slice(-4)}`, context: [a.employee_company, a.employee_org_unit].filter(Boolean).join(" · ") }))}
+      options={hits.map((a) => ({ id: a.id, name: a.employee_number?.trim() ? personLabel(a).name : personLabel(a, accounts).text, code: a.employee_number?.trim() || undefined, display: <PersonLabel person={a} peers={accounts} /> }))}
       value={null}
       onChange={(id) => {
         const a = accounts.find((x) => x.id === id);

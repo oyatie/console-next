@@ -2,7 +2,9 @@
 // an HR worker signing in to nothing. Ops is break-glass and never reduced (a DB trigger keeps it), so the tenant itself
 // cannot be locked out; the guard here is about the people who sign in next to ops.
 
-export type ReadyAccount = { id: string; name: string; active: boolean; has_passkey: boolean };
+import { pickable } from "./accounts";
+
+export type ReadyAccount = { id: string; name: string; active: boolean; has_passkey: boolean; employee_id?: string | null };
 export type ReadyGrant = { account_id: string; enforcement: string; manages_access: boolean };
 export type Check =
   | { code: "ops_full"; tone: "ok" }
@@ -16,7 +18,7 @@ const LIVE = ["ENFORCED", "PREPARED", "SCHEDULED"];
  * `ops` is the ops account's id; deactivated accounts sign in to nothing and are skipped.
  */
 export function readiness(accounts: readonly ReadyAccount[], grants: readonly ReadyGrant[], ops: string | undefined): Check[] {
-  const staff = accounts.filter((a) => a.id !== ops && a.active);
+  const staff = pickable(accounts.map((a) => ({ ...a, is_active: a.active })), ops);
   const bad = staff.flatMap((a): Check[] => {
     const mine = grants.filter((g) => g.account_id === a.id);
     const live = mine.filter((g) => LIVE.includes(g.enforcement));

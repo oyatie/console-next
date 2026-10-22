@@ -18,6 +18,7 @@ import { usePolicyRouted } from "../../../reference/settings/ui/use-policy-route
 import { fromLines, isEmpty, toLines, type Chosen } from "../domain/grid";
 import { ACCESS_READS, accountsQuery, catalogQuery, createRole, grantsQuery, meQuery, roleQuery, updateRole, type AccessCatalog, type AccessGrant, type AccessRole } from "../api";
 import { AccessHead } from "./access-head";
+import { accountLabel, grantPerson } from "../present";
 import { PermissionGrid } from "./permission-grid";
 import { RoleDiff } from "./role-diff";
 import { RolePreview } from "./role-preview";
@@ -33,7 +34,8 @@ function useHolders(role: AccessRole | undefined) {
   const grants = useQuery({ ...grantsQuery({ role_id: role?.id ?? "" }), enabled: !!role?.holder_count });
   const accounts = useQuery(accountsQuery);
   const live: readonly AccessGrant[] = grants.data?.items ?? [];
-  const names = [...new Set(live.map((g) => accounts.data?.items.find((a) => a.id === g.account_id)?.display_name ?? g.account_display_name ?? ""))];
+  const holders = [...new Map(live.map((g) => [g.account_id, g])).values()];
+  const names = holders.map((g) => accountLabel(grantPerson(g, accounts.data?.items ?? []), g.account_id, accounts.data?.items));
   return { names: names.join(", "), now: live.some((g) => g.enforcement === "ENFORCED"), waiting: live.length > 0 && live.every((g) => g.enforcement === "PREPARED") };
 }
 

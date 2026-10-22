@@ -1,5 +1,6 @@
 // Korean source for `people.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koPeople = {
+  "people.label.unnamed": "이름 없음",
   // People
   "people.title": "인사",
   "people.tabs": "보기",

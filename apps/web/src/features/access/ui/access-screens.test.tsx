@@ -8,7 +8,7 @@ import { grantDoneText, periodText, scheduledText } from "../present";
 import { BulkPreview } from "./bulk-preview";
 import { GrantPreviewSummary } from "./grant-sheet-parts";
 import { GrantState } from "./grants-page";
-import { EnforcementChip } from "./holder";
+import { AccountText, EnforcementChip } from "./holder";
 import { RoleDiff } from "./role-diff";
 
 beforeAll(() => loadCatalog("ko"));
@@ -121,4 +121,11 @@ test("F8: operating and compose copy never promises immediate application before
   expect(t("access.grant.consequence.now", { name: "김부장", grants: "인사 담당" })).not.toContain("지금부터");
   expect(t("accessGrants.start.NOW")).not.toContain("즉시");
   expect(t("accessGrants.start.NOW.hint")).not.toContain("저장하는 순간부터");
+});
+
+test("an account-only person stays identifiable in a holder row", () => {
+  const a = { id: "a", display_name: "Namesake", employee_number: null, sign_in_id: "worker1234@example.test", has_passkey: true } as Account;
+  const html = renderToStaticMarkup(<AccountText a={a} />);
+  expect(html).toContain("w••••1234@example.test");
+  expect(html).not.toContain("worker1234@example.test");
 });

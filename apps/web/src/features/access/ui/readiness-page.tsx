@@ -8,8 +8,10 @@ import { Card } from "../../../ui/card/card";
 import { EmptyState } from "../../../ui/empty-state";
 import { Table } from "../../../ui/table";
 import { blocking, readiness, type Check as Item } from "../domain/readiness";
-import { grantsQuery } from "../api";
-import { accountLabel, periodText, storedScope } from "../present";
+import { grantsQuery, type Account } from "../api";
+import { personLabel } from "../../../reference/person/present";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
+import { grantPerson, periodText, storedScope } from "../present";
 import { AccessHead } from "./access-head";
 import { EnforcementChip } from "./holder";
 import { useAccessContext } from "./use-access-context";
@@ -18,7 +20,7 @@ import s from "./access.module.css";
 
 const ICON = { ok: Check, bad: TriangleAlert, info: Info } as const;
 
-function Row({ c, ops }: { c: Item; ops: string }) {
+function Row({ c, ops, accounts }: { c: Item; ops: string; accounts: readonly Account[] }) {
   const Icon = ICON[c.tone];
   const who = "account" in c ? c.account.name : ops;
   return (
@@ -26,6 +28,7 @@ function Row({ c, ops }: { c: Item; ops: string }) {
       <Icon size={18} className={s[c.tone]} aria-hidden />
       <div>
         <strong>{t(`access.ready.${c.code}`, { name: who })}</strong>
+        {"account" in c && <div><PersonLabel person={accounts.find((a) => a.id === c.account.id) ?? c.account} peers={accounts} /></div>}
         <p>{t(`access.ready.${c.code}.text`, { name: who })}{"alsoNoPasskey" in c && c.alsoNoPasskey && <> {t("access.ready.alsoNoPasskey")}</>}</p>
       </div>
       {"account" in c && c.code !== "no_passkey" && <Link to="/access/people/$accountId" params={{ accountId: c.account.id }} search={{ grant: true }} className={buttonClass()}>{t("access.grant.title")}</Link>}
@@ -55,8 +58,7 @@ export function ReadinessPage() {
       <QueryState q={grants}>
         {(g) => {
           const checks = readiness(
-            // A namesake keeps its employee number (decision #25), anyone else is named as written.
-            ctx.accounts.map((a) => ({ id: a.id, name: ctx.accounts.filter((b) => b.display_name === a.display_name).length > 1 ? accountLabel(a, a.id) : a.display_name, active: a.is_active, has_passkey: a.has_passkey })),
+            ctx.accounts.map((a) => ({ ...a, name: personLabel(a).name, active: a.is_active })),
             g.items.map((x) => ({ account_id: x.account_id, enforcement: x.enforcement, manages_access: manages.has(x.role_id) })),
             ctx.ops,
           );
@@ -70,7 +72,7 @@ export function ReadinessPage() {
           return (
             <>
               <Card label={t("access.ready.checks", { count: blocking(checks) })} flush>
-                {checks.map((c, i) => <Row key={`${c.code}:${"account" in c ? c.account.id : i}`} c={c} ops={opsName} />)}
+                {checks.map((c, i) => <Row key={`${c.code}:${"account" in c ? c.account.id : i}`} c={c} ops={opsName} accounts={ctx.accounts} />)}
               </Card>
               <Card
                 title={title}
@@ -83,7 +85,7 @@ export function ReadinessPage() {
                     rows={g.items}
                     rowId={(x) => x.id}
                     columns={[
-                      { header: t("access.col.person"), cell: (x) => <Link to="/access/people/$accountId" params={{ accountId: x.account_id }}>{x.account_display_name ?? x.account_id}</Link> },
+                      { header: t("access.col.person"), cell: (x) => <Link to="/access/people/$accountId" params={{ accountId: x.account_id }}><PersonLabel person={grantPerson(x, ctx.accounts)} peers={ctx.accounts} /></Link> },
                       { header: t("access.col.number"), fit: true, cell: (x) => ctx.accounts.find((a) => a.id === x.account_id)?.employee_number ?? "" },
                       { header: t("access.col.role"), cell: (x) => x.role_name_ko },
                       { header: t("access.col.scope"), cell: (x) => storedScope(x.scope, roots) },

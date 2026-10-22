@@ -10,5 +10,5 @@ export function pickable<A extends Acc>(accounts: readonly A[], ops: string | un
     const held = best.get(key);
     if (!held || (a.has_passkey && !held.has_passkey)) best.set(key, a);
   }
-  return live.filter((a) => best.get(a.employee_id ?? a.id) === a);
+  return [...best.values()];
 }

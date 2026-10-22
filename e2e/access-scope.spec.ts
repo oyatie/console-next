@@ -163,7 +163,7 @@ test("an HR worker granted 인사 실무 over one 법인 works inside it and is 
 
   // 회수 is a row verb that says what is lost, in numbers, before the passkey (ROL-M7-grant-revoke).
   await go(admin, "/access/grants");
-  await admin.getByRole("button", { name: "김인사님의 인사 실무 회수" }).click();
+  await admin.getByRole("button", { name: /^김인사.*님의 인사 실무 회수$/ }).click();
   const revoke = admin.getByRole("dialog", { name: /김인사님의 「인사 실무」/ });
   await expect(revoke).toContainText(/저장하는 즉시 김인사님은 주식회사 늘봄정밀 및 하위 · 2명의 .*인사기본 등록·수정.* 할 수 없게 됩니다/);
   await expect(revoke.getByRole("button", { name: "패스키로 확인하고 회수" })).toHaveClass(/btn--danger/);

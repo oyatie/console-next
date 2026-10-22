@@ -8,6 +8,7 @@ import { Button } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
 import { Table } from "../../../ui/table";
 import type { Account } from "../api";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
 import s from "./access.module.css";
 
 /**
@@ -32,7 +33,7 @@ export function AccessRequests({ accounts, onGrant }: { accounts: readonly Accou
         rows={open}
         rowId={(r) => r.id}
         columns={[
-          { header: t("access.col.person"), cell: (r) => r.requester_name ?? who(r)?.display_name ?? "" },
+          { header: t("access.col.person"), cell: (r) => <PersonLabel person={who(r) ?? { id: r.requested_by, display_name: r.requester_name }} peers={accounts} /> },
           { header: t("accessGrants.requests.screen"), cell: (r) => <span className="code">{r.screen}</span> },
           { header: t("accessGrants.requests.why"), cell: (r) => [t(`common.denied.reason.${r.reason_code}`), r.note].filter(Boolean).join(" · ") },
           { header: t("accessGrants.requests.when"), fit: true, cell: (r) => fmtDateTime(r.created_at) },

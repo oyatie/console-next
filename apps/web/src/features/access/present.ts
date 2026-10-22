@@ -3,10 +3,11 @@
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { codeText } from "../../lib/labels";
+import { personLabel, type PersonIdentity } from "../../reference/person/present";
 import type { Level } from "./domain/grid";
 import { lastDay } from "./domain/grants";
 import { find, reach, type OrgNode, type Scope } from "./domain/scope";
-import type { AccessGrant, AccessRoleLine, AccessScope, PreviewItem } from "./api";
+import type { AccessGrant, AccessRoleLine, AccessScope, Account, PreviewItem } from "./api";
 
 export const domainText = (key: string) => codeText(`accessCodes.domain.${key}`, key);
 export const domainHelp = (key: string) => codeText(`accessCodes.domain.${key}.help`, "");
@@ -58,6 +59,9 @@ export const untilText = (validTo: string | null | undefined) => {
   return d ? t("access.until", { date: fmtDate(d) }) : t("access.until.none");
 };
 
-/** A person in a list, told apart from a namesake by employee number (decision #25); the RRN never appears. */
-export const accountLabel = (a: { display_name: string; employee_number: string | null } | undefined, fallback: string) =>
-  a ? (a.employee_number ? `${a.display_name} (${a.employee_number})` : a.display_name) : fallback;
+export const accountLabel = (a: PersonIdentity | undefined, fallback: string, peers: readonly PersonIdentity[] = []) =>
+  personLabel(a ?? { id: fallback }, peers).text;
+
+/** Join current account facts onto a grant; retain its snapshot when the account is unavailable. */
+export const grantPerson = (g: AccessGrant, accounts: readonly Account[]): PersonIdentity =>
+  accounts.find((a) => a.id === g.account_id) ?? { id: g.account_id, display_name: g.account_display_name, employee_number: g.account_employee_number, org_unit: g.account_unit };

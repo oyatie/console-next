@@ -11,7 +11,9 @@ import { ReasonField } from "../../../ui/reason/reason-field";
 import { reasonProblem, type Reason } from "../../../ui/reason/reason";
 import { endToWire } from "../domain/grants";
 import type { AccessGrant } from "../api";
-import { linesText, scopeText, storedScope, untilText } from "../present";
+import { grantPerson, linesText, scopeText, storedScope, untilText } from "../present";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
+import { personLabel } from "../../../reference/person/present";
 import { EndPick } from "./end-pick";
 import { refusalsOf, useGrantBatch } from "./use-grant-batch";
 import { useAccessContext } from "./use-access-context";
@@ -35,7 +37,8 @@ export function GrantChange({ grant, mode: start, onClose, onDone }: { grant: Ac
   const [end, setEnd] = useState<string | null>(null);
   const [reason, setReason] = useState<Reason>({ code: null, memo: "" });
   const [tried, setTried] = useState(false);
-  const message = () => t(mode === "revoke" ? "access.change.revoked" : "access.change.ended", { name: grant?.account_display_name ?? "", role: grant?.role_name_ko ?? "" });
+  const name = grant ? personLabel(grantPerson(grant, ctx.accounts)).name : t("people.label.unnamed");
+  const message = () => t(mode === "revoke" ? "access.change.revoked" : "access.change.ended", { name, role: grant?.role_name_ko ?? "" });
   const run = useGrantBatch({ onSuccess: () => (onDone(message()), reset()) });
   const reset = () => (setMode(null), setEnd(null), setReason({ code: null, memo: "" }), setTried(false));
   if (!grant) return null;
@@ -49,8 +52,8 @@ export function GrantChange({ grant, mode: start, onClose, onDone }: { grant: Ac
     });
   const refusal = refusalsOf(run.error).get(0);
   return (
-    <Dialog open title={t("access.change.title", { name: grant.account_display_name ?? "", role: grant.role_name_ko })} onClose={close}>
-      <p className="muted">{t("access.change.what", { scope: storedScope(grant.scope, roots), until: untilText(grant.valid_to) })}</p>
+    <Dialog open title={t("access.change.title", { name, role: grant.role_name_ko })} onClose={close}>
+      <p className="muted"><PersonLabel person={grantPerson(grant, ctx.accounts)} peers={ctx.accounts} /> · {t("access.change.what", { scope: storedScope(grant.scope, roots), until: untilText(grant.valid_to) })}</p>
       <ChoiceField
         label={t("access.change.mode")}
         required
@@ -64,7 +67,7 @@ export function GrantChange({ grant, mode: start, onClose, onDone }: { grant: Ac
       {/* M7-grant-revoke: what is lost, in numbers, before the passkey. */}
       {mode === "revoke" && (
         <p>
-          <strong>{t("accessGrants.loss", { name: grant.account_display_name ?? "", scope: scopeText(roots, grant.scope), what: linesText(ctx.roles.find((r) => r.id === grant.role_id)?.lines ?? []) || grant.role_name_ko })}</strong>
+          <strong>{t("accessGrants.loss", { name, scope: scopeText(roots, grant.scope), what: linesText(ctx.roles.find((r) => r.id === grant.role_id)?.lines ?? []) || grant.role_name_ko })}</strong>
           <br />
           <span className="muted">{t("accessGrants.loss.foot")}</span>
         </p>

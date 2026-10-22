@@ -5,6 +5,7 @@ import { ChevronLeft, Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { codeText } from "../../../lib/labels";
+import { personLabel } from "../../../reference/person/present";
 import { QueryState } from "../../../lib/react/query-state";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
@@ -89,6 +90,7 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
   const [done, setDone] = useState<string | null>(null);
   const [operationId, setOperationId] = useState<string>();
   const account = ctx.accounts.find((a) => a.id === accountId);
+  const name = account ? personLabel(account).name : undefined;
   const order = ctx.cat.data?.domains.map((d) => d.domain) ?? [];
   const roots = (tree.data?.entities ?? []) as OrgNode[];
   const held = grants.data?.items ?? [];
@@ -98,7 +100,7 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
       <AccessHead />
       <div className={s.titleRow}>
         <Link to="/access/grants" className={buttonClass("ghost")}><ChevronLeft size={16} aria-hidden />{t("access.nav.grants")}</Link>
-        {account ? <PersonHead a={account} ops={account.id === ctx.ops} title={<h2 className={s.personTitle}>{account.display_name}</h2>} /> : <h2 className="page__title">{t("access.person.title")}</h2>}
+        {account ? <PersonHead a={account} ops={account.id === ctx.ops} title={<h2 className={s.personTitle}>{name}</h2>} /> : <h2 className="page__title">{t("access.person.title")}</h2>}
         <span className="grow" />
         {account && <Button variant="primary" onClick={() => setGranting(true)}><Plus size={16} aria-hidden />{t("access.grant.title")}</Button>}
       </div>
@@ -107,7 +109,7 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
       {eff.isPending || grants.isPending ? <Card><QueryState q={eff.isPending ? eff : grants}>{() => null}</QueryState></Card> : (
         <div className={s.editor}>
           <Card
-            title={t("access.person.can", { name: account?.display_name ?? "" })}
+            title={name ? t("access.person.can", { name }) : t("access.person.title")}
             meta={one === "PREPARED" ? <Chip tone="info">{t("access.person.fromGoLive")}</Chip> : one && one !== "ENFORCED" && <EnforcementChip e={one} />}
             flush
           >
@@ -115,7 +117,7 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
               {(e) =>
                 e.is_ops ? <div className={s.pad}><Banner>{t("access.person.ops")}</Banner></div>
                 : e.entries.length ? <CanDo entries={e.entries} order={order} grants={held} roots={roots} />
-                : <EmptyState title={t("access.person.none", { name: account?.display_name ?? "" })} reason={t(e.phase === "SETUP" ? "access.person.none.setup" : "access.person.none.reason")} />
+                : <EmptyState title={t("access.person.none", { name: name ?? t("people.label.unnamed") })} reason={t(e.phase === "SETUP" ? "access.person.none.setup" : "access.person.none.reason")} />
               }
             </QueryState>
           </Card>
