@@ -185,6 +185,26 @@ numeric disk receipt and pass the same limits; architecture parity is not assume
 The verifier must confirm actual free disk before/after the largest amd64 job.
 The previous whole-workspace 49 GB extraction / 72 GB target is no longer a job.
 
+## Repository file policy
+
+`npm run check` starts with `node scripts/check-repo-files.mjs`: it checks committed
+paths changed from the merge base with the PR's `origin/$GITHUB_BASE_REF`, or `dev`
+locally. Pass another base ref explicitly when needed. Hygiene always runs
+`node scripts/check-repo-files.mjs --full`, including on docs-only changes and
+merge groups, so the required `ci-ok` covers the whole committed tree.
+
+`scripts/repo-files.policy.json` owns the restricted paths, file patterns, exact
+exceptions and 5,000,000-byte maximum. Failures name the path and rule. Deploy
+files remain allowed; spreadsheet exceptions do not exempt other document types
+or the size limit. Round 3 relocated the curated topology files to `e2e/stack/`
+and `scripts/ci/`; the policy names each file, and its `ops/**` allow-list is empty.
+All three named files passed structural client-data scanning and gitleaks again.
+The Node regression suite has refused and allowed controls for every rule.
+
+After this lane merges, the orchestrator updates `dev-pr-only` (25624651) to
+require `ci-ok` in place of `backend` and `web`, enables the merge queue, and deletes
+the disabled, unsupported public-source push ruleset `push-restrictions` (25552233).
+
 ## Reading a red and rerunning
 
 Open `ci-ok` first. A red dependency or a dependency-caused skip is a failed proof.
