@@ -17,11 +17,12 @@ use crate::workbench::{
 #[derive(Clone)]
 pub(crate) struct NativeWorkbenchReaders {
     pool: PgPool,
+    read_permits: std::sync::Arc<tokio::sync::Semaphore>,
 }
 
 impl NativeWorkbenchReaders {
-    pub(crate) fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub(crate) fn new(pool: PgPool, read_permits: std::sync::Arc<tokio::sync::Semaphore>) -> Self {
+        Self { pool, read_permits }
     }
 }
 
@@ -53,6 +54,7 @@ impl WorkbenchReaders for NativeWorkbenchReaders {
                 &principal,
                 context.as_of,
                 context.limits.action,
+                self.read_permits.clone(),
             )
             .await
         })

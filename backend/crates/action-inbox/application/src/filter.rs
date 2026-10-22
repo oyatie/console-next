@@ -59,10 +59,16 @@ pub async fn list_filtered_action_inbox(
         .map_or(now, |c| c.as_of);
     let view = ViewPort { port, filter };
     let mut exact = true;
+    let mut unavailable = Vec::new();
+    let mut summary = None;
     let mut items = Vec::new();
     loop {
         let page = list_action_inbox(
-            &view,
+            if first && summary.is_none() {
+                port
+            } else {
+                &view
+            },
             ListActionInboxQuery {
                 limit: Some(MAX_PAGE_LIMIT),
                 cursor: cursor.clone(),
@@ -71,6 +77,14 @@ pub async fn list_filtered_action_inbox(
         )
         .await?;
         exact &= page.total_is_exact;
+        for source in page.unavailable {
+            if !unavailable.contains(&source) {
+                unavailable.push(source);
+            }
+        }
+        if summary.is_none() {
+            summary = Some((page.counts, page.upcoming));
+        }
         items.extend(page.items.into_iter().filter(|item| filter.includes(item)));
         if items.len() > limit {
             items.truncate(limit);
@@ -84,7 +98,11 @@ pub async fn list_filtered_action_inbox(
                     id: last.id.clone(),
                 },
             ));
+            let (counts, upcoming) = summary.unwrap_or_default();
             return Ok(ActionInboxPage {
+                unavailable,
+                counts,
+                upcoming,
                 total: items.len(),
                 total_is_exact: false,
                 items,
@@ -95,7 +113,11 @@ pub async fn list_filtered_action_inbox(
             Some(next) if cursor.as_ref() != Some(&next) => cursor = Some(next),
             Some(_) => return Err(KernelError::internal("inbox source repeated its cursor")),
             None => {
+                let (counts, upcoming) = summary.unwrap_or_default();
                 return Ok(ActionInboxPage {
+                    unavailable,
+                    counts,
+                    upcoming,
                     total: items.len(),
                     total_is_exact: first && exact,
                     items,
@@ -146,6 +168,186 @@ impl ActionInboxSourcePort for ViewPort<'_> {
                     has_more: false,
                 })
             })
+        }
+    }
+}
+
+pub(crate) fn counts(
+    items: &[ActionInboxItem],
+    exact: bool,
+) -> std::collections::BTreeMap<&'static str, crate::InboxCount> {
+    [
+        ("turn", InboxFilter::Turn),
+        ("waiting", InboxFilter::Waiting),
+        ("scheduled", InboxFilter::Scheduled),
+        ("deadlines", InboxFilter::Deadlines),
+        ("failures", InboxFilter::Failures),
+    ]
+    .into_iter()
+    .map(|(key, filter)| {
+        (
+            key,
+            crate::InboxCount {
+                total: items.iter().filter(|item| filter.includes(item)).count(),
+                total_is_exact: exact,
+            },
+        )
+    })
+    .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        ActionInboxSource as S, ActionInboxSourceFuture, ActionInboxSourcePage,
+        ActionInboxSourceQuery,
+    };
+    use std::{
+        sync::Mutex,
+        task::{Context, Poll, Waker},
+    };
+
+    #[derive(Default)]
+    struct RecordingPort(Mutex<Vec<(S, ActionInboxSourceQuery)>>);
+
+    impl ActionInboxSourcePort for RecordingPort {
+        fn list_source_page(
+            &self,
+            source: S,
+            query: ActionInboxSourceQuery,
+        ) -> ActionInboxSourceFuture<'_> {
+            self.0.lock().unwrap().push((source, query));
+            Box::pin(async {
+                Ok(ActionInboxSourcePage {
+                    items: Vec::new(),
+                    total: 7,
+                    total_is_exact: false,
+                    has_more: true,
+                })
+            })
+        }
+    }
+
+    #[test]
+    fn saved_views_call_only_their_sources_and_forward_the_filter() {
+        let deadlines = [
+            S::Workflow,
+            S::Dispatch,
+            S::Support,
+            S::WorkOrder,
+            S::OrgChange,
+            S::HrExit,
+            S::HrInsurance,
+            S::HrContract,
+            S::PeriodUnlock,
+        ];
+        for (filter, expected) in [
+            (InboxFilter::Waiting, &[S::OrgChange][..]),
+            (InboxFilter::Scheduled, &[S::OrgChange][..]),
+            (InboxFilter::Failures, &[S::HrLifecycle][..]),
+            (InboxFilter::Deadlines, &deadlines[..]),
+        ] {
+            let port = RecordingPort::default();
+            let view = ViewPort {
+                port: &port,
+                filter,
+            };
+            let query = ActionInboxSourceQuery {
+                filter: InboxFilter::All,
+                require_exact_total: true,
+                now: OffsetDateTime::UNIX_EPOCH + time::Duration::days(2),
+                as_of: OffsetDateTime::UNIX_EPOCH + time::Duration::days(1),
+                after: Some(ActionInboxPosition {
+                    created_at: OffsetDateTime::UNIX_EPOCH,
+                    id: "workflow:previous".into(),
+                }),
+                limit: 17,
+            };
+            for source in S::ALL {
+                let mut future = view.list_source_page(source, query.clone());
+                let Poll::Ready(result) = future
+                    .as_mut()
+                    .poll(&mut Context::from_waker(Waker::noop()))
+                else {
+                    panic!("the recording source must be ready");
+                };
+                let page = result.unwrap();
+                assert!(page.items.is_empty());
+                if expected.contains(&source) {
+                    assert_eq!(page.total, 7, "{filter:?}: {source:?}");
+                    assert!(!page.total_is_exact);
+                    assert!(page.has_more);
+                } else {
+                    assert_eq!(page.total, 0, "{filter:?}: {source:?}");
+                    assert!(page.total_is_exact);
+                    assert!(!page.has_more);
+                }
+            }
+            let mut forwarded = query;
+            forwarded.filter = filter;
+            assert_eq!(
+                *port.0.lock().unwrap(),
+                S::ALL
+                    .into_iter()
+                    .filter(|source| expected.contains(source))
+                    .map(|source| (source, forwarded.clone()))
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+
+    fn item(lane: &'static str, due_tone: &'static str, kind: &str) -> ActionInboxItem {
+        ActionInboxItem {
+            context: None,
+            id: String::new(),
+            kind: kind.into(),
+            urg: "normal",
+            ref_code: String::new(),
+            title: String::new(),
+            site: None,
+            who: None,
+            due: None,
+            due_tone,
+            submitted: None,
+            links: Vec::new(),
+            done: false,
+            lane,
+            days_remaining: None,
+            created_at: OffsetDateTime::UNIX_EPOCH,
+        }
+    }
+
+    #[test]
+    fn counts_preserve_each_view_predicate_and_exactness() {
+        let items = [
+            item("turn", "danger", "workflow"),
+            item("turn", "warn", "lifecycle_apply_failed"),
+            item("turn", "neutral", "workflow"),
+            item("waiting", "danger", "lifecycle_apply_failed"),
+            item("waiting", "warn", "workflow"),
+            item("scheduled", "danger", "workflow"),
+            item("scheduled", "neutral", "workflow"),
+        ];
+        for exact in [true, false] {
+            let result = counts(&items, exact);
+            assert_eq!(result.len(), 5);
+            for (key, total) in [
+                ("turn", 3),
+                ("waiting", 2),
+                ("scheduled", 2),
+                ("deadlines", 2),
+                ("failures", 2),
+            ] {
+                assert_eq!(
+                    result[key],
+                    crate::InboxCount {
+                        total,
+                        total_is_exact: exact
+                    },
+                    "{key}"
+                );
+            }
         }
     }
 }

@@ -38,6 +38,7 @@ pub(crate) async fn page(
                 Err(e) => return Err(e),
             }
             items.push(ActionInboxSourceItem {
+                context: None,
                 id: format!("period_unlock:{id}"), kind: "period_unlock".into(), ref_code: domain,
                 title: request.reason_code, site: None, who: None, due: Some(relock_at), submitted: Some(requested_at), created_at: requested_at,
                 links: vec![ActionInboxLink { kind: "period_lock".into(), id: lock_id.to_string(), label: None }],
@@ -49,4 +50,42 @@ pub(crate) async fn page(
         items.truncate(query.limit);
         Ok(ActionInboxSourcePage { items, total, total_is_exact: true, has_more })
     })).await.map_err(|e| { tracing::error!(error = ?e, "unlock inbox source failed"); KernelError::internal("failed to load unlock work") })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use console_kernel_core::{BranchScope, OrgId, UserId};
+    use std::collections::BTreeSet;
+
+    #[tokio::test]
+    async fn no_period_lock_manage_grant_does_not_query_or_disclose_a_source() {
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .acquire_timeout(std::time::Duration::from_millis(50))
+            .connect_lazy("postgres://unused:unused@127.0.0.1:1/unused")
+            .unwrap();
+        let principal = Principal::new(
+            UserId::new(),
+            OrgId::new(),
+            BTreeSet::new(),
+            BranchScope::All,
+        );
+        let now = OffsetDateTime::now_utc();
+        let result = page(
+            &pool,
+            &principal,
+            ActionInboxSourceQuery {
+                filter: Default::default(),
+                require_exact_total: false,
+                now,
+                as_of: now,
+                after: None,
+                limit: 10,
+            },
+        )
+        .await
+        .unwrap();
+        assert!(result.items.is_empty());
+        assert_eq!(result.total, 0);
+    }
 }

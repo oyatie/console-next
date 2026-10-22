@@ -7,7 +7,11 @@ use axum::Router;
 use super::TenantDeps;
 
 #[cfg(feature = "workspace")]
-pub(super) fn mount_workspace(router: Router, deps: &TenantDeps<'_>) -> Router {
+pub(super) fn mount_workspace(
+    router: Router,
+    deps: &TenantDeps<'_>,
+    read_permits: std::sync::Arc<tokio::sync::Semaphore>,
+) -> Router {
     use crate::{
         collaboration, objects, workbench, workbench_native, workflow_object_context,
         workflow_studio,
@@ -29,7 +33,10 @@ pub(super) fn mount_workspace(router: Router, deps: &TenantDeps<'_>) -> Router {
                 .with_passkey_step_up(state.policy_step_up.clone()),
         ))
         .merge(workbench::router(workbench::WorkbenchState::new(
-            std::sync::Arc::new(workbench_native::NativeWorkbenchReaders::new(pool.clone())),
+            std::sync::Arc::new(workbench_native::NativeWorkbenchReaders::new(
+                pool.clone(),
+                read_permits,
+            )),
             pool.clone(),
             state.jwt_verifier.clone(),
         )))

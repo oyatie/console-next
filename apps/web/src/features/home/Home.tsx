@@ -12,7 +12,11 @@ import { Button } from "../../ui/button/button";
 import { buttonClass } from "../../ui/button/button-class";
 import { DeadlineChip } from "../../ui/deadline-chip/deadline-chip";
 import { EmptyState } from "../../ui/empty-state";
+import { InboxCommand } from "./ui/inbox-command";
+import { QuietQueue } from "./ui/quiet-queue";
+import { OutcomeLink } from "../../lib/react/outcome-link";
 import { meQuery } from "./api";
+import { AddPasskey } from "../onboarding/ui/add-passkey";
 import { GrantNotice } from "./ui/grant-notices";
 
 type InboxItem = components["schemas"]["ActionInboxItem"];
@@ -44,32 +48,55 @@ const WHY_TEXT: Record<string, MessageId> = {
   grant_notice: "home.inbox.reason.grant", account_security: "home.inbox.reason.security",
 };
 
+const SOURCE_TEXT: Record<string, MessageId> = {
+  workflow: "home.part.decide", dispatch: "home.inbox.source.dispatch", support: "home.inbox.source.support", work_order: "home.inbox.source.workOrder", payroll: "accessCodes.domain.pay", governance: "home.inbox.source.governance",
+  org_change: "home.part.changes", hr_exit: "home.part.exits", hr_lifecycle: "home.part.failedActions", hr_requests: "home.part.requests", hr_register: "home.review.register", hr_insurance: "home.part.insurance", hr_identity: "home.review.identity", hr_branch: "home.review.branch", hr_contract: "people.lifecycle.action.CONTRACT_RENEWAL", period_unlock: "home.part.unlocks", setup: "setup.title", grant_notice: "access.grant.title",
+};
+
 /** Every surface reads this server queue; filters, ownership and deadlines stay with its sources. */
-export function Home({ setup }: { setup?: (c: Checklist) => ReactNode } = {}) {
+export function Home({ setup, setupPending = false }: { setup?: (c: Checklist) => ReactNode; setupPending?: boolean } = {}) {
   const [filter, setFilter] = useState<Filter>("turn");
   const me = useQuery(meQuery);
   const inbox = useInfiniteQuery(cursorPages("/api/v1/me/action-inbox", { filter }));
+  const [opened] = useState(Date.now);
+  const [caughtUp, setCaughtUp] = useState(false);
+  const rereading = !caughtUp && inbox.isFetching && inbox.dataUpdatedAt < opened;
+  if (!rereading && !inbox.isPending && !caughtUp) setCaughtUp(true);
+  const first = inbox.data?.pages[0];
+  const loading = setupPending || rereading;
   return (
     <div className="page">
       <div className="page__head">
         <h1 id="home-title" className="page__title" tabIndex={-1}>{me.data ? t("home.greeting", { name: me.data.display_name }) : t("home.title")}</h1>
+        {first?.as_of && <span className="muted num">{t("home.asOf", { time: fmtDateTime(first.as_of) })}</span>}
       </div>
-      <section className="card panel" aria-labelledby="inbox-title">
+      {loading ? <div className="state muted" role="status">{t("common.loading")}</div> : <section className="card panel" aria-labelledby="inbox-title">
         <h2 id="inbox-title" className="panel__title" tabIndex={-1}>{t("home.inbox.title")}</h2>
-        <div role="group" aria-label={t("home.lanes")} className="tabs">
-          {FILTERS.map((key) => <Button key={key} aria-pressed={filter === key} variant={filter === key ? "secondary" : "ghost"} onClick={() => setFilter(key)}>{t(`home.inbox.filter.${key}`)}</Button>)}
-        </div>
         <QueryState q={inbox}>{(data) => {
           const pages = data.pages;
           const checklist = pages[0]?.setup;
           const rows = pages.flatMap((page) => page.items).filter((item) => !checklist || !item.kind.startsWith("setup_"));
+          const head = pages[0];
+          const unavailable = [...new Map(pages.flatMap((page) => page.unavailable).map((part) => [part.source, part])).values()];
           return <>
+            {!checklist && head?.has_work && <div role="group" aria-label={t("home.lanes")} className="tabs">
+              {FILTERS.filter((key) => head.available_filters.includes(key)).map((key) => {
+                const count = head.counts[key];
+                return <Button key={key} aria-pressed={filter === key} variant={filter === key ? "secondary" : "ghost"} onClick={() => setFilter(key)}>{t(count && !count.total_is_exact ? "home.inbox.filterCount.lower" : "home.inbox.filterCount", { filter: t(`home.inbox.filter.${key}`), count: count?.total ?? 0 })}</Button>;
+              })}
+            </div>}
+            {unavailable.map((part) => <div role="alert" className="alert" key={part.source}>
+              <p>{t("home.inbox.unavailable", { part: t(SOURCE_TEXT[part.source] ?? "home.inbox.unknown") })}</p>
+              <p>{t("home.inbox.support", { reference: part.support_reference })}</p>
+              <Button onClick={() => void inbox.refetch()} disabled={inbox.isFetching}>{t("common.retry")}</Button>
+            </div>)}
             {checklist && setup?.(checklist)}
-            {rows.length > 0 ? <ul className="list-plain">{rows.map((item) => <InboxRow key={item.id} item={item} />)}</ul> : !checklist && <EmptyState title={t("home.inbox.empty.title")} reason={t("home.inbox.empty.reason")} />}
+            {!checklist && !head?.has_work && <EmptyState title={t("home.noWork.title")} reason={t("home.noWork.reason")} actions={rows.some((item) => item.kind === "account_security") ? undefined : <Link to="/account" className={buttonClass("primary")}>{t("shell.account")}</Link>} />}
+            {rows.length > 0 ? <ul className="list-plain">{rows.map((item) => <InboxRow key={item.id} item={item} />)}</ul> : !checklist && head?.has_work && <QuietQueue page={head} filter={filter} partial={unavailable.length > 0} />}
             {inbox.hasNextPage && <Button disabled={inbox.isFetchingNextPage} onClick={() => void inbox.fetchNextPage()}>{t("home.inbox.more")}</Button>}
           </>;
         }}</QueryState>
-      </section>
+      </section>}
     </div>
   );
 }
@@ -85,7 +112,11 @@ function InboxRow({ item }: { item: InboxItem }) {
       </div>
       <div className="muted">{[item.ref, item.site, item.who && item.kind.startsWith("org_change") ? label(APPROVAL_ROLE, item.who) : item.who].filter(Boolean).join(" · ")}</div>
       {item.due && <span className="muted num">{t("home.inbox.due", { at: fmtDateTime(item.due) })}</span>}
-      <span className="muted">{t(WHY_TEXT[item.kind] ?? `home.inbox.why.${item.lane}`, { kind })}</span>
+      {item.context?.drafter && <span className="muted">{t("home.decide.drafter", { name: item.context.drafter })}</span>}
+      {item.context?.reason && <span>{item.context.reason}</span>}
+      {item.kind === "org_change_apply" && item.days_remaining != null && item.days_remaining <= 0 && <span className="muted num">{t("home.due.since", { days: -item.days_remaining })}</span>}
+      {item.context?.command_id && <OutcomeLink id={item.context.command_id} />}
+      <span className="muted">{item.kind === "account_security" ? t(item.context?.is_ops ? "account.second.whyOps" : "account.second.why") : t(WHY_TEXT[item.kind] ?? `home.inbox.why.${item.lane}`, { kind })}</span>
     </li>
   );
 }
@@ -97,13 +128,13 @@ function RecordAction({ item }: { item: InboxItem }) {
   const text = t(VERB_TEXT[item.kind] ?? "home.inbox.open");
   const className = buttonClass("primary");
   switch (link.kind) {
-    case "org_change": return <Link to="/org/changes/$id" params={{ id: link.id }} className={className}>{text}</Link>;
-    case "employee": return <Link to="/people/$id" params={{ id: link.id }} search={item.kind === "contract_renewal" ? { act: "CONTRACT_RENEWAL" } : {}} className={className}>{text}</Link>;
+    case "org_change": return <>{item.context?.command && <InboxCommand id={link.id} command={item.context.command} />}<Link to="/org/changes/$id" params={{ id: link.id }} className={buttonClass(item.context?.command ? "ghost" : "primary")}>{text}</Link></>;
+    case "employee": return <><Link to="/people/$id" params={{ id: link.id }} search={item.kind === "contract_renewal" ? { act: "CONTRACT_RENEWAL" } : {}} className={className}>{text}</Link>{item.kind === "identity_review" || item.kind === "home_branch_review" || item.kind === "register_review" || item.kind === "lifecycle_apply_failed" ? <Link to="/people" search={{ review: item.kind === "identity_review" ? "identity" : item.kind === "home_branch_review" ? "branch" : item.kind === "register_review" ? "register" : "failed", ...(item.kind === "lifecycle_apply_failed" ? { status: "all" } : {}) }}>{t("home.inbox.viewAll")}</Link> : null}</>;
     case "change_request": return <Link to="/people/requests" search={{ sel: link.id }} className={className}>{text}</Link>;
     case "exit_case": return <Link to="/people/exits/$id" params={{ id: link.id }} search={{ act: item.kind === "hr_exit_confirm" ? "confirm_exit" : item.kind === "hr_exit_confirm_hq" ? "confirm_exit_hq" : "prepare_settlement" }} className={className}>{text}</Link>;
     case "period_lock": return <Link to="/people/period-locks" search={{ review: link.id }} className={className}>{text}</Link>;
-    case "account": return <Link to="/account" className={className}>{t("account.second.add")}</Link>;
-    case "access": return <GrantNotice id={link.id} role={item.title} />;
+    case "account": return <><AddPasskey count={1} primary label={t("account.second.add")} focusAfter="inbox-title" /><Link to="/account" className={buttonClass("ghost")}>{t("shell.account")}</Link></>;
+    case "access": return <GrantNotice id={link.id} role={item.title} entries={item.context?.grants ?? []} />;
     case "statutory": return <Link to="/statutory" search={{ event: link.id }} className={className}>{text}</Link>;
     default: return null;
   }

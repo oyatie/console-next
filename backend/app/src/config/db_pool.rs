@@ -21,7 +21,11 @@ pub(crate) const COMMAND_POOL_CONNECTIONS: u32 = 2;
 /// The smallest runtime pool a process may run with.
 const MIN_RUNTIME_CONNECTIONS: u32 = 2;
 
-const VARS: [(SettingKey, &str); 6] = [
+const VARS: [(SettingKey, &str); 7] = [
+    (
+        SettingKey::ActionInboxSourceConcurrency,
+        "CONSOLE_ACTION_INBOX_SOURCE_CONCURRENCY",
+    ),
     (
         SettingKey::DbPoolApiConnections,
         "CONSOLE_DB_POOL_API_CONNECTIONS",
@@ -51,6 +55,7 @@ const VARS: [(SettingKey, &str); 6] = [
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DbPoolConfig {
     pub api_connections: u32,
+    pub inbox_source_concurrency: u32,
     pub worker_connections: u32,
     pub acquire_timeout: Duration,
     pub peak_api_processes: u32,
@@ -95,13 +100,22 @@ fn value(key: SettingKey, env: &str, raw: Option<&String>) -> Result<u32, AppErr
 impl DbPoolConfig {
     /// The registry values, with any `CONSOLE_DB_POOL_*` override.
     pub(crate) fn from_vars(get: impl Fn(&str) -> Option<String>) -> Result<Self, AppError> {
-        let mut values = [0_u32; 6];
+        let mut values = [0_u32; 7];
         for (slot, (key, env)) in values.iter_mut().zip(VARS) {
             *slot = value(key, env, get(env).as_ref())?;
         }
-        let [api, worker, acquire_ms, peak_api, peak_worker, reserved] = values;
+        let [
+            inbox_source_concurrency,
+            api,
+            worker,
+            acquire_ms,
+            peak_api,
+            peak_worker,
+            reserved,
+        ] = values;
         Ok(Self {
             api_connections: api,
+            inbox_source_concurrency,
             worker_connections: worker,
             acquire_timeout: Duration::from_millis(u64::from(acquire_ms)),
             peak_api_processes: peak_api,
@@ -158,6 +172,7 @@ mod tests {
     fn registry_defaults_size_the_a1_box() {
         let config = config(&[]).unwrap();
         assert_eq!(config.acquire_timeout, Duration::from_millis(1_000));
+        assert_eq!(config.inbox_source_concurrency, 4);
         // 60 - 8 reserved - 2 workers x 6 = 40; 20 per API process, 6 of them command pools.
         assert_eq!(config.runtime_pool_size(AppRole::Api, 60).unwrap(), 14);
         assert_eq!(config.runtime_pool_size(AppRole::Worker, 60).unwrap(), 6);
@@ -183,6 +198,8 @@ mod tests {
             ("CONSOLE_DB_POOL_ACQUIRE_TIMEOUT_MS", "50"),
             ("CONSOLE_DB_POOL_RESERVED_CONNECTIONS", "-1"),
             ("CONSOLE_DB_POOL_WORKER_CONNECTIONS", "six"),
+            ("CONSOLE_ACTION_INBOX_SOURCE_CONCURRENCY", "0"),
+            ("CONSOLE_ACTION_INBOX_SOURCE_CONCURRENCY", "9"),
         ] {
             assert!(config(&[(name, raw)]).is_err(), "{name}={raw}");
         }

@@ -19,4 +19,6 @@ macro_rules! perf { ([$($acc:tt)*] $($rest:tt)*) => { roster! { [$($acc)*
     DbPoolPeakWorkerProcesses => "db.pool.peak_worker_processes" = D::int(Count, Some(1), Some(8), 2, Neutral).governed(Governance::ReadOnly);
     // Postgres connections kept free for migration, topology and operators.
     DbPoolReservedConnections => "db.pool.reserved_connections" = D::int(Count, Some(0), Some(32), 8, Neutral).governed(Governance::ReadOnly);
+    // Shared source reads across every inbox request in an API process.
+    ActionInboxSourceConcurrency => "action_inbox.source_concurrency" = D::int(Count, Some(1), Some(8), 4, Neutral).governed(Governance::ReadOnly);
 ] $($rest)* } }; }

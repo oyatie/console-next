@@ -12,7 +12,7 @@
 .icon { color: var(--faint); }
 .title { font-weight: var(--fw-medium); color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
 .actions { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); min-height: var(--target); }
-.detail { grid-column: 2 / -1; min-height: calc(var(--lh-base) * var(--text-sm)); font-size: var(--text-sm); color: var(--steel); }
+.detail { grid-column: 2 / -1; min-height: calc(2 * var(--lh-base) * var(--text-sm)); font-size: var(--text-sm); color: var(--steel); }
 .step[aria-current="step"] { border-color: var(--primary-bd); background: var(--primary-soft); }
 .step[data-state="done"] .icon { color: var(--ok-solid); }
 .step[data-state="done"] .title { color: var(--steel); font-weight: var(--fw-body); }

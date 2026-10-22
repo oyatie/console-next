@@ -29,6 +29,7 @@ pub(crate) async fn page(
         .items
         .into_iter()
         .map(|(id, name, created_at)| ActionInboxSourceItem {
+            context: None,
             id: format!("{NAMESPACE}:{id}"),
             kind: "register_review".to_owned(),
             ref_code: String::new(),

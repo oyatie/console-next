@@ -18,6 +18,7 @@ use sqlx::PgPool;
 use time::OffsetDateTime;
 
 mod error;
+mod response;
 use error::InboxError;
 
 #[cfg(any(
@@ -42,12 +43,21 @@ pub const ME_ACTION_INBOX_PATH: &str = "/api/v1/me/action-inbox";
 pub struct ActionInboxState {
     pool: PgPool,
     jwt_verifier: Option<JwtVerifier>,
+    pub(crate) read_permits: std::sync::Arc<tokio::sync::Semaphore>,
 }
 
 impl ActionInboxState {
     #[must_use]
-    pub fn new(pool: PgPool, jwt_verifier: Option<JwtVerifier>) -> Self {
-        Self { pool, jwt_verifier }
+    pub fn new(pool: PgPool, jwt_verifier: Option<JwtVerifier>, source_concurrency: u32) -> Self {
+        // Leave headroom even when a test or deployment supplies a smaller pool.
+        let capacity = source_concurrency
+            .min(pool.options().get_max_connections().saturating_sub(1))
+            .max(1);
+        Self {
+            pool,
+            jwt_verifier,
+            read_permits: std::sync::Arc::new(tokio::sync::Semaphore::new(capacity as usize)),
+        }
     }
 }
 
@@ -100,6 +110,10 @@ async fn list_action_inbox(
     let sources = PgActionInboxSources {
         pool: state.pool,
         principal,
+        read_permits: state.read_permits,
+        support_reference: crate::telemetry::current_trace_context()
+            .trace_id()
+            .to_owned(),
         setup: tokio::sync::OnceCell::new(),
         setup_created_at: created_at,
     };
@@ -113,14 +127,7 @@ async fn list_action_inbox(
         now,
     )
     .await?;
-    let mut response = serde_json::to_value(page).map_err(|e| source_failure("projection", e))?;
-    if matches!(query.filter, InboxFilter::All | InboxFilter::Turn)
-        && query.cursor.is_none()
-        && let Some(Some(setup)) = sources.setup.get()
-    {
-        response["setup"] = setup.clone();
-    }
-    Ok(Json(response))
+    response::project(&sources, page, query.filter, query.cursor.is_none(), now)
 }
 
 /// Temporary composition-root adapter. This intentionally proves the inward
@@ -131,6 +138,8 @@ struct PgActionInboxSources {
     principal: Principal,
     setup: tokio::sync::OnceCell<Option<serde_json::Value>>,
     setup_created_at: OffsetDateTime,
+    read_permits: std::sync::Arc<tokio::sync::Semaphore>,
+    support_reference: String,
 }
 
 impl ActionInboxSourcePort for PgActionInboxSources {
@@ -140,6 +149,11 @@ impl ActionInboxSourcePort for PgActionInboxSources {
         query: ActionInboxSourceQuery,
     ) -> ActionInboxSourceFuture<'_> {
         Box::pin(async move {
+            let _permit = self
+                .read_permits
+                .acquire()
+                .await
+                .map_err(|_| KernelError::internal("inbox reader closed"))?;
             let page = match source {
                 #[cfg(feature = "workspace")]
                 ActionInboxSource::Workflow => self.workflow_page(query).await,
@@ -165,8 +179,8 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                     let setup = self
                         .setup
                         .get_or_try_init(|| sources::setup::load(&self.pool, &self.principal))
-                        .await?;
-                    Ok(sources::setup::page(
+                        .await;
+                    setup.map(|setup| sources::setup::page(
                         setup.as_ref(),
                         *self.principal.org_id.as_uuid(),
                         self.setup_created_at,
@@ -196,7 +210,10 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                 }
                 #[allow(unreachable_patterns)]
                 _ => Ok(empty_source_page()),
-            }?;
+            }.map_err(|error| {
+                tracing::error!(source = ?source, support_reference = %self.support_reference, error = %error, "inbox source unavailable");
+                error
+            })?;
             if matches!(
                 source,
                 ActionInboxSource::HrIdentity
@@ -207,7 +224,9 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                     | ActionInboxSource::HrExit
                     | ActionInboxSource::HrRequests
             ) {
-                sources::audit_personnel::record(&self.pool, &self.principal, &page).await?;
+                sources::audit_personnel::record(&self.pool, &self.principal, &page).await.map_err(|error| {
+                    tracing::error!(source = ?source, support_reference = %self.support_reference, error = %error, "inbox source audit unavailable"); error
+                })?;
             }
             Ok(page)
         })

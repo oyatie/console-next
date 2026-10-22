@@ -470,7 +470,7 @@ async fn live_dispatch_expiry_can_disappear_between_pages(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn later_source_failure_returns_no_partial_queue(pool: PgPool) {
+async fn later_source_failure_keeps_healthy_work_and_names_the_outage(pool: PgPool) {
     let keys = keys();
     let branch = seed_branch(&pool, OrgId::one(), "실패 리전", "실패 지사").await;
     let alice = UserId::new();
@@ -487,16 +487,11 @@ async fn later_source_failure_returns_no_partial_queue(pool: PgPool) {
         &bearer(&pool, &keys, OrgId::one(), alice, "MEMBER", branch).await,
     )
     .await;
-    assert_eq!(
-        resp.status,
-        StatusCode::INTERNAL_SERVER_ERROR,
-        "{:?}",
-        resp.json
-    );
-    assert!(
-        resp.json.get("items").is_none(),
-        "partial items must not escape"
-    );
+    assert_eq!(resp.status, StatusCode::OK, "{:?}", resp.json);
+    assert!(resp.json["items"].is_array());
+    assert_eq!(resp.json["total_is_exact"], false);
+    assert_eq!(resp.json["unavailable"][0]["source"], "support");
+    assert!(resp.json["unavailable"][0]["support_reference"].is_string());
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

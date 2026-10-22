@@ -24,12 +24,20 @@ struct Change {
     kind: String,
     waiting_role: Option<String>,
     created_at: OffsetDateTime,
+    reason: String,
+    drafted_by_name: Option<String>,
+    command_id: Option<Uuid>,
 }
 
 // Keep membership identical for the exact count and keyset page.
 macro_rules! eligible {
     () => {
-        "WITH classified AS (SELECT r.id, r.code, r.target_label, r.effective_date, r.created_at, \
+        "WITH classified AS (SELECT r.id, r.code, r.target_label, r.effective_date, r.created_at, r.reason, \
+         (SELECT u.display_name FROM users u WHERE u.org_id = r.org_id AND u.id = r.drafted_by) AS drafted_by_name, \
+         (SELECT e.command_id FROM audit_events e WHERE e.org_id = r.org_id \
+          AND e.target_type = 'org_change_request' AND e.target_id = r.id::text \
+          AND e.outcome = 'ALLOWED' AND e.command_id IS NOT NULL \
+          ORDER BY e.created_at DESC, e.id DESC LIMIT 1) AS command_id, \
          (SELECT s.role_key FROM org_change_approval_steps s \
           WHERE s.org_id = r.org_id AND s.request_id = r.id AND s.decision = 'PENDING' \
           ORDER BY s.step_order LIMIT 1) AS waiting_role, \
@@ -58,7 +66,7 @@ macro_rules! eligible {
 }
 
 // Match orgchange-rest's feature floor, including its legacy matrix fallback.
-fn holds(principal: &Principal, feature: Feature) -> bool {
+pub(crate) fn holds(principal: &Principal, feature: Feature) -> bool {
     principal
         .roles
         .iter()
@@ -142,6 +150,7 @@ pub(crate) async fn page(
             .into_iter()
             .take(query.limit)
             .map(|row| ActionInboxSourceItem {
+                context: Some(serde_json::json!({"command": match row.kind.as_str() { "org_change_approve" => Some("approve"), "org_change_apply" => Some("effectuate"), _ => None }, "reason": row.reason, "drafter": row.drafted_by_name.unwrap_or_default(), "command_id": row.command_id })),
                 id: format!("org_change:{}", row.id),
                 kind: row.kind,
                 ref_code: row.code,
@@ -263,6 +272,17 @@ mod tests {
                 .iter()
                 .all(|i| i.id.starts_with("org_change:") && i.due.is_some())
         );
+        for (kind, command) in [
+            ("org_change_approve", "approve"),
+            ("org_change_apply", "effectuate"),
+        ] {
+            let row = actual.items.iter().find(|item| item.kind == kind).unwrap();
+            let context = row.context.as_ref().unwrap();
+            assert_eq!(context["command"], command);
+            assert!(!context["reason"].as_str().unwrap().is_empty());
+            assert!(!context["drafter"].as_str().unwrap().is_empty());
+        }
+
         let denied = Principal::new(me, org, BTreeSet::new(), BranchScope::All);
         let no_items = page(
             &runtime_role_pool(&pool).await,

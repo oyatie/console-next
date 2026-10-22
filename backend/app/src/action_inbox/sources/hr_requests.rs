@@ -30,6 +30,7 @@ pub(crate) async fn page(
         .items
         .into_iter()
         .map(|request| ActionInboxSourceItem {
+            context: None,
             id: format!("{INBOX_ID_PREFIX}{}", request.id),
             kind: "hr_request".to_owned(),
             ref_code: request.reason_code,
