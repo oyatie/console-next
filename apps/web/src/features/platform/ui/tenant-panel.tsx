@@ -69,7 +69,7 @@ export function TenantPanel({ org, health, enrolled, onEnrolled, onIssued, onRec
 
       <Button onClick={() => setDomainOpen(true)}>{t("tenants.domain.change")}</Button>
       {domainOpen && <DomainDialog org={org} onClose={() => setDomainOpen(false)} onDone={(r) => { setDomainOpen(false); onRecorded(r); }} />}
-      {/* The server issues a code only for an active tenant. 상태 and 삭제 are drawn once the recovery read has landed
+      {/* The server issues a code only for an active tenant. The status and removal sections are drawn once the recovery read has landed
           (or failed): drawn under its skeleton, they moved down under the pointer when it arrived. */}
       {recovery.isPending ? <Skeleton label={t("common.loading")} bones={["row"]} /> : <>
       {recovery.data ? <>
