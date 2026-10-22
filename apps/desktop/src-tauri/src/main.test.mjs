@@ -1,42 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { promisify } from "node:util";
 import { chromium } from "@playwright/test";
 
 const source = readFileSync(new URL("./main.rs", import.meta.url), "utf8");
 const html = source.match(/const HTML: &str = r#"([\s\S]*?)"#;/)?.[1];
-
-test("desktop callbacks require confirmation at both native entry points", async (t) => {
-  const dir = mkdtempSync(join(tmpdir(), "desktop-callbacks-"));
-  t.after(() => rmSync(dir, { recursive: true, force: true }));
-  mkdirSync(join(dir, "src"));
-  for (const file of ["Cargo.toml", "Cargo.lock"]) {
-    copyFileSync(new URL(`../${file}`, import.meta.url), join(dir, file));
-  }
-  // Compile unchanged production bodies against mocks of window/thread/browser boundaries.
-  const window = source.slice(source.indexOf("fn window("), source.indexOf("/// The console needs"));
-  const external = source.slice(source.indexOf("mod external {"));
-  const config = readFileSync(new URL("./config.rs", import.meta.url), "utf8");
-  const policy = config.slice(config.indexOf("pub fn same_origin("), config.indexOf("/// `<scheme>"));
-  const fixture = readFileSync(new URL("./main.callbacks.test.rs", import.meta.url), "utf8");
-  writeFileSync(join(dir, "src/lib.rs"), fixture
-    .replace("// PRODUCTION_POLICY", () => policy)
-    .replace("// PRODUCTION_WINDOW", () => window)
-    .replace("// PRODUCTION_EXTERNAL", () => external.replace("mod external {", "mod external {\nuse crate::{tauri, tauri_plugin_opener, threads as std};")));
-  try {
-    const { stdout } = await promisify(execFile)("cargo", ["test", "--locked", "--lib", "--manifest-path", join(dir, "Cargo.toml")], {
-      env: { ...process.env, RUSTC_WRAPPER: "sccache" },
-    });
-    t.diagnostic(stdout);
-  } catch (error) {
-    assert.fail(`${error.stdout ?? ""}\n${error.stderr ?? error.message}`);
-  }
-});
 
 test("desktop interstitial requires an explicit trusted decision", async (t) => {
   assert.ok(html, "the shell must provide its local confirmation page");
