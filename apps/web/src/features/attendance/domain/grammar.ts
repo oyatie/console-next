@@ -3,7 +3,7 @@
 //   9-18 · 0900-1800 · 09:00~18:00 · 9:30-18:15 · 6:50-16 · 09.30-18 · full-width digits and any dash (9–18) · an hour mark
 //   or AM/PM word on a clock · 22-6+ or 22-30 (ends next day; 22-7 alone too when the day's plan crosses midnight)
 //   9-18/90 or the break word + 1, 60, 1:30 (time away) · 9-12,13:30-18 (time away) · 7:52- (in only) · -18 (out only)
-//   = (as scheduled; also remote work and training) · x (absent) · o (outside work) · business trip
+//   = (as scheduled) · x (absent) · o (outside work) · business trip
 //   day off, shift codes (D, S1 …) and leave words are read here; the save resolves them against the day's plan.
 // Refused: +2 or 18+2 (overtime is only an approval record), status words (derived from times), a lone 8 or 8:00 (hours, not
 // times), 0.375 (an Excel fraction), an ambiguous code, unconfirmed policy-long spans, 22-6 without the + off a night plan.
@@ -31,7 +31,8 @@ export type ParseCode =
   | "status_is_derived"
   | "hours_without_times"
   | "excel_fraction"
-  | "code_ambiguous";
+  | "code_ambiguous"
+  | "activity_not_stored";
 type Parsed = { ok: true; entry: Entry } | { ok: false; code: ParseCode; at?: number };
 /** What the day's plan adds: a shift that crosses midnight lets a single span end the next day without the +. */
 type Plan = { overnight: boolean };
@@ -44,7 +45,8 @@ const OVERTIME = "\u{c5f0}\u{c7a5}";
 const ACTIVITIES = ["\u{c7ac}\u{d0dd}", "\u{ad50}\u{c721}"];
 const words = (list: string[], read: (w: string) => Entry | ParseCode) => list.map((w) => [w, read(w)] as const);
 const CODES = new Map<string, Entry | ParseCode>([
-  ...words(["=", "\u{c18c}\u{c815}", "\u{c7ac}", ...ACTIVITIES], () => ({ kind: "AS_SCHEDULED" })),
+  ...words(["=", "\u{c18c}\u{c815}"], () => ({ kind: "AS_SCHEDULED" })),
+  ...words(["\u{c7ac}", ...ACTIVITIES], () => "activity_not_stored"),
   ...words(["x", "X", "\u{acb0}\u{adfc}", "\u{acb0}"], () => ({ kind: "ABSENT" })),
   ...words(["o", "O", "\u{c678}\u{adfc}", "\u{c678}"], () => ({ kind: "OUTSIDE_WORK" })),
   ...words(["\u{cd9c}\u{c7a5}"], () => ({ kind: "BUSINESS_TRIP" })),
@@ -124,8 +126,8 @@ export function parseEntry(raw: string, longSpanMinutes?: number, confirmed = fa
   const coded = codeOf(v);
   if (coded !== undefined) return typeof coded === "string" ? refuse(coded) : { ok: true, entry: coded };
   const unreadable = () => refuse("entry_unreadable", badAt(raw.trim()));
-  const activity = ACTIVITIES.find((w) => v.startsWith(w));
-  const split = breakSuffix(activity ? v.slice(activity.length).trimStart() : v);
+  if (ACTIVITIES.some((w) => v.startsWith(w))) return refuse("activity_not_stored");
+  const split = breakSuffix(v);
   if (!split) return unreadable();
   const nextDay = split.body.endsWith("+");
   const body = nextDay ? split.body.slice(0, -1).trimEnd() : split.body;

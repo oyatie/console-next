@@ -7,7 +7,7 @@
 //!   22-6+ or 22-30 (ends the next day; 22-7 alone when the plan crosses midnight)
 //!   9-18/90 or 9-18 휴1 · 휴60 · 휴1:30 (time away in the middle)
 //!   9-12,13:30-18 (외출 between spans) · 7:52- (출근만) · -18 (퇴근만)
-//!   = 소정 재택 교육 (the 근무 일정's shift) · x 결근 결 · o 외근 외 · 출장
+//!   = 소정 (the 근무 일정's shift) · x 결근 결 · o 외근 외 · 출장
 //!   휴 휴무 OFF (day off) · D E N 주 야 비 당 S1 (shift codes) · 연차 반 병가 … (휴가):
 //!   read here, resolved against the day's plan by `resolve_value`.
 //! Refused: +2, 18+2 or 연장2 (연장 is only a 승인), 지각 · 조퇴 (derived),
@@ -55,6 +55,8 @@ pub enum ParseRefusal {
     ExcelFraction,
     /// `출`: 출근 or 출장.
     CodeAmbiguous,
+    /// `재택` · `교육`: the store cannot preserve the activity attribute yet.
+    ActivityNotStored,
 }
 
 impl ParseRefusal {
@@ -70,6 +72,7 @@ impl ParseRefusal {
             Self::HoursWithoutTimes => "hours_without_times",
             Self::ExcelFraction => "excel_fraction",
             Self::CodeAmbiguous => "code_ambiguous",
+            Self::ActivityNotStored => "activity_not_stored",
         }
     }
 }
@@ -79,7 +82,7 @@ fn digits(s: &str, len: std::ops::RangeInclusive<usize>) -> bool {
 }
 
 /// NFKC, every dash as `-`, ECMAScript whitespace collapsed to ASCII spaces.
-fn normalise(raw: &str) -> String {
+pub(super) fn normalise(raw: &str) -> String {
     let mut out = String::with_capacity(raw.len());
     for c in raw.nfkc() {
         let c = match c {
@@ -107,7 +110,8 @@ fn normalise(raw: &str) -> String {
 fn code(v: &str) -> Option<Result<Entry, ParseRefusal>> {
     let slot = v.strip_prefix(['S', 's']).is_some_and(|n| digits(n, 1..=2));
     Some(Ok(match v {
-        "=" | "소정" | "재" | "재택" | "교육" => Entry::AsScheduled,
+        "=" | "소정" => Entry::AsScheduled,
+        "재" | "재택" | "교육" => return Some(Err(ParseRefusal::ActivityNotStored)),
         "x" | "X" | "결근" | "결" => Entry::Absent,
         "o" | "O" | "외근" | "외" => Entry::OutsideWork,
         "출장" => Entry::BusinessTrip,
@@ -263,11 +267,10 @@ pub(super) fn parse_with_overnight(
     if let Some(read) = code(&v) {
         return read;
     }
-    let v = ["재택", "교육"]
-        .iter()
-        .find_map(|w| v.strip_prefix(w))
-        .map_or(v.as_str(), |s| s.trim_start_matches(' '));
-    let (body, break_minutes) = break_suffix(v)?;
+    if ["재택", "교육"].iter().any(|w| v.starts_with(w)) {
+        return Err(ParseRefusal::ActivityNotStored);
+    }
+    let (body, break_minutes) = break_suffix(&v)?;
     let (body, next_day) = body
         .strip_suffix('+')
         .map_or((body.as_str(), false), |b| (b.trim_end_matches(' '), true));

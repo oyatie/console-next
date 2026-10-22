@@ -38,7 +38,7 @@ test("the as-is token set refuses only the designed residue", () => {
 
 test("the wrong character is located and a fix is offered", () => {
   expect(parseEntry("6:5O-16")).toMatchObject({ ok: false, at: 3 });
-  expect(parseEntry("\u{c7ac}\u{d0dd} 9-1x")).toMatchObject({ ok: false, code: "entry_unreadable", at: 6 });
+  expect(parseEntry("\u{c7ac}\u{d0dd} 9-1x")).toMatchObject({ ok: false, code: "activity_not_stored" });
   expect(suggestFix("6:5O-16")).toBe("6:50-16");
   expect(suggestFix("7:48-5:10")).toBe("7:48-17:10");
   expect(suggestFix("9\u{2013}2")).toBe("9-14");
