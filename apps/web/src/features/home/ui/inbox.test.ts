@@ -38,7 +38,6 @@ vi.mock("@tanstack/react-query", async (original) => ({
   }),
   useInfiniteQuery: (options: Options) => { view.options = options; return { ...view.list, fetchNextPage: view.next, refetch: view.retry }; },
 }));
-vi.mock("./inbox-command", () => ({ InboxCommand: ({ id, command }: { id: string; command: string }) => createElement("button", { "data-command": command, "data-record": id }, command) }));
 vi.mock("../../../lib/react/command", () => ({ useCommand: () => ({}) }));
 vi.mock("../../../ui/button/button", async (original) => {
   const actual = await original<typeof import("../../../ui/button/button")>();
@@ -47,7 +46,7 @@ vi.mock("../../../ui/button/button", async (original) => {
 const item = (id: string, extra: Partial<Item> = {}): Item => ({ id, kind: "register_review", lane: "turn", title: id, ref: "", urg: "wait", dueTone: "neutral", done: false, days_remaining: null, links: [{ kind: "employee", id }], ...extra });
 const page = (items: Item[], extra: Partial<Page> = {}): Page => ({ items, total: items.length, total_is_exact: true, next_cursor: null, unavailable: [], available_filters: ["turn", "waiting", "scheduled", "deadlines", "failures"], counts: {}, upcoming: [], has_work: true, quick_starts: [], as_of: "2026-10-23T00:00:00Z", ...extra });
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
-const html = () => renderToStaticMarkup(createElement(RouterContextProvider, { router } as Parameters<typeof RouterContextProvider>[0], createElement(() => Home({ setup: (c: Checklist) => createElement("div", { "data-testid": "inbox-setup" }, c.total) }))));
+const html = () => renderToStaticMarkup(createElement(RouterContextProvider, { router } as Parameters<typeof RouterContextProvider>[0], createElement(() => Home({ setup: (c: Checklist) => createElement("div", { "data-testid": "inbox-setup" }, c.total), action: (item: Item) => item.context?.command ? createElement("button", { "data-command": item.context.command, "data-record": item.links[0]?.id }, item.context.command) : item.kind === "account_security" ? createElement("button", null, t("account.second.add")) : null }))));
 const click = (label: string) => view.buttons.find((button) => button.children === label || typeof button.children === "string" && button.children.startsWith(label + " "))!.onClick!({} as MouseEvent<HTMLButtonElement>);
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {

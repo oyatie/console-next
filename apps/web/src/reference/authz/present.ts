@@ -18,11 +18,11 @@ const nameOf = (nodes: readonly Node[], id: string | null | undefined): string |
   return undefined;
 };
 
-/** A grant's scope by its node's name when the org tree names it, else by its kind ("entity scope"). */
+/** A grant's scope by its stored name, then the org tree, else its kind ("entity scope"). */
 export const scopeName = (s: AccessEffectiveEntry["scope"], roots: readonly Node[] = []) => {
   if (s.kind === "TENANT") return t("access.scope.tenant");
-  const name = nameOf(roots, s.node_id);
-  return name ? t("access.scope.below.short", { name }) : t(`denied.scopeKind.${s.kind}`);
+  const name = s.node_name || nameOf(roots, s.node_id);
+  return name ? t(s.include_descendants === false ? "access.scope.only.short" : "access.scope.below.short", { name }) : t(`denied.scopeKind.${s.kind}`);
 };
 
 /** The last day an exclusive end still counts, or no end. */

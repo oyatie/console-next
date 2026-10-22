@@ -1,6 +1,6 @@
 import { beforeAll, expect, test } from "vitest";
 import { loadCatalog } from "@console/i18n";
-import { grantRefusal } from "./present";
+import { grantRefusal, scopeName } from "./present";
 
 beforeAll(() => loadCatalog("ko"));
 
@@ -12,4 +12,10 @@ test.each([
   ["internal", undefined],
 ])("%s reads in the access screens' words", (code, text) => {
   expect(grantRefusal(code)).toBe(text);
+});
+
+test("a grant's named scope and exact reach survive without an organization-tree read", () => {
+  const scope = { kind: "DEPARTMENT", node_id: "scope", node_name: "인사팀", include_descendants: false } as const;
+  expect(scopeName(scope, [{ id: "scope", name: "이전 이름" }])).toBe("인사팀만");
+  expect(scopeName({ ...scope, include_descendants: true })).toBe("인사팀 및 하위");
 });

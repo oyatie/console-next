@@ -12,14 +12,14 @@ import { Button } from "../../ui/button/button";
 import { buttonClass } from "../../ui/button/button-class";
 import { DeadlineChip } from "../../ui/deadline-chip/deadline-chip";
 import { EmptyState } from "../../ui/empty-state";
-import { InboxCommand } from "./ui/inbox-command";
+import { Banner } from "../../ui/banner/banner";
 import { QuietQueue } from "./ui/quiet-queue";
 import { OutcomeLink } from "../../lib/react/outcome-link";
 import { meQuery } from "./api";
-import { AddPasskey } from "../onboarding/ui/add-passkey";
 import { GrantNotice } from "./ui/grant-notices";
 
 type InboxItem = components["schemas"]["ActionInboxItem"];
+type RowAction = (item: InboxItem) => ReactNode;
 const FILTERS = ["turn", "waiting", "scheduled", "deadlines", "failures"] as const;
 type Filter = (typeof FILTERS)[number];
 const KIND_TEXT: Record<string, MessageId> = {
@@ -54,7 +54,7 @@ const SOURCE_TEXT: Record<string, MessageId> = {
 };
 
 /** Every surface reads this server queue; filters, ownership and deadlines stay with its sources. */
-export function Home({ setup, setupPending = false }: { setup?: (c: Checklist) => ReactNode; setupPending?: boolean } = {}) {
+export function Home({ setup, setupPending = false, action }: { setup?: (c: Checklist) => ReactNode; setupPending?: boolean; action?: RowAction } = {}) {
   const [filter, setFilter] = useState<Filter>("turn");
   const me = useQuery(meQuery);
   const inbox = useInfiniteQuery(cursorPages("/api/v1/me/action-inbox", { filter }));
@@ -70,7 +70,7 @@ export function Home({ setup, setupPending = false }: { setup?: (c: Checklist) =
         <h1 id="home-title" className="page__title" tabIndex={-1}>{me.data ? t("home.greeting", { name: me.data.display_name }) : t("home.title")}</h1>
         {first?.as_of && <span className="muted num">{t("home.asOf", { time: fmtDateTime(first.as_of) })}</span>}
       </div>
-      {loading ? <div className="state muted" role="status">{t("common.loading")}</div> : <section className="card panel" aria-labelledby="inbox-title">
+      {loading ? <QueryState q={{ ...inbox, isPending: true }}>{() => null}</QueryState> : <section className="card panel" aria-labelledby="inbox-title">
         <h2 id="inbox-title" className="panel__title" tabIndex={-1}>{t("home.inbox.title")}</h2>
         <QueryState q={inbox}>{(data) => {
           const pages = data.pages;
@@ -85,14 +85,12 @@ export function Home({ setup, setupPending = false }: { setup?: (c: Checklist) =
                 return <Button key={key} aria-pressed={filter === key} variant={filter === key ? "secondary" : "ghost"} onClick={() => setFilter(key)}>{t(count && !count.total_is_exact ? "home.inbox.filterCount.lower" : "home.inbox.filterCount", { filter: t(`home.inbox.filter.${key}`), count: count?.total ?? 0 })}</Button>;
               })}
             </div>}
-            {unavailable.map((part) => <div role="alert" className="alert" key={part.source}>
-              <p>{t("home.inbox.unavailable", { part: t(SOURCE_TEXT[part.source] ?? "home.inbox.unknown") })}</p>
-              <p>{t("home.inbox.support", { reference: part.support_reference })}</p>
-              <Button onClick={() => void inbox.refetch()} disabled={inbox.isFetching}>{t("common.retry")}</Button>
-            </div>)}
+            {unavailable.map((part) => <Banner tone="danger" live="assertive" key={part.source} actions={<Button onClick={() => void inbox.refetch()} disabled={inbox.isFetching}>{t("common.retry")}</Button>}>
+              {t("home.inbox.unavailable", { part: t(SOURCE_TEXT[part.source] ?? "home.inbox.unknown") })} · {t("home.inbox.support", { reference: part.support_reference })}
+            </Banner>)}
             {checklist && setup?.(checklist)}
             {!checklist && !head?.has_work && <EmptyState title={t("home.noWork.title")} reason={t("home.noWork.reason")} actions={rows.some((item) => item.kind === "account_security") ? undefined : <Link to="/account" className={buttonClass("primary")}>{t("shell.account")}</Link>} />}
-            {rows.length > 0 ? <ul className="list-plain">{rows.map((item) => <InboxRow key={item.id} item={item} />)}</ul> : !checklist && head?.has_work && <QuietQueue page={head} filter={filter} partial={unavailable.length > 0} />}
+            {rows.length > 0 ? <ul className="list-plain">{rows.map((item) => <InboxRow key={item.id} item={item} action={action} />)}</ul> : !checklist && head?.has_work && <QuietQueue page={head} filter={filter} partial={unavailable.length > 0} />}
             {inbox.hasNextPage && <Button disabled={inbox.isFetchingNextPage} onClick={() => void inbox.fetchNextPage()}>{t("home.inbox.more")}</Button>}
           </>;
         }}</QueryState>
@@ -101,14 +99,14 @@ export function Home({ setup, setupPending = false }: { setup?: (c: Checklist) =
   );
 }
 
-function InboxRow({ item }: { item: InboxItem }) {
+function InboxRow({ item, action }: { item: InboxItem; action?: RowAction }) {
   const kind = t(KIND_TEXT[item.kind] ?? "home.inbox.unknown");
   return (
     <li className="form">
       <div className="row">
         <div className="grow"><strong>{kind}</strong> · {item.kind === "hr_request" ? codeText(`requests.kind.${item.title}`, item.title) : item.title}</div>
         {item.days_remaining != null ? <DeadlineChip days={item.days_remaining} severity={item.dueTone === "danger" ? "over" : item.dueTone === "warn" ? "due" : "far"} /> : <span className="muted">{t("home.inbox.noDue")}</span>}
-        <RecordAction item={item} />
+        <RecordAction item={item} action={action} />
       </div>
       <div className="muted">{[item.ref, item.site, item.who && item.kind.startsWith("org_change") ? label(APPROVAL_ROLE, item.who) : item.who].filter(Boolean).join(" · ")}</div>
       {item.due && <span className="muted num">{t("home.inbox.due", { at: fmtDateTime(item.due) })}</span>}
@@ -122,18 +120,19 @@ function InboxRow({ item }: { item: InboxItem }) {
 }
 
 /** Only registered record kinds become links; source text cannot provide a URL. */
-function RecordAction({ item }: { item: InboxItem }) {
+function RecordAction({ item, action }: { item: InboxItem; action?: RowAction }) {
   const link = item.links[0];
   if (!link) return null;
   const text = t(VERB_TEXT[item.kind] ?? "home.inbox.open");
   const className = buttonClass("primary");
+  const inline = action?.(item);
   switch (link.kind) {
-    case "org_change": return <>{item.context?.command && <InboxCommand id={link.id} command={item.context.command} />}<Link to="/org/changes/$id" params={{ id: link.id }} className={buttonClass(item.context?.command ? "ghost" : "primary")}>{text}</Link></>;
+    case "org_change": return <>{inline}<Link to="/org/changes/$id" params={{ id: link.id }} className={buttonClass(inline ? "ghost" : "primary")}>{text}</Link></>;
     case "employee": return <><Link to="/people/$id" params={{ id: link.id }} search={item.kind === "contract_renewal" ? { act: "CONTRACT_RENEWAL" } : {}} className={className}>{text}</Link>{item.kind === "identity_review" || item.kind === "home_branch_review" || item.kind === "register_review" || item.kind === "lifecycle_apply_failed" ? <Link to="/people" search={{ review: item.kind === "identity_review" ? "identity" : item.kind === "home_branch_review" ? "branch" : item.kind === "register_review" ? "register" : "failed", ...(item.kind === "lifecycle_apply_failed" ? { status: "all" } : {}) }}>{t("home.inbox.viewAll")}</Link> : null}</>;
     case "change_request": return <Link to="/people/requests" search={{ sel: link.id }} className={className}>{text}</Link>;
     case "exit_case": return <Link to="/people/exits/$id" params={{ id: link.id }} search={{ act: item.kind === "hr_exit_confirm" ? "confirm_exit" : item.kind === "hr_exit_confirm_hq" ? "confirm_exit_hq" : "prepare_settlement" }} className={className}>{text}</Link>;
     case "period_lock": return <Link to="/people/period-locks" search={{ review: link.id }} className={className}>{text}</Link>;
-    case "account": return <><AddPasskey count={1} primary label={t("account.second.add")} focusAfter="inbox-title" /><Link to="/account" className={buttonClass("ghost")}>{t("shell.account")}</Link></>;
+    case "account": return <>{inline}<Link to="/account" className={buttonClass("ghost")}>{t("shell.account")}</Link></>;
     case "access": return <GrantNotice id={link.id} role={item.title} entries={item.context?.grants ?? []} />;
     case "statutory": return <Link to="/statutory" search={{ event: link.id }} className={className}>{text}</Link>;
     default: return null;
