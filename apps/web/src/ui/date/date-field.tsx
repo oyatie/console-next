@@ -24,7 +24,7 @@ export function DateField({ label, required, value, onChange, onInvalid, today, 
   /** Why a date before `min` is refused (the caller's rule), in the error only; `minFrom` also states it beforehand. */
   minReason?: ReactNode;
   max?: string;
-  /** Why a date after `max` is refused (e.g. 「오늘 이후 날짜는 기록할 수 없습니다」), shown in place of the generic line. */
+  /** Why a date after `max` is refused (e.g. that a date after today cannot be recorded), shown in place of the generic line. */
   maxReason?: ReactNode;
   disabledDates?: readonly string[];
   basis?: ReactNode;
