@@ -270,7 +270,7 @@ test("browser failures retain traces without automatic retries", () => {
   assert.doesNotMatch(config, /on-first-retry/);
 });
 
-test("job metrics count fallback cache hits", () => {
+test("job metrics count fallback cache hits and publish budgets and D-7 quarantine warnings", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-job-metrics-"));
   try {
     const config = JSON.parse(readFileSync(new URL("scripts/ci/config.json", root), "utf8"));
@@ -278,9 +278,10 @@ test("job metrics count fallback cache hits", () => {
     mkdirSync(path.join(dir, "scripts/ci"), { recursive: true });
     const file = path.join(dir, "scripts/ci/config.json");
     writeFileSync(file, JSON.stringify(config));
+    writeFileSync(path.join(dir, config.quarantineFile), JSON.stringify([{ class: "flaky", owner: "synthetic owner", suite: "synthetic.spec.ts", expires: new Date(Date.now() + 3 * 86400_000).toISOString().slice(0, 10) }]));
     mkdirSync(path.join(dir, ".cache/ci/e2e-results"), { recursive: true });
     writeFileSync(path.join(dir, ".cache/ci/e2e-results/junit.baseline.json"), JSON.stringify({ baselineReds: [], newReds: [], fixed: [["playwright", "chromium", "fixture", "fixed"]] }));
-    const env = { ...process.env, CI_CACHE_TOTAL: "0", CI_STARTED_AT: String(Math.floor(Date.now() / 1000) - 1), CI_STEPS: JSON.stringify({ plan: { outputs: { budget: JSON.stringify({ jobs: 38, minutes: 206 }) } }, registry: { outputs: { "cache-hit": "false", "cache-matched-key": "older-key" } }, npm: { outputs: { "cache-hit": "true" } } }) };
+    const env = { ...process.env, CI_CACHE_TOTAL: "0", CI_STARTED_AT: String(Math.floor(Date.now() / 1000) - 1), CI_STEPS: JSON.stringify({ plan: { outputs: { budget: JSON.stringify({ jobs: 38, minutes: 206, wallMinutes: 195, queueMinutes: 240, perJob: { web: 8 } }) } }, registry: { outputs: { "cache-hit": "false", "cache-matched-key": "older-key" } }, npm: { outputs: { "cache-hit": "true" } } }) };
     assert.equal(spawnSync("node", [script], { cwd: dir, env, encoding: "utf8" }).status, 0);
     const report = JSON.parse(readFileSync(path.join(dir, ".cache/ci/metrics.json"), "utf8"));
     assert.equal(report.cacheHits, 2);
@@ -289,5 +290,13 @@ test("job metrics count fallback cache hits", () => {
     const summary = readFileSync(path.join(dir, ".cache/ci/summary.md"), "utf8");
     assert.match(summary, /1 fixed \(remove from baseline\)/);
     assert.ok(summary.includes(`38/${config.maxJobs} jobs, 206/${config.maxTotalMinutes}`));
+    assert.match(summary, /timeout chain 195\/240/);
+    assert.match(summary, /Predicted per-job minutes:.*"web":8/);
+    assert.match(summary, /Flaky quarantine: 1\//);
+    assert.match(summary, /Expiry D-7: synthetic owner \/ synthetic.spec.ts/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("hygiene always runs the hermetic input guard", () => {
+  mandatory(workflow().jobs.hygiene.steps.find((step) => step.run === 'node --test --test-name-pattern="check refuses" scripts/check-hermetic.test.mjs'), "hermetic input guard");
 });

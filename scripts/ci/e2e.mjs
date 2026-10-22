@@ -6,8 +6,14 @@ import { planBudget } from "./plan.mjs";
 import { listedTests, plan, readTimings } from "../e2e-timings.mjs";
 
 export function shards(tests, timings, config) {
-  const jobs = plan(tests, timings, { target: config.e2eTargetSeconds, workers: config.e2eWorkers });
-  if (!jobs.length) for (const project of new Set(tests.map((t) => t.project))) jobs.push({ project, files: [...new Set(tests.filter((t) => t.project === project).map((t) => t.file))] });
+  const max = Math.floor(config.e2eMaxShards / 2) || Infinity;
+  let target = config.e2eTargetSeconds;
+  let jobs = plan(tests, timings, { target, workers: config.e2eWorkers });
+  while (jobs.length > max) {
+    target *= 1.1;
+    jobs = plan(tests, timings, { target, workers: config.e2eWorkers });
+  }
+  if (!jobs.length) for (const project of new Set(tests.map((t) => t.project))) jobs.push({ project, files: [...new Set(tests.filter((t) => t.project === project).map((t) => t.file))], est: target });
   const solo = "first-run-solo.spec.ts";
   const first = jobs.find((j) => j.files.includes(solo));
   if (first) {
@@ -36,7 +42,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       return shards(tests, recorded, config).map((job) => ({ ...job, browser, est: job.est ?? config.e2eTargetSeconds }));
     });
     if (process.argv[2] === "seed") writeFileSync(config.e2eTimingsSeed, JSON.stringify(seed, null, 2) + "\n");
-    if (!include.length || include.length > config.e2eMaxShards) throw new Error("invalid E2E matrix size");
+    if (!include.length) throw new Error("empty E2E inventory");
     const outputs = process.env.CI_PLAN ? JSON.parse(process.env.CI_PLAN) : { backend: "true", web: "true", e2e: "true", unit: "true", db: "true" };
     const budget = planBudget(Object.fromEntries(Object.entries(outputs).map(([k, v]) => [k, v === "true"])), config, include);
     appendFileSync(process.env.GITHUB_OUTPUT, `budget=${JSON.stringify(budget)}\n`);

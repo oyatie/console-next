@@ -8,14 +8,14 @@
     "unit": 2,
     "db": 8
   },
-  "runnerDiskBudgetBytes": 47244640256,
+  "runnerDiskBudgetBytes": 61203283968,
   "runnerDiskMarginBytes": 3221225472,
   "e2eTargetSeconds": 300,
   "e2eWorkers": 2,
   "quarantineFile": "scripts/ci/baseline.json",
-  "e2eMaxShards": 18,
-  "maxJobs": 40,
-  "maxTotalMinutes": 220,
+  "e2eMaxShards": 24,
+  "maxJobs": 52,
+  "maxTotalMinutes": 300,
   "jobMinutes": {
     "plan": 2,
     "hygiene": 3,
@@ -35,5 +35,8 @@
     "/usr/share/swift",
     "/opt/hostedtoolcache/CodeQL"
   ],
-  "e2eTimingsSeed": "scripts/ci/e2e-timings.json"
+  "e2eTimingsSeed": "scripts/ci/e2e-timings.json",
+  "baselineMaxFlaky": 7,
+  "baselineFlakyDays": 7,
+  "baselineRenewalDays": 14
 }

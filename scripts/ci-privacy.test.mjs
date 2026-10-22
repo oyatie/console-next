@@ -107,7 +107,7 @@ test("failing JUnit and Playwright traces upload runner paths and synthetic fixt
     const rrn = [...Array(10).keys()].map((digit) => prefix + digit).find((value) => !rrnChecksumValid(value));
     assert.ok(rrn);
     const fixtures = { phone: ["010", "1234", "5678"].join("-"), rrn, brn: ["000", "12", "34567"].join("-") };
-    writeFileSync(path.join(dir, "junit.xml"), `<testsuite failures="1"><testcase name="synthetic fixture"><failure>at /home/runner/work/console-next/e2e/fixture.ts:12\n${JSON.stringify(fixtures)}</failure></testcase></testsuite>`);
+    writeFileSync(path.join(dir, "junit.xml"), `<testsuite failures="1"><testcase name="synthetic fixture"><failure>at ${["", "home", "runner", "work", "console-next", "e2e", "fixture.ts:12"].join("/")}\n${JSON.stringify(fixtures)}</failure></testcase></testsuite>`);
     const trace = { type: "resource-snapshot", snapshot: { request: { url: "https://console.invalid/api/fixtures", postData: JSON.stringify(fixtures) }, response: { status: 400 } } };
     const zipped = spawnSync("python3", ["-c", "import sys,zipfile\nwith zipfile.ZipFile(sys.argv[1],'w') as z:z.writestr('resources/network.trace',sys.argv[2])", path.join(dir, "trace.zip"), JSON.stringify(trace)], { encoding: "utf8" });
     assert.equal(zipped.status, 0, zipped.stderr);
@@ -237,7 +237,7 @@ test("Office archives refuse local paths while clean Office XML passes", () => {
   try {
     for (const local of [false, true]) {
       const office = path.join(dir, "control.xlsx");
-      const result = spawnSync("python3", ["-c", "import sys,zipfile\nwith zipfile.ZipFile(sys.argv[1],'w') as z:\n z.writestr('[Content_Types].xml','<Types/>')\n z.writestr('docProps/app.xml',sys.argv[2])", office, local ? "<path>/Users/synthetic/Documents/source.xlsx</path>" : "<path>synthetic.xlsx</path>"], { encoding: "utf8" });
+      const result = spawnSync("python3", ["-c", "import sys,zipfile\nwith zipfile.ZipFile(sys.argv[1],'w') as z:\n z.writestr('[Content_Types].xml','<Types/>')\n z.writestr('docProps/app.xml',sys.argv[2])", office, local ? `<path>${["", "Users", "synthetic", "Documents", "source.xlsx"].join("/")}</path>` : "<path>synthetic.xlsx</path>"], { encoding: "utf8" });
       assert.equal(result.status, 0, result.stderr);
       const scan = spawnSync("node", ["scripts/ci/privacy.mjs", office], { encoding: "utf8" });
       assert.equal(scan.status, local ? 1 : 0, scan.stderr);
