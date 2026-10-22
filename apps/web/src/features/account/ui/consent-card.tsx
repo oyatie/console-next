@@ -30,7 +30,7 @@ export function ConsentCard() {
               </Button>
             </div>
           )}
-          {documents.data && <p className="muted">{t("auth.setup.consent.policy")}: {documents.data.privacy.policy_url}</p>}
+          {documents.data && <div className="muted">{t("auth.setup.consent.policy")}: {documents.data.privacy.policy_url}</div>}
         </>
       ) : q.error ? (
         <div className="row" role="alert">
