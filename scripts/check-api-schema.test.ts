@@ -1,6 +1,6 @@
 // Planted negative controls for the client contract gate (scripts/check-api-schema.mjs), on a
 // throwaway backend repo so the test needs no real backend tree.
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -48,4 +48,13 @@ test("a backend contract change the client did not regenerate fails; pinning the
   expect(r.ok).toBe(false);
   expect(r.message).toMatch(/api schema drift.*backend [0-9a-f]{12}/);
   expect(checkApiSchema({ repo, ref: first, out }).ok).toBe(true);
+});
+
+test("the repository gate uses its own committed contract despite local backend overrides", () => {
+  const result = spawnSync(process.execPath, ["scripts/check-api-schema.mjs"], {
+    cwd: path.resolve(import.meta.dirname, ".."),
+    encoding: "utf8",
+    env: { ...process.env, CONSOLE_REPO: path.join(dir, "absent-checkout"), CONSOLE_BACKEND_REF: "absent-ref" },
+  });
+  expect(result.status, result.stdout + result.stderr).toBe(0);
 });

@@ -1,4 +1,7 @@
 import { spawnSync } from "node:child_process";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { expect, test } from "vitest";
 // @ts-expect-error: a plain .mjs script, typed by its use here
 import { check, editableLabels, required } from "./check-reach.mjs";
@@ -37,12 +40,12 @@ test("a baselined gap passes while the base has it; a reached or unrequired entr
   expect(check(gap)).toEqual([expect.stringMatching(/has no lane naming its unit/)]);
 });
 
-test("planted: a lane names an open unit of the queue; a prose lane, a closed unit, or no queue at all fails", () => {
+test("planted: a lane names a registered unit; prose, an unknown unit or a missing registry fails", () => {
   const at = (lane: string, units: Set<string> | null = tree.units) => check({ ...tree, reach: reach.slice(1), baseline: [{ record: "HR.employee.emergency_contact", op: "create", lane }], previous: {}, units });
   expect(at("unit: ra-x (orchestra; reach from the record page)")).toEqual([]);
   expect(at("existing: PEOPLE-W-13 (docs/plans/ideal-work/people.md:464)")).toEqual([expect.stringMatching(/has no lane naming its unit/)]);
-  expect(at("unit: cx-people-capability")).toEqual([expect.stringMatching(/names unit cx-people-capability, which is not open in the queue/)]);
-  expect(at("unit: ra-x", null)).toEqual([expect.stringMatching(/lanes NOT CHECKED: no orchestra queue/)]);
+  expect(at("unit: cx-people-capability")).toEqual([expect.stringMatching(/names unit cx-people-capability, which is not registered/)]);
+  expect(at("unit: ra-x", null)).toEqual([expect.stringMatching(/lanes NOT CHECKED: no versioned reach-unit registry/)]);
 });
 
 test("planted: the baseline only shrinks against the base: a gap baselined instead of reached, or listed twice, fails", () => {
@@ -77,5 +80,13 @@ test("planted: a new editable row with no surfaces mapped fails; a lock mark and
 
 test("the repository's own tree passes the gate", () => {
   const r = spawnSync("node", ["scripts/check-reach.mjs"], { encoding: "utf8" });
+  expect(r.status, r.stderr).toBe(0);
+});
+
+test("a hosted checkout proves reachability without a private queue or home pointer", () => {
+  const r = spawnSync("node", ["scripts/check-reach.mjs"], {
+    encoding: "utf8",
+    env: { ...process.env, BACKLOG_QUEUE_DIR: "", XDG_CONFIG_HOME: mkdtempSync(path.join(tmpdir(), "reach-hosted-")) },
+  });
   expect(r.status, r.stderr).toBe(0);
 });

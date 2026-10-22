@@ -4,9 +4,8 @@
 // sha this client ships with. `npm run gen:api` writes it (--write); `npm run check` fails on any
 // difference, so the types can never lag the server unnoticed.
 //
-// The pair: CONSOLE_REPO (the backend tree E2E and the lander already use; default this repository
-// when it carries backend/ (the public monorepo), else the backend-mvp checkout beside the main
-// console-react checkout) at CONSOLE_BACKEND_REF (default HEAD). The contract is read from git, never the working tree, so the check names one sha.
+// The contract comes from this repository's HEAD, never a sibling checkout or local backend overrides.
+// Reading from git rather than the working tree binds the generated types to one committed contract.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -19,18 +18,10 @@ const GEN = path.join(ROOT, "node_modules/.bin/openapi-typescript");
 
 const git = (repo, ...args) => spawnSync("git", ["-C", repo, ...args], { encoding: "utf8", maxBuffer: 1 << 28 });
 
-export function defaultRepo() {
-  if (process.env.CONSOLE_REPO) return path.resolve(process.env.CONSOLE_REPO);
-  if (existsSync(path.join(ROOT, SPEC))) return ROOT;
-  // A worktree's main checkout is the parent of git's common dir.
-  const common = git(ROOT, "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.trim();
-  return path.resolve(path.dirname(common || path.join(ROOT, ".git")), "../frontend/backend-mvp");
-}
-
 // Returns { ok, message }. Every unknown (no repo, no ref, no spec, generator failure) is a failure.
 export function checkApiSchema({ repo, ref = "HEAD", out, write = false }) {
-  const fix = `regenerate: CONSOLE_REPO=<backend tree> CONSOLE_BACKEND_REF=<sha> npm run gen:api`;
-  if (!existsSync(repo)) return { ok: false, message: `backend repo not found at ${repo} (set CONSOLE_REPO)` };
+  const fix = "regenerate: npm run gen:api";
+  if (!existsSync(repo)) return { ok: false, message: `backend repo not found at ${repo}` };
   const sha = git(repo, "rev-parse", "--verify", `${ref}^{commit}`);
   if (sha.status !== 0) return { ok: false, message: `backend ref ${ref} does not resolve in ${repo}: ${sha.stderr.trim()}` };
   const at = sha.stdout.trim();
@@ -65,8 +56,7 @@ export function checkApiSchema({ repo, ref = "HEAD", out, write = false }) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const r = checkApiSchema({
-    repo: defaultRepo(),
-    ref: process.env.CONSOLE_BACKEND_REF || "HEAD",
+    repo: ROOT,
     out: path.join(ROOT, "packages/api/src/schema.d.ts"),
     write: process.argv.includes("--write"),
   });

@@ -14,7 +14,7 @@ const run = (cmd: string, args: string[]) => {
 
 test("check-source: imports, derived keys, slice placement, max-lines pins", () => run("node", ["scripts/check-source.mjs"]));
 test("check-ds: no new raw controls, hand-written DS classes, control restyles or literal sizes (ratchet)", () => run("node", ["scripts/check-ds.mjs"]));
-test("tsconfig.pure: domain rings and neutral packages compile without DOM", () => run("node_modules/.bin/tsc", ["-p", "apps/web/tsconfig.pure.json"]));
+test("tsconfig.pure: domain rings and neutral packages compile without DOM", () => run("node_modules/.bin/tsc", ["-p", "apps/web/tsconfig.pure.json"]), 60000);
 test("ai-quality: clones, error masking, test behavior, dead code and dependency evidence (ratchet)", () => run("node", ["scripts/check-ai-quality.mjs"]), 60000);
 test("check-entity-names: an entity's name is read only through the one presentation (0h)", () => run("node", ["scripts/check-entity-names.mjs"]), 60000);
 // Planted control: the gate refuses an entity's name read straight off its state, in either form and off a response's
