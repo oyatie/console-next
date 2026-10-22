@@ -70,6 +70,14 @@ impl PgOrgStore {
                     return Err(PgOrgError::Domain(KernelError::not_found("user not found")));
                 };
                 let before = fetch_user_tx(tx, user_id).await?;
+                // Every caller, including non-HTTP callers, must use the approval transaction.
+                if employee_id.is_some_and(|requested| requested != before.employee_id) {
+                    return Err(KernelError::forbidden(
+                        "직원 연결 변경은 패스키 확인과 다른 담당자의 승인이 필요합니다",
+                    )
+                    .with_code("account_link_approval_required")
+                    .into());
+                }
                 let current_system_roles = normalize_system_roles(row.try_get("roles")?);
                 let current_branch_ids = fetch_user_branch_uuid_ids_tx(tx, user_id).await?;
                 let previous_assignments = fetch_policy_role_assignments_tx(tx, user_id).await?;

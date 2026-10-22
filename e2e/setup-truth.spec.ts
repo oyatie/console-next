@@ -176,17 +176,17 @@ test("after go-live the only ops holder is asked for a second passkey on Home an
   expect(Math.abs((await governed.boundingBox())!.y - before)).toBeLessThan(2); // was 96.5 px
   await startOperations(admin);
 
-  // people-self-17: the card says how the ops account gets back in: nobody can issue it a new code.
+  // people-self-17: the card says how the ops account gets back in: governed ops recovery through the vendor.
   const home = admin.getByRole("region", { name: "다른 기기에 패스키 하나 더" });
   await expect(home).toBeVisible();
-  await expect(home).toContainText("운영 계정은 다른 사람이 로그인 코드를 다시 발급해 줄 수 없어");
+  await expect(home).toContainText("공급사에 본인 확인 후 운영 계정 복구를 요청하고 대기 기간을 거쳐야 합니다");
   await expectAccessible(admin, "Home after go-live: second passkey");
   await shot(admin, "after-home-operating-second-passkey");
 
   await go(admin, "/account");
   await expect(admin.getByRole("heading", { name: "내 계정", level: 1 })).toBeVisible();
   const keys = admin.getByRole("region", { name: "패스키", exact: true });
-  const warning = keys.getByText(/운영 계정은 다른 사람이 로그인 코드를 다시 발급해 줄 수 없어/);
+  const warning = keys.getByText(/공급사에 본인 확인 후 운영 계정 복구를 요청하고 대기 기간을 거쳐야 합니다/);
   await expect(warning).toHaveCount(1);
   await expect(warning).toBeVisible();
   await expect(admin.getByRole("region", { name: "다른 기기에 패스키 하나 더" })).toHaveCount(0);

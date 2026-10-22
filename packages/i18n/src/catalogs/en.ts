@@ -1,3 +1,4 @@
+import { enOpsRecovery } from "./en/ops-recovery";
 import { enStatutory } from "./en/statutory";
 import { enRequestOutcome } from "./en/request-outcome";
 import type { ScreenMessageId } from "./ko";
@@ -216,4 +217,5 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enEmpRec,
   ...enEmpDoc,
   ...enPeopleJump,
+  ...enOpsRecovery,
 };

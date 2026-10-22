@@ -1,7 +1,7 @@
 import createClient from "openapi-fetch";
 // the requested entity reads and commands laid over the generated paths until each is served (see pending/entity.ts).
 import type { AllPaths as paths } from "./pending/entity";
-import { ApiError, interactionHeaders, languageHeader, noteServerDate, refresh, session } from "./session";
+import { ApiError, interactionHeaders, languageHeader, noteServerDate, reauthenticated, refresh, session } from "./session";
 import { setPlatform, type Platform } from "./platform";
 
 const withBearer = (req: Request) => {
@@ -20,6 +20,7 @@ const NO_REFRESH = ["/api/v1/auth/token/refresh", "/api/v1/auth/otp/redeem", "/a
  * A refresh that fails for a network error, 429 or 5xx rejects like a network error (the session stays).
  */
 export async function authFetch(input: Request): Promise<Response> {
+  const principal = session.principal;
   const path = new URL(input.url).pathname;
   const writable = Boolean(session.token || input.headers.get("authorization")) && path.startsWith("/api/v1/") && !["GET", "HEAD", "OPTIONS"].includes(input.method);
   const request = new Request(input);
@@ -30,9 +31,14 @@ export async function authFetch(input: Request): Promise<Response> {
     let res = await fetch(withBearer(request));
     noteServerDate(res);
     const stepUp = res.status === 401 && ApiError.fromBody(res, await res.clone().json().catch(() => null)).code.includes("step_up");
-    if (res.status === 401 && !stepUp && !NO_REFRESH.some((p) => path.startsWith(p)) && await refresh()) {
-      res = await fetch(withBearer(retry));
-      noteServerDate(res);
+    if (res.status === 401 && !stepUp && !NO_REFRESH.some((p) => path.startsWith(p))) {
+      const renewed = await refresh();
+      // A 401 refused the write before application. Keep its frozen body/key while recovery owns the screen.
+      const resumed = !renewed && writable && principal && session.lost && await reauthenticated(principal, input.signal);
+      if ((renewed || resumed) && session.principal === principal) {
+        res = await fetch(withBearer(retry));
+        noteServerDate(res);
+      }
     }
     // Resolve interrupted/malformed JSON while the transport still owns the intent key.
     if (key && res.status !== 204 && res.headers.get("content-type")?.includes("application/json")) await res.clone().json();

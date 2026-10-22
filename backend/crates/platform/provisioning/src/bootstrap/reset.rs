@@ -49,135 +49,149 @@ impl BootstrapCredentialStore {
     ) -> Result<BootstrapCredentialIssue, ProvisioningError> {
         with_audits::<_, BootstrapCredentialIssue, ProvisioningError>(pool, org, |tx| {
             Box::pin(async move {
-                require_active_account_tx(tx, org, user_id).await?;
-                // (1) Revoke ALL of the target's passkeys. RETURNING the row ids so
-                // each deletion is audited individually. The GUC armed by
-                // `with_audits` scopes this DELETE to the caller's tenant, so a user
-                // in another org matches zero rows (cross-org reset is a no-op +
-                // generic "user not found" surfaced by the REST layer's prior read).
-                let deleted = sqlx::query(
-                    r#"
-                    DELETE FROM auth_webauthn_credentials
-                    WHERE user_id = $1
-                    RETURNING id, credential_id
-                    "#,
-                )
-                .bind(user_id)
-                .fetch_all(tx.as_mut())
-                .await?;
-
-                let mut events = Vec::with_capacity(deleted.len() + 1);
-                for row in deleted {
-                    let credential_uuid: Uuid = row.try_get("id")?;
-                    let credential_id: String = row.try_get("credential_id")?;
-                    events.push(
-                        AuditEvent::new(
-                            Some(actor),
-                            AuditAction::new("auth.passkey.admin_reset")?,
-                            "auth_webauthn_credential",
-                            credential_uuid.to_string(),
-                            TraceContext::generate(),
-                            now,
-                        )
-                        .with_org(org)
-                        .with_snapshots(
-                            Some(serde_json::json!({
-                                "credential_id": credential_id,
-                                "user_id": user_id,
-                            })),
-                            None,
-                        ),
-                    );
-                }
-
-                // (2) Mint a fresh single-use OTP. ForceReset bypasses the
-                // passkey-existence rejection (the rows were just deleted in this same
-                // transaction) and revokes any stale open code so the new OTP is the
-                // user's sole valid recovery credential.
-                let issue =
-                    issue_bootstrap_if_needed_tx(tx, user_id, org, now, ttl, IssueMode::ForceReset)
-                        .await?
-                        .ok_or(ProvisioningError::ActiveBootstrapCredentialExists)?;
-
-                events.push(
-                    AuditEvent::new(
-                        Some(actor),
-                        AuditAction::new("auth.otp.issue")?,
-                        "auth_bootstrap_credential",
-                        issue.credential_id.to_string(),
-                        TraceContext::generate(),
-                        now,
-                    )
-                    .with_org(org)
-                    .with_snapshots(
-                        None,
-                        Some(serde_json::json!({
-                            "user_id": user_id,
-                            "expires_at": issue.expires_at,
-                            "reason": "admin_reset",
-                        })),
-                    ),
-                );
-
-                // (3) End every session the old passkeys created: the family
-                // revocation fails each access token's live-family check and
-                // every refresh; the generation bump fences the tokens too.
-                let revoked_families = sqlx::query(
-                    "UPDATE auth_refresh_token_families \
-                     SET revoked_at = $3, revoked_reason = 'credential_reset' \
-                     WHERE user_id = $1 AND org_id = $2 AND revoked_at IS NULL",
-                )
-                .bind(user_id)
-                .bind(*org.as_uuid())
-                .bind(now)
-                .execute(tx.as_mut())
-                .await?
-                .rows_affected();
-                sqlx::query(
-                    "UPDATE auth_refresh_tokens SET revoked_at = COALESCE(revoked_at, $3) \
-                     WHERE user_id = $1 AND org_id = $2",
-                )
-                .bind(user_id)
-                .bind(*org.as_uuid())
-                .bind(now)
-                .execute(tx.as_mut())
-                .await?;
-                sqlx::query(
-                    "INSERT INTO subject_authz_versions (org_id, user_id, version, session_generation, updated_at) \
-                     VALUES ($1, $2, 1, 1, $3) \
-                     ON CONFLICT (org_id, user_id) DO UPDATE \
-                     SET session_generation = subject_authz_versions.session_generation + 1, \
-                         updated_at = EXCLUDED.updated_at",
-                )
-                .bind(*org.as_uuid())
-                .bind(user_id)
-                .bind(now)
-                .execute(tx.as_mut())
-                .await?;
-                events.push(
-                    AuditEvent::new(
-                        Some(actor),
-                        AuditAction::new("auth.refresh.revoke_all")?,
-                        "user",
-                        user_id.to_string(),
-                        TraceContext::generate(),
-                        now,
-                    )
-                    .with_org(org)
-                    .with_snapshots(
-                        None,
-                        Some(serde_json::json!({
-                            "user_id": user_id,
-                            "reason": "credential_reset",
-                            "revoked_family_count": revoked_families,
-                        })),
-                    ),
-                );
-
-                Ok((issue, events))
+                BootstrapCredentialStore
+                    .reset_credentials_for_user_tx(tx, actor, user_id, org, now, ttl)
+                    .await
             })
         })
         .await
+    }
+
+    /// The same reset on the caller's transaction; the caller persists returned audits before commit.
+    pub async fn reset_credentials_for_user_tx(
+        &self,
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        actor: UserId,
+        user_id: Uuid,
+        org: OrgId,
+        now: OffsetDateTime,
+        ttl: Duration,
+    ) -> Result<(BootstrapCredentialIssue, Vec<AuditEvent>), ProvisioningError> {
+        require_active_account_tx(tx, org, user_id).await?;
+        // (1) Revoke ALL of the target's passkeys. RETURNING the row ids so
+        // each deletion is audited individually. The GUC armed by
+        // `with_audits` scopes this DELETE to the caller's tenant, so a user
+        // in another org matches zero rows (cross-org reset is a no-op +
+        // generic "user not found" surfaced by the REST layer's prior read).
+        let deleted = sqlx::query(
+            r#"
+        DELETE FROM auth_webauthn_credentials
+        WHERE user_id = $1
+        RETURNING id, credential_id
+        "#,
+        )
+        .bind(user_id)
+        .fetch_all(tx.as_mut())
+        .await?;
+
+        let mut events = Vec::with_capacity(deleted.len() + 1);
+        for row in deleted {
+            let credential_uuid: Uuid = row.try_get("id")?;
+            let credential_id: String = row.try_get("credential_id")?;
+            events.push(
+                AuditEvent::new(
+                    Some(actor),
+                    AuditAction::new("auth.passkey.admin_reset")?,
+                    "auth_webauthn_credential",
+                    credential_uuid.to_string(),
+                    TraceContext::generate(),
+                    now,
+                )
+                .with_org(org)
+                .with_snapshots(
+                    Some(serde_json::json!({
+                        "credential_id": credential_id,
+                        "user_id": user_id,
+                    })),
+                    None,
+                ),
+            );
+        }
+
+        // (2) Mint a fresh single-use OTP. ForceReset bypasses the
+        // passkey-existence rejection (the rows were just deleted in this same
+        // transaction) and revokes any stale open code so the new OTP is the
+        // user's sole valid recovery credential.
+        let issue = issue_bootstrap_if_needed_tx(tx, user_id, org, now, ttl, IssueMode::ForceReset)
+            .await?
+            .ok_or(ProvisioningError::ActiveBootstrapCredentialExists)?;
+
+        events.push(
+            AuditEvent::new(
+                Some(actor),
+                AuditAction::new("auth.otp.issue")?,
+                "auth_bootstrap_credential",
+                issue.credential_id.to_string(),
+                TraceContext::generate(),
+                now,
+            )
+            .with_org(org)
+            .with_snapshots(
+                None,
+                Some(serde_json::json!({
+                    "user_id": user_id,
+                    "expires_at": issue.expires_at,
+                    "reason": "admin_reset",
+                })),
+            ),
+        );
+
+        // (3) End every session the old passkeys created: the family
+        // revocation fails each access token's live-family check and
+        // every refresh; the generation bump fences the tokens too.
+        let revoked_families = sqlx::query(
+            "UPDATE auth_refresh_token_families \
+         SET revoked_at = $3, revoked_reason = 'credential_reset' \
+         WHERE user_id = $1 AND org_id = $2 AND revoked_at IS NULL",
+        )
+        .bind(user_id)
+        .bind(*org.as_uuid())
+        .bind(now)
+        .execute(tx.as_mut())
+        .await?
+        .rows_affected();
+        sqlx::query(
+            "UPDATE auth_refresh_tokens SET revoked_at = COALESCE(revoked_at, $3) \
+         WHERE user_id = $1 AND org_id = $2",
+        )
+        .bind(user_id)
+        .bind(*org.as_uuid())
+        .bind(now)
+        .execute(tx.as_mut())
+        .await?;
+        sqlx::query(
+        "INSERT INTO subject_authz_versions (org_id, user_id, version, session_generation, updated_at) \
+         VALUES ($1, $2, 1, 1, $3) \
+         ON CONFLICT (org_id, user_id) DO UPDATE \
+         SET session_generation = subject_authz_versions.session_generation + 1, \
+             updated_at = EXCLUDED.updated_at",
+    )
+    .bind(*org.as_uuid())
+    .bind(user_id)
+    .bind(now)
+    .execute(tx.as_mut())
+    .await?;
+        events.push(
+            AuditEvent::new(
+                Some(actor),
+                AuditAction::new("auth.refresh.revoke_all")?,
+                "user",
+                user_id.to_string(),
+                TraceContext::generate(),
+                now,
+            )
+            .with_org(org)
+            .with_snapshots(
+                None,
+                Some(serde_json::json!({
+                    "user_id": user_id,
+                    "reason": "credential_reset",
+                    "revoked_family_count": revoked_families,
+                })),
+            ),
+        );
+
+        Ok((issue, events))
     }
 
     /// Cross-device SELF passkey-enrollment handoff: mint a fresh single-use,

@@ -14,6 +14,7 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::ChangeReader;
 use axum::Router;
 use axum::extract::State;
 use axum::http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header};
@@ -77,7 +78,7 @@ impl SseState {
         deadline: Instant,
         from: StreamFrom,
     ) -> Response {
-        open_stream(self, reader, String::new(), deadline, from)
+        open_stream(self, reader.into(), String::new(), deadline, from)
             .await
             .unwrap_or_else(IntoResponse::into_response)
     }
@@ -134,7 +135,7 @@ fn last_event_id(headers: &HeaderMap) -> Option<i64> {
 
 async fn open_stream(
     state: &SseState,
-    reader: Principal,
+    reader: ChangeReader,
     token: String,
     deadline: Instant,
     from: StreamFrom,
@@ -174,7 +175,7 @@ async fn open_stream(
 /// the per-user count and the hub slot.
 struct Live {
     rest: RealtimeRestState,
-    reader: Arc<Principal>,
+    reader: Arc<ChangeReader>,
     token: String,
     deadline: Instant,
     recheck: Recheck,

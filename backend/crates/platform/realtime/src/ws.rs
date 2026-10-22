@@ -5,6 +5,7 @@
 
 use std::time::Duration;
 
+use crate::ChangeReader;
 use axum::Router;
 use axum::extract::ws::{CloseFrame, Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, State};
@@ -12,7 +13,6 @@ use axum::http::HeaderMap;
 use axum::response::{IntoResponse, Response};
 use axum::routing::any;
 use console_kernel_core::MessageId;
-use console_platform_authz::Principal;
 use serde::Deserialize;
 
 use crate::auth::{RealtimeApiError, bearer_token, reader_from_token};
@@ -84,7 +84,7 @@ async fn websocket_handler(
 
 async fn websocket_session(
     state: RealtimeRestState,
-    reader: Principal,
+    reader: ChangeReader,
     token: String,
     deadline: tokio::time::Instant,
     (changes, from): (bool, StreamFrom),
@@ -94,9 +94,9 @@ async fn websocket_session(
         state.hub.connect_stream(reader.clone(), from).await
     } else {
         let principal = RealtimePrincipal {
-            user_id: reader.user_id,
-            branch_scope: reader.branch_scope.clone(),
-            org_id: reader.org_id,
+            user_id: reader.user_id(),
+            branch_scope: reader.branch_scope(),
+            org_id: reader.org_id(),
         };
         match state.hub.connect(principal, from.last_message_id).await {
             Ok(connection) => connection,

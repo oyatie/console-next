@@ -99,3 +99,81 @@ pub(crate) async fn require_platform_step_up(
             ),
         })
 }
+
+/// Same enrollment/fresh assertion gate as other sensitive platform writes, with a BW-29 binding.
+pub(crate) async fn require_bound_platform_step_up(
+    state: &PlatformRestState,
+    user: console_kernel_core::UserId,
+    actor_org: OrgId,
+    org: OrgId,
+    id: Uuid,
+    command: &console_platform_provisioning::OpsRecoveryCommand,
+    envelope: Option<console_platform_auth::MobilePasskeyStepUpEnvelope>,
+) -> Result<(sqlx::Transaction<'static, sqlx::Postgres>, Uuid), PlatformError> {
+    if actor_org == OrgId::platform() {
+        require_platform_passkey(
+            state,
+            &PlatformPrincipal::new(user),
+            console_platform_request_context::PASSKEY_REQUIRED_MESSAGE,
+        )
+        .await?;
+    } else if !console_platform_auth::user_has_passkey(&state.pool, actor_org, *user.as_uuid())
+        .await
+        .map_err(|_| {
+            PlatformError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal",
+                "internal server error",
+            )
+        })?
+    {
+        return Err(PlatformError::new(
+            StatusCode::FORBIDDEN,
+            "passkey_required",
+            console_platform_request_context::PASSKEY_REQUIRED_MESSAGE,
+        ));
+    }
+    let envelope = envelope.ok_or_else(|| {
+        PlatformError::new(
+            StatusCode::UNAUTHORIZED,
+            "unauthorized",
+            "a recovery decision requires a fresh passkey assertion",
+        )
+    })?;
+    let service = state.passkey_step_up.as_ref().ok_or_else(|| {
+        PlatformError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "unavailable",
+            "passkey step-up is not configured for the platform API",
+        )
+    })?;
+    let expected = console_platform_auth::MobilePasskeyStepUpBinding {
+        action_kind: console_platform_auth::MobileStepUpActionKind::OperatorRecovery,
+        object_id: id,
+        reason_key: "passkey_step_up_operator_recovery".into(),
+        replay_attempt: None,
+        payload_hash: Some(
+            command
+                .payload_hash(org, id)
+                .map_err(PlatformError::from_provisioning)?,
+        ),
+    };
+    let mut tx = state.pool.begin().await.map_err(|_| {
+        PlatformError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal",
+            "internal server error",
+        )
+    })?;
+    let assertion = service
+        .verify_and_record_step_up_in_tx(&mut tx, envelope, *user.as_uuid(), &expected)
+        .await
+        .map_err(|_| {
+            PlatformError::new(
+                StatusCode::UNAUTHORIZED,
+                "unauthorized",
+                "passkey step-up failed",
+            )
+        })?;
+    Ok((tx, assertion))
+}

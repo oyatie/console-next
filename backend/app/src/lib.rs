@@ -9,6 +9,9 @@
 pub mod action_inbox;
 mod audit_chain_signer;
 pub mod cedar_parity;
+#[cfg(all(feature = "dev-auth", not(debug_assertions)))]
+compile_error!("the dev-auth feature is forbidden in non-development builds");
+
 mod coldstart_guard;
 #[cfg(feature = "workspace")]
 mod collaboration;

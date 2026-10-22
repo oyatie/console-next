@@ -1,3 +1,4 @@
+mod account_link;
 pub(crate) mod authz;
 pub(crate) mod dto;
 pub(crate) mod lifecycle;

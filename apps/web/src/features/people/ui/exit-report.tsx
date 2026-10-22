@@ -13,9 +13,9 @@ import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { Banner } from "../../../ui/banner/banner";
 import { ReasonCodeField } from "../../../reference/reason/ui/reason-code-field";
-import { reasonCodesQuery } from "../../../lib/reason-codes";
+import { reasonCodesQuery, reasonLabel } from "../../../lib/reason-codes";
+import { useDraft } from "../../../lib/react/use-draft";
 import { eventsQuery, reportExit } from "../api";
-import { whoLine } from "../present";
 import { OpsExitNote } from "./account-link-card";
 import { StepFrame } from "./exit-foot";
 import { focusFirstInvalid, useExitCommand } from "./use-exit-command";
@@ -32,17 +32,21 @@ const NOTE_MAX = 1000;
  * who has left. The exit reason is recorded once the exit is in effect (backend-followups EMP-UI 14).
  */
 export function ReportForm({ employee, onClose, onDone }: { employee: Employee; onClose: () => void; onDone: (message: string) => void }) {
-  const [date, setDate] = useState("");
-  const [note, setNote] = useState("");
-  const [reason, setReason] = useState<string | null>(null);
-  const reasonsRead = !useQuery(reasonCodesQuery("exit_reason")).isPending;
+  const reasons = useQuery(reasonCodesQuery("exit_reason"));
+  const draft = useDraft({
+    route: "/people/$id", record: employee.id, form: "exit.report",
+    initial: { date: "", note: "", reason: null as string | null },
+    text: (v) => `${t("exit.report")} · ${employee.name}\n${t("exit.field.date")}: ${v.date}\n${t("exit.field.reason")}: ${v.reason ? reasonLabel("exit_reason", v.reason, reasons.data?.items.find((r) => r.code === v.reason)) : ""}\n${t("exit.field.circumstances")}: ${v.note}`,
+  });
+  const { date, note, reason } = draft.value;
+  const reasonsRead = !reasons.isPending;
   const [tried, setTried] = useState(false);
   const formId = useId();
   const navigate = route.useNavigate();
   const run = useExitCommand({
     check: "resend",
     run: (_: void, key: string) => reportExit({ employee_id: employee.id, effective_exit_date: date, site_manager_note: note.trim(), exit_reason_code: reason ?? undefined }, key),
-    onSuccess: () => onDone(t("exit.reported", { name: employee.name })),
+    onSuccess: () => { draft.discard(); onDone(t("exit.reported", { name: employee.name })); },
   });
   const problems = { date: !date, note: !note.trim() };
   const missing = Object.values(problems).filter(Boolean).length;
@@ -59,14 +63,17 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
       sheet={{
         kicker: <><User size={12} aria-hidden />{t("lifecycle.kicker", { name: employee.name, number: employee.employee_number ?? "—", where: [employee.org_unit, employee.position].filter(Boolean).join(" · ") })}</>,
         title: t("exit.report"),
-        subtitle: t("lifecycle.now", { where: whoLine(employee) }),
         onClose,
       }}
       run={run}
       employeeId={employee.id}
       consequence={date ? t("exit.report.consequence.dated", { name: employee.name, date: when }) : t("exit.report.consequence", { name: employee.name })}
+      note={draft.problem || draft.restored ? <output>{t(draft.problem ? "draft.unavailable" : "draft.restored")}</output> : undefined}
       missing={tried ? missing : 0}
-      aside={<Button variant="ghost" onClick={onClose} disabled={run.pending}>{t("lifecycle.cancel")}</Button>}
+      aside={<>
+        {draft.restored && !draft.problem && <Button variant="ghost" onClick={draft.discard} disabled={run.pending}>{t("draft.discard")}</Button>}
+        <Button variant="ghost" onClick={onClose} disabled={run.pending}>{t("lifecycle.cancel")}</Button>
+      </>}
       primary={
         <Button type="submit" form={formId} variant="primary" disabled={run.pending}>
           {date ? t("exit.report.commit", { date: when }) : t("exit.report")}
@@ -78,10 +85,9 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
         <DateChips
           label={t("exit.field.date")}
           required
-          note={t("exit.field.date.note")}
           presets={employee.contract_end_date ? [{ label: t("exit.field.date.contractEnd"), date: employee.contract_end_date }] : []}
           value={date}
-          onChange={setDate}
+          onChange={(nextDate) => draft.set({ ...draft.value, date: nextDate })}
           showErrors={tried}
           // Decision #9: the field is the last working day; the statutory exit date and the insurance loss date are the day after.
           echo={date ? `${t("exit.field.date.statutory")} ${fmtDate(addDays(date, 1))} · ${t("exit.field.date.loss")} ${fmtDate(addDays(date, 1))}` : undefined}
@@ -105,14 +111,14 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
         {/* The one exit reason list (BW-07 exit_reason; the case's code is the register's reason). Optional: unknown now, it is
             recorded on the card after the exit. */}
         {/* Drawn once the list has landed, with the field under it: twenty chips arriving late pushed it down. */}
-        {reasonsRead && <ReasonCodeField domain="exit_reason" look="chips" required={false} label={t("exit.field.reason")} value={reason} onChange={setReason} hint={t("exit.field.reason.hint")} />}
+        {reasonsRead && <ReasonCodeField domain="exit_reason" look="chips" required={false} label={t("exit.field.reason")} value={reason} onChange={(nextReason) => draft.set({ ...draft.value, reason: nextReason })} hint={t("exit.field.reason.hint")} />}
         {reasonsRead && <Field
           label={t("exit.field.circumstances")}
           hint={t("exit.field.count", { count: note.length, max: NOTE_MAX })}
           required
           error={tried && problems.note ? t("exit.error.text") : undefined}
         >
-          {(p) => <TextArea {...p} maxLength={NOTE_MAX} value={note} onChange={(e) => setNote(e.target.value)} />}
+          {(p) => <TextArea {...p} maxLength={NOTE_MAX} value={note} onChange={(e) => draft.set({ ...draft.value, note: e.target.value })} />}
         </Field>}
       </fieldset>
     </StepFrame>

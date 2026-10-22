@@ -125,9 +125,9 @@ export const setAccountActive = async (id: string, active: boolean) =>
 export const cancelScheduledEvent = ({ x, reason }: { x: LifecycleEvent; reason: string }) =>
   unwrap(api.POST("/api/v1/employees/{id}/lifecycle-events/{event_id}/cancel", { params: { path: { id: x.employee_id, event_id: x.id } }, body: { reason } }));
 
-/** Links an account to this employee, or unlinks it (`employeeId` null). */
-export const linkAccount = (userId: string, employeeId: string | null) =>
-  unwrap(api.PATCH("/api/v1/users/{id}", { params: { path: { id: userId } }, body: { employee_id: employeeId } }));
+/** Requests or independently approves an employee link change with the actor's fresh passkey assertion. */
+export const linkAccount = async (userId: string, employeeId: string | null, requestId?: string) =>
+  unwrap(api.PATCH("/api/v1/users/{id}", { params: { path: { id: userId } }, body: { employee_id: employeeId, step_up: await assertPasskey(), account_link_request_id: requestId } }));
 
 /** Someone changed the record since it was read (a 409 on an optimistic-concurrency write). */
 export const isStale = (e: unknown) => e instanceof ApiError && e.status === 409;

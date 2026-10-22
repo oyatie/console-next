@@ -6,3 +6,15 @@ pub(crate) fn company_domain_changed(from: &str, to: &str) -> String {
         .replace("{from}", from)
         .replace("{to}", to)
 }
+
+pub(crate) fn ops_recovery_notice(action: &str) -> &'static str {
+    match action {
+        "issue" => {
+            "운영 계정(ops) 복구 코드가 발급되었습니다. 이전 패스키와 세션은 만료되었습니다. 계정에서 복구 기록을 확인하십시오."
+        }
+        "cancel" => "운영 계정(ops) 복구 요청이 취소되었습니다. 계정에서 복구 기록을 확인하십시오.",
+        _ => {
+            "운영 계정(ops) 복구 요청이 접수되었습니다. 본인이 요청하지 않았다면 계정에서 복구 요청을 취소하십시오."
+        }
+    }
+}

@@ -1,17 +1,35 @@
-import { useState } from "react";
-import { KeyRound, LogOut } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
+import { Copy, KeyRound, LogOut } from "lucide-react";
 import { lastSignInId, loginWithPasskey, logout, session } from "@console/api";
 import { t } from "@console/i18n";
 import { ActionBar } from "../ui/action-bar/action-bar";
 import { Button } from "../ui/button/button";
 import { Dialog } from "../ui/dialog";
+import { TextArea } from "../ui/field/text-area";
 import { PasskeyError } from "../lib/react/passkey-error";
-import { IDLE_EXPIRED } from "./idle";
+import { recoveryDraftText } from "../lib/react/use-draft";
+import { sessionRecovery } from "./session-recovery";
 
 /** Sign in again over the screen the session ended on; signing out instead discards what was typed. */
 export default function ReAuth() {
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
+  const reason = useSyncExternalStore(session.subscribe, () => session.ended);
+  const recovery = sessionRecovery(reason);
+  const draftText = recoveryDraftText();
+  const [copyStatus, setCopyStatus] = useState<"copied" | "copyFailed" | null>(null);
+  const [manualCopy, setManualCopy] = useState<string | null>(null);
+  const copy = async () => {
+    const text = recoveryDraftText();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("copyFailed");
+      setManualCopy(text);
+    }
+  };
   const signIn = async () => {
     setBusy(true);
     setError(null);
@@ -28,17 +46,21 @@ export default function ReAuth() {
   };
   return (
     <Dialog open title={t("idle.reauth.title")} onClose={() => undefined} dismissable={false}>
-      {/* Why it ended, from the server's refusal: inactivity, or anything else (signed out elsewhere, ended). */}
-      <span>{t(session.ended === IDLE_EXPIRED ? "idle.reauth.idle" : "idle.reauth.body")}</span>
-      <span className="muted">{t("idle.reauth.other")}</span>
+      <span>{t(!draftText && !recovery.passkey ? `${recovery.message}.bare` : recovery.message)}</span>
+      {recovery.passkey && <span className="muted">{t("idle.reauth.other")}</span>}
       <PasskeyError error={error} />
+      <span role="status">{draftText && copyStatus ? t(`idle.reauth.${copyStatus}`) : null}</span>
+      {manualCopy !== null && <TextArea aria-label={t("idle.reauth.copy")} readOnly value={manualCopy} onFocus={(e) => e.target.select()} />}
       <ActionBar
         actions={
           <>
             {/* The dialog opens on its first control: signing in again, never signing out. */}
-            <Button variant="primary" disabled={busy} onClick={() => void signIn()}>
+            {recovery.passkey && <Button variant="primary" disabled={busy} onClick={() => void signIn()}>
               <KeyRound size={16} aria-hidden /> {t("idle.reauth.signIn")}
-            </Button>
+            </Button>}
+            {draftText && <Button onClick={() => void copy()}>
+              <Copy size={16} aria-hidden /> {t("idle.reauth.copy")}
+            </Button>}
             <Button variant="ghost" disabled={busy} onClick={() => void logout()}>
               <LogOut size={16} aria-hidden /> {t("idle.reauth.signOut")}
             </Button>

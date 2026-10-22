@@ -5,11 +5,11 @@
 
 use std::time::Duration;
 
+use crate::ChangeReader;
 use console_messenger_adapter_postgres::PgMessengerStore;
 use console_messenger_application::MessageQuery;
 use console_notifications_adapter_postgres::PgNotificationStore;
 use console_notifications_application::NotificationQuery;
-use console_platform_authz::Principal;
 use console_platform_request_context::scope_org;
 use tokio::time::Instant;
 
@@ -38,7 +38,7 @@ impl Recheck {
 pub(crate) async fn prepare(
     state: &RealtimeRestState,
     token: &str,
-    reader: &Principal,
+    reader: &ChangeReader,
     recheck: &mut Recheck,
     hint: RealtimeEvent,
 ) -> Result<RealtimeEvent, RealtimeApiError> {
@@ -47,9 +47,9 @@ pub(crate) async fn prepare(
         RealtimeEvent::Hello { .. } | RealtimeEvent::Change { .. } | RealtimeEvent::Reset { .. }
     ) {
         let expected = RealtimePrincipal {
-            user_id: reader.user_id,
-            branch_scope: reader.branch_scope.clone(),
-            org_id: reader.org_id,
+            user_id: reader.user_id(),
+            branch_scope: reader.branch_scope(),
+            org_id: reader.org_id(),
         };
         return materialize_event(state, token, &expected, hint).await;
     }

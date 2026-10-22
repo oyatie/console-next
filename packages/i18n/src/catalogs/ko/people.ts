@@ -108,6 +108,8 @@ export const koPeople = {
   "people.homeBranch.branch": "지점",
   "people.homeBranch.assigned": "소속 지점을 {branch|으로로} 지정했습니다",
   "people.account.title": "로그인 계정",
+  "people.account.waiting": "확인 대기",
+  "people.account.pending": "확인 대기: {account} → {employee} · 요청자 {requester}",
   "people.account.unlink": "계정 연결 해제",
   "people.account.invite": "계정 초대",
   "people.account.link": "계정 연결",

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tokio::sync::{Mutex, mpsc, watch};
 
-use console_platform_authz::Principal;
+use crate::ChangeReader;
 
 use crate::event::MessageCursor;
 use crate::{DEFAULT_CONNECTION_BUFFER, RealtimeError, RealtimeEvent};
@@ -121,7 +121,7 @@ pub(crate) struct ConnectionSlot {
     pub(crate) disconnect_tx: mpsc::UnboundedSender<DisconnectNotice>,
     /// Set only on change-stream slots (`connect_stream`): the authorization
     /// principal the read filter decides with.
-    pub(crate) reader: Option<Arc<Principal>>,
+    pub(crate) reader: Option<Arc<ChangeReader>>,
     pub(crate) delivery_state: ConnectionDeliveryState,
     pub(crate) replay_task: Option<tokio::task::AbortHandle>,
 }
@@ -204,7 +204,7 @@ impl PgRealtimeHub {
     pub(crate) async fn register(
         self: &Arc<Self>,
         principal: RealtimePrincipal,
-        reader: Option<Arc<Principal>>,
+        reader: Option<Arc<ChangeReader>>,
         plan: Option<ReplayPlan>,
     ) -> RealtimeConnection {
         let capacity = self.config.connection_buffer.max(1);

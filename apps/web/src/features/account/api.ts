@@ -1,4 +1,4 @@
-import { api, assertPasskey, consentStatus, logout, registerPasskey, session, unwrap } from "@console/api";
+import { api, assertBoundPasskey, assertPasskey, consentStatus, logout, registerPasskey, session, unwrap } from "@console/api";
 import type { components } from "@console/api/schema";
 import { get, read } from "../../lib/query";
 import { landed } from "../../lib/react/landed";
@@ -40,3 +40,9 @@ export type MyAccess = { is_ops: boolean; entries: MyReach[] };
 const getUntyped = api.GET as unknown as (path: string) => Promise<{ data?: MyAccess; error?: unknown; response: Response }>;
 /** What I may do: every grant I hold that counts, by domain and level (My access). */
 export const myAccessQuery = read("/api/v1/access/me", () => unwrap(getUntyped("/api/v1/access/me")));
+
+export const tenantRecoveryQuery = get("/api/v1/tenant/ops-recovery");
+export const cancelTenantRecovery = async (orgId: string, id: string, reason: string, key: string) => unwrap(api.POST("/api/v1/tenant/ops-recovery/{rid}/cancel", {
+  params: { path: { rid: id }, header: { "Idempotency-Key": key } },
+  body: { reason, step_up: await assertBoundPasskey("OPERATOR_RECOVERY", id, JSON.stringify([orgId, id, "cancel", "", "", "", "", reason])) },
+}));

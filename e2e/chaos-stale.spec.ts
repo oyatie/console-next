@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { apiAs, soloTenant } from "./chaos";
+import { apiAs, faultNext, soloTenant } from "./chaos";
 import { firstSignIn, go, kstDate, option } from "./flows";
 import { inviteAccount } from "./access-flows";
 import { reviseFact } from "./helpers/entity";
@@ -73,7 +73,7 @@ test("a session that ends mid-edit records nothing, re-auths in place and keeps 
   const read = apiAs(admin);
   await setupCompany(admin, "세션만료", "본사");
   const id = new URL(admin.url()).pathname.split("/").pop()!;
-  const { edit, input } = await change(admin, "entity", "대표전화", "02-333-0003");
+  const { edit } = await change(admin, "entity", "대표전화", "02-333-0003");
   const mainPhone = async () => {
     const revisions = await read<{ items: { changes: { field: string }[] }[] }>(`/api/v1/legal-entities/${id}/revisions`);
     return revisions.items.filter((r) => r.changes.some((c) => c.field === "main_phone")).length;
@@ -86,10 +86,12 @@ test("a session that ends mid-edit records nothing, re-auths in place and keeps 
   await expect(dialog).toContainText("작성 중인 내용은 이 화면에 그대로 있으니");
   expect(await mainPhone()).toBe(0);
   await admin.unrouteAll();
+  await faultNext(admin, /\/api\/v1\/legal-entities\/[^/]+$/, "slow", "PUT");
+  const saved = admin.waitForResponse((r) => r.request().method() === "PUT" && new URL(r.url()).pathname === `/api/v1/legal-entities/${id}`);
   await dialog.getByRole("button", { name: "패스키로 다시 로그인" }).click();
   await expect(dialog).toBeHidden();
-  await expect(input).toHaveValue("02-333-0003");
-  await edit.getByRole("button", { name: "변경 기록" }).click();
+  // Re-auth finishes before the interrupted save; await the server, then its UI, without a second press.
+  expect((await saved).ok()).toBe(true);
   await expect(edit).toBeHidden();
   await go(admin, `/org/entities/${id}`);
   await expect(admin.getByRole("heading", { name: /세션만료/, level: 1 })).toBeVisible();

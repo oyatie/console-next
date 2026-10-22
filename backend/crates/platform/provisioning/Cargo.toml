@@ -8,6 +8,7 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+console-settings-domain = { path = "../../settings/domain" }
 console-kernel-core = { workspace = true }
 console-platform-authz = { workspace = true }
 console-platform-auth = { path = "../auth" }

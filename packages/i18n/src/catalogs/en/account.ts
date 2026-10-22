@@ -41,7 +41,7 @@ export const enAccount: Partial<Record<keyof typeof koAccount, string>> = {
   "account.consent.pending": "Not accepted yet",
   "account.consent.failed": "Could not load consents",
   "account.second.title": "One more passkey, on another device",
-  "account.second.whyOps": "You have one passkey. Nobody can issue the ops account a new sign-in code, so losing this device locks this account out. Register one more on another device, such as a phone or a security key.",
+  "account.second.whyOps": "You have one passkey. If you lose this device, request ops account recovery from the vendor after identity proofing and wait through the recovery hold. Register one more passkey on another device, such as a phone or security key.",
   "account.second.why": "You have one passkey. If you lose this device, you need a new sign-in code from whoever manages access. With one more on another device you can sign in right away.",
   "account.second.add": "Register a second passkey",
   "account.domain.title": "Company domain",

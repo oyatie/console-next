@@ -33,7 +33,7 @@ test("my account: add a second passkey, sign in with it, remove the first", { ta
   await expect(main.getByRole("button", { name: "이 기기에서 로그아웃" })).toHaveAccessibleName("이 기기에서 로그아웃");
   const passkeys = admin.getByRole("table", { name: "패스키" });
   await expect(passkeys.getByRole("row")).toHaveCount(2); // header + the enrolled passkey
-  await expect(main.getByText(/운영 계정은 다른 사람이 로그인 코드를 다시 발급해 줄 수 없어/)).toHaveCount(1);
+  await expect(main.getByText(/공급사에 본인 확인 후 운영 계정 복구를 요청하고 대기 기간을 거쳐야 합니다/)).toHaveCount(1);
   // Passkeys have no stored name: each is named by its registration day.
   const only = passkeys.getByRole("button", { name: /등록 패스키 삭제$/ });
   // The last passkey's removal stays focusable and says why, with the way out next to it.

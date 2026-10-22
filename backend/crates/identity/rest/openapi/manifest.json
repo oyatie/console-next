@@ -42,6 +42,19 @@
     "/api/platform/orgs/{id}/admin-otp": [
       "post"
     ],
+    "/api/platform/orgs/{id}/ops-recovery": [
+      "get",
+      "post"
+    ],
+    "/api/platform/orgs/{id}/ops-recovery/{rid}/approve": [
+      "post"
+    ],
+    "/api/platform/orgs/{id}/ops-recovery/{rid}/cancel": [
+      "post"
+    ],
+    "/api/platform/orgs/{id}/ops-recovery/{rid}/issue": [
+      "post"
+    ],
     "/api/platform/tenant-context": [
       "post"
     ],
@@ -302,6 +315,12 @@
       "get",
       "post"
     ],
+    "/api/v1/tenant/ops-recovery": [
+      "get"
+    ],
+    "/api/v1/tenant/ops-recovery/{rid}/cancel": [
+      "post"
+    ],
     "/api/v1/users": [
       "get",
       "post"
@@ -412,6 +431,10 @@
     "MobilePasskeyStepUpStartResponse",
     "MyWorkbenchResponse",
     "OpsAccount",
+    "OpsRecoveryCancelRequest",
+    "OpsRecoveryOpenRequest",
+    "OpsRecoveryRequest",
+    "OpsRecoveryState",
     "OpsUsageEntry",
     "OtpRedeemRequest",
     "OtpRedeemResponse",
@@ -522,6 +545,7 @@
     "ErrorBody",
     "FieldError",
     "MobilePasskeyStepUpBinding",
+    "MobilePasskeyStepUpEnvelope",
     "MobileStepUpActionKind",
     "OrgChangeApprovalRoleKey",
     "OrgChangeApprovalStep",

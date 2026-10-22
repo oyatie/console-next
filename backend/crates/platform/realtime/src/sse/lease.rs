@@ -3,9 +3,9 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, PoisonError};
 
+use crate::ChangeReader;
 use axum::http::StatusCode;
 use console_kernel_core::{OrgId, UserId};
-use console_platform_authz::Principal;
 
 use super::SseState;
 use crate::PgRealtimeHub;
@@ -23,8 +23,11 @@ pub(super) struct Lease {
 impl Lease {
     /// Refuses one stream over the cap. Never evicts the oldest: two visible
     /// tabs would evict each other in a loop (spec F13).
-    pub(super) fn acquire(state: &SseState, reader: &Principal) -> Result<Self, RealtimeApiError> {
-        let key = (reader.org_id, reader.user_id);
+    pub(super) fn acquire(
+        state: &SseState,
+        reader: &ChangeReader,
+    ) -> Result<Self, RealtimeApiError> {
+        let key = (reader.org_id(), reader.user_id());
         let mut streams = state.streams.lock().unwrap_or_else(PoisonError::into_inner);
         let open = streams.get(&key).copied().unwrap_or(0);
         if open >= state.config.max_streams_per_user {

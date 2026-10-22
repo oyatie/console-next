@@ -48,11 +48,10 @@ test("vendor reissues a lost first-admin code; an admin resets a user's passkeys
   await stale.context().close();
 
   const admin = await firstSignIn(browser, code, undefined, true);
-  // Once the admin has a passkey the server refuses a reissue for good: the button turns into a stated block.
-  await vendorStepUp(async () => {
-    await tenant.getByRole("button", { name: "패스키로 확인하고 관리자 코드 재발급" }).click();
-    await expect(tenant.getByRole("button", { name: "패스키로 확인하고 관리자 코드 재발급" })).toHaveAttribute("aria-disabled", "true");
-  });
+  // A fresh read disables reissue before any refused press, and names the governed recovery path.
+  await v.reload();
+  await v.getByRole("row").filter({ hasText: slug }).click();
+  await expect(tenant.getByRole("button", { name: "패스키로 확인하고 관리자 코드 재발급" })).toHaveAttribute("aria-disabled", "true");
   await expect(tenant).toContainText("관리자가 이미 패스키를 등록해 코드를 다시 발급하지 않습니다");
   await expectAccessible(v, "reissue refused after enrollment");
   const exec = await firstSignIn(browser, await inviteAccount(admin, "이임원", "oversight", true), undefined, true);

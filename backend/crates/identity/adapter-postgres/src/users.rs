@@ -1,3 +1,4 @@
+mod account_link;
 mod activate;
 mod create;
 mod deactivate;

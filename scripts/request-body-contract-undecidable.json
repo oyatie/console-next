@@ -164,7 +164,7 @@
       "body_type": "UpdateUserRequest",
       "body_struct_file": "backend/crates/identity/rest/src/users/dto.rs",
       "body_struct": "UpdateUserRequest",
-      "schema_sha256": "f2d33c736f0c94bf302438b7deac438038ad76bde77dc8f98df0e016bebfae16",
+      "schema_sha256": "77f75b43e219ec0b74edf0c205ca1d64c3497dfc7fcdb661ea9277c6ea5af560",
       "status": "resolved"
     },
     {
@@ -884,7 +884,7 @@
       "body_type": "ConfirmEmployeeExitCaseRequest",
       "body_struct_file": "backend/crates/hr/adapter-postgres/src/exits/types.rs",
       "body_struct": "ConfirmEmployeeExitCaseRequest",
-      "schema_sha256": "a30b851287ed44ffe2b4fc6caba60d79258729a4cb1bd28d44891e6971898cb0",
+      "schema_sha256": "fa17b7ed22b3404d35a9b84e9b163bc54b9b95dd11cae72d83656e941e0c7244",
       "status": "resolved"
     },
     {

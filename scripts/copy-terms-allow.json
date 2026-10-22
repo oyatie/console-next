@@ -2,6 +2,11 @@
   "//": "Legitimate uses of words the copy gate bans (scripts/check-copy.mjs rule 3, docs/design/copy-conventions.md). One entry per id and rule, with its reason; an entry that no longer matches fails, so the list only shrinks. An id ending in * covers a prefix.",
   "allow": [
     {
+      "id": "draft.discard",
+      "rule": "verb.label",
+      "reason": "dynamic-ux shared draft hook explicitly specifies the restore action 「버리기」"
+    },
+    {
       "id": "import.site.chip",
       "rule": "term.사업장",
       "reason": "고객 현장 is the client's site in outsourcing, deliberately not a 사업장 (copy-conventions §8)"

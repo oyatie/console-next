@@ -247,6 +247,10 @@ async fn linked_member_reads_only_own_attendance_console_data(pool: PgPool) {
 // Helpers (mirror workflow_runtime_instance_api.rs).
 // ===========================================================================
 
+#[path = "hr_attendance_self_read/account_link.rs"]
+mod account_link;
+use account_link::seed_employee;
+
 async fn seed_user(pool: &PgPool, user_id: UserId, role: &str) {
     sqlx::query("INSERT INTO users (id, display_name, roles, org_id) VALUES ($1, $2, $3, $4)")
         .bind(*user_id.as_uuid())
@@ -260,23 +264,7 @@ async fn seed_user(pool: &PgPool, user_id: UserId, role: &str) {
 
 /// Insert an employee and link `user_id` to it, so `GET /me` resolves a record.
 async fn seed_linked_employee(pool: &PgPool, user_id: UserId, role: &str, name: &str) -> Uuid {
-    let employee_id = Uuid::new_v4();
-    sqlx::query(
-        r#"
-        INSERT INTO employees (
-            id, org_id, company, name, employee_number, source_filename,
-            source_sheet, source_row, source_key, raw_row, source_metadata
-        )
-        VALUES ($1, $2, '테스트', $3, NULL, 'employees.xlsx', '직원', 2, $4, '{}', '{}')
-        "#,
-    )
-    .bind(employee_id)
-    .bind(*OrgId::one().as_uuid())
-    .bind(name)
-    .bind(format!("employee-row-{name}"))
-    .execute(pool)
-    .await
-    .unwrap();
+    let employee_id = seed_employee(pool, name).await;
     sqlx::query(
         "INSERT INTO users (id, display_name, roles, org_id, employee_id) VALUES ($1, $2, $3, $4, $5)",
     )

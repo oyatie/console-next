@@ -12,6 +12,14 @@
               type: string
             message:
               type: string
+            support_ref:
+              type: string
+              format: uuid
+              description: Support reference for a governed ops recovery refusal.
+            hold_until:
+              type: string
+              format: date-time
+              description: Hold boundary on an ops_recovery_hold_active refusal.
             trace_id:
               type: string
               description: Present on a 5xx. The server-side trace id to quote to operators; the message is then generic and the detail stays in the server log.

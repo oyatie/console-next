@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [platform]
+operationId: readPlatformOpsRecovery
+summary: Governed same-holder ops recovery
+description: Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+responses:
+  '200':
+    description: Current recovery state or command receipt.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [request, state, ops_enrolled, second_operator_available, active_accounts, recovery_available, ops_has_passkey, hold_hours, code_ttl_minutes]
+          properties:
+            request:
+              nullable: true
+              allOf:
+              - $ref: '#/components/schemas/OpsRecoveryRequest'
+            state:
+              nullable: true
+              allOf:
+              - $ref: '#/components/schemas/OpsRecoveryState'
+            recovery_available:
+              type: boolean
+            ops_has_passkey:
+              type: boolean
+            ops_enrolled:
+              type: boolean
+            second_operator_available:
+              type: boolean
+            active_accounts:
+              type: integer
+            hold_hours:
+              type: integer
+            code_ttl_minutes:
+              type: integer
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    description: Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers.

@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [platform]
+operationId: openPlatformOpsRecovery
+summary: Governed same-holder ops recovery
+description: Two operators with distinct passkeys, controller authorization, tenant notice, and a governed hold before a single-use short-lived code. Evidence is omitted from tenant reads. Every write requires an OPERATOR_RECOVERY step-up bound to this request and command.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/OpsRecoveryOpenRequest'
+responses:
+  '200':
+    description: Current recovery state or command receipt.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [request_id, expires_at]
+          properties:
+            request_id:
+              type: string
+              format: uuid
+            otp:
+              type: string
+              description: Shown once; omitted on an idempotent replay. Never logged or audited.
+            expires_at:
+              type: string
+              format: date-time
+              nullable: true
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    description: Invalid evidence or reason; ops_recovery_evidence_identifier refuses resident registration numbers.

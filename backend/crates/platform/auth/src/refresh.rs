@@ -8,6 +8,8 @@ use uuid::Uuid;
 use crate::AuthError;
 use crate::refresh_audit::{insert_audit_in_tx, insert_refusal_audit_in_tx};
 
+mod revocation;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RefreshToken(String);
 
@@ -49,6 +51,12 @@ pub enum RefreshTokenUseError {
     /// The family ended for inactivity (INF-03): `session_idle_expired`.
     #[error("session ended for inactivity")]
     IdleExpired,
+    #[error("passkeys were reset")]
+    PasskeyReset,
+    #[error("account was deactivated")]
+    AccountDeactivated,
+    #[error("session was signed out elsewhere")]
+    SignedOutElsewhere,
     #[error("refresh token storage error")]
     Storage,
 }
@@ -354,22 +362,14 @@ impl RefreshTokenStore {
         let family_revoked_at: Option<OffsetDateTime> = row.try_get("family_revoked_at")?;
         let family_created_at: OffsetDateTime = row.try_get("family_created_at")?;
 
-        if family_revoked_at.is_some() {
-            let reason: Option<String> = row.try_get("family_revoked_reason")?;
-            return Err(
-                if reason.as_deref() == Some(crate::idle::IDLE_TIMEOUT_REASON) {
-                    RefreshTokenUseError::IdleExpired
-                } else {
-                    RefreshTokenUseError::FamilyRevoked
-                }
-                .into(),
-            );
+        // Deactivation supersedes an earlier reset: signing in can no longer recover this account.
+        if active != Some(true) {
+            return Err(RefreshTokenUseError::AccountDeactivated.into());
         }
 
-        // Preserve a real revoked-family result for offboarded Accounts. An
-        // inactive Account with a remaining family still cannot mutate or rotate.
-        if active != Some(true) {
-            return Err(RefreshTokenUseError::InvalidToken.into());
+        if family_revoked_at.is_some() {
+            let reason: Option<String> = row.try_get("family_revoked_reason")?;
+            return Err(RefreshTokenUseError::revoked(reason.as_deref()).into());
         }
 
         // Absolute session-lifetime cap (NIST 800-63B AAL2 reauthentication):

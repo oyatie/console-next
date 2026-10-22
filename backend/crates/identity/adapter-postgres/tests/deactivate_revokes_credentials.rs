@@ -10,7 +10,7 @@
 //!   * the user's WebAuthn credential rows are GONE (passkeys can't authenticate),
 //!   * every refresh-token family + token is revoked (refresh fails closed,
 //!     verified by a real `RefreshTokenStore::rotate` that now returns
-//!     `FamilyRevoked`), and
+//!     `AccountDeactivated`), and
 //!   * each sub-action is audited.
 
 use console_identity_adapter_postgres::PgOrgStore;
@@ -187,7 +187,7 @@ async fn deactivate_revokes_passkeys_and_sessions_as_runtime_role(owner_pool: Pg
     assert_eq!(removed, vec!["cred-offboard-1".to_string()]);
 
     // 2) The refresh family is dead: rotating the issued token now fails closed
-    //    with FamilyRevoked (a real rotation, not a DB peek).
+    //    with AccountDeactivated (a real rotation, not a DB peek).
     let rotate = RefreshTokenStore
         .rotate(
             &rt_pool,
@@ -198,7 +198,7 @@ async fn deactivate_revokes_passkeys_and_sessions_as_runtime_role(owner_pool: Pg
         )
         .await
         .expect_err("a deactivated user's refresh token must not rotate");
-    assert_eq!(rotate, RefreshTokenUseError::FamilyRevoked);
+    assert_eq!(rotate, RefreshTokenUseError::AccountDeactivated);
 
     // 3) Each sub-action is audited (deactivate + passkey revoke + session revoke).
     assert_eq!(

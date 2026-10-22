@@ -1,3 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
+import { recoveryQuery } from "../api";
+import { CommandError } from "../../../lib/react/command-error";
+import { Skeleton } from "../../../ui/skeleton/skeleton";
+import { OpsRecovery } from "./ops-recovery";
 import { useState } from "react";
 import { X } from "lucide-react";
 import { t } from "@console/i18n";
@@ -29,6 +34,7 @@ export function TenantPanel({ org, health, enrolled, onEnrolled, onIssued, onRec
   onRemoved: (r: Recorded) => void;
   onClose: () => void;
 }) {
+  const recovery = useQuery(recoveryQuery(org.id));
   const [domainOpen, setDomainOpen] = useState(false);
   const [move, setMove] = useState<Move | null>(null);
   const [removing, setRemoving] = useState<"guarded" | "force" | null>(null);
@@ -63,8 +69,13 @@ export function TenantPanel({ org, health, enrolled, onEnrolled, onIssued, onRec
 
       <Button onClick={() => setDomainOpen(true)}>{t("tenants.domain.change")}</Button>
       {domainOpen && <DomainDialog org={org} onClose={() => setDomainOpen(false)} onDone={(r) => { setDomainOpen(false); onRecorded(r); }} />}
-      {/* The server issues a code only for an active tenant. */}
-      {org.status === "ACTIVE" && <Reissue org={org} enrolled={enrolled} onEnrolled={onEnrolled} onIssued={onIssued} />}
+      {/* The server issues a code only for an active tenant. The status and removal sections are drawn once the recovery read has landed
+          (or failed): drawn under its skeleton, they moved down under the pointer when it arrived. */}
+      {recovery.isPending ? <Skeleton label={t("common.loading")} bones={["row"]} /> : <>
+      {recovery.data ? <>
+        {org.status === "ACTIVE" && <Reissue org={org} enrolled={recovery.data.ops_enrolled || enrolled} onEnrolled={() => { onEnrolled(); void recovery.refetch(); }} onIssued={onIssued} />}
+        <OpsRecovery org={org} data={recovery.data} onIssued={onIssued} />
+      </> : <CommandError error={recovery.error}><Button onClick={() => void recovery.refetch()}>{t("common.retry")}</Button></CommandError>}
 
       <section className={s.section} aria-labelledby="tenant-status">
         <h3 id="tenant-status" className={s.heading}>{t("tenants.col.status")}</h3>
@@ -87,6 +98,7 @@ export function TenantPanel({ org, health, enrolled, onEnrolled, onIssued, onRec
           />
         )}
       </section>
+      </>}
 
       <StatusDialog
         org={org}

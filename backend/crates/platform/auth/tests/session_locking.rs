@@ -418,40 +418,8 @@ async fn different_families_serialize_per_account_without_global_lock(owner: PgP
     );
 }
 
-#[sqlx::test(migrator = "MIGRATOR")]
-async fn rotation_denies_account_deactivated_during_wait(owner: PgPool) {
-    let user = user(&owner).await;
-    let rt = runtime(&owner, "rotate-account-inactive").await;
-    let first = issue(&rt, user).await;
-    let family = first.family_id;
-    let token = first.token_id;
-    let (mut held, pid) = account(&owner, user).await;
-    let task = tokio::spawn(async move {
-        RefreshTokenStore
-            .rotate(
-                &rt,
-                first.token.as_str(),
-                OffsetDateTime::now_utc(),
-                Duration::minutes(10),
-                Duration::days(1),
-            )
-            .await
-    });
-    blocked(&owner, "rotate-account-inactive", pid).await;
-    token_and_family_unlocked(&owner, token, family).await;
-    sqlx::query("UPDATE users SET is_active=false WHERE id=$1")
-        .bind(user)
-        .execute(&mut *held)
-        .await
-        .unwrap();
-    held.commit().await.unwrap();
-    assert!(matches!(
-        timeout(WAIT, task).await.unwrap().unwrap(),
-        Err(RefreshTokenUseError::InvalidToken | RefreshTokenUseError::FamilyRevoked)
-    ));
-    let state:(i64,bool,i64)=sqlx::query_as("SELECT (SELECT count(*) FROM auth_refresh_tokens WHERE family_id=$1),(SELECT used_at IS NULL AND replaced_by IS NULL FROM auth_refresh_tokens WHERE id=$2),(SELECT count(*) FROM audit_events WHERE actor=$3 AND action='auth.refresh')").bind(family).bind(token).bind(user).fetch_one(&owner).await.unwrap();
-    assert_eq!(state, (1, true, 0));
-}
+#[path = "session_locking/recovery.rs"]
+mod recovery;
 
 /// One migrator for every `#[sqlx::test]` in this file (expanded once, not per test).
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../db/migrations");

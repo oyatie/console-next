@@ -2,6 +2,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import type { QueryClient } from "@tanstack/react-query";
 import { api, interactionHeaders, lastTouch, session } from "@console/api";
 import { ACTIVITY_REPORT_MS, idleCutoff, lastActive, watchSession } from "./idle";
+import { draftKey, readDraft, syncDraftPrincipal } from "../lib/react/use-draft";
 
 const MIN = 60_000;
 const jwt = (sub: string) => `h.${btoa(JSON.stringify({ sub, org: "o1", roles: ["HR_ADMIN"], platform: false, read_only: false })).replace(/=+$/, "")}.s`;
@@ -58,6 +59,9 @@ test("input counts only when trusted, is shared with other tabs, and a lost sess
   session.expire();
   session.set(pair("u2")); // someone else signs in over it: a reload, so no draft of u1 survives
   expect(assign).toHaveBeenCalledWith("/");
+  assign.mockClear();
+  session.set(pair("u3")); // a changed refresh-cookie account also drops the mounted screen
+  expect(assign).toHaveBeenCalledWith("/");
 
   session.set(null); // a sign-out
   expect(signedOut).toHaveBeenCalledTimes(1);
@@ -81,6 +85,33 @@ test("anonymous expiry keeps public screens, and sign-out is one principal trans
   session.expire();
   expect(signedOut).toHaveBeenCalledTimes(1);
   expect(qc.clear).toHaveBeenCalledTimes(2);
+});
+
+test.each(["draft-user", "another-user"])("an expired cold reload keeps drafts until %s is identified", (nextUser) => {
+  session.set(null); // a new page has no in-memory claims yet
+  vi.stubGlobal("document", { addEventListener: vi.fn() });
+  const values: Record<string, string> = {};
+  const store = Object.defineProperties(values, {
+    getItem: { value: (key: string) => values[key] ?? null },
+    setItem: { value: (key: string, value: string) => { values[key] = value; } },
+    removeItem: { value: (key: string) => { delete values[key]; } },
+  }) as unknown as Storage;
+  vi.stubGlobal("sessionStorage", store);
+  const owner = JSON.stringify(["o1", "draft-user"]);
+  const key = draftKey(owner, "/people/$id", "person", "exit.report");
+  const initial = { note: "" };
+  const yours = { note: "unfinished report" };
+  syncDraftPrincipal(owner);
+  store.setItem(key, JSON.stringify({ base: initial, yours }));
+  watchSession({ clear: vi.fn(), invalidateQueries: vi.fn() } as unknown as QueryClient, vi.fn());
+
+  session.expire("session_idle_expired"); // refresh refused before it could identify the account
+  expect(session.principal).toBeNull();
+  expect(readDraft(key, initial).yours).toEqual(yours);
+  session.set(pair(nextUser));
+  expect(readDraft(key, initial).yours).toEqual(nextUser === "draft-user" ? yours : initial);
+  session.set(null); // explicit sign-out still discards
+  expect(store.getItem(key)).toBeNull();
 });
 
 test("typing for 30 minutes with no other request reports itself once a minute; 30 idle minutes send nothing", () => {

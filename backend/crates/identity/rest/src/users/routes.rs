@@ -5,6 +5,8 @@ use crate::error::RestError;
 use crate::policy::delegation::ensure_assignment_preview_acknowledged;
 use crate::policy::delegation::require_assignment_preview_receipt;
 use crate::state::IdentityRestState;
+use crate::users::account_link::account_link_refusal;
+use crate::users::account_link::change_account_link;
 use crate::users::authz::account_scope;
 use crate::users::authz::authorize_user_write;
 use crate::users::authz::elevated_role_membership_changes;
@@ -141,7 +143,7 @@ pub(crate) async fn update_user(
     headers: HeaderMap,
     Path(id): Path<uuid::Uuid>,
     Json(body): Json<UpdateUserRequest>,
-) -> Result<impl IntoResponse, RestError> {
+) -> Result<axum::response::Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
     let target_id = UserId::from_uuid(id);
 
@@ -153,6 +155,29 @@ pub(crate) async fn update_user(
         .get_user(target_id, &account_scope(&principal))
         .await
         .map_err(RestError::from_store)?;
+    if body
+        .employee_id
+        .is_some_and(|requested| requested != target.employee_id)
+        || body.account_link_request_id.is_some()
+    {
+        let started = std::time::Instant::now();
+        let trace = TraceContext::generate();
+        let result = change_account_link(&state, &principal, target_id, body, trace.clone()).await;
+        let outcome = match &result {
+            Ok(response) if response.status() == StatusCode::ACCEPTED => "pending",
+            Ok(_) => "approved",
+            Err(_) => "refused",
+        };
+        metrics::counter!("identity_account_link_total", "outcome" => outcome).increment(1);
+        metrics::histogram!("identity_account_link_duration_seconds", "outcome" => outcome)
+            .record(started.elapsed().as_secs_f64());
+        return match result {
+            Ok(response) => Ok(response),
+            Err(error) => {
+                Err(account_link_refusal(&state, principal.user_id, target_id, trace, error).await)
+            }
+        };
+    }
     if body.roles.is_some() || body.branch_ids.is_some() {
         refuse_ops_target(target.is_tenant_ops)?;
     }
@@ -215,7 +240,8 @@ pub(crate) async fn update_user(
         }
     }
 
-    let summary = state
+    let trace = TraceContext::generate();
+    let result = state
         .store
         .update_user(UpdateUserCommand {
             actor: principal.user_id,
@@ -227,10 +253,20 @@ pub(crate) async fn update_user(
             roles: roles.as_ref().map(role_db_strings),
             branch_ids: body.branch_ids,
             preview_receipt_id,
-            trace: TraceContext::generate(),
+            trace: trace.clone(),
             occurred_at: OffsetDateTime::now_utc(),
         })
-        .await
-        .map_err(RestError::from_store)?;
-    Ok(Json(summary))
+        .await;
+    let summary = match result {
+        Ok(summary) => summary,
+        Err(error) => {
+            let error = RestError::from_store(error);
+            return Err(if error.code == "account_link_approval_required" {
+                account_link_refusal(&state, principal.user_id, target_id, trace, error).await
+            } else {
+                error
+            });
+        }
+    };
+    Ok(Json(summary).into_response())
 }

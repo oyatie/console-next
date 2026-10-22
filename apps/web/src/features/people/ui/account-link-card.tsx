@@ -3,8 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
+import { linkAccount, mySub } from "../api";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
+import { PasskeyError } from "../../../lib/react/passkey-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { ROLE, label } from "../../../lib/labels";
 import { Banner } from "../../../ui/banner/banner";
@@ -12,7 +14,6 @@ import { Button } from "../../../ui/button/button";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
 import { Card } from "../../../ui/card/card";
 import { buttonClass } from "../../../ui/button/button-class";
-import { linkAccount } from "../api";
 import { directorySearch, useLinkedAccount } from "./use-linked-account";
 
 type Employee = components["schemas"]["Employee"];
@@ -36,29 +37,31 @@ export function AccountLinkCard({ employee, manage }: { employee: Employee; mana
   const { mine, linked } = useLinkedAccount(employee);
   const [query, setQuery] = useState(employee.name);
   const found = useQuery({ ...directorySearch(query.trim()), enabled: manage && mine.isSuccess && !linked && query.trim().length > 0 });
-  const candidates = found.data?.items.filter((p) => p.employee_link_status === "UNLINKED" && p.is_active) ?? [];
+  const candidates = found.data?.items.filter((p) => p.employee_link_status === "UNLINKED" && p.is_active && p.id !== mySub()) ?? [];
   const [account, setAccount] = useState<string | null>(null);
   const navigate = useNavigate();
   const link = useCommand({
-    run: (userId: string | null) => linkAccount(userId ?? linked!.id, userId ? employee.id : null),
+    run: ({ id, requestId }: { id: string | null; requestId?: string }) => linkAccount(id ?? linked!.id, id ? employee.id : null, requestId),
     invalidates: ["/api/v1/directory", "/api/v1/employees"],
-    onSuccess: () => setAccount(null),
-    announce: (_, userId) => (userId ? t("people.account.linked", { name: candidates.find((p) => p.id === userId)?.display_name ?? "" }) : t("people.account.unlinked")),
+    onSuccess: (result) => { if (!("account_link" in result)) setAccount(null); },
+    announce: (result, { id }) => ("account_link" in result ? t("people.account.waiting") : id ? t("people.account.linked", { name: candidates.find((p) => p.id === id)?.display_name ?? "" }) : t("people.account.unlinked")),
   });
+  const pending = link.data && "account_link" in link.data && link.data.account_link?.status === "PENDING" ? link.data.account_link : undefined;
+  const canChange = manage && linked?.id !== mySub();
   const shown = linked && t("person.account.linked", { name: linked.display_name, roles: linked.roles.map((r) => label(ROLE, r)).join(", ") });
   return (
     <Card titleId="account" title={t("people.account.title")}>
       {/* Until the account lookup succeeds, nothing is said about a link (a failed read is not "unlinked"). */}
       {!mine.isSuccess ? (
         <QueryState q={mine}>{() => null}</QueryState>
-      ) : !manage ? (
-        <span>{shown || t("accounts.unlinked")}</span>
-      ) : linked ? (
+      ) : !canChange || linked ? (
         <div className="row">
-          <span className="grow">{shown}</span>
+          <span className="grow">{shown || t("accounts.unlinked")}</span>
           {/* Roles and scopes live with the account (E11-access): the person view says what this account can do and why. */}
-          <Link className={buttonClass("ghost")} to="/access/people/$accountId" params={{ accountId: linked.id }}>{t("access.person.title")}</Link>
-          <Button variant="ghost" disabled={link.isPending} onClick={() => link.mutate(null)}>{t("people.account.unlink")}</Button>
+          {canChange && linked && <>
+            <Link className={buttonClass("ghost")} to="/access/people/$accountId" params={{ accountId: linked.id }}>{t("access.person.title")}</Link>
+            {!pending && <Button variant="ghost" disabled={link.isPending} onClick={() => link.mutate({ id: null })}>{t("uiOverrideSheet.stepUp", { action: t("people.account.unlink") })}</Button>}
+          </>}
         </div>
       ) : (
         <>
@@ -75,14 +78,25 @@ export function AccountLinkCard({ employee, manage }: { employee: Employee; mana
             empty={t("person.account.empty")}
             escape={{ kind: "add", label: t("people.account.invite"), onAdd: () => void navigate({ to: "/people", search: { view: "accounts", act: "invite", employee: employee.id } }) }}
           />
-          {account && (
+          {account && !pending && (
             <div className="row">
-              <Button variant="primary" disabled={link.isPending} onClick={() => link.mutate(account)}>{t("people.account.link")}</Button>
+              <Button variant="primary" disabled={link.isPending} onClick={() => link.mutate({ id: account })}>{t("uiOverrideSheet.stepUp", { action: t("people.account.link") })}</Button>
             </div>
           )}
         </>
       )}
-      <CommandError error={link.error ?? found.error} />
+      {pending && <Banner tone="info" live="polite"
+        title={t("people.account.pending", {
+          account: link.data?.display_name ?? "",
+          employee: pending.employee_id ? employee.name : t("accounts.unlinked"), requester: pending.requester_name,
+        })}
+        actions={pending.requested_by !== mySub() && <Button variant="primary" disabled={link.isPending}
+          onClick={() => link.mutate({ id: pending.employee_id ? pending.user_id : null, requestId: pending.request_id })}>
+          {t("uiOverrideSheet.stepUp", { action: t("org.change.step.APPROVED") })}
+        </Button>}
+      />}
+      <PasskeyError error={link.error} />
+      <CommandError error={found.error} />
     </Card>
   );
 }

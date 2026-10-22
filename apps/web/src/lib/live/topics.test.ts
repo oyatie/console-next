@@ -97,3 +97,11 @@ test("a reorder or rename of a 법인, 사업장 or 부서 re-reads 근태's sco
     expect(m("/api/v1/attendance/patterns", null), type).toBe(false);
   }
 });
+
+
+test("recovery events re-read the vendor panel and tenant card only", () => {
+  const m = matchChange("ops_recovery", "r1");
+  expect(m("/api/platform/orgs/{id}/ops-recovery", detail("o1"))).toBe(true);
+  expect(m("/api/v1/tenant/ops-recovery", null)).toBe(true);
+  expect(m("/api/v1/employees", null)).toBe(false);
+});

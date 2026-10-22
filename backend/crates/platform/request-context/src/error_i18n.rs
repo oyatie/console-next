@@ -136,6 +136,42 @@ const CODES: &[(&str, &str)] = &[
     ),
     ("access_request_not_found", "권한 요청을 찾을 수 없습니다."),
     ("access_request_closed", "이미 처리된 권한 요청입니다."),
+    (
+        "ops_recovery_no_second_operator",
+        "패스키가 등록된 두 번째 공급사 운영자가 필요합니다.",
+    ),
+    (
+        "ops_recovery_not_enrolled",
+        "패스키를 등록하기 전에는 로그인 코드를 재발급하십시오.",
+    ),
+    (
+        "ops_recovery_already_open",
+        "진행 중인 운영 계정 복구 요청이 있습니다.",
+    ),
+    (
+        "ops_recovery_sod_requester",
+        "다른 공급사 운영자가 승인해야 합니다.",
+    ),
+    (
+        "ops_recovery_shared_authenticator",
+        "요청자와 다른 패스키로 승인하십시오.",
+    ),
+    (
+        "ops_recovery_not_approved",
+        "다른 운영자의 승인이 필요합니다.",
+    ),
+    (
+        "ops_recovery_hold_active",
+        "대기 기간이 끝난 뒤 코드를 발급하십시오.",
+    ),
+    (
+        "ops_recovery_cancelled",
+        "취소된 복구 요청에서는 코드를 발급할 수 없습니다.",
+    ),
+    (
+        "ops_recovery_evidence_identifier",
+        "확인 기록에 주민등록번호를 넣지 마십시오.",
+    ),
 ];
 
 /// Server-authored org-change `reason` strings (legacy org-setup drafts).

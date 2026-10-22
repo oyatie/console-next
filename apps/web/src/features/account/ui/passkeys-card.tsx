@@ -123,8 +123,7 @@ export function PasskeysCard({ ops, passkeys }: { ops: boolean | undefined; pass
       <Dialog open={removing !== null} title={removing ? t("account.passkey.removeOne", { name: nameOf(removing) }) : ""} onClose={close}>
         {removing && (
           <>
-            <span className="muted">{t("account.passkey.removeConsequence")}</span>
-            {removing.recent && <span className="muted">{t("account.passkey.removeRecent")}</span>}
+            <span className="muted">{t("account.passkey.removeConsequence")} {removing.recent && t("account.passkey.removeRecent")}</span>
             <ActionBar
               notice={<PasskeyError error={remove.error} />}
               actions={

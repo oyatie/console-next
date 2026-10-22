@@ -4,6 +4,7 @@ import { t } from "@console/i18n";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { Skeleton } from "../../../ui/skeleton/skeleton";
 import { claims, meQuery, passkeysQuery } from "../api";
+import { OpsRecoveryNotice } from "./ops-recovery-notice";
 import { ConsentCard } from "./consent-card";
 import { MyAccessCard } from "./my-access";
 import { PasskeysCard } from "./passkeys-card";
@@ -32,6 +33,7 @@ export function MePage({ locale }: { locale: ReactNode }) {
           <ProfileCard locale={locale} me={me} />
           <PasskeysCard ops={vendor ? false : me.data?.is_tenant_ops} passkeys={keys} />
           <ConsentCard />
+          {!vendor && <OpsRecoveryNotice />}
           {!vendor && <MyAccessCard />}
         </>
       )}

@@ -13,8 +13,7 @@
 //!
 //! `authorize_scoped` is not usable here: its `ResourceBranch` comes only from
 //! `ResourceBranch::lookup`, a DB read over a closed enum with no HR or entity
-//! variant. When these REST reads move to the Cedar engine, this function
-//! moves with them.
+//! variant. Move this filter when those REST reads adopt Cedar.
 
 use std::collections::BTreeMap;
 
@@ -93,14 +92,14 @@ pub(crate) fn may_read(principal: &Principal, row: &ChangeRow) -> bool {
 /// replay page): filtered, the same `(type, id)` once, and more than
 /// `threshold` rows of one type folded into one `id: null` frame.
 pub(crate) fn frames_for(
-    principal: &Principal,
+    principal: &crate::ChangeReader,
     rows: &[ChangeRow],
     threshold: usize,
     at: OffsetDateTime,
 ) -> Vec<RealtimeEvent> {
     // type → (id → highest row); BTreeMap keeps the output deterministic.
     let mut by_type: BTreeMap<&str, BTreeMap<Option<&str>, &ChangeRow>> = BTreeMap::new();
-    for row in rows.iter().filter(|row| may_read(principal, row)) {
+    for row in rows.iter().filter(|row| principal.may_read(row)) {
         let ids = by_type.entry(row.resource_type.as_str()).or_default();
         let slot = ids.entry(row.resource_id.as_deref()).or_insert(row);
         if row.seq > slot.seq {
@@ -225,7 +224,8 @@ mod tests {
         let burst: Vec<_> = (0..5_700)
             .map(|n| row(n, "employee", Some(&n.to_string()), Some(x)))
             .collect();
-        assert!(frames_for(&branch_admin, &burst, 50, OffsetDateTime::now_utc()).is_empty());
+        let reader = branch_admin.into();
+        assert!(frames_for(&reader, &burst, 50, OffsetDateTime::now_utc()).is_empty());
     }
 
     #[test]
@@ -250,7 +250,8 @@ mod tests {
             row(1, "employee", Some("a"), None),
             row(2, "legal_entity", Some("e"), None),
         ];
-        assert!(frames_for(&no_roles, &rows, 50, OffsetDateTime::now_utc()).is_empty());
+        let reader = no_roles.into();
+        assert!(frames_for(&reader, &rows, 50, OffsetDateTime::now_utc()).is_empty());
     }
 
     #[test]
@@ -262,7 +263,7 @@ mod tests {
             .collect();
         rows.push(row(9, "employee", Some("0"), None));
         rows.push(row(10, "legal_entity", Some("e"), None));
-        let frames = frames_for(&admin, &rows, 50, now);
+        let frames = frames_for(&admin.clone().into(), &rows, 50, now);
         assert_eq!(
             ids(&frames),
             vec![
@@ -272,7 +273,7 @@ mod tests {
                 ("legal_entity".to_owned(), Some("e".to_owned())),
             ]
         );
-        let folded = frames_for(&admin, &rows, 2, now);
+        let folded = frames_for(&admin.clone().into(), &rows, 2, now);
         assert_eq!(
             ids(&folded),
             vec![
@@ -293,7 +294,7 @@ mod tests {
             row(1, "org_unit", Some("u"), None),
             row(2, "org_unit", None, None),
         ];
-        let frames = frames_for(&admin, &rows, 50, OffsetDateTime::now_utc());
+        let frames = frames_for(&admin.clone().into(), &rows, 50, OffsetDateTime::now_utc());
         assert_eq!(ids(&frames), vec![("org_unit".to_owned(), None)]);
     }
 }

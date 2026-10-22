@@ -152,6 +152,5 @@ export const enExit: Partial<Record<keyof typeof koExit, string>> = {
   "exit.report.firstItem": "{action} scheduled for {date}",
   "exit.report.firstHint": "It must not take effect after the last working day · withdraw it, then report",
   "exit.report.cancelFirst": "Withdraw the reservation",
-  "exit.field.date.note": "No default · the last day at work",
   "exit.field.date.contractEnd": "Contract end",
 };

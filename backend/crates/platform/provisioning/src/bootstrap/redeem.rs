@@ -128,7 +128,7 @@ impl BootstrapCredentialStore {
             None
         };
         let source = sqlx::query(
-            "SELECT expires_at, issuance_version, issued_generation, issuance_purpose, source_operation_id FROM auth_bootstrap_credentials WHERE id=$1 AND user_id=$2 AND org_id=$3 AND token_hash=$4 AND consumed_at IS NULL AND revoked_at IS NULL FOR UPDATE")
+            "SELECT single_use, expires_at, issuance_version, issued_generation, issuance_purpose, source_operation_id FROM auth_bootstrap_credentials WHERE id=$1 AND user_id=$2 AND org_id=$3 AND token_hash=$4 AND consumed_at IS NULL AND revoked_at IS NULL AND (NOT single_use OR redeemed_at IS NULL) FOR UPDATE")
             .bind(credential_id).bind(user_id).bind(org_uuid).bind(&token_hash)
             .fetch_optional(tx.as_mut()).await?;
         let source = source.ok_or(ProvisioningError::InvalidBootstrapCredential)?;
@@ -136,6 +136,14 @@ impl BootstrapCredentialStore {
         let expires: OffsetDateTime = source.try_get("expires_at")?;
         if expires <= now {
             return Err(ProvisioningError::InvalidBootstrapCredential);
+        }
+
+        if source.try_get::<bool, _>("single_use")? {
+            sqlx::query("UPDATE auth_bootstrap_credentials SET redeemed_at=$2 WHERE id=$1")
+                .bind(credential_id)
+                .bind(now)
+                .execute(tx.as_mut())
+                .await?;
         }
 
         let requires_passkey_setup = count_user_passkeys_tx(tx, user_id).await? == 0;

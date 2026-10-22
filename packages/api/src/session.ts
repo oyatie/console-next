@@ -180,6 +180,10 @@ function scheduleRenewal() {
 }
 
 export const session = {
+  /** Tenant and account together own drafts and interrupted writes. */
+  get principal() {
+    return claims ? JSON.stringify([claims.org, claims.sub]) : null;
+  },
   get token() {
     return accessToken;
   },
@@ -230,6 +234,31 @@ export const session = {
     return () => listeners.delete(l);
   },
 };
+
+/** Wait only for the interrupted account; sign-out, replacement or cancellation abandons the write. */
+export function reauthenticated(principal: string, signal: AbortSignal): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const finish = (same: boolean) => {
+      off();
+      signal.removeEventListener("abort", abort);
+      resolve(same);
+    };
+    const abort = () => {
+      off();
+      signal.removeEventListener("abort", abort);
+      reject(signal.reason);
+    };
+    const check = () => {
+      if (session.principal !== principal) finish(false);
+      else if (session.token) finish(session.stage === "app");
+      else if (!session.lost) finish(false);
+    };
+    const off = session.subscribe(check);
+    signal.addEventListener("abort", abort, { once: true });
+    if (signal.aborted) abort();
+    else check();
+  });
+}
 
 /**
  * Auth endpoint call. On web, opts into the cookie transport so the refresh token never reaches JS.

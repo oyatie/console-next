@@ -1,4 +1,11 @@
 mod company_domain;
+mod ops_recovery;
+mod ops_recovery_rules;
+mod ops_recovery_store;
+pub(crate) use ops_recovery_store::admin_enrolled_tx;
+mod ops_recovery_types;
+pub use ops_recovery_rules::*;
+pub use ops_recovery_types::*;
 mod group_accounts;
 mod groups;
 mod listings;
