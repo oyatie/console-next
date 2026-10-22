@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { load } from "js-yaml";
 import { dbContract, postgresImage } from "./db-contract.mjs";
 
 const privacyGates = ["personal-data-classification", "pii-no-logs", "tenant-isolation", "rls-arming", "audit-coverage"];
@@ -18,25 +19,32 @@ export function rustBuild(crates, packages) {
   };
 }
 
-export function planBudget(plan, config, shards) {
+export function planBudget(plan, config, shards, workflow = load(readFileSync(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8")).jobs) {
   const queue = JSON.parse(readFileSync(new URL("../../.github/rulesets/dev.json", import.meta.url), "utf8")).rules.find((rule) => rule.type === "merge_queue");
-  if (config.maxTotalMinutes >= queue.parameters.check_response_timeout_minutes) throw new Error("CI minute budget must be below the merge-queue timeout");
-  const estimates = config.jobMinutes;
-  const jobs = [estimates.plan, estimates.hygiene, estimates.gate];
-  if (plan.web || plan.e2e) jobs.push(estimates.web);
-  if (plan.backend || plan.e2e) jobs.push(estimates.build);
+  const chain = (name) => workflow[name]["timeout-minutes"] + Math.max(0, ...[workflow[name].needs ?? []].flat().map(chain));
+  const wallMinutes = chain("ci-ok"), queueMinutes = queue.parameters.check_response_timeout_minutes;
+  if (!Number.isFinite(wallMinutes) || wallMinutes >= queueMinutes) throw new Error("CI timeout chain must be below the merge-queue timeout");
+  const e = config.jobMinutes;
+  const perJob = { plan: e.plan, hygiene: e.hygiene, "ci-ok": e.gate };
+  if (plan.web || plan.e2e) perJob.web = e.web;
+  if (plan.backend || plan.e2e) perJob["rust-build"] = e.build;
   if (plan.backend) {
-    jobs.push(...Array(privacyGates.length).fill(estimates.privacyGate));
-    for (const mode of ["unit", "db"]) if (plan[mode]) jobs.push(...Array(config.nextestPartitions[mode]).fill(estimates[mode]));
+    for (const name of privacyGates) perJob[name] = e.privacyGate;
+    for (const mode of ["unit", "db"]) if (plan[mode]) for (let i = 1; i <= config.nextestPartitions[mode]; i++) perJob[`backend-${mode === "unit" ? "test" : "db"}-${i}`] = e[mode];
   }
   if (plan.e2e) {
-    jobs.push(estimates.e2ePlan);
-    jobs.push(...(shards ?? Array(config.e2eMaxShards).fill({ est: config.e2eTargetSeconds })).map((job) => estimates.e2eSetup + job.est / 60));
+    perJob["e2e-plan"] = e.e2ePlan;
+    for (const [i, job] of (shards ?? Array(config.e2eMaxShards).fill({ est: config.e2eTargetSeconds })).entries()) {
+      const minutes = e.e2eSetup + job.est / 60;
+      if (!Number.isFinite(minutes) || minutes > workflow.e2e["timeout-minutes"] * 0.8) throw new Error("E2E shard exceeds timeout headroom");
+      perJob[`e2e-${job.browser ?? "reserved"}-${job.shard ?? i + 1}`] = Math.round(minutes * 100) / 100;
+    }
   }
-  const minutes = Math.ceil(jobs.reduce((a, b) => a + b, 0));
-  if (jobs.length > config.maxJobs) throw new Error("CI plan exceeds job budget");
-  if (!Number.isFinite(minutes) || minutes > config.maxTotalMinutes) throw new Error("CI plan exceeds summed minute budget");
-  return { jobs: jobs.length, minutes };
+  const jobs = Object.keys(perJob).length, minutes = Math.ceil(Object.values(perJob).reduce((a, b) => a + b, 0));
+  if (jobs > config.maxJobs) throw new Error("CI plan exceeds job budget");
+  if (jobs >= config.maxJobs * 0.8 || minutes >= config.maxTotalMinutes * 0.8) process.stdout.write("::warning::CI plan reached 80% of a provisional job/minute budget; compare hosted receipts.\n");
+  process.stdout.write(`Predicted per-job minutes: ${JSON.stringify(perJob)}; timeout chain ${wallMinutes}/${queueMinutes} min\n`);
+  return { jobs, minutes, wallMinutes, queueMinutes, perJob };
 }
 
 export function dbCrates(packages) {

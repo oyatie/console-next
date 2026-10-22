@@ -28,6 +28,8 @@ def size(paths):
 
 
 def enforce(build, extraction, free, config):
+    if max(build, extraction) >= config["runnerDiskBudgetBytes"] * 0.8:
+        print("::warning::CI disk usage reached 80% of the provisional budget; compare hosted receipts.")
     if max(build, extraction) > config["runnerDiskBudgetBytes"] or free < config["runnerDiskMarginBytes"]:
         raise ValueError("CI disk budget exceeded")
 

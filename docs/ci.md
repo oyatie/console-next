@@ -30,21 +30,34 @@ services, so cluster-global mutators never share a cluster across jobs.
 `scripts/ci/config.json` owns retention, partition counts, plan job/minute ceilings, shard
 size, disk/cache budgets and the quarantine file. Tests execute without retries.
 `test-results.py` compares exact JUnit failure IDs against `scripts/ci/baseline.json`:
-known trunk reds are reported without blocking while they still fail. A recovered
-test blocks with “fixed: remove from baseline”; a deleted test blocks during the
-nextest or Playwright inventory check. Unrelated partitions do not count as fixes.
-A new red, runner crash, missing report or expired/unowned entry blocks. JUnit, baseline counts and traces remain
-available for known reds too. `ci-ok` validates expiry independently of test jobs.
+deterministic trunk reds are reported while they still fail. A deterministic pass
+blocks with “fixed: remove from baseline”; a deleted test blocks in the nextest
+or Playwright inventory. Unrelated partitions do not count as fixes. A new red,
+runner crash, missing report or expired/unowned entry blocks. No retry hides a red.
 
-The initial baseline records the existing trunk failures from the 2026-10-22
-`baseline-reds.v2` receipt and `full-tip-chromium` run in the owner handoff (owner Jason Lee,
-expiry 2026-11-05). Round 5 removes the passing first-run-solo, register-run and
-two-entities journeys, plus stale Rust/browser IDs. First-run-solo cannot be
-quarantined. It contains no
-wildcards. After this initial seed, hygiene compares the PR/queue base's version
-and permits only removal: no additional IDs, expiry extension or owner changes.
-Remove resolved IDs when their journeys are fixed; the scan and expiry do not
-silently turn off. Strict Clippy needs no baseline.
+Entries have `class: deterministic | flaky`. Flaky entries accept either result,
+but require at least two distinct `evidence` receipts with `runId`, ISO `date` and
+`result: passed | failed`, including both outcomes. Their expiry is at most seven
+days after the latest receipt, versus a maximum 14-day deterministic renewal.
+The flake budget is seven entries (10% of the 70 remaining IDs); hygiene enforces
+it and scanned job summaries show usage and D-7 expiry warnings.
+
+Hygiene compares the PR/queue base: no new IDs or ownership changes; strict IDs
+can only shrink. An existing deterministic ID may become flaky only with the
+above evidence and short expiry. Receipts are append-only. Extending an expiry
+requires a new run ID dated today (a failing run for deterministic entries), at
+most 14 days per change, and never more than the class's window from today.
+Simply changing the date or replaying an old receipt fails. Removing resolved
+entries and shortening expiry are allowed. First-run-solo cannot be quarantined.
+
+The 2026-10-22 `baseline-reds.v2` and `full-tip-chromium` receipts seeded the
+baseline. Round 6 removes all 38 DB IDs (38/38 passed through the pinned CI
+archive/bootstrap path in verifier round 5), Chromium BL-016 and Chromium BL-013
+solo rail (both passed in that verifier run). The remaining 70 browser IDs retain
+their failure receipts; there are zero flaky entries until disagreement is proven.
+Expiries are grouped by browser/journey across October 30–November 5, earlier than
+the original blanket November 5 expiry. Hosted passing IDs must be removed too.
+Strict Clippy needs no baseline.
 
 Cargo.lock, toolchain manifests, package manifests/lock, migrations, OpenAPI,
 registry, third-party, scripts, ops and workflow changes force full proof. A docs-only
@@ -175,21 +188,45 @@ record with `E2E_SERVED=1 GITHUB_OUTPUT=/tmp/ci-plan node scripts/ci/e2e.mjs see
 The current measured inventory gives 17 browser shards, about five minutes each,
 including first-run-solo in shard 1 of each browser.
 
-The initial plan reserves at most 18 browser shards. Both planners reject more
-than 40 jobs or 220 estimated job-minutes; the latter must remain below the ruleset's
-240-minute response deadline. The current full reservation is 39 jobs / 218 minutes;
-the measured browser plan is 38 jobs / 206 minutes. These summed estimates include
-compilation, setup, proof and reporting. They are not observed wall time: jobs run
-concurrently. Each job retains its own timeout, and `ci-ok` fails if either planner
-fails. Expected cold wall time is 65–100 minutes; warm is 30–55 minutes; docs-only
-is 3–8 minutes. Hosted receipts must confirm those estimates before ruleset cutover.
+The planner reserves at most 24 browser shards. When recorded times need more,
+it increases the target and uses the existing longest-first duration packer within
+that cap, preserving project isolation, file coverage and solo in shard 1. Twice
+the seed timings are a regression control. A shard fails planning only when its
+estimate plus setup exceeds 80% of the E2E job timeout (24 of 30 minutes).
+
+Wall-clock admission reads the actual workflow `needs` graph and job timeouts,
+then compares its longest chain with the ruleset's queue response timeout:
+plan 15 → hygiene 15 → rust-build 90 → backend-db 60 → ci-ok 15 = 195 < 240 minutes.
+Summed job-minutes are a reported cost metric with an 80% warning, not a queue
+deadline. Jobs and disk also warn at 80%; exceeding the job/disk safety caps fails.
+Both planners print predicted minutes per job/partition and include them in the
+scanned summary for comparison with hosted `report.mjs` receipts.
+
+All caps are provisional until the orchestrator opens this branch as a **draft
+PR** and collects the first hosted cold/warm/docs-only/one-crate receipts. These
+local measurements are sizing inputs, not hosted proof:
+
+| Setting | Provisional value | Source and headroom |
+|---|---:|---|
+| Job cap | 52 | Round-5 verifier full reservation 39 jobs; +33% |
+| Summed-minute warning budget | 300 | Round-5 planner 217 job-minutes; +38% |
+| Browser shard cap | 24 | Round-5 CI-shaped seed plan 17 shards; +41%; slower timings repack |
+| Disk cap | 57 GiB | `r5-disk.json`: 42.376 GiB shared-build peak; +34.5% |
+| Free disk minimum | 3 GiB | Existing extraction reserve, additional to the measured build footprint |
+| E2E target/workers | 300 seconds / 2 | Existing autoshard target and round-5 served measurements |
+| Setup estimate | 0.5 minutes | Round-5 provisional runner setup allowance; replace with hosted receipt |
+| Other job estimates | plan 2, hygiene 3, ci-ok 2, web 8, build 50, unit 3, DB 5, privacy gate 1, E2E-plan 2 minutes | Round-5 `config.json` model; Mac checks/archive/backend timings in verifier §P2-3; hosted setup/cold build unmeasured |
+
+Expected cold wall time is 65–100 minutes; warm 30–55; docs-only 3–8. The 90-minute
+cold Rust build remains unproven on the hosted runner. If it exceeds about 70
+minutes, separate Clippy from archive compilation before ruleset cutover.
 
 Debug information and incremental builds are disabled. The shared archive needs
 more disk than the former six-target groups, so the disposable hosted build runner
 removes only the unused SDK directories listed in config (Android, .NET, GHC,
 Swift and CodeQL). `disk-budget.py` counts checkout, resolved dependency sources,
 a full compiler-cache reserve, artifacts and peak extraction, then refuses more
-than 40 GiB or less than 3 GiB free before publication. The disk-budget workflow
+than the provisional 57 GiB or less than 3 GiB free before publication. The disk-budget workflow
 step is mandatory and regression-tested. Extraction jobs need the shared archive's
 expanded size too; their hosted disk receipts must pass before the check is enabled.
 
@@ -394,14 +431,14 @@ The shared archive contains all 734 test binaries (plus 13 required non-test
 executables). Its inventory has 1,106 non-DB and 3,524 DB test cases; the filters
 are complementary. The full inventory removed the four named obsolete Rust IDs plus the retired
 `actual_0227_upgrade_preserves_every_account_key_and_family` baseline ID. Both browser inventories
-validate the remaining baseline. It now has 110 exact IDs, and any executed pass
+validate the remaining baseline. At round 5 it had 110 exact IDs, and any executed pass
 or deleted ID makes the required check red until that entry is removed.
 
 On macOS arm64, the complete symbol-stripped build, gates and backend measured
 42.376 GiB; the shared archive is 7.227 GiB compressed and 28.243 GiB expanded;
 test-job peak including checkout is 35.517 GiB. The receipt also counts prior
 local archive remnants and library-test outputs, conservatively beyond the
-hosted build's outputs. These measurements justify the 44 GiB cap, with a
+hosted build's outputs. Round 6 uses these measurements for a provisional 57 GiB cap, with a
 separate 3 GiB free-space margin. Stripping symbols preserves test names and
 JUnit IDs; native backtraces have fewer symbol names. Hosted amd64 must retain
 its own receipt and pass the free-space checks after unused SDK removal.
@@ -460,3 +497,18 @@ Relocation also updates these Rust-side readers/documentation outside the initia
 - `backend/crates/ontology/canonical-adapter-postgres/tests/company_port_as_runtime_role.rs`
 - `backend/crates/ontology/canonical-adapter-postgres/tests/employment_port_as_runtime_role.rs`
 - `backend/crates/ontology/canonical-adapter-postgres/tests/person_port_as_runtime_role.rs`
+
+## Round 6 proof and scope
+
+The hermetic static input guard runs in hygiene on every change, including docs.
+Its privacy fixtures construct synthetic absolute paths from parts. The complete
+clean-clone integration test remains a separate local check to avoid recursively
+running `npm run check`. Inventory controls execute both actual runner scripts
+with valid JSON and a failing inventory exit; removing either exit check is red.
+The planner control raises an actual workflow job timeout past the queue deadline.
+
+Touched files are CI-owned: workflow, docs/ci.md, scripts/ci-privacy.test.mjs,
+scripts/ci-results.test.mjs, scripts/ci.test.mjs, scripts/ci/{baseline,config}.json and
+scripts/ci/{e2e,plan,report}.mjs plus test-results.py and disk-budget.py.
+No ops files were added; the existing curated topology scripts stay unchanged.
+The orchestrator must collect hosted receipts before enabling the ruleset.

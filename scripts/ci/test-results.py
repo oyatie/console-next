@@ -11,24 +11,74 @@ import sys
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
+CONFIG = json.loads((ROOT / "scripts/ci/config.json").read_text())
+
+
+KEY_FIELDS = ("kind", "context", "suite", "test")
 
 
 def key(entry):
-    return tuple(entry[field] for field in ("kind", "context", "suite", "test"))
+    return tuple(entry[field] for field in KEY_FIELDS)
+
+
+def receipts(entry):
+    evidence = entry.get("evidence", [])
+    ids = set()
+    for run in evidence:
+        if (not isinstance(run.get("runId"), str) or not run["runId"].strip()
+                or run["runId"] in ids or run.get("result") not in ("passed", "failed")
+                or datetime.date.fromisoformat(run["date"]) > datetime.date.today()):
+            raise ValueError("invalid baseline run evidence")
+        ids.add(run["runId"])
+    return evidence
 
 
 def baseline(file):
     entries = json.loads(file.read_text())
-    ids = set()
+    ids = {}
     for entry in entries:
         if (any(not isinstance(entry.get(field), str) or not entry[field].strip()
                 for field in ("kind", "context", "suite", "test", "owner", "expires"))
                 or datetime.date.fromisoformat(entry["expires"]) <= datetime.date.today()
                 or key(entry) in ids
+                or entry.get("class", "deterministic") not in ("deterministic", "flaky")
                 or (entry["kind"] == "playwright" and "first-run-solo.spec.ts" in entry["suite"])):
             raise ValueError("invalid, duplicate or expired baseline entry")
-        ids.add(key(entry))
+        evidence = receipts(entry)
+        if entry.get("class") == "flaky":
+            if ({run["result"] for run in evidence} != {"passed", "failed"}
+                    or (datetime.date.fromisoformat(entry["expires"]) - datetime.date.fromisoformat(max(run["date"] for run in evidence))).days > CONFIG["baselineFlakyDays"]):
+                raise ValueError("flaky baseline needs disagreeing runs and a short expiry")
+        ids[key(entry)] = entry
+    flaky = sum(entry.get("class") == "flaky" for entry in entries)
+    if flaky > CONFIG["baselineMaxFlaky"]:
+        raise ValueError("flaky baseline budget exceeded")
     return ids
+
+
+def validate_changes(entries, previous):
+    old = {key(entry): entry for entry in previous}
+    today = datetime.date.today()
+    for entry in entries:
+        prior = old.get(key(entry))
+        if prior is None or any(entry[field] != prior[field] for field in (*KEY_FIELDS, "owner")):
+            raise ValueError("strict baseline may only shrink; identity and ownership may not change")
+        if entry.get("class", "deterministic") != prior.get("class", "deterministic"):
+            evidence = receipts(entry)
+            if (entry.get("class") != "flaky" or {run["result"] for run in evidence} != {"passed", "failed"}
+                    or datetime.date.fromisoformat(entry["expires"]) > today + datetime.timedelta(days=CONFIG["baselineFlakyDays"])):
+                raise ValueError("a flaky reclassification needs disagreeing runs and a short expiry")
+        evidence = receipts(entry)
+        old_runs = prior.get("evidence", [])
+        if any(run not in evidence for run in old_runs):
+            raise ValueError("baseline evidence may only grow")
+        new_runs = [run for run in evidence if run["runId"] not in {old["runId"] for old in old_runs}]
+        expires, was = datetime.date.fromisoformat(entry["expires"]), datetime.date.fromisoformat(prior["expires"])
+        if expires > was:
+            days = CONFIG["baselineFlakyDays"] if entry.get("class") == "flaky" else CONFIG["baselineRenewalDays"]
+            if (expires > min(was, today) + datetime.timedelta(days=days)
+                    or not any(run["date"] == today.isoformat() and (entry.get("class") == "flaky" or run["result"] == "failed") for run in new_runs)):
+                raise ValueError("baseline extension needs fresh run evidence within the renewal limit")
 
 
 def check(kind, context, file, status, entries):
@@ -52,12 +102,13 @@ def check(kind, context, file, status, entries):
         return (kind, context, suite, re.sub(r"(?: @[\w-]+)+$", "", case.get("name", "")))
     ids = {case_key(case) for case in failed}
     passed = {case_key(case) for case in cases if case.find("failure") is None and case.find("skipped") is None}
-    fresh = ids - entries
-    fixed = passed & entries
+    fresh = ids - set(entries)
+    strict = {ident for ident, entry in entries.items() if entry.get("class", "deterministic") == "deterministic"}
+    fixed = passed & strict
     # Only this shard's executed cases can recover; inventory checks catch deleted tests.
-    report = {"tests": len(cases), "baselineReds": sorted(ids & entries), "newReds": sorted(fresh), "fixed": sorted(fixed)}
+    report = {"tests": len(cases), "baselineReds": sorted(ids & set(entries)), "newReds": sorted(fresh), "fixed": sorted(fixed)}
     file.with_suffix(".baseline.json").write_text(json.dumps(report))
-    print(f"test baseline: {len(cases)} tests, {len(ids & entries)} known reds, {len(fresh)} new reds, {len(fixed)} fixed")
+    print(f"test baseline: {len(cases)} tests, {len(ids & set(entries))} known reds, {len(fresh)} new reds, {len(fixed)} fixed")
     if fixed:
         print("test baseline: fixed tests; remove from baseline")
     return 1 if fresh or fixed else 0
@@ -103,15 +154,15 @@ if __name__ == "__main__":
                 previous = subprocess.run(["git", "show", f"{base}:{config['quarantineFile']}"],
                                           cwd=ROOT, capture_output=True)
                 if previous.returncode == 0:
-                    old = {key(entry): entry for entry in json.loads(previous.stdout)}
-                    for entry in json.loads(file.read_text()):
-                        prior = old.get(key(entry))
-                        if prior is None or entry != prior:
-                            raise ValueError("baseline may only shrink")
+                    validate_changes(json.loads(file.read_text()), json.loads(previous.stdout))
                 elif old_path or subprocess.run(["git", "cat-file", "-e", f"{base}^{{commit}}"],
                                     cwd=ROOT, capture_output=True).returncode:
                     raise ValueError("baseline base commit unavailable")
-            print(f"test baseline: {len(entries)} owned, unexpired entries")
+            flaky = sum(entry.get("class") == "flaky" for entry in entries.values())
+            print(f"test baseline: {len(entries)} owned, unexpired entries; {flaky}/{CONFIG['baselineMaxFlaky']} flaky")
+            for entry in entries.values():
+                if (datetime.date.fromisoformat(entry["expires"]) - datetime.date.today()).days <= 7:
+                    print(f"::warning::Baseline expiry D-7: {entry['owner']} / {entry['suite']} / {entry['expires']}")
         elif sys.argv[1:2] == ["--inventory"]:
             _, kind, context, source, *custom = sys.argv[1:]
             inventory(kind, context, json.loads(Path(source).read_text()), baseline(Path(custom[0]) if custom else file))
