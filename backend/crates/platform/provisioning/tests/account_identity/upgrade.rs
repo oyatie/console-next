@@ -43,6 +43,7 @@ async fn actual_0227_upgrade_preserves_every_account_key_and_family(owner: PgPoo
             "session_purpose",
             "source_kind",
             "source_operation_id",
+            "privacy_acceptance",
         ] {
             family.insert(column.into(), Value::Null);
         }

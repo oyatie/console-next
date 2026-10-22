@@ -181,10 +181,6 @@ where
 /// receives outside the enrollment surface.
 pub const PASSKEY_REQUIRED_MESSAGE: &str = "enroll a passkey before performing this action";
 
-/// Refusal shown until the account accepts the current notice and terms.
-pub const PRIVACY_CONSENT_REQUIRED_MESSAGE: &str =
-    "required privacy notice and terms must be accepted before personal data writes";
-
 /// Why a request could not be given a tenant context.
 #[derive(Debug, thiserror::Error)]
 pub enum RequestContextError {
@@ -454,7 +450,7 @@ where
     S: Clone + Send + Sync + 'static,
 {
     router.layer(axum::middleware::from_fn(
-        move |mut request: Request, next: Next| {
+        move |request: Request, next: Next| {
             let verifier = verifier.clone();
             let pool = pool.clone();
             async move {
@@ -468,29 +464,7 @@ where
                     Ok(principal) => principal,
                     Err(err) => return error_response_for(&err),
                 };
-                if let Err(err) = privacy::ensure_write_consent(
-                    &pool,
-                    verifier,
-                    request.headers(),
-                    request.method(),
-                )
-                .await
-                {
-                    return error_response_for(&err);
-                }
-                let org = principal.org_id;
-                let session_id = session_family_id(verifier, request.headers());
-                let audit_context = request_audit_context(&request, session_id);
-                request.extensions_mut().insert(principal.clone());
-                CURRENT_ORG
-                    .scope(
-                        org,
-                        CURRENT_AUDIT_CONTEXT.scope(
-                            audit_context.clone(),
-                            commands::run(&pool, &principal, audit_context, request, next),
-                        ),
-                    )
-                    .await
+                privacy::run_tenant(&pool, verifier, principal, request, next).await
             }
         },
     ))
@@ -564,7 +538,7 @@ where
     S: Clone + Send + Sync + 'static,
 {
     router.layer(axum::middleware::from_fn(
-        move |mut request: Request, next: Next| {
+        move |request: Request, next: Next| {
             let verifier = verifier.clone();
             let pool = pool.clone();
             async move {
@@ -579,25 +553,7 @@ where
                     Ok(principal) => principal,
                     Err(err) => return error_response_for(&err),
                 };
-                if let Err(err) = privacy::ensure_write_consent(
-                    &pool,
-                    verifier,
-                    request.headers(),
-                    request.method(),
-                )
-                .await
-                {
-                    return error_response_for(&err);
-                }
-                let user_id = match UserId::from_str(&claims.sub) {
-                    Ok(id) => id,
-                    Err(_) => return error_response_for(&RequestContextError::InvalidToken),
-                };
-                request
-                    .extensions_mut()
-                    .insert(PlatformPrincipal::new(user_id));
-                request.extensions_mut().insert(claims);
-                next.run(request).await
+                privacy::run_platform(&pool, verifier, claims, request, next).await
             }
         },
     ))

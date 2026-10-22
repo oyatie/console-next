@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { apiAs, soloTenant } from "./chaos";
@@ -21,6 +22,7 @@ test("BL-015: a newer immutable document restores the blocker and asks for its e
   await expect(admin).toHaveURL(/\/setup-passkey$/);
   await acceptConsent(admin);
   await admin.getByRole("button", { name: "동의하고 계속", exact: true }).click();
+  await expect(admin).not.toHaveURL(/\/setup-passkey$/);
   await go(admin, "/setup/go-live");
   await expect(admin.getByRole("alert", { name: "고객 계정의 이용약관 동의가 없습니다" })).toBeVisible();
   await admin.getByRole("button", { name: "이용약관 읽기" }).click();

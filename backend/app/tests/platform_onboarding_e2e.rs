@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! End-to-end proof of the PLATFORM tier + tenant onboarding, running as the
 //! genuine NON-OWNER runtime role `console_rt` (so RLS is actually enforced, exactly
 //! as in production).
@@ -11,6 +12,9 @@
 //!      `console_rt`, so RLS is the gate.
 //!   3. A TENANT token is REJECTED on /api/platform/* (403).
 //!   4. A PLATFORM token is REJECTED on a tenant /api/v1/* route (403).
+
+#[path = "platform_onboarding/consent.rs"]
+mod consent;
 
 use axum::body::{Body, to_bytes};
 use console_app::{AppConfig, AppRole, AppState, DatabaseDependency, build_router};
@@ -39,24 +43,9 @@ const TEST_AUDIENCE: &str = "console-api";
 const TEST_RP_ID: &str = "example.com";
 const TEST_ORIGIN: &str = "https://auth.example.com";
 
-struct Keys {
-    private_pem: String,
-    public_pem: String,
-}
-
-fn gen_keys() -> Keys {
-    let signing_key = SigningKey::random(&mut OsRng);
-    Keys {
-        private_pem: signing_key
-            .to_pkcs8_pem(LineEnding::LF)
-            .unwrap()
-            .to_string(),
-        public_pem: signing_key
-            .verifying_key()
-            .to_public_key_pem(LineEnding::LF)
-            .unwrap(),
-    }
-}
+#[path = "platform_onboarding/fixture.rs"]
+mod fixture;
+use fixture::{Keys, gen_keys};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn platform_onboards_tenant_and_rls_isolates(super_pool: PgPool) {
@@ -85,50 +74,6 @@ async fn platform_onboards_tenant_and_rls_isolates(super_pool: PgPool) {
         true,
     )
     .await;
-
-    let family: uuid::Uuid =
-        sqlx::query_scalar("SELECT id FROM auth_refresh_token_families WHERE user_id=$1")
-            .bind(platform_admin.as_uuid())
-            .fetch_one(&super_pool)
-            .await
-            .unwrap();
-    sqlx::query("UPDATE auth_refresh_token_families SET privacy_acceptance=NULL WHERE id=$1")
-        .bind(family)
-        .execute(&super_pool)
-        .await
-        .unwrap();
-    let before: i64 = sqlx::query_scalar("SELECT count(*) FROM organizations")
-        .fetch_one(&super_pool)
-        .await
-        .unwrap();
-    let denied = service
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/platform/orgs")
-                .header(header::AUTHORIZATION, format!("Bearer {platform_token}"))
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    r#"{"slug":"no-consent","name":"Refused tenant"}"#,
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(denied.status(), StatusCode::FORBIDDEN);
-    let denied: Value =
-        serde_json::from_slice(&to_bytes(denied.into_body(), usize::MAX).await.unwrap()).unwrap();
-    assert_eq!(denied["error"]["code"], "privacy_consent_required");
-    let after: i64 = sqlx::query_scalar("SELECT count(*) FROM organizations")
-        .fetch_one(&super_pool)
-        .await
-        .unwrap();
-    assert_eq!(
-        after, before,
-        "refused platform write must create no tenant"
-    );
-    console_platform_test_support::seed_session_consent(&super_pool, family).await;
 
     let response = service
         .clone()

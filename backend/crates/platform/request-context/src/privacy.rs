@@ -4,6 +4,10 @@ use super::*;
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, Transaction};
 
+/// Refusal shown until the account accepts the current notice and terms.
+pub const PRIVACY_CONSENT_REQUIRED_MESSAGE: &str =
+    "required privacy notice and terms must be accepted before personal data writes";
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DocumentRef {
     pub version: String,
@@ -186,4 +190,54 @@ pub async fn ensure_write_consent(
                 .with_code("privacy_consent_required"),
         ))
     }
+}
+
+pub(super) async fn run_tenant(
+    pool: &PgPool,
+    verifier: &JwtVerifier,
+    principal: Principal,
+    mut request: Request,
+    next: Next,
+) -> axum::response::Response {
+    if let Err(err) =
+        ensure_write_consent(pool, verifier, request.headers(), request.method()).await
+    {
+        return error_response_for(&err);
+    }
+    let org = principal.org_id;
+    let session_id = session_family_id(verifier, request.headers());
+    let audit_context = request_audit_context(&request, session_id);
+    request.extensions_mut().insert(principal.clone());
+    CURRENT_ORG
+        .scope(
+            org,
+            CURRENT_AUDIT_CONTEXT.scope(
+                audit_context.clone(),
+                commands::run(pool, &principal, audit_context, request, next),
+            ),
+        )
+        .await
+}
+
+pub(super) async fn run_platform(
+    pool: &PgPool,
+    verifier: &JwtVerifier,
+    claims: AccessClaims,
+    mut request: Request,
+    next: Next,
+) -> axum::response::Response {
+    if let Err(err) =
+        ensure_write_consent(pool, verifier, request.headers(), request.method()).await
+    {
+        return error_response_for(&err);
+    }
+    let user_id = match UserId::from_str(&claims.sub) {
+        Ok(id) => id,
+        Err(_) => return error_response_for(&RequestContextError::InvalidToken),
+    };
+    request
+        .extensions_mut()
+        .insert(PlatformPrincipal::new(user_id));
+    request.extensions_mut().insert(claims);
+    next.run(request).await
 }

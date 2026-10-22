@@ -1,16 +1,12 @@
-//! Explicit global document fixture; this never supplies production legal content.
+// SPDX-License-Identifier: LicenseRef-Proprietary
+//! The current published terms for ordinary setup journeys; version-bump tests publish explicitly.
 #![allow(clippy::unwrap_used)]
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
 pub async fn publish(pool: &PgPool) -> Value {
-    // rls-arming: ok test-only immutable global document, published by the migration owner.
-    sqlx::query("INSERT INTO terms_documents (version, body, published_at) VALUES ('test-v1', 'Integration test service terms fixture', now()) ON CONFLICT (version) DO NOTHING")
-        .execute(pool).await.unwrap();
-    let sha256: String =
-        sqlx::query_scalar("SELECT sha256 FROM terms_documents WHERE version = 'test-v1'")
-            .fetch_one(pool)
-            .await
-            .unwrap();
-    json!({ "version": "test-v1", "sha256": sha256 })
+    let (version, sha256): (String, String) = sqlx::query_as(
+        "SELECT version, sha256 FROM terms_documents WHERE kind='service_terms' AND published_at<=now() ORDER BY published_at DESC, version DESC LIMIT 1",
+    ).fetch_one(pool).await.unwrap();
+    json!({ "version": version, "sha256": sha256 })
 }
