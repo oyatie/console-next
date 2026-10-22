@@ -194,7 +194,6 @@ export const enSetup: Record<keyof typeof koSetup, string> = {
   "setup.terms.title": "Service terms",
   "setup.error.terms_text_changed": "The terms changed. Read the new text before accepting.",
   "setup.error.terms_version_already_accepted": "This version was already accepted. Return to the start-of-operations preview.",
-  "setup.error.terms_not_published": "No terms have been published. Contact the service operator.",
   "setup.error.step_already_skipped": "This step was already deferred. Check the setup rail again.",
   "setup.error.step_not_skippable": "This step cannot be skipped. Register the required records first.",
   "setup.error.phase_not_setup": "Operations have started. Change the record from its own screen.",

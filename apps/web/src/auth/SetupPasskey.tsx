@@ -3,7 +3,7 @@ import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { KeyRound, LogOut } from "lucide-react";
-import { acceptConsent, consentDocuments, consentStatus, logout, PASSKEY_ENROLLED, registerPasskey, session } from "@console/api";
+import { ApiError, acceptConsent, consentDocuments, consentStatus, logout, PASSKEY_ENROLLED, registerPasskey, session } from "@console/api";
 import { t } from "@console/i18n";
 import { freshOnOpen, read } from "../lib/query";
 import { signInError } from "../lib/refusal";
@@ -26,6 +26,7 @@ export function SetupPasskey() {
   const documents = freshOnOpen(useQuery({ ...read("/api/v1/onboarding/terms", consentDocuments), retry: false, staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: false, refetchOnReconnect: false }));
   const status = freshOnOpen(useQuery({ ...read("/api/v1/auth/privacy-consent/status", consentStatus), retry: false, staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: false, refetchOnReconnect: false }));
   const failed = documents.isError || status.isError;
+  const unpublished = [documents.error, status.error].some((fault) => fault instanceof ApiError && fault.status === 409 && fault.code === "terms_not_published");
   const loading = documents.isPending || status.isPending || documents.isFetching || status.isFetching;
   const ready = documents.data && status.data && !failed && !loading;
   const accepted = status.data?.accepted;
@@ -64,7 +65,7 @@ export function SetupPasskey() {
         {error && <Banner tone="danger" live="assertive">{error}</Banner>}
         {loading && <Skeleton bones={["row", "row"]} label={t("common.loading")} />}
         {failed && <Banner tone="danger" live="assertive">
-          {t("auth.setup.consent.loadFailed")}
+          {t(unpublished ? "setup.error.terms_not_published" : "auth.setup.consent.loadFailed")}
           <Button disabled={busy || loading} onClick={retry}>{t("common.retry")}</Button>
         </Banner>}
         <div className="form">
@@ -95,7 +96,7 @@ export function SetupPasskey() {
         </Button>
         {!confirmed && <p className="muted" id={disabledDescription}>{t("auth.setup.consent.required")}</p>}
         <Button variant="ghost" disabled={busy} onClick={() => void logout()}>
-          <LogOut size={16} aria-hidden /> {t(isAppSession ? "shell.logout" : "auth.setup.cancel")}
+          <LogOut size={16} aria-hidden /> {t(isAppSession || unpublished ? "shell.logout" : "auth.setup.cancel")}
         </Button>
       </div></Card></div>
     </main>

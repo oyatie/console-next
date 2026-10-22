@@ -1,6 +1,6 @@
 // Route guards over the signed-in session: who may see sign-in, passkey set-up and the app.
 import { redirect } from "@tanstack/react-router";
-import { consentStatus, logout, refresh, session } from "@console/api";
+import { ApiError, consentStatus, logout, refresh, session } from "@console/api";
 
 /** A session whose token and passkey state disagree cannot recover in place: sign out and sign in again. */
 async function signInAgain(): Promise<never> {
@@ -19,7 +19,7 @@ export async function ensureSession({ location }: { location: { pathname: string
   if (session.stage === "enroll") throw redirect({ to: "/setup-passkey" });
   if (session.stage === "stale") return signInAgain();
   if (session.stage === "app") {
-    const status = await consentStatus();
+    const status = await requiredConsentStatus();
     if (!status.accepted) throw redirect({ to: "/setup-passkey" });
   }
   // Vendor-tier tokens are refused by tenant routes and vice versa; send each tier home.
@@ -39,8 +39,18 @@ export function leaveSignInWhenSignedIn() {
 export async function ensureEnrolling() {
   if (!session.token && !(await refresh())) throw redirect({ to: "/login" });
   if (session.stage === "app") {
-    const status = await consentStatus();
+    const status = await requiredConsentStatus();
     if (status.accepted) throw redirect({ to: home() });
   }
   if (session.stage === "stale") return signInAgain();
+}
+
+/** Unpublished documents keep users on setup, where they can retry or sign out. */
+async function requiredConsentStatus() {
+  try {
+    return await consentStatus();
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409 && error.code === "terms_not_published") return { accepted: false };
+    throw error;
+  }
 }

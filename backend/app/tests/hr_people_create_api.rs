@@ -33,7 +33,6 @@ struct JsonResponse {
 /// An existing app session must accept the exact current documents before any People write.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn app_session_without_privacy_consent_cannot_create_employee(pool: PgPool) {
-    console_platform_test_support::seed_consent_documents(&pool).await;
     let keys = keys();
     let org = OrgId::one();
     let user = UserId::new();
@@ -134,12 +133,22 @@ async fn privacy_documents_are_readable_and_hash_bound_before_acceptance(pool: P
             .unwrap()
             .contains("제2부. 회사가 수탁자로서 처리하는 개인정보")
     );
-    assert!(
-        result.json["privacy"]["body"]
-            .as_str()
-            .unwrap()
-            .contains("【확인 필요")
-    );
+    let body = result.json["privacy"]["body"].as_str().unwrap();
+    for editor_text in [
+        "게시 전",
+        "<a id=",
+        "【",
+        "privacy-policy-facts",
+        "console-next",
+        "현재 없습니다",
+        "# ",
+        "|---",
+    ] {
+        assert!(
+            !body.contains(editor_text),
+            "reader document contains {editor_text}"
+        );
+    }
     assert_eq!(result.json["privacy"]["review_pending"], true);
     let hash: String = sqlx::query_scalar("SELECT sha256 FROM terms_documents WHERE version=$1")
         .bind(result.json["privacy"]["version"].as_str().unwrap())
@@ -147,6 +156,107 @@ async fn privacy_documents_are_readable_and_hash_bound_before_acceptance(pool: P
         .await
         .unwrap();
     assert_eq!(result.json["privacy"]["sha256"], hash);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn missing_documents_refuse_writes_even_with_cached_acceptance(pool: PgPool) {
+    let keys = keys();
+    let org = OrgId::one();
+    let user = UserId::new();
+    seed_user(&pool, org, user).await;
+    let branch = seed_branch(&pool, org, "Unpublished branch").await;
+    let token = bearer(&pool, &keys, org, user, &["SUPER_ADMIN"]).await;
+    let service = build_router(
+        app_state(
+            runtime_role_pool(&pool).await,
+            leave_command_role_pool(&pool).await,
+            &keys,
+        )
+        .unwrap(),
+    );
+    // Only this disposable test database loses its global documents.
+    sqlx::query("TRUNCATE terms_documents CASCADE")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let before = people_write_counts(&pool, org).await;
+    let denied = post(
+        service.clone(),
+        EMPLOYEES_PATH,
+        &token,
+        create_body(
+            branch,
+            "UNPUBLISHED-001",
+            "unpublished-create",
+            "010-1234-5678",
+            "문서 미공개",
+        ),
+    )
+    .await;
+    assert_eq!(denied.status, StatusCode::FORBIDDEN, "{:?}", denied.json);
+    assert_eq!(denied.json["error"]["code"], "privacy_consent_required");
+    assert_eq!(people_write_counts(&pool, org).await, before);
+    let status = post(
+        service,
+        "/api/v1/auth/privacy-consent/status",
+        &token,
+        json!({}),
+    )
+    .await;
+    assert_eq!(status.status, StatusCode::CONFLICT, "{:?}", status.json);
+    assert_eq!(status.json["error"]["code"], "terms_not_published");
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn enrollment_can_read_documents_but_cannot_accept_tenant_terms(pool: PgPool) {
+    let keys = keys();
+    let org = OrgId::one();
+    let user = UserId::new();
+    seed_user(&pool, org, user).await;
+    let service = build_router(
+        app_state(
+            runtime_role_pool(&pool).await,
+            leave_command_role_pool(&pool).await,
+            &keys,
+        )
+        .unwrap(),
+    );
+    let issue = console_platform_provisioning::BootstrapCredentialStore
+        .issue_for_zero_credential_user(
+            &pool,
+            None,
+            *user.as_uuid(),
+            org,
+            OffsetDateTime::now_utc(),
+            Duration::hours(1),
+        )
+        .await
+        .unwrap();
+    let redeemed = post(
+        service.clone(),
+        "/api/v1/auth/otp/redeem",
+        "",
+        json!({ "otp": issue.token.as_str() }),
+    )
+    .await;
+    assert_eq!(redeemed.status, StatusCode::OK, "{:?}", redeemed.json);
+    let token = redeemed.json["access_token"].as_str().unwrap();
+    let documents = get(service.clone(), "/api/v1/onboarding/terms", token).await;
+    assert_eq!(documents.status, StatusCode::OK, "{:?}", documents.json);
+    let denied = post(
+        service,
+        "/api/v1/onboarding/terms",
+        token,
+        json!({"version": documents.json["version"], "sha256": documents.json["sha256"]}),
+    )
+    .await;
+    assert_eq!(denied.status, StatusCode::FORBIDDEN, "{:?}", denied.json);
+    assert_eq!(denied.json["error"]["code"], "passkey_required");
+    let acceptances: i64 = sqlx::query_scalar("SELECT count(*) FROM tenant_terms_acceptances")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(acceptances, 0);
 }
 
 async fn unaccepted_bearer(pool: &PgPool, keys: &Keys, org: OrgId, user: UserId) -> String {

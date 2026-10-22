@@ -58,6 +58,7 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
   await expect(page.getByLabel(/전화번호/)).toHaveCount(0);
 
   // The disclosed texts match the versioned store, and opening them never changes checkbox names.
+  expect(documents.privacy.body).not.toMatch(/게시 전|<a id=|【|privacy-policy-facts|console-next/);
   const disclosures = page.locator("details");
   await disclosures.nth(0).locator("summary").click();
   await expect(disclosures.nth(0).locator("p")).toHaveText(documents.privacy.body);
@@ -68,11 +69,13 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
   await expect(page.getByLabel(/전화번호/)).toHaveCount(0);
 
   // 5. Checking only one box keeps commit disabled
-  await privacyCheck.check();
+  await expect(privacyCheck).toBeEnabled();
+  await privacyCheck.press("Space");
   await expect(commit).toBeDisabled();
 
   // 6. Checking both enables the commit button
-  await termsCheck.check();
+  await expect(termsCheck).toBeEnabled();
+  await termsCheck.press("Space");
   await expect(commit).toBeEnabled();
 });
 
@@ -93,4 +96,17 @@ test("fresh sign-in shows no false error on first visit (issue #44 regression)",
   // Must not display any error banner
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.getByText("패스키 인증을 완료하지 못했습니다")).toHaveCount(0);
+});
+
+test("unpublished consent documents show operator action and allow sign out", { tag: "@privacy" }, async ({ browser }) => {
+  const page = await vendorPage(browser);
+  const unavailable = { status: 409, contentType: "application/json", body: JSON.stringify({ error: { code: "terms_not_published", message: "No terms published" } }) };
+  await page.route("**/api/v1/auth/privacy-consent/status", (route) => route.fulfill(unavailable));
+  await page.route("**/api/v1/onboarding/terms", (route) => route.fulfill(unavailable));
+  await page.goto("/platform");
+  await expect(page).toHaveURL(/\/setup-passkey/);
+  await expect(page.getByRole("alert")).toContainText("공개된 이용약관이 없습니다. 운영사에 문의하십시오.");
+  await expect(page.getByRole("button", { name: "동의하고 계속" })).toBeDisabled();
+  await page.getByRole("button", { name: "로그아웃" }).click();
+  await expect(page).toHaveURL(/\/login/);
 });

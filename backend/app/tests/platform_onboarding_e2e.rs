@@ -86,6 +86,50 @@ async fn platform_onboards_tenant_and_rls_isolates(super_pool: PgPool) {
     )
     .await;
 
+    let family: uuid::Uuid =
+        sqlx::query_scalar("SELECT id FROM auth_refresh_token_families WHERE user_id=$1")
+            .bind(platform_admin.as_uuid())
+            .fetch_one(&super_pool)
+            .await
+            .unwrap();
+    sqlx::query("UPDATE auth_refresh_token_families SET privacy_acceptance=NULL WHERE id=$1")
+        .bind(family)
+        .execute(&super_pool)
+        .await
+        .unwrap();
+    let before: i64 = sqlx::query_scalar("SELECT count(*) FROM organizations")
+        .fetch_one(&super_pool)
+        .await
+        .unwrap();
+    let denied = service
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/platform/orgs")
+                .header(header::AUTHORIZATION, format!("Bearer {platform_token}"))
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"slug":"no-consent","name":"Refused tenant"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+    let denied: Value =
+        serde_json::from_slice(&to_bytes(denied.into_body(), usize::MAX).await.unwrap()).unwrap();
+    assert_eq!(denied["error"]["code"], "privacy_consent_required");
+    let after: i64 = sqlx::query_scalar("SELECT count(*) FROM organizations")
+        .fetch_one(&super_pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        after, before,
+        "refused platform write must create no tenant"
+    );
+    console_platform_test_support::seed_session_consent(&super_pool, family).await;
+
     let response = service
         .clone()
         .oneshot(

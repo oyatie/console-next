@@ -7,6 +7,11 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 pub async fn tenant(owner: &PgPool) -> (PgOnboardingStore, OnboardingActor) {
+    // Each disposable fixture owns its publication timeline, independently of release documents.
+    sqlx::query("TRUNCATE terms_documents CASCADE")
+        .execute(owner)
+        .await
+        .unwrap();
     let org = OrgId::new();
     let user = seed_org_and_super_admin(owner, *org.as_uuid(), "onboarding").await;
     // rls-arming: ok test fixture assigns the sole ops holder before using console_rt.

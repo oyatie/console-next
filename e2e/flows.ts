@@ -47,8 +47,10 @@ export async function acceptConsent(page: Page) {
   const privacyCheck = page.getByRole("checkbox", { name: /개인정보 수집·이용/ });
   const termsCheck = page.getByRole("checkbox", { name: /서비스 이용약관/ });
   await expect(privacyCheck).toBeVisible();
-  await privacyCheck.check();
-  await termsCheck.check();
+  await expect(privacyCheck).toBeEnabled();
+  await privacyCheck.press("Space");
+  await expect(termsCheck).toBeEnabled();
+  await termsCheck.press("Space");
 }
 
 /** One-time code → passkey enrollment, as a first-time user does it. */

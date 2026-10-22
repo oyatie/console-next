@@ -6,9 +6,9 @@ import { SetupPasskey } from "./Login";
 
 vi.mock("@console/api", async (importOriginal) => ({ ...await importOriginal<typeof import("@console/api")>(), session: { stage: "enroll", claims: null } }));
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn(), getRouteApi: () => ({ useSearch: () => ({}) }) }));
-const query = vi.hoisted(() => ({ pending: false, failed: false, fetched: true }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: query.pending || query.failed ? undefined : { accepted: false, policy_version: "2026-10", version: "service-v1", sha256: "a".repeat(64), body: "Store service terms exact text", privacy: { version: "notice-v1", sha256: "b".repeat(64), body: "Store notice exact text 휴대전화번호", policy_url: "https://cosskorea.com/privacy", review_pending: true } }, isFetchedAfterMount: query.fetched && !query.pending, isPending: query.pending, isError: query.failed }) }));
-beforeEach(() => { query.pending = false; query.failed = false; query.fetched = true; });
+const query = vi.hoisted(() => ({ pending: false, failed: false, fetched: true, error: null as unknown }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: query.pending || query.failed ? undefined : { accepted: false, policy_version: "2026-10", version: "service-v1", sha256: "a".repeat(64), body: "Store service terms exact text", privacy: { version: "notice-v1", sha256: "b".repeat(64), body: "Store notice exact text 휴대전화번호", policy_url: "https://cosskorea.com/privacy", review_pending: true } }, isFetchedAfterMount: query.fetched && !query.pending, isPending: query.pending, isError: query.failed, error: query.error }) }));
+beforeEach(() => { query.pending = false; query.failed = false; query.fetched = true; query.error = null; });
 beforeAll(() => loadCatalog("ko"));
 
 test("first sign-in requires privacy notice and terms consent before passkey enrollment", () => {
@@ -65,4 +65,15 @@ test("cached consent text cannot stand in for a fresh document read", () => {
   const html = renderToStaticMarkup(<SetupPasskey />);
   expect(html).not.toContain("Store notice exact text");
   expect(html).toContain('role="status"');
+});
+
+test("unpublished documents explain operator action and offer logout with commit disabled", async () => {
+  const { ApiError } = await import("@console/api");
+  query.failed = true;
+  query.error = new ApiError(409, "terms_not_published", "unpublished");
+  const html = renderToStaticMarkup(<SetupPasskey />);
+  expect(html).toContain("공개된 이용약관이 없습니다. 운영사에 문의하십시오.");
+  expect(html).toContain("로그아웃");
+  expect(html).not.toContain("동의 문서를 불러오지 못했습니다");
+  expect(html).toMatch(/<input[^>]*disabled/);
 });
