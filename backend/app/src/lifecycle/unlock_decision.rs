@@ -54,6 +54,13 @@ pub(super) async fn decider_stands(
     let me = *principal.user_id.as_uuid();
     let independent =
         independent_people::authorized_in_tx(tx, Some(request.requested_by), me).await?;
+    if !independent {
+        return Err(coded(
+            StatusCode::FORBIDDEN,
+            "second_person_required",
+            "two verified distinct people are required; another close authority must decide",
+        ));
+    }
     let fact = second_person(
         tx,
         principal.org_id,
@@ -81,19 +88,11 @@ pub(super) async fn decider_stands(
             "ops_break_glass"
         });
     }
-    Err(if independent {
-        coded(
-            StatusCode::FORBIDDEN,
-            "second_person_ineligible",
-            "you are not an eligible second person for this unlock",
-        )
-    } else {
-        coded(
-            StatusCode::FORBIDDEN,
-            "second_person_required",
-            "the requester cannot decide their own unlock",
-        )
-    })
+    Err(coded(
+        StatusCode::FORBIDDEN,
+        "second_person_ineligible",
+        "you are not an eligible second person for this unlock",
+    ))
 }
 
 /// The lock's open request, locked, still the one the caller saw (409 when a

@@ -70,7 +70,7 @@ impl RestError {
             E::SodViolation => Self::new(
                 StatusCode::CONFLICT,
                 "sod_violation",
-                "the decider must not be the submitter",
+                "payroll decisions require two verified distinct people; another payroll approver must decide",
             ),
             E::AlreadyResolved => Self::new(
                 StatusCode::CONFLICT,

@@ -141,9 +141,32 @@ async fn regression_d26_ops_is_the_second_person_only_with_a_step_up_and_never_f
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
     assert_eq!(
-        refused["error"]["code"], "second_person_ineligible",
+        refused["error"]["code"], "second_person_required",
         "{refused}"
     );
+    // No side effect from either refusal.
+    assert!(active(&owner, lock_id).await);
+    assert!(unlocks(&owner, lock_id).await.is_empty());
+
+    // An ops flag cannot replace a verified person identity.
+    let (status, refused) =
+        approve(&service, &owner, &svc, &mut ops, lock_id, request_id, true).await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
+    assert_eq!(refused["error"]["code"], "second_person_required");
+    assert!(active(&owner, lock_id).await);
+    assert!(unlocks(&owner, lock_id).await.is_empty());
+    period_unlock_support::person_fixtures::bind_user_to_distinct_person(
+        &owner,
+        console_kernel_core::UserId::from_uuid(ops.id),
+    )
+    .await;
+
+    // A known ops person without an aged grant still uses the reviewed break-glass path.
+    sqlx::query("UPDATE authz_grant_ledger SET occurred_at=now() WHERE user_id=$1")
+        .bind(ops.id)
+        .execute(&owner)
+        .await
+        .unwrap();
     // Negative: ops without its own step-up is refused.
     let (status, refused) =
         approve(&service, &owner, &svc, &mut ops, lock_id, request_id, false).await;
@@ -152,9 +175,6 @@ async fn regression_d26_ops_is_the_second_person_only_with_a_step_up_and_never_f
         refused["error"]["code"], "passkey_step_up_required",
         "{refused}"
     );
-    // No side effect from either refusal.
-    assert!(active(&owner, lock_id).await);
-    assert!(unlocks(&owner, lock_id).await.is_empty());
 
     // Ops with its own step-up performs it, flagged for review and audited.
     let (status, unlocked) =

@@ -1,4 +1,9 @@
 export const koRequestOutcome = {
+  "requestOutcome.code.org_change_sod_violation": "기안자와 결재자의 신원이 확인되지 않았거나 같은 사람입니다. 신원이 확인된 다른 사람이 결재 권한으로 승인하거나 반려해야 합니다.",
+  "requestOutcome.code.leave_decide_requester_forbidden": "신청자와 결정자의 신원이 확인되지 않았거나 같은 사람입니다. 신원이 확인된 다른 사람이 휴가 결정 권한으로 승인하거나 반려해야 합니다.",
+  "requestOutcome.code.sod_violation": "제출자와 결정자의 신원이 확인되지 않았거나 같은 사람입니다. 신원이 확인된 다른 사람이 급여 결재 권한으로 승인하거나 반려해야 합니다.",
+  "requestOutcome.code.second_person_required": "요청자와 결정자의 신원이 확인되지 않았거나 같은 사람입니다. 신원이 확인된 다른 사람이 마감 권한으로 승인하거나 반려해야 합니다.",
+
   "requestOutcome.lookup": "요청 번호 또는 요청 키",
   "requestOutcome.find": "결과 확인",
   "requestOutcome.empty": "요청 번호로 처리 결과를 확인하십시오.",

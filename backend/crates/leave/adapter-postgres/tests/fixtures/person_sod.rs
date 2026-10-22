@@ -34,7 +34,16 @@ async fn same_person_accounts_cannot_decide_leave(owner_pool: PgPool) {
     .unwrap();
     assert_ne!(maker, same);
     let before = snapshot(&owner_pool, *request.id.as_uuid()).await;
-    for checker in [same, same_person_alias, same] {
+    let unknown = seed_user(&owner_pool, org_uuid).await;
+    let missing = seed_user(&owner_pool, org_uuid).await;
+    let (missing_employee, _) =
+        person_fixtures::bind_user_to_distinct_person(&owner_pool, missing).await;
+    sqlx::query("DELETE FROM employee_person_bindings WHERE employee_id=$1")
+        .bind(missing_employee)
+        .execute(&owner_pool)
+        .await
+        .unwrap();
+    for checker in [maker, same, same_person_alias, unknown, missing] {
         for decision in [LeaveDecision::Approve, LeaveDecision::TimeChange] {
             let err = scope_org(
                 org,
@@ -43,7 +52,10 @@ async fn same_person_accounts_cannot_decide_leave(owner_pool: PgPool) {
             .await
             .unwrap_err();
             assert_eq!(err.kind(), ErrorKind::Forbidden);
-            assert!(err.to_string().contains("separation of duties"));
+            assert!(
+                matches!(err, console_leave_adapter_postgres::PgLeaveError::Domain(ref e)
+                if e.code == Some("leave_decide_requester_forbidden"))
+            );
             assert_eq!(snapshot(&owner_pool, *request.id.as_uuid()).await, before);
         }
     }

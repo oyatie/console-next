@@ -31,13 +31,6 @@ impl PgLeaveStore {
         }
 
         let decision = command.decision;
-        if decision.writes_ledger() && existing.charge_resolved_by == Some(decider) {
-            return Err(KernelError::forbidden(
-                "leave charge resolver cannot approve the same request",
-            )
-            .into());
-        }
-
         let mut tx = self.command_pool()?.begin().await?;
         sqlx::query("SELECT set_config('app.current_org',$1,true)")
             .bind(org.to_string())
@@ -51,10 +44,18 @@ impl PgLeaveStore {
         .await?
         {
             return Err(KernelError::forbidden(
-                "a leave request cannot be decided by its own requester (separation of duties)",
+                "leave decisions require two verified distinct people; another authorized person must decide",
+            )
+            .with_code("leave_decide_requester_forbidden")
+            .into());
+        }
+        if decision.writes_ledger() && existing.charge_resolved_by == Some(decider) {
+            return Err(KernelError::forbidden(
+                "leave charge resolver cannot approve the same request",
             )
             .into());
         }
+
         console_platform_db::command_outcomes::execution::bind(&mut tx).await?;
         let row = sqlx::query(
             "SELECT * FROM leave_api.decide_request(\

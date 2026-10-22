@@ -23,9 +23,22 @@ async fn approvals_and_rejections_refuse_shared_identities_and_preserve_the_run(
     let same_person_alias =
         seed_active_user(&pool, *org.as_uuid(), "ADMIN", "same-person-alias").await;
     person_fixtures::bind_user_to_person(&pool, same_person_alias, person).await;
+    let unknown = seed_active_user(&pool, *org.as_uuid(), "ADMIN", "unknown").await;
+    let missing = seed_active_user(&pool, *org.as_uuid(), "ADMIN", "missing").await;
+    let (missing_employee, _) = person_fixtures::bind_user_to_distinct_person(&pool, missing).await;
+    sqlx::query("DELETE FROM employee_person_bindings WHERE employee_id=$1")
+        .bind(missing_employee)
+        .execute(&pool)
+        .await
+        .unwrap();
     assert_ne!(maker, same);
     let rt = runtime_role_pool(&pool).await;
     for (submitter, decider) in [
+        (Some(maker), maker),
+        (Some(maker), unknown),
+        (Some(unknown), checker),
+        (Some(maker), missing),
+        (Some(missing), checker),
         (Some(maker), same),
         (Some(maker), same_person_alias),
         (Some(same_person_alias), maker),

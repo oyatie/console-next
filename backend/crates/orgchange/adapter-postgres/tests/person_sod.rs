@@ -30,7 +30,7 @@ async fn routed_approval_refuses_same_person_accounts_without_decision_or_audit(
         .bind(org.as_uuid()).bind(request).fetch_one(&pool).await.unwrap();
     let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
     let before = snapshot(&pool, step).await;
-    for actor in [same, same_person_alias, same] {
+    for actor in [maker, same, same_person_alias] {
         for approved in [true, false] {
             let err = scope_org(org, store.decide_step(actor, request, step, approved, None))
                 .await
@@ -38,7 +38,7 @@ async fn routed_approval_refuses_same_person_accounts_without_decision_or_audit(
             assert_eq!(err.kind(), ErrorKind::Conflict);
             assert!(
                 err.to_string()
-                    .contains("기안자는 자신의 조직 개편을 승인할 수 없습니다.")
+                    .contains("기안자와 결재자의 신원이 확인되지 않았거나 같은 사람입니다.")
             );
             assert_eq!(snapshot(&pool, step).await, before);
         }
@@ -55,9 +55,7 @@ async fn snapshot(pool: &PgPool, step: Uuid) -> (Value, i64, i64, i64) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn distinct_accounts_can_approve_and_reject_with_zero_one_or_two_person_bindings(
-    pool: PgPool,
-) {
+async fn decisions_require_two_known_distinct_people(pool: PgPool) {
     let org = OrgId::from_uuid(Uuid::new_v4());
     let maker = seed_org_and_super_admin(&pool, *org.as_uuid(), "unlinked-orgchange").await;
     let checker = seed_active_user(&pool, *org.as_uuid(), "ADMIN", "checker").await;
@@ -75,12 +73,21 @@ async fn distinct_accounts_can_approve_and_reject_with_zero_one_or_two_person_bi
             let step: Uuid = sqlx::query_scalar("INSERT INTO org_change_approval_steps (org_id,request_id,step_order,role_key) VALUES ($1,$2,1,'hr') RETURNING id")
                 .bind(org.as_uuid()).bind(request).fetch_one(&pool).await.unwrap();
             let before = snapshot(&pool, step).await;
-            scope_org(
+            let result = scope_org(
                 org,
                 store.decide_step(checker, request, step, approved, None),
             )
-            .await
-            .unwrap();
+            .await;
+            if bindings < 2 {
+                let err = result.expect_err("missing person facts must refuse");
+                assert!(
+                    matches!(err, console_orgchange_adapter_postgres::PgOrgChangeError::Domain(ref e)
+                    if e.code == Some("org_change_sod_violation"))
+                );
+                assert_eq!(snapshot(&pool, step).await, before);
+                continue;
+            }
+            result.unwrap();
             let after = snapshot(&pool, step).await;
             assert_eq!(
                 after.0["decision"],

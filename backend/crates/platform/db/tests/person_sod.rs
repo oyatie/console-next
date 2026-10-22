@@ -9,6 +9,8 @@ static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 #[path = "fixtures/person_sod_locks.rs"]
 mod locks;
 use locks::independent;
+#[path = "fixtures/person_sod_boundaries.rs"]
+mod boundaries;
 #[path = "fixtures/independent_accounts.rs"]
 mod independent_accounts;
 

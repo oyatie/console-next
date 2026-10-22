@@ -11,6 +11,14 @@ import { useCommand } from "./command";
 
 beforeAll(() => loadCatalog("ko"));
 
+test.each(["org_change_sod_violation", "leave_decide_requester_forbidden", "sod_violation", "second_person_required"])("%s explains identity refusal and who can decide", async (code) => {
+  const banner = await html(new ApiError(403, code, "internal diagnostic", [], undefined, true));
+  expect(banner).toContain("다른 사람");
+  expect(banner).toContain("신원");
+  expect(banner).not.toContain("internal diagnostic");
+  expect(banner).toContain('role="alert"');
+});
+
 async function html(error: unknown, props: { children?: ReactNode; historyHref?: string; fieldLabel?: (field: string) => string | null | undefined; own?: (code: string) => string | undefined; live?: "polite" | "assertive"; recover?: boolean; onFocusField?: (field: string) => void; formId?: string; formFields?: string[] } = {}) {
   const root = createRootRoute({ component: () => <CommandError error={error} {...props} /> });
   const outcome = createRoute({ getParentRoute: () => root, path: "/requests/$id" });

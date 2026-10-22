@@ -27,8 +27,8 @@ impl PgOrgChangeStore {
                     tx, Some(request.drafted_by), *actor.as_uuid(),
                 ).await? {
                     return Err(KernelError::conflict(
-                        "기안자는 자신의 조직 개편을 승인할 수 없습니다.",
-                    )
+                        "기안자와 결재자의 신원이 확인되지 않았거나 같은 사람입니다. 신원이 확인된 다른 사람이 결재해야 합니다.",
+                    ).with_code("org_change_sod_violation")
                     .into());
                 }
                 let step = sqlx::query(

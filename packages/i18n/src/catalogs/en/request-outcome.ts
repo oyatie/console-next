@@ -1,4 +1,9 @@
 export const enRequestOutcome = {
+  "requestOutcome.code.org_change_sod_violation": "The drafter and decider must be two verified people. Another verified person with approval authority must approve or reject this change.",
+  "requestOutcome.code.leave_decide_requester_forbidden": "The requester and decider must be two verified people. Another verified person with leave decision authority must approve or reject this request.",
+  "requestOutcome.code.sod_violation": "The submitter and decider must be two verified people. Another verified person with payroll approval authority must approve or reject this run.",
+  "requestOutcome.code.second_person_required": "The requester and decider must be two verified people. Another verified person with close authority must approve or reject this unlock.",
+
   "requestOutcome.lookup": "Request ID or key",
   "requestOutcome.find": "Check result",
   "requestOutcome.empty": "Enter a request ID to check its outcome.",

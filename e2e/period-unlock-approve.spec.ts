@@ -33,34 +33,38 @@ async function requestUnlock(admin: Page) {
 // live; the second person finds it on Home and on the lock page, refuses it with a reason, then approves a new request
 // with their own passkey. Refusals change nothing.
 test("period unlock: a second close authority refuses, then approves; the requester sees each outcome", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
-  test.setTimeout(8 * 60_000); // two tenants, three accounts and two passkey decisions, all through the UI
+  test.setTimeout(8 * 60_000); // two tenants, verified close authorities and two passkey decisions, all through the UI
   const slug = "unlockco";
   // The setup's colleague holds nothing: the lower-grant account below.
-  const { admin, exec: nobody } = await tenantInSetup(browser, slug, "해제주식회사", false, "본사", "none");
-  // The close authority is an employee whose account is invited from the record (linked), then granted 회사 전체.
-  await registerEmployee(admin, { name: "김마감", number: "UL-0001", hired: "2024-03-04", unit: "본사" });
-  await admin.getByRole("button", { name: "계정 초대" }).click();
-  await stepUp(admin.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", admin.getByLabel("일회용 코드"));
-  const exec = await firstSignIn(browser, await takeCode(admin));
-  await startOperations(admin);
-  await grantAccess(admin, "김마감", "close");
-  // A changed grant ends the account's sessions: the close authority signs in again with their passkey, and Home asks
-  // them to confirm the grant's notice; until they do, it makes them nobody's second person.
-  await go(exec, "/", true);
-  await passkeyLogin(exec);
-  await exec.reload(); // an open page learns of new access on its next load (access-hr-walk)
-  const inbox = exec.getByRole("region", { name: "업무함", exact: true });
-  const notices = inbox.getByRole("listitem").filter({ has: exec.getByRole("button", { name: "기간 마감 부여 확인 기록", exact: true }) });
-  await expect(notices).toContainText("기간 마감 · 전체 ·", { timeout: 20_000 }); // Home holds its first frame until every read lands
-  await expectAccessible(exec, "grant notice");
-  await notices.getByRole("button", { name: "기간 마감 부여 확인 기록" }).click();
-  await expect(exec.getByRole("status").filter({ hasText: "기간 마감 부여 확인을 기록했습니다" })).toBeVisible();
-  await expect(notices).toBeHidden();
-  letGrantsAge(unique(slug), "김마감");
+  const { admin: operator, exec: nobody } = await tenantInSetup(browser, slug, "해제주식회사", false, "본사", "none");
+  // Both acts need verified people: the bootstrap operator has no employee/person link.
+  const authorities: Page[] = [];
+  for (const [name, number] of [["이요청", "UL-0001"], ["김마감", "UL-0002"]]) {
+    await registerEmployee(operator, { name: name!, number: number!, hired: "2024-03-04", unit: "본사" });
+    await operator.getByRole("button", { name: "계정 초대" }).click();
+    await stepUp(operator.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", operator.getByLabel("일회용 코드"));
+    authorities.push(await firstSignIn(browser, await takeCode(operator)));
+  }
+  const [admin, exec] = authorities as [Page, Page];
+  await startOperations(operator);
+  for (const [page, name] of [[admin, "이요청"], [exec, "김마감"]] as const) {
+    await grantAccess(operator, name, "close");
+    // A changed grant ends sessions; the authority signs in and acknowledges its notice.
+    await go(page, "/", true);
+    await passkeyLogin(page);
+    await page.reload();
+    const notices = page.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ has: page.getByRole("button", { name: "기간 마감 부여 확인 기록", exact: true }) });
+    await expect(notices).toContainText("기간 마감 · 전체 ·", { timeout: 20_000 });
+    await expectAccessible(page, "grant notice");
+    await notices.getByRole("button", { name: "기간 마감 부여 확인 기록" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "기간 마감 부여 확인을 기록했습니다" })).toBeVisible();
+    await expect(notices).toBeHidden();
+    letGrantsAge(unique(slug), name);
+  }
   // A frame within OWN_ECHO_MS of this tab's own write is that write's echo (lib/live): the requester acts after it.
   await exec.waitForTimeout(OWN_ECHO_MS);
 
-  // The ops account locks last month, then asks to unlock it: another close authority exists, so it waits.
+  // The linked requester locks last month, then asks to unlock it; another authority decides.
   const adminBearer = bearerOf(admin);
   await go(admin, LOCKS);
   await option(admin, "업무 영역", "급여").click();
@@ -105,19 +109,28 @@ test("period unlock: a second close authority refuses, then approves; the reques
   // The second person, on Home all along, sees the request arrive live and refuses it with a reason,
   // after the requester's own-write window (OWN_ECHO_MS), as people do.
   await exec.waitForTimeout(OWN_ECHO_MS);
+  const inbox = exec.getByRole("region", { name: "업무함", exact: true });
   const queue = inbox.getByRole("listitem").filter({ has: exec.locator(`a[href="${LOCKS}?review=${lock.id}"]`) });
   await expect(queue).toContainText(`급여 ${month}`);
-  await expect(queue).toContainText("운영 계정");
+  await expect(queue).toContainText("이요청");
   await expect(queue).toContainText("소급 정정");
   await queue.getByRole("link", { name: `급여 ${month} 해제 요청 검토`, exact: true }).click();
   const card = exec.getByRole("dialog", { name: `급여 ${month} 잠금 해제 요청` });
   await expect(card).toContainText("내 차례입니다");
-  await expect(card).toContainText("운영 계정 ·");
+  await expect(card).toContainText("이요청 ·");
   await expectAccessible(exec, "unlock request (second person)");
   await card.getByRole("button", { name: "반려", exact: true }).click();
   await card.getByRole("button", { name: "잠금 해제 반려" }).click(); // a check: no reason yet, nothing is sent
   await expect(card).toContainText("반려 사유를 입력하십시오");
   await card.getByLabel(/^반려 사유/).fill("9월 급여 확정 뒤 다시 요청");
+  // Identity may become unavailable after the list was read; show the server refusal in this dialog.
+  const rejectRoute = `**/api/v1/period-locks/${lock.id}/unlock/reject`;
+  await exec.route(rejectRoute, (route) => route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ error: { code: "second_person_required", message: "identity unavailable" } }) }));
+  await card.getByRole("button", { name: "잠금 해제 반려" }).click();
+  await expect(card.getByRole("alert")).toContainText("요청자와 결정자의 신원이 확인되지 않았거나 같은 사람입니다");
+  await expect(card.getByRole("alert")).toContainText("신원이 확인된 다른 사람이 마감 권한으로 승인하거나 반려해야 합니다");
+  await expect(row).toContainText("승인 대기");
+  await exec.unroute(rejectRoute);
   await card.getByRole("button", { name: "잠금 해제 반려" }).click();
   await expect(card).toBeHidden();
   await expect(exec.getByRole("status").filter({ hasText: `급여 ${month} 잠금 해제 요청을 반려했습니다` })).toBeVisible();
