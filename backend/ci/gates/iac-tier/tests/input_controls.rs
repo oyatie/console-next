@@ -101,3 +101,14 @@ fn an_untracked_opentofu_pod_manifest_is_a_violation() {
     );
     assert!(!audit(&collect_artifacts(&repo.0).unwrap()).passed());
 }
+
+#[test]
+fn an_explicit_no_iac_declaration_is_green_only_without_iac_files() {
+    let repo = Repo::new("declared");
+    repo.put("deploy/IAC-NONE.md", b"IaC lives in console-infra.\n");
+    repo.git(&["add", "."]);
+    assert!(collect_artifacts(&repo.0).unwrap().is_empty());
+    repo.put("deploy/apps/app.yaml", b"kind: Deployment\n");
+    repo.git(&["add", "."]);
+    assert!(collect_artifacts(&repo.0).is_err());
+}

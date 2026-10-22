@@ -2,6 +2,9 @@
 use crate::{IacArtifact, IacTier};
 use std::path::{Path, PathBuf};
 
+/// An explicit, reviewed statement that this repository holds no IaC (and where it lives instead).
+pub const NO_IAC_DECLARATION: &str = "deploy/IAC-NONE.md";
+
 /// Resolve the git repository root containing `dir` (works from any subdir).
 pub fn git_root(dir: &Path) -> Result<PathBuf, String> {
     let out = std::process::Command::new("git")
@@ -76,10 +79,15 @@ pub fn collect_artifacts(repo_root: &Path) -> Result<Vec<IacArtifact>, String> {
             contents,
         });
     }
-    if artifacts.is_empty() {
-        return Err(
-            "no IaC artifacts found in deploy/argocd, deploy/apps or deploy/opentofu".into(),
-        );
+    let declared_none = repo_root.join(NO_IAC_DECLARATION).is_file();
+    match (artifacts.is_empty(), declared_none) {
+        (true, false) => Err(format!(
+            "no IaC artifacts found in deploy/argocd, deploy/apps or deploy/opentofu, and no {NO_IAC_DECLARATION} declaring where IaC lives"
+        )),
+        (false, true) => Err(format!(
+            "{NO_IAC_DECLARATION} declares no IaC here, but {} IaC artifact(s) exist: remove one or the other",
+            artifacts.len()
+        )),
+        _ => Ok(artifacts),
     }
-    Ok(artifacts)
 }

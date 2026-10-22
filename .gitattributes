@@ -1,0 +1,2 @@
+# Fuzz corpora are binary inputs, not repository text (vendor-lockin and other text gates skip them).
+backend/fuzz/corpus/** binary

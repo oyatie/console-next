@@ -91,3 +91,36 @@ fn missing_and_invalid_utf8_text_is_not_silently_skipped() -> Result {
     assert_eq!(collect_artifacts(&repo.0)?.len(), 1);
     Ok(())
 }
+
+#[test]
+fn only_gitattributes_declared_binary_files_are_skipped() -> Result {
+    let repo = Repo::new("declared");
+    repo.put("main.rs", b"fn main() {}\n");
+    repo.put("corpus/seed-000", b"\xff\xfe");
+    repo.git(&["add", "."]);
+    // undeclared invalid UTF-8 still fails
+    assert!(collect_artifacts(&repo.0).is_err());
+    repo.put(".gitattributes", b"corpus/** binary\n");
+    repo.git(&["add", "."]);
+    let names: Vec<_> = collect_artifacts(&repo.0)?
+        .into_iter()
+        .map(|a| a.path)
+        .collect();
+    assert!(!names.iter().any(|p| p.starts_with("corpus")));
+    assert!(names.iter().any(|p| p.ends_with("main.rs")));
+    Ok(())
+}
+
+#[test]
+fn many_files_do_not_deadlock_the_attribute_query() -> Result {
+    let repo = Repo::new("many");
+    for i in 0..3000 {
+        repo.put(
+            &format!("src/a_rather_long_directory_name_for_pipe_pressure/file_{i:05}.rs"),
+            b"fn f() {}\n",
+        );
+    }
+    repo.git(&["add", "."]);
+    assert_eq!(collect_artifacts(&repo.0)?.len(), 3000);
+    Ok(())
+}
