@@ -35,12 +35,14 @@ beforeAll(async () => {
       import { createRoot } from "react-dom/client";
       import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
       import { createRouter, createRootRoute, RouterProvider, createMemoryHistory } from '@tanstack/react-router';
-      import { ApiError } from '@console/api';
+      import { ApiError, configure } from '@console/api';
       import { loadCatalog } from '@console/i18n';
       import { QueryState } from '/apps/web/src/lib/react/query-state.tsx';
       import { Denied } from '/apps/web/src/lib/react/denied.tsx';
       import { CommandError } from '/apps/web/src/lib/react/command-error.tsx';
+      import { SupportLookup } from '/apps/web/src/lib/react/support-lookup.tsx';
       await loadCatalog('ko');
+      configure({baseUrl:location.origin,refresh:{kind:'cookie'},passkeys:{get:async()=>null,create:async()=>null}});
       const error = status => ApiError.fromBody(new Response(null, { status }), {error:{code:'internal',message:'internal server error',...${JSON.stringify(receipt)}}});
       const h = React.createElement;
       const q = {isPending:false,error:error(500),data:undefined,refetch:()=>{}};
@@ -50,7 +52,8 @@ beforeAll(async () => {
         Case('load',h(QueryState,{q},()=>null)),
         Case('background',h(QueryState,{q:{...q,data:'saved'}},value=>h('div',null,value))),
         Case('denied',h(Denied,{error:error(403)})),
-        Case('mutation',h(CommandError,{error:error(500)})))});
+        Case('mutation',h(CommandError,{error:error(500)})),
+        Case('lookup',h(SupportLookup)))});
       const router = createRouter({routeTree:route,history:createMemoryHistory({initialEntries:['/']})});
       createRoot(document.getElementById('root')).render(h(QueryClientProvider,{client:new QueryClient({defaultOptions:{queries:{enabled:false,retry:false}}})},h(RouterProvider,{router})));
 ` : undefined,
@@ -60,6 +63,28 @@ beforeAll(async () => {
   browser = await chromium.launch();
 });
 afterAll(async () => { await browser?.close(); await server?.close(); });
+
+test("Enter submits the displayed short reference once and ignores IME composition", async () => {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    const lookups: string[] = [];
+    await page.route("**/api/v1/support-references/*", route => {
+      lookups.push(new URL(route.request().url()).pathname);
+      return route.fulfill({ json: { ...receipt, trace_id: reference, release: "previous-deploy", route_template: "/people/:id" } });
+    });
+    await page.goto(`${server.resolvedUrls!.local[0]}support-reference-fixture`);
+    await page.getByText("지원 참조 번호 조회", { exact: true }).click();
+    const input = page.getByLabel("전체 지원 참조 번호");
+    await input.fill(`ref ${reference.slice(0, 8)}`);
+    await input.dispatchEvent("keydown", { key: "Enter", isComposing: true });
+    await input.dispatchEvent("keydown", { key: "Enter", keyCode: 229 });
+    expect(lookups).toEqual([]);
+    await input.press("Enter");
+    await page.getByText("previous-deploy", { exact: true }).waitFor({ timeout: 2000 });
+    expect(lookups).toEqual([`/api/v1/support-references/${reference.slice(0, 8)}`]);
+  } finally { await context.close(); }
+}, 30_000);
 
 test("shared load, background, denied and mutation rows copy full ids and pass axe at desktop and phone widths", async () => {
   const context = await browser.newContext();

@@ -58,28 +58,37 @@ impl PlatformFeature {
 ///
 /// It holds NO tenant [`Role`] and NO [`BranchScope`]: a platform principal can
 /// never create a work order or touch tenant-scoped data through the tenant
-/// matrix. Its authority is the full [`PlatformFeature`] set (the platform token
-/// is a single trust level today; finer-grained platform RBAC can subset this
-/// later without touching the tenant matrix).
+/// matrix. Existing platform sessions hold the full [`PlatformFeature`] set;
+/// an explicit feature set restricts authority without entering the tenant matrix.
 ///
 /// [`Role`]: crate::Role
 /// [`BranchScope`]: console_kernel_core::BranchScope
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct PlatformPrincipal {
     pub user_id: UserId,
+    #[serde(default)]
+    features: Option<Vec<PlatformFeature>>,
 }
 
 impl PlatformPrincipal {
     #[must_use]
     pub const fn new(user_id: UserId) -> Self {
-        Self { user_id }
+        Self {
+            user_id,
+            features: None,
+        }
     }
 
-    /// Default-deny authorization for one platform capability. Today every
-    /// platform principal holds the full set, so this returns `Ok` for any
-    /// [`PlatformFeature`]; it exists so call sites are explicit about the
-    /// capability they require and so subsetting later is a one-line change.
-    pub fn authorize(&self, _feature: PlatformFeature) -> Result<(), KernelError> {
-        Ok(())
+    /// An explicit subset is authoritative; an omitted set preserves existing platform sessions.
+    pub fn authorize(&self, feature: PlatformFeature) -> Result<(), KernelError> {
+        if self
+            .features
+            .as_ref()
+            .is_none_or(|features| features.contains(&feature))
+        {
+            Ok(())
+        } else {
+            Err(KernelError::forbidden("Platform capability is required"))
+        }
     }
 }

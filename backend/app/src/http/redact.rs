@@ -164,7 +164,15 @@ pub async fn redact(
         .as_str()
         .unwrap_or(&trace_id)
         .to_owned();
-    let at = super::support_reference::issue(&state, org, &route, &reference, &trace_id);
+    let at = super::support_reference::issue(
+        org,
+        &route,
+        &state.web_release,
+        &reference,
+        &trace_id,
+        "http",
+        None,
+    );
     rewritten.body["error"]["support_ref"] = reference.clone().into();
     rewritten.body["error"]["support_ref_at"] = at.into();
     if let Ok(value) = HeaderValue::from_str(&reference) {

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 tags: [system]
 operationId: resolveSupportReference
-summary: Resolve a server-issued support reference
+summary: Resolve a full support reference or an unambiguous eight-character display reference
 security:
   - bearerAuth: []
 parameters:
@@ -10,7 +10,7 @@ parameters:
     required: true
     schema:
       type: string
-      pattern: '^[0-9a-f]{32}$'
+      pattern: '^(?:[0-9a-f]{8}|[0-9a-f]{32})$'
 responses:
   '200':
     description: Diagnostic context authorized by the support_reference Cedar decision.
