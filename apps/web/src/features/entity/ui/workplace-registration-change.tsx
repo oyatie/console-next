@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useId, useState } from "react";
+import { useState } from "react";
 import { Building2 } from "lucide-react";
 import type { LegalEntity, Workplace } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { FORMATS } from "../../../lib/pure/formats";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
+import { MaskedField } from "../../../ui/masked-field/masked-field";
 import { todayKst } from "../../../lib/pure/today";
 import { useCommand } from "../../../lib/react/command";
 import { Button } from "../../../ui/button/button";
@@ -17,7 +20,6 @@ import { registrationOf, workplaceName } from "../domain/view";
 import { EntityError } from "./entity-error";
 import { FreshEntity } from "./fresh-entity";
 
-type Reason = "CHANGE" | "CORRECTION" | "MISTAKE";
 
 /** Host component loading the freshest entity data when mounting the sheet */
 export function WorkplaceRegistrationChangeHost({
@@ -43,16 +45,13 @@ export function WorkplaceRegistrationChangeHost({
  * Change or replace workplace business registration link or sub-serial (REG-b-crud-g11 / MR-18).
  * Provides dated replacement with audit trail.
  */
-export function WorkplaceRegistrationChangeSheet({
-  e,
-  w,
-  onClose,
-}: {
+export function WorkplaceRegistrationChangeSheet(props: {
   e: LegalEntity;
   w: Workplace;
   onClose: () => void;
 }) {
-  const footId = useId();
+  const [{ e, w }] = useState(props);
+  const { onClose } = props;
   const today = todayKst();
   const name = workplaceName(w);
   const currentReg = registrationOf(e, w.registration_id);
@@ -60,7 +59,7 @@ export function WorkplaceRegistrationChangeSheet({
   const [selectedReg, setSelectedReg] = useState<string>(w.registration_id ?? "");
   const [subSerial, setSubSerial] = useState<string>(w.sub_serial ?? "");
   const [from, setFrom] = useState<string>(today);
-  const [reason, setReason] = useState<Reason>("CHANGE");
+  const [reason, setReason] = useState("");
 
   const chosenReg = e.registrations.find((r) => r.id === selectedReg);
   const isUnitTax = Boolean(chosenReg?.current?.unit_taxation);
@@ -74,10 +73,10 @@ export function WorkplaceRegistrationChangeSheet({
   const changed =
     targetRegId !== currentRegId || (isUnitTax && targetSubSerial !== currentSubSerial);
 
-  const subSerialValid = !isUnitTax || (targetSubSerial !== null && targetSubSerial.length === 4);
+  const subSerialValid = !isUnitTax || (targetSubSerial !== null && targetSubSerial.length === FORMATS.subSerial.max);
   const dateValid = from !== "" && from <= today;
 
-  const ready = changed && subSerialValid && dateValid;
+  const ready = changed && subSerialValid && dateValid && reason.trim() !== "";
 
   const save = useCommand({
     run: (_: undefined, key: string) =>
@@ -85,7 +84,7 @@ export function WorkplaceRegistrationChangeSheet({
         registration_id: targetRegId,
         sub_serial: targetSubSerial,
         effective_from: from,
-        reason_code: reason,
+        reason_code: reason.trim(),
       }),
     invalidates: ENTITY_READS,
     settle: true,
@@ -99,7 +98,7 @@ export function WorkplaceRegistrationChangeSheet({
       ? t("workplace.regChange.pickDate")
       : isUnitTax && !subSerialValid
         ? t("workplace.problem.subSerial")
-        : null;
+        : !reason.trim() ? t("setup.entityBulk.datedNeeded") : null;
 
   const regOptions = [
     ...e.registrations
@@ -113,7 +112,7 @@ export function WorkplaceRegistrationChangeSheet({
         const tag = r.current?.unit_taxation
           ? t("workplace.regMode.UNIT_TAXATION_SUB")
           : r.id === w.registration_id
-            ? t("workplace.regChange.current")
+            ? t("orgStructure.wp.ownCert")
             : holder
               ? `${t("workplace.regMode.EXISTING")} · ${holder}`
               : t("workplace.regMode.EXISTING");
@@ -124,14 +123,9 @@ export function WorkplaceRegistrationChangeSheet({
       }),
     {
       value: "",
-      label: `${t("workplace.regChange.none")} (${t("workplace.noRegistration")})`,
+      label: t("workplace.regChange.none"),
     },
   ];
-
-  const reasonOptions = (["CHANGE", "CORRECTION", "MISTAKE"] as const).map((code) => ({
-    value: code,
-    label: t(`workplace.regChange.reason.${code}`),
-  }));
 
   return (
     <Sheet
@@ -149,9 +143,9 @@ export function WorkplaceRegistrationChangeSheet({
       notice={<EntityError error={save.error} />}
       consequence={
         ready ? (
-          <div>{t("workplace.regChange.consequence", { name, date: fmtDate(from) })}</div>
+          <div>{t(targetRegId ? "workplace.regChange.consequence" : "workplace.regChange.unlinked", { name, date: fmtDate(from) })}</div>
         ) : (
-          <div id={footId}>{hold}</div>
+          <div>{hold}</div>
         )
       }
       actions={
@@ -166,14 +160,7 @@ export function WorkplaceRegistrationChangeSheet({
               {t("workplace.regChange.save")}
             </Button>
           ) : (
-            <Button
-              variant="primary"
-              aria-disabled
-              aria-describedby={footId}
-              onClick={() => undefined}
-            >
-              {t("workplace.regChange.save")}
-            </Button>
+            <DisabledReason reason={hold!} control={(p) => <Button variant="primary" {...p}>{t("workplace.regChange.save")}</Button>} />
           )}
         </>
       }
@@ -187,20 +174,7 @@ export function WorkplaceRegistrationChangeSheet({
       />
 
       {isUnitTax && (
-        <Field
-          label={t("workplace.field.subSerial")}
-          required
-        >
-          {(f) => (
-            <TextInput
-              {...f}
-              value={subSerial}
-              maxLength={4}
-              placeholder="0001"
-              onChange={(evt) => setSubSerial(evt.target.value.replace(/\D/g, ""))}
-            />
-          )}
-        </Field>
+        <MaskedField label={t("workplace.field.subSerial")} required format={FORMATS.subSerial} value={subSerial} onChange={setSubSerial} />
       )}
 
       <DateField
@@ -211,14 +185,7 @@ export function WorkplaceRegistrationChangeSheet({
         today={today}
       />
 
-      <ChoiceField
-        label={t("workplace.regChange.reason")}
-        required
-        columns={3}
-        options={reasonOptions}
-        value={reason}
-        onChange={(v) => setReason(v as Reason)}
-      />
+      <Field label={t("workplace.regChange.reason")} required>{(f) => <TextInput {...f} value={reason} onChange={(event) => setReason(event.target.value)} />}</Field>
     </Sheet>
   );
 }

@@ -205,4 +205,19 @@ async fn the_serial_changes_only_by_a_registration_change_and_lsa_evidence_reads
         .await
         .unwrap();
     assert_eq!(renumbered.record.sub_serial.as_deref(), Some("0002"));
+    let unlinked = store
+        .change_workplace_registration(
+            &cmd(&actor),
+            factory.id,
+            RegistrationChangeInput {
+                registration_id: None,
+                sub_serial: None,
+                effective_from: Some("2026-01-02".into()),
+                reason_code: Some("분리 신고".into()),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(unlinked.record.registration_id, None);
+    assert_eq!(unlinked.record.sub_serial, None);
 }

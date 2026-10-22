@@ -26,7 +26,7 @@ const regState = {
 const wpState = {
   name: "본사", address: hq, mail_address: addr("우편 주소"), opened_on: "2019-03-04", representative_name: "김대표", main_product: "SW",
   phone: fv("+8221110000"), fax: fv("+8221110001"), mobile: fv("+821012345678"), email: "hq@ganada.example", is_construction_site: false,
-  withholding_mode: "OWN", bulk_filed_on: "2020-01-01", independent_lsa_unit: true, status: "ACTIVE", status_since: "2019-03-04",
+  withholding_mode: "OWN", bulk_filed_on: "2020-01-01", independent_lsa_unit: true, independent_lsa_evidence: "별도 취업규칙", status: "ACTIVE", status_since: "2019-03-04",
 };
 const wp = (over: object) => ({ id: "w1", registration_id: "r1", is_primary: false, headcount: 0, current: wpState, ...over }) as unknown as Workplace;
 const entity = (over: object = {}) =>
@@ -136,7 +136,7 @@ describe("the current state as the input a dated revision sends", () => {
     expect(held).toEqual({
       name: "본사", registration_id: "r1", sub_serial: null, same_address_as_registration: true, address: null, mail_address: wpState.mail_address,
       opened_on: "2019-03-04", representative_name: "김대표", main_product: "SW", phone: "+8221110000", fax: "+8221110001", mobile: "+821012345678",
-      email: "hq@ganada.example", is_construction_site: false, withholding_mode: "OWN", bulk_filed_on: "2020-01-01", independent_lsa_unit: true,
+      email: "hq@ganada.example", is_construction_site: false, withholding_mode: "OWN", bulk_filed_on: "2020-01-01", independent_lsa_unit: true, independent_lsa_evidence: "별도 취업규칙",
       status: "ACTIVE", status_since: "2019-03-04", status_until: null,
     });
     expect(workplaceInput(e, e.workplaces[1]!)).toMatchObject({ registration_id: "r2", same_address_as_registration: false, address: hq });
@@ -144,7 +144,7 @@ describe("the current state as the input a dated revision sends", () => {
     expect(workplaceInput(e, bare)).toEqual({
       name: "지점", registration_id: null, sub_serial: "0001", same_address_as_registration: false, address: null, mail_address: null,
       opened_on: "2026-09-01", representative_name: null, main_product: null, phone: null, fax: null, mobile: null, email: null,
-      is_construction_site: true, withholding_mode: null, bulk_filed_on: null, independent_lsa_unit: null, status: "ACTIVE", status_since: null, status_until: null,
+      is_construction_site: true, withholding_mode: null, bulk_filed_on: null, independent_lsa_unit: null, independent_lsa_evidence: null, status: "ACTIVE", status_since: null, status_until: null,
     });
     expect(workplaceInput(e, wp({ registration_id: "gone" }))).toMatchObject({ same_address_as_registration: false, address: hq });
     expect(workplaceInput(e, wp({ current: { ...wpState, opened_on: null } }))).toBeNull();

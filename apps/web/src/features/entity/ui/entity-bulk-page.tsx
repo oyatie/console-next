@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import type { EntitySetupResult } from "@console/api/pending";
+import type { EntitySetupResult, LegalEntity } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { BIZ_KIND, REPRESENTATION, label } from "../../../lib/labels";
 import { readDelimited, readXlsx, type Sheet } from "../../../lib/sheet-file";
@@ -20,7 +21,10 @@ import { checklistRef as checklistQuery } from "../../../reference/entity/api";
 import { BATCH_READS, entityBatch, type Committed } from "../../../reference/org/api/setup-batch";
 import { CommittedReceipt } from "../../../reference/org/ui/batch-receipt";
 import { BULK_FIELDS, BULK_OPERATIONS, bulkGaps, entityRowOp, entityRows, guessEntityColumns, type BulkColumns, type BulkOp, type EntityRow } from "../domain/bulk";
-import { entityBody } from "../domain/create";
+import { entitiesQuery } from "../api";
+import { todayKst } from "../../../lib/pure/today";
+import { DateField } from "../../../ui/date/date-field";
+import { TextInput } from "../../../ui/field/field";
 import { BulkEntityRow } from "./bulk-entity-row";
 
 const FILES = [{ mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ext: ".xlsx" }, { mime: "text/csv", ext: ".csv" }, { mime: "text/tab-separated-values", ext: ".tsv" }] as const;
@@ -41,6 +45,10 @@ function EntityBulkEditor({ paste, canAct }: { paste: boolean; canAct: boolean }
   const [rows, setRows] = useState<EntityRow[] | null>(null);
   const [dry, setDry] = useState<EntitySetupResult | null>(null);
   const [done, setDone] = useState<Committed | null>(null);
+  const [from, setFrom] = useState("");
+  const [reason, setReason] = useState("");
+  const [heads, setHeads] = useState<LegalEntity[]>([]);
+  const entities = useQuery({ ...entitiesQuery, enabled: false });
   const words = Object.fromEntries(BULK_FIELDS.map((k) => [k, t(`setup.entityBulk.field.${k}`)])) as Record<typeof BULK_FIELDS[number], string>;
   const grid = sheets[sheet]?.rows ?? [];
   const load = (data: Sheet[]) => {
@@ -48,22 +56,25 @@ function EntityBulkEditor({ paste, canAct }: { paste: boolean; canAct: boolean }
     setColumns(guessEntityColumns(data[0]?.rows[0] ?? [], words));
   };
   const read = useCommand({ run: async (file: File) => /\.xlsx$/i.test(file.name) ? readXlsx(await file.arrayBuffer()) : [{ name: file.name, rows: readDelimited(await file.text()) }], onSuccess: load, forget: true });
-  const ops = useMemo(() => (rows ?? []).map(entityRowOp), [rows]);
-  const preview = useCommand({ run: () => entityBatch({ dry_run: true, ops }), onSuccess: setDry });
-  const apply = useCommand({ run: (_: undefined, key: string) => entityBatch({ dry_run: false, preview_digest: dry!.preview_digest, ops }, key), invalidates: BATCH_READS,
+  const missing = rows?.reduce((n, r) => n + bulkGaps(r, heads).length, 0) ?? 0;
+  const revising = rows?.some((r) => r.op === "REVISE_ENTITY" || r.op === "REVISE_WORKPLACE");
+  const ops = useMemo(() => missing ? [] : (rows ?? []).map((row) => entityRowOp(row, heads)), [rows, heads, missing]);
+  const dated = revising ? { effective_from: from, reason_code: reason.trim() } : {};
+  const preview = useCommand({ run: () => entityBatch({ dry_run: true, ...dated, ops }), onSuccess: setDry });
+  const apply = useCommand({ run: (_: undefined, key: string) => entityBatch({ dry_run: false, preview_digest: dry!.preview_digest, ...dated, ops }, key), invalidates: BATCH_READS,
     onSuccess: (r) => { setDry(r); if (r.batch_id) setDone({ orgBatchId: null, entityBatchId: r.batch_id, workplaceIds: {} }); } });
   const resetProof = () => { setDry(null); preview.reset(); apply.reset(); };
-  const map = () => {
+  const map = useCommand({ run: async () => {
+    const fresh = await entities.refetch({ throwOnError: true });
     const kinds = Object.fromEntries(BIZ_KIND.values.map((k) => [k, label(BIZ_KIND, k)])) as Record<typeof BIZ_KIND.values[number], string>;
     const modes = Object.fromEntries(REPRESENTATION.values.map((k) => [k, label(REPRESENTATION, k)])) as Record<typeof REPRESENTATION.values[number], string>;
     const opsMap = Object.fromEntries(BULK_OPERATIONS.map((o) => [o, t(`setup.entityBulk.op.${o}`)])) as Record<BulkOp, string>;
-    setRows(entityRows(grid, header, columns!, kinds, modes, opsMap)); resetProof();
-  };
-  const missing = rows?.reduce((n, r) => n + bulkGaps(r).length, 0) ?? 0;
+    return { heads: fresh.data!.items, rows: entityRows(grid, header, columns!, kinds, modes, opsMap) };
+  }, onSuccess: (mapped) => { setHeads(mapped.heads); setRows(mapped.rows); resetProof(); } });
   const refused = dry?.items.filter((i) => i.outcome === "ERROR") ?? [];
-  const busy = read.isPending || preview.isPending || apply.isPending;
-  const mapped = columns && ["name", "kind", "representatives"].every((k) => columns[k as keyof BulkColumns] >= 0);
-  const hold = !canAct ? t("setup.permissionNeeded", { permission: t("setup.permission.org::edit") }) : missing ? t("setup.entityBulk.missing", { count: missing }) : !rows?.length ? t("setup.entityBulk.empty") : null;
+  const busy = read.isPending || preview.isPending || apply.isPending || map.isPending;
+  const mapped = columns && BULK_FIELDS.some((k) => columns[k] >= 0);
+  const hold = !canAct ? t("setup.permissionNeeded", { permission: t("setup.permission.org::edit") }) : revising && (!from || !reason.trim()) ? t("setup.entityBulk.datedNeeded") : missing ? t("setup.entityBulk.missing", { count: missing }) : !rows?.length ? t("setup.entityBulk.empty") : null;
   const changeSource = () => { setRows(null); resetProof(); };
   return <div className="page form">
     <PageHead title={t(paste ? "setup.entityBulk.paste" : "setup.entityBulk.import")} tools={<Link to="/org/entities" className={buttonClass()}>{t("entityQuick.cancel")}</Link>} />
@@ -81,20 +92,27 @@ function EntityBulkEditor({ paste, canAct }: { paste: boolean; canAct: boolean }
           <Field label={t("orgBulk.import.headerRow")} required>{(f) => <SelectInput {...f} value={header} onChange={(e) => { const i = Number(e.target.value); setHeader(i); setColumns(guessEntityColumns(grid[i] ?? [], words)); }}>
             {grid.slice(0, 5).map((_, i) => <option key={i} value={i}>{t("orgBulk.import.headerRowN", { n: i + 1 })}</option>)}
           </SelectInput>}</Field>
-          {BULK_FIELDS.map((k) => <Field key={k} label={words[k]} required={["name", "kind", "representatives"].includes(k)}>{(f) => <SelectInput {...f} value={columns[k]} onChange={(e) => setColumns({ ...columns, [k]: Number(e.target.value) })}>
+          {BULK_FIELDS.map((k) => <Field key={k} label={words[k]} required={false}>{(f) => <SelectInput {...f} value={columns[k]} onChange={(e) => setColumns({ ...columns, [k]: Number(e.target.value) })}>
             <option value={-1}>{t("setup.entityBulk.unmapped")}</option>
             {(grid[header] ?? []).map((h, i) => <option key={i} value={i}>{h || t("setup.entityBulk.column", { n: i + 1 })}</option>)}
           </SelectInput>}</Field>)}
-          <Button disabled={!mapped} onClick={map}>{t("setup.entityBulk.review")}</Button>
+          <Button disabled={!mapped || busy} onClick={() => map.mutate(undefined)}>{t("setup.entityBulk.review")}</Button>
         </fieldset>}
       </>}
+      <CommandError error={map.error} />
       {rows && <>
-        <StatRow items={[{ key: "entities", label: t("setup.golive.details.legal_entity"), value: rows.length }]} />
+        {revising && <fieldset className="form__group form" disabled={busy}>
+          <DateField label={t("workplace.regChange.from")} required value={from} today={todayKst()} onChange={(value) => { setFrom(value); resetProof(); }} />
+          <Field label={t("workplace.regChange.reason")} required>{(f) => <TextInput {...f} value={reason} onChange={(e) => { setReason(e.target.value); resetProof(); }} />}</Field>
+        </fieldset>}
+        <StatRow items={[{ key: "entities", label: t("setup.entityBulk.records"), value: rows.length }]} />
         {rows.map((r, i) => (
           <BulkEntityRow
             key={r.line}
             row={r}
             busy={busy}
+            records={heads}
+            changes={dry?.items.find((x) => x.ref === String(r.line))?.changes}
             error={refused.find((x) => x.ref === String(r.line))?.error?.message}
             set={(draft) => {
               if (busy) return;

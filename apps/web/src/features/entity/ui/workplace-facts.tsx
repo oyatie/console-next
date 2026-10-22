@@ -90,11 +90,11 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
           // the one certificate reissue sheet on the entity page.
           act: (
             <div className="row">
-              {manage && !why && !reg.closed_on && (
+              {manage && !why && (
                 <Button
                   variant="link"
                   onClick={() => setOpen({ k: "changeReg" })}
-                  aria-label={t("workplace.regChange.action")}
+                  aria-label={t("workplace.regChange.title", { name: workplaceName(w) })}
                 >
                   {t("workplace.regChange.action")}
                 </Button>

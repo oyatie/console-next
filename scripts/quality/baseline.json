@@ -62,7 +62,6 @@
   "unused-export:apps/web/src/features/attendance/present.ts:clockText": 1,
   "unused-export:apps/web/src/features/attendance/present.ts:daySpecText": 1,
   "unused-export:apps/web/src/features/attendance/ui/attendance-page.tsx:View": 1,
-  "unused-export:apps/web/src/features/entity/api.ts:entitiesQuery": 1,
   "unused-export:apps/web/src/features/entity/api.ts:FieldIssue": 1,
   "unused-export:apps/web/src/features/entity/domain/brn.ts:BrnWarning": 1,
   "unused-export:apps/web/src/features/entity/domain/bulk.ts:BulkField": 1,

@@ -260,4 +260,6 @@ export const enEntity: Record<keyof typeof koEntity, string> = {
   "entity.refusal.english_name_not_latin": "English names take Latin letters, digits, spaces and & . , - ' ( ) only.",
   "entity.refusal.name_review_choice": "Pick the certificate's trade name or the current legal name.",
   "entity.refused.name_review_not_found": "This review was already settled or does not exist.",
+  "entity.refusal.registration_unchanged": "The registration is unchanged. Choose another registration or serial.",
+  "entity.refusal.use_registration_change": "Use the registration change action to change the registration or serial.",
 };

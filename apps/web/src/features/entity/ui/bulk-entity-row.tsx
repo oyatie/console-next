@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import type { EntitySetupItem, LegalEntity } from "@console/api/pending";
+import { changeLine } from "../present";
+import { entityName } from "../../../reference/entity/domain/names";
+import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { REPRESENTATION, label } from "../../../lib/labels";
 import { ChoiceField } from "../../../ui/choice/choice-field";
@@ -13,20 +17,26 @@ export function BulkEntityRow({
   set,
   setRow,
   error,
+  changes,
   busy = false,
+  records = [],
 }: {
   row: EntityRow;
   set: (d: Draft) => void;
   setRow?: (r: EntityRow) => void;
   error?: string;
+  changes?: EntitySetupItem["changes"];
   busy?: boolean;
+  records?: readonly LegalEntity[];
 }) {
   const op: BulkOp = row.op ?? "CREATE_ENTITY";
   const d = row.draft;
   const changeDraft = (patch: Partial<Draft>) => {
     const updatedDraft = { ...d, ...patch };
+    const columns: Partial<Record<keyof Draft, typeof row.fields>> = { name: ["name"], bizKind: ["kind"], representatives: ["representatives"], representationMode: ["mode"], crn: ["crn"], headOfficeAddress: ["road", "zip"] };
+    const fields = [...new Set([...(row.fields ?? []), ...Object.keys(patch).flatMap((key) => columns[key as keyof Draft] ?? [])])];
     if (setRow) {
-      setRow({ ...row, draft: updatedDraft });
+      setRow({ ...row, fields, draft: updatedDraft });
     } else {
       set(updatedDraft);
     }
@@ -37,24 +47,27 @@ export function BulkEntityRow({
     }
   };
 
-  const gaps = bulkGaps(row);
+  const gaps = bulkGaps(row, records);
   const named = d.representatives.filter((n) => n.trim()).length;
   const displayName = row.workplaceName || d.name || "";
   const opLabel = t(`setup.entityBulk.op.${op}`);
 
-  const opOptions = BULK_OPERATIONS.map((o) => ({
+  const opOptions = BULK_OPERATIONS.filter((o) => o !== "CREATE_WORKPLACE").map((o) => ({
     value: o,
     label: t(`setup.entityBulk.op.${o}`),
   }));
 
   return (
-    <details className="form" open={gaps.length > 0 || Boolean(error)}>
+    <details className="form" open={gaps.length > 0 || Boolean(error) || Boolean(changes?.length)}>
       <summary>
         {opLabel} · {t("setup.entityBulk.row", { line: row.line, name: displayName })}
         {gaps.length > 0 && ` · ${t("setup.entityBulk.missing", { count: gaps.length })}`}
       </summary>
       {error && <output role="alert">{error}</output>}
-      <fieldset className="form__group form" disabled={busy}>
+      {changes && <output>{changes.map(changeLine).join(" · ")}</output>}
+      {gaps.includes("record") && <output>{t("setup.entityBulk.recordNeeded")}</output>}
+      {op === "CREATE_WORKPLACE" && <Link to="/org/paste">{t("setup.entityBulk.workplaceFlow")}</Link>}
+      <fieldset className="form__group form" disabled={busy || op === "CREATE_WORKPLACE"}>
         {setRow && (
           <ChoiceField
             label={t("setup.entityBulk.field.op")}
@@ -67,47 +80,9 @@ export function BulkEntityRow({
         )}
 
         {(op === "REVISE_ENTITY" || op === "REVISE_WORKPLACE") && (
-          <div className="row">
-            <Field label={t("setup.entityBulk.field.id")} required>
-              {(f) => (
-                <TextInput
-                  {...f}
-                  value={row.id ?? ""}
-                  placeholder="UUID"
-                  onChange={(e) => changeRow({ id: e.target.value.trim() })}
-                />
-              )}
-            </Field>
-            <Field label={t("setup.entityBulk.field.version")} required>
-              {(f) => (
-                <TextInput
-                  {...f}
-                  type="number"
-                  min={0}
-                  value={row.expectedVersion != null ? String(row.expectedVersion) : ""}
-                  placeholder="1"
-                  onChange={(e) =>
-                    changeRow({
-                      expectedVersion: e.target.value ? Number(e.target.value) : undefined,
-                    })
-                  }
-                />
-              )}
-            </Field>
-          </div>
-        )}
-
-        {op === "CREATE_WORKPLACE" && (
-          <Field label={t("setup.entityBulk.field.legalEntityId")} required>
-            {(f) => (
-              <TextInput
-                {...f}
-                value={row.legalEntityId ?? row.entityRef ?? ""}
-                placeholder="UUID or row reference"
-                onChange={(e) => changeRow({ legalEntityId: e.target.value.trim() })}
-              />
-            )}
-          </Field>
+          <ChoiceField label={t("setup.entityBulk.field.id")} required value={row.id ?? null}
+            options={records.flatMap((e) => op === "REVISE_ENTITY" ? [{ value: e.id, label: entityName(e) }] : e.workplaces.map((w) => ({ value: w.id, label: `${entityName(e)} · ${w.current?.name ?? ""}` })))}
+            onChange={(id) => changeRow({ id, expectedVersion: undefined })} />
         )}
 
         {op === "CREATE_WORKPLACE" || op === "REVISE_WORKPLACE" ? (
@@ -117,8 +92,8 @@ export function BulkEntityRow({
                 {...f}
                 value={row.workplaceName ?? d.name}
                 onChange={(e) => {
-                  changeRow({ workplaceName: e.target.value });
-                  changeDraft({ name: e.target.value });
+                  if (setRow) setRow({ ...row, workplaceName: e.target.value, draft: { ...d, name: e.target.value }, fields: [...new Set([...(row.fields ?? []), "workplaceName" as const])] });
+                  else set({ ...d, name: e.target.value });
                 }}
               />
             )}

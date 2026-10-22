@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { entityBody, entityGaps } from "./create";
-import type { BizKind, EntitySetupOp, RepresentationMode } from "@console/api/pending";
+import type { BizKind, EntitySetupOp, KrAddress, LegalEntity, RepresentationMode } from "@console/api/pending";
 import { emptyDraft, type Draft } from "./draft";
 import { krAddress } from "./plan";
+import { entityInput, workplaceInput } from "./view";
 
 export const BULK_FIELDS = [
   "name",
@@ -40,6 +41,7 @@ export type EntityRow = {
   legalEntityId?: string;
   entityRef?: string;
   workplaceName?: string;
+  fields?: BulkField[];
 };
 
 export const emptyColumns = (): BulkColumns => ({
@@ -136,6 +138,7 @@ export function entityRows(
     return [
       {
         line: header + i + 2,
+        fields: BULK_FIELDS.filter((field) => columns[field] >= 0),
         op,
         id,
         expectedVersion,
@@ -153,7 +156,7 @@ export function entityRows(
           representationMode: mode,
           crn: get("crn").replace(/[- ]/g, ""),
           headOffice: "OTHER",
-          headOfficeAddress: get("road")
+          headOfficeAddress: get("road") || get("zip")
             ? { road: get("road"), zip: get("zip"), detail: "", verified: false }
             : null,
         },
@@ -162,99 +165,71 @@ export function entityRows(
   });
 }
 
-/** Check required fields and identify missing gaps depending on operation */
-export function bulkGaps(row: EntityRow): string[] {
+/** Revisions must have a readable full state; partial or restricted reads cannot be written back. */
+export function bulkGaps(row: EntityRow, records?: readonly LegalEntity[]): string[] {
   const op = row.op ?? "CREATE_ENTITY";
-
-  if (op === "REVISE_ENTITY") {
+  if (op === "CREATE_WORKPLACE") return ["workplaceFlow"];
+  if (op === "REVISE_ENTITY" || op === "REVISE_WORKPLACE") {
     const gaps: string[] = [];
     if (!row.id) gaps.push("id");
-    if (row.expectedVersion == null || isNaN(row.expectedVersion) || row.expectedVersion < 0) {
-      gaps.push("version");
-    }
-    if (!row.draft.name.trim()) gaps.push("name");
+    if (row.expectedVersion != null && (!Number.isSafeInteger(row.expectedVersion) || row.expectedVersion < 1)) gaps.push("version");
+    if (records && !revisionBase(row, records)) gaps.push("record");
     return gaps;
   }
-
-  if (op === "CREATE_WORKPLACE") {
-    const gaps: string[] = [];
-    const wpName = (row.workplaceName || row.draft.name).trim();
-    if (!wpName) gaps.push("workplaceName");
-    if (!row.legalEntityId && !row.entityRef) gaps.push("legalEntityId");
-    return gaps;
-  }
-
-  if (op === "REVISE_WORKPLACE") {
-    const gaps: string[] = [];
-    if (!row.id) gaps.push("id");
-    if (row.expectedVersion == null || isNaN(row.expectedVersion) || row.expectedVersion < 0) {
-      gaps.push("version");
-    }
-    const wpName = (row.workplaceName || row.draft.name).trim();
-    if (!wpName) gaps.push("workplaceName");
-    return gaps;
-  }
-
-  const gaps = entityGaps(row.draft);
+  const gaps: string[] = entityGaps(row.draft);
+  if (row.draft.bizKind === "CORPORATION" && !row.draft.headOfficeAddress?.road.trim() && !gaps.includes("headOffice")) gaps.push("headOffice");
   const count = row.draft.representatives.filter((n) => n.trim()).length;
   const mode = row.draft.representationMode;
-  if (
-    !gaps.includes("representationMode") &&
-    ((row.modeUnrecognized && !mode) ||
-      (count === 1 && mode && mode !== "SINGLE") ||
-      (count > 1 && mode === "SINGLE"))
-  ) {
-    gaps.push("representationMode");
-  }
+  if (!gaps.includes("representationMode") && ((row.modeUnrecognized && !mode) ||
+    (count === 1 && mode && mode !== "SINGLE") || (count > 1 && mode === "SINGLE"))) gaps.push("representationMode");
   return gaps;
 }
 
-/** Converts an intake EntityRow to a single-path EntitySetupOp */
-export function entityRowOp(r: EntityRow): EntitySetupOp {
-  const op = r.op ?? "CREATE_ENTITY";
-  const ref = String(r.line);
-
-  if (op === "REVISE_ENTITY") {
-    return {
-      op: "REVISE_ENTITY",
-      ref,
-      id: r.id,
-      expected_version: r.expectedVersion ?? 1,
-      entity: entityBody(r.draft),
-    };
+function revisionBase(row: EntityRow, records: readonly LegalEntity[]) {
+  if (row.op === "REVISE_ENTITY") {
+    const entity = records.find((e) => e.id === row.id && !e.read_only && !e.closed_on);
+    const input = entity && entityInput(entity);
+    return input && entity ? { entity: input, version: Math.max(entity.current!.version, ...(entity.scheduled ?? []).map((s) => s.version)) } : null;
   }
+  const entity = records.find((e) => e.workplaces.some((site) => site.id === row.id) && !e.read_only && !e.closed_on);
+  const w = entity?.workplaces.find((site) => site.id === row.id && !site.read_only && !site.closed_on);
+  const input = entity && w && workplaceInput(entity, w);
+  return input && w ? { workplace: input, version: w.current!.version } : null;
+}
 
-  if (op === "CREATE_WORKPLACE") {
-    return {
-      op: "CREATE_WORKPLACE",
-      ref,
-      legal_entity_id: r.legalEntityId,
-      entity_ref: r.entityRef ?? (r.legalEntityId ? undefined : ref),
-      workplace: {
-        name: r.workplaceName || r.draft.name,
-        opened_on: r.draft.openedOn || "2020-01-01",
-        address: r.draft.headOfficeAddress ? krAddress(r.draft.headOfficeAddress) : null,
-      },
-    };
-  }
+/** Each mapped address column replaces only that part; unmapped detail stays with the record. */
+function rowAddress(row: EntityRow, before?: KrAddress | null) {
+  const fields = row.fields ?? ["name", "workplaceName"];
+  if (!fields.includes("road") && !fields.includes("zip")) return before;
+  const draft = row.draft.headOfficeAddress;
+  const road = fields.includes("road") ? draft?.road ?? "" : before?.road_addr_part1 ?? "";
+  return road ? krAddress({ road, zip: fields.includes("zip") ? draft?.zip ?? "" : before?.zip_no ?? "", detail: before?.detail ?? "", verified: false }) : null;
+}
 
-  if (op === "REVISE_WORKPLACE") {
-    return {
-      op: "REVISE_WORKPLACE",
-      ref,
-      id: r.id,
-      expected_version: r.expectedVersion ?? 1,
-      workplace: {
-        name: r.workplaceName || r.draft.name,
-        opened_on: r.draft.openedOn || "2020-01-01",
-        address: r.draft.headOfficeAddress ? krAddress(r.draft.headOfficeAddress) : null,
-      },
-    };
-  }
-
-  return {
-    op: "CREATE_ENTITY",
-    ref,
-    entity: entityBody(r.draft),
-  };
+/** Merge only mapped columns over the record read for this preview, pinning that read's version. */
+export function entityRowOp(row: EntityRow, records: readonly LegalEntity[] = []): EntitySetupOp {
+  const op = row.op ?? "CREATE_ENTITY";
+  const ref = String(row.line);
+  if (op === "CREATE_WORKPLACE") throw new Error("workplaceFlow");
+  if (op === "CREATE_ENTITY") return { op, ref, entity: entityBody(row.draft) };
+  const base = revisionBase(row, records);
+  if (!base) throw new Error("record");
+  const has = (field: BulkField) => (row.fields ?? ["name", "workplaceName"]).includes(field);
+  const pin = { op, ref, id: row.id, expected_version: row.expectedVersion ?? base.version };
+  const d = row.draft;
+  if (base.entity) return { ...pin, entity: {
+    ...base.entity,
+    ...(has("name") ? { name: d.name.trim() } : {}),
+    ...(has("kind") ? { biz_kind: d.bizKind! } : {}),
+    ...(has("representatives") ? { representatives: d.representatives.map((n) => n.trim()).filter(Boolean) } : {}),
+    ...(has("mode") ? { representation_mode: d.representationMode! } : {}),
+    ...(has("crn") ? { crn: d.crn || null } : {}),
+    head_office_address: rowAddress(row, base.entity.head_office_address),
+  } };
+  return { ...pin, workplace: {
+    ...base.workplace!,
+    ...(has("workplaceName") || has("name") ? { name: (row.workplaceName ?? d.name).trim() } : {}),
+    address: rowAddress(row, base.workplace!.address),
+    ...(has("road") || has("zip") ? { same_address_as_registration: false } : {}),
+  } };
 }

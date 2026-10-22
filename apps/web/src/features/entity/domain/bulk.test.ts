@@ -66,7 +66,7 @@ test("single-path supports REVISE_ENTITY with id and expected version", () => {
   const cols = { ...columns, op: 7, id: 8, version: 9 };
   const grid = [
     [],
-    ["Corp Rev", "CORPORATION", "Kim", "SINGLE", "110111-1234567", "Seoul", "01234", "REVISE_ENTITY", "11111111-1111-1111-1111-111111111111", "2"],
+    ["Corp Rev", "CORPORATION", "Kim", "SINGLE", "000111-1234560", "Seoul", "01234", "REVISE_ENTITY", "11111111-1111-1111-1111-111111111111", "2"],
   ];
   const rows = entityRows(grid, 0, cols, kinds, modes);
   expect(rows[0]!.op).toBe("REVISE_ENTITY");
@@ -74,12 +74,7 @@ test("single-path supports REVISE_ENTITY with id and expected version", () => {
   expect(rows[0]!.expectedVersion).toBe(2);
   expect(bulkGaps(rows[0]!)).toEqual([]);
 
-  const op = entityRowOp(rows[0]!);
-  expect(op).toMatchObject({
-    op: "REVISE_ENTITY",
-    id: "11111111-1111-1111-1111-111111111111",
-    expected_version: 2,
-  });
+  expect(() => entityRowOp(rows[0]!)).toThrow("record");
 });
 
 test("single-path supports CREATE_WORKPLACE and REVISE_WORKPLACE", () => {
@@ -94,23 +89,70 @@ test("single-path supports CREATE_WORKPLACE and REVISE_WORKPLACE", () => {
   expect(rows[0]!.op).toBe("CREATE_WORKPLACE");
   expect(rows[0]!.workplaceName).toBe("부산지사");
   expect(rows[0]!.legalEntityId).toBe("22222222-2222-2222-2222-222222222222");
-  expect(bulkGaps(rows[0]!)).toEqual([]);
-  const opCreate = entityRowOp(rows[0]!);
-  expect(opCreate).toMatchObject({
-    op: "CREATE_WORKPLACE",
-    legal_entity_id: "22222222-2222-2222-2222-222222222222",
-    workplace: { name: "부산지사" },
-  });
+  expect(bulkGaps(rows[0]!)).toEqual(["workplaceFlow"]);
+  expect(() => entityRowOp(rows[0]!)).toThrow("workplaceFlow");
 
   expect(rows[1]!.op).toBe("REVISE_WORKPLACE");
   expect(rows[1]!.id).toBe("33333333-3333-3333-3333-333333333333");
   expect(rows[1]!.expectedVersion).toBe(1);
   expect(bulkGaps(rows[1]!)).toEqual([]);
-  const opRevise = entityRowOp(rows[1]!);
-  expect(opRevise).toMatchObject({
-    op: "REVISE_WORKPLACE",
-    id: "33333333-3333-3333-3333-333333333333",
-    expected_version: 1,
-    workplace: { name: "인천물류" },
-  });
+  expect(() => entityRowOp(rows[1]!)).toThrow("record");
+});
+
+
+test("revise overlays mapped fields on the read entity without clearing registry facts", () => {
+  const current = {
+    id: "11111111-1111-1111-1111-111111111111", biz_kind: "CORPORATION", crn: { value: "0001111234560" },
+    current: { version: 7, name: "Before", representatives: ["Kim"], representation_mode: "SINGLE",
+      additional_representatives: 2, incorporated_on: "2019-04-03", capital_won: 300,
+      main_phone: { value: "+82212345678" }, head_office_address: { road_addr_part1: "Seoul", zip_no: "01234", source: "MANUAL_UNVERIFIED" } },
+    workplaces: [], registrations: [], scheduled: [],
+  } as unknown as import("@console/api/pending").LegalEntity;
+  const row = entityRows([[], ["After", "REVISE_ENTITY", current.id]], 0,
+    { ...emptyColumns(), name: 0, op: 1, id: 2 }, kinds, modes)[0]!;
+  const result = entityRowOp(row, [current]);
+  expect(result.entity).toMatchObject({ name: "After", capital_won: 300, main_phone: "+82212345678",
+    incorporated_on: "2019-04-03", representatives: ["Kim"], additional_representatives: 2 });
+  expect(result.expected_version).toBe(7);
+});
+
+test("a workplace rename retains its serial, opening date, contacts and statutory facts", () => {
+  const workplace = { id: "33333333-3333-3333-3333-333333333333", registration_id: "reg", sub_serial: "0002",
+    current: { version: 4, name: "Before", opened_on: "2019-04-03", phone: { value: "+82212345678" },
+      representative_name: "Kim", main_product: "Parts", withholding_mode: "OWN", independent_lsa_unit: true,
+      independent_lsa_evidence: "Separate work rules", status: "SUSPENDED", status_until: "2026-12-31" } };
+  const entity = { id: "entity", registrations: [], workplaces: [workplace] } as unknown as import("@console/api/pending").LegalEntity;
+  const row = entityRows([[], ["After", "REVISE_WORKPLACE", workplace.id]], 0,
+    { ...emptyColumns(), workplaceName: 0, op: 1, id: 2 }, kinds, modes)[0]!;
+  const result = entityRowOp(row, [entity]);
+  expect(result.workplace).toMatchObject({ name: "After", registration_id: "reg", sub_serial: "0002", opened_on: "2019-04-03",
+    phone: "+82212345678", representative_name: "Kim", main_product: "Parts", withholding_mode: "OWN",
+    independent_lsa_unit: true, independent_lsa_evidence: "Separate work rules", status_until: "2026-12-31" });
+  expect(result.expected_version).toBe(4);
+});
+
+test("workplace creation is held for the existing statutory-answers flow", () => {
+  const row = { line: 2, op: "CREATE_WORKPLACE" as const, legalEntityId: "entity", workplaceName: "Branch", draft: { ...entityRows([[], ["Branch"]], 0, { ...emptyColumns(), name: 0 }, kinds, modes)[0]!.draft } };
+  expect(bulkGaps(row)).toContain("workplaceFlow");
+  expect(() => entityRowOp(row)).toThrow();
+});
+
+test("a revision cannot replace an unreadable or missing record with a partial draft", () => {
+  const row = entityRows([[], ["After", "REVISE_ENTITY", "missing"]], 0,
+    { ...emptyColumns(), name: 0, op: 1, id: 2 }, kinds, modes)[0]!;
+  expect(bulkGaps(row, [])).toContain("record");
+  expect(() => entityRowOp(row, [])).toThrow("record");
+  const restricted = { id: "missing", biz_kind: "INDIVIDUAL", current: { version: 1, name: "Before", representatives: null } } as unknown as import("@console/api/pending").LegalEntity;
+  expect(bulkGaps(row, [restricted])).toContain("record");
+  expect(() => entityRowOp(row, [restricted])).toThrow("record");
+});
+
+test("a mapped postal code preserves the unmapped road, detail and registry facts", () => {
+  const current = { id: "entity", biz_kind: "CORPORATION", current: { name: "Before", version: 2, representatives: ["Kim"],
+    head_office_address: { road_addr_part1: "Seoul", zip_no: "01234", detail: "3층", source: "MANUAL_UNVERIFIED" } } } as unknown as import("@console/api/pending").LegalEntity;
+  const row = entityRows([[], ["99999", "REVISE_ENTITY", current.id]], 0,
+    { ...emptyColumns(), zip: 0, op: 1, id: 2 }, kinds, modes)[0]!;
+  const result = entityRowOp(row, [current]);
+  expect(result.entity?.head_office_address).toMatchObject({ road_addr_part1: "Seoul", zip_no: "99999", detail: "3층" });
+  expect(result.entity?.name).toBe("Before");
 });
