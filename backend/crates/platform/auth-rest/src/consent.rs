@@ -59,9 +59,7 @@ pub(crate) async fn require_app_write_consent(
         .verify_access_token(bearer_token(request.headers())?)
         .map_err(|_| RestError::unauthorized("invalid bearer token"))?;
     if !claims.enrollment {
-        validate_current_claims(&state.pool, &claims)
-            .await
-            .map_err(rest_error_from_request_context)?;
+        // Handlers keep their authority checks and Account lock order; this gate only reads consent.
         privacy::ensure_write_consent(
             &state.pool,
             &services.jwt_verifier,
