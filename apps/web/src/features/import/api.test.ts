@@ -1,6 +1,7 @@
 import { expect, test, vi } from "vitest";
 import { api, ApiError } from "@console/api";
-import { lostAnswer, previewRollback, requestRollback, runQuery, runsQuery } from "./api";
+import { readIdentity } from "../../lib/query";
+import { rollbackPreviewQuery, lostAnswer, previewRollback, requestRollback, runQuery, runsQuery } from "./api";
 
 test("a typed transport failure checks the existing import job", () => {
   expect(lostAnswer(new ApiError(0, "command_unknown", ""))).toBe(true);
@@ -16,7 +17,8 @@ test("history reads use the published list and parameterized record path", async
     expect(get).toHaveBeenLastCalledWith("/api/v1/employee-import-runs", undefined);
     await runQuery("run-1").queryFn();
     expect(get).toHaveBeenLastCalledWith("/api/v1/employee-import-runs/{run_id}", { params: { path: { run_id: "run-1" } } });
-    expect(runQuery("run-1").queryKey).not.toEqual(runQuery("run-2").queryKey);
+    expect(readIdentity(runQuery("run-1"))).not.toEqual(readIdentity(runQuery("run-2")));
+    expect(readIdentity(rollbackPreviewQuery("run-1"))).not.toEqual(readIdentity(rollbackPreviewQuery("run-2")));
   } finally { get.mockRestore(); }
 });
 

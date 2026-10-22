@@ -63,7 +63,7 @@
 "apps/web/src/features/import/ui/dry-rows.tsx": {"dsClass":3},
 "apps/web/src/features/import/ui/dryrun-step.tsx": {"dsClass":8},
 "apps/web/src/features/import/ui/import.module.css": {"restyle":11,"literal":1},
-"apps/web/src/features/import/ui/preview-step.tsx": {"dsClass":17},
+"apps/web/src/features/import/ui/preview-step.tsx": {"dsClass":8},
 "apps/web/src/features/import/ui/recent-runs.tsx": {"dsClass":3},
 "apps/web/src/features/import/ui/resolve-controls.tsx": {"dsClass":1},
 "apps/web/src/features/import/ui/review-queue.tsx": {"dsClass":3},

@@ -10,7 +10,7 @@ type Tone = "ok" | "warn" | "danger" | "info" | "neutral";
 const known = (id: string, code: string) => (isMessageId(id) ? t(id) : code);
 
 /** A target, diff or deferred field, worded as the employee field it fills. */
-export const fieldLabel = (field: string) => field === "home_branch_id" ? t("import.rollback.homeBranch") : known(`import.target.${field}`, field);
+export const fieldLabel = (field: string) => field === "home_branch_id" ? t("importRollback.homeBranch") : known(`import.target.${field}`, field);
 
 export const CLASS_TONE: Record<Classification, Tone> = { canonical: "ok", retained: "neutral", restricted: "warn", location: "info" };
 export const classLabel = (c: Classification) => t(`import.class.${c}`);

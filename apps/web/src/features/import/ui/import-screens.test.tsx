@@ -15,7 +15,7 @@ import { ValueTable } from "./value-table";
 import { DoneStep } from "./done-step";
 import { RecentRuns } from "./recent-runs";
 import { RollbackPanel } from "./rollback-panel";
-import { applyJobQuery, runQuery, runsQuery, type ImportRun, type RollbackPreview } from "../api";
+import { rollbackPreviewQuery, applyJobQuery, runQuery, runsQuery, type ImportRun, type RollbackPreview } from "../api";
 
 const rollbackState = vi.hoisted(() => ({ acknowledged: false }));
 vi.mock("react", async (original) => {
@@ -149,17 +149,17 @@ const recordedRun: components["schemas"]["EmployeeImportRun"] = {
   rollback: { job: null, mode: "SETUP", window_until: null, window_days: 14, pending_request: null, refusal_code: null }, allowed: ["preview_rollback"],
 };
 
-function recordedScreen(node: ReactNode, items = [recordedRun], jobState: "settling" | "failed" | null = null) {
+async function recordedScreen(node: ReactNode, items = [recordedRun], jobState: "settling" | "failed" | null = null) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  client.setQueryData(runQuery(recordedRun.id).queryKey, { ...recordedRun, apply_job_state: jobState });
-  client.setQueryData(runsQuery.queryKey, { items, next_cursor: null });
-  if (jobState) client.setQueryData(applyJobQuery(recordedRun.id).queryKey, { run_id: recordedRun.id, state: jobState, total: 12, done: 6 });
+  await client.prefetchQuery({ ...runQuery(recordedRun.id), queryFn: async () => ({ ...recordedRun, apply_job_state: jobState }) });
+  await client.prefetchQuery({ ...runsQuery, queryFn: async () => ({ items, next_cursor: null }) });
+  if (jobState) await client.prefetchQuery({ ...applyJobQuery(recordedRun.id), queryFn: async () => ({ run_id: recordedRun.id, state: jobState, total: 12, done: 6 }) });
   const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
   return renderToStaticMarkup(<RouterContextProvider router={router}><QueryClientProvider client={client}>{node}</QueryClientProvider></RouterContextProvider>);
 }
 
-test("result opened by run id shows the stored file, actor, zoned time and immutable counts", () => {
-  const out = recordedScreen(<DoneStep runId={recordedRun.id} />);
+test("result opened by run id shows the stored file, actor, zoned time and immutable counts", async () => {
+  const out = await recordedScreen(<DoneStep runId={recordedRun.id} />);
   expect(out).toContain("stored-roster.xlsx");
   expect(out).toContain("담당테스트");
   expect(out).toContain('dateTime="2026-10-01T02:00:00Z"');
@@ -168,22 +168,22 @@ test("result opened by run id shows the stored file, actor, zoned time and immut
   expect(out).toContain("갱신 1명");
 });
 
-test("recent import rows link to the served result record with counts from its stored summary", () => {
-  const out = recordedScreen(<RecentRuns />);
+test("recent import rows link to the served result record with counts from its stored summary", async () => {
+  const out = await recordedScreen(<RecentRuns />);
   expect(out).toContain(`href="/people/import?run=${recordedRun.id}"`);
   expect(out).toContain("등록 10 · 갱신 1");
   expect(out).toContain("반영됨");
 });
 
-test("an empty recent-run list promises no fixed rollback window or second-person policy", () => {
-  const out = recordedScreen(<RecentRuns />, []);
+test("an empty recent-run list promises no fixed rollback window or second-person policy", async () => {
+  const out = await recordedScreen(<RecentRuns />, []);
   expect(out).not.toContain("7일");
   expect(out).not.toContain("다른 사람의 승인");
 });
 
-test("APPLIED while settlement is unfinished or failed stays on the existing job screen", () => {
+test("APPLIED while settlement is unfinished or failed stays on the existing job screen", async () => {
   for (const state of ["settling", "failed"] as const) {
-    const out = recordedScreen(<DoneStep runId={recordedRun.id} />, [], state);
+    const out = await recordedScreen(<DoneStep runId={recordedRun.id} />, [], state);
     expect(out).not.toContain("명부를 반영했습니다");
     expect(out).toContain(state === "settling" ? "배치와 고용 정보를 기록하는 중입니다" : "반영하지 못했습니다");
   }
@@ -198,83 +198,89 @@ const rollbackPlan: RollbackPreview = {
   ],
 };
 
-function rollbackScreen(run: ImportRun = recordedRun, plan = rollbackPlan, error?: ApiError) {
+async function rollbackScreen(run: ImportRun = recordedRun, plan = rollbackPlan, error?: ApiError) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, retryOnMount: false, staleTime: Infinity } } });
-  const queryKey = ["/api/v1/employee-import-runs/{run_id}/rollback/preview", { path: { run_id: run.id } }];
-  client.setQueryData(queryKey, plan);
-  if (error) client.getQueryCache().find({ queryKey })!.setState({ data: undefined, error, status: "error" });
+  await client.prefetchQuery({ ...rollbackPreviewQuery(run.id), queryFn: async () => { if (error) throw error; return plan; } });
   const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
   return renderToStaticMarkup(<RouterContextProvider router={router}><QueryClientProvider client={client}><RollbackPanel run={run} onChanged={noop} /></QueryClientProvider></RouterContextProvider>);
 }
 
-test("rollback preview lists the inverse and keeps execution disabled until acknowledged", () => {
-  const out = rollbackScreen();
+test("rollback preview lists the inverse and keeps execution disabled until acknowledged", async () => {
+  const out = await rollbackScreen();
   expect(out).toContain("After → Before");
-  expect(out).toContain(t("import.rollback.void"));
+  expect(out).toContain(t("importRollback.void"));
   expect(out).toContain('href="/people/person-existing"');
-  expect(out).toContain(t("import.rollback.acknowledged"));
+  expect(out).toContain(t("importRollback.acknowledged"));
   expect(out).toContain('type="checkbox"');
   expect(out).toMatch(/<button[^>]*(?:disabled|aria-disabled="true")[^>]*>[\s\S]*?되돌리기/);
-  expect(out).not.toContain(t("import.rollback.reason"));
+  expect(out).not.toContain(t("importRollback.reason"));
 });
 
-test("acknowledging the current rollback preview arms the setup command", () => {
+test("acknowledging the current rollback preview arms the setup command", async () => {
   rollbackState.acknowledged = true;
-  const out = rollbackScreen();
+  const out = await rollbackScreen();
   expect(out).toMatch(/<input[^>]*type="checkbox"[^>]*checked=""/);
-  expect(out).toContain(`<button type="button" class="btn btn--primary">${t("import.rollback.execute")}</button>`);
+  expect(out).toContain(`<button type="button" class="btn btn--primary">${t("importRollback.execute")}</button>`);
 });
 
-test("pending rollback shows its filing time and offers no requester decision controls", () => {
-  const out = rollbackScreen({ ...recordedRun, status: "ROLLBACK_REQUESTED", allowed: [], rollback: { ...recordedRun.rollback, pending_request: { id: "request-1", requested_by: "actor", created_at: "2026-10-01T03:00:00Z" } } });
-  expect(out).toContain(t("import.rollback.wait"));
+test("pending rollback shows its filing time and offers no requester decision controls", async () => {
+  const out = await rollbackScreen({ ...recordedRun, status: "ROLLBACK_REQUESTED", allowed: [], rollback: { ...recordedRun.rollback, pending_request: { id: "request-1", requested_by: "actor", created_at: "2026-10-01T03:00:00Z" } } });
+  expect(out).toContain(t("importRollback.wait"));
   expect(out).toMatch(/GMT\+9|KST|한국 표준시/);
   expect(out).not.toContain("<button");
-  expect(out).not.toContain(t("import.rollback.acknowledge"));
+  expect(out).not.toContain(t("importRollback.acknowledge"));
 });
 
-test("rolled-back run shows the completing actor and zoned time", () => {
-  const out = rollbackScreen({ ...recordedRun, status: "ROLLED_BACK", allowed: [], rolled_back_at: "2026-10-01T04:00:00Z", rolled_back_by: { id: "decider", name: "결정테스트" } });
-  expect(out).toContain(t("import.rollback.done"));
+test("rolled-back run shows the completing actor and zoned time", async () => {
+  const out = await rollbackScreen({ ...recordedRun, status: "ROLLED_BACK", allowed: [], rolled_back_at: "2026-10-01T04:00:00Z", rolled_back_by: { id: "decider", name: "결정테스트" } });
+  expect(out).toContain(t("importRollback.done"));
   expect(out).toContain("결정테스트");
   expect(out).not.toContain("<button");
 });
 
-test.each(["work_record", "changed_since", "later_run", "account_linked"] as const)("a %s blocker disables the whole rollback and links to its employee", (kind) => {
+test.each(["work_record", "changed_since", "later_run", "account_linked"] as const)("a %s blocker disables the whole rollback and links to its employee", async (kind) => {
   rollbackState.acknowledged = true;
-  const out = rollbackScreen(recordedRun, { ...rollbackPlan, allowed: [], blockers: [{ employee_id: "blocked-person", employee_number: "E-0042", kind, field: null, record: "/people/blocked-person", since: "2026-10-01T03:00:00Z" }] });
-  expect(out).toContain(t("import.rollback.blocked"));
+  const out = await rollbackScreen(recordedRun, { ...rollbackPlan, allowed: [], blockers: [{ employee_id: "blocked-person", employee_number: "E-0042", kind, field: null, record: "/people/blocked-person", since: "2026-10-01T03:00:00Z" }] });
+  expect(out).toContain(t("importRollback.blocked"));
   expect(out).toContain('href="/people/blocked-person"');
   expect(out).toContain("E-0042");
   expect(out).toMatch(/<button[^>]*(?:disabled|aria-disabled="true")/);
   expect(out).not.toContain('type="checkbox"');
 });
 
-test("a closed rollback window shows the server's date and a per-record correction route", () => {
-  const out = rollbackScreen({ ...recordedRun, allowed: [], rollback: { ...recordedRun.rollback, mode: "GOVERNED", refusal_code: "import_rollback_window_closed", window_until: "2026-10-15T02:00:00Z", window_days: 14 } });
-  expect(out).toContain(t("import.rollback.closed"));
+test("a closed rollback window shows the server's date and a per-record correction route", async () => {
+  const out = await rollbackScreen({ ...recordedRun, allowed: [], rollback: { ...recordedRun.rollback, mode: "GOVERNED", refusal_code: "import_rollback_window_closed", window_until: "2026-10-15T02:00:00Z", window_days: 14 } });
+  expect(out).toContain(t("importRollback.closed"));
   expect(out).toMatch(/GMT\+9|KST|한국 표준시/);
   expect(out).toContain('href="/people"');
   expect(out).not.toContain("7일");
   expect(out).not.toContain("<button");
 });
 
-test("a forbidden rollback preview uses the shared denied state and offers no execution", () => {
-  const out = rollbackScreen(recordedRun, rollbackPlan, new ApiError(403, "scope_tenant_wide_only", "denied"));
+test("a forbidden rollback preview uses the shared denied state and offers no execution", async () => {
+  const out = await rollbackScreen(recordedRun, rollbackPlan, new ApiError(403, "scope_tenant_wide_only", "denied"));
   expect(out).toContain(t("common.denied.title.plain"));
   expect(out).not.toMatch(/<button[^>]*>되돌리기<\/button>/);
 });
 
- test("rollback names the home branch being cleared instead of exposing its field code", () => {
-  const out = rollbackScreen(recordedRun, { ...rollbackPlan, rows: [{ employee_id: "matched", employee_number: "HB-01", inserted: false, fields: [{ field: "home_branch_id", current: "본점", before: null }], effects: ["home_branch_set"] }] });
+test("rollback names the home branch being cleared instead of exposing its field code", async () => {
+  const out = await rollbackScreen(recordedRun, { ...rollbackPlan, rows: [{ employee_id: "matched", employee_number: "HB-01", inserted: false, fields: [{ field: "home_branch_id", current: "본점", before: null }], effects: ["home_branch_set"] }] });
   expect(out).toContain("지점: 본점 → 미지정");
   expect(out).not.toContain("home_branch");
 });
 
 
-test("a tracked rollback job shows progress without a second decision or execute action", () => {
-  const out = rollbackScreen({ ...recordedRun, status: "ROLLBACK_RUNNING", allowed: [], rollback: { ...recordedRun.rollback, job: { state: "queued", total: 2000, error: null } } });
-  expect(out).toContain(t("import.rollback.running"));
-  expect(out).not.toContain(t("import.rollback.acknowledge"));
+test("a tracked rollback job shows progress without a second decision or execute action", async () => {
+  const out = await rollbackScreen({ ...recordedRun, status: "ROLLBACK_RUNNING", allowed: [], rollback: { ...recordedRun.rollback, job: { state: "queued", total: 2000, error: null } } });
+  expect(out).toContain(t("importRollback.running"));
+  expect(out).not.toContain(t("importRollback.acknowledge"));
   expect(out).not.toContain("<button");
+});
+
+
+test("governed rollback names passkey verification on the action and still requires a reason", async () => {
+  rollbackState.acknowledged = true;
+  const out = await rollbackScreen(recordedRun, { ...rollbackPlan, mode: "GOVERNED", basis: "STEP_UP" });
+  expect(out).toMatch(/<button[^>]*disabled[^>]*>패스키로 확인하고 되돌리기<\/button>/);
+  expect(out).toContain(t("importRollback.reason"));
 });

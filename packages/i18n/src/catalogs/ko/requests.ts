@@ -62,4 +62,6 @@ export const koRequests = {
   "requests.done.APPLIED": "{kind} 요청을 반영했습니다",
   "requests.done.DECLINED": "{kind} 요청을 거절했습니다",
   "requests.done.WITHDRAWN": "{kind} 요청을 철회했습니다",
+  "requests.kind.IMPORT_ROLLBACK": "가져오기 되돌리기",
+  "requests.subject.DATA_IMPORT_RUN": "가져오기 기록",
 } as const;

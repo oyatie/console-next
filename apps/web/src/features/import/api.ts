@@ -1,12 +1,12 @@
 // Employee import: preview → dry run → apply and stored run history (BW-10, MR-7).
 import { api, ApiError, unwrap } from "@console/api";
-import { get } from "../../lib/query";
+import { get, read } from "../../lib/query";
 import { REFUSED_BEFORE_WRITE } from "../../lib/react/command";
 import type { ApplyJob, ImportDecisions, ImportPreview, ImportReport } from "./domain/contract";
 import type { components } from "@console/api/schema";
 export type ImportRun = components["schemas"]["EmployeeImportRun"];
 export type RollbackPreview = components["schemas"]["EmployeeImportRollbackPreview"];
-export type RollbackRequest = components["schemas"]["EmployeeImportRollbackRequest"];
+type RollbackRequest = components["schemas"]["EmployeeImportRollbackRequest"];
 import { HEAD_BYTES, workbookKind } from "./domain/workbook";
 
 export { ApiError, assertBoundPasskey } from "@console/api";
@@ -101,6 +101,7 @@ export const runsQuery = get(RUNS);
 export const runQuery = (id: string) => get("/api/v1/employee-import-runs/{run_id}", { params: { path: { run_id: id } } });
 export const rollbackReasonsQuery = get("/api/v1/reason-codes", { params: { query: { domain: ROLLBACK_REASONS } } });
 export const previewRollback = (id: string) => unwrap(api.POST("/api/v1/employee-import-runs/{run_id}/rollback/preview", { params: { path: { run_id: id } } }));
+export const rollbackPreviewQuery = (id: string) => read("/api/v1/employee-import-runs/{run_id}/rollback/preview", () => previewRollback(id), { path: { run_id: id } });
 export const requestRollback = (id: string, body: RollbackRequest, key: string) =>
   unwrap(api.POST("/api/v1/employee-import-runs/{run_id}/rollback", { params: { path: { run_id: id }, header: { ...idem(key).header, Prefer: "respond-async" } }, body }));
 

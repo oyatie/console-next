@@ -27,16 +27,16 @@ export function DoneStep({ report, runId }: { report?: ImportReport; runId: stri
   return (
     <>
     <section className="card panel" aria-labelledby="import-done">
-      <h2 id="import-done" className="panel__title" tabIndex={-1}>{t(run.data?.status === "APPLIED" ? "import.done.title" : "import.run.title")}</h2>
+      <h2 id="import-done" className="panel__title" tabIndex={-1}>{t(run.data?.status === "APPLIED" ? "import.done.title" : "importRollback.run.title")}</h2>
       <QueryState q={run}>
         {(r) => <>
           <SectionHead tools={<Chip tone={STATUS_TONE[r.status]}>{statusLabel(r.status)}</Chip>}>{r.source_filename}</SectionHead>
           <p className="muted">
             {r.applied_at && r.applied_by ? <time dateTime={r.applied_at}>
-              {t("import.run.applied", { name: r.applied_by.name ?? r.applied_by.id, at: fmtZonedDateTime(r.applied_at) })}
-            </time> : t("import.run.notApplied")}
+              {t("importRollback.run.applied", { name: r.applied_by.name ?? r.applied_by.id, at: fmtZonedDateTime(r.applied_at) })}
+            </time> : t("importRollback.run.notApplied")}
+            {r.apply_summary && <> · {t("import.summary", { inserted: r.apply_summary.inserted, updated: r.apply_summary.updated, skipped: r.apply_summary.skipped })}</>}
           </p>
-          {r.apply_summary && <p>{t("import.summary", { inserted: r.apply_summary.inserted, updated: r.apply_summary.updated, skipped: r.apply_summary.skipped })}</p>}
         </>}
       </QueryState>
       <div className="form__actions">
