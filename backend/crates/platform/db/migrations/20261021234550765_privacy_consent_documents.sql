@@ -411,6 +411,11 @@ COMMENT ON COLUMN auth_refresh_token_families.privacy_acceptance IS
 -- Restore proof once per family, never scan audit history on an app write.
 CREATE FUNCTION auth_family_privacy_cache() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+    -- First enrollment has no consent proof and its restricted role cannot read audit history.
+    IF NEW.provenance_version = 1 AND NEW.session_purpose = 'enrollment' THEN
+        NEW.privacy_acceptance := NULL;
+        RETURN NEW;
+    END IF;
     SELECT after_snap || jsonb_build_object('accepted_at', occurred_at)
       INTO NEW.privacy_acceptance FROM audit_events
      WHERE org_id=NEW.org_id AND actor=NEW.user_id AND action='privacy.required_accept'
