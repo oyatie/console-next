@@ -12,7 +12,6 @@ DECLARE
     account_count INTEGER := 0;
     maker_employee UUID;
     checker_employee UUID;
-    maker_ops BOOLEAN;
     checker_ops BOOLEAN;
     maker_person UUID;
     checker_person UUID;
@@ -28,7 +27,7 @@ BEGIN
         ORDER BY u.id FOR SHARE OF u
     LOOP
         account_count := account_count + 1;
-        IF account.id = p_maker THEN maker_employee := account.employee_id; maker_ops := account.is_tenant_ops;
+        IF account.id = p_maker THEN maker_employee := account.employee_id;
         ELSE checker_employee := account.employee_id; checker_ops := account.is_tenant_ops;
         END IF;
     END LOOP;
@@ -50,8 +49,8 @@ BEGIN
         END IF;
     END LOOP;
     -- Ops may initiate bootstrap requests; it cannot check ordinary tenant decisions.
-    maker_identity := CASE WHEN maker_ops THEN 'account:' || p_maker::text
-        WHEN maker_person IS NOT NULL THEN 'person:' || maker_person::text ELSE 'account:' || p_maker::text END;
+    maker_identity := CASE WHEN maker_person IS NOT NULL THEN 'person:' || maker_person::text
+        ELSE 'account:' || p_maker::text END;
     checker_identity := CASE WHEN checker_ops THEN 'ops:' || p_checker::text
         WHEN checker_person IS NOT NULL THEN 'person:' || checker_person::text ELSE 'account:' || p_checker::text END;
     RETURN NEXT;
