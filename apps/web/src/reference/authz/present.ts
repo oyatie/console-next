@@ -29,7 +29,7 @@ export const scopeName = (s: AccessEffectiveEntry["scope"], roots: readonly Node
 export const untilText = (to: string | null | undefined) =>
   to ? t("access.until", { date: fmtDate(todayKst(new Date(Date.parse(to) - 1))) }) : t("access.until.none");
 
-export type GrantLine = { id: string; role: string; scope: string; until: string; state?: string; reach: string; caveats: string[] };
+type GrantLine = { id: string; role: string; scope: string; until: string; state?: string; reach: string; caveats: string[] };
 
 /** One line per grant, in the order the server sent them; a state is named only when the grant is not in force. */
 export function grantLines(entries: readonly AccessEffectiveEntry[], roots: readonly Node[] = []): GrantLine[] {
@@ -50,12 +50,6 @@ export function grantLines(entries: readonly AccessEffectiveEntry[], roots: read
     };
   });
 }
-
-/** One line per grant whose notice its holder has not confirmed yet (decisions D0.2). */
-export const unnoticed = (entries: readonly AccessEffectiveEntry[], roots: readonly Node[] = []): GrantLine[] => {
-  const pending = new Set(entries.filter((e) => !e.noticed_at).map((e) => e.grant_id));
-  return grantLines(entries, roots).filter((g) => pending.has(g.id));
-};
 
 /** A grant refusal in the access screens' words; undefined for any other code (the shared refusal text). */
 export const grantRefusal = (code: string) => {

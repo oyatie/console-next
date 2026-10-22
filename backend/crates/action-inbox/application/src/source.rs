@@ -16,10 +16,16 @@ pub enum ActionInboxSource {
     HrRequests,
     HrRegister,
     HrInsurance,
+    HrIdentity,
+    HrBranch,
+    HrContract,
+    PeriodUnlock,
+    Setup,
+    GrantNotice,
 }
 
 impl ActionInboxSource {
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 18] = [
         Self::Workflow,
         Self::Dispatch,
         Self::Support,
@@ -32,5 +38,11 @@ impl ActionInboxSource {
         Self::HrRequests,
         Self::HrRegister,
         Self::HrInsurance,
+        Self::HrIdentity,
+        Self::HrBranch,
+        Self::HrContract,
+        Self::PeriodUnlock,
+        Self::Setup,
+        Self::GrantNotice,
     ];
 }

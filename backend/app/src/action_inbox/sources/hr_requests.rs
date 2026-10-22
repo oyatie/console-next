@@ -32,7 +32,7 @@ pub(crate) async fn page(
         .map(|request| ActionInboxSourceItem {
             id: format!("{INBOX_ID_PREFIX}{}", request.id),
             kind: "hr_request".to_owned(),
-            ref_code: request.kind.clone(),
+            ref_code: request.reason_code,
             title: request.kind,
             site: None,
             who: None,

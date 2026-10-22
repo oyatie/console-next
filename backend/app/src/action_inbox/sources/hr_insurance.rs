@@ -17,20 +17,25 @@ pub(crate) async fn page(
         .statutory_register()
         .await
         .map_err(|_| KernelError::internal("failed to load statutory register"))?;
-    let result = HrService::new(pool.clone())
-        .insurance_filings(
-            principal.clone(),
-            FilingQuery {
-                state: Some("PENDING".into()),
-                limit: Some(query.limit),
-                inbox_as_of: Some(query.as_of),
-                inbox_after: query.after.map(|p| (p.created_at, p.id)),
-                ..FilingQuery::default()
-            },
-            register,
-        )
-        .await;
-    let page = match result {
+    let service = HrService::new(pool.clone());
+    let request = FilingQuery {
+        state: Some("PENDING".into()),
+        limit: Some(query.limit),
+        inbox_as_of: Some(query.as_of),
+        inbox_after: query.after.map(|p| (p.created_at, p.id)),
+        ..FilingQuery::default()
+    };
+    let result = if query.require_exact_total {
+        service
+            .insurance_filings(principal.clone(), request, register)
+            .await
+            .map(|page| (page, true))
+    } else {
+        service
+            .insurance_inbox_page(principal.clone(), request, register)
+            .await
+    };
+    let (page, total_is_exact) = match result {
         Ok(page) => page,
         Err(error) if error.status.as_u16() == 403 => {
             return Ok(ActionInboxSourcePage {
@@ -76,7 +81,7 @@ pub(crate) async fn page(
     Ok(ActionInboxSourcePage {
         items,
         total: usize::try_from(page.total).unwrap_or(0),
-        total_is_exact: true,
+        total_is_exact,
         has_more,
     })
 }

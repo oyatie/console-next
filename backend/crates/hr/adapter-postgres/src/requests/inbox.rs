@@ -16,6 +16,7 @@ pub const INBOX_ID_PREFIX: &str = "hr_request:";
 pub struct ChangeRequestInboxItem {
     pub id: Uuid,
     pub kind: String,
+    pub reason_code: String,
     pub subject_type: String,
     pub subject_id: Uuid,
     pub created_at: OffsetDateTime,
@@ -68,7 +69,7 @@ impl HrService {
                 push_where(&mut count);
                 let total: i64 = count.build_query_scalar().fetch_one(tx.as_mut()).await?;
                 let mut q = QueryBuilder::<Postgres>::new(
-                    "SELECT c.id, c.kind, c.subject_type, c.subject_id, c.created_at",
+                    "SELECT c.id, c.kind, c.reason_code, c.subject_type, c.subject_id, c.created_at",
                 );
                 push_where(&mut q);
                 q.push(" AND (");
@@ -90,6 +91,7 @@ impl HrService {
                         Ok(ChangeRequestInboxItem {
                             id: row.try_get("id")?,
                             kind: row.try_get("kind")?,
+                            reason_code: row.try_get("reason_code")?,
                             subject_type: row.try_get("subject_type")?,
                             subject_id: row.try_get("subject_id")?,
                             created_at: row.try_get("created_at")?,

@@ -5,7 +5,6 @@
 //! shutdown. Domain behavior lands in narrower crates and is composed here.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
-#[cfg(feature = "workspace")]
 pub mod action_inbox;
 mod audit_chain_signer;
 pub mod cedar_parity;

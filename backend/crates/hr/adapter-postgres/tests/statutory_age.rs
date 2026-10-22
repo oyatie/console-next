@@ -77,6 +77,48 @@ async fn pension_age_loss_has_one_task_and_exact_birth_dates_stay_tenant_scoped(
         .await
         .unwrap();
     assert_eq!(page.total, 1);
+    let (inbox, _) = w
+        .tenant
+        .hr
+        .insurance_inbox_page(
+            p.clone(),
+            FilingQuery {
+                inbox_as_of: Some(OffsetDateTime::now_utc()),
+                // The source is older than this cursor; its birthday task is newer.
+                inbox_after: Some((
+                    (today - Duration::days(10))
+                        .midnight()
+                        .assume_offset(UtcOffset::from_hms(9, 0, 0).unwrap()),
+                    format!("insurance_filing_ACQUIRE_NPS:{}", w.event),
+                )),
+                state: Some("PENDING".into()),
+                limit: Some(1),
+                ..list()
+            },
+            rules.clone(),
+        )
+        .await
+        .unwrap();
+    assert!(inbox.items.iter().any(|task| task.kind == "AGE60"));
+    let (filtered, _) = w
+        .tenant
+        .hr
+        .insurance_inbox_page(
+            p.clone(),
+            FilingQuery {
+                insurer: Some("EI".into()),
+                kind: Some("AGE60".into()),
+                inbox_as_of: Some(OffsetDateTime::now_utc()),
+                ..list()
+            },
+            rules.clone(),
+        )
+        .await
+        .unwrap();
+    assert!(
+        filtered.items.is_empty(),
+        "the birthday companion must retain insurer filters"
+    );
     let t = &page.items[0];
     assert_eq!(t.insurer, "NPS");
     assert_eq!(

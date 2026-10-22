@@ -109,7 +109,10 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
         held += ms.length;
         emitHeld();
       }
-      void invalidateWhere(qc, (path, params) => ms.some((x) => x(path, params)), !holds);
+      if (holds) {
+        void invalidateWhere(qc, (path, params) => path === "/api/v1/me/action-inbox" && ms.some((x) => x(path, params)));
+      }
+      void invalidateWhere(qc, (path, params) => (!holds || path !== "/api/v1/me/action-inbox") && ms.some((x) => x(path, params)), !holds);
     }, INVALIDATE_DEBOUNCE_MS);
     pending.push(m);
   };
@@ -120,7 +123,11 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
     if (event === "reset") return later(() => queue(ALL), jitter(RESET_JITTER_MAX_MS));
     if (event !== "change" || typeof d.type !== "string") return;
     // Imports keep running and recovery has other actors: a recent write cannot suppress their next step.
-    if (d.type !== "import_run" && d.type !== "ops_recovery" && ownWrite(qc)) return;
+    if (d.type !== "import_run" && d.type !== "ops_recovery" && ownWrite(qc)) {
+      const changed = matchChange(d.type, str(d.id));
+      queue((path, params) => path === "/api/v1/me/action-inbox" && changed(path, params));
+      return;
+    }
     const id = str(d.id);
     const record = matchRecord(d.type, id);
     if (record && id && shownWhere(qc, record)) {

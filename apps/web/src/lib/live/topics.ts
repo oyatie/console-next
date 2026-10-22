@@ -14,31 +14,32 @@ const ATTENDANCE_ORG_READS = ["/api/v1/attendance/schedule/tree", "/api/v1/atten
 const STRUCTURE_READS = ["/api/v1/org-units", "/api/v1/org-structure", "/api/v1/branches", "/api/v1/workplaces", "/api/v1/onboarding", ...ATTENDANCE_ORG_READS];
 // A person-day's reads: the grid, the day board and the person cards.
 const ATTENDANCE_DAY_READS = ["/api/v1/attendance/month", "/api/v1/attendance/days", "/api/v1/attendance/people"];
-const ENTITY_READS = ["/api/v1/org-structure", "/api/v1/legal-entities", "/api/v1/business-registrations", "/api/v1/entity-documents", "/api/v1/workplaces", "/api/v1/onboarding"];
+const ENTITY_READS = ["/api/v1/org-structure", "/api/v1/legal-entities", "/api/v1/business-registrations", "/api/v1/entity-documents", "/api/v1/workplaces", "/api/v1/onboarding", "/api/v1/me/action-inbox"];
 
 // Keys are the `change` types the hub emits (the BE-RT event contract, "Topics"): a subscriber gets a type only when it
 // passes that resource's REST read check, and never an unknown one.
 export const TOPICS: Readonly<Record<string, Topic>> = {
   // Go-live, setup steps, terms and renames change what every screen offers.
   ops_recovery: { paths: ["/api/platform/orgs", "/api/v1/tenant/ops-recovery"] },
+  inbox: { paths: ["/api/v1/me/action-inbox"] },
   command_outcome: { paths: ["/api/v1/requests"] },
   tenant: { paths: ["/api/v1"] },
   legal_entity: { detail: "/api/v1/legal-entities", paths: [...ENTITY_READS, "/api/v1/employment-assignments", ...ATTENDANCE_ORG_READS] },
   business_registration: { detail: "/api/v1/business-registrations", paths: ENTITY_READS },
   workplace: { detail: "/api/v1/workplaces", paths: [...ENTITY_READS, ...STRUCTURE_READS] },
   org_unit: { detail: "/api/v1/org-units", paths: [...STRUCTURE_READS, ...EMPLOYEE_READS] },
-  org_change: { detail: "/api/v1/org-changes", paths: ["/api/v1/org-changes", "/api/v1/legal-entities", ...STRUCTURE_READS] },
+  org_change: { detail: "/api/v1/org-changes", paths: ["/api/v1/org-changes", "/api/v1/legal-entities", "/api/v1/me/action-inbox", ...STRUCTURE_READS] },
   entity_setup_batch: { paths: [...ENTITY_READS, ...STRUCTURE_READS] },
   employee: { detail: "/api/v1/employees", paths: ["/api/v1/org-structure", "/api/v1/legal-entities", ...EMPLOYEE_READS, "/api/v1/org-units", "/api/v1/onboarding", "/api/v1/workplaces", "/api/v1/employee-import-runs"] },
   exit_case: { detail: "/api/v1/hr/exit-cases", paths: [...EMPLOYEE_READS, "/api/v1/org-structure", "/api/v1/legal-entities", "/api/v1/workplaces", "/api/v1/employee-import-runs"] },
   change_request: { paths: ["/api/v1/change-requests", ...EMPLOYEE_READS, "/api/v1/employee-import-runs"] },
   import_run: { paths: [...EMPLOYEE_READS, "/api/v1/employee-import-runs", "/api/v1/org-units", "/api/v1/onboarding"] },
-  user: { detail: "/api/v1/users", paths: ["/api/v1/users", "/api/v1/directory", "/api/v1/access", "/api/v1/onboarding"] },
+  user: { detail: "/api/v1/users", paths: ["/api/v1/users", "/api/v1/directory", "/api/v1/access", "/api/v1/onboarding", "/api/v1/me/action-inbox"] },
   // A role or its assignment changes who may do what, this user's own grants included.
-  role: { paths: ["/api/v1/policy", "/api/v1/access", "/api/v1/me/authz", "/api/v1/users", "/api/v1/directory", "/api/v1/onboarding"] },
+  role: { paths: ["/api/v1/policy", "/api/v1/access", "/api/v1/me/authz", "/api/v1/users", "/api/v1/directory", "/api/v1/onboarding", "/api/v1/me/action-inbox"] },
   // A lock, its unlock request or the second person's decision: the lock page, Home's unlock queue, and whether a closed
   // attendance month takes writes (its unlock reopens it, its re-lock closes it).
-  period_lock: { paths: ["/api/v1/period-locks", ...ATTENDANCE_DAY_READS] },
+  period_lock: { paths: ["/api/v1/period-locks", "/api/v1/me/action-inbox", ...ATTENDANCE_DAY_READS] },
   // work schedule (patterns, layers, crew, company holiday): one coalesced topic; every attendance read may show a schedule.
   attendance_schedule: { paths: ["/api/v1/attendance"] },
   // A save, batch undo, correction or void of a person-day: the grid, the day board and the person cards re-read.

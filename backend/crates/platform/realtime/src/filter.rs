@@ -64,7 +64,7 @@ fn door(resource_type: &str) -> Option<Door> {
 }
 
 pub(crate) fn may_read(principal: &Principal, row: &ChangeRow) -> bool {
-    if row.resource_type == "command_outcome" {
+    if matches!(row.resource_type.as_str(), "command_outcome" | "inbox") {
         return row.resource_id.is_none()
             && console_platform_authz::cedar_pbac::actions::command_outcome::decide(
                 &principal.user_id.to_string(),
@@ -196,6 +196,16 @@ mod tests {
                 other => panic!("not a change frame: {other:?}"),
             })
             .collect()
+    }
+
+    #[test]
+    fn an_inbox_hint_reaches_its_authenticated_reader_without_exposing_record_ids() {
+        let principal = reader(&[], BranchScope::All);
+        assert!(may_read(&principal, &row(1, "inbox", None, None)));
+        assert!(!may_read(
+            &principal,
+            &row(1, "inbox", Some("private-record"), None)
+        ));
     }
 
     #[test]

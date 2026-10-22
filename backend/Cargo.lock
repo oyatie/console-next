@@ -801,6 +801,7 @@ name = "console-action-inbox-application"
 version = "0.1.0"
 dependencies = [
  "console-kernel-core",
+ "futures",
  "serde",
  "serde_json",
  "time",

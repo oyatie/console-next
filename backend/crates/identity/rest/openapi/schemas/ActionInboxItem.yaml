@@ -12,6 +12,8 @@ required:
 - dueTone
 - links
 - done
+- lane
+- days_remaining
 properties:
   id:
     type: string
@@ -23,10 +25,40 @@ properties:
     - dispatch
     - work
     - support
+    - payroll
+    - governance
     - org_change
+    - org_change_approve
+    - org_change_draft
+    - org_change_apply
+    - org_change_waiting
+    - org_change_scheduled
+    - org_change_rejected
+    - org_change_settle
     - hr_exit
+    - hr_exit_confirm
+    - hr_exit_confirm_hq
+    - hr_exit_settle
     - hr_lifecycle
+    - lifecycle_apply_failed
     - hr_request
+    - register_review
+    - insurance_filing
+    - identity_review
+    - home_branch_review
+    - contract_renewal
+    - period_unlock
+    - grant_notice
+    - account_security
+    - setup_entity
+    - setup_workplace
+    - setup_org
+    - setup_approval
+    - setup_people
+    - setup_passkey
+    - setup_employees
+    - setup_roles
+    - setup_golive
   urg:
     type: string
     enum:
@@ -60,3 +92,10 @@ properties:
       $ref: '#/components/schemas/ActionInboxLink'
   done:
     type: boolean
+  lane:
+    type: string
+    enum: [turn, waiting, scheduled]
+    description: Server-owned lane based on the actor and current action state.
+  days_remaining:
+    type: [integer, 'null']
+    description: Calendar days remaining in the source deadline's timezone, computed from the database clock.

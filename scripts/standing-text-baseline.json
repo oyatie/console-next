@@ -49,7 +49,7 @@
   "apps/web/src/features/requests/ui/request-page.tsx#RequestLookup": 15,
   "apps/web/src/features/requests/ui/request-page.tsx#RequestPage": 36,
   "apps/web/src/features/statutory/ui/statutory-page.tsx#StatutoryPage": 46,
-  "apps/web/src/routes/home-screen.tsx#HomeScreen": 234,
+  "apps/web/src/routes/home-screen.tsx#HomeScreen": 52,
   "apps/web/src/routes/org-screen.tsx#OrgScreen": 303,
   "apps/web/src/features/company-domain/ui/domain-page.tsx#default": 32,
   "apps/web/src/features/people/ui/certificate-page.tsx#CertificatePage": 38,

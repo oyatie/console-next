@@ -44,10 +44,7 @@ pub(crate) async fn page(
         });
     }
     let org = principal.org_id;
-    let after = query.after.as_ref().and_then(|position| {
-        let (namespace, id) = position.id.split_once(':')?;
-        (namespace == NAMESPACE).then(|| (position.created_at, id.to_owned()))
-    });
+    let after = query.after.map(|p| (p.created_at, p.id));
     let (as_of, limit) = (query.as_of, query.limit);
     let (rows, total) = with_org_conn::<_, _, DbError>(pool, org, move |tx| {
         Box::pin(async move {
@@ -56,7 +53,7 @@ pub(crate) async fn page(
                  FROM employee_lifecycle_events l \
                  JOIN employees e ON e.org_id = l.org_id AND e.id = l.employee_id WHERE ",
                 open!(),
-                " AND ($3::timestamptz IS NULL OR (l.created_at, l.id::text) > ($3, $4)) \
+                " AND ($3::timestamptz IS NULL OR (l.created_at, ('hr_lifecycle:' || l.id::text)) > ($3, $4)) \
                  ORDER BY l.created_at, l.id LIMIT $5"
             ))
             .bind(org.as_uuid())
@@ -112,3 +109,7 @@ pub(crate) async fn page(
         has_more,
     })
 }
+
+#[cfg(test)]
+#[path = "hr_lifecycle_tests.rs"]
+mod tests;

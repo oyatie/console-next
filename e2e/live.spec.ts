@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Browser, type Page, type Request } from "@playwright/test";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { go, kstDate, newContext, passkeyLogin, registerEmployee } from "./flows";
@@ -114,28 +115,27 @@ test("a change in one session reaches another without reload or polling, survive
   expect(loads.n, "no reload").toBe(0);
 });
 
-const held = (page: Page) => page.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ });
-
-test("an unattended Home holds a change made elsewhere behind its notice: nothing moves until the press", { tag: "@live" }, async ({ browser }) => {
+test("Home applies another session's setup change through its inbox without reload or a refresh press", { tag: "@live" }, async ({ browser }) => {
   test.setTimeout(180_000);
-  // Regression (j2-transfer, round 22): the executive's Home checklist moved while the admin's setup writes streamed in.
+  // The one queue updates over SSE, including its grouped setup work.
   const { admin, exec } = await tenantInSetup(browser, "livehome", "홈실시간");
   await go(exec, "/");
   const rail = await homeRail(exec);
   await expect(rail).toBeVisible();
   await expectStable(exec, "Home before the change elsewhere");
   const before = await rail.innerText();
+  let loads = 0;
+  exec.on("load", () => { loads++; });
+  const updated = exec.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/me/action-inbox" && response.ok());
 
   await go(admin, "/org");
   await addDepartments(admin, "본점", ["총무부"]);
-  await expect(held(exec)).toBeVisible({ timeout: 15_000 });
-  expect(await rail.innerText(), "held: the checklist is as it was").toBe(before);
-  await expectStable(exec, "unattended Home after a change elsewhere");
-  await expectAccessible(exec, "Home with held changes");
-
-  await held(exec).click();
-  await expect(held(exec)).toHaveCount(0);
+  await updated;
   await expect.poll(() => rail.innerText(), { timeout: 15_000 }).not.toBe(before);
+  await expect(exec.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ })).toHaveCount(0);
+  expect(loads, "setup work updates without a document reload").toBe(0);
+  await expectStable(exec, "Home after the live setup change");
+  await expectAccessible(exec, "Home with live setup work");
 });
 
 test("a sheet holds a change made elsewhere to the record under it, and closing it shows the change", { tag: "@live" }, async ({ browser }) => {

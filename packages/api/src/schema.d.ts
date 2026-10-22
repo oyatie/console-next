@@ -8511,7 +8511,7 @@ export interface paths {
         };
         /**
          * Unified action inbox for the authenticated principal
-         * @description One server-side fan-in of the caller's actionable items across every source that owns a person-scoped list: workflow/approval tasks awaiting the caller (the ?assignee=me path), pending P1 dispatch offers, support tickets assigned to the caller, and work orders assigned to the caller. Each source is queried through the exact predicate its own list endpoint uses, so the aggregate never widens visibility (deny-by-omission). Items are bucketed by urgency (now/today/wait) with a derived due tone. Fields the overview prototype carries but no backend source can supply are omitted (entity, amount, detail, files, stats, mailId); site/who/submitted are present only for the sources that carry them. Attendance exceptions are not aggregated (no exception object exists yet). Results use an immutable `(created_at, kind:id)` traversal key plus an `as_of` admission boundary, so rows created after the first page are excluded. Membership is deliberately live rather than a repeatable full-state snapshot: resolved, reassigned, or expired rows can disappear between page requests. Totals are recalculated from live membership admitted by `as_of`; `total_is_exact` is false when an authorization-filtered source reaches its bounded counting budget. Source failures fail the whole request rather than returning a deceptively partial queue.
+         * @description One server-side fan-in of the caller's actionable items across every source that owns a person-scoped list: workflow/approval tasks awaiting the caller (the ?assignee=me path), pending P1 dispatch offers, support tickets assigned to the caller, and work orders assigned to the caller. Each source is queried through the exact predicate its own list endpoint uses, so the aggregate never widens visibility (deny-by-omission). Items are bucketed by urgency (now/today/wait) with a derived due tone. Fields the overview prototype carries but no backend source can supply are omitted (entity, amount, detail, files, stats, mailId); site/who/submitted are present only for the sources that carry them. Attendance exceptions are not aggregated (no exception object exists yet). Results use an immutable `(created_at, kind:id)` traversal key plus an `as_of` admission boundary, so rows created after the first page are excluded. Membership is deliberately live rather than a repeatable full-state snapshot: resolved, reassigned, or expired rows can disappear between page requests. Totals are recalculated from live membership admitted by `as_of`; `total_is_exact` is false when a source returns a bounded visible prefix or the selected view has more pages. Source failures fail the whole request rather than returning a deceptively partial queue.
          */
         get: operations["listMyActionInbox"];
         put?: never;
@@ -14205,7 +14205,7 @@ export interface components {
             /** @description "{kind}:{uuid}" — source-namespaced so ids never collide. */
             id: string;
             /** @enum {string} */
-            kind: "approval" | "dispatch" | "work" | "support" | "org_change" | "hr_exit" | "hr_lifecycle" | "hr_request";
+            kind: "approval" | "dispatch" | "work" | "support" | "payroll" | "governance" | "org_change" | "org_change_approve" | "org_change_draft" | "org_change_apply" | "org_change_waiting" | "org_change_scheduled" | "org_change_rejected" | "org_change_settle" | "hr_exit" | "hr_exit_confirm" | "hr_exit_confirm_hq" | "hr_exit_settle" | "hr_lifecycle" | "lifecycle_apply_failed" | "hr_request" | "register_review" | "insurance_filing" | "identity_review" | "home_branch_review" | "contract_renewal" | "period_unlock" | "grant_notice" | "account_security" | "setup_entity" | "setup_workplace" | "setup_org" | "setup_approval" | "setup_people" | "setup_passkey" | "setup_employees" | "setup_roles" | "setup_golive";
             /** @enum {string} */
             urg: "now" | "today" | "wait";
             /** @description Source reference (work order request_no, ticket id, or the workflow run/object id). Not a canonical AP-/CS- object code. */
@@ -14219,6 +14219,13 @@ export interface components {
             submitted?: components["schemas"]["Timestamp"];
             links: components["schemas"]["ActionInboxLink"][];
             done: boolean;
+            /**
+             * @description Server-owned lane based on the actor and current action state.
+             * @enum {string}
+             */
+            lane: "turn" | "waiting" | "scheduled";
+            /** @description Calendar days remaining in the source deadline's timezone, computed from the database clock. */
+            days_remaining: number | null;
         };
         /** @description One server-ordered canonical source-object reference for an action-inbox item. Clients resolve only explicitly registered kind/id pairs; current browser-linkable kinds are approval_run, work_order, and support_ticket. Unknown kinds remain valid for forward compatibility and MUST stay inert until a client registry adds support. Clients MUST NOT accept a server URL or infer a destination from the enclosing item kind, item id, label, or a code prefix. */
         ActionInboxLink: {
@@ -14232,10 +14239,12 @@ export interface components {
             items: components["schemas"]["ActionInboxItem"][];
             /** @description Live visible item count across sources admitted by as_of; inspect total_is_exact before treating it as authoritative. */
             total: number;
-            /** @description False only when a bounded authorization-filtered count reached its scan budget. */
+            /** @description False when a source reports a bounded visible prefix or a filtered traversal has more pages; total is then a lower bound. */
             total_is_exact: boolean;
             /** @description Opaque cursor for the next immutable-keyset page, or null when exhausted. */
             next_cursor: string | null;
+            /** @description The authorized setup checklist, grouped once inside the queue on its first page. */
+            setup?: components["schemas"]["SetupChecklist"];
         };
         /** @enum {string} */
         ActorKind: "TENANT_USER" | "OPS_ACCOUNT" | "GROUP_ADMIN" | "SUPPORT_OPERATOR" | "SYSTEM";
@@ -45694,6 +45703,8 @@ export interface operations {
     listMyActionInbox: {
         parameters: {
             query?: {
+                /** @description Server-owned view; ownership and deadlines are never merged or filtered in the browser. */
+                filter?: "all" | "turn" | "waiting" | "scheduled" | "deadlines" | "failures";
                 /** @description Page size, clamped server-side to 1..=200. */
                 limit?: number;
                 /** @description Opaque immutable-traversal cursor returned as `next_cursor` by the previous page. */
