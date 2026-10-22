@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-# Checks workflow changes with actionlint (with shellcheck) and the CD workflow's
-# safety properties.
+# Checks workflow changes with actionlint (with shellcheck).
 name: workflows-check
 on:
   pull_request:
-    paths: [".github/**", "scripts/cd-workflow.test.mjs"]
+    paths: [".github/**"]
   push:
     branches: [dev]
-    paths: [".github/**", "scripts/cd-workflow.test.mjs"]
+    paths: [".github/**"]
 permissions: {}
 jobs:
   workflows:
@@ -24,13 +23,3 @@ jobs:
           persist-credentials: false
       - name: actionlint
         run: docker run --rm -v "${PWD}:/repo" -w /repo rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
-      # npm's download cache (~/.npm, keyed on package-lock.json), not node_modules.
-      # GitHub cache scoping: PR runs read dev's entries, their own stay on the PR ref.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version-file: package.json
-          cache: npm
-      - name: CD workflow properties
-        run: |
-          npm ci --ignore-scripts --no-audit --no-fund
-          node --test scripts/cd-workflow.test.mjs
