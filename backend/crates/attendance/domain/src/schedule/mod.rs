@@ -2,14 +2,15 @@
 //! decide. Pure: no IO, no clock (callers pass `today`).
 
 mod assign;
+mod break_floor;
+#[cfg(test)]
+mod break_floor_tests;
 mod pattern;
 mod resolve;
 
 pub use assign::{AssignRules, LayerReason, check_assign, check_cancel, month_of};
-pub use pattern::{
-    BreakFloorFinding, BreakFloorRow, DaySpec, Derived, HolidayRule, PatternSpec, Shift, Slot,
-    Window, deducted_break_minutes,
-};
+pub use break_floor::BreakFloorRow;
+pub use pattern::{DaySpec, Derived, HolidayRule, PatternSpec, Shift, Slot, Window};
 pub use resolve::{DayKind, DayPlan, HolidayFact, HolidayKind, LayerRef, Level, plan_day, winner};
 
 /// Why a schedule command is refused. Each code is stable on the wire and has

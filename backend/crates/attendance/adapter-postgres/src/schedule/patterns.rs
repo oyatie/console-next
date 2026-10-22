@@ -80,15 +80,13 @@ fn record_floor(judged: &Result<console_attendance_domain::schedule::Derived, Sc
 fn read_row(
     row: &sqlx::postgres::PgRow,
     people_today: i64,
-    on: Date,
-    floors: &[BreakFloorRow],
 ) -> Result<PatternRead, ScheduleStoreError> {
     let spec: Value = row.try_get("spec")?;
     let spec: StoredSpec =
         serde_json::from_value(spec).map_err(|_| ScheduleStoreError::Corrupt("spec"))?;
     let derived = spec
         .pattern
-        .validate(on, floors)
+        .derive()
         .map_err(|_| ScheduleStoreError::Corrupt("spec"))?;
     Ok(PatternRead {
         id: row.try_get("id")?,
@@ -115,8 +113,7 @@ async fn one(
         .fetch_optional(tx.as_mut())
         .await?
         .ok_or(ScheduleStoreError::NotFound(codes::PATTERN_NOT_FOUND))?;
-    let floors = super::break_floor::load(tx).await?;
-    read_row(&row, 0, today_kst(), &floors)
+    read_row(&row, 0)
 }
 
 impl PgAttendanceStore {
@@ -152,7 +149,7 @@ impl PgAttendanceStore {
                         .iter()
                         .map(|r| {
                             let id: Uuid = r.try_get("id")?;
-                            read_row(r, counts.get(&id).copied().unwrap_or(0), today, &u.floors)
+                            read_row(r, counts.get(&id).copied().unwrap_or(0))
                         })
                         .collect::<Result<_, ScheduleStoreError>>()?;
                     Ok(Items { items })

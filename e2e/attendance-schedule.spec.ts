@@ -12,6 +12,7 @@ import { sheet } from "./sheet";
 test("근무 일정: first run → pattern → assign with preview → cancel before effect; refusals change nothing", { tag: "@hr" }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "attsch", "근무일정주식회사");
   const bearer = bearerOf(admin);
+  const api = apiOf(admin, bearer);
   await registerEmployee(admin, { name: "윤하준", number: "A-0001" });
   await registerEmployee(admin, { name: "송재원", number: "A-0002" });
   await openSchedule(admin);
@@ -28,6 +29,19 @@ test("근무 일정: first run → pattern → assign with preview → cancel be
   let s = await draftWeekly(admin, "공장 주간 08–17", ["08:00", "17:00", "12:00", "12:30"]);
   await expect(s.getByText(/휴게가 부족합니다/).first()).toBeVisible();
   await expect(s.getByRole("button", { name: "공장 주간 08–17 추가" })).toHaveAttribute("aria-disabled", "true");
+  // The server also refuses below-floor breaks and an unrequested four-hour waiver, without saving either.
+  const before = await (await api("/attendance/patterns")).json();
+  for (const shift of [
+    { start: 480, end: 990, breaks: [{ start: 720, end: 750 }] },
+    { start: 540, end: 780, breaks: [] },
+  ]) {
+    const response = await api("/attendance/patterns", "POST", {
+      name: "휴게 기준 미달", kind: "WEEKLY",
+      days: [{ kind: "WORK", shift }, ...Array.from({ length: 5 }, () => ({ kind: "REST_DAY" })), { kind: "WEEKLY_HOLIDAY" }],
+    }, { "Idempotency-Key": `break-floor-${crypto.randomUUID()}` });
+    expect([response.status(), await codeOf(response)]).toEqual([422, "break_below_minimum"]);
+  }
+  expect(await (await api("/attendance/patterns")).json()).toEqual(before);
   // 탄력적 근로시간제 is listed, not offered: it needs a written agreement first.
   await expect(s.getByRole("combobox", { name: /^유형/ }).locator("option", { hasText: "탄력적" })).toBeDisabled();
   for (const day of ["월", "화", "수", "목", "금"]) await s.getByRole("group", { name: day, exact: true }).getByRole("textbox", { name: /^휴게 끝/ }).fill("13:00");
@@ -73,7 +87,6 @@ test("근무 일정: first run → pattern → assign with preview → cancel be
   const live = history.getByRole("row", { name: /적용 중/ });
   await expect(live).toBeVisible();
   await expect(live.getByRole("button", { name: /일정 취소/ })).toHaveCount(0);
-  const api = apiOf(admin, bearer);
   const layers = (await (await api(`/attendance/schedule/layers?scope_kind=WORKPLACE&scope_id=${await scopeId(admin, api)}`)).json()) as { items: { id: string; state: string }[] };
   const inEffect = layers.items.find((l) => l.state === "IN_EFFECT")!;
   const refused = await api(`/attendance/schedule/layers/${inEffect.id}/cancel`, "POST", { reason: "취소 시도" });
