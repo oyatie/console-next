@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 use console_gate_audit_coverage::check_workspace;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -81,6 +82,28 @@ fn audit_coverage_gate_flags_raw_insert_without_source() -> Result<(), Box<dyn s
             rejected.violations
         );
     }
+    fs::remove_dir_all(ws)?;
+    Ok(())
+}
+
+#[test]
+fn unicode_dollar_quote_is_read_only() -> Result<(), Box<dyn std::error::Error>> {
+    let ws = temp_workspace("unicode-dollar-quote")?;
+    write_file(&ws.join("app/src/lib.rs"), "")?;
+    write_file(
+        &ws.join("crates/platform/db/src/audit_write.rs"),
+        include_str!("../../../../crates/platform/db/src/audit_write.rs"),
+    )?;
+    write_file(
+        &ws.join("crates/platform/request-context/src/commands.rs"),
+        include_str!("../../../../crates/platform/request-context/src/commands.rs"),
+    )?;
+    write_file(
+        &ws.join("crates/platform/auth/src/read.rs"),
+        r#"const READ: &str = "SELECT $한글$INSERT INTO audit_events$한글$";"#,
+    )?;
+    let result = check_workspace(&ws)?;
+    assert!(result.passed(), "{:#?}", result.violations);
     fs::remove_dir_all(ws)?;
     Ok(())
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 use console_gate_audit_coverage::{ViolationKind, check_source_tree};
 use std::{fs, path::PathBuf};
 

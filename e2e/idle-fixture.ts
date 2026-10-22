@@ -22,7 +22,7 @@ export async function settled(page: Page, quietMs = 2_000) {
   }
 }
 
-const psql = (slug: string, sql: string, minutes = 0) =>
+export const psql = (slug: string, sql: string, minutes = 0) =>
   execFileSync("psql", ["-X", "-At", "--set", "ON_ERROR_STOP=1", "--set", `slug=${slug}`, "--set", `minutes=${minutes}`, "--dbname", "console_dev"], {
     env: { ...process.env, PGHOST: "127.0.0.1", PGPORT: String(PORTS.pg), PGUSER: "console_app", PGPASSWORD: readDevSecrets().postgresAppPassword },
     input: `BEGIN;

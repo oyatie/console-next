@@ -227,13 +227,16 @@ fn dollar_delimiter(sql: &str) -> Option<&str> {
     let tag = sql.get(1..end)?;
     if !tag.is_empty()
         && !tag
-            .as_bytes()
-            .first()
-            .is_some_and(|b| b.is_ascii_alphabetic() || *b == b'_')
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_alphabetic() || c == '_' || !c.is_ascii())
     {
         return None;
     }
-    if tag.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') {
+    if tag
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || !c.is_ascii())
+    {
         sql.get(..=end)
     } else {
         None
