@@ -72,7 +72,9 @@ test("an individual's 상호 is the one name its record, list and header show", 
   await expect(row).toContainText("새온공방 · 새온");
   await expect(row).toContainText("등록증 확인 필요");
   await row.getByRole("link", { name: "확인" }).click();
-  await setName(p, "상호", "새온목공방");
+  // The record names the individual's own name row 「명칭」 (P0-TRADENAME-INDIVIDUAL: 「상호」 is the certificate's
+  // trade name, and this 개인사업자 has no certificate yet); it is the one value the list and the header show.
+  await setName(p, "명칭", "새온목공방");
   await expect(p.getByRole("heading", { level: 1 })).toHaveText("새온목공방 · 새온");
   await go(p, "/org/entities");
   await expect(p.getByRole("row").filter({ hasText: "새온목공방 · 새온" })).toHaveCount(1);
