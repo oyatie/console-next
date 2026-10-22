@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { go } from "./flows";
 import { tenantInSetup } from "./setup-flows";
+import { fillDate } from "./sheet";
 
 // S7 사업장 일괄 수정 from an empty tenant, through the UI only: a second 사업장 made by a pasted list with its
 // 4대보험 "not yet", then both edited together — the one already established stays and says so, the other changes,
@@ -25,7 +26,7 @@ test("edit two 사업장 together: the row already established stays, the other 
   await addr.getByLabel("도로명주소").fill("광주광역시 북구 첨단과기로 123");
   await addr.getByLabel("우편번호 (5자리)").fill("61005");
   await addr.getByRole("button", { name: "이 주소로 저장" }).click();
-  await card.getByLabel("개설일").fill("2026-10-01");
+  await fillDate(card, "2026-10-01", "개설일");
   await page.getByRole("button", { name: /개 추가$/ }).click();
   await expect(page.getByRole("status").filter({ hasText: "기록됨" })).toContainText("사업장 1곳 · 부서 1개를 추가했습니다");
 
@@ -39,7 +40,7 @@ test("edit two 사업장 together: the row already established stays, the other 
   await expect(sheet.getByText("사업장 종류는 종류 목록이 열린 서버에서 변경합니다")).toBeVisible();
   await radio(sheet, "무엇을 변경합니까", "4대보험 상태 지정").click();
   await radio(sheet, "^4대보험", "모두 성립 · 번호는 나중에").click();
-  await sheet.getByLabel("언제부터").fill("2026-10-01");
+  await fillDate(sheet, "2026-10-01", "언제부터");
   const rows = sheet.getByRole("table", { name: "사업장마다 바뀌는 것" });
   await expect(rows.getByRole("row").filter({ hasText: "인천 본사" })).toContainText("그대로 · 이미 그 상태");
   await expect(rows.getByRole("row").filter({ hasText: "광주지점" })).toContainText("성립 · 번호 입력 전 · 2026. 10. 01.");
