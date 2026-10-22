@@ -38,6 +38,12 @@ inserts. Existing action-inbox API tests retain legacy-source authorization and 
 proof. Web tests cover filters, pages, deadlines and refresh; inbox E2E covers actual
 two-tab resolution, axe, both themes and desktop/mobile widths.
 
+The people API journey compares every pending filing and its register-derived D-n
+with the owning statutory API, then resolves a filing and withdraws a request.
+The filing scan advances past resolved history without a raw-row ceiling. Terminal
+receipts are filtered after the candidate limit so their lateral lookups stay bounded.
+The ordinary statutory panel and Workbench retain their exact-count read.
+
 The release mounts the queue without workspace. Workflow, dispatch, work order,
 support, payroll and governance contribute only when their own compiled module is
 on. Source-specific SSE topics invalidate the queue. Account work emits a payload-free
@@ -123,7 +129,9 @@ no excluded lane file is edited. Deleted obsolete Home queue files are included.
 - `backend/app/src/routes/mod.rs`
 - `backend/app/src/routes/surfaces.rs`
 - `backend/app/src/routes/workflow.rs`
+- `backend/app/tests/action_inbox/governance.rs`
 - `backend/app/tests/inbox_journey.rs`
+- `backend/app/tests/inbox_people_journey.rs`
 - `backend/ci/gates/file-size/baseline.txt`
 - `backend/crates/action-inbox/application/Cargo.toml`
 - `backend/crates/action-inbox/application/src/complete.rs`
@@ -141,6 +149,7 @@ no excluded lane file is edited. Deleted obsolete Home queue files are included.
 - `backend/crates/identity/rest/openapi/paths/api__v1__me__action-inbox.get.yaml`
 - `backend/crates/identity/rest/openapi/schemas/ActionInboxItem.yaml`
 - `backend/crates/identity/rest/openapi/schemas/ActionInboxResponse.yaml`
+- `backend/crates/identity/rest/src/openapi.rs`
 - `backend/crates/platform/db/migrations/20261022220000000_inbox_contract_reminder_setting.sql`
 - `backend/crates/platform/db/migrations/20261022220000001_inbox_account_live.sql`
 - `backend/crates/platform/realtime/src/filter.rs`
@@ -152,6 +161,7 @@ no excluded lane file is edited. Deleted obsolete Home queue files are included.
 - `e2e/home-truth.spec.ts`
 - `e2e/inbox-live.spec.ts`
 - `e2e/live.spec.ts`
+- `e2e/setup-truth.spec.ts`
 - `packages/api/src/schema.d.ts`
 - `packages/i18n/src/catalogs/d26-copy.test.ts`
 - `packages/i18n/src/catalogs/en/home.ts`

@@ -23,7 +23,7 @@ export const koHome = {
   "home.inbox.reason.request": "다른 사람이 요청한 변경을 검토할 차례입니다.",
   "home.inbox.reason.register": "법정 명부에 빠진 항목이 있고, 명부를 관리할 권한이 있습니다.",
   "home.inbox.reason.identity": "신원 확인이 필요하며, 기록을 검토할 권한이 있습니다.",
-  "home.inbox.reason.branch": "소속 지점이 지정되지 않았고, 명부를 관리할 권한이 있습니다.",
+  "home.inbox.reason.branch": "소속 지점이 지정되지 않은 기록을 검토할 권한이 있습니다.",
   "home.inbox.reason.contract": "설정한 갱신 안내 기간에 해당하는 계약이며, 갱신 권한이 있습니다.",
   "home.inbox.reason.insurance": "완료하지 않은 법정 신고가 있고, 신고를 준비할 권한이 있습니다.",
   "home.inbox.reason.unlock": "이 잠금 해제 요청의 두 번째 확인자가 될 수 있습니다.",

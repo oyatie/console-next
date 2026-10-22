@@ -334,6 +334,53 @@ async fn grant_notices_appear_once_only_for_the_holder_and_leave_on_confirmation
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn account_security_is_personal_operating_work_until_a_second_passkey_is_registered(
+    pool: PgPool,
+) {
+    use console_kernel_core::OrgId;
+    use console_platform_test_support::soft_passkey::SoftKey;
+    let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    assert!(items_of(&inbox(&ctx).await, "account_security").is_empty());
+    SoftKey::enroll(&pool, OrgId::from_uuid(org), user).await;
+    assert!(
+        items_of(&inbox(&ctx).await, "account_security").is_empty(),
+        "setup uses its existing passkey step"
+    );
+    sqlx::query("UPDATE tenant_phase SET phase='OPERATING' WHERE org_id=$1")
+        .bind(org)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let page = inbox(&ctx).await;
+    let work = items_of(&page, "account_security");
+    assert_eq!(work.len(), 1, "{page}");
+    assert_eq!(work[0]["links"][0]["kind"], "account");
+    assert_eq!(work[0]["links"][0]["id"], user.to_string());
+    assert!(!work[0]["title"].as_str().unwrap().is_empty());
+    let other = http::add_user(&pool, org, &[]).await;
+    let outsider = http::ctx(&pool, org, other, &[], None).await;
+    assert!(items_of(&inbox(&outsider).await, "account_security").is_empty());
+    SoftKey::enroll(&pool, OrgId::from_uuid(org), user).await;
+    assert!(items_of(&inbox(&ctx).await, "account_security").is_empty());
+    // The owning phase read treats legacy tenants with no row as operating.
+    SoftKey::enroll(&pool, OrgId::from_uuid(org), other).await;
+    sqlx::query("DELETE FROM tenant_phase WHERE org_id=$1")
+        .bind(org)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let page = inbox(&outsider).await;
+    let work = items_of(&page, "account_security");
+    assert_eq!(
+        work.len(),
+        1,
+        "legacy operating accounts still need recovery work: {page}"
+    );
+    assert_eq!(work[0]["links"][0]["id"], other.to_string());
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn pending_period_unlock_is_only_the_eligible_second_persons_work_and_leaves_on_decision(
     pool: PgPool,
 ) {

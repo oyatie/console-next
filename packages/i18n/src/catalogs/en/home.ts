@@ -24,7 +24,7 @@ export const enHome: Partial<Record<keyof typeof koHome, string>> = {
   "home.inbox.reason.request": "Another person's change request needs my review.",
   "home.inbox.reason.register": "Required register facts are missing and I can manage the register.",
   "home.inbox.reason.identity": "Identity needs confirmation and I can review the record.",
-  "home.inbox.reason.branch": "No home branch is assigned and I can manage the roster.",
+  "home.inbox.reason.branch": "I can review this record with no assigned home branch.",
   "home.inbox.reason.contract": "This contract is within the configured renewal reminder window and I can renew it.",
   "home.inbox.reason.insurance": "A statutory filing is pending and I can prepare it.",
   "home.inbox.reason.unlock": "I am eligible to be the second person for this unlock request.",

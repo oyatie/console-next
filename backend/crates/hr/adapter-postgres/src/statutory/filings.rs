@@ -78,8 +78,18 @@ async fn visible_tasks(
     register: &StatutoryRegister,
     rows: Vec<sqlx::postgres::PgRow>,
 ) -> Result<Vec<super::types::FilingTask>, HrError> {
+    use sqlx::Row;
     let mut items = Vec::new();
     for row in rows {
+        // Filter terminal receipts after LIMIT so their lateral lookup stays bounded.
+        if query.inbox_scan_limit.is_some()
+            && matches!(
+                row.try_get::<Option<String>, _>("action")?.as_deref(),
+                Some("COMPLETE" | "NOT_APPLICABLE")
+            )
+        {
+            continue;
+        }
         if let Some(task) = super::filing_read::task(row, register, query.inbox_as_of)? {
             items.push(task);
         }

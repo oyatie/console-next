@@ -180,10 +180,10 @@ test("after go-live the only ops holder is asked for a second passkey on Home an
   expect(Math.abs((await governed.boundingBox())!.y - before)).toBeLessThan(2); // was 96.5 px
   await startOperations(admin);
 
-  // people-self-17: the card says how the ops account gets back in: governed ops recovery through the vendor.
-  const home = admin.getByRole("region", { name: "다른 기기에 패스키 하나 더" });
-  await expect(home).toBeVisible();
-  await expect(home).toContainText("공급사에 본인 확인 후 운영 계정 복구를 요청하고 대기 기간을 거쳐야 합니다");
+  // The single queue names account work; recovery guidance lives on its resolving record.
+  const home = admin.getByRole("region", { name: "업무함", exact: true });
+  await expect(home.getByText("다른 기기에 패스키 하나 더", { exact: true })).toBeVisible();
+  await expect(home.getByRole("link", { name: "두 번째 패스키 등록", exact: true })).toHaveAttribute("href", "/account");
   await expectAccessible(admin, "Home after go-live: second passkey");
   await shot(admin, "after-home-operating-second-passkey");
 
@@ -204,5 +204,5 @@ test("after go-live the only ops holder is asked for a second passkey on Home an
   await expect(admin.locator("#acct-passkey-receipt")).toBeFocused();
   await go(admin, "/");
   await expect(admin.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(admin.getByRole("region", { name: "다른 기기에 패스키 하나 더" })).toHaveCount(0);
+  await expect(home.getByRole("link", { name: "두 번째 패스키 등록", exact: true })).toHaveCount(0);
 });

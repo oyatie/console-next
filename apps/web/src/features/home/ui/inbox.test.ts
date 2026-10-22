@@ -97,6 +97,12 @@ test("deadlines use the server's remaining days", () => {
   expect(html()).toContain("D-3");
 });
 
+test("a statutory inbox item opens the filing list for its own lifecycle event", () => {
+  const event = "ecdf082c-c28e-4e9f-b6bb-9c4187d8d6fd";
+  view.list.data = { pages: [page([item("신고 대상", { kind: "insurance_filing", links: [{ kind: "statutory", id: event }] })])] };
+  expect(html()).toContain(`href="/statutory?event=${event}"`);
+});
+
 test("a failed inbox read shows retry without claiming the queue is empty", () => {
   view.list.error = new Error("source unavailable"); view.list.data = undefined;
   const markup = html();
