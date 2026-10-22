@@ -55,7 +55,7 @@ async fn unlinked_target_can_be_linked_by_two_distinct_people(pool: PgPool) {
     assert_eq!(employee_link(&pool, target).await, Some(employee));
 }
 
-const REVIEW: &str = "/api/v1/users?independence_review_required=true";
+const REVIEW: &str = "/api/v1/users?independence_review_required=true&include_inactive=true";
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn fallback_decisions_have_immutable_evidence_and_scoped_actionable_reviews(pool: PgPool) {
@@ -136,6 +136,17 @@ async fn fallback_decisions_have_immutable_evidence_and_scoped_actionable_review
         after, evidence,
         "a later person link must never rewrite decision evidence"
     );
+    sqlx::query("UPDATE users SET is_active=false WHERE id=$1")
+        .bind(approver.as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let (_, page) = send(&h, "GET", REVIEW, &token, None).await;
+    assert_eq!(
+        page["total"], 1,
+        "deactivation must not hide an outstanding review"
+    );
+    assert_eq!(page["items"][0]["is_active"], false);
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
