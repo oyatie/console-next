@@ -23,6 +23,11 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 
 const PAGE_SIZE: i64 = 50;
+pub(super) const ROUTE_PATHS: &[&str] = &[
+    "/api/v1/entity-identifier-corrections",
+    "/api/v1/entity-identifier-corrections/{id}",
+    "/api/v1/entity-identifier-corrections/{id}/review",
+];
 
 #[derive(Default, Deserialize)]
 struct RegisterQuery {
@@ -188,10 +193,7 @@ async fn review(
 
 pub(super) fn router() -> Router<EntityWiringState> {
     Router::new()
-        .route("/api/v1/entity-identifier-corrections", get(list))
-        .route("/api/v1/entity-identifier-corrections/{id}", get(detail))
-        .route(
-            "/api/v1/entity-identifier-corrections/{id}/review",
-            post(review),
-        )
+        .route(ROUTE_PATHS[0], get(list))
+        .route(ROUTE_PATHS[1], get(detail))
+        .route(ROUTE_PATHS[2], post(review))
 }

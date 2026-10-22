@@ -23,6 +23,7 @@ use console_platform_auth::{
 };
 use console_platform_authz::{Action, Feature, Principal, authorize_capability};
 use sqlx::PgPool;
+pub(super) const DECIDE_PATH: &str = "/api/v1/governed-exceptions/{id}/decide";
 #[derive(Clone)]
 pub(super) struct EntityWiringState {
     pub(super) pool: PgPool,
@@ -249,10 +250,7 @@ pub(super) fn router(
     let command_pool = pool.clone();
     let router = Router::new()
         .merge(super::correction_register::router())
-        .route(
-            "/api/v1/governed-exceptions/{id}/decide",
-            post(decide_exception),
-        )
+        .route(DECIDE_PATH, post(decide_exception))
         .with_state(EntityWiringState { pool, passkeys });
     console_platform_request_context::with_request_context(router, verifier, command_pool)
 }

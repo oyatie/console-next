@@ -28,6 +28,13 @@ mod exceptions;
 use corrections::GovernedIdentifierCorrections;
 pub(crate) use exceptions::read_correction_outcome;
 
+pub(crate) const IDENTIFIER_CORRECTION_ROUTE_PATHS: &[&str] = &[
+    correction_register::ROUTE_PATHS[0],
+    correction_register::ROUTE_PATHS[1],
+    correction_register::ROUTE_PATHS[2],
+    exceptions::DECIDE_PATH,
+];
+
 struct CanonicalOrgUnitSetupPort;
 
 impl OrgUnitSetupWritePort for CanonicalOrgUnitSetupPort {
