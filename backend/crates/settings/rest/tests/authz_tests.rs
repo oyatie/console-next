@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use std::collections::BTreeSet;
 
 use console_kernel_core::{BranchScope, ErrorKind, OrgId, UserId};
@@ -93,7 +94,7 @@ fn loosening_without_step_up_returns_step_up_required() {
     };
     let err = authorize_change(&admin, &loosen).unwrap_err();
     assert_eq!(err.kind, ErrorKind::Forbidden);
-    assert_eq!(err.code.as_deref(), Some("step_up_required"));
+    assert_eq!(err.code, Some("step_up_required"));
 }
 
 #[test]
@@ -118,7 +119,7 @@ fn unverified_step_up_returns_step_up_required() {
     };
     let err = authorize_change(&admin, &loosen).unwrap_err();
     assert_eq!(err.kind, ErrorKind::Forbidden);
-    assert_eq!(err.code.as_deref(), Some("step_up_required"));
+    assert_eq!(err.code, Some("step_up_required"));
 }
 
 #[test]
@@ -168,7 +169,7 @@ fn scoped_grant_writing_tenant_wide_returns_scope_tenant_wide_only() {
     };
     let err = authorize_change(&user, &tenant_wide).unwrap_err();
     assert_eq!(err.kind, ErrorKind::Forbidden);
-    assert_eq!(err.code.as_deref(), Some("scope_tenant_wide_only"));
+    assert_eq!(err.code, Some("scope_tenant_wide_only"));
 }
 
 #[test]
@@ -196,7 +197,7 @@ fn scoped_grant_writing_other_entity_returns_out_of_scope() {
     };
     let err = authorize_change(&user, &write_b).unwrap_err();
     assert_eq!(err.kind, ErrorKind::Forbidden);
-    assert_eq!(err.code.as_deref(), Some("out_of_scope"));
+    assert_eq!(err.code, Some("out_of_scope"));
 }
 
 #[test]
@@ -241,7 +242,7 @@ fn closed_reason_domain_returns_reason_domain_closed() {
     assert!(!closed.tenant_extensible());
     let err = authorize_manage(&admin, Some(closed)).unwrap_err();
     assert_eq!(err.kind, ErrorKind::Forbidden);
-    assert_eq!(err.code.as_deref(), Some("reason_domain_closed"));
+    assert_eq!(err.code, Some("reason_domain_closed"));
 }
 
 #[test]
@@ -262,5 +263,5 @@ fn scoped_grant_for_reason_codes_writing_without_tenant_wide_returns_scope_tenan
     let open = console_settings_domain::code_lists::ReasonDomain::OrgChangeReason;
     let err = authorize_manage(&user, Some(open)).unwrap_err();
     assert_eq!(err.kind, ErrorKind::Forbidden);
-    assert_eq!(err.code.as_deref(), Some("scope_tenant_wide_only"));
+    assert_eq!(err.code, Some("scope_tenant_wide_only"));
 }

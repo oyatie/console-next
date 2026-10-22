@@ -1,27 +1,14 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! INT-6a: the settings registry, the reason-code catalog and the statutory
-//! register through the composed app router, signed in as `console_rt`.
-//! Reads answer any signed-in member; every write goes through Cedar and stays
-//! closed (403, nothing written) until its per-action schema is enrolled.
-
-use axum::body::{Body, to_bytes};
-use console_app::{AppConfig, AppRole, AppState, DatabaseDependency, build_router};
-use console_kernel_core::{OrgId, UserId};
-use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
-use console_settings_domain::SettingKey;
-use http::{Request, StatusCode, header};
-use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::rand_core::OsRng;
-use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
-use serde_json::{Value, json};
+mod settings_support;
+use console_app::build_router;
+use http::StatusCode;
+use serde_json::json;
+use settings_support::*;
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
-use time::{Duration, OffsetDateTime};
-use tower::ServiceExt;
 use uuid::Uuid;
 
-const ISSUER: &str = "console-platform-auth";
-const AUDIENCE: &str = "console-api";
+use console_settings_domain::SettingKey;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn settings_and_statutory_answer_signed_in_users_and_writes_stay_closed(pool: PgPool) {
@@ -103,6 +90,7 @@ async fn settings_and_statutory_answer_signed_in_users_and_writes_stay_closed(po
         for (method, uri, body) in calls {
             let (status, body) = send(&service, method, uri, Some(token), body).await;
             assert_eq!(status, StatusCode::FORBIDDEN, "{method} {uri}: {body}");
+            assert_eq!(body["error"]["code"], "forbidden", "{body}");
         }
     }
     for sql in [
@@ -116,359 +104,49 @@ async fn settings_and_statutory_answer_signed_in_users_and_writes_stay_closed(po
             .unwrap();
         assert_eq!(written, 0, "{sql}");
     }
+}
 
-    // (b) Out of scope: user holds grant over legal entity A only.
-    // Tenant-wide writes get scope_tenant_wide_only (403), writes targeting
-    // entity B get out_of_scope (403), and 0 rows are written.
-    let le_a = seed_legal_entity(&pool, org, admin).await;
-    let le_b = seed_legal_entity(&pool, org, admin).await;
-    let scoped_user = seed_user(&pool, org, "MEMBER").await;
-    let scoped_token = token(&pool, &keys, org, scoped_user, "MEMBER").await;
-    seed_role_and_grant(&pool, org, admin, scoped_user, "LEGAL_ENTITY", Some(le_a)).await;
-
-    // Tenant-wide settings write (scope_entity_id: None)
-    let (status, body) = send(
-        &service,
-        "POST",
-        "/api/v1/settings/auth.idle_timeout_minutes",
-        Some(&scoped_token),
-        Some(change.clone()),
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn tenant_ops_without_grants_can_write_settings_and_reason_codes(pool: PgPool) {
+    let org = Uuid::new_v4();
+    let admin = console_platform_test_support::seed_org_and_super_admin(&pool, org, "ops").await;
+    console_platform_test_support::seed_passkey(
+        &pool,
+        console_kernel_core::OrgId::from_uuid(org),
+        admin,
     )
     .await;
-    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
-    assert_eq!(body["error"]["code"], "scope_tenant_wide_only", "{body}");
-
-    // Reason code write (tenant-wide only)
-    let (status, body) = send(
-        &service,
-        "POST",
-        "/api/v1/reason-codes",
-        Some(&scoped_token),
-        Some(add.clone()),
-    )
-    .await;
-    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
-    assert_eq!(body["error"]["code"], "scope_tenant_wide_only", "{body}");
-
-    // Settings write targeting entity B (outside held scope)
-    let change_b = json!({
-        "value": 20,
-        "reason_code": "POLICY_REVIEW",
-        "scope_entity_id": le_b,
-    });
-    let (status, body) = send(
-        &service,
-        "POST",
-        "/api/v1/settings/auth.idle_timeout_minutes",
-        Some(&scoped_token),
-        Some(change_b),
-    )
-    .await;
-    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
-    assert_eq!(body["error"]["code"], "out_of_scope", "{body}");
-
-    for sql in [
-        "SELECT count(*) FROM tenant_setting_overrides WHERE org_id = $1",
-        "SELECT count(*) FROM reason_codes WHERE org_id = $1",
-    ] {
-        let written: i64 = sqlx::query_scalar(sql)
-            .bind(org)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-        assert_eq!(written, 0, "{sql}");
-    }
-
-    // (c) Another tenant: user in org2 attempts to modify settings for entity A in org1.
-    // Gets 403 out_of_scope, and 0 rows are written in org1.
-    let org2 = Uuid::new_v4();
-    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2, 'Other Co')")
-        .bind(org2)
-        .bind(format!("set-{}", &org2.simple().to_string()[..12]))
+    sqlx::query("UPDATE users SET is_tenant_ops = true WHERE org_id = $1 AND id = $2")
+        .bind(org)
+        .bind(admin.as_uuid())
         .execute(&pool)
         .await
         .unwrap();
-    let other_admin = seed_user(&pool, org2, "SUPER_ADMIN").await;
-    let other_user = seed_user(&pool, org2, "MEMBER").await;
-    let other_token = token(&pool, &keys, org2, other_user, "MEMBER").await;
-    let le_other = seed_legal_entity(&pool, org2, other_admin).await;
-    seed_role_and_grant(
-        &pool,
-        org2,
-        other_admin,
-        other_user,
-        "LEGAL_ENTITY",
-        Some(le_other),
-    )
-    .await;
-
-    let change_foreign = json!({
-        "value": 20,
-        "reason_code": "POLICY_REVIEW",
-        "scope_entity_id": le_a,
-    });
-    let (status, body) = send(
-        &service,
-        "POST",
-        "/api/v1/settings/auth.idle_timeout_minutes",
-        Some(&other_token),
-        Some(change_foreign),
-    )
-    .await;
-    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
-    assert_eq!(body["error"]["code"], "out_of_scope", "{body}");
-
+    let keys = keys();
+    let token = token(&pool, &keys, org, admin, "SUPER_ADMIN").await;
+    let service = build_router(app_state(runtime_pool(&pool).await, keys.1).unwrap());
+    for (uri, body) in [
+        (
+            "/api/v1/settings/approval.policy.org_structure",
+            json!({"value": "route", "reason_code": "POLICY_REVIEW"}),
+        ),
+        (
+            "/api/v1/reason-codes",
+            json!({"domain": "org_change_reason", "label_ko": "테스트 조직 개편", "requires_note": false}),
+        ),
+    ] {
+        let (status, body) = send(&service, "POST", uri, Some(&token), Some(body)).await;
+        assert_eq!(status, StatusCode::CREATED, "{uri}: {body}");
+    }
     for sql in [
         "SELECT count(*) FROM tenant_setting_overrides WHERE org_id = $1",
         "SELECT count(*) FROM reason_codes WHERE org_id = $1",
     ] {
-        let written: i64 = sqlx::query_scalar(sql)
+        let count: i64 = sqlx::query_scalar(sql)
             .bind(org)
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(written, 0, "{sql}");
+        assert_eq!(count, 1, "{sql}");
     }
-
-    // (d) Granted holder: user with tenant-wide SettingsManage grant in org1 succeeds.
-    // Writes succeed with 201 Created and exactly 1 row is written to each table.
-    let granted_user = seed_user(&pool, org, "MEMBER").await;
-    let granted_token = token(&pool, &keys, org, granted_user, "MEMBER").await;
-    seed_role_and_grant(&pool, org, admin, granted_user, "TENANT", None).await;
-
-    let (status, body) = send(
-        &service,
-        "POST",
-        "/api/v1/settings/auth.idle_timeout_minutes",
-        Some(&granted_token),
-        Some(change),
-    )
-    .await;
-    assert_eq!(status, StatusCode::CREATED, "{body}");
-
-    let (status, body) = send(
-        &service,
-        "POST",
-        "/api/v1/reason-codes",
-        Some(&granted_token),
-        Some(add),
-    )
-    .await;
-    assert_eq!(status, StatusCode::CREATED, "{body}");
-
-    let overrides_count: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM tenant_setting_overrides WHERE org_id = $1")
-            .bind(org)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert_eq!(overrides_count, 1);
-
-    let reasons_count: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM reason_codes WHERE org_id = $1")
-            .bind(org)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert_eq!(reasons_count, 1);
-}
-
-async fn send(
-    service: &axum::Router,
-    method: &str,
-    uri: &str,
-    token: Option<&str>,
-    body: Option<Value>,
-) -> (StatusCode, Value) {
-    let mut builder = Request::builder()
-        .method(method)
-        .uri(uri)
-        .header("Idempotency-Key", Uuid::new_v4().to_string());
-    if let Some(token) = token {
-        builder = builder.header(header::AUTHORIZATION, format!("Bearer {token}"));
-    }
-    let request = match body {
-        Some(body) => builder
-            .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(body.to_string()))
-            .unwrap(),
-        None => builder.body(Body::empty()).unwrap(),
-    };
-    let response = service.clone().oneshot(request).await.unwrap();
-    let status = response.status();
-    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
-    (status, serde_json::from_slice(&bytes).unwrap_or(json!({})))
-}
-
-async fn seed_user(pool: &PgPool, org: Uuid, role: &str) -> UserId {
-    let user = UserId::new();
-    sqlx::query(
-        "INSERT INTO users (id, display_name, roles, org_id, is_active) VALUES ($1, 'S', $2, $3, true)",
-    )
-    .bind(*user.as_uuid())
-    .bind([role].as_slice())
-    .bind(org)
-    .execute(pool)
-    .await
-    .unwrap();
-    console_platform_test_support::seed_passkey(pool, OrgId::from_uuid(org), user).await;
-    user
-}
-
-fn keys() -> (String, String) {
-    let key = SigningKey::random(&mut OsRng);
-    (
-        key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string(),
-        key.verifying_key()
-            .to_public_key_pem(LineEnding::LF)
-            .unwrap(),
-    )
-}
-
-async fn token(
-    pool: &PgPool,
-    keys: &(String, String),
-    org: Uuid,
-    user: UserId,
-    role: &str,
-) -> String {
-    let issuer = JwtIssuer::from_es256_pem(
-        JwtSettings {
-            issuer: ISSUER.to_owned(),
-            audience: AUDIENCE.to_owned(),
-            access_token_ttl: Duration::minutes(15),
-        },
-        keys.0.as_bytes(),
-        keys.1.as_bytes(),
-    )
-    .unwrap();
-    console_platform_test_support::issue_session_token(
-        pool,
-        &issuer,
-        AccessTokenInput {
-            subject: user,
-            org_id: OrgId::from_uuid(org),
-            roles: vec![role.to_owned()],
-            branches: Vec::new(),
-            platform: false,
-            view_as: false,
-            read_only: false,
-            display_name: None,
-            feature_grants: Vec::new(),
-            authz_subject_version: 0,
-            authz_policy_version: 0,
-            session_generation: 0,
-            issued_at: OffsetDateTime::now_utc(),
-        },
-        None,
-        vec![],
-    )
-    .await
-}
-
-async fn runtime_pool(owner: &PgPool) -> PgPool {
-    PgPoolOptions::new()
-        .max_connections(6)
-        .after_connect(|conn, _| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_rt").execute(conn).await?;
-                Ok(())
-            })
-        })
-        .connect_with(owner.connect_options().as_ref().clone())
-        .await
-        .unwrap()
-}
-
-fn app_state(runtime: PgPool, public_pem: String) -> Result<AppState, console_app::AppError> {
-    let config = AppConfig::from_pairs([
-        ("CONSOLE_APP_ROLE", AppRole::Api.to_string()),
-        ("CONSOLE_HTTP_ADDR", "127.0.0.1:0".to_owned()),
-        ("CONSOLE_JWT_ISSUER", ISSUER.to_owned()),
-        ("CONSOLE_JWT_AUDIENCE", AUDIENCE.to_owned()),
-        ("CONSOLE_JWT_PUBLIC_KEY_PEM", public_pem),
-    ])?;
-    AppState::new(config, DatabaseDependency::Postgres(runtime))
-}
-
-async fn seed_legal_entity(pool: &PgPool, org: Uuid, user: UserId) -> Uuid {
-    let id = Uuid::new_v4();
-    sqlx::query(
-        "INSERT INTO legal_entities (org_id, id, biz_kind, created_change_mode, created_by)
-         VALUES ($1, $2, 'INDIVIDUAL', 'SETUP', $3)",
-    )
-    .bind(org)
-    .bind(id)
-    .bind(*user.as_uuid())
-    .execute(pool)
-    .await
-    .unwrap();
-    id
-}
-
-async fn seed_role_and_grant(
-    pool: &PgPool,
-    org: Uuid,
-    granter: UserId,
-    grantee: UserId,
-    scope_kind: &str,
-    legal_entity_id: Option<Uuid>,
-) -> Uuid {
-    let role_id = Uuid::new_v4();
-    sqlx::query(
-        "INSERT INTO access_roles (org_id, id, name_ko, status, version, created_by)
-         VALUES ($1, $2, $3, 'ACTIVE', 1, $4)",
-    )
-    .bind(org)
-    .bind(role_id)
-    .bind(format!(
-        "settings manager {}",
-        &role_id.simple().to_string()[..8]
-    ))
-    .bind(*granter.as_uuid())
-    .execute(pool)
-    .await
-    .unwrap();
-
-    sqlx::query(
-        "INSERT INTO access_role_versions (org_id, role_id, version, name_ko, status, change_mode, created_by)
-         VALUES ($1, $2, 1, $3, 'ACTIVE', 'SETUP', $4)",
-    )
-    .bind(org)
-    .bind(role_id)
-    .bind(format!("settings manager {}", &role_id.simple().to_string()[..8]))
-    .bind(*granter.as_uuid())
-    .execute(pool)
-    .await
-    .unwrap();
-
-    sqlx::query(
-        "INSERT INTO access_role_lines (org_id, role_id, version, domain, levels)
-         VALUES ($1, $2, 1, 'settings', ARRAY['edit'])",
-    )
-    .bind(org)
-    .bind(role_id)
-    .execute(pool)
-    .await
-    .unwrap();
-
-    let grant_id = Uuid::new_v4();
-    sqlx::query(
-        "INSERT INTO access_grants (
-            org_id, id, account_id, role_id, scope_kind, legal_entity_id,
-            valid_from, effective_in_setup, change_mode, reason_code, granted_by
-         ) VALUES ($1, $2, $3, $4, $5, $6, now() - interval '1 minute', true, 'SETUP', 'TEST', $7)",
-    )
-    .bind(org)
-    .bind(grant_id)
-    .bind(*grantee.as_uuid())
-    .bind(role_id)
-    .bind(scope_kind)
-    .bind(legal_entity_id)
-    .bind(*granter.as_uuid())
-    .execute(pool)
-    .await
-    .unwrap();
-
-    grant_id
 }

@@ -17,7 +17,7 @@ pub const DOMAIN_TENANT_EXTENSIBLE: RequiredFact = RequiredFact {
 
 pub const SCHEMA: ActionSchema = ActionSchema {
     feature: Feature::ReasonCodeManage,
-    version: "2026-10-reason-code-manage-v1",
+    version: "2026-10-reason-code-manage-v2",
     facts: &[ACTOR_HOLDS_PERMISSION, DOMAIN_TENANT_EXTENSIBLE],
     policies: r#"@reason("reason_domain_closed")
 forbid(principal, action == Action::"reason_code_manage", resource)
@@ -27,7 +27,7 @@ when {
 permit(principal, action == Action::"reason_code_manage", resource)
 when {
   principal.org == resource.org &&
-  context.actor_holds_permission &&
+  (principal.is_tenant_ops || context.actor_holds_permission) &&
   context.domain_tenant_extensible
 };
 "#,
@@ -104,5 +104,28 @@ mod tests {
             decide(org, other, &ok_facts),
             CedarEvaluation::Deny { .. }
         ));
+    }
+    #[test]
+    fn tenant_ops_policy_door_stays_tenant_bound() {
+        let org = OrgId::new();
+        let principal = Principal::new(UserId::new(), org, Default::default(), BranchScope::All)
+            .with_tenant_ops(true);
+        let bundle = compile_action_bundle(org, 1, Feature::ReasonCodeManage).unwrap();
+        let facts = Facts::new()
+            .bool("actor_holds_permission", false)
+            .bool("domain_tenant_extensible", true);
+        for (resource_org, allowed) in [(org, true), (OrgId::new(), false)] {
+            let request = AuthorizationRequest::new(
+                principal.clone(),
+                Action::new(Feature::ReasonCodeManage),
+                AuthorizationResource::org_wide(resource_org, "reason_code"),
+            );
+            let result = evaluate_with_facts(&request, &bundle, &facts);
+            assert_eq!(
+                matches!(result, CedarEvaluation::Allow { .. }),
+                allowed,
+                "{result:?}"
+            );
+        }
     }
 }

@@ -3,7 +3,7 @@
 //!
 //! Evaluates `settings_manage` and `reason_code_manage` through Cedar PBAC.
 //! Supports:
-//! - Tenant-wide built-in roles (`SuperAdmin`, `Executive`) and `is_tenant_ops`
+//! - Tenant ops authority comes from Cedar principal policy, independently of grants
 //! - Custom scope grants (`NodeKind::Tenant` for 전체, or `NodeKind::LegalEntity` for scoped writes)
 //! - Scoped grants writing tenant-wide return 403 `scope_tenant_wide_only`
 //! - Scoped grants writing outside their scope return 403 `out_of_scope`
@@ -55,11 +55,10 @@ pub fn holds_settings_manage(
             }
         }
         Some(target_id) => {
-            if tenant_wide {
-                Ok(())
-            } else if principal
-                .scopes_for(Feature::SettingsManage)
-                .any(|g| g.kind == NodeKind::LegalEntity && g.id == target_id)
+            if tenant_wide
+                || principal
+                    .scopes_for(Feature::SettingsManage)
+                    .any(|g| g.kind == NodeKind::LegalEntity && g.id == target_id)
             {
                 Ok(())
             } else if principal
@@ -82,7 +81,9 @@ pub fn authorize_change(principal: &Principal, facts: &ChangeFacts) -> Result<()
     let holds_res = holds_settings_manage(principal, facts.scope_entity_id);
     match &holds_res {
         Err(err)
-            if err.code == Some("scope_tenant_wide_only") || err.code == Some("out_of_scope") =>
+            if !principal.is_tenant_ops
+                && (err.code == Some("scope_tenant_wide_only")
+                    || err.code == Some("out_of_scope")) =>
         {
             return holds_res;
         }
@@ -90,7 +91,8 @@ pub fn authorize_change(principal: &Principal, facts: &ChangeFacts) -> Result<()
     }
     let holds = holds_res.is_ok();
 
-    if holds && facts.direction == Direction::Loosen && !facts.step_up {
+    if (holds || principal.is_tenant_ops) && facts.direction == Direction::Loosen && !facts.step_up
+    {
         return Err(
             KernelError::forbidden("loosening a setting requires passkey step-up")
                 .with_code("step_up_required"),
@@ -143,7 +145,7 @@ pub fn authorize_manage(
 
     let holds_res = holds_reason_code_manage(principal);
     match &holds_res {
-        Err(err) if err.code == Some("scope_tenant_wide_only") => {
+        Err(err) if !principal.is_tenant_ops && err.code == Some("scope_tenant_wide_only") => {
             return holds_res;
         }
         _ => {}

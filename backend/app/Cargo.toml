@@ -404,6 +404,9 @@ name = "search_api"
 required-features = ["workspace"]
 
 [[test]]
+name = "settings_cedar_grid"
+
+[[test]]
 name = "settings_statutory_api"
 required-features = ["compliance"]
 

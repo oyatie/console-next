@@ -4,7 +4,7 @@ import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { go } from "./flows";
 
-test("solo admin can write settings and add reason codes on Cedar, with negative refusals asserted", async ({ browser }) => {
+test("solo admin can write settings and add reason codes on Cedar, with negative refusals asserted", async ({ browser, playwright, baseURL }) => {
   const admin = await openTenant(browser, "cedarset", "설정테넌트");
   const bearer = bearerOf(admin);
   await go(admin, "/");
@@ -13,7 +13,7 @@ test("solo admin can write settings and add reason codes on Cedar, with negative
   const api = apiOf(admin, bearer);
 
   // 1. Settings write: tighten approval policy (none -> route)
-  // Fails on dev 22b69bf because settings_manage is not enrolled.
+  // The first administrator is the tenant ops account; Cedar grants its authority.
   const setRes = await api(
     "/settings/approval.policy.org_structure",
     "POST",
@@ -29,7 +29,7 @@ test("solo admin can write settings and add reason codes on Cedar, with negative
   expect(orgPolicy?.value).toBe("route");
 
   // 2. Reason code add: in open domain
-  // Fails on dev 22b69bf because reason_code_manage is not enrolled.
+  // Ops authority also covers open reason domains.
   const reasonRes = await api(
     "/reason-codes",
     "POST",
@@ -71,17 +71,19 @@ test("solo admin can write settings and add reason codes on Cedar, with negative
   expect(await codeOf(closedDomain)).toBe("reason_domain_closed");
 
   // d) Unauthenticated requests -> 401
-  const unauthSetting = await admin.request.fetch("/api/v1/settings/approval.policy.org_structure", {
+  const unauthenticated = await playwright.request.newContext({ baseURL });
+  const unauthSetting = await unauthenticated.fetch("/api/v1/settings/approval.policy.org_structure", {
     method: "POST",
     data: { value: "route", reason_code: "POLICY_REVIEW" },
     failOnStatusCode: false,
   });
   expect(unauthSetting.status()).toBe(401);
 
-  const unauthReason = await admin.request.fetch("/api/v1/reason-codes", {
+  const unauthReason = await unauthenticated.fetch("/api/v1/reason-codes", {
     method: "POST",
     data: { domain: "org_change_reason", label_ko: "무단 사유", requires_note: false },
     failOnStatusCode: false,
   });
   expect(unauthReason.status()).toBe(401);
+  await unauthenticated.dispose();
 });

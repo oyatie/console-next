@@ -24,7 +24,7 @@ pub const STEP_UP: RequiredFact = RequiredFact {
 
 pub const SCHEMA: ActionSchema = ActionSchema {
     feature: Feature::SettingsManage,
-    version: "2026-10-settings-manage-v1",
+    version: "2026-10-settings-manage-v2",
     facts: &[ACTOR_HOLDS_PERMISSION, DIRECTION, STEP_UP],
     policies: r#"@reason("step_up_required")
 forbid(principal, action == Action::"settings_manage", resource)
@@ -34,7 +34,7 @@ when {
 permit(principal, action == Action::"settings_manage", resource)
 when {
   principal.org == resource.org &&
-  context.actor_holds_permission &&
+  (principal.is_tenant_ops || context.actor_holds_permission) &&
   (context.direction != "loosen" || context.step_up)
 };
 "#,
@@ -124,5 +124,29 @@ mod tests {
             decide(org, other, &ok_facts),
             CedarEvaluation::Deny { .. }
         ));
+    }
+    #[test]
+    fn tenant_ops_policy_door_stays_tenant_bound() {
+        let org = OrgId::new();
+        let principal = Principal::new(UserId::new(), org, Default::default(), BranchScope::All)
+            .with_tenant_ops(true);
+        let bundle = compile_action_bundle(org, 1, Feature::SettingsManage).unwrap();
+        let facts = Facts::new()
+            .bool("actor_holds_permission", false)
+            .string("direction", "tighten")
+            .bool("step_up", false);
+        for (resource_org, allowed) in [(org, true), (OrgId::new(), false)] {
+            let request = AuthorizationRequest::new(
+                principal.clone(),
+                Action::new(Feature::SettingsManage),
+                AuthorizationResource::org_wide(resource_org, "setting"),
+            );
+            let result = evaluate_with_facts(&request, &bundle, &facts);
+            assert_eq!(
+                matches!(result, CedarEvaluation::Allow { .. }),
+                allowed,
+                "{result:?}"
+            );
+        }
     }
 }
