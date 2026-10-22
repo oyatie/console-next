@@ -20,35 +20,22 @@ pub(crate) fn head_view(head: UnitHead, org: OrgId, headcount: i64) -> OrgUnitHe
     }
 }
 
-/// The Company root node: the tenant IS the Company (`organizations` is its
-/// head per the canonical contract). Name = latest `company.revise`
-/// `legal_name` when one exists, else the tenant name.
+/// The tenant root has its own display name, independent of its legal entities.
 pub(crate) async fn company_root(
     tx: Tx<'_, '_>,
     org: OrgId,
 ) -> Result<Option<OrgUnitHeadView>, PgOrgChangeError> {
-    let Some(row) = sqlx::query(
-        "SELECT o.name, o.created_at, o.updated_at, \
-                cr.attributes->>'legal_name' AS legal_name, cr.created_at AS revised_at \
-         FROM organizations o \
-         LEFT JOIN LATERAL ( \
-             SELECT attributes, created_at FROM company_revisions \
-             WHERE org_id = o.id ORDER BY version DESC LIMIT 1 \
-         ) cr ON true \
-         WHERE o.id = $1",
-    )
-    .bind(*org.as_uuid())
-    .fetch_optional(tx.as_mut())
-    .await?
+    let Some(row) =
+        sqlx::query("SELECT name, created_at, updated_at FROM organizations WHERE id=$1")
+            .bind(org.as_uuid())
+            .fetch_optional(tx.as_mut())
+            .await?
     else {
         return Ok(None);
     };
     let name: String = row.try_get("name")?;
-    let legal_name: Option<String> = row.try_get("legal_name")?;
     let created_at: OffsetDateTime = row.try_get("created_at")?;
-    let updated_at: OffsetDateTime = row
-        .try_get::<Option<OffsetDateTime>, _>("revised_at")?
-        .unwrap_or(row.try_get("updated_at")?);
+    let updated_at: OffsetDateTime = row.try_get("updated_at")?;
     let headcount: i64 =
         sqlx::query_scalar("SELECT count(*) FROM employees WHERE employment_status <> 'EXITED'")
             .fetch_one(tx.as_mut())
@@ -56,7 +43,7 @@ pub(crate) async fn company_root(
     Ok(Some(OrgUnitHeadView {
         id: *org.as_uuid(),
         kind: OrgTreeNodeKind::Company,
-        name: legal_name.filter(|n| !n.is_empty()).unwrap_or(name),
+        name,
         parent_id: None,
         status: OrgUnitStatus::Active,
         effective_from: created_at.to_offset(offset!(+9)).date(),

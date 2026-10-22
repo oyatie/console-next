@@ -1370,7 +1370,7 @@ async fn provision_empty_tenant_appointed_employee(
         },
     )
     .await
-    .unwrap();
+    .expect_err("company legal facts are owned by legal entities");
 
     let unit_receipt = execute_sync(
         &units,

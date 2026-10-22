@@ -190,9 +190,7 @@ pub fn checklist(f: &SetupFacts) -> Checklist {
                 Done
             };
         employees.count = Some(f.employees);
-        if f.unmapped_assignments > 0 {
-            employees.remedy = Some("map_company_names");
-        } else if f.unplaced_people > 0 || f.entity_unknown_people > 0 {
+        if f.unmapped_assignments > 0 || f.unplaced_people > 0 || f.entity_unknown_people > 0 {
             employees.remedy = Some("place_people");
         }
     }

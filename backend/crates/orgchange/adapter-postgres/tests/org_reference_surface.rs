@@ -44,20 +44,6 @@ async fn org_entities_readback_company_and_bound_org_units(owner_pool: PgPool) {
     let actor = seed_user(&owner_pool, org, "EXECUTIVE").await;
     let group = seed_group_with_member(&owner_pool, org, actor).await;
 
-    // CompanyPort-shaped revise: one company_revisions row ⇒ RESOLVED.
-    sqlx::query(
-        "INSERT INTO company_revisions \
-         (org_id, version, command_id, actor_id, payload_digest, attributes, receipt) \
-         VALUES ($1, 1, $2, $3, $4, '{}'::jsonb, '{}'::jsonb)",
-    )
-    .bind(*org.as_uuid())
-    .bind(Uuid::new_v4())
-    .bind(*actor.as_uuid())
-    .bind(vec![0u8; 32])
-    .execute(&owner_pool)
-    .await
-    .unwrap();
-
     let region = seed_region(&owner_pool, org, "리전-참조").await;
     let unbound_region = seed_region(&owner_pool, org, "리전-미결").await;
     let branch = seed_branch(&owner_pool, org, region, "지점-참조").await;
@@ -96,7 +82,7 @@ async fn org_entities_readback_company_and_bound_org_units(owner_pool: PgPool) {
         assert_eq!(
             entity.company_resolution_status,
             CanonicalResolutionStatus::Resolved,
-            "console_rt must see company_revisions when app.current_org is armed"
+            "a provisioned tenant resolves without any company_revisions"
         );
 
         let bound_region = entity

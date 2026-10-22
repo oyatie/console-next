@@ -1,0 +1,16 @@
+{
+  "baseline": {
+    "apps/web/src/features/onboarding/ui/company-names.tsx#CompanyNames": 0,
+    "apps/web/src/features/people/ui/company-mappings.tsx#CompanyMappings": 49
+  },
+  "newScreens": {
+    "apps/web/src/features/people/ui/company-mappings.tsx#CompanyMappings": {
+      "FACT": 23,
+      "REFUSAL": 22,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 4,
+      "EXPLANATION": 0
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "$comment": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "decision": "ECO-G4-NAME / ecosystem-ideal G4 + G18",
+  "tenant": "organizations.name is the tenant display-name owner. A tenant is not a legal entity.",
+  "legal_facts": "Legal names are read from legal_entity_revisions; registration numbers from business_registrations. Entity revisions, corrections and confirmation retain their existing record UI.",
+  "writers": {
+    "company.revise": "Fresh commands are refused with legal_entity_record_required and /org/entities. Matching N-1 command receipts still replay. No current production code writes company_revisions.",
+    "guard": "backend/ci/gates/writer-ownership/tests/archival_company.rs scans the former owner with the existing SQL parser; the existing gate also rejects other crates writing its archive."
+  },
+  "reader_inventory": [
+    {
+      "reader": "backend/crates/ontology/canonical-adapter-postgres/src/company.rs:112",
+      "change": "get/list return the operator-owned tenant display name; archived legal_name and reg_no are never displayed.",
+      "test": "company_port_as_runtime_role::n_minus_one_receipt_replays_without_writing_and_tenant_name_has_one_owner"
+    },
+    {
+      "reader": "backend/crates/orgchange/adapter-postgres/src/org_unit/view.rs:24",
+      "change": "The tenant root reads organizations.name only.",
+      "test": "company_fact_owner::legacy_legal_name_cannot_replace_the_tenant_root_or_its_history"
+    },
+    {
+      "reader": "backend/crates/orgchange/adapter-postgres/src/store/queries.rs:45",
+      "change": "Tenant-root detail no longer renders legal-name revisions. Legal history is on the entity record.",
+      "test": "company_fact_owner::legacy_legal_name_cannot_replace_the_tenant_root_or_its_history"
+    },
+    {
+      "reader": "backend/crates/orgchange/adapter-postgres/src/store/queries.rs:238",
+      "change": "Tenant resolution uses organizations, without requiring retired company revisions.",
+      "test": "org_reference_surface::org_entities_readback_company_and_bound_org_units"
+    },
+    {
+      "reader": "former company_has_revision helper in company.rs",
+      "change": "Unused legacy-presence helper removed; no legal-fact consumer remains."
+    },
+    {
+      "reader": "backend/crates/platform/db/migrations/0259_employment_assignments_and_placements.sql:182",
+      "change": "Historical machine migration remains immutable. New expansion handles legacy facts written after that migration.",
+      "test": "entity adapter migration_backfill and company_fact_migration"
+    },
+    {
+      "reader": "backend/crates/onboarding/adapter-postgres/src/facts.rs:30",
+      "change": "Already reads entity revisions; regression proves legacy COSS never supplies setup confirmation or preview names.",
+      "test": "company_fact_owner::setup_confirms_the_entity_and_never_uses_the_tenant_legal_name_copy"
+    }
+  ],
+  "screen_registry_decision": {
+    "route": "/setup/company-names",
+    "status": "retired",
+    "redirect": "/org/entities",
+    "legal_name_confirmation": "Existing entity checklist item and entity record own confirmation and correction.",
+    "legacy_employee_text_mapping": "Moved intact into /people/unplaced as CompanyMappings; old map_company_names remedies resolve there. No separate names page or checklist step remains."
+  },
+  "rollout": [
+    {
+      "phase": "expand (this release)",
+      "action": "Owner-only migrate_company_legal_facts() copies the latest legacy legal facts when there is no entity, verifies the copy, preserves effective dates and source revision provenance, and leaves all legacy rows and receipts unchanged. Existing entities win over tenant copies. Invalid names abort rather than becoming tenant-name fallbacks.",
+      "compatibility": "No tables, columns or privileges removed or constraints tightened. N-1 binaries can continue using their schema and receipts. New binaries refuse fresh company writes. During overlap, legacy copies are archival evidence, never display sources.",
+      "rollback": "Return to N-1 binary without reversing or deleting canonical rows; retain source history. No down migration or destructive rollback is part of this release."
+    },
+    {
+      "phase": "contract (separate future release)",
+      "action": "Drop retired company history only after retention and reference handling are approved.",
+      "preconditions": [
+        "All N-1 binaries and writers are drained.",
+        "Rerun the owner-only machine migration after drain.",
+        "Machine reconciliation maps or explicitly archives every source revision and registration value; differences against existing entities are resolved through the canonical entity writer, never by overwriting it from tenant text.",
+        "No runtime consumers depend on the archive; audit and receipt replay retention remains intact."
+      ]
+    }
+  ],
+  "outside_brief_owns": [
+    "backend/crates/payroll/adapter-postgres/tests/pay_run_port_as_runtime_role.rs",
+    "backend/crates/payroll/rest/tests/api.rs",
+    "backend/crates/payroll/rest/tests/payslip_draft_api.rs",
+    "backend/crates/payroll/rest/tests/run_lifecycle_api.rs",
+    "backend/ci/gates/writer-ownership/tests/archival_company.rs",
+    "backend/ci/gates/file-size/baseline.txt",
+    "packages/i18n/src/catalogs/en/setup.ts",
+    "packages/i18n/src/catalogs/ko/setup.ts",
+    "scripts/copy-terms-allow.json",
+    "scripts/ds-baseline.json",
+    "scripts/standing-text.d/eco-g4-name.json"
+  ],
+  "outside_owns_reason": "Payroll fixtures now expect the retired company action refusal; the remaining files enforce ownership or remove the retired page and copy from verification baselines."
+}

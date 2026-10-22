@@ -1,0 +1,8 @@
+# Oversize Rust files, pinned at their code-line count (see ci/gates/file-size).
+# Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
+crates/ontology/canonical-adapter-postgres/src/company.rs	239
+crates/ontology/canonical-adapter-postgres/tests/company_port_as_runtime_role.rs	233
+crates/ontology/canonical-domain/src/lib.rs	314
+crates/ontology/rest/src/lib.rs	2359
+crates/ontology/rest/tests/canonical_dispatch_audit_as_runtime_role.rs	1705
+crates/orgchange/adapter-postgres/tests/org_reference_surface.rs	298

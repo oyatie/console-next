@@ -119,6 +119,26 @@ pub(crate) fn projected_dispatch_registry(pool: PgPool) -> ProjectedDispatchRegi
 mod projected_dispatch_coverage {
     use console_ontology_canonical_domain::DispatchTarget;
     #[tokio::test]
+    async fn company_legal_facts_are_refused_by_the_deployed_registry() {
+        let pool =
+            sqlx::postgres::PgPool::connect_lazy("postgres://console@127.0.0.1/console").unwrap();
+        let error = super::projected_dispatch_registry(pool)
+            .preflight(
+                DispatchTarget::CompanyRevise,
+                None,
+                serde_json::json!({"attributes": {"legal_name": "COSS"}}),
+            )
+            .unwrap_err();
+        let console_ontology_rest::ActionError::Store(
+            console_ontology_adapter_postgres::PgOntologyError::Domain(error),
+        ) = error
+        else {
+            panic!("expected a coded domain refusal: {error:?}");
+        };
+        assert_eq!(error.code, Some("legal_entity_record_required"));
+        assert!(error.message.contains("/org/entities"));
+    }
+    #[tokio::test]
     async fn the_wired_registry_resolves_every_canonical_dispatch_target() {
         // Lazy: no connection is opened, and none is needed — resolution is a
         // property of the wiring, not of the database behind it.

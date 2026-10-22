@@ -17,9 +17,8 @@
 
 use serde_json::Value;
 
-/// `Company` title property. Stored on `company_revisions.attributes`, never
-/// copied from provisioning-owned `organizations.name`.
-pub const COMPANY_LEGAL_NAME: &str = "legal_name";
+/// Stable refusal and its remedy, also returned by projected preflight.
+pub const LEGAL_ENTITY_RECORD_REQUIRED: &str = "legal_entity_record_required";
 
 /// `OrgUnit` title property. Stored on `org_unit_revisions.attributes`.
 pub const ORG_UNIT_NAME: &str = "name";

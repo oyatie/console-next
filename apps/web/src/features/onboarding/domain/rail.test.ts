@@ -2,6 +2,10 @@ import { expect, test } from "vitest";
 import type { Checklist, ChecklistStep } from "@console/api/pending";
 import { finished, fixFor, grouped, recordFix } from "./rail";
 
+test("legacy company-text mapping opens the existing placement flow", () => {
+  expect(fixFor("map_company_names")).toEqual({ to: "/people/unplaced" });
+});
+
 const step = (key: ChecklistStep["key"], group: ChecklistStep["group"], state: ChecklistStep["state"] = "todo"): ChecklistStep => ({ key, group, state, action: "x", skippable: false, can_act: true, needs: "org::edit", paths: ["one", "paste", "import"], counts: { entities: 0, workplaces: 0, units: 0, people: 0, unplaced: 0, entity_unknown: 0 } });
 
 test("the server's steps are grouped in its order, and nothing is invented", () => {

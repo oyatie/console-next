@@ -11,6 +11,11 @@ export type LifecycleEvent = components["schemas"]["EmployeeLifecycleEvent"];
 type Case = components["schemas"]["EmployeeExitCase"];
 type Status = Case["status"];
 
+/** Imported company text is evidence to map, never a legal-entity name. */
+export const unmappedCompaniesQuery = get("/api/v1/employment-assignments/unmapped-companies");
+export const mapCompany = (key: string, body: { company_text: string; legal_entity_id: string; workplace_id: string }) =>
+  unwrap(api.POST("/api/v1/employment-assignments/map-company", { params: { header: { "Idempotency-Key": key } }, body }));
+
 export const employeeQuery = (id: string) => get("/api/v1/employees/{id}", { params: { path: { id } } });
 export const eventsQuery = (id: string) => get("/api/v1/employees/{id}/lifecycle-events", { params: { path: { id } } });
 
