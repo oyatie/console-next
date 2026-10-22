@@ -25,7 +25,7 @@ pub(crate) async fn page(
     let (grant_times, security) = console_platform_db::with_org_conn::<_, _, console_platform_db::DbError>(pool, org, move |tx| Box::pin(async move {
         let times: Vec<(uuid::Uuid, OffsetDateTime)> = sqlx::query_as("SELECT id, granted_at FROM access_grants WHERE org_id = $1 AND account_id = $2 AND status = 'ACTIVE' AND (valid_to IS NULL OR valid_to > now())")
             .bind(org.as_uuid()).bind(user.as_uuid()).fetch_all(tx.as_mut()).await?;
-        let security: Option<(OffsetDateTime, String)> = sqlx::query_as("SELECT created_at, display_name FROM users WHERE org_id = $1 AND id = $2 AND (SELECT count(*) FROM auth_webauthn_credentials WHERE org_id = $1 AND user_id = $2) = 1 AND EXISTS (SELECT 1 FROM tenant_phase WHERE org_id = $1 AND phase <> 'SETUP')")
+        let security: Option<(OffsetDateTime, String)> = sqlx::query_as("SELECT created_at, display_name FROM users WHERE org_id = $1 AND id = $2 AND (SELECT count(*) FROM auth_webauthn_credentials WHERE org_id = $1 AND user_id = $2) = 1 AND NOT EXISTS (SELECT 1 FROM tenant_phase WHERE org_id = $1 AND phase = 'SETUP')")
             .bind(org.as_uuid()).bind(user.as_uuid()).fetch_optional(tx.as_mut()).await?;
         Ok((times, security))
     })).await.map_err(|e| { tracing::error!(error = ?e, "account inbox source failed"); KernelError::internal("failed to load account work") })?;

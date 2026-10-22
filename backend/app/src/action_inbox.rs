@@ -114,10 +114,11 @@ async fn list_action_inbox(
     )
     .await?;
     let mut response = serde_json::to_value(page).map_err(|e| source_failure("projection", e))?;
-    if matches!(query.filter, InboxFilter::All | InboxFilter::Turn) && query.cursor.is_none() {
-        if let Some(Some(setup)) = sources.setup.get() {
-            response["setup"] = setup.clone();
-        }
+    if matches!(query.filter, InboxFilter::All | InboxFilter::Turn)
+        && query.cursor.is_none()
+        && let Some(Some(setup)) = sources.setup.get()
+    {
+        response["setup"] = setup.clone();
     }
     Ok(Json(response))
 }
@@ -152,8 +153,6 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                 ActionInboxSource::Payroll => self.payroll_page(query).await,
                 #[cfg(feature = "governance")]
                 ActionInboxSource::Governance => self.governance_page(query).await,
-                #[allow(unreachable_patterns)]
-                _ if !source_enabled(source) => Ok(empty_source_page()),
                 ActionInboxSource::HrIdentity
                 | ActionInboxSource::HrBranch
                 | ActionInboxSource::HrContract => {
@@ -242,17 +241,5 @@ mod tests {
         assert_eq!(canonical_action_link_kind("workflow_run"), "approval_run");
         assert_eq!(canonical_action_link_kind("approval_run"), "approval_run");
         assert_eq!(canonical_action_link_kind("work_order"), "work_order");
-    }
-}
-
-fn source_enabled(source: ActionInboxSource) -> bool {
-    match source {
-        ActionInboxSource::Workflow => cfg!(feature = "workspace"),
-        ActionInboxSource::Dispatch => cfg!(feature = "dispatch"),
-        ActionInboxSource::Support => cfg!(feature = "support"),
-        ActionInboxSource::WorkOrder => cfg!(feature = "workorder"),
-        ActionInboxSource::Payroll => cfg!(feature = "payroll"),
-        ActionInboxSource::Governance => cfg!(feature = "governance"),
-        _ => true,
     }
 }

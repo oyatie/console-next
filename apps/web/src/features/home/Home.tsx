@@ -45,7 +45,7 @@ const WHY_TEXT: Record<string, MessageId> = {
 };
 
 /** Every surface reads this server queue; filters, ownership and deadlines stay with its sources. */
-export function Home({ setup, account }: { setup?: (c: Checklist) => ReactNode; account?: ReactNode } = {}) {
+export function Home({ setup }: { setup?: (c: Checklist) => ReactNode } = {}) {
   const [filter, setFilter] = useState<Filter>("turn");
   const me = useQuery(meQuery);
   const inbox = useInfiniteQuery(cursorPages("/api/v1/me/action-inbox", { filter }));
@@ -54,7 +54,6 @@ export function Home({ setup, account }: { setup?: (c: Checklist) => ReactNode; 
       <div className="page__head">
         <h1 id="home-title" className="page__title" tabIndex={-1}>{me.data ? t("home.greeting", { name: me.data.display_name }) : t("home.title")}</h1>
       </div>
-      {account}
       <section className="card panel" aria-labelledby="inbox-title">
         <h2 id="inbox-title" className="panel__title" tabIndex={-1}>{t("home.inbox.title")}</h2>
         <div role="group" aria-label={t("home.lanes")} className="tabs">
@@ -105,7 +104,7 @@ function RecordAction({ item }: { item: InboxItem }) {
     case "period_lock": return <Link to="/people/period-locks" search={{ review: link.id }} className={className}>{text}</Link>;
     case "account": return <Link to="/account" className={className}>{t("account.second.add")}</Link>;
     case "access": return <GrantNotice id={link.id} role={item.title} />;
-    case "statutory": return <Link to="/statutory" className={className}>{text}</Link>;
+    case "statutory": return <Link to="/statutory" search={{ event: link.id }} className={className}>{text}</Link>;
     default: return null;
   }
 }

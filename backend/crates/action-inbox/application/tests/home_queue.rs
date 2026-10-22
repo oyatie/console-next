@@ -27,6 +27,7 @@ fn every_home_kind_carries_its_lane_and_database_deadline_days() {
         ("lifecycle_apply_failed", "turn"),
         ("setup_entity", "turn"),
         ("grant_notice", "turn"),
+        ("account_security", "turn"),
     ] {
         let page = merge_pages(
             vec![ActionInboxSourcePage {

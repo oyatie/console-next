@@ -89,11 +89,6 @@ pub(super) async fn rows(
     if query.inbox_scan_limit.is_some() {
         // Birthday tasks use their projected birthday key in the companion read.
         q.push(" AND kind.k <> 'AGE60'");
-        // The owning resolution always treats these latest actions as terminal.
-        q.push(
-            " AND receipt.action IS DISTINCT FROM 'COMPLETE' \
-          AND receipt.action IS DISTINCT FROM 'NOT_APPLICABLE'",
-        );
     }
     if let Some(as_of) = query.inbox_as_of {
         q.push(" AND l.created_at <= ").push_bind(as_of);
@@ -156,6 +151,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn only_internal_candidate_reads_bound_and_use_the_immutable_cursor() {
         let after = Some((
             time::OffsetDateTime::UNIX_EPOCH,
