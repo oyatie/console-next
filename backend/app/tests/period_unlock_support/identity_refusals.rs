@@ -27,23 +27,12 @@ pub(super) async fn check(
         (StatusCode::FORBIDDEN, "second_person_required")
     );
 
-    // Unknown person identity refuses even with close authority.
-    let unlinked = admin(owner, svc, issuer, "연결 없음").await;
-    sqlx::query("UPDATE users SET employee_id = NULL WHERE id = $1")
-        .bind(unlinked.id)
-        .execute(owner)
-        .await
-        .unwrap();
-    let (status, body) = reject(service, &unlinked.token, lock_id, request_id, "반려").await;
-    assert_eq!(
-        (status, code(&body)),
-        (StatusCode::FORBIDDEN, "second_person_required"),
-        "{body}"
-    );
-
+    // Missing or failed identity facts still refuse; an unbound known account is covered separately.
+    let resolver: String = sqlx::query_scalar("SELECT pg_get_functiondef('public.console_decision_identities(uuid,uuid,uuid)'::regprocedure)")
+        .fetch_one(owner).await.unwrap();
+    sqlx::query("CREATE OR REPLACE FUNCTION public.console_decision_identities(p_org UUID,p_maker UUID,p_checker UUID) RETURNS TABLE (maker_identity TEXT,checker_identity TEXT) LANGUAGE sql AS 'SELECT NULL::text,NULL::text'")
+        .execute(owner).await.unwrap();
     let missing = admin(owner, svc, issuer, "신원 누락").await;
-    sqlx::query("DELETE FROM employee_person_bindings WHERE employee_id=(SELECT employee_id FROM users WHERE id=$1)")
-        .bind(missing.id).execute(owner).await.unwrap();
     let (status, body) = reject(service, &missing.token, lock_id, request_id, "반려").await;
     assert_eq!(
         (status, code(&body)),
@@ -53,4 +42,9 @@ pub(super) async fn check(
         request_of(service, &missing.token, lock_id).await["canDecide"],
         false
     );
+    // Restore only the definition read from pg_catalog, with no external input.
+    sqlx::query(sqlx::AssertSqlSafe(resolver))
+        .execute(owner)
+        .await
+        .unwrap();
 }

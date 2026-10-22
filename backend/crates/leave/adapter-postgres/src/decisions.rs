@@ -44,7 +44,7 @@ impl PgLeaveStore {
         .await?
         {
             return Err(KernelError::forbidden(
-                "leave decisions require two verified distinct people; another authorized person must decide",
+                "leave decisions require distinct known identities; another authorized person must decide",
             )
             .with_code("leave_decide_requester_forbidden")
             .into());

@@ -36,10 +36,9 @@ async fn routed_approval_refuses_same_person_accounts_without_decision_or_audit(
                 .await
                 .unwrap_err();
             assert_eq!(err.kind(), ErrorKind::Conflict);
-            assert!(
-                err.to_string()
-                    .contains("기안자와 결재자의 신원이 확인되지 않았거나 같은 사람입니다.")
-            );
+            assert!(err.to_string().contains(
+                "기안자 본인은 결재할 수 없으며, 신원 정보를 확인할 수 없어도 결재를 거부합니다."
+            ));
             assert_eq!(snapshot(&pool, step).await, before);
         }
     }
@@ -55,7 +54,7 @@ async fn snapshot(pool: &PgPool, step: Uuid) -> (Value, i64, i64, i64) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn decisions_require_two_known_distinct_people(pool: PgPool) {
+async fn decisions_use_person_identity_when_available_and_account_identity_otherwise(pool: PgPool) {
     let org = OrgId::from_uuid(Uuid::new_v4());
     let maker = seed_org_and_super_admin(&pool, *org.as_uuid(), "unlinked-orgchange").await;
     let checker = seed_active_user(&pool, *org.as_uuid(), "ADMIN", "checker").await;
@@ -78,15 +77,6 @@ async fn decisions_require_two_known_distinct_people(pool: PgPool) {
                 store.decide_step(checker, request, step, approved, None),
             )
             .await;
-            if bindings < 2 {
-                let err = result.expect_err("missing person facts must refuse");
-                assert!(
-                    matches!(err, console_orgchange_adapter_postgres::PgOrgChangeError::Domain(ref e)
-                    if e.code == Some("org_change_sod_violation"))
-                );
-                assert_eq!(snapshot(&pool, step).await, before);
-                continue;
-            }
             result.unwrap();
             let after = snapshot(&pool, step).await;
             assert_eq!(

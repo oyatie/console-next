@@ -52,13 +52,22 @@ pub(super) async fn decider_stands(
     settings: &ResolvedSettings,
 ) -> Result<&'static str, LifecycleError> {
     let me = *principal.user_id.as_uuid();
-    let independent =
-        independent_people::authorized_in_tx(tx, Some(request.requested_by), me).await?;
+    let independent = if principal.is_tenant_ops {
+        sqlx::query_scalar::<_, bool>("SELECT public.console_period_unlock_independent($1,$2,$3)")
+            .bind(principal.org_id.as_uuid())
+            .bind(request.requested_by)
+            .bind(me)
+            .fetch_one(tx.as_mut())
+            .await
+            .unwrap_or(false)
+    } else {
+        independent_people::authorized_in_tx(tx, Some(request.requested_by), me).await?
+    };
     if !independent {
         return Err(coded(
             StatusCode::FORBIDDEN,
             "second_person_required",
-            "two verified distinct people are required; another close authority must decide",
+            "two distinct decision identities are required; another close authority must decide",
         ));
     }
     let fact = second_person(

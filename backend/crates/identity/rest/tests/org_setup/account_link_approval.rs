@@ -220,3 +220,6 @@ async fn a_second_account_of_the_requesters_person_cannot_approve(pool: PgPool) 
     assert_eq!(body["error"]["code"], "account_link_second_person_required");
     assert_eq!(employee_link(&pool, target).await, Some(employee));
 }
+
+#[path = "independence_reviews.rs"]
+mod reviews;

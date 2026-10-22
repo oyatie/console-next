@@ -111,6 +111,7 @@ pub(crate) async fn list_users(
             &account_scope(&principal),
             UserListQuery {
                 include_inactive: query.include_inactive,
+                independence_review_required: query.independence_review_required,
                 limit: query.limit,
                 offset: query.offset,
             },

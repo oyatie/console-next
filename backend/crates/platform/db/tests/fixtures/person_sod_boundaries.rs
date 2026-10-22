@@ -29,8 +29,10 @@ async fn boundary(pool: &PgPool, sql: &'static str, code: &str, leave: bool) {
         (p.maker, p.independent, true),
         (p.maker, p.maker, false),
         (p.maker, p.same_person, false),
-        (p.maker, unknown, false),
-        (unknown, p.independent, false),
+        (p.maker, unknown, true),
+        (unknown, p.independent, true),
+        (p.maker, Uuid::new_v4(), false),
+        (Uuid::new_v4(), p.independent, false),
     ] {
         let mut tx = decision_tx(pool, &p, leave).await;
         let result = sqlx::query(sql)
@@ -43,6 +45,32 @@ async fn boundary(pool: &PgPool, sql: &'static str, code: &str, leave: bool) {
             .await;
         if allowed {
             result.unwrap();
+            // Audit SQL and Rust writers consume the same frozen mutation facts.
+            sqlx::query("SET LOCAL ROLE NONE")
+                .execute(tx.as_mut())
+                .await
+                .unwrap();
+            let (snapshot, after): (serde_json::Value, serde_json::Value) = sqlx::query_as(
+                "INSERT INTO audit_events (org_id,actor,action,target_type,target_id,trace_id,span_id,occurred_at) \
+                 VALUES ($1,$2,'sod.test','decision','test',repeat('a',32),repeat('b',16),now()) \
+                 RETURNING decision_snapshot,after_snap")
+                .bind(p.org).bind(checker).fetch_one(tx.as_mut()).await.unwrap();
+            let weak = maker == unknown || checker == unknown;
+            assert_eq!(snapshot["sod.review_required"], i32::from(weak));
+            assert_eq!(after["independence"]["review_required"], weak);
+            assert_eq!(after["independence"]["maker"], maker.to_string());
+            assert_eq!(after["independence"]["checker"], checker.to_string());
+            if weak {
+                let key = if maker == unknown {
+                    "sod.maker.account"
+                } else {
+                    "sod.checker.account"
+                };
+                assert_eq!(snapshot[key], unknown.to_string());
+            } else {
+                assert!(snapshot["sod.maker.person"].is_string());
+                assert!(snapshot["sod.checker.person"].is_string());
+            }
         } else {
             let error =
                 result.expect_err("database invariant must refuse unknown or shared people");
@@ -52,9 +80,24 @@ async fn boundary(pool: &PgPool, sql: &'static str, code: &str, leave: bool) {
         }
         tx.rollback().await.unwrap();
     }
-    // An employee link without a person binding is also an unknown identity.
+    // Imported employees without person bindings retain their known account identity.
     sqlx::query("DELETE FROM employee_person_bindings WHERE employee_id=(SELECT employee_id FROM users WHERE id=$1)")
         .bind(p.independent).execute(pool).await.unwrap();
+    let mut tx = decision_tx(pool, &p, leave).await;
+    sqlx::query(sql)
+        .bind(p.org)
+        .bind(p.maker)
+        .bind(p.independent)
+        .bind(p.employee)
+        .bind(p.branch)
+        .execute(tx.as_mut())
+        .await
+        .expect("a known account without a person binding must remain usable");
+    tx.rollback().await.unwrap();
+
+    // Missing resolver facts are different from a known account without a person link.
+    sqlx::query("CREATE OR REPLACE FUNCTION public.console_decision_identities(p_org UUID,p_maker UUID,p_checker UUID) RETURNS TABLE (maker_identity TEXT,checker_identity TEXT) LANGUAGE sql AS 'SELECT NULL::text,NULL::text'")
+        .execute(pool).await.unwrap();
     let mut tx = decision_tx(pool, &p, leave).await;
     let error = sqlx::query(sql)
         .bind(p.org)
@@ -64,7 +107,7 @@ async fn boundary(pool: &PgPool, sql: &'static str, code: &str, leave: bool) {
         .bind(p.branch)
         .execute(tx.as_mut())
         .await
-        .expect_err("missing binding must refuse");
+        .expect_err("missing decision facts must refuse");
     assert_eq!(error.as_database_error().unwrap().message(), code);
     tx.rollback().await.unwrap();
 }

@@ -118,7 +118,7 @@ export const enPeriodLocks: Partial<Record<keyof typeof koPeriodLocks, string>> 
   "periodLocks.request.reject.missing": "Enter the reason for rejecting",
   "periodLocks.request.approved": "{actor} approved unlocking {domain} {period}",
   "periodLocks.request.rejected": "{actor} rejected the unlock request for {domain} {period}",
-  "periodLocks.request.refused.second_person_required": "The requester and decider must be two verified people. Another verified person with close authority must approve or reject this unlock.",
+  "periodLocks.request.refused.second_person_required": "The requester cannot decide their own unlock, and unavailable identity facts refuse the decision. Another person with close authority must approve or reject it.",
   "periodLocks.request.refused.second_person_ineligible": "You do not meet the second-person rules for this request. Another close authority who does decides.",
   "periodLocks.request.refused.period_unlock_request_changed": "A newer unlock request arrived while you were reviewing. Review the new request.",
   "periodLocks.request.refused.period_unlock_request_expired": "This unlock request expired. The lock stays in force; request it again if needed.",

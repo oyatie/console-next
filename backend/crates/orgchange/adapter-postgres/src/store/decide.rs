@@ -27,7 +27,7 @@ impl PgOrgChangeStore {
                     tx, Some(request.drafted_by), *actor.as_uuid(),
                 ).await? {
                     return Err(KernelError::conflict(
-                        "기안자와 결재자의 신원이 확인되지 않았거나 같은 사람입니다. 신원이 확인된 다른 사람이 결재해야 합니다.",
+                        "기안자 본인은 결재할 수 없으며, 신원 정보를 확인할 수 없어도 결재를 거부합니다. 결재 권한이 있는 다른 사람이 결재해야 합니다.",
                     ).with_code("org_change_sod_violation")
                     .into());
                 }

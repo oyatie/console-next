@@ -2,12 +2,18 @@
 import { expect, test } from "@playwright/test";
 import { inviteAccount } from "./access-flows";
 import { apiAs } from "./chaos";
-import { go } from "./flows";
+import { go, unique } from "./flows";
+import { letGrantsAge } from "./second-person-fixture";
 import { fillRegister, openRegistered, pressRegister, receiptOf } from "./helpers/register";
 import { tenantInSetup } from "./setup-flows";
 
 test("employee account binding requires passkey and waits for a second person, including after reload", { tag: "@hr" }, async ({ browser }) => {
-  const { admin } = await tenantInSetup(browser, "linkguard", "연결검증");
+  const { admin, exec } = await tenantInSetup(browser, "linkguard", "연결검증", false, "본점", "full");
+  await go(exec, "/");
+  const notices = exec.getByRole("region", { name: "확인할 새 권한 1건" });
+  await notices.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
+  await expect(notices).toBeHidden();
+  letGrantsAge(unique("linkguard"), "이임원");
   await inviteAccount(admin, "연결대상", "none");
   const read = apiAs(admin);
   let authorization = "";
@@ -55,4 +61,21 @@ test("employee account binding requires passkey and waits for a second person, i
   await expect(card).toContainText(pending.requester_name);
   await expect(card).not.toContainText(pending.requested_by);
   expect((await read<{ employee_id: string | null }>(`/api/v1/users/${target}`)).employee_id).toBeNull();
+
+  // A known unbound requester can be checked by a different, eligible account.
+  await go(exec, `/people/${employeeId}?tab=access`);
+  const second = exec.getByRole("region", { name: "로그인 계정" });
+  await second.getByRole("combobox").fill("연결대상");
+  await exec.getByRole("option", { name: /연결대상/ }).click();
+  await second.getByRole("button", { name: /패스키.*계정 연결/ }).click();
+  await expect(second).toContainText("확인 대기");
+  const approval = exec.waitForResponse((r) => r.request().method() === "PATCH" && r.url().endsWith(`/api/v1/users/${target}`));
+  await second.getByRole("button", { name: /패스키.*승인/ }).click();
+  expect((await approval).status()).toBe(200);
+  await expect.poll(async () => (await read<{ employee_id: string | null }>(`/api/v1/users/${target}`)).employee_id).toBe(employeeId);
+  await go(admin, "/");
+  const review = admin.getByRole("region", { name: /계정 기준 결재 확인/ });
+  await expect(review).toContainText("실제로 다른 사람이 결정했는지 확인");
+  await expect(review).toContainText("이임원");
+  await expect(review.getByRole("link", { name: "이임원 계정 연결 검토" })).toHaveAttribute("href", /view=accounts/);
 });

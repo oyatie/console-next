@@ -1,4 +1,4 @@
-//! Shared natural-person SoD overlay; callers already authorize the action.
+//! Shared strongest-available-identity SoD overlay; callers already authorize the action.
 use super::{ActionBundle, Fact};
 use std::sync::OnceLock;
 
@@ -7,11 +7,12 @@ const SCHEMA: &str = r#"entity Subject = { "org": String, "roles": Set<String> }
 entity Resource = { "org": String };
 action independent_people appliesTo {
   principal: [Subject], resource: [Resource],
-  context: { "makerPerson": String, "checkerPerson": String }
+  context: { "makerIdentity": String, "checkerIdentity": String }
 };"#;
 const POLICIES: &str = r#"permit (principal, action == Action::"independent_people", resource)
-when { principal.org == resource.org && context.makerPerson != "" &&
-       context.checkerPerson != "" && context.makerPerson != context.checkerPerson };"#;
+when { principal.org == resource.org && context.makerIdentity != "" &&
+       context.checkerIdentity != "" && context.makerIdentity != context.checkerIdentity &&
+       !(context.makerIdentity like "ops:*") && !(context.checkerIdentity like "ops:*") };"#;
 
 fn bundle() -> Result<&'static ActionBundle, String> {
     static BUNDLE: OnceLock<Result<ActionBundle, String>> = OnceLock::new();
@@ -28,12 +29,12 @@ pub async fn authorized_in_tx(
     maker: Option<uuid::Uuid>,
     checker: uuid::Uuid,
 ) -> Result<bool, sqlx::Error> {
-    let facts = sqlx::query_as::<_, (Option<String>, Option<uuid::Uuid>, Option<uuid::Uuid>)>(
-        "SELECT NULLIF(current_setting('app.current_org',true),''), maker_person, checker_person \
-         FROM public.console_decision_people(NULLIF(current_setting('app.current_org',true),'')::uuid,$1,$2)",
+    let facts = sqlx::query_as::<_, (Option<String>, Option<String>, Option<String>)>(
+        "SELECT NULLIF(current_setting('app.current_org',true),''), maker_identity, checker_identity \
+         FROM public.console_decision_identities(NULLIF(current_setting('app.current_org',true),'')::uuid,$1,$2)",
     ).bind(maker).bind(checker).fetch_one(tx.as_mut()).await;
     // A failed resolver must return the caller's stable SoD refusal, never permission.
-    let Ok((Some(org), Some(maker_person), Some(checker_person))) = facts else {
+    let Ok((Some(org), Some(maker_identity), Some(checker_identity))) = facts else {
         return Ok(false);
     };
     Ok(bundle()
@@ -44,8 +45,8 @@ pub async fn authorized_in_tx(
                 &[],
                 &org,
                 &[
-                    ("makerPerson", Fact::Str(maker_person.to_string())),
-                    ("checkerPerson", Fact::Str(checker_person.to_string())),
+                    ("makerIdentity", Fact::Str(maker_identity)),
+                    ("checkerIdentity", Fact::Str(checker_identity)),
                 ],
             )
         })
@@ -64,10 +65,14 @@ mod tests {
             ("", "b", false),
             ("a", "", false),
             ("a", "b", true),
+            ("person:a", "person:a", false),
+            ("person:a", "account:a", true),
+            ("ops:a", "person:b", false),
+            ("account:a", "ops:b", false),
         ] {
             let facts = [
-                ("makerPerson", Fact::Str(maker.into())),
-                ("checkerPerson", Fact::Str(checker.into())),
+                ("makerIdentity", Fact::Str(maker.into())),
+                ("checkerIdentity", Fact::Str(checker.into())),
             ];
             assert_eq!(bundle.decide("u", "o", &[], "o", &facts), Ok(allowed));
             assert_eq!(bundle.decide("u", "o", &[], "foreign", &facts), Ok(false));

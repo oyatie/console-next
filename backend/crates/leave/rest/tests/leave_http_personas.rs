@@ -238,6 +238,9 @@ async fn v1_wire_shape_is_frozen_and_v2_requires_modern_exact_cas(owner_pool: Pg
         refusal.body
     );
 
+    // An unavailable fact resolver still produces the stable refusal over HTTP.
+    sqlx::query("REVOKE EXECUTE ON FUNCTION public.console_decision_identities(UUID,UUID,UUID) FROM console_leave_cmd,console_leave_definer")
+        .execute(&owner_pool).await.unwrap();
     let unknown = request_json(
         service.clone(),
         "POST",
@@ -251,8 +254,10 @@ async fn v1_wire_shape_is_frozen_and_v2_requires_modern_exact_cas(owner_pool: Pg
         unknown.body["error"]["code"],
         "leave_decide_requester_forbidden"
     );
-    person_fixtures::bind_user_to_distinct_person(&owner_pool, decider).await;
+    sqlx::query("GRANT EXECUTE ON FUNCTION public.console_decision_identities(UUID,UUID,UUID) TO console_leave_cmd,console_leave_definer")
+        .execute(&owner_pool).await.unwrap();
 
+    // A known unbound decider uses account identity without changing the frozen v1 response.
     let versionless = request_json(
         service.clone(),
         "POST",

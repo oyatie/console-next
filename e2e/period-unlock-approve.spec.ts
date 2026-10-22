@@ -127,8 +127,8 @@ test("period unlock: a second close authority refuses, then approves; the reques
   const rejectRoute = `**/api/v1/period-locks/${lock.id}/unlock/reject`;
   await exec.route(rejectRoute, (route) => route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ error: { code: "second_person_required", message: "identity unavailable" } }) }));
   await card.getByRole("button", { name: "잠금 해제 반려" }).click();
-  await expect(card.getByRole("alert")).toContainText("요청자와 결정자의 신원이 확인되지 않았거나 같은 사람입니다");
-  await expect(card.getByRole("alert")).toContainText("신원이 확인된 다른 사람이 마감 권한으로 승인하거나 반려해야 합니다");
+  await expect(card.getByRole("alert")).toContainText("요청자 본인은 결정할 수 없으며, 신원 정보를 확인할 수 없어도 결정을 거부합니다");
+  await expect(card.getByRole("alert")).toContainText("마감 권한이 있는 다른 사람이 승인하거나 반려해야 합니다");
   await expect(row).toContainText("승인 대기");
   await exec.unroute(rejectRoute);
   await card.getByRole("button", { name: "잠금 해제 반려" }).click();
