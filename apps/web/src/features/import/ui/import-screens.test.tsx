@@ -17,15 +17,13 @@ beforeAll(() => loadCatalog("ko"));
 const html = (node: ReactNode) => renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}>{node}</QueryClientProvider>);
 const noop = () => undefined;
 
-test("future leave choices render in review and remembered value links", () => {
+test.each(["review", "value links"] as const)("future leave choices render in %s", (place) => {
   const item = { id: "future", reason: "remembered", decision: "leave_type_map", value: "Synthetic leave", rows: 1, blocking: false, resolution: { decision: "leave_type_map", key: "Synthetic leave", choices: ["FUTURE_LEAVE"] } } as unknown as ReviewItem;
   const dry = { rows: [], review: { items: [item] }, remembered: [], decisions: { leave_type_map: { "Synthetic leave": "FUTURE_LEAVE" } } } as unknown as ImportDryRun;
   const props = { dry, picks: initialPicks(), busy: false, onResolve: noop, onSheets: noop };
-  for (const screen of [<ReviewResolve key="review" item={item} {...props} />, <ValueTable key="values" sel={null} onSel={noop} {...props} />]) {
-    const rendered = html(screen);
-    expect(rendered).toContain("확인되지 않은 항목");
-    expect(rendered).toContain('<span class="chip chip--neutral">FUTURE_LEAVE</span>');
-  }
+  const rendered = html(place === "review" ? <ReviewResolve item={item} {...props} /> : <ValueTable sel={null} onSel={noop} {...props} />);
+  expect(rendered).toContain("확인되지 않은 항목");
+  expect(rendered).toContain('<span class="chip chip--neutral">FUTURE_LEAVE</span>');
 });
 
 test("imported future leave types keep a neutral label and a muted code", () => {

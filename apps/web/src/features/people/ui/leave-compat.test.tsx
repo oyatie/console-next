@@ -34,6 +34,14 @@ const event = { id: "event-1", employee_id: "person-1", event_type: "LEAVE_OF_AB
 const events = { data: { items: [event], head_version: 1 }, isSuccess: true };
 const employee = { id: "person-1", name: "Synthetic employee", status: "ON_LEAVE" };
 const c = { e: employee, d: { employee, classification: {} }, events, place: { path: [] }, title: () => undefined, register: {}, personal: {}, records: {}, facts: {} } as unknown as Card;
+const notice = (leaveType: string) => ({ notice_no: "N-1", notice_date: "2026-10-23", issued_at: "2026-10-23T00:00:00Z", title: "Synthetic notice", items: [], lines: [{ line_no: 1, name: employee.name, event: { ...event, leave_type: leaveType } }] }) as unknown as Notice;
+
+test("appointment notices retain their existing omission of known leave reasons", () => {
+  reads.notice = notice("WORK_INJURY");
+  const html = renderToStaticMarkup(<NoticePage />);
+  expect(html).not.toContain("산재 요양");
+  expect(html).not.toContain("WORK_INJURY");
+});
 
 test.each([
   ["history", () => <PersonHistory employee={c.e} events={c.events} verbs={[]} manage={false} today="2026-10-23" done={null} onAct={noop} onDismiss={noop} />],
@@ -45,7 +53,7 @@ test.each([
   ["leave correction", () => <LeaveFields start="2026-10-01" today="2026-10-23" type={event.leave_type!} onType={noop} returnDate="" onReturn={noop} tried={false} />],
   ["return from leave", () => <LifecycleWhat detail={c.d} kind="RETURN_FROM_LEAVE" v={{} as never} set={noop} today="2026-10-23" bounds={{}} lastLeave={event} contractEnd={null} show={() => false} correcting={false} what={{ current: null }} tried={false} />],
   ["appointment notice", () => {
-    reads.notice = { notice_no: "N-1", notice_date: "2026-10-23", issued_at: "2026-10-23T00:00:00Z", title: "Synthetic notice", items: [], lines: [{ line_no: 1, name: employee.name, event }] } as unknown as Notice;
+    reads.notice = notice("FUTURE_LEAVE");
     return <NoticePage />;
   }],
 ] as const)("%s renders a future leave type as a neutral label and muted code", (_, screen) => {
