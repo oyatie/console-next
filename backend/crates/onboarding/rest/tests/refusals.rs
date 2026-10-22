@@ -8,19 +8,12 @@ use sqlx::PgPool;
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn roles_and_terms_refusals_have_status_code_no_write_and_an_audit(owner: PgPool) {
     let h = harness(&owner, true).await;
-    assert_refused(
-        &owner,
-        &h,
-        "GET",
-        "/api/v1/onboarding/terms",
-        Value::Null,
-        (
-            StatusCode::CONFLICT,
-            "terms_not_published",
-            Some("contact_service_operator"),
-        ),
-    )
-    .await;
+    assert_eq!(
+        send(&h, "GET", "/api/v1/onboarding/terms", Value::Null)
+            .await
+            .0,
+        StatusCode::OK
+    );
     assert_eq!(
         send(&h, "POST", "/api/v1/onboarding/steps/roles/skip", json!({}))
             .await
@@ -252,6 +245,29 @@ async fn legacy_terms_still_require_the_live_ops_holder(owner: PgPool) {
         "/api/v1/onboarding/terms",
         json!({"terms_version": "v1"}),
         (StatusCode::FORBIDDEN, "forbidden", None),
+    )
+    .await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn unpublished_documents_leave_a_refusal_audit(owner: PgPool) {
+    let h = harness(&owner, true).await;
+    // Disposable fixture DB: model an operator who has published no legal documents.
+    sqlx::query("TRUNCATE terms_documents CASCADE")
+        .execute(&owner)
+        .await
+        .unwrap();
+    assert_refused(
+        &owner,
+        &h,
+        "GET",
+        "/api/v1/onboarding/terms",
+        Value::Null,
+        (
+            StatusCode::CONFLICT,
+            "terms_not_published",
+            Some("contact_service_operator"),
+        ),
     )
     .await;
 }

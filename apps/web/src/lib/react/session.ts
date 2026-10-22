@@ -19,8 +19,8 @@ export async function ensureSession({ location }: { location: { pathname: string
   if (session.stage === "enroll") throw redirect({ to: "/setup-passkey" });
   if (session.stage === "stale") return signInAgain();
   if (session.stage === "app") {
-    const status = await consentStatus().catch(() => null);
-    if (status && !status.accepted) throw redirect({ to: "/setup-passkey" });
+    const status = await consentStatus();
+    if (!status.accepted) throw redirect({ to: "/setup-passkey" });
   }
   // Vendor-tier tokens are refused by tenant routes and vice versa; send each tier home.
   // My account (own passkeys, language) serves both tiers.
@@ -39,8 +39,8 @@ export function leaveSignInWhenSignedIn() {
 export async function ensureEnrolling() {
   if (!session.token && !(await refresh())) throw redirect({ to: "/login" });
   if (session.stage === "app") {
-    const status = await consentStatus().catch(() => null);
-    if (status?.accepted) throw redirect({ to: home() });
+    const status = await consentStatus();
+    if (status.accepted) throw redirect({ to: home() });
   }
   if (session.stage === "stale") return signInAgain();
 }

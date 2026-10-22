@@ -1,6 +1,7 @@
 //! An OTP enrollment session reaches only the enrollment surface, in the auth
 //! handlers themselves — this drives the bare auth `router()` without the app's
 //! path-level enrollment gate, so the handler check is the only barrier here.
+//! PV1 supersedes decision #3: explicit, hash-bound acceptance precedes enrollment; enrollment itself never infers consent.
 //! Also on the bare router: open sign-up with no mail sender (R25); and the
 //! worker's rate-limit prune as the runtime role (R5).
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
@@ -91,16 +92,49 @@ async fn send(
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn enrollment_session_is_refused_outside_the_enrollment_surface(owner: PgPool) {
+async fn registration_finish_without_start_requires_privacy_consent(owner: PgPool) {
+    let (app, token, user) = enrollment_session(&owner).await;
+    let credential = json!({
+        "id": "AA",
+        "rawId": "AA",
+        "type": "public-key",
+        "response": { "attestationObject": "AA", "clientDataJSON": "AA" },
+        "clientExtensionResults": {}
+    });
+    serde_json::from_value::<console_platform_auth::PasskeyRegistrationCredential>(
+        credential.clone(),
+    )
+    .expect("the forged credential must reach the registration handler");
+    let (status, body) = send(
+        &app,
+        "POST",
+        "/api/v1/auth/passkey/register/finish",
+        Some(&token),
+        Some(json!({ "ceremony_id": Uuid::new_v4(), "credential": credential })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+    assert_eq!(body["error"]["code"], "privacy_consent_required");
+    let credentials: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM auth_webauthn_credentials WHERE user_id=$1")
+            .bind(user)
+            .fetch_one(&owner)
+            .await
+            .unwrap();
+    assert_eq!(credentials, 0);
+}
+
+async fn enrollment_session(owner: &PgPool) -> (axum::Router, String, Uuid) {
+    console_platform_test_support::seed_consent_documents(owner).await;
     let org = OrgId::one();
     let user: Uuid = sqlx::query_scalar(
         "INSERT INTO users (display_name, roles, org_id, is_active) VALUES ('Enrolling', ARRAY['MECHANIC'], $1, true) RETURNING id",
     )
     .bind(*org.as_uuid())
-    .fetch_one(&owner)
+    .fetch_one(owner)
     .await
     .unwrap();
-    let rt = runtime_role_pool(&owner).await;
+    let rt = runtime_role_pool(owner).await;
     let issue = BootstrapCredentialStore
         .issue_for_zero_credential_user(
             &rt,
@@ -123,27 +157,33 @@ async fn enrollment_session_is_refused_outside_the_enrollment_surface(owner: PgP
     )
     .await;
     assert_eq!(status, StatusCode::OK, "{redeemed}");
-    let token = redeemed["access_token"].as_str().unwrap();
+    let token = redeemed["access_token"].as_str().unwrap().to_owned();
+    (app, token, user)
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn enrollment_session_is_refused_outside_the_enrollment_surface(owner: PgPool) {
+    let (app, token, user) = enrollment_session(&owner).await;
 
     // The enrollment surface answers.
     let (status, body) = send(
         &app,
         "POST",
         PRIVACY_CONSENT_STATUS_PATH,
-        Some(token),
+        Some(&token),
         Some(json!({})),
     )
     .await;
     assert_eq!(status, StatusCode::OK, "{body}");
     // Everything else is 403 passkey_required from the handler itself.
-    let (status, body) = send(&app, "GET", AUTH_PASSKEYS_PATH, Some(token), None).await;
+    let (status, body) = send(&app, "GET", AUTH_PASSKEYS_PATH, Some(&token), None).await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
     assert_eq!(body["error"]["code"], "passkey_required");
     let (status, body) = send(
         &app,
         "DELETE",
         &format!("{AUTH_PASSKEYS_PATH}/{}", Uuid::new_v4()),
-        Some(token),
+        Some(&token),
         None,
     )
     .await;
@@ -154,7 +194,7 @@ async fn enrollment_session_is_refused_outside_the_enrollment_surface(owner: PgP
         &app,
         "POST",
         "/api/v1/auth/passkey/register/start",
-        Some(token),
+        Some(&token),
         Some(json!({})),
     )
     .await;
@@ -165,7 +205,7 @@ async fn enrollment_session_is_refused_outside_the_enrollment_surface(owner: PgP
         &app,
         "POST",
         "/api/v1/auth/passkey/enroll-handoff",
-        Some(token),
+        Some(&token),
         Some(json!({})),
     )
     .await;

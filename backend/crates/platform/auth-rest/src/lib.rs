@@ -167,5 +167,10 @@ pub fn router(state: AuthRestState) -> Router {
         );
     #[cfg(feature = "dev-auth")]
     let router = router.route(DEV_AUTH_SESSION_PATH, post(dev_auth_session));
-    router.with_state(state)
+    router
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            consent::require_app_write_consent,
+        ))
+        .with_state(state)
 }

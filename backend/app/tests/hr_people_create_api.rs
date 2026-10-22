@@ -30,6 +30,166 @@ struct JsonResponse {
     json: Value,
 }
 
+/// An existing app session must accept the exact current documents before any People write.
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn app_session_without_privacy_consent_cannot_create_employee(pool: PgPool) {
+    console_platform_test_support::seed_consent_documents(&pool).await;
+    let keys = keys();
+    let org = OrgId::one();
+    let user = UserId::new();
+    seed_user(&pool, org, user).await;
+    let branch = seed_branch(&pool, org, "Privacy branch").await;
+    let service = build_router(
+        app_state(
+            runtime_role_pool(&pool).await,
+            leave_command_role_pool(&pool).await,
+            &keys,
+        )
+        .unwrap(),
+    );
+    let token = unaccepted_bearer(&pool, &keys, org, user).await;
+    let before = people_write_counts(&pool, org).await;
+    let body = create_body(
+        branch,
+        "PRIVACY-001",
+        "privacy-create",
+        "010-1234-5678",
+        "동의 확인",
+    );
+    let denied = post(service.clone(), EMPLOYEES_PATH, &token, body.clone()).await;
+    assert_eq!(denied.status, StatusCode::FORBIDDEN, "{:?}", denied.json);
+    assert_eq!(denied.json["error"]["code"], "privacy_consent_required");
+    assert_eq!(people_write_counts(&pool, org).await, before);
+    assert_no_employee_writes(&pool, org, "PRIVACY-001", "privacy-create").await;
+
+    let documents = get(service.clone(), "/api/v1/onboarding/terms", &token).await;
+    assert_eq!(documents.status, StatusCode::OK, "{:?}", documents.json);
+    let d = documents.json;
+    let accepted = post(
+        service.clone(),
+        "/api/v1/auth/privacy-consent/accept",
+        &token,
+        json!({"privacy": {"version": d["privacy"]["version"], "sha256": d["privacy"]["sha256"]},
+            "terms": {"version": d["version"], "sha256": d["sha256"]},
+            "privacy_collection": true, "terms_of_service": true}),
+    )
+    .await;
+    assert_eq!(accepted.status, StatusCode::OK, "{:?}", accepted.json);
+    let allowed = post(service.clone(), EMPLOYEES_PATH, &token, body.clone()).await;
+    assert_eq!(allowed.status, StatusCode::CREATED, "{:?}", allowed.json);
+
+    // A new sign-in restores hash-bound acceptance once from the durable audit.
+    let next_session = unaccepted_bearer(&pool, &keys, org, user).await;
+    let repeated = post(service.clone(), EMPLOYEES_PATH, &next_session, body.clone()).await;
+    assert_eq!(repeated.status, StatusCode::CREATED, "{:?}", repeated.json);
+    sqlx::query("INSERT INTO terms_documents (version,kind,body,published_at,policy_url,review_pending) SELECT 'privacy-next-test',kind,body || E'\\nUpdated fixture',clock_timestamp(),policy_url,review_pending FROM terms_documents WHERE version=$1")
+        .bind(d["privacy"]["version"].as_str().unwrap()).execute(&pool).await.unwrap();
+    let before_reconsent = people_write_counts(&pool, org).await;
+    let stale = post(service.clone(), EMPLOYEES_PATH, &next_session, body).await;
+    assert_eq!(stale.status, StatusCode::FORBIDDEN, "{:?}", stale.json);
+    assert_eq!(stale.json["error"]["code"], "privacy_consent_required");
+    assert_eq!(people_write_counts(&pool, org).await, before_reconsent);
+    let credential_write = post(
+        service,
+        "/api/v1/auth/passkey/register/start",
+        &next_session,
+        json!({}),
+    )
+    .await;
+    assert_eq!(
+        credential_write.status,
+        StatusCode::FORBIDDEN,
+        "{:?}",
+        credential_write.json
+    );
+    assert_eq!(
+        credential_write.json["error"]["code"],
+        "privacy_consent_required"
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn privacy_documents_are_readable_and_hash_bound_before_acceptance(pool: PgPool) {
+    sqlx::query("INSERT INTO terms_documents (version,body,published_at) VALUES ('service-read-test','Exact service document from store',now())").execute(&pool).await.unwrap();
+    let keys = keys();
+    let org = OrgId::one();
+    let user = UserId::new();
+    seed_user(&pool, org, user).await;
+    let service = build_router(
+        app_state(
+            runtime_role_pool(&pool).await,
+            leave_command_role_pool(&pool).await,
+            &keys,
+        )
+        .unwrap(),
+    );
+    let token = unaccepted_bearer(&pool, &keys, org, user).await;
+    let result = get(service, "/api/v1/onboarding/terms", &token).await;
+    assert_eq!(result.status, StatusCode::OK, "{:?}", result.json);
+    assert_eq!(result.json["version"], "service-read-test");
+    assert_eq!(result.json["body"], "Exact service document from store");
+    assert!(
+        result.json["privacy"]["body"]
+            .as_str()
+            .unwrap()
+            .contains("제2부. 회사가 수탁자로서 처리하는 개인정보")
+    );
+    assert!(
+        result.json["privacy"]["body"]
+            .as_str()
+            .unwrap()
+            .contains("【확인 필요")
+    );
+    assert_eq!(result.json["privacy"]["review_pending"], true);
+    let hash: String = sqlx::query_scalar("SELECT sha256 FROM terms_documents WHERE version=$1")
+        .bind(result.json["privacy"]["version"].as_str().unwrap())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(result.json["privacy"]["sha256"], hash);
+}
+
+async fn unaccepted_bearer(pool: &PgPool, keys: &Keys, org: OrgId, user: UserId) -> String {
+    let issuer = JwtIssuer::from_es256_pem(
+        JwtSettings {
+            issuer: TEST_ISSUER.to_owned(),
+            audience: TEST_AUDIENCE.to_owned(),
+            access_token_ttl: Duration::minutes(15),
+        },
+        keys.private_pem.as_bytes(),
+        keys.public_pem.as_bytes(),
+    )
+    .unwrap();
+    let now = OffsetDateTime::now_utc();
+    let family = console_platform_auth::RefreshTokenStore
+        .issue_family(pool, *user.as_uuid(), org, now, Duration::hours(1))
+        .await
+        .unwrap();
+    issuer
+        .issue_session_access_token(
+            AccessTokenInput {
+                subject: user,
+                org_id: org,
+                roles: vec!["SUPER_ADMIN".into()],
+                branches: vec![],
+                platform: false,
+                view_as: false,
+                read_only: false,
+                display_name: None,
+                feature_grants: vec![],
+                authz_subject_version: 0,
+                authz_policy_version: 0,
+                session_generation: 0,
+                issued_at: now,
+            },
+            None,
+            vec![],
+            family.family_id,
+            family.expires_at,
+        )
+        .unwrap()
+}
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn readiness_counts_only_inspectable_active_payroll_close_statuses(pool: PgPool) {
     let keys = keys();
@@ -61,7 +221,7 @@ async fn readiness_counts_only_inspectable_active_payroll_close_statuses(pool: P
         app_state(
             runtime_role_pool(&pool).await,
             leave_command_role_pool(&pool).await,
-            keys.public_pem.clone(),
+            &keys,
         )
         .unwrap(),
     );
@@ -115,7 +275,7 @@ async fn employee_create_is_idempotent_unique_and_tenant_scoped(pool: PgPool) {
         app_state(
             runtime_role_pool(&pool).await,
             leave_command_role_pool(&pool).await,
-            keys.public_pem.clone(),
+            &keys,
         )
         .unwrap(),
     );
@@ -607,7 +767,7 @@ async fn employee_create_assigns_numbers_warns_on_same_name_and_masks_readers(po
         app_state(
             runtime_role_pool(&pool).await,
             leave_command_role_pool(&pool).await,
-            keys.public_pem.clone(),
+            &keys,
         )
         .unwrap(),
     );
@@ -722,7 +882,7 @@ async fn employee_create_rejects_unknown_org_unit_uuid(pool: PgPool) {
         app_state(
             runtime_role_pool(&pool).await,
             leave_command_role_pool(&pool).await,
-            keys.public_pem.clone(),
+            &keys,
         )
         .unwrap(),
     );
@@ -759,7 +919,7 @@ async fn deactivated_super_admin_cannot_create_employee(pool: PgPool) {
         app_state(
             runtime_role_pool(&pool).await,
             leave_command_role_pool(&pool).await,
-            keys.public_pem.clone(),
+            &keys,
         )
         .unwrap(),
     );
@@ -858,7 +1018,7 @@ async fn revoked_grant_executive_cannot_create_employee(pool: PgPool) {
         app_state(
             runtime_role_pool(&pool).await,
             leave_command_role_pool(&pool).await,
-            keys.public_pem.clone(),
+            &keys,
         )
         .unwrap(),
     );
@@ -1246,14 +1406,20 @@ async fn scoped_role_pool(owner_pool: &PgPool, role: &'static str) -> PgPool {
 fn app_state(
     runtime_pool: PgPool,
     leave_command_pool: PgPool,
-    public_key_pem: String,
+    keys: &Keys,
 ) -> Result<AppState, console_app::AppError> {
     let config = AppConfig::from_pairs([
         ("CONSOLE_APP_ROLE", AppRole::Api.to_string()),
         ("CONSOLE_HTTP_ADDR", "127.0.0.1:0".to_owned()),
         ("CONSOLE_JWT_ISSUER", TEST_ISSUER.to_owned()),
         ("CONSOLE_JWT_AUDIENCE", TEST_AUDIENCE.to_owned()),
-        ("CONSOLE_JWT_PUBLIC_KEY_PEM", public_key_pem),
+        ("CONSOLE_JWT_PUBLIC_KEY_PEM", keys.public_pem.clone()),
+        ("CONSOLE_JWT_PRIVATE_KEY_PEM", keys.private_pem.clone()),
+        ("CONSOLE_WEBAUTHN_RP_ID", "example.com".into()),
+        (
+            "CONSOLE_WEBAUTHN_RP_ORIGIN",
+            "https://auth.example.com".into(),
+        ),
     ])?;
     AppState::new(config, DatabaseDependency::Postgres(runtime_pool))
         .map(|state| state.with_leave_command_database(leave_command_pool))

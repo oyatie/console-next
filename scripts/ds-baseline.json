@@ -1,5 +1,5 @@
 {
-"apps/web/src/auth/Login.tsx": {"dsClass":2},
+"apps/web/src/auth/Login.tsx": {"dsClass":1},
 "apps/web/src/auth/idle.module.css": {"restyle":1},
 "apps/web/src/features/access/ui/access.module.css": {"restyle":68,"literal":5},
 "apps/web/src/features/access/ui/bulk-form.tsx": {"dsClass":1},

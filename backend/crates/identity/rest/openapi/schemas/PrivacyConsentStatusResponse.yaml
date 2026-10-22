@@ -2,6 +2,8 @@ type: object
 description: Current required first-login privacy/terms consent status.
 required:
 - policy_version
+- privacy
+- terms
 - accepted
 properties:
   policy_version:
@@ -15,3 +17,19 @@ properties:
     format: date-time
     nullable: true
     description: UTC timestamp of the latest acceptance for the current version.
+  privacy:
+    type: object
+    required: [version, sha256]
+    properties:
+      version:
+        type: string
+      sha256:
+        type: string
+  terms:
+    type: object
+    required: [version, sha256]
+    properties:
+      version:
+        type: string
+      sha256:
+        type: string

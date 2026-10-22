@@ -33,6 +33,7 @@ pub use refusals::record_refusal;
 pub mod error_i18n;
 mod error_response;
 mod idle;
+pub mod privacy;
 pub mod rate_limit;
 
 use audit_context::{request_audit_context, session_family_id};
@@ -179,6 +180,10 @@ where
 /// Message of the 403 `passkey_required` refusal an OTP enrollment session
 /// receives outside the enrollment surface.
 pub const PASSKEY_REQUIRED_MESSAGE: &str = "enroll a passkey before performing this action";
+
+/// Refusal shown until the account accepts the current notice and terms.
+pub const PRIVACY_CONSENT_REQUIRED_MESSAGE: &str =
+    "required privacy notice and terms must be accepted before personal data writes";
 
 /// Why a request could not be given a tenant context.
 #[derive(Debug, thiserror::Error)]
@@ -463,6 +468,16 @@ where
                     Ok(principal) => principal,
                     Err(err) => return error_response_for(&err),
                 };
+                if let Err(err) = privacy::ensure_write_consent(
+                    &pool,
+                    verifier,
+                    request.headers(),
+                    request.method(),
+                )
+                .await
+                {
+                    return error_response_for(&err);
+                }
                 let org = principal.org_id;
                 let session_id = session_family_id(verifier, request.headers());
                 let audit_context = request_audit_context(&request, session_id);
@@ -564,6 +579,16 @@ where
                     Ok(principal) => principal,
                     Err(err) => return error_response_for(&err),
                 };
+                if let Err(err) = privacy::ensure_write_consent(
+                    &pool,
+                    verifier,
+                    request.headers(),
+                    request.method(),
+                )
+                .await
+                {
+                    return error_response_for(&err);
+                }
                 let user_id = match UserId::from_str(&claims.sub) {
                     Ok(id) => id,
                     Err(_) => return error_response_for(&RequestContextError::InvalidToken),

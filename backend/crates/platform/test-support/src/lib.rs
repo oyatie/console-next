@@ -326,6 +326,8 @@ pub async fn issue_session_token(
         )
         .await
         .expect("issue real test session family");
+    seed_consent_documents(pool).await;
+    seed_session_consent(pool, family.family_id).await;
     issuer
         .issue_session_access_token(
             input,
@@ -335,6 +337,23 @@ pub async fn issue_session_token(
             family.expires_at,
         )
         .expect("sign family-bound test access")
+}
+
+/// Explicit accepted personal-consent state for integration actors, without extra business audits.
+pub async fn seed_session_consent(pool: &PgPool, family: uuid::Uuid) {
+    // Ordinary integration actors have completed onboarding; refusal tests mint their own family.
+    sqlx::query("UPDATE auth_refresh_token_families SET privacy_acceptance = \
+        (SELECT jsonb_build_object('privacy', jsonb_build_object('version', p.version, 'sha256', p.sha256), \
+          'terms', jsonb_build_object('version', t.version, 'sha256', t.sha256), 'accepted_at', now()) \
+         FROM (SELECT version,sha256 FROM terms_documents WHERE kind='privacy_notice' AND published_at<=now() ORDER BY published_at DESC,version DESC LIMIT 1) p \
+         CROSS JOIN (SELECT version,sha256 FROM terms_documents WHERE kind='service_terms' AND published_at<=now() ORDER BY published_at DESC,version DESC LIMIT 1) t) WHERE id=$1")
+        .bind(family).execute(pool).await.expect("seed explicit accepted test session");
+}
+
+/// Publish a service-terms fixture without replacing newer documents under test.
+pub async fn seed_consent_documents(pool: &PgPool) {
+    sqlx::query("INSERT INTO terms_documents (version, body, published_at) VALUES ('test-service-v1', 'Integration service terms fixture', '2000-01-01T00:00:00Z') ON CONFLICT (version) DO NOTHING")
+        .execute(pool).await.expect("publish test service terms");
 }
 
 /// A real (software) passkey enrolled for one user, for routes that demand a

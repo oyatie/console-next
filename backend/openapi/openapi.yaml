@@ -3906,6 +3906,8 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: terms_text_changed when either displayed version/hash differs, or terms_not_published.
   /api/v1/auth/privacy-consent/status:
     post:
       tags:
@@ -18885,7 +18887,7 @@ paths:
       tags:
       - onboarding
       operationId: readTerms
-      summary: Read the latest published service terms
+      summary: Read the exact current service terms and required privacy notice, including before passkey enrollment
       security:
       - bearerAuth: []
       responses:
@@ -18897,8 +18899,6 @@ paths:
                 $ref: '#/components/schemas/TermsDocument'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          description: Contracting ops administrator required.
         '409':
           description: terms_not_published; ask the service operator for approved terms.
     post:
@@ -51162,13 +51162,29 @@ components:
         agreements are explicit booleans so the client cannot bundle them into one generic "agree all" flag. Optional marketing
         consent and GPS/location consent are not collected by this request.
       required:
-      - policy_version
+      - privacy
+      - terms
       - privacy_collection
       - terms_of_service
       properties:
-        policy_version:
-          type: string
-          description: Required privacy/terms notice version being accepted.
+        privacy:
+          type: object
+          required: [version, sha256]
+          properties:
+            version:
+              type: string
+            sha256:
+              type: string
+              pattern: ^[a-f0-9]{64}$
+        terms:
+          type: object
+          required: [version, sha256]
+          properties:
+            version:
+              type: string
+            sha256:
+              type: string
+              pattern: ^[a-f0-9]{64}$
         privacy_collection:
           type: boolean
           description: Required acknowledgement of collection/use purpose, items, retention period, refusal right, and refusal
@@ -51182,6 +51198,8 @@ components:
       description: Current required first-login privacy/terms consent status.
       required:
       - policy_version
+      - privacy
+      - terms
       - accepted
       properties:
         policy_version:
@@ -51195,6 +51213,22 @@ components:
           format: date-time
           nullable: true
           description: UTC timestamp of the latest acceptance for the current version.
+        privacy:
+          type: object
+          required: [version, sha256]
+          properties:
+            version:
+              type: string
+            sha256:
+              type: string
+        terms:
+          type: object
+          required: [version, sha256]
+          properties:
+            version:
+              type: string
+            sha256:
+              type: string
     ProcessingStatus:
       type: string
       enum:
@@ -55719,6 +55753,7 @@ components:
       - version
       - sha256
       - body
+      - privacy
       properties:
         version:
           type: string
@@ -55728,6 +55763,22 @@ components:
         body:
           type: string
           description: Exact published UTF-8 text whose SHA-256 is returned.
+        privacy:
+          type: object
+          description: Required privacy notice from the same immutable store, including its legal review state.
+          required: [version, sha256, body, policy_url, review_pending]
+          properties:
+            version:
+              type: string
+            sha256:
+              type: string
+              pattern: ^[a-f0-9]{64}$
+            body:
+              type: string
+            policy_url:
+              type: string
+            review_pending:
+              type: boolean
     TimeChangeCoverageEvidence:
       type: object
       additionalProperties: false

@@ -1,9 +1,11 @@
 // Sign-in, shell and shared-state copy (ids app., auth., common., shell.), both locales. It ships in
 // the entry so sign-in and the shell never wait; every screen's copy is in ko.ts/en.ts, loaded per
 // locale with the first screen. Same rules as ko.ts (ICU, `{name|을를}`, no ASCII apostrophe before `{`).
+import { bootConsentEn, bootConsentKo } from "./boot-consent";
 import { bootIdleEn, bootIdleKo } from "./boot-idle";
 
 export const bootKo = {
+  ...bootConsentKo,
   "common.failed.code.contract_overlap": "기존 계약과 기간이 겹칩니다. 계약 내역에서 겹치는 계약을 정정하십시오.",
   "common.failed.code.rehire_date_not_after_exit": "재입사일은 마지막 퇴직일 다음 날부터 선택하십시오.",
   "common.failed.code.filing_applicability_unverified": "신고 적용 사실을 확인하지 않아 저장하지 않았습니다. 근로시간·국적 등 필요한 사실을 확인하고, 생년월일이 다르면 직원 기록에서 정정하십시오.",
@@ -128,16 +130,7 @@ export const bootKo = {
   "auth.setup.consent.privacy": "[필수] 개인정보 수집·이용",
   "auth.setup.consent.terms": "[필수] 서비스 이용약관",
   "auth.setup.consent.continue": "동의하고 계속",
-  "auth.setup.consent.disclosure": "전문 보기 (검토 전)",
-  "auth.setup.consent.privacy.title": "[개인정보 수집·이용 동의 (검토 전 초안)]",
-  "auth.setup.consent.privacy.p1": "1. 수집 항목: 성명, 로그인 ID, 휴대전화번호, 인증정보(패스키 공개키)",
-  "auth.setup.consent.privacy.p2": "2. 수집 및 이용 목적: 서비스 본인 확인, 계정 관리 및 패스키 인증",
-  "auth.setup.consent.privacy.p3": "3. 보유 및 이용 기간: 회원 탈퇴 시 또는 관계 법령에 따른 보존기간까지",
-  "auth.setup.consent.privacy.p4": "4. 동의 거부 권리 및 불이익: 귀하는 동의를 거부할 권리가 있으나, 필수 동의 항목 미동의 시 서비스 이용이 제한됩니다.",
-  "auth.setup.consent.terms.title": "[서비스 이용약관 (검토 전 초안)]",
-  "auth.setup.consent.terms.p1": "제1조 (목적) 본 약관은 콘솔 인사·조직 관리 서비스의 이용조건 및 절차, 운영사와 회원의 권리·의무 및 책임사항을 규정함을 목적으로 합니다.",
-  "auth.setup.consent.terms.p2": "제2조 (용어의 정의) 서비스, 회원, 관리자 등 본 약관에서 사용하는 용어의 정의는 관계 법령 및 서비스별 안내에서 정하는 바에 따릅니다.",
-  "auth.setup.consent.terms.p3": "제3조 (약관의 효력 및 변경) 본 약관은 동의함으로써 효력이 발생합니다.",
+  "auth.setup.consent.disclosure": "전문 보기",
   "common.denied.title": "{screen}: 접근 권한이 없습니다",
   "common.denied.title.plain": "이 화면에 접근 권한이 없습니다",
   "common.denied.reason": "이 화면에 필요한 권한이 이 계정에 없습니다. 지금 가진 권한은 아래와 같습니다.",
@@ -164,6 +157,7 @@ export const bootKo = {
 export type BootMessageId = keyof typeof bootKo;
 
 export const bootEn: Record<BootMessageId, string> = {
+  ...bootConsentEn,
   "common.failed.code.contract_overlap": "The period overlaps an existing contract. Correct the overlapping contract in contract history.",
   "common.failed.code.rehire_date_not_after_exit": "Choose a rehire date after the last exit date.",
   "common.failed.code.filing_applicability_unverified": "Nothing was saved because filing applicability is unverified. Confirm the required facts, and correct a conflicting birth date in the employee record.",
@@ -288,16 +282,7 @@ export const bootEn: Record<BootMessageId, string> = {
   "auth.setup.consent.privacy": "[Required] Consent to collection and use of personal information",
   "auth.setup.consent.terms": "[Required] Terms of service",
   "auth.setup.consent.continue": "Agree and continue",
-  "auth.setup.consent.disclosure": "View full text (under review)",
-  "auth.setup.consent.privacy.title": "[Collection and use of personal information (draft under review)]",
-  "auth.setup.consent.privacy.p1": "1. Collected items: name, sign-in ID, mobile phone number, credentials (passkey public key)",
-  "auth.setup.consent.privacy.p2": "2. Purpose of collection and use: user identity verification, account management, passkey authentication",
-  "auth.setup.consent.privacy.p3": "3. Retention and use period: until membership withdrawal or statutory retention period",
-  "auth.setup.consent.privacy.p4": "4. Right to refuse consent and consequences: you have the right to refuse consent; however, required items are necessary to use the service.",
-  "auth.setup.consent.terms.title": "[Terms of service (draft under review)]",
-  "auth.setup.consent.terms.p1": "Article 1 (Purpose) These terms govern the conditions and procedures for using the service.",
-  "auth.setup.consent.terms.p2": "Article 2 (Definitions) Definitions of terms used in these terms shall be governed by applicable laws.",
-  "auth.setup.consent.terms.p3": "Article 3 (Effect and changes) These terms become effective upon agreement.",
+  "auth.setup.consent.disclosure": "View full text",
   "common.denied.title": "{screen}: you don’t have access",
   "common.denied.title.plain": "You don’t have access to this screen",
   "common.denied.reason": "This account does not hold the access this screen needs. What it holds today is below.",

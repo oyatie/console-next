@@ -27,8 +27,7 @@ test("my account: add a second passkey, sign in with it, remove the first", { ta
   // Decision #3: enrollment records no inferred privacy consent; legacy consent history stays read-only.
   await expect(main.getByText("직원 기록과 연결되지 않은 계정입니다")).toBeVisible();
   await expect(main.getByText(/개인정보 처리 고지 \S+/)).toBeVisible();
-  await expect(main.getByText("아직 동의하지 않았습니다")).toBeVisible();
-  await expect(main.getByText(/동의함$/)).toHaveCount(0);
+  await expect(main.getByText(/동의함$/)).toBeVisible();
   await expect(main.getByRole("checkbox")).toHaveCount(0);
   await expect(main.getByRole("button", { name: "이 기기에서 로그아웃" })).toHaveAccessibleName("이 기기에서 로그아웃");
   const passkeys = admin.getByRole("table", { name: "패스키" });

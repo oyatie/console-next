@@ -1,7 +1,7 @@
 tags:
 - onboarding
 operationId: readTerms
-summary: Read the latest published service terms
+summary: Read the exact current service terms and required privacy notice, including before passkey enrollment
 security:
 - bearerAuth: []
 responses:
@@ -13,7 +13,5 @@ responses:
           $ref: '#/components/schemas/TermsDocument'
   '401':
     $ref: '#/components/responses/Unauthorized'
-  '403':
-    description: Contracting ops administrator required.
   '409':
     description: terms_not_published; ask the service operator for approved terms.

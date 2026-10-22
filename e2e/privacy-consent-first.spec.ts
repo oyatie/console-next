@@ -25,7 +25,9 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
 
   // Enter one-time code to reach enrollment screen
   await page.getByLabel("일회용 코드").fill(code);
+  const documentResponse = page.waitForResponse((response) => response.url().endsWith("/api/v1/onboarding/terms") && response.request().method() === "GET");
   await page.getByRole("button", { name: "코드로 로그인" }).click();
+  const documents = await (await documentResponse).json();
 
   // On /setup-passkey
   await page.waitForURL(/\/setup-passkey/);
@@ -55,6 +57,16 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
   await expect(page.getByLabel(/생년월일/)).toHaveCount(0);
   await expect(page.getByLabel(/전화번호/)).toHaveCount(0);
 
+  // The disclosed texts match the versioned store, and opening them never changes checkbox names.
+  const disclosures = page.locator("details");
+  await disclosures.nth(0).locator("summary").click();
+  await expect(disclosures.nth(0).locator("p")).toHaveText(documents.privacy.body);
+  await disclosures.nth(1).locator("summary").click();
+  await expect(disclosures.nth(1).locator("p")).toHaveText(documents.body);
+  await expect(privacyCheck).toHaveAccessibleName("[필수] 개인정보 수집·이용");
+  await expect(termsCheck).toHaveAccessibleName("[필수] 서비스 이용약관");
+  await expect(page.getByLabel(/전화번호/)).toHaveCount(0);
+
   // 5. Checking only one box keeps commit disabled
   await privacyCheck.check();
   await expect(commit).toBeDisabled();
@@ -66,12 +78,17 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
 
 test("fresh sign-in shows no false error on first visit (issue #44 regression)", { tag: "@privacy" }, async ({ browser }) => {
   const page = await (await newContext(browser)).newPage();
+  await page.addInitScript(() => {
+    Object.defineProperty(PublicKeyCredential, "isConditionalMediationAvailable", { value: async () => true });
+  });
+  await page.route("**/api/v1/auth/passkey/login/start", (route) => route.fulfill({
+    status: 429, contentType: "application/json", body: JSON.stringify({ error: { code: "rate_limited", message: "Rate limited" } }),
+  }));
+  const refused = page.waitForResponse((response) => response.url().endsWith("/api/v1/auth/passkey/login/start") && response.status() === 429);
   await page.goto("/login");
+  await refused;
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByLabel("일회용 코드")).toBeVisible();
-
-  // Wait a moment for any conditional autofill ceremony to resolve/settle
-  await page.waitForTimeout(500);
 
   // Must not display any error banner
   await expect(page.getByRole("alert")).toHaveCount(0);

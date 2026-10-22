@@ -3,7 +3,7 @@ use super::*;
 use console_onboarding_domain::TermsVersion;
 use sqlx::Row;
 
-const LATEST: &str = "SELECT version, sha256, body FROM terms_documents WHERE published_at <= now() ORDER BY published_at DESC, version DESC LIMIT 1";
+const LATEST: &str = "SELECT version, sha256, body FROM terms_documents WHERE kind = 'service_terms' AND published_at <= now() ORDER BY published_at DESC, version DESC LIMIT 1";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TermsDocument {

@@ -101,6 +101,8 @@ struct AdminCredentialResetResponse {
 #[derive(Debug, Deserialize)]
 struct PrivacyConsentStatusResponse {
     policy_version: String,
+    privacy: Value,
+    terms: Value,
     accepted: bool,
     #[serde(with = "time::serde::rfc3339::option")]
     accepted_at: Option<OffsetDateTime>,
@@ -1616,6 +1618,7 @@ async fn approve_session_rejects_access_token_expired_during_family_lock(pool: P
 async fn platform_admin_can_approve_and_consume_bound_device_handoff(pool: PgPool) {
     use sha2::{Digest, Sha256};
 
+    console_platform_test_support::seed_consent_documents(&pool).await;
     let signing_key = SigningKey::random(&mut OsRng);
     let private_pem = signing_key
         .to_pkcs8_pem(LineEnding::LF)
@@ -1869,6 +1872,79 @@ async fn device_login_failures_preserve_proof_and_poll_permit(pool: PgPool) {
     assert_eq!(poll_replay.status(), StatusCode::UNAUTHORIZED);
 }
 
+/// Acceptance binds both separate sign-offs to the exact immutable text hashes.
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn privacy_consent_acceptance_binds_both_exact_documents(pool: PgPool) {
+    let signing_key = SigningKey::random(&mut OsRng);
+    let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
+    let public_key_pem = signing_key
+        .verifying_key()
+        .to_public_key_pem(LineEnding::LF)
+        .unwrap();
+    let branch = seed_branch(&pool, "Document Region", "Document Branch").await;
+    let user =
+        seed_user_with_branch(&pool, "Document User", "010-1234-0081", "MECHANIC", branch).await;
+    let service =
+        build_router(app_state(pool.clone(), private_key_pem.to_string(), public_key_pem).unwrap());
+    let token = admin_session_via_otp(&service, &pool, user).await;
+    let status: Value = post_json(
+        service.clone(),
+        "/api/v1/auth/privacy-consent/status",
+        Some(&token),
+        json!({}),
+        StatusCode::OK,
+    )
+    .await;
+    let consent = json!({
+        "privacy": status["privacy"],
+        "terms": status["terms"],
+        "privacy_collection": true,
+        "terms_of_service": true
+    });
+    for document in ["privacy", "terms"] {
+        let mut mismatched = consent.clone();
+        mismatched[document]["sha256"] = json!("0".repeat(64));
+        let response = post_raw(
+            service.clone(),
+            "/api/v1/auth/privacy-consent/accept",
+            Some(&token),
+            mismatched,
+        )
+        .await;
+        let refusal: Value = response.into_json(StatusCode::CONFLICT).await;
+        assert_eq!(refusal["error"]["code"], "terms_text_changed");
+        let accepted: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM audit_events WHERE actor=$1 AND action='privacy.required_accept'",
+        )
+        .bind(user.as_uuid())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            accepted, 0,
+            "a mismatched {document} hash must never be recorded"
+        );
+    }
+    let accepted: Value = post_json(
+        service,
+        "/api/v1/auth/privacy-consent/accept",
+        Some(&token),
+        consent.clone(),
+        StatusCode::OK,
+    )
+    .await;
+    assert_eq!(accepted["accepted"], true);
+    let snapshot: Value = sqlx::query_scalar(
+        "SELECT after_snap FROM audit_events WHERE actor=$1 AND action='privacy.required_accept'",
+    )
+    .bind(user.as_uuid())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(snapshot["privacy"], consent["privacy"]);
+    assert_eq!(snapshot["terms"], consent["terms"]);
+}
+
 /// Initial enrollment requires privacy and terms consent before passkey registration can begin.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn first_passkey_enrollment_requires_privacy_terms(pool: PgPool) {
@@ -1927,6 +2003,10 @@ async fn first_passkey_enrollment_requires_privacy_terms(pool: PgPool) {
     .await;
     assert!(!initial_status.accepted);
     assert!(initial_status.accepted_at.is_none());
+    assert_eq!(
+        initial_status.privacy["version"].as_str(),
+        Some(initial_status.policy_version.as_str())
+    );
 
     let blocked = post_raw(
         service.clone(),
@@ -1943,7 +2023,8 @@ async fn first_passkey_enrollment_requires_privacy_terms(pool: PgPool) {
         "/api/v1/auth/privacy-consent/accept",
         Some(&redeem.access_token),
         json!({
-            "policy_version": initial_status.policy_version,
+            "privacy": initial_status.privacy,
+            "terms": initial_status.terms,
             "privacy_collection": true,
             "terms_of_service": false
         }),
@@ -2013,8 +2094,8 @@ async fn privacy_consent_status_returns_500_under_db_fault(pool: PgPool) {
     )
     .await;
 
-    // Drop audit_events table to cause a DB fault when checking consent
-    sqlx::query("DROP TABLE audit_events CASCADE")
+    // Missing versioned text must refuse instead of reporting an unaccepted state.
+    sqlx::query("DROP TABLE terms_documents CASCADE")
         .execute(&pool)
         .await
         .unwrap();
@@ -4312,7 +4393,8 @@ async fn accept_required_privacy_consent(
         "/api/v1/auth/privacy-consent/accept",
         Some(access_token),
         json!({
-            "policy_version": status.policy_version,
+            "privacy": status.privacy,
+            "terms": status.terms,
             "privacy_collection": true,
             "terms_of_service": true
         }),
@@ -4975,6 +5057,7 @@ async fn seed_user_with_branch(
     role: &str,
     branch_id: BranchId,
 ) -> UserId {
+    console_platform_test_support::seed_consent_documents(pool).await;
     let user_id = UserId::new();
     sqlx::query(
         "INSERT INTO users (id, display_name, phone, roles, org_id) VALUES ($1, $2, $3, $4, $5)",
