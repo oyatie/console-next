@@ -395,10 +395,13 @@ async fn pending_period_unlock_is_only_the_eligible_second_persons_work_and_leav
         json!({"domain":"payroll","periodStart":"2026-06-01","periodEnd":"2026-06-30","reasonCode":"MONTHLY_PAYROLL_CLOSE"})).await;
     assert_eq!(status, StatusCode::CREATED, "{lock}");
     let lock: Uuid = lock["id"].as_str().unwrap().parse().unwrap();
+    let reason_code = "T_0123456789ABCDEF0123456789ABCDEF";
+    sqlx::query("INSERT INTO reason_codes (org_id,domain,code,label_ko,requires_note,created_by) VALUES ($1,'period_unlock',$2,'추가 정산',false,$3)")
+        .bind(OrgId::one().as_uuid()).bind(reason_code).bind(requester.id).execute(&pool).await.unwrap();
     let relock_at = (OffsetDateTime::now_utc() + Duration::days(3))
         .format(&Rfc3339)
         .unwrap();
-    let payload = format!("PERIOD_UNLOCK\n{lock}\nPAYROLL_ERROR\n{relock_at}");
+    let payload = format!("PERIOD_UNLOCK\n{lock}\n{reason_code}\n{relock_at}");
     let step_up = period_support::step_up(&pool, &svc, &mut requester, lock, &payload).await;
     let unlock = format!("{}/{lock}/unlock", period_support::LOCKS);
     let (status, pending) = period_support::send(
@@ -406,7 +409,7 @@ async fn pending_period_unlock_is_only_the_eligible_second_persons_work_and_leav
         &unlock,
         &requester.token,
         None,
-        json!({"reasonCode":"PAYROLL_ERROR","relockAt":relock_at,"stepUp":step_up}),
+        json!({"reasonCode":reason_code,"relockAt":relock_at,"stepUp":step_up}),
     )
     .await;
     assert_eq!(status, StatusCode::ACCEPTED, "{pending}");
@@ -421,7 +424,8 @@ async fn pending_period_unlock_is_only_the_eligible_second_persons_work_and_leav
         rows[0]["context"]["unlock"],
         json!({
             "domain": "payroll", "periodStart": "2026-06-01", "periodEnd": "2026-06-30",
-            "requester": "업무함 요청자", "reason_code": "PAYROLL_ERROR"
+            "requester": "업무함 요청자", "reason_code": reason_code,
+        "reason_entry": {"system": false, "label_ko": "추가 정산", "label_en": null}
         })
     );
     let requester_ctx = http::Ctx {

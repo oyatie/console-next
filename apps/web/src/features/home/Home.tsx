@@ -3,7 +3,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { components } from "@console/api";
 import type { Checklist } from "@console/api/pending";
-import { t, type MessageId } from "@console/i18n";
+import { isMessageId, t, type MessageId } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { APPROVAL_ROLE, INSURER, LIFECYCLE_EVENT, codeText, label } from "../../lib/labels";
 import { reasonLabel } from "../../lib/reason-codes";
@@ -106,10 +106,10 @@ function InboxRow({ item, action }: { item: InboxItem; action?: RowAction }) {
   const kind = t(KIND_TEXT[item.kind] ?? "home.inbox.unknown");
   const { unlock, insurance, lifecycle, request } = item.context ?? {};
   const subject = unlock ? `${domainText(unlock.domain)} ${periodText(unlock)}` : request ? codeText(`requests.kind.${request.kind}`, t("requests.kind.OTHER")) : item.title;
-  const facts = unlock ? [unlock.requester, reasonLabel("period_unlock", unlock.reason_code)]
+  const facts = unlock ? [unlock.requester, unlock.reason_entry || isMessageId(`reason.period_unlock.${unlock.reason_code}`) ? reasonLabel("period_unlock", unlock.reason_code, unlock.reason_entry ?? undefined) : t("enum.unknown")]
     : insurance ? [label(INSURER, insurance.insurer), codeText(`statutory.${insurance.kind}`, t("home.inbox.unknown")), fmtDate(insurance.effective_date)]
     : lifecycle ? [label(LIFECYCLE_EVENT, lifecycle.action_kind), fmtDate(lifecycle.effective_date)]
-    : request ? [codeText(`requests.reason.${request.reason_code}`, t("home.inbox.unknown"))] : [];
+    : request ? [codeText(`requests.reason.${request.reason_code}`, /^[A-Z][A-Z0-9_]*$/.test(request.reason_code) ? t("enum.unknown") : request.reason_code)] : [];
   return (
     <li className="form">
       <div className="row">
