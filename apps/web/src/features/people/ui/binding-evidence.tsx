@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
@@ -20,12 +20,11 @@ export function BindingEvidence({ subjectId, employeeId }: { subjectId: string; 
   const reviews = useQuery(personBindingReviewsQuery(subjectId));
   return <QueryState q={reviews}>{(page) => {
     const candidates = [...new Map(page.items.flatMap((r) => r.evidence.candidates)
-      .filter((c) => c.employee_id !== employeeId).map((c) => [c.employee_id, c])).values()];
+      .filter((c) => c.employee_id !== employeeId).map((c) => [c.employee_id, c])).values()]
+      .map((c) => ({ ...c, id: c.employee_id }));
     return candidates.length > 0 && <section aria-label={t("identity.binding.title")}>
       <ul className="list-plain">{candidates.map((candidate) => <li key={candidate.employee_id} className="row">
-        <Link to="/people/$id" params={{ id: candidate.employee_id }} search={{}}>
-          {t("people.sameName.other", { name: candidate.name, number: candidate.employee_number ?? "—" })}
-        </Link>
+        <PersonLabel person={candidate} peers={candidates} />
         {candidate.birth_date && <time dateTime={candidate.birth_date}>{fmtDate(candidate.birth_date)}</time>}
       </li>)}</ul>
     </section>;
