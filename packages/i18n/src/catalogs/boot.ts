@@ -8,9 +8,6 @@ import { bootSupportEn, bootSupportKo } from "./boot-support";
 export const bootKo = {
   ...bootConsentKo,
   "common.failed.code.parent_not_found": "그 상위 항목이 없습니다. 조직 구조를 다시 여십시오.",
-  "common.failed.code.contract_overlap": "기존 계약과 기간이 겹칩니다. 계약 내역에서 겹치는 계약을 정정하십시오.",
-  "common.failed.code.rehire_date_not_after_exit": "재입사일은 마지막 퇴직일 다음 날부터 선택하십시오.",
-  "common.failed.code.filing_applicability_unverified": "신고 적용 사실을 확인하지 않아 저장하지 않았습니다. 근로시간·국적 등 필요한 사실을 확인하고, 생년월일이 다르면 직원 기록에서 정정하십시오.",
   "common.failed.code.filing_not_applicable_invalid": "선택한 미해당 사유가 보험의 법정 근거 또는 확인된 사실과 맞지 않아 저장하지 않았습니다. 사실과 해당 사유의 근거를 확인하십시오.",
   "common.failed.code.filing_request_invalid": "요청을 저장하지 않았습니다. 해당 인사 기록에 맞는 요청일·근로월과 시행 중인 신고 종류를 선택하고 중복 요청 여부를 확인하십시오.",
   "common.failed.code.filing_remuneration_required": "상실 신고의 보수총액을 입력하지 않아 저장하지 않았습니다. 실제 신고한 보수총액을 입력하십시오.",
@@ -150,9 +147,6 @@ export type BootMessageId = keyof typeof bootKo;
 export const bootEn: Record<BootMessageId, string> = {
   ...bootConsentEn,
   "common.failed.code.parent_not_found": "That parent no longer exists. Reopen the org structure.",
-  "common.failed.code.contract_overlap": "The period overlaps an existing contract. Correct the overlapping contract in contract history.",
-  "common.failed.code.rehire_date_not_after_exit": "Choose a rehire date after the last exit date.",
-  "common.failed.code.filing_applicability_unverified": "Nothing was saved because filing applicability is unverified. Confirm the required facts, and correct a conflicting birth date in the employee record.",
   "common.failed.code.filing_not_applicable_invalid": "Nothing was saved because the exclusion conflicts with this insurer's cited grounds or the known facts. Confirm the facts and the exclusion basis.",
   "common.failed.code.filing_request_invalid": "Nothing was saved. Choose a request date or work month and an in-force filing kind matching the employment event, and check for an existing request.",
   "common.failed.code.filing_remuneration_required": "Nothing was saved because the loss filing needs total remuneration. Enter the amount actually reported.",
