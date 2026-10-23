@@ -368,3 +368,25 @@ This round also touches shared Home/setup-rail, the existing action-inbox compos
 - `packages/i18n/src/catalogs/en/support-access.ts`
 - `packages/i18n/src/catalogs/ko/support-access.ts`
 - `scripts/api-compat.test.ts`
+
+
+## Round 4 — current-dev compatibility and visible support notices
+
+Rebased first onto current `public/dev` (`ebe3857c3`); G2 has not landed and `ActionInboxSource::ALL` still contains 13 sources. Evidence, the detached fail-before worktree and screenshots are under `/Users/jasonlee/Developer/frontend/lanes/eco-g1-support/round4/`.
+
+- Replaced the stale `view_as` member in dev's bulk-limit token fixture with `support: None`. The isolated rebased base reproduces E0560 at `bulk_limits.rs:59` (`bulk-fail-before.log`).
+- Idle/loading support reads render no banner or empty landmark. Pending and active notices have natural height, with every operator row and action in the page flow. The unused idle copy is removed from both catalogs.
+- Added a compact, catalog-backed `SupportAccessIndicator` using the same SSE-invalidated query. Approvers get a history link and readers get a status without an unauthorized link. It is silent when idle or pending only for another user. **Its shell mount is an owning-lane hand-off:** this round explicitly excludes `apps/web/src/shell/shell.tsx`, so this file is unchanged. The owner should add `SupportAccessIndicator` to the existing banner import and place `{!platform && <SupportAccessIndicator />}` immediately after `<LiveStatus />`. The reviewable patch is `round4/header-indicator.patch` and passes `git apply --check`.
+- The browser regression tests idle, pending, active and crowded notices at 390/1440 in both themes, checking computed overflow, every row and action against the enclosing bounds, and horizontal fit. All eight cases fail on the isolated base; all eight pass after the fix. The support unit suite also covers the compact indicator, idle/loading and non-approver visibility (23 cases).
+- The source-level DB regression creates requests before, exactly at and after `as_of`, then checks exact totals, both keyset pages and an empty earlier snapshot on a runtime-role pool. It passes on the base because the guards already exist. Removing each SQL guard independently makes it fail: the count becomes 3 instead of 2; the rows incorrectly advertise another page. Both mutations are restored (`as-of-mutations.json`).
+- The acceptance E2E uses MVP support surfaces. The workspace-only inbox assertion remains in the existing real-router DB suite. The E2E now records idle/pending/active screenshots at 1440/390 in light/dark and checks for internal scrolling.
+- Regenerated composed OpenAPI and TypeScript types with the repository generators (no contract drift). Regenerated this lane's size contribution against public/dev while excluding paths already registered by another lane's contribution; the private local `dev` branch is not changed.
+
+Round 4 files outside the brief's support/session/UI owns:
+
+- `backend/crates/platform/authz-rest/tests/bulk_limits.rs`: required integration repair for this lane's removed token field.
+- `backend/app/src/action_inbox/sources/support_access.rs`: the requested `as_of` source DB regression; production SQL is unchanged.
+- `backend/ci/gates/file-size/baseline.d/eco-g1-support.txt`: repository-generated size contribution after rebase.
+- `docs/ops/support-access.md`: this evidence and the excluded header mount hand-off.
+
+No excluded file is edited. Slice 2 remains the existing OC0 hand-off; this round adds no new product scope.

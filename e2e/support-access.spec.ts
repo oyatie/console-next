@@ -42,13 +42,28 @@ async function operatorBearer(page: Page) {
   return bearer;
 }
 
-async function auditLayouts(page: Page, context: string) {
+async function auditLayouts(page: Page, context: string, state?: string) {
+  const capture = async () => {
+    if (!state) return;
+    const html = page.locator("html");
+    const theme = await html.getAttribute("data-theme");
+    for (const value of ["light", "dark"]) {
+      await html.evaluate((el, next) => el.dataset.theme = next, value);
+      await page.screenshot({ path: test.info().outputPath(`support-${state}-${page.viewportSize()!.width}-${value}.png`) });
+    }
+    await html.evaluate((el, previous) => { if (previous) el.dataset.theme = previous; else delete el.dataset.theme; }, theme);
+    const region = page.getByRole("region", { name: "지원 접근", exact: true });
+    if (state === "idle") await expect(region).toHaveCount(0);
+    else expect(await region.evaluate((el) => el.scrollHeight - el.clientHeight), "support notices never scroll internally").toBe(0);
+  };
   await page.setViewportSize({ width: 1440, height: 1000 });
   await forgetResize(page);
   await expectAccessible(page, `${context} at 1440px`);
+  await capture();
   await atPhoneWidth(page, async () => {
     await expectAccessible(page, `${context} at 390px`);
     await fits(page, context);
+    await capture();
   });
 }
 
@@ -94,6 +109,7 @@ test("two operators and the customer authorize support; every read arrives live 
   const requester = supportSessionsApi(createClient<paths>({ baseUrl: new URL(operator.url()).origin, headers }));
   const secondOperator = supportSessionsApi(createClient<paths>({ baseUrl: new URL(approver.url()).origin, headers: { authorization: approverBearer() } }));
   await go(tenant, "/");
+  await auditLayouts(tenant, "idle support access", "idle");
   const opened = await vendorStepUp(async () => requester.request({
     ...body, step_up: await boundStepUp(operator, requesterBearer(), id, JSON.stringify([org, id, "request", body.ticket_ref, body.reason_code, body.reason, body.scope, duration])),
   }));
@@ -102,18 +118,11 @@ test("two operators and the customer authorize support; every read arrives live 
     org_id: org, step_up: await boundStepUp(approver, approverBearer(), id, JSON.stringify([org, id, "approve"])),
   });
   expect(approvedByOperator.state).toBe("OPERATOR_APPROVED");
-  // SSE delivers the notification; pending work belongs to the shared action-inbox backend.
+  // SSE delivers the MVP notice. The workspace-only inbox source is covered by its DB suite.
   await expect(tenant.getByText("지원 접근 승인 대기 1건", { exact: true }).first()).toBeVisible();
-  const inbox = await apiOf(tenant, tenantBearer)("/me/action-inbox");
-  expect(inbox.ok()).toBe(true);
-  const actions = await inbox.json() as components["schemas"]["ActionInboxResponse"];
-  expect(actions.items.find((item) => item.id === `support_access:${id}`)).toMatchObject({
-    kind: "support_access", ref: body.ticket_ref, title: body.reason,
-    due: expect.any(String), links: [{ kind: "support_session", id }],
-  });
   const review = tenant.getByRole("link", { name: "지원 요청 확인", exact: true });
   await expect(review).toHaveAttribute("href", `/audit/support-access?review=${id}`);
-  await auditLayouts(tenant, "Home support approval notice");
+  await auditLayouts(tenant, "Home support approval notice", "pending");
   await review.click();
   await expect(tenant.getByText(body.ticket_ref, { exact: true }).first()).toBeVisible();
   for (const suffix of ["decision", "end"]) {
@@ -158,7 +167,7 @@ test("two operators and the customer authorize support; every read arrives live 
   await expect(records.getByText("/api/v1/org-structure", { exact: true })).toBeVisible();
   await expect(records.getByRole("row")).toHaveCount(2);
   expect(documentLoads, "the access record appeared without reloading").toBe(0);
-  await auditLayouts(tenant, "active support access records");
+  await auditLayouts(tenant, "active support access records", "active");
   const read = async (path: string) => {
     const response = await operator.request.get(path, { headers: { authorization: `Bearer ${token}` } });
     expect(response.status(), await response.text()).toBe(200);

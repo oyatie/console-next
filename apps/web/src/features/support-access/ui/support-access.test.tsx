@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ApiError } from "../../../reference/support-access/api";
-import { ActiveSupportBanner, SupportAccess } from "./support-access";
+import { ActiveSupportBanner, SupportAccess, SupportAccessIndicator } from "./support-access";
 import { activeSupportQuery, supportSessionsQuery, supportRefusal, type SupportSession } from "../../../reference/support-access/api";
 
 const state = vi.hoisted(() => ({
@@ -67,7 +67,7 @@ test("approval and end commands use the shared authenticated API and retain thei
   expect(state.post).toHaveBeenLastCalledWith("/api/v1/support-sessions/{id}/end", { params:{path:{id:"session-a"}},headers: { "Idempotency-Key": "intent-b" } });
 });
 test("the banner names an active operator and expiry on any tenant page", () => {
-  expect(renderToStaticMarkup(<ActiveSupportBanner />)).toContain("supportAccess.idle");
+  expect(renderToStaticMarkup(<ActiveSupportBanner />)).toBe("");
   state.active = { sessions: [{ id: session.id, operator_label: session.operator_label, expires_at: "2026-10-23T00:30:00Z" }], can_approve: false };
   const html = renderToStaticMarkup(<ActiveSupportBanner />);
   expect(html).toContain(session.operator_label);
@@ -101,6 +101,28 @@ test("the live notification deep-links to the pending request for approvers only
   expect(renderToStaticMarkup(<ActiveSupportBanner />)).toContain("supportAccess.pending");
   state.active = { sessions: [], can_approve: false, pending_count: 1, pending_approvals: [session] };
   expect(renderToStaticMarkup(<ActiveSupportBanner />)).not.toContain("supportAccess.pending");
+});
+
+test("the compact indicator follows pending and active support without exposing approval links to readers", () => {
+  expect(renderToStaticMarkup(<SupportAccessIndicator />)).toBe("");
+  state.active = { sessions: [], can_approve: true, pending_count: 1, pending_approvals: [session] };
+  expect(renderToStaticMarkup(<SupportAccessIndicator />)).toContain('data-to="/audit/support-access"');
+  state.active = { sessions: [], can_approve: false, pending_count: 1, pending_approvals: [] };
+  expect(renderToStaticMarkup(<SupportAccessIndicator />)).toBe("");
+  state.active = { sessions: [session], can_approve: false, pending_count: 0, pending_approvals: [] };
+  const html = renderToStaticMarkup(<SupportAccessIndicator />);
+  expect(html).toContain('role="status"');
+  expect(html).toContain("supportAccess.indicator");
+  expect(html).not.toContain("data-to");
+  state.error = new ApiError(503, "unavailable", "", []);
+  expect(renderToStaticMarkup(<SupportAccessIndicator />)).toBe("");
+});
+
+test("loading and pending requests for another approver leave no empty banner", () => {
+  state.active = undefined;
+  expect(renderToStaticMarkup(<ActiveSupportBanner />)).toBe("");
+  state.active = { sessions: [], can_approve: false, pending_count: 1, pending_approvals: [] };
+  expect(renderToStaticMarkup(<ActiveSupportBanner />)).toBe("");
 });
 
 test("active details show the support deadline without an approval form or pending deadline", () => {

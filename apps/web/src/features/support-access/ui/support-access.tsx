@@ -34,10 +34,9 @@ const stateText = (state:string) => {const key=`supportAccess.state.${state}`;re
 /** Visible on every tenant page; the shell's SSE stream invalidates this read. */
 export function ActiveSupportBanner() {
   const q = useQuery(activeSupportQuery);
-  // Keep the security status slot mounted so an SSE notification cannot move page controls.
+  if (!q.error && (!q.data || (!q.data.sessions.length && !(q.data.can_approve && q.data.pending_count)))) return null;
   return <section className={styles.status} aria-label={t("supportAccess.title")}>
     {q.error ? <CommandError error={q.error} own={supportRefusal}><Button onClick={() => void q.refetch()}>{t("common.retry")}</Button></CommandError> : q.data && <>
-    {!q.data.pending_count && !q.data.sessions.length && <Banner placement="page" title={t("supportAccess.idle")} />}
     {q.data.can_approve && q.data.pending_count > 0 && <Banner placement="page" tone="warn" live="polite" title={t("supportAccess.pending", { count: fmtNumber(q.data.pending_count) })}
       actions={<Link to="/audit/support-access" search={{ review: q.data.pending_approvals[0]?.id }} className={buttonClass()}>{t("supportAccess.review")}</Link>}>
       {q.data.pending_approvals.map((s) => <p key={s.id}>{s.operator_label} · {t("supportAccess.requestDeadline", { at: fmtDateTime(s.request_expires_at) })}</p>)}
@@ -48,6 +47,20 @@ export function ActiveSupportBanner() {
     </Banner>}
     </>}
   </section>;
+}
+
+/** The shell header keeps this visible while the page's detailed notice scrolls. */
+export function SupportAccessIndicator() {
+  const q = useQuery(activeSupportQuery);
+  if (q.error || !q.data) return null;
+  const active = q.data.sessions.length;
+  const pending = q.data.can_approve ? q.data.pending_count : 0;
+  if (!active && !pending) return null;
+  const label = t("supportAccess.indicatorLabel", { pending: fmtNumber(pending), active: fmtNumber(active) });
+  const count = <Chip tone="warn">{t("supportAccess.indicator", { count: fmtNumber(active + pending) })}</Chip>;
+  return q.data.can_approve
+    ? <Link to="/audit/support-access" className={styles.indicator} aria-label={label} title={label}>{count}</Link>
+    : <span className={styles.indicator} role="status" aria-label={label} title={label}>{count}</span>;
 }
 
 export function SupportAccess() {

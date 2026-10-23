@@ -6,7 +6,7 @@ crates/comms/rest/src/lib.rs	873
 crates/governance/rest/src/lib.rs	355
 crates/ontology/rest/src/lib.rs	2357
 crates/platform/auth/src/jwt.rs	483
-crates/platform/authz-rest/src/lib.rs	494
+crates/platform/authz-rest/src/lib.rs	465
 crates/platform/platform-rest/src/view_as.rs	0
 crates/platform/platform-rest/tests/view_as.rs	0
 crates/platform/request-context/src/lib.rs	274

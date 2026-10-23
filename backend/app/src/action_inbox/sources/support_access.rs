@@ -76,3 +76,70 @@ pub(crate) async fn page(
         has_more,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use console_action_inbox_application::ActionInboxPosition;
+    use console_kernel_core::{BranchScope, OrgId};
+    use console_platform_test_support::{runtime_role_pool, seed_org_and_super_admin};
+    use time::Duration;
+
+    #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+    async fn snapshot_filters_both_support_rows_and_totals(pool: PgPool) {
+        let org = OrgId::new();
+        let user = seed_org_and_super_admin(&pool, *org.as_uuid(), "support-snapshot").await;
+        sqlx::query("UPDATE users SET is_tenant_ops=true WHERE org_id=$1 AND id=$2")
+            .bind(org.as_uuid())
+            .bind(user.as_uuid())
+            .execute(&pool)
+            .await
+            .unwrap();
+        let as_of: OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let mut ids = Vec::new();
+        for requested_at in [as_of - Duration::SECOND, as_of, as_of + Duration::SECOND] {
+            let id = Uuid::new_v4();
+            sqlx::query("INSERT INTO support_sessions(org_id,id,operator_ref,operator_label,ticket_ref,reason_code,reason,scope,requested_duration_seconds,state,requested_at,request_expires_at,request_assertion,operator_approver_ref,operator_approved_at,approval_assertion) VALUES($1,$2,gen_random_uuid(),'공급사 운영자','SNAPSHOT','DIAGNOSE','조회 확인',ARRAY['org'],60,'OPERATOR_APPROVED',$3,$4,gen_random_uuid(),gen_random_uuid(),$3,gen_random_uuid())")
+                .bind(org.as_uuid()).bind(id).bind(requested_at).bind(as_of + Duration::HOUR)
+                .execute(&pool).await.unwrap();
+            ids.push(format!("support_access:{id}"));
+        }
+        let pool = runtime_role_pool(&pool).await;
+        let principal = Principal::new(user, org, Default::default(), BranchScope::All);
+        let mut query = ActionInboxSourceQuery {
+            now: as_of + Duration::seconds(2),
+            as_of,
+            after: None,
+            limit: 1,
+        };
+        let first = page(&pool, &principal, query.clone()).await.unwrap();
+        assert_eq!(first.total, 2);
+        assert!(first.total_is_exact);
+        assert!(first.has_more);
+        assert_eq!(first.items[0].id, ids[0]);
+        query.after = Some(ActionInboxPosition {
+            created_at: first.items[0].created_at,
+            id: first.items[0].id.clone(),
+        });
+        let second = page(&pool, &principal, query.clone()).await.unwrap();
+        assert_eq!(second.total, 2);
+        assert!(!second.has_more);
+        assert_eq!(second.items.len(), 1);
+        assert_eq!(second.items[0].id, ids[1]);
+        query.after = None;
+        query.limit = 10;
+        let all = page(&pool, &principal, query.clone()).await.unwrap();
+        assert_eq!(
+            all.items.iter().map(|item| &item.id).collect::<Vec<_>>(),
+            ids[..2].iter().collect::<Vec<_>>()
+        );
+        query.as_of -= Duration::seconds(2);
+        let empty = page(&pool, &principal, query).await.unwrap();
+        assert_eq!(empty.total, 0);
+        assert!(empty.items.is_empty());
+        assert!(!empty.has_more);
+    }
+}
