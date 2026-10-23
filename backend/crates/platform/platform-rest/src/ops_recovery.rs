@@ -48,9 +48,8 @@ pub(crate) struct DecisionRequest {
 }
 
 fn authority(p: &PlatformPrincipal) -> Result<(), PlatformError> {
-    p.authorize(PlatformFeature::TenantCreate).map_err(|_| {
-        PlatformError::forbidden("platform recovery authority required").with_support_ref()
-    })
+    p.authorize(PlatformFeature::TenantCreate)
+        .map_err(|_| PlatformError::forbidden("platform recovery authority required"))
 }
 fn key(headers: &HeaderMap) -> Result<String, PlatformError> {
     console_platform_db::idempotency::validate_idempotency_key(
@@ -58,7 +57,7 @@ fn key(headers: &HeaderMap) -> Result<String, PlatformError> {
             .get(console_platform_db::idempotency::IDEMPOTENCY_KEY_HEADER)
             .and_then(|h| h.to_str().ok()),
     )
-    .map_err(|error| PlatformError::validation(error).with_support_ref())
+    .map_err(PlatformError::validation)
 }
 pub(crate) async fn vendor_read(
     State(state): State<PlatformRestState>,
@@ -75,7 +74,7 @@ pub(crate) async fn vendor_read(
             OffsetDateTime::now_utc(),
         )
         .await
-        .map_err(|error| PlatformError::from_provisioning(error).with_support_ref())?;
+        .map_err(PlatformError::from_provisioning)?;
     Ok(Json(result).into_response())
 }
 pub(crate) async fn tenant_read(
@@ -86,7 +85,7 @@ pub(crate) async fn tenant_read(
         .provisioner
         .read_ops_recovery(&state.pool, p.org_id, false, OffsetDateTime::now_utc())
         .await
-        .map_err(|error| PlatformError::from_provisioning(error).with_support_ref())?;
+        .map_err(PlatformError::from_provisioning)?;
     Ok(Json(result).into_response())
 }
 pub(crate) async fn open(
@@ -127,11 +126,11 @@ pub(crate) async fn decide(
         Some("approve") => OpsRecoveryCommand::Approve,
         Some("issue") => OpsRecoveryCommand::Issue,
         Some("cancel") => OpsRecoveryCommand::Cancel {
-            reason: body.reason.ok_or_else(|| {
-                PlatformError::validation("cancel reason is required").with_support_ref()
-            })?,
+            reason: body
+                .reason
+                .ok_or_else(|| PlatformError::validation("cancel reason is required"))?,
         },
-        _ => return Err(PlatformError::validation("unknown recovery action").with_support_ref()),
+        _ => return Err(PlatformError::validation("unknown recovery action")),
     };
     execute(
         &state,
@@ -157,14 +156,13 @@ pub(crate) async fn tenant_cancel(
         .provisioner
         .read_ops_recovery(&state.pool, p.org_id, false, OffsetDateTime::now_utc())
         .await
-        .map_err(|error| PlatformError::from_provisioning(error).with_support_ref())?;
+        .map_err(PlatformError::from_provisioning)?;
     if read.request.as_ref().map(|r| r.id) != Some(rid) {
         return Err(PlatformError::new(
             StatusCode::NOT_FOUND,
             "not_found",
             "recovery request not found",
-        )
-        .with_support_ref());
+        ));
     }
     execute(
         &state,
@@ -173,9 +171,9 @@ pub(crate) async fn tenant_cancel(
         p.org_id,
         rid,
         OpsRecoveryCommand::Cancel {
-            reason: body.reason.ok_or_else(|| {
-                PlatformError::validation("cancel reason is required").with_support_ref()
-            })?,
+            reason: body
+                .reason
+                .ok_or_else(|| PlatformError::validation("cancel reason is required"))?,
         },
         body.step_up,
         &key(&headers)?,
@@ -195,9 +193,7 @@ async fn execute(
     key: &str,
 ) -> Result<Response, PlatformError> {
     let (mut tx, assertion) =
-        require_platform_step_up(state, user, actor_org, org, id, &command, envelope)
-            .await
-            .map_err(PlatformError::with_support_ref)?;
+        require_platform_step_up(state, user, actor_org, org, id, &command, envelope).await?;
     let result = state
         .provisioner
         .write_ops_recovery_in_tx(
@@ -214,14 +210,13 @@ async fn execute(
             OffsetDateTime::now_utc(),
         )
         .await
-        .map_err(|error| PlatformError::from_provisioning(error).with_support_ref())?;
+        .map_err(PlatformError::from_provisioning)?;
     tx.commit().await.map_err(|_| {
         PlatformError::new(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal",
             "internal server error",
         )
-        .with_support_ref()
     })?;
     Ok(Json(result).into_response())
 }

@@ -732,6 +732,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform/support-references/{reference}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resolve a full support reference or an unambiguous eight-character display reference */
+        get: operations["resolvePlatformSupportReference"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/platform/tenant-context": {
         parameters: {
             query?: never;
@@ -3019,7 +3036,7 @@ export interface paths {
         put?: never;
         /**
          * First-party client error beacon (B-01)
-         * @description Unauthenticated and same-origin: the SPA reports an uncaught error, an unhandled rejection, a failed bundle or stylesheet, a failed dynamic import or a boot that never rendered, with navigator.sendBeacon (any content type). A closed vocabulary only: no message, query or form value. Counted in console_client_errors_total{kind,build}; capped per client IP and per process (429 + Retry-After).
+         * @description Unauthenticated and same-origin: the SPA reports an uncaught error, an unhandled rejection, a failed bundle or stylesheet, a failed dynamic import or a boot that never rendered, with navigator.sendBeacon (any content type). A closed vocabulary only: no message, query or form value. Recovery reference requests are not counted as errors. Counted in console_client_errors_total{kind,build}; capped per client IP and per process (429 + Retry-After).
          */
         post: operations["reportClientError"];
         delete?: never;
@@ -12163,6 +12180,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/support-references/{reference}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resolve a full support reference or an unambiguous eight-character display reference */
+        get: operations["resolveSupportReference"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/support/intake": {
         parameters: {
             query?: never;
@@ -19582,17 +19616,19 @@ export interface components {
             error: {
                 code: string;
                 message: string;
-                /**
-                 * Format: uuid
-                 * @description Support reference for a governed ops recovery refusal.
-                 */
+                /** @description Request correlation id shared by the response, structured log and request span. */
                 support_ref?: string;
                 /**
                  * Format: date-time
                  * @description Hold boundary on an ops_recovery_hold_active refusal.
                  */
                 hold_until?: string;
-                /** @description Present on a 5xx. The server-side trace id to quote to operators; the message is then generic and the detail stays in the server log. */
+                /**
+                 * Format: date-time
+                 * @description Server timestamp of the error response.
+                 */
+                support_ref_at?: string;
+                /** @description Present on error responses. The server-side trace id to quote to operators; the message is then generic and the detail stays in the server log. */
                 trace_id?: string;
                 /** @description Present when an operation has an uncertain admission or external outcome. */
                 operation_id?: components["schemas"]["Uuid"];
@@ -29776,6 +29812,63 @@ export interface operations {
             };
         };
     };
+    resolvePlatformSupportReference: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reference: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Diagnostic context authorized by the support_reference Cedar decision. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        support_ref: string;
+                        trace_id: string;
+                        release: string;
+                        route_template: string;
+                        /** Format: uuid */
+                        org_id: string;
+                        /** Format: date-time */
+                        support_ref_at: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description support_reference_cross_tenant_denied or support_reference_grant_required; no diagnostic data or business writes. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description support_reference_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The log store is unconfigured or unavailable; no database fallback. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     startPlatformTenantContext: {
         parameters: {
             query?: never;
@@ -33187,14 +33280,28 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    kind: "error" | "rejection" | "resource" | "preload" | "boot";
+                    kind: "error" | "rejection" | "resource" | "preload" | "boot" | "reference";
                     build: string;
                     route: string;
                     name?: string;
+                    release?: string;
                 };
             };
         };
         responses: {
+            /** @description An Accept application/json request receives the server-issued diagnostic reference. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        support_ref: string;
+                        /** Format: date-time */
+                        support_ref_at: string;
+                    };
+                };
+            };
             /** @description Counted. */
             204: {
                 headers: {
@@ -52727,6 +52834,63 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             /** @description Media storage is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    resolveSupportReference: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reference: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Diagnostic context authorized by the support_reference Cedar decision. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        support_ref: string;
+                        trace_id: string;
+                        release: string;
+                        route_template: string;
+                        /** Format: uuid */
+                        org_id: string;
+                        /** Format: date-time */
+                        support_ref_at: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description support_reference_cross_tenant_denied or support_reference_grant_required; no diagnostic data or business writes. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description support_reference_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The log store is unconfigured or unavailable; no database fallback. */
             503: {
                 headers: {
                     [name: string]: unknown;

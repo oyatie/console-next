@@ -7,6 +7,7 @@ description: >-
   unhandled rejection, a failed bundle or stylesheet, a failed dynamic
   import or a boot that never rendered, with navigator.sendBeacon (any
   content type). A closed vocabulary only: no message, query or form value.
+  Recovery reference requests are not counted as errors.
   Counted in console_client_errors_total{kind,build}; capped per client IP
   and per process (429 + Retry-After).
 requestBody:
@@ -20,7 +21,7 @@ requestBody:
         properties:
           kind:
             type: string
-            enum: [error, rejection, resource, preload, boot]
+            enum: [error, rejection, resource, preload, boot, reference]
           build:
             type: string
             pattern: '^[A-Za-z0-9_-]{1,16}$'
@@ -31,7 +32,25 @@ requestBody:
           name:
             type: string
             pattern: '^[A-Za-z0-9_]{1,40}$'
+          release:
+            type: string
+            maxLength: 80
+            pattern: '^[A-Za-z0-9._:-]+$'
 responses:
+  '202':
+    description: An Accept application/json request receives the server-issued diagnostic reference.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [support_ref, support_ref_at]
+          properties:
+            support_ref:
+              type: string
+              pattern: '^[0-9a-f]{32}$'
+            support_ref_at:
+              type: string
+              format: date-time
   '204':
     description: Counted.
   '400':

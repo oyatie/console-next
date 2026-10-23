@@ -14,15 +14,19 @@
               type: string
             support_ref:
               type: string
-              format: uuid
-              description: Support reference for a governed ops recovery refusal.
+              pattern: '^[0-9a-f]{32}$'
+              description: Request correlation id shared by the response, structured log and request span.
             hold_until:
               type: string
               format: date-time
               description: Hold boundary on an ops_recovery_hold_active refusal.
+            support_ref_at:
+              type: string
+              format: date-time
+              description: Server timestamp of the error response.
             trace_id:
               type: string
-              description: Present on a 5xx. The server-side trace id to quote to operators; the message is then generic and the detail stays in the server log.
+              description: Present on error responses. The server-side trace id to quote to operators; the message is then generic and the detail stays in the server log.
             operation_id:
               $ref: '#/components/schemas/Uuid'
               description: Present when an operation has an uncertain admission or external outcome.

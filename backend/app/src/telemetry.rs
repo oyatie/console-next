@@ -13,6 +13,17 @@ use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
+tokio::task_local! { static REQUEST_TRACE: TraceContext; }
+
+pub(crate) async fn with_trace_context(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    REQUEST_TRACE
+        .scope(TraceContext::generate(), next.run(request))
+        .await
+}
+
 pub(crate) fn current_trace_context() -> TraceContext {
     let context = tracing::Span::current().context();
     let span_context = context.span().span_context().clone();
@@ -23,14 +34,16 @@ pub(crate) fn current_trace_context() -> TraceContext {
         )
         .unwrap_or_else(|_| TraceContext::generate())
     } else {
-        TraceContext::generate()
+        REQUEST_TRACE
+            .try_with(Clone::clone)
+            .unwrap_or_else(|_| TraceContext::generate())
     }
 }
 
 pub(crate) fn record_otel_ids(span: &tracing::Span) -> String {
     let context = span.context();
     let span_context = context.span().span_context().clone();
-    let fallback = TraceContext::generate();
+    let fallback = current_trace_context();
     let trace_id = if span_context.is_valid() {
         span_context.trace_id().to_string()
     } else {

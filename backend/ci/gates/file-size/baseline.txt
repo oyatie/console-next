@@ -41,7 +41,7 @@ app/tests/object_links_api.rs	593
 app/tests/object_ontology_api.rs	537
 app/tests/object_resolve_api.rs	908
 app/tests/office_versions.rs	313
-app/tests/openapi_drift.rs	1114
+app/tests/openapi_drift.rs	1110
 app/tests/org_change_api.rs	1745
 app/tests/org_units_api.rs	716
 app/tests/platform_onboarding_e2e.rs	556

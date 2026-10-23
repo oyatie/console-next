@@ -1,3 +1,4 @@
+import { expectAccessible } from "./a11y";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { newContext, vendorPage } from "./flows";
 
@@ -44,26 +45,45 @@ test("a lazy screen chunk missing once reloads the page once, afresh, and the sc
 
 test("a lazy screen chunk that stays missing reloads once, then shows the error screen; its button reloads afresh", async ({ browser }) => {
   const page = await vendorPage(browser);
-  let tries = 0;
-  await page.route((u) => TENANTS_CHUNK.test(u.pathname), (route) => (++tries, notFound(route)));
-  const docs = documents(page);
-  await page.goto("/platform");
-  await expect(page.getByRole("heading", { name: CRASHED })).toBeVisible();
-  await settled(docs, 2); // one reload, no loop
-  expect(busted(docs[1]!)).toBe(true);
-  expect(tries).toBe(2);
+  try {
+    let tries = 0;
+    await page.route((u) => TENANTS_CHUNK.test(u.pathname), (route) => (++tries, notFound(route)));
+    const docs = documents(page);
+    const referenceRequest = page.waitForRequest(r => new URL(r.url()).pathname === "/api/v1/client-errors" && r.headers().accept === "application/json");
+    await page.goto("/platform");
+    await expect(page.getByRole("heading", { name: CRASHED })).toBeVisible();
+    await expect(page.locator("[data-support-reference]")).toBeVisible();
+    const reference = await page.locator("[data-support-reference]").getAttribute("data-support-reference");
+    const { release } = (await referenceRequest).postDataJSON() as { release: string };
+    await expect(page.getByRole("button", { name: "지원 참조 번호 복사" })).toBeVisible();
+    await expectAccessible(page, "chunk recovery support reference");
+    await settled(docs, 2); // one reload, no loop
+    expect(busted(docs[1]!)).toBe(true);
+    expect(tries).toBe(2);
 
-  // The button reloads afresh; still missing, the screen comes back without a reload of its own.
-  await page.getByRole("button", { name: RELOAD }).click();
-  await expect(page.getByRole("heading", { name: CRASHED })).toBeVisible();
-  await settled(docs, 3);
-  expect(busted(docs[2]!)).toBe(true);
+    // The button reloads afresh; still missing, the screen comes back without a reload of its own.
+    await page.getByRole("button", { name: RELOAD }).click();
+    await expect(page.getByRole("heading", { name: CRASHED })).toBeVisible();
+    await settled(docs, 3);
+    expect(busted(docs[2]!)).toBe(true);
 
-  // The chunk is back: the button brings the screen, and that load clears the guard for the next deploy.
-  await page.unrouteAll();
-  await page.getByRole("button", { name: RELOAD }).click();
-  await expect(page.getByRole("button", { name: "고객 계정 개설" })).toBeVisible();
-  expect(await page.evaluate(() => Object.keys(sessionStorage).filter((k) => k.startsWith("console.chunk-reload:")))).toEqual([]);
+    // The chunk is back: the button brings the screen, and that load clears the guard for the next deploy.
+    await page.unrouteAll();
+    await page.getByRole("button", { name: RELOAD }).click();
+    await expect(page.getByRole("button", { name: "고객 계정 개설" })).toBeVisible();
+    expect(await page.evaluate(() => Object.keys(sessionStorage).filter((k) => k.startsWith("console.chunk-reload:")))).toEqual([]);
+    await page.getByText("지원 참조 번호 조회", { exact: true }).click();
+    await page.getByLabel("전체 지원 참조 번호").fill(`ref ${reference!.slice(0, 8)}`);
+    await expect(async () => {
+      await page.getByLabel("전체 지원 참조 번호").press("Enter");
+      await expect(page.getByText(reference!, { exact: true })).toBeVisible();
+    }).toPass();
+    await expect(page.getByText("/platform", { exact: true })).toBeVisible();
+    await expect(page.getByText(release, { exact: true })).toBeVisible();
+  } finally {
+    await page.unrouteAll();
+    await page.reload();
+  }
 });
 
 /**
@@ -102,6 +122,8 @@ test("an entry chunk that stays missing reloads once, then shows the static erro
   const docs = documents(page);
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: CRASHED })).toBeVisible();
+  await expect(page.locator("[data-support-reference]")).toBeVisible();
+  await expectAccessible(page, "stale entry support reference");
   await settled(docs, 2);
   expect(busted(docs[1]!)).toBe(true);
   await page.getByRole("button", { name: RELOAD }).click();

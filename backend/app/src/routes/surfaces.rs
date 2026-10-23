@@ -12,6 +12,7 @@ const fn surface(name: &'static str, paths: &'static [&'static str]) -> Configur
 }
 
 pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
+    surface("support-reference", crate::http::support_reference::PATHS),
     surface("public-status", crate::http::status::STATUS_ROUTE_PATHS),
     surface("requests", crate::requests::REQUEST_ROUTE_PATHS),
     surface("audit", crate::AUDIT_ROUTE_PATHS),

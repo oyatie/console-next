@@ -289,12 +289,18 @@ pub fn build_router(state: AppState) -> Router {
         // R4: no internal error text leaves the process (generic 5xx message
         // + trace_id; text/plain errors → JSON envelope). Inside `localize`,
         // so the generic message is translated by code.
-        .layer(axum::middleware::from_fn(redact::redact))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            redact::redact,
+        ))
         // Korean `message` for `Accept-Language: ko` (error_i18n's one table).
         .layer(axum::middleware::from_fn(error_i18n::localize))
         // INF-01: `/api` responses get `no-store`; downloads `private, no-store`.
         .layer(axum::middleware::from_fn(cache_control::default_no_store))
-        .layer(http_trace_layer());
+        .layer(http_trace_layer())
+        .layer(axum::middleware::from_fn(
+            crate::telemetry::with_trace_context,
+        ));
     // This wraps the fully-composed HTTP surface exactly once.  Every router
     // below consumes the resolved extension; no domain/rate-limit surface is
     // allowed to interpret raw X-Forwarded-For itself.

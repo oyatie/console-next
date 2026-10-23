@@ -19,6 +19,10 @@ export type LastChange = {
 const requestKeys = new WeakMap<Response, string>();
 /** What a refusal carries besides its code and message. */
 export type ErrorExtras = {
+  /** Diagnostic correlation issued by the server; absent for network failures. */
+  traceId?: string;
+  supportRef?: string;
+  supportRefAt?: string;
   /** Field-level refusals (`error.errors[]`). */
   errors?: FieldError[];
   /** The refusal's facts by name (`error.details`), e.g. the lock that refused a dated write. */
@@ -40,6 +44,9 @@ export function retryAfterMs(value: string | null, now = Date.now()): number | u
 
 /** Backend error envelope `{error:{code,message,reasons?,operation_id?,errors?,details?}}` as a throwable. */
 export class ApiError extends Error {
+  readonly traceId?: string;
+  readonly supportRef?: string;
+  readonly supportRefAt?: string;
   readonly errors: FieldError[];
   readonly details: Record<string, unknown>;
   readonly retryAfterMs?: number;
@@ -59,6 +66,9 @@ export class ApiError extends Error {
     extras: ErrorExtras = {},
   ) {
     super(message);
+    this.traceId = extras.traceId;
+    this.supportRef = extras.supportRef;
+    this.supportRefAt = extras.supportRefAt;
     this.errors = extras.errors ?? [];
     this.details = extras.details ?? {};
     this.retryAfterMs = extras.retryAfterMs;
@@ -81,6 +91,9 @@ export class ApiError extends Error {
   static fromBody(res: Response, body: unknown): ApiError {
     const e = (body as { error?: ErrorBody } | null)?.error;
     return new ApiError(res.status, e?.code ?? `http_${res.status}`, e?.message ?? res.statusText, e?.reasons, e?.operation_id ?? res.headers.get("operation-id") ?? undefined, Boolean(e?.message), e?.refusals, {
+      traceId: e?.trace_id,
+      supportRef: e?.support_ref,
+      supportRefAt: e?.support_ref_at,
       errors: e?.errors,
       details: e?.details,
       retryAfterMs: retryAfterMs(res.headers.get("retry-after")),

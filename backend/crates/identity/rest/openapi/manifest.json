@@ -55,6 +55,9 @@
     "/api/platform/orgs/{id}/ops-recovery/{rid}/issue": [
       "post"
     ],
+    "/api/platform/support-references/{reference}": [
+      "get"
+    ],
     "/api/platform/tenant-context": [
       "post"
     ],
@@ -309,6 +312,9 @@
       "get"
     ],
     "/api/v1/status/evidence": [
+      "get"
+    ],
+    "/api/v1/support-references/{reference}": [
       "get"
     ],
     "/api/v1/tenant/company-domain/request": [

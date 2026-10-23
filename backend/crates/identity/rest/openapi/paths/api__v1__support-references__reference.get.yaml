@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [system]
+operationId: resolveSupportReference
+summary: Resolve a full support reference or an unambiguous eight-character display reference
+security:
+  - bearerAuth: []
+parameters:
+  - name: reference
+    in: path
+    required: true
+    schema:
+      type: string
+      pattern: '^(?:[0-9a-f]{8}|[0-9a-f]{32})$'
+responses:
+  '200':
+    description: Diagnostic context authorized by the support_reference Cedar decision.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [support_ref, trace_id, release, route_template, org_id, support_ref_at]
+          properties:
+            support_ref:
+              type: string
+              pattern: '^[0-9a-f]{32}$'
+            trace_id:
+              type: string
+            release:
+              type: string
+            route_template:
+              type: string
+            org_id:
+              type: string
+              format: uuid
+            support_ref_at:
+              type: string
+              format: date-time
+  '503':
+    description: The log store is unconfigured or unavailable; no database fallback.
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: support_reference_cross_tenant_denied or support_reference_grant_required; no diagnostic data or business writes.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: support_reference_not_found
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

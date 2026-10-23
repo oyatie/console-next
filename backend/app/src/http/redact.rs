@@ -115,7 +115,7 @@ fn rewrite(
                 tracing::error!(status = status.as_u16(), trace_id = %trace_id, detail = %original, "server error response redacted");
             }
         }
-        error.insert("trace_id".into(), trace_id.into());
+        error.entry("trace_id").or_insert_with(|| trace_id.into());
         generic.to_owned()
     } else {
         original
@@ -129,30 +129,63 @@ fn rewrite(
 }
 
 /// The response layer; see the module docs.
-pub async fn redact(request: Request, next: Next) -> Response {
+pub async fn redact(
+    axum::extract::State(state): axum::extract::State<crate::state::AppState>,
+    request: Request,
+    next: Next,
+) -> Response {
+    let authorization = request.headers().get(header::AUTHORIZATION).cloned();
+    let route = super::metrics::cardinality_safe_http_route(&request).to_owned();
     let (response, pool_timed_out) =
         console_platform_db::watch_pool_timeouts(next.run(request)).await;
     let status = response.status();
     let kind = content_type(&response);
-    let json = kind.starts_with("application/json");
+    let json = kind.starts_with("application/json") || kind.starts_with("application/problem+json");
     let text = kind.starts_with("text/plain");
-    if !((status.is_server_error() && (json || text)) || (status.is_client_error() && text)) {
+    if !((status.is_server_error() || status.is_client_error()) && (json || text)) {
         return response;
     }
     let (mut parts, bytes) = match buffer_small_body(response).await {
         Ok(buffered) => buffered,
         Err(response) => return *response,
     };
-    let Some(rewritten) = rewrite(status, (json, pool_timed_out), &bytes, || {
+    let Some(mut rewritten) = rewrite(status, (json, pool_timed_out), &bytes, || {
         crate::telemetry::record_otel_ids(&tracing::Span::current())
     }) else {
         return Response::from_parts(parts, Body::from(bytes));
     };
+    let trace_id = rewritten.body["error"]["trace_id"]
+        .as_str()
+        .map(str::to_owned)
+        .unwrap_or_else(|| crate::telemetry::record_otel_ids(&tracing::Span::current()));
+    rewritten.body["error"]["trace_id"] = trace_id.clone().into();
+    let org = super::support_reference::request_org(&state, authorization.as_ref());
+    let reference = rewritten.body["error"]["support_ref"]
+        .as_str()
+        .unwrap_or(&trace_id)
+        .to_owned();
+    let at = super::support_reference::issue(
+        org,
+        &route,
+        &state.web_release,
+        &reference,
+        &trace_id,
+        "http",
+        None,
+    );
+    rewritten.body["error"]["support_ref"] = reference.clone().into();
+    rewritten.body["error"]["support_ref_at"] = at.into();
+    if let Ok(value) = HeaderValue::from_str(&reference) {
+        parts.headers.insert("support-ref", value);
+    }
+    rewritten.body["type"] = "about:blank".into();
+    rewritten.body["title"] = rewritten.body["error"]["message"].clone();
+    rewritten.body["status"] = rewritten.status.as_u16().into();
     parts.status = rewritten.status;
     parts.headers.remove(header::CONTENT_LENGTH);
     parts.headers.insert(
         header::CONTENT_TYPE,
-        HeaderValue::from_static("application/json"),
+        HeaderValue::from_static("application/problem+json"),
     );
     // Only overload earns Retry-After: a "not configured" 503 is not transient.
     if rewritten.retry {
@@ -165,106 +198,5 @@ pub async fn redact(request: Request, next: Next) -> Response {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
-mod tests {
-    use super::*;
-
-    fn run(status: StatusCode, json: bool, body: &str) -> (StatusCode, Value) {
-        let rewritten =
-            rewrite(status, (json, false), body.as_bytes(), || "t-1".to_owned()).unwrap();
-        (rewritten.status, rewritten.body)
-    }
-
-    #[test]
-    fn a_500_keeps_its_code_and_loses_the_sql_text() {
-        let body = r#"{"error":{"code":"internal","message":"error returned from database: relation \"employees\" does not exist"}}"#;
-        let (status, json) = run(StatusCode::INTERNAL_SERVER_ERROR, true, body);
-        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert_eq!(
-            json,
-            json!({"error": {"code": "internal", "message": "internal server error", "trace_id": "t-1"}})
-        );
-    }
-
-    #[test]
-    fn a_502_with_a_sender_error_is_generic() {
-        let body = r#"{"error":{"code":"bad_gateway","message":"could not send the verification email: smtp 535 auth failed"}}"#;
-        let (_, json) = run(StatusCode::BAD_GATEWAY, true, body);
-        assert_eq!(json["error"]["message"], "an upstream service failed");
-        assert_eq!(json["error"]["code"], "bad_gateway");
-    }
-
-    /// regression (PERF-BE): a crate that maps the session check's pool
-    /// timeout to an opaque 500 (`/org-structure`: code `internal`, no text)
-    /// answered 500 under load; the request's helper timeout makes it a shed.
-    #[test]
-    fn regression_an_opaque_500_after_a_pool_timeout_is_a_503_with_retry_after() {
-        let body = r#"{"error":{"code":"internal","message":"internal server error"}}"#;
-        let shed = rewrite(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            (true, true),
-            body.as_bytes(),
-            String::new,
-        )
-        .unwrap();
-        assert_eq!(
-            (shed.status, shed.retry),
-            (StatusCode::SERVICE_UNAVAILABLE, true)
-        );
-        assert_eq!(shed.body["error"]["code"], "unavailable");
-        let (status, _) = run(StatusCode::INTERNAL_SERVER_ERROR, true, body);
-        assert_eq!(
-            status,
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "no timeout: a fault"
-        );
-    }
-
-    #[test]
-    fn a_plain_text_rejection_becomes_the_json_envelope() {
-        let (status, json) = run(
-            StatusCode::BAD_REQUEST,
-            false,
-            "Failed to parse the request body as JSON: EOF while parsing",
-        );
-        assert_eq!(status, StatusCode::BAD_REQUEST);
-        assert_eq!(json["error"]["code"], "bad_request");
-        assert_eq!(
-            json["error"]["message"],
-            "Failed to parse the request body as JSON: EOF while parsing"
-        );
-        assert!(json["error"].get("trace_id").is_none());
-        let (_, json) = run(
-            StatusCode::PAYLOAD_TOO_LARGE,
-            false,
-            "length limit exceeded",
-        );
-        assert_eq!(json["error"]["code"], "payload_too_large");
-    }
-
-    #[test]
-    fn a_pool_timeout_alone_earns_retry_after_and_readyz_is_untouched() {
-        let pool = r#"{"error":{"code":"internal","message":"internal server error"}}"#;
-        let check = |body: &str, timed_out| {
-            rewrite(
-                StatusCode::SERVICE_UNAVAILABLE,
-                (true, timed_out),
-                body.as_bytes(),
-                String::new,
-            )
-        };
-        assert!(check(pool, true).unwrap().retry);
-        let unconfigured =
-            r#"{"error":{"code":"service_unavailable","message":"x is not configured"}}"#;
-        assert!(!check(unconfigured, false).unwrap().retry);
-        // /readyz reports its dependencies in its own 503 body: not an envelope.
-        assert!(check(r#"{"status":"not_ready","database":"unreachable"}"#, false).is_none());
-    }
-
-    #[test]
-    fn a_panic_text_is_generic() {
-        let (_, json) = run(StatusCode::INTERNAL_SERVER_ERROR, false, "Service panicked");
-        assert_eq!(json["error"]["code"], "internal");
-        assert_eq!(json["error"]["message"], "internal server error");
-    }
-}
+#[path = "redact_tests.rs"]
+mod tests;

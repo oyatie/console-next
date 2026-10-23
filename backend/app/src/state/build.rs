@@ -75,7 +75,10 @@ impl AppState {
             config.juso.clone(),
         ));
 
+        let (web_release, support_log_client) = super::support::dependencies(&config)?;
         Ok(Self {
+            web_release,
+            support_log_client,
             config,
             database,
             leave_command_database: DatabaseDependency::NotConfigured,
