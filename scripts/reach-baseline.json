@@ -870,11 +870,6 @@
   "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
   "when": "mvp"
  },
- "POST /api/v1/auth/privacy-consent/accept": {
-  "lane": "PV1",
-  "reason": "PV1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
  "POST /api/v1/auth/signup": {
   "lane": "MAT-PARITY",
   "reason": "Self-signup is outside MVP bootstrap and invitation flows; units/maturity/plan.md §3.",
