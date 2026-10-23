@@ -97,7 +97,7 @@ impl std::error::Error for UnknownValue {}
 
 object_keys! {
     /// `organizations` stays the tenant/current head; `company_revisions` is the
-    /// append-only history. No `companies` table is created.
+    /// immutable legacy history. Legal facts belong to legal entities.
     ///
     /// Current production writers of `organizations`: none. The four matches in
     /// the tree are three `#[cfg(test)]` fixtures (`console-platform-group`,
@@ -511,37 +511,8 @@ pub trait CanonicalObject {
     const KEY: ObjectKey;
 }
 
-/// Blockers found by a preflight. Empty means the command may be submitted.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Preflight {
-    blockers: Vec<String>,
-}
-
-impl Preflight {
-    /// No blockers.
-    #[must_use]
-    pub const fn ok() -> Self {
-        Self {
-            blockers: Vec::new(),
-        }
-    }
-
-    /// Blocked, for the given reasons.
-    #[must_use]
-    pub fn blocked(blockers: Vec<String>) -> Self {
-        Self { blockers }
-    }
-
-    #[must_use]
-    pub fn is_ok(&self) -> bool {
-        self.blockers.is_empty()
-    }
-
-    #[must_use]
-    pub fn blockers(&self) -> &[String] {
-        &self.blockers
-    }
-}
+mod preflight;
+pub use preflight::Preflight;
 
 /// A typed query that knows which member of the dispatch roster it is.
 ///
@@ -628,6 +599,7 @@ pub trait CanonicalPort {
         object_type_id: uuid::Uuid,
     ) -> Self::Command;
 
+    /// Validate fresh writes after replay lookup; dry-run preflight never blocks a stored receipt.
     /// Performs the write and returns the stored receipt. A repeat of the same
     /// command id with the same actor and digest replays it.
     ///

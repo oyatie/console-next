@@ -43,40 +43,8 @@ impl PgOrgChangeStore {
                 let is_root = id == *org.as_uuid();
                 let (head, revisions) = if is_root {
                     let head = company_root(tx, org).await?.ok_or_else(not_found)?;
-                    let rows = sqlx::query(
-                        "SELECT r.version, r.attributes, r.actor_id, \
-                         u.display_name AS actor_name, r.created_at, a.actor_kind, a.command_id \
-                         FROM company_revisions r LEFT JOIN users u ON u.id = r.actor_id \
-                         LEFT JOIN LATERAL (SELECT a.actor_kind, a.command_id FROM audit_events a \
-                           WHERE a.org_id = r.org_id AND a.target_type = 'company' \
-                             AND a.target_id = r.org_id::text AND a.actor = r.actor_id \
-                             AND a.created_at = r.created_at AND (a.outcome IS NULL OR a.outcome = 'ALLOWED') \
-                           ORDER BY (a.command_id = r.command_id) DESC NULLS LAST, a.id DESC LIMIT 1) a ON true \
-                         ORDER BY r.version DESC",
-                    )
-                    .fetch_all(tx.as_mut())
-                    .await?;
-                    let mut revisions = Vec::with_capacity(rows.len());
-                    for row in &rows {
-                        let attributes: Value = row.try_get("attributes")?;
-                        let created_at: OffsetDateTime = row.try_get("created_at")?;
-                        revisions.push(OrgUnitRevisionView {
-                            version: row.try_get("version")?,
-                            name: attr_text(&attributes, "legal_name").unwrap_or_default(),
-                            parent_id: None,
-                            status: OrgUnitStatus::Active,
-                            effective_from: attr_date(&attributes, created_at),
-                            actor_id: row.try_get("actor_id")?,
-                            actor_name: row.try_get("actor_name")?,
-                            actor_kind: row.try_get("actor_kind")?,
-                            command_id: row.try_get("command_id")?,
-                            created_at,
-                            code: None,
-                            head_employee_id: None,
-                            head_name: None,
-                            merged_into: None,
-                        });
-                    }
+                    // Legal revision history is on the entity record, not the tenant root.
+                    let revisions = Vec::new();
                     (head, revisions)
                 } else {
                     let head = load_unit_head(tx, id).await?.ok_or_else(not_found)?;
@@ -265,10 +233,11 @@ impl PgOrgChangeStore {
             let (company_resolved, org_units) = with_org_conn(&self.pool, org_id, |tx| {
                 Box::pin(async move {
                     // SELECT-only: writer-ownership does not charge reads.
+                    // Tenant identity resolves without a retired company revision.
                     // Kept local so this adapter never depends on the Company
                     // owner adapter (adapter→adapter is illegal).
                     let company_resolved: bool = sqlx::query_scalar(
-                        "SELECT EXISTS(SELECT 1 FROM company_revisions WHERE org_id = $1)",
+                        "SELECT EXISTS(SELECT 1 FROM organizations WHERE id = $1)",
                     )
                     .bind(*org_id.as_uuid())
                     .fetch_one(tx.as_mut())

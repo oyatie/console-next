@@ -17,7 +17,7 @@ export function grouped(c: Checklist) {
 /** Done, or done with something to look at. */
 export const finished = (s: ChecklistStep) => s.state === "done" || s.state === "attention";
 
-export type Fix = { to: "/org" | "/org/entities" | "/org/entities/new" | "/setup/company-names" | "/setup/go-live" | "/org/changes" | "/people" | "/people/new" | "/people/unplaced" | "/access/roles/new" | "/access/grants"; search?: { view: "accounts" } };
+export type Fix = { to: "/org" | "/org/entities" | "/org/entities/new" | "/setup/go-live" | "/org/changes" | "/people" | "/people/new" | "/people/unplaced" | "/access/roles/new" | "/access/grants"; search?: { view: "accounts" } };
 const ENTITIES: Fix = { to: "/org/entities" };
 /**
  * Where each server remedy (and step action) is fixed. A code not listed here, or one the server marks as
@@ -29,6 +29,7 @@ const LINKS: Record<string, Fix> = {
   register_legal_entity: { to: "/org/entities/new" },
   create_legal_entity: { to: "/org/entities/new" },
   confirm_legal_entity: ENTITIES,
+  legal_entity_record_required: ENTITIES,
   confirm_registration: ENTITIES,
   verify_registration: ENTITIES,
   create_primary_workplace: ENTITIES,
@@ -42,7 +43,7 @@ const LINKS: Record<string, Fix> = {
   review_org_changes: { to: "/org/changes" },
   invite_executive: { to: "/people", search: { view: "accounts" } },
   register_employee: { to: "/people/new" },
-  map_company_names: { to: "/setup/company-names" },
+  map_company_names: { to: "/people/unplaced" },
   place_people: { to: "/people/unplaced" },
   add_role: { to: "/access/roles/new" },
   grant_access_admin: { to: "/access/grants" },

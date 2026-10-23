@@ -1031,8 +1031,8 @@ async fn empty_tenant_company_org_unit_and_job_position_round_trip(owner_pool: P
 
     let no_company = spawn_get_company(&company, org).await.unwrap();
     assert!(
-        no_company.is_none(),
-        "provisioning an organizations row must not fabricate a company head; got {no_company:?}"
+        no_company.is_some(),
+        "the provisioned tenant has its own display name; got {no_company:?}"
     );
     assert!(
         list(&units, org).await.unwrap().is_empty(),
@@ -1053,13 +1053,13 @@ async fn empty_tenant_company_org_unit_and_job_position_round_trip(owner_pool: P
         },
     )
     .await
-    .unwrap();
+    .expect_err("company legal facts are owned by legal entities");
     let head = spawn_get_company(&company, org)
         .await
         .unwrap()
-        .expect("company.revise must produce a queryable head");
-    assert_eq!(head.legal_name.as_deref(), Some("주식회사 아크메"));
-    assert_eq!(head.version, 1);
+        .expect("the tenant name remains readable after retirement");
+    assert_eq!(head.display_name.as_deref(), Some("Org org-unit"));
+    assert_eq!(head.version, 0);
 
     let created = execute(
         &units,

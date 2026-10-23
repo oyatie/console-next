@@ -28,6 +28,10 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   const code = await takeCode(v);
   expect(c.done("vendor: open the tenant and hand over the code")).toBeLessThanOrEqual(4);
   const admin = await firstSignIn(browser, code);
+  await expect(admin.locator('a[href="/setup/company-names"]')).toHaveCount(0);
+  await go(admin, "/setup/company-names", true);
+  await expect(admin).toHaveURL(/\/org\/entities$/);
+  await go(admin, "/");
 
   await admin.getByRole("link", { name: "회사 도메인", exact: true }).click();
   await expect(admin.getByText(`회사 도메인: ${companyDomain}`, { exact: true })).toBeVisible();

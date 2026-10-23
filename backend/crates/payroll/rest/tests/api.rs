@@ -794,7 +794,7 @@ async fn provision_empty_tenant_appointed_run(owner_pool: &PgPool) -> EmptyTenan
         },
     )
     .await
-    .unwrap();
+    .expect_err("company legal facts are owned by legal entities");
 
     let unit_receipt = execute_sync(
         &units,

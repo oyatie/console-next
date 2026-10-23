@@ -1,3 +1,4 @@
+import { CompanyMappings } from "./company-mappings";
 import { PlacePath } from "./place-path";
 import { EntityName } from "../../../reference/entity/ui/entity-name";
 import { entityNameText } from "../../../reference/entity/present";
@@ -134,6 +135,7 @@ export function UnplacedPage() {
           </>
         }
       />
+      <CompanyMappings />
       <div role="group" aria-label={t("unplaced.tabs")} className={s.tabs}>
         {tabs.map((x) => (
           <ToggleButton key={x} pressed={x === tab} onClick={() => (setTab(x), setG(0), setSel(new Set()))}>

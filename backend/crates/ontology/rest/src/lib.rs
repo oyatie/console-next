@@ -406,22 +406,8 @@ where
 /// execute, no connection, no side effect. `P::preflight` is an associated
 /// function (`no &self`), so this is free to call on a dry run without spending
 /// an approval or opening a transaction.
-fn canonical_port_preflight<P>(
-    target: DispatchTarget,
-    target_id: Option<Uuid>,
-    params: Value,
-) -> Result<(), ActionError>
-where
-    P: CanonicalPort,
-    P::Query: DeserializeOwned,
-{
-    let query = decode_canonical_query::<P>(target, target_id, params)?;
-    let preflight = P::preflight(&query);
-    if !preflight.is_ok() {
-        return Err(ActionError::Validation(preflight.blockers().join("; ")));
-    }
-    Ok(())
-}
+mod projected_preflight;
+use projected_preflight::canonical_port_preflight;
 
 /// ONE handler for every target a canonical port owns.
 ///
@@ -482,12 +468,7 @@ where
 
             let query = decode_canonical_query::<P>(target, target_id, params)?;
 
-            // PURE, and run before anything opens a connection.
-            let preflight = P::preflight(&query);
-            if !preflight.is_ok() {
-                return Err(ActionError::Validation(preflight.blockers().join("; ")));
-            }
-
+            // The owner replays accepted commands before validating a fresh write.
             let command = P::command(
                 principal.org_id,
                 CommandId::from_uuid(command_id),
@@ -1858,6 +1839,10 @@ impl OntologyRestState {
                         receipt: None,
                     });
                 }
+
+                // Refuse a fresh invalid command before spending its approval; replay returned above.
+                self.dry_run_instance_revision(principal, &prepared, &command)
+                    .await?;
 
                 // First attempt: run the §16 gate chain (authority → checklist →
                 // four-eyes peek → egress) fail-closed, then consume the single-use

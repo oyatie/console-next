@@ -232,3 +232,24 @@ fn department_is_required_at_go_live_both_ways() {
         );
     }
 }
+#[test]
+fn company_text_is_placement_work_not_a_separate_setup_step() {
+    let f = SetupFacts {
+        phase_is_setup: true,
+        entities: 1,
+        workplaces: 1,
+        employees: 1,
+        unmapped_assignments: 1,
+        ..SetupFacts::default()
+    };
+    let c = checklist(&f);
+    assert_eq!(
+        c.steps
+            .iter()
+            .find(|s| s.key == "employees")
+            .unwrap()
+            .remedy,
+        Some("place_people")
+    );
+    assert!(!c.steps.iter().any(|s| s.key == "company_names"));
+}

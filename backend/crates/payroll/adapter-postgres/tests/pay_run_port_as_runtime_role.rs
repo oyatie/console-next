@@ -1313,7 +1313,7 @@ async fn empty_tenant_pay_run_fixture(
         },
     )
     .await
-    .unwrap();
+    .expect_err("company legal facts are owned by legal entities");
 
     let unit_receipt = execute_sync(
         &units,

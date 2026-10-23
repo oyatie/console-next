@@ -44,6 +44,9 @@ use uuid::Uuid;
 mod canonical_people;
 use canonical_people::{person_fixtures, seed_org, seed_user};
 
+#[path = "canonical_dispatch/company_fact_refusal.rs"]
+mod company_fact_refusal;
+
 const AT: OffsetDateTime = datetime!(2026-07-10 12:00 UTC);
 const PROMOTE_AT: OffsetDateTime = datetime!(2026-07-11 12:00 UTC);
 const TRANSFER_AT: OffsetDateTime = datetime!(2026-07-12 12:00 UTC);
@@ -350,7 +353,7 @@ async fn seeded_org_actions_write_canonical_heads_through_owning_ports(owner_poo
         "회사",
         "company_revisions",
         "org_id",
-        catalog::COMPANY_LEGAL_NAME,
+        "legal_name",
         "법인명",
         "revise",
         DispatchTarget::CompanyRevise.as_str(),
@@ -490,16 +493,8 @@ async fn seeded_org_actions_write_canonical_heads_through_owning_ports(owner_poo
             .await
     })
     .await
-    .expect("company.revise through the seeded action must succeed");
-    assert_eq!(
-        company_outcome
-            .projected
-            .as_ref()
-            .and_then(|value| value.get("target")),
-        Some(&Value::String(
-            DispatchTarget::CompanyRevise.as_str().to_owned()
-        ))
-    );
+    .expect_err("company.revise must direct legal facts to the entity record");
+    assert!(format!("{company_outcome:?}").contains("legal_entity_record_required"));
 
     let unit_outcome = console_platform_request_context::scope_org(org, async {
         state
@@ -770,15 +765,13 @@ async fn seeded_org_actions_write_canonical_heads_through_owning_ports(owner_poo
             .unwrap();
     assert_eq!(head_unit, org_unit_id);
 
-    let legal_name: serde_json::Value = sqlx::query_scalar(
-        "SELECT attributes FROM company_revisions \
-         WHERE org_id = $1 AND version = (SELECT MAX(version) FROM company_revisions WHERE org_id = $1)",
-    )
-    .bind(org_uuid)
-    .fetch_one(&owner_pool)
-    .await
-    .unwrap();
-    assert_eq!(legal_name, json!({ "legal_name": "주식회사 아크메" }));
+    let legacy_revisions: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM company_revisions WHERE org_id=$1")
+            .bind(org_uuid)
+            .fetch_one(&owner_pool)
+            .await
+            .unwrap();
+    assert_eq!(legacy_revisions, 0);
 
     let unit_head: serde_json::Value = sqlx::query_scalar(
         "SELECT attributes FROM org_unit_revisions \

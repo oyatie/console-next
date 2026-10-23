@@ -1,72 +1,7 @@
-//! `CompanyPort` — the Postgres implementation of `ObjectKey::Company`.
-//!
-//! Owned tables, verbatim from the contract: `organizations`,
-//! `company_revisions`. `organizations` stays the tenant/current head and
-//! `company_revisions` is the append-only history; no `companies` table is
-//! created.
-//!
-//! # Why this port writes ONE of its two owned tables
-//!
-//! `organizations` is owned by Company and is DELIBERATELY unwritable by the
-//! runtime role. `0031_runtime_role_and_immutable_org.sql` grants `console_rt`
-//! `SELECT` on it and then `REVOKE INSERT, UPDATE, DELETE ON organizations FROM
-//! console_rt`, in its own words because "provisioning a tenant is an owner
-//! operation, so the runtime role must never INSERT/UPDATE/DELETE org rows" —
-//! the one deliberate exception to the `ALTER DEFAULT PRIVILEGES` blanket grant
-//! two lines below it. So an `UPDATE organizations` here would not be a stronger
-//! port; it would be a statement that raises `42501 permission denied for table
-//! organizations` in every deployed database.
-//!
-//! Ownership in the contract is the right to write, not an obligation to. The
-//! canonical company state therefore lives entirely in
-//! `company_revisions.attributes`, and `organizations` keeps exactly the role
-//! 0026 and 0031 gave it: the provisioning-owned identity of the tenant, and the
-//! `REFERENCES organizations(id)` this table's `org_id` hangs off.
-//! `tests/company_port_as_runtime_role.rs::the_runtime_role_may_not_write_the_organizations_head`
-//! measures both halves of that — the three revoked privileges and the real
-//! refusal — so the claim is executed rather than argued.
-//!
-//! One consequence to state plainly: `console-gate-writer-ownership` can never
-//! be made non-vacuous for `organizations` by this port, because there is no
-//! legitimate writer to be a second one of. Its coverage of that table is proven
-//! by injection instead (a second writer added to a non-owner crate is charged),
-//! not by a green run.
-//!
-//! # Where the receipt is stored
-//!
-//! In `ont_action_command_receipts` — the generalised store 0177 created, shared
-//! with `console-ontology-rest` and with `PersonPort`. Its `PRIMARY KEY (org_id,
-//! command_id)` is what makes a command id tenant-global across OWNERS, which is
-//! the property `CommandId` and `ReceiptOwner` state in `canonical-domain`. A
-//! private per-object store would have given this port its own namespace, and
-//! one client idempotency key would then have meant two accepted commands.
-//!
-//! 0177 carries no `owner` and no `target` column yet, so the `DispatchTarget`
-//! travels inside the receipt JSONB as its wire string and read-back parses it
-//! with `FromStr`, spelling the target literals once, in `canonical-domain`. A
-//! stored row that names no target is refused, never replayed.
-//!
-//! # Append-only, enforced by the database
-//!
-//! `company_revisions` refuses UPDATE and DELETE (0215's
-//! `canonical_org_structure_row_immutable` trigger), so a revision is never
-//! edited: a revise appends `MAX(version) + 1`. `UNIQUE (org_id, version)`
-//! carries no object id because there is exactly one company per tenant — the
-//! tenant IS the company.
-//!
-//! The TRIGGER is the whole of that enforcement, not a privilege:
-//! `ops/postgres-reconcile-topology.sh` grants `console_rt` UPDATE and DELETE on
-//! every table a migration creates, which 0215's own header states, so the
-//! runtime role holds both on `company_revisions` in the deployed database.
-//!
-//! # Synchronous port, async driver
-//!
-//! `CanonicalPort::execute` is synchronous and `sqlx` is async-only, so
-//! [`PgCompanyPort`] holds a `tokio::runtime::Handle` and blocks on it.
-//! `Handle::block_on` panics when called from a runtime worker thread; an async
-//! caller must therefore reach `execute` through `spawn_blocking`.
-//! one runtime handle, no thread pool of its own — revisit only if the
-//! trait ever gains an async form.
+// SPDX-License-Identifier: LicenseRef-Proprietary
+//! Retired company writer: legal facts belong to the entity adapter and tenant
+//! names to the existing operator owner. Legacy receipts remain replayable.
+//! Existing revisions and receipts stay immutable during the expand phase.
 
 use console_kernel_core::{KernelError, OrgId, UserId};
 use console_ontology_canonical_domain::{
@@ -90,9 +25,7 @@ use uuid::Uuid;
 /// the test fail rather than this shape silently go wrong.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct CompanyQuery {
-    /// The company's canonical state at the new version. The attribute schema
-    /// belongs to this port: [`crate::catalog::COMPANY_LEGAL_NAME`] is required
-    /// (PURE preflight). 0215 constrains the column only to be a JSON object.
+    /// Legacy attributes, retained for replay of commands accepted before retirement.
     pub attributes: serde_json::Value,
 }
 
@@ -115,9 +48,7 @@ impl CanonicalQuery for CompanyQuery {
     }
 }
 
-/// The typed write this port accepts. `org_id` is the RLS key, the tenant, AND
-/// the company; `command_id` is the tenant-global idempotency key, and a repeat
-/// replays the stored receipt.
+/// A legacy command with its original tenant-global idempotency key.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompanyCommand {
     pub org_id: OrgId,
@@ -130,6 +61,8 @@ pub struct CompanyCommand {
 
 #[derive(Debug, thiserror::Error)]
 pub enum CompanyError {
+    #[error("{code}", code = crate::catalog::LEGAL_ENTITY_RECORD_REQUIRED)]
+    LegalEntityRecordRequired,
     #[error("preflight blocked the command: {0:?}")]
     Blocked(Vec<String>),
     #[error(transparent)]
@@ -144,6 +77,8 @@ impl CanonicalPortError for CompanyError {
     fn into_kernel_error(self) -> KernelError {
         let message = self.to_string();
         match self {
+            Self::LegalEntityRecordRequired => KernelError::validation(message)
+                .with_code(crate::catalog::LEGAL_ENTITY_RECORD_REQUIRED),
             Self::Blocked(_) => KernelError::validation(message),
             Self::DigestConflict(_) => KernelError::conflict(message),
             Self::Database(_) | Self::UnreadableReceipt(_, _) => KernelError::internal(message),
@@ -151,21 +86,15 @@ impl CanonicalPortError for CompanyError {
     }
 }
 
-/// Current canonical company head for one tenant.
-///
-/// `legal_name` / `reg_no` come from the latest revision's attributes. They are
-/// never copied from `organizations` — the runtime role is SELECT-only there,
-/// and the provisioning-owned `name` is not the canonical company state.
+/// Current tenant display name; legal facts are read on the legal-entity record.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompanyHead {
     pub org_id: Uuid,
-    pub legal_name: Option<String>,
-    pub reg_no: Option<String>,
+    pub display_name: Option<String>,
     pub version: i64,
 }
 
-/// The one permitted holder of production DML against `company_revisions`, and
-/// the declared owner of `organizations` — which no runtime identity may write.
+/// Compatibility port: replay history, refuse fresh writes, read tenant names.
 #[derive(Debug, Clone)]
 pub struct PgCompanyPort {
     pool: PgPool,
@@ -178,8 +107,7 @@ impl PgCompanyPort {
         Self { pool, runtime }
     }
 
-    /// Latest `company_revisions` row for the armed tenant. No revision, an
-    /// invisible org, or unset RLS is `None` — never a fabricated head.
+    /// Current tenant display name. An invisible org yields no head.
     pub fn get(&self, org_id: OrgId) -> Result<Option<CompanyHead>, CompanyError> {
         self.runtime.block_on(self.read_head(*org_id.as_uuid()))
     }
@@ -206,38 +134,19 @@ impl PgCompanyPort {
         let mut tx = self.pool.begin().await?;
         self.arm_org(&mut *tx, org).await?;
         let row = sqlx::query(
-            "SELECT r.org_id, r.version, r.attributes \
-             FROM organizations o \
-             JOIN company_revisions r ON r.org_id = o.id \
-             WHERE o.id = $1 \
-               AND r.version = ( \
-                 SELECT MAX(version) FROM company_revisions WHERE org_id = o.id \
-               )",
-        )
-        .bind(org)
-        .fetch_optional(&mut *tx)
-        .await?;
+            "SELECT o.id AS org_id, o.name, COALESCE((SELECT MAX(version) FROM company_revisions WHERE org_id=o.id),0) AS version FROM organizations o WHERE o.id=$1",
+        ).bind(org).fetch_optional(&mut *tx).await?;
         tx.commit().await?;
-        Ok(row.map(|row| {
-            let attributes: serde_json::Value = row.get("attributes");
-            CompanyHead {
-                org_id: row.get("org_id"),
-                legal_name: attr_string(&attributes, "legal_name"),
-                reg_no: attr_string(&attributes, "reg_no"),
-                version: row.get("version"),
-            }
+        Ok(row.map(|row| CompanyHead {
+            org_id: row.get("org_id"),
+            display_name: Some(row.get("name")),
+            version: row.get("version"),
         }))
     }
 
     async fn write(&self, command: &CompanyCommand) -> Result<CommandReceipt, CompanyError> {
-        let preflight = <Self as CanonicalPort>::preflight(&command.query);
-        if !preflight.is_ok() {
-            return Err(CompanyError::Blocked(preflight.blockers().to_vec()));
-        }
-
         let digest = payload_digest(command);
         let org = *command.org_id.as_uuid();
-        let actor = *command.actor_id.as_uuid();
         let command_uuid = *command.command_id.as_uuid();
 
         let mut tx = self.pool.begin().await?;
@@ -276,82 +185,7 @@ impl PgCompanyPort {
             ));
         }
 
-        // MAX + 1 under the row's own transaction. A concurrent revise
-        // of the same tenant loses to UNIQUE (org_id, version) with 23505 rather
-        // than silently overwriting; add SELECT ... FOR UPDATE on the head if
-        // that contention is ever measured.
-        let version: i64 = sqlx::query_scalar(
-            "SELECT COALESCE(MAX(version), 0) + 1 FROM company_revisions WHERE org_id = $1",
-        )
-        .bind(org)
-        .fetch_one(&mut *tx)
-        .await?;
-
-        let target = command.query.target();
-        let result = serde_json::json!({
-            "org_id": org.to_string(),
-            "version": version,
-            "target": target.as_str(),
-        });
-
-        let created_at: OffsetDateTime = sqlx::query_scalar(
-            "INSERT INTO company_revisions \
-             (org_id, version, command_id, actor_id, payload_digest, attributes, receipt) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING created_at",
-        )
-        .bind(org)
-        .bind(version)
-        .bind(command_uuid)
-        .bind(actor)
-        .bind(digest.as_slice())
-        .bind(&command.query.attributes)
-        .bind(&result)
-        .fetch_one(&mut *tx)
-        .await?;
-
-        // The receipt store, and with it the tenant-global command-id namespace
-        // this port shares with every other receipt owner.
-        // Attribute the receipt to the object whose action it records.
-        //
-        // DERIVED from the command's own query, which already implements
-        // `dispatch_target()` -- the same value the projected-dispatch path uses.
-        // NOT from `action_key`: that is "unique only per object type" (a bare
-        // "revise"), so it cannot name a target on its own, and the internal
-        // reassign path carries "internal.reassign_org_unit", which names none at
-        // all. The query knows; the string does not.
-        //
-        // Without this the row takes the `owner` DEFAULT of 'ontology.action',
-        // filing a canonical receipt under the pre-existing instance-action path
-        // -- a wrong attribution recorded as fact.
-        let receipt_target = command.query.dispatch_target();
-        let receipt_owner = ReceiptOwner::Canonical(receipt_target.object());
-        sqlx::query(
-            "INSERT INTO ont_action_command_receipts \
-             (org_id, command_id, actor_id, payload_digest, receipt, action_key, object_type_id, created_at, owner, target) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-        )
-        .bind(org)
-        .bind(command_uuid)
-        .bind(actor)
-        .bind(digest.as_slice())
-        .bind(&result)
-        .bind(&command.action_key)
-        .bind(command.object_type_id)
-        .bind(created_at)
-        .bind(receipt_owner.as_str())
-        .bind(receipt_target.as_str())
-        .execute(&mut *tx)
-        .await?;
-
-        tx.commit().await?;
-        Ok(receipt(
-            command,
-            target,
-            command.actor_id,
-            digest,
-            result,
-            created_at,
-        ))
+        Err(CompanyError::LegalEntityRecordRequired)
     }
 }
 
@@ -363,16 +197,11 @@ impl CanonicalPort for PgCompanyPort {
 
     /// PURE: no `&self`, no IO, no persistence. A blocked preflight has written
     /// nothing, so it can never spend an approval.
-    fn preflight(query: &Self::Query) -> Preflight {
-        let blockers = crate::catalog::require_text_property(
-            &query.attributes,
-            crate::catalog::COMPANY_LEGAL_NAME,
-        );
-        if blockers.is_empty() {
-            Preflight::ok()
-        } else {
-            Preflight::blocked(blockers)
-        }
+    fn preflight(_query: &Self::Query) -> Preflight {
+        Preflight::blocked(vec![
+            crate::catalog::LEGAL_ENTITY_RECORD_REQUIRED.to_owned(),
+        ])
+        .with_code(crate::catalog::LEGAL_ENTITY_RECORD_REQUIRED)
     }
 
     fn command(
@@ -475,28 +304,6 @@ fn canonical_json(value: &serde_json::Value) -> serde_json::Value {
         }
         primitive => primitive.clone(),
     }
-}
-
-fn attr_string(attributes: &serde_json::Value, key: &str) -> Option<String> {
-    attributes
-        .get(key)
-        .and_then(serde_json::Value::as_str)
-        .filter(|value| !value.is_empty())
-        .map(str::to_owned)
-}
-
-/// Whether `company_revisions` has any row for the tenant (CompanyPort has run).
-///
-/// `organizations.id` is always the company id; this only answers resolution
-/// status for the L5-ORG reference surface.
-pub async fn company_has_revision<'e, E>(executor: E, org_id: OrgId) -> Result<bool, sqlx::Error>
-where
-    E: sqlx::Executor<'e, Database = sqlx::Postgres>,
-{
-    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM company_revisions WHERE org_id = $1)")
-        .bind(*org_id.as_uuid())
-        .fetch_one(executor)
-        .await
 }
 
 #[cfg(test)]

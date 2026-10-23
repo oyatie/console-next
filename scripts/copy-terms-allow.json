@@ -122,11 +122,6 @@
       "reason": "company names in imported data, 「회사 이름 정리」 (#29 kept uses)"
     },
     {
-      "id": "setup.names.none.title",
-      "rule": "term.회사",
-      "reason": "company names in imported data, 「회사 이름 정리」 (#29 kept uses)"
-    },
-    {
       "id": "setup.names.title",
       "rule": "term.회사",
       "reason": "company names in imported data, 「회사 이름 정리」 (#29 kept uses)"

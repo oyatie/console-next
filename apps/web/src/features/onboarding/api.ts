@@ -24,12 +24,6 @@ export const recordContact = (body: { role: "REPRESENTATIVE" | "CPO" | "SELF"; n
 export const goLive = async (digest: string, soleHolderAcknowledged: boolean, lineDigests: Record<string, string>, key: string) =>
   unwrap(api.POST("/api/v1/onboarding/go-live", { headers: { "Idempotency-Key": key }, body: { digest, line_digests: lineDigests, sole_holder_acknowledged: soleHolderAcknowledged, step_up: (await assertPasskey()) as never } }));
 
-/** Company names on people records that no legal entity stands for yet (from before entities, or an import). */
-export const unmappedCompaniesQuery = get("/api/v1/employment-assignments/unmapped-companies");
-/** Binds every person whose company name is `company_text` to one entity and workplace. */
-export const mapCompany = (key: string, body: { company_text: string; legal_entity_id: string; workplace_id: string }) =>
-  unwrap(api.POST("/api/v1/employment-assignments/map-company", { params: { header: { "Idempotency-Key": key } }, body }));
-
 const passkeys = get("/api/v1/auth/passkeys");
 /**
  * A second passkey, from the rail (governance-20): a step-up with one this account holds, then the new one on the device

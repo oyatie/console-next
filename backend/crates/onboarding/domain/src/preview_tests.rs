@@ -2,6 +2,22 @@
 use super::*;
 
 #[test]
+fn legacy_company_text_mapping_is_fixed_through_placement() {
+    let f = SetupFacts {
+        unmapped_assignments: 1,
+        ..ready()
+    };
+    let p = preview(&f, &Records::new());
+    let mapping = p
+        .warnings
+        .iter()
+        .find(|w| w.code == "company_names_to_map")
+        .unwrap();
+    assert_eq!(mapping.count, Some(1));
+    assert_eq!(mapping.remedy, Some("place_people"));
+}
+
+#[test]
 fn regression_bl014_preview_explains_setup_undo_becomes_correction() {
     assert!(
         preview(&ready(), &Records::new())

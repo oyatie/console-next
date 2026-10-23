@@ -183,7 +183,7 @@ pub fn preview(f: &SetupFacts, records: &Records) -> Preview {
         f.unmapped_assignments > 0,
         "company_names_to_map",
         f.unmapped_assignments,
-        "map_company_names",
+        "place_people",
     );
     warn(
         f.insurance_not_established_with_people > 0,
