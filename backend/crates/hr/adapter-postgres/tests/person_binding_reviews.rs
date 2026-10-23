@@ -2,6 +2,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #[path = "emp_create/fixture.rs"]
 mod fixture;
+use console_hr_adapter_postgres::directory::read_filters::EmployeeListQuery;
 use console_hr_adapter_postgres::person_binding::ReviewQuery;
 use console_kernel_core::{BranchId, BranchScope};
 use console_platform_authz::{Principal, Role};
@@ -93,9 +94,32 @@ async fn branch_hr_sees_employee_and_account_reviews_without_foreign_evidence(po
         .unwrap();
     assert_eq!(outside.total, 0);
     assert!(outside.items.is_empty());
+    for verdict in ["DIFFERENT", "SAME"] {
+        let refused =
+            f.hr.resolve_identity(
+                principal.clone(),
+                &console_platform_test_support::soft_passkey::passkey_service(),
+                a.id,
+                serde_json::from_value(
+                    json!({"verdict":verdict,"keep_employee_id":b.id,"reason_code":"VERIFIED"}),
+                )
+                .unwrap(),
+                console_hr_adapter_postgres::corrections::SecondPersonContext {
+                    other_eligible_holders: 1,
+                    routed: true,
+                    sole_holder_refuse: false,
+                },
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(
+            (refused.status.as_u16(), refused.code),
+            (403, "scope_tenant_wide_only")
+        );
+    }
     let done =
         f.hr.resolve_identity(
-            principal.clone(),
+            f.principal.clone(),
             &console_platform_test_support::soft_passkey::passkey_service(),
             a.id,
             serde_json::from_value(
@@ -153,4 +177,61 @@ async fn branch_hr_sees_employee_and_account_reviews_without_foreign_evidence(po
             .as_u16(),
         403
     );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn roster_identity_counts_and_filters_include_open_reviews_until_decided(pool: PgPool) {
+    let f = fixture::fixture(pool.clone()).await;
+    let a = f
+        .create(f.body("roster-a", "REGULAR"))
+        .await
+        .unwrap()
+        .employee;
+    let b = f
+        .create(f.body("roster-b", "REGULAR"))
+        .await
+        .unwrap()
+        .employee;
+    sqlx::query("INSERT INTO person_binding_reviews(org_id,subject_kind,subject_id,reason,evidence) VALUES($1,'EMPLOYEE',$2,'NUMBER_BIRTH_AMBIGUOUS',$3)")
+        .bind(f.principal.org_id.as_uuid()).bind(a.id)
+        .bind(json!({"candidates":[{"employee_id":b.id}]})).execute(&pool).await.unwrap();
+    for decided in [false, true] {
+        let facets =
+            f.hr.employee_facets(f.principal.clone(), EmployeeListQuery::default())
+                .await
+                .unwrap();
+        assert_eq!(facets.review.identity_review_required, i64::from(!decided));
+        for required in [false, true] {
+            let list =
+                f.hr.list_employees(
+                    f.principal.clone(),
+                    EmployeeListQuery {
+                        identity_review_required: Some(required),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .unwrap();
+            assert_eq!(list.items.iter().any(|e| e.id == a.id), required != decided);
+            assert_eq!(list.items.iter().any(|e| e.id == b.id), !required);
+        }
+        if !decided {
+            f.hr.resolve_identity(
+                f.principal.clone(),
+                &console_platform_test_support::soft_passkey::passkey_service(),
+                a.id,
+                serde_json::from_value(
+                    json!({"verdict":"DIFFERENT","reason_code":"VERIFIED_DIFFERENT"}),
+                )
+                .unwrap(),
+                console_hr_adapter_postgres::corrections::SecondPersonContext {
+                    other_eligible_holders: 1,
+                    routed: true,
+                    sole_holder_refuse: false,
+                },
+            )
+            .await
+            .unwrap();
+        }
+    }
 }

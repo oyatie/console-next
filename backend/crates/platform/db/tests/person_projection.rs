@@ -58,7 +58,10 @@ async fn legacy_edits_and_person_revisions_keep_every_projection_current(pool: P
         .unwrap();
     assert_eq!(facts["display_name"], "Preferred");
     assert_eq!(facts["legal_name"], "After");
-    assert_eq!(facts["phone"], "+821033334444");
+    assert_eq!(
+        facts["phone"], "+821011112222",
+        "account contact edits do not change human facts"
+    );
     let phone: String = sqlx::query_scalar(
         "SELECT phone_e164 FROM employee_employment_profiles WHERE employee_id=$1",
     )
@@ -66,7 +69,7 @@ async fn legacy_edits_and_person_revisions_keep_every_projection_current(pool: P
     .fetch_one(tx.as_mut())
     .await
     .unwrap();
-    assert_eq!(phone, "+821033334444");
+    assert_eq!(phone, "+821011112222");
     sqlx::query("SELECT console_revise_person_facts($1,console_employee_person($1,$2),'{\"legal_name\":\"Canonical\",\"birth_date\":null,\"phone\":null}'::jsonb,NULL)")
         .bind(org).bind(employee).execute(tx.as_mut()).await.unwrap();
     let raw = sqlx::query("SELECT e.name,e.birth_date,p.phone_e164,u.display_name,u.phone FROM employees e JOIN employee_employment_profiles p ON p.employee_id=e.id JOIN users u ON u.employee_id=e.id WHERE e.id=$1")
@@ -75,7 +78,10 @@ async fn legacy_edits_and_person_revisions_keep_every_projection_current(pool: P
     assert_eq!(raw.get::<Option<time::Date>, _>("birth_date"), None);
     assert_eq!(raw.get::<Option<String>, _>("phone_e164"), None);
     assert_eq!(raw.get::<String, _>("display_name"), "Preferred");
-    assert_eq!(raw.get::<Option<String>, _>("phone"), None);
+    assert_eq!(
+        raw.get::<Option<String>, _>("phone").as_deref(),
+        Some("+821033334444")
+    );
     tx.rollback().await.unwrap();
 }
 

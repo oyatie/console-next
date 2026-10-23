@@ -20,7 +20,7 @@ use super::merge::{
     Resolution, lock_pair, merge_binding, require_review, resolution_event, write_resolution_in_tx,
 };
 use super::{SecondPersonContext, lock_employee, refusal};
-use crate::authz::{Tier, authorize_hr_person_in, hr_reach_in};
+use crate::authz::authorize_hr_org_wide;
 use crate::requests::cedar::sole_holder_cedar;
 use crate::requests::create::{NewChangeRequest, insert_change_request_in_tx};
 use crate::requests::{ChangeRequestResponse, reason_code};
@@ -66,7 +66,7 @@ impl HrService {
         body: ResolveIdentityRequest,
         holders: SecondPersonContext,
     ) -> Result<IdentityResolutionOutcome, HrError> {
-        hr_reach_in(&principal, Feature::EmployeeDirectoryManage, Tier::Branch)?;
+        authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
         let verdict = IdentityVerdict::parse(body.verdict.trim())?;
         let reason = reason_code(&body.reason_code, "reason_code")?;
         let me = *principal.user_id.as_uuid();
@@ -75,14 +75,6 @@ impl HrService {
         if verdict == IdentityVerdict::Different {
             return with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
                 Box::pin(async move {
-                    authorize_hr_person_in(
-                        tx,
-                        &principal,
-                        Feature::EmployeeDirectoryManage,
-                        employee_id,
-                        Tier::Branch,
-                    )
-                    .await?;
                     require_review(&lock_employee(tx, org_uuid, employee_id).await?)?;
                     let resolution = Resolution {
                         employee_id,
@@ -125,22 +117,6 @@ impl HrService {
         let passkeys = passkeys.clone();
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                authorize_hr_person_in(
-                    tx,
-                    &principal,
-                    Feature::EmployeeDirectoryManage,
-                    employee_id,
-                    Tier::Branch,
-                )
-                .await?;
-                authorize_hr_person_in(
-                    tx,
-                    &principal,
-                    Feature::EmployeeDirectoryManage,
-                    keep,
-                    Tier::Branch,
-                )
-                .await?;
                 lock_pair(tx, org_uuid, employee_id, keep).await?;
                 let assertion = passkeys
                     .verify_and_record_step_up_in_tx(

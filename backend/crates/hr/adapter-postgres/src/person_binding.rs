@@ -13,6 +13,15 @@ use uuid::Uuid;
 use crate::directory::access_log::{DirectoryAccess, access_event, actor_employee_id};
 use crate::{HrError, HrService};
 
+/// Alias `e`: the legacy marker and durable evidence require the same decision.
+#[macro_export]
+macro_rules! identity_review_sql {
+    () => {
+        "(e.identity_review_required OR EXISTS(SELECT 1 FROM person_binding_reviews_open r \
+         WHERE r.org_id=e.org_id AND r.subject_kind='EMPLOYEE' AND r.subject_id=e.id))"
+    };
+}
+
 #[derive(Debug, Deserialize, Default)]
 pub struct ReviewQuery {
     pub limit: Option<i64>,

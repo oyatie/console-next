@@ -68,12 +68,14 @@ impl HrService {
         // CAP-01: one scan instead of five. `f` carries each row's group
         // values and whether it passes each group's own filters; every count is
         // `count(*) FILTER` over the groups it keeps, per grouping set.
-        let mut query = QueryBuilder::<Postgres>::new(
+        let mut query = QueryBuilder::<Postgres>::new(concat!(
             "WITH f AS (SELECT e.employment_status AS status, p.employment_type AS etype, \
-             ea.legal_entity_id, ea.workplace_id, e.identity_review_required AS identity, \
+             ea.legal_entity_id, ea.workplace_id, ",
+            crate::identity_review_sql!(),
+            " AS identity, \
              b.id IS NULL AS no_branch, fe.id IS NOT NULL AS failed, \
              p.contract_end_date AS contract_end, ",
-        );
+        ));
         query.push(crate::register_review_sql!());
         query.push(" AS register_gap, ");
         for (group, alias) in [

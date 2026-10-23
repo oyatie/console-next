@@ -36,7 +36,6 @@ BEGIN
         attrs:=public.console_person_facts(NEW.org_id,NEW.person_id);
         IF attrs IS NOT NULL THEN
             NEW.display_name:=coalesce(attrs->>'display_name',attrs->>'legal_name',NEW.display_name);
-            NEW.phone:=attrs->>'phone';
         END IF;
     END IF;
     RETURN NEW;
@@ -89,11 +88,11 @@ BEGIN
     UPDATE public.employee_employment_profiles p SET phone_e164=attrs->>'phone'
     FROM public.employee_person_bindings b JOIN public.employees e ON e.org_id=b.org_id AND e.id=b.employee_id
     WHERE b.org_id=p_org AND b.person_id=p_person AND p.org_id=b.org_id AND p.employee_id=b.employee_id
-      AND e.pii_destroyed_at IS NULL AND p.phone_e164 IS DISTINCT FROM attrs->>'phone';
-    UPDATE public.users u SET display_name=coalesce(attrs->>'display_name',attrs->>'legal_name',u.display_name),phone=attrs->>'phone'
+      AND e.pii_destroyed_at IS NULL AND attrs ? 'phone' AND p.phone_e164 IS DISTINCT FROM attrs->>'phone';
+    -- Account contact/sign-in phones have their own global uniqueness contract.
+    UPDATE public.users u SET display_name=coalesce(attrs->>'display_name',attrs->>'legal_name',u.display_name)
     WHERE u.org_id=p_org AND u.person_id=p_person
-      AND (u.display_name IS DISTINCT FROM coalesce(attrs->>'display_name',attrs->>'legal_name',u.display_name)
-        OR u.phone IS DISTINCT FROM attrs->>'phone');
+      AND u.display_name IS DISTINCT FROM coalesce(attrs->>'display_name',attrs->>'legal_name',u.display_name);
 END $$;
 REVOKE ALL ON FUNCTION console_project_person_facts(UUID,UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION console_project_person_facts(UUID,UUID) TO console_rt,console_leave_definer,console_ontology_writer;
@@ -117,9 +116,6 @@ BEGIN
         IF NEW.display_name IS DISTINCT FROM OLD.display_name
           AND NEW.display_name IS DISTINCT FROM coalesce(attrs->>'display_name',attrs->>'legal_name') THEN
             patch:=patch||jsonb_build_object('display_name',NEW.display_name);
-        END IF;
-        IF NEW.phone IS DISTINCT FROM OLD.phone AND NEW.phone IS DISTINCT FROM attrs->>'phone' THEN
-            patch:=patch||jsonb_build_object('phone',NEW.phone);
         END IF;
         IF patch<>'{}'::JSONB THEN
             PERFORM public.console_revise_person_facts(NEW.org_id,NEW.person_id,patch,NULL);
@@ -149,7 +145,7 @@ END $$;
 DROP TRIGGER person_account_initial_facts ON users;
 CREATE TRIGGER person_account_initial_facts AFTER INSERT OR UPDATE OF person_id,employee_id,is_tenant_ops ON users
     FOR EACH ROW EXECUTE FUNCTION console_account_person_initial_facts();
-CREATE TRIGGER person_account_write AFTER INSERT OR UPDATE OF display_name,phone,person_id,employee_id,is_tenant_ops ON users
+CREATE TRIGGER person_account_write AFTER INSERT OR UPDATE OF display_name,person_id,employee_id,is_tenant_ops ON users
     FOR EACH ROW EXECUTE FUNCTION console_account_fact_write();
 
 CREATE OR REPLACE FUNCTION console_sync_employee_accounts() RETURNS TRIGGER

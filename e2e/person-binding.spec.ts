@@ -8,23 +8,27 @@ import { staffedTenant } from "./setup-flows";
 test("open binding evidence surfaces on employee and account records without a legacy review flag", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "bindingreviews", "사람연결상사");
   const api = apiOf(admin, bearerOf(admin));
-  await registerEmployee(admin, { name: "연결검토일", number: "PB-1001", unit: "채용팀" });
-  await registerEmployee(admin, { name: "연결검토이", number: "PB-1002", unit: "채용팀" });
-  const employees = await (await api("/employees?search=PB-100")).json() as { items: { id: string; name: string; employee_number: string; identity_review_required: boolean }[] };
-  const subject = employees.items.find((e) => e.employee_number === "PB-1001")!;
-  const other = employees.items.find((e) => e.employee_number === "PB-1002")!;
-  expect(subject.identity_review_required).toBe(false);
+  type Employees = { items: { id: string; name: string; employee_number: string; identity_review_required: boolean }[] };
   let accountId: string | undefined;
   // The durable review source is DB-tested; this fixture isolates both browser entry points.
+  // Registration opens the card: install evidence before its first query is cached.
   await admin.route("**/api/v1/person-binding-reviews?*", async (route) => {
     const id = new URL(route.request().url()).searchParams.get("subject_id");
-    const items = id === subject.id || id === accountId ? [{
+    const employees = await (await api("/employees?search=PB-100")).json() as Employees;
+    const subject = employees.items.find((e) => e.employee_number === "PB-1001");
+    const items = subject && (id === subject.id || id === accountId) ? [{
       subject_kind: id === subject.id ? "EMPLOYEE" : "ACCOUNT", subject_id: id,
       reason: "NUMBER_BIRTH_AMBIGUOUS", created_at: new Date().toISOString(),
-      evidence: { candidates: [subject, other].map((e) => ({ employee_id: e.id, name: e.name, employee_number: e.employee_number, birth_date: "1990-03-04" })) },
+      evidence: { candidates: employees.items.map((e) => ({ employee_id: e.id, name: e.name, employee_number: e.employee_number, birth_date: "1990-03-04" })) },
     }] : [];
     await route.fulfill({ json: { items, total: items.length, limit: 50, offset: 0 } });
   });
+  await registerEmployee(admin, { name: "연결검토이", number: "PB-1002", unit: "채용팀" });
+  await registerEmployee(admin, { name: "연결검토일", number: "PB-1001", unit: "채용팀" });
+  const employees = await (await api("/employees?search=PB-100")).json() as Employees;
+  const subject = employees.items.find((e) => e.employee_number === "PB-1001")!;
+  const other = employees.items.find((e) => e.employee_number === "PB-1002")!;
+  expect(subject.identity_review_required).toBe(false);
   await go(admin, `/people/${subject.id}`);
   await admin.getByRole("button", { name: "동일인 확인", exact: true }).click();
   const sheet = admin.getByRole("dialog", { name: `${subject.name} 동일인 확인` });

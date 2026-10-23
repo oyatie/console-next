@@ -123,10 +123,12 @@ async fn write_rehire_profile(
     let won = request.base_pay_won.ok_or_else(|| {
         HrError::validation("base_pay_won is required when the former employee has no profile")
     })?;
-    let pay_unit = request
-        .pay_unit
-        .as_deref()
-        .ok_or_else(|| HrError::validation("pay_unit is required with base_pay_won"))?;
+    let contracts = crate::contract::load_rows(tx, org_uuid, employee_id).await?;
+    let hired = parse_yyyy_mm_dd(&request.hire_date)?;
+    let pay_unit = request.pay_unit.as_deref().or_else(|| {
+        console_hr_domain::contract::in_force(&contracts, hired)
+            .map(|contract| contract.terms.pay_unit.as_str())
+    });
     if won < 0 {
         return Err(HrError::validation("base_pay_won must not be negative"));
     }

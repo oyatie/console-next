@@ -233,7 +233,8 @@ impl EmployeeListFilters {
                     builder.push_bind(required);
                 }
                 if let Some(required) = self.identity_review_required {
-                    and(builder, "e.identity_review_required = ");
+                    and(builder, crate::identity_review_sql!());
+                    builder.push(" = ");
                     builder.push_bind(required);
                 }
                 if let Some(before) = self.contract_ending_before {

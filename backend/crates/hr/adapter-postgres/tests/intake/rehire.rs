@@ -221,3 +221,39 @@ async fn a_profileless_rehire_still_requires_phone_and_base_pay(pool: PgPool) {
         assert_eq!(status, "EXITED", "a refusal rolls back the new period");
     }
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn released_rehire_without_pay_unit_uses_recorded_terms_or_keeps_unknown(pool: PgPool) {
+    let f = fixture(pool.clone()).await;
+    for recorded in [false, true] {
+        let id = exited(&f, &pool, &format!("legacy-{recorded}")).await;
+        sqlx::query("DELETE FROM employee_employment_profiles WHERE employee_id=$1")
+            .bind(id)
+            .execute(&pool)
+            .await
+            .unwrap();
+        if recorded {
+            sqlx::query("INSERT INTO employee_contracts(org_id,employee_id,command_id,kind,start_date,wage_won,pay_unit,created_by) VALUES($1,$2,gen_random_uuid(),'OPEN_ENDED',$3::date,12000,'HOURLY',$4)")
+                .bind(f.principal.org_id.as_uuid()).bind(id).bind(kst_day(0))
+                .bind(f.principal.user_id.as_uuid()).execute(&pool).await.unwrap();
+        }
+        let mut request = rehire(&f, &format!("released-{recorded}"), kst_day(0));
+        request.phone = Some("010-1234-5678".into());
+        request.base_pay_won = Some(12_000);
+        for expected_replay in [false, true] {
+            let (replayed, _) =
+                f.hr.rehire_employee(f.principal.clone(), id, request.clone())
+                    .await
+                    .unwrap();
+            assert_eq!(replayed, expected_replay);
+            let unit: Option<String> = sqlx::query_scalar(
+                "SELECT pay_unit FROM employee_employment_profiles WHERE employee_id=$1",
+            )
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+            assert_eq!(unit.as_deref(), recorded.then_some("HOURLY"));
+        }
+    }
+}
