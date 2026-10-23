@@ -2,7 +2,7 @@
 import { resolve } from "node:path";
 import { realpathSync } from "node:fs";
 import { AxeBuilder } from "@axe-core/playwright";
-import { chromium, type Browser, type Page } from "@playwright/test";
+import { chromium, expect as expectElement, type Browser, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
 
@@ -25,19 +25,31 @@ beforeAll(async () => {
         import { createRoot } from 'react-dom/client';
         import { loadCatalog } from '@console/i18n';
         import { ServerPicker } from '/apps/web/src/ui/server-picker/server-picker.tsx';
+        import { Dialog, Modal, ModalOverlay } from 'react-aria-components';
         import '/apps/web/src/app.css';
         await loadCatalog('en');
         function Picker() {
           const [query, setQuery] = useState('');
           const [value, setValue] = useState(null);
           const [clicks, setClicks] = useState(0);
+          const [mounted, setMounted] = useState(true);
+          const [sheetOpen, setSheetOpen] = useState(true);
+          window.closeSheet = () => setSheetOpen(false);
+          const picker = mounted && h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query,
+            onQueryChange: setQuery, value, onChange: setValue,
+            options: [{ id: 'a', name: 'Namesake', display: 'Namesake · HR' }, { id: 'b', name: 'Namesake', display: 'Namesake · Sales' }, { id: 'c', name: 'Coded', code: 'E-3', display: 'Coded · E-3' }] });
+          if (location.hash === '#sheet') return h('main', null,
+            h('button', { id: 'outside', onClick: () => setClicks(n => n + 1) }, 'Outside'),
+            h('output', { id: 'clicks' }, clicks),
+            h(ModalOverlay, { isOpen: sheetOpen, onOpenChange: setSheetOpen }, h(Modal, null, h(Dialog, { 'aria-label': 'Sheet' }, picker))));
           return h('main', null,
             h('div', { inert: true }, h('button', { id: 'already-inert' }, 'Unavailable')),
             h('button', { id: 'outside', onClick: () => setClicks(n => n + 1) }, 'Outside'),
-            h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query,
+            mounted && h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query,
               onQueryChange: setQuery, value, onChange: setValue,
               options: [{ id: 'a', name: 'Namesake', display: 'Namesake · HR' }, { id: 'b', name: 'Namesake', display: 'Namesake · Sales' }, { id: 'c', name: 'Coded', code: 'E-3', display: 'Coded · E-3' }] }),
             h('input', { id: 'after', 'aria-label': 'After' }),
+            h('button', { id: 'unmount', onClick: () => setMounted(false) }, 'Unmount'),
             h('output', { id: 'selected' }, value), h('output', { id: 'clicks' }, clicks));
         }
         createRoot(document.getElementById('root')).render(h(Picker));
@@ -71,11 +83,34 @@ test("an open picker passes axe in both themes and preserves existing inert rest
     expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual([]);
   }
   await page.getByRole("option", { name: "Namesake · HR" }).click();
-  await page.getByRole("option").first().waitFor({ state: "hidden" });
-  await expect.poll(() => page.locator("#already-inert").evaluate((el) => !!el.closest("[inert]"))).toBe(true);
+  await expectElement(input).toHaveAttribute("aria-expanded", "false");
+  await expectElement(page.getByRole("option").first()).toBeHidden();
+  await expectElement(page.locator("#already-inert").locator("..")).toHaveJSProperty("inert", true);
   await page.getByRole("button", { name: "Outside", exact: true }).focus();
-  expect(await page.getByRole("button", { name: "Outside", exact: true }).evaluate((el) => el === document.activeElement)).toBe(true);
+  await expectElement(page.getByRole("button", { name: "Outside", exact: true })).toBeFocused();
 }, 30000);
+
+test("closing restores existing inert restrictions before the next microtask", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
+  const input = page.getByRole("combobox", { name: "Person" });
+  await input.fill("Namesake");
+  await page.getByRole("option").first().waitFor();
+  await expectElement(page.locator("#outside")).toHaveAttribute("aria-hidden", "true");
+  await page.locator("#already-inert").evaluate((el) => {
+    const restricted = el.parentElement!;
+    const combobox = document.querySelector('[role="combobox"]')!;
+    restricted.dataset.exposed = "false";
+    new MutationObserver(() => {
+      if (combobox.getAttribute("aria-expanded") === "false" && !restricted.inert) restricted.dataset.exposed = "true";
+    }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["inert", "aria-expanded"] });
+  });
+  await page.getByRole("option", { name: "Namesake · HR" }).click();
+  await expectElement(input).toHaveAttribute("aria-expanded", "false");
+  await expectElement(page.locator("#outside")).not.toHaveAttribute("aria-hidden", "true");
+  const restricted = page.locator("#already-inert").locator("..");
+  await expectElement(restricted).toHaveJSProperty("inert", true);
+  await expectElement(restricted).toHaveAttribute("data-exposed", "false");
+}, 10000);
 
 test("a deliberately selected namesake without an employee number can be confirmed", async () => {
   await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
@@ -85,13 +120,36 @@ test("a deliberately selected namesake without an employee number can be confirm
   expect(await page.locator("#selected").textContent()).toBe("b");
 }, 10000);
 
+test("unmounting an open picker retains outside restrictions", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
+  await page.getByRole("combobox", { name: "Person" }).fill("Namesake");
+  await page.getByRole("option").first().waitFor();
+  // A parent can unmount the picker without the pointer or blur first closing its popover.
+  await page.locator("#unmount").evaluate((el: HTMLButtonElement) => el.click());
+  await expectElement(page.getByRole("combobox")).toHaveCount(0);
+  await expectElement(page.locator("#already-inert").locator("..")).toHaveJSProperty("inert", true);
+}, 10000);
+
+test("a Sheet that closes while its picker list is open leaves the page usable", async () => {
+  await page.goto("about:blank"); // a hash-only change would not reload the harness
+  await page.goto(`${server.resolvedUrls!.local[0]}picker-test#sheet`);
+  await page.getByRole("combobox", { name: "Person" }).fill("Namesake");
+  await page.getByRole("option").first().waitFor();
+  // Back or a route change unmounts the Sheet (ui/sheet wraps this same ModalOverlay) with its picker in one commit while the list is open.
+  await page.evaluate(() => (window as unknown as { closeSheet: () => void }).closeSheet());
+  await expectElement(page.getByRole("dialog")).toHaveCount(0);
+  await expectElement(page.locator("[inert]")).toHaveCount(0);
+  await page.locator("#outside").click();
+  await expectElement(page.locator("#clicks")).toHaveText("1");
+}, 10000);
+
 test("one outside click activates its control while the picker is open", async () => {
   await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
   await page.getByRole("combobox", { name: "Person" }).fill("Namesake");
   await page.getByRole("option").first().waitFor();
   const bounds = await page.locator("#outside").boundingBox();
   await page.mouse.click(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2);
-  await expect.poll(() => page.locator("#clicks").textContent()).toBe("1");
+  await expectElement(page.locator("#clicks")).toHaveText("1");
   await page.getByRole("option").first().waitFor({ state: "hidden" });
 }, 30000);
 
@@ -102,7 +160,7 @@ test("Tab and Shift+Tab leave an open picker for the adjacent controls", async (
     await input.fill("Namesake");
     await page.getByRole("option").first().waitFor();
     await input.press(key);
-    await expect.poll(() => page.evaluate(() => document.activeElement?.id), { message: key }).toBe(target.slice(1));
+    await expectElement(page.locator(target), key).toBeFocused();
     await page.getByRole("option").first().waitFor({ state: "hidden" });
     await input.clear();
   }

@@ -45,9 +45,14 @@ export function ServerPicker(p: {
     if (!open) return;
     const body = input.current!.ownerDocument.body;
     const preserved = [...body.querySelectorAll<HTMLElement>("[inert]")];
+    // A picker inside a Sheet: when the Sheet itself unmounts (Back, route change) its overlay's inert must not return.
+    const host = input.current!.closest('[role="dialog"]');
     return () => {
-      // React Aria clears inert with aria-hidden; retain restrictions that predate this picker.
-      queueMicrotask(() => { for (const el of preserved) el.inert = true; });
+      const restore = () => { for (const el of preserved) el.inert = true; };
+      // A rapid reopen must snapshot the original restrictions before any microtask runs.
+      restore();
+      // On unmount, React Aria's child cleanup runs after ours and clears inert with aria-hidden.
+      queueMicrotask(() => { if (!host || host.isConnected) restore(); });
     };
   }, [open]);
   const homonyms = homonymOf(p.options, pending);
