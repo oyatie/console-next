@@ -23,6 +23,7 @@ export const REACH: readonly ReachEntry[] = [
   { record: "Entity.legal_entity", op: "create", page: "entities", via: [{ role: "link", name: "법인 추가" }] },
   { record: "Entity.legal_entity", op: "update", page: "entity", via: [b("대표전화 수정", { exact: true })] },
   { record: "Entity.legal_entity", op: "end", page: "entity", via: [b("법인 삭제 미리보기|법인 종료 계획 보기", { any: true })] },
+  { record: "Entity.business_registration", op: "end", page: "entity", via: [b("사업자등록증 · 본점 ", { prefix: true }), { role: "menuitem", name: "삭제", exact: true }], phase: "setup" },
   // 사업장: the same fact rows on the 법인 page's panel and the org chart's (owner: 「사업장 이름은 어떻게 수정해?」)
   { record: "Entity.workplace", op: "create", page: "entity", via: [{ role: "link", name: "사업장 추가" }] },
   { record: "Entity.workplace", op: "update", page: "entity", via: [b("사업장 1", { prefix: true }), b("사업장 이름 수정", { exact: true, within: "{workplace}" })] },

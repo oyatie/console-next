@@ -13,12 +13,6 @@
   "why": "backend operation served; no action on the record's own page found within two interactions"
  },
  {
-  "record": "Entity.business_registration",
-  "op": "end",
-  "lane": "unit: crud-g10 (orchestra; registration void from the cert card)",
-  "why": "Registration void has no UI"
- },
- {
   "record": "Entity.document",
   "op": "create",
   "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
@@ -874,11 +868,6 @@
   "lane": "MAT-PARITY",
   "reason": "Self-signup is outside MVP bootstrap and invitation flows; units/maturity/plan.md §3.",
   "when": "post-mvp"
- },
- "POST /api/v1/business-registrations/{registrationId}/void": {
-  "lane": "E4",
-  "reason": "E4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
  },
  "POST /api/v1/console/kill-switch": {
   "lane": "MAT-PARITY",

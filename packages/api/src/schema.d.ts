@@ -2806,6 +2806,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/business-registrations/{registrationId}/end-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview deletion of a mistaken business registration
+         * @description Setup-only void; linked non-voided workplaces refuse with record_in_use. can_manage is Cedar legal_entity_manage on this registration. Revisions remain in storage and evidence stays under retention.
+         */
+        get: operations["registrationEndOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/business-registrations/{registrationId}/identifier-corrections": {
         parameters: {
             query?: never;
@@ -25698,6 +25718,21 @@ export interface components {
             branch_id: components["schemas"]["Uuid"];
             source_system: string;
         };
+        RegistrationEndOptions: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            phase: "SETUP" | "OPERATING";
+            delete: components["schemas"]["EndOffer"];
+            /** @description Stored certificate revisions removed from the active record by voiding; retained in storage. */
+            revisions: number;
+            linked_workplaces: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            }[];
+            can_manage: boolean;
+        };
         /** @description One 사업자등록증. brn, or brn_pending_reason when the number is not issued yet. */
         RegistrationInput: {
             /** @description 개인사업자: 사업자등록증 ① 상호 as printed; ignored for 법인. Absent on create defaults to the entity name; absent on revise preserves the stored value. */
@@ -32858,6 +32893,47 @@ export interface operations {
             };
             /** @description Field issues: errors[{field, code}] (with document_id: document_not_found, document_not_certificate, document_attached_elsewhere, document_not_new). */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    registrationEndOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                registrationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deletion permission, blockers and cascade preview. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationEndOptions"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Not permitted. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not found in this tenant. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

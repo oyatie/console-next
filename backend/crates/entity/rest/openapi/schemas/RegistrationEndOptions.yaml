@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [id, phase, delete, revisions, linked_workplaces, can_manage]
+properties:
+  id:
+    type: string
+    format: uuid
+  phase:
+    type: string
+    enum: [SETUP, OPERATING]
+  delete:
+    $ref: '#/components/schemas/EndOffer'
+  revisions:
+    type: integer
+    minimum: 0
+    description: Stored certificate revisions removed from the active record by voiding; retained in storage.
+  linked_workplaces:
+    type: array
+    items:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+  can_manage:
+    type: boolean

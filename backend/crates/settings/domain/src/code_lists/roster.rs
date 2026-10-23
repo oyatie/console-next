@@ -162,6 +162,7 @@ reason_domains! {
     ];
     // --- settings (BW-00) ---
     SettingsChange => "settings_change" ["POLICY_REVIEW"];
+    BusinessRegistrationEnd => "business_registration_end" ["DUPLICATE", "TEST_ENTRY", "WRONG_DOCUMENT"];
 }
 
 impl ReasonDomain {
