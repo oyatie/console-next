@@ -390,3 +390,10 @@ Round 4 files outside the brief's support/session/UI owns:
 - `docs/ops/support-access.md`: this evidence and the excluded header mount hand-off.
 
 No excluded file is edited. Slice 2 remains the existing OC0 hand-off; this round adds no new product scope.
+
+
+Round 4 final verification: exact CI `cargo fmt --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, all 13 discovered code gates, `cargo clippy --workspace --tests -- -D warnings`, `cargo check --workspace --tests`, the workspace-feature app clippy and public-base size/quality ratchets pass. Affected Rust suites pass 63 tests: authz REST 21, app source 4, real-router inbox 12, support sessions/ledger 26. All DB suites use the sourced lane database.
+
+The exact `npm run check` passes 289 files / 1,998 tests, typecheck, lint, build, bundle budget and secrets, then stops at the inherited private-`dev` licence reference (`no merge base found`). The identical default-header failure is recorded on the isolated base. Public-base headers (59 added sources), fixture identifiers, 38 production dependency licences and the final three Node tests pass separately. No quality baseline was raised.
+
+Default MVP plus E2E-only fixtures (without `workspace`): Chromium `support-access.spec.ts --repeat-each=3` passes 6/6, Firefox with one worker passes 2/2. The runs include axe and fit checks at 1440/390 in light/dark. Preserved screenshots: `round4/screenshots/chromium/` (36), `round4/screenshots/firefox/` (12); manually inspected pending/active 390 and idle 1440. The header mount is still excluded and is not represented as delivered by these screenshots. The owning lane must apply the checked patch and verify the complete header at 390 with the support indicator and `LiveStatus` together. Full release-unit DB/E2E/mutation sweeps and merge-result GitHub CI remain verifier/release work.
