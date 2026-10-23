@@ -31088,6 +31088,17 @@ components:
                   type: [string, 'null']
                 reason_code:
                   type: string
+                reason_entry:
+                  type: [object, 'null']
+                  description: Tenant-defined reason labels, using the owning reason catalog's presentation contract.
+                  required: [system, label_ko, label_en]
+                  properties:
+                    system:
+                      type: boolean
+                    label_ko:
+                      type: [string, 'null']
+                    label_en:
+                      type: [string, 'null']
             insurance:
               type: object
               required: [insurer, kind, effective_date]

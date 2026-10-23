@@ -67,9 +67,13 @@ test("Home reads all work through the unified inbox and renders its record verb"
 
 test.each([
   ["period_unlock", "period_lock", { unlock: { domain: "payroll", periodStart: "2026-09-01", periodEnd: "2026-09-30", requester: "김요청", reason_code: "RETRO_CORRECTION" } }, ["급여", "2026년 9월", "김요청", "소급 정정", "급여 2026년 9월 해제 요청 검토"]],
+  ["period_unlock", "period_lock", { unlock: { domain: "payroll", periodStart: "2026-09-01", periodEnd: "2026-09-30", requester: "김요청", reason_code: "T_0123456789ABCDEF0123456789ABCDEF", reason_entry: { system: false, label_ko: "추가 정산", label_en: null } } }, ["추가 정산", "급여 2026년 9월 해제 요청 검토"]],
+  ["period_unlock", "period_lock", { unlock: { domain: "payroll", periodStart: "2026-09-01", periodEnd: "2026-09-30", requester: "김요청", reason_code: "FUTURE_REASON" } }, ["확인되지 않은 항목"]],
   ["insurance_filing", "statutory", { insurance: { insurer: "EI", kind: "ACQUIRE", effective_date: "2026-09-01" } }, ["고용보험", "취득 신고", "4대보험 신고 열기"]],
   ["lifecycle_apply_failed", "employee", { lifecycle: { action_kind: "TRANSFER", effective_date: "2026-09-01" } }, ["전보", "확인"]],
   ["hr_request", "change_request", { request: { kind: "PROFILE_CORRECTION", reason_code: "DATA_ENTRY_ERROR" } }, ["정보 정정", "입력 오류", "요청 검토"]],
+  ["hr_request", "change_request", { request: { kind: "PROFILE_CORRECTION", reason_code: "주소를 확인해 주십시오" } }, ["정보 정정", "주소를 확인해 주십시오", "요청 검토"]],
+  ["hr_request", "change_request", { request: { kind: "PROFILE_CORRECTION", reason_code: "FUTURE_REASON" } }, ["확인되지 않은 항목", "요청 검토"]],
 ] as const)("%s labels source facts and keeps its resolving verb without machine codes", (kind, link, context, labels) => {
   view.list.data = { pages: [page([item("업무 대상", { kind, title: "김직원", links: [{ kind: link, id: "record" }], context })])] };
   const markup = html();

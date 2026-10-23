@@ -14236,6 +14236,12 @@ export interface components {
                     periodEnd: string;
                     requester: string | null;
                     reason_code: string;
+                    /** @description Tenant-defined reason labels, using the owning reason catalog's presentation contract. */
+                    reason_entry?: {
+                        system: boolean;
+                        label_ko: string | null;
+                        label_en: string | null;
+                    } | null;
                 };
                 insurance?: {
                     insurer: string;
