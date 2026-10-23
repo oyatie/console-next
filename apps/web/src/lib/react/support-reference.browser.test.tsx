@@ -3,11 +3,14 @@ import { dirname, resolve } from "node:path";
 import { realpathSync } from "node:fs";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { createServer, searchForWorkspaceRoot, type ViteDevServer } from "vite";
-import { chromium, type Browser } from "@playwright/test";
+import { chromium, type Browser, type Page } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
 
 let server: ViteDevServer;
 let browser: Browser;
+let lookupPage: Page;
+let statesPage: Page;
+let fallbackPage: Page;
 const reference = "0123456789abcdef0123456789abcdef";
 const receipt = { support_ref: reference, support_ref_at: "2026-10-22T04:50:18.769Z" };
 beforeAll(async () => {
@@ -63,34 +66,38 @@ beforeAll(async () => {
   });
   await server.listen();
   browser = await chromium.launch();
-});
+  lookupPage = await (await browser.newContext()).newPage();
+  statesPage = await (await browser.newContext()).newPage();
+  fallbackPage = await (await browser.newContext()).newPage();
+  for (const page of [lookupPage, statesPage]) {
+    await page.goto(`${server.resolvedUrls!.local[0]}support-reference-fixture`);
+    await page.locator("[data-support-reference]").first().waitFor();
+  }
+  await fallbackPage.goto(`${server.resolvedUrls!.local[0]}support-reference-static-fixture`);
+}, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
 test("Enter submits the displayed short reference once and ignores IME composition", async () => {
-  const context = await browser.newContext();
-  try {
-    const page = await context.newPage();
-    const lookups: string[] = [];
-    await page.route("**/api/v1/support-references/*", route => {
-      lookups.push(new URL(route.request().url()).pathname);
-      return route.fulfill({ json: { ...receipt, trace_id: reference, release: "previous-deploy", route_template: "/people/:id" } });
-    });
-    await page.goto(`${server.resolvedUrls!.local[0]}support-reference-fixture`);
-    await page.getByText("지원 참조 번호 조회", { exact: true }).click();
-    const input = page.getByLabel("전체 지원 참조 번호");
-    await input.fill(`ref ${reference.slice(0, 8)}`);
-    await input.dispatchEvent("keydown", { key: "Enter", isComposing: true });
-    await input.dispatchEvent("keydown", { key: "Enter", keyCode: 229 });
-    expect(lookups).toEqual([]);
-    await input.press("Enter");
-    await page.getByText("previous-deploy", { exact: true }).waitFor({ timeout: 2000 });
-    expect(lookups).toEqual([`/api/v1/support-references/${reference.slice(0, 8)}`]);
-  } finally { await context.close(); }
+  const page = lookupPage;
+  const lookups: string[] = [];
+  await page.route("**/api/v1/support-references/*", route => {
+    lookups.push(new URL(route.request().url()).pathname);
+    return route.fulfill({ json: { ...receipt, trace_id: reference, release: "previous-deploy", route_template: "/people/:id" } });
+  });
+  await page.goto(`${server.resolvedUrls!.local[0]}support-reference-fixture`);
+  await page.getByText("지원 참조 번호 조회", { exact: true }).click();
+  const input = page.getByLabel("전체 지원 참조 번호");
+  await input.fill(`ref ${reference.slice(0, 8)}`);
+  await input.dispatchEvent("keydown", { key: "Enter", isComposing: true });
+  await input.dispatchEvent("keydown", { key: "Enter", keyCode: 229 });
+  expect(lookups).toEqual([]);
+  await input.press("Enter");
+  await page.getByText("previous-deploy", { exact: true }).waitFor({ timeout: 2000 });
+  expect(lookups).toEqual([`/api/v1/support-references/${reference.slice(0, 8)}`]);
 }, 30_000);
 
 test("shared load, background, denied and mutation rows copy full ids and pass axe at desktop and phone widths", async () => {
-  const context = await browser.newContext();
-  const page = await context.newPage();
+  const page = statesPage;
   await page.goto(`${server.resolvedUrls!.local[0]}support-reference-fixture`);
   await page.locator("[data-support-reference]").first().waitFor();
   for (const name of ["load", "background", "denied", "mutation"]) {
@@ -114,13 +121,11 @@ test("shared load, background, denied and mutation rows copy full ids and pass a
   await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined }));
   await page.locator('[data-case="load"]').getByRole("button", { name: "지원 참조 번호 복사" }).click();
   await page.getByText(`ref ${reference}`, { exact: true }).waitFor();
-  await context.close();
 }, 30_000);
 
 
 test("the unbundled fallback separates reference and timestamp and keeps reload compact", async () => {
-  const context = await browser.newContext();
-  const page = await context.newPage();
+  const page = fallbackPage;
   await page.goto(`${server.resolvedUrls!.local[0]}support-reference-static-fixture`);
   await page.evaluate(data => Object.assign(window, { consoleErrorBeacon: { reference: () => Promise.resolve(data) } }), receipt);
   await page.addScriptTag({ url: `${server.resolvedUrls!.local[0]}apps/web/public/chunk-guard.js` });
@@ -137,5 +142,4 @@ test("the unbundled fallback separates reference and timestamp and keeps reload 
       expect(violations.filter(v => ["serious", "critical"].includes(v.impact ?? ""))).toEqual([]);
     }
   }
-  await context.close();
 }, 30_000);

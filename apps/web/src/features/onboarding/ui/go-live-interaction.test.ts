@@ -2,12 +2,13 @@
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, test } from "vitest";
-import { chromium, expect as browserExpect, type Browser } from "@playwright/test";
+import { chromium, expect as browserExpect, type Browser, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 
 // Serve the real component and hooks in Chromium; only API responses and the passkey device are fixtures.
 let server: ViteDevServer;
 let browser: Browser;
+let page: Page;
 beforeAll(async () => {
   server = await createServer({
     // The installed virtualizer uses this switch for browser measurements.
@@ -56,14 +57,12 @@ beforeAll(async () => {
   await server.listen();
   browser = await chromium.launch();
   // First load pays Vite's transforms and dep optimisation; do it here so the test's 5 s budget measures only the interaction.
-  const warm = await browser.newPage();
-  await warm.goto(`${server.resolvedUrls!.local[0]}setup/go-live`, { waitUntil: "networkidle" }).catch(() => undefined);
-  await warm.close();
+  page = await browser.newPage();
+  await page.goto(`${server.resolvedUrls!.local[0]}setup/go-live`, { waitUntil: "networkidle" });
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
 test("clicks cannot launch while blocked or refreshing; the remedy returns to a ready preview that submits once", async () => {
-  const page = await browser.newPage();
   const preview = {
     phase: "SETUP", digest: "blocked", line_digests: {} as Record<string, string>,
     blockers: [{ code: "no_department", count: 0, remedy: "add_department", records: [] }],

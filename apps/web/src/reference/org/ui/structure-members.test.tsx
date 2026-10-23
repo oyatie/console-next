@@ -272,14 +272,6 @@ describe("directory retry in a browser", () => {
     });
     await server.listen();
     browser = await chromium.launch();
-  });
-  afterAll(async () => { await browser?.close(); await server?.close(); });
-
-  // Cold Vite transforms and page startup belong to setup, outside the retry's test budget.
-  beforeEach(async () => {
-    futureJoiner();
-    directoryStatus = 200;
-    reads = 0;
     page = await browser.newPage();
     await page.route("**/members-test", (route) => route.fulfill({
       contentType: "text/html",
@@ -298,10 +290,18 @@ describe("directory retry in a browser", () => {
           : { code: directoryStatus === 403 ? "forbidden" : "unavailable" },
       });
     });
+    await mount();
+  }, 60_000);
+  afterAll(async () => { await browser?.close(); await server?.close(); });
+
+  async function mount() {
+    futureJoiner();
+    directoryStatus = 200;
+    reads = 0;
     await page.goto(`${server.resolvedUrls!.local[0]}members-test`);
     await browserExpect(page.getByText("입사 예정 1명", { exact: true })).toBeVisible();
-  });
-  afterEach(async () => { await page?.close(); });
+  }
+  beforeEach(mount, 60_000);
 
   test.each([403, 503])("visible counts recover after a cached %s refusal by clicking the rendered retry button", async (status) => {
     const count = page.getByText("입사 예정 1명", { exact: true });

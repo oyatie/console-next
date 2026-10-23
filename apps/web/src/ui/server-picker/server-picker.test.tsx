@@ -67,7 +67,9 @@ beforeAll(async () => {
   browser = await chromium.launch();
   page = await (await browser.newContext()).newPage();
   page.setDefaultTimeout(15000);
-}, 30000);
+  await page.goto(`${server.resolvedUrls!.local[0]}picker-test`);
+  await page.getByRole("combobox", { name: "Person" }).waitFor();
+}, 60_000);
 
 afterAll(async () => { await browser?.close(); await server?.close(); });
 

@@ -70,7 +70,9 @@ beforeAll(async () => {
   browser = await chromium.launch();
   page = await browser.newPage();
   page.on("pageerror", (error) => errors.push(error.message));
-});
+  await page.goto(`${origin}external-url-test`);
+  await page.waitForFunction(() => typeof window.renderUrl === "function");
+}, 60_000);
 
 afterAll(async () => {
   await browser?.close();

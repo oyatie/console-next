@@ -1,9 +1,17 @@
 import { readFileSync } from "node:fs";
-import { chromium } from "@playwright/test";
-import { expect, test } from "vitest";
+import { chromium, type Browser, type Page } from "@playwright/test";
+import { afterAll, beforeAll, expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PersonDayGrid, type Cell, type Range } from "./person-day-grid";
 import classes from "./person-day-grid.module.css";
+
+let browser: Browser;
+let page: Page;
+beforeAll(async () => {
+  browser = await chromium.launch();
+  page = await browser.newPage();
+}, 60_000);
+afterAll(async () => { await browser?.close(); });
 
 type R = { id: string; name: string; v: string[] };
 const yoon: R = { id: "a", name: "윤하준", v: ["8", "", "x"] };
@@ -86,50 +94,44 @@ test("refused outlines and group borders draw resolved 2px solid cues with >=3:1
       .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
   };
-  const browser = await chromium.launch();
-  try {
-    const page = await browser.newPage();
-    const focus = { row: "b", col: "2" };
-    await page.setContent(`<style>${tokens}\n${scoped}\nbody { background: var(--surface); }</style>${html([yoon, hwang, han], { anchor: focus, focus }, null, (r) => r.id === "c" ? "B" : "A")}`);
-    const cell = page.locator('td[data-look="refused"]');
-    expect(await cell.count()).toBe(1);
-    for (const theme of ["light", "dark"]) {
-      for (const state of ["default", "holiday", "rest", "selected-focus"]) {
-        const drawn = await cell.evaluate((el, options) => {
-          document.documentElement.dataset.theme = options.theme;
-          el.setAttribute("data-tone", options.state);
-          el.setAttribute("aria-selected", String(options.state === "selected-focus"));
-          el.toggleAttribute("data-focus", options.state === "selected-focus");
-          const style = getComputedStyle(el);
-          let background = style.backgroundColor;
-          for (let parent = el.parentElement; background === "rgba(0, 0, 0, 0)" && parent; parent = parent.parentElement)
-            background = getComputedStyle(parent).backgroundColor;
-          return { width: style.outlineWidth, style: style.outlineStyle, color: style.outlineColor, background };
-        }, { theme, state });
-        const context = `${theme} ${state}: ${JSON.stringify(drawn)}`;
-        expect(drawn.width, context).toBe("2px");
-        expect(drawn.style, context).toBe("solid");
-        expect(drawn.color, context).toMatch(/^rgb\(/);
-        expect(drawn.background, context).toMatch(/^rgb\(/);
-        const [a, b] = [luminance(drawn.color), luminance(drawn.background)];
-        expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), context).toBeGreaterThanOrEqual(3);
-      }
-      const borders = await page.locator("tr[data-group] > *").evaluateAll((cells) => cells.map((el) => {
+  const focus = { row: "b", col: "2" };
+  await page.setContent(`<style>${tokens}\n${scoped}\nbody { background: var(--surface); }</style>${html([yoon, hwang, han], { anchor: focus, focus }, null, (r) => r.id === "c" ? "B" : "A")}`);
+  const cell = page.locator('td[data-look="refused"]');
+  expect(await cell.count()).toBe(1);
+  for (const theme of ["light", "dark"]) {
+    for (const state of ["default", "holiday", "rest", "selected-focus"]) {
+      const drawn = await cell.evaluate((el, options) => {
+        document.documentElement.dataset.theme = options.theme;
+        el.setAttribute("data-tone", options.state);
+        el.setAttribute("aria-selected", String(options.state === "selected-focus"));
+        el.toggleAttribute("data-focus", options.state === "selected-focus");
         const style = getComputedStyle(el);
-        return { width: style.borderTopWidth, style: style.borderTopStyle, color: style.borderTopColor, surface: getComputedStyle(document.body).backgroundColor };
-      }));
-      expect(borders).toHaveLength(10);
-      for (const border of borders) {
-        const context = `${theme} group border: ${JSON.stringify(border)}`;
-        expect(border.width, context).toBe("2px");
-        expect(border.style, context).toBe("solid");
-        expect(border.color, context).toMatch(/^rgb\(/);
-        expect(border.surface, context).toMatch(/^rgb\(/);
-        const [a, b] = [luminance(border.color), luminance(border.surface)];
-        expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), context).toBeGreaterThanOrEqual(3);
-      }
+        let background = style.backgroundColor;
+        for (let parent = el.parentElement; background === "rgba(0, 0, 0, 0)" && parent; parent = parent.parentElement)
+          background = getComputedStyle(parent).backgroundColor;
+        return { width: style.outlineWidth, style: style.outlineStyle, color: style.outlineColor, background };
+      }, { theme, state });
+      const context = `${theme} ${state}: ${JSON.stringify(drawn)}`;
+      expect(drawn.width, context).toBe("2px");
+      expect(drawn.style, context).toBe("solid");
+      expect(drawn.color, context).toMatch(/^rgb\(/);
+      expect(drawn.background, context).toMatch(/^rgb\(/);
+      const [a, b] = [luminance(drawn.color), luminance(drawn.background)];
+      expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), context).toBeGreaterThanOrEqual(3);
     }
-  } finally {
-    await browser.close();
+    const borders = await page.locator("tr[data-group] > *").evaluateAll((cells) => cells.map((el) => {
+      const style = getComputedStyle(el);
+      return { width: style.borderTopWidth, style: style.borderTopStyle, color: style.borderTopColor, surface: getComputedStyle(document.body).backgroundColor };
+    }));
+    expect(borders).toHaveLength(10);
+    for (const border of borders) {
+      const context = `${theme} group border: ${JSON.stringify(border)}`;
+      expect(border.width, context).toBe("2px");
+      expect(border.style, context).toBe("solid");
+      expect(border.color, context).toMatch(/^rgb\(/);
+      expect(border.surface, context).toMatch(/^rgb\(/);
+      const [a, b] = [luminance(border.color), luminance(border.surface)];
+      expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), context).toBeGreaterThanOrEqual(3);
+    }
   }
-}, 30_000); // launches a real browser: the 5 s default measured the launch, not the contrast check
+});
