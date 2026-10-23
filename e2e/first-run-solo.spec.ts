@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { resolveFilingNotApplicable } from "./helpers/statutory";
 import { expectAccessible } from "./a11y";
@@ -80,14 +81,21 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   // A person may still be placed straight on a 사업장: the register form offers it (no dead end).
   await go(admin, "/");
   await c.click(rail.getByRole("link", { name: "직원 등록" }).first());
-  await registerSheet(admin).getByRole("combobox", { name: "둘 곳" }).fill("판교");
+  const probe = registerSheet(admin);
+  const placement = probe.getByRole("combobox", { name: "둘 곳" });
+  await placement.fill("판교");
   await expect(admin.getByRole("option", { name: /› 판교지점 \d+명$/ })).toBeVisible();
-  await go(admin, "/"); // leave the probe's sheet: step 5 opens a fresh one
+  // Dismiss the picker and sheet before reopening; rapid history changes can keep the probe mounted.
+  await placement.press("Escape");
+  await c.click(probe.getByRole("button", { name: "닫기", exact: true }));
+  await expect(probe).toBeHidden();
   expect(c.done("org: two departments, applied at once")).toBeLessThanOrEqual(BUDGET.org);
 
   // 5. The first employee, placed by id: the one entity is a fact; the workplace is chosen (no default).
-  await go(admin, "/people/new");
+  await c.click(admin.getByRole("link", { name: "직원 등록", exact: true }).first());
   const sheet = registerSheet(admin);
+  await expect(sheet.getByRole("combobox", { name: "둘 곳" })).toHaveValue("");
+  await expect(sheet.getByRole("textbox", { name: /^이름/ })).toBeVisible();
   await expect(sheet.locator("details")).toHaveCount(0);
   await expect(sheet.getByText(/인사카드에서 채우도록 바뀔 예정/)).toHaveCount(0);
   await sheet.getByRole("textbox", { name: /^이름/ }).fill("김직원");
