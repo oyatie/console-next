@@ -34,6 +34,22 @@ async fn a_sole_holder_unlocks_at_once_and_is_flagged_for_review(owner: PgPool) 
         "단독",
     )
     .await;
+    let person: Uuid = sqlx::query_scalar("SELECT person_id FROM users WHERE id=$1")
+        .bind(only.id)
+        .fetch_one(&owner)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE users SET is_tenant_ops=true WHERE id=$1")
+        .bind(only.id)
+        .execute(&owner)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE users SET person_id=$2 WHERE id=$1")
+        .bind(only.id)
+        .bind(person)
+        .execute(&owner)
+        .await
+        .unwrap();
     let lock = json!({"domain": "accounting", "periodStart": "2026-06-01",
                       "periodEnd": "2026-06-30", "reasonCode": "BOOKS_CLOSE"});
     let (status, locked) = send(&service, LOCKS, &only.token, None, lock).await;

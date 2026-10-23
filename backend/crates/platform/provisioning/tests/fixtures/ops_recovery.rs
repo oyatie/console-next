@@ -72,12 +72,6 @@ impl Harness {
             .unwrap();
         let org = OrgId::from_uuid(created.organization.id);
         let ops = UserId::from_uuid(created.admin_user_id);
-        // Recovery still supports legacy operations accounts; new bootstrap admins are personal.
-        sqlx::query("UPDATE users SET is_tenant_ops=true WHERE id=$1")
-            .bind(ops.as_uuid())
-            .execute(&owner)
-            .await
-            .unwrap();
         let old_key = if enrolled {
             Some(SoftKey::enroll(&owner, org, ops).await)
         } else {

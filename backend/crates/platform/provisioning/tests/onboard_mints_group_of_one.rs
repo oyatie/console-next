@@ -89,10 +89,7 @@ async fn t7_onboard_tenant_as_console_rt_mints_group_of_one(owner_pool: PgPool) 
         person.is_some(),
         "the bootstrap admin needs the same canonical person binding as invited accounts"
     );
-    assert!(
-        !is_ops,
-        "the first human administrator is a personal account"
-    );
+    assert!(is_ops, "bootstrap retains its governed operations recovery");
 
     let org_id = onboarded.organization.id;
     let group_id = onboarded

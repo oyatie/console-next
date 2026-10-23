@@ -94,7 +94,7 @@ pub(super) async fn unlock_period_lock(
                 .bind(org.as_uuid()).bind(user).fetch_one(tx.as_mut()).await?;
             let admins = console_identity_adapter_postgres::second_person::PgHolderResolver {
                 tx, org, capability: console_identity_adapter_postgres::second_person::HolderCapability::AccessAdmin,
-                exclude_account: None, exclude_employee: None, include_ops: false, now,
+                exclude_account: None, exclude_employee: None, include_ops: true, now,
             }.resolve_at_most(2).await.map_err(LifecycleError::from_kernel)?;
             let setup_single_admin = setup_person && admins.len()==1 && admins.contains(&user);
             // Admission is a separate Cedar decision; no assertion has been verified yet.

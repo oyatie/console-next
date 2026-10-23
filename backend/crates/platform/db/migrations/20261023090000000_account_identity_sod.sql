@@ -4,6 +4,72 @@
 -- Rollback: old binaries fail safely; retain the decision evidence and SQL invariant.
 SET LOCAL lock_timeout = '2s';
 
+-- Expand the operations principal shape to admit an explicitly bound bootstrap Person.
+-- Ordinary operations inserts still have no Person; the decision resolver never invents one.
+ALTER TABLE users ADD CONSTRAINT users_principal_person_bound_check CHECK (
+    (principal_kind='TENANT_PERSON' AND person_id IS NOT NULL AND NOT is_tenant_ops)
+    OR (principal_kind='OPERATIONS' AND is_tenant_ops)
+    OR (principal_kind='VENDOR' AND person_id IS NULL AND NOT is_tenant_ops)
+) NOT VALID;
+ALTER TABLE users VALIDATE CONSTRAINT users_principal_person_bound_check;
+ALTER TABLE users DROP CONSTRAINT users_principal_person_check;
+ALTER TABLE users RENAME CONSTRAINT users_principal_person_bound_check TO users_principal_person_check;
+
+CREATE OR REPLACE FUNCTION console_account_binding() RETURNS TRIGGER
+LANGUAGE plpgsql SET search_path=pg_catalog AS $$
+DECLARE linked UUID; patch JSONB:='{}'::JSONB;
+BEGIN
+    IF TG_OP='UPDATE' AND current_setting('app.pii_destruction',true)='on' THEN RETURN NEW; END IF;
+    IF NEW.is_tenant_ops THEN NEW.principal_kind:='OPERATIONS';
+    ELSIF EXISTS(SELECT 1 FROM public.organizations WHERE id=NEW.org_id AND slug='platform') THEN NEW.principal_kind:='VENDOR';
+    ELSE NEW.principal_kind:='TENANT_PERSON'; END IF;
+    IF NEW.principal_kind<>'TENANT_PERSON' THEN
+        IF NEW.principal_kind='VENDOR' OR (TG_OP='UPDATE' AND NOT OLD.is_tenant_ops) THEN
+            NEW.person_id:=NULL;
+        ELSIF TG_OP='UPDATE' AND OLD.person_id IS NOT NULL THEN
+            NEW.person_id:=OLD.person_id;
+        END IF;
+        RETURN NEW;
+    END IF;
+    IF TG_OP='INSERT' OR NEW.employee_id IS DISTINCT FROM OLD.employee_id THEN
+        IF NEW.employee_id IS NOT NULL THEN
+            linked:=public.console_bind_employee_person(NEW.org_id,NEW.employee_id,NULL);
+            NEW.person_id:=linked;
+        ELSIF TG_OP='INSERT' AND NEW.person_id IS NOT NULL THEN
+            IF NOT EXISTS(SELECT 1 FROM public.persons WHERE org_id=NEW.org_id AND id=NEW.person_id) THEN
+                RAISE EXCEPTION USING ERRCODE='23503', MESSAGE='person binding is not in this tenant';
+            END IF;
+        END IF;
+        IF TG_OP='INSERT' AND NEW.person_id IS NULL THEN NEW.person_id:=NEW.id; END IF;
+    END IF;
+    IF TG_OP='UPDATE' AND NEW.person_id IS NOT NULL THEN
+        IF NEW.display_name IS DISTINCT FROM OLD.display_name THEN patch:=patch||jsonb_build_object('display_name',NEW.display_name); END IF;
+        IF NEW.phone IS DISTINCT FROM OLD.phone THEN patch:=patch||jsonb_build_object('phone',NEW.phone); END IF;
+        IF patch<>'{}'::JSONB THEN
+            PERFORM public.console_revise_person_facts(NEW.org_id,NEW.person_id,patch,NULL);
+            NEW.display_name:=OLD.display_name;
+            NEW.phone:=OLD.phone;
+        END IF;
+    END IF;
+    RETURN NEW;
+END $$;
+
+-- Existing tenant bootstrap operations accounts use G5's binding provenance, with no invented actor.
+DO $$ DECLARE u RECORD; bound UUID; previous TEXT:=current_setting('app.current_org',true); BEGIN
+    FOR u IN SELECT id,org_id,employee_id,display_name,phone FROM public.users
+        WHERE is_tenant_ops AND person_id IS NULL ORDER BY org_id,id FOR UPDATE LOOP
+        PERFORM set_config('app.current_org',u.org_id::text,true);
+        bound:=COALESCE(public.console_employee_person(u.org_id,u.employee_id),u.id);
+        INSERT INTO public.persons(org_id,id) VALUES(u.org_id,bound) ON CONFLICT DO NOTHING;
+        UPDATE public.users SET person_id=bound WHERE id=u.id AND org_id=u.org_id;
+        IF public.console_person_facts(u.org_id,bound) IS NULL THEN
+            PERFORM public.console_revise_person_facts(u.org_id,bound,
+                jsonb_build_object('legal_name',u.display_name,'phone',u.phone),NULL);
+        END IF;
+    END LOOP;
+    PERFORM set_config('app.current_org',COALESCE(previous,''),true);
+END $$;
+
 -- One resolver for Cedar, SQL invariants, governance and identity-link self checks.
 CREATE OR REPLACE FUNCTION public.console_decision_people(p_org UUID,p_maker UUID,p_checker UUID)
 RETURNS TABLE (maker_person UUID,checker_person UUID)

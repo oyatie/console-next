@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import { PORTS } from "./slot";
-import { psql } from "./idle-fixture";
 import { apiAs } from "./chaos";
 import type { Org, OpsRecoveryRead } from "../apps/web/src/features/platform/api";
 import { expectAccessible } from "./a11y";
@@ -44,10 +43,7 @@ test("governed ops recovery: two operators, tenant veto, hold and once-only reen
   await vendor.getByLabel("고객 이름").fill(company);
   await tenantSlugField(vendor).fill(slug);
   await vendor.getByRole("button", { name: "개설하고 코드 발급" }).click();
-  const bootstrapCode = await takeCode(vendor);
-  // Existing operations accounts retain their recovery path; new bootstrap admins are personal.
-  psql(slug, "UPDATE users SET is_tenant_ops=true WHERE org_id=current_setting('app.current_org')::uuid AND 'SUPER_ADMIN'=ANY(roles);");
-  const holder = await firstSignIn(browser, bootstrapCode);
+  const holder = await firstSignIn(browser, await takeCode(vendor));
   await vendor.reload();
   const first = await openRecovery(vendor, slug);
   await expectAccessible(vendor, "ops recovery vendor section");
