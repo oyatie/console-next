@@ -7,7 +7,7 @@ import { safeMediaUrl } from "../../lib/media-url";
  * record, where `src` shows their photo; `alt` names the photo and `fallbackAlt` names its absence.
  */
 export function Avatar({ name, size = "md", src, alt, fallbackAlt }: { name: string; size?: "sm" | "md" | "lg"; src?: string; alt?: string; fallbackAlt?: string }) {
-  const url = safeMediaUrl(src, "image");
+  const url = safeMediaUrl(src);
   if (url) return <img className={s.avatar} data-size={size} src={url} alt={alt ?? ""} />;
   if (fallbackAlt) return <span className={s.avatar} data-size={size} role="img" aria-label={fallbackAlt}>{name.trim().slice(0, 1)}</span>;
   return <span className={s.avatar} data-size={size} aria-hidden>{name.trim().slice(0, 1)}</span>;

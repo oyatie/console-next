@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { renderToStaticMarkup as html } from "react-dom/server";
-import { expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { Avatar } from "./avatar";
+
+beforeEach(() => vi.stubGlobal("location", { origin: "https://console.example" }));
+afterEach(() => vi.unstubAllGlobals());
 
 test.each([
   "javascript:alert(1)", " java\tscript:alert(1)", "JaVaScRiPt:alert(1)",
@@ -24,7 +27,7 @@ test.each([
 ])("allowed photo URL preserves the image and accessible name: %s", (src) => {
   const markup = html(<Avatar name="Kim" src={src} alt="Photo" />);
   expect(markup).toContain(`<img`);
-  expect(markup).toContain(`src="${src}"`);
+  expect(markup).toContain(`src="${new URL(src, "https://console.example").href}"`);
   expect(markup).toContain('alt="Photo"');
 });
 

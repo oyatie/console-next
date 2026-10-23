@@ -26,7 +26,7 @@
 "apps/web/src/features/entity/ui/entity-record.gallery.tsx": {"dsClass":1},
 "apps/web/src/features/entity/ui/entity-record.tsx": {"dsClass":6},
 "apps/web/src/features/entity/ui/entity-wizard.tsx": {"dsClass":7},
-"apps/web/src/features/entity/ui/entity.module.css": {"restyle":9},
+"apps/web/src/features/entity/ui/entity.module.css": {"restyle":2},
 "apps/web/src/features/entity/ui/history-tab.tsx": {"dsClass":3},
 "apps/web/src/features/entity/ui/identity-section.tsx": {"dsClass":1},
 "apps/web/src/features/entity/ui/insurance-fields.tsx": {"dsClass":1},
