@@ -181,7 +181,7 @@ crates/ontology/canonical-adapter-postgres/tests/employment_port_as_runtime_role
 crates/ontology/canonical-adapter-postgres/tests/job_position_port_as_runtime_role.rs	820
 crates/ontology/canonical-adapter-postgres/tests/org_unit_kinds_as_runtime_role.rs	356
 crates/ontology/canonical-adapter-postgres/tests/org_unit_port_as_runtime_role.rs	992
-crates/ontology/canonical-adapter-postgres/tests/person_port_as_runtime_role.rs	895
+crates/ontology/canonical-adapter-postgres/tests/person_port_as_runtime_role.rs	894
 crates/ontology/canonical-domain/src/lib.rs	314
 crates/ontology/rest/src/lib.rs	2359
 crates/ontology/rest/src/projected_dispatch_derivation.rs	389
