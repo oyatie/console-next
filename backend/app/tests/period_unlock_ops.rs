@@ -146,12 +146,12 @@ async fn unbound_operations_accounts_cannot_be_either_decision_party(owner: PgPo
         .execute(&owner)
         .await
         .unwrap();
-    // Negative: ops without its own step-up is refused.
+    // Missing identity refuses before a step-up ceremony is requested.
     let (status, refused) =
         approve(&service, &owner, &svc, &mut ops, lock_id, request_id, false).await;
-    assert_eq!(status, StatusCode::UNAUTHORIZED, "{refused}");
+    assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
     assert_eq!(
-        refused["error"]["code"], "passkey_step_up_required",
+        refused["error"]["code"], "period_unlock.refuse.identity_unbound",
         "{refused}"
     );
 

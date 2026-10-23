@@ -831,9 +831,7 @@ async fn require_natural_person_bound_conn(
     }
 }
 
-/// Deny same-Person (different capacity) and fail closed on unbound parties for
-/// Company/HR/Payroll kinds. Account-level self-approval is already rejected
-/// before this runs; this layer catches two user_ids that share one Person.
+/// Every approval requires two known, distinct people through the shared Cedar rule.
 async fn enforce_natural_person_four_eyes_conn(
     conn: &mut PgConnection,
     requester: UserId,
