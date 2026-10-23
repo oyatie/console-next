@@ -52,15 +52,15 @@ async fn parties(pool: &PgPool) -> Parties {
         if let Some(person) = linked_person {
             let employee: Uuid = sqlx::query_scalar("INSERT INTO employees (org_id,company,name,source_filename,source_sheet,source_row,source_key) VALUES ($1,'ACME','Decider','test','test',1,$2) RETURNING id")
                 .bind(org).bind(account.to_string()).fetch_one(pool).await.unwrap();
+            sqlx::query("INSERT INTO employee_person_bindings (org_id,employee_id,person_id,actor_id,payload_digest) VALUES ($1,$2,$3,$4,$5)")
+                .bind(org).bind(employee).bind(person).bind(account).bind([7u8;32].as_slice())
+                .execute(pool).await.unwrap();
             sqlx::query("UPDATE users SET employee_id=$1 WHERE id=$2")
                 .bind(employee)
                 .bind(account)
                 .execute(pool)
                 .await
                 .unwrap();
-            sqlx::query("INSERT INTO employee_person_bindings (org_id,employee_id,person_id,actor_id,payload_digest) VALUES ($1,$2,$3,$4,$5)")
-                .bind(org).bind(employee).bind(person).bind(account).bind([7u8;32].as_slice())
-                .execute(pool).await.unwrap();
             employees.push(employee);
         }
     }

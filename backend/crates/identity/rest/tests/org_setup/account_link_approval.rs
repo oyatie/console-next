@@ -193,6 +193,12 @@ async fn a_second_account_of_the_requesters_person_cannot_approve(pool: PgPool) 
         .await
         .unwrap();
     // Distinct employee records of one natural person are not independent checkers.
+    sqlx::query("DELETE FROM employee_person_bindings WHERE org_id=$1 AND employee_id=ANY($2)")
+        .bind(OrgId::one().as_uuid())
+        .bind(vec![own_employee, alias_employee])
+        .execute(&pool)
+        .await
+        .unwrap();
     sqlx::query("INSERT INTO employee_person_bindings (org_id, employee_id, person_id, actor_id, payload_digest) SELECT $1, employee, $2, $3, $4 FROM unnest($5::uuid[]) AS employee")
         .bind(OrgId::one().as_uuid())
         .bind(person)

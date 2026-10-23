@@ -64,3 +64,53 @@ async fn runtime_backfill_includes_voided_rows_and_restores_visibility(pool: PgP
     assert_eq!(foreign, 0);
     tx.commit().await.unwrap();
 }
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn command_roles_read_canonical_actor_labels_inside_the_armed_tenant(pool: PgPool) {
+    let org = Uuid::new_v4();
+    sqlx::query("INSERT INTO organizations(id,slug,name) VALUES($1,$2,'Command actors')")
+        .bind(org)
+        .bind(org.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let account: Uuid = sqlx::query_scalar(
+        "INSERT INTO users(org_id,display_name) VALUES($1,'Actor') RETURNING id",
+    )
+    .bind(org)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    for role in [
+        "SET LOCAL ROLE console_leave_definer",
+        "SET LOCAL ROLE console_ontology_writer",
+    ] {
+        let mut tx = pool.begin().await.unwrap();
+        sqlx::query("SELECT set_config('app.current_org',$1,true)")
+            .bind(org.to_string())
+            .execute(tx.as_mut())
+            .await
+            .unwrap();
+        sqlx::query(role).execute(tx.as_mut()).await.unwrap();
+        let label: String =
+            sqlx::query_scalar("SELECT display_name FROM person_accounts_current WHERE id=$1")
+                .bind(account)
+                .fetch_one(tx.as_mut())
+                .await
+                .unwrap();
+        assert_eq!(label, "Actor");
+        sqlx::query("SELECT set_config('app.current_org',$1,true)")
+            .bind(Uuid::new_v4().to_string())
+            .execute(tx.as_mut())
+            .await
+            .unwrap();
+        let label: Option<String> =
+            sqlx::query_scalar("SELECT display_name FROM person_accounts_current WHERE id=$1")
+                .bind(account)
+                .fetch_optional(tx.as_mut())
+                .await
+                .unwrap();
+        assert_eq!(label, None);
+        tx.commit().await.unwrap();
+    }
+}
