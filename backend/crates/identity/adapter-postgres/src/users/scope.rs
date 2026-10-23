@@ -197,7 +197,7 @@ mod ensure_branch_rewrite_in_scope_tests {
             );
         }
         assert!(
-            USER_SELECT_WITH_PASSKEY.contains("u.phone"),
+            USER_SELECT_WITH_PASSKEY.contains("account.phone"),
             "get_user / list_users must keep reading users.phone"
         );
     }

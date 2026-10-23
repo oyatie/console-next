@@ -211,6 +211,12 @@ async fn roster_identity_counts_and_filters_include_open_reviews_until_decided(p
                 .unwrap();
             assert_eq!(list.items.iter().any(|e| e.id == a.id), required != decided);
             assert_eq!(list.items.iter().any(|e| e.id == b.id), !required);
+            for row in &list.items {
+                assert_eq!(
+                    row.identity_review_required, required,
+                    "the roster chip must agree with its review filter"
+                );
+            }
         }
         if !decided {
             f.hr.resolve_identity(

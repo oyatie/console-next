@@ -48,7 +48,7 @@ test("open binding evidence surfaces on employee and account records without a l
   const accountId = accounts.items.find((u) => u.employee_id === subject.id)!.id;
   await go(admin, `/people?view=accounts&sel=${accountId}`);
   const panel = admin.getByRole("complementary", { name: subject.name });
-  await panel.getByRole("button", { name: "동일인 확인", exact: true }).click();
+  await panel.locator(".panel__head").getByRole("button", { name: "동일인 확인", exact: true }).click();
   const accountSheet = admin.getByRole("dialog", { name: "사람 연결 확인 자료" });
   await expect(accountSheet.getByRole("link", { name: /연결검토이.*PB-1002/ })).toBeVisible();
   await expectAccessible(admin, "account binding evidence");

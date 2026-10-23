@@ -26,7 +26,7 @@ pub(crate) const USER_SELECT_WITH_PASSKEY: &str = r#"
            e.position AS employee_position,
            e.identity_review_required AS employee_identity_review_required,
            e.identity_resolution_confidence AS employee_identity_resolution_confidence,
-           u.phone,
+           account.phone,
            u.roles,
            u.team,
            u.is_active,
@@ -40,6 +40,7 @@ pub(crate) const USER_SELECT_WITH_PASSKEY: &str = r#"
                WHERE s.org_id = u.org_id AND s.user_id = u.id AND s.retired_at IS NULL
              ) AS sign_in_id
     FROM person_accounts_current u
+    JOIN users account ON account.org_id = u.org_id AND account.id = u.id
     LEFT JOIN employees e
       ON e.id = u.employee_id
      AND e.org_id = u.org_id

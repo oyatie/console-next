@@ -65,10 +65,10 @@ export function AccountPanel({ id, row, admin, receipt, onClose, onIssued, onRec
     <aside className="card panel" aria-labelledby="acct-title">
       <div className="panel__head">
         <h2 id="acct-title" className="panel__title" tabIndex={-1}>{u?.display_name ?? t("accounts.title")}</h2>
+        {can("employee_directory_manage", "branch") && <BindingReviewChip subjectId={id} onOpen={() => setReviewOpen(true)} />}
         <Button variant="ghost" onClick={onClose} aria-label={t("common.closePanel")}><X size={16} aria-hidden /></Button>
       </div>
-      {can("employee_directory_manage", "branch") && <BindingReviewChip subjectId={id} onOpen={() => setReviewOpen(true)} />}
-      {reviewOpen && <Sheet open title={t("identity.binding.title")} onClose={() => setReviewOpen(false)} consequence={null} actions={<Button onClick={() => setReviewOpen(false)}>{t("common.closePanel")}</Button>}>
+      {reviewOpen && <Sheet open title={t("identity.binding.title")} onClose={() => setReviewOpen(false)} consequence={null} actions={<Button onClick={() => setReviewOpen(false)}>{t("uiSheet.close")}</Button>}>
         <BindingEvidence subjectId={id} />
       </Sheet>}
       {receipt && <Receipt state="recorded" message={receipt} />}

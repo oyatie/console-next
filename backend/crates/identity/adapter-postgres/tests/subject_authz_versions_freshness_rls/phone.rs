@@ -72,7 +72,11 @@ async fn account_contact_edits_keep_person_reads_and_directory_privacy_separate(
         .scope(org, store.get_user(target, &BranchScope::All))
         .await
         .unwrap();
-    assert_eq!(got.phone.as_deref(), Some("+82212345678"));
+    assert_eq!(
+        got.phone.as_deref(),
+        Some("+821012345678"),
+        "get_user must keep phone"
+    );
     let users = CURRENT_ORG
         .scope(
             org,
@@ -95,6 +99,7 @@ async fn account_contact_edits_keep_person_reads_and_directory_privacy_separate(
             .unwrap()
             .phone
             .as_deref(),
-        Some("+82212345678")
+        Some("+821012345678"),
+        "list_users must keep phone"
     );
 }
