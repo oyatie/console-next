@@ -28,15 +28,22 @@ pub(super) async fn check(
     );
 
     // Missing or failed identity facts still refuse; an unbound known account is covered separately.
-    let resolver: String = sqlx::query_scalar("SELECT pg_get_functiondef('public.console_decision_identities(uuid,uuid,uuid)'::regprocedure)")
-        .fetch_one(owner).await.unwrap();
-    sqlx::query("CREATE OR REPLACE FUNCTION public.console_decision_identities(p_org UUID,p_maker UUID,p_checker UUID) RETURNS TABLE (maker_identity TEXT,checker_identity TEXT) LANGUAGE sql AS 'SELECT NULL::text,NULL::text'")
+    let resolver: String = sqlx::query_scalar(
+        "SELECT pg_get_functiondef('public.console_decision_people(uuid,uuid,uuid)'::regprocedure)",
+    )
+    .fetch_one(owner)
+    .await
+    .unwrap();
+    sqlx::query("CREATE OR REPLACE FUNCTION public.console_decision_people(p_org UUID,p_maker UUID,p_checker UUID) RETURNS TABLE (maker_person UUID,checker_person UUID) LANGUAGE sql AS 'SELECT NULL::uuid,NULL::uuid'")
         .execute(owner).await.unwrap();
     let missing = admin(owner, svc, issuer, "신원 누락").await;
     let (status, body) = reject(service, &missing.token, lock_id, request_id, "반려").await;
     assert_eq!(
         (status, code(&body)),
-        (StatusCode::FORBIDDEN, "second_person_required")
+        (
+            StatusCode::FORBIDDEN,
+            "period_unlock.refuse.identity_unbound"
+        )
     );
     assert_eq!(
         request_of(service, &missing.token, lock_id).await["canDecide"],

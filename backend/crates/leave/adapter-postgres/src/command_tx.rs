@@ -137,6 +137,7 @@ pub(super) fn map_leave_command_sqlx(error: sqlx::Error) -> PgLeaveError {
         | "leave_home_branch.already_assigned" => {
             PgLeaveError::Domain(KernelError::conflict(message.to_owned()))
         }
+        "leave.refuse.identity_unbound" => PgLeaveError::Domain(KernelError::forbidden("person binding is unavailable").with_code("leave.refuse.identity_unbound")),
         "leave_write.actor_forbidden"
         | "leave_write.branch_forbidden"
         | "leave_write.org_admin_required"

@@ -16,6 +16,11 @@ async fn unlinked_target_can_be_linked_by_two_distinct_people(pool: PgPool) {
             .fetch_one(&pool)
             .await
             .unwrap();
+    sqlx::query("DELETE FROM employee_person_bindings WHERE employee_id=$1")
+        .bind(approver_employee)
+        .execute(&pool)
+        .await
+        .unwrap();
     sqlx::query("INSERT INTO employee_person_bindings (org_id,employee_id,person_id,actor_id,payload_digest) VALUES ($1,$2,$3,$4,$5)")
         .bind(OrgId::one().as_uuid()).bind(approver_employee).bind(person).bind(approver.as_uuid()).bind(vec![0_u8;32]).execute(&pool).await.unwrap();
     sqlx::query("UPDATE users SET employee_id=NULL WHERE id=$1")
@@ -55,100 +60,6 @@ async fn unlinked_target_can_be_linked_by_two_distinct_people(pool: PgPool) {
     assert_eq!(employee_link(&pool, target).await, Some(employee));
 }
 
-const REVIEW: &str = "/api/v1/users?independence_review_required=true&include_inactive=true";
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn fallback_decisions_have_immutable_evidence_and_scoped_actionable_reviews(pool: PgPool) {
-    let (h, actor, target, _) = fixture(&pool).await;
-    let approver = aged_noticed_approver(&pool).await;
-    let token = h.token(actor, &["SUPER_ADMIN"], vec![]).await;
-    let (status, before) = send(&h, "GET", REVIEW, &token, None).await;
-    assert_eq!(status, StatusCode::OK, "{before}");
-    assert_eq!(
-        before["total"], 0,
-        "probes and ordinary accounts are not review items"
-    );
-    let (status, requested) = request_unlink(&h, actor, target, None).await;
-    assert_eq!(status, StatusCode::ACCEPTED, "{requested}");
-    let (_, pending) = send(&h, "GET", REVIEW, &token, None).await;
-    assert_eq!(
-        pending["total"], 0,
-        "an undecided proposal creates no review item"
-    );
-    let request = requested["account_link"]["request_id"]
-        .as_str()
-        .unwrap()
-        .parse()
-        .unwrap();
-    let (status, approved) = request_unlink(&h, approver, target, Some(request)).await;
-    assert_eq!(status, StatusCode::OK, "{approved}");
-    let evidence: (Value, Value) = sqlx::query_as("SELECT decision_snapshot,after_snap FROM audit_events WHERE action='account_link.approved' AND target_id=$1")
-        .bind(target.to_string()).fetch_one(&pool).await.unwrap();
-    assert_eq!(evidence.0["sod.maker.account"], actor.to_string());
-    assert_eq!(evidence.0["sod.checker.account"], approver.to_string());
-    assert_eq!(evidence.1["independence"]["review_required"], true);
-    let (_, page) = send(&h, "GET", &format!("{REVIEW}&limit=1"), &token, None).await;
-    let (_, next) = send(
-        &h,
-        "GET",
-        &format!("{REVIEW}&limit=1&offset=1"),
-        &token,
-        None,
-    )
-    .await;
-    assert_eq!(page["total"], 2);
-    assert_eq!(page["items"].as_array().unwrap().len(), 1);
-    assert_ne!(page["items"][0]["id"], next["items"][0]["id"]);
-    let lower = seed_user(&pool, "Reader", &["MECHANIC"], None).await;
-    let lower = h.token(lower, &["MECHANIC"], vec![]).await;
-    assert_eq!(
-        send(&h, "GET", REVIEW, &lower, None).await.0,
-        StatusCode::FORBIDDEN
-    );
-    let foreign_org = uuid::Uuid::new_v4();
-    let foreign = console_platform_test_support::seed_org_and_super_admin(
-        &pool,
-        foreign_org,
-        "foreign-review",
-    )
-    .await;
-    let foreign = h
-        .token_for_org(
-            OrgId::from_uuid(foreign_org),
-            foreign,
-            &["SUPER_ADMIN"],
-            vec![],
-        )
-        .await;
-    let (status, page) = send(&h, "GET", REVIEW, &foreign, None).await;
-    assert_eq!(status, StatusCode::OK, "{page}");
-    assert_eq!(page["total"], 0);
-    people::bind_user_to_distinct_person(&pool, actor).await;
-    let (_, page) = send(&h, "GET", REVIEW, &token, None).await;
-    assert_eq!(
-        page["total"], 1,
-        "only the account still needing a person link remains"
-    );
-    assert_eq!(page["items"][0]["id"], approver.to_string());
-    let after: (Value, Value) = sqlx::query_as("SELECT decision_snapshot,after_snap FROM audit_events WHERE action='account_link.approved' AND target_id=$1")
-        .bind(target.to_string()).fetch_one(&pool).await.unwrap();
-    assert_eq!(
-        after, evidence,
-        "a later person link must never rewrite decision evidence"
-    );
-    sqlx::query("UPDATE users SET is_active=false WHERE id=$1")
-        .bind(approver.as_uuid())
-        .execute(&pool)
-        .await
-        .unwrap();
-    let (_, page) = send(&h, "GET", REVIEW, &token, None).await;
-    assert_eq!(
-        page["total"], 1,
-        "deactivation must not hide an outstanding review"
-    );
-    assert_eq!(page["items"][0]["is_active"], false);
-}
-
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn own_account_includes_shared_employee_and_shared_person(pool: PgPool) {
     let (h, actor, target, target_employee) = fixture(&pool).await;
@@ -179,6 +90,11 @@ async fn own_account_includes_shared_employee_and_shared_person(pool: PgPool) {
             .fetch_one(&pool)
             .await
             .unwrap();
+    sqlx::query("DELETE FROM employee_person_bindings WHERE employee_id=ANY($1)")
+        .bind(vec![own, target_employee])
+        .execute(&pool)
+        .await
+        .unwrap();
     sqlx::query("INSERT INTO employee_person_bindings (org_id,employee_id,person_id,actor_id,payload_digest) SELECT $1,employee,$2,$3,$4 FROM unnest($5::uuid[]) employee")
         .bind(OrgId::one().as_uuid()).bind(person).bind(actor.as_uuid()).bind(vec![0_u8;32]).bind(vec![own,target_employee]).execute(&pool).await.unwrap();
     let (status, body) = request_unlink(&h, actor, target, None).await;
@@ -199,4 +115,34 @@ async fn self_identity_evaluation_errors_keep_the_refusal_code(pool: PgPool) {
     assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
     assert_eq!(body["error"]["code"], "account_link_self_forbidden");
     assert_eq!(employee_link(&pool, target).await, Some(employee));
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn unbound_requester_or_checker_cannot_approve_link_changes(pool: PgPool) {
+    let (h, actor, target, employee) = fixture(&pool).await;
+    let approver = aged_noticed_approver(&pool).await;
+    let (_, body) = request_unlink(&h, actor, target, None).await;
+    let request = body["account_link"]["request_id"]
+        .as_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+    for user in [actor, approver] {
+        let mut identity = pool.begin().await.unwrap();
+        sqlx::query("UPDATE users SET is_tenant_ops=false,person_id=COALESCE(public.console_employee_person(org_id,employee_id),id) WHERE id=ANY($1)")
+            .bind(vec![*actor.as_uuid(),*approver.as_uuid()]).execute(identity.as_mut()).await.unwrap();
+        sqlx::query("UPDATE users SET is_tenant_ops=true WHERE id=$1")
+            .bind(user.as_uuid())
+            .execute(identity.as_mut())
+            .await
+            .unwrap();
+        identity.commit().await.unwrap();
+        let (status, body) = request_unlink(&h, approver, target, Some(request)).await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+        assert_eq!(
+            body["error"]["code"],
+            "account_link.refuse.identity_unbound"
+        );
+        assert_eq!(employee_link(&pool, target).await, Some(employee));
+    }
 }

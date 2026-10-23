@@ -108,7 +108,11 @@ impl PgOrgStore {
                     return Err(account_link_stale().into());
                 }
                 facts.approving = true;
-                facts.independent = independent_people::authorized_in_tx(tx, Some(*requester.as_uuid()), *actor.as_uuid()).await?;
+                if let Some(refusal) = independent_people::refusal_in_tx(tx.as_mut(), Some(*requester.as_uuid()), *actor.as_uuid()).await {
+                    return Err(KernelError::forbidden("account linking requires two bound, distinct natural persons")
+                        .with_code(refusal.code("account_link.refuse.identity_unbound", "account_link_second_person_required")).into());
+                }
+                facts.independent = true;
                 facts.eligible = second.eligible.contains(actor.as_uuid());
                 if !account_link::decide(&actor.to_string(), &org.to_string(), &org.to_string(), facts) {
                     return Err(KernelError::forbidden("요청자와 다른 확인 권한자가 승인해야 합니다")

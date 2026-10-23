@@ -13,14 +13,18 @@ pub async fn decide_run_in_tx(
     if run.status != "SUBMITTED" {
         return Err(invalid_state("decide", &run.status));
     }
-    if !console_platform_authz::cedar_pbac::actions::independent_people::authorized_in_tx(
-        tx,
-        run.submitted_by,
-        actor,
-    )
-    .await?
+    if let Some(refusal) =
+        console_platform_authz::cedar_pbac::actions::independent_people::refusal_in_tx(
+            tx.as_mut(),
+            run.submitted_by,
+            actor,
+        )
+        .await
     {
-        return Err(LifecycleError::SodViolation);
+        return Err(match refusal {
+            console_platform_authz::cedar_pbac::actions::independent_people::Refusal::IdentityUnbound => LifecycleError::IdentityUnbound,
+            console_platform_authz::cedar_pbac::actions::independent_people::Refusal::SamePerson => LifecycleError::SodViolation,
+        });
     }
     match decision {
         "APPROVE" => {

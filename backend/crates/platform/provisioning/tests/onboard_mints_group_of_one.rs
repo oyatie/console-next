@@ -79,6 +79,21 @@ async fn t7_onboard_tenant_as_console_rt_mints_group_of_one(owner_pool: PgPool) 
         .await
         .unwrap();
 
+    let (person, is_ops): (Option<Uuid>, bool) =
+        sqlx::query_as("SELECT person_id,is_tenant_ops FROM users WHERE id=$1")
+            .bind(onboarded.admin_user_id)
+            .fetch_one(&owner_pool)
+            .await
+            .unwrap();
+    assert!(
+        person.is_some(),
+        "the bootstrap admin needs the same canonical person binding as invited accounts"
+    );
+    assert!(
+        !is_ops,
+        "the first human administrator is a personal account"
+    );
+
     let org_id = onboarded.organization.id;
     let group_id = onboarded
         .organization

@@ -428,19 +428,9 @@ impl CanonicalPortError for PayRunError {
 /// REST `from_lifecycle` status surface (404 / 422 / 409 / 500), instead of
 /// flattening every arm to `Internal` via [`PayRunError::Lifecycle`].
 fn lifecycle_into_kernel_error(err: crate::lifecycle::LifecycleError) -> KernelError {
-    use crate::lifecycle::LifecycleError as E;
-    let message = err.to_string();
     match err {
-        E::NotFound => KernelError::not_found(message),
-        E::Validation(_) => KernelError::validation(message),
-        E::InvalidTransition(_) => KernelError::invalid_transition(message),
-        E::InvalidState(_)
-        | E::PreflightBlocked(_)
-        | E::ExceptionsOpen(_)
-        | E::SodViolation
-        | E::AlreadyResolved
-        | E::LegalGate(_) => KernelError::conflict(message),
-        E::Db(_) => KernelError::internal(message),
+        crate::lifecycle::LifecycleError::NotFound => KernelError::not_found(err.to_string()),
+        other => other.into_kernel_error(),
     }
 }
 

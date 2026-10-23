@@ -73,8 +73,6 @@ pub(crate) struct UpdateSelfRequest {
 #[derive(Debug, Deserialize)]
 pub(crate) struct ListUsersRequest {
     #[serde(default)]
-    pub(crate) independence_review_required: bool,
-    #[serde(default)]
     pub(crate) include_inactive: bool,
     pub(crate) limit: Option<i64>,
     /// Zero-based row offset for offset pagination. Optional, defaults to 0.

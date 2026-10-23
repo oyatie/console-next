@@ -41,7 +41,6 @@ impl PgOrgStore {
         // COUNT, so build it once into a closure that appends to any builder.
         let scope = scope.clone();
         let include_inactive = query.include_inactive;
-        let independence_review_required = query.independence_review_required;
         let push_filter = move |builder: &mut QueryBuilder<Postgres>| {
             match &scope {
                 BranchScope::All => {
@@ -61,15 +60,6 @@ impl PgOrgStore {
                         .push_bind(branch_ids)
                         .push("))");
                 }
-            }
-            if independence_review_required {
-                builder.push(
-                    " AND NOT EXISTS (SELECT 1 FROM employee_person_bindings b \
-                    WHERE b.org_id=u.org_id AND b.employee_id=u.employee_id) \
-                    AND EXISTS (SELECT 1 FROM audit_events a WHERE a.org_id=u.org_id AND \
-                    (a.decision_snapshot->>'sod.maker.account'=u.id::text OR \
-                     a.decision_snapshot->>'sod.checker.account'=u.id::text))",
-                );
             }
             if !include_inactive {
                 builder.push(" AND u.is_active = true");

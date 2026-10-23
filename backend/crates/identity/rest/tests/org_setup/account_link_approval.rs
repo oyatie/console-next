@@ -221,5 +221,5 @@ async fn a_second_account_of_the_requesters_person_cannot_approve(pool: PgPool) 
     assert_eq!(employee_link(&pool, target).await, Some(employee));
 }
 
-#[path = "independence_reviews.rs"]
-mod reviews;
+#[path = "person_identity.rs"]
+mod person_identity;

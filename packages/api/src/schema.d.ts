@@ -54900,8 +54900,6 @@ export interface operations {
     listUsers: {
         parameters: {
             query?: {
-                /** @description Accounts with committed account-based SoD decisions that still need a person link; retains tenant and branch visibility. */
-                independence_review_required?: boolean;
                 include_inactive?: boolean;
                 limit?: number;
                 offset?: number;

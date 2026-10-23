@@ -90,8 +90,15 @@ pub(super) async fn unlock_period_lock(
                 settings.get(&SettingKey::AuthzSoleHolderMode),
                 Some(Ok(resolved)) if matches!(resolved.value, SettingValue::Code("step_up_notice_review"))
             );
+            let setup_person: bool = sqlx::query_scalar("SELECT public.console_setup_person($1,$2)")
+                .bind(org.as_uuid()).bind(user).fetch_one(tx.as_mut()).await?;
+            let admins = console_identity_adapter_postgres::second_person::PgHolderResolver {
+                tx, org, capability: console_identity_adapter_postgres::second_person::HolderCapability::AccessAdmin,
+                exclude_account: None, exclude_employee: None, include_ops: false, now,
+            }.resolve_at_most(2).await.map_err(LifecycleError::from_kernel)?;
+            let setup_single_admin = setup_person && admins.len()==1 && admins.contains(&user);
             // Admission is a separate Cedar decision; no assertion has been verified yet.
-            if !unlock_admitted(&user.to_string(), &org.to_string(), fact.other_eligible_holders, sole_holder_refuse) {
+            if !unlock_admitted(&user.to_string(), &org.to_string(), fact.other_eligible_holders, sole_holder_refuse, setup_single_admin) {
                 return Err(coded(
                     StatusCode::CONFLICT,
                     "period_unlock_sole_holder_refused",
@@ -102,7 +109,7 @@ pub(super) async fn unlock_period_lock(
             let step_up =
                 verify_step_up(verifier.as_ref(), tx, body.step_up, user, &binding(lock_id, &payload)).await?;
             // This fact is true only after verify_step_up returned a bound assertion.
-            let path = unlock_path(&user.to_string(), &org.to_string(), fact.other_eligible_holders, sole_holder_refuse, true);
+            let path = unlock_path(&user.to_string(), &org.to_string(), fact.other_eligible_holders, sole_holder_refuse, setup_single_admin, true);
             if path == UnlockPath::Refused {
                 return Err(coded(StatusCode::CONFLICT, "period_unlock_sole_holder_refused", "기간 잠금 해제가 허용되지 않았습니다"));
             }

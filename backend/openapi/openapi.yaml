@@ -27207,13 +27207,6 @@ paths:
       security:
       - bearerAuth: []
       parameters:
-      - name: independence_review_required
-        in: query
-        description: Accounts with committed account-based SoD decisions that still need a person link; retains tenant and branch visibility.
-        required: false
-        schema:
-          type: boolean
-          default: false
       - name: include_inactive
         in: query
         required: false

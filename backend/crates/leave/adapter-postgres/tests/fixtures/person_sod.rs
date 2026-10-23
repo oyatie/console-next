@@ -46,10 +46,37 @@ async fn same_person_accounts_cannot_decide_leave(owner_pool: PgPool) {
             assert_eq!(err.kind(), ErrorKind::Forbidden);
             assert!(
                 matches!(err, console_leave_adapter_postgres::PgLeaveError::Domain(ref e)
-                if e.code == Some("leave_decide_requester_forbidden"))
+                if e.code == Some(if checker==unknown {"leave.refuse.identity_unbound"} else {"leave_decide_requester_forbidden"}))
             );
             assert_eq!(snapshot(&owner_pool, *request.id.as_uuid()).await, before);
         }
+    }
+    let checker = seed_user(&owner_pool, org_uuid).await;
+    for user in [checker, maker] {
+        let mut identity = owner_pool.begin().await.unwrap();
+        sqlx::query("UPDATE users SET is_tenant_ops=false,person_id=COALESCE(public.console_employee_person(org_id,employee_id),id) WHERE id=ANY($1)")
+            .bind(vec![*maker.as_uuid(),*checker.as_uuid()]).execute(identity.as_mut()).await.unwrap();
+        sqlx::query("UPDATE users SET is_tenant_ops=true WHERE id=$1")
+            .bind(user.as_uuid())
+            .execute(identity.as_mut())
+            .await
+            .unwrap();
+        identity.commit().await.unwrap();
+        let error = scope_org(
+            org,
+            store.decide(decide_cmd(
+                request.id,
+                checker,
+                BranchScope::All,
+                LeaveDecision::Approve,
+            )),
+        )
+        .await
+        .unwrap_err();
+        assert!(
+            matches!(error,console_leave_adapter_postgres::PgLeaveError::Domain(ref e) if e.code==Some("leave.refuse.identity_unbound"))
+        );
+        assert_eq!(snapshot(&owner_pool, *request.id.as_uuid()).await, before);
     }
 }
 

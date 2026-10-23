@@ -36,17 +36,21 @@ impl PgLeaveStore {
             .bind(org.to_string())
             .execute(tx.as_mut())
             .await?;
-        if !console_platform_authz::cedar_pbac::actions::independent_people::authorized_in_tx(
-            &mut tx,
-            Some(*existing.requester_user_id.as_uuid()),
-            *decider.as_uuid(),
-        )
-        .await?
+        if let Some(refusal) =
+            console_platform_authz::cedar_pbac::actions::independent_people::refusal_in_tx(
+                tx.as_mut(),
+                Some(*existing.requester_user_id.as_uuid()),
+                *decider.as_uuid(),
+            )
+            .await
         {
             return Err(KernelError::forbidden(
-                "leave decisions require distinct known identities; another authorized person must decide",
+                "leave decisions require two bound, distinct natural persons",
             )
-            .with_code("leave_decide_requester_forbidden")
+            .with_code(refusal.code(
+                "leave.refuse.identity_unbound",
+                "leave_decide_requester_forbidden",
+            ))
             .into());
         }
         if decision.writes_ledger() && existing.charge_resolved_by == Some(decider) {

@@ -1,9 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Decisions #26 item d through the router: when an unlock waits for a second
-//! person, the tenant ops account may be that person (break-glass: its own
-//! step-up, flagged for review, audited). Anyone else who is not an eligible
-//! holder is still refused with no side effect, and ops never approves its
-//! own request.
+//! Unbound operations accounts fail the same person rule as every other account.
 
 mod period_unlock_support;
 
@@ -116,13 +112,11 @@ async fn active(owner: &PgPool, lock_id: Uuid) -> bool {
 /// `second_person_ineligible` and an unlock waiting on an absent holder could
 /// not be performed by anyone in the tenant.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn regression_d26_ops_is_the_second_person_only_with_a_step_up_and_never_for_itself(
-    owner: PgPool,
-) {
+async fn unbound_operations_accounts_cannot_be_either_decision_party(owner: PgPool) {
     let (service, issuer) = router(&owner).await;
     let svc = passkey_service();
     let mut requester = admin(&owner, &svc, &issuer, "요청자").await;
-    let _absent = admin(&owner, &svc, &issuer, "부재자").await;
+    let mut absent = admin(&owner, &svc, &issuer, "부재자").await;
     let mut ops = unlinked(&owner, &svc, &issuer, "운영 관리자", true).await;
     let mut outsider = unlinked(&owner, &svc, &issuer, "외부자", false).await;
     let (lock_id, request_id) =
@@ -163,37 +157,31 @@ async fn regression_d26_ops_is_the_second_person_only_with_a_step_up_and_never_f
         "{refused}"
     );
 
-    // Ops with its own step-up performs it, flagged for review and audited.
-    let (status, unlocked) =
+    let (status, refused) =
         approve(&service, &owner, &svc, &mut ops, lock_id, request_id, true).await;
-    assert_eq!(status, StatusCode::OK, "{unlocked}");
-    assert_eq!(unlocked["lock"]["active"], false);
-    assert_eq!(unlocked["lock"]["unlockedBy"], requester.id.to_string());
-    assert_eq!(unlocked["lock"]["unlockApprovedBy"], ops.id.to_string());
-    assert_eq!(unlocked["lock"]["unlockReviewRequired"], true);
-    let audits = unlocks(&owner, lock_id).await;
-    assert_eq!(audits.len(), 1, "{audits:?}");
-    assert_eq!(audits[0]["second_person"], "ops_break_glass");
-    assert_eq!(audits[0]["review_required"], true);
-    assert!(audits[0]["step_up_assertion_id"].is_string(), "{audits:?}");
-
-    // Negative: ops is never the second person of its own request.
-    let (own_lock, own_request) = lock_and_request(&service, &owner, &svc, &mut ops, "07").await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
+    assert_eq!(
+        refused["error"]["code"],
+        "period_unlock.refuse.identity_unbound"
+    );
+    assert!(active(&owner, lock_id).await);
+    assert!(unlocks(&owner, lock_id).await.is_empty());
+    let (lock_id, request_id) = lock_and_request(&service, &owner, &svc, &mut ops, "07").await;
     let (status, refused) = approve(
         &service,
         &owner,
         &svc,
-        &mut ops,
-        own_lock,
-        own_request,
+        &mut absent,
+        lock_id,
+        request_id,
         true,
     )
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
     assert_eq!(
-        refused["error"]["code"], "second_person_required",
-        "{refused}"
+        refused["error"]["code"],
+        "period_unlock.refuse.identity_unbound"
     );
-    assert!(active(&owner, own_lock).await);
-    assert!(unlocks(&owner, own_lock).await.is_empty());
+    assert!(active(&owner, lock_id).await);
+    assert!(unlocks(&owner, lock_id).await.is_empty());
 }

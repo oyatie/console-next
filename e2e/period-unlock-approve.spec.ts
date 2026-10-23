@@ -125,10 +125,10 @@ test("period unlock: a second close authority refuses, then approves; the reques
   await card.getByLabel(/^반려 사유/).fill("9월 급여 확정 뒤 다시 요청");
   // Identity may become unavailable after the list was read; show the server refusal in this dialog.
   const rejectRoute = `**/api/v1/period-locks/${lock.id}/unlock/reject`;
-  await exec.route(rejectRoute, (route) => route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ error: { code: "second_person_required", message: "identity unavailable" } }) }));
+  await exec.route(rejectRoute, (route) => route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ error: { code: "period_unlock.refuse.identity_unbound", message: "identity unavailable" } }) }));
   await card.getByRole("button", { name: "잠금 해제 반려" }).click();
-  await expect(card.getByRole("alert")).toContainText("요청자 본인은 결정할 수 없으며, 신원 정보를 확인할 수 없어도 결정을 거부합니다");
-  await expect(card.getByRole("alert")).toContainText("마감 권한이 있는 다른 사람이 승인하거나 반려해야 합니다");
+  await expect(card.getByRole("alert")).toContainText("본인 정보를 확인할 수 없어 거부했습니다");
+  await expect(card.getByRole("alert")).toContainText("계정 관리 권한이 있는 담당자에게 계정을 인사카드에 연결해 달라고 요청하십시오");
   await expect(row).toContainText("승인 대기");
   await exec.unroute(rejectRoute);
   await card.getByRole("button", { name: "잠금 해제 반려" }).click();

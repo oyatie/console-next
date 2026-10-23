@@ -21,18 +21,42 @@ const LOCK: &str = boundary_sql!(
     "INSERT INTO period_locks (org_id,domain,period_start,period_end,reason_code,unlocked_at,unlocked_by,unlock_approved_by,unlock_reason_code,relock_at) SELECT org,'payroll','2026-01-01','2026-01-31','MONTHLY_PAYROLL_CLOSE',now(),maker,checker,'PAYROLL_ERROR',now()+interval '1 day' FROM args"
 );
 
-async fn boundary(pool: &PgPool, sql: &'static str, code: &str, leave: bool) {
+async fn boundary(pool: &PgPool, sql: &'static str, code: &str, domain: &str, leave: bool) {
     let p = parties(pool).await;
-    let unknown: Uuid = sqlx::query_scalar("INSERT INTO users (org_id,display_name,roles) VALUES ($1,'Unknown',ARRAY['ADMIN']) RETURNING id")
+    let unbound: Uuid = sqlx::query_scalar("INSERT INTO users (org_id,display_name,roles,is_tenant_ops) VALUES ($1,'Unbound',ARRAY['ADMIN'],true) RETURNING id")
         .bind(p.org).fetch_one(pool).await.unwrap();
-    for (maker, checker, allowed) in [
-        (p.maker, p.independent, true),
-        (p.maker, p.maker, false),
-        (p.maker, p.same_person, false),
-        (p.maker, unknown, true),
-        (unknown, p.independent, true),
-        (p.maker, Uuid::new_v4(), false),
-        (Uuid::new_v4(), p.independent, false),
+    // A second account retains its canonical person even without an employee link.
+    sqlx::query("UPDATE users SET employee_id=NULL WHERE id=$1")
+        .bind(p.same_person_alias)
+        .execute(pool)
+        .await
+        .unwrap();
+    for (maker, checker, expected) in [
+        (Some(p.maker), p.same_person, Some(code.to_owned())),
+        (Some(p.maker), p.same_person_alias, Some(code.to_owned())),
+        (Some(p.maker), p.maker, Some(code.to_owned())),
+        (Some(p.same_person_alias), p.maker, Some(code.to_owned())),
+        (
+            Some(p.maker),
+            unbound,
+            Some(format!("{domain}.refuse.identity_unbound")),
+        ),
+        (
+            Some(unbound),
+            p.independent,
+            Some(format!("{domain}.refuse.identity_unbound")),
+        ),
+        (
+            None,
+            p.independent,
+            Some(format!("{domain}.refuse.identity_unbound")),
+        ),
+        (
+            Some(p.maker),
+            Uuid::new_v4(),
+            Some(format!("{domain}.refuse.identity_unbound")),
+        ),
+        (Some(p.maker), p.independent, None),
     ] {
         let mut tx = decision_tx(pool, &p, leave).await;
         let result = sqlx::query(sql)
@@ -43,96 +67,129 @@ async fn boundary(pool: &PgPool, sql: &'static str, code: &str, leave: bool) {
             .bind(p.branch)
             .execute(tx.as_mut())
             .await;
-        if allowed {
+        if let Some(expected) = expected {
+            let error = result.expect_err("SQL must refuse missing or shared person identities");
+            let error = error.as_database_error().unwrap();
+            assert_eq!(error.code().as_deref(), Some("42501"));
+            assert_eq!(error.message(), expected);
+        } else {
             result.unwrap();
-            // Audit SQL and Rust writers consume the same frozen mutation facts.
             sqlx::query("SET LOCAL ROLE NONE")
                 .execute(tx.as_mut())
                 .await
                 .unwrap();
-            let (snapshot, after): (serde_json::Value, serde_json::Value) = sqlx::query_as(
+            let (snapshot, after): (Option<serde_json::Value>, serde_json::Value) = sqlx::query_as(
                 "INSERT INTO audit_events (org_id,actor,action,target_type,target_id,trace_id,span_id,occurred_at) \
                  VALUES ($1,$2,'sod.test','decision','test',repeat('a',32),repeat('b',16),now()) \
                  RETURNING decision_snapshot,after_snap")
                 .bind(p.org).bind(checker).fetch_one(tx.as_mut()).await.unwrap();
-            let weak = maker == unknown || checker == unknown;
-            assert_eq!(snapshot["sod.review_required"], i32::from(weak));
-            assert_eq!(after["independence"]["review_required"], weak);
-            assert_eq!(after["independence"]["maker"], maker.to_string());
+            assert!(
+                snapshot.is_none_or(|v| !v.to_string().contains("sod.")),
+                "identity values never enter the policy-version snapshot"
+            );
+            assert_eq!(after["independence"]["maker"], maker.unwrap().to_string());
             assert_eq!(after["independence"]["checker"], checker.to_string());
-            if weak {
-                let key = if maker == unknown {
-                    "sod.maker.account"
-                } else {
-                    "sod.checker.account"
-                };
-                assert_eq!(snapshot[key], unknown.to_string());
-            } else {
-                assert!(snapshot["sod.maker.person"].is_string());
-                assert!(snapshot["sod.checker.person"].is_string());
-            }
-        } else {
-            let error =
-                result.expect_err("database invariant must refuse unknown or shared people");
-            let error = error.as_database_error().unwrap();
-            assert_eq!(error.code().as_deref(), Some("42501"));
-            assert_eq!(error.message(), code);
+            assert!(after["independence"]["maker_person"].is_string());
+            assert!(after["independence"]["checker_person"].is_string());
         }
         tx.rollback().await.unwrap();
     }
-    // Imported employees without person bindings retain their known account identity.
-    sqlx::query("DELETE FROM employee_person_bindings WHERE employee_id=(SELECT employee_id FROM users WHERE id=$1)")
-        .bind(p.independent).execute(pool).await.unwrap();
-    let mut tx = decision_tx(pool, &p, leave).await;
-    sqlx::query(sql)
-        .bind(p.org)
-        .bind(p.maker)
-        .bind(p.independent)
-        .bind(p.employee)
-        .bind(p.branch)
-        .execute(tx.as_mut())
-        .await
-        .expect("a known account without a person binding must remain usable");
-    tx.rollback().await.unwrap();
-
-    // Missing resolver facts are different from a known account without a person link.
-    sqlx::query("CREATE OR REPLACE FUNCTION public.console_decision_identities(p_org UUID,p_maker UUID,p_checker UUID) RETURNS TABLE (maker_identity TEXT,checker_identity TEXT) LANGUAGE sql AS 'SELECT NULL::text,NULL::text'")
-        .execute(pool).await.unwrap();
-    let mut tx = decision_tx(pool, &p, leave).await;
-    let error = sqlx::query(sql)
-        .bind(p.org)
-        .bind(p.maker)
-        .bind(p.independent)
-        .bind(p.employee)
-        .bind(p.branch)
-        .execute(tx.as_mut())
-        .await
-        .expect_err("missing decision facts must refuse");
-    assert_eq!(error.as_database_error().unwrap().message(), code);
-    tx.rollback().await.unwrap();
 }
 
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn org_change_invariant_requires_known_distinct_people(pool: PgPool) {
-    boundary(&pool, ORG_CHANGE, "org_change_decide.sod_violation", false).await;
+    boundary(
+        &pool,
+        ORG_CHANGE,
+        "org_change_decide.sod_violation",
+        "org_change",
+        false,
+    )
+    .await;
 }
-
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn payroll_invariant_requires_known_distinct_people(pool: PgPool) {
-    boundary(&pool, PAYROLL, "payroll_decide.sod_violation", false).await;
+    boundary(
+        &pool,
+        PAYROLL,
+        "payroll_decide.sod_violation",
+        "payroll",
+        false,
+    )
+    .await;
 }
-
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn leave_invariant_requires_known_distinct_people(pool: PgPool) {
-    boundary(&pool, LEAVE, "leave_decide.requester_forbidden", true).await;
+    boundary(
+        &pool,
+        LEAVE,
+        "leave_decide.requester_forbidden",
+        "leave",
+        true,
+    )
+    .await;
 }
-
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn period_unlock_invariant_requires_known_distinct_people(pool: PgPool) {
-    boundary(&pool, UNLOCK, "second_person_required", false).await;
+    boundary(
+        &pool,
+        UNLOCK,
+        "second_person_required",
+        "period_unlock",
+        false,
+    )
+    .await;
 }
-
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn period_lock_invariant_requires_known_distinct_people(pool: PgPool) {
-    boundary(&pool, LOCK, "second_person_required", false).await;
+    boundary(
+        &pool,
+        LOCK,
+        "second_person_required",
+        "period_unlock",
+        false,
+    )
+    .await;
+}
+
+async fn unbound_boundary(pool: &PgPool, sql: &'static str, domain: &str, leave: bool) {
+    let p = parties(pool).await;
+    let unbound:Uuid=sqlx::query_scalar("INSERT INTO users(org_id,display_name,is_tenant_ops) VALUES($1,'Unbound',true) RETURNING id").bind(p.org).fetch_one(pool).await.unwrap();
+    for (maker, checker) in [(p.maker, unbound), (unbound, p.independent)] {
+        let mut tx = decision_tx(pool, &p, leave).await;
+        let error = sqlx::query(sql)
+            .bind(p.org)
+            .bind(maker)
+            .bind(checker)
+            .bind(p.employee)
+            .bind(p.branch)
+            .execute(tx.as_mut())
+            .await
+            .expect_err("a missing person binding must refuse");
+        assert_eq!(
+            error.as_database_error().unwrap().message(),
+            format!("{domain}.refuse.identity_unbound")
+        );
+        tx.rollback().await.unwrap();
+    }
+}
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn org_change_refuses_identity_unbound(pool: PgPool) {
+    unbound_boundary(&pool, ORG_CHANGE, "org_change", false).await;
+}
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn leave_refuses_identity_unbound(pool: PgPool) {
+    unbound_boundary(&pool, LEAVE, "leave", true).await;
+}
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn payroll_refuses_identity_unbound(pool: PgPool) {
+    unbound_boundary(&pool, PAYROLL, "payroll", false).await;
+}
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn period_unlock_refuses_identity_unbound(pool: PgPool) {
+    unbound_boundary(&pool, UNLOCK, "period_unlock", false).await;
+}
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn period_lock_refuses_identity_unbound(pool: PgPool) {
+    unbound_boundary(&pool, LOCK, "period_unlock", false).await;
 }

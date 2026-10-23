@@ -7,7 +7,7 @@ import { staffedTenant } from "./setup-flows";
 // Accounts from people (governance-01, regression): there are no preset roles. An invite starts from an employee
 // record (linked on create), asks only who, creates an account with no access, and continues into 권한 부여; it stops
 // when the person already has an account. The ops account is named 운영 계정 and cannot be deactivated (governance-22).
-test("accounts: invite with no role, continue into 권한 부여, find the existing account, ops is protected", { tag: "@access" }, async ({ browser }) => {
+test("accounts: invite with no role, continue into 권한 부여, find the existing account, the bootstrap admin cannot deactivate itself", { tag: "@access" }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "acctsco", "계정상사");
   const api = apiOf(admin, bearerOf(admin));
   await registerEmployee(admin, { name: "정하늘", number: "HK-4112", unit: "채용팀" });
@@ -66,8 +66,8 @@ test("accounts: invite with no role, continue into 권한 부여, find the exist
   await expect(admin.getByRole("row", { name: /Tenant Admin/ })).toHaveCount(0);
   await ops.click();
   const opsPanel = admin.getByRole("complementary", { name: "운영 계정" });
-  await expect(opsPanel).toContainText("운영 계정은 비활성화할 수 없습니다");
-  await expect(opsPanel).toContainText("역할 없이 모든 권한");
+  await expect(opsPanel).toContainText("내 계정은 비활성화할 수 없습니다");
+  await expect(opsPanel).toContainText("이 사람이 할 수 있는 일");
   await expect(opsPanel.getByRole("button", { name: "계정 비활성화" })).toHaveCount(0);
   await expectAccessible(admin, "ops account panel");
 });

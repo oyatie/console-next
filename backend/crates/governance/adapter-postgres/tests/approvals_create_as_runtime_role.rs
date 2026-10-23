@@ -296,62 +296,10 @@ async fn cross_org_requests_are_invisible(pool: PgPool) {
 
 const NATURAL_PERSON_KIND: &str = "company.revise";
 
-async fn seed_employee(pool: &PgPool, org: Uuid, source_key: &str) -> Uuid {
-    sqlx::query_scalar(
-        "INSERT INTO employees \
-         (org_id, company, name, source_filename, source_sheet, source_row, source_key) \
-         VALUES ($1, 'ACME', $2, 'seed.xlsx', 'Sheet1', 1, $2) RETURNING id",
-    )
-    .bind(org)
-    .bind(source_key)
-    .fetch_one(pool)
-    .await
-    .unwrap()
-}
+#[path = "fixtures/governance_people.rs"]
+mod people;
+use people::{seed_employee, seed_person, seed_person_bound_user};
 
-async fn seed_person_bound_user(
-    pool: &PgPool,
-    org: Uuid,
-    name: &str,
-    employee_id: Uuid,
-    person_id: Uuid,
-    binder: UserId,
-) -> UserId {
-    let user = seed_user(pool, org, name).await;
-    sqlx::query(
-        "INSERT INTO employee_person_bindings \
-         (org_id, employee_id, person_id, actor_id, payload_digest) \
-         VALUES ($1, $2, $3, $4, $5)",
-    )
-    .bind(org)
-    .bind(employee_id)
-    .bind(person_id)
-    .bind(*binder.as_uuid())
-    .bind([7_u8; 32].as_slice())
-    .execute(pool)
-    .await
-    .unwrap();
-    sqlx::query("UPDATE users SET employee_id = $1 WHERE id = $2 AND org_id = $3")
-        .bind(employee_id)
-        .bind(*user.as_uuid())
-        .bind(org)
-        .execute(pool)
-        .await
-        .unwrap();
-    user
-}
-
-async fn seed_person(pool: &PgPool, org: Uuid) -> Uuid {
-    sqlx::query_scalar("INSERT INTO persons (org_id) VALUES ($1) RETURNING id")
-        .bind(org)
-        .fetch_one(pool)
-        .await
-        .unwrap()
-}
-
-/// Two DISTINCT accounts bound to the SAME Person must be denied on
-/// Company/HR/Payroll kinds. A mere `user_id != user_id` check would ALLOW this
-/// fixture — that is the whole point of the bar.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn same_person_different_accounts_denied_on_company_kind(pool: PgPool) {
     seed_org(&pool, ORG_A, "np-same").await;
@@ -361,6 +309,11 @@ async fn same_person_different_accounts_denied_on_company_kind(pool: PgPool) {
     let emp_b = seed_employee(&pool, ORG_A, "np-same-b").await;
     let requester = seed_person_bound_user(&pool, ORG_A, "Cap-A", emp_a, person, binder).await;
     let approver = seed_person_bound_user(&pool, ORG_A, "Cap-B", emp_b, person, binder).await;
+    sqlx::query("UPDATE users SET employee_id=NULL WHERE id=$1")
+        .bind(approver.as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
     assert_ne!(
         requester, approver,
         "fixture must use two accounts; otherwise the account-level bar masks the defect"
@@ -403,11 +356,7 @@ async fn same_person_different_accounts_denied_on_company_kind(pool: PgPool) {
     match refused {
         console_governance_adapter_postgres::PgGovernanceError::Domain(err) => {
             assert_eq!(err.kind, ErrorKind::Forbidden);
-            assert!(
-                err.message.contains("same Person"),
-                "refusal must name the Person bar, got {:?}",
-                err.message
-            );
+            assert_eq!(err.code, Some("governance.refuse.same_person"));
         }
         other => panic!("expected Domain forbidden, got {other:?}"),
     }
@@ -467,6 +416,11 @@ async fn distinct_persons_may_decide_company_kind(pool: PgPool) {
 async fn unbound_requester_fails_closed_on_company_kind_open(pool: PgPool) {
     seed_org(&pool, ORG_A, "np-unbound").await;
     let unbound = seed_user(&pool, ORG_A, "Unbound").await;
+    sqlx::query("UPDATE users SET is_tenant_ops=true WHERE id=$1")
+        .bind(unbound.as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
     let store = PgGovernanceStore::new(runtime_role_pool(&pool).await);
 
     let refused = scope_org(OrgId::from_uuid(ORG_A), async {
@@ -488,6 +442,7 @@ async fn unbound_requester_fails_closed_on_company_kind_open(pool: PgPool) {
     match refused {
         console_governance_adapter_postgres::PgGovernanceError::Domain(err) => {
             assert_eq!(err.kind, ErrorKind::Forbidden);
+            assert_eq!(err.code, Some("governance.refuse.identity_unbound"));
             assert!(
                 err.message.contains("unbound") || err.message.contains("natural person"),
                 "got {:?}",

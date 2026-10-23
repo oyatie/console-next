@@ -23,12 +23,21 @@ impl PgOrgChangeStore {
                     )
                     .into());
                 }
-                if !console_platform_authz::cedar_pbac::actions::independent_people::authorized_in_tx(
-                    tx, Some(request.drafted_by), *actor.as_uuid(),
-                ).await? {
-                    return Err(KernelError::conflict(
-                        "기안자 본인은 결재할 수 없으며, 신원 정보를 확인할 수 없어도 결재를 거부합니다. 결재 권한이 있는 다른 사람이 결재해야 합니다.",
-                    ).with_code("org_change_sod_violation")
+                if let Some(refusal) =
+                    console_platform_authz::cedar_pbac::actions::independent_people::refusal_in_tx(
+                        tx.as_mut(),
+                        Some(request.drafted_by),
+                        *actor.as_uuid(),
+                    )
+                    .await
+                {
+                    return Err(KernelError::forbidden(
+                        "approval requires two bound, distinct natural persons",
+                    )
+                    .with_code(refusal.code(
+                        "org_change.refuse.identity_unbound",
+                        "org_change_sod_violation",
+                    ))
                     .into());
                 }
                 let step = sqlx::query(

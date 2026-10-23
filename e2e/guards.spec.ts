@@ -19,7 +19,7 @@ import { reasonChip } from "./helpers/lifecycle";
 const shot = (p: Page, name: string) => (process.env.GUARDS_SHOTS ? p.screenshot({ path: `${process.env.GUARDS_SHOTS}/${name}.png`, fullPage: true }) : Promise.resolve());
 const path = (p: Page) => new URL(p.url()).pathname;
 
-test("nobody acts on their own record, the ops account keeps its sign-in path, and the auto 사번 never collides", { tag: ["@hr", "@access", "@regression"] }, async ({ browser }) => {
+test("nobody acts on their own record, the bootstrap admin keeps its sign-in path, and the auto 사번 never collides", { tag: ["@hr", "@access", "@regression"] }, async ({ browser }) => {
   test.setTimeout(8 * 60_000);
   const { admin } = await staffedTenant(browser, "guards", "늘봄정밀");
   let hr!: Page;
@@ -80,7 +80,7 @@ test("nobody acts on their own record, the ops account keeps its sign-in path, a
     await shot(hr, "ps33-own-case-after");
   });
 
-  await test.step("governance-02/03: the ops account's own reset says why not; no handover promised", async () => {
+  await test.step("governance-02/03: the bootstrap admin's own reset says why not; no handover promised", async () => {
     await go(admin, "/people?view=accounts");
     await admin.getByRole("row").filter({ hasText: "운영 계정" }).first().click();
     const panel = admin.getByRole("complementary").filter({ has: admin.getByRole("heading", { name: /운영|ops/ }) }).last();
@@ -90,7 +90,7 @@ test("nobody acts on their own record, the ops account keeps its sign-in path, a
     await expect(admin.getByRole("link", { name: "내 계정에서 패스키 등록" })).toHaveAttribute("href", "/account");
     await reset.click({ force: true });
     await expect(admin.getByRole("dialog", { name: "패스키 초기화" })).toHaveCount(0);
-    await expect(admin.getByText("운영 계정은 비활성화할 수 없습니다 · 고객 계정에 하나뿐인 운영 계정입니다")).toBeVisible();
+    await expect(admin.getByText("내 계정은 비활성화할 수 없습니다 · 다른 권한 관리 담당자가 합니다")).toBeVisible();
     await expect(panel).not.toContainText("인계");
     await shot(admin, "gov02-ops-panel-after");
     await expectAccessible(admin, "ops account panel: own reset refused with its fix");

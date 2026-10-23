@@ -92,6 +92,7 @@ pub(super) fn unlock_path(
     org: &str,
     other_eligible_holders: i64,
     sole_holder_refuse: bool,
+    setup_single_admin: bool,
     step_up: bool,
 ) -> UnlockPath {
     use console_platform_authz::cedar_pbac::actions::period_unlock::{Intent, UnlockFacts, decide};
@@ -100,6 +101,7 @@ pub(super) fn unlock_path(
         other_eligible_holders,
         step_up,
         sole_holder_allowed: !sole_holder_refuse,
+        setup_single_admin,
         intent: Intent::Wait,
     };
     if decide(user, org, org, f) {
@@ -125,6 +127,7 @@ pub(super) fn unlock_admitted(
     org: &str,
     other_eligible_holders: i64,
     sole_holder_refuse: bool,
+    setup_single_admin: bool,
 ) -> bool {
     use console_platform_authz::cedar_pbac::actions::period_unlock::{Intent, UnlockFacts, decide};
     decide(
@@ -136,6 +139,7 @@ pub(super) fn unlock_admitted(
             other_eligible_holders,
             step_up: false,
             sole_holder_allowed: !sole_holder_refuse,
+            setup_single_admin,
             intent: Intent::Request,
         },
     )
@@ -323,14 +327,17 @@ mod tests {
     #[test]
     fn a_second_person_wins_and_a_sole_holder_follows_the_mode() {
         assert_eq!(
-            unlock_path("u", "o", 1, true, true),
+            unlock_path("u", "o", 1, true, true, true),
             UnlockPath::SecondPerson
         );
         assert_eq!(
-            unlock_path("u", "o", 0, false, true),
+            unlock_path("u", "o", 0, false, true, true),
             UnlockPath::SoleHolderReview
         );
-        assert_eq!(unlock_path("u", "o", 0, true, true), UnlockPath::Refused);
+        assert_eq!(
+            unlock_path("u", "o", 0, true, true, true),
+            UnlockPath::Refused
+        );
     }
 
     #[test]

@@ -63,20 +63,4 @@ test("employee account binding requires passkey and waits for a second person, i
   await expect(card).not.toContainText(pending.requested_by);
   expect((await read<{ employee_id: string | null }>(`/api/v1/users/${target}`)).employee_id).toBeNull();
 
-  // A known unbound requester can be checked by a different, eligible account.
-  await go(exec, `/people/${employeeId}?tab=access`);
-  const second = exec.getByRole("region", { name: "로그인 계정" });
-  await second.getByRole("combobox").fill("연결대상");
-  await exec.getByRole("option", { name: /연결대상/ }).click();
-  await second.getByRole("button", { name: /패스키.*계정 연결/ }).click();
-  await expect(second).toContainText("확인 대기");
-  const approval = exec.waitForResponse((r) => r.request().method() === "PATCH" && r.url().endsWith(`/api/v1/users/${target}`));
-  await second.getByRole("button", { name: /패스키.*승인/ }).click();
-  expect((await approval).status()).toBe(200);
-  await expect.poll(async () => (await read<{ employee_id: string | null }>(`/api/v1/users/${target}`)).employee_id).toBe(employeeId);
-  await go(admin, "/");
-  const review = admin.getByRole("region", { name: /계정 기준 결재 확인/ });
-  await expect(review).toContainText("실제로 다른 사람이 결정했는지 확인");
-  await expect(review).toContainText("이임원");
-  await expect(review.getByRole("link", { name: "이임원 계정 연결 검토" })).toHaveAttribute("href", /view=accounts/);
 });

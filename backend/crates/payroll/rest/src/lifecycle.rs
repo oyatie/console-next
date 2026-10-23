@@ -67,11 +67,7 @@ impl RestError {
                 format!("{open} exceptions are still open"),
             )
             .with_details(Some(json!({ "open": open }))),
-            E::SodViolation => Self::new(
-                StatusCode::CONFLICT,
-                "sod_violation",
-                "payroll decisions require distinct known identities; another payroll approver must decide",
-            ),
+            E::IdentityUnbound | E::SodViolation => Self::from_kernel(err.into_kernel_error()),
             E::AlreadyResolved => Self::new(
                 StatusCode::CONFLICT,
                 "already_resolved",

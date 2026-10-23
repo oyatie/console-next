@@ -11,13 +11,13 @@ pub(super) async fn independent(tx: &mut Transaction<'_, Postgres>, p: &Parties)
 }
 
 #[sqlx::test(migrator = "MIGRATOR")]
-async fn person_facts_hold_account_and_binding_locks_until_decision_commits(pool: PgPool) {
+async fn person_facts_hold_canonical_account_locks_until_decision_commits(pool: PgPool) {
     let p = parties(&pool).await;
     let mut decision = decision_tx(&pool, &p, false).await;
     assert!(independent(&mut decision, &p).await);
     for sql in [
         "UPDATE users SET employee_id=$1 WHERE id=$2",
-        "DELETE FROM employee_person_bindings WHERE employee_id=$1 AND actor_id=$2",
+        "UPDATE users SET person_id=$1 WHERE id=$2",
     ] {
         let mut writer = pool.begin().await.unwrap();
         sqlx::query("SET LOCAL lock_timeout='250ms'")

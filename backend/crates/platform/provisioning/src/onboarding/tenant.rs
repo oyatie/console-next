@@ -50,12 +50,11 @@ impl PlatformProvisioner {
 
         let organization = fetch_org_tx(&mut tx, org_id).await?;
 
-        // (2) Seed the first administrator: the tenant's one ops account
-        // (break-glass, decision #26; access-model §2.4).
+        // (2) The first administrator is a person; G5 binds it in this transaction.
         let admin_user_id: Uuid = sqlx::query_scalar(
             r#"
             INSERT INTO users (display_name, roles, is_active, org_id, is_tenant_ops)
-            VALUES ($1, $2, true, $3, true)
+            VALUES ($1, $2, true, $3, false)
             RETURNING id
             "#,
         )
