@@ -8,8 +8,9 @@ use time::OffsetDateTime;
 /// for legally distinct items.
 #[derive(Debug, Deserialize)]
 pub(crate) struct PrivacyConsentAcceptRequest {
-    pub(crate) privacy: DocumentRef,
-    pub(crate) terms: DocumentRef,
+    // shortcut: N-1 omits references, restore required fields after the compatibility release.
+    pub(crate) privacy: Option<DocumentRef>,
+    pub(crate) terms: Option<DocumentRef>,
     pub(crate) privacy_collection: bool,
     pub(crate) terms_of_service: bool,
 }

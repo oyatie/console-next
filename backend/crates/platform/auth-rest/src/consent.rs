@@ -156,9 +156,16 @@ pub(crate) async fn accept_privacy_consent(
         ));
     }
 
-    let refs = ConsentRefs {
-        privacy: body.privacy,
-        terms: body.terms,
+    let refs = match (body.privacy, body.terms) {
+        (Some(privacy), Some(terms)) => ConsentRefs { privacy, terms },
+        // N-1's version-only notice has no immutable text/hash mapping; never credit unseen documents.
+        _ => {
+            return Err(RestError {
+                status: axum::http::StatusCode::CONFLICT,
+                code: "terms_text_changed",
+                message: "review the current published documents".into(),
+            });
+        }
     };
     let now = OffsetDateTime::now_utc();
     let event = AuditEvent::new(

@@ -2507,7 +2507,7 @@ export interface paths {
                 };
                 400: components["responses"]["ValidationError"];
                 401: components["responses"]["Unauthorized"];
-                /** @description terms_text_changed when either displayed version/hash differs, or terms_not_published. */
+                /** @description terms_text_changed when either displayed version/hash differs or the N-1 version-only body cannot be mapped to immutable displayed documents (no acceptance is recorded), or terms_not_published. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -16073,10 +16073,8 @@ export interface components {
         /** @description BW-17 change request (변경 요청) to HR. The requester never decides. */
         ChangeRequest: {
             id: components["schemas"]["Uuid"];
-            /** @enum {string} */
-            kind: "PROFILE_CORRECTION" | "IDENTITY_REVIEW" | "ACCESS_REQUEST" | "SCOPE_ACTION" | "OTHER" | "ACCESS_EXPLANATION" | "POLICY_QUESTION" | "EMPLOYEE_VOID" | "IMPORT_ROLLBACK";
-            /** @enum {string} */
-            subject_type: "EMPLOYEE" | "USER_ACCOUNT" | "BRANCH" | "ORGANIZATION" | "DATA_IMPORT_RUN";
+            kind: string;
+            subject_type: string;
             subject_id: components["schemas"]["Uuid"];
             payload: {
                 [key: string]: unknown;
@@ -24964,13 +24962,13 @@ export interface components {
         PrioritySupport: "YES" | "NO";
         /** @enum {string} */
         PrioritySupportBasis: "ANNEX_1" | "SME_ACT" | "GRACE_5Y" | "NOT_ELIGIBLE";
-        /** @description Required initial-login Korean privacy collection/use and service-terms acknowledgement. These required agreements are explicit booleans so the client cannot bundle them into one generic "agree all" flag. Optional marketing consent and GPS/location consent are not collected by this request. */
+        /** @description Required initial-login Korean privacy collection/use and service-terms acknowledgement. These required agreements are explicit booleans so the client cannot bundle them into one generic "agree all" flag. Optional marketing consent and GPS/location consent are not collected by this request. For one compatibility release the N-1 version-only body is parsed, but returns terms_text_changed without recording acceptance because its notice has no immutable document mapping. Current clients send both references. */
         PrivacyConsentAcceptRequest: {
-            privacy: {
+            privacy?: {
                 version: string;
                 sha256: string;
             };
-            terms: {
+            terms?: {
                 version: string;
                 sha256: string;
             };

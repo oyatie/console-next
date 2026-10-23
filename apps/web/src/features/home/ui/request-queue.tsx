@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import type { components } from "@console/api/schema";
+import { codeText } from "../../../lib/labels";
 import { QueueSection } from "./change-rows";
 
 type ChangeRequest = components["schemas"]["ChangeRequest"];
@@ -16,7 +17,7 @@ export function RequestQueue({ page }: { page: { items: ChangeRequest[]; total: 
       <ul className="list-plain">
         {page.items.map((r) => (
           <li key={r.id} className="row">
-            <span className="grow">{t("home.requests.line", { kind: t(`requests.kind.${r.kind}`), reason: r.reason_code })}</span>
+            <span className="grow">{t("home.requests.line", { kind: codeText(`requests.kind.${r.kind}`, r.kind), reason: r.reason_code })}</span>
             <span className="muted num">{fmtDateTime(r.created_at)}</span>
             <Link className="btn btn--ghost" to="/people/requests" search={{ sel: r.id }}>{t("home.requests.open")}</Link>
           </li>

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { firstSignIn, newContext, takeCode, tenantSlugField, unique, vendorPage, go } from "./flows";
+import { virtualAuthenticator } from "./auth";
 
 // PV1: Privacy notice and consent before the first personal-data field (P0)
 // On first sign-in the privacy notice is shown and acknowledged before any personal-data field renders.
@@ -77,6 +78,34 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
   await expect(termsCheck).toBeEnabled();
   await termsCheck.press("Space");
   await expect(commit).toBeEnabled();
+
+  // An N-1 request must receive a typed review refusal, then recover with both displayed references.
+  await virtualAuthenticator(page);
+  await page.route("**/api/v1/auth/privacy-consent/accept", async (route) => {
+    expect(route.request().postDataJSON()).toMatchObject({
+      privacy: { version: documents.privacy.version, sha256: documents.privacy.sha256 },
+      terms: { version: documents.version, sha256: documents.sha256 },
+    });
+    const response = await route.fetch({ postData: {
+      policy_version: "kr-pipa-v1-2026-06-25", privacy_collection: true, terms_of_service: true,
+    } });
+    expect(response.status()).toBe(409);
+    expect((await response.json()).error.code).toBe("terms_text_changed");
+    const status = await page.request.post("/api/v1/auth/privacy-consent/status", {
+      headers: { authorization: route.request().headers().authorization! }, data: {},
+    });
+    expect(status.ok()).toBe(true);
+    expect((await status.json()).accepted).toBe(false);
+    await route.fulfill({ response });
+  }, { times: 1 });
+  const refused = page.waitForResponse((response) => response.url().endsWith("/api/v1/auth/privacy-consent/accept") && response.status() === 409);
+  await commit.click();
+  await refused;
+  await expect(commit).toBeEnabled();
+  const accepted = page.waitForResponse((response) => response.url().endsWith("/api/v1/auth/privacy-consent/accept") && response.status() === 200);
+  await commit.click();
+  await accepted;
+  await expect(page.getByRole("button", { name: "로그아웃" })).toBeVisible();
 });
 
 test("fresh sign-in shows no false error on first visit (issue #44 regression)", { tag: "@privacy" }, async ({ browser }) => {

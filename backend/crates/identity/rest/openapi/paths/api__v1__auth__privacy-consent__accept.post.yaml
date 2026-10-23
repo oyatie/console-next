@@ -24,4 +24,5 @@ responses:
   '401':
     $ref: '#/components/responses/Unauthorized'
   '409':
-    description: terms_text_changed when either displayed version/hash differs, or terms_not_published.
+    description: terms_text_changed when either displayed version/hash differs or the N-1 version-only body cannot
+      be mapped to immutable displayed documents (no acceptance is recorded), or terms_not_published.
