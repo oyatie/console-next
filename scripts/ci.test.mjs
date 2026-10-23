@@ -90,20 +90,15 @@ test("every proof job feeds an always-reporting merge-queue gate", async () => {
   mandatory(enforcement, "ci-ok");
   assert.equal(enforcement.env?.NEEDS, "${{ toJSON(needs) }}");
   assert.equal(wf.concurrency["cancel-in-progress"], "${{ github.event_name == 'pull_request' }}");
-  assert.deepEqual([...wf.jobs["ci-ok"].needs].sort(), Object.keys(wf.jobs).filter((x) => x !== "ci-ok").sort());
-  for (const name of ["backend-test", "backend-db", "e2e", "personal-data-classification", "pii-no-logs", "tenant-isolation", "rls-arming", "audit-coverage"]) assert.ok(wf.jobs[name], name);
+  assert.deepEqual([...wf.jobs["ci-ok"].needs].sort(), Object.keys(wf.jobs).filter((x) => !["ci-ok", "backend", "web"].includes(x)).sort());
+  for (const name of ["backend-test", "backend-db", "e2e", "code-gates"]) assert.ok(wf.jobs[name], name);
   const { requiredJobs } = await helpers();
   assert.equal(requiredJobs({}).hygiene, true);
-  assert.deepEqual(Object.keys(requiredJobs({})).sort(), Object.keys(wf.jobs).filter((name) => !["ci-ok", "plan"].includes(name)).sort());
+  assert.deepEqual(Object.keys(requiredJobs({})).sort(), Object.keys(wf.jobs).filter((name) => !["ci-ok", "plan", "backend", "web"].includes(name)).sort());
 });
 
 test("proof jobs execute their required commands without optional steps", () => {
   const wf = workflow();
-  for (const name of ["personal-data-classification", "pii-no-logs", "tenant-isolation", "rls-arming", "audit-coverage"]) {
-    const command = new RegExp(`^\\s*(?:\\S*/)?console-gate-${name}\\s*$`, "m");
-    mandatory(wf.jobs[name], name, "needs.plan.outputs.backend == 'true'");
-    mandatory(wf.jobs[name].steps.find((step) => command.test(step.run ?? "")), name);
-  }
   for (const [name, command] of [["backend-test", "rust-tests\\.mjs\\s+unit"], ["backend-db", "rust-tests\\.mjs\\s+db"], ["e2e", "e2e\\.mjs\\s+run"]]) {
     mandatory(wf.jobs[name], name, `needs.plan.outputs.${name === "e2e" ? "e2e" : name === "backend-test" ? "unit" : "db"} == 'true'`);
     const run = new RegExp(`^\\s*node\\s+(?:\\.\\./)?scripts/ci/${command}(?:\\s|$)`, "m");
@@ -246,6 +241,82 @@ test("DB test setup derives the guarded admin and connection marker from the mig
   assert.equal(new URL(sqlxUrl("postgres://localhost/test")).searchParams.get("options"), `-c ${contract.key}=${contract.marker}`);
   assert.throws(() => parseDbContract("SELECT 1"), /contract changed/);
   assert.equal(workflow().jobs["backend-db"].services.postgres.env.POSTGRES_USER, "${{ needs.plan.outputs.testAdmin }}");
+});
+
+test("Postgres service and browser jobs consume the planner's single production digest", async () => {
+  const wf = workflow();
+  const { postgresImage } = await import("./ci/db-contract.mjs");
+  assert.match(postgresImage(), /^postgres:[\w.-]+@sha256:[a-f0-9]{64}$/);
+  assert.equal(wf.jobs.plan.outputs.postgres, "${{ steps.plan.outputs.postgres }}");
+  assert.equal(wf.jobs["backend-db"].services.postgres.image, "${{ needs.plan.outputs.postgres }}");
+  assert.equal(wf.jobs.e2e.env.CONSOLE_POSTGRES_IMAGE, "${{ needs.plan.outputs.postgres }}");
+});
+
+test("live backend and web checks always propagate ci-ok, including docs-only runs", () => {
+  const wf = workflow();
+  for (const name of ["backend", "web"]) {
+    const job = wf.jobs[name];
+    mandatory(job, name, "always()");
+    assert.equal(job.if, "always()");
+    assert.deepEqual(job.needs, ["ci-ok"]);
+    const step = job.steps.find((s) => s.env?.CI_RESULT === "${{ needs.ci-ok.result }}");
+    mandatory(step, name);
+    for (const result of ["success", "failure", "cancelled", "skipped", ""]) {
+      const run = spawnSync("bash", ["-e", "-o", "pipefail", "-c", step.run], { encoding: "utf8", env: { ...process.env, CI_RESULT: result } });
+      assert.equal(run.status === 0, result === "success", `${name}: ${result}`);
+    }
+  }
+});
+
+test("every manifest gate is built and executed; future, missing and red gates fail closed", async () => {
+  const wf = workflow();
+  const job = wf.jobs["code-gates"];
+  mandatory(job, "code-gates", "needs.plan.outputs.backend == 'true'");
+  assert.ok(wf.jobs["ci-ok"].needs.includes("code-gates"));
+  const { requiredJobs } = await helpers();
+  assert.equal(requiredJobs({ backend: true })["code-gates"], true);
+  const build = wf.jobs["rust-build"].steps.find((s) => s.name === "Build all backend code gates");
+  const execute = job.steps.find((s) => s.name === "Enforce all backend code gates");
+  mandatory(build, "gate build", "needs.plan.outputs.backend == 'true'");
+  mandatory(execute, "gate execution");
+  const upload = wf.jobs["rust-build"].steps.find((s) => s.with?.name === "code-gates");
+  assert.equal(job.steps.find((s) => s.uses?.startsWith("actions/download-artifact")).with.name, upload.with.name);
+  assert.equal(upload.with.path, ".cache/ci/build/gates");
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-code-gates-"));
+  try {
+    const expected = [];
+    for (const entry of readdirSync(new URL("backend/ci/gates/", root))) {
+      const manifest = readFileSync(new URL(`backend/ci/gates/${entry}/Cargo.toml`, root), "utf8");
+      const name = manifest.match(/^name = "(console-gate-[a-z0-9-]*)"$/m)?.[1];
+      if (!name) continue;
+      mkdirSync(path.join(dir, "backend/ci/gates", entry), { recursive: true });
+      writeFileSync(path.join(dir, "backend/ci/gates", entry, "Cargo.toml"), manifest);
+      expected.push(name);
+    }
+    mkdirSync(path.join(dir, "backend/ci/gates/future"));
+    writeFileSync(path.join(dir, "backend/ci/gates/future/Cargo.toml"), 'name = "console-gate-future"\n');
+    expected.push("console-gate-future");
+    expected.sort();
+    mkdirSync(path.join(dir, "backend/target/debug"), { recursive: true });
+    for (const name of expected) writeFileSync(path.join(dir, "backend/target/debug", name), `#!${process.execPath}\nrequire('node:fs').appendFileSync(process.env.EXECUTED,${JSON.stringify(name + "\n")});process.exit(process.env.RED_GATE===${JSON.stringify(name)}?1:0);\n`, { mode: 0o700 });
+    writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nrequire('node:fs').writeFileSync(process.env.BUILT,JSON.stringify(process.argv.slice(2)));\n`, { mode: 0o700 });
+    const env = { ...process.env, PATH: `${dir}:${process.env.PATH}`, BUILT: path.join(dir, "built"), EXECUTED: path.join(dir, "executed") };
+    const run = (step, extra = {}) => spawnSync("bash", ["-e", "-o", "pipefail", "-c", step.run], { cwd: dir, encoding: "utf8", env: { ...env, ...extra } });
+    const built = run(build);
+    assert.equal(built.status, 0, built.stderr);
+    const args = JSON.parse(readFileSync(env.BUILT, "utf8"));
+    assert.deepEqual(args.slice(0, 3), ["build", "--locked", "--offline"]);
+    assert.deepEqual(args.filter((_, i) => args[i - 1] === "-p").sort(), expected);
+    mkdirSync(path.join(dir, ".cache/ci/gates"), { recursive: true });
+    for (const name of expected) writeFileSync(path.join(dir, ".cache/ci/gates", name), readFileSync(path.join(dir, upload.with.path, name)));
+    for (const red of ["", ...expected]) {
+      writeFileSync(env.EXECUTED, "");
+      assert.equal(run(execute, { RED_GATE: red }).status, red ? 1 : 0, red);
+      assert.deepEqual(readFileSync(env.EXECUTED, "utf8").trim().split("\n").sort(), expected);
+    }
+    rmSync(path.join(dir, ".cache/ci/gates", expected[0]));
+    assert.notEqual(run(execute).status, 0, "missing gate binary must fail");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test("service preparation exports guarded URLs and refuses invalid ports", async () => {

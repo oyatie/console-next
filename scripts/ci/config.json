@@ -27,7 +27,7 @@
     "build": 50,
     "unit": 3,
     "db": 5,
-    "privacyGate": 1,
+    "codeGates": 1,
     "e2ePlan": 2,
     "e2eSetup": 0.5
   },

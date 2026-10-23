@@ -88,7 +88,7 @@ test("fast shard CLI selects Chromium smoke and changed specs with the shared ma
 });
 
 test("browser-backed unit checks install Chromium and use the planner base", () => {
-  const steps = load(read(".github/workflows/ci.yml")).jobs.web.steps;
+  const steps = load(read(".github/workflows/ci.yml")).jobs["web-check"].steps;
   const check = steps.findIndex((step) => step.run === "npm run check");
   assert.ok(check > 0);
   assert.ok(steps.slice(0, check).some((step) => step.run === "npx playwright install --with-deps --only-shell chromium"));
