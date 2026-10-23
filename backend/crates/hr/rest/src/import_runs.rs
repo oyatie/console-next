@@ -86,6 +86,7 @@ async fn preview(
                     status: StatusCode::FORBIDDEN,
                     code: "import_rollback_sole_holder_refused",
                     message: "another eligible holder is required".into(),
+                    errors: None,
                     refusals: None,
                 }
                 .into());

@@ -231,6 +231,7 @@ impl HrService {
                         status: http::StatusCode::NOT_FOUND,
                         code: "import_run_not_found",
                         message: "employee import run not found".into(),
+                        errors: None,
                         refusals: None,
                     })?;
                 let policy = policy_in_tx(tx, *principal.org_id.as_uuid()).await?;

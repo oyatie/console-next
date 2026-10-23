@@ -265,14 +265,14 @@ impl HrService {
 pub(super) fn check_digest(preview: &RollbackPreview, digest: &str) -> Result<(), HrError> {
     if !preview.blockers.is_empty() {
         let mut err = coded("import_rollback_blocked");
-        err.refusals = Some(
+        err.refusals = Some(Box::new(
             serde_json::to_value(&preview.blockers)
                 .map_err(|_| HrError::internal("rollback blockers"))?,
-        );
+        ));
         Err(err)
     } else if preview.preview_digest != digest {
         let mut err = coded("rows_changed_since_preview");
-        err.refusals = Some(serde_json::json!([{"preview":preview}]));
+        err.refusals = Some(Box::new(serde_json::json!([{"preview":preview}])));
         Err(err)
     } else {
         Ok(())
