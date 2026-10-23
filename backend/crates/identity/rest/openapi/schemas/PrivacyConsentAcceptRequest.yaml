@@ -2,9 +2,9 @@ type: object
 description: Required initial-login Korean privacy collection/use and service-terms acknowledgement. These required
   agreements are explicit booleans so the client cannot bundle them into one generic "agree all" flag. Optional marketing
   consent and GPS/location consent are not collected by this request.
+  For one compatibility release the N-1 version-only body is parsed, but returns terms_text_changed without
+  recording acceptance because its notice has no immutable document mapping. Current clients send both references.
 required:
-- privacy
-- terms
 - privacy_collection
 - terms_of_service
 properties:

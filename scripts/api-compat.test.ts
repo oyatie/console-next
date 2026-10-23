@@ -17,11 +17,17 @@ test.each([
   ["import leave_type", schemas.EmployeeImportPlannedRow!.properties!.new_person!.properties!.leave!.properties!.leave_type!, 5],
   ["leave request leave_type", schemas.LeaveRequestView!.properties!.leave_type!, 2],
   ["leave v2 leave_type", schemas.LeaveRequestV2View!.properties!.leave_type!, 2],
+  ["change request kind", schemas.ChangeRequest!.properties!.kind!, 9],
+  ["change request subject_type", schemas.ChangeRequest!.properties!.subject_type!, 5],
 ] as const)("%s permits future response values and retains every documented value", (_, schema, count) => {
   expect(schema.type).toBe("string");
   expect(schema.enum).toBeUndefined();
   expect(schema["x-extensible-enum"]).toHaveLength(count);
   expect(new Set(schema["x-extensible-enum"]).size).toBe(count);
+});
+
+test("consent accepts the N-1 request shape for typed legacy refusal", () => {
+  expect(schemas.PrivacyConsentAcceptRequest!.required).toEqual(["privacy_collection", "terms_of_service"]);
 });
 
 test("exit confirmation 409 keeps the N-1 error object and optional schedule refusals", () => {

@@ -1,3 +1,11 @@
   title: Console API
   version: 0.1.0
-  x-contract-of: b9fe135466f8
+  x-contract-of: 89cf5eeb08c2
+  x-contract-evidence: >-
+    REL-API-COMPAT-2 accepts only ErrorBody.error.support_ref losing format uuid.
+    git grep -n -i support_ref 89cf5eeb08c2 -- apps/web packages finds only
+    packages/api/src/schema.d.ts (generated types); no runtime reader or validator.
+    N-1 packages/api/src/client.ts and session.ts deserialize JSON without a schema validator.
+    Consent request references are optional with typed terms_text_changed for unmappable legacy text;
+    ChangeRequest response enums are extensible and the released translator renders unknown keys.
+    See docs/ops/release-api-compat-2.md for reproduction and the one-release contract follow-up.

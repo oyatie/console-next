@@ -1,0 +1,21 @@
+<!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
+# REL-API-COMPAT-2
+
+Released backend/web: `89cf5eeb08c2`. Candidate base: `b5c358575b9ebac672e3108dd77c03671dabe9da`.
+
+## Per-class decisions
+
+- **Support reference:** accept the UUID-format removal only. `git grep -n -i support_ref 89cf5eeb08c2 -- apps/web packages` finds exactly one reference, in generated `packages/api/src/schema.d.ts`. The released `packages/api/src/client.ts` and `session.ts` read JSON without runtime schema validation. No runtime consumer reads this property. `backend/openapi/shared/info.yaml` therefore uses the release gate's documented `x-contract-of: 89cf5eeb08c2`, with this evidence. This marker is release-specific; replace/remove it for the next released base. It must never hide another error class.
+- **Consent:** parse the N-1 body with missing document references and return typed `409 terms_text_changed` without an audit event or session-cache write. N-1's `auth-rest/src/limits.rs` defines `kr-pipa-v1-2026-06-25`; its accept handler records that version and two separate booleans, with no immutable text/hash. There is no document of that version in `terms_documents`. The N-1 web actually has no runtime caller of this accept endpoint (`git grep -n privacy-consent/accept 89cf5eeb08c2 -- apps/web packages` finds generated types only); enrollment has already moved away from that historical API. It does not display today's reader documents. Mapping that body to current versions would invent consent, so the brief's typed-unmappable-refusal rule applies. New clients still send both displayed version/hash references and receive the existing atomic exact-document acceptance. Neither an unsupported legacy body nor a partial upgrade can credit current consent.
+- **Change requests:** `kind` and `subject_type` are response-only extensible strings. Keep the documented values in `x-extensible-enum`; command enums remain strict. N-1's `people/present.ts` uses the translator for both fields, and its translator falls back to the message key without throwing. `request-compat.test.ts`, run unchanged in the released tree, verifies both added values and future unknown values, including an empty change payload. Current clients reuse `codeText` to preserve Korean labels and render unknown codes. N-1 can render these values safely, so no server version negotiation is needed.
+
+## Verification
+
+The pinned release tool is `tufin/oasdiff:v1.33.0@sha256:6263a96dd2ef0726c54e21fea9b8e1607eac4841add0079324b424c1f52b819c`.
+Compare released `backend/openapi/openapi.yaml` with the composed candidate using `oasdiff breaking base.yaml rev.yaml --fail-on ERR -f singleline` (the exact flags in console-infra `scripts/api-compat.sh`). Before the fix: 2,998 ERR (2,990 support-reference formats, two required request fields, six response-enum additions). After the fix, every remaining ERR must be `response-property-type-changed` for `error/support_ref`; the gate then accepts that one class via the release-specific marker. Warnings remain visible.
+
+Local evidence lives under the lane directory: `fail-before-schema.log`, `fail-before-consent.log`, `n-minus-one-client.log`, `api-compat-before.log`, `api-compat-after.log`. DB regression exercises the real HTTP router and verifies both audit and family cache stay empty on refusal; existing exact-document tests cover acceptance and mismatched hashes. E2E covers future request values and legacy-refusal recovery by current consent.
+
+## Scheduled contract
+
+- [P1] REL-API-COMPAT-2-CONTRACT — after one release containing this adapter has been deployed, make `PrivacyConsentAcceptRequest.privacy` and `.terms` required again in Rust and OpenAPI; remove the legacy-refusal regression and compatibility note; regenerate the composed spec and client schema. Admission: released N-1 includes the client that sends both references, runtime caller evidence confirms no version-only accept body, API gate is green against that new released base, and exact-document acceptance/refusal tests pass. Never migrate legacy audit evidence to newer document versions.

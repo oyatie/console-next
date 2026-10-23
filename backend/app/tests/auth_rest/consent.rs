@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
+#[path = "consent_compat.rs"]
+mod compatibility;
+
 /// Acceptance binds both separate sign-offs to the exact immutable text hashes.
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn privacy_consent_acceptance_binds_both_exact_documents(pool: PgPool) {

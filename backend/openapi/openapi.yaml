@@ -2,7 +2,15 @@ openapi: 3.1.0
 info:
   title: Console API
   version: 0.1.0
-  x-contract-of: b9fe135466f8
+  x-contract-of: 89cf5eeb08c2
+  x-contract-evidence: >-
+    REL-API-COMPAT-2 accepts only ErrorBody.error.support_ref losing format uuid.
+    git grep -n -i support_ref 89cf5eeb08c2 -- apps/web packages finds only
+    packages/api/src/schema.d.ts (generated types); no runtime reader or validator.
+    N-1 packages/api/src/client.ts and session.ts deserialize JSON without a schema validator.
+    Consent request references are optional with typed terms_text_changed for unmappable legacy text;
+    ChangeRequest response enums are extensible and the released translator renders unknown keys.
+    See docs/ops/release-api-compat-2.md for reproduction and the one-release contract follow-up.
 paths:
   /.well-known/apple-app-site-association:
     get:
@@ -3966,7 +3974,8 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '409':
-          description: terms_text_changed when either displayed version/hash differs, or terms_not_published.
+          description: terms_text_changed when either displayed version/hash differs or the N-1 version-only body cannot
+            be mapped to immutable displayed documents (no acceptance is recorded), or terms_not_published.
   /api/v1/auth/privacy-consent/status:
     post:
       tags:
@@ -33852,10 +33861,10 @@ components:
           $ref: '#/components/schemas/Uuid'
         kind:
           type: string
-          enum: [PROFILE_CORRECTION, IDENTITY_REVIEW, ACCESS_REQUEST, SCOPE_ACTION, OTHER, ACCESS_EXPLANATION, POLICY_QUESTION, EMPLOYEE_VOID, IMPORT_ROLLBACK]
+          x-extensible-enum: [PROFILE_CORRECTION, IDENTITY_REVIEW, ACCESS_REQUEST, SCOPE_ACTION, OTHER, ACCESS_EXPLANATION, POLICY_QUESTION, EMPLOYEE_VOID, IMPORT_ROLLBACK]
         subject_type:
           type: string
-          enum: [EMPLOYEE, USER_ACCOUNT, BRANCH, ORGANIZATION, DATA_IMPORT_RUN]
+          x-extensible-enum: [EMPLOYEE, USER_ACCOUNT, BRANCH, ORGANIZATION, DATA_IMPORT_RUN]
         subject_id:
           $ref: '#/components/schemas/Uuid'
         payload:
@@ -51808,9 +51817,9 @@ components:
       description: Required initial-login Korean privacy collection/use and service-terms acknowledgement. These required
         agreements are explicit booleans so the client cannot bundle them into one generic "agree all" flag. Optional marketing
         consent and GPS/location consent are not collected by this request.
+        For one compatibility release the N-1 version-only body is parsed, but returns terms_text_changed without
+        recording acceptance because its notice has no immutable document mapping. Current clients send both references.
       required:
-      - privacy
-      - terms
       - privacy_collection
       - terms_of_service
       properties:
