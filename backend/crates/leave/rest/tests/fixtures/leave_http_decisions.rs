@@ -96,7 +96,8 @@ async fn v1_wire_shape_is_frozen_and_v2_requires_modern_exact_cas(owner_pool: Pg
     sqlx::query("GRANT EXECUTE ON FUNCTION public.console_decision_people(UUID,UUID,UUID) TO console_leave_cmd,console_leave_definer")
         .execute(&owner_pool).await.unwrap();
 
-    // G5 binds this account to a Person even without an employee link; v1 stays frozen.
+    person_fixtures::bind_user_to_distinct_person(&owner_pool, decider).await;
+    // A verified decider keeps the deployed v1 wire shape.
     let versionless = request_json(
         service.clone(),
         "POST",
@@ -189,4 +190,59 @@ async fn v1_wire_shape_is_frozen_and_v2_requires_modern_exact_cas(owner_pool: Pg
     assert_eq!(v2_page.status, StatusCode::OK, "{:?}", v2_page.body);
     assert!(v2_page.body.get("next_cursor").is_some());
     assert!(v2_page.body["items"][0].get("request_version").is_some());
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn leave_http_refuses_unlinked_reviewed_and_bootstrap_people(owner: PgPool) {
+    let org = OrgId::new();
+    let branch = BranchId::new();
+    let maker = UserId::new();
+    let checker = UserId::new();
+    let employee = Uuid::new_v4();
+    seed_subject(&owner, org, branch, maker, employee).await;
+    seed_branch_admin(&owner, org, branch, checker).await;
+    person_fixtures::bind_user_to_distinct_person(&owner, checker).await;
+    let cases = person_fixtures::unverified_decision_parties(&owner, maker, checker).await;
+    let definer = leave_definer_role_pool(&owner).await;
+    sqlx::query("SELECT set_config('app.current_org',$1,false)")
+        .bind(org.to_string())
+        .execute(&definer)
+        .await
+        .unwrap();
+    for (case, maker, checker) in cases {
+        sqlx::query("INSERT INTO user_branches(org_id,user_id,branch_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
+            .bind(org.as_uuid()).bind(checker.as_uuid()).bind(branch.as_uuid())
+            .execute(&owner).await.unwrap();
+        let id: Uuid = sqlx::query_scalar("INSERT INTO leave_requests(org_id,branch_id,requester_user_id,subject_employee_id,leave_type,days,start_date,end_date,status) VALUES($1,$2,$3,$4,'annual',1,'2026-10-01','2026-10-01','pending') RETURNING id")
+            .bind(org.as_uuid()).bind(branch.as_uuid()).bind(maker.as_uuid()).bind(employee)
+            .fetch_one(&definer).await.unwrap();
+        let auth = test_auth_with_roles(&owner, checker, org, vec![branch], vec!["ADMIN"]).await;
+        let rt = runtime_role_pool(&owner).await;
+        let service = router(LeaveRestState::new(
+            PgLeaveStore::new(rt.clone(), Arc::new(PgInboxStore::new(rt)))
+                .with_leave_command_pool(leave_command_role_pool(&owner).await),
+            Some(auth.verifier),
+        ));
+        for version in ["v1", "v2"] {
+            let refused = request_json(service.clone(), "POST", &format!("/api/{version}/leave/requests/{id}/decide"),
+                &auth.token, Some(if version == "v1" {json!({"decision":"time_change","comment":"시기 변경 협의"})} else {json!({"expected_version":1,"decision":"time_change","comment":"시기 변경 협의"})})).await;
+            assert_eq!(
+                refused.status,
+                StatusCode::FORBIDDEN,
+                "{case}: {}",
+                refused.body
+            );
+            assert_eq!(
+                refused.body["error"]["code"], "leave.refuse.identity_unbound",
+                "{case}"
+            );
+        }
+        let (status, decider): (String, Option<Uuid>) =
+            sqlx::query_as("SELECT status,decided_by FROM leave_requests WHERE id=$1")
+                .bind(id)
+                .fetch_one(&owner)
+                .await
+                .unwrap();
+        assert_eq!((status.as_str(), decider), ("pending", None));
+    }
 }

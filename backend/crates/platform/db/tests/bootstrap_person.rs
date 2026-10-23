@@ -59,7 +59,7 @@ async fn existing_bootstrap_admin_is_bound_and_runtime_backfill_preserves_it(poo
         .await
         .unwrap();
     assert!(
-        sqlx::query_scalar::<_, bool>("SELECT public.console_independent_people($1,$2,$3)")
+        !sqlx::query_scalar::<_, bool>("SELECT public.console_independent_people($1,$2,$3)")
             .bind(org)
             .bind(user)
             .bind(alias)

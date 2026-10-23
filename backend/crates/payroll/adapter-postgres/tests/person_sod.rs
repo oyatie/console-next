@@ -73,11 +73,16 @@ async fn approvals_and_rejections_refuse_shared_identities_and_preserve_the_run(
             .execute(tx.as_mut())
             .await
             .unwrap();
-        decide_run_in_tx(&mut tx, run, *checker.as_uuid(), "APPROVE", None)
-            .await
-            .unwrap();
-        tx.commit().await.unwrap();
-        assert_eq!(snapshot(&pool, run).await.0["status"], "APPROVED");
+        let result = decide_run_in_tx(&mut tx, run, *checker.as_uuid(), "APPROVE", None).await;
+        if unlinked.is_none() {
+            result.unwrap();
+            tx.commit().await.unwrap();
+            assert_eq!(snapshot(&pool, run).await.0["status"], "APPROVED");
+        } else {
+            assert!(matches!(result, Err(LifecycleError::IdentityUnbound)));
+            tx.rollback().await.unwrap();
+            assert_eq!(snapshot(&pool, run).await.0["status"], "SUBMITTED");
+        }
     }
 }
 
@@ -93,16 +98,18 @@ async fn unbound_maker_or_checker_has_its_own_refusal(pool: PgPool) {
     let checker = seed_active_user(&pool, *org.as_uuid(), "ADMIN", "checker").await;
     let run:Uuid=sqlx::query_scalar("INSERT INTO payroll_draft_runs(org_id,period_start,period_end,source_label,status,submitted_by) VALUES($1,'2026-01-01','2026-01-31','unbound','SUBMITTED',$2) RETURNING id").bind(org.as_uuid()).bind(maker.as_uuid()).fetch_one(&pool).await.unwrap();
     let rt = runtime_role_pool(&pool).await;
-    for user in [checker, maker] {
-        let mut identity = pool.begin().await.unwrap();
-        sqlx::query("UPDATE users SET is_tenant_ops=false,person_id=COALESCE(public.console_employee_person(org_id,employee_id),id) WHERE id=ANY($1)")
-            .bind(vec![*maker.as_uuid(),*checker.as_uuid()]).execute(identity.as_mut()).await.unwrap();
-        sqlx::query("UPDATE users SET is_tenant_ops=true WHERE id=$1")
-            .bind(user.as_uuid())
-            .execute(identity.as_mut())
+    person_fixtures::bind_user_to_distinct_person(&pool, maker).await;
+    person_fixtures::bind_user_to_distinct_person(&pool, checker).await;
+    for (case, maker, checker) in
+        person_fixtures::unverified_decision_parties(&pool, maker, checker).await
+    {
+        sqlx::query("UPDATE payroll_draft_runs SET submitted_by=$2 WHERE id=$1")
+            .bind(run)
+            .bind(maker.as_uuid())
+            .execute(&pool)
             .await
             .unwrap();
-        identity.commit().await.unwrap();
+        let before = snapshot(&pool, run).await;
         let mut tx = rt.begin().await.unwrap();
         sqlx::query("SELECT set_config('app.current_org',$1,true)")
             .bind(org.to_string())
@@ -113,7 +120,12 @@ async fn unbound_maker_or_checker_has_its_own_refusal(pool: PgPool) {
             .await
             .unwrap_err()
             .into_kernel_error();
-        assert_eq!(error.code, Some("payroll.refuse.identity_unbound"));
+        assert_eq!(
+            error.code,
+            Some("payroll.refuse.identity_unbound"),
+            "{case}"
+        );
         tx.rollback().await.unwrap();
+        assert_eq!(snapshot(&pool, run).await, before);
     }
 }

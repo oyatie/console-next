@@ -227,7 +227,7 @@ impl PgGovernanceStore {
 
         with_audit::<_, ApprovalRequestSummary, PgGovernanceError>(&self.pool, event, |tx| {
             Box::pin(async move {
-                // A canonical person binding is required even without an employee link.
+                // The requester needs the same reviewed employee binding as the decider.
                 require_natural_person_bound_conn(
                     tx.as_mut(),
                     command.requester,
@@ -803,9 +803,8 @@ async fn pending_request_binding_conn(
     }))
 }
 
-/// Resolve a platform account to its bound natural `person_id`, or `None` when
-/// the account has no canonical Person binding, or is otherwise not a
-/// natural person (service / unbound). RLS-scoped by the armed org.
+/// Resolve an employee-bound Person without an open identity review through
+/// the same resolver as Cedar and the SQL invariant. RLS-scoped by the armed org.
 async fn natural_person_id_conn(
     conn: &mut PgConnection,
     user_id: Uuid,

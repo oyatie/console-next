@@ -4,8 +4,8 @@ use super::*;
 pub(super) async fn seed_employee(pool: &PgPool, org: Uuid, source_key: &str) -> Uuid {
     sqlx::query_scalar(
         "INSERT INTO employees \
-         (org_id, company, name, source_filename, source_sheet, source_row, source_key) \
-         VALUES ($1, 'ACME', $2, 'seed.xlsx', 'Sheet1', 1, $2) RETURNING id",
+         (org_id, company, name, source_filename, source_sheet, source_row, source_key, identity_review_required) \
+         VALUES ($1, 'ACME', $2, 'seed.xlsx', 'Sheet1', 1, $2, false) RETURNING id",
     )
     .bind(org)
     .bind(source_key)
@@ -22,7 +22,7 @@ pub(super) async fn seed_person_bound_user(
     person_id: Uuid,
     binder: UserId,
 ) -> UserId {
-    let user = seed_user(pool, org, name).await;
+    let user = seed_unbound_user(pool, org, name).await;
     sqlx::query(
         "INSERT INTO employee_person_bindings \
          (org_id, employee_id, person_id, actor_id, payload_digest) \

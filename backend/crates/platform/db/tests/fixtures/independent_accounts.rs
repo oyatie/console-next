@@ -1,7 +1,7 @@
 use super::*;
 
 #[sqlx::test(migrator = "MIGRATOR")]
-async fn canonical_people_remain_bound_without_employee_links(pool: PgPool) {
+async fn canonical_people_without_employee_links_cannot_decide(pool: PgPool) {
     let p = parties(&pool).await;
     for account in [p.maker, p.independent] {
         sqlx::query("UPDATE users SET employee_id=NULL WHERE id=$1")
@@ -10,7 +10,7 @@ async fn canonical_people_remain_bound_without_employee_links(pool: PgPool) {
             .await
             .unwrap();
         let mut tx = decision_tx(&pool, &p, false).await;
-        assert!(independent(&mut tx, &p).await);
+        assert!(!independent(&mut tx, &p).await);
         tx.rollback().await.unwrap();
     }
 }

@@ -133,7 +133,7 @@ async fn unbound_operations_accounts_cannot_be_either_decision_party(owner: PgPo
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
     assert_eq!(
-        refused["error"]["code"], "second_person_ineligible",
+        refused["error"]["code"], "period_unlock.refuse.identity_unbound",
         "{refused}"
     );
     // No side effect from either refusal.

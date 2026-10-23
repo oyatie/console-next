@@ -37,7 +37,7 @@ impl Refusal {
     }
 }
 
-/// Resolve and lock canonical person bindings. Missing facts and resolver/Cedar errors deny.
+/// Resolve reviewed employee-bound people. Missing facts and resolver/Cedar errors deny.
 pub async fn refusal_in_tx(
     conn: &mut sqlx::PgConnection,
     maker: Option<uuid::Uuid>,

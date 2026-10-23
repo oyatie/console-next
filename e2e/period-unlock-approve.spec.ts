@@ -37,7 +37,7 @@ test("period unlock: a second close authority refuses, then approves; the reques
   const slug = "unlockco";
   // The setup's colleague holds nothing: the lower-grant account below.
   const { admin: operator, exec: nobody } = await tenantInSetup(browser, slug, "해제주식회사", false, "본사", "none");
-  // Both acts need verified people: the bootstrap operator has no employee/person link.
+  // Both acts need verified people: the bootstrap operator has no employee record link.
   const authorities: Page[] = [];
   for (const [name, number] of [["이요청", "UL-0001"], ["김마감", "UL-0002"]]) {
     await registerEmployee(operator, { name: name!, number: number!, hired: "2024-03-04", unit: "본사" });
@@ -89,6 +89,11 @@ test("period unlock: a second close authority refuses, then approves; the reques
   const requestId = lock.unlockRequest!.id;
   const own = await api(`/period-locks/${lock.id}/unlock/reject`, "POST", { requestId, note: "본인 반려" });
   expect([own.status(), await codeOf(own)]).toEqual([403, "second_person_required"]);
+  const operatorBearer = bearerOf(operator);
+  await go(operator, LOCKS);
+  await expect.poll(operatorBearer, { timeout: 15_000 }).not.toBe("");
+  const unboundOperator = await apiOf(operator, operatorBearer)(`/period-locks/${lock.id}/unlock/reject`, "POST", { requestId, note: "운영 계정 반려" });
+  expect([unboundOperator.status(), await codeOf(unboundOperator)]).toEqual([403, "period_unlock.refuse.identity_unbound"]);
   const nobodyBearer = bearerOf(nobody);
   await go(nobody, LOCKS);
   await expect(nobody.getByText("기간 잠금을 볼 권한이 없습니다")).toBeVisible();
@@ -127,8 +132,8 @@ test("period unlock: a second close authority refuses, then approves; the reques
   const rejectRoute = `**/api/v1/period-locks/${lock.id}/unlock/reject`;
   await exec.route(rejectRoute, (route) => route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ error: { code: "period_unlock.refuse.identity_unbound", message: "identity unavailable" } }) }));
   await card.getByRole("button", { name: "잠금 해제 반려" }).click();
-  await expect(card.getByRole("alert")).toContainText("본인 정보를 확인할 수 없어 거부했습니다");
-  await expect(card.getByRole("alert")).toContainText("계정 관리 권한이 있는 담당자에게 계정을 인사카드에 연결해 달라고 요청하십시오");
+  await expect(card.getByRole("alert")).toContainText("요청자 또는 결정자의 본인 정보를 확인할 수 없어 거부했습니다");
+  await expect(card.getByRole("alert")).toContainText("계정 관리 권한이 있는 담당자에게 계정을 인사카드에 연결하거나 동일인 확인을 완료해 달라고 요청하십시오");
   await expect(row).toContainText("승인 대기");
   await exec.unroute(rejectRoute);
   await card.getByRole("button", { name: "잠금 해제 반려" }).click();

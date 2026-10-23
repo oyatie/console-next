@@ -10,6 +10,9 @@ const PAYROLL: &str = boundary_sql!(
 const ORG_CHANGE: &str = boundary_sql!(
     "INSERT INTO gov_approvals (org_id,request_ref,kind,requested_by,approver_id,decision) SELECT org,gen_random_uuid(),'org_change_step',maker,checker,'approved' FROM args"
 );
+const GOVERNANCE: &str = boundary_sql!(
+    "INSERT INTO gov_approvals (org_id,request_ref,kind,requested_by,approver_id,decision) SELECT org,gen_random_uuid(),'company.revise',maker,checker,'approved' FROM args"
+);
 const LEAVE: &str = boundary_sql!(
     "INSERT INTO leave_requests (org_id,branch_id,requester_user_id,subject_employee_id,leave_type,days,start_date,end_date,status,decided_by,decided_at,charge_state,charge_units,charge_review_reasons) SELECT org,branch,maker,employee,'annual',1,'2026-01-01','2026-01-01','approved',checker,now(),'legacy_unverified',1,ARRAY[]::text[] FROM args"
 );
@@ -25,7 +28,7 @@ async fn boundary(pool: &PgPool, sql: &'static str, code: &str, domain: &str, le
     let p = parties(pool).await;
     let unbound: Uuid = sqlx::query_scalar("INSERT INTO users (org_id,display_name,roles,is_tenant_ops) VALUES ($1,'Unbound',ARRAY['ADMIN'],true) RETURNING id")
         .bind(p.org).fetch_one(pool).await.unwrap();
-    // A second account retains its canonical person even without an employee link.
+    // A retained Person without an employee link is still unbound.
     sqlx::query("UPDATE users SET employee_id=NULL WHERE id=$1")
         .bind(p.same_person_alias)
         .execute(pool)
@@ -33,9 +36,17 @@ async fn boundary(pool: &PgPool, sql: &'static str, code: &str, domain: &str, le
         .unwrap();
     for (maker, checker, expected) in [
         (Some(p.maker), p.same_person, Some(code.to_owned())),
-        (Some(p.maker), p.same_person_alias, Some(code.to_owned())),
+        (
+            Some(p.maker),
+            p.same_person_alias,
+            Some(format!("{domain}.refuse.identity_unbound")),
+        ),
         (Some(p.maker), p.maker, Some(code.to_owned())),
-        (Some(p.same_person_alias), p.maker, Some(code.to_owned())),
+        (
+            Some(p.same_person_alias),
+            p.maker,
+            Some(format!("{domain}.refuse.identity_unbound")),
+        ),
         (
             Some(p.maker),
             unbound,
@@ -154,24 +165,34 @@ async fn period_lock_invariant_requires_known_distinct_people(pool: PgPool) {
 
 async fn unbound_boundary(pool: &PgPool, sql: &'static str, domain: &str, leave: bool) {
     let p = parties(pool).await;
-    let unbound:Uuid=sqlx::query_scalar("INSERT INTO users(org_id,display_name,is_tenant_ops) VALUES($1,'Unbound',true) RETURNING id").bind(p.org).fetch_one(pool).await.unwrap();
-    for (maker, checker) in [(p.maker, unbound), (unbound, p.independent)] {
+    let cases = person_fixtures::unverified_decision_parties(
+        pool,
+        UserId::from_uuid(p.maker),
+        UserId::from_uuid(p.independent),
+    )
+    .await;
+    let mut actual = Vec::new();
+    for (case, maker, checker) in cases {
         let mut tx = decision_tx(pool, &p, leave).await;
-        let error = sqlx::query(sql)
+        let result = sqlx::query(sql)
             .bind(p.org)
-            .bind(maker)
-            .bind(checker)
+            .bind(maker.as_uuid())
+            .bind(checker.as_uuid())
             .bind(p.employee)
             .bind(p.branch)
             .execute(tx.as_mut())
-            .await
-            .expect_err("a missing person binding must refuse");
-        assert_eq!(
-            error.as_database_error().unwrap().message(),
-            format!("{domain}.refuse.identity_unbound")
-        );
+            .await;
+        let refusal = result
+            .err()
+            .map(|e| e.as_database_error().unwrap().message().to_owned());
+        actual.push((case, refusal));
         tx.rollback().await.unwrap();
     }
+    let expected: Vec<_> = actual
+        .iter()
+        .map(|(case, _)| (*case, Some(format!("{domain}.refuse.identity_unbound"))))
+        .collect();
+    assert_eq!(actual, expected);
 }
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn org_change_refuses_identity_unbound(pool: PgPool) {
@@ -192,4 +213,9 @@ async fn period_unlock_refuses_identity_unbound(pool: PgPool) {
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn period_lock_refuses_identity_unbound(pool: PgPool) {
     unbound_boundary(&pool, LOCK, "period_unlock", false).await;
+}
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn governance_refuses_identity_unbound(pool: PgPool) {
+    unbound_boundary(&pool, GOVERNANCE, "governance", false).await;
 }

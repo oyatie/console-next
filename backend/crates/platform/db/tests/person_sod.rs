@@ -1,8 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use console_kernel_core::OrgId;
+use console_kernel_core::{OrgId, UserId};
 use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
+
+#[path = "../../../../test-support/person_fixtures.rs"]
+mod person_fixtures;
 
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
@@ -52,7 +55,7 @@ async fn parties(pool: &PgPool) -> Parties {
             .bind(account).bind(org).execute(pool).await.unwrap();
         accounts.push(account);
         if let Some(person) = linked_person {
-            let employee: Uuid = sqlx::query_scalar("INSERT INTO employees (org_id,company,name,source_filename,source_sheet,source_row,source_key) VALUES ($1,'ACME','Decider','test','test',1,$2) RETURNING id")
+            let employee: Uuid = sqlx::query_scalar("INSERT INTO employees (org_id,company,name,source_filename,source_sheet,source_row,source_key,identity_review_required) VALUES ($1,'ACME','Decider','test','test',1,$2,false) RETURNING id")
                 .bind(org).bind(account.to_string()).fetch_one(pool).await.unwrap();
             sqlx::query("INSERT INTO employee_person_bindings (org_id,employee_id,person_id,actor_id,payload_digest) VALUES ($1,$2,$3,$4,$5)")
                 .bind(org).bind(employee).bind(person).bind(account).bind([7u8;32].as_slice())

@@ -124,7 +124,7 @@ export const koPeriodLocks = {
   "periodLocks.request.approved": "{actor}님이 {domain} {period} 잠금 해제를 승인했습니다",
   "periodLocks.request.rejected": "{actor}님이 {domain} {period} 잠금 해제 요청을 반려했습니다",
   "periodLocks.request.refused.second_person_required": "요청자와 같은 사람은 결정할 수 없습니다. 마감 권한이 있는 다른 사람에게 요청하십시오.",
-  "periodLocks.request.refused.period_unlock.refuse.identity_unbound": "본인 정보를 확인할 수 없어 거부했습니다. 계정 관리 권한이 있는 담당자에게 계정을 인사카드에 연결해 달라고 요청하십시오.",
+  "periodLocks.request.refused.period_unlock.refuse.identity_unbound": "요청자 또는 결정자의 본인 정보를 확인할 수 없어 거부했습니다. 계정 관리 권한이 있는 담당자에게 계정을 인사카드에 연결하거나 동일인 확인을 완료해 달라고 요청하십시오.",
   "periodLocks.request.refused.second_person_ineligible": "이 요청을 결정할 두 번째 확인자 조건을 충족하지 않습니다. 조건을 충족하는 다른 마감 권한자가 결정합니다.",
   "periodLocks.request.refused.period_unlock_request_changed": "검토하는 동안 새 해제 요청이 들어왔습니다. 새 요청을 다시 검토하십시오.",
   "periodLocks.request.refused.period_unlock_request_expired": "이 해제 요청은 기간이 지나 만료됐습니다. 잠금은 그대로이며, 필요하면 다시 요청해야 합니다.",

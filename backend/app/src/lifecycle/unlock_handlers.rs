@@ -84,13 +84,8 @@ pub(super) async fn unlock_period_lock(
             load_lock_for_update(tx, lock_id)
                 .await?
                 .ok_or_else(|| LifecycleError::from_kernel(KernelError::not_found("period lock was not found")))?;
-            let actor = sqlx::query_as::<_,(bool,Option<Uuid>)>(
-                "SELECT public.console_setup_phase($1),maker_person FROM public.console_decision_people($1,$2,$2)"
-            ).bind(org.as_uuid()).bind(user).fetch_one(tx.as_mut()).await;
-            let Ok((setup,Some(_))) = actor else {
-                return Err(coded(StatusCode::FORBIDDEN,"period_unlock.refuse.identity_unbound",
-                    "unlock requests require a bound natural person"));
-            };
+            let setup: bool = sqlx::query_scalar("SELECT public.console_setup_phase($1)")
+                .bind(org.as_uuid()).fetch_one(tx.as_mut()).await?;
             let fact = second_person(tx, org, user, now, &settings).await?;
             let sole_holder_refuse = !matches!(
                 settings.get(&SettingKey::AuthzSoleHolderMode),
@@ -103,6 +98,15 @@ pub(super) async fn unlock_period_lock(
                 }.resolve_at_most(2).await.map_err(LifecycleError::from_kernel)?;
                 admins.len()==1 && admins.contains(&user)
             } else { false };
+            if !setup_single_admin {
+                let actor = sqlx::query_scalar::<_,Option<Uuid>>(
+                    "SELECT maker_person FROM public.console_decision_people($1,$2,$2)"
+                ).bind(org.as_uuid()).bind(user).fetch_one(tx.as_mut()).await;
+                if !matches!(actor, Ok(Some(_))) {
+                    return Err(coded(StatusCode::FORBIDDEN,"period_unlock.refuse.identity_unbound",
+                        "unlock requests require a reviewed employee-bound natural person"));
+                }
+            }
             // Admission is a separate Cedar decision; no assertion has been verified yet.
             if !unlock_admitted(&user.to_string(), &org.to_string(), fact.other_eligible_holders, sole_holder_refuse, setup_single_admin) {
                 return Err(coded(
