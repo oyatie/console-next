@@ -16,7 +16,7 @@ use console_platform_authz::cedar_pbac::actions::support_session::{
 };
 use console_platform_db::support::{self, SupportError};
 use console_settings_domain::{SettingKey, SettingValue};
-use serde_json::Value;
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use sqlx::{Postgres, Transaction};
 use time::{Duration, OffsetDateTime};
