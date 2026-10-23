@@ -5,6 +5,8 @@ import { checklistQuery } from "../features/onboarding/api";
 import { phaseBand } from "../features/onboarding/domain/phase";
 import { Banner } from "../ui/banner/banner";
 import { Skeleton } from "../ui/skeleton/skeleton";
+import { isAnswer } from "../lib/react/query-defaults";
+import { QueryState } from "../lib/react/query-state";
 
 /** The last successful phase stays visible through a failed read or expired session. */
 export function PhaseBand({ children }: { children: ReactNode }) {
@@ -20,6 +22,7 @@ export function PhaseBand({ children }: { children: ReactNode }) {
   // Paint the phase and route together, so the late strip never moves a route's controls.
   if (q.isPending) return <Skeleton bones={["title", "row", "row"]} label={t("common.loading")} />;
   return <>
+    {q.isError && !q.data && !isAnswer(q.error) && <QueryState q={q}>{() => null}</QueryState>}
     {band && <Banner placement="page" title={t(`setup.phase.${band}.title`)}>{t(`setup.phase.${band}.detail`)}</Banner>}
     {children}
   </>;
