@@ -81,7 +81,7 @@ async fn product_created_people_work_preserves_sources_permissions_and_resolutio
         request["reason_code"]
     );
     assert_eq!(correction["ref"], "");
-    assert_eq!(correction["title"], "");
+    assert_eq!(correction["title"], created["employee"]["name"]);
     assert_eq!(correction["links"][0]["kind"], "change_request");
     assert_eq!(correction["links"][0]["id"], request_id);
     assert_eq!(correction["links"][1]["kind"], "employee");

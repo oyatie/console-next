@@ -1,5 +1,5 @@
 /* ui/setup-rail: grouped first-run steps with a state, one action and a remedy when blocked. Tokens only. */
-.rail { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.rail { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); container-type: inline-size; }
 .head { display: flex; align-items: baseline; gap: var(--space-3); }
 .count { font-size: var(--text-sm); color: var(--steel); font-variant-numeric: tabular-nums; }
 .summary { margin: 0; font-size: var(--text-sm); color: var(--steel); }
@@ -21,3 +21,7 @@
 /* Blocked is waiting on an earlier step, not an error: quiet, with its remedy beside it. */
 .step[data-state="blocked"] .icon { color: var(--faint); }
 .step[data-state="blocked"] .title { color: var(--steel); }
+@container (max-width: 480px) {
+  .step { grid-template-columns: max-content minmax(0, 1fr); }
+  .actions { grid-column: 2 / -1; justify-content: flex-start; }
+}

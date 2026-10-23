@@ -25,7 +25,7 @@ pub(crate) async fn page(
     let principal = principal.clone();
     let org = principal.org_id;
     with_org_conn::<_, _, LifecycleError>(pool, org, move |tx| Box::pin(async move {
-        type Row = (Uuid, Uuid, Uuid, String, Option<String>, OffsetDateTime, Uuid, OffsetDateTime, String, time::Date, time::Date, Option<String>, Option<serde_json::Value>);
+        type Row = (Uuid, Uuid, Uuid, String, Option<String>, OffsetDateTime, Uuid, OffsetDateTime, String, time::Date, time::Date, String, Option<serde_json::Value>);
         let rows: Vec<Row> = sqlx::query_as("SELECT r.id, r.lock_id, r.requested_by, r.reason_code, r.reason_note, r.relock_at, r.step_up_assertion_id, r.requested_at, l.domain, l.period_start, l.period_end, (SELECT u.display_name FROM person_accounts_current u WHERE u.org_id = r.org_id AND u.id = r.requested_by), (SELECT jsonb_build_object('system', false, 'label_ko', c.label_ko, 'label_en', c.label_en) FROM reason_codes c WHERE c.org_id = r.org_id AND c.domain = 'period_unlock' AND c.code = r.reason_code) FROM period_unlock_requests r JOIN period_locks l ON l.org_id = r.org_id AND l.id = r.lock_id WHERE r.org_id = $1 AND r.outcome IS NULL AND r.relock_at > $2 AND r.requested_at <= $3 AND period_lock_effective(l) ORDER BY r.requested_at, r.id")
             .bind(org.as_uuid()).bind(query.now).bind(query.as_of).fetch_all(tx.as_mut()).await?;
         let settings = resolve_in_tx(tx.as_mut(), org, &SETTING_KEYS, None, query.now).await?;
@@ -43,7 +43,7 @@ pub(crate) async fn page(
                     "requester": requester, "reason_code": request.reason_code, "reason_entry": reason_entry
                 }, "reason": request.reason_note.unwrap_or_default()})),
                 id: format!("period_unlock:{id}"), kind: "period_unlock".into(), ref_code: String::new(),
-                title: String::new(), site: None, who: None, due: Some(relock_at), submitted: Some(requested_at), created_at: requested_at,
+                title: requester, site: None, who: None, due: Some(relock_at), submitted: Some(requested_at), created_at: requested_at,
                 links: vec![ActionInboxLink { kind: "period_lock".into(), id: lock_id.to_string(), label: None }],
             });
         }
