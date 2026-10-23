@@ -3,7 +3,7 @@
 
 OPS-SUPPORT-ACCESS-GATE is implemented by the support ledger, two distinct device-bound operator assertions, tenant `support_access::approve` permission, and the live read boundary. A deployment with no eligible second operator refuses with `support.refuse.no_second_operator`; one with no tenant approver refuses with `support.refuse.no_tenant_approver`.
 
-The tenant page is `/audit/support-access`. The shell banner and history update through the existing SSE stream. `/support-sessions/active` is the shared Cedar-backed visibility projection for navigation, the pending notification and Home’s support approval `QueueSection`. It returns pending requests only to approval holders, including the deadline and a request-specific deep link. G2 must absorb `pendingApprovalQuery` and `features/home/ui/support-queue.tsx` into 업무함; the decision and end actions remain on this screen. Expired and already-decided requests leave the pending source.
+The tenant page is `/audit/support-access`. The shell banner and history update through the existing SSE stream. `/support-sessions/active` is the shared catalog-backed visibility projection for navigation and the pending notification. It returns pending requests only to approval holders, including the deadline and a request-specific deep link. Approval work is registered in `crates/action-inbox` as `SupportAccess` and composed through `/api/v1/me/action-inbox` with kind `support_access` and target `support_session`. It reuses the decision endpoint’s permission resolver, confines rows to the tenant, and excludes expired or decided requests. G2 consumes that existing backend source; there is no Home-local support queue. Decisions and end actions remain on this screen. Expired and already-decided requests leave the pending source.
 
 Requests and decisions belong to the target tenant under forced RLS. Vendor lists project opaque identifiers, state and times only. Every support-token request appends `support.access` to that tenant's existing audit chain before its response leaves. Revocation is checked again after the handler and at audit commit. Failed audit writes withhold the response. Audit identities carry the operator display name and operator organization; opaque references remain stored separately.
 
@@ -22,7 +22,7 @@ Only reviewed rows in `support_read_surfaces` permit content reads. The initial 
 
 The fail-before worktree and logs are under `/Users/jasonlee/Developer/frontend/lanes/eco-g1-support`. They include missing-ledger RLS failure, missing Cedar support contract, missing tenant UI, old HTTP refusal behavior, WebSocket scope regression the approved-duration regression, read-validation problem details and withdrawal before start. Focused DB tests cover all support refusal codes, forced RLS, target-org audit identity, refusal before writes, audit failure, policy duration and immediate revocation. UI tests cover every refusal, history, consent commands, banner and the G2 query source.
 
-The verifier runs `e2e/support-access.spec.ts` in Chromium: real bound WebAuthn assertions for two operators, tenant approval, banner, read, SSE history, tenant termination, next-call 401 and tenant `/platform*` 404. Its accessibility checks exercise 1440/390 in light/dark. Run first-run-solo and released-contract compatibility checks as part of the release verification. Full multi-browser E2E and mutations remain release-unit CI work.
+The support acceptance runs `e2e/support-access.spec.ts` in Chromium and Firefox: real bound WebAuthn assertions for two operators, tenant approval, banner, read, SSE history, tenant termination, next-call 401 and tenant `/platform*` 404. Its accessibility checks exercise 1440/390 in light/dark. Run first-run-solo and released-contract compatibility checks as part of the release verification. Full multi-browser E2E and mutations remain release-unit CI work.
 
 Slice 2 is deferred to OC0-API/OC0-WEB. No ops origin/process migration or operator screen is included here. Proposed OC0-WEB paths remain `apps/ops/src/features/{tenants,support}/`. The current platform surface is retained for operators until that slice; tenant sessions opening `/platform*` receive the Korean 404.
 
@@ -34,7 +34,7 @@ Slice 2 is deferred to OC0-API/OC0-WEB. No ops origin/process migration or opera
 - One DB refusal remains identical on clean public/dev and the tip: `leave_command_preprovision_and_privilege_matrix_are_fail_closed` sees the pre-existing `leave_api.employee_import_rollback_audit_required` trigger helper among public entrypoints. Both logs have exactly the same actual/expected function lists (`base-leave-privileges.log`, `tip-leave-privileges.log`). The source is migration `20261023061209000_employee_import_rollback.sql`; this is a hand-off to the import-rollback owner, not a support change.
 - Fail-before logs retain the absent base ledger/Cedar/UI contracts, old HTTP refusal, second-operator refusal, WebSocket boundary, duration clamp, read problem-details, approved-but-unstarted request expiry, pre-start withdrawal and all three nested/container/array masking regressions. The terminal-state end guard was additionally checked without changing its implementation.
 
-Chromium product E2E, its 1440/390 light/dark axe checks, first-run-solo and the release unit's full browser/mutation/released-spec verification remain with the verifier and CI, as directed by the brief. No push was performed.
+The paragraph above records earlier rounds. Round 3 runs the focused support browser acceptance and first-run-solo locally; the results below supersede that earlier browser remainder. No push was performed.
 
 ## Touch inventory
 
@@ -306,3 +306,65 @@ The brief authorizes support implementation and its verification across shared c
 The response registry is `20261023100100000_support_response_classes.sql`; unknown paths, containers and fields fail closed. Tenant durations are entered in minutes and shown with locale-formatted hours and minutes. Active-session details show the support deadline rather than a stale approval deadline.
 
 Negative DB tests cover non-holder list/approve/deny/end with no ledger change, post-verification hardware-key eligibility for both operators, and revocation inside a handler with an audited 401. The key-upgrade injection isolates the support hardware guard from WebAuthn’s independent backup-flag check. Policy tests set both tenant keys, prove the resulting deadlines and cap, and reject values above registry defaults. A capacity fixture finds a custom approval holder among 2,000 active accounts with one existence query, then proves revoking that grant refuses the next request.
+
+
+## Round 3 corrections and proof
+
+Rebased first onto public/dev `581367052` (#37 and #32 included), with pre-fix support tip `656979915`. Evidence is under `/Users/jasonlee/Developer/frontend/lanes/eco-g1-support/round3/`.
+
+- The E2E duration lookup uses its field label without hard-coding the required marker. Approval duration is asserted on the persisted tenant session rather than a response request body that Playwright may omit.
+- The clean public/dev setup rail also fails the phone layout regression: its action row crowds the title. The shared grid now uses a shrinkable title track and moves actions below it when its container is narrow. The 390px Home audit remains in SETUP. Real support screens pass axe at 1440/390, light/dark.
+- Live support status retains its layout slot before loading and through pending/active/idle states. This fixes the observed unsolicited notification shift (0.0362); the E2E also clears shifts from its own initial viewport resize, using the existing helper.
+- Support approvals are an existing action-inbox source, with no Home-local support queue. The new real-router DB regression covers a custom approval grant, revocation, non-holder refusal to see items, tenant isolation, expiry, already-approved requests and keyset pagination. It fails on `656979915` because both pending items are missing, then passes on the candidate. The component regression fails on clean public/dev and passes after the shared grid fix. Contract assertions fail with the former strict response enum.
+- The rebase’s person-read ratchet is satisfied by using `person_accounts_current` for operator/tenant labels. The full-feature finance refusal test now uses a roleless support token with its operator binding and approved session ledger, including the real operator in the platform realm so refusals can be audited. No standing tenant account is created.
+- Released contract: see [per-class N-1 decisions](release-api-compat-2.md). The pinned oasdiff run has **zero unaccepted errors**: 2,972 inherited support-reference format errors and exactly four accepted unused operator POST-path removals. All eleven new domain-enum errors are gone. Response domains and inbox kinds are extensible; access-role commands retain the strict catalog vocabulary. Composed OpenAPI, face registry and TypeScript types were regenerated.
+- Support E2E: Chromium **2/2 on each of three consecutive runs** (63s, 72s, 61s); Firefox **2/2** (98s), with no browser skip. First-run-solo **1 passed, 1 pre-existing skip** (57s). The skipped governed-change journey remains explicitly disabled in the existing spec.
+- Exact web CI: **278 files / 1,888 tests**, typecheck, lint, build, 145.8 KB initial gzip against 151 KB, history/build secrets. The default license step has the same `no merge base found` failure on clean public/dev and the candidate because local `dev` belongs to the private history. Header validation against public/dev, fixture IDs, third-party licenses and the remaining three Node tests pass separately.
+- Rust: exact CI format/clippy, workspace test compilation, all 13 backend code gates including expand-only migration safety and the shrink-only file-size ratchet, plus full-feature application clippy. Focused crate proof: platform-rest 53 (including 25 support DB tests), identity-rest 99, contracts/action-inbox 55, application action-inbox 12 and finance 2. Both direct-dependent reads lead to console-app; its affected DB suites are covered.
+
+The file-size contribution was generated with the existing gate, retaining only this lane’s entries because the local private `dev` ref otherwise includes other lanes’ contributions. No pin is raised. The source dispatch implementation moved to its existing `sources` module; source DB regressions remain grouped separately from the oversized test root.
+
+Slice 2 remains the OC0 origin/application hand-off. G2 should render backend kind `support_access` with its `support_session` target as `/audit/support-access?review=<id>`; it must not reconstruct approvals from Home state. Full release-unit DB/E2E/mutation sweeps and merge-result CI remain release verification work.
+
+### Round 3 cross-module inventory
+
+This round also touches shared Home/setup-rail, the existing action-inbox composition/application and tests, a finance token fixture, generated contract registries/types, release documentation, catalogs and the lane’s size contribution. The complete round inventory (including files within the brief) follows; no excluded running-lane file is edited.
+
+- `apps/web/src/features/home/Home.tsx`
+- `apps/web/src/features/home/ui/support-queue.test.tsx`
+- `apps/web/src/features/home/ui/support-queue.tsx`
+- `apps/web/src/features/support-access/ui/support-access.module.css`
+- `apps/web/src/features/support-access/ui/support-access.test.tsx`
+- `apps/web/src/features/support-access/ui/support-access.tsx`
+- `apps/web/src/reference/support-access/api.ts`
+- `apps/web/src/ui/setup-rail/setup-rail.browser.test.tsx`
+- `apps/web/src/ui/setup-rail/setup-rail.module.css`
+- `backend/app/src/action_inbox.rs`
+- `backend/app/src/action_inbox/sources/mod.rs`
+- `backend/app/src/action_inbox/sources/support_access.rs`
+- `backend/app/tests/action_inbox/sources.rs`
+- `backend/app/tests/action_inbox/support_access.rs`
+- `backend/app/tests/action_inbox_api.rs`
+- `backend/app/tests/finance_gl_voucher_sod.rs`
+- `backend/ci/gates/file-size/baseline.d/eco-g1-support.txt`
+- `backend/crates/action-inbox/application/src/lib.rs`
+- `backend/crates/action-inbox/application/src/namespaced_id.rs`
+- `backend/crates/action-inbox/application/src/source.rs`
+- `backend/crates/contracts/src/gen_registry.rs`
+- `backend/crates/identity/rest/openapi/manifest.json`
+- `backend/crates/identity/rest/openapi/schemas/AccessDomain.yaml`
+- `backend/crates/identity/rest/openapi/schemas/AccessRoleLineInput.yaml`
+- `backend/crates/identity/rest/openapi/schemas/ActionInboxItem.yaml`
+- `backend/crates/identity/rest/openapi/schemas/CreateAccessRoleRequest.yaml`
+- `backend/crates/identity/rest/openapi/schemas/UpdateAccessRoleRequest.yaml`
+- `backend/crates/identity/rest/src/openapi.rs`
+- `backend/crates/platform/platform-rest/src/lib.rs`
+- `backend/crates/platform/platform-rest/src/support_store.rs`
+- `backend/openapi/openapi.yaml`
+- `docs/ops/release-api-compat-2.md`
+- `docs/ops/support-access.md`
+- `e2e/support-access.spec.ts`
+- `packages/api/src/schema.d.ts`
+- `packages/i18n/src/catalogs/en/support-access.ts`
+- `packages/i18n/src/catalogs/ko/support-access.ts`
+- `scripts/api-compat.test.ts`

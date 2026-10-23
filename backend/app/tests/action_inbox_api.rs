@@ -30,8 +30,6 @@ use std::sync::atomic::{AtomicU16, Ordering};
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
 const PATH: &str = "/api/v1/me/action-inbox";
-#[path = "action_inbox/support_access.rs"]
-mod support_access;
 static EQUIPMENT_SEQUENCE: AtomicU16 = AtomicU16::new(1);
 
 struct Keys {
@@ -1219,5 +1217,5 @@ fn app_state(pool: PgPool, public_key_pem: String) -> Result<AppState, console_a
     AppState::new(config, DatabaseDependency::Postgres(pool))
 }
 
-#[path = "action_inbox/governance.rs"]
-mod governance;
+#[path = "action_inbox/sources.rs"]
+mod sources;

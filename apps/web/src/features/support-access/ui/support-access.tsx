@@ -19,7 +19,7 @@ import { Table } from "../../../ui/table";
 import { codeText } from "../../../lib/labels";
 import { buttonClass } from "../../../ui/button/button-class";
 import { ApiError, activeSupportQuery, decideSupportSession, endSupportSession, SUPPORT_READS, supportRefusal, supportSessionsQuery, type Sessions, type SupportDecision, type SupportSession } from "../../../reference/support-access/api";
-import s from "./support-access.module.css";
+import styles from "./support-access.module.css";
 
 const route = getRouteApi("/app/audit/support-access");
 const durationText = (seconds: number) => t("supportAccess.duration", { hours: fmtNumber(Math.floor(seconds / 3600)), minutes: fmtNumber((seconds % 3600) / 60) });
@@ -35,7 +35,7 @@ const stateText = (state:string) => {const key=`supportAccess.state.${state}`;re
 export function ActiveSupportBanner() {
   const q = useQuery(activeSupportQuery);
   // Keep the security status slot mounted so an SSE notification cannot move page controls.
-  return <section className={s.status} aria-label={t("supportAccess.title")}>
+  return <section className={styles.status} aria-label={t("supportAccess.title")}>
     {q.error ? <CommandError error={q.error} own={supportRefusal}><Button onClick={() => void q.refetch()}>{t("common.retry")}</Button></CommandError> : q.data && <>
     {!q.data.pending_count && !q.data.sessions.length && <Banner placement="page" title={t("supportAccess.idle")} />}
     {q.data.can_approve && q.data.pending_count > 0 && <Banner placement="page" tone="warn" live="polite" title={t("supportAccess.pending", { count: fmtNumber(q.data.pending_count) })}

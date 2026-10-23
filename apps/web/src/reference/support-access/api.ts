@@ -4,17 +4,11 @@ import { isMessageId, t } from "@console/i18n";
 import { read, type PathPrefix } from "../../lib/query";
 
 export type SupportSession = components["schemas"]["SupportSession"];
-export type ActiveSessions = components["schemas"]["ActiveSupportSessions"];
 export type Sessions = components["schemas"]["SupportSessions"];
 export type SupportDecision = components["schemas"]["SupportTenantDecision"];
 const BASE = "/api/v1/support-sessions";
 export const supportSessionsQuery = read(BASE, () => unwrap(api.GET(BASE)));
 export const activeSupportQuery = read("/api/v1/support-sessions/active", () => unwrap(api.GET("/api/v1/support-sessions/active")));
-/** G2 inbox source: the server's tenant approval permission owns visibility. */
-export const pendingApprovalQuery = {
-  ...activeSupportQuery,
-  select: (data: ActiveSessions) => data.can_approve ? data.pending_approvals : [],
-};
 export const SUPPORT_READS = [BASE] satisfies PathPrefix[];
 export const decideSupportSession = (id: string, body: SupportDecision, key: string) =>
   unwrap(api.POST("/api/v1/support-sessions/{id}/decision", {params:{path:{id}},body,headers:{"Idempotency-Key":key}}));

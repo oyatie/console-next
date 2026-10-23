@@ -4,7 +4,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ApiError } from "../../../reference/support-access/api";
 import { ActiveSupportBanner, SupportAccess } from "./support-access";
-import { activeSupportQuery, supportSessionsQuery, pendingApprovalQuery, supportRefusal, type SupportSession } from "../../../reference/support-access/api";
+import { activeSupportQuery, supportSessionsQuery, supportRefusal, type SupportSession } from "../../../reference/support-access/api";
 
 const state = vi.hoisted(() => ({
   data: undefined as unknown, active: undefined as unknown, error: undefined as unknown,
@@ -52,13 +52,6 @@ test.each(refusals)("support refusal %s has an actionable UI message", (code) =>
 test("wrong-realm 401 has support-specific copy; unknown errors keep the shared fallback", () => {
   expect(supportRefusal("unauthorized")).toBe("supportAccess.wrongRealm");
   expect(supportRefusal("unrecognized")).toBeUndefined();
-});
-test("the G2 source contains only requests the tenant can approve", () => {
-  const select = pendingApprovalQuery.select;
-  const data = { sessions: [], can_approve: true, pending_count: 1, pending_approvals: [session] };
-  expect(select(data)).toEqual([session]);
-  expect(select({ ...data, can_approve: false })).toEqual([]);
-  expect(pendingApprovalQuery).toMatchObject(activeSupportQuery);
 });
 test("the tenant sees purpose, scope, bounded duration, decisions and access records", () => {
   const html = renderToStaticMarkup(<SupportAccess />);

@@ -96,9 +96,9 @@ pub(super) async fn label(
 ) -> Result<String, SupportError> {
     support::arm(tx, org).await?;
     let sql = if vendor {
-        "SELECT u.display_name||' · '||o.name FROM users u JOIN organizations o ON o.id=u.org_id WHERE u.id=$1 AND u.org_id=$2"
+        "SELECT u.display_name||' · '||o.name FROM person_accounts_current u JOIN organizations o ON o.id=u.org_id WHERE u.id=$1 AND u.org_id=$2"
     } else {
-        "SELECT display_name FROM users WHERE id=$1 AND org_id=$2"
+        "SELECT display_name FROM person_accounts_current WHERE id=$1 AND org_id=$2"
     };
     Ok(sqlx::query_scalar(sql)
         .bind(user)

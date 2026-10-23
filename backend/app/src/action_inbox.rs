@@ -216,46 +216,6 @@ struct PgActionInboxSources {
     principal: Principal,
 }
 
-impl ActionInboxSourcePort for PgActionInboxSources {
-    fn list_source_page(
-        &self,
-        source: ActionInboxSource,
-        query: ActionInboxSourceQuery,
-    ) -> ActionInboxSourceFuture<'_> {
-        Box::pin(async move {
-            match source {
-                ActionInboxSource::Workflow => self.workflow_page(query).await,
-                ActionInboxSource::Dispatch => self.dispatch_page(query).await,
-                ActionInboxSource::Support => self.support_page(query).await,
-                ActionInboxSource::WorkOrder => self.work_order_page(query).await,
-                ActionInboxSource::Payroll => self.payroll_page(query).await,
-                ActionInboxSource::Governance => self.governance_page(query).await,
-                ActionInboxSource::OrgChange => {
-                    sources::org_change::page(&self.pool, &self.principal, query).await
-                }
-                ActionInboxSource::HrExit => {
-                    sources::hr_exit::page(&self.pool, &self.principal, query).await
-                }
-                ActionInboxSource::HrLifecycle => {
-                    sources::hr_lifecycle::page(&self.pool, &self.principal, query).await
-                }
-                ActionInboxSource::HrRegister => {
-                    sources::hr_register::page(&self.pool, &self.principal, query).await
-                }
-                ActionInboxSource::HrRequests => {
-                    sources::hr_requests::page(&self.pool, &self.principal, query).await
-                }
-                ActionInboxSource::HrInsurance => {
-                    sources::hr_insurance::page(&self.pool, &self.principal, query).await
-                }
-                ActionInboxSource::SupportAccess => {
-                    sources::support_access::page(&self.pool, &self.principal, query).await
-                }
-            }
-        })
-    }
-}
-
 impl PgActionInboxSources {
     async fn workflow_page(
         &self,

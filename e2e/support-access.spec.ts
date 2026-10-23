@@ -106,7 +106,7 @@ test("two operators and the customer authorize support; every read arrives live 
   await expect(tenant.getByText("지원 접근 승인 대기 1건", { exact: true }).first()).toBeVisible();
   const inbox = await apiOf(tenant, tenantBearer)("/me/action-inbox");
   expect(inbox.ok()).toBe(true);
-  const actions = await inbox.json() as components["schemas"]["ActionInboxPage"];
+  const actions = await inbox.json() as components["schemas"]["ActionInboxResponse"];
   expect(actions.items.find((item) => item.id === `support_access:${id}`)).toMatchObject({
     kind: "support_access", ref: body.ticket_ref, title: body.reason,
     due: expect.any(String), links: [{ kind: "support_session", id }],
