@@ -1,5 +1,6 @@
 //! BW-10: unknown units (미배치, MR-7), settling new people, atomic and concurrent applies.
 
+use console_hr_adapter_postgres::directory::read_filters::EmployeeListQuery;
 use console_hr_domain::import::plan::Decisions;
 use sqlx::PgPool;
 
@@ -55,6 +56,52 @@ async fn new_people_are_settled_by_what_they_are(pool: PgPool) {
         .load("명부.xlsx", &[coming, former, current, unnumbered])
         .await;
     assert_eq!(report.inserted, 4);
+    let unbound: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM employees e WHERE e.org_id = $1 AND NOT EXISTS (\
+         SELECT 1 FROM employee_person_bindings b WHERE b.org_id = e.org_id AND b.employee_id = e.id)",
+    )
+    .bind(*im.f.principal.org_id.as_uuid())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        unbound, 0,
+        "every imported employee is bound before apply returns"
+    );
+    let people: Vec<(uuid::Uuid, uuid::Uuid, String, String)> = sqlx::query_as(
+        "SELECT e.id, b.person_id, e.name, r.attributes->>'legal_name' FROM employees e \
+         JOIN employee_person_bindings b ON b.org_id = e.org_id AND b.employee_id = e.id \
+         JOIN LATERAL (SELECT attributes FROM person_revisions \
+             WHERE org_id = b.org_id AND person_id = b.person_id ORDER BY version DESC LIMIT 1) r ON true \
+         WHERE e.org_id = $1",
+    )
+    .bind(*im.f.principal.org_id.as_uuid())
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(people.len(), 4, "every row has canonical person facts");
+    let page =
+        im.f.hr
+            .list_employees(im.f.principal.clone(), EmployeeListQuery::default())
+            .await
+            .unwrap();
+    for (employee, person, imported_name, legal_name) in people {
+        assert_eq!(legal_name, imported_name);
+        let listed = page.items.iter().find(|row| row.id == employee).unwrap();
+        assert_eq!(
+            serde_json::to_value(listed).unwrap()["person_id"],
+            person.to_string()
+        );
+        let detail =
+            im.f.hr
+                .employee_detail(im.f.principal.clone(), employee)
+                .await
+                .unwrap();
+        assert_eq!(
+            serde_json::to_value(&detail.employee).unwrap()["person_id"],
+            person.to_string()
+        );
+    }
 
     let (coming, _, status, ..) = im.person("E-7").await;
     assert_eq!(status, "PRE_HIRE");

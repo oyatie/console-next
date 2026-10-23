@@ -362,7 +362,7 @@ impl PgDispatchStore {
                            CASE WHEN u.phone IS NOT NULL AND btrim(u.phone) <> '' THEN 'PENDING' ELSE 'SKIPPED' END,
                            $2, t.org_id
                     FROM p1_dispatch_targets t
-                    JOIN users u ON u.id = t.user_id
+                    JOIN person_accounts_current u ON u.id = t.user_id
                     LEFT JOIN p1_dispatch_responses r ON r.dispatch_id = t.dispatch_id AND r.user_id = t.user_id
                     WHERE t.dispatch_id = $1 AND t.target_role = 'TECHNICIAN' AND r.id IS NULL
                       AND NOT EXISTS (
@@ -1046,7 +1046,7 @@ impl PgDispatchStore {
             WITH claimable AS (
                 SELECT a.id
                 FROM p1_dispatch_alerts a
-                JOIN users u ON u.id = a.recipient_user_id
+                JOIN person_accounts_current u ON u.id = a.recipient_user_id
                 WHERE a.dispatch_id = $1
                   AND a.alert_type = $2
                   AND a.status = 'PENDING'
@@ -1076,7 +1076,7 @@ impl PgDispatchStore {
                 u.phone
             FROM claimed
             JOIN p1_dispatches d ON d.id = claimed.dispatch_id
-            JOIN users u ON u.id = claimed.recipient_user_id
+            JOIN person_accounts_current u ON u.id = claimed.recipient_user_id
             ORDER BY claimed.created_at, claimed.id
             "#,
         )
@@ -2117,7 +2117,7 @@ async fn insert_manager_force_alerts(
                $2,
                t.org_id
         FROM p1_dispatch_targets t
-        JOIN users u ON u.id = t.user_id
+        JOIN person_accounts_current u ON u.id = t.user_id
         WHERE t.dispatch_id = $1
           AND t.target_role = 'MANAGER'
           AND NOT EXISTS (

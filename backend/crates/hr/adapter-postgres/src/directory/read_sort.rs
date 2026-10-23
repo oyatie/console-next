@@ -79,7 +79,9 @@ impl RosterSort {
     /// The SQL sort expression; a missing value sorts as `''`.
     pub fn expr(self) -> &'static str {
         match self.key {
-            SortKey::Name => "e.name",
+            SortKey::Name => {
+                "COALESCE(console_employee_facts(e.org_id,e.id)->>'legal_name',e.name)"
+            }
             SortKey::EmployeeNumber => "COALESCE(e.employee_number, '')",
             SortKey::HireDate => "COALESCE(e.hire_date, '')",
             SortKey::OrgUnit => "COALESCE(e.org_unit, '')",

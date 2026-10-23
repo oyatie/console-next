@@ -22484,6 +22484,35 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/person-binding-reviews:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: listPersonBindingReviews
+      tags: [HR]
+      summary: Read unresolved Person binding evidence for tenant-wide HR review
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: query
+        name: subject_id
+        schema: {type: string, format: uuid}
+      - in: query
+        name: limit
+        schema: {type: integer, format: int64}
+      - in: query
+        name: offset
+        schema: {type: integer, format: int64}
+      responses:
+        '200':
+          description: Tenant-scoped durable review evidence; never an automatic merge
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonBindingReviews'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/policy/assignments:
     get:
       tags:
@@ -37154,6 +37183,13 @@ components:
       - account_status
       - created_at
       properties:
+        principal_kind:
+          type: string
+          enum: [TENANT_PERSON, OPERATIONS, VENDOR]
+        person_id:
+          type: [string, "null"]
+          format: uuid
+          description: Canonical tenant Person; null only for a non-person principal or an N-1 record.
         id:
           $ref: '#/components/schemas/Uuid'
         display_name:
@@ -37401,6 +37437,10 @@ components:
       - created_at
       - updated_at
       properties:
+        person_id:
+          type: [string, "null"]
+          format: uuid
+          description: Canonical tenant Person; null only for a non-person principal or an N-1 record.
         id:
           $ref: '#/components/schemas/Uuid'
         company:
@@ -50083,6 +50123,48 @@ components:
           description: Why the second person refused it (REJECTED).
         canDecide:
           type: boolean
+    PersonBindingReviews:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        total: {type: integer, format: int64}
+        limit: {type: integer, format: int64}
+        offset: {type: integer, format: int64}
+        items:
+          type: array
+          items:
+            type: object
+            required: [subject_kind, subject_id, reason, evidence, created_at]
+            properties:
+              subject_kind:
+                type: string
+                enum: [EMPLOYEE, ACCOUNT]
+              subject_id: {type: string, format: uuid}
+              reason: {type: string}
+              evidence:
+                type: object
+                required: [candidates]
+                properties:
+                  employee_number:
+                    type: [string, "null"]
+                  birth_date:
+                    type: [string, "null"]
+                    format: date
+                  candidates:
+                    type: array
+                    items:
+                      type: object
+                      required: [employee_id]
+                      properties:
+                        employee_id: {type: string, format: uuid}
+                        birth_date:
+                          type: [string, "null"]
+                          format: date
+                        person_id:
+                          type: [string, "null"]
+                          format: uuid
+              created_at: {type: string, format: date-time}
     PersonRecordAward:
       type: object
       additionalProperties: false
@@ -50566,6 +50648,12 @@ components:
       - group_roles
       - created_at
       properties:
+        person_id:
+          type: [string, "null"]
+          format: uuid
+        principal_kind:
+          type: string
+          enum: [TENANT_PERSON, OPERATIONS, VENDOR]
         user_id:
           $ref: '#/components/schemas/Uuid'
         display_name:
@@ -57429,6 +57517,13 @@ components:
       - account_status
       - created_at
       properties:
+        principal_kind:
+          type: string
+          enum: [TENANT_PERSON, OPERATIONS, VENDOR]
+        person_id:
+          type: [string, "null"]
+          format: uuid
+          description: Canonical tenant Person; null only for a non-person principal or an N-1 record.
         id:
           $ref: '#/components/schemas/Uuid'
         display_name:

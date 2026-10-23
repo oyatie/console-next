@@ -34,6 +34,7 @@ pub enum DirectoryAccess {
     OrgChart,
     /// IMPORT-2: 주민등록번호 열람 (the full number, with its 사유).
     RrnReveal,
+    PersonBindingReview,
 }
 
 impl DirectoryAccess {
@@ -48,12 +49,14 @@ impl DirectoryAccess {
             Self::LifecycleHistory => "employee.lifecycle_read",
             Self::OrgChart => "employee.org_chart_read",
             Self::RrnReveal => "employee.rrn_reveal",
+            Self::PersonBindingReview => "person_binding_reviews.read",
         }
     }
 
     const fn target_type(self) -> &'static str {
         match self {
             Self::ExitCaseList | Self::ExitCase => "employee_exit_case",
+            Self::PersonBindingReview => "person_binding_review",
             _ => "employee",
         }
     }

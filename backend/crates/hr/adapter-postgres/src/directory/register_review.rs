@@ -50,7 +50,7 @@ impl HrService {
         let limit = limit.clamp(1, 200);
         let push_where = move |q: &mut QueryBuilder<Postgres>| {
             q.push(concat!(
-                " FROM employees e ",
+                " FROM person_employees_current e ",
                 crate::assignment_lateral!(),
                 " LEFT JOIN employee_employment_profiles p ",
                 "ON p.org_id = e.org_id AND p.employee_id = e.id WHERE e.org_id = "

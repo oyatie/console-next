@@ -113,30 +113,32 @@ async fn write_rehire_profile(
         .await?;
         return Ok(());
     }
-    let (Some(phone), Some(won)) = (request.phone.clone(), request.base_pay_won) else {
-        return Err(HrError::validation(
-            "phone and base_pay_won are required: this person has no employment profile yet",
-        ));
-    };
-    if won < 0 {
+    let phone = request
+        .phone
+        .clone()
+        .map(normalize_phone_e164)
+        .transpose()?;
+    let won = request.base_pay_won;
+    if won.is_some_and(|amount| amount < 0) {
         return Err(HrError::validation("base_pay_won must not be negative"));
     }
     sqlx::query(
         "INSERT INTO employee_employment_profiles (employee_id, org_id, employment_type, \
              phone_e164, base_pay, base_pay_won, idempotency_key, request_hash, created_by, \
-             contract_start_date, contract_end_date) \
-         VALUES ($1, $2, $3, $4, $5::numeric, $5, $6, $7, $8, $9::DATE, $10::DATE)",
+             contract_start_date, contract_end_date, pay_unit) \
+         VALUES ($1, $2, $3, $4, $5::numeric, $5, $6, $7, $8, $9::DATE, $10::DATE, $11)",
     )
     .bind(employee_id)
     .bind(org_uuid)
     .bind(&request.employment_type)
-    .bind(normalize_phone_e164(phone)?)
+    .bind(phone)
     .bind(won)
     .bind(&request.idempotency_key)
     .bind(hash)
     .bind(*actor.as_uuid())
     .bind(contract_start)
     .bind(request.contract_end_date.as_deref())
+    .bind(won.map(|_| console_hr_domain::profile::enums::PayUnit::Monthly.as_str()))
     .execute(tx.as_mut())
     .await?;
     Ok(())

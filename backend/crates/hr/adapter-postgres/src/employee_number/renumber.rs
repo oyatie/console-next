@@ -50,7 +50,7 @@ async fn people(
     id: Uuid,
 ) -> Result<Vec<(Uuid, Option<String>)>, HrError> {
     Ok(sqlx::query_as(
-        "SELECT e.id, e.employee_number FROM employees e WHERE e.org_id = $1 \
+        "SELECT e.id, e.employee_number FROM person_employees_current e WHERE e.org_id = $1 \
            AND e.employment_status IN ('ACTIVE', 'ON_LEAVE', 'PRE_HIRE') \
            AND ($3 = 'TENANT' OR EXISTS (SELECT 1 FROM employment_assignments a \
                 WHERE a.org_id = e.org_id AND a.employee_id = e.id \

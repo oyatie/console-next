@@ -34,7 +34,7 @@ pub(super) async fn place_ages(
     q.push_values(dates, |mut b, (event, employee, on)| {
         b.push_bind(event).push_bind(employee).push_bind(on);
     });
-    q.push(") SELECT d.event_id,ea.legal_entity_id,ea.workplace_id,w.name FROM dates d JOIN employees e ON e.id=d.employee_id \
+    q.push(") SELECT d.event_id,ea.legal_entity_id,ea.workplace_id,w.name FROM dates d JOIN person_employees_current e ON e.id=d.employee_id \
       JOIN LATERAL (SELECT a.legal_entity_id,a.workplace_id FROM employment_assignments a WHERE a.org_id=e.org_id AND a.employee_id=e.id AND a.superseded_at IS NULL AND a.valid_from<=d.on_date AND (a.valid_to IS NULL OR a.valid_to>d.on_date) ORDER BY a.valid_from DESC LIMIT 1) ea ON TRUE \
       LEFT JOIN LATERAL (SELECT h.to_org_unit_id AS org_unit_id FROM employee_lifecycle_events h WHERE h.org_id=e.org_id AND h.employee_id=e.id AND h.state='APPLIED' AND h.effective_date::date<=d.on_date AND h.to_org_unit_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM employee_lifecycle_events v WHERE v.org_id=h.org_id AND v.voids_event_id=h.id AND v.state='APPLIED') ORDER BY h.effective_date::date DESC,h.created_at DESC LIMIT 1) unit ON TRUE \
       LEFT JOIN LATERAL (SELECT r.name FROM workplace_revisions r WHERE r.org_id=e.org_id AND r.workplace_id=ea.workplace_id AND r.effective_from<=d.on_date ORDER BY r.effective_from DESC,r.version DESC LIMIT 1) w ON TRUE WHERE e.org_id=")

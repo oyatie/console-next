@@ -14,7 +14,7 @@ use console_kernel_core::{
 use serde::{Deserialize, Serialize};
 
 mod directory_person;
-pub use directory_person::DirectoryPage;
+pub use directory_person::{DirectoryPage, DirectoryPerson, UserSummary};
 
 // ---------------------------------------------------------------------------
 // Commands
@@ -346,71 +346,6 @@ pub enum EmployeeLinkStatus {
     Unlinked,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UserSummary {
-    pub id: UserId,
-    pub display_name: String,
-    /// The current sign-in ID `<아이디>@<회사 도메인>` (decisions #33). A label:
-    /// the account is keyed by `id` only.
-    pub sign_in_id: Option<String>,
-    pub employee_id: Option<uuid::Uuid>,
-    pub employee_name: Option<String>,
-    pub employee_number: Option<String>,
-    pub employee_company: Option<String>,
-    pub employee_org_unit: Option<String>,
-    pub employee_position: Option<String>,
-    pub employee_identity_review_required: Option<bool>,
-    pub employee_identity_resolution_confidence: Option<String>,
-    pub employee_link_status: EmployeeLinkStatus,
-    pub phone: Option<String>,
-    pub team: Option<Team>,
-    pub roles: Vec<String>,
-    pub branch_ids: Vec<BranchId>,
-    pub is_active: bool,
-    /// The tenant's one ops account (break-glass; never a role). The console
-    /// shows it as 운영 계정 and offers no 비활성화 on it.
-    pub is_tenant_ops: bool,
-    /// Whether the user has at least one enrolled passkey credential. A user can
-    /// only actually sign in once this is true; until then they are pending setup.
-    pub has_passkey: bool,
-    /// Derived setup state (`is_active` + `has_passkey`) for the console badge.
-    pub account_status: AccountStatus,
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_at: Timestamp,
-}
-
-/// Directory list item: [`UserSummary`] fields except `phone`.
-///
-/// Org user get/list still use [`UserSummary`] (phone included). Mapping
-/// `phone: None` onto `UserSummary` still serializes a `phone` key; this type
-/// omits the field.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DirectoryPerson {
-    pub id: UserId,
-    pub display_name: String,
-    pub sign_in_id: Option<String>,
-    pub employee_id: Option<uuid::Uuid>,
-    pub employee_name: Option<String>,
-    pub employee_number: Option<String>,
-    pub employee_company: Option<String>,
-    pub employee_org_unit: Option<String>,
-    pub employee_position: Option<String>,
-    pub employee_identity_review_required: Option<bool>,
-    pub employee_identity_resolution_confidence: Option<String>,
-    pub employee_link_status: EmployeeLinkStatus,
-    pub team: Option<Team>,
-    pub roles: Vec<String>,
-    pub branch_ids: Vec<BranchId>,
-    pub is_active: bool,
-    /// The tenant's one ops account (break-glass; never a role). The console
-    /// shows it as 운영 계정 and offers no 비활성화 on it.
-    pub is_tenant_ops: bool,
-    pub has_passkey: bool,
-    pub account_status: AccountStatus,
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_at: Timestamp,
-}
-
 /// One permission cell in a custom role definition. Keys are canonical snake-case
 /// `Feature` and `PermissionLevel` strings validated at the REST boundary.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -702,6 +637,8 @@ mod tests {
         assert_eq!(event.target_type, "user");
 
         let user = UserSummary {
+            person_id: None,
+            principal_kind: "TENANT_PERSON".into(),
             id: UserId::new(),
             display_name: "홍길동".to_owned(),
             sign_in_id: None,

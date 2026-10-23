@@ -42,8 +42,8 @@ macro_rules! lifecycle_event_select {
              g.succession_evidence_ref AS gt_succession_ref, \
              (SELECT v.id FROM employee_lifecycle_events v WHERE v.voids_event_id = l.id) AS voided_by \
              FROM employee_lifecycle_events l \
-             LEFT JOIN users u ON u.id = l.created_by \
-             LEFT JOIN users cu ON cu.id = l.cancelled_by \
+             LEFT JOIN person_accounts_current u ON u.id = l.created_by \
+             LEFT JOIN person_accounts_current cu ON cu.id = l.cancelled_by \
              LEFT JOIN employee_group_transfers g \
                ON g.org_id = l.org_id AND g.lifecycle_event_id = l.id ",
             $tail

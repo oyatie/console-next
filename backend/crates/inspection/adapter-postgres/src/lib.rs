@@ -323,7 +323,7 @@ impl PgInspectionStore {
             -- Same-org LEFT JOIN: `users` is RLS-scoped to app.current_org like
             -- the schedules, so a mechanic only resolves within the caller's
             -- tenant; a hard-deleted mechanic simply yields NULL.
-            LEFT JOIN users mech ON mech.id = s.mechanic_id
+            LEFT JOIN person_accounts_current mech ON mech.id = s.mechanic_id
             WHERE s.due_date >=
             "#,
         );
@@ -525,7 +525,7 @@ async fn fetch_schedule_summary_tx(
         FROM regular_inspection_schedules s
         JOIN registry_equipment e ON e.id = s.equipment_id
         JOIN registry_sites site ON site.id = e.site_id
-        LEFT JOIN users mech ON mech.id = s.mechanic_id
+        LEFT JOIN person_accounts_current mech ON mech.id = s.mechanic_id
         WHERE s.id = $1
         "#,
     )

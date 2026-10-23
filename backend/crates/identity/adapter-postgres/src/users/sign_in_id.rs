@@ -58,7 +58,7 @@ macro_rules! records {
             WHEN s.alias_until > now() THEN 'ALIAS' ELSE 'RESERVED' END AS state \
   FROM user_sign_in_ids s \
   JOIN organizations o ON o.id = s.org_id \
-  LEFT JOIN users a ON a.id = s.assigned_by AND a.org_id = s.org_id \
+  LEFT JOIN person_accounts_current a ON a.id = s.assigned_by AND a.org_id = s.org_id \
  WHERE s.org_id = $1 AND s.user_id = $2"
     };
 }

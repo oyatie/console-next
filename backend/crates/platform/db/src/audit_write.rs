@@ -16,7 +16,7 @@ pub(crate) async fn insert_audit_event_tx(
         && let Some(actor) = event.actor
     {
         context.actor_display = sqlx::query_scalar(
-            "SELECT display_name FROM users WHERE id = $1 AND ($2::uuid IS NULL OR org_id=$2)",
+            "SELECT display_name FROM person_accounts_current WHERE id = $1 AND ($2::uuid IS NULL OR org_id=$2)",
         )
         .bind(actor.as_uuid())
         .bind(event.org_id.map(|id| *id.as_uuid()))

@@ -246,7 +246,7 @@ pub(crate) async fn list(
            FROM access_grants g
            LEFT JOIN user_role_grants_pending p ON p.org_id=g.org_id AND p.grant_id=g.id
            JOIN access_roles r ON r.org_id = g.org_id AND r.id = g.role_id
-           JOIN users u ON u.org_id = g.org_id AND u.id = g.account_id
+           JOIN person_accounts_current u ON u.org_id = g.org_id AND u.id = g.account_id
            LEFT JOIN employees e ON e.org_id = u.org_id AND e.id = u.employee_id
           WHERE g.org_id = $1
             AND ($2::uuid IS NULL OR g.account_id = $2)

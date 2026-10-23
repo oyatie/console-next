@@ -63,7 +63,7 @@ pub struct UnplacedPage {
 macro_rules! unplaced {
     () => {
         concat!(
-            " FROM employees e",
+            " FROM person_employees_current e",
             assignment_lateral!(),
             " LEFT JOIN employee_employment_profiles p \
                ON p.org_id = e.org_id AND p.employee_id = e.id",

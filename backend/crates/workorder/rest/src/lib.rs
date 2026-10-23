@@ -4686,7 +4686,7 @@ async fn fetch_assignment_map(
             a.work_order_id, a.id, a.mechanic_id, u.display_name AS mechanic_name,
             a.role, a.assigned_at
         FROM work_order_assignments a
-        JOIN users u ON u.id = a.mechanic_id
+        JOIN person_accounts_current u ON u.id = a.mechanic_id
         WHERE a.work_order_id = ANY($1)
         ORDER BY a.work_order_id,
                  CASE a.role WHEN 'PRIMARY' THEN 1 ELSE 2 END,
@@ -4736,8 +4736,8 @@ async fn fetch_approval_line(
             approved_by.display_name AS approved_by_name,
             step.decision_comment
         FROM work_order_approval_steps step
-        LEFT JOIN users approver ON approver.id = step.approver_id
-        LEFT JOIN users approved_by ON approved_by.id = step.approved_by_id
+        LEFT JOIN person_accounts_current approver ON approver.id = step.approver_id
+        LEFT JOIN person_accounts_current approved_by ON approved_by.id = step.approved_by_id
         WHERE step.work_order_id = $1
         ORDER BY step.step_order
         "#,

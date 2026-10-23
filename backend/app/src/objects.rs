@@ -1107,7 +1107,7 @@ async fn search_persons(
     let rows = sqlx::query(
         r#"
         SELECT DISTINCT u.id, u.display_name
-        FROM users u
+        FROM person_accounts_current u
         LEFT JOIN user_branches ub ON ub.user_id = u.id
         WHERE u.is_active
           AND u.display_name ILIKE $1
@@ -1286,7 +1286,7 @@ async fn resolve_user_by_branch_scope(
             sqlx::query(
                 r#"
                 SELECT display_name, is_active
-                FROM users
+                FROM person_accounts_current
                 WHERE id = $1 AND ($2 = false OR is_active = true)
                 "#,
             )
@@ -1300,7 +1300,7 @@ async fn resolve_user_by_branch_scope(
             sqlx::query(
                 r#"
                 SELECT u.display_name, u.is_active
-                FROM users u
+                FROM person_accounts_current u
                 JOIN user_branches ub ON ub.user_id = u.id AND ub.branch_id = ANY($2)
                 WHERE u.id = $1 AND ($3 = false OR u.is_active = true)
                 LIMIT 1

@@ -10567,6 +10567,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/person-binding-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read unresolved Person binding evidence for tenant-wide HR review */
+        get: operations["listPersonBindingReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/policy/assignments": {
         parameters: {
             query?: never;
@@ -17846,6 +17863,13 @@ export interface components {
             total: number;
         };
         DirectoryPerson: {
+            /** @enum {string} */
+            principal_kind?: "TENANT_PERSON" | "OPERATIONS" | "VENDOR";
+            /**
+             * Format: uuid
+             * @description Canonical tenant Person; null only for a non-person principal or an N-1 record.
+             */
+            person_id?: string | null;
             id: components["schemas"]["Uuid"];
             display_name: string;
             /** @description The current sign-in ID `<아이디>@<회사 도메인>` (decisions #33). A label: the account is keyed by `id` only. */
@@ -17979,6 +18003,11 @@ export interface components {
             phone: string;
         };
         Employee: {
+            /**
+             * Format: uuid
+             * @description Canonical tenant Person; null only for a non-person principal or an N-1 record.
+             */
+            person_id?: string | null;
             id: components["schemas"]["Uuid"];
             company: string;
             name: string;
@@ -24292,6 +24321,36 @@ export interface components {
             decisionNote?: string;
             canDecide: boolean;
         };
+        PersonBindingReviews: {
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            limit: number;
+            /** Format: int64 */
+            offset: number;
+            items: {
+                /** @enum {string} */
+                subject_kind: "EMPLOYEE" | "ACCOUNT";
+                /** Format: uuid */
+                subject_id: string;
+                reason: string;
+                evidence: {
+                    employee_number?: string | null;
+                    /** Format: date */
+                    birth_date?: string | null;
+                    candidates: {
+                        /** Format: uuid */
+                        employee_id: string;
+                        /** Format: date */
+                        birth_date?: string | null;
+                        /** Format: uuid */
+                        person_id?: string | null;
+                    }[];
+                };
+                /** Format: date-time */
+                created_at: string;
+            }[];
+        };
         /** @description 포상. */
         PersonRecordAward: {
             title: string;
@@ -24521,6 +24580,10 @@ export interface components {
             updated_at: components["schemas"]["Timestamp"];
         };
         PlatformGroupAccount: {
+            /** Format: uuid */
+            person_id?: string | null;
+            /** @enum {string} */
+            principal_kind?: "TENANT_PERSON" | "OPERATIONS" | "VENDOR";
             user_id: components["schemas"]["Uuid"];
             display_name: string;
             phone: string | null;
@@ -27553,6 +27616,13 @@ export interface components {
             total: number;
         };
         UserSummary: {
+            /** @enum {string} */
+            principal_kind?: "TENANT_PERSON" | "OPERATIONS" | "VENDOR";
+            /**
+             * Format: uuid
+             * @description Canonical tenant Person; null only for a non-person principal or an N-1 record.
+             */
+            person_id?: string | null;
             id: components["schemas"]["Uuid"];
             display_name: string;
             /** @description The current sign-in ID `<아이디>@<회사 도메인>` (decisions #33). A label: the account is keyed by `id` only. */
@@ -49998,6 +50068,32 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
+        };
+    };
+    listPersonBindingReviews: {
+        parameters: {
+            query?: {
+                subject_id?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tenant-scoped durable review evidence; never an automatic merge */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonBindingReviews"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listPolicyAssignments: {

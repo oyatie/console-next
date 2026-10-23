@@ -39,7 +39,7 @@ const REGISTER_HEADER: &str = "사번,성명,성별,생년월일,주소,전화�
 /// imported worksite text; `workplace_id=` cuts one 사업장's register.
 pub(crate) const REGISTER_SELECT: &str = concat!(
     "SELECT e.employee_number, e.name, e.birth_date::TEXT AS birth_date, \
-    p.phone_e164, \
+    CASE WHEN console_employee_facts(e.org_id,e.id) ? 'phone' THEN console_employee_facts(e.org_id,e.id)->>'phone' ELSE p.phone_e164 END AS phone_e164, \
     COALESCE( \
       (SELECT w.name FROM workplace_revisions w \
         WHERE w.org_id = e.org_id AND w.workplace_id = ea.workplace_id \

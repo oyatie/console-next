@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [items, total, limit, offset]
+properties:
+  total: {type: integer, format: int64}
+  limit: {type: integer, format: int64}
+  offset: {type: integer, format: int64}
+  items:
+    type: array
+    items:
+      type: object
+      required: [subject_kind, subject_id, reason, evidence, created_at]
+      properties:
+        subject_kind:
+          type: string
+          enum: [EMPLOYEE, ACCOUNT]
+        subject_id: {type: string, format: uuid}
+        reason: {type: string}
+        evidence:
+          type: object
+          required: [candidates]
+          properties:
+            employee_number:
+              type: [string, "null"]
+            birth_date:
+              type: [string, "null"]
+              format: date
+            candidates:
+              type: array
+              items:
+                type: object
+                required: [employee_id]
+                properties:
+                  employee_id: {type: string, format: uuid}
+                  birth_date:
+                    type: [string, "null"]
+                    format: date
+                  person_id:
+                    type: [string, "null"]
+                    format: uuid
+        created_at: {type: string, format: date-time}

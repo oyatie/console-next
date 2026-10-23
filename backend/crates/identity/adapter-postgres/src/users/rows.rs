@@ -16,10 +16,10 @@ use sqlx::{PgPool, Postgres, Row, Transaction};
 /// never reads `users.phone`.
 pub(crate) const USER_SELECT_WITH_PASSKEY: &str = r#"
     SELECT
-           u.id,
+           u.id, u.person_id, u.principal_kind,
            u.display_name,
            u.employee_id,
-           e.name AS employee_name,
+           COALESCE(console_employee_facts(e.org_id,e.id)->>'legal_name',e.name) AS employee_name,
            e.employee_number AS employee_number,
            e.company AS employee_company,
            e.org_unit AS employee_org_unit,
@@ -39,7 +39,7 @@ pub(crate) const USER_SELECT_WITH_PASSKEY: &str = r#"
                 JOIN organizations o ON o.id = s.org_id
                WHERE s.org_id = u.org_id AND s.user_id = u.id AND s.retired_at IS NULL
              ) AS sign_in_id
-    FROM users u
+    FROM person_accounts_current u
     LEFT JOIN employees e
       ON e.id = u.employee_id
      AND e.org_id = u.org_id
@@ -53,10 +53,10 @@ pub(crate) const USER_SELECT_WITH_PASSKEY: &str = r#"
 /// column.
 pub(crate) const USER_SELECT_DIRECTORY: &str = r#"
     SELECT
-           u.id,
+           u.id, u.person_id, u.principal_kind,
            u.display_name,
            u.employee_id,
-           e.name AS employee_name,
+           COALESCE(console_employee_facts(e.org_id,e.id)->>'legal_name',e.name) AS employee_name,
            e.employee_number AS employee_number,
            e.company AS employee_company,
            e.org_unit AS employee_org_unit,
@@ -75,7 +75,7 @@ pub(crate) const USER_SELECT_DIRECTORY: &str = r#"
                 JOIN organizations o ON o.id = s.org_id
                WHERE s.org_id = u.org_id AND s.user_id = u.id AND s.retired_at IS NULL
              ) AS sign_in_id
-    FROM users u
+    FROM person_accounts_current u
     LEFT JOIN employees e
       ON e.id = u.employee_id
      AND e.org_id = u.org_id
@@ -191,6 +191,8 @@ fn user_from_row_with_phone(
     let employee_id: Option<uuid::Uuid> = row.try_get("employee_id")?;
     Ok(UserSummary {
         id: UserId::from_uuid(row.try_get("id")?),
+        person_id: row.try_get("person_id")?,
+        principal_kind: row.try_get("principal_kind")?,
         display_name: row.try_get("display_name")?,
         sign_in_id: row.try_get("sign_in_id")?,
         employee_id,

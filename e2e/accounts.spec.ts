@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { go, registerEmployee, stepUp, takeCode } from "./flows";
+import { apiOf, bearerOf } from "./helpers/api";
 import { staffedTenant } from "./setup-flows";
 
 // Accounts from people (governance-01, regression): there are no preset roles. An invite starts from an employee
@@ -8,6 +9,7 @@ import { staffedTenant } from "./setup-flows";
 // when the person already has an account. The ops account is named 운영 계정 and cannot be deactivated (governance-22).
 test("accounts: invite with no role, continue into 권한 부여, find the existing account, ops is protected", { tag: "@access" }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "acctsco", "계정상사");
+  const api = apiOf(admin, bearerOf(admin));
   await registerEmployee(admin, { name: "정하늘", number: "HK-4112", unit: "채용팀" });
 
   // The invite starts from the person: their page finds no account to link and invites them, already chosen.
@@ -24,6 +26,13 @@ test("accounts: invite with no role, continue into 권한 부여, find the exist
   // The one-time code offers to continue into 권한 부여 for this account.
   await expect(admin.getByRole("dialog").getByRole("link", { name: "전달하고 권한 부여로" })).toBeVisible();
   await takeCode(admin);
+  const employees = await (await api("/employees?search=HK-4112")).json() as { items: { id: string; person_id: string }[] };
+  const employee = employees.items[0]!;
+  const accounts = await (await api("/users")).json() as { items: { employee_id: string | null; person_id: string | null; principal_kind: string }[] };
+  const account = accounts.items.find((row) => row.employee_id === employee.id)!;
+  expect(employee.person_id).toBeTruthy();
+  expect(account.person_id).toBe(employee.person_id);
+  expect(account.principal_kind).toBe("TENANT_PERSON");
 
   const panel = admin.getByRole("complementary", { name: "정하늘" });
   await expect(panel.getByRole("status")).toContainText("정하늘님의 계정을 생성하고 첫 로그인 코드를 발급했습니다");

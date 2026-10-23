@@ -139,7 +139,7 @@ impl HrService {
                     ) AS org_unit,
                     COALESCE(NULLIF(e.position, ''), '직책 미지정') AS position,
                     e.employment_status
-                FROM employees e
+                FROM person_employees_current e
                 LEFT JOIN LATERAL (
                     SELECT r.attributes FROM org_unit_revisions r
                     WHERE r.org_id = e.org_id AND r.org_unit_id = e.org_unit_id

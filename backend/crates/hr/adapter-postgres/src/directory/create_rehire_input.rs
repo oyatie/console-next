@@ -26,11 +26,10 @@ pub struct RehireEmployeeRequest {
     /// Required for CONTRACT, refused otherwise.
     #[serde(default)]
     pub contract_end_date: Option<String>,
-    /// Required only when the person has no employment profile (a former
-    /// employee loaded by import); otherwise the profile keeps its contact.
+    /// Optional contact when an imported former employee has no profile.
     #[serde(default)]
     pub phone: Option<String>,
-    /// Required only with `phone` (no profile yet).
+    /// Optional monthly base pay when the person has no profile yet.
     #[serde(default)]
     pub base_pay_won: Option<i64>,
     pub idempotency_key: String,

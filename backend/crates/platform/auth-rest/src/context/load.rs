@@ -62,7 +62,7 @@ pub(crate) async fn load_user_auth_context_tx(
     let row = sqlx::query(
         r#"
         SELECT display_name, phone, roles, is_active, org_id
-        FROM users
+        FROM person_accounts_current
         WHERE id = $1
         "#,
     )

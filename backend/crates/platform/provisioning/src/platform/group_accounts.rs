@@ -26,10 +26,10 @@ impl PlatformProvisioner {
         let rows = sqlx::query(
             r#"
             SELECT
-                user_id, display_name, phone, tenant_roles, is_active,
+                user_id, person_id, principal_kind, display_name, phone, tenant_roles, is_active,
                 has_passkey, account_status, org_id, org_slug, org_name,
                 group_roles, created_at
-            FROM platform_list_group_accounts($1)
+            FROM platform_list_group_person_accounts($1)
             "#,
         )
         .bind(group_id)

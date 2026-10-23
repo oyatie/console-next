@@ -80,7 +80,7 @@ pub(crate) async fn load_facts(
     macro_rules! facts_sql {
         ($tail:literal) => {
             concat!(
-                "SELECT e.id, to_char(e.hire_on, 'YYYY-MM-DD') AS hire_date, e.birth_date, e.work_email, e.id_type, e.updated_at, \
+                "SELECT e.id, to_char(e.hire_on, 'YYYY-MM-DD') AS hire_date, CASE WHEN console_employee_facts(e.org_id,e.id) ? 'birth_date' THEN (console_employee_facts(e.org_id,e.id)->>'birth_date')::DATE ELSE e.birth_date END AS birth_date, e.work_email, e.id_type, e.updated_at, \
                  p.employee_id AS profile_employee_id, p.employment_type, p.base_pay_won, \
                  p.pay_unit, p.probation_end_date, p.probation_confirmed_at \
                  FROM employees e LEFT JOIN employee_employment_profiles p \

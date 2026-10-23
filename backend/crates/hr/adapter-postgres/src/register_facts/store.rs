@@ -56,7 +56,7 @@ const LOAD: &str = concat!(
         WHERE c.org_id = f.org_id AND c.employee_id = f.employee_id AND c.voided_at IS NULL) END AS careers, \
      (SELECT r.label_ko FROM reason_codes r \
        WHERE r.org_id = e.org_id AND r.domain = 'exit_reason' AND r.code = x.code) AS tenant_label \
-     FROM employees e \
+     FROM person_employees_current e \
      LEFT JOIN employee_register_facts f ON f.org_id = e.org_id AND f.employee_id = e.id \
      CROSS JOIN LATERAL (SELECT ",
     exit_reason_code_sql!(),

@@ -1,4 +1,4 @@
-//! Shared fixture: an org, an HR user, employees with no Person binding (as
+//! Shared fixture: an org, an HR user, employees with a Person binding (as
 //! trunk import leaves them), a `console_rt` pool.
 
 use std::collections::BTreeSet;
@@ -67,9 +67,9 @@ pub async fn fixture(pool: PgPool) -> Fixture {
 }
 
 impl Fixture {
-    /// An employee row with no Person binding, as trunk import writes it.
+    /// An eagerly bound employee, as registration and import write it.
     pub async fn employee(&self, number: &str) -> Uuid {
-        sqlx::query_scalar(
+        let employee: Uuid = sqlx::query_scalar(
             "INSERT INTO employees (org_id, company, name, employee_number, source_filename, source_sheet, \
              source_row, source_key, hire_date) VALUES ($1, 'Co', '김인사', $2, 'sheet.xlsx', 'S', 1, $3, '2026-09-01') \
              RETURNING id",
@@ -79,7 +79,15 @@ impl Fixture {
         .bind(Uuid::new_v4().to_string())
         .fetch_one(&self.owner)
         .await
-        .unwrap()
+        .unwrap();
+        sqlx::query("SELECT console_bind_employee_person($1,$2,$3)")
+            .bind(self.org)
+            .bind(employee)
+            .bind(self.user)
+            .execute(&self.owner)
+            .await
+            .unwrap();
+        employee
     }
 
     /// A pre-MR-28 duplicate 사번 as 0292 flags it: the flag guard admits it

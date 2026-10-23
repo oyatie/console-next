@@ -90,10 +90,11 @@ impl PgOrgStore {
         };
 
         let mut count_builder =
-            QueryBuilder::<Postgres>::new("SELECT COUNT(*) FROM users u WHERE ");
+            QueryBuilder::<Postgres>::new("SELECT COUNT(*) FROM person_accounts_current u WHERE ");
         push_filter(&mut count_builder);
 
-        let mut page_builder = QueryBuilder::<Postgres>::new("SELECT id FROM users u WHERE ");
+        let mut page_builder =
+            QueryBuilder::<Postgres>::new("SELECT id FROM person_accounts_current u WHERE ");
         push_filter(&mut page_builder);
         // No deployment pins the database collation (neither the CI service nor
         // deploy/apps/console/base/database.yaml sets one), so an unqualified

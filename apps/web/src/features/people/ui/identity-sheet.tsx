@@ -5,6 +5,7 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
+import { BindingEvidence } from "./binding-evidence";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Field, TextInput } from "../../../ui/field/field";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
@@ -57,7 +58,7 @@ export function IdentitySheet({ d, onClose, onDone }: { d: Detail; onClose: () =
         run.mutate(undefined);
       }}
     >
-      <p className={s.fact}>{t("identity.fact")}</p>
+      <BindingEvidence employeeId={e.id} />
       <ChoiceField
         label={t("identity.verdict")}
         required

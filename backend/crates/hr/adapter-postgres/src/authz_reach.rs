@@ -241,7 +241,7 @@ pub fn push_subject_in_reach(builder: &mut QueryBuilder<Postgres>, reach: &HrRea
         return;
     }
     builder.push(format!(
-        " ({alias}subject_type = 'EMPLOYEE' AND {alias}subject_id IN (SELECT e.id FROM employees e"
+        " ({alias}subject_type = 'EMPLOYEE' AND {alias}subject_id IN (SELECT e.id FROM person_employees_current e"
     ));
     builder.push(crate::assignment_lateral!());
     builder.push(" WHERE ");
@@ -258,7 +258,8 @@ pub async fn person_in_reach(
     if *reach == HrReach::All {
         return Ok(true);
     }
-    let mut q = QueryBuilder::<Postgres>::new("SELECT EXISTS (SELECT 1 FROM employees e");
+    let mut q =
+        QueryBuilder::<Postgres>::new("SELECT EXISTS (SELECT 1 FROM person_employees_current e");
     q.push(crate::assignment_lateral!());
     q.push(" WHERE e.id = ");
     q.push_bind(id);

@@ -10,7 +10,7 @@ pub(crate) const SELECT_REQUEST: &str = "SELECT r.id, r.code, r.kind, r.status, 
        AND e.target_type='org_change_request' AND e.target_id=r.id::text \
        AND e.outcome='ALLOWED' AND e.command_id IS NOT NULL \
        ORDER BY e.created_at DESC,e.id DESC LIMIT 1) AS command_id \
-     FROM org_change_requests r LEFT JOIN users du ON du.id = r.drafted_by \
+     FROM org_change_requests r LEFT JOIN person_accounts_current du ON du.id = r.drafted_by \
      WHERE r.id = $1";
 pub(crate) const SELECT_REQUEST_FOR_UPDATE: &str = "SELECT id, code, kind, status, target_kind, \
      target_ref, target_label, effective_date, reason, proposal, preflight, headcount, \
@@ -24,7 +24,7 @@ pub(crate) const SELECT_REQUEST_PAGE: &str = "SELECT r.id, r.code, r.kind, r.sta
        AND e.target_type='org_change_request' AND e.target_id=r.id::text \
        AND e.outcome='ALLOWED' AND e.command_id IS NOT NULL \
        ORDER BY e.created_at DESC,e.id DESC LIMIT 1) AS command_id \
-     FROM org_change_requests r LEFT JOIN users du ON du.id = r.drafted_by \
+     FROM org_change_requests r LEFT JOIN person_accounts_current du ON du.id = r.drafted_by \
      WHERE ($1::text[] IS NULL OR r.status = ANY($1)) AND ($2::text IS NULL OR r.kind = $2) \
      AND ($3::uuid IS NULL OR r.drafted_by = $3) \
      AND ($6::date IS NULL OR r.effective_date >= $6) \

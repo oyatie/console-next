@@ -67,6 +67,8 @@ pub struct GroupSummary {
 /// Tenant-anchored account that holds one or more group-level grants.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct GroupAccountSummary {
+    pub person_id: Option<Uuid>,
+    pub principal_kind: String,
     pub user_id: Uuid,
     pub display_name: String,
     pub phone: Option<String>,

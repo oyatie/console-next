@@ -68,7 +68,7 @@ pub async fn load_employee_detail(
     employee_id: Uuid,
 ) -> Result<EmployeeDetailResponse, HrError> {
     let row = sqlx::query(concat!(
-        r#"SELECT e.id, e.company, e.name, e.employee_number, e.org_unit, e.org_unit_id, e.job,
+        r#"SELECT e.id, e.company, COALESCE(console_employee_facts(e.org_id,e.id)->>'legal_name',e.name) AS name, console_employee_person(e.org_id,e.id) AS person_id, e.employee_number, e.org_unit, e.org_unit_id, e.job,
             e.position, e.worksite_name, e.worksite_address, to_char(e.hire_on, 'YYYY-MM-DD') AS hire_date, to_char(e.exit_on, 'YYYY-MM-DD') AS exit_date,
             e.employment_status, e.leave_accrued::TEXT AS leave_accrued,
             e.leave_used::TEXT AS leave_used, e.leave_remaining::TEXT AS leave_remaining,
@@ -76,7 +76,7 @@ pub async fn load_employee_detail(
             e.identity_resolution_strategy, e.identity_resolution_confidence,
             e.identity_review_required, e.identity_name_only_merge, e.work_email,
             e.created_at, e.updated_at, ea.legal_entity_id, ea.workplace_id, p.employee_id AS profile_employee_id,
-            p.employment_type, p.phone_e164, p.base_pay::TEXT AS base_pay, p.currency,
+            p.employment_type, CASE WHEN console_employee_facts(e.org_id,e.id) ? 'phone' THEN console_employee_facts(e.org_id,e.id)->>'phone' ELSE p.phone_e164 END AS phone_e164, p.base_pay::TEXT AS base_pay, p.currency,
             p.contract_start_date::TEXT AS contract_start_date,
             p.contract_end_date::TEXT AS contract_end_date, lr.expected_return_date,
             ne.id AS next_event_id, ne.event_type AS next_event_type,
@@ -87,7 +87,7 @@ pub async fn load_employee_detail(
             e.grade_id, e.job_title_id, e.position_kind_id, e.job_id, e.job_family_id, "#,
         crate::register_review_sql!(),
         r#" AS register_review_required
-        FROM employees e
+        FROM person_employees_current e
         LEFT JOIN employee_employment_profiles p ON p.employee_id = e.id AND p.org_id = e.org_id
         LEFT JOIN branches b ON b.id = e.home_branch_id AND b.org_id = e.org_id AND b.deactivated_at IS NULL
         LEFT JOIN LATERAL (SELECT n.id, n.event_type, n.effective_date

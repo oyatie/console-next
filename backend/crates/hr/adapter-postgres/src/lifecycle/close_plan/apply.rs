@@ -88,7 +88,7 @@ pub(crate) async fn advance(
         let gone: bool = sqlx::query_scalar(
             "SELECT CASE WHEN $2::uuid IS NULL THEN e.employment_status = 'EXITED' \
                     ELSE EXISTS (SELECT 1 FROM employee_lifecycle_events l WHERE l.id = $2 AND l.state = 'APPLIED') END \
-             FROM employees e WHERE e.id = $1",
+             FROM person_employees_current e WHERE e.id = $1",
         )
         .bind(employee)
         .bind(l.lifecycle_event_id.filter(|_| l.action == "GROUP_TRANSFER"))

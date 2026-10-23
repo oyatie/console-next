@@ -10309,6 +10309,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
             },
         ],
     },
+    PathItem {
+        path: "/api/v1/person-binding-reviews",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__person-binding-reviews.get.yaml"
+            ),
+        }],
+    },
 ];
 
 const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
@@ -10977,6 +10986,10 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "OrgUnitStatus",
         body: include_str!("../../orgchange/rest/openapi/schemas/OrgUnitStatus.yaml"),
+    },
+    NamedYaml {
+        name: "PersonBindingReviews",
+        body: include_str!("../../orgchange/rest/openapi/schemas/PersonBindingReviews.yaml"),
     },
     NamedYaml {
         name: "PersonRecordAward",

@@ -25,7 +25,7 @@ fn push_all_lines_in_reach(q: &mut QueryBuilder<Postgres>, reach: &HrReach) {
     q.push(
         " NOT EXISTS (SELECT 1 FROM appointment_notice_lines x \
            JOIN employee_lifecycle_events l ON l.org_id = x.org_id AND l.id = x.lifecycle_event_id \
-           JOIN employees e ON e.org_id = l.org_id AND e.id = l.employee_id",
+           JOIN person_employees_current e ON e.org_id = l.org_id AND e.id = l.employee_id",
     );
     q.push(crate::assignment_lateral!());
     q.push(" WHERE x.org_id = n.org_id AND x.notice_id = n.id AND NOT ");
@@ -51,7 +51,7 @@ async fn notice_in_reach(
 const SUMMARY: &str = "SELECT n.id, n.notice_no, n.title, n.notice_date::TEXT AS notice_date, \
      n.issued_by, u.display_name AS issued_by_name, n.issued_at, n.note, \
      (SELECT count(*) FROM appointment_notice_lines x WHERE x.org_id = n.org_id AND x.notice_id = n.id) AS line_count \
-     FROM appointment_notices n LEFT JOIN users u ON u.id = n.issued_by ";
+     FROM appointment_notices n LEFT JOIN person_accounts_current u ON u.id = n.issued_by ";
 
 fn summary(row: &sqlx::postgres::PgRow) -> Result<AppointmentNoticeSummary, HrError> {
     Ok(AppointmentNoticeSummary {
@@ -95,7 +95,7 @@ pub(super) async fn load_notice(
     .fetch_all(tx.as_mut())
     .await?;
     let people: Vec<(Uuid, String, Option<String>)> = sqlx::query_as(
-        "SELECT e.id, e.name, e.employee_number FROM employees e \
+        "SELECT e.id, e.name, e.employee_number FROM person_employees_current e \
          JOIN employee_lifecycle_events l ON l.org_id = e.org_id AND l.employee_id = e.id \
          JOIN appointment_notice_lines x ON x.org_id = l.org_id AND x.lifecycle_event_id = l.id \
          WHERE x.org_id = $1 AND x.notice_id = $2",

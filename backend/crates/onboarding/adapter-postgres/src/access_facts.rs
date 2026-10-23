@@ -13,7 +13,7 @@ pub(crate) async fn load(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
 ) -> Result<(SetupFacts, PreviewDetails), PgOnboardingError> {
-    let accounts = sqlx::query("SELECT id, display_name, is_tenant_ops, EXISTS (SELECT 1 FROM auth_webauthn_credentials c WHERE c.user_id = users.id) AS enrolled FROM users WHERE is_active ORDER BY id")
+    let accounts = sqlx::query("SELECT id, display_name, is_tenant_ops, EXISTS (SELECT 1 FROM auth_webauthn_credentials c WHERE c.user_id = users.id) AS enrolled FROM person_accounts_current users WHERE is_active ORDER BY id")
         .fetch_all(tx.as_mut()).await?;
     let mut subjects = BTreeMap::new();
     let mut names = BTreeMap::new();

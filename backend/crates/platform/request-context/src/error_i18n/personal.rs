@@ -4,6 +4,10 @@
 /// Exact English message → Korean (합니다체).
 pub(super) const MESSAGES: &[(&str, &str)] = &[
     (
+        "this employee requires a Person binding review before record changes",
+        "사람 연결을 먼저 확인한 뒤 인사기록을 변경할 수 있습니다.",
+    ),
+    (
         "name_hanja must be 한자 (CJK ideographs), 30 characters or fewer",
         "한자 성명은 한자로 30자까지 입력할 수 있습니다.",
     ),

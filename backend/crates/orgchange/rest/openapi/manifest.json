@@ -344,6 +344,9 @@
       "delete",
       "get",
       "patch"
+    ],
+    "/api/v1/person-binding-reviews": [
+      "get"
     ]
   },
   "schemas": [
@@ -499,6 +502,7 @@
     "OrgUnitMembers",
     "OrgUnitRevision",
     "OrgUnitStatus",
+    "PersonBindingReviews",
     "PersonRecordAward",
     "PersonRecordBasis",
     "PersonRecordDisability",

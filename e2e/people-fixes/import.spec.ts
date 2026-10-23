@@ -20,8 +20,10 @@ test("solo: a migrated worker without employment follows the guided re-import di
   const api = apiOf(admin, bearerOf(admin));
   await go(admin, "/people/import");
   await previewAndApply(admin, [["사번", "성명", "입사일"], ["PM-0001", "이관인", "2024-01-02"]], "명부 반영: 신규 1명 · 갱신 0명");
-  const rows = async () => ((await (await api("/employees?employee_number=PM-0001")).json()) as { items: { id: string }[] }).items;
-  const id = (await rows())[0]!.id;
+  const rows = async () => ((await (await api("/employees?employee_number=PM-0001")).json()) as { items: { id: string; person_id: string | null }[] }).items;
+  const original = (await rows())[0]!;
+  const id = original.id;
+  expect(original.person_id).toBeTruthy();
   const detail = async () => (await (await api(`/employees/${id}`)).json()) as { employment: { employment_type: string } | null };
   expect((await detail()).employment).toBeNull();
   await go(admin, `/people/${id}`);
@@ -30,7 +32,7 @@ test("solo: a migrated worker without employment follows the guided re-import di
   await expectAccessible(admin, "people: missing employment names the reviewed re-import path");
   await admin.getByRole("link", { name: "명부 재이관으로 고용 정보 등록" }).click();
   await previewAndApply(admin, [["사번", "성명", "입사일", "고용형태"], ["PM-0001", "이관인", "2024-01-02", "정규직"]], "명부 반영: 신규 0명 · 갱신 1명");
-  expect((await rows()).map((r) => r.id)).toEqual([id]);
+  expect((await rows()).map((r) => ({ id: r.id, person_id: r.person_id }))).toEqual([{ id, person_id: original.person_id }]);
   expect((await detail()).employment?.employment_type).toBe("REGULAR");
   await go(admin, `/people/${id}`);
   await expect(admin.getByRole("link", { name: "명부 재이관으로 고용 정보 등록" })).toHaveCount(0);

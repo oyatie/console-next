@@ -14,7 +14,7 @@ fn hashed(n: u8) -> Option<Vec<u8>> {
 }
 
 #[test]
-fn an_alias_and_then_the_rrn_hash_find_the_person() {
+fn an_alias_finds_the_person_but_an_rrn_alone_requires_review() {
     let mut renumbered = person("S-1", "김일", "ACTIVE");
     renumbered.aliases = vec!["E-1".into()];
     let mut sealed = person("E-2", "이이", "ACTIVE");
@@ -30,18 +30,12 @@ fn an_alias_and_then_the_rrn_hash_find_the_person() {
         (plan[0].matched_by, plan[0].employee_id),
         (Some("alias"), Some(world.people[0].id))
     );
-    assert_eq!(
-        (plan[1].matched_by, plan[1].employee_id),
-        (Some("rrn"), Some(world.people[1].id))
-    );
-    // The RRN found them under another 사번: the change is deferred, never written.
+    assert_eq!(plan[1].outcome, "unresolved_identity");
+    assert_eq!(plan[1].employee_id, None);
+    assert_eq!(plan[1].candidates[0].employee_id, world.people[1].id);
     let plan = &world.plan(&[new_number], &Decisions::default())[0];
-    assert_eq!(plan.matched_by, Some("rrn"));
-    assert!(
-        plan.deferred
-            .iter()
-            .any(|d| d.route == "employee_number_change")
-    );
+    assert_eq!(plan.outcome, "unresolved_identity");
+    assert_eq!(plan.employee_id, None);
 }
 
 #[test]

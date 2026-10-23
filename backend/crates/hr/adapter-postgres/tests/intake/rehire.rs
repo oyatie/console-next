@@ -37,12 +37,15 @@ async fn exited(f: &Fixture, pool: &PgPool, key: &str) -> uuid::Uuid {
 async fn a_former_employee_comes_back_as_the_same_person(pool: PgPool) {
     let f = fixture(pool.clone()).await;
     let id = exited(&f, &pool, "re-1").await;
-    let number: Option<String> =
-        sqlx::query_scalar("SELECT employee_number FROM employees WHERE id = $1")
-            .bind(id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let (number, person): (Option<String>, uuid::Uuid) = sqlx::query_as(
+        "SELECT e.employee_number, b.person_id FROM employees e \
+         JOIN employee_person_bindings b ON b.employee_id = e.id AND b.org_id = e.org_id \
+         WHERE e.id = $1",
+    )
+    .bind(id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
 
     let (replayed, detail) =
         f.hr.rehire_employee(f.principal.clone(), id, rehire(&f, "re-2", kst_day(0)))
@@ -52,6 +55,10 @@ async fn a_former_employee_comes_back_as_the_same_person(pool: PgPool) {
     assert_eq!(detail.employee.id, id);
     assert_eq!(detail.employee.status.as_deref(), Some("ACTIVE"));
     assert_eq!(detail.employee.employee_number, number);
+    assert_eq!(
+        serde_json::to_value(&detail.employee).unwrap()["person_id"],
+        person.to_string()
+    );
     assert_eq!(detail.employee.exit_date, None);
     assert_eq!(detail.employee.hire_date, Some(kst_day(0)));
     assert_eq!(
@@ -78,6 +85,13 @@ async fn a_former_employee_comes_back_as_the_same_person(pool: PgPool) {
             .await
             .unwrap();
     assert!(again, "the same key and body replay");
+    let after: uuid::Uuid =
+        sqlx::query_scalar("SELECT person_id FROM employee_person_bindings WHERE employee_id = $1")
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(after, person, "rehire and its replay preserve the person");
     let refused =
         f.hr.rehire_employee(f.principal.clone(), id, rehire(&f, "re-3", kst_day(0)))
             .await
@@ -86,6 +100,48 @@ async fn a_former_employee_comes_back_as_the_same_person(pool: PgPool) {
         (refused.status.as_u16(), refused.code),
         (409, "rehire_requires_exited")
     );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn an_imported_former_employee_reuses_their_person(pool: PgPool) {
+    let im = crate::import_fixture::importer(pool.clone()).await;
+    let mut former = crate::import_fixture::line("E-RE-1", "재입사 김일");
+    former.exit = Some("2025-12-31");
+    im.load("퇴사자.xlsx", &[former]).await;
+    let (id, ..) = im.person("E-RE-1").await;
+    let person: uuid::Uuid =
+        sqlx::query_scalar("SELECT person_id FROM employee_person_bindings WHERE employee_id = $1")
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    for expected_replay in [false, true] {
+        let (replayed, detail) =
+            im.f.hr
+                .rehire_employee(im.f.principal.clone(), id, {
+                    let mut request = rehire(&im.f, "import-re-1", kst_day(0));
+                    request.phone = Some("010-1234-5678".into());
+                    request.base_pay_won = Some(2_500_000);
+                    request
+                })
+                .await
+                .unwrap();
+        assert_eq!(replayed, expected_replay);
+        assert_eq!(detail.employee.id, id);
+        assert_eq!(
+            serde_json::to_value(&detail.employee).unwrap()["person_id"],
+            person.to_string()
+        );
+        let after: uuid::Uuid = sqlx::query_scalar(
+            "SELECT person_id FROM employee_person_bindings WHERE employee_id = $1",
+        )
+        .bind(id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(after, person);
+    }
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -125,4 +181,21 @@ async fn a_future_rehire_is_pre_hire_with_a_scheduled_onboard(pool: PgPool) {
             .unwrap();
     assert_eq!(head.employee.status.as_deref(), Some("EXITED"));
     assert_eq!(head.employee.exit_date, Some(kst_day(-10)));
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_former_employee_without_a_profile_can_rehire_before_pay_is_recorded(pool: PgPool) {
+    let f = fixture(pool.clone()).await;
+    let id = exited(&f, &pool, "unpaid-1").await;
+    sqlx::query("DELETE FROM employee_employment_profiles WHERE employee_id=$1")
+        .bind(id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let (_, detail) =
+        f.hr.rehire_employee(f.principal.clone(), id, rehire(&f, "unpaid-2", kst_day(0)))
+            .await
+            .unwrap();
+    assert_eq!(detail.employee.id, id);
+    assert!(detail.employment.unwrap().base_pay.is_none());
 }
