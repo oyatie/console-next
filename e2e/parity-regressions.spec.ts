@@ -101,7 +101,7 @@ for (const explicit of [false, true]) {
       const third = await api<Inbox>(`/api/v1/me/action-inbox?limit=1&cursor=${encodeURIComponent(otherSourceCursor)}`);
       expect(third.items).toHaveLength(1);
       expect(["최다음", "최마지막"]).toContain(third.items[0]!.title);
-      expect(third.items[0]!.id).not.toBe(`hr_register:${detail.employee.id}`);
+      expect(third.items[0]!.id).not.toBe(items.find((item) => item.id.startsWith("hr_register:") && item.title === "최다음")!.id);
       expect(third.next_cursor).not.toBeNull();
     }
   });

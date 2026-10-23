@@ -425,7 +425,7 @@ async fn pending_period_unlock_is_only_the_eligible_second_persons_work_and_leav
         json!({
             "domain": "payroll", "periodStart": "2026-06-01", "periodEnd": "2026-06-30",
             "requester": "업무함 요청자", "reason_code": reason_code,
-        "reason_entry": {"system": false, "label_ko": "추가 정산", "label_en": null}
+            "reason_entry": {"system": false, "label_ko": "추가 정산", "label_en": null}
         })
     );
     let requester_ctx = http::Ctx {
