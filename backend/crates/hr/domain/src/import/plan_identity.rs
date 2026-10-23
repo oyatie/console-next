@@ -1,6 +1,6 @@
 //! IMPORT-2 (decisions #25) who a row is, in order: the operator's pick, the
-//! 사번 (current, then an alias of an earlier 사번), the 주민등록번호 keyed
-//! hash, then namesakes as candidates only — never an automatic name match.
+//! 사번 (current, then an alias of an earlier 사번); RRN and namesakes
+//! are review evidence, never automatic identity keys.
 //! A 사번 and an RRN that name two different people are a conflict for the
 //! operator, not a merge.
 
@@ -80,7 +80,6 @@ pub(super) fn identify<'a>(
             candidates: others.iter().map(|p| candidate(p, "rrn")).collect(),
             ..refused(base, "identity_conflict", "rrn")
         })),
-        (None, [one]) => Identity::Known(one, "rrn"),
         (None, []) if row.employee_number.is_some() => Identity::New,
         (None, []) => {
             let waiting = unresolved(base, row, birth, facts);

@@ -157,7 +157,7 @@ pub(super) async fn signoff(
     let row = sqlx::query(
         "SELECT s.signed_by, u.display_name, s.signed_at, s.total_rows, s.confirmed, \
          s.needs_check, s.unchecked, s.note FROM import_signoffs s \
-         LEFT JOIN users u ON u.id = s.signed_by WHERE s.org_id = $1 AND s.run_id = $2",
+         LEFT JOIN person_accounts_current u ON u.id = s.signed_by WHERE s.org_id = $1 AND s.run_id = $2",
     )
     .bind(org)
     .bind(run_id)

@@ -1,6 +1,6 @@
 //! The 재입사 request (BW-19 2) and its normalisation.
 
-use console_hr_domain::profile::enums::EmploymentType;
+use console_hr_domain::profile::enums::{EmploymentType, PayUnit};
 use console_hr_domain::text::{normalize_enum_text, normalize_optional_text, parse_yyyy_mm_dd};
 use serde::Deserialize;
 use uuid::Uuid;
@@ -26,33 +26,36 @@ pub struct RehireEmployeeRequest {
     /// Required for CONTRACT, refused otherwise.
     #[serde(default)]
     pub contract_end_date: Option<String>,
-    /// Required only when the person has no employment profile (a former
-    /// employee loaded by import); otherwise the profile keeps its contact.
+    /// Required contact when an imported former employee has no profile.
     #[serde(default)]
     pub phone: Option<String>,
-    /// Required only with `phone` (no profile yet).
+    /// Required base pay when the person has no profile yet.
     #[serde(default)]
     pub base_pay_won: Option<i64>,
+    #[serde(default)]
+    pub pay_unit: Option<String>,
     pub idempotency_key: String,
 }
 
 impl RehireEmployeeRequest {
     /// The idempotency hash: this person and every normalised field.
     pub fn request_hash(&self, employee_id: Uuid) -> String {
-        sha256_hex(
-            format!(
-                "rehire:{employee_id}:{}:{}:{}:{}:{:?}:{:?}:{:?}:{:?}",
-                self.hire_date,
-                self.employment_type,
-                self.org_unit_id,
-                self.position,
-                self.company,
-                self.contract_end_date,
-                self.phone,
-                self.base_pay_won
-            )
-            .as_bytes(),
-        )
+        let payload = format!(
+            "rehire:{employee_id}:{}:{}:{}:{}:{:?}:{:?}:{:?}:{:?}",
+            self.hire_date,
+            self.employment_type,
+            self.org_unit_id,
+            self.position,
+            self.company,
+            self.contract_end_date,
+            self.phone,
+            self.base_pay_won,
+        );
+        let payload = match &self.pay_unit {
+            Some(unit) => format!("{payload}:pay_unit:{unit}"),
+            None => payload,
+        };
+        sha256_hex(payload.as_bytes())
     }
 }
 
@@ -94,6 +97,9 @@ pub fn normalize_rehire(
         (_, None) => {}
     }
     request.contract_end_date = end.map(|date| date.to_string());
+    request.pay_unit = normalize_optional_text(request.pay_unit)
+        .map(|unit| PayUnit::parse(&normalize_enum_text(unit)).map(|unit| unit.as_str().to_owned()))
+        .transpose()?;
     Ok(request)
 }
 
@@ -131,4 +137,37 @@ where
             "FREELANCE",
         ],
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn omitted_pay_unit_keeps_the_released_rehire_idempotency_hash() {
+        let employee = Uuid::new_v4();
+        let unit = Uuid::new_v4();
+        let request = RehireEmployeeRequest {
+            hire_date: "2027-01-02".into(),
+            employment_type: "REGULAR".into(),
+            org_unit_id: unit,
+            position: "Staff".into(),
+            company: None,
+            contract_end_date: None,
+            phone: None,
+            base_pay_won: None,
+            pay_unit: None,
+            idempotency_key: "rehire-replay".into(),
+        };
+        let released = sha256_hex(
+            format!("rehire:{employee}:2027-01-02:REGULAR:{unit}:Staff:None:None:None:None")
+                .as_bytes(),
+        );
+        assert_eq!(request.request_hash(employee), released);
+        let with_unit = RehireEmployeeRequest {
+            pay_unit: Some("HOURLY".into()),
+            ..request
+        };
+        assert_ne!(with_unit.request_hash(employee), released);
+    }
 }

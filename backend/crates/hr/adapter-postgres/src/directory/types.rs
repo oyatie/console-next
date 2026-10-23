@@ -21,6 +21,7 @@ pub struct EmployeePage {
 
 #[derive(Debug, Serialize)]
 pub struct EmployeeResponse {
+    pub person_id: Option<Uuid>,
     pub id: Uuid,
     pub company: String,
     pub name: String,

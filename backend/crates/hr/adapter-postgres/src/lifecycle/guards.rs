@@ -49,7 +49,7 @@ async fn stale(
 ) -> Result<HrError, HrError> {
     let last: Option<(Uuid, String, String, Option<String>, OffsetDateTime)> = sqlx::query_as(
         "SELECT l.id, l.event_type, l.effective_date, u.display_name, l.created_at \
-         FROM employee_lifecycle_events l LEFT JOIN users u ON u.id = l.created_by \
+         FROM employee_lifecycle_events l LEFT JOIN person_accounts_current u ON u.id = l.created_by \
          WHERE l.org_id = $1 AND l.employee_id = $2 AND l.state = 'APPLIED' \
          ORDER BY l.created_at DESC, l.id DESC LIMIT 1",
     )
@@ -79,7 +79,7 @@ pub async fn check_record_guards(
     let org_uuid = *org.as_uuid();
     let (hire, version, contract_end): (Option<String>, i32, Option<String>) = sqlx::query_as(
         "SELECT e.hire_date, e.head_version, p.contract_end_date::TEXT \
-         FROM employees e LEFT JOIN employee_employment_profiles p \
+         FROM person_employees_current e LEFT JOIN employee_employment_profiles p \
            ON p.org_id = e.org_id AND p.employee_id = e.id \
          WHERE e.org_id = $1 AND e.id = $2",
     )
@@ -114,7 +114,7 @@ pub async fn check_record_guards(
         (Some(existing), named) if named != Some(existing) => {
             let (kind, on, by): (String, String, Option<String>) = sqlx::query_as(
                 "SELECT l.event_type, l.effective_date, u.display_name \
-                 FROM employee_lifecycle_events l LEFT JOIN users u ON u.id = l.created_by \
+                 FROM employee_lifecycle_events l LEFT JOIN person_accounts_current u ON u.id = l.created_by \
                  WHERE l.org_id = $1 AND l.id = $2",
             )
             .bind(org_uuid)

@@ -1,5 +1,6 @@
 // Korean source for `identity.` ids (features/people/ui/identity-sheet.tsx): settling an identity review (BW-18).
 export const koIdentity = {
+  "identity.binding.title": "사람 연결 확인 자료",
   "identity.title": "{name} 동일인 확인",
   "identity.fact": "가져오기나 등록 때 같은 사람일 수 있는 기록이 있어 확인이 필요합니다. 다른 사람이면 표시만 해제하고, 같은 사람이면 이 기록을 남길 기록에 병합합니다.",
   "identity.verdict": "판단",

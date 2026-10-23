@@ -416,3 +416,6 @@ export async function reportExits(people: { id: string; name: string }[], date: 
   }
   return out;
 }
+
+/** System binding evidence for the existing HR identity review. */
+export const personBindingReviewsQuery = (subject_id: string) => get("/api/v1/person-binding-reviews", { params: { query: { subject_id } } });

@@ -60,7 +60,7 @@ fn out(row: &sqlx::postgres::PgRow) -> AccessResult<Value> {
 
 async fn one(tx: &mut Transaction<'_, Postgres>, org: OrgId, id: Uuid) -> AccessResult<Value> {
     let row = sqlx::query(sqlx::AssertSqlSafe(format!(
-        "SELECT {COLUMNS} FROM access_requests r JOIN users u ON u.org_id = r.org_id AND u.id = r.requested_by \
+        "SELECT {COLUMNS} FROM access_requests r JOIN person_accounts_current u ON u.org_id = r.org_id AND u.id = r.requested_by \
           WHERE r.org_id = $1 AND r.id = $2"
     )))
     .bind(org.as_uuid())
@@ -141,7 +141,7 @@ pub async fn list(s: &AccessService, p: Principal) -> AccessResult<Vec<Value>> {
         Box::pin(async move {
             let admin = Actor::load(tx, &p).await?.require_some_access(Level::View).is_ok();
             let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
-                "SELECT {COLUMNS} FROM access_requests r JOIN users u ON u.org_id = r.org_id AND u.id = r.requested_by \
+                "SELECT {COLUMNS} FROM access_requests r JOIN person_accounts_current u ON u.org_id = r.org_id AND u.id = r.requested_by \
                   WHERE r.org_id = $1 AND (($3 AND r.status = 'OPEN') OR r.requested_by = $2) \
                   ORDER BY r.created_at DESC, r.id LIMIT 200"
             )))
@@ -211,7 +211,7 @@ pub async fn granters(s: &AccessService, p: Principal) -> AccessResult<Value> {
     with_org_conn::<_, _, AccessError>(&s.pool, p.org_id, move |tx| {
         Box::pin(async move {
             let names: Vec<String> = sqlx::query_scalar(
-                "SELECT u.display_name FROM users u WHERE u.org_id = $1 AND u.is_active AND (u.is_tenant_ops \
+                "SELECT u.display_name FROM person_accounts_current u WHERE u.org_id = $1 AND u.is_active AND (u.is_tenant_ops \
                    OR EXISTS (SELECT 1 FROM access_grants g \
                      JOIN access_roles r ON r.org_id = g.org_id AND r.id = g.role_id AND r.status = 'ACTIVE' \
                      JOIN access_role_lines l ON l.org_id = r.org_id AND l.role_id = r.id AND l.version = r.version \

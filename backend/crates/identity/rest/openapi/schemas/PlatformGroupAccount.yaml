@@ -13,6 +13,12 @@ required:
 - group_roles
 - created_at
 properties:
+  person_id:
+    type: [string, "null"]
+    format: uuid
+  principal_kind:
+    type: string
+    enum: [TENANT_PERSON, OPERATIONS, VENDOR]
   user_id:
     $ref: '#/components/schemas/Uuid'
   display_name:

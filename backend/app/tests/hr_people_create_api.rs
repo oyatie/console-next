@@ -128,6 +128,11 @@ async fn employee_create_is_idempotent_unique_and_tenant_scoped(pool: PgPool) {
     );
     let token = bearer(&pool, &keys, org, user, &["SUPER_ADMIN"]).await;
     let body = create_body(branch, "PEOPLE-001", "same-key", "010-1234-5678", "Kim");
+    let people_before: i64 = sqlx::query_scalar("SELECT count(*) FROM persons WHERE org_id=$1")
+        .bind(org.as_uuid())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
 
     let (first, second) = tokio::join!(
         post(service.clone(), EMPLOYEES_PATH, &token, body.clone()),
@@ -156,11 +161,7 @@ async fn employee_create_is_idempotent_unique_and_tenant_scoped(pool: PgPool) {
     .fetch_one(&pool)
     .await
     .unwrap();
-    assert_eq!(
-        signoffs,
-        json!({}),
-        "employee creation must not fabricate acknowledgements"
-    );
+    assert_eq!(signoffs, json!({}), "creation must not fabricate signoffs");
     let row_counts: (i64, i64, i64, i64, i64, i64) = sqlx::query_as(
         "SELECT (SELECT count(*) FROM employees WHERE org_id = $1), \
          (SELECT count(*) FROM employee_employment_profiles WHERE org_id = $1), \
@@ -175,7 +176,7 @@ async fn employee_create_is_idempotent_unique_and_tenant_scoped(pool: PgPool) {
     .unwrap();
     assert_eq!(
         row_counts,
-        (1, 1, 1, 1, 1, 1),
+        (1, 1, 1, 1, people_before + 1, 1),
         "same-key race must write exactly one row in each employee creation table"
     );
     let bound_person: Uuid = sqlx::query_scalar(
@@ -206,8 +207,7 @@ async fn employee_create_is_idempotent_unique_and_tenant_scoped(pool: PgPool) {
     .unwrap();
     assert_eq!(
         home_branch_audits, 1,
-        "create must establish the first home-branch routing authority through \
-         the command channel (exactly one employee.home_branch_set audit)"
+        "create must establish home-branch authority through exactly one command audit"
     );
 
     let changed = post(

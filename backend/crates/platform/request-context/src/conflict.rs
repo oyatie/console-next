@@ -26,7 +26,7 @@ pub async fn last_change(
     let target_id = id.to_owned();
     let id = id.to_owned();
     let row=with_org_conn(pool,org,move |tx| Box::pin(async move {
-        Ok::<_,DbError>(sqlx::query("SELECT e.id,COALESCE(e.actor_display,u.display_name) AS actor_name,e.actor_kind,e.created_at,e.before_snap,e.after_snap,e.branch_id FROM audit_events e LEFT JOIN users u ON u.id=e.actor AND u.org_id=e.org_id WHERE e.org_id=$1 AND e.target_type=$2 AND e.target_id=$3 AND COALESCE(e.outcome,'ALLOWED')='ALLOWED' AND EXISTS(SELECT 1 FROM realtime_topic_map m WHERE m.target_type=e.target_type AND m.action=e.action) ORDER BY e.created_at DESC,e.id DESC LIMIT 1")
+        Ok::<_,DbError>(sqlx::query("SELECT e.id,COALESCE(e.actor_display,u.display_name) AS actor_name,e.actor_kind,e.created_at,e.before_snap,e.after_snap,e.branch_id FROM audit_events e LEFT JOIN person_accounts_current u ON u.id=e.actor AND u.org_id=e.org_id WHERE e.org_id=$1 AND e.target_type=$2 AND e.target_id=$3 AND COALESCE(e.outcome,'ALLOWED')='ALLOWED' AND EXISTS(SELECT 1 FROM realtime_topic_map m WHERE m.target_type=e.target_type AND m.action=e.action) ORDER BY e.created_at DESC,e.id DESC LIMIT 1")
             .bind(org.as_uuid()).bind(kind).bind(id).fetch_optional(tx.as_mut()).await?)
     })).await?;
     let Some(row) = row else {

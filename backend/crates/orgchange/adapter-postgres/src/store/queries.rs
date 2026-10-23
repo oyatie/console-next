@@ -45,6 +45,7 @@ impl PgOrgChangeStore {
                     let head = company_root(tx, org).await?.ok_or_else(not_found)?;
                     // Legal revision history is on the entity record, not the tenant root.
                     let revisions = Vec::new();
+
                     (head, revisions)
                 } else {
                     let head = load_unit_head(tx, id).await?.ok_or_else(not_found)?;
@@ -53,7 +54,7 @@ impl PgOrgChangeStore {
                     let rows = sqlx::query(
                         "SELECT r.version, r.attributes, r.actor_id, \
                          u.display_name AS actor_name, r.created_at, h.name AS head_name, a.actor_kind, a.command_id \
-                         FROM org_unit_revisions r LEFT JOIN users u ON u.id = r.actor_id \
+                         FROM org_unit_revisions r LEFT JOIN person_accounts_current u ON u.id = r.actor_id \
                          LEFT JOIN employees h ON h.id::text = r.attributes->>'head_employee_id' \
                          LEFT JOIN LATERAL (SELECT a.actor_kind, a.command_id FROM audit_events a \
                            WHERE a.org_id = r.org_id AND a.target_type = 'org_unit' \

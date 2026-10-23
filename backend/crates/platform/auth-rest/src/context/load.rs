@@ -8,6 +8,10 @@ use sqlx::PgPool;
 use sqlx::Row;
 use uuid::Uuid;
 
+#[cfg(test)]
+#[path = "load_tests.rs"]
+mod tests;
+
 #[derive(Debug)]
 pub(crate) struct UserAuthContext {
     pub(crate) user_id: UserId,
@@ -61,9 +65,10 @@ pub(crate) async fn load_user_auth_context_tx(
 ) -> Result<UserAuthContext, RestError> {
     let row = sqlx::query(
         r#"
-        SELECT display_name, phone, roles, is_active, org_id
-        FROM users
-        WHERE id = $1
+        SELECT u.display_name, account.phone, u.roles, u.is_active, u.org_id
+        FROM person_accounts_current u
+        JOIN users account ON account.org_id=u.org_id AND account.id=u.id
+        WHERE u.id = $1
         "#,
     )
     .bind(user_id)

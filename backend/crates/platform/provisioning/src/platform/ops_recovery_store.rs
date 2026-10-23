@@ -28,7 +28,7 @@ pub(super) async fn notice(
     org: OrgId,
     action: &str,
 ) -> Result<u64, ProvisioningError> {
-    Ok(sqlx::query("INSERT INTO notifications(org_id,recipient_user_id,category,body,link) SELECT org_id,id,'tenant.ops_recovery',$2,jsonb_build_object('type','screen','screen','account') FROM users WHERE org_id=$1 AND is_active")
+    Ok(sqlx::query("INSERT INTO notifications(org_id,recipient_user_id,category,body,link) SELECT org_id,id,'tenant.ops_recovery',$2,jsonb_build_object('type','screen','screen','account') FROM person_accounts_current WHERE org_id=$1 AND is_active")
         .bind(org.as_uuid()).bind(crate::catalog::ops_recovery_notice(action)).execute(tx.as_mut()).await?.rows_affected())
 }
 pub(super) fn write_error(e: sqlx::Error) -> ProvisioningError {
@@ -55,7 +55,7 @@ pub(crate) async fn admin_enrolled_tx(
 ) -> Result<bool, ProvisioningError> {
     Ok(sqlx::query_scalar(
         "SELECT EXISTS (\
-                 SELECT 1 FROM users u \
+                 SELECT 1 FROM person_accounts_current u \
                  WHERE u.org_id = $1 AND 'SUPER_ADMIN' = ANY(u.roles) AND (\
                      EXISTS (SELECT 1 FROM auth_webauthn_credentials c WHERE c.user_id = u.id) \
                      OR EXISTS (SELECT 1 FROM audit_events a \
@@ -76,7 +76,7 @@ impl PlatformProvisioner {
     ) -> Result<OpsRecoveryRead, ProvisioningError> {
         let mut tx = pool.begin().await?;
         arm(&mut tx, OrgId::platform()).await?;
-        let operators:i64=sqlx::query_scalar("SELECT count(*) FROM users u WHERE org_id=$1 AND is_active AND 'SUPER_ADMIN'=ANY(roles) AND EXISTS(SELECT 1 FROM auth_webauthn_credentials c WHERE c.user_id=u.id)").bind(OrgId::platform().as_uuid()).fetch_one(tx.as_mut()).await?;
+        let operators:i64=sqlx::query_scalar("SELECT count(*) FROM person_accounts_current u WHERE org_id=$1 AND is_active AND 'SUPER_ADMIN'=ANY(roles) AND EXISTS(SELECT 1 FROM auth_webauthn_credentials c WHERE c.user_id=u.id)").bind(OrgId::platform().as_uuid()).fetch_one(tx.as_mut()).await?;
         arm(&mut tx, org).await?;
         let mut request: Option<OpsRecoveryRequest> =
             sqlx::query_as("SELECT id,target_user_id,requested_by,opened_at,approved_by,hold_until,cancelled_by,cancelled_at,cancel_reason,issued_at,authoriser_role,authoriser_name,proofing_method,evidence_ref,open_assertion FROM ops_recovery_requests WHERE org_id=$1 ORDER BY opened_at DESC,id DESC LIMIT 1")
@@ -85,23 +85,26 @@ impl PlatformProvisioner {
                 .await?;
         if let Some(r) = request.as_mut() {
             arm(&mut tx, OrgId::platform()).await?;
-            r.requested_by_name = sqlx::query_scalar("SELECT display_name FROM users WHERE id=$1")
-                .bind(r.requested_by)
+            r.requested_by_name =
+                sqlx::query_scalar("SELECT display_name FROM person_accounts_current WHERE id=$1")
+                    .bind(r.requested_by)
+                    .fetch_optional(tx.as_mut())
+                    .await?;
+            if let Some(user) = r.cancelled_by {
+                r.cancelled_by_name = sqlx::query_scalar(
+                    "SELECT display_name FROM person_accounts_current WHERE id=$1",
+                )
+                .bind(user)
                 .fetch_optional(tx.as_mut())
                 .await?;
-            if let Some(user) = r.cancelled_by {
-                r.cancelled_by_name =
-                    sqlx::query_scalar("SELECT display_name FROM users WHERE id=$1")
-                        .bind(user)
-                        .fetch_optional(tx.as_mut())
-                        .await?;
                 if r.cancelled_by_name.is_none() {
                     arm(&mut tx, org).await?;
-                    r.cancelled_by_name =
-                        sqlx::query_scalar("SELECT display_name FROM users WHERE id=$1")
-                            .bind(user)
-                            .fetch_optional(tx.as_mut())
-                            .await?;
+                    r.cancelled_by_name = sqlx::query_scalar(
+                        "SELECT display_name FROM person_accounts_current WHERE id=$1",
+                    )
+                    .bind(user)
+                    .fetch_optional(tx.as_mut())
+                    .await?;
                 }
             }
             arm(&mut tx, org).await?;
@@ -120,14 +123,15 @@ impl PlatformProvisioner {
             r.proofing_method = None;
             r.evidence_ref = None;
         }
-        let ops_has_passkey:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users u JOIN auth_webauthn_credentials c ON c.user_id=u.id WHERE u.org_id=$1 AND u.is_tenant_ops)").bind(org.as_uuid()).fetch_one(tx.as_mut()).await?;
-        let recovery_available:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users u WHERE u.org_id=$1 AND u.is_tenant_ops AND (EXISTS(SELECT 1 FROM auth_webauthn_credentials c WHERE c.user_id=u.id) OR EXISTS(SELECT 1 FROM ops_recovery_requests r WHERE r.target_user_id=u.id AND r.issued_at IS NOT NULL)))").bind(org.as_uuid()).fetch_one(tx.as_mut()).await?;
+        let ops_has_passkey:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM person_accounts_current u JOIN auth_webauthn_credentials c ON c.user_id=u.id WHERE u.org_id=$1 AND u.is_tenant_ops)").bind(org.as_uuid()).fetch_one(tx.as_mut()).await?;
+        let recovery_available:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM person_accounts_current u WHERE u.org_id=$1 AND u.is_tenant_ops AND (EXISTS(SELECT 1 FROM auth_webauthn_credentials c WHERE c.user_id=u.id) OR EXISTS(SELECT 1 FROM ops_recovery_requests r WHERE r.target_user_id=u.id AND r.issued_at IS NOT NULL)))").bind(org.as_uuid()).fetch_one(tx.as_mut()).await?;
         let ops_enrolled = admin_enrolled_tx(&mut tx, *org.as_uuid()).await?;
-        let active_accounts: i64 =
-            sqlx::query_scalar("SELECT count(*) FROM users WHERE org_id=$1 AND is_active")
-                .bind(org.as_uuid())
-                .fetch_one(tx.as_mut())
-                .await?;
+        let active_accounts: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM person_accounts_current WHERE org_id=$1 AND is_active",
+        )
+        .bind(org.as_uuid())
+        .fetch_one(tx.as_mut())
+        .await?;
         tx.commit().await?;
         Ok(OpsRecoveryRead {
             request,

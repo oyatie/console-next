@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: listPersonBindingReviews
+tags: [HR]
+summary: Read unresolved Person binding evidence for tenant-wide HR review
+security:
+- bearerAuth: []
+parameters:
+- in: query
+  name: subject_id
+  schema: {type: string, format: uuid}
+- in: query
+  name: limit
+  schema: {type: integer, format: int64}
+- in: query
+  name: offset
+  schema: {type: integer, format: int64}
+responses:
+  '200':
+    description: Tenant-scoped durable review evidence; never an automatic merge
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PersonBindingReviews'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'

@@ -78,7 +78,7 @@ pub(crate) async fn apply_roster_tx(
         let existing = if let Some(id) = mapping[&user.phone] {
             Some(
                 sqlx::query(
-                    "SELECT id, display_name, roles, team FROM users WHERE id=$1 AND org_id=$2",
+                    "SELECT id, display_name, roles, team FROM person_accounts_current WHERE id=$1 AND org_id=$2",
                 )
                 .bind(id)
                 .bind(*OrgId::one().as_uuid())

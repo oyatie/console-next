@@ -57,6 +57,10 @@ async fn an_hr_worker_cannot_write_their_own_facts_contract_number_or_record(poo
     let (worker, own) = w.hr_worker().await;
     let other = w.employee("김직원").await;
     let p = || worker.clone();
+    let written = "SELECT (SELECT count(*) FROM employee_contracts WHERE employee_id = $1) \
+                   + (SELECT count(*) FROM employee_number_changes WHERE employee_id = $1) \
+                   + (SELECT count(*) FROM employee_person_bindings WHERE employee_id = $1)";
+    let before = w.count(written, own).await;
 
     let (status, code, _) = refused(
         w.hr.record_contract(p(), own, Uuid::new_v4(), contract())
@@ -78,14 +82,7 @@ async fn an_hr_worker_cannot_write_their_own_facts_contract_number_or_record(poo
     let (status, code, _) = refused(entry);
     assert_eq!((status, code), OWN, "인사기록카드");
 
-    let written = "SELECT (SELECT count(*) FROM employee_contracts WHERE employee_id = $1) \
-                   + (SELECT count(*) FROM employee_number_changes WHERE employee_id = $1) \
-                   + (SELECT count(*) FROM employee_person_bindings WHERE employee_id = $1)";
-    assert_eq!(
-        w.count(written, own).await,
-        0,
-        "nothing written on one's own record"
-    );
+    assert_eq!(w.count(written, own).await, before);
 
     w.hr.record_contract(p(), other, Uuid::new_v4(), contract())
         .await

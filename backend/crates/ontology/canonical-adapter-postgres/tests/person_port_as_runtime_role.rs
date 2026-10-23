@@ -153,8 +153,11 @@ async fn seed_employee(owner_pool: &PgPool, org: Uuid, source_key: &str) -> Uuid
     .unwrap()
 }
 
-const COUNT_PERSONS: &str = "SELECT count(*)::bigint FROM persons";
-const COUNT_REVISIONS: &str = "SELECT count(*)::bigint FROM person_revisions";
+// Fixture tenant accounts eagerly own Persons; count only command-created Persons.
+const COUNT_PERSONS: &str = "SELECT count(*)::bigint FROM persons WHERE (org_id,id) NOT IN \
+    (SELECT org_id,person_id FROM users WHERE person_id IS NOT NULL)";
+const COUNT_REVISIONS: &str = "SELECT count(*)::bigint FROM person_revisions WHERE (org_id,person_id) NOT IN \
+    (SELECT org_id,person_id FROM users WHERE person_id IS NOT NULL)";
 const COUNT_BINDINGS: &str = "SELECT count(*)::bigint FROM employee_person_bindings";
 const COUNT_RECEIPTS: &str = "SELECT count(*)::bigint FROM ont_action_command_receipts";
 
@@ -348,7 +351,9 @@ async fn a_person_is_created_and_read_back(owner_pool: PgPool) {
         "display_name was not stored and must not be invented from legal_name"
     );
     assert_eq!(head.version, 1);
-    assert_eq!(list(&port, org).await.unwrap(), vec![head]);
+    let mut listed = list(&port, org).await.unwrap();
+    listed.retain(|row| row.id != *actor.as_uuid());
+    assert_eq!(listed, vec![head]);
     let unknown = get(&port, org, Uuid::new_v4()).await;
     assert!(
         matches!(unknown, Ok(None)),
@@ -476,7 +481,7 @@ async fn an_update_of_a_revision_row_is_refused_by_the_trigger(owner_pool: PgPoo
 
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn a_foreign_tenant_is_invisible_and_unwritable_to_the_runtime_role(owner_pool: PgPool) {
-    let (org, _actor, port) = fixture(&owner_pool).await;
+    let (org, actor, port) = fixture(&owner_pool).await;
     let foreign_actor = seed_org_and_super_admin(&owner_pool, FOREIGN_ORG, "foreign").await;
     let foreign_employee = seed_employee(&owner_pool, FOREIGN_ORG, "foreign-1").await;
 
@@ -524,7 +529,7 @@ async fn a_foreign_tenant_is_invisible_and_unwritable_to_the_runtime_role(owner_
         );
     }
 
-    // A `console_rt` session armed for ORG, which owns none of them.
+    // A `console_rt` session armed for ORG owns only the excluded account Person.
     let runtime_pool = runtime_role_pool(&owner_pool).await;
     let mut tx = runtime_pool.begin().await.unwrap();
     sqlx::query("SELECT set_config('app.current_org', $1, true)")
@@ -554,7 +559,9 @@ async fn a_foreign_tenant_is_invisible_and_unwritable_to_the_runtime_role(owner_
     );
     drop(tx);
 
-    assert!(list(&port, org).await.unwrap().is_empty());
+    let local = list(&port, org).await.unwrap();
+    assert_eq!(local.len(), 1);
+    assert_eq!(local[0].id, *actor.as_uuid());
     let foreign_head = get(&port, org, foreign_person).await;
     assert!(
         matches!(foreign_head, Ok(None)),
@@ -680,7 +687,8 @@ async fn create_without_employee_id_stays_unbound_despite_name_phone_org_attribu
     assert_eq!(head.id, person_id);
     assert_eq!(head.legal_name.as_deref(), Some("동명이인"));
     assert_eq!(head.display_name, None);
-    let listed = list(&port, org).await.unwrap();
+    let mut listed = list(&port, org).await.unwrap();
+    listed.retain(|row| row.id != *actor.as_uuid());
     assert_eq!(listed, vec![head.clone()]);
     for (label, wire) in [
         ("get", serde_json::to_value(&head).unwrap()),
@@ -760,11 +768,7 @@ async fn a_second_binding_for_the_same_employee_is_refused(owner_pool: PgPool) {
     .unwrap();
     assert_eq!(bound, vec![person_id]);
 
-    let persons: i64 = sqlx::query_scalar("SELECT count(*)::bigint FROM persons WHERE org_id = $1")
-        .bind(ORG)
-        .fetch_one(&owner_pool)
-        .await
-        .unwrap();
+    let persons = count_rows(&owner_pool, COUNT_PERSONS).await;
     assert_eq!(
         persons, 2,
         "the refused revise must leave both persons; the second create already committed"
@@ -831,11 +835,7 @@ async fn an_actor_from_another_org_is_refused(owner_pool: PgPool) {
         "the (actor_id, org_id) foreign key on person_revisions must refuse it; got {message}"
     );
 
-    let persons: i64 = sqlx::query_scalar("SELECT count(*)::bigint FROM persons WHERE org_id = $1")
-        .bind(ORG)
-        .fetch_one(&owner_pool)
-        .await
-        .unwrap();
+    let persons = count_rows(&owner_pool, COUNT_PERSONS).await;
     assert_eq!(persons, 0, "a refused command must persist no person");
 }
 

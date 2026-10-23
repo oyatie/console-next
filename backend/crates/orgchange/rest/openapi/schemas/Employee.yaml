@@ -16,6 +16,10 @@ required:
 - created_at
 - updated_at
 properties:
+  person_id:
+    type: [string, "null"]
+    format: uuid
+    description: Canonical tenant Person; null only for a non-person principal or an N-1 record.
   id:
     $ref: '#/components/schemas/Uuid'
   company:

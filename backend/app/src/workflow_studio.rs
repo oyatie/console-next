@@ -3335,7 +3335,7 @@ async fn list_definition_history(
                     e.summary,
                     e.created_at
                 FROM workflow_definition_events e
-                LEFT JOIN users u ON u.id = e.actor_id
+                LEFT JOIN person_accounts_current u ON u.id = e.actor_id
                 LEFT JOIN workflow_definition_versions v
                     ON v.definition_id = e.definition_id
                    AND v.org_id = e.org_id
@@ -3513,7 +3513,7 @@ async fn trigger_definition_run(
                     i.completed_at,
                     i.failed_at
                 FROM inserted i
-                LEFT JOIN users u ON u.id = i.initiated_by
+                LEFT JOIN person_accounts_current u ON u.id = i.initiated_by
                 "#,
             )
             .bind(run_id)
@@ -4756,7 +4756,7 @@ fn workflow_run_log_sql() -> &'static str {
         r.completed_at,
         r.failed_at
     FROM workflow_runs r
-    LEFT JOIN users u ON u.id = r.initiated_by
+    LEFT JOIN person_accounts_current u ON u.id = r.initiated_by
     WHERE r.definition_id = $1
     ORDER BY COALESCE(r.completed_at, r.failed_at, r.updated_at, r.started_at) DESC, r.id DESC
     LIMIT 25
@@ -4790,7 +4790,7 @@ fn workflow_run_by_idempotency_key_sql() -> &'static str {
         r.completed_at,
         r.failed_at
     FROM workflow_runs r
-    LEFT JOIN users u ON u.id = r.initiated_by
+    LEFT JOIN person_accounts_current u ON u.id = r.initiated_by
     WHERE r.idempotency_key = $1
     LIMIT 1
     "#

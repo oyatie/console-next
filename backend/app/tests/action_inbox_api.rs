@@ -1013,7 +1013,6 @@ async fn bind_user_to_new_person(
     org: OrgId,
     user: UserId,
     source_key: &str,
-    binder: UserId,
 ) -> uuid::Uuid {
     let employee_id: uuid::Uuid = sqlx::query_scalar(
         "INSERT INTO employees \
@@ -1025,12 +1024,6 @@ async fn bind_user_to_new_person(
     .fetch_one(pool)
     .await
     .unwrap();
-    let person_id: uuid::Uuid =
-        sqlx::query_scalar("INSERT INTO persons (org_id) VALUES ($1) RETURNING id")
-            .bind(*org.as_uuid())
-            .fetch_one(pool)
-            .await
-            .unwrap();
     sqlx::query("UPDATE users SET employee_id = $1 WHERE id = $2 AND org_id = $3")
         .bind(employee_id)
         .bind(*user.as_uuid())
@@ -1038,19 +1031,6 @@ async fn bind_user_to_new_person(
         .execute(pool)
         .await
         .unwrap();
-    sqlx::query(
-        "INSERT INTO employee_person_bindings \
-         (org_id, employee_id, person_id, actor_id, payload_digest) \
-         VALUES ($1, $2, $3, $4, $5)",
-    )
-    .bind(*org.as_uuid())
-    .bind(employee_id)
-    .bind(person_id)
-    .bind(*binder.as_uuid())
-    .bind([7_u8; 32].as_slice())
-    .execute(pool)
-    .await
-    .unwrap();
     employee_id
 }
 

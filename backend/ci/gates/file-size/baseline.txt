@@ -9,7 +9,7 @@ app/src/office.rs	891
 app/src/workbench.rs	660
 app/src/workflow_object_context.rs	460
 app/src/workflow_studio.rs	7166
-app/tests/action_inbox_api.rs	1145
+app/tests/action_inbox_api.rs	1125
 app/tests/attendance_persona_api.rs	415
 app/tests/audit_api.rs	827
 app/tests/auth_rest.rs	4487
@@ -99,7 +99,7 @@ crates/consulting/rest/tests/audit_atomicity.rs	501
 crates/contracts/src/lib.rs	654
 crates/contracts/tests/compose.rs	1178
 crates/dispatch/adapter-postgres/src/lib.rs	2112
-crates/dispatch/adapter-postgres/tests/p1_dispatch.rs	1239
+crates/dispatch/adapter-postgres/tests/p1_dispatch.rs	1226
 crates/dispatch/application/src/lib.rs	349
 crates/dispatch/rest/src/lib.rs	659
 crates/dispatch/worker/src/lib.rs	341
@@ -127,10 +127,10 @@ crates/governance/adapter-postgres/src/lib.rs	793
 crates/governance/adapter-postgres/tests/approvals_create_as_runtime_role.rs	595
 crates/governance/adapter-postgres/tests/governance_rls_as_runtime_role.rs	790
 crates/governance/rest/src/lib.rs	357
-crates/identity/adapter-postgres/tests/subject_authz_versions_freshness_rls.rs	481
-crates/identity/application/src/org.rs	426
+crates/identity/adapter-postgres/tests/subject_authz_versions_freshness_rls.rs	430
+crates/identity/application/src/org.rs	377
 crates/identity/rest/tests/authentication_locking.rs	862
-crates/identity/rest/tests/org_setup.rs	4072
+crates/identity/rest/tests/org_setup.rs	4054
 crates/inbox/adapter-postgres/src/lib.rs	346
 crates/inbox/adapter-postgres/tests/inbox_docs_rls_surfaces_as_runtime_role.rs	345
 crates/inbox/rest/tests/api.rs	693
@@ -142,7 +142,7 @@ crates/inventory/application/src/lib.rs	406
 crates/inventory/domain/src/lib.rs	409
 crates/inventory/rest/src/lib.rs	795
 crates/leave/adapter-postgres/src/lib.rs	1596
-crates/leave/adapter-postgres/tests/leave_migration_expand_contract.rs	1818
+crates/leave/adapter-postgres/tests/leave_migration_expand_contract.rs	1743
 crates/leave/adapter-postgres/tests/leave_rls_surfaces_as_runtime_role.rs	2678
 crates/leave/application/src/lib.rs	320
 crates/leave/domain/src/lib.rs	562
@@ -181,7 +181,7 @@ crates/ontology/canonical-adapter-postgres/tests/employment_port_as_runtime_role
 crates/ontology/canonical-adapter-postgres/tests/job_position_port_as_runtime_role.rs	820
 crates/ontology/canonical-adapter-postgres/tests/org_unit_kinds_as_runtime_role.rs	356
 crates/ontology/canonical-adapter-postgres/tests/org_unit_port_as_runtime_role.rs	992
-crates/ontology/canonical-adapter-postgres/tests/person_port_as_runtime_role.rs	895
+crates/ontology/canonical-adapter-postgres/tests/person_port_as_runtime_role.rs	894
 crates/ontology/canonical-domain/src/lib.rs	314
 crates/ontology/rest/src/lib.rs	2359
 crates/ontology/rest/src/projected_dispatch_derivation.rs	389

@@ -109,6 +109,8 @@ impl DirectoryListRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct DirectoryPerson {
     pub(crate) id: UserId,
+    pub(crate) person_id: Option<uuid::Uuid>,
+    pub(crate) principal_kind: String,
     pub(crate) display_name: String,
     /// The current sign-in ID `<아이디>@<회사 도메인>` (decisions #33).
     pub(crate) sign_in_id: Option<String>,
@@ -137,6 +139,8 @@ impl From<UserSummary> for VisibleDirectoryPerson {
         use time::format_description::well_known::Rfc3339;
         let UserSummary {
             id,
+            person_id: _,
+            principal_kind: _,
             display_name,
             sign_in_id: _,
             employee_id,
@@ -201,6 +205,8 @@ impl From<UserSummary> for DirectoryPerson {
     fn from(user: UserSummary) -> Self {
         let UserSummary {
             id,
+            person_id,
+            principal_kind,
             display_name,
             sign_in_id,
             employee_id,
@@ -224,6 +230,8 @@ impl From<UserSummary> for DirectoryPerson {
         } = user;
         Self {
             id,
+            person_id,
+            principal_kind,
             display_name,
             sign_in_id,
             employee_id,
@@ -423,6 +431,8 @@ mod directory_query_tests {
     fn directory_person_json_omits_phone_while_user_summary_keeps_it() {
         let stored_phone = "010-1234-5678";
         let user = UserSummary {
+            person_id: None,
+            principal_kind: "TENANT_PERSON".into(),
             id: UserId::new(),
             display_name: "directory subject".to_owned(),
             sign_in_id: Some("e-000001@acme".to_owned()),
@@ -471,6 +481,8 @@ mod directory_query_tests {
             .map(String::as_str)
             .collect::<BTreeSet<_>>();
         let allowed = [
+            "person_id",
+            "principal_kind",
             "id",
             "display_name",
             "sign_in_id",

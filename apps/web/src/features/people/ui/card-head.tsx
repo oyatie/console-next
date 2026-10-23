@@ -23,6 +23,7 @@ import { useOwnRecord } from "./use-case-actions";
 import { unitListQuery } from "../api/record";
 import { useLinkedAccount } from "./use-linked-account";
 import { EndActions } from "./end-actions";
+import { BindingReviewChip } from "./binding-evidence";
 import { EmployeeWarnings } from "./employee-warnings";
 import type { Card } from "./use-card";
 import s from "./card.module.css";
@@ -108,8 +109,7 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
             {e.register_review_required && <Chip tone="warn">{t("roster.review.register")}</Chip>}
             {d.employment?.employment_type && <Chip>{label(EMPLOYMENT_TYPE, d.employment.employment_type)}</Chip>}
             {next && <Chip tone="info">{t("people.nextEvent.chip")}</Chip>}
-            {e.identity_review_required && <Chip tone="warn">{t("people.identityReview")}</Chip>}
-            {e.identity_review_required && c.manage && <Button variant="ghost" onClick={() => onAct("identity")}>{t("person.identity")}</Button>}
+            {c.manage ? <BindingReviewChip subjectId={e.id} required={e.identity_review_required} onOpen={() => onAct("identity")} /> : e.identity_review_required && <Chip tone="warn">{t("people.identityReview")}</Chip>}
           </div>
           <div className={s.path} role="group" aria-label={t("empCard.place")}>
             {/* The legal entity and the workplace are links (no dead end from a person to where they are employed and work). */}

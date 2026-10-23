@@ -38,6 +38,7 @@ pub const RENUMBER_PREVIEW_PATH: &str = "/api/v1/employees/renumber/preview";
 pub const RENUMBER_APPLY_PATH: &str = "/api/v1/employees/renumber/apply";
 pub const RENUMBER_UNDO_PATH: &str = "/api/v1/employees/renumber/{batch_id}/undo";
 pub const IDENTITY_ROUTE_PATHS: &[&str] = &[
+    crate::person_binding::REVIEWS_PATH,
     RRN_PATH,
     RRN_REVEAL_PATH,
     EMPLOYEE_NUMBER_PATH,
@@ -69,7 +70,11 @@ pub fn router(hr: HrService, vault: Option<Arc<dyn RrnVault>>) -> Router {
         .route(RENUMBER_PREVIEW_PATH, post(renumber_preview))
         .route(RENUMBER_APPLY_PATH, post(renumber_apply))
         .route(RENUMBER_UNDO_PATH, post(renumber_undo))
-        .with_state(IdentityState { hr, vault })
+        .with_state(IdentityState {
+            hr: hr.clone(),
+            vault,
+        })
+        .merge(crate::person_binding::router(hr))
 }
 
 type Reply<T> = Result<Json<T>, HrApiError>;

@@ -66,7 +66,7 @@ async fn load(
 ) -> Result<Loaded, HrError> {
     let head: Option<Head> = sqlx::query_as(
         "SELECT e.hire_date, p.employment_type, p.contract_start_date, p.contract_end_date \
-             FROM employees e LEFT JOIN employee_employment_profiles p \
+             FROM person_employees_current e LEFT JOIN employee_employment_profiles p \
                ON p.org_id = e.org_id AND p.employee_id = e.id \
              WHERE e.org_id = $1 AND e.id = $2",
     )

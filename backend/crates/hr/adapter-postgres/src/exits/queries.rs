@@ -168,7 +168,7 @@ pub fn exit_case_select_sql() -> &'static str {
         p.submitted_by,
         p.submitted_at
     FROM employee_exit_cases c
-    JOIN employees e
+    JOIN person_employees_current e
       ON e.id = c.employee_id
      AND e.org_id = c.org_id
     LEFT JOIN reason_codes rc ON rc.org_id = c.org_id AND rc.domain = 'exit_reason' AND rc.code = c.exit_reason_code

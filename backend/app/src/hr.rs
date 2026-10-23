@@ -762,7 +762,7 @@ async fn list_attendance_summary(
                     (ARRAY_AGG(l.kind ORDER BY l.occurred_at DESC))[1] AS last_kind,
                     MAX(l.occurred_at) AS last_event_at
                 FROM site_attendance_events l
-                LEFT JOIN users u ON u.id = l.user_id
+                LEFT JOIN person_accounts_current u ON u.id = l.user_id
                 WHERE
                 "#,
             );
@@ -5097,6 +5097,7 @@ E-001,홍길동,본사,2026-07-01,abc
     fn employee_response_serializes_canonical_fields_without_import_provenance()
     -> Result<(), String> {
         let body = serde_json::to_value(EmployeeResponse {
+            person_id: None,
             id: Uuid::nil(),
             company: "새온".to_owned(),
             name: "홍길동".to_owned(),

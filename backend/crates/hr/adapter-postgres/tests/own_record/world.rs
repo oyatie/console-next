@@ -11,7 +11,6 @@ use console_kernel_core::{BranchScope, OrgId, UserId};
 use console_platform_authz::{EffectiveFeatureGrant, Feature, PermissionLevel, Principal, Role};
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
 
 use crate::go_live;
@@ -49,20 +48,7 @@ pub async fn world(pool: PgPool) -> World {
     .execute(&pool)
     .await
     .unwrap();
-    let options = pool.connect_options().as_ref().clone();
-    let rt = PgPoolOptions::new()
-        .max_connections(2)
-        .after_connect(|conn, _| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_rt")
-                    .execute(conn)
-                    .await
-                    .map(|_| ())
-            })
-        })
-        .connect_with(options)
-        .await
-        .unwrap();
+    let rt = console_platform_test_support::runtime_role_pool(&pool).await;
     let ops = Principal::new(
         ops,
         org,
@@ -80,7 +66,7 @@ pub async fn world(pool: PgPool) -> World {
 
 impl World {
     pub async fn employee(&self, name: &str) -> Uuid {
-        sqlx::query_scalar(
+        let employee: Uuid = sqlx::query_scalar(
             "INSERT INTO employees (org_id, company, name, position, job, source_filename, \
              source_sheet, source_row, source_key, hire_date) VALUES ($1, 'Co', $2, '사원', \
              '인사', 'console', 'console', 1, $3, '2025-01-02') RETURNING id",
@@ -90,7 +76,15 @@ impl World {
         .bind(Uuid::new_v4().to_string())
         .fetch_one(&self.owner)
         .await
-        .unwrap()
+        .unwrap();
+        sqlx::query("SELECT console_bind_employee_person($1,$2,$3)")
+            .bind(self.org)
+            .bind(employee)
+            .bind(*self.ops.user_id.as_uuid())
+            .execute(&self.owner)
+            .await
+            .unwrap();
+        employee
     }
 
     pub async fn link(&self, account: Uuid, employee: Uuid) {

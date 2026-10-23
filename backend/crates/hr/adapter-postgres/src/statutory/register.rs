@@ -39,7 +39,7 @@ pub struct RegisterPage {
 }
 
 const DAY: &str = "(SELECT on_date FROM point)";
-const FROM: &str = " FROM employees e \
+const FROM: &str = " FROM person_employees_current e \
  JOIN LATERAL (SELECT a.* FROM employment_assignments a \
    WHERE a.org_id = e.org_id AND a.employee_id = e.id \
      AND a.superseded_at IS NULL AND a.valid_from <= (SELECT on_date FROM point) \

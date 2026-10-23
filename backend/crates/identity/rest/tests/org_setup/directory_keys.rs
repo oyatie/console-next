@@ -5,6 +5,8 @@ use super::*;
 
 pub(super) fn assert_directory_item_json_allowlist(page: &Value) {
     const ALLOWED_KEYS: &[&str] = &[
+        "person_id",
+        "principal_kind",
         "id",
         "display_name",
         "sign_in_id",

@@ -19,7 +19,7 @@ pub(crate) async fn load_detail(
     let step_rows = sqlx::query(
         "SELECT s.id, s.step_order, s.role_key, s.decision, s.decided_by, \
          u.display_name AS decided_by_name, s.decided_at, s.memo \
-         FROM org_change_approval_steps s LEFT JOIN users u ON u.id = s.decided_by \
+         FROM org_change_approval_steps s LEFT JOIN person_accounts_current u ON u.id = s.decided_by \
          WHERE s.request_id = $1 ORDER BY s.step_order",
     )
     .bind(id)
@@ -42,7 +42,7 @@ pub(crate) async fn load_detail(
     let item_rows = sqlx::query(
         "SELECT i.id, i.item_key, i.done, i.done_by, u.display_name AS done_by_name, \
          i.done_at, i.memo \
-         FROM org_change_settlement_items i LEFT JOIN users u ON u.id = i.done_by \
+         FROM org_change_settlement_items i LEFT JOIN person_accounts_current u ON u.id = i.done_by \
          WHERE i.request_id = $1",
     )
     .bind(id)
@@ -77,7 +77,7 @@ pub(crate) async fn load_detail(
     let event_rows = sqlx::query(
         "SELECT e.actor, u.display_name AS actor_name, e.action, e.from_status, \
          e.to_status, e.reason, e.created_at \
-         FROM org_change_events e LEFT JOIN users u ON u.id = e.actor \
+         FROM org_change_events e LEFT JOIN person_accounts_current u ON u.id = e.actor \
          WHERE e.request_id = $1 ORDER BY e.created_at, e.id",
     )
     .bind(id)

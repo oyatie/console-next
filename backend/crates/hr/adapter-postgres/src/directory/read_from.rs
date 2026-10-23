@@ -70,7 +70,7 @@ const FAILED_SET_JOIN: &str = " LEFT JOIN (SELECT DISTINCT f.org_id, f.employee_
      ON fe.org_id = e.org_id AND fe.id = e.id AND e.employment_status <> 'EXITED'";
 
 const FILTERED_FROM: &str = concat!(
-    " FROM employees e \
+    " FROM person_employees_current e \
      LEFT JOIN branches b ON b.id = e.home_branch_id \
        AND b.org_id = e.org_id AND b.deactivated_at IS NULL \
      LEFT JOIN employee_employment_profiles p \
@@ -107,7 +107,7 @@ pub fn push_filtered_from(builder: &mut QueryBuilder<Postgres>, filters: &Employ
 /// the same.
 pub fn counted_employees(select: &str, filters: &EmployeeListFilters) -> QueryBuilder<Postgres> {
     let mut builder = QueryBuilder::<Postgres>::new(select);
-    builder.push(" FROM employees e");
+    builder.push(" FROM person_employees_current e");
     if filters.home_branch_review_required.is_some() {
         builder.push(BRANCH_JOIN);
     }
@@ -131,7 +131,7 @@ pub fn counted_employees(select: &str, filters: &EmployeeListFilters) -> QueryBu
 /// The FROM/WHERE of the one-pass facets: every join a facet group reads
 /// (`b`, `p`, the `fe` set, `ea`) and only the filters no group lifts.
 pub fn push_facets_from(builder: &mut QueryBuilder<Postgres>, filters: &EmployeeListFilters) {
-    builder.push(" FROM employees e");
+    builder.push(" FROM person_employees_current e");
     builder.push(BRANCH_JOIN);
     builder.push(PROFILE_JOIN);
     builder.push(FAILED_SET_JOIN);

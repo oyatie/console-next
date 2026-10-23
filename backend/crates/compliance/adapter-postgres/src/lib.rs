@@ -534,7 +534,7 @@ impl PgComplianceStore {
             JOIN work_orders w    ON w.id = l.work_order_id
             JOIN registry_sites s ON s.id = l.site_id
             JOIN registry_customers c ON c.id = s.customer_id
-            JOIN users u ON u.id = l.user_id
+            JOIN person_accounts_current u ON u.id = l.user_id
             WHERE
             "#,
         );

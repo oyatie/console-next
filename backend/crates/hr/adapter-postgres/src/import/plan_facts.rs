@@ -113,7 +113,7 @@ pub async fn people_for_rows(
                 ARRAY(SELECT c.from_number FROM employee_number_changes c \
                       WHERE c.org_id = e.org_id AND c.employee_id = e.id \
                         AND c.undone_at IS NULL AND c.from_number IS NOT NULL) AS aliases \
-         FROM employees e \
+         FROM person_employees_current e \
          LEFT JOIN employee_employment_profiles p ON p.org_id = e.org_id AND p.employee_id = e.id \
          LEFT JOIN employee_rrn r ON r.org_id = e.org_id AND r.employee_id = e.id \
          ",

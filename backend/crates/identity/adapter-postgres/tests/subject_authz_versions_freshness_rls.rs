@@ -19,15 +19,17 @@
 
 use console_identity_adapter_postgres::PgOrgStore;
 use console_identity_application::{
-    CreatePolicyAssignmentPreviewReceiptCommand, DeactivateUserCommand, DirectoryListQuery,
-    UpdateUserCommand, UserListQuery,
+    CreatePolicyAssignmentPreviewReceiptCommand, DeactivateUserCommand, UpdateUserCommand,
 };
-use console_kernel_core::{BranchScope, OrgId, TraceContext, UserId};
+use console_kernel_core::{OrgId, TraceContext, UserId};
 use console_platform_request_context::CURRENT_ORG;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
+
+#[path = "subject_authz_versions_freshness_rls/phone.rs"]
+mod phone;
 
 /// A second, non-SAE tenant id, to prove cross-tenant isolation under `console_rt`.
 const ORG_B: Uuid = Uuid::from_u128(0x2222_2222_2222_2222_2222_2222_2222_2222);
@@ -443,59 +445,6 @@ async fn update_user_delta_scopes_the_preview_receipt_gate(owner_pool: PgPool) {
         (0, 0),
         "a no-op assignment resend must not bump the subject version",
     );
-
-    let directory = CURRENT_ORG
-        .scope(
-            org,
-            store.list_directory_people(
-                &BranchScope::All,
-                DirectoryListQuery {
-                    search: None,
-                    team: None,
-                    branch_id: None,
-                    roles: Vec::new(),
-                    include_inactive: false,
-                    limit: None,
-                    offset: None,
-                },
-            ),
-        )
-        .await
-        .expect("directory list must succeed as console_rt");
-    let listed = directory
-        .items
-        .iter()
-        .find(|user| user.id == target)
-        .expect("phone-bearing user must appear in the directory page");
-    assert_eq!(
-        listed.phone, None,
-        "list_directory_people must not load users.phone"
-    );
-    let got = CURRENT_ORG
-        .scope(org, store.get_user(target, &BranchScope::All))
-        .await
-        .expect("get_user must keep phone");
-    assert_eq!(got.phone.as_deref(), Some("+821012345678"));
-    let users = CURRENT_ORG
-        .scope(
-            org,
-            store.list_users(
-                &BranchScope::All,
-                UserListQuery {
-                    include_inactive: false,
-                    limit: None,
-                    offset: None,
-                },
-            ),
-        )
-        .await
-        .expect("list_users must keep phone");
-    let listed_user = users
-        .items
-        .iter()
-        .find(|user| user.id == target)
-        .expect("phone-bearing user must appear in list_users");
-    assert_eq!(listed_user.phone.as_deref(), Some("+821012345678"));
 
     // (2) A real role change with NO receipt is rejected by the store
     // (enforcement-of-record) and does not bump either.

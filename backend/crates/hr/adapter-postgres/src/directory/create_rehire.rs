@@ -113,30 +113,44 @@ async fn write_rehire_profile(
         .await?;
         return Ok(());
     }
-    let (Some(phone), Some(won)) = (request.phone.clone(), request.base_pay_won) else {
-        return Err(HrError::validation(
-            "phone and base_pay_won are required: this person has no employment profile yet",
-        ));
-    };
+    let phone = request
+        .phone
+        .clone()
+        .ok_or_else(|| {
+            HrError::validation("phone is required when the former employee has no profile")
+        })
+        .and_then(normalize_phone_e164)?;
+    let won = request.base_pay_won.ok_or_else(|| {
+        HrError::validation("base_pay_won is required when the former employee has no profile")
+    })?;
+    let contracts = crate::contract::load_rows(tx, org_uuid, employee_id).await?;
+    let hired = parse_yyyy_mm_dd(&request.hire_date)?;
+    let pay_unit = request.pay_unit.as_deref().or_else(|| {
+        console_hr_domain::contract::in_force(&contracts, hired)
+            .map(|contract| contract.terms.pay_unit.as_str())
+    });
     if won < 0 {
         return Err(HrError::validation("base_pay_won must not be negative"));
     }
+    // Released clients can omit the unit; preserve the legacy amount without inventing a typed wage.
     sqlx::query(
         "INSERT INTO employee_employment_profiles (employee_id, org_id, employment_type, \
              phone_e164, base_pay, base_pay_won, idempotency_key, request_hash, created_by, \
-             contract_start_date, contract_end_date) \
-         VALUES ($1, $2, $3, $4, $5::numeric, $5, $6, $7, $8, $9::DATE, $10::DATE)",
+             contract_start_date, contract_end_date, pay_unit) \
+         VALUES ($1, $2, $3, $4, $5::numeric, CASE WHEN $11::text IS NULL THEN NULL ELSE $5 END, \
+                 $6, $7, $8, $9::DATE, $10::DATE, $11)",
     )
     .bind(employee_id)
     .bind(org_uuid)
     .bind(&request.employment_type)
-    .bind(normalize_phone_e164(phone)?)
+    .bind(phone)
     .bind(won)
     .bind(&request.idempotency_key)
     .bind(hash)
     .bind(*actor.as_uuid())
     .bind(contract_start)
     .bind(request.contract_end_date.as_deref())
+    .bind(pay_unit)
     .execute(tx.as_mut())
     .await?;
     Ok(())

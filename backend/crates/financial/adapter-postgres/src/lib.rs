@@ -2318,7 +2318,7 @@ async fn list_purchase_requests_tx(
                p.price_anomaly, p.quote_update_required,
                p.expenditure_no, p.rejection_memo, p.created_at, p.updated_at
         FROM financial_purchase_requests p
-        JOIN users u ON u.id = p.requested_by
+        JOIN person_accounts_current u ON u.id = p.requested_by
         WHERE p.branch_id = $1
           AND (NOT $2 OR p.status = ANY($3))
           AND ($4::uuid IS NULL OR p.requested_by = $4)
@@ -2377,7 +2377,7 @@ fn purchase_select_sql() -> &'static str {
            p.price_anomaly, p.quote_update_required,
            p.expenditure_no, p.rejection_memo, p.created_at, p.updated_at
     FROM financial_purchase_requests p
-    JOIN users u ON u.id = p.requested_by
+    JOIN person_accounts_current u ON u.id = p.requested_by
     WHERE p.id = $1
     "#
 }

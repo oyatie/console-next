@@ -16,6 +16,8 @@ const state = vi.hoisted(() => ({
 vi.mock("@console/api", async (original) => (await import("./account-link-test-api")).accountLinkApi(await original<object>(), state));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({}) }));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: React.ReactNode }) => children }));
+vi.mock("../../../reference/authz/ui/use-can", () => ({ useCan: () => () => true }));
+vi.mock("./binding-evidence", () => ({ BindingReviewChip: () => <span data-binding-review />, BindingEvidence: () => null }));
 vi.mock("./use-issue-code", () => ({ useIssueCode: () => ({}) }));
 vi.mock("./account-sign-in-id", () => ({ SignInId: () => null }));
 vi.mock("../../../lib/react/command", () => ({ useCommand: (opts: LinkCommand) => {
@@ -97,4 +99,10 @@ test("a proposed employee absent from the search never displays its id", () => {
   const html = panel();
   expect(html).toContain("확인 대기");
   expect(html).not.toContain(employeeId);
+});
+
+test("the asynchronous review action shares the header row with the title", () => {
+  const html = panel();
+  const head = html.slice(html.indexOf('class="panel__head"'), html.indexOf("</div>"));
+  expect(head).toContain("data-binding-review");
 });

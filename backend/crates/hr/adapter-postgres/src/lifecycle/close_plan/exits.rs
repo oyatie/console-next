@@ -87,7 +87,7 @@ pub(crate) async fn open_for_close(
     let (hire, scheduled): (Option<Date>, bool) = sqlx::query_as(
         "SELECT e.hire_on, EXISTS (SELECT 1 FROM employee_lifecycle_events l WHERE l.org_id = e.org_id \
            AND l.employee_id = e.id AND l.event_type = 'TERMINATE' AND l.state = 'SCHEDULED') \
-         FROM employees e WHERE e.org_id = $1 AND e.id = $2",
+         FROM person_employees_current e WHERE e.org_id = $1 AND e.id = $2",
     )
     .bind(org_uuid)
     .bind(employee)

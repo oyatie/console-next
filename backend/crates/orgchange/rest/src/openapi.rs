@@ -1035,6 +1035,13 @@ const PATHS: &[PathItem] = &[
             },
         ],
     },
+    PathItem {
+        path: "/api/v1/person-binding-reviews",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__person-binding-reviews.get.yaml"),
+        }],
+    },
 ];
 
 const SCHEMAS: &[NamedYaml] = &[
@@ -1645,6 +1652,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "OrgUnitStatus",
         body: include_str!("../openapi/schemas/OrgUnitStatus.yaml"),
+    },
+    NamedYaml {
+        name: "PersonBindingReviews",
+        body: include_str!("../openapi/schemas/PersonBindingReviews.yaml"),
     },
     NamedYaml {
         name: "PersonRecordAward",

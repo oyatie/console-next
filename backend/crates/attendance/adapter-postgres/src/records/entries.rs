@@ -15,7 +15,7 @@ use crate::schedule::ScheduleStoreError;
 const COLUMNS: &str = "e.id, e.batch_id, e.employee_id, e.work_date, e.kind, e.segments, e.reason, e.supersedes_id, \
      e.created_at, b.source, b.evidence_kind, b.undone_at IS NOT NULL AS undone, COALESCE(u.display_name, '') AS created_by_name \
      FROM attendance_entries e JOIN attendance_batches b ON b.id = e.batch_id AND b.org_id = e.org_id \
-     LEFT JOIN users u ON u.id = e.created_by AND u.org_id = e.org_id";
+     LEFT JOIN person_accounts_current u ON u.id = e.created_by AND u.org_id = e.org_id";
 
 pub(crate) fn entry_from(
     row: &sqlx::postgres::PgRow,

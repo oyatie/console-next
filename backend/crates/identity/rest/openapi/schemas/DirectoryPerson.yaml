@@ -20,6 +20,13 @@ required:
 - account_status
 - created_at
 properties:
+  principal_kind:
+    type: string
+    enum: [TENANT_PERSON, OPERATIONS, VENDOR]
+  person_id:
+    type: [string, "null"]
+    format: uuid
+    description: Canonical tenant Person; null only for a non-person principal or an N-1 record.
   id:
     $ref: '#/components/schemas/Uuid'
   display_name:

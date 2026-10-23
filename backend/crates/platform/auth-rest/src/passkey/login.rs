@@ -171,7 +171,7 @@ pub(crate) async fn finish_login(
     let (name, display_name): (String, String) = sqlx::query_as(
         "SELECT s.login || '@' || o.slug, u.display_name || ' · ' || o.name || ' — ' || s.login || '@' || o.slug \
          FROM user_sign_in_ids s JOIN organizations o ON o.id=s.org_id \
-         JOIN users u ON u.id=s.user_id AND u.org_id=s.org_id \
+         JOIN person_accounts_current u ON u.id=s.user_id AND u.org_id=s.org_id \
          WHERE s.user_id=$1 AND s.retired_at IS NULL",
     ).bind(outcome.user_id).fetch_one(tx.as_mut()).await.map_err(DbError::Sqlx)?;
     let profile = crate::dto::token::PasskeyProfile {

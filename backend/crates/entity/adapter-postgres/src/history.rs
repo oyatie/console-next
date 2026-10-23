@@ -80,7 +80,7 @@ fn sql(record: Record) -> String {
         "SELECT '' AS chain, r.version, r.effective_from, r.created_at, r.change_mode, r.reason_code, \
                 u.display_name AS actor_name, r.actor_id, \
                 (to_jsonb(r) - ({meta})) || jsonb_build_object({extra}) AS state, NULL::jsonb AS before_state \
-         FROM {table} r LEFT JOIN users u ON u.id = r.actor_id WHERE r.{key} = $1 {skip} UNION ALL {}",
+         FROM {table} r LEFT JOIN person_accounts_current u ON u.id = r.actor_id WHERE r.{key} = $1 {skip} UNION ALL {}",
         ledger(record)
     );
     let combined = match record {
@@ -89,7 +89,7 @@ fn sql(record: Record) -> String {
             "{rows} UNION ALL \
              SELECT i.insurer, i.version, i.effective_from, i.created_at, i.change_mode, i.reason_code, u.display_name, i.actor_id, \
                     (SELECT jsonb_object_agg('insurance.' || i.insurer || '.' || k, v) FROM jsonb_each(to_jsonb(i) - {META}) e(k, v)), NULL \
-             FROM workplace_insurance_revisions i LEFT JOIN users u ON u.id = i.actor_id WHERE i.workplace_id = $1 \
+             FROM workplace_insurance_revisions i LEFT JOIN person_accounts_current u ON u.id = i.actor_id WHERE i.workplace_id = $1 \
              ORDER BY created_at, version"
         ),
         _ => format!("{rows} ORDER BY created_at, version"),
@@ -126,7 +126,9 @@ fn ledger(record: Record) -> String {
             "c.workplace_id = $1",
         ),
     };
-    format!("SELECT {cols} FROM {table} c LEFT JOIN users u ON u.id = c.actor_id WHERE {key}")
+    format!(
+        "SELECT {cols} FROM {table} c LEFT JOIN person_accounts_current u ON u.id = c.actor_id WHERE {key}"
+    )
 }
 
 /// Seal the same delta history displays, using only this revision and its dated predecessor.

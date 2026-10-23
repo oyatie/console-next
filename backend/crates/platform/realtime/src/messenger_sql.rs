@@ -37,10 +37,10 @@ pub(crate) fn message_select_builder() -> QueryBuilder<Postgres> {
         LEFT JOIN messenger_messages read_receipt_message
           ON read_receipt_message.id = read_receipt.last_read_message_id
         LEFT JOIN messenger_messages quoted ON quoted.id = m.quoted_message_id
-        LEFT JOIN users quoted_sender ON quoted_sender.id = quoted.sender_id
+        LEFT JOIN person_accounts_current quoted_sender ON quoted_sender.id = quoted.sender_id
         -- Same-org JOIN: `users` is RLS-scoped to app.current_org like the
         -- messages, so a sender only resolves within the caller's tenant.
-        LEFT JOIN users sender ON sender.id = m.sender_id
+        LEFT JOIN person_accounts_current sender ON sender.id = m.sender_id
         "#,
     )
 }

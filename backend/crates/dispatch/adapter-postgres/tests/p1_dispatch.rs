@@ -12,6 +12,9 @@ use console_platform_test_support::{grant_console_rt, runtime_role_pool};
 use sqlx::{PgPool, Row};
 use time::macros::datetime;
 
+#[path = "p1_dispatch/contacts.rs"]
+mod contacts;
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn two_accepts_auto_assign_best_gps_candidate_and_audit(pool: PgPool) {
     console_platform_request_context::scope_org(console_kernel_core::OrgId::one(), async move {
@@ -716,22 +719,6 @@ async fn escalation_replays_are_audit_once_and_do_not_mutate_timestamps(pool: Pg
         assert!(counts.iter().all(|(_, count)| *count == 1), "each transition emits one audit under replay/concurrency");
     })
     .await;
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn concurrent_identical_force_assignment_replays_once(pool: PgPool) {
-    console_platform_request_context::scope_org(OrgId::one(), async move {
-        let seeded = seed_dispatch_context(&pool).await;
-        let store = PgDispatchStore::new(pool.clone());
-        let now = datetime!(2026-06-12 09:00 UTC);
-        let started = store.start_dispatch(StartP1DispatchCommand { actor: seeded.receptionist, work_order_id: seeded.work_order_id, incident_location: None, include_region: false, trace: TraceContext::generate(), occurred_at: now }, DispatchTimerConfig::default()).await.unwrap();
-        store.expire_accept_window(ExpireP1DispatchCommand { dispatch_id: started.id, trace: TraceContext::generate(), occurred_at: now + time::Duration::minutes(6) }).await.unwrap();
-        let command = ForceAssignP1DispatchCommand { actor: seeded.manager, dispatch_id: started.id, mechanic_id: seeded.far_mechanic, trace: TraceContext::generate(), occurred_at: now + time::Duration::minutes(7) };
-        let (left, right) = tokio::join!(store.force_assign(command.clone()), store.force_assign(command));
-        assert_eq!(left.unwrap().id, right.unwrap().id);
-        let audits: i64 = sqlx::query_scalar("SELECT count(*) FROM audit_events WHERE action = 'p1_dispatch.force_assign' AND target_id = $1").bind(started.id.to_string()).fetch_one(&pool).await.unwrap();
-        assert_eq!(audits, 1);
-    }).await;
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

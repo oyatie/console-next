@@ -21,6 +21,9 @@ import { PasskeyError } from "../../../lib/react/passkey-error";
 import { checkedOnAccount, linkAccount, mySub, resetPasskeys, setAccountActive } from "../api";
 import { holdsActive, holdsLink } from "../domain/accounts";
 import { useIssueCode, type Issued } from "./use-issue-code";
+import { useCan } from "../../../reference/authz/ui/use-can";
+import { Sheet } from "../../../ui/sheet/sheet";
+import { BindingEvidence, BindingReviewChip } from "./binding-evidence";
 import { SignInId } from "./account-sign-in-id";
 import { personLabel } from "../../../reference/person/present";
 import { personOption } from "../../../reference/person/ui/person-option";
@@ -56,12 +59,18 @@ export function AccountPanel({ id, row, admin, receipt, onClose, onIssued, onRec
   // An account the list has not loaded (a deep link, the account just invited under a filter) is read on its own.
   const q = useQuery({ ...get("/api/v1/users/{id}", { params: { path: { id } } }), enabled: !row });
   const u = row ?? q.data;
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const can = useCan();
   return (
     <aside className="card panel" aria-labelledby="acct-title">
       <div className="panel__head">
         <h2 id="acct-title" className="panel__title" tabIndex={-1}>{u?.display_name ?? t("accounts.title")}</h2>
+        {can("employee_directory_manage", "branch") && <BindingReviewChip subjectId={id} onOpen={() => setReviewOpen(true)} />}
         <Button variant="ghost" onClick={onClose} aria-label={t("common.closePanel")}><X size={16} aria-hidden /></Button>
       </div>
+      {reviewOpen && <Sheet open title={t("identity.binding.title")} onClose={() => setReviewOpen(false)} consequence={null} actions={<Button onClick={() => setReviewOpen(false)}>{t("uiSheet.close")}</Button>}>
+        <BindingEvidence subjectId={id} />
+      </Sheet>}
       {receipt && <Receipt state="recorded" message={receipt} />}
       {u ? <Sections u={u} admin={admin} onIssued={onIssued} onRecorded={onRecorded} /> : <QueryState q={q}>{() => null}</QueryState>}
     </aside>
@@ -128,7 +137,7 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
   const options = found.data?.items ?? [];
   const link = useCommand({
     run: ({ employeeId, requestId }: { employeeId: string | null; requestId?: string }) => checkedOnAccount(u.id, () => linkAccount(u.id, employeeId, requestId), holdsLink(employeeId)),
-    invalidates: [...INVALIDATES, "/api/v1/employees"],
+    invalidates: [...INVALIDATES, "/api/v1/employees", "/api/v1/person-binding-reviews"],
     onSuccess: (r) =>
       onRecorded("account_link" in r ? t("people.account.waiting") : r.employee_name ? t("accounts.employee.linked", { name: u.display_name, employee: r.employee_name }) : t("accounts.employee.unlinked", { name: u.display_name })),
   });

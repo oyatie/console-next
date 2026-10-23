@@ -30,6 +30,10 @@ properties:
     type: integer
     format: int64
     minimum: 0
+  pay_unit:
+    type: string
+    enum: [MONTHLY, HOURLY, DAILY, ANNUAL]
+    description: Required with base_pay_won when the person has no employment profile.
   idempotency_key:
     type: string
     maxLength: 128

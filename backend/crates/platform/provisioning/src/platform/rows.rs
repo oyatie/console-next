@@ -24,6 +24,8 @@ pub(crate) fn group_account_from_row(
     row: sqlx::postgres::PgRow,
 ) -> Result<GroupAccountSummary, ProvisioningError> {
     Ok(GroupAccountSummary {
+        person_id: row.try_get("person_id")?,
+        principal_kind: row.try_get("principal_kind")?,
         user_id: row.try_get("user_id")?,
         display_name: row.try_get("display_name")?,
         phone: row.try_get("phone")?,
@@ -67,10 +69,10 @@ pub(crate) async fn fetch_group_account_tx(
     let row = sqlx::query(
         r#"
         SELECT
-            user_id, display_name, phone, tenant_roles, is_active,
+            user_id, person_id, principal_kind, display_name, phone, tenant_roles, is_active,
             has_passkey, account_status, org_id, org_slug, org_name,
             group_roles, created_at
-        FROM platform_list_group_accounts($1)
+        FROM platform_list_group_person_accounts($1)
         WHERE user_id = $2
         "#,
     )

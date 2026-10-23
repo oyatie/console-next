@@ -22,7 +22,7 @@ pub async fn final_report(
                 Ok(sqlx::query_as(
                     "SELECT r.apply_summary, r.dry_run_summary->'unplaced', \
                             (SELECT count(*) FROM import_run_row_snapshots s \
-                               JOIN employees e ON e.org_id = s.org_id AND e.id = s.employee_id \
+                               JOIN person_employees_current e ON e.org_id = s.org_id AND e.id = s.employee_id \
                               WHERE s.org_id = r.org_id AND s.run_id = r.id \
                                 AND s.outcome = 'INSERTED' AND e.org_unit_id IS NOT NULL) \
                        FROM data_import_runs r WHERE r.org_id = $1 AND r.id = $2",
@@ -57,7 +57,7 @@ pub async fn register_gaps_in(
                 count(*) FILTER (WHERE e.employment_status = 'EXITED' \
                                    AND f.exit_reason_code IS NULL) \
            FROM import_run_row_snapshots s \
-           JOIN employees e ON e.org_id = s.org_id AND e.id = s.employee_id \
+           JOIN person_employees_current e ON e.org_id = s.org_id AND e.id = s.employee_id \
            LEFT JOIN employee_register_facts f ON f.org_id = e.org_id AND f.employee_id = e.id \
           WHERE s.org_id = $1 AND s.run_id = $2 AND s.outcome = 'INSERTED'",
     )

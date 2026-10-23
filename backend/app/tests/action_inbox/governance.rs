@@ -12,9 +12,9 @@ async fn action_inbox_governance_source_enforces_requester_sod(pool: PgPool) {
     seed_user(&pool, OrgId::one(), member, "MEMBER", branch).await;
     // company.*/hr.*/payroll.* four-eyes is a distinct-natural-person bar.
     let requester_employee =
-        bind_user_to_new_person(&pool, OrgId::one(), requester, "gov-inbox-req", member).await;
+        bind_user_to_new_person(&pool, OrgId::one(), requester, "gov-inbox-req").await;
     let approver_employee =
-        bind_user_to_new_person(&pool, OrgId::one(), approver, "gov-inbox-app", member).await;
+        bind_user_to_new_person(&pool, OrgId::one(), approver, "gov-inbox-app").await;
     let expected_register: BTreeSet<String> = [requester_employee, approver_employee]
         .into_iter()
         .map(|id| format!("hr_register:{id}"))

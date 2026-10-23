@@ -318,13 +318,6 @@ async fn seed_person_bound_user(
     binder: UserId,
 ) -> UserId {
     let user = seed_user(pool, org, name).await;
-    sqlx::query("UPDATE users SET employee_id = $1 WHERE id = $2 AND org_id = $3")
-        .bind(employee_id)
-        .bind(*user.as_uuid())
-        .bind(org)
-        .execute(pool)
-        .await
-        .unwrap();
     sqlx::query(
         "INSERT INTO employee_person_bindings \
          (org_id, employee_id, person_id, actor_id, payload_digest) \
@@ -338,6 +331,13 @@ async fn seed_person_bound_user(
     .execute(pool)
     .await
     .unwrap();
+    sqlx::query("UPDATE users SET employee_id = $1 WHERE id = $2 AND org_id = $3")
+        .bind(employee_id)
+        .bind(*user.as_uuid())
+        .bind(org)
+        .execute(pool)
+        .await
+        .unwrap();
     user
 }
 

@@ -632,7 +632,7 @@ impl PgNoticeStore {
                     r"
                     SELECT r.recipient_user_id, u.display_name, r.acknowledged_at
                     FROM notice_receipts r
-                    JOIN users u ON u.id = r.recipient_user_id AND u.org_id = r.org_id
+                    JOIN person_accounts_current u ON u.id = r.recipient_user_id AND u.org_id = r.org_id
                     WHERE r.notice_id = $1
                       AND ($2::boolean IS NULL OR (r.acknowledged_at IS NOT NULL) = $2)
                     ORDER BY r.acknowledged_at DESC NULLS LAST,

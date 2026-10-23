@@ -81,8 +81,7 @@ async fn employees_by_number(
     Ok(out)
 }
 
-/// Bound person per employee; an unbound one will be minted as
-/// `person_id = employee_id` (the Person port's trusted create).
+/// Existing Person bindings; a record import never invents a human.
 async fn persons_of(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
@@ -95,7 +94,7 @@ async fn persons_of(
     .bind(employees)
     .fetch_all(tx.as_mut())
     .await?;
-    let mut out: HashMap<Uuid, Uuid> = employees.iter().map(|e| (*e, *e)).collect();
+    let mut out: HashMap<Uuid, Uuid> = HashMap::new();
     for row in rows {
         out.insert(row.try_get("employee_id")?, row.try_get("person_id")?);
     }
@@ -186,7 +185,10 @@ pub(crate) async fn plan(
                 continue;
             }
         };
-        let person = persons.get(&employee).copied().unwrap_or(employee);
+        let Some(person) = persons.get(&employee).copied() else {
+            planned.push(error("person_binding_required", None));
+            continue;
+        };
         let (intent, reason) = match intent(section, row) {
             Ok(parsed) => parsed,
             Err((code, message)) => {

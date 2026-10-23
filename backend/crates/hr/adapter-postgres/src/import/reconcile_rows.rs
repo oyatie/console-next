@@ -90,7 +90,7 @@ pub(super) async fn load_rows(
            e.employee_number, COALESCE(c.state, 'UNCHECKED') AS state, c.note, \
            c.checked_by, c.checked_at, COALESCE(c.version, 0) AS version \
          FROM plan p \
-         LEFT JOIN employees e ON e.org_id = $1 AND e.id = p.employee_id \
+         LEFT JOIN person_employees_current e ON e.org_id = $1 AND e.id = p.employee_id \
          LEFT JOIN import_reconcile_checks c \
            ON c.org_id = $1 AND c.run_id = $2 AND c.source_key = p.source_key \
          WHERE ($3::TEXT IS NULL OR COALESCE(c.state, 'UNCHECKED') = $3) \

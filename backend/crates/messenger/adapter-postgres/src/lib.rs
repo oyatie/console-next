@@ -815,7 +815,7 @@ impl PgMessengerStore {
                            u.display_name,
                            p.last_activity_at
                     FROM messenger_thread_members tm
-                    LEFT JOIN users u ON u.id = tm.user_id
+                    LEFT JOIN person_accounts_current u ON u.id = tm.user_id
                     LEFT JOIN messenger_presence p ON p.user_id = tm.user_id
                     WHERE tm.thread_id = $1
                     ORDER BY p.last_activity_at DESC NULLS LAST, tm.user_id
@@ -855,7 +855,7 @@ impl PgMessengerStore {
                 Ok(sqlx::query(
                     r#"
                     SELECT u.id, u.display_name, u.team
-                    FROM users u
+                    FROM person_accounts_current u
                     JOIN user_branches ub
                       ON ub.user_id = u.id
                      AND ub.branch_id = $1
@@ -1378,7 +1378,7 @@ async fn fetch_branch_member_tx(
     let row = sqlx::query(
         r#"
         SELECT u.id, u.display_name, u.team
-        FROM users u
+        FROM person_accounts_current u
         JOIN user_branches ub
           ON ub.user_id = u.id
          AND ub.branch_id = $1

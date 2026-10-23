@@ -31,6 +31,12 @@ async fn two_employments_of_one_person_share_entries_and_access_is_closed(pool: 
         )
         .await
         .unwrap();
+    sqlx::query("DELETE FROM employee_person_bindings WHERE org_id=$1 AND employee_id=$2")
+        .bind(f.org)
+        .bind(second)
+        .execute(&f.owner)
+        .await
+        .unwrap();
     sqlx::query(
         "INSERT INTO employee_person_bindings (org_id, employee_id, person_id, actor_id, payload_digest) \
          VALUES ($1, $2, $3, $4, $5)",

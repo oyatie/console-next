@@ -187,7 +187,7 @@ impl PgKpiRepository {
                     .await?;
                     let users = name_map(
                         tx,
-                        "SELECT id, display_name AS name FROM users WHERE id = ANY($1)",
+                        "SELECT id, display_name AS name FROM person_accounts_current WHERE id = ANY($1)",
                         &user_ids,
                     )
                     .await?;
@@ -910,7 +910,7 @@ impl PgKpiRepository {
             LEFT JOIN LATERAL (
                 SELECT u.display_name AS mechanic_name
                 FROM work_order_assignments a
-                JOIN users u ON u.id = a.mechanic_id
+                JOIN person_accounts_current u ON u.id = a.mechanic_id
                 WHERE a.work_order_id = w.id
                   AND a.role = 'PRIMARY'
                 ORDER BY a.assigned_at, a.id
@@ -958,7 +958,7 @@ impl PgKpiRepository {
                 COALESCE(w.status, p.status) AS status
             FROM daily_work_plans p
             JOIN daily_work_plan_items i ON i.plan_id = p.id
-            JOIN users u ON u.id = p.mechanic_id
+            JOIN person_accounts_current u ON u.id = p.mechanic_id
             LEFT JOIN work_orders w ON w.id = i.work_order_id
             LEFT JOIN registry_equipment e ON e.id = w.equipment_id
             LEFT JOIN registry_sites s ON s.id = w.site_id
@@ -1004,7 +1004,7 @@ impl PgKpiRepository {
             LEFT JOIN LATERAL (
                 SELECT u.display_name AS mechanic_name
                 FROM work_order_assignments a
-                JOIN users u ON u.id = a.mechanic_id
+                JOIN person_accounts_current u ON u.id = a.mechanic_id
                 WHERE a.work_order_id = w.id
                   AND a.role = 'PRIMARY'
                 ORDER BY a.assigned_at, a.id
@@ -1264,7 +1264,7 @@ impl PgKpiRepository {
                         COUNT(*) AS "active_assignments!"
                     FROM work_order_assignments a
                     JOIN work_orders w ON w.id = a.work_order_id
-                    JOIN users u ON u.id = a.mechanic_id
+                    JOIN person_accounts_current u ON u.id = a.mechanic_id
                     WHERE w.status NOT IN (
                         'FINAL_COMPLETED', 'REJECTED', 'ARCHIVED', 'CANCELLED'
                     )
