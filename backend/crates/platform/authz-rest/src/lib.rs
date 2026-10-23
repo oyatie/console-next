@@ -483,10 +483,7 @@ impl RestError {
     }
 
     fn code(&self) -> &'static str {
-        if let Some(code) = self.code {
-            return code;
-        }
-        self.kind.code()
+        self.code.unwrap_or(self.kind.code())
     }
 }
 
