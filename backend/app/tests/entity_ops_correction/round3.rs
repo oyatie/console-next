@@ -154,6 +154,8 @@ async fn correction_inbox_cursor_keeps_tied_cases_without_duplicates(owner: PgPo
     let mut s = setup::setup(&owner).await;
     let (_, receipt, _) = request(&owner, &mut s).await;
     let id: Uuid = receipt["exception_id"].as_str().unwrap().parse().unwrap();
+    let (_, before) = get(&s, INBOX, &s.approver.token).await;
+    let expected_total = before["total"].as_u64().unwrap() + 2;
     let org: Uuid = sqlx::query_scalar("SELECT org_id FROM users WHERE id=$1")
         .bind(s.ops.id)
         .fetch_one(&owner)
@@ -170,20 +172,24 @@ async fn correction_inbox_cursor_keeps_tied_cases_without_duplicates(owner: PgPo
     tx.commit().await.unwrap();
     let mut uri = format!("{INBOX}?limit=1");
     let mut seen = std::collections::BTreeSet::new();
-    for page in 0..3 {
+    let mut corrections = std::collections::BTreeSet::new();
+    for _ in 0..expected_total {
         let (status, body) = get(&s, &uri, &s.approver.token).await;
         assert_eq!(status, StatusCode::OK, "{body}");
-        assert_eq!(body["total"], 3, "{body}");
+        assert_eq!(body["total"], expected_total, "{body}");
         assert_eq!(body["items"].as_array().unwrap().len(), 1);
-        assert!(seen.insert(body["items"][0]["id"].as_str().unwrap().to_owned()));
-        if page < 2 {
-            uri = format!(
-                "{INBOX}?limit=1&cursor={}",
-                body["next_cursor"].as_str().unwrap()
-            );
+        let item = &body["items"][0];
+        let id = item["id"].as_str().unwrap().to_owned();
+        assert!(seen.insert(id.clone()));
+        if item["kind"] == "identifier_correction_decide" {
+            corrections.insert(id);
+        }
+        if let Some(cursor) = body["next_cursor"].as_str() {
+            uri = format!("{INBOX}?limit=1&cursor={cursor}");
         } else {
-            assert!(body["next_cursor"].is_null());
+            break;
         }
     }
-    assert_eq!(seen.len(), 3);
+    assert_eq!(seen.len() as u64, expected_total);
+    assert_eq!(corrections.len(), 3);
 }
