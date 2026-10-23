@@ -26,7 +26,7 @@ BEGIN
     IF NEW.principal_kind<>'TENANT_PERSON' THEN
         IF NEW.principal_kind='VENDOR' OR (TG_OP='UPDATE' AND NOT OLD.is_tenant_ops) THEN
             NEW.person_id:=NULL;
-        ELSIF TG_OP='UPDATE' AND OLD.person_id IS NOT NULL THEN
+        ELSIF TG_OP='UPDATE' AND OLD.person_id IS NOT NULL AND NEW.person_id IS NULL THEN
             NEW.person_id:=OLD.person_id;
         END IF;
         RETURN NEW;

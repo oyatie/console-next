@@ -50,4 +50,38 @@ async fn existing_bootstrap_admin_is_bound_and_runtime_backfill_preserves_it(poo
             .unwrap(),
         person
     );
+    let (alias,canonical):(Uuid,Uuid)=sqlx::query_as("INSERT INTO users(org_id,display_name) VALUES($1,'Linked administrator') RETURNING id,person_id")
+        .bind(org).fetch_one(&pool).await.unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    assert!(
+        sqlx::query_scalar::<_, bool>("SELECT public.console_independent_people($1,$2,$3)")
+            .bind(org)
+            .bind(user)
+            .bind(alias)
+            .fetch_one(tx.as_mut())
+            .await
+            .unwrap()
+    );
+    sqlx::query("UPDATE users SET person_id=$2 WHERE id=$1")
+        .bind(user)
+        .bind(canonical)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    assert!(
+        !sqlx::query_scalar::<_, bool>("SELECT public.console_independent_people($1,$2,$3)")
+            .bind(org)
+            .bind(user)
+            .bind(alias)
+            .fetch_one(tx.as_mut())
+            .await
+            .unwrap(),
+        "an explicitly corrected bootstrap binding must agree with the same-person rule"
+    );
+    tx.commit().await.unwrap();
 }
