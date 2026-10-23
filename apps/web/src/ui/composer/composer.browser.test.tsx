@@ -34,8 +34,9 @@ beforeAll(async () => {
             h(Composer, { layout: state === 'drawer' ? 'drawer' : state?.startsWith('page') ? 'page' : 'inline', headingLevel: 3, commitId: 'commit',
               title: 'Review', action: { kind: long ? 'EMPLOYMENT_TYPE_CHANGE' : 'appointment', mode: long ? 'apply' : 'schedule', count: 3 },
               onClose: () => {}, onSubmit: () => setSubmits(x => x + 1),
-              blocked: state === 'blocked' || (state === 'page-blocked' && !long) ? { reason: 'Resolve first', remedy: h('button', { id: 'remedy', onClick: () => setRemedies(x => x + 1) }, 'Register entity') } : undefined,
-              locked: state === 'locked', recovery: state === 'recovery' ? h('span', null, 'Checking') : undefined,
+              blocked: state === 'blocked' || state?.startsWith('locate') || (state === 'page-blocked' && !long) ? { reason: 'Resolve first', remedy: h('button', { id: 'remedy', onClick: () => setRemedies(x => x + 1) }, 'Register entity'), press: state?.startsWith('locate') ? () => setRemedies(x => x + 1) : undefined } : undefined,
+              pending: state === 'locate-pending', loading: state === 'locate-loading',
+              locked: state === 'locked' || state === 'locate-locked', recovery: state === 'recovery' ? h('span', null, 'Checking') : undefined,
             }, h('input', { 'aria-label': 'Reason' })),
             h('output', { id: 'submits' }, submits), h('output', { id: 'remedies' }, remedies));
         }
@@ -78,6 +79,16 @@ test.each(["blocked", "locked", "recovery"])("%s refuses native form submission"
     await page.locator("#remedy").click();
     expect(await page.locator("#remedies").textContent()).toBe("1");
   }
+});
+
+test.each(["locate", "locate-pending", "locate-loading", "locate-locked"])("%s only runs the opted-in blocked press when editable", async (state) => {
+  await open(state);
+  await page.locator("#commit").click({ force: true });
+  expect(await page.locator("#remedies").textContent()).toBe(state === "locate" ? "1" : "0");
+  await page.getByLabel("Reason").press("Control+Enter");
+  expect(await page.locator("#remedies").textContent()).toBe(state === "locate" ? "2" : "0");
+  await page.locator("form").evaluate((form) => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(await page.locator("#submits").textContent()).toBe("0");
 });
 
 test.each([[390, "inline"], [1440, "inline"], [390, "page"], [1440, "page"]] as const)("commit and dismiss boxes stay fixed at %ipx in %s", async (width, state) => {

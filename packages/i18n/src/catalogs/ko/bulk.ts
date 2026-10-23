@@ -171,17 +171,7 @@ export const koBulk = {
   "bulk.page.doneFuture": "예약함",
   "bulk.page.doneNow": "반영함",
   "bulk.position.catalogMissing": "직위 목록에서 사용 중인 직위를 선택하십시오. 붙여넣은 직위는 목록의 이름과 같아야 합니다.",
-  "bulk.commit.none": "{count, plural, other {#명}} 발령",
-  "bulk.commit.TRANSFER.none": "{count, plural, other {#명}} 전보 예약",
-  "bulk.commit.TRANSFER.future": "{count, plural, other {#명}} {date}자 전보 예약",
-  "bulk.commit.TRANSFER.today": "{count, plural, other {#명}} 오늘 전보",
-  "bulk.commit.TRANSFER.past": "{count, plural, other {#명}} {date}자 전보 (지난 날짜)",
-  "bulk.commit.PROMOTE.none": "{count, plural, other {#명}} 승진 예약",
-  "bulk.commit.PROMOTE.future": "{count, plural, other {#명}} {date}자 승진 예약",
-  "bulk.commit.PROMOTE.today": "{count, plural, other {#명}} 오늘 승진 처리",
-  "bulk.commit.PROMOTE.past": "{count, plural, other {#명}} {date}자 승진 처리 (지난 날짜)",
   "bulk.missing": "{count, plural, other {#개}} 항목을 채워야 합니다",
-  "bulk.close": "닫기",
   "bulk.stale.repin": "확인 후 {count, number}명을 현재 기록 기준으로 다시 불러오기",
 
 } as const;

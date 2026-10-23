@@ -8,8 +8,7 @@ import { DateField } from "../../../ui/date/date-field";
 import { Field, TextInput } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { Receipt } from "../../../ui/receipt/receipt";
-import { Sheet } from "../../../ui/sheet/sheet";
-import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
+import { Composer } from "../../../ui/composer/composer";
 import { CommandError } from "../../../lib/react/command-error";
 import { announce } from "../../../lib/react/announce";
 import { todayKst } from "../../../lib/pure/today";
@@ -166,7 +165,6 @@ export function BulkSheet({ source, matching, onClose, onDone }: {
   })();
   const date = fmtDate(d.date);
   const danger = when === "today" || when === "past";
-  const commitLabel = d.kind ? t(`bulk.commit.${d.kind}.${when}`, { count, date }) : t("bulk.commit.none", { count });
   const presets = [
     { label: t("bulk.preset.nextMonthFirst"), date: nextMonthFirst(today) },
     ...(monthEnd(today) === today ? [] : [{ label: t("bulk.preset.monthEnd"), date: monthEnd(today) }]),
@@ -185,7 +183,7 @@ export function BulkSheet({ source, matching, onClose, onDone }: {
     locked: cmd.lost || cmd.busy,
   };
   return (
-    <Sheet
+    <Composer
       open
       wide
       title={t("bulk.title")}
@@ -215,30 +213,12 @@ export function BulkSheet({ source, matching, onClose, onDone }: {
           <Muted>{groups.length > 1 && d.kind ? t(`bulk.groups.${d.kind}`, { count: groups.length }) : t("bulk.consequence.atomic")}</Muted>
         </>
       }
-      actions={
-        cmd.lost ? (
-          <>
-            <Button onClick={onClose}>{t("bulk.close")}</Button>
-            <Button variant="primary" onClick={() => void cmd.send(batches(rows))}>{t("bulk.lost.check")}</Button>
-          </>
-        ) : (
-          <>
-            <Button onClick={onClose} disabled={cmd.busy}>{t("common.back")}</Button>
-            {blockedWhy ? (
-              <DisabledReason
-                control={(p) => (
-                  <Button variant={danger ? "danger" : "primary"} {...p} onClick={(e) => { p.onClick(e); submit(); }}>
-                    {commitLabel}
-                  </Button>
-                )}
-                reason={blockedWhy}
-              />
-            ) : (
-              <Button variant={danger ? "danger" : "primary"} disabled={cmd.busy} onClick={submit}>{commitLabel}</Button>
-            )}
-          </>
-        )
-      }
+      action={{ kind: d.kind === "PROMOTE" && demotion ? "demotion" : d.kind ?? "appointment", mode: when === "future" ? "schedule" : "apply", count }}
+      tone={danger ? "danger" : "primary"}
+      onSubmit={submit}
+      blocked={blockedWhy ? { reason: blockedWhy, press: submit } : undefined}
+      missing={tried ? missingCount : 0}
+      recovery={cmd.lost ? <><Button onClick={onClose}>{t("composer.dismiss")}</Button><Button variant="primary" onClick={() => void cmd.send(batches(rows))}>{t("bulk.lost.check")}</Button></> : undefined}
     >
       <div id={bodyId} className={s.lines}>
         {restored && (
@@ -303,7 +283,7 @@ export function BulkSheet({ source, matching, onClose, onDone }: {
           {resolved.ready && <BulkLines {...lines} />}
         </Section>
       </div>
-    </Sheet>
+    </Composer>
   );
 }
 

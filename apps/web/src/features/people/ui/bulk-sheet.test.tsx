@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { MouseEvent } from "react";
+import { cloneElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { bulkBlock, type Row } from "../domain/bulk";
-import type { Button } from "../../../ui/button/button";
+import type { Button, Form } from "../../../ui/button/button";
 import type { Sheet } from "../../../ui/sheet/sheet";
 import { BulkSheet } from "./bulk-sheet";
 
 const view = vi.hoisted(() => ({
   cursor: 0, draft: {}, ready: true, rows: [] as Row[],
-  buttons: [] as Parameters<typeof Button>[0][], send: vi.fn(),
+  buttons: [] as Parameters<typeof Button>[0][], forms: [] as Parameters<typeof Form>[0][], send: vi.fn(),
 }));
 vi.mock("react", async (original) => {
   const actual = await original<typeof import("react")>();
@@ -21,14 +21,17 @@ vi.mock("./use-bulk-rows", () => ({ useBulkRows: () => ({ rows: view.rows, lines
 vi.mock("../../../lib/reason-codes", () => ({ reasonCodesQuery: vi.fn(), useReasonCodesReady: () => true }));
 vi.mock("./use-bulk-command", () => ({ useBulkCommand: () => ({ recorded: [], recordedIds: new Set(), refused: new Map(), stale: new Set(), send: view.send }) }));
 // React Aria portals are covered by E2E; keep this unit proof on the composer's actual footer.
-vi.mock("../../../ui/sheet/sheet", () => ({ Sheet: (p: Parameters<typeof Sheet>[0]) => <>{p.consequence}{p.actions}</> }));
+vi.mock("../../../ui/sheet/sheet", () => ({ Sheet: (p: Parameters<typeof Sheet>[0]) => <>{cloneElement(p.children as ReactElement, undefined, null)}{p.consequence}{p.actions}</> }));
 vi.mock("../../../ui/button/button", async (original) => {
   const actual = await original<typeof import("../../../ui/button/button")>();
-  return { ...actual, Button: (p: Parameters<typeof Button>[0]) => { view.buttons.push(p); return <actual.Button {...p} />; } };
+  return { ...actual,
+    Button: (p: Parameters<typeof Button>[0]) => { view.buttons.push(p); return <actual.Button {...p} />; },
+    Form: (p: Parameters<typeof Form>[0]) => { view.forms.push(p); return <actual.Form {...p} />; },
+  };
 });
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
-  view.cursor = 0; view.ready = true; view.rows = []; view.buttons = []; view.send.mockClear();
+  view.cursor = 0; view.ready = true; view.rows = []; view.buttons = []; view.forms = []; view.send.mockClear();
   view.draft = { text: "", kind: "TRANSFER", unitId: "unit", position: "", date: "2099-12-31", code: "OTHER", comment: "Assignment" };
 });
 const input = () => ({ missingCount: 0, errorLines: 0, count: 1, checking: false, failed: false, progress: { done: 1, total: 1 } });
@@ -80,7 +83,12 @@ test("checking rows blocks the primary until they resolve, then permits submissi
   expect(html).toContain(t("bulk.paste.checking", { done: 0, total: 1 }));
   view.cursor = 0; view.ready = true; view.rows = [{ key: "one", merged: [], target: "", unitId: "unit", employee: { id: "one", name: "One", status: "ACTIVE" } as Row["employee"] }];
   expect(renderToStaticMarkup(<BulkSheet {...props} />)).not.toContain('aria-disabled="true"');
-  view.buttons.findLast((p) => p.variant === "primary")!.onClick!({} as MouseEvent<HTMLButtonElement>);
+  const commit = view.buttons.findLast((p) => p.variant === "primary")!;
+  expect(commit.type).toBe("submit");
+  const form = view.forms.findLast((p) => p.id === commit.form)!;
+  expect(form).toBeDefined();
+  expect(renderToStaticMarkup(<>{commit.children}</>)).toContain("전보 1명 예약");
+  form.onSubmit(null);
   expect(view.send).toHaveBeenCalledExactlyOnceWith([{ event_type: "TRANSFER", employee_ids: ["one"], to_org_unit_id: "unit", effective_date: "2099-12-31", reason_code: "OTHER", comment: "Assignment" }]);
 });
 test("a header-only paste names the absence of people without inventing an empty field", () => {

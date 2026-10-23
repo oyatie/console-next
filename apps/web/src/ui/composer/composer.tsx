@@ -37,7 +37,7 @@ export function Composer(p: {
   tone?: "primary" | "danger";
   missing?: number;
   incomplete?: boolean;
-  blocked?: { reason: ReactNode; remedy?: ReactNode };
+  blocked?: { reason: ReactNode; remedy?: ReactNode; press?: () => void };
   secondary?: ReactNode;
   recovery?: ReactNode;
   dirty?: boolean;
@@ -91,7 +91,7 @@ export function Composer(p: {
   );
   const commit = <Button className={s.commit} ref={submitter} id={p.commitId} type="submit" form={id} variant={p.tone ?? "primary"} aria-disabled={p.incomplete || undefined} disabled={p.pending || p.loading || p.locked}>{commitLabel(p.action)}<Kbd keys="⌘↵" /></Button>;
   const actions = <div className={p.layout === "page" ? s.pageActions : s.actions}>{p.recovery ?? <>
-    {p.blocked ? <DisabledReason control={(props) => <Button {...props} className={`${props.className} ${s.commit}`} id={p.commitId} variant={p.tone ?? "primary"}>{commitLabel(p.action)}</Button>} reason={p.blocked.reason} remedy={p.blocked.remedy} /> : commit}
+    {p.blocked ? <DisabledReason control={(props) => <Button {...props} ref={submitter} className={`${props.className} ${s.commit}`} id={p.commitId} variant={p.tone ?? "primary"} onClick={(event) => { props.onClick(event); if (!p.pending && !p.loading && !p.locked) p.blocked?.press?.(); }}>{commitLabel(p.action)}</Button>} reason={p.blocked.reason} remedy={p.blocked.remedy} /> : commit}
     {p.missing ? <span role="status">{t("composer.missing", { count: p.missing })}</span> : null}
     {p.secondary}
     {p.onSaveDraft && <Button variant={p.draftTone} disabled={p.pending || p.locked} title={p.localDraft ? t("composer.draftHint") : undefined} onClick={p.onSaveDraft}>{p.draftAction ? commitLabel(p.draftAction) : t("composer.saveDraft")}</Button>}

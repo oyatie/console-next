@@ -146,7 +146,7 @@ test("J6 bulk transfer from a paste: lines keyed by employee number, errors firs
   await rest();
   await expect(sheet).toContainText("새 조직이 2곳이어도 한 번의 발령으로 기록합니다");
   // Lines that can't be read stop the commit and take focus to the first one to fix.
-  await sheet.getByRole("button", { name: "전보 4명 반영" }).click();
+  await sheet.getByRole("button", { name: "전보 4명 반영" }).click({ force: true });
   await expect(sheet).toContainText("오류 2줄을 수정하거나 제외해야 기록할 수 있습니다");
   await expect(sheet.getByRole("button", { name: "6줄 · P6-9999 제외" })).toBeFocused();
   await sheet.getByRole("button", { name: "6줄 · P6-9999 제외" }).click();

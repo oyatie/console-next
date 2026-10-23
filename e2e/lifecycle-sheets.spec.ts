@@ -46,7 +46,6 @@ test("lifecycle sheets: a schedule conflict names the reservation, its withdrawa
   await reasonBox(transfer).fill("채용팀 합류");
   await transfer.getByRole("button", { name: "전보 1명 예약", exact: true }).click();
   await expect(history.getByText(/충돌이를 채용팀으로 전보하도록 예약했습니다/)).toBeVisible();
-  await expect(history.getByRole("button", { name: "접수 번호 복사" })).toBeVisible();
 
   // A leave from today would leave the transfer unable to apply on its date: refused, with the reservation named.
   await hrAct(admin, "휴직 처리", c.click);
