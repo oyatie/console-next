@@ -568,6 +568,8 @@ mod tests {
     /// payroll-ish scrape keys.
     const DIRECTORY_PERSON_JSON_KEYS: &[&str] = &[
         "id",
+        "person_id",
+        "principal_kind",
         "display_name",
         "sign_in_id",
         "employee_id",

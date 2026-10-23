@@ -25,9 +25,9 @@ async fn actual_0227_upgrade_preserves_every_account_key_and_family(owner: PgPoo
         .await
         .unwrap();
     tx.commit().await.unwrap();
-    // `is_tenant_ops` is a later column (decision #26; its backfill has its own test), as are
-    // 20261013153727436's family activity columns (INF-03).
-    let snapshot = "SELECT jsonb_build_object('users',(SELECT jsonb_agg(to_jsonb(u) - 'is_tenant_ops' ORDER BY id) FROM users u),'keys',(SELECT jsonb_agg(to_jsonb(k) ORDER BY id) FROM auth_webauthn_credentials k),'families',(SELECT jsonb_agg(to_jsonb(f) - 'last_activity_at' - 'idle_timeout_minutes' ORDER BY id) FROM auth_refresh_token_families f),'bootstrap',(SELECT jsonb_agg(to_jsonb(b) ORDER BY id) FROM auth_bootstrap_credentials b))";
+    // Account operations/person columns and family activity columns were added after 0227;
+    // their backfills have separate coverage. Preserve every historical field below.
+    let snapshot = "SELECT jsonb_build_object('users',(SELECT jsonb_agg(to_jsonb(u) - 'is_tenant_ops' - 'person_id' - 'principal_kind' ORDER BY id) FROM users u),'keys',(SELECT jsonb_agg(to_jsonb(k) ORDER BY id) FROM auth_webauthn_credentials k),'families',(SELECT jsonb_agg(to_jsonb(f) - 'last_activity_at' - 'idle_timeout_minutes' ORDER BY id) FROM auth_refresh_token_families f),'bootstrap',(SELECT jsonb_agg(to_jsonb(b) ORDER BY id) FROM auth_bootstrap_credentials b))";
     let before: Value = sqlx::query_scalar(snapshot)
         .fetch_one(&owner)
         .await
