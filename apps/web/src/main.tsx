@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, Link, RouterProvider } from "@tanstack/react-router";
@@ -7,7 +7,7 @@ import { I18nProvider } from "react-aria-components";
 import { configure, session } from "@console/api";
 import { webPlatform } from "@console/api/web";
 import { i18n, loadCatalog, t } from "@console/i18n";
-import { crashed, loaded, started } from "./lib/chunk-guard";
+import { chunk, crashed, loaded, started } from "./lib/chunk-guard";
 import { CrashScreen } from "./lib/react/crash-screen";
 import { STALE_TIME_MS } from "./lib/freshness";
 import { queryDefaults } from "./lib/react/query-defaults";
@@ -16,7 +16,6 @@ import { EmptyState } from "./ui/empty-state";
 import { initLocale } from "./shell/locale";
 import { IDLE_EXPIRED, watchSession } from "./auth/idle";
 import { pauseAutofill } from "./auth/sign-in-id";
-import { IdleGuard } from "./auth/IdleGuard";
 import { app, frame, root } from "./routes/app";
 import { orgRoutes } from "./routes/org";
 import { peopleRoutes } from "./routes/people";
@@ -36,6 +35,9 @@ started();
 configure(webPlatform);
 
 initLocale();
+
+// Session warning UI loads beside the router without adding to the entry bundle.
+const IdleGuard = lazy(() => chunk(import("./auth/IdleGuard")).then((m) => ({ default: m.IdleGuard })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -104,7 +106,9 @@ function Root() {
       {/* React Aria's own strings (tree chevrons, dismiss buttons, combobox announcements) follow the app locale. */}
       <I18nProvider locale={locale === "ko" ? "ko-KR" : "en-US"}>
         <RouterProvider router={router} key={locale} />
-        <IdleGuard />
+        <Suspense fallback={null}>
+          <IdleGuard />
+        </Suspense>
       </I18nProvider>
     </QueryClientProvider>
   );
