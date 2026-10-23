@@ -6,7 +6,7 @@ import { buttonClass } from "../../../ui/button/button-class";
 import type { ActiveSessions } from "../../support-access/api";
 import { QueueSection } from "./change-rows";
 
-/** G2 absorbs this source into 업무함; decisions stay on the shared support-access screen. */
+/** G2 absorbs this source into the inbox; decisions stay on the shared support-access screen. */
 export function SupportQueue({ requests }: { requests: ActiveSessions["pending_approvals"] }) {
   return <QueueSection id="support" title={t("supportAccess.pending", { count: fmtNumber(requests.length) })}>
     <ul className="list-plain">{requests.map((r) => <li key={r.id} className="row">
