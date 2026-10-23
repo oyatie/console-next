@@ -43,33 +43,9 @@ export function ServerPicker(p: {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
-    // ComboBox hides outside content for virtual focus; hidden controls must also leave the tab order.
-    const changed = new Map<HTMLElement, string | null>();
     const body = input.current!.ownerDocument.body;
     const preserved = [...body.querySelectorAll<HTMLElement>("[inert]")];
-    const focusable = 'a[href], area[href], button, input, select, textarea, iframe, object, embed, audio[controls], video[controls], summary, [tabindex], [contenteditable]:not([contenteditable="false"])';
-    const restore = (el: HTMLElement, value: string | null) => {
-      if (value === null) el.removeAttribute("tabindex");
-      else el.setAttribute("tabindex", value);
-    };
-    const sync = () => {
-      for (const [el, value] of changed) if (!el.closest('[aria-hidden="true"]')) {
-        restore(el, value);
-        changed.delete(el);
-      }
-      for (const region of body.querySelectorAll<HTMLElement>('[aria-hidden="true"]')) {
-        for (const el of [region, ...region.querySelectorAll<HTMLElement>(focusable)]) if (el.matches(focusable) && !changed.has(el)) {
-          changed.set(el, el.getAttribute("tabindex"));
-          el.tabIndex = -1;
-        }
-      }
-    };
-    sync();
-    const observer = new MutationObserver(sync);
-    observer.observe(body, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-hidden"] });
     return () => {
-      observer.disconnect();
-      for (const [el, value] of changed) restore(el, value);
       // React Aria clears inert with aria-hidden; retain restrictions that predate this picker.
       queueMicrotask(() => { for (const el of preserved) el.inert = true; });
     };

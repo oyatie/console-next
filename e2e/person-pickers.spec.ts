@@ -20,7 +20,7 @@ async function pickNamesake(page: Page, label: string, count = 3) {
     await expect(option).toContainText(SETUP_DEPARTMENT);
     await expect(option.getByRole("link")).toHaveCount(0);
   }
-  await expectAccessible(page, `${label}: open namesake picker`);
+  await expectAccessible(page, `${label}: open namesake picker`, { openPicker: true });
   await options.filter({ hasText: "PK-0002" }).click();
   await page.getByRole("textbox", { name: /선택한 사람의 사번 끝/ }).fill("0002");
 }

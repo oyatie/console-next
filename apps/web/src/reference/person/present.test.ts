@@ -21,7 +21,9 @@ test("whitespace and canonical spelling cannot hide a namesake", () => {
 test("missing number uses placement; blank facts, short or malformed sign-in IDs always have a safe fallback", () => {
   expect(personLabel({ id: "a", name: "Person", employee_number: " ", company: "Company", org_unit: "HR" }).detail).toBe("Company · HR");
   expect(personLabel({ id: "a", name: "Person", sign_in_id: "ab@example.test" }).detail).toBe("a••••@example.test");
-  expect(personLabel({ id: "a", name: "Person", sign_in_id: "invalid" }).detail).toBe("a");
+  for (const sign_in_id of ["invalid", "@example.test", "login@"]) {
+    expect(personLabel({ id: "a", name: "Person", sign_in_id }).detail).toBe("a");
+  }
   expect(personLabel({ id: "a", name: " ", employee_number: " " }).text).toBe(`${t("people.label.unnamed")} · a`);
 });
 

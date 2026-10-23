@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
+import { QueryState } from "../../../lib/react/query-state";
 import { useCommand } from "../../../lib/react/command";
 import { PasskeyError } from "../../../lib/react/passkey-error";
 import { todayKst } from "../../../lib/pure/today";
@@ -106,7 +107,7 @@ export function BulkPage() {
           onApply={() => apply.mutate(undefined)}
         />
       ) : (
-        <div className={s.editor}>
+        <QueryState q={ctx.accountsQ}>{() => <div className={s.editor}>
           <Card flush>
             {/* One toolbar (mockup M5): find by name or number, narrow by placement, or to people who can sign in. */}
             <div className={s.filters}>
@@ -124,7 +125,6 @@ export function BulkPage() {
               rowId={(a) => a.id}
               hasMore={false}
               onLoadMore={() => {}}
-              loading={ctx.accountsQ.isPending}
               empty={<EmptyState title={t("access.bulk.empty")} reason={t("access.bulk.empty.reason")} />}
               selection={sel}
               onSelectionChange={(next) => setSel(next.kind === "ids" ? next : { kind: "ids", ids: new Set(rows.map((a) => a.id)) })}
@@ -142,7 +142,7 @@ export function BulkPage() {
               ) : <Button variant="primary" className={s.wide} disabled={check.isPending} onClick={previewPicked}>{t("access.bulk.preview", { count: ids.length })}</Button>}
             </BulkForm>
           )}
-        </div>
+        </div>}</QueryState>
       )}
       {picking && ctx.cat.data && (
         <ScopeSheet

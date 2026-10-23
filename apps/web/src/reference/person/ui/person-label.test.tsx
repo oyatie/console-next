@@ -7,7 +7,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { PersonLabel, PersonRecordLink } from "./person-label";
 import { personOption } from "./person-option";
 
-vi.mock("@tanstack/react-router", () => ({ Link: ({ params, children }: { params: { id: string }; children: ReactNode }) => <a href={`/people/${params.id}`}>{children}</a> }));
+vi.mock("@tanstack/react-router", () => ({ Link: ({ params, children, ...props }: { params: { id: string }; children: ReactNode }) => <a {...props} href={`/people/${params.id}`}>{children}</a> }));
 beforeAll(() => loadCatalog("ko"));
 const person = { id: "account-a", display_name: "Namesake", employee_id: "person-a", employee_number: "E-1" };
 
@@ -43,4 +43,12 @@ test("picker options share the label without nesting record links or losing the 
   expect(html).toMatch(/>E-1<\//);
   expect(html).toContain(t("people.sameName.chip"));
   expect(renderToStaticMarkup(<>{personOption(other, [person, other]).display}</>)).toContain(">Sales</");
+});
+
+test("person-card actions distinguish linked namesakes in their accessible names", () => {
+  const other = { ...person, id: "account-b", employee_id: "person-b", employee_number: "E-2" };
+  const peers = [person, other];
+  const names = peers.map((p) => renderToStaticMarkup(<PersonRecordLink person={p} peers={peers} />).match(/aria-label="([^"]+)"/)?.[1]);
+  expect(names).toEqual(peers.map((p) => t("people.label.record", { name: `Namesake · ${p.employee_number}` })));
+  expect(new Set(names).size).toBe(2);
 });

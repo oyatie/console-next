@@ -112,7 +112,7 @@ export async function passkeyLogin(page: Page) {
 
 /** Reads the code a dialog shows exactly once, then closes it (an account code is "delivered", a tenant code is closed). */
 export async function takeCode(page: Page, audit = false): Promise<string> {
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog").filter({ has: page.getByLabel("일회용 코드") })).toBeVisible();
   if (audit) await expectAccessible(page, "one-time code dialog");
   const code = (await page.getByLabel("일회용 코드").textContent())!.trim();
   await page.getByRole("button", { name: /^(코드 전달 완료|코드 닫기)$/ }).click();
