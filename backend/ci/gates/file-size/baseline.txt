@@ -9,7 +9,7 @@ app/src/office.rs	891
 app/src/workbench.rs	660
 app/src/workflow_object_context.rs	460
 app/src/workflow_studio.rs	7166
-app/tests/action_inbox_api.rs	1145
+app/tests/action_inbox_api.rs	1125
 app/tests/attendance_persona_api.rs	415
 app/tests/audit_api.rs	827
 app/tests/auth_rest.rs	4487
@@ -99,7 +99,7 @@ crates/consulting/rest/tests/audit_atomicity.rs	501
 crates/contracts/src/lib.rs	654
 crates/contracts/tests/compose.rs	1178
 crates/dispatch/adapter-postgres/src/lib.rs	2112
-crates/dispatch/adapter-postgres/tests/p1_dispatch.rs	1239
+crates/dispatch/adapter-postgres/tests/p1_dispatch.rs	1226
 crates/dispatch/application/src/lib.rs	349
 crates/dispatch/rest/src/lib.rs	659
 crates/dispatch/worker/src/lib.rs	341
