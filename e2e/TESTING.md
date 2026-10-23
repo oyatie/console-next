@@ -2,6 +2,12 @@
 
 # E2E fixture limits
 
+Build `console-app` with `--features full,e2e-test-support` for the complete suite
+and point `CONSOLE_APP_BIN` at that binary. The default MVP profile can run specs
+that use its routes. Only the two registration tests in `parity-regressions`
+require the workspace action inbox; each fails with build instructions when
+that route is unavailable. Global setup allows either profile.
+
 Build synthetic tenants through the product. Pending elevated grants use
 `activatePendingGrants`: it moves only that tenant's debug worker clock to the
 configured deadline. Release builds ignore this clock. This does not advance
