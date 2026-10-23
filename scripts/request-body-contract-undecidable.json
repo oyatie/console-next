@@ -1429,7 +1429,7 @@
       "body_type": "BulkAuthorizeBody",
       "body_struct_file": "backend/crates/platform/authz-rest/src/request_bodies.rs",
       "body_struct": "BulkAuthorizeBody",
-      "schema_sha256": "f9ca97fa283bbb21cfb284f0a381c82b4e93eba9338b6c6b18f48cab700d132b",
+      "schema_sha256": "6256979e4030ab3a91ca615bb9e3f3e11e3b5ee916462ccf5f3a298654e65576",
       "status": "resolved"
     },
     {

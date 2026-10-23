@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+name: First-party code
+paths-ignore:
+  - third-party/**

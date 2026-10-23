@@ -15725,6 +15725,7 @@ export interface components {
         };
         BulkAuthorizeBody: {
             subject: components["schemas"]["PolicySimSubject"];
+            /** @description The encoded subject repeated across all checks must fit the policy bulk evaluation work limit (2 MiB). Over-limit requests are rejected without recording decisions. */
             checks: {
                 action: string;
                 resource: components["schemas"]["PolicySimResource"];
@@ -50297,6 +50298,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BulkDecisionResponse"];
+                };
+            };
+            /** @description policy_bulk_limit: too many checks or excessive repeated subject data; no decisions are recorded */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
         };

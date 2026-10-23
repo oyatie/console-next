@@ -26,11 +26,11 @@ const fixtureRoots = [];
 // and source-derived re-export/Option resolution. Any route, body, or accepted enum value change fails
 // until this snapshot is deliberately re-derived.
 const LIVE_CENSUS = Object.freeze({
-  population: 412,
-  resolved: 174,
+  population: 417,
+  resolved: 179,
   skipped: 238,
-  enumCandidates: 82,
-  enumResolved: 67,
+  enumCandidates: 83,
+  enumResolved: 68,
   enumSkipped: 15,
 });
 
@@ -1265,6 +1265,20 @@ use modes::{WidgetMode};
 
     assert.equal(report.enumResolved, 1, JSON.stringify(report, null, 2));
     assert.deepEqual(report.findings, []);
+  });
+
+  it("scans many attributes before a non-use item without exponential backtracking", () => {
+    const root = enumFixture({
+      enumSource: `${"#[allow(dead_code)]\n".repeat(32)}fn unused() {}\n` +
+        '#[derive(Deserialize)]\n#[serde(rename_all = "snake_case")]\npub enum WidgetMode { FastMode, SafeMode }',
+    });
+    const result = spawnSync(process.execPath, ["--input-type=module", "-e", `
+      import { evaluateRequestBodyContract } from ${JSON.stringify(new URL("./check-request-body-contract.mjs", import.meta.url).href)};
+      const report = evaluateRequestBodyContract({ repoRoot: ${JSON.stringify(root)} });
+      if (report.enumResolved !== 1 || report.findings.length) process.exit(1);
+    `], { encoding: "utf8", timeout: 5_000 });
+    assert.equal(result.error, undefined, result.error?.message);
+    assert.equal(result.status, 0, result.stderr);
   });
 
   it("resolves a qualified enum declared in a file-backed module", () => {

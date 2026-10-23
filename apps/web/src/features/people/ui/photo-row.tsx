@@ -47,7 +47,7 @@ export function PhotoRow({ c, quick }: { c: Card; quick: Quick }) {
         )
       }
     >
-      {photo ? <span className={s.photoCell}><Avatar size="md" name={c.e.name} src={photo.url ?? undefined} alt={t("empCard.photo", { name: c.e.name })} /> {t("empCard.photo.on")}</span> : <Muted>{t("empCard.none")}</Muted>}
+      {photo ? <span className={s.photoCell}><Avatar size="md" name={c.e.name} src={photo.url ?? undefined} alt={t("empCard.photo", { name: c.e.name })} fallbackAlt={t("empCard.photo.none")} /> {t("empCard.photo.on")}</span> : <Muted>{t("empCard.none")}</Muted>}
       {open && <PhotoSheet c={c} replace={Boolean(photo)} onClose={close} />}
     </FieldRow>
   );

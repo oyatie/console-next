@@ -23,13 +23,31 @@ export function sourceFiles(root, folders = ["docs"]) {
 // Preserve prose and table rows; skip headings, separators, and illustrative code.
 export function markdownBlocks(text) {
   const lines = text.split(/\r?\n/), blocks = [];
-  let headings = [], pending, fence;
+  let headings = [], pending, fence, comment = false;
   const flush = () => {
     if (pending) blocks.push(pending);
     pending = undefined;
   };
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim(), n = i + 1;
+    let line = lines[i].trim();
+    const n = i + 1;
+    if (!fence) {
+      if (comment) {
+        const closing = line.indexOf("-->");
+        if (closing < 0) { flush(); continue; }
+        line = line.slice(closing + 3);
+        comment = false;
+      }
+      // Removing a comment can join its surrounding text into another comment.
+      let previous;
+      do {
+        previous = line;
+        line = line.replace(/<!--[\s\S]*?-->/g, "");
+      } while (line !== previous);
+      const opening = line.indexOf("<!--");
+      if (opening >= 0) { comment = true; line = line.slice(0, opening); }
+      line = line.trim();
+    }
     const fenced = line.match(/^(`{3,}|~{3,})/);
     if (fenced) {
       flush();
@@ -40,7 +58,7 @@ export function markdownBlocks(text) {
     if (fence) continue;
     const head = line.match(/^(#{1,6})\s+(.*)/);
     if (head) { flush(); headings = headings.slice(0, head[1].length - 1); headings[head[1].length - 1] = head[2]; continue; }
-    if (!line || /^(?:[-*_]\s*){3,}$/.test(line) || /^\|[\s:|\-]+\|$/.test(line) || /^<!--.*-->$/.test(line)) { flush(); continue; }
+    if (!line || /^(?:[-*_]\s*){3,}$/.test(line) || /^\|[\s:|\-]+\|$/.test(line)) { flush(); continue; }
     const separate = /^(?:\||[-*+]\s|\d+[.)]\s|>)/.test(line);
     if (separate) flush();
     if (!pending) pending = { line: n, endLine: n, section: headings.filter(Boolean).join(" / "), summary: line };
