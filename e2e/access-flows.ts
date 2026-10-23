@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { fmtStamp } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expect, type Page } from "@playwright/test";
 import { activatePendingGrants } from "./second-person-fixture";
@@ -75,7 +75,7 @@ export async function grantAccess(admin: Page, name: string, access: Access, sco
   const preview = await (await previewResponse).json() as { items: { enforcement_after: string; activates_at?: string }[] };
   const scheduled = preview.items.filter((i) => i.enforcement_after === "SCHEDULED" && i.activates_at);
   if (scheduled.length) {
-    for (const item of scheduled) await expect(sheet.getByText(fmtStamp(item.activates_at), { exact: false })).toBeVisible();
+    for (const item of scheduled) await expect(sheet.getByText(fmtDateTime(item.activates_at), { exact: false })).toBeVisible();
     await sheet.getByRole("button", { name: "패스키로 확인하고 부여 1건 저장" }).click();
   }
   await expect(admin.getByRole("status").filter({ hasText: `${name}님에게 부여 1건을 저장했습니다` })).toBeVisible({ timeout: 20_000 });

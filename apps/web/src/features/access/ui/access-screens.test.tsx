@@ -1,7 +1,7 @@
 import { beforeAll, expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { loadCatalog, t } from "@console/i18n";
-import { fmtStamp } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import type { AccessEffectiveEntry, AccessGrant, AccessGrantPreview, Account } from "../api";
 import { grantLines } from "../../../reference/authz/present";
 import { grantDoneText, periodText, scheduledText } from "../present";
@@ -63,8 +63,8 @@ test("ROL-M2: a held role's edit shows what each domain gains and loses before t
 
 test("F8: a pending grant shows its configured activation date", () => {
   const pending = grant({ valid_from: "2026-10-01T00:00:00Z", activates_at: "2026-10-03T00:00:00Z", enforcement: "SCHEDULED" });
-  expect(periodText(pending)).toContain(fmtStamp(pending.activates_at));
-  expect(periodText(pending)).not.toContain(fmtStamp(pending.valid_from));
+  expect(periodText(pending)).toContain(fmtDateTime(pending.activates_at));
+  expect(periodText(pending)).not.toContain(fmtDateTime(pending.valid_from));
 });
 
 test("F8: bulk delayed grants never promise application today", () => {
@@ -85,10 +85,10 @@ test("F8: scheduled preview shows the server deadline without promising immediat
     const props = { preview, accounts: [], role: "역할", scope: "전체", end: "2027-04-08", pending: false, error: null, onBack: () => {}, onDropRefused: () => {}, onApply: () => {} };
     const html = renderToStaticMarkup(<BulkPreview {...props} />);
     if (state === "SCHEDULED") {
-      expect(html).toContain(fmtStamp(at));
+      expect(html).toContain(fmtDateTime(at));
       expect(html).not.toContain("모두 한 번에 적용됩니다");
     } else {
-      expect(html).not.toContain(fmtStamp(at));
+      expect(html).not.toContain(fmtDateTime(at));
       expect(html).not.toContain("보안 대기");
     }
   }
@@ -101,7 +101,7 @@ test("F8: the confirm sheet body lists grants without repeating the footer deadl
   ];
   const html = renderToStaticMarkup(<GrantPreviewSummary items={items} named={["인사 담당 (전체)"]} />);
   expect(html).toContain("인사 담당 (전체)");
-  expect(html).not.toContain(fmtStamp(at));
+  expect(html).not.toContain(fmtDateTime(at));
   expect(html).not.toContain("보안 대기");
 });
 
@@ -110,9 +110,9 @@ test("F8: scheduled grants use truthful copy before and after save", () => {
   const item: AccessGrantPreview["items"][number] = {
     index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED", activates_at: at,
   };
-  expect(scheduledText(item)).toContain(`보안 대기 · ${fmtStamp(at)}부터 적용`);
+  expect(scheduledText(item)).toContain(`보안 대기 · ${fmtDateTime(at)}부터 적용`);
   const done = grantDoneText("김부장", [grant({ enforcement: "SCHEDULED", activates_at: at })]);
-  expect(done).toContain(fmtStamp(at));
+  expect(done).toContain(fmtDateTime(at));
   expect(done).toContain("적용");
 });
 

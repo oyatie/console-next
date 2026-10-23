@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { ko } from "../packages/i18n/src/catalogs/ko";
-import { fmtStamp } from "@console/i18n/format";
+import { fmtDateTime } from "@console/i18n/format";
 import { expectAccessible } from "./a11y";
 import { chooseRadio, firstSignIn, go, stepUp, takeCode } from "./flows";
 import { firstWorkplace, registerAt } from "./helpers/entity";
@@ -110,7 +110,7 @@ test("an HR worker granted 인사 실무 over one 법인 works inside it and is 
   const preview = await (await previewResponse).json() as { items: { enforcement_after: string; activates_at?: string }[] };
   for (const item of preview.items) {
     expect(item.enforcement_after).toBe("SCHEDULED");
-    await expect(sheet.getByText(fmtStamp(item.activates_at), { exact: false })).toBeVisible();
+    await expect(sheet.getByText(fmtDateTime(item.activates_at), { exact: false })).toBeVisible();
   }
   await stepUp(sheet, "패스키로 확인하고 부여 1건 저장", admin.getByRole("status").filter({ hasText: "김인사님에게 부여 1건을 저장했습니다" }));
   await activatePendingGrants(admin, token);
