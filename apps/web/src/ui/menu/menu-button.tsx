@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
 import { ChevronDown } from "lucide-react";
 import s from "./menu.module.css";
@@ -10,11 +10,11 @@ export type MenuEntry = { id: string; label: ReactNode; text: string; hint?: Rea
  * A button that opens a menu of commands (personnel action ▾, ⋯). An unavailable entry stays listed, not pressable, with its
  * reason under it. `icon` replaces the label for an icon-only trigger, which then needs `label`.
  */
-export function MenuButton({ label, icon, primary, items, onAction, caret = true }: { label: string; icon?: ReactNode; primary?: boolean; items: MenuEntry[]; onAction: (id: string) => void; caret?: boolean }) {
+export function MenuButton({ label, icon, primary, items, onAction, caret = true, buttonRef }: { label: string; icon?: ReactNode; primary?: boolean; items: MenuEntry[]; onAction: (id: string) => void; caret?: boolean; buttonRef?: Ref<HTMLButtonElement> }) {
   const disabled = items.filter((i) => i.why).map((i) => i.id);
   return (
     <MenuTrigger>
-      <Button className={icon && !caret && !primary ? `btn ${s.icon}` : `btn${primary ? " btn--primary" : ""}`} aria-label={icon && !caret ? label : undefined}>
+      <Button ref={buttonRef} className={icon && !caret && !primary ? `btn ${s.icon}` : `btn${primary ? " btn--primary" : ""}`} aria-label={icon && !caret ? label : undefined}>
         {icon}
         {(!icon || caret) && <span>{label}</span>}
         {caret && <ChevronDown size={14} aria-hidden />}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Eye, FilePlus2, FileText, MoreHorizontal } from "lucide-react";
 import type { BusinessRegistration, LegalEntity } from "@console/api/pending";
 import { t } from "@console/i18n";
@@ -37,6 +37,7 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
   // company-06: suspension / resumption of this certificate, offered on an open record only.
   const [statusing, setStatusing] = useState(false);
   const [voiding, setVoiding] = useState(false);
+  const voidTrigger = useRef<HTMLButtonElement>(null);
   const locked = useRecordLock() !== null;
   const suspended = c?.status === "SUSPENDED";
   const fix = <V,>(spec: FieldSpec<V>) => ({ kind: "fix" as const, onPress: () => act.field(spec) });
@@ -63,7 +64,8 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
         )}
         {!locked && c && c.status !== "CLOSED" && (
           <MenuButton
-            label={t("uiRecordActions.more", { field: title })}
+            buttonRef={voidTrigger}
+            label={t("uiRecordActions.more", { field: `${title} ${r.brn?.display ?? r.id}` })}
             icon={<MoreHorizontal size={16} aria-hidden />}
             caret={false}
             items={[{
@@ -115,7 +117,7 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
         <FactRow label={t("entityRecord.field.issued")} action={fix(f.issued)}><span className="num">{c?.cert_issued_on ? fmtDate(c.cert_issued_on) : "—"}</span> · {c?.tax_office_label || "—"}</FactRow>
       </div>
       {statusing && <RegistrationStatusSheet e={e} r={r} onClose={() => setStatusing(false)} />}
-      {voiding && <VoidRegistration r={r} onClose={() => setVoiding(false)} />}
+      {voiding && <VoidRegistration r={r} onClose={() => { setVoiding(false); requestAnimationFrame(() => voidTrigger.current?.focus()); }} />}
     </section>
   );
 }

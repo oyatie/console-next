@@ -1,6 +1,9 @@
 import type { koReason } from "../ko/reason";
 
 export const enReason: Partial<Record<keyof typeof koReason, string>> = {
+  "reason.registration_void.DUPLICATE": "Registered twice",
+  "reason.registration_void.TEST_ENTRY": "Test entry",
+  "reason.registration_void.WRONG_DOCUMENT": "Another company’s certificate",
   "reason.lifecycle_transfer.REGULAR_RESHUFFLE": "Regular reshuffle",
   "reason.lifecycle_transfer.REORGANIZATION": "Reorganization",
   "reason.lifecycle_transfer.EMPLOYEE_REQUEST": "Employee's request",

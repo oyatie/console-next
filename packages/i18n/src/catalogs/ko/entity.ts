@@ -115,6 +115,7 @@ export const koEntity = {
   "entity.void.done": "{name|을를} 삭제했습니다",
   "entity.regVoid.previewLoading": "삭제 미리보기를 읽고 있습니다",
   "entity.regVoid.previewFailed": "삭제 미리보기를 읽지 못했습니다",
+  "entity.regVoid.notSent": "삭제 요청은 보내지 않았습니다. 미리보기를 다시 읽은 뒤 확인하십시오.",
   "entity.regVoid.previewRetry": "삭제 미리보기 다시 읽기",
   "entity.regVoid.title": "사업자등록증 삭제",
   "entity.regVoid.consequence": "사업자등록증 {name}, 개정 이력 {revisions, number}건을 삭제합니다. 첨부한 문서는 보관 기간 동안 남고 감사 기록에 사유가 남습니다.",

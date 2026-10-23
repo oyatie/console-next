@@ -13,7 +13,7 @@ const sheet = (page: Page) => page.getByRole("dialog", { name: "사업자등록�
 const confirm = (page: Page) => sheet(page).getByRole("button", { name: "사업자등록증 삭제", exact: true });
 
 async function openVoid(page: Page) {
-  await page.getByRole("button", { name: /^사업자등록증(?: · 본점)? 더보기$/ }).click();
+  await page.getByRole("button", { name: /^사업자등록증(?: · 본점)? .+ 더보기$/ }).click();
   await page.getByRole("menuitem", { name: "삭제", exact: true }).click();
   await expect(sheet(page)).toBeVisible();
 }
@@ -41,9 +41,11 @@ test("certificate void fails closed during preview loading/failure and rechecks 
     await route.fulfill({ status: 503, json: { error: { code: "unavailable", message: "preview unavailable" } } });
   });
   await openVoid(admin);
-  await option(admin, "삭제 사유", "중복 등록").click();
+  await expect(option(admin, "삭제 사유", "중복 등록")).toBeDisabled();
   await expect(confirm(admin)).toBeDisabled();
   release();
+  await expect(sheet(admin)).toContainText("삭제 요청은 보내지 않았습니다");
+  await expect(sheet(admin)).not.toContainText("처리 여부 확인 중");
   await expect(sheet(admin).getByRole("button", { name: "삭제 미리보기 다시 읽기" })).toBeVisible();
   await expect(confirm(admin)).toBeDisabled();
   expect(writes).toEqual([]);
@@ -55,10 +57,11 @@ test("certificate void fails closed during preview loading/failure and rechecks 
     await route.fulfill({ response, json: { ...await response.json(), can_manage: false } });
   });
   await sheet(admin).getByRole("button", { name: "삭제 미리보기 다시 읽기" }).click();
-  await expect(sheet(admin)).toContainText("이 계정에는 이 일을 할 권한이 없습니다");
+  await expect(sheet(admin).getByText("이 계정에는 이 일을 할 권한이 없습니다", { exact: true })).toHaveCount(1);
   await expect(confirm(admin)).toBeDisabled();
   expect(writes).toEqual([]);
   await sheet(admin).getByRole("button", { name: "돌아가기", exact: true }).click();
+  await expect(admin.getByRole("button", { name: /^사업자등록증(?: · 본점)? .+ 더보기$/ })).toBeFocused();
   await admin.unroute(previewPath);
 
   const preview = admin.waitForResponse((r) => previewPath.test(new URL(r.url()).pathname));
@@ -95,7 +98,7 @@ test("a linked workplace refuses registration void after reason selection and at
   expect(end.delete).toEqual({ allowed: false, refusal: "record_in_use" });
   expect(end.linked_workplaces).toContainEqual({ id: before.workplaces[0].id, name: "본사" });
   await expect(sheet(admin)).toContainText("본사");
-  await option(admin, "삭제 사유", "시험 입력").click();
+  await expect(option(admin, "삭제 사유", "시험 입력")).toBeDisabled();
   await expect(confirm(admin)).toBeDisabled();
   const denied = await api(`/business-registrations/${id}/void`, "POST", { reason_code: "TEST_ENTRY" }, { "Idempotency-Key": crypto.randomUUID() });
   expect(denied.status()).toBe(409);

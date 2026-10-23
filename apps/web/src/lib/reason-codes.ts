@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { get } from "./query";
 
 type Entry = components["schemas"]["ReasonCatalogEntry"];
-export type ReasonDomain = "lifecycle_transfer" | "lifecycle_promote" | "lifecycle_cancel" | "period_lock" | "period_unlock" | "exception" | "rrn_reveal" | "employee_number_change" | "exit_reason" | "sign_in_id_change";
+export type ReasonDomain = "registration_void" | "lifecycle_transfer" | "lifecycle_promote" | "lifecycle_cancel" | "period_lock" | "period_unlock" | "exception" | "rrn_reveal" | "employee_number_change" | "exit_reason" | "sign_in_id_change";
 export type ReasonOption = { value: string; label: string; requiresNote: boolean };
 
 export const reasonCodesQuery = (domain: ReasonDomain) => ({ ...get("/api/v1/reason-codes", { params: { query: { domain } } }), staleTime: 5 * 60_000 });

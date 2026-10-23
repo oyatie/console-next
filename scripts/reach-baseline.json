@@ -869,11 +869,6 @@
   "reason": "Self-signup is outside MVP bootstrap and invitation flows; units/maturity/plan.md §3.",
   "when": "post-mvp"
  },
- "POST /api/v1/business-registrations/{registrationId}/void": {
-  "lane": "E4",
-  "reason": "E4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
  "POST /api/v1/console/kill-switch": {
   "lane": "MAT-PARITY",
   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",

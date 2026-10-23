@@ -54,6 +54,7 @@ mod read;
 // --- lane: CRUD ---
 mod record_end;
 mod registration;
+mod registration_calendar;
 mod registration_change;
 mod registration_end;
 mod registration_revision;

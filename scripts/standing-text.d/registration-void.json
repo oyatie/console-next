@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/entity/ui/void-registration.tsx#VoidRegistration": 46
+  },
+  "newScreens": {
+    "apps/web/src/features/entity/ui/void-registration.tsx#VoidRegistration": {
+      "FACT": 24,
+      "REFUSAL": 17,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 3,
+      "EXPLANATION": 0
+    }
+  }
+}

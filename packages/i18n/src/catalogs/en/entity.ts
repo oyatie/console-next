@@ -116,6 +116,7 @@ export const enEntity: Record<keyof typeof koEntity, string> = {
   "entity.void.done": "Removed {name}",
   "entity.regVoid.previewLoading": "Reading deletion preview",
   "entity.regVoid.previewFailed": "Could not read deletion preview",
+  "entity.regVoid.notSent": "No deletion request was sent. Reload the preview before confirming.",
   "entity.regVoid.previewRetry": "Retry deletion preview",
   "entity.regVoid.title": "Delete business registration certificate",
   "entity.regVoid.consequence": "Deletes certificate {name} and {revisions, number} revision(s). Attached documents stay for their retention period, and the reason is audited.",

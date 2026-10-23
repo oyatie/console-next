@@ -28,14 +28,16 @@ pub struct LinkedWorkplace {
 async fn linked_workplaces(
     tx: &mut Tx<'_>,
     id: Uuid,
+    today: time::Date,
 ) -> Result<Vec<LinkedWorkplace>, PgEntityError> {
     let rows: Vec<(Uuid, String)> = sqlx::query_as(
         "SELECT w.id, COALESCE((SELECT r.name FROM workplace_revisions r \
-         WHERE r.workplace_id = w.id ORDER BY r.effective_from > (now() AT TIME ZONE 'Asia/Seoul')::date, \
-         abs(r.effective_from - (now() AT TIME ZONE 'Asia/Seoul')::date), r.version DESC LIMIT 1), w.id::text) \
+         WHERE r.workplace_id = w.id ORDER BY r.effective_from > $2, \
+         abs(r.effective_from - $2), r.version DESC LIMIT 1), w.id::text) \
          FROM workplaces w WHERE w.registration_id = $1 AND w.voided_at IS NULL ORDER BY w.id",
     )
     .bind(id)
+    .bind(today)
     .fetch_all(tx.as_mut())
     .await?;
     Ok(rows
@@ -70,7 +72,8 @@ impl PgEntityStore {
                 .await?;
                 let entity = entity.ok_or_else(|| Refusal::not_found("registration_not_found"))?;
                 let phase = read_phase(tx, false).await?;
-                let mut linked_workplaces = linked_workplaces(tx, id).await?;
+                let today = crate::registration_calendar::today(tx, entity).await?;
+                let mut linked_workplaces = linked_workplaces(tx, id, today).await?;
                 let refused = if phase != TenantPhase::Setup {
                     Some("phase_not_setup")
                 } else if !linked_workplaces.is_empty() {
