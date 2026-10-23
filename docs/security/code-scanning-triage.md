@@ -1,14 +1,14 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
 # Code-scanning triage
 
-Repository: `oyatie/console-next`. Reviewed against public `dev` at `708adea2`.
+Repository: `oyatie/console-next`. Initial inventory reviewed at `708adea2`; round-two implementation rebased onto public `dev` at `bfc65fc7` (after `385a97be`).
 The GitHub API inventory on 2026-10-23 has **69 open alerts** from the brief's historical 70-alert set (#1–#70): #2 was already fixed upstream. The table retains all 70 numbers; #71 and #72 were already dismissed and are outside that set. No alert was dismissed by this change. False-positive verdicts below are proposed, evidence-backed dismissal reasons for the orchestrator; do not dismiss test findings automatically.
 
 **Merge requirement / PR body:** Disable GitHub CodeQL default setup when this advanced-setup workflow merges. The orchestrator owns that switch. Keep it disabled thereafter so the scheduled/push-only workflow is authoritative and CodeQL does not return to the per-PR tier. After the first successful advanced run, verify that no high/critical first-party runtime alert remains open; a new one blocks the release unit.
 
 The workflow analyzes Actions, JavaScript/TypeScript, Python and Rust on pushes to `dev` and once a week. Every action is commit-pinned, credentials are not persisted, and only the analyze job receives `security-events: write`. Its config excludes `third-party/**`, leaving tests and scripts in analysis. Rust uses build mode `none`, so scanner path exclusions apply without building vendored dependencies. See GitHub's [workflow configuration guidance](https://docs.github.com/en/code-security/reference/code-scanning/workflow-configuration-options).
 
-Bulk authorization now has process resource ceilings in `authz-rest/src/limits.rs`: 200 checks and 2 MiB of serialized-subject bytes multiplied by check count. It refuses the whole request with HTTP 422 / `policy_bulk_limit`, after authentication and before loading policies or allocating/evaluating decisions. This also bounds repeated identifiers, roles and clearance keys, while preserving empty batches, index alignment and all-or-none persistence. These engineering limits belong to the resource-limit module and published API contract, independent of tenant policy.
+Bulk authorization now has process resource ceilings in `authz-rest/src/limits.rs`: 200 checks and 2 MiB of serialized-subject bytes multiplied by check count. It refuses the whole request with HTTP 422 / `policy_bulk_limit`, after authentication and before loading policies or allocating/evaluating decisions. This also bounds repeated identifiers, roles and clearance keys, while preserving empty batches, index alignment and all-or-none persistence. The exact 2 MiB boundary is covered by a DB test. Refusals use `KernelError::with_code`; REST preserves that stable code and otherwise uses the shared error-kind code. These engineering limits belong to the resource-limit module and published API contract, independent of tenant policy.
 
 The other reported runtime allocations already reject more than 20 goals, 10 evidence entries or 200 mobile operations, or clamp inbox page size to 1–200. The named Rust cleartext sites are test assertions, including those in `src/lib.rs`; no production logging change or PII-gate exemption is warranted. Test-only dummy keys are retained as deterministic fixtures.
 
@@ -91,21 +91,31 @@ Locations below are the original scanner locations, not post-patch line numbers.
 
 ## Files outside the brief owns
 
-These files are necessary callers, regression tests, contract fragments or regenerated outputs; no excluded lane file is changed.
+These files are necessary callers, regression tests, contract fragments or regenerated outputs; no excluded lane file is changed. The file-size generator consolidates four inherited `baseline.d` contributions into `baseline.txt`.
 
 - `apps/web/src/features/entity/ui/document-pane.test.tsx`
+- `apps/web/src/features/people/ui/card-head.tsx`
+- `apps/web/src/features/people/ui/photo-row.tsx`
+- `apps/web/src/lib/media-url.test.ts`
 - `apps/web/src/lib/media-url.ts`
+- `apps/web/src/ui/canonical.test.tsx`
 - `backend/Cargo.lock`
+- `backend/ci/gates/file-size/baseline.d/eco-g4-name.txt`
+- `backend/ci/gates/file-size/baseline.d/fx-w1-f7.txt`
+- `backend/ci/gates/file-size/baseline.d/fx-w1-pv1-r4.txt`
+- `backend/ci/gates/file-size/baseline.d/lmg-exit-cancel.txt`
 - `backend/ci/gates/file-size/baseline.txt`
 - `backend/crates/identity/rest/openapi/paths/api__v1__policy__authorize__bulk.post.yaml`
 - `backend/crates/identity/rest/openapi/schemas/BulkAuthorizeBody.yaml`
 - `backend/crates/platform/authz-rest/Cargo.toml`
 - `backend/crates/platform/authz-rest/src/bulk.rs`
+- `backend/crates/platform/authz-rest/src/lib_errors.rs`
 - `backend/crates/platform/authz-rest/src/limits.rs`
 - `backend/crates/platform/authz-rest/tests/bulk_limits.rs`
 - `backend/openapi/openapi.yaml`
 - `e2e/entity-capture.spec.ts`
 - `e2e/policy-bulk-limits.spec.ts`
+- `e2e/record-actions/card.spec.ts`
 - `e2e/session-recovery.spec.ts`
 - `packages/api/src/schema.d.ts`
 - `scripts/backlog-sources.test.ts`
@@ -113,11 +123,3 @@ These files are necessary callers, regression tests, contract fragments or regen
 - `scripts/codeql-workflow.test.ts`
 - `scripts/quality/baseline.json`
 - `scripts/request-body-contract-undecidable.json`
-
-- `apps/web/src/lib/media-url.test.ts`
-- `apps/web/src/features/people/ui/card-head.tsx`
-- `apps/web/src/features/people/ui/photo-row.tsx`
-- `apps/web/src/ui/avatar/avatar.test.tsx`
-- `apps/web/src/ui/canonical.test.tsx`
-- `backend/crates/platform/authz-rest/src/lib_errors.rs`
-- `e2e/record-actions/card.spec.ts`
