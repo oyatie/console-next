@@ -142,3 +142,45 @@ async fn runtime_cannot_forge_person_revision_erasure(pool: PgPool) {
     );
     tx.rollback().await.unwrap();
 }
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn compatibility_revisions_never_invent_a_human_actor(pool: PgPool) {
+    let org = tenant(&pool).await;
+    let creator: Uuid = sqlx::query_scalar(
+        "INSERT INTO users(org_id,display_name) VALUES($1,'Creator') RETURNING id",
+    )
+    .bind(org)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let employee: Uuid = sqlx::query_scalar("INSERT INTO employees(org_id,company,name,source_filename,source_sheet,source_row,source_key) VALUES($1,'Co','Subject','test','test',1,'subject') RETURNING id")
+        .bind(org).fetch_one(&pool).await.unwrap();
+    let account: Uuid = sqlx::query_scalar(
+        "INSERT INTO users(org_id,employee_id,display_name) VALUES($1,$2,'Subject') RETURNING id",
+    )
+    .bind(org)
+    .bind(employee)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    sqlx::query("INSERT INTO employee_employment_profiles(org_id,employee_id,employment_type,phone_e164,idempotency_key,request_hash,created_by) VALUES($1,$2,'REGULAR','+821098761234','subject',repeat('a',64),$3)")
+        .bind(org).bind(employee).bind(creator).execute(&pool).await.unwrap();
+    sqlx::query("UPDATE users SET display_name='Edited' WHERE id=$1")
+        .bind(account)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query(
+        "UPDATE employee_employment_profiles SET phone_e164='+821012349876' WHERE employee_id=$1",
+    )
+    .bind(employee)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let attributed: i64 = sqlx::query_scalar("SELECT count(*) FROM person_revisions WHERE org_id=$1 AND origin='binding' AND actor_id IS NOT NULL")
+        .bind(org).fetch_one(&pool).await.unwrap();
+    assert_eq!(
+        attributed, 0,
+        "the subject and original creator are not evidence of who edited"
+    );
+}
