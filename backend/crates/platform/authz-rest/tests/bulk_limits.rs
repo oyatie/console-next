@@ -146,3 +146,24 @@ async fn empty_and_at_limit_batches_keep_every_decision(pool: PgPool) {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(feed.as_array().unwrap().len(), 200);
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn exactly_two_mib_of_subject_work_is_allowed_and_excess_is_atomic(pool: PgPool) {
+    let (app, token, org) = app(&pool).await;
+    let mut request = batch(org, 2);
+    request["subject"]["clearance_keys"] = json!([""]);
+    let overhead = request["subject"].to_string().len();
+    request["subject"]["clearance_keys"] = json!(["x".repeat(1024 * 1024 - overhead)]);
+    assert_eq!(request["subject"].to_string().len() * 2, 2 * 1024 * 1024);
+    let (status, body) = send(&app, &token, Some(request.clone())).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["decisions"].as_array().unwrap().len(), 2);
+
+    request["subject"]["clearance_keys"] = json!(["x".repeat(1024 * 1024 - overhead + 1)]);
+    let (status, body) = send(&app, &token, Some(request)).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body["error"]["code"], "policy_bulk_limit");
+    let (status, feed) = send(&app, &token, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(feed.as_array().unwrap().len(), 2);
+}
