@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-# ci-ok is the only required check; merge_group always proves the full merge result.
+# ci-ok proves affected PR/queue results; dispatch proves a full release unit.
 name: ci
 "on":
   push:
     branches:
       - dev
+  workflow_dispatch: null
   pull_request: null
   merge_group:
     types:
@@ -83,6 +84,9 @@ jobs:
           include-hidden-files: true
           overwrite: true
     outputs:
+      tier: ${{ steps.plan.outputs.tier }}
+      browsers: ${{ steps.plan.outputs.browsers }}
+      e2eFiles: ${{ steps.plan.outputs.e2eFiles }}
       full: ${{ steps.plan.outputs.full }}
       crates: ${{ steps.plan.outputs.crates }}
       workspaces: ${{ steps.plan.outputs.workspaces }}
@@ -120,7 +124,7 @@ jobs:
           docker run --rm -v "${PWD}:/repo" -w /repo
           rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
       - name: Workflow regression and safety checks
-        run: node --test scripts/ci.test.mjs scripts/ci-privacy.test.mjs scripts/ci-results.test.mjs scripts/cd-workflow.test.mjs scripts/dev-secrets.test.mjs scripts/check-repo-files.test.mjs
+        run: node --test scripts/ci.test.mjs scripts/ci-privacy.test.mjs scripts/ci-results.test.mjs scripts/dev-secrets.test.mjs scripts/check-repo-files.test.mjs
       - name: Check hermetic repository inputs
         run: node --test --test-name-pattern="check refuses" scripts/check-hermetic.test.mjs
       - name: Repository file policy
@@ -180,7 +184,11 @@ jobs:
       - run: bash scripts/ci/install-tools.sh gitleaks
       - name: Ratchet base
         run: git rev-parse --verify -q refs/heads/dev >/dev/null || git branch dev origin/dev
+      - name: Chromium headless shell for browser-backed unit tests
+        run: npx playwright install --with-deps --only-shell chromium
       - run: npm run check
+        env:
+          CI_BASE_SHA: ${{ needs.plan.outputs.base }}
       - *job-metrics
       - name: Personal-data scan before any upload
         id: privacy

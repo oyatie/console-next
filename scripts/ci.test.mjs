@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { load } from "js-yaml";
+
+import "./ci-cutover.test.mjs";
 
 const root = new URL("../", import.meta.url);
 const workflow = () => load(readFileSync(new URL(".github/workflows/ci.yml", root), "utf8"));
@@ -34,7 +36,7 @@ test("docs skip proof jobs; crate changes include reverse dependencies only", as
   assert.equal(affected(["backend/other/src/lib.rs"], packages, [], "/repo").e2e, false);
 });
 
-test("shared inputs and merge queue force full proof; unknown paths fail safe", async () => {
+test("shared inputs and release units force full proof; unknown paths fail safe", async () => {
   const { affected } = await helpers();
   for (const file of ["backend/Cargo.lock", "package-lock.json", ".github/workflows/ci.yml", "backend/core/migrations/new.sql", "new-tool/input"]) {
     assert.equal(affected([file], packages, [], "/repo").full, true, file);
@@ -42,19 +44,21 @@ test("shared inputs and merge queue force full proof; unknown paths fail safe", 
   assert.equal(affected(["docs/ci.md"], packages, [], "/repo", true).full, true);
 });
 
-test("merge-group CLI forces full proof even when the event supplies a docs-only base", () => {
+test("merge-group CLI uses its base SHA for affected docs-only fast proof", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-merge-plan-"));
   try {
-    writeFileSync(path.join(dir, "event.json"), JSON.stringify({ before: "base-sha" }));
+    writeFileSync(path.join(dir, "event.json"), JSON.stringify({ merge_group: { base_sha: "base-sha" } }));
     writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nprocess.stdout.write(${JSON.stringify(JSON.stringify({ packages }))});\n`, { mode: 0o700 });
     writeFileSync(path.join(dir, "git"), `#!${process.execPath}\nprocess.stdout.write('docs/ci.md\\0');\n`, { mode: 0o700 });
     const output = path.join(dir, "outputs");
     const result = spawnSync(process.execPath, ["scripts/ci/plan.mjs"], { encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, GITHUB_EVENT_PATH: path.join(dir, "event.json"), GITHUB_EVENT_NAME: "merge_group", GITHUB_OUTPUT: output } });
     assert.equal(result.status, 0, result.stderr);
     const values = Object.fromEntries(readFileSync(output, "utf8").trim().split("\n").map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]));
-    assert.equal(values.full, "true");
-    assert.equal(JSON.parse(values.build).full, true);
-    assert.ok(Object.values(JSON.parse(values.required)).every(Boolean));
+    assert.equal(values.full, "false");
+    assert.equal(values.tier, "fast");
+    assert.equal(JSON.parse(values.build).full, false);
+    assert.equal(JSON.parse(values.required).hygiene, true);
+    assert.equal(values.e2e, "false");
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -119,7 +123,7 @@ test("hygiene always enforces structural scans, fixture checks, terms and secret
 });
 
 test("all actions are allowed and SHA pinned; every job is bounded and hardened", () => {
-  for (const file of ["ci.yml", "cd.yml", "probe.yml", "workflows-check.yml"]) {
+  for (const file of readdirSync(new URL(".github/workflows/", root)).filter((file) => /\.ya?ml$/.test(file))) {
     const wf = load(readFileSync(new URL(`.github/workflows/${file}`, root), "utf8"));
     assert.equal(wf.on.pull_request_target, undefined);
     for (const [name, job] of Object.entries(wf.jobs)) {
@@ -212,7 +216,7 @@ test("Telegram adapter keeps credentials out of argv and sends only the supplied
     const capture = path.join(dir, "capture.json");
     writeFileSync(path.join(dir, "curl"), `#!${process.execPath}\nconst fs=require('node:fs');const args=process.argv.slice(2);fs.writeFileSync(process.env.CAPTURE,JSON.stringify({args,config:fs.readFileSync(args[args.indexOf('-K')+1],'utf8'),body:fs.readFileSync(0,'utf8')}));process.stdout.write('{"ok":true}\\n200');\n`, { mode: 0o700 });
     const token = `1:${randomBytes(24).toString("hex")}`;
-    const result = spawnSync("bash", ["scripts/ci/notify-telegram.sh", "send", "cd", "cd", "console CD failure"], {
+    const result = spawnSync("bash", ["scripts/ci/notify-telegram.sh", "send", "page", "page", "console probe failed"], {
       input: "Run https://example.invalid/actions/runs/1.\n", encoding: "utf8",
       env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, CAPTURE: capture, CONSOLE_TELEGRAM_BOT_TOKEN: token, CONSOLE_TELEGRAM_CHAT_ID: "-1", NOTIFY_TELEGRAM_GAP: "0" },
     });
@@ -220,8 +224,8 @@ test("Telegram adapter keeps credentials out of argv and sends only the supplied
     const sent = JSON.parse(readFileSync(capture, "utf8"));
     assert.equal(sent.args.some((arg) => arg.includes(token)), false);
     assert.ok(sent.config.includes(`/bot${token}/sendMessage`));
-    assert.ok(sent.args.includes("disable_notification=true"));
-    assert.equal(sent.body, "console CD failure\n\nRun https://example.invalid/actions/runs/1.\n");
+    assert.equal(sent.args.includes("disable_notification=true"), false);
+    assert.equal(sent.body, "console probe failed\n\nRun https://example.invalid/actions/runs/1.\n");
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

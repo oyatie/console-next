@@ -12,9 +12,9 @@ const root = new URL("../", import.meta.url);
 const workflow = () => load(readFileSync(new URL(".github/workflows/ci.yml", root), "utf8"));
 
 test("public test topology has no restricted paths or production services", () => {
-  const tracked = spawnSync("git", ["ls-files", "-z", "--", "ops/", "tools/", "deploy/"], { encoding: "utf8", cwd: root });
+  const tracked = spawnSync("git", ["ls-files", "-z", "--", "ops/", "tools/"], { encoding: "utf8", cwd: root });
   assert.equal(tracked.status, 0, tracked.stderr);
-  assert.deepEqual(tracked.stdout.split("\0").filter(Boolean), ["deploy/SECRETS.md"]);
+  assert.deepEqual(tracked.stdout.split("\0").filter(Boolean), []);
   const stack = load(readFileSync(new URL("e2e/stack/compose.yml", root), "utf8"));
   assert.deepEqual(Object.keys(stack.services).sort(), ["mailpit", "otel-collector", "postgres", "postgres-topology", "seaweedfs"]);
   assert.equal(stack.services.postgres.image, "${CONSOLE_POSTGRES_IMAGE:?}");

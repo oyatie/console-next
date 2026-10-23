@@ -16,7 +16,8 @@
 #     a page with the host healthy is a false positive (console-infra RUNBOOK.md, alarm-probe).
 #   - HTTP only; a real browser load of sign-in is the next step (B-06 phase 2).
 # Repository secrets: PROBE_URL, CONSOLE_PUBLIC_HOST (egress allow-list).
-# Environment `probe`: CONSOLE_TELEGRAM_BOT_TOKEN, CONSOLE_TELEGRAM_CHAT_ID.
+# Enable only after configuring the secrets: repository variable PROBE_ENABLED=true.
+# Repository or environment `probe`: CONSOLE_TELEGRAM_BOT_TOKEN, CONSOLE_TELEGRAM_CHAT_ID.
 name: probe
 on:
   schedule:
@@ -29,6 +30,7 @@ concurrency:
 
 jobs:
   probe:
+    if: vars.PROBE_ENABLED == 'true'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 5
     permissions:
