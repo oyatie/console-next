@@ -6,7 +6,7 @@ import { Building2, Lock } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate, fmtNumber } from "@console/i18n/format";
-import { label } from "../../../lib/labels";
+import { PAY_UNIT, label } from "../../../lib/labels";
 import { CommandError } from "../../../lib/react/command-error";
 import { useCommand } from "../../../lib/react/command";
 import { FORMATS, phoneE164 } from "../../../lib/pure/formats";
@@ -26,6 +26,7 @@ import { Sheet } from "../../../ui/sheet/sheet";
 import { rehireEmployee } from "../api";
 import { addDays } from "../domain/lifecycle";
 import { EMPLOYMENT_TYPES, type EmploymentType, type Where } from "../domain/register";
+import { PAY_UNITS, type PayUnit } from "../domain/facts";
 import { placeOptions } from "../domain/register-place";
 import { placeText } from "../present";
 import s from "./register.module.css";
@@ -47,12 +48,17 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
   const roots = useQuery({ ...orgStructureRef, retry: false }).data?.entities ?? [];
   const [where, setWhere] = useState<Where | null>(null);
   const options = placeOptions(units, roots, entities, where);
-  const [f, setF] = useState({ hire: "", unit: "", type: null as EmploymentType | null, position: e.position ?? "", end: "", phone: "", pay: "" });
+  const [f, setF] = useState({ hire: "", unit: "", type: null as EmploymentType | null, position: e.position ?? "", end: "", phone: "", pay: "", payUnit: null as PayUnit | null });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
   const [tried, setTried] = useState(false);
   const minHire = e.exit_date ? addDays(e.exit_date, 1) : undefined;
   const dateRefusal = e.exit_date ? t("people.refusal.rehire_date_not_after_exit", { date: e.exit_date }) : undefined;
-  const gaps = NEEDED.filter((k) => (k === "end" ? f.type === "CONTRACT" && !f.end : k === "type" ? !f.type : k === "hire" ? !f.hire || Boolean(minHire && f.hire < minHire) : !f[k]));
+  const gaps: (typeof NEEDED[number] | "phone" | "pay" | "payUnit")[] = NEEDED.filter((k) => (k === "end" ? f.type === "CONTRACT" && !f.end : k === "type" ? !f.type : k === "hire" ? !f.hire || Boolean(minHire && f.hire < minHire) : !f[k]));
+  if (!d.employment) {
+    if (!phoneE164(f.phone)) gaps.push("phone");
+    if (!f.pay) gaps.push("pay");
+    if (!f.payUnit) gaps.push("payUnit");
+  }
   const place = options.find((o) => o.unit.id === f.unit);
   const run = useCommand({
     run: (_: void, key: string) =>
@@ -65,6 +71,7 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
         contract_end_date: f.type === "CONTRACT" ? f.end : undefined,
         phone: f.phone ? (phoneE164(f.phone) ?? FORMATS.phone.display(f.phone)) : undefined,
         base_pay_won: f.pay ? Number(f.pay) : undefined,
+        pay_unit: f.payUnit ?? undefined,
         idempotency_key: key,
       }),
     invalidates: ["/api/v1/employees", "/api/v1/org-units", "/api/v1/legal-entities", "/api/v1/org-structure"],
@@ -84,7 +91,7 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
       notice={<CommandError error={run.error} own={(code) => code === "rehire_date_not_after_exit" ? dateRefusal : undefined} />}
       consequence={
         gaps.length > 0 ? (
-          <b className={tried ? s.err : undefined}>{t("register.foot.todo", { n: gaps.length, list: gaps.map((g) => t(`register.field.${g === "unit" ? "unit" : g === "end" ? "contractEnd" : g}`)).join(" · ") })}</b>
+          <b className={tried ? s.err : undefined}>{t("register.foot.todo", { n: gaps.length, list: gaps.map((g) => g === "payUnit" ? t("facts.payUnit") : t(`register.field.${g === "unit" ? "unit" : g === "end" ? "contractEnd" : g}`)).join(" · ") })}</b>
         ) : (
           <b>{t("register.rehire.foot", { name: e.name, place: place ? placeText(units, place).split(" › ").slice(1).join(" › ") : "", type: label(TYPE, f.type!), status, date: fmtDate(f.hire), number: e.employee_number ?? "—" })}</b>
         )
@@ -131,15 +138,16 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
           <span className={s.flabel}>{t("register.rehire.service")}</span>
           <span className={s.hint}>{t("register.rehire.serviceClosed")}</span>
         </div>
-        <fieldset className={s.extra}>
+        {!d.employment && <fieldset className={s.extra}>
           <legend className={s.flabel}>{t("register.rehire.profile")}</legend>
           <div className={s.extraRow}>
-            <MaskedField label={t("register.phone")} required={false} format={FORMATS.phone} value={f.phone} onChange={(v) => set("phone", v)} />
-            <Field label={t("register.pay")} required={false}>
+            <MaskedField label={t("register.phone")} required format={FORMATS.phone} value={f.phone} onChange={(v) => set("phone", v)} />
+            <Field label={t("register.field.pay")} required>
               {(p) => <TextInput {...p} className="num" inputMode="numeric" value={f.pay ? fmtNumber(Number(f.pay)) : ""} onChange={(x) => set("pay", x.target.value.replace(/[^\d]/g, ""))} />}
             </Field>
           </div>
-        </fieldset>
+          <ChoiceField label={t("facts.payUnit")} required options={PAY_UNITS.map((u) => ({ value: u, label: label(PAY_UNIT, u) }))} value={f.payUnit} onChange={(u) => set("payUnit", u as PayUnit)} />
+        </fieldset>}
       </div>
     </Sheet>
   );

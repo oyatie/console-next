@@ -97,7 +97,7 @@ async fn load_employee(
          e.position, e.worksite_name, e.worksite_address, \
          CASE WHEN console_employee_facts(e.org_id,e.id) ? 'birth_date' THEN console_employee_facts(e.org_id,e.id)->>'birth_date' ELSE to_char(e.birth_date, 'YYYY-MM-DD') END AS birth_date, e.work_email, e.id_type, \
          e.grade_id::text, e.job_title_id::text, e.position_kind_id::text, e.job_id::text, e.job_family_id::text, \
-         e.employment_status, e.updated_at, e.identity_review_required, \
+         e.employment_status, e.updated_at, (e.identity_review_required OR EXISTS(SELECT 1 FROM person_binding_reviews_open r WHERE r.org_id=e.org_id AND r.subject_kind='EMPLOYEE' AND r.subject_id=e.id)) AS identity_review_required, \
          p.employee_id IS NOT NULL AS has_profile, CASE WHEN console_employee_facts(e.org_id,e.id) ? 'phone' THEN console_employee_facts(e.org_id,e.id)->>'phone' ELSE p.phone_e164 END AS phone_e164, p.employment_type, \
          p.base_pay::text AS base_pay, p.pay_unit, \
          to_char(p.probation_end_date, 'YYYY-MM-DD') AS probation_end_date, \

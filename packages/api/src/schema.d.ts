@@ -24341,6 +24341,8 @@ export interface components {
                     candidates: {
                         /** Format: uuid */
                         employee_id: string;
+                        name: string;
+                        employee_number: string | null;
                         /** Format: date */
                         birth_date?: string | null;
                         /** Format: uuid */
@@ -25972,6 +25974,11 @@ export interface components {
             phone?: string;
             /** Format: int64 */
             base_pay_won?: number;
+            /**
+             * @description Required with base_pay_won when the person has no employment profile.
+             * @enum {string}
+             */
+            pay_unit?: "MONTHLY" | "HOURLY" | "DAILY" | "ANNUAL";
             idempotency_key: string;
         };
         RejectPeriodUnlockRequest: {

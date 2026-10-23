@@ -29,9 +29,12 @@ properties:
               type: array
               items:
                 type: object
-                required: [employee_id]
+                required: [employee_id, name, employee_number]
                 properties:
                   employee_id: {type: string, format: uuid}
+                  name: {type: string}
+                  employee_number:
+                    type: [string, "null"]
                   birth_date:
                     type: [string, "null"]
                     format: date

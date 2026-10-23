@@ -4,7 +4,9 @@
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_audits;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
+use sqlx::{FromRow, Postgres, QueryBuilder};
+
+use crate::authz::{HrReach, Tier, hr_reach_in, push_reach};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -42,8 +44,7 @@ impl HrService {
         principal: Principal,
         query: ReviewQuery,
     ) -> Result<PersonBindingReviews, HrError> {
-        // Account evidence can span employments and branches of the tenant.
-        crate::authz::authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
+        let reach = hr_reach_in(&principal, Feature::EmployeeDirectoryManage, Tier::Branch)?;
         let limit = query
             .limit
             .unwrap_or(crate::paging::DEFAULT_LIMIT)
@@ -52,10 +53,17 @@ impl HrService {
         let subject = query.subject_id;
         with_audits::<_, _, HrError>(&self.pool, principal.org_id, move |tx| {
             Box::pin(async move {
-                let total = sqlx::query_scalar("SELECT count(*) FROM person_binding_reviews WHERE ($1::uuid IS NULL OR subject_id=$1)")
-                    .bind(subject).fetch_one(tx.as_mut()).await?;
-                let items: Vec<PersonBindingReview> = sqlx::query_as("SELECT subject_kind,subject_id,reason,evidence,created_at FROM person_binding_reviews WHERE ($3::uuid IS NULL OR subject_id=$3) ORDER BY created_at,subject_kind,subject_id LIMIT $1 OFFSET $2")
-                    .bind(limit).bind(offset).bind(subject).fetch_all(tx.as_mut()).await?;
+                let mut count = visible_reviews(&reach, subject);
+                count.push(" SELECT count(*) FROM reviews");
+                let total = count.build_query_scalar().fetch_one(tx.as_mut()).await?;
+                let mut rows = visible_reviews(&reach, subject);
+                rows.push(" SELECT subject_kind,subject_id,reason,evidence || jsonb_build_object('candidates', \
+                    coalesce((SELECT jsonb_agg(c.value || jsonb_build_object('name',e.name,'employee_number',e.employee_number) ORDER BY e.id) \
+                    FROM jsonb_array_elements(reviews.evidence->'candidates') c \
+                    JOIN visible_employees e ON e.id=(c.value->>'employee_id')::uuid),'[]'::jsonb)) AS evidence,created_at \
+                    FROM reviews ORDER BY created_at,subject_kind,subject_id LIMIT ");
+                rows.push_bind(limit).push(" OFFSET ").push_bind(offset);
+                let items: Vec<PersonBindingReview> = rows.build_query_as().fetch_all(tx.as_mut()).await?;
                 let subjects = items.iter().map(|item|item.subject_id).collect::<Vec<_>>();
                 let me = actor_employee_id(tx,&principal).await?;
                 let event = access_event(&principal,DirectoryAccess::PersonBindingReview,&subjects,me,serde_json::json!({"row_count":items.len()}))?;
@@ -63,4 +71,26 @@ impl HrService {
             })
         }).await
     }
+}
+
+fn visible_reviews(reach: &HrReach, subject: Option<Uuid>) -> QueryBuilder<Postgres> {
+    let mut q = QueryBuilder::new(
+        "WITH visible_employees AS (SELECT e.id,e.name,e.employee_number FROM person_employees_current e",
+    );
+    q.push(crate::assignment_lateral!()).push(" WHERE ");
+    push_reach(&mut q, reach);
+    q.push("), reviews AS (SELECT r.* FROM person_binding_reviews_open r WHERE (");
+    q.push_bind(subject)
+        .push("::uuid IS NULL OR r.subject_id=")
+        .push_bind(subject)
+        .push(") ");
+    if *reach != HrReach::All {
+        q.push("AND ((r.subject_kind='EMPLOYEE' AND r.subject_id IN (SELECT id FROM visible_employees)) \
+            OR (r.subject_kind='ACCOUNT' AND EXISTS(SELECT 1 FROM users u WHERE u.org_id=r.org_id \
+            AND u.id=r.subject_id AND u.employee_id IN (SELECT id FROM visible_employees))) \
+            OR (r.subject_kind='ACCOUNT' AND EXISTS(SELECT 1 FROM jsonb_array_elements(r.evidence->'candidates') c \
+            JOIN visible_employees e ON e.id=(c->>'employee_id')::uuid))) ");
+    }
+    q.push(")");
+    q
 }

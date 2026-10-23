@@ -16,6 +16,7 @@ fn rehire(f: &Fixture, key: &str, hire_date: String) -> RehireEmployeeRequest {
         contract_end_date: Some(kst_day(400)),
         phone: None,
         base_pay_won: None,
+        pay_unit: None,
         idempotency_key: key.into(),
     }
 }
@@ -122,13 +123,22 @@ async fn an_imported_former_employee_reuses_their_person(pool: PgPool) {
                 .rehire_employee(im.f.principal.clone(), id, {
                     let mut request = rehire(&im.f, "import-re-1", kst_day(0));
                     request.phone = Some("010-1234-5678".into());
-                    request.base_pay_won = Some(2_500_000);
+                    request.base_pay_won = Some(12_000);
+                    request.pay_unit = Some("HOURLY".into());
                     request
                 })
                 .await
                 .unwrap();
         assert_eq!(replayed, expected_replay);
         assert_eq!(detail.employee.id, id);
+        let pay: (Option<i64>, Option<String>) = sqlx::query_as(
+            "SELECT base_pay_won,pay_unit FROM employee_employment_profiles WHERE employee_id=$1",
+        )
+        .bind(id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(pay, (Some(12_000), Some("HOURLY".into())));
         assert_eq!(
             serde_json::to_value(&detail.employee).unwrap()["person_id"],
             person.to_string()
@@ -184,7 +194,7 @@ async fn a_future_rehire_is_pre_hire_with_a_scheduled_onboard(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn a_former_employee_without_a_profile_can_rehire_before_pay_is_recorded(pool: PgPool) {
+async fn a_profileless_rehire_still_requires_phone_and_base_pay(pool: PgPool) {
     let f = fixture(pool.clone()).await;
     let id = exited(&f, &pool, "unpaid-1").await;
     sqlx::query("DELETE FROM employee_employment_profiles WHERE employee_id=$1")
@@ -192,10 +202,22 @@ async fn a_former_employee_without_a_profile_can_rehire_before_pay_is_recorded(p
         .execute(&pool)
         .await
         .unwrap();
-    let (_, detail) =
-        f.hr.rehire_employee(f.principal.clone(), id, rehire(&f, "unpaid-2", kst_day(0)))
-            .await
-            .unwrap();
-    assert_eq!(detail.employee.id, id);
-    assert!(detail.employment.unwrap().base_pay.is_none());
+    for (phone, pay) in [(None, Some(12_000)), (Some("010-1234-5678"), None)] {
+        let mut body = rehire(&f, "missing-facts", kst_day(0));
+        body.phone = phone.map(str::to_owned);
+        body.base_pay_won = pay;
+        body.pay_unit = Some("HOURLY".into());
+        let refused =
+            f.hr.rehire_employee(f.principal.clone(), id, body)
+                .await
+                .unwrap_err();
+        assert_eq!((refused.status.as_u16(), refused.code), (422, "validation"));
+        let status: String =
+            sqlx::query_scalar("SELECT employment_status FROM employees WHERE id=$1")
+                .bind(id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(status, "EXITED", "a refusal rolls back the new period");
+    }
 }

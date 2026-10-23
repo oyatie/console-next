@@ -2,8 +2,6 @@ import type { koIdentity } from "../ko/identity";
 
 export const enIdentity: Partial<Record<keyof typeof koIdentity, string>> = {
   "identity.binding.title": "Person binding evidence",
-  "identity.binding.note": "These records were kept separate because employee number and birth date could not confirm the binding. They remain separate until reviewed.",
-  "identity.binding.candidate": "Compare employee record · {birth}",
   "identity.title": "Is {name} someone already on file?",
   "identity.fact": "An import or registration found a record that may be the same person. If they differ, the flag clears; if they are the same, this record merges into the one kept.",
   "identity.verdict": "Verdict",

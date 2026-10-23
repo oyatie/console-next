@@ -37,7 +37,7 @@ export function IdentitySheet({ d, onClose, onDone }: { d: Detail; onClose: () =
   const count = Object.values(missing).filter(Boolean).length;
   const run = useCommand({
     run: () => resolveIdentity(e.id, { verdict: verdict!, keep: verdict === "SAME" ? keep! : undefined, reason: reason.trim() }),
-    invalidates: ["/api/v1/employees", "/api/v1/change-requests"],
+    invalidates: ["/api/v1/employees", "/api/v1/change-requests", "/api/v1/person-binding-reviews"],
     onSuccess: onDone,
   });
   const kept = others.find((x) => x.id === keep);
@@ -58,7 +58,8 @@ export function IdentitySheet({ d, onClose, onDone }: { d: Detail; onClose: () =
         run.mutate(undefined);
       }}
     >
-      <BindingEvidence employeeId={e.id} />
+      <p>{t("identity.fact")}</p>
+      <BindingEvidence subjectId={e.id} employeeId={e.id} />
       <ChoiceField
         label={t("identity.verdict")}
         required

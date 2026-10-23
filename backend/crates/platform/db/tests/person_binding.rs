@@ -47,7 +47,10 @@ async fn every_tenant_account_is_bound_and_person_facts_are_authoritative(pool: 
         .fetch_one(tx.as_mut())
         .await
         .unwrap();
-    assert_eq!(legacy, "Before", "the N-1 snapshot is not dual-written");
+    assert_eq!(
+        legacy, "After",
+        "the N-1 column projects the current Person"
+    );
     tx.commit().await.unwrap();
     let error = sqlx::query("UPDATE users SET person_id=NULL WHERE id=$1")
         .bind(user)

@@ -116,10 +116,18 @@ async fn write_rehire_profile(
     let phone = request
         .phone
         .clone()
-        .map(normalize_phone_e164)
-        .transpose()?;
-    let won = request.base_pay_won;
-    if won.is_some_and(|amount| amount < 0) {
+        .ok_or_else(|| {
+            HrError::validation("phone is required when the former employee has no profile")
+        })
+        .and_then(normalize_phone_e164)?;
+    let won = request.base_pay_won.ok_or_else(|| {
+        HrError::validation("base_pay_won is required when the former employee has no profile")
+    })?;
+    let pay_unit = request
+        .pay_unit
+        .as_deref()
+        .ok_or_else(|| HrError::validation("pay_unit is required with base_pay_won"))?;
+    if won < 0 {
         return Err(HrError::validation("base_pay_won must not be negative"));
     }
     sqlx::query(
@@ -138,7 +146,7 @@ async fn write_rehire_profile(
     .bind(*actor.as_uuid())
     .bind(contract_start)
     .bind(request.contract_end_date.as_deref())
-    .bind(won.map(|_| console_hr_domain::profile::enums::PayUnit::Monthly.as_str()))
+    .bind(pay_unit)
     .execute(tx.as_mut())
     .await?;
     Ok(())

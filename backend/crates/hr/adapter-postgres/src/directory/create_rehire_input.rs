@@ -1,6 +1,6 @@
 //! The 재입사 request (BW-19 2) and its normalisation.
 
-use console_hr_domain::profile::enums::EmploymentType;
+use console_hr_domain::profile::enums::{EmploymentType, PayUnit};
 use console_hr_domain::text::{normalize_enum_text, normalize_optional_text, parse_yyyy_mm_dd};
 use serde::Deserialize;
 use uuid::Uuid;
@@ -26,12 +26,14 @@ pub struct RehireEmployeeRequest {
     /// Required for CONTRACT, refused otherwise.
     #[serde(default)]
     pub contract_end_date: Option<String>,
-    /// Optional contact when an imported former employee has no profile.
+    /// Required contact when an imported former employee has no profile.
     #[serde(default)]
     pub phone: Option<String>,
-    /// Optional monthly base pay when the person has no profile yet.
+    /// Required base pay when the person has no profile yet.
     #[serde(default)]
     pub base_pay_won: Option<i64>,
+    #[serde(default)]
+    pub pay_unit: Option<String>,
     pub idempotency_key: String,
 }
 
@@ -40,7 +42,7 @@ impl RehireEmployeeRequest {
     pub fn request_hash(&self, employee_id: Uuid) -> String {
         sha256_hex(
             format!(
-                "rehire:{employee_id}:{}:{}:{}:{}:{:?}:{:?}:{:?}:{:?}",
+                "rehire:{employee_id}:{}:{}:{}:{}:{:?}:{:?}:{:?}:{:?}:{:?}",
                 self.hire_date,
                 self.employment_type,
                 self.org_unit_id,
@@ -48,7 +50,8 @@ impl RehireEmployeeRequest {
                 self.company,
                 self.contract_end_date,
                 self.phone,
-                self.base_pay_won
+                self.base_pay_won,
+                self.pay_unit
             )
             .as_bytes(),
         )
@@ -93,6 +96,9 @@ pub fn normalize_rehire(
         (_, None) => {}
     }
     request.contract_end_date = end.map(|date| date.to_string());
+    request.pay_unit = normalize_optional_text(request.pay_unit)
+        .map(|unit| PayUnit::parse(&normalize_enum_text(unit)).map(|unit| unit.as_str().to_owned()))
+        .transpose()?;
     Ok(request)
 }
 
