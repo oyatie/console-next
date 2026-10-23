@@ -416,11 +416,11 @@ required-features = ["workspace"]
 
 [[test]]
 name = "workbench_api"
-required-features = ["workspace"]
+required-features = ["full"]
 
 [[test]]
 name = "workbench_native_api"
-required-features = ["workspace"]
+required-features = ["full"]
 
 [[test]]
 name = "workflow_automation_triggers"
