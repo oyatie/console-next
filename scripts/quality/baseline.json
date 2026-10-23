@@ -257,7 +257,6 @@
   "unused-export:apps/web/src/lib/pure/three-way.ts:Choice": 1,
   "unused-export:apps/web/src/lib/pure/three-way.ts:Field": 1,
   "unused-export:apps/web/src/lib/pure/three-way.ts:Outcome": 1,
-  "unused-export:apps/web/src/lib/react/query-defaults.ts:isAnswer": 1,
   "unused-export:apps/web/src/lib/reason-codes.ts:ReasonOption": 1,
   "unused-export:apps/web/src/lib/release-toggles.ts:released": 1,
   "unused-export:apps/web/src/reference/authz/api.ts:AccessEffective": 1,
