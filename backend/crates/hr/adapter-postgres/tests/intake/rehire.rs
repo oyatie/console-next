@@ -246,14 +246,21 @@ async fn released_rehire_without_pay_unit_uses_recorded_terms_or_keeps_unknown(p
                     .await
                     .unwrap();
             assert_eq!(replayed, expected_replay);
-            let unit: Option<String> = sqlx::query_scalar(
-                "SELECT pay_unit FROM employee_employment_profiles WHERE employee_id=$1",
+            let pay: (Option<String>, Option<i64>, i64) = sqlx::query_as(
+                "SELECT pay_unit,base_pay_won,base_pay::bigint FROM employee_employment_profiles WHERE employee_id=$1",
             )
             .bind(id)
             .fetch_one(&pool)
             .await
             .unwrap();
-            assert_eq!(unit.as_deref(), recorded.then_some("HOURLY"));
+            assert_eq!(
+                pay,
+                (
+                    recorded.then(|| "HOURLY".into()),
+                    recorded.then_some(12_000),
+                    12_000
+                )
+            );
         }
     }
 }

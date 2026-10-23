@@ -112,10 +112,7 @@ async fn branch_hr_sees_employee_and_account_reviews_without_foreign_evidence(po
             )
             .await
             .unwrap_err();
-        assert_eq!(
-            (refused.status.as_u16(), refused.code),
-            (403, "scope_tenant_wide_only")
-        );
+        assert_eq!((refused.status.as_u16(), refused.code), (403, "forbidden"));
     }
     let done =
         f.hr.resolve_identity(

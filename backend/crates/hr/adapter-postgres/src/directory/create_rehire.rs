@@ -132,11 +132,13 @@ async fn write_rehire_profile(
     if won < 0 {
         return Err(HrError::validation("base_pay_won must not be negative"));
     }
+    // Released clients can omit the unit; preserve the legacy amount without inventing a typed wage.
     sqlx::query(
         "INSERT INTO employee_employment_profiles (employee_id, org_id, employment_type, \
              phone_e164, base_pay, base_pay_won, idempotency_key, request_hash, created_by, \
              contract_start_date, contract_end_date, pay_unit) \
-         VALUES ($1, $2, $3, $4, $5::numeric, $5, $6, $7, $8, $9::DATE, $10::DATE, $11)",
+         VALUES ($1, $2, $3, $4, $5::numeric, CASE WHEN $11::text IS NULL THEN NULL ELSE $5 END, \
+                 $6, $7, $8, $9::DATE, $10::DATE, $11)",
     )
     .bind(employee_id)
     .bind(org_uuid)
