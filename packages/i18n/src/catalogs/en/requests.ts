@@ -1,6 +1,7 @@
 import type { koRequests } from "../ko/requests";
 
 export const enRequests: Partial<Record<keyof typeof koRequests, string>> = {
+  "requests.reason.DATA_ENTRY_ERROR": "Data entry error",
   "requests.title": "Change requests",
   "requests.list": "Requests",
   "requests.lanes": "Whose turn",

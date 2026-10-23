@@ -24,11 +24,11 @@ test("parity: solo setup, launch, home and source failure", async ({ browser }) 
   await startOperations(a);
   await capture(a, "home-first-run", ["H4-launch-receipt", "P7-day1-home", "P7-golive-done", "H5-deadline", "H7-scale-held"], "Actual post-launch Home; only a small tenant, not a scale or legal-deadline fixture.");
   await inspect(a, "home-first-run", "operating");
-  await a.route(/\/api\/v1\/employees\?.*identity_review_required=true/, (r) => r.fulfill({ status: 500, body: "" }));
+  await a.route(/\/api\/v1\/me\/action-inbox(?:\?|$)/, (r) => r.fulfill({ status: 500, body: "" }));
   await a.reload();
   await expect(a.getByRole("alert").filter({ hasText: "일부 항목을 불러오지 못했습니다" })).toBeVisible();
   await capture(a, "home-first-run", ["H6-source-error"], "Controlled GET500; real server handles all other reads. Partial-error UI is visible.");
-  await a.unroute(/\/api\/v1\/employees\?.*identity_review_required=true/);
+  await a.unroute(/\/api\/v1\/me\/action-inbox(?:\?|$)/);
   await a.route(/\/api\/v1\/hr\/exit-cases(\?|$)/, (r) => r.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ error: { code: "forbidden", message: "forbidden" } }) }));
   await a.reload();
   await expect(a.getByRole("region", { name: "일부 항목은 볼 권한이 없습니다" })).toBeVisible();

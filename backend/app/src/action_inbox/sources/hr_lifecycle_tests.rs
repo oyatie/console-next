@@ -80,6 +80,11 @@ async fn foreign_source_cursor_respects_timestamp_and_namespaced_ties(pool: PgPo
         assert_eq!(actual.items.len(), 1);
         assert_eq!(actual.items[0].id, format!("hr_lifecycle:{expected}"));
         assert_eq!(actual.items[0].kind, "lifecycle_apply_failed");
+        assert!(actual.items[0].ref_code.is_empty());
+        assert_eq!(
+            actual.items[0].context.as_ref().unwrap()["lifecycle"]["action_kind"],
+            "ONBOARD"
+        );
         assert_eq!(actual.has_more, more);
     }
 }

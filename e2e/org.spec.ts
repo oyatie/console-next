@@ -92,7 +92,7 @@ test.fixme("an org change is drafted, submitted from its page, rejected with a r
 
   // My rejected change waits for my redraft: Home's turn leads to the reason, and the default view still lists it.
   await go(admin, "/");
-  await expect(admin.getByRole("region", { name: "내가 올린 조직 변경" })).toContainText("영남권");
+  await expect(admin.getByRole("region", { name: "업무함", exact: true })).toContainText("영남권");
   await expect(admin.getByRole("link", { name: "반려 사유 보기" })).toHaveCount(1);
   await go(admin, "/org/changes");
   await expect(admin.getByRole("button", { name: "진행 중 1" })).toHaveAttribute("aria-pressed", "true");

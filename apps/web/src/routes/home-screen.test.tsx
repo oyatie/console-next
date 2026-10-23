@@ -51,6 +51,7 @@ test("the first inbox and its setup references hold Home until its first complet
   expect(render()).toContain('data-pending="true"');
   expect(state.hold).toHaveBeenLastCalledWith(true);
   expect(state.options && readIdentity(state.options)).toBe(readIdentity(cursorPages("/api/v1/me/action-inbox", { filter: "turn" })));
+  expect(state.options).toMatchObject({ refetchOnMount: "always" });
   expect(state.reads.every((read) => !read.enabled)).toBe(true);
   landed(checklist);
   expect(render()).toContain('data-pending="true"');

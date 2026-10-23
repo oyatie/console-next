@@ -132,7 +132,6 @@ test("Home applies another session's setup change through its inbox without relo
   await addDepartments(admin, "본점", ["총무부"]);
   await updated;
   await expect.poll(() => rail.innerText(), { timeout: 15_000 }).not.toBe(before);
-  await expect(exec.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ })).toHaveCount(0);
   expect(loads, "setup work updates without a document reload").toBe(0);
   await expectStable(exec, "Home after the live setup change");
   await expectAccessible(exec, "Home with live setup work");

@@ -85,7 +85,7 @@ test("parity 1012: Home loading, failed producer and denied producer", async ({ 
   const a = await openTenant(browser, "parity-home-reads-1012", "패리티읽기");
   await setupCompany(a, "패리티읽기", "본사");
   await startOperations(a);
-  const api = /\/api\/v1\/employees\?.*identity_review_required=true/;
+  const api = /\/api\/v1\/me\/action-inbox(?:\?|$)/;
   let release!: () => void;
   let called!: () => void;
   const gate = new Promise<void>((ok) => { release = ok; });

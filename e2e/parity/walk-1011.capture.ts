@@ -79,7 +79,7 @@ test("parity 1011: Home and zero-facet roster read states", async ({ browser }) 
   const a = await openTenant(browser, "parity-states-1011", "패리티상태");
   await setupCompany(a, "패리티상태", "본사");
   await startOperations(a);
-  await readStates(a, "home-first-run", "/", /\/api\/v1\/employees\?.*identity_review_required=true/, ["H11-loading", "S1-loading"], ["H6-source-error"]);
+  await readStates(a, "home-first-run", "/", /\/api\/v1\/me\/action-inbox(?:\?|$)/, ["H11-loading", "S1-loading"], ["H6-source-error"]);
   await readStates(a, "people", "/people", /\/api\/v1\/employees(\?|$)/, ["E12-loading", "R-loading"], ["E12-error", "R-error"]);
   await inspect(a, "people", "roster-error");
 });

@@ -415,6 +415,15 @@ async fn pending_period_unlock_is_only_the_eligible_second_persons_work_and_leav
     let rows = items_of(&page, "period_unlock");
     assert_eq!(rows.len(), 1, "{page}");
     assert_eq!(rows[0]["id"], format!("period_unlock:{request}"));
+    assert_eq!(rows[0]["ref"], "");
+    assert_eq!(rows[0]["title"], "");
+    assert_eq!(
+        rows[0]["context"]["unlock"],
+        json!({
+            "domain": "payroll", "periodStart": "2026-06-01", "periodEnd": "2026-06-30",
+            "requester": "업무함 요청자", "reason_code": "PAYROLL_ERROR"
+        })
+    );
     let requester_ctx = http::Ctx {
         service: service.clone(),
         token: requester.token.clone(),

@@ -47,21 +47,20 @@ for (const explicit of [false, true]) {
     await expect(page.getByText("확인 필요", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("5개 빠짐", { exact: true })).toBeVisible();
     const inbox = await api<{ items: unknown[] }>("/api/v1/me/action-inbox");
-    expect(inbox.items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "hr_request", id: expect.stringMatching(/^hr_register:/), title: "최최소" })]));
+    expect(inbox.items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "register_review", id: expect.stringMatching(/^hr_register:/), title: "최최소" })]));
     const reviewRead = page.waitForResponse((r) => {
       const url = new URL(r.url());
-      return r.request().method() === "GET" && url.pathname === "/api/v1/employees" && url.searchParams.get("register_review_required") === "true";
+      return r.request().method() === "GET" && url.pathname === "/api/v1/me/action-inbox";
     });
     await go(page, "/");
     const reviewResponse = await reviewRead;
     expect(reviewResponse.status(), "Home's register-review read failed").toBe(200);
     const reviewPage = await reviewResponse.json() as { items: { id: string }[] };
-    expect(reviewPage.items.map(({ id }) => id)).toContain(detail.employee.id);
+    expect(reviewPage.items.map(({ id }) => id)).toContain(`hr_register:${detail.employee.id}`);
     await expect(page.getByRole("main").getByText("불러오는 중…", { exact: true })).toBeHidden({ timeout: 15_000 });
-    const review = page.getByRole("region", { name: "확인할 직원 기록" });
-    await expect(review.getByRole("link", { name: "최최소", exact: true })).toBeVisible();
-    await expect(review.getByText("확인 필요", { exact: true })).toBeVisible();
-    await review.getByRole("link", { name: /명부 항목 빠짐/ }).click();
+    const review = page.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ hasText: "최최소" }).filter({ has: page.locator('a[href="/people?review=register"]') });
+    await expect(review.getByRole("link", { name: "사유 확인", exact: true })).toBeVisible();
+    await review.getByRole("link", { name: "전체 보기", exact: true }).click();
     await expect(page.getByRole("grid", { name: "직원", exact: true }).getByText("최최소", { exact: true })).toBeVisible();
     await page.getByRole("link", { name: "미배치", exact: true }).click();
     await expect(page.getByText("최최소", { exact: true }).first()).toBeVisible();

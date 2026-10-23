@@ -11,6 +11,7 @@ import { ORG_READS, unitsQuery } from "../../../reference/org/api";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { Dialog } from "../../../ui/dialog";
+import { commitLabel } from "../../../ui/composer/actions";
 import { changeCommands, changeQuery } from "../api";
 import { EffectuateConsequence } from "./effectuate-consequence";
 
@@ -35,7 +36,7 @@ export function InboxCommand({ id, command }: { id: string; command: "approve" |
   const disabled = !detail.isSuccess || detail.isFetching || action.isPending || (!!needsHeadcount && (!headcount || units.isFetching));
   if (command === "approve") return <div className="row">
     {step && <Chip tone="info">{t("orgChange.turn", { role })}</Chip>}
-    <Button variant="primary" disabled={disabled || !step} onClick={() => action.mutate(undefined)}>{step ? t("org.change.decide.approve", { role }) : t("org.change.step.APPROVED")}</Button>
+    <Button variant="primary" disabled={disabled || !step} onClick={() => action.mutate(undefined)}>{commitLabel({ kind: "orgChange", mode: "approve" })}</Button>
     <CommandError error={action.error} />
   </div>;
   return <div className="form">
@@ -45,8 +46,8 @@ export function InboxCommand({ id, command }: { id: string; command: "approve" |
       <QueryState q={detail}>{(d) => <EffectuateConsequence d={d} headcount={headcount} />}</QueryState>
       <CommandError error={action.error} />
       <div className="form__actions">
-        <Button onClick={() => setOpen(false)}>{t("common.back")}</Button>
-        <Button variant="primary" disabled={disabled} onClick={() => action.mutate(undefined)}>{t("org.change.effectuate")}</Button>
+        <Button onClick={() => setOpen(false)}>{t("composer.dismiss")}</Button>
+        <Button variant="primary" disabled={disabled} onClick={() => action.mutate(undefined)}>{commitLabel({ kind: "orgChange", mode: "apply" })}</Button>
       </div>
     </Dialog>
   </div>;

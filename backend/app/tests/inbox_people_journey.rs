@@ -75,8 +75,13 @@ async fn product_created_people_work_preserves_sources_permissions_and_resolutio
         .find(|item| item["id"] == format!("hr_request:{request_id}"))
         .expect("the independent reviewer receives the open request");
     assert_eq!(correction["kind"], "hr_request");
-    assert_eq!(correction["title"], request["kind"]);
-    assert_eq!(correction["ref"], request["reason_code"]);
+    assert_eq!(correction["context"]["request"]["kind"], request["kind"]);
+    assert_eq!(
+        correction["context"]["request"]["reason_code"],
+        request["reason_code"]
+    );
+    assert_eq!(correction["ref"], "");
+    assert_eq!(correction["title"], "");
     assert_eq!(correction["links"][0]["kind"], "change_request");
     assert_eq!(correction["links"][0]["id"], request_id);
     assert_eq!(correction["links"][1]["kind"], "employee");
@@ -93,6 +98,9 @@ async fn product_created_people_work_preserves_sources_permissions_and_resolutio
             .expect("every native pending filing reaches the shared queue");
         assert_eq!(item["kind"], "insurance_filing");
         assert_eq!(item["title"], task["name"]);
+        assert_eq!(item["ref"], "");
+        assert_eq!(item["context"]["insurance"]["insurer"], task["insurer"]);
+        assert_eq!(item["context"]["insurance"]["kind"], task["kind"]);
         assert_eq!(item["links"][0]["kind"], "statutory");
         assert_eq!(item["links"][0]["id"], event);
         let due = task["due_date"]

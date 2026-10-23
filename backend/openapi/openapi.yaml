@@ -31074,6 +31074,46 @@ components:
           type: object
           description: Source-owned facts for the row's command and informed grant confirmation.
           properties:
+            unlock:
+              type: object
+              required: [domain, periodStart, periodEnd, requester, reason_code]
+              properties:
+                domain:
+                  type: string
+                periodStart:
+                  type: string
+                periodEnd:
+                  type: string
+                requester:
+                  type: [string, 'null']
+                reason_code:
+                  type: string
+            insurance:
+              type: object
+              required: [insurer, kind, effective_date]
+              properties:
+                insurer:
+                  type: string
+                kind:
+                  type: string
+                effective_date:
+                  type: string
+            lifecycle:
+              type: object
+              required: [action_kind, effective_date]
+              properties:
+                action_kind:
+                  type: string
+                effective_date:
+                  type: string
+            request:
+              type: object
+              required: [kind, reason_code]
+              properties:
+                kind:
+                  type: string
+                reason_code:
+                  type: string
             command:
               type: [string, 'null']
               enum: [approve, effectuate, null]

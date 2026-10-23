@@ -31,7 +31,7 @@ for (const [index, path] of routes.entries()) {
     // Recovery is a person's action, with the same failure reference available to support.
     counts.clear();
     await failed.getByRole("button", { name: "다시 불러오기", exact: true }).click();
-    await expect.poll(() => counts.get("/api/v1/onboarding/checklist") ?? 0).toBe(1);
+    await expect.poll(() => [...counts].filter(([key]) => key.startsWith(path === "/" ? "/api/v1/me/action-inbox" : "/api/v1/onboarding/checklist")).reduce((sum, [, count]) => sum + count, 0)).toBe(1);
     await page.context().close();
   });
 }
