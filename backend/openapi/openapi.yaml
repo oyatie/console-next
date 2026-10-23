@@ -8822,7 +8822,7 @@ paths:
         RETURN_FROM_LEAVE only from ON_LEAVE (to ACTIVE); ONBOARD/TRANSFER/PROMOTE not while ON_LEAVE;
         CONTRACT_RENEWAL keeps the current status and requires employment_type CONTRACT. Exits are never recorded
         here: OFFBOARD/TERMINATE are 422 — an employee leaves only through an exit case, whose HR confirmation
-        records TERMINATE and whose reject/cancel records the compensating EXIT_REVERSAL. No act needs an
+        records TERMINATE and whose rejection records the compensating EXIT_REVERSAL. No act needs an
         acknowledgement (decisions #3, A13). TRANSFER, LEAVE_OF_ABSENCE and RETURN_FROM_LEAVE wait
         for 운영 시작: 409 phase_not_operating while the tenant is in SETUP (first-run §2). A TRANSFER that changes
         to_company is 409 entity_change_needs_group_transfer: another 법인 is a 전적, never a transfer (E-S3b).
@@ -14119,7 +14119,7 @@ paths:
         - hr
       operationId: cancelEmployeeExitCase
       summary: Cancel an employee exit report
-      description: Moves a REPORTED or HR_CONFIRMED case to CANCELLED. While REPORTED the reporter capability (exit_case_report) or exit_case_hr_confirm suffices; once HR_CONFIRMED it takes exit_case_hr_confirm (403 otherwise). A case the HR confirmation already exited is reversed with a compensating EXIT_REVERSAL lifecycle event in the same audited transaction; a still-SCHEDULED exit is withdrawn instead (its TERMINATE event becomes CANCELLED).
+      description: Withdraws a REPORTED case before HR confirmation. The reporter capability (exit_case_report) or exit_case_hr_confirm is required. After HR confirmation, cancellation is refused with 409 exit_cancel_after_hr_confirmation, including scheduled and applied exits; nothing is changed. Reject the case with a reason instead. A cancellation never reverses an effective exit.
         403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person). Nobody records an HR act on their own record, whatever they hold; another holder in scope, or the ops account, records it. The ops account passes only when no other active account holds the act over the employee, and that pass is audited as authz.own_record.break_glass with review_required (people-self-33).
       security:
       - bearerAuth: []
@@ -14168,7 +14168,7 @@ paths:
         that exits the employee; it requires all four signoffs (422 lifecycle_signoff_required naming the first
         missing one). HQ tier (hq_confirmation=true) moves HR_CONFIRMED to HQ_CONFIRMED and must be a
         different actor than the HR confirmer (403). With a complete settlement_input an HQ-confirmed case becomes
-        SETTLEMENT_READY. Any other starting state is 409 invalid_transition; see EmployeeExitCaseStatus. A case whose effective_exit_date is after today (KST) is confirmed ahead: the TERMINATE event is SCHEDULED (exit_event_state) and exits the employee on that date; reject/cancel before then withdraws it (no EXIT_REVERSAL). Like any lifecycle event, the TERMINATE must leave the employee's later SCHEDULED events valid, which an exit never does: 409 lifecycle_schedule_conflict (error.refusals names each pending event) until they are cancelled.
+        SETTLEMENT_READY. Any other starting state is 409 invalid_transition; see EmployeeExitCaseStatus. A case whose effective_exit_date is after today (KST) is confirmed ahead: the TERMINATE event is SCHEDULED (exit_event_state) and exits the employee on that date; rejection before then withdraws it (no EXIT_REVERSAL). Like any lifecycle event, the TERMINATE must leave the employee's later SCHEDULED events valid, which an exit never does: 409 lifecycle_schedule_conflict (error.refusals names each pending event) until they are cancelled.
         403 own_record_forbidden when the employee is the caller's own record (linked account, or the same person). Nobody records an HR act on their own record, whatever they hold; another holder in scope, or the ops account, records it. The ops account passes only when no other active account holds the act over the employee, and that pass is audited as authz.own_record.break_glass with review_required (people-self-33).
       security:
       - bearerAuth: []
@@ -37639,20 +37639,20 @@ components:
         HQ_CONFIRMED --complete settlement source (confirm/approval-draft)--> SETTLEMENT_READY
         HQ_CONFIRMED | SETTLEMENT_READY | APPROVAL_DRAFTED --approval-draft submit=false--> APPROVAL_DRAFTED
         HQ_CONFIRMED | SETTLEMENT_READY | APPROVAL_DRAFTED --approval-draft submit=true--> SUBMITTED
-        REPORTED | HR_CONFIRMED --cancel(reason)--> CANCELLED
+        REPORTED --cancel(reason)--> CANCELLED
         REPORTED .. APPROVAL_DRAFTED --reject(reason)--> REJECTED
         ```
 
         SUBMITTED, REJECTED and CANCELLED are terminal: confirm, approval-draft, reject and cancel all answer
-        409 invalid_transition. approval-draft from HQ_CONFIRMED passes through SETTLEMENT_READY in the same call
+        409 invalid_transition (cancel after HR confirmation is 409 exit_cancel_after_hr_confirmation). approval-draft from HQ_CONFIRMED passes through SETTLEMENT_READY in the same call
         (it requires a complete settlement package).
 
         Exit effect: the HR-tier confirmation is the only lifecycle route to EXITED — it records a TERMINATE
         lifecycle event (EXITED, exit_date = effective_exit_date). Direct OFFBOARD/TERMINATE lifecycle events are
         refused (422); an employee import that states EXITED is the one non-lifecycle path, and an exit case
-        cannot be reported for an EXITED employee (409). Rejecting or cancelling a case after HR confirmation records a compensating EXIT_REVERSAL
+        cannot be reported for an EXITED employee (409). Rejecting a case after HR confirmation records a compensating EXIT_REVERSAL
         lifecycle event that restores the status the exit replaced (and clears exit_date), audited with the
-        reject/cancel. A linked absence alert returns to OPEN.
+        rejection. A linked absence alert returns to OPEN.
       enum:
       - REPORTED
       - HR_CONFIRMED

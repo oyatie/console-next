@@ -8,7 +8,7 @@ description: >-
   RETURN_FROM_LEAVE only from ON_LEAVE (to ACTIVE); ONBOARD/TRANSFER/PROMOTE not while ON_LEAVE;
   CONTRACT_RENEWAL keeps the current status and requires employment_type CONTRACT. Exits are never recorded
   here: OFFBOARD/TERMINATE are 422 — an employee leaves only through an exit case, whose HR confirmation
-  records TERMINATE and whose reject/cancel records the compensating EXIT_REVERSAL. No act needs an
+  records TERMINATE and whose rejection records the compensating EXIT_REVERSAL. No act needs an
   acknowledgement (decisions #3, A13). TRANSFER, LEAVE_OF_ABSENCE and RETURN_FROM_LEAVE wait
   for 운영 시작: 409 phase_not_operating while the tenant is in SETUP (first-run §2). A TRANSFER that changes
   to_company is 409 entity_change_needs_group_transfer: another 법인 is a 전적, never a transfer (E-S3b).

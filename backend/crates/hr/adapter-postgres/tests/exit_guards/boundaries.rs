@@ -216,7 +216,7 @@ async fn tenant_reason_flags_guard_and_default_to_voluntary(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn cancelling_a_voluntary_exit_does_not_end_the_restored_protected_leave(pool: PgPool) {
+async fn rejecting_a_voluntary_exit_does_not_end_the_restored_protected_leave(pool: PgPool) {
     let w = live(&pool).await;
     leave(&w, w.in_a, "WORK_INJURY", "2026-10-09", None).await;
     let c = report(&w, w.in_a, Some("PERSONAL"), "2026-10-10")
@@ -227,7 +227,7 @@ async fn cancelling_a_voluntary_exit_does_not_end_the_restored_protected_leave(p
         w.hr(w.hr_one),
         c["id"].as_str().unwrap().parse().unwrap(),
         serde_json::from_value(json!({"reason":"합성 취소"})).unwrap(),
-        "CANCELLED",
+        "REJECTED",
     )
     .await
     .unwrap();

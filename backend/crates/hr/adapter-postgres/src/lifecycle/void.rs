@@ -117,7 +117,7 @@ pub(super) async fn load_voidable(
     if matches!(kind.as_str(), "TERMINATE" | "OFFBOARD" | "EXIT_REVERSAL") {
         return Err(refusal(
             "lifecycle_void_exit_owned",
-            "an exit is reversed by rejecting or cancelling its exit case",
+            "an exit is reversed by rejecting its exit case with a reason",
         ));
     }
     if matches!(kind.as_str(), "ONBOARD" | "REHIRE" | "RESCIND") {

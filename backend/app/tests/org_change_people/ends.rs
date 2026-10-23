@@ -119,7 +119,7 @@ async fn regression_a_same_day_exit_leaves_every_count_at_once(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn cancelling_a_confirmed_exit_reopens_the_assignment(pool: PgPool) {
+async fn cancelling_a_confirmed_exit_is_refused_and_rejection_reopens_the_assignment(pool: PgPool) {
     let t = tenant(pool).await;
     let [_, pangyo] = t.workplaces;
     let stays = t.person("돌아온사람", t.sites[1], pangyo, "ACTIVE").await;
@@ -130,6 +130,17 @@ async fn cancelling_a_confirmed_exit_reopens_the_assignment(pool: PgPool) {
             "POST",
             &format!("{EXITS}/{case}/cancel"),
             Some(json!({ "reason": "잘못 보고" })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert_eq!(body["error"]["code"], "exit_cancel_after_hr_confirmation");
+    assert_eq!(chart(&t).await, (0, vec![0, 0]));
+    let (status, body) = t
+        .ops
+        .call(
+            "POST",
+            &format!("{EXITS}/{case}/reject"),
+            Some(json!({"reason":"잘못 보고"})),
         )
         .await;
     assert_eq!(status, StatusCode::OK, "{body}");

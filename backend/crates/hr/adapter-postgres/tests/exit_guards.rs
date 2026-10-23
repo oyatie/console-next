@@ -88,6 +88,8 @@ async fn count(pool: &PgPool, table: &str, w: &World) -> i64 {
 mod access;
 #[path = "exit_guards/boundaries.rs"]
 mod boundaries;
+#[path = "exit_guards/cancel.rs"]
+mod cancel_tests;
 #[path = "exit_guards/confirm.rs"]
 mod confirm_tests;
 #[path = "exit_guards/hooks.rs"]

@@ -37,7 +37,7 @@ pub fn normalize_lifecycle_transition(
     }
     // One coherent exit rule: an employee leaves only through an exit case,
     // whose HR confirmation records the TERMINATE event (and whose reject or
-    // cancel reverses it). A direct exit event would bypass HR/HQ review.
+    // rejection reverses it). A direct exit event would bypass HR/HQ review.
     if matches!(event_type.as_str(), "OFFBOARD" | "TERMINATE") {
         return Err(HrError::validation(
             "OFFBOARD and TERMINATE are recorded by confirming an exit case",
