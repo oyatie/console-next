@@ -22,7 +22,7 @@ test.fixme("an org change is drafted, submitted from its page, rejected with a r
   await card.getByLabel("부서 이름").fill("영남권");
   await card.getByRole("button", { name: /^오늘/ }).click();
   await card.getByLabel("사유").fill("영남 거점 검토");
-  await card.getByRole("button", { name: "초안 저장" }).click();
+  await card.getByRole("button", { name: "임시 저장" }).click();
 
   // The draft names what it changes, and shows its own preflight without a click. No precheck step on the rail.
   await expect(admin.getByRole("heading", { name: "영남권 신설", level: 1 })).toBeVisible();
@@ -32,10 +32,10 @@ test.fixme("an org change is drafted, submitted from its page, rejected with a r
   await expectAccessible(admin, "org change page (draft)");
 
   // Re-dating starts from an empty date: nothing is chosen for the user.
-  await admin.getByRole("button", { name: "시행일·사유 수정" }).click();
+  await admin.getByRole("button", { name: "시행일·사유 변경" }).click();
   await expect(admin.getByRole("textbox", { name: /^시행일/ })).toHaveValue("");
   await admin.getByRole("button", { name: /^다음 주 월요일/ }).click();
-  await admin.getByRole("button", { name: "초안 저장" }).click();
+  await admin.getByRole("button", { name: "임시 저장" }).click();
   await expect(admin.getByRole("status").filter({ hasText: "초안을 고쳤습니다" })).toBeVisible();
 
   // Submitted from the page in one click; the drafter is told they cannot decide or withdraw it.

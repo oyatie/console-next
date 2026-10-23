@@ -11,7 +11,8 @@ import { useDirtyEscape } from "../../../lib/react/dirty-escape";
 import { landed } from "../../../lib/react/landed";
 import { APPROVAL_ROLE, actor, label } from "../../../lib/labels";
 import { ORG_READS } from "../../../reference/org/api";
-import { ApprovalCard } from "../../../ui/approval-card/approval-card";
+import { Composer } from "../../../ui/composer/composer";
+import { commitLabel } from "../../../ui/composer/actions";
 import { Button } from "../../../ui/button/button";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
@@ -41,10 +42,9 @@ export function ChangeDecision({ d, s, n, refetch, onNote, onReopen }: {
 }) {
   const [reason, setReason] = useState("");
   const [comment, setComment] = useState("");
-  // Esc closes the reject form (twice once a reason is typed); the card owns its form, so it is re-mounted closed.
-  const [shut, setShut] = useState(0);
+  // Esc closes the reject form, twice once a reason is typed.
+  const [rejecting, setRejecting] = useState(false);
   const role = label(APPROVAL_ROLE, s.step.roleKey);
-  const pos = { role, n: s.n, total: s.total };
   const self = me();
   const decide = useCommand({
     run: async (decision: "APPROVED" | "REJECTED") => {
@@ -84,36 +84,33 @@ export function ChangeDecision({ d, s, n, refetch, onNote, onReopen }: {
   });
   const { ref, armed } = useDirtyEscape<HTMLElement>(reason.trim() !== "", () => {
     setReason("");
-    setShut((x) => x + 1);
+    setRejecting(false);
     focusSoon("next-step");
   });
   const prev = s.prev;
   return (
     <section id="next-step" ref={ref} tabIndex={-1} aria-label={t("orgChange.next.title")} className={css.receipt}>
-      <ApprovalCard
-        key={shut}
-        eyebrow={<>{t("orgChange.list.title")} · <span className="code">{d.code}</span></>}
-        step={t("orgChange.decide.step", pos)}
+      <Composer
+        layout="inline" headingLevel={3}
+        kicker={<>{t("orgChange.list.title")} · <span className="code">{d.code}</span></>}
+        subtitle={t("orgChange.decide.step", { role, n: s.n, total: s.total })}
         title={t("orgChange.turn", { role })}
-        consequence={s.next ? t("orgChange.decide.approve.next", { role: label(APPROVAL_ROLE, s.next.roleKey) }) : t("orgChange.decide.approve.last", { date: fmtDate(d.effectiveDate) })}
-        rejectConsequence={t("orgChange.decide.reject.consequence")}
-        approveLabel={t("orgChange.decide.approve", pos)}
-        rejectLabel={t("orgChange.decide.reject", pos)}
-        reason={() => (
-          <>
-            <Field label={t("orgChange.decide.reject.reason")} required example={t("orgChange.decide.reject.example")}>
-              {(p) => <TextArea {...p} value={reason} onChange={(e) => setReason(e.target.value)} />}
-            </Field>
-            {armed && <p className="muted" role="status">{t("orgChange.escConfirm")}</p>}
-            <CommandError error={decide.error} />
-          </>
-        )}
-        reasonComplete={reason.trim() !== ""}
-        reasonMissing={t("orgChange.decide.reject.needReason")}
-        onApprove={() => decide.mutate("APPROVED")}
-        onReject={() => decide.mutate("REJECTED")}
-        pending={decide.isPending ? (decide.variables === "REJECTED" ? "reject" : "approve") : undefined}
+        action={{ kind: "orgChange", mode: rejecting ? "reject" : "approve" }}
+        tone={rejecting ? "danger" : "primary"}
+        pending={decide.isPending}
+        consequence={rejecting ? t("orgChange.decide.reject.consequence") : s.next ? t("orgChange.decide.approve.next", { role: label(APPROVAL_ROLE, s.next.roleKey) }) : t("orgChange.decide.approve.last", { date: fmtDate(d.effectiveDate) })}
+        blocked={rejecting && !reason.trim() ? { reason: t("orgChange.decide.reject.needReason") } : undefined}
+        onSubmit={() => { if (!rejecting || reason.trim()) decide.mutate(rejecting ? "REJECTED" : "APPROVED"); }}
+        onClose={rejecting ? () => setRejecting(false) : undefined}
+        secondary={!rejecting && <Button onClick={() => setRejecting(true)}>{commitLabel({ kind: "orgChange", mode: "reject" })}</Button>}
+        notice={<CommandError error={decide.error} />}
       >
+        {rejecting && <>
+          <Field label={t("orgChange.decide.reject.reason")} required example={t("orgChange.decide.reject.example")}>
+            {(p) => <TextArea {...p} value={reason} onChange={(e) => setReason(e.target.value)} />}
+          </Field>
+          {armed && <p className="muted" role="status">{t("orgChange.escConfirm")}</p>}
+        </>}
         <ol className={css.ops}>{d.proposal.map((op, i) => <li key={i}>{describeOp(op, n)}</li>)}</ol>
         <blockquote className={css.quote}>{d.reason}</blockquote>
         <p className="num">{t("orgChange.headcount")} · {t("orgChange.headcount.value", { count: d.headcount })}</p>
@@ -125,8 +122,7 @@ export function ChangeDecision({ d, s, n, refetch, onNote, onReopen }: {
             {(p) => <TextArea {...p} value={comment} onChange={(e) => setComment(e.target.value)} />}
           </Field>
         </details>
-        {decide.variables === "APPROVED" && <CommandError error={decide.error} />}
-      </ApprovalCard>
+      </Composer>
     </section>
   );
 }

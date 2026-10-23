@@ -2,9 +2,7 @@ import { useId, useState, type ReactNode } from "react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate, fmtNumber } from "@console/i18n/format";
-import { Button } from "../../../ui/button/button";
 import { DateField } from "../../../ui/date/date-field";
-import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Field, TextInput } from "../../../ui/field/field";
 import { CommandError } from "../../../lib/react/command-error";
 import { useCommand } from "../../../lib/react/command";
@@ -41,7 +39,7 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
   stale?: Effect | null;
   follow?: ReactNode;
   onSaved?: () => void;
-  onDone: (message: string) => void;
+  onDone: (message: string, reference?: string) => void;
 }) {
   const p = c.settlement_package;
   const stored: Fields = {
@@ -74,7 +72,7 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
     caseId: c.id,
     check: "submit",
     run: () => draftExitApproval(c.id, { submit: true }),
-    onSuccess: () => onDone(t("exit.settlement.submitted", { name })),
+    onSuccess: () => onDone(t("exit.settlement.submitted", { name }), c.id),
   });
   const same = KEYS.every((k) => f[k] === stored[k]);
   const computed = p && p.severance_pay_won != null && p.missing_source_fields.length === 0;
@@ -102,11 +100,7 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
   return (
     <StepFrame
       formId={formId}
-      onSubmit={() => {
-        setTried(true);
-        if (empty.length === 0) save.mutate(undefined);
-        else focusFirstInvalid(formId);
-      }}
+      onSubmit={() => submit.submit(undefined)}
       sheet={sheet}
       run={submit}
       busy={save.isPending}
@@ -115,18 +109,18 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
       employeeId={c.employee_id}
       consequence={t("exit.settlement.consequence", { name })}
       missing={tried ? empty.length : 0}
-      aside={aside ?? (sheet && <Button onClick={sheet.onClose} disabled={locked}>{t("common.back")}</Button>)}
-      primary={
-        <>
-          {/* Blue while computing is the next move, quiet once the figures match; submitting is final, so red (C21). */}
-          <Button type="submit" form={formId} variant={computed && same ? "secondary" : "primary"} disabled={locked}>{t("exit.settlement.saveCompute")}</Button>
-          {why ? (
-            <DisabledReason control={(d) => <Button variant="danger" {...d}>{t("exit.settlement.submit")}</Button>} reason={why} />
-          ) : (
-            <Button variant="danger" disabled={locked} onClick={() => submit.submit(undefined)}>{t("exit.settlement.submit")}</Button>
-          )}
-        </>
-      }
+      aside={aside}
+      action={{ kind: "settlement", mode: "request", count: 1 }}
+      tone="danger"
+      blocked={why ? { reason: why } : undefined}
+      draftTone={computed && same ? "secondary" : "primary"}
+      draftAction={{ kind: "settlement", mode: "calculate", count: 1 }}
+      onSaveDraft={() => {
+        setTried(true);
+        if (empty.length === 0) save.mutate(undefined);
+        else focusFirstInvalid(formId);
+      }}
+
     >
       <fieldset className={s.group} disabled={locked}>
         <legend className={s.groupTitle}>{t("exit.settlement.period")}</legend>

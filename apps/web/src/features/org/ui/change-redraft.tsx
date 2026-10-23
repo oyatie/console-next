@@ -6,11 +6,10 @@ import { fmtDate } from "@console/i18n/format";
 import { announce } from "../../../lib/react/announce";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
-import { useDirtyEscape } from "../../../lib/react/dirty-escape";
 import { landed } from "../../../lib/react/landed";
 import { todayKst } from "../../../lib/pure/today";
 import { ORG_READS } from "../../../reference/org/api";
-import { Button } from "../../../ui/button/button";
+import { Composer } from "../../../ui/composer/composer";
 import { DateField } from "../../../ui/date/date-field";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
@@ -57,10 +56,11 @@ export function ChangeRedraft({ d, title, memo, onClose }: { d: Detail; title: s
     announce(t("orgChange.errors", { count }));
     dateRef.current?.querySelector<HTMLElement>(date ? "textarea" : "input")?.focus();
   };
-  const { ref: escRef, armed } = useDirtyEscape(date !== "" || reason !== d.reason, onClose);
   return (
-    <section className={css.form} aria-labelledby="redraft" ref={escRef}>
-      <h3 id="redraft" className={css.formHead} tabIndex={-1}>{t("orgChange.redraft")}</h3>
+    <Composer title={t("orgChange.redraft")} subtitle={title} dirty={date !== "" || reason !== d.reason} onClose={onClose}
+      pending={redraft.isPending} action={{ kind: "orgChange", mode: "request" }} onSubmit={() => press(true)} onSaveDraft={() => press(false)}
+      consequence={t("orgChange.next.draft.consequence")}
+    ><div className={css.form}>
       {memo && <blockquote className={css.quote}>{t("orgChange.rejected.memo", { memo })}</blockquote>}
       <div ref={dateRef} className={css.fix}>
         <DateField
@@ -79,15 +79,7 @@ export function ChangeRedraft({ d, title, memo, onClose }: { d: Detail; title: s
           {(p) => <TextArea {...p} value={reason} onChange={(e) => setReason(e.target.value)} />}
         </Field>
       </div>
-      <p id="redraft-consequence" className={css.consequence} role="note">{t("orgChange.next.draft.consequence")}</p>
-      {armed && <p className="muted" role="status">{t("orgChange.escConfirm")}</p>}
       <CommandError error={refusalOf(redraft.error) === "date" ? undefined : redraft.error} />
-      <div className={css.bar}>
-        <Button disabled={redraft.isPending} onClick={onClose}>{t("common.back")}</Button>
-        <span className={css.spacer} />
-        <Button disabled={redraft.isPending} onClick={() => press(false)}>{t("orgChange.saveDraft")}</Button>
-        <Button variant="primary" disabled={redraft.isPending} aria-describedby="redraft-consequence" onClick={() => press(true)}>{t("orgChange.redraft.submit", { title })}</Button>
-      </div>
-    </section>
+    </div></Composer>
   );
 }

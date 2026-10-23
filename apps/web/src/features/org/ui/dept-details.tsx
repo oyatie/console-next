@@ -7,7 +7,8 @@ import { CommandError } from "../../../lib/react/command-error";
 import { useFocusInside } from "../../../lib/react/use-focus-inside";
 import { STRUCTURE_READS } from "../../../reference/org/api";
 import type { Node } from "../../../reference/org/domain/structure";
-import { Button, Form } from "../../../ui/button/button";
+import { Composer } from "../../../ui/composer/composer";
+import { Button } from "../../../ui/button/button";
 import { Field, TextInput } from "../../../ui/field/field";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
@@ -30,7 +31,7 @@ export function DeptDetails({ node, onDone }: { node: Node; onDone: () => void }
   const [code, setCode] = useState(node.code ?? "");
   const [head, setHead] = useState<string | null>(node.head?.employee_id ?? null);
   const [query, setQuery] = useState("");
-  const box = useFocusInside<HTMLSpanElement>();
+  const box = useFocusInside<HTMLDivElement>();
   const q = query.trim();
   const people = useQuery(get("/api/v1/employees", { params: { query: q ? { search: q, status: LIVE, limit: 20 } : { org_unit_id: node.id, status: LIVE, limit: 20 } } }));
   const peers = people.data?.items ?? [];
@@ -50,8 +51,8 @@ export function DeptDetails({ node, onDone }: { node: Node; onDone: () => void }
     onSuccess: onDone,
   });
   return (
-    <span ref={box} className={css.stack}>
-      <Form className={css.stack} onSubmit={() => !bad && !same && save.mutate(undefined)}>
+    <div ref={box} className={css.stack}>
+      <Composer title={t("orgUnit.details.title")} layout="inline" headingLevel={3} action={{ kind: "orgDetails", mode: "change", count: 1 }} pending={save.isPending} onClose={onDone} blocked={same ? { reason: t("orgChange.edit.nothing") } : undefined} onSubmit={() => { if (!bad && !same) save.mutate(undefined); }}>
         <ServerPicker
           label={t("orgUnit.fact.head")}
           query={query}
@@ -69,11 +70,7 @@ export function DeptDetails({ node, onDone }: { node: Node; onDone: () => void }
           {(p) => <TextInput {...p} maxLength={30} value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === "Escape" && onDone()} />}
         </Field>
         <CommandError error={save.error} own={ownRefusal} />
-        <span className="row">
-          <Button type="submit" variant="primary" disabled={save.isPending || same}>{t("orgUnit.details.save")}</Button>
-          <Button variant="ghost" onClick={onDone}>{t("orgStructure.cancel")}</Button>
-        </span>
-      </Form>
-    </span>
+      </Composer>
+    </div>
   );
 }

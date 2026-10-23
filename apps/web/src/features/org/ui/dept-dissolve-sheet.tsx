@@ -5,8 +5,7 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { get } from "../../../lib/query";
 import { CommandError } from "../../../lib/react/command-error";
-import { Button } from "../../../ui/button/button";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
 import { depts, type Node, type Place } from "../../../reference/org/domain/structure";
 import { grantsQuery, settleGrants } from "../api";
 import { defaultDestination, dissolvePlan, scopedGrants, type GrantChoice, type Member } from "../domain/dissolve-plan";
@@ -63,8 +62,7 @@ export function DeptDissolveSheet({ place, places, company, onClose }: { place: 
   const reasonId = "dept-dissolve-reason";
   const head = d.head;
   return (
-    <Sheet
-      open
+    <Composer
       wide
       kicker={<><Network size={14} aria-hidden />{[...place.path, d.name].join(" › ")}</>}
       title={title}
@@ -82,17 +80,12 @@ export function DeptDissolveSheet({ place, places, company, onClose }: { place: 
           </>
         )
       }
-      actions={
-        <>
-          <Button onClick={onClose}>{t("orgStructure.cancel")}</Button>
-          {open.length === 0 && <Button onClick={() => submit.mutate(false)}>{t("orgUnit.gov.saveDraft")}</Button>}
-          {open.length === 0 ? (
-            <Button variant="danger" disabled={submit.isPending} onClick={() => submit.mutate(true)}>{gov.words.submit(plan.ops.length)}</Button>
-          ) : (
-            <Button variant="danger" aria-disabled aria-describedby={reasonId}>{gov.words.submit(plan.ops.length)}</Button>
-          )}
-        </>
-      }
+      action={{ kind: "orgDissolve", mode: gov.routed ? "request" : gov.mode === "schedule" ? "schedule" : "apply", count: 1 }}
+      sections={{ approvals: gov.routed ? t("orgPropose.route") : null }}
+      onSubmit={() => { if (open.length === 0) submit.mutate(true); }}
+      blocked={open.length ? { reason: open.join(", ") } : undefined}
+      onSaveDraft={open.length === 0 ? () => submit.mutate(false) : undefined}
+      tone="danger"
     >
       <section className={css.stack} aria-labelledby="dissolve-first">
         <h3 id="dissolve-first" className="field__label">{t("orgUnit.dissolve.first")}</h3>
@@ -116,6 +109,6 @@ export function DeptDissolveSheet({ place, places, company, onClose }: { place: 
       </section>
       <GovernFields s={gov} />
       <p className={css.note}>{t("orgUnit.dissolve.kept")}</p>
-    </Sheet>
+    </Composer>
   );
 }

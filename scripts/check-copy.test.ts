@@ -4,7 +4,21 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, expect, test } from "vitest";
-import { EN_TERM_RULES, TERM_RULES, catalogIds, checkRuntimeOutput, checkTerms, checkUnused, copyEntries } from "./check-copy.mjs";
+import { EN_TERM_RULES, TERM_RULES, catalogIds, checkRuntimeOutput, checkTerms, checkUnused, copyEntries, checkComposer } from "./check-copy.mjs";
+test("governed commit and dismiss labels must come from the verb table", () => {
+  expect(checkComposer("apps/web/src/features/people/ui/lifecycle-sheet.tsx", '<Composer action={{ kind: "TRANSFER", mode: "apply" }} />')).toEqual([]);
+  for (const text of ['<Composer commit={{ label: t("bad.commit") }} />', '<Composer dismissLabel={t("common.back")} />', '<Sheet actions={<Button type="submit">{t("bad.commit")}</Button>} />', '<Button onClick={() => run.mutate(undefined)}>{t("bad.commit")}</Button>', '<Button onClick={onClose}>{t("common.back")}</Button>']) {
+    expect(checkComposer("apps/web/src/features/people/ui/lifecycle-sheet.tsx", `import { Composer } from "./composer"; ${text}`)).not.toEqual([]);
+  }
+});
+
+test.each(["lifecycle-sheet", "exit-report", "fix-change", "register-sheet", "new-action-sheet"])("audits %s without a sheet skip list", (name) => {
+  const file = `apps/web/src/features/people/ui/${name}.tsx`;
+  expect(checkComposer(file, '<Sheet />')).not.toEqual([]);
+  expect(checkComposer(file, '<Sheet actions={<Button type="submit">{t("bad.commit")}</Button>} />')).not.toEqual([]);
+  expect(checkComposer(file, '<Composer commit={{ label: "planted" }} />')).not.toEqual([]);
+  expect(checkComposer(file, 'import { recordLifecycleEvent } from "../api"; <Button type="submit">{t("empFix.change.commit.planned")}</Button>')).not.toEqual([]);
+});
 
 const src = [`t("org.title"); t(\`exit.action.\${k}\`); const id = \`org.change.event.\${e.action}\`;`];
 
@@ -190,8 +204,18 @@ function runtimeCli() {
   const josaSource = readFileSync(path.join(root, "packages/i18n/src/josa.ts"), "utf8");
   writeFileSync(josaFile, josaSource);
   const cli = (...args: string[]) => spawnSync(process.execPath, [path.join(dir, "scripts/check-copy.mjs"), ...args], { cwd: dir, encoding: "utf8" });
-  return { cli, josaFile, josaSource };
+  return { cli, dir, josaFile, josaSource };
 }
+
+test("CLI refuses a planted commit in a newly added sheet without a path exception", () => {
+  const { cli, dir } = runtimeCli();
+  const folder = "apps/web/src/features/people/ui";
+  mkdirSync(path.join(dir, folder), { recursive: true });
+  writeFileSync(path.join(dir, folder, "fix-added-sheet.tsx"), '<Composer commit={{ label: "planted" }} />');
+  const result = cli();
+  expect(result.status, result.stderr).toBe(1);
+  expect(result.stderr).toContain("fix-added-sheet.tsx:1: composer.verb: per-screen commit/dismiss label");
+});
 
 test("CLI formats mixed text and numeric ICU slots correctly", () => {
   const { cli, josaFile, josaSource } = runtimeCli();

@@ -81,14 +81,14 @@ test("setup phase: contacts, photo, entries and careers are added, edited, trace
   const sheet = await addContact(admin, "홍길순", "배우자", "01022223333");
   await expect(sheet.getByText("바로 반영 (설정 단계)")).toBeVisible();
   await expectAccessible(admin, "emergency contact sheet");
-  await sheet.getByRole("button", { name: "비상연락처 추가" }).click();
+  await sheet.getByRole("button", { name: "인사 정보 1명 정정" }).click();
   await expect(sheet).toBeHidden();
   await expect(personal.getByText("배우자 홍••")).toBeVisible();
   await personal.getByRole("button", { name: "비상연락처 배우자 홍•• 수정" }).click();
   const edit = admin.getByRole("dialog", { name: "비상연락처 수정" });
   await expect(edit.getByRole("textbox", { name: /^이름/ })).toHaveValue("홍길순");
   await edit.getByRole("combobox", { name: /^관계/ }).selectOption({ label: "형제자매" });
-  await edit.getByRole("button", { name: "비상연락처 수정" }).click();
+  await edit.getByRole("button", { name: "인사 정보 1명 정정" }).click();
   await expect(personal.getByText("형제자매 홍••")).toBeVisible();
   // Regression (photo 409 against the user's own write): the card's re-read is held until the photo is recorded, so 사진 추가
   // is pressed and sent at the version read before this delete; it still saves (the delete touched another field), never
@@ -114,7 +114,7 @@ test("setup phase: contacts, photo, entries and careers are added, edited, trace
   // Regression (사번 변경 409 against the user's own write): every writer of the record goes past this tab's own writes
   // (lib/record-versions), so 사번 변경 pressed while the card still shows the version before the delete is changed.
   const again = await addContact(admin, "홍길순", "배우자", "01022223333");
-  await andReread(admin, "/personal-facts", () => again.getByRole("button", { name: "비상연락처 추가" }).click());
+  await andReread(admin, "/personal-facts", () => again.getByRole("button", { name: "인사 정보 1명 정정" }).click());
   await expect(personal.getByText("배우자 홍••")).toBeVisible();
   const free = await holdCardRead(admin);
   await personal.getByRole("button", { name: "비상연락처 배우자 홍•• 더보기" }).click();
@@ -130,7 +130,7 @@ test("setup phase: contacts, photo, entries and careers are added, edited, trace
   await pick(empno, /언제부터/, "오늘부터").click();
   await reasonChip(empno, "사번 체계 변경", "사유").click();
   const numbered = admin.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname.endsWith("/employee-number"));
-  await empno.getByRole("button", { name: "사번 변경", exact: true }).click();
+  await empno.getByRole("button", { name: "사번 1명 변경", exact: true }).click();
   expect((await numbered).status(), "the number is changed, not refused against the delete").toBe(200);
   await free();
   await expect(empno).toBeHidden();
@@ -186,7 +186,7 @@ test("setup phase: contacts, photo, entries and careers are added, edited, trace
   await admin.getByRole("searchbox", { name: "찾기와 이동" }).fill(w.person);
   await admin.getByRole("option", { name: "비상연락처 추가" }).click();
   await expect(admin.getByRole("dialog", { name: "비상연락처 추가" })).toBeVisible();
-  await admin.getByRole("dialog", { name: "비상연락처 추가" }).getByRole("button", { name: "취소" }).click();
+  await admin.getByRole("dialog", { name: "비상연락처 추가" }).getByRole("button", { name: "닫기", exact: true }).last().click();
   await expect(admin.getByRole("dialog", { name: "비상연락처 추가" })).toBeHidden();
 
   // 주민등록번호: the honest state, no dead control; 문서: no upload button the server cannot take.
@@ -202,7 +202,7 @@ test("after 운영 시작: the same 수정 is recorded as a correction and no ha
   const sheet = await addContact(admin, "박하늘", "부모", "01044445555");
   await expect(sheet.getByText("정정 기록으로 남습니다")).toBeVisible();
   await expect(sheet.getByText("설정 단계")).toHaveCount(0);
-  await sheet.getByRole("button", { name: "비상연락처 추가" }).click();
+  await sheet.getByRole("button", { name: "인사 정보 1명 정정" }).click();
   await expect(personal.getByText("부모 박••")).toBeVisible();
   await personal.getByRole("button", { name: "비상연락처 부모 박•• 더보기" }).click();
   await expect(admin.getByRole("menuitem", { name: "삭제" })).toHaveCount(0);
@@ -224,13 +224,13 @@ test("after 운영 시작: the same 수정 is recorded as a correction and no ha
   // person reading the notice would. A write pressed before it lands is refused too (whole-record precondition until
   // unit me6-employee-field-preconditions). The career below is written at the register facts' version, so their re-read too.
   const facts = admin.waitForResponse((r) => r.request().method() === "GET" && new URL(r.url()).pathname.endsWith("/register-facts"));
-  await andReread(admin, `/employees/${w.personId}`, () => stale.getByRole("button", { name: "비상연락처 추가" }).click());
+  await andReread(admin, `/employees/${w.personId}`, () => stale.getByRole("button", { name: "인사 정보 1명 정정" }).click());
   await facts;
   await expect(stale.getByRole("alert")).toBeVisible();
   await expect(stale).toBeVisible();
   await expect(personal.getByText("자녀 이••")).toHaveCount(0);
   await other.close();
-  await stale.getByRole("button", { name: "취소" }).click();
+  await stale.getByRole("button", { name: "닫기", exact: true }).last().click();
 
   // 경력 수정 after 운영 시작: the why asked is the correction's reason on the server, as in the setup phase.
   await careerWithWhy(admin, admin.getByRole("region", { name: "이력" }), "누리정밀", "누리정밀공업");

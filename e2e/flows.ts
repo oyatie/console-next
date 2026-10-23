@@ -205,7 +205,7 @@ type Clicks = ReturnType<typeof clickCounter>;
 export const plain = { click: (l: import("@playwright/test").Locator) => l.click(), select: (l: import("@playwright/test").Locator, v: string) => l.selectOption(v).then(() => undefined) };
 
 /** The open proposal card (it takes the panel's place beside the tree or the tables). */
-export const proposal = (page: Page) => page.getByRole("region").filter({ hasText: "아직 저장하지 않았습니다" });
+export const proposal = (page: Page) => page.getByRole("dialog").filter({ hasText: "아직 저장하지 않았습니다" });
 
 /**
  * Completes the open proposal card and submits it for approval: the effective date is never defaulted, so the

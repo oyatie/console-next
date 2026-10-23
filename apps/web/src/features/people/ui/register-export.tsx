@@ -95,7 +95,7 @@ export function RegisterExport({ onClose }: { onClose: () => void }) {
         <span>{site ? <b>{t("empDoc.reg.cons", { site: chosen?.name ?? "", count: workers + exited, workers, exited })}</b> : <b>{t("empDoc.reg.pickSite")}</b>} {missing ? t("empDoc.reg.pick") : t("empDoc.reg.logged")}</span>
         {run.isError && <CommandError error={run.error} />}
         <span className="grow" />
-        <Button variant="ghost" onClick={onClose}>{t("empFix.cancel")}</Button>
+        <Button variant="ghost" onClick={onClose}>{t("composer.dismiss")}</Button>
         <Button variant="primary" aria-disabled={missing ? true : undefined} onClick={press}><Download size={16} aria-hidden /> {t("empDoc.reg.commit")}</Button>
       </Band>
     </div>

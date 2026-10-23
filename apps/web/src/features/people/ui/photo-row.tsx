@@ -79,7 +79,7 @@ function PhotoSheet({ c, replace, onClose }: { c: Card; replace: boolean; onClos
       consequence={<PathNote path={c.setup ? "setup" : "correction"} />}
       actions={
         <>
-          <Button variant="ghost" onClick={onClose}>{t("empFix.cancel")}</Button>
+
           <Button variant="primary" aria-disabled={!file || undefined} onClick={() => file && run.mutate(undefined)}>{title}</Button>
         </>
       }

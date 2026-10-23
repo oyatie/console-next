@@ -7,7 +7,7 @@ import { UnitPicker } from "../../../reference/org/ui/unit-picker";
 import { changesByStatusQuery, OPEN_CHANGE_STATUSES } from "../api";
 import { namesakes, type Intent, type Unit } from "../domain/proposal";
 import { moveTargets, PARENT_KINDS } from "../domain/tree";
-import { ProposeShell, type Check } from "./propose-shell";
+import { ProposalForm, type Check } from "./proposal-form";
 import { DissolveCard, ReassignCard } from "./unit-members";
 import { Context, NameInput, UnitDiff } from "./unit-parts";
 import { kindName, okOr, unitKit, useValues, type UnitKit } from "./use-unit-kit";
@@ -44,7 +44,7 @@ function CreateCard({ intent: i, units, open, onClose }: Card<"create">) {
   const field = t("orgPropose.field.name", { kind });
   const op = { op: "CREATE_ORG_UNIT", kind: i.child as "SITE" | "DEPARTMENT" | "TEAM", parentId: i.parent.kind === "COMPANY" ? null : i.parent.id, name: k.name } as const;
   return (
-    <ProposeShell intent={i} v={v} set={set} onClose={onClose} spec={(kit) => ({
+    <ProposalForm intent={i} v={v} set={set} onClose={onClose} spec={(kit) => ({
       title: t("orgPropose.title.create", { parent: i.parent.name, kind }),
       context: (
         <Context rows={[
@@ -57,7 +57,7 @@ function CreateCard({ intent: i, units, open, onClose }: Card<"create">) {
       diff: <UnitDiff units={units} op={op} then={k.then} note={t("orgPropose.diff.noMembers")} summary={t("orgPropose.summary.create", { parent: i.parent.name, name: k.name || t("orgPropose.diff.unnamed", { kind }) })} />,
       checks: [{ tone: "ok", text: t("orgPropose.checks.nesting", { parent: i.parent.name, kind }) }],
       consequence: k.consequence(),
-      submitLabel: t("orgPropose.submit.create", { name: k.name || kind }),
+      action: "orgCreate",
       dated: true,
       append: k.into(op),
       // The ref is the parent: the new unit has no id until the change applies.
@@ -75,7 +75,7 @@ function RenameCard({ intent: { unit }, units, open, onClose }: Card<"rename">) 
   const changed = k.name !== "" && k.name !== unit.name;
   const op = { op: "RENAME_ORG_UNIT", orgUnitId: unit.id, name: k.name } as const;
   return (
-    <ProposeShell intent={{ kind: "rename", unit }} v={v} set={set} onClose={onClose} spec={(kit) => ({
+    <ProposalForm intent={{ kind: "rename", unit }} v={v} set={set} onClose={onClose} spec={(kit) => ({
       title: t("orgPropose.title.rename", { name: unit.name }),
       context: (
         <Context note={k.headcountNote} rows={[
@@ -91,7 +91,7 @@ function RenameCard({ intent: { unit }, units, open, onClose }: Card<"rename">) 
       checks: okOr([]),
       related: k.onTarget(unit),
       consequence: k.consequence(t("orgPropose.consequence.rename", { count: unit.headcount, sub })),
-      submitLabel: t("orgPropose.submit.rename", { name: unit.name }),
+      action: "orgRename",
       dated: true,
       append: k.into(op),
       create: (key) => k.post(key, { kind: "REORG", target: { kind: "ORG_UNIT", ref: unit.id, label: k.name }, proposal: [op] }),
@@ -116,7 +116,7 @@ function MoveCard({ intent: { unit }, units, open, onClose }: Card<"move">) {
     ...(same && to ? [{ tone: "caution" as const, text: t("orgPropose.field.name.duplicate", { parent: to.name, count: same.headcount }) }] : []),
   ];
   return (
-    <ProposeShell intent={{ kind: "move", unit }} v={v} set={set} onClose={onClose} spec={(kit) => ({
+    <ProposalForm intent={{ kind: "move", unit }} v={v} set={set} onClose={onClose} spec={(kit) => ({
       title: t("orgPropose.title.move", { name: unit.name }),
       context: (
         <Context note={k.headcountNote} rows={[
@@ -136,7 +136,7 @@ function MoveCard({ intent: { unit }, units, open, onClose }: Card<"move">) {
       checks: okOr(checks),
       related: k.onTarget(unit),
       consequence: k.consequence(t("orgPropose.consequence.move", { count, sub })),
-      submitLabel: t("orgPropose.submit.move", { name: unit.name }),
+      action: "orgMove",
       block: blocked ? { reason: blocked } : undefined,
       dated: true,
       append: blocked ? undefined : k.into(op),

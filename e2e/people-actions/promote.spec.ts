@@ -44,7 +44,7 @@ test("bulk promotion: a suggestion per person, never applied until accepted; the
   await todayPreset(admin).click();
   await admin.getByRole("radiogroup", { name: /^사유/ }).getByRole("radio").first().locator("xpath=ancestor::label[1]").click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("정기 승진");
-  await admin.getByRole("button", { name: /^3명 승진 · 오늘 반영/ }).click();
+  await admin.getByRole("button", { name: "승진 3명 반영" }).click();
   await expect(admin.getByRole("alert").filter({ hasText: "새 직위를 선택하지 않은 사람이 2명 있습니다" })).toBeVisible();
   const events = async (name: string) => {
     const id = ((await (await api(`/employees?search=${encodeURIComponent(name)}&limit=1`)).json()) as { items: { id: string }[] }).items[0]!.id;
@@ -62,7 +62,7 @@ test("bulk promotion: a suggestion per person, never applied until accepted; the
 
   // Accept the two suggestions at once; each person's own title is recorded.
   await admin.getByRole("button", { name: "제안 2개 모두 받기" }).click();
-  await admin.getByRole("button", { name: /^3명 승진 · 오늘 반영/ }).click();
+  await admin.getByRole("button", { name: "승진 3명 반영" }).click();
   await expect(admin.getByRole("status").filter({ hasText: /3명 승진/ }).first()).toBeVisible({ timeout: 15_000 });
   expect((await events("김사원"))[0]?.to_position).toBe("주임");
   expect((await events("이주임"))[0]?.to_position).toBe("대리");

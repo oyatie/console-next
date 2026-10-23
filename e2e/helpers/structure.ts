@@ -32,7 +32,7 @@ export async function deleteUnusedDept(page: Page, name: string, c: C = plain) {
   const selected = new URL(page.url()).searchParams.get("sel");
   await c.click(p.locator("#act-dept-delete"));
   const s = sheet(page, `${name} 삭제 · 폐지`);
-  await c.click(s.getByRole("button", { name: `${name} 삭제` }));
+  await c.click(s.getByRole("button", { name: "부서 1개 삭제", exact: true }));
   await expect(s).toBeHidden();
   await expect(box(page, name)).toHaveCount(0);
   // The chart then selects the parent: a navigation that would undo one a caller makes before it lands.

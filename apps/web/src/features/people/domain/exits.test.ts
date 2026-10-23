@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { components } from "@console/api/schema";
-import { blockingSchedules, noticeMissing, protectedLines, effectOf, forwardStep, stepStates, usableActions } from "./exits";
+import { blockingSchedules, exitUndoVerb, noticeMissing, protectedLines, effectOf, forwardStep, stepStates, usableActions } from "./exits";
 
 type Case = components["schemas"]["EmployeeExitCase"];
 type LifecycleEvent = components["schemas"]["EmployeeLifecycleEvent"];
@@ -59,4 +59,11 @@ test("notice evidence lists exactly the missing fields and refuses service after
 test("protected lines preserve the server's dates and citation without recalculating a tail", () => {
   const p = { lifecycle_event_id: "leave-1", leave_type: "MATERNITY", leave_from: "2026-01-01", leave_until: "2026-03-31", protected_until: "2026-05-03", instrument: "근로기준법", article: "제23조제2항" };
   expect(protectedLines(exitCase({ protected_periods: [p] }))).toEqual([p]);
+});
+test.each([
+  ["APPLIED", true, "revoke"], ["APPLIED", false, "revoke"],
+  ["SCHEDULED", true, "cancel"], ["SCHEDULED", false, "cancel"],
+  [null, true, "reject"], [null, false, "cancel"],
+] as const)("exit undo in %s uses %s's defined meaning", (state, reject, expected) => {
+  expect(exitUndoVerb({ exit_event_state: state, hr_confirmed_at: undefined }, reject)).toBe(expected);
 });

@@ -23,7 +23,7 @@ test("a backend restart mid-registration: the save fails in words, the session s
     await expect(registerSheet(admin).getByRole("alert")).toContainText(DOWN);
     await expect(registerSheet(admin).getByRole("textbox", { name: /^이름/ })).toHaveValue("재시작직원");
     // The answer never came, so the save is held for its check instead of being sent again (BL-010).
-    await expect(registerSheet(admin).getByRole("button", { name: /^등록하고 닫기/ })).toBeDisabled();
+    await expect(registerSheet(admin).getByRole("button", { name: /^직원 등록 1명 반영(?: ⌘|$)/ })).toBeDisabled();
     await expectAccessible(admin, "register employee: the backend is down");
   } finally {
     await setBackend(true);

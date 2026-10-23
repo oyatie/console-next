@@ -33,7 +33,7 @@ test("notice: a bulk transfer's 발령 공고 takes the next number; the same ac
   await todayPreset(admin).click();
   await admin.getByRole("radiogroup", { name: /^사유/ }).getByText("조직 개편", { exact: true }).click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("조직 개편");
-  await admin.getByRole("button", { name: /^2명 전보 · 오늘 반영/ }).click();
+  await admin.getByRole("button", { name: "전보 2명 반영" }).click();
   await expect(admin.getByRole("status").filter({ hasText: "2명 전보 반영함" })).toBeVisible();
 
   // From the receipt: the notice for this batch. A commit without a date names the gap and makes nothing.

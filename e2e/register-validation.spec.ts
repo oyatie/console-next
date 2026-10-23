@@ -45,7 +45,7 @@ for (const width of [1280, 390]) {
     await expectAccessible(admin, "registration after a delayed placement read");
     expect(creates.count()).toBe(0);
     await expect(sheet.getByRole("textbox", { name: /^이름/ })).toHaveValue("김검증");
-    for (const name of [/^등록하고 닫기/, /^등록하고 다음 사람/]) {
+    for (const name of [/^직원 등록 1명 반영(?: ⌘|$)/, /^직원 등록 1명 반영 · 다음 직원/]) {
       const action = sheet.getByRole("button", { name });
       const bounds = await action.boundingBox();
       expect(bounds).not.toBeNull();

@@ -30,7 +30,7 @@ test("a solo admin deletes a never-used 팀 and 부서 and dissolves a used one,
   let s = await endSheet(admin, "영업1팀", "삭제");
   await expect(s).toContainText("쓰인 적 없는 부서는 폐지하지 않고 삭제합니다");
   await expectAccessible(admin, "CRUD: end sheet of a never-used 팀");
-  await s.getByRole("button", { name: "영업1팀 삭제" }).click();
+  await s.getByRole("button", { name: "부서 1개 삭제" }).click();
   await expect(s).toBeHidden();
   await expect(admin.getByRole("status").filter({ hasText: "영업1팀을 지웠습니다" })).toBeAttached();
   await expect(box(admin, "영업1팀")).toHaveCount(0);
@@ -45,14 +45,14 @@ test("a solo admin deletes a never-used 팀 and 부서 and dissolves a used one,
   await expect(s.getByRole("link", { name: "구성원 1명 보기" })).toBeVisible();
   await expect(s.getByRole("button", { name: /총무부 (삭제|폐지)$/ })).toHaveCount(0);
   await expectAccessible(admin, "CRUD: end sheet refused with its reasons");
-  await s.getByRole("button", { name: "취소" }).click();
+  await s.getByRole("button", { name: "닫기", exact: true }).last().click();
 
   // After go-live a mistaken 부서 is still deleted (not only proposed for dissolution), recorded as a governed change.
   await startOperations(admin);
   await go(admin, "/org");
   await leaveScreen(admin);
   s = await endSheet(admin, "임시부", "삭제");
-  await s.getByRole("button", { name: "임시부 삭제" }).click();
+  await s.getByRole("button", { name: "부서 1개 삭제" }).click();
   await expect(s).toBeHidden();
   await expect(box(admin, "임시부")).toHaveCount(0);
 
@@ -60,7 +60,7 @@ test("a solo admin deletes a never-used 팀 and 부서 and dissolves a used one,
   const p = await openUnit(admin, "총무부");
   await p.locator("#act-dept-code").click();
   await p.getByRole("textbox", { name: /부서 코드/ }).fill("GA-01");
-  await p.getByRole("button", { name: "저장" }).click();
+  await p.getByRole("button", { name: "부서 정보 1개 변경" }).click();
   await expect(panel(admin, "총무부")).toContainText("GA-01");
 
   // With people still in it after go-live, 폐지 opens the one dissolution sheet that moves them (org-06: no sheet before it).

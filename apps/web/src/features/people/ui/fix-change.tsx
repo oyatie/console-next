@@ -7,7 +7,6 @@ import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { todayKst } from "../../../lib/pure/today";
 import { reasonCodesQuery, reasonOptions } from "../../../lib/reason-codes";
-import { Button } from "../../../ui/button/button";
 import { Segmented } from "../../../ui/button/segmented";
 import { Card as Surface } from "../../../ui/card/card";
 import { ChipChoice } from "../../../ui/choice/chip-choice";
@@ -15,7 +14,7 @@ import { DateInput } from "../../../ui/date/date-input";
 import { TextInput } from "../../../ui/field/field";
 import { Tag } from "../../../ui/record/record-section";
 import { RecordRows } from "../../../ui/record/rows";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
 import { jobTitlesQuery, recordLifecycleEvent, type LifecycleRequest } from "../api";
 import { CATALOG_KIND, isDate, nextMonthFirst, periods, type FixField } from "../domain/fix";
 import { isDemotion, DEMOTION_REASON } from "../domain/titles";
@@ -97,9 +96,8 @@ export function FixChange({ c, field, act, onClose, onDone, onCorrect }: { c: Ca
   const before = last && side(last, c.title)?.[0];
   const hire = c.e.hire_date ?? null;
   const table = from && target ? periods({ from: last?.effective_date ?? hire, value: now.text }, { from, value: toText }, before && hire ? { from: hire, value: before } : undefined) : [];
-  const verb = t(`empFix.change.verb.${act}`);
   return (
-    <Sheet
+    <Composer
       open
       kicker={<Who c={c} />}
       title={t("empFix.change.title", { field: fieldName })}
@@ -114,12 +112,9 @@ export function FixChange({ c, field, act, onClose, onDone, onCorrect }: { c: Ca
           <span className={s.s12}>{t("empFix.change.cons.rule")}</span>
         </>
       }
-      actions={
-        <>
-          <Button variant="ghost" onClick={onClose}>{t("empFix.cancel")}</Button>
-          <Button variant="primary" aria-disabled={missing ? true : undefined} onClick={press}>{from && from > today ? t("empFix.change.commit.planned", { verb, date: fmtDate(from) }) : t("empFix.change.commit.now", { verb })}</Button>
-        </>
-      }
+      action={{ kind: demotion ? "demotion" : act, mode: from && from > today ? "schedule" : "apply", count: 1 }}
+      incomplete={Boolean(missing)}
+      onSubmit={press}
     >
       <div className="row">
         <Segmented label={t("empFix.change.how")} value="change" onChange={onCorrect} items={[{ id: "change", label: t("empFix.change.chosen") }, { id: "correct", label: t("empFix.change.toCorrectSeg") }]} />
@@ -153,6 +148,6 @@ export function FixChange({ c, field, act, onClose, onDone, onCorrect }: { c: Ca
           ]}
         />
       )}
-    </Sheet>
+    </Composer>
   );
 }

@@ -1,3 +1,6 @@
+import { commitLabel } from "../../../ui/composer/actions";
+import { exitUndoVerb } from "../domain/exits";
+import { ReceiptReference } from "../../../ui/composer/receipt-reference";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
@@ -8,7 +11,7 @@ import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Receipt } from "../../../ui/receipt/receipt";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
 import { focusSoon } from "../../../lib/react/announce";
 import { usePageActive } from "../../../lib/react/page-active";
 import { QueryState } from "../../../lib/react/query-state";
@@ -47,7 +50,7 @@ export function ExitCases({ employee, act }: { employee: Employee; act?: string 
   const can = useCan();
   const own = useOwnRecord(employee.id);
   const navigate = route.useNavigate();
-  const [receipt, setReceipt] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<{ message: string; reference?: string } | null>(null);
   const pageActive = usePageActive();
   const open = cases.data?.items.find((c) => !isClosed(c) && c.status !== "SUBMITTED");
   const past = cases.data?.items.filter((c) => c !== open) ?? [];
@@ -57,9 +60,9 @@ export function ExitCases({ employee, act }: { employee: Employee; act?: string 
   const want = parse(act);
   const target = want && want.key !== "report" ? cases.data?.items.find((c) => c.id === want.caseId) : undefined;
   const show = (next?: string) => void navigate({ search: next ? { act: next } : {}, replace: !next });
-  const done = (message: string) => {
+  const done = (message: string, reference?: string) => {
     if (!pageActive()) return;
-    setReceipt(message);
+    setReceipt({ message, reference });
     show();
     focusSoon("exit");
   };
@@ -71,7 +74,7 @@ export function ExitCases({ employee, act }: { employee: Employee; act?: string 
         {canReport && <Button onClick={() => show("exit.report")}>{t("exit.report")}</Button>}
         {reportable && own && <DisabledReason layout="inline" control={(p) => <Button {...p}>{t("exit.report")}</Button>} reason={t("common.failed.code.own_record_forbidden")} />}
       </div>
-      {receipt && <Receipt state="recorded" message={receipt} />}
+      {receipt && <Receipt state="recorded" message={receipt.message} meta={receipt.reference && <ReceiptReference value={receipt.reference} />} />}
       <QueryState q={cases}>
         {() => (
           <>
@@ -121,7 +124,7 @@ function OpenCase({ c, name, onAct }: { c: Case; name: string; onAct: (k: Key) =
         {forward && <Button variant="primary" onClick={() => onAct(forward)}>{t(`exit.action.${forward}`)}</Button>}
         {sameActor && <DisabledReason control={(p) => <Button variant="primary" {...p}>{t("exit.action.confirm_exit_hq")}</Button>} reason={t("exit.hq.sameActor")} />}
         <span className="grow" />
-        {back.map((k) => <Button key={k} variant="ghost-danger" onClick={() => onAct(k)}>{t(`exit.action.${k}`)}</Button>)}
+        {back.map((k) => <Button key={k} variant="ghost-danger" onClick={() => onAct(k)}>{commitLabel({ kind: "exit", mode: exitUndoVerb(c, k === "reject_exit") })}</Button>)}
       </div>
       <Link to="/people/exits/$id" params={{ id: c.id }} search={{}}>{t("exit.block.open")}</Link>
     </div>
@@ -141,7 +144,7 @@ function ActSheet({ act, want, target, employee, canReport, loaded, onClose, onD
   canReport: boolean;
   loaded: boolean;
   onClose: () => void;
-  onDone: (message: string) => void;
+  onDone: (message: string, reference?: string) => void;
 }) {
   const actions = useCaseActionsOrNone(target);
   const [checked, setChecked] = useState<{ act?: string; offered: boolean } | null>(null);
@@ -154,16 +157,16 @@ function ActSheet({ act, want, target, employee, canReport, loaded, onClose, onD
   const offered = checked.offered && (report || Boolean(target));
   if (!offered)
     return (
-      <Sheet
-        open
+      <Composer
+        action={{ kind: "exit", mode: "apply" }} onSubmit={() => false} locked
         title={report ? t("exit.report.title", { name: employee.name }) : t(`exit.action.${key!}`)}
         subtitle={whoLine(employee)}
         onClose={onClose}
         consequence={<p role="status">{t("exit.unavailable")} · {t("exit.unavailable.reason")}</p>}
-        actions={<Button onClick={onClose}>{t("uiSheet.close")}</Button>}
+        recovery={<Button onClick={onClose}>{t("composer.dismiss")}</Button>}
       >
         {null}
-      </Sheet>
+      </Composer>
     );
   if (report) return <ReportForm employee={employee} onClose={onClose} onDone={onDone} />;
   const sheet = { title: t(`exit.action.${key!}`), subtitle: whoLine(employee), onClose };

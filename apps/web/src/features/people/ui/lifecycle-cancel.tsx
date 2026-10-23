@@ -11,7 +11,7 @@ import { TextArea } from "../../../ui/field/text-area";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { cancelScheduledEvent, eventsQuery, mySub, refusalOf, type LifecycleEvent } from "../api";
 import { describeEvent, fmtDay } from "../present";
-import { LifecycleFrame } from "./lifecycle-frame";
+import { Composer } from "../../../ui/composer/composer";
 import { LifecycleRefusal } from "./lifecycle-refusal";
 import { useDraft } from "./use-lifecycle-draft";
 import s from "./lifecycle.module.css";
@@ -65,10 +65,11 @@ export function CancelSheet({ d, x, act, onClose, onRecorded, onOpen }: {
   const unknown = run.isError && (keepsKey(run.error) || refusalOf(run.error)?.code === "invalid_transition");
   const checking = unknown && !elsewhere && !notRecorded;
   return (
-    <LifecycleFrame
+    <Composer
       title={t("lifecycle.cancel.title", { action })}
       subtitle={[e.name, e.employee_number].filter(Boolean).join(" · ")}
       onClose={onClose}
+      localDraft
       onSaveDraft={onClose}
       pending={run.isSending || events.isRefetching}
       locked={checking || elsewhere !== null}
@@ -93,16 +94,17 @@ export function CancelSheet({ d, x, act, onClose, onRecorded, onOpen }: {
         )
       }
       consequence={<span>{t("lifecycle.cancel.consequence", { name: e.name })}</span>}
-      commit={{ label: t("lifecycle.cancel.title", { action }), tone: "danger" }}
+      action={{ kind: x.event_type, mode: "cancel", count: 1 }}
+      tone="danger"
       missing={tried && !reason.trim() ? 1 : 0}
-      actions={
+      recovery={
         checking ? (
           <>
-            <Button onClick={onClose}>{t("lifecycle.close")}</Button>
+            <Button onClick={onClose}>{t("composer.dismiss")}</Button>
             <Button variant="primary" onClick={() => run.check()}>{t("lifecycle.checking.ask")}</Button>
           </>
         )
-        : elsewhere ? <Button onClick={onClose}>{t("lifecycle.close")}</Button>
+        : elsewhere ? <Button onClick={onClose}>{t("composer.dismiss")}</Button>
         : undefined
       }
       onSubmit={() => {
@@ -135,6 +137,6 @@ export function CancelSheet({ d, x, act, onClose, onRecorded, onOpen }: {
           />
         )}
       </Field>
-    </LifecycleFrame>
+    </Composer>
   );
 }

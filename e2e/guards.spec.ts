@@ -69,7 +69,7 @@ test("nobody acts on their own record, the ops account keeps its sign-in path, a
     const report = admin.getByRole("dialog");
     await report.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(30));
     await report.getByLabel("퇴직 경위").fill("본인 사정");
-    await report.getByRole("button", { name: "퇴직 보고" }).click();
+    await report.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
     const exit = admin.getByRole("region", { name: "퇴직", exact: true });
     await expect(exit).toContainText("보고됨");
     await expect(exit.getByRole("button", { name: "인사 확인하고 퇴직 처리" })).toBeVisible();
@@ -112,7 +112,7 @@ test("nobody acts on their own record, the ops account keeps its sign-in path, a
     await empno.getByRole("textbox", { name: "새 사번" }).fill("HB-1001");
     await empno.getByRole("radiogroup", { name: /언제부터/ }).getByText("오늘부터", { exact: true }).click();
     await reasonChip(empno, "사번 체계 변경", "사유").click();
-    await empno.getByRole("button", { name: "사번 변경", exact: true }).click();
+    await empno.getByRole("button", { name: "사번 1명 변경", exact: true }).click();
     await expect(admin.getByText("사번을 HB-1001로 변경했습니다")).toBeVisible();
 
     await registerEmployee(admin, { name: "최자동", unit: "인사부" });

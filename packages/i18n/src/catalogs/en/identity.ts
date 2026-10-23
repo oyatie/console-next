@@ -18,8 +18,6 @@ export const enIdentity: Partial<Record<keyof typeof koIdentity, string>> = {
   "identity.none.consequence": "Choose a verdict to see what changes",
   "identity.different.consequence": "Clears {name}’s identity review flag. The records do not change; the verdict and reason are kept",
   "identity.same.consequence": "Merges {name}’s record into {keep}. The merged record is no longer used; this cannot be undone",
-  "identity.different.commit": "Confirm different people",
-  "identity.same.commit": "Confirm with passkey and merge",
   "identity.passkeyCancelled": "The passkey check was cancelled, so nothing was merged. Press again to be asked again",
   "identity.receipt.different": "Confirmed as different people.",
   "identity.receipt.merged": "Merged into the record kept.",

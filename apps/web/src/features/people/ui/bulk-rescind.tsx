@@ -7,7 +7,7 @@ import { ReasonCodeField } from "../../../reference/reason/ui/reason-code-field"
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { failureOf, rescindBatch } from "../api";
-import { LifecycleFrame } from "./lifecycle-frame";
+import { Composer } from "../../../ui/composer/composer";
 import s from "./lifecycle.module.css";
 
 const NOTE_MAX = 1000;
@@ -42,7 +42,7 @@ export function BulkRescind({ batchId, count, onClose, onDone }: { batchId: stri
   const f = failureOf(run.error);
   const gone = f.kind === "refused" && f.refusals.length > 0 && f.refusals.every((r) => r.code === "lifecycle_event_voided");
   return (
-    <LifecycleFrame
+    <Composer
       title={t("bulk.rescind.title")}
       subtitle={t("bulk.rescind.subtitle", { count })}
       onClose={onClose}
@@ -54,7 +54,8 @@ export function BulkRescind({ batchId, count, onClose, onDone }: { batchId: stri
           {cascades ? <span className={s.interim}>{t("lifecycle.rescind.cascades", { count: cascades })}</span> : null}
         </>
       }
-      commit={{ label: cascades ? t("lifecycle.rescind.confirm", { count: cascades }) : t("bulk.rescind.commit", { count }), tone: "danger" }}
+      action={{ kind: "appointment", mode: "revoke", count }}
+      tone={"danger"}
       missing={tried ? Object.values(missing).filter(Boolean).length : 0}
       onSubmit={() => {
         setTried(true);
@@ -66,6 +67,6 @@ export function BulkRescind({ batchId, count, onClose, onDone }: { batchId: stri
       <Field label={t("lifecycle.rescind.note")} required={needsNote} hint={t("lifecycle.reason.count", { count: note.length, max: NOTE_MAX })} error={tried && missing.note ? t("lifecycle.reason.missing") : undefined}>
         {(p) => <TextArea {...p} maxLength={NOTE_MAX} value={note} onChange={(e) => setNote(e.target.value)} />}
       </Field>
-    </LifecycleFrame>
+    </Composer>
   );
 }

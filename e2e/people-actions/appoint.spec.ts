@@ -33,7 +33,7 @@ test("appoint: the role list is filled from the sheet by the one who keeps it; t
   await expectAccessible(admin, "E5-appoint: a role added from the sheet");
   await todayPreset(s).click();
   await reasonBox(s).fill("부서장 공석 보충");
-  await s.getByRole("button", { name: /^오늘 직책 임면/ }).click();
+  await s.getByRole("button", { name: "보직 1명 반영" }).click();
   await expect(s).toBeHidden({ timeout: 15_000 });
   await expect(admin.getByRole("region", { name: "인사 이력" })).toContainText("직책·직무를 발령했습니다");
   // The appointment holds the 팀장 just added (the history line does not name it yet: EMP-A's history view).

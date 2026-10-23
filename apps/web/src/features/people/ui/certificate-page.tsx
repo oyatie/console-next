@@ -42,7 +42,7 @@ function Document({ certificate: c }: { certificate: Certificate }) {
     <CertificatePaper certificate={c} />
     {act && <Sheet open pending={change.isSending} locked={change.isChecking} title={t(act === "void" ? "empDoc.certificate.void" : "empDoc.certificate.reissue")} onClose={() => setAct(null)} consequence={t(act === "void" ? "empDoc.certificate.voidEffect" : "empDoc.certificate.reissueEffect")}
       notice={<CommandError error={change.error} own={certificateError} />}
-      actions={<><Button onClick={() => setAct(null)}>{t("empFix.cancel")}</Button><Button variant="primary" aria-disabled={!reason.trim() || change.isPending} onClick={() => { if (reason.trim() && !change.isPending) change.mutate({ action: act, reason: reason.trim() }); }}>{t(act === "void" ? "empDoc.certificate.void" : "empDoc.certificate.reissue")}</Button></>}>
+      actions={<><Button variant="primary" aria-disabled={!reason.trim() || change.isPending} onClick={() => { if (reason.trim() && !change.isPending) change.mutate({ action: act, reason: reason.trim() }); }}>{t(act === "void" ? "empDoc.certificate.void" : "empDoc.certificate.reissue")}</Button></>}>
       <Field label={t("empDoc.certificate.reason")} required>{(p) => <TextInput {...p} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
     </Sheet>}
   </>;

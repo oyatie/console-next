@@ -63,7 +63,7 @@ test("employee page: effective-date history, change a reservation, home-branch c
   await todayPreset(transfer).click();
   await reasonChip(transfer, "업무 필요").click();
   await reasonBox(transfer).fill("채용 업무 전담");
-  await transfer.getByRole("button", { name: "오늘 전보", exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 반영", exact: true }).click();
   await expect(history).toContainText("정기록을 인사부에서 채용팀으로 전보했습니다");
   await hrAct(admin, "승진 처리");
   const promote = sheet(admin, "정기록 승진 처리");
@@ -92,7 +92,7 @@ test("employee page: effective-date history, change a reservation, home-branch c
   await fillDate(transfer, on);
   await reasonChip(transfer, "정기 인사").click();
   await reasonBox(transfer).fill("인사부 복귀 예정");
-  await transfer.getByRole("button", { name: `전보 예약 · ${koDate(on)} 시행`, exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 예약", exact: true }).click();
   await expect(next).toContainText(`${koDate(on)} 전보 예정`);
   await expect(history.getByRole("heading", { name: "예정", level: 3 })).toBeVisible();
   const reserved = history.getByRole("listitem").filter({ hasText: "인사부 복귀 예정" });

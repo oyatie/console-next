@@ -81,7 +81,7 @@ test("a change in one session reaches another without reload or polling, survive
   const sheet = admin.getByRole("dialog");
   await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(30));
   await sheet.getByLabel("퇴직 경위").fill("실시간 확인");
-  await sheet.getByRole("button", { name: "퇴직 보고" }).click();
+  await sheet.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
   await expect(exitPanel(admin)).toContainText("보고됨");
   await expect(exitPanel(b.page)).toContainText("보고됨", { timeout: 15_000 });
   await expect(b.page.getByRole("status").filter({ hasText: "다른 곳에서 바뀌어" })).toBeVisible();
@@ -100,10 +100,10 @@ test("a change in one session reaches another without reload or polling, survive
   await b.page.context().setOffline(true);
   await expect(outage(b.page)).toBeVisible({ timeout: 60_000 });
   await b.page.context().setOffline(false);
-  await admin.getByRole("button", { name: "퇴직 보고 취소" }).click();
-  const withdraw = admin.getByRole("dialog", { name: "퇴직 보고 취소" });
+  await admin.getByRole("button", { name: "퇴직 취소" }).click();
+  const withdraw = admin.getByRole("dialog", { name: "퇴직 취소" });
   await withdraw.getByLabel("취소 사유").fill("실시간 재연결 확인");
-  await withdraw.getByRole("button", { name: "퇴직 보고 취소" }).click();
+  await withdraw.getByRole("button", { name: "퇴직 1명 취소" }).click();
   await expect(exitPanel(admin)).toContainText("취소됨");
   await expect(exitPanel(b.page)).toContainText("보고됨"); // still the old read: nothing polled while cut
 
@@ -156,7 +156,7 @@ test("a sheet holds a change made elsewhere to the record under it, and closing 
   const sheet = admin.getByRole("dialog");
   await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(30));
   await sheet.getByLabel("퇴직 경위").fill("시트 보류 확인");
-  await sheet.getByRole("button", { name: "퇴직 보고" }).click();
+  await sheet.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
   await expect(exitPanel(admin)).toContainText("보고됨");
 
   // Past the frame and its debounce: nothing under (or in) the open sheet was re-read or redrawn.
@@ -165,7 +165,7 @@ test("a sheet holds a change made elsewhere to the record under it, and closing 
   await expect(exitPanel(b.page)).not.toContainText("보고됨");
 
   // Closing applies the held change: one re-read, the record shows the report.
-  await open.getByRole("button", { name: "닫기" }).click();
+  await open.getByRole("button", { name: "닫기", exact: true }).last().click();
   await expect(open).toBeHidden();
   await expect(exitPanel(b.page)).toContainText("보고됨", { timeout: 15_000 });
 });

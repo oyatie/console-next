@@ -9,9 +9,8 @@ import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { ORG_READS, unitsQuery } from "../../../reference/org/api";
 import { useCan } from "../../../reference/authz/ui/use-can";
-import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
-import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
+import { Composer } from "../../../ui/composer/composer";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { changeCommands, changeUnitId, me, probed } from "../api";
@@ -56,7 +55,7 @@ function OpenItem({ d, it, refetch, onNote }: { d: Detail; it: Item; refetch: Re
   const can = useCan();
   const [memo, setMemo] = useState("");
   const [tried, setTried] = useState(false);
-  const memoRef = useRef<HTMLSpanElement>(null);
+  const memoRef = useRef<HTMLDivElement>(null);
   const unitId = d.target.kind === "ORG_UNIT" ? changeUnitId(d) : undefined;
   const transfer = it.itemKey === "TRANSFER_EMPLOYEES" && !!unitId;
   const units = useQuery({ ...unitsQuery, enabled: transfer });
@@ -73,7 +72,6 @@ function OpenItem({ d, it, refetch, onNote }: { d: Detail; it: Item; refetch: Re
       focusSoon("settlement");
     },
   });
-  const label = t("orgChange.settle.complete", { label: it.label });
   if (d.status !== "SETTLING" || !can("org_change_apply"))
     return (
       <span className="row">
@@ -81,52 +79,27 @@ function OpenItem({ d, it, refetch, onNote }: { d: Detail; it: Item; refetch: Re
         <Chip>{t("orgChange.settle.waiting")}</Chip>
       </span>
     );
-  if (transfer && !units.data) return <span>{it.label}</span>;
+  if (transfer && !unit) return <span role="status">{it.label} · {t("common.loading")}</span>;
   if (transfer) {
     const left = unit?.headcount ?? 0;
     const name = unit?.name ?? "—";
-    return (
-      <span className={css.fix}>
-        <span className="row">
-          <span className="grow">{it.label}</span>
-          {left === 0 && <Link to="/org" search={{ sel: unitId }}>{t("orgChange.openUnit")}</Link>}
-        </span>
-        {left > 0 ? (
-          <DisabledReason
-            control={(p) => <Button {...p}>{label}</Button>}
-            reason={t("orgChange.settle.transfer.left", { name, count: left })}
-            remedy={<Link to="/org" search={{ sel: unitId, act: "reassign" }}>{t("orgChange.settle.moveMembers", { count: left })}</Link>}
-          />
-        ) : (
-          <span className="row">
-            <span className="muted grow">{t("orgChange.settle.transfer.zero", { name })}</span>
-            <Button disabled={complete.isPending || !unit} onClick={() => complete.mutate(undefined)}>{label}</Button>
-          </span>
-        )}
-        <CommandError error={complete.error} />
-      </span>
-    );
+    return <Composer layout="inline" headingLevel={3} title={it.label} action={{ kind: "orgSettlement", mode: "complete" }} pending={complete.isPending}
+      blocked={left > 0 ? { reason: t("orgChange.settle.transfer.left", { name, count: left }), remedy: <Link to="/org" search={{ sel: unitId, act: "reassign" }}>{t("orgChange.settle.moveMembers", { count: left })}</Link> } : undefined}
+      consequence={unit && left === 0 ? t("orgChange.settle.transfer.zero", { name }) : undefined}
+      notice={<CommandError error={complete.error} />}
+      onSubmit={() => { if (left === 0 && unit) complete.mutate(undefined); }}
+    ><Link to="/org" search={{ sel: unitId }}>{t("orgChange.openUnit")}</Link></Composer>;
   }
+
   const missing = tried && !memo.trim();
   return (
-    <span ref={memoRef} className={css.fix}>
+    <Composer layout="inline" headingLevel={3} title={it.label} action={{ kind: "orgSettlement", mode: "complete" }} pending={complete.isPending}
+      notice={<CommandError error={complete.error} />}
+      onSubmit={() => { setTried(true); if (memo.trim()) complete.mutate(undefined); else memoRef.current?.querySelector("textarea")?.focus(); }}
+    ><div ref={memoRef} className={css.fix}>
       <Field label={t("orgChange.settle.memo", { label: it.label })} required example={t("orgChange.settle.memo.example")} error={missing ? t("orgChange.settle.memo.required") : undefined}>
         {(p) => <TextArea {...p} rows={2} value={memo} onChange={(e) => setMemo(e.target.value)} />}
       </Field>
-      <span className="row">
-        <span className="grow" />
-        <Button
-          disabled={complete.isPending}
-          onClick={() => {
-            setTried(true);
-            if (memo.trim()) complete.mutate(undefined);
-            else memoRef.current?.querySelector("textarea")?.focus();
-          }}
-        >
-          {label}
-        </Button>
-      </span>
-      <CommandError error={complete.error} />
-    </span>
+    </div></Composer>
   );
 }

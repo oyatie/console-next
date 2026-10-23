@@ -32,7 +32,7 @@ const EDITS: Record<string, Edit> = {
       await w.admin.getByRole("button", { name: `비상연락처 ${NAMES.contact} 수정` }).click();
       const sheet = w.admin.getByRole("dialog", { name: "비상연락처 수정" });
       await sheet.getByRole("combobox", { name: /^관계/ }).selectOption({ label: "형제자매" });
-      await sheet.getByRole("button", { name: "비상연락처 수정" }).click();
+      await sheet.getByRole("button", { name: "인사 정보 1명 정정" }).click();
       await expect(sheet).toBeHidden();
     },
   },

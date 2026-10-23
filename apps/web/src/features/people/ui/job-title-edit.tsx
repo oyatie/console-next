@@ -29,6 +29,6 @@ export function JobTitleEdit({ entry, onClose }: { entry: JobTitle; onClose: () 
       {(p) => <TextInput {...p} inputMode="numeric" value={rank} onChange={(e) => setRank(e.target.value)} />}
     </Field>}
     <CommandError error={run.error} />
-    <div className="row"><Button variant="ghost" onClick={onClose}>{t("empFix.cancel")}</Button><Button type="submit" variant="primary" aria-disabled={missing || run.isPending || undefined}>{t("titles.edit.commit")}</Button></div>
+    <div className="row"><Button variant="ghost" onClick={onClose}>{t("composer.dismiss")}</Button><Button type="submit" variant="primary" aria-disabled={missing || run.isPending || undefined}>{t("titles.edit.commit")}</Button></div>
   </Form>;
 }

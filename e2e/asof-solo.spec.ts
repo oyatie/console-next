@@ -136,7 +136,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   await rename.getByRole("textbox", { name: /^새 이름/ }).fill("국내영업팀");
   await rename.getByRole("textbox", { name: /^시행일/ }).fill(due);
   await rename.getByRole("textbox", { name: /^사유/ }).fill("영업 조직 이름 정리");
-  await rename.getByRole("button", { name: /^예약 · / }).click();
+  await rename.getByRole("button", { name: "부서 이름 변경 1개 예약" }).click();
   const receipt = admin.getByRole("status").filter({
     has: admin.getByRole("link", { name: /^OC-\d{4}-\d{4} 기록 보기$/ }),
   });
@@ -148,7 +148,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   await create.getByLabel("부서 이름").fill("미래팀");
   await create.getByRole("textbox", { name: /^시행일/ }).fill(due);
   await create.getByLabel("사유").fill("미래 사업 준비");
-  await create.getByRole("button", { name: /^예약 · / }).click();
+  await create.getByRole("button", { name: "부서 신설 1개 예약" }).click();
   await expect(receipt).toContainText("미래팀 신설");
   const createCode = (await receipt.getByRole("link", { name: /기록 보기$/ }).innerText()).match(/OC-\d{4}-\d{4}/)![0];
   const ending = await openUnit(admin, "종료팀");
@@ -156,7 +156,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   const dissolve = sheet(admin, "종료팀 폐지");
   await dissolve.getByRole("textbox", { name: /^시행일/ }).fill(due);
   await dissolve.getByLabel("사유").fill("한시 조직 종료");
-  await dissolve.getByRole("button", { name: /^예약 · / }).click();
+  await dissolve.getByRole("button", { name: "부서 폐지 1개 예약" }).click();
   await expect(receipt).toContainText("종료팀 폐지");
   const dissolveCode = (await receipt.getByRole("link", { name: /기록 보기$/ }).innerText()).match(/OC-\d{4}-\d{4}/)![0];
   await findBox(admin, "종료팀"); // before its dissolution date, the dated read retains the unit
@@ -191,11 +191,11 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   };
   admin.on("request", observeDraftWrites);
   await admin.getByRole("button", { name: "이 날짜로 개편안 작성" }).click();
-  const proposal = admin.getByRole("region", { name: "본사 아래에 부서 신설", exact: true });
+  const proposal = admin.getByRole("dialog", { name: "본사 아래에 부서 신설", exact: true });
   await expect(proposal).toBeVisible();
   await expect(proposal.getByRole("term").filter({ hasText: "상위 조직" }).locator("xpath=following-sibling::dd[1]")).toContainText("본사");
   await expect(proposal.getByRole("textbox", { name: /^시행일/ })).toHaveValue(koDate(due));
-  await proposal.getByRole("button", { name: "제안 닫기", exact: true }).click();
+  await proposal.getByRole("button", { name: "닫기", exact: true }).last().click();
   await expect(proposal).toHaveCount(0);
   expect(draftWrites).toEqual([]);
   admin.off("request", observeDraftWrites);

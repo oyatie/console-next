@@ -7,7 +7,7 @@ import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { ChipChoice } from "../../../ui/choice/chip-choice";
 import { Chip } from "../../../ui/chip";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
 import { correctEmployee, isStale, type Correction, type CorrectionChanges } from "../api";
 import { SheetConflict } from "./sheet-conflict";
 import { serviceSpan } from "../domain/card";
@@ -57,7 +57,7 @@ export function FixCorrect({ c, field, onClose, onDone, lead }: { c: Card; field
   const shift = typedDate && typeof now.raw === "string" ? dayDiff(now.raw, typedDate) : null;
   const span = field === "hire_date" && typedDate && c.e.hire_date ? [serviceSpan(c.e.hire_date, todayKst()), serviceSpan(typedDate, todayKst())] : null;
   return (
-    <Sheet
+    <Composer
       open
       kicker={<Who c={c} />}
       title={t("empFix.title", { field: label })}
@@ -71,12 +71,10 @@ export function FixCorrect({ c, field, onClose, onDone, lead }: { c: Card; field
           <span className={s.s12}>{t(two ? "empFix.cons.two" : "empFix.cons.now")} {missing && t("empFix.cons.press")}</span>
         </>
       }
-      actions={
-        <>
-          <Button variant="ghost" onClick={onClose}>{t("empFix.cancel")}</Button>
-          <Button variant="primary" aria-disabled={missing ? true : undefined} onClick={press}>{stale ? t("empFix.conflict.commit") : t(two ? "empFix.commit.two" : "empFix.commit")}</Button>
-        </>
-      }
+      action={{ kind: "profile", mode: "correct", count: 1 }}
+      incomplete={Boolean(missing)}
+      recovery={stale && keep === false ? <Button onClick={onClose}>{t("composer.dismiss")}</Button> : undefined}
+      onSubmit={press}
     >
       {lead}
       <div className="row"><Chip tone="warn">{t("uiRecord.mark.cor")}</Chip>{REGISTER_NO[field] && <Chip>{t("empFix.registerItem", { no: REGISTER_NO[field] })}</Chip>}{two && <Chip tone="info">{t("empFix.second")}</Chip>}</div>
@@ -98,6 +96,6 @@ export function FixCorrect({ c, field, onClose, onDone, lead }: { c: Card; field
         {span?.[0] && span[1] && <p className={s.note}>{t("empFix.derived.tenure", { from: t("empCard.tenure", span[0]), to: t("empCard.tenure", span[1]) })}</p>}
       </Surface>
       <p className={s.note}>{t("empFix.evidence")}</p>
-    </Sheet>
+    </Composer>
   );
 }

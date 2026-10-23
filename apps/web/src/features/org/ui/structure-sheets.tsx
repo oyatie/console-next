@@ -3,11 +3,10 @@ import { focusSoon } from "../../../lib/react/announce";
 import { STRUCTURE_ACTS, type StructureAct } from "../../../reference/org/domain/structure";
 import { useStructure } from "../../../reference/org/ui/use-structure";
 import { useStructureSlots } from "../../../reference/org/ui/use-structure-slots";
-import { DeptAddGovernedSheet } from "./dept-add-governed-sheet";
+import { DeptNameComposer } from "./dept-name-composer";
 import { DeptDissolveSheet } from "./dept-dissolve-sheet";
 import { DeptEndSheet } from "./dept-end-sheet";
 import { DeptMergeSheet } from "./dept-merge-sheet";
-import { DeptRenameGovernedSheet } from "./dept-rename-governed-sheet";
 
 const route = getRouteApi("/app/org");
 
@@ -33,9 +32,9 @@ export function StructureSheets() {
   if (a.startsWith("wp-")) return slots?.workplaceSheet({ act: a, at, setup: s.setup, onClose: close, onSelect: (id) => void select(id), onAct: (n) => void onAct(n) }) ?? null;
   switch (a) {
     case "dept-add":
-      return at.kind !== "entity" && !s.setup ? <DeptAddGovernedSheet place={at} onClose={close} /> : null;
+      return at.kind !== "entity" && !s.setup ? <DeptNameComposer key={`create:${at.node.id}`} mode="create" place={at} onClose={close} /> : null;
     case "dept-rename":
-      return at.kind === "dept" && !s.setup ? <DeptRenameGovernedSheet place={at} onClose={close} /> : null;
+      return at.kind === "dept" && !s.setup ? <DeptNameComposer key={`rename:${at.node.id}`} mode="rename" place={at} onClose={close} /> : null;
     // CRUD: one sheet in both phases; the server says whether it is deleted (never used) or dissolution (used).
     case "dept-delete":
       return at.kind === "dept" ? <DeptEndSheet place={at} setup={s.setup} onClose={close} onDone={() => void select(at.parent?.id)} onPropose={() => void onAct("dept-dissolve")} /> : null;

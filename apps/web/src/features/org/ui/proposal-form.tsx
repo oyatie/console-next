@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, useState, type FocusEvent, type ReactNode } from "react";
+import { useId, useRef, useState, type FocusEvent, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, CheckCircle2, X, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
@@ -8,11 +8,11 @@ import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { announce } from "../../../lib/react/announce";
 import { failureText } from "../../../lib/refusal";
-import { useDirtyEscape } from "../../../lib/react/dirty-escape";
 import { todayKst } from "../../../lib/pure/today";
 import { label, PERIOD_LOCK_DOMAIN, UNIT_KIND } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
-import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
+import { Composer } from "../../../ui/composer/composer";
+import type { ActionDescription } from "../../../ui/composer/actions";
 import { ORG_READS } from "../../../reference/org/api";
 import { appendOp, dateDraft, submitDraft } from "../api";
 import { currentName, fieldsOf, validate, type Field, type FieldError, type Intent, type Values } from "../domain/proposal";
@@ -29,7 +29,7 @@ type Press = "draft" | "submit" | "append";
 type Done = { draft: Change | Summary; unsent: boolean; submit: boolean; press: Press; failed?: string };
 export type Check = { tone: "ok" | "caution" | "block"; text: ReactNode; action?: ReactNode };
 /** What one intent puts into the card; the shell owns validation, the checks list, the decision bar and the submit flow. */
-export type Spec = {
+type Spec = {
   title: string;
   context: ReactNode;
   inputs: ReactNode;
@@ -38,7 +38,8 @@ export type Spec = {
   /** Open changes already on the same target: listed as cautions with a link. */
   related?: Summary[];
   consequence: string;
-  submitLabel: string;
+  action: ActionDescription["kind"];
+  count?: number;
   /** A fact that makes submitting impossible now; the draft may still be saved. */
   block?: { reason: string; remedy?: ReactNode };
   /** Drafts the change. `dated`: the request already carries the date and reason (no follow-up PATCH). */
@@ -59,21 +60,17 @@ const labelOf = (i: Intent, f: Field) =>
   : t("orgPropose.field.newName");
 
 /** The card around one intent: context → input → preview → checks → approval route → consequence → decision bar. */
-export function ProposeShell({ intent, v, set, onClose, spec }: { intent: Intent; v: Values; set: (f: Field, value: string) => void; onClose: () => void; spec: (kit: Kit) => Spec }) {
+export function ProposalForm({ intent, v, set, onClose, spec }: { intent: Intent; v: Values; set: (f: Field, value: string) => void; onClose: () => void; spec: (kit: Kit) => Spec }) {
   const nav = useNavigate();
-  const id = useId();
-  const title = useRef<HTMLHeadingElement>(null);
+  const appendId = useId();
   const today = todayKst();
   const [touched, setTouched] = useState<ReadonlySet<Field>>(new Set());
   const [pressed, setPressed] = useState(false);
   const fields = fieldsOf(intent);
   const errors = validate(fields, v, { today, current: currentName(intent) });
   const dirty = fields.some((f) => v[f].trim() !== "");
-  const { ref: card, armed } = useDirtyEscape<HTMLElement>(dirty, onClose);
+  const card = useRef<HTMLDivElement>(null);
   const freeze = useFreezeCheck(v.date);
-  // The card takes the panel's place: focus moves to its title, so a screen reader hears what is proposed.
-  useEffect(() => title.current?.focus(), []);
-
   const error = (f: Field) => {
     const e = errors[f];
     return e && (pressed || touched.has(f)) ? errorText(f, e) : undefined;
@@ -91,9 +88,6 @@ export function ProposeShell({ intent, v, set, onClose, spec }: { intent: Intent
   // decisions #26: without approval the press applies today's change, or schedules it for its effective date.
   const routed = useOrgRouted();
   const later = v.date > today;
-  const submitText = routed ? t("orgPropose.via.route", { action: sp.submitLabel })
-    : later ? t("orgPropose.via.scheduled", { action: sp.submitLabel, date: fmtDate(v.date) })
-    : t("orgPropose.via.now", { action: sp.submitLabel });
   const sentText = (code: string) => (routed ? t("orgPropose.done.submitted", { code }) : later ? t("orgPropose.done.scheduled", { code, date: fmtDate(v.date) }) : t("orgPropose.done.applied", { code }));
 
   const propose = useCommand({
@@ -150,69 +144,40 @@ export function ProposeShell({ intent, v, set, onClose, spec }: { intent: Intent
   ];
 
   return (
-    <section ref={card} className={`card ${s.card}`} aria-labelledby={`${id}-title`}>
-      <div className={s.head}>
-        <h2 id={`${id}-title`} ref={title} className="panel__title" tabIndex={-1}>{sp.title}</h2>
-        <Button variant="ghost" onClick={onClose} aria-label={t("orgPropose.close")}><X size={16} aria-hidden /></Button>
-      </div>
-      <p className={s.sub}>{t("orgPropose.unsaved")}</p>
-
-      <Part title={t("orgPropose.section.context")}>{sp.context}</Part>
-      <Part title={t("orgPropose.section.input")}>
+    <Composer
+      title={sp.title}
+      subtitle={t("orgPropose.unsaved")}
+      dirty={dirty}
+      onClose={onClose}
+      pending={propose.isPending}
+      action={{ kind: sp.action, mode: routed ? "request" : later ? "schedule" : "apply", count: sp.count ?? 1 }}
+      onSubmit={() => go("submit")}
+      blocked={sp.block}
+      onSaveDraft={() => go("draft")}
+      secondary={sp.append && <Button aria-describedby={appendId} disabled={propose.isPending} onClick={() => go("append")}>{t("orgPropose.append", { code: sp.append.into.code })}</Button>}
+      notice={<>
+        {sp.append && <p id={appendId} className={s.note}>{t("orgPropose.append.note", { code: sp.append.into.code, date: fmtDate(sp.append.into.effectiveDate) })}</p>}
+        <CommandError error={propose.error} />
+        {missing.length > 0 && <p className={s.note}>{t("orgPropose.missing", { fields: missing.join(" · ") })}</p>}
+      </>}
+      sections={{
+        preflight: <><p className={s.note}>{t("orgPropose.checks.title")}</p><ul className={s.checks}>{checks.map((c, i) => (
+          <li key={i} className={s.check} data-tone={c.tone}>
+            {c.tone === "ok" ? <CheckCircle2 size={16} aria-hidden /> : c.tone === "caution" ? <AlertTriangle size={16} aria-hidden /> : <XCircle size={16} aria-hidden />}
+            <span className={s.checkTag}>{t(`orgPropose.checks.tone.${c.tone}`)}</span><span>{c.text}</span>{c.action != null && <span className={s.checkAction}>{c.action}</span>}
+          </li>
+        ))}</ul></>,
+        effects: <>{sp.diff}<p className={s.consequence}>{sp.consequence}</p></>,
+        approvals: routed ? <p className={s.note}>{t("orgPropose.route")}</p> : null,
+      }}
+    >
+      <div ref={card} className={s.section}>
+        {sp.context}
         {sp.inputs}
         {wrap("date", <EffectiveDate value={v.date} onChange={(x) => set("date", x)} today={today} error={error("date")} />)}
         {wrap("reason", <ReasonText intent={intent.kind} value={v.reason} onChange={(x) => set("reason", x)} error={error("reason")} />)}
-      </Part>
-      {sp.diff != null && <Part title={t("orgPropose.section.diff")}>{sp.diff}</Part>}
-      <Part title={t("orgPropose.section.checks")}>
-        <p className={s.note}>{t("orgPropose.checks.title")}</p>
-        <ul className={s.checks}>
-          {checks.map((c, i) => (
-            <li key={i} className={s.check} data-tone={c.tone}>
-              {c.tone === "ok" ? <CheckCircle2 size={16} aria-hidden /> : c.tone === "caution" ? <AlertTriangle size={16} aria-hidden /> : <XCircle size={16} aria-hidden />}
-              <span className={s.checkTag}>{t(`orgPropose.checks.tone.${c.tone}`)}</span>
-              <span>{c.text}</span>
-              {c.action != null && <span className={s.checkAction}>{c.action}</span>}
-            </li>
-          ))}
-        </ul>
-      </Part>
-      {/* decisions #26: a route only when the tenant routes org changes. the named route (BW-01) replaces this sentence once routes exist. */}
-      {routed && <Part title={t("orgPropose.section.route")}><p className={s.note}>{t("orgPropose.route")}</p></Part>}
-
-      <div className={s.foot}>
-        <p id={`${id}-consequence`} className={s.consequence}>{sp.consequence}</p>
-        {sp.append && (
-          <p id={`${id}-append`} className={s.note}>
-            {t("orgPropose.append.note", { code: sp.append.into.code, date: fmtDate(sp.append.into.effectiveDate) })}
-          </p>
-        )}
-        <CommandError error={propose.error} />
-        {armed && <p className={s.note} role="status">{t("orgPropose.escConfirm")}</p>}
-        {missing.length > 0 && <p className={s.note}>{t("orgPropose.missing", { fields: missing.join(" · ") })}</p>}
-        <div className={s.bar}>
-          <Button variant="ghost" onClick={onClose}>{t("orgPropose.back")}</Button>
-          <span className="grow" />
-          {sp.append && <Button aria-describedby={`${id}-append`} disabled={propose.isPending} onClick={() => go("append")}>{t("orgPropose.append", { code: sp.append.into.code })}</Button>}
-          <Button disabled={propose.isPending} onClick={() => go("draft")}>{t("orgPropose.saveDraft")}</Button>
-          {sp.block ? (
-            <DisabledReason control={(p) => <Button {...p} variant="primary">{submitText}</Button>} reason={sp.block.reason} remedy={sp.block.remedy} />
-          ) : (
-            <Button variant="primary" aria-describedby={`${id}-consequence`} disabled={propose.isPending} onClick={() => go("submit")}>{submitText}</Button>
-          )}
-        </div>
       </div>
-    </section>
-  );
-}
-
-function Part({ title, children }: { title: string; children: ReactNode }) {
-  const id = useId();
-  return (
-    <section className={s.section} aria-labelledby={id}>
-      <h3 id={id} className={s.sectionTitle}>{title}</h3>
-      {children}
-    </section>
+    </Composer>
   );
 }
 

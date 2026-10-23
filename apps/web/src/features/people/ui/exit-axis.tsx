@@ -1,3 +1,5 @@
+import { commitLabel } from "../../../ui/composer/actions";
+import { exitUndoVerb } from "../domain/exits";
 import { useState, type ReactNode } from "react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
@@ -27,7 +29,7 @@ type StepProps = {
   follow?: ReactNode;
   /** A saved settlement draft moved the case: my own change, followed without a notice. */
   onSaved?: () => void;
-  onDone: (message: string) => void;
+  onDone: (message: string, reference?: string) => void;
 };
 /** The form for a forward step, inline at the current step on the case page or in a sheet over the person's record. */
 export function StepForm({ k, onSaved, ...rest }: StepProps) {
@@ -44,7 +46,7 @@ const holder = (next: ForwardKey, sameActor: boolean) =>
  * marked and its form sits right under the steps, with the back decisions (reject, cancel) at equal height
  * on its left. A closed case shows the steps it reached and its close step.
  */
-export function CaseAxis({ c: live, onBack, onDone }: { c: Case; onBack: (k: BackKey) => void; onDone: (message: string) => void }) {
+export function CaseAxis({ c: live, onBack, onDone }: { c: Case; onBack: (k: BackKey) => void; onDone: (message: string, reference?: string) => void }) {
   // The case the open form was built for (C11): a refresh that keeps the step follows along; one that moves the
   // case (someone else took the step) keeps the form, read-only, with who did it, until the user moves on. My
   // own commit follows the next read.
@@ -61,9 +63,9 @@ export function CaseAxis({ c: live, onBack, onDone }: { c: Case; onBack: (k: Bac
     if (seen.status !== live.status) setFollow(false);
   }
   const moved = seen.status !== live.status;
-  const done = (message: string) => {
+  const done = (message: string, reference?: string) => {
     setFollow(true);
-    onDone(message);
+    onDone(message, reference);
   };
   const name = c.employee_name;
   const date = fmtDate(c.effective_exit_date);
@@ -99,7 +101,7 @@ export function CaseAxis({ c: live, onBack, onDone }: { c: Case; onBack: (k: Bac
     });
   const backRow = back.length > 0 && (
     <span className="row" role="group" aria-label={t("exit.actions")}>
-      {back.map((k) => <Button key={k} variant="ghost-danger" onClick={() => onBack(k)}>{t(`exit.action.${k}`)}</Button>)}
+      {back.map((k) => <Button key={k} variant="ghost-danger" onClick={() => onBack(k)}>{commitLabel({ kind: "exit", mode: exitUndoVerb(c, k === "reject_exit") })}</Button>)}
     </span>
   );
   return (

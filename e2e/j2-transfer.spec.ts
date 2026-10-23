@@ -24,7 +24,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   // Nothing is chosen: no date, no unit; the commit is never dead, it says what is missing and goes there.
   await expect(dateBox(transfer)).toHaveValue("");
   await expect(transfer).toContainText("시행일을 선택하면 바로 반영할지 예약할지 정해집니다");
-  await transfer.getByRole("button", { name: "전보 예약", exact: true }).click(); // a check, not part of the journey
+  await transfer.getByRole("button", { name: "전보 1명 예약", exact: true }).click(); // a check, not part of the journey
   await expect(transfer).toContainText("4개 항목을 채워야 합니다");
   await expect(transfer.getByRole("combobox", { name: "어디로" })).toBeFocused();
   await expectAccessible(admin, "J2: transfer sheet with what is missing");
@@ -37,8 +37,8 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await expect(transfer.getByRole("checkbox")).toHaveCount(0); // BW-11 A13: no statement to tick
   await expectAccessible(admin, "J2: transfer sheet");
   // Applies now: red.
-  await expect(transfer.getByRole("button", { name: "오늘 전보", exact: true })).toHaveClass(/btn--danger/);
-  await c.click(transfer.getByRole("button", { name: "오늘 전보", exact: true }));
+  await expect(transfer.getByRole("button", { name: "전보 1명 반영", exact: true })).toHaveClass(/btn--danger/);
+  await c.click(transfer.getByRole("button", { name: "전보 1명 반영", exact: true }));
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /오발령을 인사부에서 채용팀으로 전보했습니다/ })).toBeVisible();
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("status").filter({ hasText: "오발령님을 채용팀으로 전보했습니다" })).toBeVisible();
   expect(c.done("J2 transfer (base 4 with 발령 → 전보, spec §5 + 1 date + 1 reason code)")).toBeLessThanOrEqual(6);
@@ -51,7 +51,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await c.click(todayPreset(promote));
   await c.click(reasonChip(promote, "정기 승진"));
   await reasonBox(promote).fill("정기 승진");
-  await c.click(promote.getByRole("button", { name: "오늘 승진 처리", exact: true }));
+  await c.click(promote.getByRole("button", { name: "승진 1명 반영", exact: true }));
   const refused = promote.getByRole("alert");
   await expect(refused).toContainText("바뀌는 것이 없습니다");
   await expect(refused).toContainText("이미 대리입니다");
@@ -59,7 +59,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await c.click(refused.getByRole("button", { name: "다른 직위 입력" }));
   await expect(position).toBeFocused();
   await position.fill("과장");
-  await c.click(promote.getByRole("button", { name: "오늘 승진 처리", exact: true }));
+  await c.click(promote.getByRole("button", { name: "승진 1명 반영", exact: true }));
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /오발령을 대리에서 과장으로 승진 처리했습니다/ })).toBeVisible();
   expect(c.done("J2 promote (base 3 with 발령 + 1 date + 1 reason code + 2 to fix one refusal)")).toBeLessThanOrEqual(7);
 
@@ -88,7 +88,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await c.click(reasonChip(transfer, "정기 인사"));
   await reasonBox(transfer).fill("인사부 복귀");
   await expectAccessible(admin, "J2: scheduled transfer sheet");
-  const schedule = transfer.getByRole("button", { name: `전보 예약 · ${koDate(later)} 시행`, exact: true });
+  const schedule = transfer.getByRole("button", { name: "전보 1명 예약", exact: true });
   await expect(schedule).toHaveClass(/btn--primary/);
   await c.click(schedule);
   await expect(history.getByText(/오발령을 인사부로 전보하도록 예약했습니다/)).toBeVisible();
@@ -103,7 +103,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await hrAct(admin, "전보");
   await fillDate(transfer, later);
   await expect(transfer).toContainText(`${koMonthDay(later)} 전보 예약을 이 내용으로 변경합니다`);
-  await transfer.getByRole("button", { name: "취소", exact: true }).click();
+  await transfer.getByRole("button", { name: "닫기", exact: true }).last().click();
   await expect(transfer).toBeHidden();
 
   await atPhoneWidth(admin, async () => {
@@ -147,7 +147,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await expect(cancel).toContainText("이 예약을 취소합니다. 오발령님의 기록은 바뀌지 않으며");
   await cancel.getByRole("textbox", { name: /^취소 사유/ }).fill("발령 계획 변경");
   await expectAccessible(admin, "J2: cancel a scheduled transfer");
-  const withdraw = cancel.getByRole("button", { name: "전보 예약 취소" });
+  const withdraw = cancel.getByRole("button", { name: "전보 1명 취소" });
   await expect(withdraw).toHaveClass(/btn--danger/);
   await c.click(withdraw);
   // The receipt heads the history; the withdrawn record is kept, shown on request, struck through.
@@ -171,7 +171,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await fillDate(transfer, moveOn);
   await c.click(reasonChip(transfer, "정기 인사"));
   await reasonBox(transfer).fill("하반기 인사부 복귀");
-  await c.click(transfer.getByRole("button", { name: `전보 예약 · ${koDate(moveOn)} 시행`, exact: true }));
+  await c.click(transfer.getByRole("button", { name: "전보 1명 예약", exact: true }));
   const scheduled = history.getByRole("listitem").filter({ hasText: "하반기 인사부 복귀" });
   await expect(scheduled).toContainText("인사부로 전보하도록 예약했습니다");
   await expect(scheduled).toContainText("효력 예정");

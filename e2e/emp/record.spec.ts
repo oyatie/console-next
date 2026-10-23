@@ -66,7 +66,7 @@ test("roster: first run, counts that add up, 3-year retention, a void in setup a
   await c.click(a.getByRole("group", { name: "인사카드 동작" }).getByRole("button", { name: "더 보기" }));
   await c.click(a.getByRole("menuitem", { name: /등록 취소/ }));
   const voiding = sheet(a);
-  const commit = voiding.getByRole("button", { name: "등록 취소", exact: true });
+  const commit = voiding.getByRole("button", { name: "직원 등록 1명 삭제", exact: true });
   await commit.press("Enter"); // a check: nothing is chosen (aria-disabled, R9), so it goes to what is missing and cancels nothing
   await expect(voiding.getByRole("radio", { checked: true })).toHaveCount(0);
   await expect(voiding).toBeVisible();
@@ -126,7 +126,7 @@ test("record card: a hire date corrected within budget, a taken number refused, 
   await expect(fix).toContainText("2019. 03. 04.");
   await c.click(pick(fix, /왜 정정합니까/, "원본 서류와 다름"));
   await expectAccessible(a, "E4 hire-date correction");
-  await c.click(fix.getByRole("button", { name: "정정 요청", exact: true }));
+  await c.click(fix.getByRole("button", { name: "인사 정보 1명 정정", exact: true }));
   await expect(a.getByRole("status").filter({ hasText: "검토 표시" })).toBeVisible();
   expect(c.done("E4 correct a mistyped hire date")).toBeLessThanOrEqual(7);
   await expect(a.getByRole("group", { name: "소속" })).toContainText("2019. 03. 04.");
@@ -163,7 +163,7 @@ test("record card: a hire date corrected within budget, a taken number refused, 
   await expect(empno.getByRole("textbox", { name: "새 사번" })).toHaveAccessibleDescription(/이미 쓰는 사번입니다/);
   await pick(empno, /언제부터/, "오늘부터").click();
   await reasonChip(empno, "사번 체계 변경", "사유").click();
-  await empno.getByRole("button", { name: "사번 변경", exact: true }).press("Enter"); // aria-disabled (R9): goes to the number
+  await empno.getByRole("button", { name: "사번 1명 변경", exact: true }).press("Enter"); // aria-disabled (R9): goes to the number
   await expect(empno.getByRole("textbox", { name: "새 사번" })).toBeFocused();
   await a.keyboard.press("Escape");
   await expect(cardHeading(a).locator("..")).toContainText(HERO.no);
@@ -180,11 +180,11 @@ test("record card: a hire date corrected within budget, a taken number refused, 
   await other.getByRole("textbox", { name: "업무 이메일" }).press("Enter");
   await expect(other.getByRole("status").filter({ hasText: "저장했습니다" })).toBeVisible();
   await other.close();
-  await sheet(a).getByRole("button", { name: "정정", exact: true }).click();
+  await sheet(a).getByRole("button", { name: "인사 정보 1명 정정", exact: true }).click();
   await expect(sheet(a).getByText(/시트를 연 뒤 다른 사람이/)).toBeVisible();
   await expectAccessible(a, "E12 conflict in a sheet");
   await sheet(a).getByText("내 값을 버리고 지금 값을 둡니다").click();
-  await sheet(a).getByRole("button", { name: "선택대로 저장" }).click();
+  await sheet(a).getByRole("button", { name: "닫기", exact: true }).last().click();
   await expect(sheet(a)).toBeHidden();
   await expect(a.getByRole("region", { name: "인적사항" })).toContainText("hajun@saeon.example");
   await expect(a.getByRole("region", { name: "인적사항" })).not.toContainText(/성별\s*여/);

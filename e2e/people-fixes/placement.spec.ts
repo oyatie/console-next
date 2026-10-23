@@ -34,7 +34,7 @@ test("solo: identically named workplaces keep their entity IDs; typed warnings s
   await fillDate(move, kstDate(-1));
   await move.getByRole("radiogroup", { name: /^사유 분류/ }).getByRole("radio").first().locator("xpath=ancestor::label[1]").click();
   await reasonBox(move).fill("같은 법인 사업장 전근");
-  await move.getByRole("button", { name: /전보 \(지난 날짜\)$/ }).click();
+  await move.getByRole("button", { name: "전보 1명 반영" }).click();
   await expect(move).toBeHidden();
   expect((await detail(b.id)).employee.legal_entity_id).toBe(second);
 
@@ -46,7 +46,7 @@ test("solo: identically named workplaces keep their entity IDs; typed warnings s
   await todayPreset(admin).click();
   await admin.getByRole("radiogroup", { name: /^사유/ }).getByRole("radio").first().locator("xpath=ancestor::label[1]").click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("본사로 복귀");
-  await admin.getByRole("button", { name: /^1명 전보 · 오늘 반영/ }).click();
+  await admin.getByRole("button", { name: "전보 1명 반영" }).click();
   await expect(admin.getByRole("status").filter({ hasText: /1명 전보/ }).first()).toBeVisible();
   expect((await detail(b.id)).employee).toMatchObject({ legal_entity_id: before.employee.legal_entity_id, workplace_id: before.employee.workplace_id });
   await go(admin, `/people/${b.id}`);

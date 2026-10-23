@@ -13,7 +13,7 @@ import { ChipChoice } from "../../../ui/choice/chip-choice";
 import { DateField } from "../../../ui/date/date-field";
 import { TextInput } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
 import { byNumbersQuery } from "../api";
 import { changeEmployeeNumber } from "../api/record";
 import type { Card } from "./use-card";
@@ -52,7 +52,7 @@ export function FixEmpno({ c, onClose, onCorrect }: { c: Card; onClose: () => vo
   });
   const press = () => (missing ? document.getElementById(missing)?.querySelector<HTMLElement>("input, textarea")?.focus() : run.mutate(undefined));
   return (
-    <Sheet
+    <Composer
       open
       kicker={<Who c={c} />}
       title={t("empFix.empno.title")}
@@ -60,13 +60,11 @@ export function FixEmpno({ c, onClose, onCorrect }: { c: Card; onClose: () => vo
       onClose={onClose}
       notice={run.isError && <CommandError error={run.error} />}
       consequence={<span>{missing ? t("empFix.empno.pick") : <b>{t("empFix.empno.cons", { from: c.e.employee_number ?? "—", to: next })}</b>}</span>}
-      actions={
-        <>
-          <Button variant="ghost" onClick={onClose}>{t("empFix.cancel")}</Button>
-          <Button onClick={onCorrect}>{t("empFix.empno.toCorrect")}</Button>
-          <Button variant="primary" aria-disabled={missing ? true : undefined} onClick={press}>{t("empFix.empno.commit")}</Button>
-        </>
-      }
+      action={{ kind: "employeeNumber", mode: "change", count: 1 }}
+      pending={run.isPending}
+      incomplete={Boolean(missing)}
+      secondary={<Button onClick={onCorrect}>{t("empFix.empno.toCorrect")}</Button>}
+      onSubmit={press}
     >
       <div id="empno-new" className={s.fieldBlock}>
         <span className={s.fieldLabel}>{t("empFix.empno.new")}</span>
@@ -94,6 +92,6 @@ export function FixEmpno({ c, onClose, onCorrect }: { c: Card; onClose: () => vo
           </div>
         ))}
       </Surface>
-    </Sheet>
+    </Composer>
   );
 }

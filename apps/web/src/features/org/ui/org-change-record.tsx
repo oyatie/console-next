@@ -1,3 +1,4 @@
+import { ReceiptReference } from "../../../ui/composer/receipt-reference";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
@@ -101,7 +102,7 @@ function Record({ d, refetch }: { d: Detail; refetch: () => Promise<{ data?: Det
       <ChangeHead d={d} title={title} today={today} />
       {note && (
         <div id="change-receipt" tabIndex={-1} className={css.receipt}>
-          <Receipt state="recorded" message={note.message} actions={note.actions} />
+          <Receipt state="recorded" message={note.message} meta={<ReceiptReference value={d.code} />} actions={note.actions} />
         </div>
       )}
       {unsent && editable && report && report.blockers.length > 0 && <div className="alert" role="alert">{t("orgChange.unsent", { count: report.blockers.length })}</div>}

@@ -5,13 +5,12 @@ import { t } from "@console/i18n";
 import { FORMATS, phoneE164, toDomestic } from "../../../lib/pure/formats";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
-import { Button } from "../../../ui/button/button";
 import { Field, TextInput } from "../../../ui/field/field";
 import { SelectInput } from "../../../ui/field/select-input";
 import { MaskedField } from "../../../ui/masked-field/masked-field";
 import { FieldRow } from "../../../ui/record/field-row";
 import { ListAdd, PathNote, RowActions } from "../../../ui/record-actions/record-actions";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
 import { correctEmployee } from "../api";
 import { maskedPhone } from "../domain/card";
 import type { Card } from "./use-card";
@@ -97,7 +96,7 @@ function ContactSheet({ c, list, at, onClose }: { c: Card; list: Contact[]; at: 
   });
   const title = t(at === null ? "empContact.add" : "empContact.edit");
   return (
-    <Sheet
+    <Composer
       open
       kicker={<Who c={c} />}
       title={title}
@@ -105,12 +104,9 @@ function ContactSheet({ c, list, at, onClose }: { c: Card; list: Contact[]; at: 
       pending={run.isPending}
       notice={run.isError && <CommandError error={run.error} />}
       consequence={<PathNote path={c.setup ? "setup" : "correction"} />}
-      actions={
-        <>
-          <Button variant="ghost" onClick={onClose}>{t("empFix.cancel")}</Button>
-          <Button variant="primary" aria-disabled={!ready || undefined} onClick={() => (ready ? run.mutate(undefined) : setTried(true))}>{title}</Button>
-        </>
-      }
+      action={{ kind: "profile", mode: "correct", count: 1 }}
+      incomplete={!ready}
+      onSubmit={() => (ready ? run.mutate(undefined) : setTried(true))}
     >
       <Field label={t("empContact.name")} required error={tried && !name.trim() ? t("empContact.need.name") : undefined}>
         {(p) => <TextInput {...p} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />}
@@ -124,6 +120,6 @@ function ContactSheet({ c, list, at, onClose }: { c: Card; list: Contact[]; at: 
         )}
       </Field>
       <MaskedField label={t("empContact.phone")} required format={FORMATS.phone} value={phone} onChange={setPhone} error={tried && !e164 ? t("empContact.need.phone") : undefined} />
-    </Sheet>
+    </Composer>
   );
 }

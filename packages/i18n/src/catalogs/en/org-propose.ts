@@ -3,14 +3,6 @@ import type { koOrgPropose } from "../ko/org-propose";
 
 export const enOrgPropose: Record<keyof typeof koOrgPropose, string> = {
   "orgPropose.unsaved": "Not saved yet",
-  "orgPropose.close": "Close this proposal",
-  "orgPropose.back": "Go back",
-  "orgPropose.saveDraft": "Save draft",
-  "orgPropose.section.context": "Context",
-  "orgPropose.section.input": "Input",
-  "orgPropose.section.diff": "What changes",
-  "orgPropose.section.checks": "Checks",
-  "orgPropose.section.route": "Approval route",
 
   "orgPropose.title.create": "Create a {kind} under {parent}",
   "orgPropose.title.rename": "Rename {name}",
@@ -76,7 +68,6 @@ export const enOrgPropose: Record<keyof typeof koOrgPropose, string> = {
   "orgPropose.error.pick": "Select the {label}",
   "orgPropose.errors": "{count, plural, one {# error} other {# errors}} · moved to the first",
   "orgPropose.missing": "Fill in {fields} to continue",
-  "orgPropose.escConfirm": "You have unsaved input · press Esc again to close",
 
   "orgPropose.diff.now": "Now",
   "orgPropose.diff.then": "From {date}",
@@ -133,15 +124,6 @@ export const enOrgPropose: Record<keyof typeof koOrgPropose, string> = {
   "orgPropose.consequence.dissolve": "Applying opens {count, plural, one {# settlement item} other {# settlement items}} ({items}); {name} closes only when they are all done and the change is archived.",
   "orgPropose.consequence.reassign": "Applying transfers all {count, plural, one {# member} other {# members}} of {name} (people on leave included) to {to} as of the effective date, each keeping their status. This cannot be undone and is recorded per person in the HR history and the audit log.",
 
-  "orgPropose.submit.create": "create {name}",
-  "orgPropose.submit.rename": "rename {name}",
-  "orgPropose.submit.move": "move {name}",
-  "orgPropose.submit.dissolve": "dissolve {name}",
-  "orgPropose.submit.reassign": "transfer {count, plural, one {# member} other {# members}} to {to}",
-  "orgPropose.submit.reassignNoTo": "transfer {count, plural, one {# member} other {# members}}",
-  "orgPropose.via.route": "Submit: {action}",
-  "orgPropose.via.now": "Apply now: {action}",
-  "orgPropose.via.scheduled": "Schedule for {date}: {action}",
   "orgPropose.reassignTarget": "Transfer the members of {name}",
   "orgPropose.done.submitted": "Submitted · {code}",
   "orgPropose.done.applied": "Applied · {code}",

@@ -35,7 +35,6 @@ test("a governed change keeps its sheet pending until the changed chart has been
     late: false,
     routed: false,
     mode: "apply",
-    words: { submit: () => "" },
   };
   function Probe({ collect }: { collect: (value: ReturnType<typeof useGovernSubmit>) => void }) {
     collect(useGovernSubmit(() => ({ kind: "NEW", target: { kind: "ORG_UNIT", ref: "parent", label: "new department" }, proposal: [] }), state));

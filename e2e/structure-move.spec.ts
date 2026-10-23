@@ -27,13 +27,13 @@ test("bulk move: four 부서 to another 사업장, one carried, a name clash ren
     await c.click(admin.getByRole("button", { name: "함께 이동할 부서 추가" }));
     await c.click(admin.getByRole("dialog", { name: "함께 이동할 부서 추가" }).getByRole("row", { name: new RegExp(`^${n}`) }).first());
   }
-  await expect(admin.getByRole("heading", { level: 1 })).toHaveText("부서 4개 이동 (하위 포함 5개)");
+  await expect(admin.getByRole("heading", { level: 1 })).toHaveText("부서 4개 이동");
   await expect(admin.getByText("공정품질팀은 품질관리부 아래에 있어 함께 이동합니다. 실제로 이동하는 묶음은 3개입니다.")).toBeVisible();
 
   // 2. Only this 법인's places are offered; the current place is named and cannot be picked.
   const where = admin.getByRole("treegrid", { name: "어디로" });
   await expect(where.getByRole("row", { name: /^본점 지금 위치/ })).toHaveAttribute("aria-disabled", "true");
-  const submit = admin.getByRole("button", { name: /^부서 4개\(하위 포함 5개\) 이동/ });
+  const submit = admin.getByRole("button", { name: "부서 이동 4개 반영" });
   await expect(submit).toHaveAttribute("aria-disabled", "true");
   await c.click(where.getByRole("row", { name: /^아산공장/ }));
 

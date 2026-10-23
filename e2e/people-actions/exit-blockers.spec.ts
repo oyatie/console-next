@@ -36,7 +36,7 @@ test("exit report: a later reservation is named first and withdrawn in place; a 
   await fillDate(transfer, move);
   await reasonChip(transfer, "업무 필요").click();
   await reasonBox(transfer).fill("채용팀 합류");
-  await transfer.getByRole("button", { name: `전보 예약 · ${koDate(move)} 시행`, exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 예약", exact: true }).click();
   await expect(history.getByText(/정예약을 채용팀으로 전보하도록 예약했습니다/)).toBeVisible();
 
   // The report: the reservation after the last working day is named first, with its own withdrawal.
@@ -50,7 +50,7 @@ test("exit report: a later reservation is named first and withdrawn in place; a 
   await c.click(first.getByRole("button", { name: "예약 취소" }));
   const cancel = sheet(admin, "전보 예약 취소");
   await cancel.getByRole("textbox", { name: /^취소 사유/ }).fill("퇴직이 먼저 정해짐");
-  await c.click(cancel.getByRole("button", { name: "전보 예약 취소" }));
+  await c.click(cancel.getByRole("button", { name: "전보 1명 취소" }));
   await c.click(history.getByRole("button", { name: "퇴직 보고 작성으로 돌아가기" }));
   await fillDate(report, kstDate(10), "마지막 근무일");
   await expect(report.getByText("먼저 정리할 것")).toHaveCount(0);
@@ -62,12 +62,12 @@ test("exit report: a later reservation is named first and withdrawn in place; a 
   await admin.route("**/api/v1/hr/exit-cases", (r) =>
     r.request().method() === "POST" ? r.continue({ postData: JSON.stringify({ ...r.request().postDataJSON(), exit_reason_code: "T_RETIRED" }) }) : r.continue(),
   );
-  await report.getByRole("button", { name: /퇴직 보고$/ }).click();
+  await report.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
   await expect(report.getByRole("alert")).toContainText("이 퇴직 사유는 더는 쓰지 않습니다");
   await expect(report).toBeVisible();
   expect(await cases()).toBe(0);
   await admin.unroute("**/api/v1/hr/exit-cases");
-  await c.click(report.getByRole("button", { name: /퇴직 보고$/ }));
+  await c.click(report.getByRole("button", { name: "퇴직 보고 1명 반영" }));
   await expect(report).toBeHidden({ timeout: 15_000 });
   expect(c.done("E5-exit with a reservation withdrawn in place")).toBeLessThanOrEqual(9);
 

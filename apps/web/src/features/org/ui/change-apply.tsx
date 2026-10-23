@@ -10,8 +10,7 @@ import { useCan } from "../../../reference/authz/ui/use-can";
 import { branchesQuery, ORG_READS, unitsQuery } from "../../../reference/org/api";
 import { BlockedPanel } from "../../../ui/blocker/blocked-panel";
 import { Button } from "../../../ui/button/button";
-import { Dialog } from "../../../ui/dialog";
-import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
+import { Composer } from "../../../ui/composer/composer";
 import { changeCommands, changeUnitId, movedElsewhere, probed, refusalMessage, refusalOf } from "../api";
 import { dissolvedName, type Names, type NextStep } from "../present";
 import { ChangeScheduled } from "./change-scheduled";
@@ -59,14 +58,12 @@ function Effectuate({ d, title, refetch, onNote }: { d: Detail; title: string; r
       <div className={css.bar}>
         <Button variant={danger ? "danger" : "primary"} aria-describedby="effectuate-consequence" onClick={() => setOpen(true)}>{t("orgChange.effectuate", { title })}</Button>
       </div>
-      <Dialog open={open} title={t("orgChange.effectuate", { title })} onClose={() => setOpen(false)}>
-        {consequence("effectuate-confirm")}
-        {refusalOf(effectuate.error, d.effectiveDate) === "frozen" ? <Frozen d={d} error={effectuate.error} /> : <CommandError error={effectuate.error} />}
-        <div className="form__actions">
-          <Button onClick={() => setOpen(false)}>{t("common.back")}</Button>
-          <Button variant={danger ? "danger" : "primary"} disabled={effectuate.isPending} aria-describedby="effectuate-confirm" onClick={() => effectuate.mutate(undefined)}>{t("orgChange.effectuate", { title })}</Button>
-        </div>
-      </Dialog>
+      <Composer open={open} title={t("orgChange.effectuate", { title })} onClose={() => setOpen(false)}
+        pending={effectuate.isPending} tone={danger ? "danger" : "primary"} action={{ kind: "orgChange", mode: "apply" }}
+        consequence={consequence("effectuate-confirm")}
+        notice={refusalOf(effectuate.error, d.effectiveDate) === "frozen" ? <Frozen d={d} error={effectuate.error} /> : <CommandError error={effectuate.error} />}
+        onSubmit={() => effectuate.mutate(undefined)}
+      >{null}</Composer>
     </>
   );
 }
@@ -103,19 +100,12 @@ function Archive({ d, s, title, n, refetch, onNote }: { d: Detail; s: Extract<Ap
     <>
       {s.open.length > 0 && <p>{t("orgChange.settling.left", { count: s.open.length })}</p>}
       {isBranch && <p className={css.caution}>{t("orgChange.archive.branchUsers")}</p>}
-      {s.canArchive &&
-        (reasons.length > 0 ? (
-          <DisabledReason control={(p) => <Button variant="danger" {...p}>{t("orgChange.archive", { title })}</Button>} reason={reasons.join(" · ")} />
-        ) : (
-          <>
-            <p id="archive-consequence" className={css.consequence} role="note">{t("orgChange.archive.consequence", { name })}</p>
-            <div className={css.bar}>
-              <Button variant="danger" disabled={archive.isPending} aria-describedby="archive-consequence" onClick={() => archive.mutate(undefined)}>
-                {t("orgChange.archive", { title })}
-              </Button>
-            </div>
-          </>
-        ))}
+      {s.canArchive && <Composer layout="inline" headingLevel={3} title={t("orgChange.archive", { title })}
+        action={{ kind: "orgDissolve", mode: "complete" }} tone="danger" pending={archive.isPending}
+        blocked={reasons.length ? { reason: reasons.join(" · ") } : undefined}
+        consequence={t("orgChange.archive.consequence", { name })}
+        onSubmit={() => archive.mutate(undefined)}
+      >{null}</Composer>}
       {refusal === "frozen" ? (
         <Frozen d={d} error={archive.error} />
       ) : refusal === "conflict" && isBranch ? (

@@ -16,7 +16,7 @@ import { TextArea } from "../../../ui/field/text-area";
 import { MaskedField } from "../../../ui/masked-field/masked-field";
 import { correctEmployee, fileRequest, type ChangeRequest, type Correction, type CorrectionChanges } from "../api";
 import { changes, EMPTY, FIELDS, needsSecond, type Current, type Draft, type Field as Key } from "../domain/corrections";
-import { LifecycleFrame } from "./lifecycle-frame";
+import { Composer } from "../../../ui/composer/composer";
 import s from "./lifecycle.module.css";
 
 type Detail = components["schemas"]["EmployeeDetail"];
@@ -71,14 +71,15 @@ export function ProfileSheet({ d, mode, onClose, onDone }: { d: Detail; mode: "c
     : needsSecond(diff) ? t("profile.correct.consequence.second", { name: e.name })
     : t("profile.correct.consequence", { name: e.name });
   return (
-    <LifecycleFrame
+    <Composer
       title={t(mode === "correct" ? "profile.correct.title" : "profile.request.title", { name: e.name })}
       subtitle={[e.employee_number, e.org_unit, e.position].filter(Boolean).join(" · ")}
       onClose={onClose}
       pending={run.isPending}
       notice={run.isError && <CommandError error={run.error} />}
       consequence={<span>{consequence}</span>}
-      commit={{ label: t(mode === "correct" ? "profile.correct.commit" : "profile.request.commit"), tone: "primary" }}
+      action={{ kind: "profile", mode: mode === "correct" ? "correct" : "request", count: 1 }}
+      tone={"primary"}
       missing={tried ? count : 0}
       onSubmit={() => {
         setTried(true);
@@ -140,6 +141,6 @@ export function ProfileSheet({ d, mode, onClose, onDone }: { d: Detail; mode: "c
           {(p) => <TextArea {...p} value={note} maxLength={NOTE_MAX} onChange={(x) => (run.reset(), setNote(x.target.value))} />}
         </Field>
       </section>
-    </LifecycleFrame>
+    </Composer>
   );
 }

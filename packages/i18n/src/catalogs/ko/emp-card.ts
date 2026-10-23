@@ -272,8 +272,6 @@ export const koEmpCard = {
   "empCard.denied.list": "직원 목록으로",
   "empCard.denied.pick": "사유를 선택하면 요청할 수 있습니다 · 누르면 사유 칸으로 갑니다 · 요청에는 이 링크의 주소만 붙습니다",
   "empCard.denied.unserved": "권한 요청 보내기는 아직 서버에 없습니다 · 운영 관리자에게 직접 요청합니다",
-  "empCard.draft.save": "임시 저장",
-  "empCard.draft.session": "이 탭에서 다시 열면 작성한 내용을 불러옵니다. 새로고침하면 사라집니다.",
   "empCard.rrn.entryComing": "번호 입력·정정은 승인 절차(패스키·두 사람 확인)와 함께 열립니다 · 지금은 직원 일괄 반입으로만 기록됩니다",
   "empCard.f.registerNote": "근로자 명부 비고",
   "empCard.f.registerNote.hint": "명부 9호 기타 · 비워 두면 기록하지 않습니다",

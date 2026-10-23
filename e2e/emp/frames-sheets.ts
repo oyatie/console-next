@@ -15,7 +15,7 @@ export async function sheetFrames(a: Page) {
   await shot(a, "E4-hire-correct");
   await sheet(a).getByText(/이 정정으로 함께 바뀌는 기록/).scrollIntoViewIfNeeded();
   await shot(a, "E4-hire-correct--below");
-  await sheet(a).getByRole("button", { name: "취소", exact: true }).click();
+  await sheet(a).getByRole("button", { name: "닫기", exact: true }).last().click();
   await a.getByRole("button", { name: "직급 수정" }).click();
   await shot(a, "E4-grade-initial");
   await sheet(a).getByText("직급이 바뀝니다 · 변경 (발령)").click();
@@ -26,7 +26,7 @@ export async function sheetFrames(a: Page) {
   await pick(sheet(a), /직위도/, "직위도 대리로").click();
   await shot(a, "E4-grade-change");
   await shot(a, "E4-grade-change--dark", { dark: true });
-  await sheet(a).getByRole("button", { name: /승진 예약/ }).click();
+  await sheet(a).getByRole("button", { name: "승진 1명 예약" }).click();
   await expect(sheet(a)).toBeHidden();
   await a.getByRole("button", { name: "예약 취소 ›" }).first().click();
   await expect(sheet(a)).toBeVisible();
@@ -37,12 +37,12 @@ export async function sheetFrames(a: Page) {
   await sheet(a).getByRole("textbox", { name: "생년월일" }).fill("1994-08-12");
   await pick(sheet(a), /사유/, "원본 서류와 다름").click();
   await shot(a, "E4-multi");
-  await sheet(a).getByRole("button", { name: "취소", exact: true }).click();
+  await sheet(a).getByRole("button", { name: "닫기", exact: true }).last().click();
   await a.getByRole("button", { name: "사번 변경", exact: true }).click();
   await sheet(a).getByRole("textbox", { name: "새 사번" }).fill("10422");
   await expect(sheet(a).getByText(/이미 쓰는 사번입니다/)).toBeVisible();
   await shot(a, "E4-empno-change");
-  await sheet(a).getByRole("button", { name: "취소", exact: true }).click();
+  await sheet(a).getByRole("button", { name: "닫기", exact: true }).last().click();
 
   // E12-conflict: the same person saved first in another tab; this tab's quick edit meets the 409 and keeps its value.
   await expect(a.getByText(/예약했습니다|정정했습니다/)).toHaveCount(0, { timeout: 20_000 });
@@ -76,7 +76,7 @@ export async function sheetFrames(a: Page) {
   await third.getByRole("textbox", { name: "업무 이메일" }).press("Enter");
   await expect(third.getByRole("status").filter({ hasText: "저장했습니다" })).toBeVisible();
   await third.close();
-  await sheet(a).getByRole("button", { name: "정정", exact: true }).click();
+  await sheet(a).getByRole("button", { name: "인사 정보 1명 정정", exact: true }).click();
   await expect(sheet(a).getByText(/시트를 연 뒤 다른 사람이/)).toBeVisible();
   await shot(a, "E12-conflict-sheet");
   await a.keyboard.press("Escape");
@@ -102,7 +102,7 @@ export async function sheetFrames(a: Page) {
   await pick(sheet(a), /언제부터/, "오늘부터").click();
   await reasonChip(sheet(a), "사번 체계 변경", "사유").click();
   const account = await holdRead(a, /\/api\/v1\/directory\/people\?.*search=30901(?:&|$)/);
-  await sheet(a).getByRole("button", { name: "사번 변경", exact: true }).click();
+  await sheet(a).getByRole("button", { name: "사번 1명 변경", exact: true }).click();
   await account.requested;
   try {
     await expect(sheet(a)).toBeHidden();

@@ -7,6 +7,7 @@ import { staffedTenant } from "./setup-flows";
 import { koMonthDay, reasonBox, sheet, todayPreset, fillDate } from "./sheet";
 import { reasonChip } from "./helpers/lifecycle";
 import { sent } from "./chaos";
+import { expectComposer } from "./helpers/composer";
 
 test("saving an incomplete lifecycle draft restores its fields without recording an action", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "lcsdraft", "임시작성주식회사");
@@ -43,7 +44,7 @@ test("lifecycle sheets: a schedule conflict names the reservation, its withdrawa
   await fillDate(transfer, move);
   await reasonChip(transfer, "업무 필요").click();
   await reasonBox(transfer).fill("채용팀 합류");
-  await transfer.getByRole("button", { name: `전보 예약 · ${koDate(move)} 시행`, exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 예약", exact: true }).click();
   await expect(history.getByText(/충돌이를 채용팀으로 전보하도록 예약했습니다/)).toBeVisible();
 
   // A leave from today would leave the transfer unable to apply on its date: refused, with the reservation named.
@@ -52,7 +53,7 @@ test("lifecycle sheets: a schedule conflict names the reservation, its withdrawa
   await c.click(leave.getByText("개인 사유", { exact: true }));
   await c.click(todayPreset(leave));
   await reasonBox(leave).fill("개인 사정");
-  await c.click(leave.getByRole("button", { name: "오늘 휴직 처리", exact: true }));
+  await c.click(leave.getByRole("button", { name: "휴직 1명 반영", exact: true }));
   const refused = leave.getByRole("alert");
   await expect(refused).toContainText("예약된 기록과 맞지 않습니다");
   await expect(refused).toContainText(`${koMonthDay(move)}`);
@@ -63,7 +64,7 @@ test("lifecycle sheets: a schedule conflict names the reservation, its withdrawa
   await expect(history.getByRole("listitem").filter({ hasText: "채용팀 합류" })).toBeFocused();
   await hrAct(admin, "휴직 처리");
   await expect(leave).toContainText("작성하던 내용을 불러왔습니다");
-  await leave.getByRole("button", { name: "오늘 휴직 처리", exact: true }).click();
+  await leave.getByRole("button", { name: "휴직 1명 반영", exact: true }).click();
   await expect(refused).toContainText("예약된 기록과 맞지 않습니다");
   await expectAccessible(admin, "lifecycle: schedule conflict names the reservation");
 
@@ -71,11 +72,11 @@ test("lifecycle sheets: a schedule conflict names the reservation, its withdrawa
   await c.click(refused.getByRole("button", { name: "그 예약 취소" }));
   const cancel = sheet(admin, "전보 예약 취소");
   await cancel.getByRole("textbox", { name: /^취소 사유/ }).fill("휴직이 먼저 확정됨");
-  await c.click(cancel.getByRole("button", { name: "전보 예약 취소" }));
+  await c.click(cancel.getByRole("button", { name: "전보 1명 취소" }));
   await c.click(history.getByRole("button", { name: "휴직 처리 작성으로 돌아가기" }));
   await expect(leave).toContainText("작성하던 내용을 불러왔습니다");
   await expect(reasonBox(leave)).toHaveValue("개인 사정");
-  await c.click(leave.getByRole("button", { name: "오늘 휴직 처리", exact: true }));
+  await c.click(leave.getByRole("button", { name: "휴직 1명 반영", exact: true }));
   await expect(history.getByText(/충돌이를 휴직 처리했습니다/)).toBeVisible();
   expect(c.done("leave through one schedule conflict (base 4 with 발령 + 1 type + 1 date + 4 for the detour)")).toBeLessThanOrEqual(10);
 
@@ -85,7 +86,7 @@ test("lifecycle sheets: a schedule conflict names the reservation, its withdrawa
   const ret = sheet(admin, "충돌이 복직 처리");
   await fillDate(ret, back);
   await reasonBox(ret).fill("복귀 예정");
-  await ret.getByRole("button", { name: `복직 예약 · ${koDate(back)} 시행`, exact: true }).click();
+  await ret.getByRole("button", { name: "복직 1명 예약", exact: true }).click();
   await expect(history.getByText(/충돌이를 복직 처리하도록 예약했습니다/)).toBeVisible();
   // On leave until then: a transfer is not offered now, only after the return (from the day after it).
   await hrAct(admin, "전보");
@@ -122,9 +123,9 @@ test("lifecycle sheets: a lost response freezes the sheet until it is checked, a
   await todayPreset(transfer).click();
   await reasonChip(transfer, "업무 필요").click();
   await reasonBox(transfer).fill("응답 유실 확인");
-  await transfer.getByRole("button", { name: "오늘 전보", exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 반영", exact: true }).click();
   await expect(transfer).toContainText("응답을 받지 못해 기록됐는지 모릅니다");
-  await expect(transfer.getByRole("button", { name: "오늘 전보", exact: true })).toHaveCount(0);
+  await expect(transfer.getByRole("button", { name: "전보 1명 반영", exact: true })).toHaveCount(0);
   await expectAccessible(admin, "lifecycle: a lost response being checked");
   await admin.unroute(/\/lifecycle-events$/);
   await transfer.getByRole("button", { name: "기록됐는지 확인" }).click();
@@ -139,7 +140,7 @@ test("lifecycle sheets: a lost response freezes the sheet until it is checked, a
   await fillDate(transfer, later);
   await reasonChip(transfer, "정기 인사").click();
   await reasonBox(transfer).fill("인사부 복귀 예약");
-  await transfer.getByRole("button", { name: `전보 예약 · ${koDate(later)} 시행`, exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 예약", exact: true }).click();
   const reserved = history.getByRole("listitem").filter({ hasText: "인사부 복귀 예약" });
   await expect(reserved).toContainText("효력 예정");
 
@@ -148,21 +149,21 @@ test("lifecycle sheets: a lost response freezes the sheet until it is checked, a
   await reserved.getByRole("button", { name: "전보 예약 취소" }).click();
   const cancel = sheet(admin, "전보 예약 취소");
   await cancel.getByRole("textbox", { name: /^취소 사유/ }).fill("계획 변경");
-  await cancel.getByRole("button", { name: "전보 예약 취소" }).click();
+  await cancel.getByRole("button", { name: "전보 1명 취소" }).click();
   // A refused history read cannot use the cached reservation to resolve the lost cancellation.
   await admin.route(/\/lifecycle-events$/, (r) => r.request().method() === "GET"
     ? r.fulfill({ status: 403, json: { code: "forbidden", message: "denied" } }) : r.continue());
   await cancel.getByRole("button", { name: "기록됐는지 확인" }).click();
   await expect(cancel.getByRole("button", { name: "기록됐는지 확인" })).toBeEnabled();
   await expect(cancel.getByText("취소는 기록되지 않았습니다", { exact: false })).toHaveCount(0);
-  await expect(cancel.getByRole("button", { name: "전보 예약 취소", exact: true })).toHaveCount(0);
+  await expect(cancel.getByRole("button", { name: "전보 1명 취소", exact: true })).toHaveCount(0);
   await admin.unroute(/\/lifecycle-events$/);
   await cancel.getByRole("button", { name: "기록됐는지 확인" }).click();
   await expect(cancel).toContainText("취소는 기록되지 않았습니다");
   await admin.unroute(/\/cancel$/);
   // Recorded this time, but the answer is lost: reading the history back shows my withdrawal, so it is done.
   await loseNext(/\/cancel$/);
-  await cancel.getByRole("button", { name: "전보 예약 취소" }).click();
+  await cancel.getByRole("button", { name: "전보 1명 취소" }).click();
   await cancel.getByRole("button", { name: "기록됐는지 확인" }).click();
   await expect(history.getByRole("status").filter({ hasText: "유실이님의 전보 예약을 취소했습니다" })).toBeVisible();
   await expect(cancel).toBeHidden();

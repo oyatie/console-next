@@ -65,7 +65,6 @@ const TENANCY_WORDS = [
   "orgHistory.crumb",
   "orgBulk.crumb",
   "orgBulk.close",
-  "bulkMove.back",
   "workplace.kinds.kicker",
   "setup.terms.accept",
   "setup.terms.done",

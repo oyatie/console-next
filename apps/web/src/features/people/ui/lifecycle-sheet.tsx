@@ -3,9 +3,8 @@ import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
-import { useNeedsNote, useReasonCodesReady } from "../../../lib/reason-codes";
+import { reasonCodesQuery, useNeedsNote, useReasonCodesReady } from "../../../lib/reason-codes";
 import { keepsKey } from "../../../lib/react/command";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
@@ -22,7 +21,7 @@ import { applies, effectivePresets } from "../domain/presets";
 import { type JobTitle, activeTitles, currentTitle, DEMOTION_REASON, isDemotion } from "../domain/titles";
 import { fmtDay, fmtDayShort, whoLine } from "../present";
 import { Consequence } from "./lifecycle-consequence";
-import { LifecycleFrame } from "./lifecycle-frame";
+import { Composer } from "../../../ui/composer/composer";
 import { Changed, LockedDate, Restored } from "./lifecycle-notes";
 import { LifecycleRefusal } from "./lifecycle-refusal";
 import { LifecycleWhat, LifecycleWhy } from "./lifecycle-what";
@@ -116,6 +115,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
   const sameDay = when === "future" ? events.find((x) => x.state === "SCHEDULED" && x.event_type === kind && x.effective_date === v0.date && x.id !== from?.id) : undefined;
   const replaces = seed?.mode === "edit" ? from!.id : (sameDay?.id ?? (conflict?.date === v0.date ? conflict.id : undefined));
   const coded = kind === "TRANSFER" || kind === "PROMOTE";
+  const reasons = useQuery({ ...reasonCodesQuery(kind === "PROMOTE" ? "lifecycle_promote" : "lifecycle_transfer"), enabled: coded });
   const codes = useReasonCodesReady(kind === "TRANSFER" ? "lifecycle_transfer" : kind === "PROMOTE" ? "lifecycle_promote" : null);
   const voidNote = useNeedsNote("lifecycle_cancel", v0.voidCode);
   // Each still-missing input, in screen order; the frame focuses the first after a refused submit.
@@ -159,14 +159,6 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
     fromType: detail.employment?.employment_type ? label(TYPE, detail.employment.employment_type) : "—",
     toType: v0.toType ? label(TYPE, v0.toType) : t("lifecycle.placeholder.type"),
   };
-  const verb = t(`people.lifecycle.action.${kind}`);
-  const commit =
-    correcting ? t("lifecycle.commit.correct", { date: fmtDayShort(v0.date), action })
-    : locked ? t("lifecycle.commit.change", { date: fmtDayShort(v0.date), action })
-    : when === "none" ? t("lifecycle.commit.none", { action })
-    : when === "future" ? t("lifecycle.commit.future", { date: fmtDate(v0.date), action })
-    : when === "today" ? t("lifecycle.commit.today", { action: verb })
-    : t("lifecycle.commit.past", { date: fmtDayShort(v0.date), action: verb });
   const show = (k: keyof typeof missing) => tried && missing[k];
   const carryNote =
     kind === "TRANSFER" && from?.to_org_unit && !carriedUnit && !correcting ? t(named ? "lifecycle.carry.unitCurrent" : "lifecycle.carry.unitMissing", { name: from.to_org_unit })
@@ -224,13 +216,15 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
         )
   );
   return (
-    <LifecycleFrame
+    <Composer
+      localDraft
       onSaveDraft={onClose}
       kicker={<><User size={12} aria-hidden />{t("lifecycle.kicker", { name: e.name, number: e.employee_number ?? "—", where: [here?.split(" › ").slice(-2).join(" › ") ?? e.org_unit, e.position].filter(Boolean).join(" · ") })}</>}
       title={correcting ? t("lifecycle.title.correct", { name: e.name, action }) : locked ? t("lifecycle.title.change", { name: e.name, action }) : t(`lifecycle.title.${kind}`)}
       subtitle={here ? t("lifecycle.nowSince", { where: here, date: since }) : t("lifecycle.now", { where: whoLine(e) })}
       onClose={onClose}
       pending={run.isSending}
+      loading={titles.isPending || (coded && reasons.isPending)}
       locked={checking || noCatalog}
       notice={
         <>
@@ -240,20 +234,20 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
           {refusal}
         </>
       }
-      consequence={<Consequence kind={kind} when={when} v={v} replaces={replaces ? fmtDayShort(v0.date) : undefined} corrects={correcting ? fmtDayShort(v0.date) : undefined} />}
+      consequence={<><LifecycleChanges kind={kind} e={e} units={units} v={{ ...v0, contractEnd }} words={v} /><Consequence kind={kind} when={when} v={v} replaces={replaces ? fmtDayShort(v0.date) : undefined} corrects={correcting ? fmtDayShort(v0.date) : undefined} /></>}
       signoffs={{
         items: offer.required_signoffs.map((k) => ({ id: k, label: t(`people.lifecycle.ack.change.${k}`) })),
         value: offer.required_signoffs.filter((k) => v0.acks[k]),
         onChange: (on) => set({ acks: Object.fromEntries(offer.required_signoffs.map((k) => [k, on.includes(k)])) }),
         missing: show("acks"),
       }}
-      commit={{ label: commit, tone: locked || when === "future" || when === "none" ? "primary" : "danger" }}
+      action={{ kind: kind === "PROMOTE" && demotion ? "demotion" : kind, mode: correcting ? "correct" : locked ? "change" : when === "future" || when === "none" ? "schedule" : "apply", count: 1 }}
+      tone={locked || when === "future" || when === "none" ? "primary" : "danger"}
       missing={tried ? count : 0}
-      open={count - (missing.acks ? 1 : 0)}
-      actions={
+      recovery={
         checking ? (
           <>
-            <Button onClick={onClose}>{t("lifecycle.close")}</Button>
+            <Button onClick={onClose}>{t("composer.dismiss")}</Button>
             <Button variant="primary" onClick={() => run.check()}>{t("lifecycle.checking.ask")}</Button>
           </>
         ) : undefined
@@ -289,8 +283,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
           {dateControl}
         </section>
       )}
-      <LifecycleChanges kind={kind} e={e} units={units} v={{ ...v0, contractEnd }} words={v} />
       <LifecycleWhy kind={kind} v={v0} set={set} demotion={demotion} replaces={Boolean(replaces)} correcting={Boolean(correcting)} voidNote={voidNote} show={show} />
-    </LifecycleFrame>
+    </Composer>
   );
 }

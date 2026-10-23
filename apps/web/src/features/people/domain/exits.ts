@@ -9,6 +9,12 @@ type LifecycleEvent = components["schemas"]["EmployeeLifecycleEvent"];
 /** The grants the exit steps need (a subset of reference/authz's Feature). */
 type Grant = "exit_case_report" | "exit_case_hr_confirm" | "exit_case_hq_confirm" | "exit_settlement_manage";
 
+/** Undo names the effect, including the legacy case-close API's compensating reversal. */
+export function exitUndoVerb(c: Pick<Case, "exit_event_state" | "hr_confirmed_at">, reject: boolean): "revoke" | "cancel" | "reject" {
+  const applied = c.exit_event_state ? c.exit_event_state === "APPLIED" : Boolean(c.hr_confirmed_at);
+  return applied ? "revoke" : c.exit_event_state === "SCHEDULED" || !reject ? "cancel" : "reject";
+}
+
 /** Which grant each server-offered next action needs (advisory: the server re-checks capability, state and actor). */
 const NEEDS: Record<Key, Grant[]> = {
   confirm_exit: ["exit_case_hr_confirm"],

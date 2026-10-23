@@ -81,7 +81,7 @@ test("전적: nowhere to go says why, then one act records the exit and the hire
   await go(admin, `/people/${person}`);
   await hrAct(admin, "전적");
   await expect(g).toContainText("주식회사 가나홀딩스에서 퇴직하고 받을 법인에 채용합니다(전적)");
-  await g.getByRole("button", { name: "전적 예약", exact: true }).click();
+  await g.getByRole("button", { name: "전적 1명 예약", exact: true }).click();
   await expect(g.getByText("동의 증빙을 입력하십시오")).toBeVisible();
   await expect(g.getByText("퇴직금을 정산할지 승계할지 선택하십시오")).toBeVisible();
   await expect(g.getByText("남은 연차를 수당으로 지급할지 넘길지 선택하십시오")).toBeVisible();
@@ -110,7 +110,7 @@ test("전적: nowhere to go says why, then one act records the exit and the hire
   await expect(preview).toContainText("주식회사 가나홀딩스에서 지급 · 퇴직 정산 처리가 열립니다");
   await expect(preview).toContainText("주식회사 가나홀딩스에서 남은 연차 수당 지급");
   await expectAccessible(admin, "group transfer: filled sheet");
-  await g.getByRole("button", { name: "오늘 전적", exact: true }).click();
+  await g.getByRole("button", { name: "전적 1명 반영", exact: true }).click();
   await expect(g).toBeHidden();
 
   // The card follows: the 법인 row, the history line with its facts.
@@ -198,7 +198,7 @@ test("전적: nowhere to go says why, then one act records the exit and the hire
   await chooseRadio(g, /^새 법인 근속은/);
   await g.getByRole("button", { name: /^입사일과 같게/ }).click();
   await reasonBox(g).fill("복귀");
-  await g.getByRole("button", { name: "오늘 전적", exact: true }).click();
+  await g.getByRole("button", { name: "전적 1명 반영", exact: true }).click();
   const refused = g.getByRole("alert");
   await expect(refused).toContainText("같은 법인 안으로는 전적하지 않습니다");
   await expect(refused).toContainText("기록한 것은 없습니다");

@@ -28,7 +28,7 @@ test("regression: a move on a placement day names its fix and leaves one draft, 
   await admin.getByRole("treegrid", { name: "어디로" }).getByRole("row", { name: /^경영지원본부/ }).click();
   await admin.getByRole("main").getByRole("button", { name: /^오늘/ }).first().click();
   await admin.getByRole("main").getByRole("textbox", { name: /^사유/ }).first().fill("개발팀 본점 이전");
-  await admin.getByRole("button", { name: /^반영 · 항목 1개/ }).click();
+  await admin.getByRole("button", { name: "부서 이동 1개 반영" }).click();
 
   // The draft's record names the cause and the fix; nothing speaks of a generic conflict.
   await expect(admin).toHaveURL(/\/org\/changes\/[^/?]+/);

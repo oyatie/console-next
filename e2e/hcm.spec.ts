@@ -27,7 +27,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
     const s = admin.getByRole("dialog", { name: dialog });
     await c.click(s.getByRole("button", { name: /^오늘/ }));
     await s.getByLabel("사유").fill(reason);
-    await c.click(s.getByRole("button", { name: "반영 · 항목 1개" }));
+    await c.click(s.getByRole("button", { name: "부서 신설 1개 반영" }));
     // org-19: the press keeps the user on the chart; the receipt names this change (an earlier one may still be announced).
     await expect(admin.getByRole("dialog", { name: dialog })).toBeHidden();
     await expect(admin.getByRole("status").filter({ hasText: "반영했습니다" }).first()).toBeAttached();
@@ -87,7 +87,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await c.click(todayPreset(transfer));
   await c.click(reasonChip(transfer, "업무 필요"));
   await reasonBox(transfer).fill("채용 업무 전담");
-  await c.click(transfer.getByRole("button", { name: "오늘 전보", exact: true }));
+  await c.click(transfer.getByRole("button", { name: "전보 1명 반영", exact: true }));
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /정하늘을 인사부에서 채용팀으로 전보했습니다/ })).toBeVisible();
   // Focus lands on the record the action added to the history, not on <body>.
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /정하늘을 인사부에서 채용팀으로 전보했습니다/ })).toBeFocused();
@@ -106,7 +106,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await c.click(reasonChip(promote, "정기 승진"));
   await reasonBox(promote).fill("정기 승진");
   await expect(promote.getByRole("checkbox")).toHaveCount(0); // BW-11 A13: no statement to tick
-  await c.click(promote.getByRole("button", { name: "오늘 승진 처리", exact: true }));
+  await c.click(promote.getByRole("button", { name: "승진 1명 반영", exact: true }));
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /정하늘을 대리에서 과장으로 승진 처리했습니다/ })).toBeVisible();
   expect(c.done("promote employee")).toBeLessThanOrEqual(5);
 
@@ -118,7 +118,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await reasonBox(leave).fill("육아 휴직");
   await expect(leave.getByRole("checkbox")).toHaveCount(0); // BW-11 A13: no statement to tick
   await expectAccessible(admin, "leave sheet");
-  await c.click(leave.getByRole("button", { name: "오늘 휴직 처리", exact: true }));
+  await c.click(leave.getByRole("button", { name: "휴직 1명 반영", exact: true }));
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /정하늘을 휴직 처리했습니다\. 복귀 예정일은/ })).toBeVisible();
   await expect(head.getByText("휴직", { exact: true })).toBeVisible();
   expect(c.done("place on leave")).toBeLessThanOrEqual(5);
@@ -140,7 +140,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await c.click(todayPreset(ret));
   await reasonBox(ret).fill("육아 휴직 종료");
   await expect(ret.getByRole("checkbox")).toHaveCount(0); // BW-11 A13: no statement to tick
-  await c.click(ret.getByRole("button", { name: "오늘 복직 처리", exact: true }));
+  await c.click(ret.getByRole("button", { name: "복직 1명 반영", exact: true }));
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /정하늘을 복직 처리했습니다/ })).toBeVisible();
   await expect(head.getByText("재직", { exact: true })).toBeVisible();
   expect(c.done("return from leave")).toBeLessThanOrEqual(4);
@@ -166,7 +166,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await fillDate(renewal, "2027-12-31", "새 계약 종료일");
   await reasonBox(renewal).fill("계약 1년 연장");
   await expect(renewal.getByRole("checkbox")).toHaveCount(0); // BW-11 A13: no statement to tick
-  await c.click(renewal.getByRole("button", { name: "오늘 계약 갱신", exact: true }));
+  await c.click(renewal.getByRole("button", { name: "계약 갱신 1명 반영", exact: true }));
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /한가람의 계약을 .+까지 갱신했습니다/ })).toBeVisible();
   expect(c.done("renew contract")).toBeLessThanOrEqual(4);
 
@@ -193,11 +193,11 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await admin.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(0));
   await admin.getByLabel("퇴직 경위").fill("개인 사유 퇴직");
   await admin.getByRole("dialog").getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
-  await c.click(admin.getByRole("dialog").getByRole("button", { name: "퇴직 보고" }));
+  await c.click(admin.getByRole("dialog").getByRole("button", { name: "퇴직 보고 1명 반영" }));
   await c.click(admin.getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
   await expectAccessible(admin, "exit: HR confirmation dialog");
   await signOff(admin.getByRole("dialog"), c.click);
-  await c.click(admin.getByRole("dialog").getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
+  await c.click(admin.getByRole("dialog").getByRole("button", { name: "퇴직 1명 반영" }));
   await expect(admin.getByRole("dialog")).toBeHidden();
   await expect(admin.getByRole("heading", { name: /윤바다/, level: 1 }).locator("..").getByText("퇴직")).toBeVisible();
   expect(c.done("exit employee")).toBeLessThanOrEqual(12);

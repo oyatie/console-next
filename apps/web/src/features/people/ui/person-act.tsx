@@ -37,7 +37,7 @@ export type Seed = { from: LifecycleEvent; mode: "edit" | "again" | "correct" };
  * A recorded commit: the receipt's sentence, the record to focus, the record a new one may start from, the act a
  * detour started from (`back`), and whether to offer the next renewal in Home's queue.
  */
-export type Done = { message: string; eventId: string; again?: string; back?: string; renewal?: boolean; settlement?: { caseId: string; entity: string } };
+export type Done = { reference?: string; message: string; eventId: string; again?: string; back?: string; renewal?: boolean; settlement?: { caseId: string; entity: string } };
 
 type Resolved =
   | { kind: "form"; offer: Offer; seed?: Seed }
@@ -177,6 +177,7 @@ export function ActHost({ d, act, back, events, onClose, onOpen, onRecorded }: {
         r.seed?.mode === "correct" ? t("lifecycle.receipt.corrected", { name: e.name, action: label(LIFECYCLE_EVENT, kind), date: fmtDay(out.effective_date) })
         : out.state === "SCHEDULED" ? t("lifecycle.receipt.scheduled", { name: e.name, action: label(LIFECYCLE_EVENT, kind), date: fmtDay(out.effective_date) })
         : done,
+      reference: out.command_id ?? out.id,
       eventId: out.id,
       back: snap.back,
       renewal: kind === "CONTRACT_RENEWAL",

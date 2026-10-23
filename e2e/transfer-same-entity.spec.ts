@@ -68,7 +68,7 @@ test("regression M22: a transfer never reaches another 법인's 부서 (TR-33)",
   await todayPreset(transfer).click();
   await reasonChip(transfer, "업무 필요").click();
   await reasonBox(transfer).fill("그룹 내 전적");
-  await transfer.getByRole("button", { name: "오늘 전보", exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 반영", exact: true }).click();
   const refused = transfer.getByRole("alert");
   await expect(refused).toContainText("다른 법인으로는 전보할 수 없습니다 · 법인 간 이동은 전적으로 합니다");
   await expect(refused).toContainText("기획팀은 주식회사 가나랩 소속입니다");
@@ -92,7 +92,7 @@ test("regression M22: a transfer never reaches another 법인's 부서 (TR-33)",
   expect(events.items.filter((e) => e.event_type === "TRANSFER")).toHaveLength(0);
 
   // A 부서 of 가나홀딩스 still transfers from the same sheet.
-  await transfer.getByRole("button", { name: "오늘 전보", exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 반영", exact: true }).click();
   const history = admin.getByRole("region", { name: "인사 이력" });
   await expect(history.getByRole("listitem").filter({ hasText: /강전적을 인사팀에서 기획실로 전보했습니다/ })).toBeVisible();
 });
