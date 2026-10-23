@@ -108,9 +108,13 @@ export const consentDocuments = () => unwrap(api.GET("/api/v1/onboarding/terms")
 export const consentStatus = () => authPost<ConsentStatus>("/api/v1/auth/privacy-consent/status", undefined, true);
 
 /** Accept the exact text that was displayed, with separate required sign-offs. */
-export const acceptConsent = (documents: ConsentDocuments) =>
-  authPost<ConsentStatus>("/api/v1/auth/privacy-consent/accept", {
+export const acceptConsent = async (documents: ConsentDocuments) => {
+  const principal = session.principal;
+  const status = await authPost<ConsentStatus>("/api/v1/auth/privacy-consent/accept", {
     privacy: { version: documents.privacy.version, sha256: documents.privacy.sha256 },
     terms: { version: documents.version, sha256: documents.sha256 },
     privacy_collection: true, terms_of_service: true,
   }, true);
+  if (session.principal === principal) session.setConsentAccepted(status.accepted);
+  return status;
+};

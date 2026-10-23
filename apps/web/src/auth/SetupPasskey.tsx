@@ -3,7 +3,7 @@ import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { KeyRound, LogOut } from "lucide-react";
-import { ApiError, acceptConsent, consentDocuments, consentStatus, logout, PASSKEY_ENROLLED, registerPasskey, session } from "@console/api";
+import { ApiError, acceptConsent, consentDocuments, logout, PASSKEY_ENROLLED, registerPasskey, session } from "@console/api";
 import { t } from "@console/i18n";
 import { freshOnOpen, read } from "../lib/query";
 import { signInError } from "../lib/refusal";
@@ -24,12 +24,11 @@ export function SetupPasskey() {
   const [busy, setBusy] = useState(false);
   const [signoffs, setSignoffs] = useState<string[]>([]);
   const documents = freshOnOpen(useQuery({ ...read("/api/v1/onboarding/terms", consentDocuments), retry: false, staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: false, refetchOnReconnect: false }));
-  const status = freshOnOpen(useQuery({ ...read("/api/v1/auth/privacy-consent/status", consentStatus), retry: false, staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: false, refetchOnReconnect: false }));
-  const failed = documents.isError || status.isError;
-  const unpublished = [documents.error, status.error].some((fault) => fault instanceof ApiError && fault.status === 409 && fault.code === "terms_not_published");
-  const loading = documents.isPending || status.isPending || documents.isFetching || status.isFetching;
-  const ready = documents.data && status.data && !failed && !loading;
-  const accepted = status.data?.accepted;
+  const failed = documents.isError;
+  const unpublished = documents.error instanceof ApiError && documents.error.status === 409 && documents.error.code === "terms_not_published";
+  const loading = documents.isPending || documents.isFetching;
+  const ready = documents.data && !failed && !loading;
+  const accepted = session.consentAccepted;
   const confirmed = accepted || (signoffs.includes("privacy") && signoffs.includes("terms"));
   const isAppSession = session.stage === "app";
 
@@ -55,7 +54,6 @@ export function SetupPasskey() {
   const retry = () => {
     setSignoffs([]);
     void documents.refetch();
-    void status.refetch();
   };
 
   return (

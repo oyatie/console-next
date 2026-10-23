@@ -112,6 +112,7 @@ let acceptLanguage = "ko";
 export const setAcceptLanguage = (tag: string) => void (acceptLanguage = tag);
 export const languageHeader = () => acceptLanguage;
 let passkeySetupRequired = false;
+let privacyConsentAccepted = false;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
@@ -193,6 +194,14 @@ function scheduleRenewal() {
 }
 
 export const session = {
+  /** Session routing hint; the server still enforces current consent on protected writes. */
+  get consentAccepted() {
+    return privacyConsentAccepted;
+  },
+  setConsentAccepted(accepted: boolean) {
+    privacyConsentAccepted = accepted;
+    emit();
+  },
   /** Tenant and account together own drafts and interrupted writes. */
   get principal() {
     return claims ? JSON.stringify([claims.org, claims.sub]) : null;
@@ -225,6 +234,7 @@ export const session = {
     accessToken = pair?.access_token ?? null;
     claims = decode(accessToken);
     passkeySetupRequired = pair?.requires_passkey_setup ?? false;
+    privacyConsentAccepted = pair?.privacy_consent_accepted === true;
     lost = false;
     ended = null;
     scheduleRenewal();

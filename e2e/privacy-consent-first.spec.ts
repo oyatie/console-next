@@ -137,9 +137,12 @@ test("unpublished consent documents show operator action and allow sign out", { 
   const page = await firstSignIn(browser, await takeCode(v));
   const unavailable = { status: 409, contentType: "application/json", body: JSON.stringify({ error: { code: "terms_not_published", message: "No terms published" } }) };
   try {
-    await page.route("**/api/v1/auth/privacy-consent/status", (route) => route.fulfill(unavailable));
+    await page.route("**/api/v1/auth/token/refresh", async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({ response, json: { ...await response.json(), privacy_consent_accepted: false } });
+    });
     await page.route("**/api/v1/onboarding/terms", (route) => route.fulfill(unavailable));
-    await go(page, "/people", true);
+    await page.goto("/people");
     await expect(page).toHaveURL(/\/setup-passkey/);
     await expect(page.getByRole("alert")).toContainText("공개된 이용약관이 없습니다. 운영사에 문의하십시오.");
     await expect(page.getByRole("button", { name: "동의하고 계속" })).toBeDisabled();
@@ -148,4 +151,29 @@ test("unpublished consent documents show operator action and allow sign out", { 
   } finally {
     await page.unrouteAll({ behavior: "wait" });
   }
+});
+
+
+test("ten in-app navigations make no consent requests after first sign-in", { tag: "@privacy" }, async ({ browser }) => {
+  const vendor = await vendorPage(browser);
+  await go(vendor, "/platform");
+  await vendor.getByRole("button", { name: "고객 계정 개설" }).click();
+  await vendor.getByLabel("고객 이름").fill("동의 세션 테스트");
+  await tenantSlugField(vendor).fill(unique("pvsession"));
+  await vendor.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  const page = await firstSignIn(browser, await takeCode(vendor));
+  const consentRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/api/v1/auth/privacy-consent/")) consentRequests.push(request.url());
+  });
+  for (let i = 0; i < 10; i++) {
+    const entities = i % 2 === 0;
+    await go(page, entities ? "/org/entities" : "/settings/company-domain");
+    if (entities) await expect(page.locator("#entities-title")).toBeVisible();
+    else await expect(page.getByRole("heading", { name: "회사 도메인", exact: true }).first()).toBeVisible();
+  }
+  expect(consentRequests).toEqual([]);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "회사 도메인", exact: true }).first()).toBeVisible();
+  expect(consentRequests).toEqual([]);
 });

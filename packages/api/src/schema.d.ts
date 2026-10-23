@@ -18027,6 +18027,8 @@ export interface components {
             poll_token: string;
         };
         DeviceLoginPollResponse: {
+            /** @description Current required document acceptance for this session, checked on issuance and refresh. Absent means consent is required. */
+            privacy_consent_accepted?: boolean | null;
             /** @enum {string} */
             status: "pending" | "approved" | "expired";
             access_token?: string | null;
@@ -23836,6 +23838,8 @@ export interface components {
             otp: string;
         };
         OtpRedeemResponse: {
+            /** @description Current required document acceptance for this session, checked on issuance and refresh. Absent means consent is required. */
+            privacy_consent_accepted?: boolean;
             access_token: string;
             /** @description The opaque rotating refresh token in the body transport (mobile). It is null in the cookie transport (web), where the token is set as an HttpOnly `console_refresh` cookie and must never reach web JS. */
             refresh_token?: string | null;
@@ -27528,6 +27532,8 @@ export interface components {
             done_at: string | null;
         };
         TokenPairResponse: {
+            /** @description Current required document acceptance for this session, checked on issuance and refresh. Absent means consent is required. */
+            privacy_consent_accepted?: boolean;
             /** @description Current verified account labels, returned only after successful passkey authentication. */
             passkey_profile?: {
                 user_id: components["schemas"]["Uuid"];

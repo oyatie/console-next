@@ -18,6 +18,7 @@ pub(crate) struct TokenPairResponse {
     #[serde(with = "time::serde::rfc3339")]
     pub(crate) refresh_expires_at: OffsetDateTime,
     pub(crate) requires_passkey_setup: bool,
+    pub(crate) privacy_consent_accepted: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) passkey_profile: Option<PasskeyProfile>,
 }

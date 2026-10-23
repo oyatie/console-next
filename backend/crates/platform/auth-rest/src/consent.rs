@@ -226,3 +226,18 @@ fn document_error(error: sqlx::Error) -> RestError {
         error => RestError::internal(error.to_string()),
     }
 }
+
+/// A routing snapshot at issuance/rotation; protected writes independently check current documents.
+pub(crate) async fn session_consent_accepted(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    family: uuid::Uuid,
+) -> Result<bool, RestError> {
+    let refs = match privacy::current_references_in_tx(tx).await {
+        Ok(refs) => serde_json::to_value(refs).map_err(|e| RestError::internal(e.to_string()))?,
+        Err(sqlx::Error::RowNotFound) => return Ok(false),
+        Err(error) => return Err(RestError::internal(error.to_string())),
+    };
+    sqlx::query_scalar("SELECT COALESCE(privacy_acceptance @> $2, false) FROM auth_refresh_token_families WHERE id=$1")
+        .bind(family).bind(refs).fetch_one(tx.as_mut()).await
+        .map_err(|error| RestError::internal(error.to_string()))
+}

@@ -157,6 +157,7 @@ async fn enrollment_session(owner: &PgPool) -> (axum::Router, String, Uuid) {
     )
     .await;
     assert_eq!(status, StatusCode::OK, "{redeemed}");
+    assert_eq!(redeemed["privacy_consent_accepted"], false);
     let token = redeemed["access_token"].as_str().unwrap().to_owned();
     (app, token, user)
 }
@@ -265,3 +266,6 @@ async fn the_runtime_role_prunes_rate_limit_windows_older_than_an_hour(owner: Pg
         .unwrap();
     assert_eq!(left, ["ip:new"]);
 }
+
+#[path = "enrollment_session_scope/consent_snapshot.rs"]
+mod consent_snapshot;

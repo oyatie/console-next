@@ -139,6 +139,7 @@ pub(crate) fn token_pair_response_with_profile(
             token_type: "Bearer",
             refresh_expires_at: tokens.refresh_expires_at,
             requires_passkey_setup: false,
+            privacy_consent_accepted: tokens.privacy_consent_accepted,
             passkey_profile: profile,
         };
         with_refresh_cookie(
