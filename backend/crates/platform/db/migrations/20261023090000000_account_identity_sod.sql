@@ -17,9 +17,9 @@ ALTER TABLE users RENAME CONSTRAINT users_principal_person_bound_check TO users_
 
 CREATE OR REPLACE FUNCTION console_account_binding() RETURNS TRIGGER
 LANGUAGE plpgsql SET search_path=pg_catalog AS $$
-DECLARE linked UUID; patch JSONB:='{}'::JSONB;
+DECLARE linked UUID; attrs JSONB;
 BEGIN
-    IF TG_OP='UPDATE' AND current_setting('app.pii_destruction',true)='on' THEN RETURN NEW; END IF;
+    IF TG_OP='UPDATE' AND public.console_person_erasing() THEN RETURN NEW; END IF;
     IF NEW.is_tenant_ops THEN NEW.principal_kind:='OPERATIONS';
     ELSIF EXISTS(SELECT 1 FROM public.organizations WHERE id=NEW.org_id AND slug='platform') THEN NEW.principal_kind:='VENDOR';
     ELSE NEW.principal_kind:='TENANT_PERSON'; END IF;
@@ -31,7 +31,8 @@ BEGIN
         END IF;
         RETURN NEW;
     END IF;
-    IF TG_OP='INSERT' OR NEW.employee_id IS DISTINCT FROM OLD.employee_id THEN
+    IF TG_OP='INSERT' OR NEW.employee_id IS DISTINCT FROM OLD.employee_id
+      OR OLD.principal_kind<>'TENANT_PERSON' THEN
         IF NEW.employee_id IS NOT NULL THEN
             linked:=public.console_bind_employee_person(NEW.org_id,NEW.employee_id,NULL);
             NEW.person_id:=linked;
@@ -40,15 +41,10 @@ BEGIN
                 RAISE EXCEPTION USING ERRCODE='23503', MESSAGE='person binding is not in this tenant';
             END IF;
         END IF;
-        IF TG_OP='INSERT' AND NEW.person_id IS NULL THEN NEW.person_id:=NEW.id; END IF;
-    END IF;
-    IF TG_OP='UPDATE' AND NEW.person_id IS NOT NULL THEN
-        IF NEW.display_name IS DISTINCT FROM OLD.display_name THEN patch:=patch||jsonb_build_object('display_name',NEW.display_name); END IF;
-        IF NEW.phone IS DISTINCT FROM OLD.phone THEN patch:=patch||jsonb_build_object('phone',NEW.phone); END IF;
-        IF patch<>'{}'::JSONB THEN
-            PERFORM public.console_revise_person_facts(NEW.org_id,NEW.person_id,patch,NULL);
-            NEW.display_name:=OLD.display_name;
-            NEW.phone:=OLD.phone;
+        IF NEW.person_id IS NULL THEN NEW.person_id:=NEW.id; END IF;
+        attrs:=public.console_person_facts(NEW.org_id,NEW.person_id);
+        IF attrs IS NOT NULL THEN
+            NEW.display_name:=coalesce(attrs->>'display_name',attrs->>'legal_name',NEW.display_name);
         END IF;
     END IF;
     RETURN NEW;
