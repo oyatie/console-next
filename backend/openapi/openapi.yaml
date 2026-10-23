@@ -30934,6 +30934,7 @@ components:
       - exceptions
       - retention
       - tenant
+      - support_access
     AccessEffectLine:
       type: object
       required:
