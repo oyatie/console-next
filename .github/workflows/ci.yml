@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-# ci-ok proves affected PR/queue results; dispatch proves a full release unit.
+# PR/queue fast proof; dispatch release-unit proof. backend/web preserve the live required checks.
 name: ci
 "on":
   push:
@@ -169,7 +169,7 @@ jobs:
           overwrite: true
     needs:
       - plan
-  web:
+  web-check:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -278,34 +278,18 @@ jobs:
         run: |-
           cd backend
           node ../scripts/ci/rust-build.mjs
-      - name: Backend code gates (release parity)
+      - name: Build all backend code gates
         if: needs.plan.outputs.backend == 'true'
-        working-directory: backend
         shell: bash
         run: |
+          cd backend
           pkgs="$(sed -n 's/^name = "\(console-gate-[a-z0-9-]*\)"$/\1/p' ci/gates/*/Cargo.toml | sort -u)"
           test -n "$pkgs"
           args=()
           for p in ${pkgs}; do args+=(-p "$p"); done
           cargo build --locked --offline "${args[@]}"
-          failed=0
-          for p in ${pkgs}; do
-            cargo run -q --locked --offline -p "${p}" || failed=1
-          done
-          echo "Backend code gates: ${SECONDS}s"
-          exit "$failed"
-      - name: Build the five privacy gates
-        if: needs.plan.outputs.backend == 'true'
-        run: >-
-          cd backend
-
-          cargo build --locked -p console-gate-personal-data-classification -p console-gate-pii-no-logs -p
-          console-gate-tenant-isolation -p console-gate-rls-arming -p console-gate-audit-coverage
-
           mkdir -p ../.cache/ci/build/gates
-
-          for gate in personal-data-classification pii-no-logs tenant-isolation rls-arming audit-coverage; do cp
-          "target/debug/console-gate-$gate" ../.cache/ci/build/gates/; done
+          for p in ${pkgs}; do cp "target/debug/$p" ../.cache/ci/build/gates/; done
       - name: Build the backend once for every browser shard
         if: needs.plan.outputs.e2e == 'true'
         run: |-
@@ -333,7 +317,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.backend == 'true' && needs.plan.outputs.retention != ''
         with:
-          name: privacy-gates
+          name: code-gates
           path: .cache/ci/build/gates
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
@@ -537,7 +521,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U ${{ needs.plan.outputs.testAdmin }} -d ${{ needs.plan.outputs.database }}" --health-interval
           5s --health-timeout 5s --health-retries 20
-  personal-data-classification:
+  code-gates:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -549,13 +533,21 @@ jobs:
       - *node
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: privacy-gates
+          name: code-gates
           path: .cache/ci/gates
-      - name: Enforce personal-data-classification
-        run: |-
-          chmod +x .cache/ci/gates/console-gate-personal-data-classification
+      - name: Enforce all backend code gates
+        shell: bash
+        run: |
           cd backend
-          ../.cache/ci/gates/console-gate-personal-data-classification
+          pkgs="$(sed -n 's/^name = "\(console-gate-[a-z0-9-]*\)"$/\1/p' ci/gates/*/Cargo.toml | sort -u)"
+          test -n "$pkgs"
+          failed=0
+          for p in ${pkgs}; do
+            chmod +x "../.cache/ci/gates/$p"
+            "../.cache/ci/gates/$p" || failed=1
+          done
+          echo "Backend code gates: ${SECONDS}s"
+          exit "$failed"
       - *job-metrics
       - name: Personal-data scan before any upload
         id: privacy
@@ -568,171 +560,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
-          name: metrics-personal-data-classification
-          path: .cache/ci/metrics.json
-          retention-days: ${{ needs.plan.outputs.retention }}
-          if-no-files-found: error
-          include-hidden-files: true
-          overwrite: true
-    needs:
-      - plan
-      - rust-build
-    if: needs.plan.outputs.backend == 'true'
-  pii-no-logs:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    steps:
-      - *harden-runner
-      - *checkout
-      - *duration-start
-      - *node
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with:
-          name: privacy-gates
-          path: .cache/ci/gates
-      - name: Enforce pii-no-logs
-        run: |-
-          chmod +x .cache/ci/gates/console-gate-pii-no-logs
-          cd backend
-          ../.cache/ci/gates/console-gate-pii-no-logs
-      - *job-metrics
-      - name: Personal-data scan before any upload
-        id: privacy
-        if: always()
-        env: *scan-terms
-        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
-      - name: Publish scanned summary
-        if: always() && steps.privacy.outcome == 'success'
-        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
-        with:
-          name: metrics-pii-no-logs
-          path: .cache/ci/metrics.json
-          retention-days: ${{ needs.plan.outputs.retention }}
-          if-no-files-found: error
-          include-hidden-files: true
-          overwrite: true
-    needs:
-      - plan
-      - rust-build
-    if: needs.plan.outputs.backend == 'true'
-  tenant-isolation:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    steps:
-      - *harden-runner
-      - *checkout
-      - *duration-start
-      - *node
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with:
-          name: privacy-gates
-          path: .cache/ci/gates
-      - name: Enforce tenant-isolation
-        run: |-
-          chmod +x .cache/ci/gates/console-gate-tenant-isolation
-          cd backend
-          ../.cache/ci/gates/console-gate-tenant-isolation
-      - *job-metrics
-      - name: Personal-data scan before any upload
-        id: privacy
-        if: always()
-        env: *scan-terms
-        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
-      - name: Publish scanned summary
-        if: always() && steps.privacy.outcome == 'success'
-        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
-        with:
-          name: metrics-tenant-isolation
-          path: .cache/ci/metrics.json
-          retention-days: ${{ needs.plan.outputs.retention }}
-          if-no-files-found: error
-          include-hidden-files: true
-          overwrite: true
-    needs:
-      - plan
-      - rust-build
-    if: needs.plan.outputs.backend == 'true'
-  rls-arming:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    steps:
-      - *harden-runner
-      - *checkout
-      - *duration-start
-      - *node
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with:
-          name: privacy-gates
-          path: .cache/ci/gates
-      - name: Enforce rls-arming
-        run: |-
-          chmod +x .cache/ci/gates/console-gate-rls-arming
-          cd backend
-          ../.cache/ci/gates/console-gate-rls-arming
-      - *job-metrics
-      - name: Personal-data scan before any upload
-        id: privacy
-        if: always()
-        env: *scan-terms
-        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
-      - name: Publish scanned summary
-        if: always() && steps.privacy.outcome == 'success'
-        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
-        with:
-          name: metrics-rls-arming
-          path: .cache/ci/metrics.json
-          retention-days: ${{ needs.plan.outputs.retention }}
-          if-no-files-found: error
-          include-hidden-files: true
-          overwrite: true
-    needs:
-      - plan
-      - rust-build
-    if: needs.plan.outputs.backend == 'true'
-  audit-coverage:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    steps:
-      - *harden-runner
-      - *checkout
-      - *duration-start
-      - *node
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with:
-          name: privacy-gates
-          path: .cache/ci/gates
-      - name: Enforce audit-coverage
-        run: |-
-          chmod +x .cache/ci/gates/console-gate-audit-coverage
-          cd backend
-          ../.cache/ci/gates/console-gate-audit-coverage
-      - *job-metrics
-      - name: Personal-data scan before any upload
-        id: privacy
-        if: always()
-        env: *scan-terms
-        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json
-      - name: Publish scanned summary
-        if: always() && steps.privacy.outcome == 'success'
-        run: cat .cache/ci/summary.md >>"$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
-        with:
-          name: metrics-audit-coverage
+          name: metrics-code-gates
           path: .cache/ci/metrics.json
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
@@ -877,7 +705,7 @@ jobs:
     needs:
       - plan
       - e2e-plan
-      - web
+      - web-check
       - rust-build
     if: needs.plan.outputs.e2e == 'true'
     strategy:
@@ -976,14 +804,24 @@ jobs:
     needs:
       - plan
       - hygiene
-      - web
+      - web-check
       - rust-build
       - backend-test
       - backend-db
-      - personal-data-classification
-      - pii-no-logs
-      - tenant-isolation
-      - rls-arming
-      - audit-coverage
+      - code-gates
       - e2e-plan
       - e2e
+  # Keep the live required contexts until the owner switches the ruleset to ci-ok.
+  backend: &required-context
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    if: always()
+    needs: [ci-ok]
+    steps:
+      - *harden-runner
+      - name: Propagate complete CI proof
+        env:
+          CI_RESULT: ${{ needs.ci-ok.result }}
+        run: test "$CI_RESULT" = success
+  web: *required-context

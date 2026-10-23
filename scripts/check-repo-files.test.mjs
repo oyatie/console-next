@@ -133,7 +133,7 @@ test("npm check and always-running hygiene enforce the guard before ci-ok", () =
   assert.equal(step.if, undefined);
   assert.ok(!step["continue-on-error"]);
   assert.ok(hygiene.steps.some((item) => item.run?.includes("node --test ") && item.run.includes("scripts/check-repo-files.test.mjs")));
-  assert.ok(wf.jobs.web.steps.some((item) => item.run === "npm run check"));
+  assert.ok(wf.jobs["web-check"].steps.some((item) => item.run === "npm run check"));
   assert.ok(wf.jobs["ci-ok"].needs.includes("hygiene"));
 });
 

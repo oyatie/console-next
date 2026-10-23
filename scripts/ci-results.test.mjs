@@ -82,7 +82,7 @@ test("plan budgets the workflow timeout chain; job-minutes warn without blocking
   const reservation = planBudget(p, c);
   assert.ok(c.maxJobs >= Math.ceil(reservation.jobs * 1.25));
   assert.ok(c.maxTotalMinutes >= Math.ceil(reservation.minutes * 1.25));
-  assert.equal(proof.wallMinutes, 195);
+  assert.equal(proof.wallMinutes, 200);
   assert.ok(proof.wallMinutes < proof.queueMinutes);
   assert.equal(proof.perJob["e2e-chromium-1"], 5.5);
   assert.throws(() => planBudget(p, { ...c, maxJobs: proof.jobs - 1 }, jobs), /job budget/);
@@ -357,5 +357,34 @@ for (const runner of ["nextest", "playwright"]) test(`${runner} runner refuses a
     const result = spawnSync("node", [new URL(`./ci/${runner === "nextest" ? "rust-tests" : "e2e"}.mjs`, import.meta.url).pathname, ...(runner === "nextest" ? ["unit", "1"] : ["plan"])], { cwd: runner === "nextest" ? path.join(dir, "backend") : dir, encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, CI_RUST_BUILD: JSON.stringify({ crates: [], full: true, unitFilter: "all()" }), GITHUB_OUTPUT: path.join(dir, "output") } });
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, new RegExp(`${runner === "nextest" ? "nextest archive" : "Playwright"} inventory failed`));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+for (const runner of ["nextest", "playwright"]) test(`${runner} runner propagates stale baseline inventory despite a successful listing`, () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-stale-inventory-"));
+  try {
+    for (const sub of ["backend", "scripts/ci", "node_modules/.bin"]) mkdirSync(path.join(dir, sub), { recursive: true });
+    writeFileSync(path.join(dir, "scripts/ci/config.json"), readFileSync(new URL("./ci/config.json", import.meta.url)));
+    copyFileSync(new URL("./ci/test-results.py", import.meta.url), path.join(dir, "scripts/ci/test-results.py"));
+    writeFileSync(path.join(dir, "scripts/ci/disk-budget.py"), "# synthetic disk receipt\n");
+    const entry = { kind: runner, context: runner === "nextest" ? "unit" : "chromium", suite: runner === "nextest" ? "synthetic::binary" : "synthetic.spec.ts", test: "deleted", owner: "Jason Lee", expires: "2099-01-01" };
+    writeFileSync(path.join(dir, "scripts/ci/baseline.json"), JSON.stringify([entry]));
+    const spec = (title) => ({ title, tests: [{ projectName: "parallel", expectedStatus: "passed" }] });
+    const inventories = runner === "nextest"
+      ? [false, true].map((present) => ({ "rust-suites": { [entry.suite]: { testcases: present ? { [entry.test]: {} } : {} } } }))
+      : [false, true].map((present) => ({ suites: [{ file: entry.suite, specs: [spec("unrelated"), ...(present ? [spec(entry.test)] : [])] }] }));
+    const listing = `process.stdout.write(JSON.stringify(${JSON.stringify(inventories)}[process.env.TEST_PRESENT==='1'?1:0]));`;
+    writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nconst f=require('node:fs');if(process.argv.includes('list')){${listing}process.exit(0);}f.mkdirSync('target/nextest/ci',{recursive:true});f.writeFileSync('target/nextest/ci/junit.xml','<testsuites><testsuite tests="1" failures="0"><testcase classname="unrelated" name="passed"/></testsuite></testsuites>');\n`, { mode: 0o700 });
+    writeFileSync(path.join(dir, "node_modules/.bin/playwright"), `#!${process.execPath}\n${listing}\n`, { mode: 0o700 });
+    const run = (present) => spawnSync(process.execPath, [new URL(`./ci/${runner === "nextest" ? "rust-tests" : "e2e"}.mjs`, import.meta.url).pathname, ...(runner === "nextest" ? ["unit", "1"] : ["plan"])], {
+      cwd: runner === "nextest" ? path.join(dir, "backend") : dir, encoding: "utf8",
+      env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, TEST_PRESENT: present ? "1" : "0", CI_RUST_BUILD: JSON.stringify({ crates: ["synthetic"], full: true, unitFilter: "all()" }), CI_PLAN: JSON.stringify({ e2e: "true", browsers: '["chromium"]' }), GITHUB_OUTPUT: path.join(dir, "output") },
+    });
+    const stale = run(false);
+    assert.equal(stale.status, 1, stale.stderr + stale.stdout);
+    assert.match(stale.stderr + stale.stdout, /absent tests; remove from baseline/);
+    if (runner === "playwright") assert.match(stale.stderr, /stale browser baseline/);
+    const valid = run(true);
+    assert.equal(valid.status, 0, valid.stderr + valid.stdout);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
