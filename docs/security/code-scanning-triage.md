@@ -12,7 +12,7 @@ Bulk authorization now has process resource ceilings in `authz-rest/src/limits.r
 
 The other reported runtime allocations already reject more than 20 goals, 10 evidence entries or 200 mobile operations, or clamp inbox page size to 1–200. The named Rust cleartext sites are test assertions, including those in `src/lib.rs`; no production logging change or PII-gate exemption is warranted. Test-only dummy keys are retained as deterministic fixtures.
 
-Photos accept HTTPS, same-origin root-relative paths, blob URLs and base64 raster image data; SVG/HTML data, active schemes, protocol-relative URLs and insecure remote URLs are refused. PDF previews accept local blob URLs. Both components use one allowlist and keep accessible fallback behavior. The explicit HTTPS-only remote-image policy also refuses HTTP presigned photo URLs from the local MinIO stack; those render the existing initial until that stack serves HTTPS. No production HTTP exception is introduced.
+Photos accept HTTPS, same-origin root-relative paths, blob URLs and base64 raster image data. HTTP is allowed only for loopback hosts (`127.0.0.1`, `::1`, `localhost`), preserving local presigned photo URLs. SVG/HTML data, active schemes, protocol-relative URLs and other HTTP hosts are refused. PDF previews accept local blob URLs. Both components use one allowlist. Initials use a separate missing-photo label and never reuse the photo label; the photo E2E asserts a real `img[alt]`.
 
 Locations below are the original scanner locations, not post-patch line numbers. Reasons are at most 200 characters.
 
@@ -113,3 +113,11 @@ These files are necessary callers, regression tests, contract fragments or regen
 - `scripts/codeql-workflow.test.ts`
 - `scripts/quality/baseline.json`
 - `scripts/request-body-contract-undecidable.json`
+
+- `apps/web/src/lib/media-url.test.ts`
+- `apps/web/src/features/people/ui/card-head.tsx`
+- `apps/web/src/features/people/ui/photo-row.tsx`
+- `apps/web/src/ui/avatar/avatar.test.tsx`
+- `apps/web/src/ui/canonical.test.tsx`
+- `backend/crates/platform/authz-rest/src/lib_errors.rs`
+- `e2e/record-actions/card.spec.ts`

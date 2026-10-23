@@ -21,12 +21,10 @@ pub(super) async fn authorize_bulk(
             .checked_mul(body.checks.len())
             .is_none_or(|work| work > limits::BULK_SUBJECT_WORK_BYTES_MAX)
     {
-        return Err(RestError {
-            status: StatusCode::UNPROCESSABLE_ENTITY,
-            kind: ErrorKind::Validation,
-            code_override: Some("policy_bulk_limit"),
-            message: "policy bulk request exceeds the evaluation limit".to_owned(),
-        });
+        return Err(RestError::from_kernel(
+            KernelError::validation("policy bulk request exceeds the evaluation limit")
+                .with_code("policy_bulk_limit"),
+        ));
     }
     // Load the enforced set ONCE, then evaluate every check against it.
     let policies = state

@@ -97,7 +97,7 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
         <span className={s.pos}><Kbd k="J" /><Kbd k="K" /> {t("empCard.walk")}</span>
       </div>
       <div className={s.hdr}>
-        <Avatar size="lg" name={e.name} src={photo ?? undefined} alt={photo ? t("empCard.photo", { name: e.name }) : t("empCard.photo.none")} />
+        <Avatar size="lg" name={e.name} src={photo ?? undefined} alt={t("empCard.photo", { name: e.name })} fallbackAlt={t("empCard.photo.none")} />
         <div className={s.who}>
           <div className={s.nameRow}>
             <h1 id="person" className={s.name} tabIndex={-1}>{e.name}</h1>

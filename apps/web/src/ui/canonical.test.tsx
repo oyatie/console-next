@@ -154,7 +154,7 @@ test("a segmented control is one named group with exactly one pressed segment; a
 test("a record's photo is named when it stands for the person, an initial is decoration unless it names a missing photo", async () => {
   const { Avatar } = await import("./avatar/avatar");
   expect(html(<Avatar name="김" />)).toContain('aria-hidden="true"');
-  expect(html(<Avatar name="김" size="lg" alt={x} />)).toMatch(/role="img" aria-label="x"/);
+  expect(html(<Avatar name="김" size="lg" fallbackAlt={x} />)).toMatch(/role="img" aria-label="x"/);
   expect(html(<Avatar name="김" size="lg" src="/p.jpg" alt={y} />)).toMatch(/<img[^>]*alt="y"/);
 });
 
