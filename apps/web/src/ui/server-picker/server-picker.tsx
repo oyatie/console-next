@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, ComboBox, Input, Label, ListBox, ListBoxItem, Popover, Text, TextField } from "react-aria-components";
 import { Plus, Search, Send } from "lucide-react";
 import { t } from "@console/i18n";
@@ -40,13 +40,23 @@ export function ServerPicker(p: {
   const [pending, setPending] = useState<PickerOption>();
   const [suffix, setSuffix] = useState("");
   const input = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const body = input.current!.ownerDocument.body;
+    const preserved = [...body.querySelectorAll<HTMLElement>("[inert]")];
+    return () => {
+      // React Aria clears inert with aria-hidden; retain restrictions that predate this picker.
+      queueMicrotask(() => { for (const el of preserved) el.inert = true; });
+    };
+  }, [open]);
   const homonyms = homonymOf(p.options, pending);
   const pick = (key: string | null) => {
     // React Aria re-reports the current key (e.g. on blur); a confirmed namesake must not be asked again.
     if (key !== null && key === p.value) return;
     const o = p.options.find((x) => x.id === key);
     setSuffix("");
-    if (o && homonymOf(p.options, o).length > 1) {
+    if (o?.code?.trim() && homonymOf(p.options, o).length > 1) {
       setPending(o);
       p.onChange(null);
       return;
@@ -72,6 +82,7 @@ export function ServerPicker(p: {
         items={p.options}
         inputValue={p.query}
         onInputChange={p.onQueryChange}
+        onOpenChange={setOpen}
         selectedKey={pending ? pending.id : (p.value ?? null)}
         onSelectionChange={(k) => pick(k === null ? null : String(k))}
         menuTrigger="input"
@@ -92,7 +103,7 @@ export function ServerPicker(p: {
             {(o: PickerOption) => (
               <ListBoxItem id={o.id} textValue={o.name} className={`listbox__item ${css.option}`}>
                 <span className={css.name}>{o.display ?? o.name}</span>
-                {o.code && <span className={css.code}>{o.code}</span>}
+                {o.code && !o.display && <span className={css.code}>{o.code}</span>}
                 {(o.context || o.status) && <span className={css.sub}>{o.context && <span>{o.context}</span>}{o.status && <span>{o.status}</span>}</span>}
               </ListBoxItem>
             )}

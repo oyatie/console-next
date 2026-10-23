@@ -10,6 +10,8 @@ import type { Node } from "../../../reference/org/domain/structure";
 import { Button, Form } from "../../../ui/button/button";
 import { Field, TextInput } from "../../../ui/field/field";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
+import { personOption } from "../../../reference/person/ui/person-option";
 import { ownRefusal } from "../../../reference/crud/present";
 import { setUnitDetails } from "../api";
 import css from "../../../reference/org/ui/structure.module.css";
@@ -31,13 +33,13 @@ export function DeptDetails({ node, onDone }: { node: Node; onDone: () => void }
   const box = useFocusInside<HTMLSpanElement>();
   const q = query.trim();
   const people = useQuery(get("/api/v1/employees", { params: { query: q ? { search: q, status: LIVE, limit: 20 } : { org_unit_id: node.id, status: LIVE, limit: 20 } } }));
-  const options = (people.data?.items ?? []).map((e) => ({
-    id: e.id,
-    name: e.name,
-    code: e.employee_number ?? undefined,
+  const peers = people.data?.items ?? [];
+  const selected = peers.find((p) => p.id === head);
+  const options = peers.map((e) => ({
+    ...personOption(e, peers),
     context: e.org_unit_id === node.id ? e.org_unit ?? undefined : t("orgUnit.head.otherUnit", { unit: e.org_unit ?? "—" }),
   }));
-  if (node.head && !options.some((o) => o.id === node.head!.employee_id)) options.unshift({ id: node.head.employee_id, name: node.head.name ?? "—", code: undefined, context: t("orgUnit.head.current") });
+  if (node.head && !options.some((o) => o.id === node.head!.employee_id)) options.unshift({ ...personOption({ id: node.head.employee_id, name: node.head.name }, peers), context: t("orgUnit.head.current") });
   const v = code.trim();
   const bad = v !== "" && !CODE.test(v);
   const same = v === (node.code ?? "") && head === (node.head?.employee_id ?? null);
@@ -61,6 +63,7 @@ export function DeptDetails({ node, onDone }: { node: Node; onDone: () => void }
           loading={people.isPending}
           empty={t("orgUnit.head.none")}
         />
+        {head && <PersonLabel person={{ ...selected, id: head, employee_id: head, name: selected?.name ?? (node.head?.employee_id === head ? node.head.name : undefined) }} peers={peers} />}
         {head && <Button variant="ghost" className="btn--sm" onClick={() => setHead(null)}>{t("orgUnit.head.clear")}</Button>}
         <Field label={t("orgUnit.fact.code")} required={null} hint={t("orgUnit.code.hint")} error={bad ? t("orgUnit.code.invalid") : undefined}>
           {(p) => <TextInput {...p} maxLength={30} value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === "Escape" && onDone()} />}

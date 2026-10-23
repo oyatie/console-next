@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
+import { QueryState } from "../../../lib/react/query-state";
 import { useCommand } from "../../../lib/react/command";
 import { PasskeyError } from "../../../lib/react/passkey-error";
 import { todayKst } from "../../../lib/pure/today";
@@ -21,6 +22,8 @@ import { bulkBlock, grantOp, missing, ready, blankLine, type DraftLine } from ".
 import { flatten, type OrgNode } from "../domain/scope";
 import { ACCESS_READS, applyGrants, previewGrants, type AccessGrantPreview, type Account, type Batch } from "../api";
 import { scopeLabel } from "../present";
+import { pickable } from "../domain/accounts";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { AccessHead } from "./access-head";
 import { BulkForm, type BulkDraft } from "./bulk-form";
 import { BulkPreview } from "./bulk-preview";
@@ -48,9 +51,7 @@ export function BulkPage() {
   const [picking, setPicking] = useState(false);
   const [preview, setPreview] = useState<{ p: AccessGrantPreview; ids: string[] } | null>(null);
   const [done, setDone] = useState<string | null>(null);
-  const offered = ctx.accounts.filter((a) => a.is_active && a.id !== ctx.ops && a.id !== ctx.me);
-  const names = offered.map((a) => a.display_name);
-  const namesake = (a: Account) => names.indexOf(a.display_name) !== names.lastIndexOf(a.display_name);
+  const offered = pickable(ctx.accounts, ctx.ops).filter((a) => a.id !== ctx.me);
   const roots = (tree.data?.entities ?? []) as OrgNode[];
   // The chart's order (one order for every list and picker); a name the tree does not hold follows, by name.
   const units = inOrder([...new Set(offered.map((a) => a.employee_org_unit).filter((u): u is string => !!u))].sort(), flatten(roots).map((r) => r.node.name));
@@ -77,9 +78,7 @@ export function BulkPage() {
   const block = bulkBlock({ picked: ids.length, gaps, setup: ctx.setup, when: d.when, reason: d.reason });
   const previewPicked = () => block ? setTried(true) : check.mutate(ids);
   const columns: LongColumn<Account>[] = [
-    { id: "name", header: t("access.col.name"), rowHeader: true, cell: (a: Account) => <span className={s.chips}>{a.display_name}{namesake(a) && <Chip>{t("access.bulk.namesake")}</Chip>}</span> },
-    { id: "no", header: t("access.col.number"), width: 120, cell: (a: Account) => a.employee_number ?? "" },
-    { id: "org", header: t("access.col.placement"), width: "2fr", cell: (a: Account) => [a.employee_company, a.employee_org_unit].filter(Boolean).join(" · ") },
+    { id: "name", header: t("access.col.name"), rowHeader: true, cell: (a: Account) => <PersonLabel person={a} peers={offered} /> },
     { id: "pk", header: t("access.col.passkey"), width: 96, cell: (a: Account) => <Chip tone={a.has_passkey ? "ok" : "neutral"}>{t(a.has_passkey ? "access.account.passkey.yes" : "access.account.passkey.no")}</Chip> },
   ];
   const role = ctx.roles.find((r) => r.id === d.line.role_id);
@@ -108,7 +107,7 @@ export function BulkPage() {
           onApply={() => apply.mutate(undefined)}
         />
       ) : (
-        <div className={s.editor}>
+        <QueryState q={ctx.accountsQ}>{() => <div className={s.editor}>
           <Card flush>
             {/* One toolbar (mockup M5): find by name or number, narrow by placement, or to people who can sign in. */}
             <div className={s.filters}>
@@ -126,7 +125,6 @@ export function BulkPage() {
               rowId={(a) => a.id}
               hasMore={false}
               onLoadMore={() => {}}
-              loading={ctx.accountsQ.isPending}
               empty={<EmptyState title={t("access.bulk.empty")} reason={t("access.bulk.empty.reason")} />}
               selection={sel}
               onSelectionChange={(next) => setSel(next.kind === "ids" ? next : { kind: "ids", ids: new Set(rows.map((a) => a.id)) })}
@@ -144,7 +142,7 @@ export function BulkPage() {
               ) : <Button variant="primary" className={s.wide} disabled={check.isPending} onClick={previewPicked}>{t("access.bulk.preview", { count: ids.length })}</Button>}
             </BulkForm>
           )}
-        </div>
+        </div>}</QueryState>
       )}
       {picking && ctx.cat.data && (
         <ScopeSheet

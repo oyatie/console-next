@@ -17,6 +17,8 @@ import { createAccount, employeeQuery } from "../api";
 import { useFocusInvalid } from "./use-focus-invalid";
 import { useIssueCode, type Issued } from "./use-issue-code";
 import { inviteBlock, LOGIN_MAX, loginProblem, normalizeLogin, suggestLogin } from "../domain/sign-in-id";
+import { personOption } from "../../../reference/person/ui/person-option";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { Muted } from "../../../ui/muted/muted";
 
 type Employee = components["schemas"]["Employee"];
@@ -135,7 +137,7 @@ export function InviteSheet({ employeeId, onClose, onIssued, onOpenAccount }: {
               label={t("accounts.invite.who")}
               query={text}
               onQueryChange={setQuery}
-              options={options.map((e) => ({ id: e.id, name: e.name, code: e.employee_number ?? undefined, status: e.status ? label(EMPLOYEE_STATUS, e.status) : undefined, context: e.org_unit ?? undefined }))}
+              options={options.map((e) => ({ ...personOption(e, options), status: e.status ? label(EMPLOYEE_STATUS, e.status) : undefined }))}
               value={who?.id ?? null}
               onChange={(id) => setPicked(options.find((e) => e.id === id) ?? null)}
               group={t("accounts.invite.who.group")}
@@ -144,6 +146,7 @@ export function InviteSheet({ employeeId, onClose, onIssued, onOpenAccount }: {
               isRequired
             />
           )}
+          {!nonEmployee && who && <PersonLabel person={{ ...who, employee_id: who.id }} peers={options} />}
           {!nonEmployee && tried && who == null && <span className="field__error" role="alert">{t("accounts.invite.pickWho")}</span>}
           <Field
             label={t("accounts.invite.signInId")}

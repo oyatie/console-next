@@ -16,7 +16,8 @@ import { orgStructureRef } from "../../../reference/entity/api";
 import { blankLine, grantOp, missing, ready, startProblem, type DraftLine, type Start } from "../domain/grants";
 import type { OrgNode } from "../domain/scope";
 import { ACCESS_READS, applyGrants, previewGrants, type AccessGrantPreview, type Batch, type AccessCatalog, type AccessGrant, type AccessRole, type Account } from "../api";
-import { enforcementText, grantDoneText, scheduledText, scopeLabel } from "../present";
+import { accountLabel, enforcementText, grantDoneText, scheduledText, scopeLabel } from "../present";
+import { personLabel } from "../../../reference/person/present";
 import { PersonHead } from "./holder";
 import { GrantLine } from "./grant-line";
 import { CurrentGrants, GrantPreviewSummary, StartPick } from "./grant-sheet-parts";
@@ -53,11 +54,12 @@ export function GrantSheet({ account, me, ops, cat, roles, setup, onClose, onGra
   const [reason, setReason] = useState<Reason>({ code: null, memo: "" });
   const [tried, setTried] = useState(false);
   const [picking, setPicking] = useState<string | null>(null);
+  const name = account ? personLabel(account).name : t("people.label.unnamed");
   const [preview, setPreview] = useState<AccessGrantPreview | null>(null);
   const run = useCommand({
     run: (receipt: string, key: string) => applyGrants(receipt, key),
     invalidates: ACCESS_READS,
-    onSuccess: (out) => onGranted(grantDoneText(account?.display_name ?? "", out.items), out.items, out.operation_id),
+    onSuccess: (out) => onGranted(grantDoneText(name, out.items), out.items, out.operation_id),
   });
   const check = useCommand({
     run: async (batch: Batch) => {
@@ -79,7 +81,7 @@ export function GrantSheet({ account, me, ops, cat, roles, setup, onClose, onGra
       <ScopeSheet
         rules={cat.scope_kinds}
         value={scoping.scope}
-        subtitle={[account.display_name, roles.find((r) => r.id === scoping.role_id)?.name_ko].filter(Boolean).join(" · ")}
+        subtitle={[accountLabel(account, account.id), roles.find((r) => r.id === scoping.role_id)?.name_ko].filter(Boolean).join(" · ")}
         onDone={(scope) => (set({ ...scoping, scope }), setPicking(null))}
         onCancel={() => setPicking(null)}
       />
@@ -105,10 +107,10 @@ export function GrantSheet({ account, me, ops, cat, roles, setup, onClose, onGra
   ) : named.length ? (
     <>
       {preview ? preview.items.map((item) => <strong key={item.index}>{named[item.index]} · {scheduledText(item) ?? enforcementText(item.enforcement_after ?? "")}</strong>) : (
-        <strong>{from ? t("accessGrants.consequence.from", { name: account.display_name, grants: named.join(", "), date: from }) : t(live ? "access.grant.consequence.now" : "access.grant.consequence.golive", { name: account.display_name, grants: named.join(", ") })}</strong>
+        <strong>{from ? t("accessGrants.consequence.from", { name, grants: named.join(", "), date: from }) : t(live ? "access.grant.consequence.now" : "access.grant.consequence.golive", { name, grants: named.join(", ") })}</strong>
       )}
       {scopedHr && <span className="muted">{t("accessGrants.scoped.note")}</span>}
-      <span className="muted">{t(account.has_passkey ? "access.grant.consequence.kept" : "access.grant.consequence.noPasskey", { name: account.display_name })}</span>
+      <span className="muted">{t(account.has_passkey ? "access.grant.consequence.kept" : "access.grant.consequence.noPasskey", { name })}</span>
     </>
   ) : (
     <span className="muted">{t("access.grant.consequence.empty")}</span>

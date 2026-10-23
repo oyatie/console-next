@@ -8,6 +8,9 @@ import { CommandError } from "../../../lib/react/command-error";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Field, TextInput } from "../../../ui/field/field";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
+import { personOption } from "../../../reference/person/ui/person-option";
+import { personLabel } from "../../../reference/person/present";
 import { resolveIdentity, samePersonQuery, type Resolution } from "../api";
 import { LifecycleFrame } from "./lifecycle-frame";
 import s from "./lifecycle.module.css";
@@ -45,7 +48,7 @@ export function IdentitySheet({ d, onClose, onDone }: { d: Detail; onClose: () =
       onClose={onClose}
       pending={run.isPending}
       notice={cancelled ? <p className={s.changed} role="alert">{t("identity.passkeyCancelled")}</p> : run.isError && <CommandError error={run.error} />}
-      consequence={<span>{verdict === "SAME" ? t("identity.same.consequence", { name: e.name, keep: kept ? `${kept.name} (${kept.employee_number ?? "—"})` : t("identity.keep.placeholder") }) : verdict === "DIFFERENT" ? t("identity.different.consequence", { name: e.name }) : t("identity.none.consequence")}</span>}
+      consequence={<span>{verdict === "SAME" ? t("identity.same.consequence", { name: e.name, keep: kept ? personLabel(kept, others).text : t("identity.keep.placeholder") }) : verdict === "DIFFERENT" ? t("identity.different.consequence", { name: e.name }) : t("identity.none.consequence")}</span>}
       commit={{ label: t(verdict === "SAME" ? "identity.same.commit" : "identity.different.commit"), tone: verdict === "SAME" ? "danger" : "primary" }}
       missing={tried ? count : 0}
       onSubmit={() => {
@@ -74,12 +77,13 @@ export function IdentitySheet({ d, onClose, onDone }: { d: Detail; onClose: () =
             query={query}
             onQueryChange={setQuery}
             loading={found.isFetching}
-            options={others.map((x) => ({ id: x.id, name: x.name, code: x.employee_number ?? undefined, context: [x.org_unit, x.hire_date && fmtDate(x.hire_date)].filter(Boolean).join(" · ") }))}
+            options={others.map((x) => ({ ...personOption(x, others), context: x.hire_date && fmtDate(x.hire_date) }))}
             value={keep}
             onChange={(id) => (run.reset(), setKeep(id))}
             group={t("identity.keep.group")}
             empty={t("identity.keep.none")}
           />
+          {kept && <PersonLabel person={{ ...kept, employee_id: kept.id }} peers={others} />}
           {tried && missing.keep && <p className={s.error}>{t("identity.keep.missing")}</p>}
         </>
       )}

@@ -4,6 +4,8 @@ import { t } from "@console/i18n";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Field, TextInput } from "../../../ui/field/field";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
+import { personOption } from "../../../reference/person/ui/person-option";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { peopleQuery, type Evidence } from "../api";
 import { EVIDENCE, type EvidenceDraft } from "../domain/evidence";
 
@@ -11,7 +13,8 @@ import { EVIDENCE, type EvidenceDraft } from "../domain/evidence";
 export function EvidenceField({ value, onChange, disabled }: { value: EvidenceDraft; onChange: (v: EvidenceDraft) => void; disabled?: boolean }) {
   const [query, setQuery] = useState("");
   const found = useQuery({ ...peopleQuery(query.trim()), enabled: query.trim().length > 0, placeholderData: keepPreviousData });
-  const options = (found.data?.items ?? []).map((p) => ({ id: p.id, name: p.name, code: p.employee_number ?? undefined }));
+  const people = found.data?.items ?? [];
+  const options = people.map((p) => personOption(p, people));
   return (
     <fieldset className="form" disabled={disabled}>
       <ChoiceField
@@ -39,6 +42,7 @@ export function EvidenceField({ value, onChange, disabled }: { value: EvidenceDr
           }}
         />
       )}
+      {value.kind === "SUPERVISOR_CONFIRM" && value.confirmer && <PersonLabel person={{ ...people.find((p) => p.id === value.confirmer!.id), ...value.confirmer, employee_id: value.confirmer.id }} peers={people} />}
       {value.kind && (
         <Field label={t("attendanceRecords.evidence.note")} required={value.kind === "OTHER"}>
           {(p) => <TextInput {...p} value={value.note} maxLength={500} onChange={(e) => onChange({ ...value, note: e.target.value })} />}

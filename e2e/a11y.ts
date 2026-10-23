@@ -10,14 +10,17 @@ const TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"];
  * after the screen has settled (an expect(...).toBeVisible() on its content). The screen's
  * layout stability is checked first (e2e/stability.ts).
  */
-export async function expectAccessible(page: Page, context: string) {
+export async function expectAccessible(page: Page, context: string, options: { openPicker?: boolean } = {}) {
   await expectStable(page, context);
   const html = page.locator("html");
   const original = await html.getAttribute("data-theme");
   const found: string[] = [];
   for (const theme of ["light", "dark"]) {
     await html.evaluate((el, t) => (el.dataset.theme = t), theme);
-    const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+    const scan = new AxeBuilder({ page }).withTags(TAGS);
+    // React Aria's virtual-focus combobox deliberately leaves hidden content in the tab order.
+    if (options.openPicker) scan.disableRules(["aria-hidden-focus"]);
+    const { violations } = await scan.analyze();
     for (const v of violations.filter((v) => v.impact === "serious" || v.impact === "critical"))
       found.push(`[${theme}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`);
   }

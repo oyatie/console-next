@@ -18,6 +18,7 @@ import { AccountPanel } from "./account-panel";
 import { InviteSheet } from "./account-invite-sheet";
 import { IssuedCode } from "./account-issued-code";
 import type { Issued } from "./use-issue-code";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { Muted } from "../../../ui/muted/muted";
 
 type Person = components["schemas"]["DirectoryPerson"];
@@ -73,9 +74,8 @@ export function Accounts({ q, sel }: { q: string; sel?: string; onSelect?: (id?:
         </div>
         <LongTable
           label={t("accounts.table")}
-          density="compact"
           caption={total === undefined ? undefined : t("accounts.count", { count: total })}
-          columns={columns(sel)}
+          columns={columns(rows, sel)}
           rows={rows}
           rowId={(p) => p.id}
           total={total}
@@ -121,15 +121,15 @@ export function Accounts({ q, sel }: { q: string; sel?: string; onSelect?: (id?:
 }
 
 /** Built per render: headers read the catalog, which loads after this module; `open` is the account in the panel. */
-const columns = (open?: string): LongColumn<Person>[] => [
+const columns = (peers: readonly Person[], open?: string): LongColumn<Person>[] => [
   // The open account's row is marked, so the panel beside the list says whose it is.
   {
     id: "name",
     header: t("accounts.col.name"),
     // The ops account is the one preset: named as such, never by a role title (company-17).
-    cell: (p) => <>{p.id === open ? <strong aria-current="true">{p.display_name}</strong> : p.display_name}{p.is_tenant_ops && <> <Chip tone="info">{t("accounts.ops")}</Chip></>}</>,
+    cell: (p) => <>{p.id === open ? <strong aria-current="true"><PersonLabel person={p} peers={peers} /></strong> : <PersonLabel person={p} peers={peers} />}{p.is_tenant_ops && <> <Chip tone="info">{t("accounts.ops")}</Chip></>}</>,
     rowHeader: true,
-    width: "2fr",
+    width: "40%",
   },
   {
     id: "employee",

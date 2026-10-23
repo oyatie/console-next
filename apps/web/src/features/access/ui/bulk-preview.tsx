@@ -9,6 +9,7 @@ import { Table } from "../../../ui/table";
 import type { AccessGrantPreview, Account, PreviewItem } from "../api";
 import { accountLabel, enforcementText, refusalText, scheduledText } from "../present";
 import s from "./access.module.css";
+import { PersonLabel } from "../../../reference/person/ui/person-label";
 
 /**
  * What an accepted row will do once applied — said before commit as "can be granted" (critique L-2), never a past-tense
@@ -35,7 +36,7 @@ export function BulkPreview({ preview, accounts, role, scope, end, pending, erro
 }) {
   const ok = preview.items.length - preview.refused;
   const who = (id: string) => accounts.find((a) => a.id === id);
-  const noKey = preview.items.filter((i) => i.outcome === "OK" && who(i.account_id)?.has_passkey === false).map((i) => accountLabel(who(i.account_id), i.account_id));
+  const noKey = preview.items.filter((i) => i.outcome === "OK" && who(i.account_id)?.has_passkey === false).map((i) => accountLabel(who(i.account_id), i.account_id, accounts));
   const from = preview.items.some((i) => i.enforcement_after === "SCHEDULED") ? enforcementText("SCHEDULED") : preview.items.some((i) => i.enforcement_after === "PREPARED") ? t("access.period.golive") : t("access.period.now");
   const stats = [
     [t("access.bulk.stat.ok"), t("access.count", { count: ok })],
@@ -53,8 +54,7 @@ export function BulkPreview({ preview, accounts, role, scope, end, pending, erro
         rows={preview.items}
         rowId={(i) => String(i.index)}
         columns={[
-          { header: t("access.col.person"), cell: (i) => accountLabel(who(i.account_id), i.account_id) },
-          { header: t("access.col.number"), fit: true, cell: (i) => who(i.account_id)?.employee_number ?? "" },
+          { header: t("access.col.person"), cell: (i) => <PersonLabel person={who(i.account_id) ?? { id: i.account_id }} peers={accounts} /> },
           { header: t("access.col.scope"), cell: () => scope },
           {
             header: t("access.col.result"),
