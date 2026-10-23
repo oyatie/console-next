@@ -22,7 +22,6 @@ export const koSupportAccess = {
   "supportAccess.pending": "지원 접근 승인 대기 {count}건",
   "supportAccess.review": "지원 요청 확인",
   "supportAccess.requestDeadline": "승인 대기 만료 {at}",
-  "home.part.support": "지원 접근 승인",
   "supportAccess.masked": "개인정보는 가려집니다.",
   "supportAccess.unmasked": "고객이 승인한 개인정보 항목만 열람할 수 있습니다.",
   "supportAccess.readOnly": "조회 전용",

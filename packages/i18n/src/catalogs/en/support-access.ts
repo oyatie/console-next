@@ -22,7 +22,6 @@ export const enSupportAccess = {
   "supportAccess.pending": "Support access awaiting approval: {count}",
   "supportAccess.review": "Review support request",
   "supportAccess.requestDeadline": "Approval deadline {at}",
-  "home.part.support": "Support access approvals",
   "supportAccess.masked": "Personal data is masked.",
   "supportAccess.unmasked": "Only personal data covered by the customer's grant may be revealed.",
   "supportAccess.readOnly": "Read only",
