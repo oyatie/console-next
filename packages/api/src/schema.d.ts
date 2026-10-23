@@ -38726,6 +38726,8 @@ export interface operations {
     listEntityIdentifierCorrections: {
         parameters: {
             query?: {
+                /** @description Return only work this viewer can decide, apply, or review; uses the decision route's eligibility facts. */
+                awaiting?: "me";
                 entity_id?: string;
                 offset?: number;
             };

@@ -48,8 +48,24 @@ test("identifier correction: a second person approves, requester applies, and a 
   await admin.getByRole("button", { name: "계정 초대" }).click();
   await stepUp(admin.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", admin.getByLabel("일회용 코드"));
   const reviewer = await firstSignIn(browser, await takeCode(admin));
+  await registerEmployee(admin, { name: "이범위", number: "ID-SCOPE-1", hired: "2024-03-04", unit: "본사" });
+  await admin.getByRole("button", { name: "계정 초대" }).click();
+  await stepUp(admin.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", admin.getByLabel("일회용 코드"));
+  const manager = await firstSignIn(browser, await takeCode(admin));
   await startOperations(admin);
   await grantAccess(admin, "김검토", "full");
+  await grantAccess(admin, "이범위", "full", /본사/);
+  await go(manager, "/", true);
+  await passkeyLogin(manager);
+  const scopedAuthz = await apiOf(manager, bearerOf(manager))("/me/authz");
+  expect(scopedAuthz.status()).toBe(200);
+  const scopedCapabilities = await scopedAuthz.json() as { capabilities: { feature: string; org_wide: boolean }[] };
+  expect(scopedCapabilities.capabilities).toEqual(expect.arrayContaining([expect.objectContaining({ feature: "org_change_apply", org_wide: false })]));
+  expect(scopedCapabilities.capabilities.filter((capability) => ["legal_entity_manage", "org_change_apply"].includes(capability.feature)).every((capability) => !capability.org_wide)).toBe(true);
+  await go(manager, "/org/entities");
+  await expect(manager.getByRole("heading", { name: "법인·사업장", exact: true })).toBeVisible();
+  await expect(register(manager)).toBeHidden();
+  await expect(manager.getByText("이 화면에 접근 권한이 없습니다", { exact: true })).toBeHidden();
   await go(reviewer, "/", true);
   await passkeyLogin(reviewer);
   await reviewer.reload();
@@ -70,8 +86,10 @@ test("identifier correction: a second person approves, requester applies, and a 
   await expect(detail(admin).getByRole("button", { name: "승인 · 패스키 확인" })).toHaveCount(0);
   await detail(admin).getByRole("button", { name: "돌아가기", exact: true }).click();
 
-  await go(reviewer, "/org/entities");
-  await register(reviewer).getByRole("row").filter({ hasText: FORMATS.corpRegNo.display(REGISTRATION_FIXTURES.second.crn) }).click();
+  await go(reviewer, "/");
+  const queue = reviewer.getByRole("region", { name: "처리할 번호 정정 1건" });
+  await queue.getByRole("link", { name: "정정 요청 검토", exact: true }).click();
+  await expect(reviewer).toHaveURL(new RegExp(`correction=${requested.id}#identifier-corrections`));
   await expect(detail(reviewer)).toContainText(FORMATS.corpRegNo.display(REGISTRATION_FIXTURES.second.crn));
   await expectAccessible(reviewer, "identifier correction decision");
   const approved = reviewer.waitForResponse((r) => r.request().method() === "POST" && r.url().endsWith(`/governed-exceptions/${requested.id}/decide`));
@@ -80,10 +98,11 @@ test("identifier correction: a second person approves, requester applies, and a 
   await expect(detail(reviewer)).toContainText("승인됨 · 적용 대기");
   await detail(reviewer).getByRole("button", { name: "돌아가기", exact: true }).click();
 
-  await register(admin).getByRole("button", { name: "새로고침", exact: true }).click();
+  await go(admin, "/");
+  await admin.getByRole("region", { name: "처리할 번호 정정 1건" }).getByRole("link", { name: "승인된 정정 적용", exact: true }).click();
+  await expect(detail(admin).getByRole("button", { name: "승인된 정정 적용", exact: true })).toBeVisible();
   const ready = register(admin).getByRole("row").filter({ hasText: FORMATS.corpRegNo.display(REGISTRATION_FIXTURES.second.crn) });
   await expect(ready).toContainText("승인됨 · 적용 대기");
-  await ready.click();
   const applied = admin.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === `/api/v1/legal-entities/${entityId}/identifier-corrections`);
   await detail(admin).getByRole("button", { name: "승인된 정정 적용", exact: true }).click();
   const appliedResponse = await applied;

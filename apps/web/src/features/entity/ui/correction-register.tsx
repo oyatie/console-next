@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDateTimeShort } from "@console/i18n/format";
+import { useCan } from "../../../reference/authz/ui/use-can";
+import s from "./correction-register.module.css";
 import { QueryState } from "../../../lib/react/query-state";
 import { useCommand } from "../../../lib/react/command";
 import { BIZ_KIND, label } from "../../../lib/labels";
@@ -28,10 +30,17 @@ const statusText = (r: Case) => t(`entityRecord.corrections.status.${r.reviewed_
 const fieldText = (r: Case) => r.proposal ? t(`entityRecord.id.field.${r.proposal.field}`) : t("entityRecord.corrections.title");
 const valueText = (r: Case) => !r.proposal ? "—" : r.proposal.field === "crn" ? FORMATS.corpRegNo.display(r.proposal.value) : r.proposal.field === "brn" ? FORMATS.bizRegNo.display(r.proposal.value) : label(BIZ_KIND, r.proposal.value);
 
-/** The shared inbox remains visible on the entity list and record, including its history tab. */
-export function CorrectionRegister({ entityId }: { entityId?: string }) {
+/** Org-wide readers only: branch-scoped entity viewers have no register read permission. */
+export function CorrectionRegister(props: { entityId?: string; correctionId?: string; onSelect?: (id: string | null) => void }) {
+  const can = useCan();
+  return can("legal_entity_manage", "tenant") || can("org_change_apply", "tenant") ? <Register {...props} /> : null;
+}
+
+function Register({ entityId, correctionId, onSelect }: { entityId?: string; correctionId?: string; onSelect?: (id: string | null) => void }) {
   const [offsets, setOffsets] = useState([0]);
   const [selected, setSelected] = useState<string | null>(null);
+  const select = onSelect ?? setSelected;
+  const active = correctionId ?? selected;
   const q = useQuery({ ...correctionRegisterQuery(entityId, offsets.at(-1)), retry: false, refetchOnMount: "always" });
   return (
     <section id="identifier-corrections" aria-labelledby="identifier-corrections-title">
@@ -41,9 +50,9 @@ export function CorrectionRegister({ entityId }: { entityId?: string }) {
       </SectionHead>
       <QueryState q={q} empty={(data) => data.items.length ? null : <EmptyState title={t("entityRecord.corrections.empty")} reason={null} />}>
         {(data) => <>
-          <Table label={t("entityRecord.corrections.title")} rows={data.items} rowId={(r) => r.id} onSelect={setSelected} columns={[
+          <Table label={t("entityRecord.corrections.title")} rows={data.items} rowId={(r) => r.id} onSelect={select} columns={[
             { header: t("entityRecord.corrections.subject"), cell: (r) => <>{r.entity_name} · {fieldText(r)} <b>{valueText(r)}</b></> },
-            { header: t("entityRecord.corrections.state"), cell: (r) => <Chip tone={r.status === "PENDING" || r.status === "RECORDED" && !r.reviewed_at ? "warn" : "neutral"}>{statusText(r)}</Chip>, fit: true },
+            { header: t("entityRecord.corrections.state"), cell: (r) => <span className={s.status}>{(["APPROVED", "RECORDED"] as const).map((status) => <span key={status} aria-hidden className={s.measure}><Chip>{t(`entityRecord.corrections.status.${status}`)}</Chip></span>)}<span><Chip tone={r.status === "PENDING" || r.status === "RECORDED" && !r.reviewed_at ? "warn" : "neutral"}>{statusText(r)}</Chip></span></span>, fit: true },
             { header: t("entityRecord.corrections.due"), cell: (r) => fmtDateTimeShort(r.review_due_at ?? r.expires_at), fit: true },
           ]} />
           <ActionBar actions={<>
@@ -52,12 +61,12 @@ export function CorrectionRegister({ entityId }: { entityId?: string }) {
           </>} />
         </>}
       </QueryState>
-      {selected && <CorrectionDetail key={selected} id={selected} onClose={() => setSelected(null)} />}
+      {active && <CorrectionDetail key={active} id={active} row={q.data?.items.find((item) => item.id === active)} onClose={() => select(null)} />}
     </section>
   );
 }
 
-function CorrectionDetail({ id, onClose }: { id: string; onClose: () => void }) {
+function CorrectionDetail({ id, row, onClose }: { id: string; row?: Case; onClose: () => void }) {
   const q = useQuery({ ...correctionCaseQuery(id), refetchOnMount: "always", retry: false });
   const r = q.data?.items[0];
   const [note, setNote] = useState("");
@@ -75,19 +84,30 @@ function CorrectionDetail({ id, onClose }: { id: string; onClose: () => void }) 
     onSuccess: (_, action) => { setNote(""); if (action === "APPLY") onClose(); },
   });
   const busy = command.isPending;
+  const status = (r ?? row)?.status;
+  const help = status === "APPROVED" ? "applyHelp" : status === "RECORDED" ? "reviewHelp" : "decisionHelp";
   return (
     <Sheet open onClose={onClose} pending={busy} title={t("entityRecord.corrections.detail")}
       notice={<EntityError error={command.error} own={(code) => correctionRefusal(code)} />}
-      consequence={r && t(r.can_apply ? "entityRecord.corrections.applyHelp" : r.can_review ? "entityRecord.corrections.reviewHelp" : "entityRecord.corrections.decisionHelp")}
-      actions={<>
-        <Button onClick={onClose} disabled={busy}>{t("common.back")}</Button>
+      consequence={<div className={s.consequence}>{(["applyHelp", "reviewHelp", "decisionHelp"] as const).map((key) =>
+        <span key={key} className={key === help ? undefined : s.measure} aria-hidden={key !== help || undefined}>{t(`entityRecord.corrections.${key}`)}</span>
+      )}</div>}
+      actions={<div className={s.actions}>
+        <div aria-hidden className={s.measure}>
+          <span className={buttonClass()}>{t("common.back")}</span>
+          <span className={buttonClass()}>{t("entityRecord.corrections.decline")}</span>
+          <span className={buttonClass("primary")}>{t("entityRecord.corrections.approve")}</span>
+        </div>
+        <div>
+          <Button onClick={onClose} disabled={busy}>{t("common.back")}</Button>
         {r?.can_decide && <>
           <Button disabled={busy} aria-disabled={!note.trim() || undefined} onClick={() => note.trim() && command.mutate("DECLINE")}>{t("entityRecord.corrections.decline")}</Button>
           <Button variant="primary" disabled={busy} onClick={() => command.mutate("APPROVE")}>{t("entityRecord.corrections.approve")}</Button>
         </>}
         {r?.can_apply && <Button variant="primary" disabled={busy} onClick={() => command.mutate("APPLY")}>{t("entityRecord.corrections.apply")}</Button>}
         {r?.can_review && <Button variant="primary" disabled={busy} aria-disabled={!note.trim() || undefined} onClick={() => note.trim() && command.mutate("REVIEW")}>{t("entityRecord.corrections.review")}</Button>}
-      </>}>
+        </div>
+      </div>}>
       <QueryState q={q}>
         {(data) => {
           const item = data.items[0]!;

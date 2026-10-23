@@ -174,7 +174,7 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
               {tab === "documents" && <div className={s.wide}><DocumentsTab docs={docs ?? []} /></div>}
               {tab === "history" && <div className={s.wide}><HistoryTab e={e} /></div>}
             </div>
-            {!readOnly && e.can_manage && <CorrectionRegister entityId={e.id} />}
+            {!readOnly && <CorrectionRegister entityId={e.id} />}
             {!readOnly && sheet}
             {!readOnly && reissuing && <ReissueSheet e={e} r={reissuing} phase={phase} onClose={() => void navigate({ search: (search) => ({ ...search, reissue: undefined }), replace: true })} />}
           </div>

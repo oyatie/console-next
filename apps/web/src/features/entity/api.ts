@@ -7,8 +7,8 @@ import type { AsOf } from "../../reference/entity/api";
 import { get, type PathPrefix } from "../../lib/query";
 import { opsCorrectionLine } from "./domain/ops-cover";
 
+export { correctionRegisterQuery, type IdentifierCorrectionCase } from "../../reference/entity/api";
 /** One field the server refused and why (the envelope's `errors`, codes from the entity domain). */
-export type IdentifierCorrectionCase = components["schemas"]["IdentifierCorrectionCase"];
 export type FieldIssue = { field: string; code: string };
 
 /**
@@ -35,8 +35,7 @@ export const registrationHistoryQuery = (registrationId: string) => get("/api/v1
 export const workplaceHistoryQuery = (workplaceId: string) => get("/api/v1/workplaces/{workplaceId}/revisions", { params: { path: { workplaceId } } });
 export const entityDocumentsQuery = (entityId: string) => get("/api/v1/legal-entities/{entityId}/documents", { params: { path: { entityId } } });
 export const documentQuery = (id: string) => get("/api/v1/entity-documents/{id}", { params: { path: { id } } });
-/** Pending decisions, approved corrections and the recorded corrections due for review. */
-export const correctionRegisterQuery = (entityId?: string, offset = 0) => get("/api/v1/entity-identifier-corrections", { params: { query: { entity_id: entityId, offset } } });
+/** One correction case with the actions this viewer can take. */
 export const correctionCaseQuery = (id: string) => get("/api/v1/entity-identifier-corrections/{id}", { params: { path: { id } } });
 /** One page of an official code list matching `q` (code or label). */
 export const codesQuery = (key: RefListKey, q: string) => get("/api/v1/ref/lists/{key}/codes", { params: { path: { key }, query: { q } } });
@@ -44,7 +43,7 @@ export const addressQuery = (q: string) => get("/api/v1/ref/address-search", { p
 
 /** Every read an entity or workplace command may change, onboarding's checklist and the org structure included. */
 // A workplace brings its default branch (the employee's home branch) and its place in the org tree.
-export const ENTITY_READS: PathPrefix[] = ["/api/v1/legal-entities", "/api/v1/business-registrations", "/api/v1/workplaces", "/api/v1/onboarding", "/api/v1/org-structure", "/api/v1/branches", "/api/v1/org-units", "/api/v1/entity-identifier-corrections"];
+export const ENTITY_READS: PathPrefix[] = ["/api/v1/legal-entities", "/api/v1/business-registrations", "/api/v1/workplaces", "/api/v1/onboarding", "/api/v1/org-structure", "/api/v1/branches", "/api/v1/org-units", "/api/v1/entity-identifier-corrections", "/api/v1/me/action-inbox"];
 
 /**
  * A dated revision: the full new state, when it takes effect (may be in the future) and why, against the newest

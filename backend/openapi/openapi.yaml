@@ -10937,6 +10937,10 @@ paths:
       security:
       - bearerAuth: []
       parameters:
+      - name: awaiting
+        in: query
+        description: Return only work this viewer can decide, apply, or review; uses the decision route's eligibility facts.
+        schema: { type: string, enum: [me] }
       - name: entity_id
         in: query
         schema: { type: string, format: uuid }

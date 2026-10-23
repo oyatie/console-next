@@ -29,9 +29,16 @@ pub(super) const ROUTE_PATHS: &[&str] = &[
     "/api/v1/entity-identifier-corrections/{id}/review",
 ];
 
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum Awaiting {
+    Me,
+}
+
 #[derive(Default, Deserialize)]
 struct RegisterQuery {
     entity_id: Option<Uuid>,
+    awaiting: Option<Awaiting>,
     #[serde(default)]
     offset: i64,
 }
@@ -84,38 +91,58 @@ async fn read(
     let result: Result<_, PgGovernanceError> =
         console_platform_db::with_org_conn(&state.pool, p.org_id, move |tx| {
             Box::pin(async move {
-                let mut cases = register::list_conn(
-                    tx.as_mut(),
-                    query.entity_id,
-                    id,
-                    query.offset,
-                    PAGE_SIZE + 1,
-                )
-                .await?;
-                let more = cases.len() > PAGE_SIZE as usize;
-                cases.truncate(PAGE_SIZE as usize);
-                let mut items = Vec::with_capacity(cases.len());
-                for case in cases {
-                    let mut row = projection(&case, &p)?;
-                    if let Some(id) = id {
-                        let stored = get_exception_conn(tx.as_mut(), id)
-                            .await?
-                            .ok_or_else(|| KernelError::not_found("exception_not_found"))?;
-                        let (contributed, holds) = decision_facts(tx, &stored, &p).await?;
-                        let independent = stored.requested_by != p.user_id && !contributed && holds;
-                        row["can_decide"] = json!(independent && row["status"] == "PENDING");
-                        row["can_review"] = json!(
-                            independent
-                                && stored.status == ExceptionStatus::Recorded
-                                && case.reviewed_at.is_none()
-                        );
+                let mut offset = query.offset;
+                let mut items = Vec::new();
+                let mut next_offset = None;
+                'pages: loop {
+                    let cases = register::list_conn(
+                        tx.as_mut(),
+                        query.entity_id,
+                        id,
+                        offset,
+                        PAGE_SIZE + 1,
+                    )
+                    .await?;
+                    let full = cases.len() > PAGE_SIZE as usize;
+                    for case in cases {
+                        let mut row = projection(&case, &p)?;
+                        if id.is_some() || query.awaiting.is_some() {
+                            let actionable = row["status"] == "PENDING"
+                                || row["status"] == "RECORDED" && case.reviewed_at.is_none();
+                            if actionable {
+                                let stored = get_exception_conn(tx.as_mut(), case.id)
+                                    .await?
+                                    .ok_or_else(|| KernelError::not_found("exception_not_found"))?;
+                                let (contributed, holds) = decision_facts(tx, &stored, &p).await?;
+                                let independent =
+                                    stored.requested_by != p.user_id && !contributed && holds;
+                                row["can_decide"] =
+                                    json!(independent && row["status"] == "PENDING");
+                                row["can_review"] =
+                                    json!(independent && row["status"] == "RECORDED");
+                            }
+                        }
+                        let include = query.awaiting.is_none()
+                            || ["can_decide", "can_apply", "can_review"]
+                                .iter()
+                                .any(|key| row[*key] == true);
+                        if include {
+                            if items.len() == PAGE_SIZE as usize {
+                                next_offset = Some(offset);
+                                break 'pages;
+                            }
+                            items.push(row);
+                        }
+                        offset += 1;
                     }
-                    items.push(row);
+                    if !full || id.is_some() {
+                        break;
+                    }
                 }
                 if id.is_some() && items.is_empty() {
                     return Err(KernelError::not_found("exception_not_found").into());
                 }
-                Ok(json!({"items":items, "next_offset":more.then_some(query.offset + PAGE_SIZE)}))
+                Ok(json!({"items":items, "next_offset":next_offset}))
             })
         })
         .await;
@@ -138,6 +165,8 @@ fn projection(case: &CorrectionCase, p: &Principal) -> Result<Value, KernelError
     } else {
         &case.status
     });
+    row["can_decide"] = json!(false);
+    row["can_review"] = json!(false);
     row["can_apply"] = json!(
         !expired
             && case.status == "APPROVED"

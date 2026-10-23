@@ -166,6 +166,7 @@ pub(super) fn decision_error(mut error: KernelError) -> Response {
         ErrorKind::Forbidden => StatusCode::FORBIDDEN,
         ErrorKind::Conflict | ErrorKind::InvalidTransition => StatusCode::CONFLICT,
         ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
+        ErrorKind::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
     };
     (status, Json(serde_json::json!({"error": {"code": error.code.unwrap_or(error.message.as_str()), "message": error.message}}))).into_response()
 }

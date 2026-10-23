@@ -274,6 +274,10 @@ async fn recorded_queue_has_review_deadline_and_independent_signoff(owner: PgPoo
     // Let the controller's restored grant age and deliver its notice, as in the shared holder fixture.
     sqlx::query("UPDATE authz_grant_ledger SET occurred_at=now()-interval '400 days' WHERE user_id=$1 AND event='GRANTED'").bind(s.approver.id).execute(&owner).await.unwrap();
     sqlx::query("INSERT INTO authz_grant_ledger (org_id,user_id,grant_kind,grant_ref,event,source,channel) SELECT org_id,user_id,grant_kind,grant_ref,'NOTICE_DELIVERED','NOTIFIER','IN_APP' FROM authz_grant_ledger WHERE user_id=$1 AND event='GRANTED' AND grant_kind='SYSTEM_ROLE'").bind(s.approver.id).execute(&owner).await.unwrap();
+    let (_, queue) = get(&s, &format!("{REGISTER}?awaiting=me"), &s.approver.token).await;
+    assert_eq!(queue["items"].as_array().unwrap().len(), 1, "{queue}");
+    assert_eq!(queue["items"][0]["can_review"], true);
+    assert!(queue["items"][0]["review_due_at"].is_string());
     for _ in 0..2 {
         let (status, body) = send(
             &s.service,
@@ -289,4 +293,6 @@ async fn recorded_queue_has_review_deadline_and_independent_signoff(owner: PgPoo
     assert_eq!(count(&owner, "SELECT count(*) FROM audit_events WHERE action='exception.review' AND target_id=$1::text", id).await, 1);
     let (_, list) = get(&s, REGISTER, &s.ops.token).await;
     assert!(list["items"][0]["reviewed_at"].is_string());
+    let (_, queue) = get(&s, &format!("{REGISTER}?awaiting=me"), &s.approver.token).await;
+    assert_eq!(queue["items"], json!([]));
 }

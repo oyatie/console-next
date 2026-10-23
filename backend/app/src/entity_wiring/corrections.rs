@@ -58,7 +58,13 @@ pub(super) async fn min_grant_age_days(
         time::OffsetDateTime::now_utc(),
     )
     .await?;
-    match resolved.get(&key) {
+    grant_age_days(&resolved)
+}
+
+fn grant_age_days(
+    resolved: &console_platform_db::settings_read::ResolvedSettings,
+) -> Result<i32, KernelError> {
+    match resolved.get(&SettingKey::AuthzSecondPersonMinGrantAge) {
         Some(Ok(value)) => match value.value {
             SettingValue::Int(days) => i32::try_from(days).map_err(|_| {
                 KernelError::internal("authz.second_person.min_grant_age is out of range")
@@ -277,3 +283,7 @@ pub(super) async fn correction_contributors(
         .map_err(|_| KernelError::internal("failed to resolve correction contributors"))?;
     Ok(ids.into_iter().flatten().map(UserId::from_uuid).collect())
 }
+
+#[cfg(test)]
+#[path = "corrections/maturity_settings.rs"]
+mod maturity_settings;

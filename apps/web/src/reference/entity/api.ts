@@ -1,6 +1,6 @@
 // Legal entities and their workplaces as other slices read them (registration, import, the employee record),
 // and the setup checklist (whose phase says whether setup-only actions apply).
-import { api, unwrap } from "@console/api";
+import { api, unwrap, type components } from "@console/api";
 import type { AllPaths } from "@console/api/pending";
 import { get } from "../../lib/query";
 
@@ -29,3 +29,7 @@ export const bindAssignment = (key: string, body: AllPaths["/api/v1/employment-a
   unwrap(api.POST("/api/v1/employment-assignments", { params: { header: { "Idempotency-Key": key } }, body }));
 /** Road-name address search through the server (juso.go.kr; the key stays on the server). */
 export const addressSearchRef = (q: string) => get("/api/v1/ref/address-search", { params: { query: { q } } });
+
+/** Identifier corrections shared by Home and the entity register. The server projects this viewer's next actions. */
+export type IdentifierCorrectionCase = components["schemas"]["IdentifierCorrectionCase"];
+export const correctionRegisterQuery = (entityId?: string, offset = 0, awaiting?: "me") => get("/api/v1/entity-identifier-corrections", { params: { query: { entity_id: entityId, offset, awaiting } } });
