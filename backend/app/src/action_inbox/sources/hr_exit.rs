@@ -59,7 +59,7 @@ pub(crate) async fn page(
             let candidates = sqlx::query_as::<_, Exit>(
                 "SELECT c.id, c.employee_id, c.branch_id, e.name, e.worksite_name AS site, c.status, \
                  c.effective_exit_date AS exit_date, c.hr_confirmed_by, c.created_at \
-                 FROM employee_exit_cases c JOIN employees e ON e.org_id = c.org_id AND e.id = c.employee_id \
+                 FROM employee_exit_cases c JOIN person_employees_current e ON e.org_id = c.org_id AND e.id = c.employee_id \
                  LEFT JOIN employee_lifecycle_events l ON l.org_id = c.org_id AND l.id = c.exit_lifecycle_event_id \
                  WHERE c.org_id = $1 AND c.created_at <= $2 \
                    AND c.status IN ('REPORTED','HR_CONFIRMED','HQ_CONFIRMED','SETTLEMENT_READY','APPROVAL_DRAFTED') \

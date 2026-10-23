@@ -51,7 +51,7 @@ pub(crate) async fn page(
             let rows: Vec<Row> = sqlx::query_as(concat!(
                 "SELECT l.id, l.employee_id, l.event_type, l.effective_date, e.name, l.created_at \
                  FROM employee_lifecycle_events l \
-                 JOIN employees e ON e.org_id = l.org_id AND e.id = l.employee_id WHERE ",
+                 JOIN person_employees_current e ON e.org_id = l.org_id AND e.id = l.employee_id WHERE ",
                 open!(),
                 " AND ($3::timestamptz IS NULL OR (l.created_at, ('hr_lifecycle:' || l.id::text)) > ($3, $4)) \
                  ORDER BY l.created_at, l.id LIMIT $5"
