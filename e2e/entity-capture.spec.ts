@@ -50,9 +50,11 @@ test("capture: the district comes from the bundled list, other lists say they ar
   await expectAccessible(a, "entity wizard (district picked, KSIC not loaded)");
 
   // The same entity registers by hand with nothing coded; its 상시근로자수 is derived, held for a labor attorney.
-  // A fresh form: leave the screen first (the same route would keep the typed state).
+  // Wait for the list to render: its consent guard may still be loading while the URL already changed.
   await go(a, "/org/entities");
+  await expect(a.getByRole("heading", { name: "법인·사업장", exact: true })).toBeVisible();
   await go(a, "/org/entities/new");
+  await expect(a.getByLabel("법인명(단체명)")).toHaveValue("");
   await registerEntity(a, "캡처솔루션");
   const headcount = a.getByRole("group", { name: "상시근로자수" });
   await expect(headcount).toContainText("산정 보류");
