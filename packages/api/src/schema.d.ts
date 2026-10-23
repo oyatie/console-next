@@ -16144,10 +16144,11 @@ export interface components {
             /** @description Why the business goes on (kept in the audit row). */
             why: string;
         };
-        /** @description A reference-list value as sent: the code only. The server stamps label and list version (UNVERIFIED while no list is loaded); any label or version sent is ignored. */
+        /** @description A reference-list value as sent. The server resolves the code and stamps its label and current list version; a supplied stale version is refused. */
         CodeInput: {
-            /** @description KSIC code (optional section letter, then 2–5 digits). */
             code: string;
+            /** @description The list version the choice came from; omitted by N-1 clients. */
+            version?: string | null;
         };
         /** @description A reference-list value: code + label + list version, stamped by the server. version UNVERIFIED = format-checked only (「코드 확인 필요」). */
         CodeRef: {
@@ -20438,6 +20439,8 @@ export interface components {
             /** Format: int64 */
             count?: number | null;
             remedy?: string | null;
+            /** @description Stable support lookup key for this readiness fact. */
+            support_ref?: string | null;
             /** @description The records the line counts (count equals their number where the line is per record), so the fix opens on that record. */
             records: {
                 kind: string;
@@ -25461,6 +25464,9 @@ export interface components {
             code: string;
             label: string;
             parent_label?: string | null;
+            /** Format: uri */
+            citation_url?: string | null;
+            abstract_workplace?: boolean | null;
         };
         RefCodePage: {
             list: components["schemas"]["RefList"];
@@ -28063,6 +28069,12 @@ export interface components {
             /** Format: uuid */
             registration_id?: string | null;
             sub_serial?: string | null;
+            not_registered_reason?: components["schemas"]["CodeRef"] | null;
+            is_abstract?: boolean;
+            /** @description True only while the workplace has neither a registration nor a completed not-required answer. */
+            registration_todo: boolean;
+            /** Format: uuid */
+            filing_registration_id?: string | null;
             /**
              * Format: uuid
              * @description Branch backing the 사업장; use as home_branch_id when registering people here.
@@ -28209,6 +28221,11 @@ export interface components {
             registration_id?: string | null;
             /** @description 종사업장 일련번호. */
             sub_serial?: string | null;
+            /** @enum {string|null} */
+            reg_mode?: "NEW" | "EXISTING" | "UNIT_TAXATION_SUB" | "NOT_REQUIRED" | "LATER" | null;
+            not_registered_reason?: components["schemas"]["CodeInput"] | null;
+            /** @description Derived from the selected not-registered reason and checked by the server. */
+            is_abstract?: boolean | null;
             same_address_as_registration?: boolean;
             address?: components["schemas"]["KrAddress"] | null;
             mail_address?: components["schemas"]["KrAddress"] | null;
@@ -28297,6 +28314,8 @@ export interface components {
             mobile?: components["schemas"]["FormattedValue"] | null;
             email?: string | null;
             is_construction_site: boolean;
+            is_abstract?: boolean;
+            not_registered_reason?: components["schemas"]["CodeRef"] | null;
             status: components["schemas"]["OperatingStatus"];
             /** Format: date */
             status_since?: string | null;
@@ -51493,7 +51512,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                key: "admin_region" | "brn_classification" | "nts_industry_code" | "tax_office" | "insurance_branch" | "ksic" | "bank";
+                key: "admin_region" | "brn_classification" | "nts_industry_code" | "tax_office" | "insurance_branch" | "ksic" | "bank" | "workplace_not_registered_reason";
             };
             cookie?: never;
         };

@@ -144,6 +144,7 @@ fn a_ksic_code_is_taken_alone_and_stamped_unverified() {
     let bad = LegalEntityInput {
         main_ksic: Some(CodeInput {
             code: Some("62-01".into()),
+            version: None,
         }),
         ..corp()
     };

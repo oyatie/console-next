@@ -20,9 +20,11 @@ pub(crate) async fn insert_revision(
     let address = match &d.address {
         WorkplaceAddress::Own(a) => Some(insert_address(tx, a).await?),
         WorkplaceAddress::SameAsRegistration => registration_address,
+        WorkplaceAddress::None => None,
     };
-    let address =
-        address.ok_or_else(|| Refusal::field("address", "registration_has_no_address"))?;
+    if !d.is_abstract && address.is_none() {
+        return Err(Refusal::field("address", "registration_has_no_address").into());
+    }
     let mail = insert_optional(tx, d.mail_address.as_ref()).await?;
     let phone =
         |p: &Option<console_kernel_core::kr::PhoneE164>| p.as_ref().map(|p| p.as_str().to_owned());
@@ -30,9 +32,12 @@ pub(crate) async fn insert_revision(
         "INSERT INTO workplace_revisions (org_id, workplace_id, version, effective_from, name, address_id, \
            mail_address_id, opened_on, representative_name, main_product, phone, fax, mobile, email, \
            is_construction_site, status, status_since, status_until, withholding_mode, bulk_filed_on, independent_lsa_unit, \
-           independent_lsa_evidence, change_mode, reason_code, actor_id, payload_digest, settings_snapshot, command_id) \
+           independent_lsa_evidence, change_mode, reason_code, actor_id, payload_digest, settings_snapshot, command_id, \
+           not_registered_reason_code, not_registered_reason_label, not_registered_reason_list_key, \
+           not_registered_reason_version, is_abstract) \
          VALUES (NULLIF(current_setting('app.current_org', true), '')::uuid, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, \
-           $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24, sha256(convert_to($25::jsonb::text, 'UTF8')), $26, $27)",
+           $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24, sha256(convert_to($25::jsonb::text, 'UTF8')), $26, $27, \
+           $28, $29, $30, $31, $32)",
     )
     .bind(id)
     .bind(m.version)
@@ -61,6 +66,15 @@ pub(crate) async fn insert_revision(
     .bind(&m.payload)
     .bind(m.admitted.snapshot())
     .bind(command_id(m.actor)?)
+    .bind(d.not_registered_reason.as_ref().map(|r| r.code.as_str()))
+    .bind(d.not_registered_reason.as_ref().map(|r| r.label.as_str()))
+    .bind(
+        d.not_registered_reason
+            .as_ref()
+            .map(|r| r.list_key.as_str()),
+    )
+    .bind(d.not_registered_reason.as_ref().map(|r| r.version.as_str()))
+    .bind(d.is_abstract)
     .execute(tx.as_mut())
     .await?;
     Ok(())

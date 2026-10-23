@@ -6,24 +6,25 @@ import { MaskedField } from "../../../ui/masked-field/masked-field";
 import { SectionConfirm } from "../../../ui/section-confirm/section-confirm";
 import { PickOne } from "../../../reference/entity/ui/pick-one";
 import { entityName } from "../../../reference/entity/domain/names";
-import type { RegMode, WorkplaceDraft, WpProblem } from "../domain/workplace";
+import { abstractFromReason, type RegMode, type WorkplaceDraft, type WpProblem } from "../domain/workplace";
 import { sectionTitle } from "../present";
 import { AddressSection } from "./address-section";
 import { BusinessSection } from "./business-section";
 import { KeptCertificates } from "./kept-certificates";
 import { CertificateSection } from "./certificate-section";
 import { IdentitySection } from "./identity-section";
+import { RefPick } from "./ref-pick";
 import type { WorkplaceCreate } from "./use-workplace-create";
 
 const REG_SECTIONS = [["identity", IdentitySection], ["address", AddressSection], ["business", BusinessSection], ["certificate", CertificateSection]] as const;
-const MODES: readonly RegMode[] = ["NEW", "EXISTING", "UNIT_TAXATION_SUB", "LATER"];
-type Picked = Pick<WorkplaceDraft, "regMode" | "registrationId" | "subSerial">;
+const MODES: readonly RegMode[] = ["NEW", "EXISTING", "UNIT_TAXATION_SUB", "NOT_REQUIRED", "LATER"];
+type Picked = Pick<WorkplaceDraft, "regMode" | "registrationId" | "subSerial"> & Partial<Pick<WorkplaceDraft, "notRegisteredReason" | "isAbstract">>;
 /** What the choice reads and sets: the add sheet's state, or the attach sheet's (org-03), which has no "later". */
 export type RegistrationChoiceState = Pick<WorkplaceCreate, "free" | "unit" | "reg" | "askVat" | "vat" | "setVat"> & {
   w: Picked;
   set<K extends keyof Picked>(k: K, v: Picked[K]): void;
   mode: RegMode | null;
-  problems: { subSerial?: WpProblem };
+  problems: { subSerial?: WpProblem; notRegisteredReason?: WpProblem };
 };
 
 /**
@@ -37,6 +38,7 @@ export function RegistrationChoice({ e, c, modes = MODES, required = false }: { 
     NEW: null,
     EXISTING: c.free.length ? null : held ? t("workplace.create.existingHeld", { brn: held.brn?.display ?? "", holder: holder ?? "" }) : t("workplace.create.existingNone"),
     UNIT_TAXATION_SUB: c.unit ? null : t("workplace.create.unitOff", { entity: entityName(e) }),
+    NOT_REQUIRED: null,
     LATER: null,
   };
   const hint = (m: RegMode) =>
@@ -82,6 +84,22 @@ export function RegistrationChoice({ e, c, modes = MODES, required = false }: { 
       )}
       {c.mode === "UNIT_TAXATION_SUB" && (
         <MaskedField label={t("workplace.field.subSerial")} required format={FORMATS.subSerial} value={c.w.subSerial} onChange={(v) => set("subSerial", v)} hint={t("workplace.field.subSerialHint")} error={c.problems.subSerial ? t(`workplace.problem.${c.problems.subSerial}`) : undefined} />
+      )}
+      {c.mode === "NOT_REQUIRED" && (
+        <>
+          <RefPick
+            listKey="workplace_not_registered_reason"
+            showCode={false}
+            label={t("workplace.field.notRegisteredReason")}
+            required
+            value={c.w.notRegisteredReason ?? null}
+            onChange={(v, reason) => {
+              set("notRegisteredReason", v);
+              set("isAbstract", abstractFromReason(reason));
+            }}
+            error={c.problems.notRegisteredReason ? t(`workplace.problem.${c.problems.notRegisteredReason}`) : undefined}
+          />
+        </>
       )}
     </>
   );

@@ -2,7 +2,7 @@ use super::*;
 use crate::insurance::InsurerInput;
 use time::macros::date;
 
-fn input() -> WorkplaceInput {
+pub(super) fn input() -> WorkplaceInput {
     WorkplaceInput {
         name: Some("본사".into()),
         registration_id: Some(Uuid::from_u128(7)),
@@ -17,7 +17,7 @@ fn input() -> WorkplaceInput {
     }
 }
 
-const CREATE: WorkplaceContext = WorkplaceContext {
+pub(super) const CREATE: WorkplaceContext = WorkplaceContext {
     biz_kind: Some(BizKind::Corporation),
     registration_is_unit_taxation_of_other: false,
     creating: true,

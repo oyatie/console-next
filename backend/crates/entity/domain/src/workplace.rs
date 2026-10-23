@@ -8,6 +8,7 @@ use crate::address::{AddressInput, KrAddress, validate_address};
 use crate::codes::{BizKind, OperatingStatus, WithholdingMode};
 use crate::insurance::{InsuranceDraft, InsuranceSetupInput, validate_insurance_setup};
 use crate::refusal::{Issues, NOT_APPLICABLE, REQUIRED, Refusal};
+use crate::workplace_registration::{ResolvedReferenceCode, WorkplaceRegistrationAnswer};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WorkplaceInput {
@@ -37,6 +38,9 @@ pub struct WorkplaceInput {
     pub status_since: Option<String>,
     /// 휴업's expected end (SUSPENDED only).
     pub status_until: Option<String>,
+    pub is_abstract: Option<bool>,
+    pub reg_mode: Option<String>,
+    pub not_registered_reason: Option<crate::legal_entity::CodeInput>,
 }
 
 /// Where the address comes from after validation.
@@ -44,6 +48,7 @@ pub struct WorkplaceInput {
 pub enum WorkplaceAddress {
     Own(Box<KrAddress>),
     SameAsRegistration,
+    None,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -51,6 +56,9 @@ pub struct WorkplaceDraft {
     pub name: String,
     pub registration_id: Option<Uuid>,
     pub sub_serial: Option<SubWorkplaceSerial>,
+    pub registration_answer: WorkplaceRegistrationAnswer,
+    pub not_registered_reason: Option<ResolvedReferenceCode>,
+    pub is_abstract: bool,
     pub address: WorkplaceAddress,
     pub mail_address: Option<KrAddress>,
     pub opened_on: time::Date,
@@ -88,6 +96,17 @@ pub fn validate_workplace(
     ctx: WorkplaceContext,
     today: time::Date,
 ) -> Result<WorkplaceDraft, Refusal> {
+    validate_workplace_resolved(input, ctx, today, None)
+}
+
+/// Validate with a reference value resolved by the use case from the current
+/// loaded list. The domain never invents a label or list version.
+pub fn validate_workplace_resolved(
+    input: &WorkplaceInput,
+    ctx: WorkplaceContext,
+    today: time::Date,
+    resolved_reason: Option<&ResolvedReferenceCode>,
+) -> Result<WorkplaceDraft, Refusal> {
     let mut is = Issues::default();
     let name = is.text("name", input.name.as_deref(), 200, true);
     let sub_serial = is.parsed(
@@ -99,20 +118,33 @@ pub fn validate_workplace(
     if sub_serial.is_some() && !ctx.registration_is_unit_taxation_of_other {
         is.push("sub_serial", NOT_APPLICABLE);
     }
-    let address = match (&input.address, input.same_address_as_registration) {
-        (Some(_), true) => {
+    let (registration_answer, not_registered_reason, is_abstract) =
+        crate::workplace_registration::validate_answer(input, resolved_reason, &mut is);
+
+    let address = if is_abstract {
+        if input.address.is_some() || input.same_address_as_registration {
             is.push("address", NOT_APPLICABLE);
-            None
         }
-        (Some(addr), false) => {
-            validate_address(&mut is, "address", addr).map(|a| WorkplaceAddress::Own(Box::new(a)))
-        }
-        (None, true) if input.registration_id.is_some() => {
-            Some(WorkplaceAddress::SameAsRegistration)
-        }
-        (None, _) => {
-            is.push("address", REQUIRED);
-            None
+        Some(WorkplaceAddress::None)
+    } else {
+        match (&input.address, input.same_address_as_registration) {
+            (Some(_), true) => {
+                is.push("address", NOT_APPLICABLE);
+                None
+            }
+            (Some(addr), false) => validate_address(&mut is, "address", addr)
+                .map(|a| WorkplaceAddress::Own(Box::new(a))),
+            (None, true) if input.registration_id.is_some() => {
+                Some(WorkplaceAddress::SameAsRegistration)
+            }
+            (None, true) => {
+                is.push("address", NOT_APPLICABLE);
+                None
+            }
+            (None, false) => {
+                is.push("address", REQUIRED);
+                None
+            }
         }
     };
     let mail_address = input
@@ -187,6 +219,9 @@ pub fn validate_workplace(
             name: name?,
             registration_id: input.registration_id,
             sub_serial,
+            registration_answer,
+            not_registered_reason,
+            is_abstract,
             address: address?,
             mail_address,
             opened_on: opened_on?,
@@ -281,3 +316,7 @@ pub fn withholding_target(f: WithholdingFacts) -> WithholdingTarget {
 #[cfg(test)]
 #[path = "workplace_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "workplace_registration_tests.rs"]
+mod registration_tests;

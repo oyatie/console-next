@@ -119,6 +119,7 @@ export const enEntityOps = {
   "entityOps.reason.CORRECTION": "correction",
   "entityOps.reason.SUSPENSION": "suspension",
   "entityOps.reason.RESUMPTION": "resumption",
+  "entityOps.reason.REGISTRATION_ANSWER_CHANGED": "registration answer changed",
   "entityOps.reason.FIRST_ATTACH": "registration attached",
   "entityOps.reason.INCORPORATION_REGISTERED": "incorporation registered",
   "entityOps.reason.LEGAL_ENTITY_CLOSE_CORRECTED": "close corrected",

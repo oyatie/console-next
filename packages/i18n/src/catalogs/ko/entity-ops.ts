@@ -120,6 +120,7 @@ export const koEntityOps = {
   "entityOps.reason.CORRECTION": "정정",
   "entityOps.reason.SUSPENSION": "휴업",
   "entityOps.reason.RESUMPTION": "재개",
+  "entityOps.reason.REGISTRATION_ANSWER_CHANGED": "사업자등록 여부 변경",
   "entityOps.reason.FIRST_ATTACH": "등록증 연결",
   "entityOps.reason.INCORPORATION_REGISTERED": "설립등기",
   "entityOps.reason.LEGAL_ENTITY_CLOSE_CORRECTED": "종료 정정",

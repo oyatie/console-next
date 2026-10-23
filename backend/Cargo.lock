@@ -1548,6 +1548,7 @@ dependencies = [
  "console-platform-db",
  "console-platform-test-support",
  "console-settings-domain",
+ "metrics",
  "serde",
  "serde_json",
  "sqlx 0.9.0",

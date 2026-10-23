@@ -7,7 +7,7 @@ import { Marker } from "../field/field";
 import css from "../server-picker/server-picker.module.css";
 import s from "./code-picker.module.css";
 
-export type CodeOption = { code: string; label: string; context?: string };
+export type CodeOption = { code: string; label: string; context?: string; isAbstract?: boolean };
 /** An official code list as the server serves it: its title, version, and whether it is loaded. */
 export type CodeList = { title: string; version?: string; loaded: boolean };
 
@@ -18,7 +18,7 @@ export type CodeList = { title: string; version?: string; loaded: boolean };
  * the certificate, or a code typed with format checks only), and the code is assigned once the list loads. With no
  * fallback the field may stay empty until then.
  */
-export function CodePicker({ label, required, list, query, onQueryChange, options, value, onChange, loading, fallback, error }: {
+export function CodePicker({ label, required, list, query, onQueryChange, options, value, onChange, loading, fallback, error, showCode = true }: {
   label: string;
   required: boolean;
   list: CodeList;
@@ -30,6 +30,7 @@ export function CodePicker({ label, required, list, query, onQueryChange, option
   loading?: boolean;
   fallback?: ReactNode;
   error?: ReactNode;
+  showCode?: boolean;
 }) {
   if (!list.loaded)
     return (
@@ -66,9 +67,9 @@ export function CodePicker({ label, required, list, query, onQueryChange, option
       <Popover className={`popover ${css.pop}`}>
         <ListBox className="listbox" renderEmptyState={() => <div className={css.empty}>{loading ? t("uiCodePicker.loading") : t("uiCodePicker.none")}</div>}>
           {(o: CodeOption) => (
-            <ListBoxItem id={o.code} textValue={`${o.code} ${o.label}`} className={`listbox__item ${css.option}`}>
+            <ListBoxItem id={o.code} textValue={showCode ? `${o.code} ${o.label}` : o.label} className={`listbox__item ${css.option}`}>
               <span className={css.name}>{o.label}</span>
-              <span className={css.code}>{o.code}</span>
+              {showCode && <span className={css.code}>{o.code}</span>}
               {o.context && <span className={css.sub}>{o.context}</span>}
             </ListBoxItem>
           )}

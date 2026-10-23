@@ -88,14 +88,14 @@ export function WorkplaceRegistrationChangeSheet(props: {
       }),
     invalidates: ENTITY_READS,
     settle: true,
-    announce: () => t("workplace.regChange.saved", { name }),
+    announce: () => t("workplaceRegChange.saved", { name }),
     onSuccess: onClose,
   });
 
   const hold = !changed
-    ? t("workplace.regChange.same")
+    ? t("workplaceRegChange.same")
     : !dateValid
-      ? t("workplace.regChange.pickDate")
+      ? t("workplaceRegChange.pickDate")
       : isUnitTax && !subSerialValid
         ? t("workplace.problem.subSerial")
         : !reason.trim() ? t("setup.entityBulk.datedNeeded") : null;
@@ -123,7 +123,7 @@ export function WorkplaceRegistrationChangeSheet(props: {
       }),
     {
       value: "",
-      label: t("workplace.regChange.none"),
+      label: t("workplaceRegChange.none"),
     },
   ];
 
@@ -134,16 +134,16 @@ export function WorkplaceRegistrationChangeSheet(props: {
       kicker={
         <>
           <Building2 size={14} aria-hidden />
-          {t("workplace.regChange.kicker", { entity: entityName(e), name })} · {currentReg?.brn?.display ?? t("workplace.noRegistration")}
+          {t("workplaceRegChange.kicker", { entity: entityName(e), name })} · {currentReg?.brn?.display ?? t("workplace.noRegistration")}
         </>
       }
-      title={t("workplace.regChange.title", { name })}
+      title={t("workplaceRegChange.title", { name })}
       onClose={onClose}
       pending={save.isPending}
       notice={<EntityError error={save.error} />}
       consequence={
         ready ? (
-          <div>{t(targetRegId ? "workplace.regChange.consequence" : "workplace.regChange.unlinked", { name, date: fmtDate(from) })}</div>
+          <div>{t(targetRegId ? "workplaceRegChange.consequence" : "workplaceRegChange.unlinked", { name, date: fmtDate(from) })}</div>
         ) : (
           <div>{hold}</div>
         )
@@ -157,16 +157,16 @@ export function WorkplaceRegistrationChangeSheet(props: {
               onClick={() => save.mutate(undefined)}
               disabled={save.isPending}
             >
-              {t("workplace.regChange.save")}
+              {t("workplaceRegChange.save")}
             </Button>
           ) : (
-            <DisabledReason reason={hold!} control={(p) => <Button variant="primary" {...p}>{t("workplace.regChange.save")}</Button>} />
+            <DisabledReason reason={hold!} control={(p) => <Button variant="primary" {...p}>{t("workplaceRegChange.save")}</Button>} />
           )}
         </>
       }
     >
       <ChoiceField
-        label={t("workplace.regChange.target")}
+        label={t("workplaceRegChange.target")}
         required
         options={regOptions}
         value={selectedReg}
@@ -178,14 +178,14 @@ export function WorkplaceRegistrationChangeSheet(props: {
       )}
 
       <DateField
-        label={t("workplace.regChange.from")}
+        label={t("workplaceRegChange.from")}
         required
         value={from}
         onChange={setFrom}
         today={today}
       />
 
-      <Field label={t("workplace.regChange.reason")} required>{(f) => <TextInput {...f} value={reason} onChange={(event) => setReason(event.target.value)} />}</Field>
+      <Field label={t("workplaceRegChange.reason")} required>{(f) => <TextInput {...f} value={reason} onChange={(event) => setReason(event.target.value)} />}</Field>
     </Sheet>
   );
 }

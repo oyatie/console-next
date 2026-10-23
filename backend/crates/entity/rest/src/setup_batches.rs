@@ -36,7 +36,17 @@ pub(crate) async fn run(
     Json(b): Json<EntitySetupBatch>,
 ) -> Result<Response> {
     let a = manager_of(&s, &h, &targets(&b), !b.dry_run).await?;
-    Ok(Json(s.store.entity_setup_batch(&a, b, port(&s)?).await?).into_response())
+    Ok(Json(
+        s.store
+            .entity_setup_batch_with_references(
+                &a,
+                b,
+                port(&s)?,
+                Some(crate::handlers::resolve_workplace_reason),
+            )
+            .await?,
+    )
+    .into_response())
 }
 
 pub(crate) async fn list(State(s): State<EntityRestState>, h: HeaderMap) -> Result<Response> {

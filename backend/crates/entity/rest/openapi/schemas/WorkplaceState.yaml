@@ -57,6 +57,12 @@ properties:
     - 'null'
   is_construction_site:
     type: boolean
+  is_abstract:
+    type: boolean
+  not_registered_reason:
+    anyOf:
+    - $ref: '#/components/schemas/CodeRef'
+    - type: 'null'
   status:
     $ref: '#/components/schemas/OperatingStatus'
   status_since:

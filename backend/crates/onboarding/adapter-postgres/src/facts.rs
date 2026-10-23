@@ -56,9 +56,9 @@ const RECORDS: &str = concat!(
        UNION ALL SELECT 'workplace_incomplete', 'workplace', id, label, legal_entity_id FROM wp \
          WHERE needs_confirmation OR default_branch_id IS NULL \
        UNION ALL SELECT 'staffed_workplace_without_registration', 'workplace', id, label, legal_entity_id FROM wp \
-         WHERE registration_id IS NULL AND id IN (SELECT workplace_id FROM live) \
+         WHERE registration_id IS NULL AND not_registered_reason_code IS NULL AND id IN (SELECT workplace_id FROM live) \
        UNION ALL SELECT 'workplace_without_registration', 'workplace', id, label, legal_entity_id FROM wp \
-         WHERE registration_id IS NULL AND id NOT IN (SELECT workplace_id FROM live) \
+         WHERE registration_id IS NULL AND not_registered_reason_code IS NULL AND id NOT IN (SELECT workplace_id FROM live) \
        UNION ALL SELECT 'insurance_not_established_with_people', 'workplace', id, label, legal_entity_id FROM wp \
          WHERE id IN (SELECT workplace_id FROM ins WHERE status = 'NOT_ESTABLISHED') AND id IN (SELECT workplace_id FROM live) \
        UNION ALL SELECT 'insurance_numbers_pending', 'workplace', id, label, legal_entity_id FROM wp \

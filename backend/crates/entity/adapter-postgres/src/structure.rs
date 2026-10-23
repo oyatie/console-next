@@ -77,9 +77,6 @@ pub(crate) async fn compose(
                 Some("CLOSED") => chips.push("closed"),
                 _ => {}
             }
-            if w.registration_id.is_none() {
-                chips.push("registration_missing");
-            }
             wp_nodes.push(OrgStructureNode {
                 scheduled_by: None,
                 changed_after: false,

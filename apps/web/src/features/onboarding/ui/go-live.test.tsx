@@ -13,7 +13,7 @@ const state = vi.hoisted(() => ({
     phase: "SETUP", digest: "preview", line_digests: {}, blockers: [] as GoLiveItem[],
     warnings: [{ code: "sole_holder", count: 0, remedy: null, records: [] }], becomes_governed: [],
     breakdown: [{ kind: "workplace", id: "site", legal_entity_id: "entity", name: "Head Office", people: 1982, units: 31 }], roles_becoming_active: [], access_admin_holders: [], hr_accounts_with_no_grant: [],
-    facts: { entities: 1, workplaces: 1, org_units: 2, employees: 2000, employees_starting_later: 0,
+    facts: { entities: 1, workplaces: 1, staffed_workplaces_without_registration: 1, empty_workplaces_without_registration: 2, org_units: 2, employees: 2000, employees_starting_later: 0,
       setup_writes: 4, prepared_grants: 1, grants_effective_in_setup: 0, hr_accounts_invited: 1, hr_accounts_enrolled: 1 },
   },
 }));
@@ -69,6 +69,11 @@ test("arrival waits for the fresh preview before showing cached records or launc
   state.fetched = true; state.fetching = false;
   expect(render()).toContain("Head Office");
   expect(state.mutate).not.toHaveBeenCalled();
+});
+
+test("the facts panel names how many workplaces still need a registration answer", () => {
+  expect(render()).toContain("사업자등록 답변 대기");
+  expect(render()).toContain(">3<");
 });
 
 test("session expiry preserves the last preview and sole-holder acknowledgement without running a write", () => {

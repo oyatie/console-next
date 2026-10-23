@@ -93,7 +93,6 @@ export const koEntityRecord = {
   "entityRecord.workplaces.col.open": "열기",
   "entityRecord.workplaces.head": "본점",
   "entityRecord.workplaces.primary": "대표 사업장",
-  "entityRecord.workplaces.noCert": "등록증 연결 전",
   "entityRecord.workplaces.insDone": "성립 {count, number}건",
   "entityRecord.workplaces.insPending": "번호 입력 전 {count, number}건",
   "entityRecord.workplaces.insNone": "성립 전",

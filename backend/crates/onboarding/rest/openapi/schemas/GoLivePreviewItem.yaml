@@ -14,6 +14,11 @@ properties:
     type:
     - string
     - 'null'
+  support_ref:
+    type:
+    - string
+    - 'null'
+    description: Stable support lookup key for this readiness fact.
   records:
     description: The records the line counts (count equals their number where the line is per record), so the fix opens on that record.
     type: array

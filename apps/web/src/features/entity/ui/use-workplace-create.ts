@@ -32,7 +32,7 @@ export function useWorkplaceCreate(e: LegalEntity, opts: { kinds: boolean; onSav
 
   const mode: RegMode = w.regMode ?? "LATER";
   const chosen = free.find((r) => r.id === (free.length === 1 ? free[0]!.id : w.registrationId));
-  const place = mode === "EXISTING" ? chosen?.current?.business_address : mode === "NEW" && reg.draft.businessAddress ? krAddress(reg.draft.businessAddress) : w.address ? krAddress(w.address) : null;
+  const place = mode === "EXISTING" ? chosen?.current?.business_address : mode === "NEW" && reg.draft.businessAddress ? krAddress(reg.draft.businessAddress) : mode === "NOT_REQUIRED" && w.isAbstract ? null : w.address ? krAddress(w.address) : null;
   const evident = corp && samePlace(place, e.current?.head_office_address);
   const askHeadOffice = !headOfficeSettled(e) && !evident;
   const askVat = mode === "NEW" && e.current?.vat_unit_mode_basis !== "DECLARED" && reg.draft.unitTaxation === false && e.registrations.some((r) => !r.closed_on);

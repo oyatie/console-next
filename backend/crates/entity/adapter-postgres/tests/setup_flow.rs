@@ -79,7 +79,10 @@ async fn a_new_tenant_opens_in_setup_and_builds_its_entity_alone(owner: PgPool) 
     .fetch_one(&owner)
     .await
     .unwrap();
-    assert_eq!(marked, 3);
+    assert_eq!(
+        marked, 4,
+        "the workplace answer change is a separate business event"
+    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

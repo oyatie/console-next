@@ -64,7 +64,7 @@ pub(crate) struct OpDone {
     pub warnings: Vec<Warning>,
     /// The receipt step (ids, versions, flags; no values).
     pub step: Value,
-    pub event: AuditEvent,
+    pub events: Vec<AuditEvent>,
 }
 
 impl OpDone {
@@ -82,6 +82,7 @@ pub(crate) struct OpCtx<'a> {
     pub effective_from: Option<&'a str>,
     pub reason_code: Option<&'a str>,
     pub refs: &'a HashMap<String, Uuid>,
+    pub references: Option<console_entity_application::WorkplaceReferenceResolver>,
     pub port: &'a dyn OrgUnitSetupWritePort,
 }
 
@@ -119,7 +120,7 @@ pub(crate) async fn exec(
                 return Err(exists(found));
             }
             let (id, warnings, event) = create_entity_in_tx(tx, actor, admitted, &input).await?;
-            Ok(created("legal_entity", id, id, warnings, event))
+            Ok(created("legal_entity", id, id, warnings, vec![event]))
         }
         REVISE_ENTITY => {
             let id = required(op.id.as_ref(), "id")?;
@@ -152,7 +153,7 @@ pub(crate) async fn exec(
                     "before_needs_confirmation": before.needs_confirmation,
                     "before_biz_kind": identity.0, "before_crn": identity.1,
                 }),
-                event,
+                events: vec![event],
             })
         }
         CREATE_WORKPLACE => {
@@ -176,9 +177,10 @@ pub(crate) async fn exec(
                 // the bulk sheet has no kind column; a kind is set per 사업장 afterwards.
                 kind_code: None,
             };
-            let (id, event) =
-                create_workplace_in_tx(tx, actor, admitted, entity, &cmd, ctx.port).await?;
-            Ok(created("workplace", id, entity, Vec::new(), event))
+            let (id, events) =
+                create_workplace_in_tx(tx, actor, admitted, entity, &cmd, ctx.port, ctx.references)
+                    .await?;
+            Ok(created("workplace", id, entity, Vec::new(), events))
         }
         REVISE_WORKPLACE => {
             let id = required(op.id.as_ref(), "id")?;
@@ -191,7 +193,9 @@ pub(crate) async fn exec(
                     .await?
                     .ok_or_else(|| Refusal::not_found("workplace_not_found"))?;
             let before = workplace_state(tx, entity, id).await?;
-            let (_, event) = revise_workplace_in_tx(tx, actor, admitted, id, rev, ctx.port).await?;
+            let (_, events) =
+                revise_workplace_in_tx(tx, actor, admitted, id, rev, ctx.port, ctx.references)
+                    .await?;
             if op.is_primary == Some(true) || op.is_head_office == Some(true) {
                 set_roles_on_create(
                     tx,
@@ -218,7 +222,7 @@ pub(crate) async fn exec(
                     "after_version": version, "after_revision_id": revision_id,
                     "before_needs_confirmation": before.0,
                 }),
-                event,
+                events,
             })
         }
         _ => Err(Refusal::field("op", "invalid_choice").into()),
@@ -230,7 +234,7 @@ fn created(
     id: Uuid,
     entity: Uuid,
     warnings: Vec<Warning>,
-    event: AuditEvent,
+    events: Vec<AuditEvent>,
 ) -> OpDone {
     OpDone {
         target: id,
@@ -240,7 +244,7 @@ fn created(
         changes: Vec::new(),
         warnings,
         step: json!({ "target_type": kind, "target_id": id, "created": true, "after_version": 1 }),
-        event,
+        events,
     }
 }
 

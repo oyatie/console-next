@@ -92,3 +92,38 @@ test("the request trims what was typed, holds no certificate when later, and sen
   expect(plan(base({ regMode: "NEW", address: null }))).toMatchObject({ registration_id: "r1", same_address_as_registration: true, address: null, opened_on: "2019-03-04" });
   expect(plan(base({ regMode: "UNIT_TAXATION_SUB", subSerial: "0002", address: null }))).toMatchObject({ registration_id: "r1", sub_serial: "0002", address: null, opened_on: "2026-09-01" });
 });
+
+test("등록 대상 아님 (NOT_REQUIRED) requires statutory reason, and abstract workplace omits address", () => {
+  const reason = { code: "REMOTE_TELEWORK", label: "주소 없는 원격 근무지 묶음", version: "2026-10-22" };
+  // Without reason: required
+  expect(workplaceProblems(base({ regMode: "NOT_REQUIRED", notRegisteredReason: null }), facts).notRegisteredReason).toBe("required");
+  // With reason: valid
+  expect(workplaceProblems(base({ regMode: "NOT_REQUIRED", notRegisteredReason: reason }), facts).notRegisteredReason).toBeUndefined();
+
+  // Abstract workplace needs no address
+  expect(workplaceProblems(base({ regMode: "NOT_REQUIRED", notRegisteredReason: reason, isAbstract: true, address: null }), facts).address).toBeUndefined();
+  // Non-abstract NOT_REQUIRED without address needs address
+  expect(workplaceProblems(base({ regMode: "NOT_REQUIRED", notRegisteredReason: reason, isAbstract: false, address: null }), facts).address).toBe("required");
+
+  // Planned request reflects NOT_REQUIRED, reason code, abstract status, and null registration
+  const plannedAbstract = plan(base({ regMode: "NOT_REQUIRED", notRegisteredReason: reason, isAbstract: true, address: null }));
+  expect(plannedAbstract).toMatchObject({
+    registration_id: null,
+    reg_mode: "NOT_REQUIRED",
+    not_registered_reason: { code: "REMOTE_TELEWORK", version: "2026-10-22" },
+    is_abstract: true,
+    address: null,
+  });
+});
+
+test("abstract state is ignored after leaving NOT_REQUIRED mode", () => {
+  const stale = base({ regMode: "LATER", isAbstract: true, address: null });
+  expect(workplaceProblems(stale, facts).address).toBe("required");
+  expect(plan(stale)).toMatchObject({ reg_mode: "LATER", is_abstract: false, address: null });
+
+  expect(plan(base({ regMode: "UNIT_TAXATION_SUB", subSerial: "0001", isAbstract: true }))).toMatchObject({
+    registration_id: "r1",
+    is_abstract: false,
+  });
+});
+

@@ -91,6 +91,21 @@ impl PgEntityStore {
         cmd: CreateWorkplace,
         port: Arc<dyn OrgUnitSetupWritePort>,
     ) -> Result<Saved<WorkplaceView>, PgEntityError> {
+        self.create_workplace_with_references(actor, entity, cmd, port, None)
+            .await
+    }
+
+    /// Write with reference data resolved by the outer owner.
+    /// # Errors
+    /// Domain refusals or database faults.
+    pub async fn create_workplace_with_references(
+        &self,
+        actor: &Actor,
+        entity: Uuid,
+        cmd: CreateWorkplace,
+        port: Arc<dyn OrgUnitSetupWritePort>,
+        references: Option<console_entity_application::WorkplaceReferenceResolver>,
+    ) -> Result<Saved<WorkplaceView>, PgEntityError> {
         let actor = actor.clone();
         with_audits(&self.pool, actor.org, move |tx| {
             Box::pin(async move {
@@ -105,9 +120,16 @@ impl PgEntityStore {
                     return Ok((replay(tx, done).await?, vec![]));
                 }
                 let admitted = admit(tx, WriteClass::EntityStructure).await?;
-                let (id, event) =
-                    create_workplace_in_tx(tx, &actor, admitted, entity, &cmd, port.as_ref())
-                        .await?;
+                let (id, events) = create_workplace_in_tx(
+                    tx,
+                    &actor,
+                    admitted,
+                    entity,
+                    &cmd,
+                    port.as_ref(),
+                    references,
+                )
+                .await?;
                 let today = today_kst(tx).await?;
                 finish(
                     tx,
@@ -125,7 +147,7 @@ impl PgEntityStore {
                     warnings: Vec::<Warning>::new(),
                     change_mode: admitted.mode.as_str().into(),
                 };
-                Ok((saved, vec![event]))
+                Ok((saved, events))
             })
         })
         .await
@@ -142,6 +164,21 @@ impl PgEntityStore {
         rev: WorkplaceRevision,
         port: Arc<dyn OrgUnitSetupWritePort>,
     ) -> Result<Saved<WorkplaceView>, PgEntityError> {
+        self.revise_workplace_with_references(actor, id, rev, port, None)
+            .await
+    }
+
+    /// Write with reference data resolved by the outer owner.
+    /// # Errors
+    /// Domain refusals or database faults.
+    pub async fn revise_workplace_with_references(
+        &self,
+        actor: &Actor,
+        id: Uuid,
+        rev: WorkplaceRevision,
+        port: Arc<dyn OrgUnitSetupWritePort>,
+        references: Option<console_entity_application::WorkplaceReferenceResolver>,
+    ) -> Result<Saved<WorkplaceView>, PgEntityError> {
         let actor = actor.clone();
         with_audits(&self.pool, actor.org, move |tx| {
             Box::pin(async move {
@@ -156,8 +193,16 @@ impl PgEntityStore {
                     return Ok((replay(tx, done).await?, vec![]));
                 }
                 let admitted = admit(tx, WriteClass::EntityStructure).await?;
-                let (entity, event) =
-                    revise_workplace_in_tx(tx, &actor, admitted, id, rev, port.as_ref()).await?;
+                let (entity, events) = revise_workplace_in_tx(
+                    tx,
+                    &actor,
+                    admitted,
+                    id,
+                    rev,
+                    port.as_ref(),
+                    references,
+                )
+                .await?;
                 let today = today_kst(tx).await?;
                 finish(
                     tx,
@@ -176,7 +221,7 @@ impl PgEntityStore {
                         warnings: Vec::new(),
                         change_mode: admitted.mode.as_str().into(),
                     },
-                    vec![event],
+                    events,
                 ))
             })
         })

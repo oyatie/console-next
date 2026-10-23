@@ -92,3 +92,79 @@ async fn go_live_line_records_follow_the_stored_order(owner: PgPool) {
     assert_eq!(records("entity_needs_confirmation"), strings(&entities));
     assert_eq!(records("workplace_incomplete"), strings(&workplaces));
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn exempt_workplaces_are_finished_while_later_is_counted_with_support(owner: PgPool) {
+    let (store, actor) = tenant(&owner).await;
+    let org = *actor.org.as_uuid();
+    let mut tx = owner.begin().await.unwrap();
+    sqlx::query("SET LOCAL session_replication_role = replica")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let entity = entity(&mut tx, org, "주식회사 가나", Some(0)).await;
+    let exempt = site(&mut tx, org, entity, "하치장", Some(0)).await;
+    let later = site(&mut tx, org, entity, "등록 답변 대기", Some(1)).await;
+    sqlx::query(
+        "UPDATE workplaces SET needs_confirmation = false, default_branch_id = gen_random_uuid(), \
+           not_registered_reason_code = 'VAT_DEPOT', not_registered_reason_label = '하치장', \
+           not_registered_reason_list_key = 'workplace_not_registered_reason', \
+           not_registered_reason_version = '2026-10-22' WHERE id = $1",
+    )
+    .bind(exempt)
+    .execute(tx.as_mut())
+    .await
+    .unwrap();
+    sqlx::query("UPDATE workplaces SET needs_confirmation = false, default_branch_id = gen_random_uuid() WHERE id = $1")
+        .bind(later)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    for (index, workplace) in [exempt, later].into_iter().enumerate() {
+        let employee: Uuid = sqlx::query_scalar(
+            "INSERT INTO employees (org_id, company, name, source_filename, source_sheet, source_row, source_key) \
+             VALUES ($1, '주식회사 가나', $2, 'fixture.xlsx', 'Roster', $3, $2) RETURNING id",
+        )
+        .bind(org)
+        .bind(format!("직원-{index}"))
+        .bind(i32::try_from(index).unwrap() + 1)
+        .fetch_one(tx.as_mut())
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO employment_assignments (org_id, employee_id, legal_entity_id, workplace_id, valid_from, cause, command_id) \
+             VALUES ($1, $2, $3, $4, '2020-01-01', 'MIGRATION', gen_random_uuid())",
+        )
+        .bind(org)
+        .bind(employee)
+        .bind(entity)
+        .bind(workplace)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    }
+    tx.commit().await.unwrap();
+
+    let preview = store.preview(&actor).await.unwrap();
+    assert_eq!(preview.facts.staffed_workplaces_without_registration, 1);
+    assert_eq!(
+        preview.facts.staffed_workplaces_without_registration
+            + preview.facts.empty_workplaces_without_registration,
+        1
+    );
+    assert!(
+        !preview
+            .blockers
+            .iter()
+            .chain(&preview.warnings)
+            .any(|item| item.code.contains("without_registration"))
+    );
+    assert!(
+        preview
+            .blockers
+            .iter()
+            .chain(&preview.warnings)
+            .flat_map(|item| &item.records)
+            .all(|record| record.id != exempt.to_string())
+    );
+}

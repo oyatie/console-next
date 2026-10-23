@@ -19,4 +19,5 @@ export const enCapture: Record<keyof typeof koCapture, string> = {
   "capture.docs.open": "Open",
   "capture.docs.openLabel": "Open the original of {file}",
   "capture.list.brn_classification": "Registration number classification",
+  "capture.list.workplace_not_registered_reason": "Reason for exemption from business registration",
 };

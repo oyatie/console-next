@@ -102,8 +102,8 @@ function EntityBulkEditor({ paste, canAct }: { paste: boolean; canAct: boolean }
       <CommandError error={map.error} />
       {rows && <>
         {revising && <fieldset className="form__group form" disabled={busy}>
-          <DateField label={t("workplace.regChange.from")} required value={from} today={todayKst()} onChange={(value) => { setFrom(value); resetProof(); }} />
-          <Field label={t("workplace.regChange.reason")} required>{(f) => <TextInput {...f} value={reason} onChange={(e) => { setReason(e.target.value); resetProof(); }} />}</Field>
+          <DateField label={t("workplaceRegChange.from")} required value={from} today={todayKst()} onChange={(value) => { setFrom(value); resetProof(); }} />
+          <Field label={t("workplaceRegChange.reason")} required>{(f) => <TextInput {...f} value={reason} onChange={(e) => { setReason(e.target.value); resetProof(); }} />}</Field>
         </fieldset>}
         <StatRow items={[{ key: "entities", label: t("setup.entityBulk.records"), value: rows.length }]} />
         {rows.map((r, i) => (

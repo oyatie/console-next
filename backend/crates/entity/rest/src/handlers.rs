@@ -172,7 +172,9 @@ pub(crate) async fn create_workplace(
 ) -> Result<Response> {
     let a = manager(&s, &h, Target::Entity(id)).await?;
     Ok(created(
-        s.store.create_workplace(&a, id, b, port(&s)?).await?,
+        s.store
+            .create_workplace_with_references(&a, id, b, port(&s)?, Some(resolve_workplace_reason))
+            .await?,
     ))
 }
 
@@ -183,7 +185,12 @@ pub(crate) async fn revise_workplace(
     Json(b): Json<WorkplaceRevision>,
 ) -> Result<Response> {
     let a = manager(&s, &h, Target::Workplace(id)).await?;
-    Ok(Json(s.store.revise_workplace(&a, id, b, port(&s)?).await?).into_response())
+    Ok(Json(
+        s.store
+            .revise_workplace_with_references(&a, id, b, port(&s)?, Some(resolve_workplace_reason))
+            .await?,
+    )
+    .into_response())
 }
 
 pub(crate) async fn void_workplace(
@@ -254,3 +261,7 @@ pub(crate) async fn map_company(
     let a = writer(&s, &h, Need::People).await?;
     Ok(Json(json!({ "mapped": s.store.map_company_text(&a, b).await? })).into_response())
 }
+
+#[path = "workplace_reference.rs"]
+mod workplace_reference;
+pub(crate) use workplace_reference::resolve_workplace_reason;

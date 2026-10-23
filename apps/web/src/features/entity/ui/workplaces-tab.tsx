@@ -5,10 +5,11 @@ import type { LegalEntity } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { labeled, RECORD_STATUS, TAX_TYPE, label, VERIFICATION } from "../../../lib/labels";
+import { Muted } from "../../../ui/muted/muted";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { Table } from "../../../ui/table";
-import { registrationOf, workplaceName } from "../domain/view";
+import { registrationOf, registrationTodo, workplaceName } from "../domain/view";
 import { entityName } from "../../../reference/entity/domain/names";
 import { WorkplacePanel } from "./workplace-panel";
 
@@ -50,7 +51,7 @@ export function WorkplacesTab({ e, selected }: { e: LegalEntity; selected?: stri
               fit: true,
               cell: (w) => {
                 const r = reg(w.registration_id);
-                return r ? <span className="code">{r.brn?.display ?? t("workplace.brnPending")}{w.sub_serial && ` · ${w.sub_serial}`}</span> : <Chip tone="warn">{t("workplace.noRegistration")}</Chip>;
+                return r ? <span className="code">{r.brn?.display ?? t("workplace.brnPending")}{w.sub_serial && ` · ${w.sub_serial}`}</span> : registrationTodo(w) ? <Muted>{t("workplace.filing.entityBasis")}{reg(w.filing_registration_id)?.brn?.display && ` · ${reg(w.filing_registration_id)?.brn?.display}`}</Muted> : <Chip tone="neutral">{w.not_registered_reason?.label ?? "—"}</Chip>;
               },
             },
             { header: t("workplace.col.taxType"), cell: (w) => { const tax = reg(w.registration_id)?.current?.tax_type; return tax ? label(TAX_TYPE, tax) : "—"; }, fit: true, wide: true },

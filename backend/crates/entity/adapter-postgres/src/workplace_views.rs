@@ -47,10 +47,15 @@ pub(crate) async fn views_at(
 ) -> Result<HashMap<Uuid, Vec<WorkplaceView>>, PgEntityError> {
     let rows = sqlx::query(
         "SELECT w.id, w.legal_entity_id, w.registration_id, w.sub_serial, w.default_branch_id, w.kind_code, w.code, w.needs_confirmation, \
-                w.closed_on, e.biz_kind, e.primary_workplace_id, e.head_office_workplace_id, e.head_office_has_no_workplace, \
+                w.closed_on, w.not_registered_reason_code, w.not_registered_reason_label, w.not_registered_reason_version, \
+                COALESCE(w.is_abstract, false) AS is_abstract, \
+                COALESCE(w.registration_id, (SELECT reg.id FROM business_registrations reg WHERE reg.legal_entity_id = w.legal_entity_id AND reg.voided_at IS NULL AND reg.closed_on IS NULL ORDER BY reg.holder_workplace_id = e.primary_workplace_id DESC NULLS LAST, reg.created_at LIMIT 1)) AS filing_registration_id, \
+                e.biz_kind, e.primary_workplace_id, e.head_office_workplace_id, e.head_office_has_no_workplace, \
                 r.version, r.effective_from, r.name, r.address_id, r.mail_address_id, r.opened_on, r.representative_name, \
                 r.main_product, r.phone, r.fax, r.mobile, r.email, r.is_construction_site, r.status, r.status_since, r.status_until, \
                 r.withholding_mode, r.bulk_filed_on, r.independent_lsa_unit, r.independent_lsa_evidence, r.change_mode, r.effective_from > $2 AS before_first, \
+                r.not_registered_reason_code AS rev_reason_code, r.not_registered_reason_label AS rev_reason_label, r.not_registered_reason_version AS rev_reason_version, \
+                r.is_abstract AS rev_is_abstract, \
                 (SELECT count(*) FROM employment_assignments a WHERE a.workplace_id = w.id \
                    AND (a.superseded_at IS NULL OR a.superseded_at > $4) \
                    AND ($4::timestamptz IS NULL OR a.created_at <= $4) \
@@ -95,12 +100,51 @@ pub(crate) async fn views_at(
         let head: Option<Uuid> = r.try_get("head_office_workplace_id")?;
         let mode: Option<String> = r.try_get("withholding_mode")?;
         let version: Option<i32> = r.try_get("version")?;
+        let not_registered_reason =
+            match r.try_get::<Option<String>, _>("not_registered_reason_code")? {
+                Some(code) => Some(console_entity_domain::legal_entity::CodeRef {
+                    code,
+                    label: r
+                        .try_get::<Option<String>, _>("not_registered_reason_label")?
+                        .unwrap_or_default(),
+                    version: r
+                        .try_get::<Option<String>, _>("not_registered_reason_version")?
+                        .unwrap_or_default(),
+                }),
+                None => None,
+            };
+        let is_abstract: bool = r
+            .try_get::<Option<bool>, _>("is_abstract")?
+            .unwrap_or(false);
+        let registration_id: Option<Uuid> = r.try_get("registration_id")?;
+        let registration_todo =
+            registration_id.is_none() && not_registered_reason.is_none() && !is_abstract;
+        let filing_registration_id: Option<Uuid> = r.try_get("filing_registration_id")?;
         let current = match version {
             None => None,
             Some(version) => {
                 let address: Option<Uuid> = r.try_get("address_id")?;
                 let mail: Option<Uuid> = r.try_get("mail_address_id")?;
                 let status: String = r.try_get("status")?;
+                let rev_is_abstract: bool = r
+                    .try_get::<Option<bool>, _>("rev_is_abstract")?
+                    .unwrap_or(is_abstract);
+                let rev_reason = if registration_id.is_some() {
+                    None
+                } else {
+                    match r.try_get::<Option<String>, _>("rev_reason_code")? {
+                        Some(code) => Some(console_entity_domain::legal_entity::CodeRef {
+                            code,
+                            label: r
+                                .try_get::<Option<String>, _>("rev_reason_label")?
+                                .unwrap_or_default(),
+                            version: r
+                                .try_get::<Option<String>, _>("rev_reason_version")?
+                                .unwrap_or_default(),
+                        }),
+                        None => not_registered_reason.clone(),
+                    }
+                };
                 Some(WorkplaceState {
                     version,
                     effective_from: r.try_get("effective_from")?,
@@ -124,6 +168,8 @@ pub(crate) async fn views_at(
                     },
                     email: if personal { r.try_get("email")? } else { None },
                     is_construction_site: r.try_get("is_construction_site")?,
+                    is_abstract: rev_is_abstract,
+                    not_registered_reason: rev_reason,
                     status: OperatingStatus::parse(&status).unwrap_or(OperatingStatus::Continuing),
                     status_since: r.try_get("status_since")?,
                     status_until: r.try_get("status_until")?,
@@ -147,8 +193,12 @@ pub(crate) async fn views_at(
             read: point.stamp(),
             id,
             legal_entity_id: entity,
-            registration_id: r.try_get("registration_id")?,
+            registration_id,
             sub_serial: r.try_get("sub_serial")?,
+            not_registered_reason,
+            is_abstract,
+            registration_todo,
+            filing_registration_id,
             default_branch_id: r.try_get("default_branch_id")?,
             kind_code: r.try_get("kind_code")?,
             code: r.try_get("code")?,

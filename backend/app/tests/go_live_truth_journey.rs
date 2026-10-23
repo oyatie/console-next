@@ -235,14 +235,17 @@ async fn regression_go_live_counts_the_records_the_panels_show(pool: PgPool) {
         "{p}"
     );
 
-    // company-53: the blocker names 오송공장, so its fix opens on that record.
-    let staffed = line(&p, "blockers", "staffed_workplace_without_registration");
-    assert_eq!(staffed["count"], 1, "{p}");
+    // A staffed workplace without its own registration uses the entity filing basis.
+    assert_eq!(p["facts"]["staffed_workplaces_without_registration"], 1);
+    for list in ["blockers", "warnings"] {
+        assert!(p[list].as_array().unwrap().iter().all(|item| {
+            !item["code"]
+                .as_str()
+                .unwrap()
+                .contains("without_registration")
+        }));
+    }
     assert_eq!(ins["records"][0]["id"], osong_id, "{p}");
-    assert_eq!(
-        staffed["records"],
-        json!([{ "kind": "workplace", "id": osong_id, "name": "오송공장", "legal_entity_id": entity }])
-    );
     // governance-20: one passkey → the rail asks for another; never a blocker.
     assert_eq!(
         line(&p, "warnings", "single_passkey")["remedy"],

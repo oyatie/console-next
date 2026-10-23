@@ -19,3 +19,16 @@ test("a certificate attached to the entity but to no registration is offered aga
   const docs = [doc("free", {}), doc("linked", { registration_id: "r1" }), doc("old", { superseded_at: "2026-01-01T00:00:00Z" }), doc("extract", { kind: "CORP_REGISTRY_EXTRACT" })];
   expect(unlinkedCertificates(docs).map((d) => d.id)).toEqual(["free"]);
 });
+
+test("red-proof: workplace marked 등록 대상 아님 is excluded from unattached list", () => {
+  const rows = unattached([
+    entity("a", [
+      wp("hq", "본사", { registration_id: "r1" }),
+      wp("exempt", "천안물류하치장", { registration_id: null, not_registered_reason: { code: "VAT_DEPOT", label: "하치장", version: "2026-10-21" } } as never),
+      wp("later", "신설지점", { registration_id: null }),
+    ]),
+  ]);
+  // MUST NOT contain "exempt"
+  expect(rows.map((r) => r.w.id)).toEqual(["later"]);
+});
+
