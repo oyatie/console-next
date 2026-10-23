@@ -66,10 +66,11 @@ pub async fn bind_user_to_person(owner: &PgPool, user: UserId, person: Uuid) -> 
         .unwrap();
     sqlx::query("INSERT INTO employee_identity_resolutions(org_id,employee_id,verdict,reason_code,resolved_by) SELECT $1,$2,'DIFFERENT','fixture-verified',$3 WHERE EXISTS(SELECT 1 FROM person_binding_reviews_open WHERE org_id=$1 AND subject_kind='EMPLOYEE' AND subject_id=$2)")
         .bind(org).bind(employee).bind(user.as_uuid()).execute(owner).await.unwrap();
-    sqlx::query("UPDATE users SET employee_id = $1 WHERE id = $2 AND org_id = $3")
+    sqlx::query("UPDATE users SET employee_id = $1, person_id = $4 WHERE id = $2 AND org_id = $3")
         .bind(employee)
         .bind(*user.as_uuid())
         .bind(org)
+        .bind(person)
         .execute(owner)
         .await
         .unwrap();

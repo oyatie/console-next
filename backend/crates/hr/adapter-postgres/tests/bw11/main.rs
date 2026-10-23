@@ -4,6 +4,8 @@
 //! floor; `void` covers correction and rescission.
 
 mod hooks;
+#[path = "../../../../../test-support/person_fixtures.rs"]
+mod person_fixtures;
 mod solo_correction;
 mod void;
 
