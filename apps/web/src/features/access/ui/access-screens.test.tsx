@@ -1,9 +1,12 @@
 import { beforeAll, expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
+import { fmtDateTime } from "@console/i18n/format";
 import type { AccessEffectiveEntry, AccessGrant, AccessGrantPreview, Account } from "../api";
 import { grantLines } from "../../../reference/authz/present";
+import { grantDoneText, periodText, scheduledText } from "../present";
 import { BulkPreview } from "./bulk-preview";
+import { GrantPreviewSummary } from "./grant-sheet-parts";
 import { GrantState } from "./grants-page";
 import { EnforcementChip } from "./holder";
 import { RoleDiff } from "./role-diff";
@@ -55,4 +58,67 @@ test("ROL-M2: a held role's edit shows what each domain gains and loses before t
   expect(html).toContain("저장하면 바뀌는 것");
   expect(html).toContain("더함: 조회");
   expect(html).toContain("더함: 내보내기");
+});
+
+
+test("F8: a pending grant shows its configured activation date", () => {
+  const pending = grant({ valid_from: "2026-10-01T00:00:00Z", activates_at: "2026-10-03T00:00:00Z", enforcement: "SCHEDULED" });
+  expect(periodText(pending)).toContain(fmtDateTime(pending.activates_at));
+  expect(periodText(pending)).not.toContain(fmtDateTime(pending.valid_from));
+});
+
+test("F8: bulk delayed grants never promise application today", () => {
+  const preview: AccessGrantPreview = { receipt_id: "r", phase: "OPERATING", step_up_required: true, refused: 0, accounts_affected: 1,
+    items: [{ index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED" }] };
+  const props = { preview, accounts: [], role: "역할", scope: "전체", end: "2027-04-08", pending: false, error: null, onBack: () => {}, onDropRefused: () => {}, onApply: () => {} };
+  const html = renderToStaticMarkup(<BulkPreview {...props} />);
+  expect(html).not.toContain("오늘 ~");
+  expect(html).toContain("시작 전");
+});
+
+
+test("F8: scheduled preview shows the server deadline without promising immediate application", () => {
+  const at = "2026-10-03T02:34:00Z";
+  for (const state of ["SCHEDULED", "PREPARED", "ENFORCED"] as const) {
+    const preview = { receipt_id: "r", phase: state === "PREPARED" ? "SETUP" : "OPERATING", step_up_required: true, refused: 0, accounts_affected: 1,
+      items: [{ index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: state, activates_at: at }] } as AccessGrantPreview;
+    const props = { preview, accounts: [], role: "역할", scope: "전체", end: "2027-04-08", pending: false, error: null, onBack: () => {}, onDropRefused: () => {}, onApply: () => {} };
+    const html = renderToStaticMarkup(<BulkPreview {...props} />);
+    if (state === "SCHEDULED") {
+      expect(html).toContain(fmtDateTime(at));
+      expect(html).not.toContain("모두 한 번에 적용됩니다");
+    } else {
+      expect(html).not.toContain(fmtDateTime(at));
+      expect(html).not.toContain("보안 대기");
+    }
+  }
+});
+
+test("F8: the confirm sheet body lists grants without repeating the footer deadline", () => {
+  const at = "2026-10-03T02:34:00Z";
+  const items: AccessGrantPreview["items"] = [
+    { index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED", activates_at: at },
+  ];
+  const html = renderToStaticMarkup(<GrantPreviewSummary items={items} named={["인사 담당 (전체)"]} />);
+  expect(html).toContain("인사 담당 (전체)");
+  expect(html).not.toContain(fmtDateTime(at));
+  expect(html).not.toContain("보안 대기");
+});
+
+test("F8: scheduled grants use truthful copy before and after save", () => {
+  const at = "2026-10-03T02:34:00Z";
+  const item: AccessGrantPreview["items"][number] = {
+    index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED", activates_at: at,
+  };
+  expect(scheduledText(item)).toContain(`보안 대기 · ${fmtDateTime(at)}부터 적용`);
+  const done = grantDoneText("김부장", [grant({ enforcement: "SCHEDULED", activates_at: at })]);
+  expect(done).toContain(fmtDateTime(at));
+  expect(done).toContain("적용");
+});
+
+test("F8: operating and compose copy never promises immediate application before preview", () => {
+  expect(t("access.phase.operating")).not.toContain("즉시");
+  expect(t("access.grant.consequence.now", { name: "김부장", grants: "인사 담당" })).not.toContain("지금부터");
+  expect(t("accessGrants.start.NOW")).not.toContain("즉시");
+  expect(t("accessGrants.start.NOW.hint")).not.toContain("저장하는 순간부터");
 });

@@ -1,8 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expectAccessible } from "./a11y";
 import { chooseRadio, firstSignIn, go, kstDate, registerEmployee, stepUp, takeCode } from "./flows";
 import { staffedTenant } from "./setup-flows";
 import { signOff } from "./sheet";
+import { bearerOf } from "./helpers/api";
+import { activatePendingGrants } from "./second-person-fixture";
 
 // The pilot's HR worker, end to end (regressions governance-02/03/people-self-01 and governance-04/move-03): an
 // employee's account, signed in once with nothing, is granted 인사 실무 over the 법인 AND 권한 관리 over 회사 전체.
@@ -21,6 +24,7 @@ async function role(admin: Page, name: string, cells: string[]) {
 
 /** One grant to `who` of `roleName` over the scope row `scope`, for a year, with the admin's passkey. */
 async function grant(admin: Page, who: string, roleName: string, scope: RegExp) {
+  const token = bearerOf(admin);
   await go(admin, "/access/grants");
   await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill(who);
   await admin.getByRole("option", { name: new RegExp(who) }).first().click();
@@ -32,9 +36,13 @@ async function grant(admin: Page, who: string, roleName: string, scope: RegExp) 
   await pick.getByRole("row", { name: scope }).first().click();
   await pick.getByRole("button", { name: "이 범위로 설정" }).click();
   await sheet.getByRole("button", { name: /^1년/ }).click();
-  await chooseRadio(sheet, /^저장 즉시/);
+  await chooseRadio(sheet, new RegExp(`^${ko["accessGrants.start.NOW"]}`));
   await chooseRadio(sheet, /^업무 배정·변경/);
+  await sheet.getByRole("button", { name: "패스키로 확인하고 부여 1건 저장" }).click();
+  const applied = admin.waitForResponse((r) => r.url().endsWith("/access/grants/apply") && r.request().method() === "POST");
   await stepUp(sheet, "패스키로 확인하고 부여 1건 저장", admin.getByRole("status").filter({ hasText: `${who}님에게 부여 1건을 저장했습니다` }));
+  expect((await applied).ok()).toBeTruthy();
+  await activatePendingGrants(admin, token);
 }
 
 test("an HR worker granted 인사 실무 over the 법인 and 권한 관리 over 회사 전체 works, and loses it all on exit", { tag: ["@access", "@hr"] }, async ({ browser }) => {
@@ -61,6 +69,7 @@ test("an HR worker granted 인사 실무 over the 법인 and 권한 관리 over 
   await grant(admin, "김인사", "인사 실무", /주식회사 늘봄정밀/);
   await grant(admin, "김인사", "권한 관리 담당", /^전체/);
   await go(admin, "/access/grants");
+  await admin.reload();
   await expect(admin.getByRole("row", { name: /김인사/ })).toHaveCount(2);
   for (const row of await admin.getByRole("row", { name: /김인사/ }).all()) await expect(row).toContainText("적용 중");
 

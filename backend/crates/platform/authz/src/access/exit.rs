@@ -134,7 +134,7 @@ pub struct ExitRevocation {
 }
 
 /// End the access of the account linked to `employee` at `ends_at`: every
-/// active grant ends by then (one that would only start later is revoked), and
+/// active or pending grant ends by then (one that would only start later is revoked), and
 /// when `ends_at` is not in the future the account is suspended with its
 /// passkeys and sessions. The tenant's ops account is never suspended (lockout
 /// invariant): its sessions end and a vendor handover is needed.
@@ -169,7 +169,7 @@ pub async fn revoke_privileged_access(
     let user = UserId::from_uuid(account);
     let not_begun = sqlx::query(
         "UPDATE access_grants SET status = 'REVOKED', revoked_by = $3, revoked_at = $5
-          WHERE org_id = $1 AND account_id = $2 AND status = 'ACTIVE' AND valid_from >= $4",
+          WHERE org_id = $1 AND account_id = $2 AND status IN ('ACTIVE', 'PENDING') AND valid_from >= $4",
     )
     .bind(org.as_uuid())
     .bind(account)
@@ -182,7 +182,7 @@ pub async fn revoke_privileged_access(
     .rows_affected();
     let shortened = sqlx::query(
         "UPDATE access_grants SET valid_to = $3
-          WHERE org_id = $1 AND account_id = $2 AND status = 'ACTIVE'
+          WHERE org_id = $1 AND account_id = $2 AND status IN ('ACTIVE', 'PENDING')
             AND (valid_to IS NULL OR valid_to > $3)",
     )
     .bind(org.as_uuid())

@@ -5,9 +5,11 @@
 mod support;
 
 use axum::http::{Method, StatusCode};
+use console_kernel_core::FixedClock;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use support::{World, grant_op, world};
+use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use uuid::Uuid;
 
 fn notice(grant: &Value) -> String {
@@ -72,6 +74,22 @@ async fn only_the_holder_confirms_a_live_grants_notice_once(pool: PgPool) {
         (StatusCode::NOT_FOUND, json!("grant_not_found"))
     );
     assert_eq!(notices(&w).await, 0);
+
+    let (status, body) = w.call(Method::POST, &notice(&grant), w.hr, None).await;
+    assert_eq!(
+        (status, body["error"]["code"].clone()),
+        (StatusCode::CONFLICT, json!("grant_ended"))
+    );
+    assert_eq!(notices(&w).await, 0, "a pending grant cannot be noticed");
+    assert_eq!(granted[0]["enforcement"], "SCHEDULED");
+    let due =
+        OffsetDateTime::parse(granted[0]["activates_at"].as_str().unwrap(), &Rfc3339).unwrap();
+    assert_eq!(
+        console_platform_access::pending::activate_due(&w.owner, &FixedClock(due))
+            .await
+            .unwrap(),
+        1
+    );
 
     // The holder confirms; again answers with the first confirmation.
     let (status, first) = w.call(Method::POST, &notice(&grant), w.hr, None).await;

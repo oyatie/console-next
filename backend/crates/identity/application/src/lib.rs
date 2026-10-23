@@ -7,6 +7,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod access_revocation;
+pub mod holders;
 mod org;
 
 pub use access_revocation::{RevokeMode, access_end};

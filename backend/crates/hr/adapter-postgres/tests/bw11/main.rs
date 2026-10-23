@@ -4,6 +4,7 @@
 //! floor; `void` covers correction and rescission.
 
 mod hooks;
+mod solo_correction;
 mod void;
 
 #[path = "../support/go_live.rs"]

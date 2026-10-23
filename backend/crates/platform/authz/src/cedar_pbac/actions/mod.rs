@@ -37,6 +37,7 @@ pub mod independent_people;
 pub mod platform_listing;
 // --- lane: CL-second-person ---
 pub mod grant_notice;
+pub mod period_unlock;
 pub mod period_unlock_decide;
 // --- lane: LC-B3 ---
 pub mod lifecycle_item;

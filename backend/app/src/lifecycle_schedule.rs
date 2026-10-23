@@ -72,6 +72,9 @@ pub fn spawn(pool: sqlx::PgPool, worker: bool) -> LifecycleScheduleHandle {
                         Ok(settled) => tracing::info!(settled, "scheduled lifecycle events settled"),
                         Err(error) => tracing::warn!(%error, "scheduled lifecycle event run failed"),
                     }
+                    if let Err(error) = console_platform_access::pending::activate_due(&pool, &console_kernel_core::SystemClock).await {
+                        tracing::error!(?error, "pending grant scheduler failed");
+                    }
                     crate::workplace_close_schedule::tick(&pool, today).await;
                     crate::org_change_schedule::tick(&pool, today).await;
                     crate::requests::tick(&pool).await;

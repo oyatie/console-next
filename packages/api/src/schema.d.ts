@@ -4372,7 +4372,7 @@ export interface paths {
         put?: never;
         /**
          * Correct (정정) an applied lifecycle event on its date (BW-11)
-         * @description The same voidability rules as rescind. The employee is restored and the replacement (same event_type and effective_date, else 422) is recorded in the same transaction with voids_event_id naming the original, which then shows voided_by. A replacement that changes contract_end_date or expected_return_date needs a second person (Cedar; until that rule is enabled it is 403 second_person_required). Audited as employee.lifecycle.correct plus employee.lifecycle.record.
+         * @description The same voidability rules as rescind. The employee is restored and the replacement (same event_type and effective_date, else 422) is recorded in the same transaction with voids_event_id naming the original, which then shows voided_by. A replacement that changes contract_end_date or expected_return_date needs an independent current holder. The original recorder may instead use the governed solo path only when no other eligible holder exists and authz.sole_holder.mode is step_up_notice_review (otherwise 403 second_person_required). The solo path requires a passkey step_up envelope (401 step_up_required when absent, step_up_failed when invalid; 503 step_up_unavailable when WebAuthn is not configured). Its binding is EXCEPTION_DECIDE on the original event_id, with the action's expected reason_key and a SHA-256 payload_hash over UTF-8 compact JSON, recursively sorted by key, of {operation, employee_id, replacement, reason_code, note}. operation is employee.lifecycle.correct; replacement is the complete object as sent, reason_code and note are trimmed, and an absent note is null. The assertion is verified and consumed in the correction transaction. Audited as employee.lifecycle.correct plus employee.lifecycle.record; a solo correction records review_required and step_up_assertion_id in the correction audit.
          */
         post: operations["correctEmployeeLifecycleEvent"];
         delete?: never;
@@ -13852,6 +13852,11 @@ export interface components {
             valid_from: components["schemas"]["Timestamp"];
             /** @description Exclusive end; null = open-ended. */
             valid_to?: components["schemas"]["Timestamp"] | null;
+            /**
+             * Format: date-time
+             * @description Pending elevated grant's configured activation deadline; null after activation or cancellation.
+             */
+            activates_at?: string | null;
             /** @description 「설정 단계부터 적용」 — enforced during SETUP too. */
             effective_in_setup: boolean;
             enforcement: components["schemas"]["AccessEnforcement"];
@@ -13933,6 +13938,8 @@ export interface components {
             grant_id?: components["schemas"]["Uuid"] | null;
             /** @description null when REFUSED. */
             enforcement_after: components["schemas"]["AccessEnforcement"] | null;
+            /** @description Sole-admin security delay deadline for a SCHEDULED grant; recalculated when applied. */
+            activates_at?: components["schemas"]["Timestamp"];
             /** @description Lines the account gains now (enforced); PREPARED/SCHEDULED grants gain nothing yet. */
             gains: components["schemas"]["AccessEffectLine"][];
             losses: components["schemas"]["AccessEffectLine"][];
@@ -36341,6 +36348,7 @@ export interface operations {
                     /** @description A lifecycle_cancel code (INPUT_ERROR, ...). */
                     reason_code: string;
                     note?: string | null;
+                    step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
                 };
             };
         };
@@ -36354,10 +36362,28 @@ export interface operations {
                     "application/json": components["schemas"]["EmployeeLifecycleEvent"];
                 };
             };
+            /** @description A solo correction needs a valid payload-bound passkey assertion. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
+            /** @description Passkey verification is not configured for a solo correction. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     rescindEmployeeLifecycleEvent: {

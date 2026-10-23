@@ -8,6 +8,8 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+console-identity-application.workspace = true
+console-identity-adapter-postgres.workspace = true
 console-kernel-core.workspace = true
 console-onboarding-domain.workspace = true
 console-platform-authz.workspace = true

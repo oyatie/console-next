@@ -9,6 +9,7 @@ publish.workspace = true
 
 [dependencies]
 base64 = { workspace = true }
+console-identity-adapter-postgres.workspace = true
 console-hr-application = { workspace = true }
 console-entity-domain = { workspace = true }
 console-hr-domain = { workspace = true }

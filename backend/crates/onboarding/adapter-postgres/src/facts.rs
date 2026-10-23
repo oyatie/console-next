@@ -1,11 +1,10 @@
 //! [`SetupFacts`] and the [`Records`] behind them, from the tenant's rows, in
 //! the caller's transaction.
 
+use console_identity_adapter_postgres::second_person::{HolderCapability, PgHolderResolver};
+use console_identity_application::holders::HolderResolver;
 use console_kernel_core::OrgId;
 use console_onboarding_domain::{PreviewDetails, Record, Records, SetupFacts};
-use console_platform_authz::access::{
-    AccessSlice, Domain, Level, NodeKind, action_group, load_access_subject, scope_path,
-};
 use console_settings_adapter_postgres::approval_routes_in_tx;
 use console_settings_domain::SettingKey;
 use sqlx::{Postgres, Row, Transaction};
@@ -119,26 +118,19 @@ async fn org_change_deciders(
     org: OrgId,
     actor: Uuid,
 ) -> Result<(i64, i64), PgOnboardingError> {
-    let accounts: Vec<Uuid> =
-        sqlx::query_scalar("SELECT id FROM users WHERE org_id = $1 AND is_active ORDER BY id")
-            .bind(org.as_uuid())
-            .fetch_all(tx.as_mut())
-            .await?;
-    let now = time::OffsetDateTime::now_utc();
-    let action = action_group(Domain::Org, Level::Approve);
-    let tenant = scope_path(org, NodeKind::Tenant, None, None);
-    let (mut holders, mut others) = (0, 0);
-    for account in accounts {
-        let subject = load_access_subject(tx, org, account, now).await?;
-        let holds = AccessSlice::compile(&subject)
-            .and_then(|slice| slice.allows(&action, &tenant))
-            .unwrap_or(false);
-        if holds {
-            holders += 1;
-            others += i64::from(account != actor);
-        }
+    let holders = PgHolderResolver {
+        tx,
+        org,
+        capability: HolderCapability::OrgChangeDecide,
+        exclude_account: None,
+        exclude_employee: None,
+        include_ops: true,
+        now: time::OffsetDateTime::now_utc(),
     }
-    Ok((holders, others))
+    .resolve()
+    .await?;
+    let total = i64::try_from(holders.len()).unwrap_or(i64::MAX);
+    Ok((total, total - i64::from(holders.contains(&actor))))
 }
 
 fn count(records: &Records, code: &str) -> i64 {

@@ -153,6 +153,8 @@ pub struct GrantOut {
     pub valid_from: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339::option")]
     pub valid_to: Option<OffsetDateTime>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub activates_at: Option<OffsetDateTime>,
     pub effective_in_setup: bool,
     pub enforcement: Enforcement,
     pub reason_code: String,

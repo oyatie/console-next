@@ -223,7 +223,11 @@ pub async fn second_person_fact_in_tx(
             confirmed.insert(row.clone());
         }
     }
-    Ok(count_second_persons(rows, &confirmed))
+    let fact = count_second_persons(rows, &confirmed);
+    tracing::debug!(business_event="authz.second_person.resolved", org=%query.org,
+        feature=query.feature.as_str(), eligible=fact.other_eligible_holders,
+        review_flags=fact.review_flags.len(), "second-person fact resolved");
+    Ok(fact)
 }
 
 /// Whether `grants` hold the feature over the act's scope (org-wide: all).
@@ -288,3 +292,6 @@ mod tests {
         assert_eq!(fact.other_eligible_holders, 3);
     }
 }
+
+mod holders;
+pub use holders::{HolderCapability, PgHolderResolver};

@@ -37,6 +37,7 @@ export type AccessGrant = {
   scope: AccessScope;
   valid_from: Ts;
   valid_to?: Ts | null;
+  activates_at?: Ts | null;
   effective_in_setup: boolean;
   enforcement: Enforcement;
   reason_code: string;
@@ -48,7 +49,7 @@ export type GrantOp =
   | { op: "revoke"; grant_id: Uuid }
   | { op: "set_end"; grant_id: Uuid; valid_to: Ts | null };
 export type Batch = { operations: GrantOp[]; reason_code: string; reason_note: string | null };
-export type PreviewItem = { index: number; op: GrantOp["op"]; outcome: "OK" | "REFUSED"; refusal?: { code: string; message: string } | null; account_id: Uuid; enforcement_after: Enforcement | null };
+export type PreviewItem = { index: number; op: GrantOp["op"]; outcome: "OK" | "REFUSED"; refusal?: { code: string; message: string } | null; account_id: Uuid; enforcement_after: Enforcement | null; activates_at?: Ts | null };
 export type AccessGrantPreview = { receipt_id: Uuid; phase: "SETUP" | "OPERATING"; step_up_required: boolean; items: PreviewItem[]; refused: number; accounts_affected: number };
 // One source for "what can this account do" (governance-22): the server's effective read, shared with My access and the
 // refused state (reference/authz).

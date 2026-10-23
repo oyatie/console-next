@@ -114,7 +114,7 @@ pub async fn apply(s: &AccessService, p: Principal, body: Apply) -> AccessResult
                             reason_note: note.as_deref(),
                             granted_by: actor.id(),
                         };
-                        store::insert(tx, org, &new).await?;
+                        store::insert_with_deadline(tx, org, &new, c.activates_at).await?;
                         ids.push(*grant_id);
                     }
                     Op::Revoke { grant_id } => {

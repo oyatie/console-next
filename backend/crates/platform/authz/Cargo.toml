@@ -9,6 +9,7 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+tracing.workspace = true
 console-kernel-core = { workspace = true }
 sqlx = { workspace = true }
 serde = { workspace = true }

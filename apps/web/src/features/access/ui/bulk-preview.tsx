@@ -6,16 +6,16 @@ import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { StatRow } from "../../../ui/key-value/key-value";
 import { Table } from "../../../ui/table";
-import type { AccessGrantPreview, Account } from "../api";
-import { accountLabel, enforcementText, refusalText } from "../present";
+import type { AccessGrantPreview, Account, PreviewItem } from "../api";
+import { accountLabel, enforcementText, refusalText, scheduledText } from "../present";
 import s from "./access.module.css";
 
 /**
  * What an accepted row will do once applied — said before commit as "can be granted" (critique L-2), never a past-tense
  * "granted": from go-live, now, or the state the server named.
  */
-const okText = (e: string | null) =>
-  [t("accessGrants.bulk.ok"), e === "PREPARED" ? t("access.period.golive") : e === "ENFORCED" ? t("access.period.now") : e ? enforcementText(e) : ""].filter(Boolean).join(" · ");
+const okText = (item: PreviewItem) =>
+  [t("accessGrants.bulk.ok"), scheduledText(item) ?? (item.enforcement_after === "PREPARED" ? t("access.period.golive") : item.enforcement_after === "ENFORCED" ? t("access.period.now") : item.enforcement_after ? enforcementText(item.enforcement_after) : "")].filter(Boolean).join(" · ");
 
 /**
  * The server's receipt for a bulk grant (mockup M5): the totals, then one row per person with what happens or why it is
@@ -36,7 +36,7 @@ export function BulkPreview({ preview, accounts, role, scope, end, pending, erro
   const ok = preview.items.length - preview.refused;
   const who = (id: string) => accounts.find((a) => a.id === id);
   const noKey = preview.items.filter((i) => i.outcome === "OK" && who(i.account_id)?.has_passkey === false).map((i) => accountLabel(who(i.account_id), i.account_id));
-  const from = preview.items.some((i) => i.enforcement_after === "PREPARED") ? t("access.period.golive") : t("access.period.now");
+  const from = preview.items.some((i) => i.enforcement_after === "SCHEDULED") ? enforcementText("SCHEDULED") : preview.items.some((i) => i.enforcement_after === "PREPARED") ? t("access.period.golive") : t("access.period.now");
   const stats = [
     [t("access.bulk.stat.ok"), t("access.count", { count: ok })],
     [t("access.bulk.stat.skipped"), t("access.count", { count: preview.refused })],
@@ -60,8 +60,8 @@ export function BulkPreview({ preview, accounts, role, scope, end, pending, erro
             header: t("access.col.result"),
             cell: (i) =>
               i.outcome !== "OK" ? <Chip tone="danger">{refusalText(i.refusal)}</Chip>
-              : who(i.account_id)?.has_passkey === false ? <span className={s.chips}><Chip tone="ok">{okText(i.enforcement_after)}</Chip><Chip tone="warn">{t("accessGrants.bulk.noPasskey")}</Chip></span>
-              : <Chip tone="ok">{okText(i.enforcement_after)}</Chip>,
+              : who(i.account_id)?.has_passkey === false ? <span className={s.chips}><Chip tone="ok">{okText(i)}</Chip><Chip tone="warn">{t("accessGrants.bulk.noPasskey")}</Chip></span>
+              : <Chip tone="ok">{okText(i)}</Chip>,
           },
         ]}
       />
@@ -71,7 +71,7 @@ export function BulkPreview({ preview, accounts, role, scope, end, pending, erro
           consequence={
             <>
               <strong>{preview.refused ? t("access.bulk.refused", { count: preview.refused }) : t("access.bulk.summary", { count: ok, role, scope })}</strong>
-              <span className="muted">{t(preview.refused ? "access.bulk.refused.how" : preview.phase === "SETUP" ? "access.bulk.setup" : "access.bulk.live")}</span>
+              <span className="muted">{t(preview.refused ? "access.bulk.refused.how" : preview.phase === "SETUP" ? "access.bulk.setup" : preview.items.some((i) => i.enforcement_after === "SCHEDULED") ? "access.grant.consequence.kept" : "access.bulk.live")}</span>
               {/* governance-32: who cannot sign in to use it yet, named before the passkey. */}
               {noKey.length > 0 && <span className="muted">{t("accessGrants.bulk.noPasskey.line", { count: noKey.length, names: noKey.join(", ") })}</span>}
             </>

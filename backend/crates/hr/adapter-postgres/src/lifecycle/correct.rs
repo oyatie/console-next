@@ -2,6 +2,7 @@
 //! correct (정정) one event on the same date.
 
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
+use console_platform_auth::{MobilePasskeyStepUpEnvelope, PasskeyService};
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_audits;
 use serde::Deserialize;
@@ -10,10 +11,11 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::batch_undo::withdraw_scheduled;
+use super::correction_authorization::authorize_sensitive_correction;
+pub use super::correction_authorization::lifecycle_correction_binding;
 use super::normalize::normalize_lifecycle_transition;
 use super::prepare::prepare_lifecycle_event;
 use super::record::record_lifecycle_event_tx;
-use super::requests::CreateEmployeeLifecycleEventRequest;
 use super::title_reason::coded;
 use super::types::EmployeeLifecycleEventResponse;
 use super::void::{
@@ -32,11 +34,15 @@ use crate::{HrError, HrService};
 #[serde(deny_unknown_fields)]
 pub struct CorrectLifecycleEventRequest {
     /// The event as it should have been: same type and same effective date.
-    pub replacement: CreateEmployeeLifecycleEventRequest,
+    /// Keep the sent object for signing; decode the typed request before opening a transaction.
+    pub replacement: Value,
     /// A `lifecycle_cancel` code (INPUT_ERROR, …).
     pub reason_code: String,
     #[serde(default)]
     pub note: Option<String>,
+    /// Only the governed solo path consumes a payload-bound assertion.
+    #[serde(default)]
+    pub step_up: Option<MobilePasskeyStepUpEnvelope>,
 }
 
 fn audit(
@@ -56,17 +62,6 @@ fn audit(
     )
     .with_org(org)
     .with_snapshots(None, Some(snapshot)))
-}
-
-/// Who may confirm a correction that moves a date or the pay is Cedar's
-/// (second person when another holder exists, else step-up; BW-11 #5).
-// deny (fail closed) until F-CEDAR's second-person/step-up arm for
-// lifecycle corrections lands; a correction that keeps those facts runs now.
-fn authorize_sensitive_correction(_principal: &Principal) -> Result<(), HrError> {
-    Err(coded(
-        KernelError::forbidden("a correction that changes a date or the pay needs a second person")
-            .with_code("second_person_required"),
-    ))
 }
 
 impl HrService {
@@ -190,9 +185,14 @@ impl HrService {
         employee_id: Uuid,
         event_id: Uuid,
         request: CorrectLifecycleEventRequest,
+        passkeys: Option<&PasskeyService>,
     ) -> Result<EmployeeLifecycleEventResponse, HrError> {
         hr_reach_any(&principal, &APPOINTMENT_KEYS)?;
-        let transition = normalize_lifecycle_transition(request.replacement)?;
+        let binding = lifecycle_correction_binding(employee_id, event_id, &request);
+        let replacement = serde_json::from_value(request.replacement)
+            .map_err(|error| HrError::validation(error.to_string()))?;
+        let transition = normalize_lifecycle_transition(replacement)?;
+        let passkeys = passkeys.cloned();
         let (org, actor) = (principal.org_id, principal.user_id);
         let org_uuid = *org.as_uuid();
         let today = today_kst();
@@ -217,11 +217,13 @@ impl HrService {
                     ));
                 }
                 let date = |d: Option<time::Date>| d.map(|d| d.to_string());
-                if transition.contract_end_date != date(original.contract_end_date)
+                let assertion = if transition.contract_end_date != date(original.contract_end_date)
                     || transition.expected_return_date != date(original.expected_return_date)
                 {
-                    authorize_sensitive_correction(&principal)?;
-                }
+                    authorize_sensitive_correction(
+                        tx, &principal, employee_id, event_id, passkeys.as_ref(), request.step_up, &binding,
+                    ).await?
+                } else { None };
                 // The undo of a 전근 is its own assignment command (E-S3b).
                 let undo = (*actor.as_uuid(), Uuid::new_v4());
                 restore_head(tx, org_uuid, employee_id, &original, undo).await?;
@@ -232,7 +234,8 @@ impl HrService {
                     record_lifecycle_event_tx(tx, org, actor, employee_id, &prepared, None).await?;
                 let corrected = audit(org, actor, "employee.lifecycle.correct", ("employee", employee_id),
                     json!({"lifecycle_event_id": item.id, "voids_event_id": original.id,
-                           "reason_code": request.reason_code.trim()}))?;
+                           "reason_code": request.reason_code.trim(), "review_required": assertion.is_some(),
+                           "step_up_assertion_id": assertion}))?;
                 Ok((item, vec![recorded, corrected]))
             })
         })
