@@ -54,5 +54,5 @@ test("a red gate fails backend after reporting the remaining gates", () => {
 });
 test("a failed build or missing gate directory cannot pass", () => {
   assert.deepEqual(run({ buildFailure: true }), { status: 1, calls: commands.slice(0, 1) });
-  assert.equal(run({ empty: true }).status, 1);
+  assert.notEqual(run({ empty: true }).status, 0); // GNU sed exits 2, BSD sed 1: any non-zero fails the job
 });
