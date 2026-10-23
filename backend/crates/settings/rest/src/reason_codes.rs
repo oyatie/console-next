@@ -15,13 +15,11 @@ use axum::response::IntoResponse;
 use axum::routing::{get, patch};
 use axum::{Json, Router};
 use console_kernel_core::KernelError;
-use console_platform_authz::cedar_pbac::enforce::enforce_action;
-use console_platform_authz::cedar_pbac::facts::Facts;
-use console_platform_authz::{AuthorizationResource, Feature, Principal};
+use console_platform_authz::Principal;
 use console_platform_request_context::current_audit_context;
 use console_settings_application::Actor;
 use console_settings_application::reason_codes::{AddReasonCode, UpdateReasonCode};
-use console_settings_domain::code_lists::{ReasonDomain, parse_domain};
+use console_settings_domain::code_lists::parse_domain;
 use serde::Deserialize;
 
 pub const REASON_CODES_PATH: &str = "/api/v1/reason-codes";
@@ -38,23 +36,7 @@ pub(crate) fn routes() -> Router<SettingsRestState> {
         .route(REASON_CODE_STATS_PATH, get(stats))
 }
 
-/// Who may manage a domain's catalog is Cedar's (`reason_code_manage`, with
-/// the roster `tenant_extensible` flag as `domain_tenant_extensible`, the one
-/// fact GOV-CED-1 declares). Denies until that schema is enrolled.
-// the stats read (no domain) stays deny-all; it is a
-// `policy_config_view` read (governance design §2.2), a GOV-CED-1 Feature not
-// on trunk yet.
-pub(crate) fn authorize_manage(
-    principal: &Principal,
-    domain: Option<ReasonDomain>,
-) -> Result<(), KernelError> {
-    let Some(domain) = domain else {
-        return Err(KernelError::forbidden("reason code stats are not enabled"));
-    };
-    let facts = Facts::new().bool("domain_tenant_extensible", domain.tenant_extensible());
-    let resource = AuthorizationResource::org_wide(principal.org_id, "reason_code");
-    enforce_action(principal, Feature::ReasonCodeManage, resource, &facts)
-}
+pub(crate) use crate::authz::authorize_manage;
 
 #[derive(Debug, Deserialize)]
 struct CatalogQuery {

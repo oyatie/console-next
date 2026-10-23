@@ -12,8 +12,10 @@ console-kernel-core.workspace = true
 console-platform-db.workspace = true
 console-settings-application = { path = "../application" }
 console-settings-domain = { path = "../domain" }
+hex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 sqlx.workspace = true
 time.workspace = true
 tracing.workspace = true

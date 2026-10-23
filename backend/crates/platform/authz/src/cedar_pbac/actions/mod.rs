@@ -11,6 +11,9 @@ pub mod legal_entity_manage;
 pub mod job_title_manage;
 // --- lane: CRUD ---
 pub mod org_unit_manage;
+// --- lane: F7 ---
+pub mod reason_code_manage;
+pub mod settings_manage;
 
 use super::action_schema::ActionSchema;
 
@@ -21,6 +24,8 @@ pub const ACTION_SCHEMAS: &[ActionSchema] = &[
     change_request_decide::SCHEMA,
     job_title_manage::SCHEMA,
     org_unit_manage::SCHEMA,
+    settings_manage::SCHEMA,
+    reason_code_manage::SCHEMA,
 ];
 
 // Self-contained single-action bundles (`ActionBundle`) for actions whose

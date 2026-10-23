@@ -16,8 +16,11 @@
 mod openapi;
 pub use openapi::OPENAPI_FRAGMENT;
 
+pub mod authz;
+pub use authz::authorize_change;
+
 mod error;
-mod reason_codes;
+pub mod reason_codes;
 
 pub use reason_codes::REASON_CODES_ROUTE_PATHS;
 
@@ -28,13 +31,10 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use console_kernel_core::{KernelError, Timestamp};
 use console_platform_auth::JwtVerifier;
-use console_platform_authz::cedar_pbac::enforce::enforce_action;
-use console_platform_authz::cedar_pbac::facts::Facts;
-use console_platform_authz::{AuthorizationResource, Feature, Principal};
+use console_platform_authz::Principal;
 use console_platform_request_context::current_audit_context;
 use console_settings_adapter_postgres::PgSettingsStore;
-use console_settings_application::{Actor, ChangeFacts, ChangeSetting};
-use console_settings_domain::Direction;
+use console_settings_application::{Actor, ChangeSetting};
 use console_settings_domain::SettingKey;
 use error::ApiError;
 use serde::Deserialize;
@@ -74,28 +74,11 @@ pub fn router(state: SettingsRestState) -> Router {
     console_platform_request_context::with_request_context(router, verifier, pool)
 }
 
-/// Who may change a setting is Cedar's (`settings_manage`, with the change
-/// direction and step-up as facts; a loosening needs a fresh step-up, D0.3).
-/// Denies until F-CEDAR enrols the `settings_manage` schema (GOV-CED-1),
-/// which must declare exactly these facts.
-fn authorize_change(principal: &Principal, facts: &ChangeFacts) -> Result<(), KernelError> {
-    let direction = match facts.direction {
-        Direction::Tighten => "tighten",
-        Direction::Loosen => "loosen",
-        Direction::Neutral => "neutral",
-    };
-    let facts = Facts::new()
-        .string("direction", direction)
-        .bool("step_up", facts.step_up_assertion_id.is_some());
-    let resource = AuthorizationResource::org_wide(principal.org_id, "setting");
-    enforce_action(principal, Feature::SettingsManage, resource, &facts)
-}
-
 /// History shows who changed what and why: settings administrators only.
 // deny-all (fail closed). Reading history is `policy_config_view`
 // (governance design §2.2), a GOV-CED-1 Feature not on trunk yet; swap this
 // body for `enforce_action(.., Feature::PolicyConfigView, ..)` when it lands.
-fn authorize_history(_principal: &Principal) -> Result<(), KernelError> {
+pub fn authorize_history(_principal: &Principal) -> Result<(), KernelError> {
     Err(KernelError::forbidden("settings history is not enabled"))
 }
 
@@ -180,41 +163,4 @@ fn parse_key(raw: &str) -> Result<SettingKey, ApiError> {
                 .with_field("key"),
         )
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use std::collections::BTreeSet;
-
-    use console_kernel_core::{BranchScope, ErrorKind, OrgId, UserId};
-    use console_platform_authz::Role;
-    use console_settings_domain::SettingKey;
-
-    use super::*;
-
-    /// A plain member loosening without step-up is refused through the Cedar
-    /// call, whether or not the schemas are enrolled yet (fail closed).
-    #[test]
-    fn a_member_is_refused_on_every_swapped_route() {
-        let member = Principal::new(
-            UserId::new(),
-            OrgId::one(),
-            BTreeSet::from([Role::Member]),
-            BranchScope::All,
-        );
-        let change = ChangeFacts {
-            key: SettingKey::ALL[0],
-            direction: Direction::Loosen,
-            step_up_assertion_id: None,
-        };
-        let domain = console_settings_domain::code_lists::ReasonDomain::ALL[0];
-        for got in [
-            authorize_change(&member, &change),
-            authorize_history(&member),
-            reason_codes::authorize_manage(&member, Some(domain)),
-            reason_codes::authorize_manage(&member, None),
-        ] {
-            assert_eq!(got.unwrap_err().kind, ErrorKind::Forbidden);
-        }
-    }
 }

@@ -33,108 +33,14 @@ use super::{AuthorizationRequest, CedarEvaluation, CompiledBundleCacheKey};
 use crate::{Feature, PermissionLevel, Role, permission_for};
 pub use audit_stream_policy::generate_audit_stream_policies;
 
-/// Cedar SDK version pinned in `authz/Cargo.toml` (`cedar-policy = "=4.11.2"`).
-/// Recorded on the compiled-bundle cache key so a Cedar upgrade re-keys bundles.
-pub const CEDAR_SDK_VERSION: &str = "4.11.2";
-
-/// Cedar policy language version implemented by [`CEDAR_SDK_VERSION`].
-pub const CEDAR_LANGUAGE_VERSION: &str = "4.5";
-
-/// Hand-picked schema identity for the RoleManage pilot bundle. Bump this string
-/// whenever [`ROLE_MANAGE_SCHEMA`] changes so cache keys never collide across
-/// schema shapes.
-pub const ROLE_MANAGE_SCHEMA_VERSION: &str = "2026-07-role-manage-v1";
-
-macro_rules! shared_entity_schema {
-    () => {
-        r#"entity Subject = {
-  "org": String,
-  "roles": Set<String>,
-  "subject_version": Long,
-  "clearance_keys": Set<String>
+#[path = "engine_schema.rs"]
+mod schema;
+use schema::CONTEXT_SCHEMA;
+pub use schema::{
+    AUDIT_STREAM_SCHEMA, AUDIT_STREAM_SCHEMA_VERSION, CEDAR_LANGUAGE_VERSION, CEDAR_SDK_VERSION,
+    CEO_COVERT_AUDIT_CLEARANCE_KEY, CEO_COVERT_AUDIT_STREAM_KEY, ROLE_MANAGE_SCHEMA,
+    ROLE_MANAGE_SCHEMA_VERSION, SHARED_ENTITY_SCHEMA,
 };
-
-entity Resource = {
-  "org": String,
-  "resource_type": String,
-  "resource_id"?: String,
-  "branch"?: String
-};"#
-    };
-}
-
-/// Shared server-derived entity definitions used by every enrolled Cedar schema.
-pub const SHARED_ENTITY_SCHEMA: &str = shared_entity_schema!();
-
-const CONTEXT_SCHEMA: &str = r#"context: {
-  "purpose"?: String,
-  "channel"?: String,
-  "step_up"?: Bool
-}"#;
-
-/// Cedar schema (human-readable `.cedarschema` format) for the RoleManage pilot.
-///
-/// Entities and context carry only SERVER-derived material: a UI/JWT projection
-/// can never fabricate the `roles`/`subject_version`/`clearance_keys` a permit
-/// depends on. The action id is [`Feature::as_str`] (`role_manage`) so the
-/// generated policy and the evaluated request address the same Cedar action.
-pub const ROLE_MANAGE_SCHEMA: &str = concat!(
-    shared_entity_schema!(),
-    "\n\n",
-    r#"action role_manage appliesTo {
-  principal: [Subject],
-  resource: [Resource],
-  context: {
-    "purpose"?: String,
-    "channel"?: String,
-    "step_up"?: Bool
-  }
-};
-"#,
-);
-
-/// Schema identity for the B26b CEO/top-clearance covert audit stream bundle.
-pub const AUDIT_STREAM_SCHEMA_VERSION: &str = "2026-07-ceo-covert-audit-stream-v1";
-
-/// Tenant-owned stream id for the first covert audit stream. The public REST
-/// path uses the hyphenated slug; Cedar/resource labels stay snake_case.
-pub const CEO_COVERT_AUDIT_STREAM_KEY: &str = "ceo_covert_audit";
-
-/// Clearance fact required to read the CEO/top-clearance covert stream.
-pub const CEO_COVERT_AUDIT_CLEARANCE_KEY: &str = "audit.ceo_covert.read";
-
-pub const AUDIT_STREAM_SCHEMA: &str = r#"entity Subject = {
-  "org": String,
-  "roles": Set<String>,
-  "subject_version": Long,
-  "clearance_keys": Set<String>
-};
-
-entity Resource = {
-  "org": String,
-  "resource_type": String,
-  "resource_id": String,
-  "branch"?: String
-};
-
-action audit_stream_read appliesTo {
-  principal: [Subject],
-  resource: [Resource],
-  context: {
-    "purpose"?: String,
-    "channel"?: String
-  }
-};
-
-action audit_stream_access_log_read appliesTo {
-  principal: [Subject],
-  resource: [Resource],
-  context: {
-    "purpose"?: String,
-    "channel"?: String
-  }
-};
-"#;
 
 /// Parsed + strict-validated Cedar bundle material for one enrolled action.
 ///
@@ -208,7 +114,7 @@ pub fn feature_schema(feature: Feature) -> String {
 /// never collide across features/actions.
 #[must_use]
 pub fn feature_schema_version(feature: Feature) -> String {
-    format!("2026-07-feature-{}-v1", feature.as_str())
+    format!("2026-10-feature-{}-v2", feature.as_str())
 }
 
 /// Compile a strict-validated Cedar bundle for an arbitrary enrolled `feature`,
@@ -360,6 +266,10 @@ pub(super) fn evaluate_inner(
             RestrictedExpression::new_string(principal.org_id.to_string()),
         ),
         ("roles".to_owned(), RestrictedExpression::new_set(roles)),
+        (
+            "is_tenant_ops".to_owned(),
+            RestrictedExpression::new_bool(principal.is_tenant_ops),
+        ),
         (
             "subject_version".to_owned(),
             RestrictedExpression::new_long(subject_version),

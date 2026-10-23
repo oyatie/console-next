@@ -159,6 +159,8 @@ reason_domains! {
     SignInIdChange => "sign_in_id_change" [
         "NAME_CHANGE", "INPUT_ERROR", "HOLDER_REQUEST", "SECURITY_INCIDENT",
     ];
+    // --- settings (BW-00) ---
+    SettingsChange => "settings_change" ["POLICY_REVIEW"];
 }
 
 impl ReasonDomain {

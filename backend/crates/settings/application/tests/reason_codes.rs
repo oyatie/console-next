@@ -236,3 +236,17 @@ async fn an_added_exit_reason_keeps_its_class() {
     assert_eq!(store.writes, 1);
     assert_eq!(events.len(), 1);
 }
+
+#[tokio::test]
+async fn closed_governance_domain_is_refused() {
+    let mut store = Fake::default();
+    let err = add_reason_code(
+        &mut store,
+        |_| Ok(()),
+        actor(),
+        add("exception", "테스트"),
+        audit(),
+    )
+    .await;
+    assert_eq!(coded(err), "reason_domain_closed");
+}
