@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Korean source for `workplaceRegChange.` ids (the 사업장 사업자등록 change dialog; split from workplace.ts for the 300-line ceiling).
 export const koWorkplaceRegChange = {
   "workplaceRegChange.action": "등록 변경",
