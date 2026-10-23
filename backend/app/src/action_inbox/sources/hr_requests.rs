@@ -30,11 +30,13 @@ pub(crate) async fn page(
         .items
         .into_iter()
         .map(|request| ActionInboxSourceItem {
-            context: None,
+            context: Some(serde_json::json!({ "request": {
+                "kind": request.kind, "reason_code": request.reason_code
+            }})),
             id: format!("{INBOX_ID_PREFIX}{}", request.id),
             kind: "hr_request".to_owned(),
-            ref_code: request.reason_code,
-            title: request.kind,
+            ref_code: String::new(),
+            title: String::new(),
             site: None,
             who: None,
             due: None,

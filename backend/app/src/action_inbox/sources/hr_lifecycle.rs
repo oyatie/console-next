@@ -85,10 +85,12 @@ pub(crate) async fn page(
         .take(limit)
         .map(
             |(id, employee, kind, on, name, created_at)| ActionInboxSourceItem {
-                context: None,
+                context: Some(serde_json::json!({ "lifecycle": {
+                    "action_kind": kind, "effective_date": on
+                }})),
                 id: format!("{NAMESPACE}:{id}"),
                 kind: "lifecycle_apply_failed".to_owned(),
-                ref_code: format!("{kind} {on}"),
+                ref_code: String::new(),
                 title: name,
                 site: None,
                 who: None,

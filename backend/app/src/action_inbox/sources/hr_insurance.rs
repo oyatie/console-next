@@ -52,13 +52,15 @@ pub(crate) async fn page(
         .items
         .into_iter()
         .map(|task| ActionInboxSourceItem {
-            context: None,
+            context: Some(serde_json::json!({ "insurance": {
+                "insurer": task.insurer, "kind": task.kind, "effective_date": task.effective_date
+            }})),
             id: format!(
                 "insurance_filing_{}_{}:{}",
                 task.kind, task.insurer, task.event_id
             ),
             kind: "insurance_filing".into(),
-            ref_code: format!("{} {} {}", task.insurer, task.kind, task.effective_date),
+            ref_code: String::new(),
             title: task.name,
             site: task.workplace_name,
             who: None,

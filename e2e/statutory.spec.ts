@@ -115,8 +115,15 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await admin.getByRole("button", { name: "닫고 직원 목록으로", exact: true }).click();
   await expect(admin).toHaveURL(/\/people$/);
   await go(admin, "/");
-  await expect(admin.getByRole("heading", { name: "4대보험 신고 4건" })).toBeVisible();
-  await admin.getByRole("link", { name: "4대보험 신고 열기" }).click();
+  const filings = admin.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ has: admin.getByRole("link", { name: "4대보험 신고 열기", exact: true }) });
+  await expect(filings).toHaveCount(4);
+  for (const insurer of ["국민연금", "건강보험", "고용보험", "산재보험"]) {
+    const filing = filings.filter({ hasText: insurer });
+    await expect(filing).toContainText("김신고");
+    await expect(filing).toContainText("취득 신고");
+    await expect(filing.getByRole("link", { name: "4대보험 신고 열기", exact: true })).toBeVisible();
+  }
+  await filings.first().getByRole("link", { name: "4대보험 신고 열기", exact: true }).click();
   await admin.getByRole("tab", { name: "근로자 명부" }).click();
   await admin.getByRole("button", { name: /사업장/ }).click();
   await admin.getByRole("option", { name: /본사/ }).click();

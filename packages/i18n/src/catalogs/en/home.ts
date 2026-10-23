@@ -1,6 +1,7 @@
 import type { koHome } from "../ko/home";
 
 export const enHome: Partial<Record<keyof typeof koHome, string>> = {
+  "home.requests.review": "Review request",
   "home.inbox.title": "Inbox",
   "home.inbox.filter.turn": "My turn",
   "home.inbox.filter.waiting": "Waiting",

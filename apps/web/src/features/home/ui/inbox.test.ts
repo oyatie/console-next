@@ -62,6 +62,20 @@ test("Home reads all work through the unified inbox and renders its record verb"
   expect(markup).toContain("명부 확인");
   expect(markup).toContain('href="/people/');
   expect(markup).toContain(t("home.inbox.reason.register"));
+  expect(view.options).toMatchObject({ refetchOnMount: "always" });
+});
+
+test.each([
+  ["period_unlock", "period_lock", { unlock: { domain: "payroll", periodStart: "2026-09-01", periodEnd: "2026-09-30", requester: "김요청", reason_code: "RETRO_CORRECTION" } }, ["급여", "2026년 9월", "김요청", "소급 정정", "급여 2026년 9월 해제 요청 검토"]],
+  ["insurance_filing", "statutory", { insurance: { insurer: "EI", kind: "ACQUIRE", effective_date: "2026-09-01" } }, ["고용보험", "취득 신고", "4대보험 신고 열기"]],
+  ["lifecycle_apply_failed", "employee", { lifecycle: { action_kind: "TRANSFER", effective_date: "2026-09-01" } }, ["전보", "확인"]],
+  ["hr_request", "change_request", { request: { kind: "PROFILE_CORRECTION", reason_code: "DATA_ENTRY_ERROR" } }, ["정보 정정", "입력 오류", "요청 검토"]],
+] as const)("%s labels source facts and keeps its resolving verb without machine codes", (kind, link, context, labels) => {
+  view.list.data = { pages: [page([item("업무 대상", { kind, title: "김직원", links: [{ kind: link, id: "record" }], context })])] };
+  const markup = html();
+  for (const text of labels) expect(markup).toContain(text);
+  const visible = markup.match(/<li class="form">.*?<\/li>/s)![0].replace(/<[^>]*>/g, "");
+  expect(visible).not.toMatch(/[A-Z]{2,}_?[A-Z]*|payroll/);
 });
 
 test.each(["waiting", "scheduled", "deadlines", "failures"] as const)("%s requests the server filter", (filter) => {
@@ -236,7 +250,7 @@ test.each([
   ["hr_exit_settle", "exit_case", "/people/exits/record?act=prepare_settlement"],
   ["period_unlock", "period_lock", "/people/period-locks?review=record"],
 ] as const)("%s retains its resolving record or sheet verb", (kind, link, href) => {
-  view.list.data = { pages: [page([item("work", { kind, links: [{ kind: link, id: "record" }] })])] };
+  view.list.data = { pages: [page([item("work", { kind, links: [{ kind: link, id: "record" }], context: kind === "period_unlock" ? { unlock: { domain: "payroll", periodStart: "2026-09-01", periodEnd: "2026-09-30", requester: "김요청", reason_code: "RETRO_CORRECTION" } } : undefined })])] };
   expect(html()).toContain(`href="${href}"`);
 });
 

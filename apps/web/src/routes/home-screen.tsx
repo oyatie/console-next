@@ -12,7 +12,7 @@ import { unitsQuery } from "../reference/org/api";
 
 /** Setup and operating work share the same server queue. */
 export function HomeScreen() {
-  const inbox = useInfiniteQuery(cursorPages("/api/v1/me/action-inbox", { filter: "turn" }));
+  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter: "turn" }), refetchOnMount: "always" });
   const during = inbox.data?.pages[0]?.setup !== undefined;
   const reads = [useQuery({ ...entitiesRef, enabled: during }), useQuery({ ...unitsQuery, enabled: during })];
   const [settled, setSettled] = useState(false);

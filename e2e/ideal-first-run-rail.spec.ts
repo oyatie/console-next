@@ -44,7 +44,7 @@ test("BL-013: solo rail, equal paths, J/K, 2,000 applied people and a prepared r
   await expect(rowsGrid(admin)).toBeVisible({ timeout: 60_000 });
   await admin.getByRole("button", { name: "명부 반영: 신규 2,000명 · 갱신 0명" }).click();
   await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible({ timeout: 120_000 });
-  const refreshed = admin.waitForResponse((r) => r.request().method() === "GET" && r.url().endsWith("/api/v1/onboarding/checklist"));
+  const refreshed = admin.waitForResponse((r) => r.request().method() === "GET" && new URL(r.url()).pathname === "/api/v1/me/action-inbox");
   await go(admin, "/");
   expect((await refreshed).status()).toBe(200);
   await expect(rail).toContainText("미배치 18");

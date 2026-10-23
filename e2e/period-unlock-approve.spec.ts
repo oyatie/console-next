@@ -106,8 +106,10 @@ test("period unlock: a second close authority refuses, then approves; the reques
   // after the requester's own-write window (OWN_ECHO_MS), as people do.
   await exec.waitForTimeout(OWN_ECHO_MS);
   const queue = inbox.getByRole("listitem").filter({ has: exec.locator(`a[href="${LOCKS}?review=${lock.id}"]`) });
-  await expect(queue).toContainText("잠금 해제");
-  await queue.getByRole("link", { name: "열기", exact: true }).click();
+  await expect(queue).toContainText(`급여 ${month}`);
+  await expect(queue).toContainText("운영 계정");
+  await expect(queue).toContainText("소급 정정");
+  await queue.getByRole("link", { name: `급여 ${month} 해제 요청 검토`, exact: true }).click();
   const card = exec.getByRole("dialog", { name: `급여 ${month} 잠금 해제 요청` });
   await expect(card).toContainText("내 차례입니다");
   await expect(card).toContainText("운영 계정 ·");

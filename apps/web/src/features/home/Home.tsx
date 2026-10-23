@@ -4,8 +4,10 @@ import { Link } from "@tanstack/react-router";
 import type { components } from "@console/api";
 import type { Checklist } from "@console/api/pending";
 import { t, type MessageId } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
-import { APPROVAL_ROLE, codeText, label } from "../../lib/labels";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
+import { APPROVAL_ROLE, INSURER, LIFECYCLE_EVENT, codeText, label } from "../../lib/labels";
+import { reasonLabel } from "../../lib/reason-codes";
+import { domainText, periodText } from "../../reference/periods/present";
 import { cursorPages } from "../../lib/query";
 import { QueryState } from "../../lib/react/query-state";
 import { Button } from "../../ui/button/button";
@@ -36,6 +38,7 @@ const VERB_TEXT: Record<string, MessageId> = {
   hr_exit_confirm: "exit.action.confirm_exit", hr_exit_confirm_hq: "exit.action.confirm_exit_hq", hr_exit_settle: "exit.action.prepare_settlement",
   lifecycle_apply_failed: "home.failed.review", hr_lifecycle: "home.failed.review", contract_renewal: "people.lifecycle.action.CONTRACT_RENEWAL",
   insurance_filing: "statutory.open", identity_review: "home.failed.review", home_branch_review: "home.failed.review", register_review: "home.failed.review",
+  period_unlock: "periodLocks.request.review", hr_request: "home.requests.review",
 };
 const WHY_TEXT: Record<string, MessageId> = {
   org_change_approve: "home.inbox.reason.approve", org_change_draft: "home.inbox.reason.draft",
@@ -57,7 +60,7 @@ const SOURCE_TEXT: Record<string, MessageId> = {
 export function Home({ setup, setupPending = false, action }: { setup?: (c: Checklist) => ReactNode; setupPending?: boolean; action?: RowAction } = {}) {
   const [filter, setFilter] = useState<Filter>("turn");
   const me = useQuery(meQuery);
-  const inbox = useInfiniteQuery(cursorPages("/api/v1/me/action-inbox", { filter }));
+  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter }), refetchOnMount: "always" });
   const [opened] = useState(Date.now);
   const [caughtUp, setCaughtUp] = useState(false);
   const rereading = !caughtUp && inbox.isFetching && inbox.dataUpdatedAt < opened;
@@ -101,14 +104,20 @@ export function Home({ setup, setupPending = false, action }: { setup?: (c: Chec
 
 function InboxRow({ item, action }: { item: InboxItem; action?: RowAction }) {
   const kind = t(KIND_TEXT[item.kind] ?? "home.inbox.unknown");
+  const { unlock, insurance, lifecycle, request } = item.context ?? {};
+  const subject = unlock ? `${domainText(unlock.domain)} ${periodText(unlock)}` : request ? codeText(`requests.kind.${request.kind}`, t("requests.kind.OTHER")) : item.title;
+  const facts = unlock ? [unlock.requester, reasonLabel("period_unlock", unlock.reason_code)]
+    : insurance ? [label(INSURER, insurance.insurer), codeText(`statutory.${insurance.kind}`, t("home.inbox.unknown")), fmtDate(insurance.effective_date)]
+    : lifecycle ? [label(LIFECYCLE_EVENT, lifecycle.action_kind), fmtDate(lifecycle.effective_date)]
+    : request ? [codeText(`requests.reason.${request.reason_code}`, t("home.inbox.unknown"))] : [];
   return (
     <li className="form">
       <div className="row">
-        <div className="grow"><strong>{kind}</strong> · {item.kind === "hr_request" ? codeText(`requests.kind.${item.title}`, item.title) : item.title}</div>
+        <div className="grow"><strong>{kind}</strong> · {subject}</div>
         {item.days_remaining != null ? <DeadlineChip days={item.days_remaining} severity={item.dueTone === "danger" ? "over" : item.dueTone === "warn" ? "due" : "far"} /> : <span className="muted">{t("home.inbox.noDue")}</span>}
         <RecordAction item={item} action={action} />
       </div>
-      <div className="muted">{[item.ref, item.site, item.who && item.kind.startsWith("org_change") ? label(APPROVAL_ROLE, item.who) : item.who].filter(Boolean).join(" · ")}</div>
+      <div className="muted">{[...facts, item.ref, item.site, item.who && item.kind.startsWith("org_change") ? label(APPROVAL_ROLE, item.who) : item.who].filter(Boolean).join(" · ")}</div>
       {item.due && <span className="muted num">{t("home.inbox.due", { at: fmtDateTime(item.due) })}</span>}
       {item.context?.drafter && <span className="muted">{t("home.decide.drafter", { name: item.context.drafter })}</span>}
       {item.context?.reason && <span>{item.context.reason}</span>}
@@ -123,7 +132,8 @@ function InboxRow({ item, action }: { item: InboxItem; action?: RowAction }) {
 function RecordAction({ item, action }: { item: InboxItem; action?: RowAction }) {
   const link = item.links[0];
   if (!link) return null;
-  const text = t(VERB_TEXT[item.kind] ?? "home.inbox.open");
+  const unlock = item.context?.unlock;
+  const text = t(VERB_TEXT[item.kind] ?? "home.inbox.open", unlock ? { domain: domainText(unlock.domain), period: periodText(unlock) } : {});
   const className = buttonClass("primary");
   const inline = action?.(item);
   switch (link.kind) {

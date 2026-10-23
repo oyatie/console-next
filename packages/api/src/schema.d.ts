@@ -14230,6 +14230,26 @@ export interface components {
             days_remaining: number | null;
             /** @description Source-owned facts for the row's command and informed grant confirmation. */
             context?: {
+                unlock?: {
+                    domain: string;
+                    periodStart: string;
+                    periodEnd: string;
+                    requester: string | null;
+                    reason_code: string;
+                };
+                insurance?: {
+                    insurer: string;
+                    kind: string;
+                    effective_date: string;
+                };
+                lifecycle?: {
+                    action_kind: string;
+                    effective_date: string;
+                };
+                request?: {
+                    kind: string;
+                    reason_code: string;
+                };
                 /** @enum {string|null} */
                 command?: "approve" | "effectuate" | null;
                 drafter?: string;
