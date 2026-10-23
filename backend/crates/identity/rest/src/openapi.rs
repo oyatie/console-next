@@ -238,31 +238,43 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
-        path: "/api/platform/tenant-context",
+        path: "/api/platform/support-sessions",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__platform__support-sessions.get.yaml"),
+            },
+            Operation {
+                method: "post",
+                body: include_str!("../openapi/paths/api__platform__support-sessions.post.yaml"),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/platform/support-sessions/{id}/approve",
         operations: &[Operation {
             method: "post",
-            body: include_str!("../openapi/paths/api__platform__tenant-context.post.yaml"),
+            body: include_str!(
+                "../openapi/paths/api__platform__support-sessions__id__approve.post.yaml"
+            ),
         }],
     },
     PathItem {
-        path: "/api/platform/tenant-context/exit",
+        path: "/api/platform/support-sessions/{id}/end",
         operations: &[Operation {
             method: "post",
-            body: include_str!("../openapi/paths/api__platform__tenant-context__exit.post.yaml"),
+            body: include_str!(
+                "../openapi/paths/api__platform__support-sessions__id__end.post.yaml"
+            ),
         }],
     },
     PathItem {
-        path: "/api/platform/view-as",
+        path: "/api/platform/support-sessions/{id}/start",
         operations: &[Operation {
             method: "post",
-            body: include_str!("../openapi/paths/api__platform__view-as.post.yaml"),
-        }],
-    },
-    PathItem {
-        path: "/api/platform/view-as/exit",
-        operations: &[Operation {
-            method: "post",
-            body: include_str!("../openapi/paths/api__platform__view-as__exit.post.yaml"),
+            body: include_str!(
+                "../openapi/paths/api__platform__support-sessions__id__start.post.yaml"
+            ),
         }],
     },
     PathItem {
@@ -912,6 +924,36 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/support-sessions",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__support-sessions.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/support-sessions/active",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__support-sessions__active.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/support-sessions/{id}/decision",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__support-sessions__id__decision.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/support-sessions/{id}/end",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__support-sessions__id__end.post.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/tenant/company-domain/request",
         operations: &[
             Operation {
@@ -1151,6 +1193,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "ActionInboxResponse",
         body: include_str!("../openapi/schemas/ActionInboxResponse.yaml"),
+    },
+    NamedYaml {
+        name: "ActiveSupportSessions",
+        body: include_str!("../openapi/schemas/ActiveSupportSessions.yaml"),
     },
     NamedYaml {
         name: "AdminCredentialResetRequest",
@@ -1405,10 +1451,6 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/PlatformAccountStatus.yaml"),
     },
     NamedYaml {
-        name: "PlatformExitResponse",
-        body: include_str!("../openapi/schemas/PlatformExitResponse.yaml"),
-    },
-    NamedYaml {
         name: "PlatformGroup",
         body: include_str!("../openapi/schemas/PlatformGroup.yaml"),
     },
@@ -1449,28 +1491,12 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/PlatformOrgStatus.yaml"),
     },
     NamedYaml {
-        name: "PlatformTenantContextStartRequest",
-        body: include_str!("../openapi/schemas/PlatformTenantContextStartRequest.yaml"),
-    },
-    NamedYaml {
-        name: "PlatformTenantContextStartResponse",
-        body: include_str!("../openapi/schemas/PlatformTenantContextStartResponse.yaml"),
-    },
-    NamedYaml {
         name: "PlatformTenantHealth",
         body: include_str!("../openapi/schemas/PlatformTenantHealth.yaml"),
     },
     NamedYaml {
         name: "PlatformTenantRole",
         body: include_str!("../openapi/schemas/PlatformTenantRole.yaml"),
-    },
-    NamedYaml {
-        name: "PlatformViewAsStartRequest",
-        body: include_str!("../openapi/schemas/PlatformViewAsStartRequest.yaml"),
-    },
-    NamedYaml {
-        name: "PlatformViewAsStartResponse",
-        body: include_str!("../openapi/schemas/PlatformViewAsStartResponse.yaml"),
     },
     NamedYaml {
         name: "PolicyAssignmentPreviewResponse",
@@ -1627,6 +1653,42 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "StepUpRequest",
         body: include_str!("../openapi/schemas/StepUpRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SupportAccessRecord",
+        body: include_str!("../openapi/schemas/SupportAccessRecord.yaml"),
+    },
+    NamedYaml {
+        name: "SupportOperatorDecision",
+        body: include_str!("../openapi/schemas/SupportOperatorDecision.yaml"),
+    },
+    NamedYaml {
+        name: "SupportRefusal",
+        body: include_str!("../openapi/schemas/SupportRefusal.yaml"),
+    },
+    NamedYaml {
+        name: "SupportRequest",
+        body: include_str!("../openapi/schemas/SupportRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SupportSession",
+        body: include_str!("../openapi/schemas/SupportSession.yaml"),
+    },
+    NamedYaml {
+        name: "SupportSessionDecision",
+        body: include_str!("../openapi/schemas/SupportSessionDecision.yaml"),
+    },
+    NamedYaml {
+        name: "SupportSessionMetadata",
+        body: include_str!("../openapi/schemas/SupportSessionMetadata.yaml"),
+    },
+    NamedYaml {
+        name: "SupportSessions",
+        body: include_str!("../openapi/schemas/SupportSessions.yaml"),
+    },
+    NamedYaml {
+        name: "SupportTenantDecision",
+        body: include_str!("../openapi/schemas/SupportTenantDecision.yaml"),
     },
     NamedYaml {
         name: "SystemPolicyRoleResponse",

@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+properties:
+  actor_label:
+    type: string
+  decision:
+    type: string
+    x-extensible-enum:
+      - REQUEST
+      - OPERATOR_APPROVE
+      - APPROVE
+      - DENY
+      - START
+      - END
+      - EXPIRE
+  at:
+    type: string
+    format: date-time
+required:
+  - actor_label
+  - decision
+  - at

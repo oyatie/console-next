@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+properties:
+  sessions:
+    type: array
+    items:
+      $ref: '#/components/schemas/SupportSession'
+  can_approve:
+    type: boolean
+required:
+  - sessions
+  - can_approve

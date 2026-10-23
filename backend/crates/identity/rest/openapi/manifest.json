@@ -58,16 +58,17 @@
     "/api/platform/support-references/{reference}": [
       "get"
     ],
-    "/api/platform/tenant-context": [
+    "/api/platform/support-sessions": [
+      "get",
       "post"
     ],
-    "/api/platform/tenant-context/exit": [
+    "/api/platform/support-sessions/{id}/approve": [
       "post"
     ],
-    "/api/platform/view-as": [
+    "/api/platform/support-sessions/{id}/end": [
       "post"
     ],
-    "/api/platform/view-as/exit": [
+    "/api/platform/support-sessions/{id}/start": [
       "post"
     ],
     "/api/v1/access/accounts/{accountId}/effective": [
@@ -317,6 +318,18 @@
     "/api/v1/support-references/{reference}": [
       "get"
     ],
+    "/api/v1/support-sessions": [
+      "get"
+    ],
+    "/api/v1/support-sessions/active": [
+      "get"
+    ],
+    "/api/v1/support-sessions/{id}/decision": [
+      "post"
+    ],
+    "/api/v1/support-sessions/{id}/end": [
+      "post"
+    ],
     "/api/v1/tenant/company-domain/request": [
       "get",
       "post"
@@ -390,6 +403,7 @@
     "ActionInboxItem",
     "ActionInboxLink",
     "ActionInboxResponse",
+    "ActiveSupportSessions",
     "AdminCredentialResetRequest",
     "AdminCredentialResetResponse",
     "AdminIssueOtpRequest",
@@ -453,7 +467,6 @@
     "PasskeyRegisterStartResponse",
     "PasskeySummary",
     "PlatformAccountStatus",
-    "PlatformExitResponse",
     "PlatformGroup",
     "PlatformGroupAccount",
     "PlatformGroupMember",
@@ -464,12 +477,8 @@
     "PlatformOrgAdminOtpReissueResponse",
     "PlatformOrgOnboardingResponse",
     "PlatformOrgStatus",
-    "PlatformTenantContextStartRequest",
-    "PlatformTenantContextStartResponse",
     "PlatformTenantHealth",
     "PlatformTenantRole",
-    "PlatformViewAsStartRequest",
-    "PlatformViewAsStartResponse",
     "PolicyAssignmentPreviewResponse",
     "PolicyAuditEventResponse",
     "PolicyAuthorizeRequest",
@@ -509,6 +518,15 @@
     "SignupResponse",
     "SimulationOutcome",
     "StepUpRequest",
+    "SupportAccessRecord",
+    "SupportOperatorDecision",
+    "SupportRefusal",
+    "SupportRequest",
+    "SupportSession",
+    "SupportSessionDecision",
+    "SupportSessionMetadata",
+    "SupportSessions",
+    "SupportTenantDecision",
     "SystemPolicyRoleResponse",
     "Team",
     "TokenPairResponse",

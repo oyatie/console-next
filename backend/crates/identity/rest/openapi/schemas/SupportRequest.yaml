@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+  org_id:
+    type: string
+    format: uuid
+  ticket_ref:
+    type: string
+    minLength: 1
+    maxLength: 200
+  reason_code:
+    type: string
+    minLength: 1
+    maxLength: 100
+  reason:
+    type: string
+    minLength: 1
+    maxLength: 2000
+  scope:
+    type: array
+    items:
+      type: string
+    minItems: 1
+  duration_seconds:
+    type: integer
+    format: int64
+    minimum: 1
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+required:
+  - id
+  - org_id
+  - ticket_ref
+  - reason_code
+  - reason
+  - scope
+  - duration_seconds
+additionalProperties: false

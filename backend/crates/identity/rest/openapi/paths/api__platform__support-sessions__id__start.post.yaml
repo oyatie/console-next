@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - platform
+operationId: startSupportSession
+summary: start support session
+description: >-
+  Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and
+  audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The
+  metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
+security:
+  - bearerAuth: []
+responses:
+  '200':
+    description: Current support session state.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            access_token:
+              type: string
+            token_type:
+              type: string
+            expires_at:
+              type: string
+              format: date-time
+          required:
+            - id
+            - access_token
+            - token_type
+            - expires_at
+  '401':
+    description: >-
+      Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+      closed.
+    content:
+      application/problem+json:
+        schema:
+          $ref: '#/components/schemas/SupportRefusal'
+  '403':
+    description: >-
+      Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+      closed.
+    content:
+      application/problem+json:
+        schema:
+          $ref: '#/components/schemas/SupportRefusal'
+  '404':
+    description: >-
+      Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+      closed.
+    content:
+      application/problem+json:
+        schema:
+          $ref: '#/components/schemas/SupportRefusal'
+  '409':
+    description: >-
+      Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+      closed.
+    content:
+      application/problem+json:
+        schema:
+          $ref: '#/components/schemas/SupportRefusal'
+  '422':
+    description: >-
+      Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+      closed.
+    content:
+      application/problem+json:
+        schema:
+          $ref: '#/components/schemas/SupportRefusal'
+  '500':
+    description: >-
+      Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+      closed.
+    content:
+      application/problem+json:
+        schema:
+          $ref: '#/components/schemas/SupportRefusal'
+parameters:
+  - name: id
+    in: path
+    required: true
+    schema:
+      type: string
+      format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SupportOperatorDecision'

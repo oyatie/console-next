@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+properties:
+  decision:
+    type: string
+    enum:
+      - APPROVE
+      - DENY
+  approved_duration_seconds:
+    type: integer
+    format: int64
+    minimum: 1
+  reveal_classes:
+    type: array
+    items:
+      type: string
+      enum:
+        - personal
+required:
+  - decision
+additionalProperties: false

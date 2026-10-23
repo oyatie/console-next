@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+  org_id:
+    type: string
+    format: uuid
+  operator_ref:
+    type: string
+    format: uuid
+  state:
+    type: string
+  requested_at:
+    type: string
+    format: date-time
+  expires_at:
+    type:
+      - string
+      - 'null'
+    format: date-time
+required:
+  - id
+  - org_id
+  - operator_ref
+  - state
+  - requested_at
+  - expires_at

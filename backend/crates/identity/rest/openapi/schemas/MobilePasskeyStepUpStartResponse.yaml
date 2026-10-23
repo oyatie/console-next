@@ -1,9 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
 type: object
 required:
-- ceremony_id
-- challenge
-- expires_at
-- binding
+  - ceremony_id
+  - challenge
+  - expires_at
+  - binding
 properties:
   ceremony_id:
     $ref: '#/components/schemas/Uuid'
@@ -13,56 +14,57 @@ properties:
   expires_at:
     $ref: '#/components/schemas/Timestamp'
   binding:
-    # Response values may grow while command bindings keep their validated enums.
     type: object
     required:
-    - action_kind
-    - object_id
-    - reason_key
-    - replay_attempt
+      - action_kind
+      - object_id
+      - reason_key
+      - replay_attempt
     properties:
       action_kind:
         type: string
         x-extensible-enum:
-        - APPROVAL_DECISION
-        - POLL_VOTE
-        - EXIT_CONFIRM
-        - EXIT_RESCIND
-        - ELEVATED_GRANT
-        - PERIOD_UNLOCK
-        - IDENTITY_MERGE
-        - EXCEPTION_DECIDE
-        - SETTINGS_CHANGE
-        - CREDENTIAL_RESET
-        - TENANT_OFFBOARD
-        - OPERATOR_RECOVERY
+          - APPROVAL_DECISION
+          - POLL_VOTE
+          - EXIT_CONFIRM
+          - EXIT_RESCIND
+          - ELEVATED_GRANT
+          - PERIOD_UNLOCK
+          - IDENTITY_MERGE
+          - EXCEPTION_DECIDE
+          - SETTINGS_CHANGE
+          - CREDENTIAL_RESET
+          - TENANT_OFFBOARD
+          - OPERATOR_RECOVERY
+          - SUPPORT_SESSION
       object_id:
         $ref: '#/components/schemas/Uuid'
       reason_key:
         type: string
         x-extensible-enum:
-        - operations_passkey_approval_decision
-        - operations_passkey_poll_vote
-        - passkey_step_up_exit_confirm
-        - passkey_step_up_exit_rescind
-        - passkey_step_up_elevated_grant
-        - passkey_step_up_period_unlock
-        - passkey_step_up_identity_merge
-        - passkey_step_up_exception_decide
-        - passkey_step_up_settings_change
-        - passkey_step_up_credential_reset
-        - passkey_step_up_tenant_offboard
-        - passkey_step_up_operator_recovery
+          - operations_passkey_approval_decision
+          - operations_passkey_poll_vote
+          - passkey_step_up_exit_confirm
+          - passkey_step_up_exit_rescind
+          - passkey_step_up_elevated_grant
+          - passkey_step_up_period_unlock
+          - passkey_step_up_identity_merge
+          - passkey_step_up_exception_decide
+          - passkey_step_up_settings_change
+          - passkey_step_up_credential_reset
+          - passkey_step_up_tenant_offboard
+          - passkey_step_up_operator_recovery
+          - passkey_step_up_support_session
       replay_attempt:
         type:
-        - integer
-        - 'null'
+          - integer
+          - 'null'
         format: int32
         minimum: 1
         description: Null for an immediate online action; 1-based for queued replay attempts.
       payload_hash:
         type:
-        - string
-        - 'null'
-        pattern: '^[a-f0-9]{64}$'
+          - string
+          - 'null'
+        pattern: ^[a-f0-9]{64}$
         description: Required for BW-29 actions including OPERATOR_RECOVERY; SHA-256 of the command payload.
