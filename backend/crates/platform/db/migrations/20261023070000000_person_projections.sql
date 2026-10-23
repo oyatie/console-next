@@ -3,13 +3,16 @@
 -- The erasure marker is meaningful only inside the trusted destruction definer.
 CREATE FUNCTION console_person_erasing() RETURNS BOOLEAN
 LANGUAGE sql STABLE SET search_path=pg_catalog AS $$
-    SELECT current_setting('app.pii_destruction',true)='on'
+    SELECT (current_setting('app.pii_destruction',true)='on'
       AND current_user=pg_get_userbyid((SELECT proowner FROM pg_proc
-        WHERE oid='public.employee_void_destroy_pii(uuid,boolean)'::regprocedure))
+        WHERE oid='public.employee_void_destroy_pii(uuid,boolean)'::regprocedure)))
+      OR (current_setting('app.platform_force_remove_org',true)='on'
+      AND current_user=pg_get_userbyid((SELECT proowner FROM pg_proc
+        WHERE oid='public.platform_force_remove_organization(uuid)'::regprocedure)))
 $$;
 CREATE OR REPLACE FUNCTION console_account_binding() RETURNS TRIGGER
 LANGUAGE plpgsql SET search_path=pg_catalog AS $$
-DECLARE linked UUID; patch JSONB:='{}'::JSONB;
+DECLARE linked UUID; attrs JSONB;
 BEGIN
     IF TG_OP='UPDATE' AND public.console_person_erasing() THEN RETURN NEW; END IF;
     IF NEW.is_tenant_ops THEN NEW.principal_kind:='OPERATIONS';
@@ -19,7 +22,8 @@ BEGIN
         NEW.person_id:=NULL;
         RETURN NEW;
     END IF;
-    IF TG_OP='INSERT' OR NEW.employee_id IS DISTINCT FROM OLD.employee_id THEN
+    IF TG_OP='INSERT' OR NEW.employee_id IS DISTINCT FROM OLD.employee_id
+      OR OLD.principal_kind<>'TENANT_PERSON' THEN
         IF NEW.employee_id IS NOT NULL THEN
             linked:=public.console_bind_employee_person(NEW.org_id,NEW.employee_id,NULL);
             NEW.person_id:=linked;
@@ -28,7 +32,12 @@ BEGIN
                 RAISE EXCEPTION USING ERRCODE='23503', MESSAGE='person binding is not in this tenant';
             END IF;
         END IF;
-        IF TG_OP='INSERT' AND NEW.person_id IS NULL THEN NEW.person_id:=NEW.id; END IF;
+        IF NEW.person_id IS NULL THEN NEW.person_id:=NEW.id; END IF;
+        attrs:=public.console_person_facts(NEW.org_id,NEW.person_id);
+        IF attrs IS NOT NULL THEN
+            NEW.display_name:=coalesce(attrs->>'display_name',attrs->>'legal_name',NEW.display_name);
+            NEW.phone:=attrs->>'phone';
+        END IF;
     END IF;
     RETURN NEW;
 END $$;
@@ -119,7 +128,28 @@ BEGIN
     PERFORM public.console_project_person_facts(NEW.org_id,NEW.person_id);
     RETURN NEW;
 END $$;
-CREATE TRIGGER person_account_write AFTER INSERT OR UPDATE OF display_name,phone,person_id ON users
+-- A linked employment seeds its Person; an unlinked account seeds its own.
+CREATE OR REPLACE FUNCTION console_account_person_initial_facts() RETURNS TRIGGER
+LANGUAGE plpgsql SET search_path=pg_catalog AS $$
+BEGIN
+    IF public.console_person_erasing() THEN RETURN NEW; END IF;
+    IF NEW.person_id IS NOT NULL THEN
+        IF NOT EXISTS(SELECT 1 FROM public.persons WHERE org_id=NEW.org_id AND id=NEW.person_id) THEN
+            INSERT INTO public.persons(org_id,id) VALUES(NEW.org_id,NEW.person_id);
+        END IF;
+        IF NEW.employee_id IS NULL AND public.console_person_facts(NEW.org_id,NEW.person_id) IS NULL THEN
+            PERFORM public.console_revise_person_facts(NEW.org_id,NEW.person_id,
+                jsonb_build_object('legal_name',NEW.display_name,'phone',NEW.phone),NULL);
+        END IF;
+    END IF;
+    RETURN NEW;
+END $$;
+
+-- An ops handover demotes the former operator to a tenant account in the same transaction.
+DROP TRIGGER person_account_initial_facts ON users;
+CREATE TRIGGER person_account_initial_facts AFTER INSERT OR UPDATE OF person_id,employee_id,is_tenant_ops ON users
+    FOR EACH ROW EXECUTE FUNCTION console_account_person_initial_facts();
+CREATE TRIGGER person_account_write AFTER INSERT OR UPDATE OF display_name,phone,person_id,employee_id,is_tenant_ops ON users
     FOR EACH ROW EXECUTE FUNCTION console_account_fact_write();
 
 CREATE OR REPLACE FUNCTION console_sync_employee_accounts() RETURNS TRIGGER

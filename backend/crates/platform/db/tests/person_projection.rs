@@ -165,3 +165,109 @@ async fn unflagged_number_birth_matches_never_merge_different_people_and_reuse_e
         }
     }
 }
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn linking_and_ops_handover_settle_the_person_projection_in_the_same_transaction(
+    pool: PgPool,
+) {
+    let org = Uuid::new_v4();
+    sqlx::query("INSERT INTO organizations(id,slug,name) VALUES($1,$2,'Account transitions')")
+        .bind(org)
+        .bind(org.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let employee: Uuid=sqlx::query_scalar("INSERT INTO employees(org_id,company,name,identity_review_required,source_filename,source_sheet,source_row,source_key) VALUES($1,'Co','Employee',false,'test','test',1,'link') RETURNING id")
+        .bind(org).fetch_one(&pool).await.unwrap();
+    let account: Uuid = sqlx::query_scalar(
+        "INSERT INTO users(org_id,display_name) VALUES($1,'Old account') RETURNING id",
+    )
+    .bind(org)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let ops: Uuid=sqlx::query_scalar("INSERT INTO users(org_id,display_name,is_tenant_ops) VALUES($1,'Operator',true) RETURNING id")
+        .bind(org).fetch_one(&pool).await.unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let linked: (Uuid, String) = sqlx::query_as(
+        "UPDATE users SET employee_id=$1 WHERE id=$2 RETURNING person_id,display_name",
+    )
+    .bind(employee)
+    .bind(account)
+    .fetch_one(tx.as_mut())
+    .await
+    .unwrap();
+    assert_eq!(
+        linked,
+        (employee, "Employee".into()),
+        "an existing account projects immediately when linked"
+    );
+    sqlx::query("UPDATE users SET is_tenant_ops=false WHERE id=$1")
+        .bind(ops)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE users SET is_tenant_ops=true WHERE id=$1")
+        .bind(account)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let former: (Uuid, String) =
+        sqlx::query_as("SELECT person_id,principal_kind FROM users WHERE id=$1")
+            .bind(ops)
+            .fetch_one(tx.as_mut())
+            .await
+            .unwrap();
+    assert_eq!(former, (ops, "TENANT_PERSON".into()));
+    let facts: serde_json::Value = sqlx::query_scalar("SELECT console_person_facts($1,$2)")
+        .bind(org)
+        .bind(ops)
+        .fetch_one(tx.as_mut())
+        .await
+        .unwrap();
+    assert_eq!(facts["legal_name"], "Operator");
+    tx.commit().await.unwrap();
+}
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn an_account_attached_before_employee_binding_follows_employee_facts(pool: PgPool) {
+    let org = Uuid::new_v4();
+    sqlx::query("INSERT INTO organizations(id,slug,name) VALUES($1,$2,'Early account')")
+        .bind(org)
+        .bind(org.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let employee: Uuid=sqlx::query_scalar("INSERT INTO employees(org_id,company,name,source_filename,source_sheet,source_row,source_key) VALUES($1,'Co','Employee fact','test','test',1,'early') RETURNING id")
+        .bind(org).fetch_one(&pool).await.unwrap();
+    // A retained pre-binding account: its own Person must not overwrite employee facts during sync.
+    sqlx::query("ALTER TABLE users DISABLE TRIGGER person_bind_account")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let account = Uuid::new_v4();
+    sqlx::query("INSERT INTO users(id,org_id,employee_id,person_id,display_name) VALUES($1,$2,$3,$1,'Old account fact')")
+        .bind(account).bind(org).bind(employee).execute(&pool).await.unwrap();
+    sqlx::query("ALTER TABLE users ENABLE TRIGGER person_bind_account")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("SELECT console_bind_employee_person($1,$2,NULL)")
+        .bind(org)
+        .bind(employee)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let bound: (Uuid, String) =
+        sqlx::query_as("SELECT person_id,display_name FROM users WHERE id=$1")
+            .bind(account)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(bound, (employee, "Employee fact".into()));
+}

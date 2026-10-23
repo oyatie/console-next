@@ -272,6 +272,8 @@ DO $$ DECLARE o RECORD; previous TEXT:=current_setting('app.current_org',true); 
     END LOOP;
     PERFORM set_config('app.current_org',coalesce(previous,''),true);
 END $$;
+-- Existing deferrable account guards must finish before ALTER TABLE validates the expansion.
+SET CONSTRAINTS ALL IMMEDIATE;
 ALTER TABLE users VALIDATE CONSTRAINT users_person_fk;
 ALTER TABLE users VALIDATE CONSTRAINT users_principal_person_check;
 
