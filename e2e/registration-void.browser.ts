@@ -47,16 +47,6 @@ export function registrationVoidBrowser() {
     await server.listen();
     origin = server.resolvedUrls!.local[0]!;
     browser = await chromium.launch();
-  });
-  afterAll(async () => {
-    await browser?.close();
-    await server?.close();
-  });
-  beforeEach(async () => {
-    errors = []; unexpected = []; writes = []; reads = [];
-    catalog = ["DUPLICATE", "TEST_ENTRY", "WRONG_DOCUMENT"].map((code) => ({ code, system: true, active: true, requires_note: false, involuntary: false, notice_required: false, label_ko: null, label_en: null }));
-    preview = async () => ({ json: options() });
-    submit = async () => ({ status: 204 });
     context = await browser.newContext();
     page = await context.newPage();
     page.on("pageerror", (error) => errors.push(error.message));
@@ -77,9 +67,28 @@ export function registrationVoidBrowser() {
         await route.fulfill({ status: 404 });
       }
     });
+    // Pay cold transforms before the first test's 5 s interaction budget.
+    reset();
+    await mount();
+  }, 60_000);
+  afterAll(async () => {
+    await browser?.close();
+    await server?.close();
   });
+  function reset() {
+    errors = []; unexpected = []; writes = []; reads = [];
+    catalog = ["DUPLICATE", "TEST_ENTRY", "WRONG_DOCUMENT"].map((code) => ({ code, system: true, active: true, requires_note: false, involuntary: false, notice_required: false, label_ko: null, label_en: null }));
+    preview = async () => ({ json: options() });
+    submit = async () => ({ status: 204 });
+  }
+  beforeEach(async () => {
+    await context.setOffline(false);
+    await page.setViewportSize({ width: 1280, height: 720 });
+    reset();
+  }, 60_000);
   afterEach(async () => {
-    await context?.close();
+    // Unmount observers before the next test changes its response fixtures.
+    await page.goto("about:blank");
     expect(errors).toEqual([]);
     expect(unexpected).toEqual([]);
   });
