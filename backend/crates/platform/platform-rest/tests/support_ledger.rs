@@ -7,6 +7,9 @@ use uuid::Uuid;
 
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn support_ledger_is_tenant_partitioned_and_approval_cannot_be_fabricated(pool: PgPool) {
+    let head_class: String = sqlx::query_scalar("SELECT field_classes->>'head.name' FROM support_read_surfaces WHERE path='/api/v1/org-structure'")
+        .fetch_one(&pool).await.unwrap();
+    assert_eq!(head_class, "personal");
     let a = Uuid::new_v4();
     let b = Uuid::new_v4();
     seed_org_and_super_admin(&pool, a, "support-a").await;

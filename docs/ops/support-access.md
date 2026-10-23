@@ -7,7 +7,7 @@ The tenant page is `/audit/support-access`. The shell banner and history update 
 
 Requests and decisions belong to the target tenant under forced RLS. Vendor lists project opaque identifiers, state and times only. Every support-token request appends `support.access` to that tenant's existing audit chain before its response leaves. Revocation is checked again after the handler and at audit commit. Failed audit writes withhold the response. Audit identities carry the vendor name and opaque operator label.
 
-Only reviewed rows in `support_read_surfaces` permit content reads. The initial reference data covers organization structure, organization units, legal entities, workplaces and the employee list. Unknown routes, write methods and ungranted field classes fail closed. Schema classifications mask personal fields by default; a tenant can explicitly grant the personal class. Sensitive and unknown fields remain masked. Scope review and field aliases belong in this reference data, never a fallback tenant role.
+Only reviewed rows in `support_read_surfaces` permit content reads. The initial reference data covers organization structure, organization units, legal entities, workplaces and the employee list. Unknown routes, write methods and ungranted field classes fail closed. Schema classifications mask personal fields by default; a tenant can explicitly grant the personal class. Sensitive and unknown fields remain masked. Dotted response aliases protect nested personal names separately from organization names; protected JSON columns are masked as a whole, including their object keys. Scope review and field aliases belong in this reference data, never a fallback tenant role.
 
 `support.request_expiry` and `support.max_duration` are settings-registry keys with vendor defaults. Tenant writes remain refused pending G7. The approved support deadline controls token expiry; operator family logout, revocation, authority changes and tenant suspension still invalidate reads immediately.
 
@@ -182,6 +182,7 @@ The brief authorizes support implementation and its verification across shared c
 - `backend/crates/payroll/rest/tests/api.rs`
 - `backend/crates/payroll/rest/tests/payslip_draft_api.rs`
 - `backend/crates/payroll/rest/tests/run_lifecycle_api.rs`
+- `backend/crates/platform/access-rest/src/catalog.rs`
 - `backend/crates/platform/access-rest/tests/support/mod.rs`
 - `backend/crates/platform/auth-rest/src/context/request.rs`
 - `backend/crates/platform/auth-rest/src/group_admin/actor.rs`
@@ -223,6 +224,7 @@ The brief authorizes support implementation and its verification across shared c
 - `backend/crates/platform/platform-rest/tests/fixtures/support_sessions.rs`
 - `backend/crates/platform/platform-rest/tests/onboard_seeds_config_objects.rs`
 - `backend/crates/platform/platform-rest/tests/ops_dashboard.rs`
+- `backend/crates/platform/platform-rest/tests/ops_recovery.rs`
 - `backend/crates/platform/platform-rest/tests/platform_groups.rs`
 - `backend/crates/platform/platform-rest/tests/remove_tenant.rs`
 - `backend/crates/platform/platform-rest/tests/support_ledger.rs`
@@ -248,6 +250,7 @@ The brief authorizes support implementation and its verification across shared c
 - `backend/crates/sales/rest/src/lib.rs`
 - `backend/crates/settings/domain/src/keys/mod.rs`
 - `backend/crates/settings/domain/src/keys/support.rs`
+- `backend/crates/settings/domain/tests/registry.rs`
 - `backend/crates/settings/domain/tests/sql_definitions.rs`
 - `backend/crates/support/rest/src/lib.rs`
 - `backend/crates/support/rest/tests/authz.rs`

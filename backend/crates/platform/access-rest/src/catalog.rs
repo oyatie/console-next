@@ -55,7 +55,21 @@ mod tests {
     #[test]
     fn the_catalog_lists_every_domain_and_marks_every_scope_kind_enforceable() {
         let c = super::catalog();
-        assert_eq!(c["domains"].as_array().unwrap().len(), 18);
+        assert_eq!(
+            c["domains"].as_array().unwrap().len(),
+            super::Domain::ALL.len()
+        );
+        let support = c["domains"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|domain| domain["domain"] == super::Domain::SupportAccess.as_str())
+            .unwrap();
+        assert_eq!(support["grantable"], true);
+        assert_eq!(
+            support["levels"],
+            serde_json::json!([super::Level::Approve])
+        );
         let hr = &c["domains"][1];
         assert_eq!(hr["domain"], "hr_basic");
         assert_eq!(

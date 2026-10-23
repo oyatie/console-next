@@ -70,8 +70,8 @@ GRANT UPDATE(state,operator_approver_ref,operator_approved_at,approval_assertion
 -- Reference data is an explicit allow list. New read surfaces require review of their response classification.
 CREATE TABLE support_read_surfaces(path TEXT PRIMARY KEY, domain TEXT NOT NULL, feature TEXT NOT NULL, classification_tables TEXT[] NOT NULL, field_classes JSONB NOT NULL DEFAULT '{}');
 INSERT INTO support_read_surfaces VALUES
-('/api/v1/org-structure','org','org_change_read',ARRAY['legal_entities','org_units','workplaces','business_registrations'],'{}'),
-('/api/v1/org-units','org','org_change_read',ARRAY['org_units'],'{}'),
+('/api/v1/org-structure','org','org_change_read',ARRAY['legal_entities','org_units','workplaces','business_registrations'],'{"head.name":"personal"}'),
+('/api/v1/org-units','org','org_change_read',ARRAY['org_units'],'{"head.name":"personal"}'),
 ('/api/v1/legal-entities','org','org_change_read',ARRAY['legal_entities'],'{}'),
 ('/api/v1/workplaces','org','org_change_read',ARRAY['workplaces'],'{}'),
 ('/api/v1/employees','hr_basic','employee_directory_read',ARRAY['employees'],'{"display_name":"personal","personal_email":"personal","count":"metadata","total":"metadata"}');
@@ -80,7 +80,7 @@ COMMENT ON TABLE support_read_surfaces IS 'Reviewed support read surfaces; unkno
 COMMENT ON COLUMN support_read_surfaces.path IS 'pd:none — metadata: API route';
 COMMENT ON COLUMN support_read_surfaces.domain IS 'pd:none — metadata: access catalog domain';
 COMMENT ON COLUMN support_read_surfaces.classification_tables IS 'pd:none — metadata: response source tables';
-COMMENT ON COLUMN support_read_surfaces.field_classes IS 'pd:none — metadata: reviewed response aliases and classifications';
+COMMENT ON COLUMN support_read_surfaces.field_classes IS 'pd:none — metadata: reviewed response aliases and classifications; dotted paths match the nearest object suffix';
 COMMENT ON COLUMN support_read_surfaces.feature IS 'pd:none — metadata: Cedar read action';
 
 INSERT INTO realtime_topic_map(target_type,action,resource_type,carries_id)

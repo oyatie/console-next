@@ -192,7 +192,7 @@ async fn run(
         .map_err(|_| SupportError::Refused("internal"))?;
     let mut value: Value =
         serde_json::from_slice(&bytes).map_err(|_| SupportError::Refused("internal"))?;
-    mask(&mut value, &classes, &session.reveal_classes);
+    mask(&mut value, &classes, &session.reveal_classes, "");
     parts.headers.remove(header::CONTENT_LENGTH);
     let bytes = serde_json::to_vec(&value).map_err(|_| SupportError::Refused("internal"))?;
     Ok(Response::from_parts(parts, Body::from(bytes)))
@@ -231,34 +231,53 @@ async fn field_classes(
     Ok(rows.into_iter().collect())
 }
 
-fn mask(value: &mut Value, classes: &BTreeMap<String, String>, grants: &[String]) {
+fn field_class<'a>(classes: &'a BTreeMap<String, String>, path: &str) -> Option<&'a str> {
+    let mut suffix = path;
+    loop {
+        if let Some(class) = classes.get(suffix) {
+            return Some(class);
+        }
+        suffix = suffix.split_once('.')?.1;
+    }
+}
+
+fn mask(value: &mut Value, classes: &BTreeMap<String, String>, grants: &[String], path: &str) {
+    let class = field_class(classes, path);
+    let visible = |class: &str| {
+        console_platform_authz::cedar_pbac::actions::support_session::field_visible(
+            class != "metadata",
+            grants.iter().any(|grant| grant == class),
+        )
+    };
+    // A classified JSON column is one protected field, including its object keys.
+    if (value.is_object() || value.is_array()) && class.is_some_and(|class| !visible(class)) {
+        *value = Value::Null;
+        return;
+    }
     match value {
         Value::Array(rows) => {
             for row in rows {
-                mask(row, classes, grants);
+                mask(row, classes, grants, path);
             }
         }
         Value::Object(object) => {
             for (key, value) in object {
-                if value.is_object() || value.is_array() {
-                    mask(value, classes, grants);
-                    continue;
-                }
-                let class = classes.get(key).map_or("sensitive", String::as_str);
-                if !console_platform_authz::cedar_pbac::actions::support_session::field_visible(
-                    class != "metadata",
-                    grants.iter().any(|grant| grant == class),
-                ) && !value.is_null()
-                {
-                    *value = if value.is_string() {
-                        Value::String("••••".into())
-                    } else {
-                        Value::Null
-                    };
-                }
+                let child = if path.is_empty() {
+                    key.to_owned()
+                } else {
+                    format!("{path}.{key}")
+                };
+                mask(value, classes, grants, &child);
             }
         }
-        _ => *value = Value::Null,
+        _ if !visible(class.unwrap_or("sensitive")) && !value.is_null() => {
+            *value = if value.is_string() {
+                Value::String("••••".into())
+            } else {
+                Value::Null
+            };
+        }
+        _ => {}
     }
 }
 
@@ -281,6 +300,41 @@ fn websocket_token(headers: &http::HeaderMap) -> Option<&str> {
 mod tests {
     use super::*;
     #[test]
+    fn nested_personal_aliases_override_metadata_names_at_every_tree_depth() {
+        let classes = BTreeMap::from([
+            ("name".into(), "metadata".into()),
+            ("head.name".into(), "personal".into()),
+        ]);
+        let mut value = json!({"entities":[{"name":"부서","children":[{"name":"하위 부서","head":{"name":"담당자"}}]}]});
+        mask(&mut value, &classes, &[], "");
+        assert_eq!(value["entities"][0]["name"], "부서");
+        assert_eq!(value["entities"][0]["children"][0]["name"], "하위 부서");
+        assert_eq!(value["entities"][0]["children"][0]["head"]["name"], "••••");
+        let mut value = json!({"head":{"name":"담당자"}});
+        mask(&mut value, &classes, &["personal".into()], "");
+        assert_eq!(value["head"]["name"], "담당자");
+    }
+
+    #[test]
+    fn classified_personal_containers_cannot_expose_metadata_named_children() {
+        let classes = BTreeMap::from([
+            ("contacts".into(), "personal".into()),
+            ("name".into(), "metadata".into()),
+        ]);
+        let mut value = json!({"contacts":[{"name":"개인 이름"}]});
+        mask(&mut value, &classes, &[], "");
+        assert!(value["contacts"].is_null());
+    }
+
+    #[test]
+    fn metadata_arrays_preserve_their_values() {
+        let classes = BTreeMap::from([("codes".into(), "metadata".into())]);
+        let mut value = json!({"codes":["A","B"]});
+        mask(&mut value, &classes, &[], "");
+        assert_eq!(value["codes"], json!(["A", "B"]));
+    }
+
+    #[test]
     fn unknown_and_sensitive_fields_stay_masked_with_a_personal_grant() {
         let classes = BTreeMap::from([
             ("count".into(), "metadata".into()),
@@ -289,11 +343,11 @@ mod tests {
         ]);
         let mut value =
             json!({"items":[{"name":"이름","rrn":"protected","phone":"private","count":2}]});
-        mask(&mut value, &classes, &[]);
+        mask(&mut value, &classes, &[], "");
         assert_eq!(value["items"][0]["name"], "••••");
         assert_eq!(value["items"][0]["count"], 2);
         let mut value = json!({"name":"이름","rrn":"protected"});
-        mask(&mut value, &classes, &["personal".into()]);
+        mask(&mut value, &classes, &["personal".into()], "");
         assert_eq!(value["name"], "이름");
         assert_eq!(value["rrn"], "••••");
     }
