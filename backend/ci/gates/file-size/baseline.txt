@@ -245,7 +245,7 @@ crates/platform/platform-rest/tests/platform_groups.rs	374
 crates/platform/platform-rest/tests/remove_tenant.rs	921
 crates/platform/platform-rest/tests/view_as.rs	700
 crates/platform/provisioning/tests/account_identity.rs	895
-crates/platform/provisioning/tests/account_locking.rs	673
+crates/platform/provisioning/tests/account_locking.rs	676
 crates/platform/provisioning/tests/bootstrap_passkey.rs	730
 crates/platform/provisioning/tests/company_locking.rs	480
 crates/platform/provisioning/tests/first_enrollment_command.rs	629

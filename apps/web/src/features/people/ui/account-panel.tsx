@@ -137,7 +137,7 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
   const options = found.data?.items ?? [];
   const link = useCommand({
     run: ({ employeeId, requestId }: { employeeId: string | null; requestId?: string }) => checkedOnAccount(u.id, () => linkAccount(u.id, employeeId, requestId), holdsLink(employeeId)),
-    invalidates: [...INVALIDATES, "/api/v1/employees"],
+    invalidates: [...INVALIDATES, "/api/v1/employees", "/api/v1/person-binding-reviews"],
     onSuccess: (r) =>
       onRecorded("account_link" in r ? t("people.account.waiting") : r.employee_name ? t("accounts.employee.linked", { name: u.display_name, employee: r.employee_name }) : t("accounts.employee.unlinked", { name: u.display_name })),
   });

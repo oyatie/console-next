@@ -351,7 +351,7 @@ async fn roster_locks_complete_existing_set_in_uuid_order_before_writes(owner: P
     assert!(result.bootstrap_credentials_issued.is_empty());
 }
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn roster_keeps_its_account_mapping_when_person_contact_changes(owner: PgPool) {
+async fn roster_mapping_change_during_wait_rolls_back_entire_import(owner: PgPool) {
     let low = Uuid::from_u128(1);
     let high = Uuid::from_u128(2);
     roster_user(&owner, low, "010-1234-0036").await;
@@ -366,10 +366,12 @@ async fn roster_keeps_its_account_mapping_when_person_contact_changes(owner: PgP
         .await
         .unwrap();
     held.rollback().await.unwrap();
-    assert!(timeout(WAIT, task).await.unwrap().unwrap().is_ok());
-    // Person contact edits do not reassign the frozen provisioning identifier.
-    let state:(i64,i64,i64,String)=sqlx::query_as("SELECT (SELECT count(*) FROM person_accounts_current WHERE id=ANY($1) AND display_name='Updated'),(SELECT count(*) FROM users WHERE phone='010-1234-0037'),(SELECT count(*) FROM audit_events WHERE action='roster.import'),(SELECT phone FROM person_accounts_current WHERE id=$2)").bind(vec![low,high]).bind(high).fetch_one(&owner).await.unwrap();
-    assert_eq!(state, (2, 1, 1, "010-2100-9999".into()));
+    assert!(matches!(
+        timeout(WAIT, task).await.unwrap().unwrap(),
+        Err(ProvisioningError::Conflict(_))
+    ));
+    let state:(i64,i64,i64)=sqlx::query_as("SELECT (SELECT count(*) FROM users WHERE id=ANY($1) AND display_name='Original'),(SELECT count(*) FROM users WHERE phone='010-1234-0037'),(SELECT count(*) FROM audit_events WHERE action='roster.import')").bind(vec![low,high]).fetch_one(&owner).await.unwrap();
+    assert_eq!(state, (2, 0, 0));
 }
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn roster_does_not_adopt_account_created_after_mapping_snapshot(owner: PgPool) {

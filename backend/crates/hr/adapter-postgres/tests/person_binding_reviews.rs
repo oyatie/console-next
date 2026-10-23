@@ -18,11 +18,9 @@ async fn branch_hr_sees_employee_and_account_reviews_without_foreign_evidence(po
         .await
         .unwrap()
         .employee;
-    let b = f
-        .create(f.body("review-b", "REGULAR"))
-        .await
-        .unwrap()
-        .employee;
+    let mut other = f.body("review-b", "REGULAR");
+    other.phone = "010-9999-0001".into();
+    let b = f.create(other).await.unwrap().employee;
     let account: Uuid = sqlx::query_scalar(
         "INSERT INTO users(org_id,employee_id,display_name) VALUES($1,$2,'Account') RETURNING id",
     )
@@ -126,13 +124,8 @@ async fn branch_hr_sees_employee_and_account_reviews_without_foreign_evidence(po
         .total,
         0
     );
-    sqlx::query("UPDATE users SET employee_id=NULL WHERE id=$1")
-        .bind(account)
-        .execute(&pool)
-        .await
-        .unwrap();
     sqlx::query("UPDATE users SET employee_id=$1 WHERE id=$2")
-        .bind(a.id)
+        .bind(b.id)
         .bind(unlinked)
         .execute(&pool)
         .await
