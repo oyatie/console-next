@@ -41,7 +41,7 @@ test("solo: bulk catalog promotions preserve IDs and demotion rules; inactive en
   await todayPreset(admin).click();
   await admin.getByRole("radiogroup", { name: /^사유/ }).getByText("정기 승진", { exact: true }).click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("정기 평가");
-  await admin.getByRole("button", { name: /^1명 승진 · 오늘 반영/ }).click();
+  await admin.getByRole("button", { name: "승진 1명 반영" }).click();
   await expect(admin.getByRole("status").filter({ hasText: /1명 승진/ }).first()).toBeVisible();
   expect((await read()).classification.job_title_id).toBe(titles.find((x) => x.label === "선임")!.id);
 
@@ -53,10 +53,10 @@ test("solo: bulk catalog promotions preserve IDs and demotion rules; inactive en
   await expect(reasons).toContainText("강등(징계)");
   await todayPreset(admin).click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("징계 결정에 따른 강등");
-  await admin.getByRole("button", { name: /^1명 승진 · 오늘 반영/ }).click();
+  await admin.getByRole("button", { name: "승진 1명 반영" }).click();
   expect((await read()).classification.job_title_id).toBe(titles.find((x) => x.label === "선임")!.id);
   await reasons.getByText("강등(징계)", { exact: true }).click();
-  await admin.getByRole("button", { name: /^1명 승진 · 오늘 반영/ }).click();
+  await admin.getByRole("button", { name: "승진 1명 반영" }).click();
   await expect(admin.getByRole("status").filter({ hasText: /1명 승진/ }).first()).toBeVisible();
   expect((await read()).classification.job_title_id).toBe(titles.find((x) => x.label === "사원")!.id);
 
@@ -72,7 +72,7 @@ test("solo: bulk catalog promotions preserve IDs and demotion rules; inactive en
   await expect(appoint.getByRole("radio", { name: "팀장", exact: true })).toBeChecked();
   await todayPreset(appoint).click();
   await reasonBox(appoint).fill("부서장 임면");
-  await appoint.getByRole("button", { name: /^오늘 직책 임면/ }).click();
+  await appoint.getByRole("button", { name: "보직 1명 반영" }).click();
   await expect(appoint).toBeHidden();
   await expectAccessible(admin, "people: reactivated entry selected and recorded");
 });
@@ -88,7 +88,7 @@ test("solo: a conversion correction keeps its contract end and a fixed-term refu
   await todayPreset(convert).click();
   await fillDate(convert, kstDate(400), "계약 종료일");
   await reasonBox(convert).fill("기간제 전환");
-  await convert.getByRole("button", { name: /^오늘 고용형태 전환/ }).click();
+  await convert.getByRole("button", { name: "고용 형태 변경 1명 반영" }).click();
   await expect(convert).toBeHidden();
   await openHistory(admin);
   await admin.getByRole("region", { name: "인사 이력" }).getByRole("button", { name: "정정", exact: true }).click();
@@ -98,7 +98,7 @@ test("solo: a conversion correction keeps its contract end and a fixed-term refu
   await expect(correct.getByRole("radio", { name: /^정규직/ })).toBeDisabled();
   await reasonBox(correct).fill("계약서 표기 정정");
   await correct.getByRole("radiogroup", { name: /^정정 사유/ }).getByText("입력 오류", { exact: true }).click();
-  await correct.getByRole("button", { name: /고용형태 전환 정정/ }).click();
+  await correct.getByRole("button", { name: "고용 형태 변경 1명 정정" }).click();
   await expect(correct).toBeHidden();
   await go(admin, `/people/${worker.id}`);
   await hrAct(admin, "계약 갱신");

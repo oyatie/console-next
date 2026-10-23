@@ -33,7 +33,7 @@ const NOTE_MAX = 1000;
  * is typed. What must be settled first is named above it: a reservation dated after that day would apply to someone
  * who has left. The exit reason is recorded once the exit is in effect (backend-followups EMP-UI 14).
  */
-export function ReportForm({ employee, onClose, onDone }: { employee: Employee; onClose: () => void; onDone: (message: string) => void }) {
+export function ReportForm({ employee, onClose, onDone }: { employee: Employee; onClose: () => void; onDone: (message: string, reference?: string) => void }) {
   const today = todayKst();
   const reasons = useQuery(reasonCodesQuery("exit_reason"));
   const draft = useDraft({
@@ -50,7 +50,7 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
   const run = useExitCommand({
     check: "resend",
     run: (_: void, key: string) => reportExit({ employee_id: employee.id, effective_exit_date: date, site_manager_note: note.trim(), exit_reason_code: reason ?? undefined }, key),
-    onSuccess: () => { draft.discard(); onDone(t("exit.reported", { name: employee.name })); },
+    onSuccess: (out) => { draft.discard(); onDone(t("exit.reported", { name: employee.name }), out.id); },
   });
   const problems = { date: !date, note: !note.trim() };
   const missing = Object.values(problems).filter(Boolean).length;
@@ -74,15 +74,8 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
       consequence={date ? t("exit.report.consequence.dated", { name: employee.name, date: when }) : t("exit.report.consequence", { name: employee.name })}
       note={draft.problem || draft.restored ? <output>{t(draft.problem ? "draft.unavailable" : "draft.restored")}</output> : undefined}
       missing={tried ? missing : 0}
-      aside={<>
-        {draft.restored && !draft.problem && <Button variant="ghost" onClick={draft.discard} disabled={run.pending}>{t("draft.discard")}</Button>}
-        <Button variant="ghost" onClick={onClose} disabled={run.pending}>{t("lifecycle.cancel")}</Button>
-      </>}
-      primary={
-        <Button type="submit" form={formId} variant="primary" disabled={run.pending}>
-          {date ? t("exit.report.commit", { date: when }) : t("exit.report")}
-        </Button>
-      }
+      aside={<>{draft.restored && !draft.problem && <Button variant="ghost" onClick={draft.discard} disabled={run.pending}>{t("draft.discard")}</Button></>}<Button variant="ghost" onClick={onClose} disabled={run.pending}>{t("composer.dismiss")}</Button></>}
+      action={{ kind: "exitReport", mode: "apply", count: 1 }}
     >
       <OpsExitNote employeeId={employee.id} search={employee.employee_number || employee.name} />
       <fieldset className={s.group} disabled={run.locked}>

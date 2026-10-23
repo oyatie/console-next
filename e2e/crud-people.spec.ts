@@ -51,7 +51,7 @@ test("퇴직 from the record, refused where it must be, closed alone, and the pe
   // The solo admin confirms for HR and for HQ (D26-FINISH: no second person under 결재 none).
   await exitPanel.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
   await signOff(admin.getByRole("dialog").getByRole("group", { name: "확인 사항" }));
-  await admin.getByRole("dialog").getByRole("button", { name: /인사 확인하고/ }).click();
+  await admin.getByRole("dialog").getByRole("button", { name: /퇴직 1명 (반영|예약)/ }).click();
   await expect(admin.getByRole("dialog")).toBeHidden();
   await expect(exitPanel).toContainText("인사 확인됨");
   const caseHref = await exitPanel.getByRole("link", { name: "퇴직 건 열기" }).getAttribute("href");
@@ -59,7 +59,7 @@ test("퇴직 from the record, refused where it must be, closed alone, and the pe
   await go(admin, caseHref!);
   // The case can show HQ's confirmation while another invalidated read still holds its receipt callback.
   const employeeRead = await holdRead(admin, `**/api/v1/employees/${employeeId}`);
-  await admin.getByRole("region", { name: /지금/ }).getByRole("button", { name: "본사 퇴직 확인" }).click();
+  await admin.getByRole("region", { name: /지금/ }).getByRole("button", { name: "퇴직 본사 확인 1명 반영" }).click();
   await employeeRead.requested;
   await expect(admin.getByRole("region", { name: "퇴직" })).toContainText("본사 확인됨");
 
@@ -90,14 +90,14 @@ test("등록 취소 for a mistaken registration, refused for a used one, and 퇴
   const s = admin.getByRole("dialog", { name: "잘못등록 등록 취소" });
   await expect(s).toContainText("운영 중 · 근무한 적 없는 등록만 취소합니다");
   // Negative: nothing goes until the reason and the attestation are given.
-  await expect(s.getByRole("button", { name: "등록 취소", exact: true })).toHaveAttribute("aria-disabled", "true");
-  await s.getByRole("button", { name: "등록 취소", exact: true }).click({ force: true });
+  await expect(s.getByRole("button", { name: "직원 등록 1명 취소", exact: true })).toHaveAttribute("aria-disabled", "true");
+  await s.getByRole("button", { name: "직원 등록 1명 취소", exact: true }).click({ force: true });
   await expect(s).toBeVisible();
   await option(admin, "취소하는 이유", "같은 사람을 두 번 등록함").click();
   await s.getByText("이 사람은 근무한 적이 없습니다").click();
   await expect(admin.getByRole("main").getByText("불러오는 중…", { exact: true })).toBeHidden({ timeout: 15_000 });
   await expectAccessible(admin, "CRUD: 등록 취소 sheet");
-  await s.getByRole("button", { name: "등록 취소", exact: true }).click();
+  await s.getByRole("button", { name: "직원 등록 1명 취소", exact: true }).click();
   await expect(admin).toHaveURL(/\/people$/);
   // Gone from the roster (an empty company shows its first-run ways in, not an empty grid).
   await expect(admin.getByRole("row", { name: /잘못등록/ })).toHaveCount(0);
@@ -110,7 +110,7 @@ test("등록 취소 for a mistaken registration, refused for a used one, and 퇴
   const bulk = admin.getByRole("dialog", { name: "2명 퇴직 보고" });
   await bulk.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(0));
   await bulk.getByLabel("퇴직 사유").fill("사업 정리");
-  await bulk.getByRole("button", { name: "2명 퇴직 보고" }).click();
+  await bulk.getByRole("button", { name: "퇴직 보고 2명 반영" }).click();
   await expect(bulk.getByRole("status")).toContainText("보고 2명 · 거절 0명");
   await expectAccessible(admin, "CRUD: bulk 퇴직 results");
   await bulk.getByRole("button", { name: "닫기", exact: true }).last().click();
@@ -125,7 +125,7 @@ test("등록 취소 for a mistaken registration, refused for a used one, and 퇴
   await admin.getByRole("button", { name: "선택한 2명 퇴직" }).click();
   await bulk.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(0));
   await bulk.getByLabel("퇴직 사유").fill("다시");
-  await bulk.getByRole("button", { name: "2명 퇴직 보고" }).click();
+  await bulk.getByRole("button", { name: "퇴직 보고 2명 반영" }).click();
   await expect(bulk.getByRole("status")).toContainText("보고 0명 · 거절 2명");
   await expect(bulk).toContainText("진행 중인 퇴직 건이 있습니다");
 });

@@ -1,6 +1,7 @@
 import { enCommon } from "./en/common";
 import { enOpsRecovery } from "./en/ops-recovery";
 import { enImportRollback } from "./en/import-rollback";
+import { enComposer } from "./en/composer";
 import { enStatutory } from "./en/statutory";
 import { enRequestOutcome } from "./en/request-outcome";
 import type { ScreenMessageId } from "./ko";
@@ -172,6 +173,7 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enUiCodePicker,
   ...enUiAddressField,
   ...enUiSheet,
+  ...enComposer,
   ...enUiCrumbs,
   ...enRoster,
   ...enPerson,

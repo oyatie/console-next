@@ -22,7 +22,7 @@ test("lifecycle: correct and rescind the latest change, re-read a stale sheet, r
   await todayPreset(promote).click();
   await reasonChip(promote, "정기 승진").click();
   await reasonBox(promote).fill("하반기 정기 승진");
-  await promote.getByRole("button", { name: "오늘 승진 처리", exact: true }).click();
+  await promote.getByRole("button", { name: "승진 1명 반영", exact: true }).click();
   const promoted = history.getByRole("listitem").filter({ hasText: "사원에서 과장으로" });
   await expect(promoted).toBeVisible();
 
@@ -34,7 +34,7 @@ test("lifecycle: correct and rescind the latest change, re-read a stale sheet, r
   await correct.getByRole("textbox", { name: /^새 직위/ }).fill("대리");
   await reasonChip(correct, "입력 오류", "정정 사유").click();
   await expectAccessible(admin, "life: correct the latest change");
-  await correct.getByRole("button", { name: /승진 정정$/ }).click();
+  await correct.getByRole("button", { name: "승진 1명 정정" }).click();
   await expect(history.getByRole("status").filter({ hasText: "승진 기록을 정정했습니다" })).toBeVisible();
   await expect(history.getByRole("listitem").filter({ hasText: "정정됨" })).toContainText("사원에서 과장으로");
   const corrected = history.getByRole("listitem").filter({ hasText: "앞선 기록을 정정한 기록" });
@@ -53,11 +53,11 @@ test("lifecycle: correct and rescind the latest change, re-read a stale sheet, r
   await corrected.getByRole("button", { name: "철회", exact: true }).click();
   const rescind = sheet(admin, "승진 철회");
   await expect(rescind).toContainText("정정이님의 기록이 승진 전으로 돌아가고");
-  await rescind.getByRole("button", { name: "승진 철회", exact: true }).click(); // a check: no reason yet
+  await rescind.getByRole("button", { name: "승진 1명 철회", exact: true }).click(); // a check: no reason yet
   await expect(rescind).toContainText("사유 분류를 선택하십시오");
   await reasonChip(rescind, "계획 철회", "철회 사유").click();
   await expectAccessible(admin, "life: rescind the latest change");
-  await rescind.getByRole("button", { name: "승진 철회", exact: true }).click();
+  await rescind.getByRole("button", { name: "승진 1명 철회", exact: true }).click();
   await expect(history.getByRole("status").filter({ hasText: "정정이님의 승진 기록을 철회했습니다" })).toBeVisible();
   await expect(history.getByRole("listitem").filter({ hasText: "기록을 철회했습니다" })).toContainText("계획 철회");
   await expect(history.getByRole("button", { name: "철회", exact: true })).toHaveCount(0); // nothing in force is left to undo
@@ -80,10 +80,10 @@ test("lifecycle: correct and rescind the latest change, re-read a stale sheet, r
   await todayPreset(elsewhere).click();
   await reasonChip(elsewhere, "특별 승진").click();
   await reasonBox(elsewhere).fill("다른 창에서 기록");
-  await elsewhere.getByRole("button", { name: "오늘 승진 처리", exact: true }).click();
+  await elsewhere.getByRole("button", { name: "승진 1명 반영", exact: true }).click();
   await expect(other.getByRole("region", { name: "인사 이력" }).getByRole("status")).toContainText("주임");
   await other.close();
-  await transfer.getByRole("button", { name: "오늘 전보", exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 반영", exact: true }).click();
   const stale = transfer.getByRole("alert");
   await expect(stale).toContainText("그사이 기록이 바뀌었습니다");
   await expect(stale).toContainText("승진");
@@ -91,7 +91,7 @@ test("lifecycle: correct and rescind the latest change, re-read a stale sheet, r
   await stale.getByRole("button", { name: /^최신 기록 다시 읽기/ }).click();
   await expect(transfer).toContainText("최신 기록을 다시 읽었습니다");
   await expect(reasonBox(transfer)).toHaveValue("채용 업무 전담");
-  await transfer.getByRole("button", { name: "오늘 전보", exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 반영", exact: true }).click();
   await expect(history.getByRole("status").filter({ hasText: "정정이님을 채용팀으로 전보했습니다" })).toBeVisible();
 
   // A second transfer on a reserved date replaces that reservation by name, with the reason the history keeps.

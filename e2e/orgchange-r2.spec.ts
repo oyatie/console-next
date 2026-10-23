@@ -51,7 +51,7 @@ test("an org change moves its people with the unit, stays on the chart with a re
   await expect(totals.getByRole("term").filter({ hasText: /^사업장이 바뀌는 사람$/ }).locator("xpath=preceding-sibling::dd[1]")).toHaveText("1");
   await today(admin.getByRole("main"), "개발 조직 본점 이전");
   await expect(admin.getByRole("main")).not.toContainText(APPROVAL);
-  await admin.getByRole("button", { name: /^반영 · 항목 1개/ }).click();
+  await admin.getByRole("button", { name: "부서 이동 1개 반영" }).click();
 
   // org-19, org-25: back on the chart, a receipt names the change by what it does and links its record.
   await expect(admin).toHaveURL(/\/org(\?|$)/);
@@ -95,7 +95,7 @@ test("an org change moves its people with the unit, stays on the chart with a re
   await expect(merge).not.toContainText("삭제됩니다");
   await expect(merge).toContainText("이력에 남음");
   await today(merge, "영업 조직 통합");
-  await merge.getByRole("button", { name: /^반영/ }).click();
+  await merge.getByRole("button", { name: "부서 통합 1개 반영" }).click();
   await expect(receipt(admin)).toContainText("영업3팀을 인사팀에 합침");
   await expect(box(admin, "영업3팀")).toHaveCount(0);
   await receipt(admin).getByRole("link", { name: /기록 보기$/ }).click();
@@ -130,7 +130,7 @@ test("a scheduled change can be moved or cancelled, frees its unit when cancelle
   await rename.getByRole("textbox", { name: /^새 이름/ }).fill("국내영업팀");
   await rename.getByRole("textbox", { name: /^시행일/ }).fill(due);
   await rename.getByRole("textbox", { name: /^사유/ }).fill("영업 조직 이름 정리");
-  await rename.getByRole("button", { name: /^예약 · / }).click();
+  await rename.getByRole("button", { name: "부서 이름 변경 1개 예약" }).click();
   await expect(receipt(admin)).toContainText("영업1팀 → 국내영업팀 이름 변경");
   await expect(admin.getByRole("link", { name: "예정 1건" })).toBeVisible();
 
@@ -140,7 +140,7 @@ test("a scheduled change can be moved or cancelled, frees its unit when cancelle
   const dissolve = sheet(admin, "영업2팀 폐지");
   await dissolve.getByRole("textbox", { name: /^시행일/ }).fill(due);
   await dissolve.getByRole("textbox", { name: /^사유/ }).fill("영업 조직 통합");
-  await dissolve.getByRole("button", { name: /^예약 · / }).click();
+  await dissolve.getByRole("button", { name: "부서 폐지 1개 예약" }).click();
   await expect(admin.getByRole("link", { name: "예정 2건" })).toBeVisible();
   const held = await openUnit(admin, "영업2팀");
   await held.getByRole("link", { name: /^이 부서를 붙잡고 있는 OC-\d{4}-\d{4} 열기/ }).click();
@@ -151,7 +151,7 @@ test("a scheduled change can be moved or cancelled, frees its unit when cancelle
   const cancel = admin.getByRole("dialog", { name: /예약 취소$/ });
   await expect(cancel).toContainText("반영되지 않습니다");
   await cancel.getByRole("textbox", { name: /^취소 사유/ }).fill("통합 보류");
-  await cancel.getByRole("button", { name: /예약 취소$/ }).click();
+  await cancel.getByRole("button", { name: "조직 변경 취소" }).click();
   await expect(admin.getByRole("button", { name: "예약 취소", exact: true })).toBeHidden();
   const freed = await openUnit(admin, "영업2팀");
   await expect(freed.getByRole("link", { name: /^이 부서를 붙잡고 있는/ })).toHaveCount(0);

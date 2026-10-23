@@ -17,7 +17,7 @@ async function fillCommon(sheet: Locator, admin: Page, c: Clicks) {
     await c.click(sheet.getByRole("button", { name: /오늘 · 바로 반영/ }));
     await c.click(sheet.getByRole("radiogroup", { name: /^사유 분류/ }).getByText("조직 개편", { exact: true }));
     await sheet.getByRole("textbox", { name: /^사유/ }).fill("조직 개편");
-    await expect(admin.getByRole("button", { name: /오늘 전보$/ })).toHaveClass(/btn--danger/); // applies now: red
+    await expect(admin.getByRole("button", { name: /전보 \d+명 반영$/ })).toHaveClass(/btn--danger/); // applies now: red
   };
 }
 
@@ -52,7 +52,7 @@ test("J6 bulk transfer: a refused person is named and nothing is recorded; retry
   await c.click(admin.getByRole("radiogroup", { name: /^사유/ }).getByText("조직 개편", { exact: true }));
   await admin.getByRole("textbox", { name: /^메모/ }).fill("조직 개편");
   await expectAccessible(admin, "J6: bulk workspace ready");
-  await c.click(admin.getByRole("button", { name: /^3명 전보 · 오늘 반영/ }));
+  await c.click(admin.getByRole("button", { name: "전보 3명 반영" }));
   await expect(admin.getByRole("alert").filter({ hasText: "1명이 거부되어 이 발령은 기록되지 않았습니다" })).toBeVisible();
   await expect(admin.getByRole("row", { name: /박삼번/ })).toContainText("거부됨");
   await expectAccessible(admin, "J6: refused batch");
@@ -91,14 +91,14 @@ test("J6 bulk transfer: a refused person is named and nothing is recorded; retry
   const batch = await batchOf();
   const body = { reason_code: "PLAN_WITHDRAWN", note: "다른 담당자가 먼저 철회", confirm_cascades: true };
   expect((await api(`/employees/lifecycle-events/bulk/${batch}/rescind`, "POST", body)).status()).toBe(200);
-  await rescind.getByRole("button", { name: "2명 모두 철회" }).click();
+  await rescind.getByRole("button", { name: "발령 2명 철회" }).click();
   await expect(rescind.getByRole("alert")).toContainText("이미 철회되었거나 되돌릴 기록이 남아 있지 않습니다");
   // At the API a second undo of an applied batch is refused person by person as already voided (contract-be.md says
   // 404; the server answers 422 — backend-followups EMP-B2), and nothing more is written.
   const again = await api(`/employees/lifecycle-events/bulk/${batch}/rescind`, "POST", body);
   expect([again.status(), await codeOf(again)]).toEqual([422, "bulk_lifecycle_refused"]);
   expect(await again.text()).toContain("lifecycle_event_voided");
-  await rescind.getByRole("button", { name: "닫기", exact: true }).click();
+  await rescind.getByRole("button", { name: "닫기", exact: true }).last().click();
   await go(admin, "/people");
   for (const name of names.slice(0, 2)) await expect(admin.getByRole("row", { name: new RegExp(name) })).toContainText("인사부");
 
@@ -146,12 +146,12 @@ test("J6 bulk transfer from a paste: lines keyed by employee number, errors firs
   await rest();
   await expect(sheet).toContainText("새 조직이 2곳이어도 한 번의 발령으로 기록합니다");
   // Lines that can't be read stop the commit and take focus to the first one to fix.
-  await sheet.getByRole("button", { name: "4명 오늘 전보" }).click();
+  await sheet.getByRole("button", { name: "전보 4명 반영" }).click();
   await expect(sheet).toContainText("오류 2줄을 수정하거나 제외해야 기록할 수 있습니다");
   await expect(sheet.getByRole("button", { name: "6줄 · P6-9999 제외" })).toBeFocused();
   await sheet.getByRole("button", { name: "6줄 · P6-9999 제외" }).click();
   await sheet.getByRole("button", { name: "7줄 · P6-0005 제외" }).click();
-  await c.click(sheet.getByRole("button", { name: "4명 오늘 전보" }));
+  await c.click(sheet.getByRole("button", { name: "전보 4명 반영" }));
   // Paste mode: open + type + date + reason code + commit, plus the 2 required statements; the unit comes from the paste.
   expect(c.done("J6 bulk transfer from a paste")).toBeLessThanOrEqual(5);
 

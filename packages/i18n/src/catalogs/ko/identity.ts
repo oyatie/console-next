@@ -17,8 +17,6 @@ export const koIdentity = {
   "identity.none.consequence": "판단을 선택하면 무엇이 바뀌는지 여기에 나옵니다",
   "identity.different.consequence": "{name}님의 동일인 확인 표시를 해제합니다. 기록은 바뀌지 않으며 판단과 사유가 남습니다",
   "identity.same.consequence": "{name}님의 기록을 {keep}에 병합합니다. 병합한 기록은 더 쓰지 않으며 되돌릴 수 없습니다",
-  "identity.different.commit": "다른 사람으로 확정",
-  "identity.same.commit": "패스키 확인 후 병합",
   "identity.passkeyCancelled": "패스키 확인을 취소해 병합하지 않았습니다. 다시 누르면 확인을 다시 요청합니다",
   "identity.receipt.different": "다른 사람으로 확정했습니다.",
   "identity.receipt.merged": "선택한 기록에 병합했습니다.",

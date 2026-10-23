@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Ban, Network, Trash2 } from "lucide-react";
+import { Network } from "lucide-react";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
@@ -9,7 +9,7 @@ import { QueryState } from "../../../lib/react/query-state";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
 import { ChoiceField } from "../../../ui/choice/choice-field";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
 import { applySetup, STRUCTURE_READS } from "../../../reference/org/api";
 import { depts, descendants, direct, type Place } from "../../../reference/org/domain/structure";
 import { ownRefusal, refusalText } from "../../../reference/crud/present";
@@ -67,8 +67,8 @@ export function DeptEndSheet({ place, setup, onClose, onDone, onPropose }: { pla
             ? t("crud.unit.dissolveConsequence", { name: d.name })
             : t("crud.unit.noneConsequence");
   return (
-    <Sheet
-      open
+    <Composer
+      commitId={plan === "dissolve" ? "crud-unit-dissolve" : "crud-unit-erase"}
       kicker={<><Network size={14} aria-hidden />{[place.entity.name, place.workplace?.name].filter(Boolean).join(" › ")}</>}
       title={t("crud.unit.title", { name: d.name })}
       subtitle={t("crud.unit.subtitle")}
@@ -76,24 +76,11 @@ export function DeptEndSheet({ place, setup, onClose, onDone, onPropose }: { pla
       pending={pending}
       notice={<CommandError error={erase.error ?? dissolve.error ?? raise.error} own={ownRefusal} />}
       consequence={<span id="crud-unit-consequence">{consequence}</span>}
-      actions={
-        <>
-          <Button onClick={onClose}>{t("orgStructure.cancel")}</Button>
-          {o?.can_manage && (plan || (ask && !children)) && (
-            <Button
-              variant="danger"
-              id={plan === "dissolve" ? "crud-unit-dissolve" : "crud-unit-erase"}
-              disabled={pending}
-              aria-disabled={plan ? undefined : true}
-              aria-describedby={plan ? undefined : "crud-unit-consequence"}
-              onClick={() => plan && run[plan].mutate(Number(o.version))}
-            >
-              {plan === "dissolve" ? <Ban size={16} aria-hidden /> : <Trash2 size={16} aria-hidden />}
-              {t(plan === "dissolve" ? "crud.unit.dissolve" : "crud.unit.erase", { name: d.name })}
-            </Button>
-          )}
-        </>
-      }
+      action={{ kind: plan === "erase" ? "orgDelete" : "orgDissolve", mode: plan === "erase" ? "remove" : "apply", count: 1 }}
+      tone="danger"
+      onSubmit={() => { if (o?.can_manage && plan) run[plan].mutate(Number(o.version)); }}
+      blocked={!o?.can_manage || !plan ? { reason: consequence ?? t("crud.noPermission") } : undefined}
+
     >
       <QueryState q={q}>
         {(read) => (
@@ -144,7 +131,7 @@ export function DeptEndSheet({ place, setup, onClose, onDone, onPropose }: { pla
           </>
         )}
       </QueryState>
-    </Sheet>
+    </Composer>
   );
 }
 

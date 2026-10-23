@@ -16,7 +16,6 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { DateField } from "../../../ui/date/date-field";
 import { inBounds } from "../../../ui/date/days";
 import { Receipt } from "../../../ui/receipt/receipt";
-import { Sheet } from "../../../ui/sheet/sheet";
 import { refusalOf, type LifecycleEvent } from "../api";
 import { personalFactsQuery } from "../api/record";
 import { groupMissing, groupTargets } from "../domain/group-transfer";
@@ -26,7 +25,7 @@ import { placeOptions } from "../domain/register-place";
 import { fmtDay, fmtDayShort, placeEntityText } from "../present";
 import { GroupBlocked, GroupFields } from "./group-transfer-fields";
 import { GroupPreview } from "./group-transfer-preview";
-import { LifecycleFrame } from "./lifecycle-frame";
+import { Composer } from "../../../ui/composer/composer";
 import { Changed, LockedDate, Restored } from "./lifecycle-notes";
 import { LifecycleRefusal } from "./lifecycle-refusal";
 import { LifecycleWhy } from "./lifecycle-what";
@@ -107,17 +106,11 @@ export function GroupTransferSheet({ d, events, head, units, act, offer, seed, c
   const kicker = <><User size={12} aria-hidden />{t("lifecycle.kicker", { name: e.name, number: e.employee_number ?? "—", where: [from, e.org_unit, e.position].filter(Boolean).join(" · ") })}</>;
   if (!ready)
     return (
-      <Sheet open kicker={kicker} title={t("groupTransfer.title")} onClose={onClose} consequence={null} actions={<Button onClick={onClose}>{t("lifecycle.close")}</Button>}>
+      <Composer action={{ kind: "GROUP_TRANSFER", mode: "apply", count: 1 }} onSubmit={() => false} locked kicker={kicker} title={t("groupTransfer.title")} onClose={onClose} consequence={null} recovery={<Button onClick={onClose}>{t("composer.dismiss")}</Button>}>
         {targets.kind !== "ready" && <GroupBlocked targets={targets} onTransfer={() => onOpen("TRANSFER")} />}
-      </Sheet>
+      </Composer>
     );
   const words = { name: e.name, from, to, date: when !== "none" ? fmtDay(v0.date) : "", last: when !== "none" ? fmtDay(addDays(v0.date, -1)) : "" };
-  const commit =
-    locked ? t("lifecycle.commit.change", { date: fmtDayShort(v0.date), action })
-    : when === "none" ? t("lifecycle.commit.none", { action })
-    : when === "future" ? t("lifecycle.commit.future", { date: fmtDate(v0.date), action })
-    : when === "today" ? t("lifecycle.commit.today", { action })
-    : t("lifecycle.commit.past", { date: fmtDayShort(v0.date), action });
   const code = run.isError && !checking ? refusalOf(run.error)?.code : undefined;
   const refusal = run.isError && !checking && (
     groupCode(code) ? (
@@ -175,7 +168,8 @@ export function GroupTransferSheet({ d, events, head, units, act, offer, seed, c
     />
   );
   return (
-    <LifecycleFrame
+    <Composer
+      localDraft
       onSaveDraft={onClose}
       kicker={kicker}
       title={locked ? t("lifecycle.title.change", { name: e.name, action }) : t("groupTransfer.title")}
@@ -189,14 +183,14 @@ export function GroupTransferSheet({ d, events, head, units, act, offer, seed, c
           {refusal}
         </>
       }
-      consequence={[t(`groupTransfer.consequence.${when}`, words), replaces && t("lifecycle.replaces", { date: fmtDayShort(v0.date), action })].filter(Boolean).join(" · ")}
-      commit={{ label: commit, tone: locked || when === "future" || when === "none" ? "primary" : "danger" }}
+      consequence={<><GroupPreview from={from} to={to} place={picked ? picked.site : ""} date={when === "none" ? "" : v0.date} v={v0} /><p>{[t(`groupTransfer.consequence.${when}`, words), replaces && t("lifecycle.replaces", { date: fmtDayShort(v0.date), action })].filter(Boolean).join(" · ")}</p></>}
+      action={{ kind: "GROUP_TRANSFER", mode: locked ? "change" : when === "future" || when === "none" ? "schedule" : "apply", count: 1 }}
+      tone={locked || when === "future" || when === "none" ? "primary" : "danger"}
       missing={tried ? count : 0}
-      open={count}
-      actions={
+      recovery={
         checking ? (
           <>
-            <Button onClick={onClose}>{t("lifecycle.close")}</Button>
+            <Button onClick={onClose}>{t("composer.dismiss")}</Button>
             <Button variant="primary" onClick={() => run.check()}>{t("lifecycle.checking.ask")}</Button>
           </>
         ) : undefined
@@ -222,8 +216,7 @@ export function GroupTransferSheet({ d, events, head, units, act, offer, seed, c
           date={when === "none" ? "" : v0.date}
         />
       </div>
-      <GroupPreview from={from} to={to} place={picked ? picked.site : ""} date={when === "none" ? "" : v0.date} v={v0} />
       <LifecycleWhy kind="GROUP_TRANSFER" v={v0} set={set} demotion={false} replaces={Boolean(replaces)} correcting={false} voidNote={false} show={(k) => tried && Boolean(missing[k as keyof typeof missing])} />
-    </LifecycleFrame>
+    </Composer>
   );
 }

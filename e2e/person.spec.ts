@@ -63,7 +63,7 @@ test("employee page: effective-date history, change a reservation, home-branch c
   await todayPreset(transfer).click();
   await reasonChip(transfer, "업무 필요").click();
   await reasonBox(transfer).fill("채용 업무 전담");
-  await transfer.getByRole("button", { name: "오늘 전보", exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 반영", exact: true }).click();
   await expect(history).toContainText("정기록을 인사부에서 채용팀으로 전보했습니다");
   await hrAct(admin, "승진 처리");
   const promote = sheet(admin, "정기록 승진 처리");

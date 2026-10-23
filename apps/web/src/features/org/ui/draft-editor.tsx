@@ -4,12 +4,11 @@ import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
-import { useDirtyEscape } from "../../../lib/react/dirty-escape";
 import { landed } from "../../../lib/react/landed";
 import { edit, isConflict, load, rebaseAll, resolve, type Fields } from "../../../lib/pure/three-way";
 import { todayKst } from "../../../lib/pure/today";
 import { ORG_READS } from "../../../reference/org/api";
-import { Button } from "../../../ui/button/button";
+import { Composer } from "../../../ui/composer/composer";
 import { ConflictPanel } from "../../../ui/conflict/field-conflict";
 import { DateField } from "../../../ui/date/date-field";
 import { Field } from "../../../ui/field/field";
@@ -74,7 +73,6 @@ export function DraftEditor({ d, scheduled, refetch, onSaved, onNote, onClose }:
     setError(e);
     if (!e.reason && !e.form && conflicts.length === 0) save.mutate(undefined);
   };
-  const { ref: escRef, armed } = useDirtyEscape(Object.keys(body).length > 0, onClose);
   const dateError = refusalOf(save.error) === "date" ? t("orgChange.date.min") : undefined;
   const choose = (k: Key, choice: "theirs" | "mine") => {
     setFields((f) => ({ ...f, [k]: resolve(f[k], choice) }));
@@ -83,9 +81,11 @@ export function DraftEditor({ d, scheduled, refetch, onSaved, onNote, onClose }:
   };
   const changedAt = fmtDateTime(d.updatedAt);
   return (
-    <section className={css.form} aria-labelledby="draft-editor" ref={escRef}>
-      <h3 id="draft-editor" className={css.formHead} tabIndex={-1}>{t(scheduled ? "orgChange.scheduled.edit" : "orgChange.edit")}</h3>
-      {scheduled && <p className={css.consequence} role="note">{t("orgChange.scheduled.edit.consequence")}</p>}
+    <Composer title={t(scheduled ? "orgChange.scheduled.edit" : "orgChange.edit")} dirty={Object.keys(body).length > 0} onClose={onClose}
+      pending={save.isPending} action={{ kind: "orgChange", mode: "change" }} onSubmit={press}
+      blocked={conflicts.length ? { reason: t("uiConflict.left", { count: conflicts.length }) } : undefined}
+      consequence={scheduled ? t("orgChange.scheduled.edit.consequence") : undefined}
+    ><div className={css.form}>
       {conflicts.length > 0 && (
         <ConflictPanel
           kind="field_conflict"
@@ -131,13 +131,7 @@ export function DraftEditor({ d, scheduled, refetch, onSaved, onNote, onClose }:
       </Field>
       {taken.includes("reason") && <p className={css.changed}>{t("live.notice.updated_by.hidden", { time: changedAt })}</p>}
       {error.form && <p className="alert" role="alert">{error.form}</p>}
-      {armed && <p className="muted" role="status">{t("orgChange.escConfirm")}</p>}
       <CommandError error={refusalOf(save.error) === "date" ? undefined : save.error} />
-      <div className={css.bar}>
-        <Button disabled={save.isPending} onClick={onClose}>{t("common.back")}</Button>
-        <span className={css.spacer} />
-        <Button variant="primary" disabled={save.isPending || conflicts.length > 0} onClick={press}>{t(scheduled ? "orgChange.scheduled.save" : "orgChange.edit.save")}</Button>
-      </div>
-    </section>
+    </div></Composer>
   );
 }

@@ -13,7 +13,7 @@ import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { personOption } from "../../../reference/person/ui/person-option";
 import { personLabel } from "../../../reference/person/present";
 import { resolveIdentity, samePersonQuery, type Resolution } from "../api";
-import { LifecycleFrame } from "./lifecycle-frame";
+import { Composer } from "../../../ui/composer/composer";
 import s from "./lifecycle.module.css";
 
 type Detail = components["schemas"]["EmployeeDetail"];
@@ -43,14 +43,15 @@ export function IdentitySheet({ d, onClose, onDone }: { d: Detail; onClose: () =
   const kept = others.find((x) => x.id === keep);
   const cancelled = run.error instanceof Error && run.error.message === "passkey_cancelled";
   return (
-    <LifecycleFrame
+    <Composer
       title={t("identity.title", { name: e.name })}
       subtitle={[e.employee_number, e.org_unit, e.hire_date && fmtDate(e.hire_date)].filter(Boolean).join(" · ")}
       onClose={onClose}
       pending={run.isPending}
       notice={cancelled ? <p className={s.changed} role="alert">{t("identity.passkeyCancelled")}</p> : run.isError && <CommandError error={run.error} />}
       consequence={<span>{verdict === "SAME" ? t("identity.same.consequence", { name: e.name, keep: kept ? personLabel(kept, others).text : t("identity.keep.placeholder") }) : verdict === "DIFFERENT" ? t("identity.different.consequence", { name: e.name }) : t("identity.none.consequence")}</span>}
-      commit={{ label: t(verdict === "SAME" ? "identity.same.commit" : "identity.different.commit"), tone: verdict === "SAME" ? "danger" : "primary" }}
+      action={{ kind: verdict === "SAME" ? "identityMerge" : "identityDifferent", mode: "apply", count: 1 }}
+      tone={verdict === "SAME" ? "danger" : "primary"}
       missing={tried ? count : 0}
       onSubmit={() => {
         setTried(true);
@@ -92,6 +93,6 @@ export function IdentitySheet({ d, onClose, onDone }: { d: Detail; onClose: () =
       <Field label={t("profile.reason")} required hint={t("lifecycle.reason.count", { count: reason.length, max: REASON_MAX })} error={tried && missing.reason ? t("lifecycle.reason.missing") : undefined}>
         {(p) => <TextInput {...p} value={reason} maxLength={REASON_MAX} onChange={(x) => (run.reset(), setReason(x.target.value))} />}
       </Field>
-    </LifecycleFrame>
+    </Composer>
   );
 }

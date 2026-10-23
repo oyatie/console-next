@@ -274,8 +274,6 @@ export const enEmpCard: Partial<Record<keyof typeof koEmpCard, string>> = {
   "empCard.denied.list": "Back to people",
   "empCard.denied.pick": "Choose a reason to send · pressing goes to the reasons · only this link's address is attached",
   "empCard.denied.unserved": "Sending access requests is not served yet · ask the ops account directly",
-  "empCard.draft.save": "Save draft",
-  "empCard.draft.session": "Reopen in this tab to restore your draft. Reloading clears it.",
   "empCard.rrn.entryComing": "Entering or correcting the number opens with its approval steps (passkey, second person) · today only the employee import records it",
   "empCard.f.registerNote": "Register note",
   "empCard.f.registerNote.hint": "Register item 9 · clear it to remove",

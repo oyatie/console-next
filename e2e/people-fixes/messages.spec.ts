@@ -52,7 +52,7 @@ test("solo: a contract overlap names its period and opens that contract's correc
   await report.getByRole("button", { name: /퇴직 보고$/ }).click();
   await admin.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
   await signOff(admin.getByRole("dialog").getByRole("group", { name: "확인 사항" }));
-  await admin.getByRole("dialog").getByRole("button", { name: /인사 확인하고/ }).click();
+  await admin.getByRole("dialog").getByRole("button", { name: /퇴직 1명 (반영|예약)/ }).click();
   await expect(admin.getByRole("dialog")).toBeHidden();
   const read = async () => ((await (await api(`/employees/${worker.id}`)).json()) as { employee: { status: string; exit_date: string } }).employee;
   await expect.poll(async () => (await read()).status).toBe("EXITED");
@@ -67,14 +67,14 @@ test("solo: a contract overlap names its period and opens that contract's correc
   const url = `**/api/v1/employees/${worker.id}/rehire`;
   await admin.route(url, (route) => route.continue({ postData: JSON.stringify({ ...route.request().postDataJSON(), hire_date: before.exit_date }) }));
   const early = admin.waitForResponse((r) => r.request().method() === "POST" && r.url().endsWith(`/employees/${worker.id}/rehire`));
-  await rehire.getByRole("button", { name: /^재입사로 등록/ }).click();
+  await rehire.getByRole("button", { name: /재입사 1명 (예약|반영)/ }).click();
   expect((await early).status()).toBe(422);
   expect(await codeOf(await early)).toBe("rehire_date_not_after_exit");
   await expect(rehire.getByRole("alert")).toContainText("마지막 퇴직일");
   await expect(rehire.getByRole("alert")).toContainText(before.exit_date);
   expect(await read()).toEqual(before);
   await admin.unroute(url);
-  await rehire.getByRole("button", { name: /^재입사로 등록/ }).click();
+  await rehire.getByRole("button", { name: /재입사 1명 (예약|반영)/ }).click();
   await expect(rehire).toBeHidden();
   expect((await read()).status).toBe("ACTIVE");
 });

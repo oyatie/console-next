@@ -49,7 +49,7 @@ test(`regression: after the only person's exit (${lastDay}) the 법인 counts no
   await expect(exitPanel).toContainText("보고됨");
   await exitPanel.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
   await signOff(admin.getByRole("dialog").getByRole("group", { name: "확인 사항" }));
-  await admin.getByRole("dialog").getByRole("button", { name: /인사 확인하고/ }).click();
+  await admin.getByRole("dialog").getByRole("button", { name: /퇴직 1명 (반영|예약)/ }).click();
   await expect(exitPanel).toContainText("인사 확인됨");
 
   // Live counts drop the confirmed exit; a dated read still includes the last working day.

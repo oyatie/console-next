@@ -1,3 +1,4 @@
+import { ReceiptReference } from "../../../ui/composer/receipt-reference";
 import { Link } from "@tanstack/react-router";
 import { FileText } from "lucide-react";
 import { t } from "@console/i18n";
@@ -17,12 +18,13 @@ export function ChangeReceipt() {
       state="applied"
       message={n.message}
       onDismiss={() => noteChange()}
-      actions={
+      actions={<>
+        <ReceiptReference value={n.code} />
         <Link to="/org/changes/$id" params={{ id: n.id }} className={receiptAction} onClick={() => noteChange()}>
           <FileText size={14} aria-hidden />
           {t("orgChange.receipt.open", { code: n.code })}
         </Link>
-      }
+      </>}
     />
   );
 }

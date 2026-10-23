@@ -4,7 +4,13 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, expect, test } from "vitest";
-import { EN_TERM_RULES, TERM_RULES, catalogIds, checkRuntimeOutput, checkTerms, checkUnused, copyEntries } from "./check-copy.mjs";
+import { EN_TERM_RULES, TERM_RULES, catalogIds, checkRuntimeOutput, checkTerms, checkUnused, copyEntries, checkComposer } from "./check-copy.mjs";
+test("governed commit and dismiss labels must come from the verb table", () => {
+  expect(checkComposer("apps/web/src/features/people/ui/lifecycle-sheet.tsx", '<Composer action={{ kind: "TRANSFER", mode: "apply" }} />')).toEqual([]);
+  for (const text of ['<Composer commit={{ label: t("bad.commit") }} />', '<Composer dismissLabel={t("common.back")} />', '<Sheet actions={<Button type="submit">{t("bad.commit")}</Button>} />', '<Button onClick={() => run.mutate(undefined)}>{t("bad.commit")}</Button>', '<Button onClick={onClose}>{t("common.back")}</Button>']) {
+    expect(checkComposer("apps/web/src/features/people/ui/lifecycle-sheet.tsx", text)).not.toEqual([]);
+  }
+});
 
 const src = [`t("org.title"); t(\`exit.action.\${k}\`); const id = \`org.change.event.\${e.action}\`;`];
 

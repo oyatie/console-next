@@ -12,11 +12,39 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { IntlMessageFormat } from "intl-messageformat";
 import { applyJosa, resolveJosa } from "../packages/i18n/src/josa.ts";
+import ts from "typescript";
 
 const HANGUL = /[ㄱ-ㆎ가-힣]/;
 const CATALOGS = "packages/i18n/src/catalogs";
 const BASELINE = "scripts/copy-unused-baseline.json";
 const escape = (s) => s.replace(/[.*+?^$()|[\]\\{}]/g, "\\$&");
+
+// Governed org/lifecycle forms have one owner for commit and dismiss copy, including their page-sized variants.
+export function checkComposer(file, text) {
+  if (!/apps\/web\/src\/features\/(?:org\/ui\/|people\/ui\/(?:lifecycle-|bulk-(?:page|sheet|exit-sheet|rescind)|group-transfer-sheet|cancel-sheet|exit-|identity-sheet|profile-sheet|register-rehire))/.test(file)) return [];
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const problems = [];
+  const visit = (node) => {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tag = node.tagName.getText(source);
+      const attributes = node.attributes.properties.filter(ts.isJsxAttribute);
+      const attr = (name) => attributes.find((a) => a.name.getText(source) === name)?.initializer?.getText(source) ?? "";
+      const refuse = (why) => problems.push(`${file}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}: composer.verb: ${why}; use Composer's typed action and canonical dismiss`);
+      if (["Sheet", "LifecycleFrame", "ApprovalCard"].includes(tag)) refuse("parallel governed frame");
+      if (tag === "Composer" && attributes.some((a) => ["commit", "dismissLabel", "actions"].includes(a.name.getText(source)))) refuse("per-screen commit/dismiss label");
+      if (tag === "Button") {
+        if ((attr("type") === '"submit"' || /\.(?:mutate|submit)\(/.test(attr("onClick"))) && !node.parent.getText(source).includes("commitLabel(")) refuse("per-screen commit control");
+        if (/\b(?:onClose|close)\b/.test(attr("onClick")) && ts.isJsxOpeningElement(node)) {
+          const label = node.parent.children.map((c) => c.getText(source)).join("");
+          if (!/^\{t\("composer.dismiss"\)\}$/.test(label)) refuse("noncanonical dismiss label");
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return problems;
+}
 
 // The quoted keys of a catalog file's object literal(s).
 export const catalogIds = (text) => [...text.matchAll(/^\s*(["'])([^"']+)\1:/gm)].map((m) => m[2]);
@@ -154,7 +182,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // schema.d.ts is generated from the backend's OpenAPI doc comments (`npm run gen:api`), never rendered.
   for (const p of ["apps/web/src", "packages/api/src"].flatMap((d) => walk(d))) {
     if (!/\.(tsx?|css)$/.test(p) || isTest(p) || p === "packages/api/src/schema.d.ts") continue;
-    readFileSync(p, "utf8").split("\n").forEach((line, i) => {
+    const source = readFileSync(p, "utf8");
+    problems.push(...checkComposer(p, source));
+    source.split("\n").forEach((line, i) => {
       if (HANGUL.test(line)) problems.push(`${p}:${i + 1}: literal outside the i18n catalogs: ${line.trim().slice(0, 100)}`);
     });
   }

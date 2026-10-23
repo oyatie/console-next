@@ -2,10 +2,11 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
-import { Button, Form } from "../../../ui/button/button";
+import { Button } from "../../../ui/button/button";
 import { BlockedPanel } from "../../../ui/blocker/blocked-panel";
 import { Receipt } from "../../../ui/receipt/receipt";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
+import { commitLabel, type ActionDescription } from "../../../ui/composer/actions";
 import { CommandError } from "../../../lib/react/command-error";
 import { LIFECYCLE_EVENT, actor, label } from "../../../lib/labels";
 import { problemOf } from "../api";
@@ -49,7 +50,13 @@ export function StepFrame(p: {
   /** Fields still missing after a commit attempt (0 hides the line). */
   missing: number;
   aside?: ReactNode;
-  primary: ReactNode;
+  action: ActionDescription;
+  tone?: "primary" | "danger";
+  blocked?: { reason: ReactNode };
+  secondary?: ReactNode;
+  draftAction?: ActionDescription;
+  draftTone?: "primary" | "secondary";
+  onSaveDraft?: () => void;
   children: ReactNode;
 }) {
   const { run, sheet } = p;
@@ -57,7 +64,7 @@ export function StepFrame(p: {
   const lost = phase.kind === "lost";
   const elsewhere = phase.kind === "elsewhere" ? phase.effect : (p.stale ?? null);
   const onClose = sheet?.onClose;
-  const back = onClose && <Button onClick={onClose} disabled={run.pending}>{t("common.back")}</Button>;
+  const back = onClose && <Button onClick={onClose} disabled={run.pending}>{t("composer.dismiss")}</Button>;
   const consequence = (
     <>
       <p className={s.consequence}>{p.consequence}</p>
@@ -77,56 +84,30 @@ export function StepFrame(p: {
       {phase.kind === "notRecorded" && <p className={s.note} role="status">{t("exit.check.notRecorded")}</p>}
     </>
   );
-  const actions = lost ? (
-    <>
-      <span className={s.grow} />
-      {back}
-      <Button variant="primary" disabled={run.checking} onClick={run.checkNow}>{t("exit.check")}</Button>
-    </>
-  ) : elsewhere ? (
-    <>
-      <span className={s.grow} />
-      {p.follow ?? back}
-    </>
-  ) : (
-    <>
-      {p.aside}
-      <span className={s.grow} />
-      {p.missing > 0 && <span className={s.missing} role="status">{t("exit.missing", { count: p.missing })}</span>}
-      {p.primary}
-    </>
-  );
-  const form = (body: ReactNode) => (
-    <Form id={p.formId} className="form" noValidate onSubmit={p.onSubmit}>{body}</Form>
-  );
-  if (sheet)
-    return (
-      <Sheet
-        open
-        kicker={sheet.kicker}
-        title={sheet.title}
-        subtitle={sheet.subtitle}
-        onClose={sheet.onClose}
-        pending={run.pending || run.checking || p.busy}
-        locked={run.locked || Boolean(elsewhere)}
-        consequence={consequence}
-        notice={notice}
-        actions={actions}
-      >
-        {form(<>{p.children}{p.signoffs}</>)}
-      </Sheet>
-    );
-  return form(
-    <>
-      {p.children}
-      <div className={s.foot}>
-        {consequence}
-        {p.signoffs}
-        {notice}
-        <div className={s.decision}>{actions}</div>
-      </div>
-    </>,
-  );
+  const recovery = lost ? <>{back}<Button variant="primary" disabled={run.checking} onClick={run.checkNow}>{t("exit.check")}</Button></> : elsewhere ? <>{p.follow ?? back}</> : undefined;
+  return <Composer
+    formId={p.formId}
+    layout={sheet ? "drawer" : "page"}
+    kicker={sheet?.kicker}
+    title={sheet?.title ?? commitLabel(p.action)}
+    subtitle={sheet?.subtitle}
+    onClose={sheet?.onClose}
+    pending={run.pending || run.checking || p.busy}
+    locked={run.locked || Boolean(elsewhere)}
+    consequence={consequence}
+    sections={{ preflight: p.signoffs }}
+    notice={notice}
+    recovery={recovery}
+    secondary={<>{!sheet && p.aside}{p.secondary}</>}
+    action={p.action}
+    tone={p.tone}
+    blocked={p.blocked}
+    missing={p.missing}
+    onSaveDraft={p.onSaveDraft}
+    draftAction={p.draftAction}
+    draftTone={p.draftTone}
+    onSubmit={p.onSubmit}
+  >{p.children}</Composer>;
 }
 
 /** Someone else took the step: who and when, and what this user had typed, kept readable and copyable. */

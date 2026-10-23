@@ -1,5 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { commitLabel, verbLabel } from "../../../ui/composer/actions";
+import { exitUndoVerb } from "../domain/exits";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
@@ -20,7 +22,7 @@ const REASON_MAX = 1000;
  * beside a forward decision. Rejection after the exit applied records a compensating event; rejection of a
  * scheduled exit withdraws it.
  */
-export function CloseForm({ c: opened, reject, onClose, onDone }: { c: Case; reject: boolean; onClose: () => void; onDone: (message: string) => void }) {
+export function CloseForm({ c: opened, reject, onClose, onDone }: { c: Case; reject: boolean; onClose: () => void; onDone: (message: string, reference?: string) => void }) {
   const { data, refetch } = useQuery({ ...caseQuery(opened.id), initialData: opened });
   const c = data ?? opened;
   // Sheets hold list refreshes; this decision must still follow its case's SSE changes.
@@ -35,12 +37,13 @@ export function CloseForm({ c: opened, reject, onClose, onDone }: { c: Case; rej
     caseId: c.id,
     check: reject ? "reject_exit" : "cancel_exit",
     run: () => closeExit(c.id, reject, reason.trim()),
-    onSuccess: () => onDone(t(reject ? "exit.rejected" : "exit.cancelled", { name })),
+    onSuccess: () => onDone(t(reject ? "exit.rejected" : "exit.cancelled", { name }), c.id),
   });
   const exited = reject && (c.exit_event_state ? c.exit_event_state === "APPLIED" : Boolean(c.hr_confirmed_at));
   const scheduled = reject && c.exit_event_state === "SCHEDULED";
   const missing = reason.trim() ? 0 : 1;
-  const action = t(reject ? "exit.action.reject_exit" : "exit.action.cancel_exit");
+  const mode = exitUndoVerb(c, reject);
+  const action = commitLabel({ kind: "exit", mode });
   const unavailable = !reject && c.status !== "REPORTED";
   return (
     <StepFrame
@@ -57,12 +60,13 @@ export function CloseForm({ c: opened, reject, onClose, onDone }: { c: Case; rej
       draft={reason.trim()}
       consequence={unavailable ? null : t(exited ? "exit.close.consequence.reverse" : scheduled ? "exit.close.consequence.scheduled" : "exit.close.consequence", { name, date: fmtDate(c.effective_exit_date) })}
       missing={tried ? missing : 0}
-      aside={<Button onClick={onClose} disabled={run.pending}>{t("common.back")}</Button>}
-      primary={<Button type="submit" form={formId} variant="danger" disabled={run.pending}>{action}</Button>}
+      aside={<Button onClick={onClose} disabled={run.pending}>{t("composer.dismiss")}</Button>}
+      action={{ kind: "exit", mode, count: 1 }}
+      tone="danger"
     >
       {!unavailable && <fieldset className={s.group} disabled={run.locked}>
         <Field
-          label={t(reject ? "exit.field.rejectReason" : "exit.field.cancelReason")}
+          label={t("composer.reason", { verb: verbLabel(mode) })}
           required
           hint={t("exit.field.count", { count: reason.length, max: REASON_MAX })}
           error={tried && missing ? t("exit.error.text") : undefined}

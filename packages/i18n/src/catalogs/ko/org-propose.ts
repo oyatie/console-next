@@ -2,14 +2,6 @@
 // Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koOrgPropose = {
   "orgPropose.unsaved": "아직 저장하지 않았습니다",
-  "orgPropose.close": "제안 닫기",
-  "orgPropose.back": "돌아가기",
-  "orgPropose.saveDraft": "초안 저장",
-  "orgPropose.section.context": "맥락",
-  "orgPropose.section.input": "입력",
-  "orgPropose.section.diff": "바뀌는 모습",
-  "orgPropose.section.checks": "확인할 사항",
-  "orgPropose.section.route": "결재선",
 
   "orgPropose.title.create": "{parent} 아래에 {kind} 신설",
   "orgPropose.title.rename": "{name} 이름 변경",
@@ -75,7 +67,6 @@ export const koOrgPropose = {
   "orgPropose.error.pick": "{label|을를} 선택하십시오",
   "orgPropose.errors": "오류 {count, plural, other {#건}} · 첫 오류로 이동했습니다",
   "orgPropose.missing": "{fields|을를} 채우면 진행할 수 있습니다",
-  "orgPropose.escConfirm": "작성 중인 내용이 있습니다 · 한 번 더 누르면 닫습니다",
 
   "orgPropose.diff.now": "지금",
   "orgPropose.diff.then": "{date}부터 시행하면",
@@ -132,15 +123,6 @@ export const koOrgPropose = {
   "orgPropose.consequence.dissolve": "시행하면 정리 항목 {count, plural, other {#건}}({items})이 열리고, 모두 끝내고 종결해야 {name|이가} 닫힙니다.",
   "orgPropose.consequence.reassign": "시행하면 {name} 구성원 {count, plural, other {#명}}(휴직자 포함)이 시행일자로 모두 {to|으로로} 전보되고, 휴직 등 각자의 상태는 그대로입니다. 되돌릴 수 없고 한 명씩 인사 이력과 감사 기록에 남습니다.",
 
-  "orgPropose.submit.create": "{name} 신설",
-  "orgPropose.submit.rename": "{name} 이름 변경",
-  "orgPropose.submit.move": "{name} 이동",
-  "orgPropose.submit.dissolve": "{name} 폐지",
-  "orgPropose.submit.reassign": "구성원 {count, plural, other {#명}} {to|으로로} 전보",
-  "orgPropose.submit.reassignNoTo": "구성원 {count, plural, other {#명}} 전보",
-  "orgPropose.via.route": "{action} 상신",
-  "orgPropose.via.now": "{action} 반영",
-  "orgPropose.via.scheduled": "{action} 예약 · {date}",
   "orgPropose.reassignTarget": "{name} 소속 직원 전보",
   "orgPropose.done.submitted": "상신했습니다 · {code}",
   "orgPropose.done.applied": "반영했습니다 · {code}",

@@ -9,7 +9,7 @@ import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button, Check } from "../../../ui/button/button";
 import { ChoiceField } from "../../../ui/choice/choice-field";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
 import { ownRefusal, refusalText } from "../../../reference/crud/present";
 import { CANCEL_REASONS, cancelRegistration, endOptionsQuery } from "../api";
 import { whoLine } from "../present";
@@ -45,8 +45,8 @@ function CancelSheet({ e, onClose, onAct }: { e: Employee; onClose: () => void; 
   const missing = !o ? null : !why ? "cancel-why" : o.attestation_required && !attest ? "cancel-attest" : o.register_confirmation_required && !kept ? "cancel-kept" : null;
   const ready = o?.cancel.allowed && o.can_cancel;
   return (
-    <Sheet
-      open
+    <Composer
+      commitId="crud-person-cancel"
       kicker={<><UserX size={14} aria-hidden />{whoLine(e)}</>}
       title={t("crud.person.cancelTitle", { name: e.name })}
       subtitle={o ? t(o.cancel_route === "DELETE" ? "crud.person.cancelSetup" : "crud.person.cancelOperating") : undefined}
@@ -54,18 +54,13 @@ function CancelSheet({ e, onClose, onAct }: { e: Employee; onClose: () => void; 
       pending={run.isPending}
       notice={<CommandError error={run.error} own={ownRefusal} />}
       consequence={<span>{ready ? t(o!.cancel_route === "DELETE" ? "crud.person.cancelConsequenceSetup" : "crud.person.cancelConsequence", { name: e.name }) : t("crud.person.cancelNo")}</span>}
-      actions={
-        <>
-          <Button onClick={onClose}>{t("common.back")}</Button>
-          {ready ? (
-            <Button variant="danger" id="crud-person-cancel" aria-disabled={missing ? true : undefined} onClick={() => (missing ? document.getElementById(missing)?.querySelector<HTMLElement>("input")?.focus() : run.mutate(undefined))}>
-              {t("crud.person.cancelCommit")}
-            </Button>
-          ) : (
-            o?.exit.allowed && <Button variant="primary" id="crud-person-exit-instead" onClick={() => onAct("exit.report")}>{t("crud.person.exitInstead")}</Button>
-          )}
-        </>
-      }
+      action={{ kind: "registration", mode: o?.cancel_route === "DELETE" ? "remove" : "cancel", count: 1 }}
+      tone="danger"
+      incomplete={Boolean(missing)}
+      onSubmit={() => { if (ready) { if (missing) document.getElementById(missing)?.querySelector<HTMLElement>("input")?.focus(); else run.mutate(undefined); } }}
+      blocked={!ready ? { reason: t("crud.person.cancelNo") } : undefined}
+      secondary={!ready && o?.exit.allowed && <Button id="crud-person-exit-instead" onClick={() => onAct("exit.report")}>{t("crud.person.exitInstead")}</Button>}
+
     >
       <QueryState q={q}>
         {(read) =>
@@ -88,6 +83,6 @@ function CancelSheet({ e, onClose, onAct }: { e: Employee; onClose: () => void; 
           )
         }
       </QueryState>
-    </Sheet>
+    </Composer>
   );
 }

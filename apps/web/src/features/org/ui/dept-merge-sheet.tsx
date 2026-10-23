@@ -3,8 +3,7 @@ import { GitMerge, Lock } from "lucide-react";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
-import { Button } from "../../../ui/button/button";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
 import { applySetup, STRUCTURE_READS } from "../../../reference/org/api";
 import { mergePlan } from "../domain/structure-plans";
 import { descendants, direct, type Place } from "../../../reference/org/domain/structure";
@@ -40,11 +39,9 @@ export function DeptMergeSheet({ place, places, setup, company, onClose, onDone 
   const membersBlock = setup && direct(a) > 0;
   const blockers = [!target && t("orgUnit.merge.pick"), membersBlock && t("orgUnit.merge.membersUnserved", { count: direct(a) }), !setup && gov.missing.join(", ")].filter((x): x is string => Boolean(x));
   const reasonId = "merge-reason";
-  const label = target ? t("orgUnit.merge.submit", { name: target.node.name, n: a.headcount }) : t("orgUnit.act.merge");
   const pending = run.isPending || submit.isPending;
   return (
-    <Sheet
-      open
+    <Composer
       wide
       kicker={<><GitMerge size={14} aria-hidden />{[...place.path, a.name].join(" › ")}</>}
       title={t("orgUnit.merge.title", { name: a.name })}
@@ -59,17 +56,11 @@ export function DeptMergeSheet({ place, places, setup, company, onClose, onDone 
           {blockers.length > 0 && <span id={reasonId} className={membersBlock ? css.footWarn : css.footReason}><Lock size={14} aria-hidden />{blockers[0]}</span>}
         </>
       }
-      actions={
-        <>
-          <Button onClick={onClose}>{t("orgStructure.cancel")}</Button>
-          {!setup && blockers.length === 0 && <Button onClick={() => submit.mutate(false)}>{t("orgUnit.gov.saveDraft")}</Button>}
-          {blockers.length === 0 ? (
-            <Button variant="primary" onClick={() => (setup ? run.mutate(undefined) : submit.mutate(true))}><GitMerge size={16} aria-hidden />{setup ? label : gov.words.submit(plan!.govOps.length)}</Button>
-          ) : (
-            <Button variant="primary" aria-disabled aria-describedby={reasonId}><GitMerge size={16} aria-hidden />{label}</Button>
-          )}
-        </>
-      }
+      action={{ kind: "orgMerge", mode: !setup && gov.routed ? "request" : !setup && gov.mode === "schedule" ? "schedule" : "apply", count: 1 }}
+      sections={{ approvals: !setup && gov.routed ? t("orgPropose.route") : null }}
+      onSubmit={() => { if (blockers.length === 0) { if (setup) run.mutate(undefined); else submit.mutate(true); } }}
+      blocked={blockers.length ? { reason: blockers.join(", ") } : undefined}
+      onSaveDraft={!setup && blockers.length === 0 ? () => submit.mutate(false) : undefined}
     >
       <div className={css.two}>
         <TargetTree
@@ -106,6 +97,6 @@ export function DeptMergeSheet({ place, places, setup, company, onClose, onDone 
         </div>
       </div>
       {!setup && <GovernFields s={gov} />}
-    </Sheet>
+    </Composer>
   );
 }

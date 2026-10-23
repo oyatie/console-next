@@ -105,7 +105,6 @@ export const koRegister = {
   "register.rehire.service": "근속 · 그룹 입사일",
   "register.rehire.serviceClosed": "근속을 이어 셀지 선택하는 칸은 아직 열지 않았습니다 · 새 입사일부터 셉니다",
   "register.rehire.profile": "가져온 기록이라 고용 정보가 없으면 함께 적습니다",
-  "register.rehire.commit": "재입사로 등록",
   "register.rehire.foot": "{name|을를} {place}에 {type|으로로} {status} ({date})으로 다시 등록합니다. 사번 {number} 그대로.",
   "register.rehire.done": "{name|을를} 재입사로 등록했습니다 · {date}",
   "register.rehire.notExited": "퇴직한 사람만 재입사로 등록합니다",

@@ -66,7 +66,7 @@ test("roster: first run, counts that add up, 3-year retention, a void in setup a
   await c.click(a.getByRole("group", { name: "인사카드 동작" }).getByRole("button", { name: "더 보기" }));
   await c.click(a.getByRole("menuitem", { name: /등록 취소/ }));
   const voiding = sheet(a);
-  const commit = voiding.getByRole("button", { name: "등록 취소", exact: true });
+  const commit = voiding.getByRole("button", { name: "직원 등록 1명 삭제", exact: true });
   await commit.press("Enter"); // a check: nothing is chosen (aria-disabled, R9), so it goes to what is missing and cancels nothing
   await expect(voiding.getByRole("radio", { checked: true })).toHaveCount(0);
   await expect(voiding).toBeVisible();

@@ -8,7 +8,7 @@ import { todayKst } from "../../../lib/pure/today";
 import { rollupHeadcount, unitPath } from "../../../reference/org/present";
 import { draftChange, me } from "../api";
 import { childrenOf, EMPTY, namesakes, type Field, type Unit, type Values } from "../domain/proposal";
-import type { Check } from "./propose-shell";
+import type { Check } from "./proposal-form";
 
 type Summary = components["schemas"]["OrgChangeSummary"];
 type Body = components["schemas"]["CreateOrgChangeRequest"];

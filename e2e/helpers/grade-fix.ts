@@ -53,7 +53,7 @@ export async function gradeJourney(page: Page) {
   await reasonChip(promote, "정기 승진").click();
   await reasonBox(promote).fill("직급 승진");
   await signOff(promote);
-  await promote.getByRole("button", { name: "오늘 승진 처리", exact: true }).click();
+  await promote.getByRole("button", { name: "승진 1명 반영", exact: true }).click();
   await expect(promote).toBeHidden();
   await go(page, card);
   await expect(page.locator("#f-grade")).toContainText("G3");

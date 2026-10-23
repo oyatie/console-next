@@ -6,7 +6,7 @@ import { label, ORG_CHANGE_STATUS, SETTLEMENT } from "../../../lib/labels";
 import { UnitPicker } from "../../../reference/org/ui/unit-picker";
 import { Button } from "../../../ui/button/button";
 import { reassignTargets, type Intent, type Unit } from "../domain/proposal";
-import { ProposeShell, type Check } from "./propose-shell";
+import { ProposalForm, type Check } from "./proposal-form";
 import { ChangeLink, Context, UnitDiff } from "./unit-parts";
 import { okOr, unitKit, useValues } from "./use-unit-kit";
 import { useOrgRouted } from "./use-org-routed";
@@ -54,7 +54,7 @@ export function DissolveCard({ intent: { unit }, units, open, moving, onClose }:
   const blocked = direct > 0 ? t("orgPropose.blocked.members") : children.length > 0 ? t("orgPropose.blocked.children") : undefined;
   const items = SETTLEMENT.values.map((x) => label(SETTLEMENT, x)).join(" · ");
   return (
-    <ProposeShell intent={{ kind: "dissolve", unit }} v={v} set={set} onClose={onClose} spec={() => ({
+    <ProposalForm intent={{ kind: "dissolve", unit }} v={v} set={set} onClose={onClose} spec={() => ({
       title: t("orgPropose.title.dissolve", { name: unit.name }),
       context: (
         <Context note={k.headcountNote} rows={[
@@ -69,7 +69,7 @@ export function DissolveCard({ intent: { unit }, units, open, moving, onClose }:
       checks: blocked ? checks : [{ tone: "ok", text: t("orgPropose.checks.dissolvable") }],
       related: k.onTarget(unit),
       consequence: k.consequence(t("orgPropose.consequence.dissolve", { count: SETTLEMENT.values.length, items, name: unit.name })),
-      submitLabel: t("orgPropose.submit.dissolve", { name: unit.name }),
+      action: "orgDissolve",
       block: blocked ? { reason: blocked } : undefined,
       dated: true,
       create: (key) => k.post(key, { kind: "DISSOLVE", target: { kind: "ORG_UNIT", ref: unit.id, label: unit.name }, proposal: [{ op: "DISSOLVE_ORG_UNIT", orgUnitId: unit.id }] }),
@@ -103,7 +103,7 @@ export function ReassignCard({ intent: i, units, open, onClose }: { intent: Extr
     </>
   );
   return (
-    <ProposeShell intent={i} v={v} set={set} onClose={onClose} spec={(kit) => ({
+    <ProposalForm intent={i} v={v} set={set} onClose={onClose} spec={(kit) => ({
       title: t("orgPropose.title.reassign", { name: unit.name, count }),
       context: <Context note={k.headcountNote} rows={[{ label: t("orgPropose.ctx.from"), value: k.path(unit) }, { label: t("orgPropose.ctx.moversLabel"), value: movers }]} />,
       inputs: kit.wrap("to", (
@@ -120,7 +120,8 @@ export function ReassignCard({ intent: i, units, open, onClose }: { intent: Extr
       checks: okOr([]),
       related: k.onTarget(unit),
       consequence: k.consequence(t("orgPropose.consequence.reassign", { name: unit.name, count, to: to?.name ?? t("orgPropose.ctx.chosenUnit") })),
-      submitLabel: to ? t("orgPropose.submit.reassign", { count, to: to.name }) : t("orgPropose.submit.reassignNoTo", { count }),
+      action: "orgReassign",
+      count,
       dated: true,
       append: k.into(op),
       create: (key) => k.post(key, { kind: "REORG", target: { kind: "ORG_UNIT", ref: unit.id, label: t("orgPropose.reassignTarget", { name: unit.name }) }, proposal: [op] }),

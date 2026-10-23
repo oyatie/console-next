@@ -110,7 +110,7 @@ test("전적: nowhere to go says why, then one act records the exit and the hire
   await expect(preview).toContainText("주식회사 가나홀딩스에서 지급 · 퇴직 정산 처리가 열립니다");
   await expect(preview).toContainText("주식회사 가나홀딩스에서 남은 연차 수당 지급");
   await expectAccessible(admin, "group transfer: filled sheet");
-  await g.getByRole("button", { name: "오늘 전적", exact: true }).click();
+  await g.getByRole("button", { name: "전적 1명 반영", exact: true }).click();
   await expect(g).toBeHidden();
 
   // The card follows: the 법인 row, the history line with its facts.
@@ -198,7 +198,7 @@ test("전적: nowhere to go says why, then one act records the exit and the hire
   await chooseRadio(g, /^새 법인 근속은/);
   await g.getByRole("button", { name: /^입사일과 같게/ }).click();
   await reasonBox(g).fill("복귀");
-  await g.getByRole("button", { name: "오늘 전적", exact: true }).click();
+  await g.getByRole("button", { name: "전적 1명 반영", exact: true }).click();
   const refused = g.getByRole("alert");
   await expect(refused).toContainText("같은 법인 안으로는 전적하지 않습니다");
   await expect(refused).toContainText("기록한 것은 없습니다");

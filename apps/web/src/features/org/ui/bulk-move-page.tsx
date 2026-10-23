@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { CornerDownRight, Lock, Network, Plus, X } from "lucide-react";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
+import { Lock, Network, Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
+import { Composer } from "../../../ui/composer/composer";
 import { Dialog } from "../../../ui/dialog";
 import { applySetup, STRUCTURE_READS } from "../../../reference/org/api";
 import { bulkPlan, type Resolution } from "../domain/bulk-move";
@@ -68,21 +69,33 @@ function Body({ chosen, places, setup, company }: { chosen: string[]; places: Ma
     !setup && gov.missing.join(", "),
   ].filter((x): x is string => Boolean(x));
   const items = plan ? plan.items.moves + plan.items.renames + plan.items.merges : 0;
-  const submitLabel = setup ? t("bulkMove.submit", { n: count, m: total, p: plan?.totals.members ?? 0 }) : gov.words.submit(items);
   return (
-    <div className={s.page}>
-      <header className={s.head}>
-        <div className={s.titles}>
-          {/* org-20: one unit moved is the page's object; the path is where it sits now, not a parent that moves. */}
-          <span className={s.crumb}><Network size={14} aria-hidden />{t("bulkMove.from")} · {[t("orgStructure.title"), ...first.path].join(" › ")}</span>
-          <h1 className={s.title}>{count === 1 ? t("bulkMove.titleOne", { name: roots[0]!.name }) : t("bulkMove.title", { n: count })} <span className={s.sub}>{t("bulkMove.titleSub", { m: total })}</span></h1>
-        </div>
+    <Composer
+      layout="page"
+      title={count === 1 ? t("bulkMove.titleOne", { name: roots[0]!.name }) : t("bulkMove.title", { n: count })}
+      kicker={<span className={s.crumb}><Network size={14} aria-hidden />{t("bulkMove.from")} · {[t("orgStructure.title"), ...first.path].join(" › ")}</span>}
+      subtitle={<>
+        {t("bulkMove.titleSub", { m: total })}
         {carried.length > 0 && <p className={s.lead}>{t("bulkMove.collapsed", { names: carried.map((c) => c.name).join("·"), parent: carried.map((c) => places.get(c.id)?.parent?.name).join("·"), n: roots.length })}</p>}
-        <span className="grow" />
         <AddMore entity={entity} chosen={chosen} />
         <Chip tone={setup ? "ok" : "info"}>{t(setup ? "bulkMove.phaseSetup" : "bulkMove.phaseOperating")}</Chip>
-        <Button variant="ghost" onClick={close} aria-label={t("bulkMove.close")}><X size={16} aria-hidden /></Button>
-      </header>
+      </>}
+      onClose={close}
+      pending={run.isPending || submit.isPending}
+      action={{ kind: "orgMove", mode: !setup && gov.routed ? "request" : !setup && gov.mode === "schedule" ? "schedule" : "apply", count }}
+      onSubmit={() => { if (blockers.length === 0) { if (setup) run.mutate(undefined); else submit.mutate(true); } }}
+      blocked={blockers.length ? { reason: blockers.join(", ") } : undefined}
+      onSaveDraft={!setup && blockers.length === 0 ? () => submit.mutate(false) : undefined}
+      notice={<CommandError error={run.error ?? submit.error} />}
+      sections={{
+        preflight: blockers.length ? <span className={s.reason}><Lock size={14} aria-hidden />{blockers[0]}</span> : null,
+        effects: !blockers.length ? <>
+          <span>{t(setup ? "bulkMove.consequence" : "bulkMove.consequenceGoverned", { n: count, m: total, p: plan!.totals.members, to: target!.workplace!.name, date: gov.g.date, items, moves: plan!.items.moves, renames: plan!.items.renames })}</span>
+          <Muted>{t(setup ? "bulkMove.consequenceSetupNote" : "bulkMove.consequenceGovNote", { p: plan!.totals.siteChanged })}</Muted>
+        </> : null,
+        approvals: !setup && gov.routed ? t("orgPropose.route") : null,
+      }}
+    >
       <div className={s.cols}>
         <section className={`card ${s.col}`} aria-label={t("bulkMove.where")}>
           <TargetTree
@@ -112,27 +125,7 @@ function Body({ chosen, places, setup, company }: { chosen: string[]; places: Ma
           {plan && <MiniTree label={t("bulkMove.after", { site: target!.workplace!.name })} root={plan.after} />}
         </section>
       </div>
-      <footer className={s.foot}>
-        <div className={s.footText}>
-          {blockers.length > 0 ? (
-            <span id="bulk-reason" className={s.reason}><Lock size={14} aria-hidden />{blockers[0]}</span>
-          ) : (
-            <>
-              <span>{t(setup ? "bulkMove.consequence" : "bulkMove.consequenceGoverned", { n: count, m: total, p: plan!.totals.members, to: target!.workplace!.name, date: gov.g.date, items, moves: plan!.items.moves, renames: plan!.items.renames })}</span>
-              <Muted>{t(setup ? "bulkMove.consequenceSetupNote" : "bulkMove.consequenceGovNote", { p: plan!.totals.siteChanged })}</Muted>
-            </>
-          )}
-          <CommandError error={run.error ?? submit.error} />
-        </div>
-        <Link to="/org" search={{ sel: roots.length === 1 ? roots[0]!.id : undefined }} className="btn">{t("orgStructure.cancel")}</Link>
-        {!setup && blockers.length === 0 && <Button onClick={() => submit.mutate(false)}>{t("orgUnit.gov.saveDraft")}</Button>}
-        {blockers.length === 0 ? (
-          <Button variant="primary" disabled={run.isPending || submit.isPending} onClick={() => (setup ? run.mutate(undefined) : submit.mutate(true))}><CornerDownRight size={16} aria-hidden />{submitLabel}</Button>
-        ) : (
-          <Button variant="primary" aria-disabled aria-describedby="bulk-reason"><CornerDownRight size={16} aria-hidden />{submitLabel}</Button>
-        )}
-      </footer>
-    </div>
+    </Composer>
   );
 }
 
@@ -169,7 +162,7 @@ function Unmovable({ mixed, onClose }: { mixed: boolean; onClose: () => void }) 
   return (
     <div className="page">
       <p className="alert" role="alert">{t(mixed ? "bulkMove.mixedEntities" : "bulkMove.nothing")}</p>
-      <div><Button onClick={onClose}>{t("bulkMove.back")}</Button></div>
+      <div><Button onClick={onClose}>{t("composer.dismiss")}</Button></div>
     </div>
   );
 }

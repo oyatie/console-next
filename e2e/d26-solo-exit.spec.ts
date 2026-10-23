@@ -60,7 +60,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   await expect(exitPanel.getByRole("button", { name: "퇴직 보고 취소" })).toBeVisible();
   await exitPanel.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
   await signOff(admin.getByRole("dialog").getByRole("group", { name: "확인 사항" }));
-  await admin.getByRole("dialog").getByRole("button", { name: /인사 확인하고/ }).click();
+  await admin.getByRole("dialog").getByRole("button", { name: /퇴직 1명 (반영|예약)/ }).click();
   await expect(admin.getByRole("dialog")).toBeHidden();
   await expect(exitPanel).toContainText("인사 확인됨");
   await expect(exitPanel.getByRole("button", { name: "퇴직 보고 취소" })).toHaveCount(0);
@@ -73,7 +73,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   await go(admin, caseHref!);
   const now = admin.getByRole("region", { name: /지금/ });
   await expect(now.getByRole("heading", { name: "지금 · 본사 확인" })).toBeVisible();
-  await now.getByRole("button", { name: "본사 퇴직 확인" }).click();
+  await now.getByRole("button", { name: "퇴직 본사 확인 1명 반영" }).click();
   await expect(admin.getByRole("region", { name: "퇴직" })).toContainText("본사 확인됨");
   await expect(admin.getByRole("button", { name: "퇴직 보고 취소" })).toHaveCount(0);
   await expectAccessible(admin, "D26: exit closed for HQ by the HR confirmer");

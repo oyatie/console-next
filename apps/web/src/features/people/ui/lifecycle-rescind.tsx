@@ -12,7 +12,7 @@ import { TextArea } from "../../../ui/field/text-area";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { eventsQuery, mySub, rescindEvent, type Cascade, type LifecycleEvent } from "../api";
 import { describeEvent, fmtDay } from "../present";
-import { LifecycleFrame } from "./lifecycle-frame";
+import { Composer } from "../../../ui/composer/composer";
 import { LifecycleRefusal } from "./lifecycle-refusal";
 import { ReasonCodeField } from "../../../reference/reason/ui/reason-code-field";
 import { useDraft } from "./use-lifecycle-draft";
@@ -85,10 +85,11 @@ export function RescindSheet({ d, x, act, onClose, onRecorded, onOpen }: {
   };
   const show = (k: keyof typeof missing) => tried && missing[k];
   return (
-    <LifecycleFrame
+    <Composer
       title={t("lifecycle.rescind.title", { action })}
       subtitle={[e.name, e.employee_number].filter(Boolean).join(" · ")}
       onClose={onClose}
+      localDraft
       onSaveDraft={onClose}
       pending={(run.isPending && !run.isChecking) || events.isRefetching}
       locked={checking}
@@ -105,12 +106,13 @@ export function RescindSheet({ d, x, act, onClose, onRecorded, onOpen }: {
           {cascades && cascades.length > 0 && <span className={s.interim}>{t("lifecycle.rescind.cascades", { count: cascades.length })}</span>}
         </>
       }
-      commit={{ label: cascades?.length ? t("lifecycle.rescind.confirm", { count: cascades.length }) : t("lifecycle.rescind.title", { action }), tone: "danger" }}
+      action={{ kind: x.event_type, mode: "revoke", count: 1 }}
+      tone="danger"
       missing={tried ? count : 0}
-      actions={
+      recovery={
         checking ? (
           <>
-            <Button onClick={onClose}>{t("lifecycle.close")}</Button>
+            <Button onClick={onClose}>{t("composer.dismiss")}</Button>
             <Button variant="primary" onClick={() => run.check()}>{t("lifecycle.checking.ask")}</Button>
           </>
         ) : undefined
@@ -139,6 +141,6 @@ export function RescindSheet({ d, x, act, onClose, onRecorded, onOpen }: {
       <Field label={t("lifecycle.rescind.note")} required={needsNote} hint={t("lifecycle.reason.count", { count: v.voidNote.length, max: NOTE_MAX })} error={show("note") ? t("lifecycle.reason.missing") : undefined}>
         {(p) => <TextArea {...p} maxLength={NOTE_MAX} value={v.voidNote} onChange={(ev) => set({ voidNote: ev.target.value })} />}
       </Field>
-    </LifecycleFrame>
+    </Composer>
   );
 }

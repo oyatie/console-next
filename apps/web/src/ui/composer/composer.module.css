@@ -1,0 +1,7 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.page { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+.head { display: flex; flex-direction: column; gap: var(--space-2); }
+.section { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.heading { margin: 0; font-size: var(--text-sm); font-weight: var(--fw-strong); }
+.foot { position: sticky; bottom: 0; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border-top: 1px solid var(--border); background: var(--canvas); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); }

@@ -6,7 +6,7 @@ import { DerivedValue } from "../../../ui/field/derived-value";
 import type { Unit } from "../domain/proposal";
 import { preview } from "../domain/preview";
 import { NameField } from "./propose-fields";
-import type { Kit } from "./propose-shell";
+import type { Kit } from "./proposal-form";
 import { StructureDiff } from "./structure-diff";
 import type { UnitKit } from "./use-unit-kit";
 import s from "./propose.module.css";

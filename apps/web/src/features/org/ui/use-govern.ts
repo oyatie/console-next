@@ -25,10 +25,7 @@ export function useGovern() {
   const later = Boolean(g.date) && g.date > today;
   const missing = [!g.date && t("orgUnit.gov.missingDate"), !g.reason.trim() && t("orgUnit.gov.missingReason")].filter((x): x is string => Boolean(x));
   const mode = routed ? "route" : later ? "schedule" : "apply";
-  const words = {
-    submit: (count: number) => t(routed ? "orgUnit.gov.submit" : later ? "orgUnit.gov.schedule" : "orgUnit.gov.apply", { count, date: g.date && fmtDate(g.date) }),
-  };
-  return { g, set: (patch: Partial<Govern>) => setG((x) => ({ ...x, ...patch })), today, missing, late: Boolean(g.date) && g.date < today, routed, mode, words };
+  return { g, set: (patch: Partial<Govern>) => setG((x) => ({ ...x, ...patch })), today, missing, late: Boolean(g.date) && g.date < today, routed, mode };
 }
 export type GovernState = ReturnType<typeof useGovern>;
 

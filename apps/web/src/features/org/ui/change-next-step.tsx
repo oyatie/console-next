@@ -9,7 +9,7 @@ import { APPROVAL_ROLE, actor, label } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { ORG_READS } from "../../../reference/org/api";
 import { Button } from "../../../ui/button/button";
-import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
+import { Composer } from "../../../ui/composer/composer";
 import { blockerCount, changeCommands, movedElsewhere, probed, refusalOf } from "../api";
 import { submittedText, submitWords, type Names, type NextStep } from "../present";
 import { CancelDialog } from "./cancel-dialog";
@@ -134,27 +134,18 @@ function Submit({ d, title, report, refetch, onNote, onEdit, onPreflight }: {
       }),
   });
   const blockers = report?.blockers.length ?? 0;
-  const { label: submitText, consequence } = submitWords(d, title, routed, todayKst());
+  const { consequence } = submitWords(d, routed, todayKst());
   return (
     <>
-      <p id="submit-consequence" className={css.consequence} role="note">{consequence}</p>
-      <CommandError error={submit.error} />
-      <div className={css.bar}>
-        {blockers > 0 ? (
-          <DisabledReason
-            control={(p) => <Button variant="primary" {...p}>{submitText}</Button>}
-            reason={t("orgChange.submit.blocked", { count: blockers })}
-            remedy={<Button variant="ghost" onClick={() => focusSoon("preflight")}>{t("orgChange.submit.seePreflight")}</Button>}
-          />
-        ) : (
-          <Button variant="primary" disabled={submit.isPending} aria-describedby="submit-consequence" onClick={() => submit.mutate(undefined)}>
-            {submitText}
-          </Button>
-        )}
-        <Button onClick={onEdit}>{t("orgChange.edit")}</Button>
-        <span className={css.spacer} />
-        <Button variant="ghost" className="btn--danger" onClick={() => setCancelling(true)}>{t("orgChange.cancel")}</Button>
-      </div>
+      <Composer layout="page" title={title} pending={submit.isPending}
+        action={{ kind: "orgChange", mode: routed ? "request" : d.effectiveDate > todayKst() ? "schedule" : "apply" }}
+        consequence={consequence}
+        sections={{ approvals: routed ? t("orgPropose.route") : null }}
+        notice={<CommandError error={submit.error} />}
+        blocked={blockers > 0 ? { reason: t("orgChange.submit.blocked", { count: blockers }), remedy: <Button variant="ghost" onClick={() => focusSoon("preflight")}>{t("orgChange.submit.seePreflight")}</Button> } : undefined}
+        onSubmit={() => submit.mutate(undefined)}
+        secondary={<><Button onClick={onEdit}>{t("orgChange.edit")}</Button><Button variant="ghost-danger" onClick={() => setCancelling(true)}>{t("orgChange.cancel")}</Button></>}
+      >{null}</Composer>
       <CancelDialog d={d} title={title} scheduled={false} open={cancelling} onClose={() => setCancelling(false)} refetch={refetch} onNote={onNote} />
     </>
   );

@@ -70,7 +70,7 @@ test("parity grade: catalog-backed change, correction, promotion, roster and set
   await expect(promote).toContainText(/주임\s*→\s*대리/);
   await supplement(a, "grade-promotion", "Actual single-person promotion preview names the grade delta; position remains unchanged.");
   await inspect(a, "people", "grade-promotion");
-  await promote.getByRole("button", { name: "오늘 승진 처리", exact: true }).click();
+  await promote.getByRole("button", { name: "승진 1명 반영", exact: true }).click();
   await expect(promote).toBeHidden();
   await go(a, card);
   await expect(a.locator("#f-grade")).toContainText("대리");

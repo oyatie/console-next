@@ -1,0 +1,22 @@
+{
+  "baseline": {
+    "apps/web/src/features/org/OrgChange.tsx#OrgChange": 133,
+    "apps/web/src/features/people/ui/bulk-page.tsx#BulkPage": 80,
+    "apps/web/src/features/people/ui/card-page.tsx#EmployeeCard": 459,
+    "apps/web/src/features/people/ui/exit-page.tsx#ExitCasePage": 100,
+    "apps/web/src/features/people/ui/people-route.tsx#PeopleRoute": 222,
+    "apps/web/src/routes/home-screen.tsx#HomeScreen": 230,
+    "apps/web/src/routes/org-screen.tsx#OrgScreen": 303,
+    "apps/web/src/ui/composer/composer.tsx#Composer": 19
+  },
+  "newScreens": {
+    "apps/web/src/ui/composer/composer.tsx#Composer": {
+      "FACT": 8,
+      "REFUSAL": 11,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

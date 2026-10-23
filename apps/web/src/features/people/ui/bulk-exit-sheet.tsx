@@ -7,11 +7,11 @@ import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { todayKst } from "../../../lib/pure/today";
 import { refusalText } from "../../../reference/crud/present";
-import { Button, Form } from "../../../ui/button/button";
+import { Button } from "../../../ui/button/button";
 import { DateField } from "../../../ui/date/date-field";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
 import { reportExits, type BulkExitRow } from "../api";
 
 const NOTE_MAX = 1000;
@@ -42,8 +42,8 @@ export function BulkExitSheet({ picked, onClose }: { picked: Map<string, string>
   const busy = run.isPending;
   const ok = rows?.filter((r) => r.ok).length ?? 0;
   return (
-    <Sheet
-      open
+    <Composer
+      commitId="crud-bulk-exit"
       kicker={<><LogOut size={14} aria-hidden />{t("crud.bulkExit.kicker", { count: people.length })}</>}
       title={t("crud.bulkExit.title", { count: people.length })}
       subtitle={t("crud.bulkExit.subtitle")}
@@ -51,19 +51,11 @@ export function BulkExitSheet({ picked, onClose }: { picked: Map<string, string>
       pending={busy}
       notice={<CommandError error={run.error} />}
       consequence={rows ? <span role="status">{t("crud.bulkExit.done", { ok, refused: rows.length - ok })}</span> : <span>{date ? t("crud.bulkExit.consequence", { count: people.length, date: fmtDate(date) }) : t("crud.bulkExit.needDate")}</span>}
-      actions={
-        rows ? (
-          <>
-            <Link className="btn" to="/people/exits" search={{}}>{t("crud.bulkExit.openList")}</Link>
-            <Button variant="primary" onClick={onClose}>{t("crud.close")}</Button>
-          </>
-        ) : (
-          <>
-            <Button onClick={onClose} disabled={busy}>{t("common.back")}</Button>
-            <Button variant="danger" id="crud-bulk-exit" disabled={busy} onClick={submit}>{t("crud.bulkExit.commit", { count: people.length })}</Button>
-          </>
-        )
-      }
+      action={{ kind: "exitReport", mode: "apply", count: people.length }}
+      tone="danger"
+      onSubmit={submit}
+      recovery={rows ? <><Link className="btn" to="/people/exits" search={{}}>{t("crud.bulkExit.openList")}</Link><Button onClick={onClose}>{t("composer.dismiss")}</Button></> : undefined}
+
     >
       {rows ? (
         <ul className="list-plain" aria-label={t("crud.bulkExit.results")}>
@@ -75,14 +67,14 @@ export function BulkExitSheet({ picked, onClose }: { picked: Map<string, string>
           ))}
         </ul>
       ) : (
-        <Form className="form" onSubmit={submit}>
+        <div className="form">
           <DateField label={t("exit.field.date")} required value={date} onChange={setDate} today={todayKst()} error={tried && !date ? t("exit.error.date") : undefined} />
           <Field label={t("exit.field.note")} required hint={t("exit.field.count", { count: note.length, max: NOTE_MAX })} error={tried && !note.trim() ? t("exit.error.text") : undefined}>
             {(p) => <TextArea {...p} maxLength={NOTE_MAX} value={note} onChange={(e) => setNote(e.target.value)} />}
           </Field>
           <p className="muted">{people.map((p) => p.name).join(" · ")}</p>
-        </Form>
+        </div>
       )}
-    </Sheet>
+    </Composer>
   );
 }

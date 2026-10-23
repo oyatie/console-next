@@ -25,7 +25,7 @@ test("an act right after another opens on the person as recorded: no 'record cha
   await reasonBox(transfer).fill("채용팀 합류");
   // The person's re-read after this act is held back, as a loaded server answers it late.
   await admin.route(/\/api\/v1\/employees\/[0-9a-f-]{36}$/, async (r) => (r.request().method() === "GET" ? (await new Promise((ok) => setTimeout(ok, 2_500)), r.continue()) : r.continue()));
-  await transfer.getByRole("button", { name: /오늘 전보/ }).click();
+  await transfer.getByRole("button", { name: /전보 1명 반영/ }).click();
   await expect(history.getByText(/연속이를 .*채용팀으로 전보했습니다/).first()).toBeVisible({ timeout: 15_000 });
 
   await hrAct(admin, "승진 처리");

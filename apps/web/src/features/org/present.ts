@@ -209,11 +209,10 @@ export function submittedText(d: Pick<Detail, "code" | "kind" | "effectiveDate">
 }
 
 /** The draft's submit button and what pressing it does: submit into approval, or (decisions #26) apply now / on its effective date. */
-export function submitWords(d: Pick<Detail, "effectiveDate">, title: string, routed: boolean, today: string) {
-  if (routed) return { label: t("orgChange.submit", { title }), consequence: t("orgChange.next.draft.consequence") };
+export function submitWords(d: Pick<Detail, "effectiveDate">, routed: boolean, today: string) {
+  if (routed) return { consequence: t("orgChange.next.draft.consequence") };
   const later = Boolean(d.effectiveDate && d.effectiveDate > today);
   return {
-    label: later ? t("orgPropose.via.scheduled", { action: title, date: fmtDate(d.effectiveDate) }) : t("orgPropose.via.now", { action: title }),
     consequence: [later ? t("orgPropose.consequence.directDated", { date: fmtDate(d.effectiveDate) }) : t("orgPropose.consequence.direct"), t("orgPropose.consequence.directUndo")].join(" "),
   };
 }

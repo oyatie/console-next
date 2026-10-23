@@ -101,7 +101,7 @@ test("an HR worker granted 인사 실무 over the 법인 and 권한 관리 over 
   await exit.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
   const confirm = admin.getByRole("dialog");
   await signOff(confirm.getByRole("group", { name: "확인 사항" }), (l) => l.click());
-  await confirm.getByRole("button", { name: /인사 확인하고/ }).click();
+  await confirm.getByRole("button", { name: /퇴직 1명 (반영|예약)/ }).click();
   await expect(confirm).toBeHidden();
   await expect(exit).toContainText("인사 확인됨");
 

@@ -41,7 +41,7 @@ export function ConfirmForm({ c, hq, aside, sheet, stale, follow, onDone }: {
   sheet?: SheetSpec;
   stale?: Effect | null;
   follow?: ReactNode;
-  onDone: (message: string) => void;
+  onDone: (message: string, reference?: string) => void;
 }) {
   const slot = `${c.id}:${hq ? "hq" : "hr"}`;
   const [draft, setDraftState] = useState(() => drafts.get(slot) ?? { ...EMPTY, reason: c.exit_reason_code ?? null });
@@ -69,12 +69,11 @@ export function ConfirmForm({ c, hq, aside, sheet, stale, follow, onDone }: {
     run: () => confirmExit(c.id, { hq_confirmation: hq, exit_reason_code: hq ? undefined : reason ?? undefined, dismissal_notice: !hq && noticeRequired ? { ...notice, method: notice.method as "IN_PERSON_SIGNED" | "CERTIFIED_MAIL" | "ELECTRONIC" } : undefined, note: note.trim() || undefined, signoffs: hq ? undefined : (Object.fromEntries(EXIT_ACKS.map((k) => [k, Boolean(acks[k])])) as Record<(typeof EXIT_ACKS)[number], boolean>) }),
     onSuccess: (out) => {
       drafts.delete(slot);
-      onDone(t(hq ? "exit.hqConfirmed" : out.exit_event_state === "SCHEDULED" ? "exit.hrConfirmed.scheduled" : "exit.hrConfirmed", { name, date }));
+      onDone(t(hq ? "exit.hqConfirmed" : out.exit_event_state === "SCHEDULED" ? "exit.hrConfirmed.scheduled" : "exit.hrConfirmed", { name, date }), c.id);
     },
   });
   const missing = hq ? 0 : EXIT_ACKS.filter((k) => !acks[k]).length + Number(!reason) + missingNotice.length;
   const consequence = t(hq ? "exit.hq.consequence" : scheduled ? "exit.hr.consequence.scheduled" : "exit.hr.consequence", { name, date });
-  const primary = hq ? t("exit.action.confirm_exit_hq") : scheduled ? t("exit.hr.commit.scheduled", { date }) : t("exit.action.confirm_exit");
   const locked = run.locked || Boolean(stale);
   return (
     <StepFrame
@@ -104,9 +103,9 @@ export function ConfirmForm({ c, hq, aside, sheet, stale, follow, onDone }: {
         )
       }
       missing={tried ? missing : 0}
-      aside={aside ?? (sheet && <Button onClick={sheet.onClose} disabled={run.pending}>{t("common.back")}</Button>)}
-      // Red only when the exit applies now (C21); a scheduled exit can still be withdrawn by rejecting the case.
-      primary={blockReason ? <DisabledReason reason={blockReason} control={(p) => <Button form={formId} variant={!hq && !scheduled ? "danger" : "primary"} {...p}>{primary}</Button>} /> : <Button type="submit" form={formId} variant={!hq && !scheduled ? "danger" : "primary"} disabled={run.pending}>{primary}</Button>}
+      aside={aside ?? (sheet && <Button onClick={sheet.onClose} disabled={run.pending}>{t("composer.dismiss")}</Button>)}
+      action={{ kind: hq ? "exitHq" : "exit", mode: !hq && scheduled ? "schedule" : "apply", count: 1 }}
+      tone={!hq && !scheduled ? "danger" : "primary"}
     >
       {!hq && <OpsExitNote employeeId={c.employee_id} search={c.employee_number || c.employee_name} />}
       <fieldset className={s.group} disabled={locked}>

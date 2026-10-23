@@ -105,7 +105,6 @@ export const enRegister: Record<keyof typeof koRegister, string> = {
   "register.rehire.service": "Service · group start date",
   "register.rehire.serviceClosed": "Choosing to continue service is not available yet · service counts from the new start date",
   "register.rehire.profile": "An imported record without employment details also needs these",
-  "register.rehire.commit": "Rehire",
   "register.rehire.foot": "Rehires {name} at {place} as {type}, {status} ({date}). Employee no. {number} stays.",
   "register.rehire.done": "Rehired {name} · {date}",
   "register.rehire.notExited": "Only people who left can be rehired",

@@ -13,16 +13,14 @@ import { FORMATS, phoneE164 } from "../../../lib/pure/formats";
 import { todayKst } from "../../../lib/pure/today";
 import { unitsQuery } from "../../../reference/org/api";
 import { entitiesRef, orgStructureRef } from "../../../reference/entity/api";
-import { Button } from "../../../ui/button/button";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Chip } from "../../../ui/chip";
 import { DateField } from "../../../ui/date/date-field";
 import { datePresets } from "../../../ui/date/date-text";
 import { Field, TextInput } from "../../../ui/field/field";
-import { Kbd } from "../../../ui/kbd/kbd";
 import { MaskedField } from "../../../ui/masked-field/masked-field";
 import { PathPicker } from "../../../ui/path-picker/path-picker";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
 import { rehireEmployee } from "../api";
 import { addDays } from "../domain/lifecycle";
 import { EMPLOYMENT_TYPES, type EmploymentType, type Where } from "../domain/register";
@@ -81,8 +79,7 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
   const submit = () => (setTried(true), gaps.length === 0 && run.mutate());
   const status = f.hire > today ? t("register.foot.statusFuture") : t("register.foot.statusNow");
   return (
-    <Sheet
-      open
+    <Composer
       wide
       kicker={<><Lock size={12} aria-hidden />{t("register.rehire.kicker", { name: e.name, number: e.employee_number ?? "—" })}</>}
       title={t("register.rehire.title")}
@@ -96,12 +93,9 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
           <b>{t("register.rehire.foot", { name: e.name, place: place ? placeText(units, place).split(" › ").slice(1).join(" › ") : "", type: label(TYPE, f.type!), status, date: fmtDate(f.hire), number: e.employee_number ?? "—" })}</b>
         )
       }
-      actions={
-        <>
-          <Button variant="ghost" onClick={onClose}>{t("lifecycle.back")}</Button>
-          <Button variant="primary" aria-disabled={run.isPending || undefined} onClick={submit}>{t("register.rehire.commit")}<Kbd keys="⌘↵" /></Button>
-        </>
-      }
+      action={{ kind: "rehire", mode: f.hire > today || !f.hire ? "schedule" : "apply", count: 1 }}
+      onSubmit={() => { submit(); }}
+
     >
       <div className={s.form}>
         <div className={s.before}>
@@ -149,6 +143,6 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
           <ChoiceField label={t("facts.payUnit")} required options={PAY_UNITS.map((u) => ({ value: u, label: label(PAY_UNIT, u) }))} value={f.payUnit} onChange={(u) => set("payUnit", u as PayUnit)} />
         </fieldset>}
       </div>
-    </Sheet>
+    </Composer>
   );
 }

@@ -51,7 +51,7 @@ test("dated chart and comparison retain 2,000 imported people through a projecte
   await rename.getByRole("textbox", { name: /^사유/ }).fill("전체 구성원을 유지하는 이름 변경");
   const submitted = admin.waitForResponse((r) => r.request().method() === "POST"
     && /^\/api\/v1\/org-changes\/[^/]+\/submit$/.test(new URL(r.url()).pathname));
-  await rename.getByRole("button", { name: /^예약 · / }).click();
+  await rename.getByRole("button", { name: "부서 이름 변경 1개 예약" }).click();
   expect((await submitted).status(), "scheduled rename refused").toBe(200);
   await expect(rename).toBeHidden({ timeout: 30_000 });
   const control = admin.getByRole("region", { name: "기준일", exact: true });

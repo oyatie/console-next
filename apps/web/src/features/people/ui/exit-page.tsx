@@ -1,3 +1,4 @@
+import { ReceiptReference } from "../../../ui/composer/receipt-reference";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
@@ -125,7 +126,7 @@ function CaseBody({ c }: { c: Case }) {
         <div>
           {receipt && (
             <div id="exit-receipt" tabIndex={-1} className={s.column}>
-              <Receipt state="recorded" message={receipt} />
+              <Receipt state="recorded" message={receipt} meta={<ReceiptReference value={c.id} />} />
             </div>
           )}
           <CaseAxis c={c} onBack={setClosing} onDone={done} />

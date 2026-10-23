@@ -42,7 +42,7 @@ export async function captureE5(page: Page) {
     if (await reason.isVisible()) await reason.getByRole("radio").first().locator("xpath=ancestor::label[1]").click();
     await sheet(page).getByRole("textbox", { name: /사유 메모|^사유/ }).fill("인력 재배치");
     await shot(page, "E5-transfer");
-    await sheet(page).getByRole("button", { name: "취소", exact: true }).click();
+    await sheet(page).getByRole("button", { name: "닫기", exact: true }).last().click();
   });
   await frame(page, "E5-leave", async () => {
     const leaver = await openPerson(page, "10007");
@@ -52,7 +52,7 @@ export async function captureE5(page: Page) {
     await sheet(page).getByRole("button", { name: /^다음 달 1일/ }).click();
     await sheet(page).getByRole("textbox", { name: /사유/ }).first().fill("육아휴직 신청");
     await shot(page, "E5-leave");
-    await sheet(page).getByRole("button", { name: "취소", exact: true }).click();
+    await sheet(page).getByRole("button", { name: "닫기", exact: true }).last().click();
   });
   await frame(page, "E5-appoint", async () => {
     const kt = await openPerson(page, "10013");
@@ -68,7 +68,7 @@ export async function captureE5(page: Page) {
     await sheet(page).getByRole("button", { name: /^다음 달 1일/ }).click();
     await sheet(page).getByRole("textbox", { name: /^사유/ }).first().fill("부서장 공석 보충");
     await shot(page, "E5-appoint");
-    await sheet(page).getByRole("button", { name: "취소", exact: true }).click();
+    await sheet(page).getByRole("button", { name: "닫기", exact: true }).last().click();
   });
   await frame(page, "E5-convert", async () => {
     // A person registered through the sheet has an employment profile: a contract worker to convert and renew.
@@ -84,10 +84,10 @@ export async function captureE5(page: Page) {
     await sheet(page).getByRole("button", { name: /^계약 종료 다음 날|^다음 달 1일/ }).first().click();
     await sheet(page).getByRole("textbox", { name: /사유/ }).first().fill("기간제 2년 만료 전 전환");
     await shot(page, "E5-convert");
-    await sheet(page).getByRole("button", { name: "취소", exact: true }).click();
+    await sheet(page).getByRole("button", { name: "닫기", exact: true }).last().click();
     await act(page, path, "CONTRACT_RENEWAL");
     await shot(page, "E5-renew");
-    await sheet(page).getByRole("button", { name: "취소", exact: true }).click();
+    await sheet(page).getByRole("button", { name: "닫기", exact: true }).last().click();
   });
   await frame(page, "E5-return", async () => {
     const back = await openPerson(page, "10019");
@@ -102,7 +102,7 @@ export async function captureE5(page: Page) {
     await act(page, back, "RETURN_FROM_LEAVE");
     await sheet(page).getByRole("button", { name: /^예정대로/ }).click();
     await shot(page, "E5-return");
-    await sheet(page).getByRole("button", { name: "취소", exact: true }).click();
+    await sheet(page).getByRole("button", { name: "닫기", exact: true }).last().click();
   });
   await frame(page, "E5-exit", async () => {
     // The contract worker with a transfer reserved after their contract ends: the report names it first.
@@ -129,7 +129,7 @@ export async function captureE5(page: Page) {
     await sheet(page).getByRole("button", { name: /퇴직 보고$/ }).click();
     await page.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
     await signOff(page.getByRole("dialog").getByRole("group", { name: "확인 사항" }));
-    await page.getByRole("dialog").getByRole("button", { name: /인사 확인하고/ }).click();
+    await page.getByRole("dialog").getByRole("button", { name: /퇴직 1명 (반영|예약)/ }).click();
     await expect(page.getByRole("dialog")).toBeHidden({ timeout: 15_000 });
     await act(page, hero, "rehire");
     await shot(page, "E3-rehire");
