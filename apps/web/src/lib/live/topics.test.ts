@@ -127,3 +127,13 @@ test("recovery events re-read the vendor panel and tenant card only", () => {
   expect(match("/api/v1/me/action-inbox", null)).toBe(true);
   expect(match("/api/v1/employees", null)).toBe(false);
 });
+
+ test("identifier correction requests, decisions and reviews refresh the inbox and their case only", () => {
+  expect(TOPICS.identifier_correction).toBeDefined();
+  const matches = matchChange("identifier_correction", "case");
+  expect(matches("/api/v1/me/action-inbox", null)).toBe(true);
+  expect(matches("/api/v1/entity-identifier-corrections", null)).toBe(true);
+  expect(matches("/api/v1/entity-identifier-corrections/{id}", detail("case"))).toBe(true);
+  expect(matches("/api/v1/entity-identifier-corrections/{id}", detail("other"))).toBe(false);
+  expect(matches("/api/v1/employees", null)).toBe(false);
+});

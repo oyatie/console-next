@@ -40,3 +40,10 @@ test.each(["legal_entity_manage", "org_change_apply"])("a branch-scoped %s holde
   const html = renderToStaticMarkup(<QueryClientProvider client={client}><CorrectionRegister /></QueryClientProvider>);
   expect(html).toBe("");
 });
+
+test("the register uses live invalidation without a manual refresh control", () => {
+  i18n.set("en");
+  const client = new QueryClient({ defaultOptions: { queries: { initialData: { capabilities: [{ feature: "org_change_apply", permission: "allow", org_wide: true }], items: [], next_offset: null } } } });
+  const html = renderToStaticMarkup(<QueryClientProvider client={client}><CorrectionRegister /></QueryClientProvider>);
+  expect(html).not.toContain(">Refresh<");
+});

@@ -144,3 +144,6 @@ pub(crate) fn router(
     ));
     entity.merge(onboarding).merge(exceptions)
 }
+
+#[cfg(feature = "workspace")]
+pub(crate) use corrections::{governance_kernel, min_grant_age_days};

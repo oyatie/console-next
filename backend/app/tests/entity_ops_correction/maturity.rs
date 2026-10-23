@@ -275,6 +275,13 @@ async fn recorded_queue_has_review_deadline_and_independent_signoff(owner: PgPoo
     sqlx::query("UPDATE authz_grant_ledger SET occurred_at=now()-interval '400 days' WHERE user_id=$1 AND event='GRANTED'").bind(s.approver.id).execute(&owner).await.unwrap();
     sqlx::query("INSERT INTO authz_grant_ledger (org_id,user_id,grant_kind,grant_ref,event,source,channel) SELECT org_id,user_id,grant_kind,grant_ref,'NOTICE_DELIVERED','NOTIFIER','IN_APP' FROM authz_grant_ledger WHERE user_id=$1 AND event='GRANTED' AND grant_kind='SYSTEM_ROLE'").bind(s.approver.id).execute(&owner).await.unwrap();
     let (_, queue) = get(&s, &format!("{REGISTER}?awaiting=me"), &s.approver.token).await;
+    #[cfg(feature = "workspace")]
+    {
+        let work = super::round3::inbox(&s, &s.approver.token).await;
+        assert_eq!(work.len(), 1);
+        assert_eq!(work[0]["kind"], "identifier_correction_review");
+        assert!(work[0]["due"].is_string());
+    }
     assert_eq!(queue["items"].as_array().unwrap().len(), 1, "{queue}");
     assert_eq!(queue["items"][0]["can_review"], true);
     assert!(queue["items"][0]["review_due_at"].is_string());
@@ -290,6 +297,11 @@ async fn recorded_queue_has_review_deadline_and_independent_signoff(owner: PgPoo
         assert_eq!(status, StatusCode::OK, "{body}");
     }
     let id: Uuid = id.parse().unwrap();
+    #[cfg(feature = "workspace")]
+    {
+        super::round3::changes(&owner, id, "exception.review").await;
+        assert!(super::round3::inbox(&s, &s.approver.token).await.is_empty());
+    }
     assert_eq!(count(&owner, "SELECT count(*) FROM audit_events WHERE action='exception.review' AND target_id=$1::text", id).await, 1);
     let (_, list) = get(&s, REGISTER, &s.ops.token).await;
     assert!(list["items"][0]["reviewed_at"].is_string());

@@ -45,7 +45,7 @@ fn step_up_failed() -> KernelError {
     KernelError::forbidden("the passkey step-up did not verify").with_code("passkey_step_up_failed")
 }
 
-pub(super) async fn min_grant_age_days(
+pub(crate) async fn min_grant_age_days(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     org: OrgId,
 ) -> Result<i32, KernelError> {
@@ -236,7 +236,7 @@ impl GovernedCorrectionPort for GovernedIdentifierCorrections {
     }
 }
 
-pub(super) fn governance_kernel(error: PgGovernanceError) -> KernelError {
+pub(crate) fn governance_kernel(error: PgGovernanceError) -> KernelError {
     match error {
         PgGovernanceError::Domain(mut k) => {
             if k.code.is_none() {

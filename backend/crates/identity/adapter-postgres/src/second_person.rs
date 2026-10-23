@@ -12,15 +12,10 @@
 //! (plan D2).
 
 use std::collections::BTreeSet;
-use std::str::FromStr;
 
 use console_kernel_core::{BranchId, BranchScope, KernelError, OrgId, UserId};
-use console_platform_authz::access::{load_access_subject, project, tag};
-use console_platform_authz::{
-    EffectiveFeatureGrant, Feature, PermissionLevel, Role, permission_for,
-    resolve_branch_scope_in_tx, resolve_effective_feature_grants_in_tx,
-};
-use sqlx::{Postgres, Row, Transaction};
+use console_platform_authz::{EffectiveFeatureGrant, Feature, PermissionLevel, Role};
+use sqlx::{Postgres, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -129,106 +124,14 @@ pub async fn second_person_fact_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     query: &SecondPersonQuery,
 ) -> Result<SecondPersonFact, KernelError> {
-    let allow_roles: Vec<&str> = Role::ALL
-        .into_iter()
-        .filter(|role| permission_for(*role, query.feature) == PermissionLevel::Allow)
-        .map(Role::as_str)
-        .collect();
-    let all_scope_roles: Vec<&str> = ALL_SCOPE_ROLES.into_iter().map(Role::as_str).collect();
-    let excluded: Vec<Uuid> = query.excluded.iter().map(|user| *user.as_uuid()).collect();
-    // A fenced operation has no (domain, level): no access grant reaches it.
-    let line = tag(query.feature);
-    let rows = sqlx::query(
-        "SELECT user_id, via, grant_ref, counted, reason, scope_final \
-         FROM second_person_candidates($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, \
-              make_interval(days => $11), make_interval(days => $12))",
-    )
-    .bind(*query.org.as_uuid())
-    .bind(query.feature.as_str())
-    .bind(&allow_roles)
-    .bind(&all_scope_roles)
-    .bind(line.map(|(domain, _)| domain.as_str()))
-    .bind(line.map(|(_, level)| level.as_str()))
-    .bind(query.branch.map(|branch| *branch.as_uuid()))
-    .bind(*query.requester.as_uuid())
-    .bind(&excluded)
-    .bind(query.case_created_at)
-    .bind(query.min_grant_age_days)
-    .bind(DEMOTION_LOOKBACK_DAYS)
-    .fetch_all(tx.as_mut())
-    .await
-    .map_err(db_error)?
-    .into_iter()
-    .map(|row| {
-        Ok(SecondPersonCandidate {
-            user_id: row.try_get("user_id")?,
-            via: row.try_get("via")?,
-            grant_ref: row.try_get("grant_ref")?,
-            counted: row.try_get("counted")?,
-            reason: row.try_get("reason")?,
-            scope_final: row.try_get("scope_final")?,
-        })
-    })
-    .collect::<Result<Vec<_>, sqlx::Error>>()
-    .map_err(db_error)?;
-
-    let mut confirmed = BTreeSet::new();
-    let pending: Vec<RowKey> = rows
-        .iter()
-        .filter(|row| row.counted && !row.scope_final)
-        .filter_map(key)
-        .collect();
-    let policy_users: BTreeSet<Uuid> = pending
-        .iter()
-        .filter(|(_, via, _)| via == "POLICY_ROLE")
-        .map(|(user, _, _)| *user)
-        .collect();
-    for user in policy_users {
-        // The candidate's own live scope, exactly as their principal would get
-        // it; the resolver only narrows from there. An unknown role code is
-        // dropped, which can only narrow the scope.
-        let codes: Vec<String> =
-            sqlx::query_scalar("SELECT roles FROM users WHERE org_id = $1 AND id = $2")
-                .bind(*query.org.as_uuid())
-                .bind(user)
-                .fetch_one(tx.as_mut())
-                .await
-                .map_err(db_error)?;
-        let roles: Vec<Role> = codes
-            .iter()
-            .filter_map(|code| Role::from_str(code).ok())
-            .collect();
-        let id = UserId::from_uuid(user);
-        let live = resolve_branch_scope_in_tx(tx, id, &roles).await?;
-        let grants = resolve_effective_feature_grants_in_tx(tx, query.org, id, &live).await?;
-        if covers(&grants, query) {
-            confirmed.extend(
-                pending
-                    .iter()
-                    .filter(|k| k.0 == user && k.1 == "POLICY_ROLE")
-                    .cloned(),
-            );
-        }
-    }
-    // An access grant counts on its own: Cedar decides that grant alone (its
-    // dates, role, phase and scope chain), so another grant of the same holder
-    // that is too young or not yet noticed never lends it a wider scope.
-    let now = OffsetDateTime::now_utc();
-    for row in pending.iter().filter(|(_, via, _)| via == "ACCESS_GRANT") {
-        let mut subject = load_access_subject(tx, query.org, row.0, now).await?;
-        subject
-            .grants
-            .retain(|grant| grant.grant_id.to_string() == row.2);
-        if covers(&project(&subject).grants, query) {
-            confirmed.insert(row.clone());
-        }
-    }
-    let fact = count_second_persons(rows, &confirmed);
-    tracing::debug!(business_event="authz.second_person.resolved", org=%query.org,
-        feature=query.feature.as_str(), eligible=fact.other_eligible_holders,
-        review_flags=fact.review_flags.len(), "second-person fact resolved");
-    Ok(fact)
+    batch::facts_in_tx(tx, std::slice::from_ref(query), None)
+        .await?
+        .pop()
+        .ok_or_else(|| KernelError::internal("missing second-person fact"))
 }
+
+mod batch;
+pub use batch::facts_in_tx as second_person_facts_in_tx;
 
 /// Whether `grants` hold the feature over the act's scope (org-wide: all).
 fn covers(grants: &[EffectiveFeatureGrant], query: &SecondPersonQuery) -> bool {

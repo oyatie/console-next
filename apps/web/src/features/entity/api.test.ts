@@ -86,3 +86,9 @@ test.each(["crn", "brn"] as const)("applying an approved %s correction sends the
   expect(post.mock.calls[0]![1].body).toEqual({ field, ...approved, step_up: undefined });
   expect(assertBoundPasskey).not.toHaveBeenCalled();
 });
+
+test("the person-scoped correction read sends awaiting=me to the server", async () => {
+  read.mockResolvedValue({ response: new Response(null, { status: 200 }), data: { items: [] } });
+  await correctionRegisterQuery(undefined, 0, "me").queryFn();
+  expect(read).toHaveBeenLastCalledWith("/api/v1/entity-identifier-corrections", { params: { query: { entity_id: undefined, offset: 0, awaiting: "me" } } });
+});

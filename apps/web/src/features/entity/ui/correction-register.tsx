@@ -44,8 +44,7 @@ function Register({ entityId, correctionId, onSelect }: { entityId?: string; cor
   const q = useQuery({ ...correctionRegisterQuery(entityId, offsets.at(-1)), retry: false, refetchOnMount: "always" });
   return (
     <section id="identifier-corrections" aria-labelledby="identifier-corrections-title">
-      <SectionHead level={2} id="identifier-corrections-title"
-        tools={<Button onClick={() => void q.refetch()} disabled={q.isFetching}>{t("entityRecord.corrections.refresh")}</Button>}>
+      <SectionHead level={2} id="identifier-corrections-title">
         {t("entityRecord.corrections.title")}
       </SectionHead>
       <QueryState q={q} empty={(data) => data.items.length ? null : <EmptyState title={t("entityRecord.corrections.empty")} reason={null} />}>
@@ -123,11 +122,10 @@ function CorrectionDetail({ id, row, onClose }: { id: string; row?: Case; onClos
               ...(item.proposal ? [{ key: "reason", label: t("entityRecord.id.reason"), value: t(`entityRecord.id.reason.${item.proposal.reason_code}`) }] : []),
             ]} />
             <Link to="/org/entities/$id" params={{ id: item.entity_id }} className={buttonClass()} onClick={onClose}>{t("entityRecord.corrections.openRecord")}</Link>
-            {item.proposal && <ProposedEvidence id={item.proposal.document_id} />}
             {(item.can_decide || item.can_review) && <Field label={t("entityRecord.corrections.note")} required={Boolean(item.can_review)}>
               {(props) => <TextArea {...props} value={note} maxLength={1000} onChange={(event) => setNote(event.target.value)} disabled={busy} />}
             </Field>}
-            <Button onClick={() => void q.refetch()} disabled={busy || q.isFetching}>{t("entityRecord.corrections.refresh")}</Button>
+            {item.proposal && <ProposedEvidence id={item.proposal.document_id} />}
           </>;
         }}
       </QueryState>
