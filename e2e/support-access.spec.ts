@@ -72,6 +72,7 @@ test("two operators and the customer authorize support; every read arrives live 
   await expect(nonApprover.getByRole("navigation").getByRole("link", { name: "지원 접근", exact: true })).toHaveCount(0);
   for (const name of ["지원 접근 승인", "지원 접근 거절", "지원 종료"]) await expect(nonApprover.getByRole("button", { name, exact: true })).toHaveCount(0);
   expect(readerBearer()).not.toBe("");
+  await auditLayouts(nonApprover, "support access refusal");
   const initialList = tenant.waitForResponse((r) => new URL(r.url()).pathname === TENANT_SUPPORT && r.request().method() === "GET");
   await go(tenant, "/audit/support-access");
   expect((await (await initialList).json()).can_approve, "the first tenant ops account can approve through the access catalog").toBe(true);
@@ -106,6 +107,7 @@ test("two operators and the customer authorize support; every read arrives live 
   await expect(queue).toContainText(body.ticket_ref);
   await expect(queue).toContainText("승인 대기 만료");
   await expect(queue.getByRole("link", { name: "지원 요청 확인", exact: true })).toHaveAttribute("href", `/audit/support-access?review=${id}`);
+  await auditLayouts(tenant, "Home support approval queue");
   await queue.getByRole("link", { name: "지원 요청 확인", exact: true }).click();
   await expect(tenant.getByText(body.ticket_ref, { exact: true }).first()).toBeVisible();
   for (const suffix of ["decision", "end"]) {
@@ -119,7 +121,9 @@ test("two operators and the customer authorize support; every read arrives live 
   await auditLayouts(tenant, "support approval");
   const decision = tenant.waitForResponse((r) => new URL(r.url()).pathname === `${TENANT_SUPPORT}/${id}/decision` && r.request().method() === "POST");
   await tenant.getByRole("button", { name: "지원 접근 승인", exact: true }).click();
-  expect((await decision).ok()).toBe(true);
+  const recordedDecision = await decision;
+  expect(recordedDecision.ok()).toBe(true);
+  expect(recordedDecision.request().postDataJSON().approved_duration_seconds).toBe(duration);
   await expect(tenant.getByRole("table", { name: "요청·승인·종료 기록", exact: true }).getByText("고객 승인", { exact: true })).toBeVisible();
   const started = await vendorStepUp(async () => requester.start(id, {
     org_id: org, step_up: await boundStepUp(operator, requesterBearer(), id, JSON.stringify([org, id, "start"])),
