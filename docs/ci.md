@@ -19,9 +19,8 @@ Forks use plain `pull_request`, a read-only token and no secrets. There is no
 | `rust-build` | Format; default, `full` and `full,test-postgres` Clippy; one affected-workspace test archive per architecture; one backend binary for every browser shard |
 | `backend-test` | Non-DB library tests from the shared archive, using nextest `slice:` partitions |
 | `backend-db` | All remaining tests, including mixed SQLx library tests, from the shared archive, with an isolated PostgreSQL service per partition |
-| `code-gates` | Every `console-gate-*` package discovered from `backend/ci/gates/*/Cargo.toml`, built once offline by `rust-build` and executed without arguments; includes all five personal-data gates |
 | `e2e-plan`, `e2e` | Existing duration bin packing; fast Chromium smoke/changed specs, full Chromium and Firefox per release unit; clock projects stay serial; first-run-solo is always in browser shard 1 |
-| `ci-ok` | Every required job succeeded; skips pass only when `plan` explicitly marked that job unnecessary |
+| `ci-ok` | Every `console-gate-*` package discovered from `backend/ci/gates/*/Cargo.toml`, built offline and executed without arguments on every change (including docs-only); then enforce required results and plan-authorized skips |
 | `backend`, `web` | Always report success only after `ci-ok` succeeds, including docs-only runs |
 
 An npm consumer or backend change also needs the web build used by E2E. Every
@@ -55,8 +54,9 @@ entries and shortening expiry are allowed. First-run-solo cannot be quarantined.
 
 Cargo.lock, toolchain manifests, package manifests/lock, migrations, OpenAPI,
 registry, third-party, scripts, ops and workflow changes expand the affected set
-to the full workspace. A docs-only PR runs plan/hygiene/ci-ok and both required reporting checks. Queue runs use the
-same affected fast tier as PRs. Only a release-unit dispatch requests the full
+to the full workspace. A docs-only PR runs plan/hygiene/ci-ok (including every
+backend code gate) and both required reporting checks. Queue runs use the same
+affected fast tier as PRs. Only a release-unit dispatch requests the full
 Chromium/Firefox suite; fast runs use Chromium, the configured smoke files and
 directly changed E2E specs. The planner is the only source for both tiers.
 
@@ -278,6 +278,52 @@ bypass list applies to administrators too. Check other active org/repo rulesets
 for conflicting approval/direct-push rules before applying. Do not change Actions
 permissions or add an administrative check bypass to make a red pass.
 
+## Rebase proof (2026-10-24)
+
+Rebased onto `public/dev` at `ebe3857c3` (#37, #38 and #40). The package-script
+conflict keeps G5's person-read check and this lane's repository/CI checks.
+`backend` and `web` retain their live required-check names. `ci-ok` now restores
+the existing lock-keyed registry cache, fetches locked dependencies for cold runs,
+and discovers, builds offline and executes all 13 code-gate packages itself,
+including on docs-only changes. There is no separate conditional code-gate job
+or gate-binary upload. The planner accounts for the gate work inside `ci-ok`.
+
+Local proof: 1,962 unit tests across 286 files; all 13 real code gates; six focused
+gate/result controls; actionlint/YAML, fmt, all three Clippy feature sets,
+`cargo check --workspace --tests`, the file-size ratchet against `public/dev`,
+quality ratchets, types/lint/build/bundle, licence headers against `public/dev`,
+fixture IDs, dependency licences and merge-range gitleaks pass. With the lane
+`db.env` sourced, the canonical adapter suite passes 124/124 (all test binaries);
+the topology crate results and exact base reproduction are listed below. Gate controls
+cover every current manifest plus a synthetic future gate, a red gate, a missing
+binary, an empty discovery and a failed build. The three focused backend controls
+failed before the fix on `c929ca367` in the lane's `rebase-base` worktree.
+
+Inherited reds were reproduced unchanged on that rebased pre-fix base:
+
+- The workflow suite passes 101/102; the remaining safety assertion rejects
+  #40's `codeql.yml` job's `egress-policy: audit` (that workflow also uses the
+  `github/codeql-action` namespace outside the CI-1 allow-list).
+- The executed topology census passes 20/22 controls on both tip and base. Its
+  two DB failures reject unaccounted `console_leave_definer` INSERT grants on
+  `employee_person_bindings`, `person_revisions` and `persons` after the new
+  migrations. The other writer-ownership tests pass (66 controls). This is an
+  exact base reproduction, not an unexecuted DB check.
+- Full repository policy rejects `docs/ops/release-api-compat-2.md`.
+- Structural scanning finds three phone-shaped values across
+  `backend/crates/platform/db/tests/person_binding_lifecycle.rs` and
+  `backend/crates/platform/db/tests/person_fact_validation.rs`.
+- `npm run check` passes through unit tests, build and secrets, then its licence
+  script stops because the shared local `dev` branch belongs to unrelated
+  pre-flip history. The same error occurs on the base; the explicit licence
+  check against `public/dev` passes (29 added source files). Remaining check
+  commands were run separately; their only red is the CodeQL assertion above.
+
+Lane receipts use the `rebase-` prefix. No lint or privacy rule was weakened;
+these inherited reds still require their owners' fixes before hosted CI is green.
+Full browser/release-unit proof and hosted measurements remain the verifier's
+work below; no push or GitHub API mutation was performed.
+
 ## Post-flip proof receipt
 
 No hosted run is fabricated. Fill this table from Actions job durations, scanned
@@ -287,7 +333,7 @@ cache counters and repository cache usage from the hosted runs:
 | --- | --- | --- | --- | --- | --- |
 | Cold release unit | Unmeasured | Pending | Pending | Pending | Actions dispatch URL + candidate SHA |
 | Warm release unit | Unmeasured | Pending | Pending | Pending | Actions dispatch URL + candidate SHA |
-| Docs-only PR | Unmeasured | Pending | Pending | Pending | plan + hygiene + ci-ok + backend/web, proof jobs intentionally skipped |
+| Docs-only PR | Unmeasured | Pending | Pending | Pending | plan + hygiene + ci-ok (all code gates) + backend/web, other proof jobs skipped |
 | One crate PR | Unmeasured | Pending | Pending | Pending | planned reverse dependencies + nextest selected packages + ci-ok |
 
 Verifier: run one generated shard per browser using the curated test topology;
@@ -309,7 +355,7 @@ merge result in GitHub Actions is the final proof.
    Re-running a PR, merge group or dispatch alone cannot warm caches: those events
    restore only. Confirm total repository cache bytes remain below
    `cacheBudgetBytes`; all artifacts use `retentionDays`.
-3. Open a docs-only PR: only plan, hygiene, `ci-ok`, `backend` and `web` run.
+3. Open a docs-only PR: only plan, hygiene, `ci-ok` (all code gates), `backend` and `web` run.
    Then use a leaf Cargo gate crate change to show the affected crate selection,
    skipped web/E2E jobs and a reporting `ci-ok`. Queueing either PR must report
    the same affected fast tier on the merge SHA; dispatch must expand to full proof.

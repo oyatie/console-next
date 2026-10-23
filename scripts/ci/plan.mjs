@@ -23,11 +23,10 @@ export function planBudget(plan, config, shards, workflow = load(readFileSync(ne
   const wallMinutes = Math.max(...Object.keys(workflow).map(chain)), queueMinutes = queue.parameters.check_response_timeout_minutes;
   if (!Number.isFinite(wallMinutes) || wallMinutes >= queueMinutes) throw new Error("CI timeout chain must be below the merge-queue timeout");
   const e = config.jobMinutes;
-  const perJob = { plan: e.plan, hygiene: e.hygiene, "ci-ok": e.gate, backend: e.gate, web: e.gate };
+  const perJob = { plan: e.plan, hygiene: e.hygiene, "ci-ok": e.gate + e.codeGates, backend: e.gate, web: e.gate };
   if (plan.web || plan.e2e) perJob["web-check"] = e.web;
   if (plan.backend || plan.e2e) perJob["rust-build"] = e.build;
   if (plan.backend) {
-    perJob["code-gates"] = e.codeGates;
     for (const mode of ["unit", "db"]) if (plan[mode]) for (let i = 1; i <= config.nextestPartitions[mode]; i++) perJob[`backend-${mode === "unit" ? "test" : "db"}-${i}`] = e[mode];
   }
   if (plan.e2e) {
@@ -93,7 +92,6 @@ export function requiredJobs(plan) {
     "backend-db": plan.db ?? plan.backend,
     "e2e-plan": plan.e2e,
     e2e: plan.e2e,
-    "code-gates": plan.backend,
     hygiene: true,
   };
 }

@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import yaml from "js-yaml";
 
 const workflow = yaml.load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
-const build = workflow.jobs["rust-build"].steps.find((s) => s.name === "Build all backend code gates");
-const step = workflow.jobs["code-gates"].steps.find((s) => s.name === "Enforce all backend code gates");
+const step = workflow.jobs["ci-ok"].steps.find((s) => s.name === "Backend code gates (release parity)");
 
 function run({ fail = "", buildFailure = false, empty = false } = {}) {
-  assert.ok(build && step, "ci-ok must build and run every release code gate");
+  assert.ok(step, "ci-ok must build and run every release code gate");
+  assert.equal(step.if, undefined, "gates must run for docs-only and web-only changes too");
   const root = mkdtempSync(path.join(tmpdir(), "backend-ci-gates-"));
   try {
     mkdirSync(path.join(root, "bin"));
@@ -28,6 +28,7 @@ function run({ fail = "", buildFailure = false, empty = false } = {}) {
     writeFileSync(path.join(root, "bin/cargo"), `#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$COMMAND_LOG"
 if [[ "$1" == build && "$BUILD_FAILURE" == 1 ]]; then exit 1; fi
+if [[ "$1" == run ]]; then exec target/debug/"\${@: -1}"; fi
 `, { mode: 0o755 });
     const log = path.join(root, "commands");
     writeFileSync(log, "");
@@ -37,11 +38,7 @@ if [[ "$1" == build && "$BUILD_FAILURE" == 1 ]]; then exit 1; fi
       env: { ...process.env, PATH: `${root}/bin:${process.env.PATH}`, COMMAND_LOG: log,
         FAIL_GATE: fail, BUILD_FAILURE: buildFailure ? "1" : "0" },
     });
-    let result = execute(build.run);
-    if (result.status === 0) {
-      cpSync(path.join(root, ".cache/ci/build/gates"), path.join(root, ".cache/ci/gates"), { recursive: true });
-      result = execute(step.run);
-    }
+    const result = execute(step.run);
     return { status: result.status, calls: readFileSync(log, "utf8").trim().split("\n").filter(Boolean) };
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -50,7 +47,7 @@ if [[ "$1" == build && "$BUILD_FAILURE" == 1 ]]; then exit 1; fi
 
 const commands = [
   "build --locked --offline -p console-gate-alpha -p console-gate-beta -p console-gate-gamma",
-  ...["alpha", "beta", "gamma"].map((name) => `gate console-gate-${name}`),
+  ...["alpha", "beta", "gamma"].flatMap((name) => [`run -q --locked --offline -p console-gate-${name}`, `gate console-gate-${name}`]),
 ];
 
 test("backend runs every discovered gate with the release build and execution arguments", () => {
