@@ -135,13 +135,92 @@ passkey registration into Home. Grant scope text uses the shared access referenc
 formatter without requiring a separate organization-tree read.
 The lane evidence directory is `lanes/eco-g2-inbox/round2-logs/`.
 
+## Round 4 integration
+
+Rebased the lane onto public/dev `9004241bc` (composer #38, including G5 #37 and
+REG-a #32). The J5 resolution retains dev's HQ hint and composer verbs plus the
+lane's reason/confirmer assertions. The file-size baseline was reconciled by hand;
+no baseline generator was run and no contribution file was removed.
+
+`backend/app/src/lib.rs` declares `pub mod action_inbox` without a workspace gate.
+`action_inbox.rs` declares its HR/Org/setup/grant sources without that gate, and
+`routes/mod.rs` mounts the inbox before the optional workspace mount. The legacy
+sources retain their own module gates. The explicit `--no-default-features
+--features mvp` build and the MVP-only inbox DB journeys are the release proof.
+The ordinary Home route compiles into the web production build and uses the same
+endpoint; G1 and SHIP-a can contribute their Home work through this source seam.
+
+Unlock, insurance, lifecycle and request machine values live in typed context;
+`ref` is empty for these kinds. Home uses the period/domain presenters, reason
+catalog presentation, enum labels and statutory catalog keys. Unlock rows retain
+the requester, period, relock deadline, reason/note and subject-named review link.
+Tenant-defined unlock reasons carry their catalog labels; unknown reason codes
+render a readable unknown label. BW-17 also accepts prose in `reason_code`, which
+remains readable. The request has its own review verb.
+
+Both Home inbox observers request `refetchOnMount: "always"`; navigation after an
+import waits for the new inbox snapshot. The statutory journey asserts all four
+labelled filing rows and their resolving links. The E2E audit also migrated the
+remaining removed Home reads/sections in parity, org, bounded-retry, access and
+capture callers. Cursor parity compares against the complete queue, including
+setup work, and observes `total_is_exact` rather than treating a prefix as exact.
+
+G5's person projections now supply the inbox's person facts and statutory query;
+the inherited person-read inventory only shrinks. The combined settings roster is
+regenerated in `20261024000000000_inbox_settings_after_import.sql`, because the
+newer import migration otherwise replaces the earlier inbox definitions.
+
+Round-4 command logs are in `lanes/eco-g2-inbox/round4-logs/`. The disposable
+`fail-before-r4` worktree starts at rebased pre-fix `aab733a63`; the new row-content
+and mount-refresh assertions fail there, while the current focused tests pass.
+The unlock/request/lifecycle DB assertions also fail before their source fixes.
+Additional before-fix tests cover tenant reason labels and free-text reasons.
+
+The exact CI web command passes in the isolated proof clone with public dev as
+its `dev` branch: **281 files / 1,985 Vitest tests**, the production build and
+bundle gate, history/build secrets scans, headers, fixture IDs, licences and
+**3 Node tests**. `VITEST_MAX_WORKERS=2` limits local contention; earlier uncapped
+runs hit unrelated five-second test timeouts. No test timeout was changed.
+The sandboxed browser launch also failed on macOS Mach-port permissions; the
+successful browser-backed unit run used the approved host execution.
+
+Rust fmt, workspace clippy with `-D warnings`, workspace test compilation, the
+explicit MVP build and **all 13 CI-discovered backend release gates** pass.
+The file-size gate measures **2,415 Rust files / 297 pins**; the app inbox API pin
+is manually lowered to **1,120** after the G5 merge. The composer standing-text
+contribution is lowered from **216 to 63**, preserving the lane's existing pin.
+The person-read inventory falls to **56**. Range gitleaks reports no leaks.
+
+Touched/dependent crate checks pass: settings-domain + action-inbox-application +
+identity-rest **170 tests**; MVP app library **137 passed / 1 pre-existing ignored**;
+HR statutory/person **12**; period/person projection DB **9**; HR REST/settings
+adapter **24**; entity REST **5**; MVP surfaces **2**; route layers **3**; the
+additional tenant-labelled unlock DB rerun **1**. The focused Home/route/command
+suite has **72 passing tests**. In the rebased starting worktree, **10 of 61**
+Home/route assertions fail; the other 51 pass.
+
+All **13 inbox DB journeys** pass in the MVP build. For **2,000 product-created
+people / 20 first-page reads**, p95 is **222.974167 ms** (budget 300 ms), peak
+single-request leases **7/8**, source cap **4**, and **400** acquisitions. The
+inserted-later person stays outside the cursor traversal, which visits each
+admitted person once. Three six-reader rounds peak at **8/8** leases; unrelated
+identity reads finish in **264.405292 / 252.082833 / 246.391917 ms**. Pool headroom
+under concurrent reads remains the already-recorded P2 follow-up.
+
+The requested combined Chromium command could not start the webServer because
+this checkout has no `ops/compose.yml`; zero E2E assertions ran. The verifier must
+run J5, d26, period-unlock-approve, ideal-first-run-rail, statutory, home-truth and
+inbox-live in its compose environment, plus the additionally migrated parity/org/
+retry/access journeys. Full workspace DB, Firefox and mutation sweeps remain the
+release batch's checks.
+
 ## Change inventory
 
-The allowlist is `units/ecosystem/briefs/ECO-G2-INBOX.paths.json` in console-handoff.
-The paths below are the complete lane inventory against public dev, including
-Round 3 (the six original lane commits were rebased from train/fix-r1). Generated contracts are regenerated with their repository tools.
+This is the complete lane inventory against public/dev `9004241bc`, including
+deletions and generated contracts. No excluded lane file is edited. Shared
+contracts are regenerated with the repository OpenAPI and TypeScript generators.
 
-### Owned and shared contract paths
+### Owned paths
 
 - `apps/web/src/features/home/Home.tsx`
 - `apps/web/src/features/home/api.test.ts`
@@ -190,16 +269,15 @@ Round 3 (the six original lane commits were rebased from train/fix-r1). Generate
 - `backend/crates/action-inbox/application/src/source.rs`
 - `backend/crates/action-inbox/application/tests/home_queue.rs`
 - `backend/crates/action-inbox/application/tests/resilience.rs`
+
+### Shared contract paths
+
 - `backend/openapi/openapi.yaml`
 - `packages/api/src/schema.d.ts`
 - `packages/i18n/src/catalogs/en/home.ts`
 - `packages/i18n/src/catalogs/ko/home.ts`
 
 ### Outside owned paths
-
-These supporting route, command, configuration, source-test and contract files are
-necessary for the requested parity, pool bound, first-paint and verification proof.
-No excluded lane file is edited.
 
 - `apps/web/src/features/account/ui/second-passkey.tsx`
 - `apps/web/src/features/onboarding/ui/add-passkey.test.tsx`
@@ -249,6 +327,7 @@ No excluded lane file is edited.
 - `backend/crates/platform/db/migrations/20261022220000000_inbox_contract_reminder_setting.sql`
 - `backend/crates/platform/db/migrations/20261022220000001_inbox_account_live.sql`
 - `backend/crates/platform/db/migrations/20261023000000000_inbox_read_budget.sql`
+- `backend/crates/platform/db/migrations/20261024000000000_inbox_settings_after_import.sql`
 - `backend/crates/platform/realtime/src/filter.rs`
 - `backend/crates/settings/domain/src/keys/display.rs`
 - `backend/crates/settings/domain/src/keys/perf.rs`
@@ -256,17 +335,31 @@ No excluded lane file is edited.
 - `backend/crates/settings/domain/tests/sql_definitions.rs`
 - `docs/product/action-inbox.md`
 - `e2e/d26-solo-exit.spec.ts`
+- `e2e/home-truth.spec.ts`
+- `e2e/ideal-first-run-access.spec.ts`
+- `e2e/ideal-first-run-rail.spec.ts`
 - `e2e/import-reds-layout.spec.ts`
+- `e2e/inbox-live.spec.ts`
 - `e2e/j3-renewal.spec.ts`
 - `e2e/j5-exit.spec.ts`
-- `e2e/period-unlock-approve.spec.ts`
-- `e2e/home-truth.spec.ts`
-- `e2e/inbox-live.spec.ts`
 - `e2e/live.spec.ts`
+- `e2e/org.spec.ts`
+- `e2e/parity-regressions.spec.ts`
+- `e2e/parity/states.capture.ts`
+- `e2e/parity/walk-1011.capture.ts`
+- `e2e/parity/walk-1012.capture.ts`
+- `e2e/parity/walk.capture.ts`
+- `e2e/period-unlock-approve.spec.ts`
+- `e2e/read-retry-bound.spec.ts`
 - `e2e/setup-truth.spec.ts`
+- `e2e/statutory.spec.ts`
 - `packages/i18n/src/catalogs/d26-copy.test.ts`
+- `packages/i18n/src/catalogs/en/requests.ts`
+- `packages/i18n/src/catalogs/ko/requests.ts`
 - `scripts/check-source.mjs`
 - `scripts/ds-baseline.json`
+- `scripts/person-reads-baseline.json`
 - `scripts/quality/baseline.json`
 - `scripts/reach-baseline.json`
 - `scripts/standing-text-baseline.json`
+- `scripts/standing-text.d/eco-composer.json`
