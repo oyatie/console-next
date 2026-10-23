@@ -15,11 +15,14 @@ use serde_json::Value;
 use sqlx::PgPool;
 use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
+use uuid::Uuid;
 
 pub struct Harness {
     pub app: axum::Router,
     pub actor: OnboardingActor,
     pub token: String,
+    owner: PgPool,
+    family: Uuid,
 }
 
 pub async fn harness(owner: &PgPool, ops: bool) -> Harness {
@@ -83,6 +86,11 @@ pub async fn harness(owner: &PgPool, ops: bool) -> Harness {
         Vec::new(),
     )
     .await;
+    let family = verifier
+        .verify_access_token(&token)
+        .unwrap()
+        .session_family_id
+        .unwrap();
     let app = router(OnboardingRestState::new(
         store.clone(),
         Some(verifier),
@@ -97,10 +105,14 @@ pub async fn harness(owner: &PgPool, ops: bool) -> Harness {
             trace: TraceContext::generate(),
         },
         token,
+        owner: owner.clone(),
+        family,
     }
 }
 
 pub async fn send(h: &Harness, method: &str, path: &str, body: Value) -> (StatusCode, Value) {
+    // These cases exercise tenant terms; personal consent follows each published fixture.
+    console_platform_test_support::seed_session_consent(&h.owner, h.family).await;
     let r = h
         .app
         .clone()

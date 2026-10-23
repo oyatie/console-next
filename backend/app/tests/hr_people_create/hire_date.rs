@@ -11,7 +11,7 @@ async fn employee_create_records_hire_date_and_contract_window(pool: PgPool) {
         app_state(
             runtime_role_pool(&pool).await,
             leave_command_role_pool(&pool).await,
-            keys.public_pem.clone(),
+            &keys,
         )
         .unwrap(),
     );

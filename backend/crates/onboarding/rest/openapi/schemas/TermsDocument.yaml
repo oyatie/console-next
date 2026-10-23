@@ -3,6 +3,7 @@ required:
 - version
 - sha256
 - body
+- privacy
 properties:
   version:
     type: string
@@ -12,3 +13,19 @@ properties:
   body:
     type: string
     description: Exact published UTF-8 text whose SHA-256 is returned.
+  privacy:
+    type: object
+    description: Required privacy notice from the same immutable store, including its legal review state.
+    required: [version, sha256, body, policy_url, review_pending]
+    properties:
+      version:
+        type: string
+      sha256:
+        type: string
+        pattern: ^[a-f0-9]{64}$
+      body:
+        type: string
+      policy_url:
+        type: string
+      review_pending:
+        type: boolean

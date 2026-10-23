@@ -1,3 +1,4 @@
+import { api, unwrap } from "./client";
 import type { components } from "./schema";
 import { authPost, clearStoredRefresh, session, storedRefresh, type TokenPair } from "./session";
 import { platform, type PasskeyGet } from "./platform";
@@ -100,5 +101,16 @@ export async function logout() {
 }
 
 export type ConsentStatus = components["schemas"]["PrivacyConsentStatusResponse"];
-/** Historical account acceptance, retained for the account history; enrollment never depends on it. */
+type ConsentDocuments = components["schemas"]["TermsDocument"];
+/** Exact immutable texts, readable by app and enrollment sessions. */
+export const consentDocuments = () => unwrap(api.GET("/api/v1/onboarding/terms"));
+/** Read required privacy/terms acceptance status. */
 export const consentStatus = () => authPost<ConsentStatus>("/api/v1/auth/privacy-consent/status", undefined, true);
+
+/** Accept the exact text that was displayed, with separate required sign-offs. */
+export const acceptConsent = (documents: ConsentDocuments) =>
+  authPost<ConsentStatus>("/api/v1/auth/privacy-consent/accept", {
+    privacy: { version: documents.privacy.version, sha256: documents.privacy.sha256 },
+    terms: { version: documents.version, sha256: documents.sha256 },
+    privacy_collection: true, terms_of_service: true,
+  }, true);

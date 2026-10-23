@@ -23,3 +23,5 @@ responses:
     $ref: '#/components/responses/ValidationError'
   '401':
     $ref: '#/components/responses/Unauthorized'
+  '409':
+    description: terms_text_changed when either displayed version/hash differs, or terms_not_published.

@@ -27,7 +27,10 @@ pub(crate) fn with_enrollment_gate(router: Router, verifier: Option<JwtVerifier>
                         .and_then(|token| verifier.verify_access_token(token.trim()).ok())
                         .is_some_and(|claims| claims.enrollment)
                 });
+                let document_read = request.method() == axum::http::Method::GET
+                    && request.uri().path() == console_onboarding_rest::TERMS_PATH;
                 if enrollment
+                    && !document_read
                     && !console_platform_auth_rest::ENROLLMENT_ROUTE_PATHS
                         .contains(&request.uri().path())
                 {

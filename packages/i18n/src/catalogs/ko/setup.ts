@@ -193,7 +193,6 @@ export const koSetup = {
   "setup.terms.title": "서비스 이용약관",
   "setup.error.terms_text_changed": "이용약관이 바뀌었습니다. 새 내용을 읽고 동의하십시오.",
   "setup.error.terms_version_already_accepted": "이 버전의 이용약관에 이미 동의했습니다. 운영 시작 미리보기로 돌아가십시오.",
-  "setup.error.terms_not_published": "공개된 이용약관이 없습니다. 운영사에 문의하십시오.",
   "setup.error.step_already_skipped": "이 단계는 이미 나중에 하기로 기록했습니다. 운영 준비를 다시 확인하십시오.",
   "setup.error.step_not_skippable": "이 단계는 건너뛸 수 없습니다. 필요한 항목을 먼저 등록하십시오.",
   "setup.error.phase_not_setup": "운영을 시작한 뒤에는 설정 단계를 건너뛸 수 없습니다. 해당 기록에서 변경하십시오.",

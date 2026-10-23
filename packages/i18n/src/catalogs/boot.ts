@@ -1,9 +1,11 @@
 // Sign-in, shell and shared-state copy (ids app., auth., common., shell.), both locales. It ships in
 // the entry so sign-in and the shell never wait; every screen's copy is in ko.ts/en.ts, loaded per
 // locale with the first screen. Same rules as ko.ts (ICU, `{name|을를}`, no ASCII apostrophe before `{`).
+import { bootConsentEn, bootConsentKo } from "./boot-consent";
 import { bootIdleEn, bootIdleKo } from "./boot-idle";
 
 export const bootKo = {
+  ...bootConsentKo,
   "common.failed.code.contract_overlap": "기존 계약과 기간이 겹칩니다. 계약 내역에서 겹치는 계약을 정정하십시오.",
   "common.failed.code.rehire_date_not_after_exit": "재입사일은 마지막 퇴직일 다음 날부터 선택하십시오.",
   "common.failed.code.filing_applicability_unverified": "신고 적용 사실을 확인하지 않아 저장하지 않았습니다. 근로시간·국적 등 필요한 사실을 확인하고, 생년월일이 다르면 직원 기록에서 정정하십시오.",
@@ -125,8 +127,12 @@ export const bootKo = {
   "auth.passkey.failed": "패스키 인증을 완료하지 못했습니다. 다시 시도하십시오.",
   "auth.passkey.unavailable": "이 브라우저에서는 패스키를 쓸 수 없습니다. 데스크톱 Chrome 또는 Firefox를 최신 버전으로 업데이트한 뒤 다시 시도하십시오.",
   "auth.setup.title": "패스키 등록",
-  "auth.setup.register": "패스키 등록",
+  "auth.setup.register": "동의하고 패스키 등록",
   "auth.setup.cancel": "로그인 취소",
+  "auth.setup.consent.privacy": "[필수] 개인정보 수집·이용",
+  "auth.setup.consent.terms": "[필수] 서비스 이용약관",
+  "auth.setup.consent.continue": "동의하고 계속",
+  "auth.setup.consent.disclosure": "전문 보기",
   "common.denied.title": "{screen}: 접근 권한이 없습니다",
   "common.denied.title.plain": "이 화면에 접근 권한이 없습니다",
   "common.denied.reason": "이 화면에 필요한 권한이 이 계정에 없습니다. 지금 가진 권한은 아래와 같습니다.",
@@ -153,6 +159,7 @@ export const bootKo = {
 export type BootMessageId = keyof typeof bootKo;
 
 export const bootEn: Record<BootMessageId, string> = {
+  ...bootConsentEn,
   "common.failed.code.contract_overlap": "The period overlaps an existing contract. Correct the overlapping contract in contract history.",
   "common.failed.code.rehire_date_not_after_exit": "Choose a rehire date after the last exit date.",
   "common.failed.code.filing_applicability_unverified": "Nothing was saved because filing applicability is unverified. Confirm the required facts, and correct a conflicting birth date in the employee record.",
@@ -274,8 +281,12 @@ export const bootEn: Record<BootMessageId, string> = {
   "auth.passkey.failed": "The passkey step didn’t complete. Try again.",
   "auth.passkey.unavailable": "This browser can’t use passkeys. Update desktop Chrome or Firefox to the latest version, then try again.",
   "auth.setup.title": "Register a passkey",
-  "auth.setup.register": "Register passkey",
+  "auth.setup.register": "Agree and register passkey",
   "auth.setup.cancel": "Cancel sign-in",
+  "auth.setup.consent.privacy": "[Required] Consent to collection and use of personal information",
+  "auth.setup.consent.terms": "[Required] Terms of service",
+  "auth.setup.consent.continue": "Agree and continue",
+  "auth.setup.consent.disclosure": "View full text",
   "common.denied.title": "{screen}: you don’t have access",
   "common.denied.title.plain": "You don’t have access to this screen",
   "common.denied.reason": "This account does not hold the access this screen needs. What it holds today is below.",

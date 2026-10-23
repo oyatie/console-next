@@ -1,5 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+#[path = "auth_rest/consent.rs"]
+mod consent;
+
 #[path = "auth_fixtures/cookie_requests.rs"]
 mod cookie_requests;
 use cookie_requests::{post_cookie_mode, post_cookie_mode_with_device_id};
@@ -101,6 +104,8 @@ struct AdminCredentialResetResponse {
 #[derive(Debug, Deserialize)]
 struct PrivacyConsentStatusResponse {
     policy_version: String,
+    privacy: Value,
+    terms: Value,
     accepted: bool,
     #[serde(with = "time::serde::rfc3339::option")]
     accepted_at: Option<OffsetDateTime>,
@@ -1616,6 +1621,7 @@ async fn approve_session_rejects_access_token_expired_during_family_lock(pool: P
 async fn platform_admin_can_approve_and_consume_bound_device_handoff(pool: PgPool) {
     use sha2::{Digest, Sha256};
 
+    console_platform_test_support::seed_consent_documents(&pool).await;
     let signing_key = SigningKey::random(&mut OsRng);
     let private_pem = signing_key
         .to_pkcs8_pem(LineEnding::LF)
@@ -1867,102 +1873,6 @@ async fn device_login_failures_preserve_proof_and_poll_permit(pool: PgPool) {
     assert_audit_count(&pool, "auth.device_login.consume", 1).await;
     let poll_replay = post_raw(service, "/api/v1/auth/device-login/poll", None, poll).await;
     assert_eq!(poll_replay.status(), StatusCode::UNAUTHORIZED);
-}
-
-/// Initial enrollment does not attest consent; the legacy endpoint and history remain compatible.
-#[sqlx::test(migrator = "MIGRATOR")]
-async fn first_passkey_enrollment_does_not_require_privacy_terms(pool: PgPool) {
-    let signing_key = SigningKey::random(&mut OsRng);
-    let private_key_pem = signing_key.to_pkcs8_pem(LineEnding::LF).unwrap();
-    let public_key_pem = signing_key
-        .verifying_key()
-        .to_public_key_pem(LineEnding::LF)
-        .unwrap();
-    let branch_id = seed_branch(&pool, "Privacy Region", "Privacy Branch").await;
-    let user_id = seed_user_with_branch(
-        &pool,
-        "Privacy User",
-        "010-1234-0016",
-        "MECHANIC",
-        branch_id,
-    )
-    .await;
-    let service = build_router(
-        app_state(
-            pool.clone(),
-            private_key_pem.to_string(),
-            public_key_pem.clone(),
-        )
-        .unwrap(),
-    );
-
-    let issue = BootstrapCredentialStore
-        .issue_for_zero_credential_user(
-            &pool,
-            None,
-            *user_id.as_uuid(),
-            OrgId::one(),
-            OffsetDateTime::now_utc(),
-            Duration::hours(24),
-        )
-        .await
-        .unwrap();
-    let redeem: OtpRedeemResponse = post_json(
-        service.clone(),
-        "/api/v1/auth/otp/redeem",
-        None,
-        json!({ "otp": issue.token.as_str() }),
-        StatusCode::OK,
-    )
-    .await;
-    assert!(redeem.requires_passkey_setup);
-
-    let initial_status: PrivacyConsentStatusResponse = post_json(
-        service.clone(),
-        "/api/v1/auth/privacy-consent/status",
-        Some(&redeem.access_token),
-        json!({}),
-        StatusCode::OK,
-    )
-    .await;
-    assert!(!initial_status.accepted);
-    assert!(initial_status.accepted_at.is_none());
-
-    let blocked = post_raw(
-        service.clone(),
-        "/api/v1/auth/passkey/register/start",
-        Some(&redeem.access_token),
-        json!({ "username": "privacy.user", "display_name": "Privacy User" }),
-    )
-    .await;
-    assert_eq!(blocked.status(), StatusCode::OK);
-
-    let bundled_or_partial_consent = post_raw(
-        service.clone(),
-        "/api/v1/auth/privacy-consent/accept",
-        Some(&redeem.access_token),
-        json!({
-            "policy_version": initial_status.policy_version,
-            "privacy_collection": true,
-            "terms_of_service": false
-        }),
-    )
-    .await;
-    assert_eq!(bundled_or_partial_consent.status(), StatusCode::BAD_REQUEST);
-
-    let accepted = accept_required_privacy_consent(&service, &redeem.access_token).await;
-    assert!(accepted.accepted);
-    assert!(accepted.accepted_at.is_some());
-
-    let allowed: RegisterStartResponse = post_json(
-        service.clone(),
-        "/api/v1/auth/passkey/register/start",
-        Some(&redeem.access_token),
-        json!({ "username": "privacy.user", "display_name": "Privacy User" }),
-        StatusCode::OK,
-    )
-    .await;
-    assert_ne!(allowed.ceremony_id, Uuid::nil());
 }
 
 /// The one-time code is consumed on PASSKEY REGISTRATION, not on redeem. A redeem
@@ -4248,7 +4158,8 @@ async fn accept_required_privacy_consent(
         "/api/v1/auth/privacy-consent/accept",
         Some(access_token),
         json!({
-            "policy_version": status.policy_version,
+            "privacy": status.privacy,
+            "terms": status.terms,
             "privacy_collection": true,
             "terms_of_service": true
         }),
@@ -4911,6 +4822,7 @@ async fn seed_user_with_branch(
     role: &str,
     branch_id: BranchId,
 ) -> UserId {
+    console_platform_test_support::seed_consent_documents(pool).await;
     let user_id = UserId::new();
     sqlx::query(
         "INSERT INTO users (id, display_name, phone, roles, org_id) VALUES ($1, $2, $3, $4, $5)",

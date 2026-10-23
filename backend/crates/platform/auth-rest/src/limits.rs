@@ -26,12 +26,6 @@ pub(crate) const ENROLL_HANDOFF_TTL: Duration = Duration::minutes(5);
 /// token are separate bearer secrets; both expire quickly like enrollment QR.
 pub(crate) const DEVICE_LOGIN_HANDOFF_TTL: Duration = Duration::minutes(5);
 
-/// Required first-login privacy/terms notice version. This is an engineering
-/// control, not a substitute for counsel-approved policy text: bump it whenever
-/// the required collection/use notice or service terms materially change so users
-/// must accept the new version before initial passkey enrollment.
-pub(crate) const REQUIRED_PRIVACY_TERMS_VERSION: &str = "kr-pipa-v1-2026-06-25";
-
 /// Per-client-IP cap per window on unauthenticated auth endpoints that take a
 /// guessable secret (OTP redeem, signup). Passkey login start and device login
 /// use the NAT-sized caps in [`RateLimitEndpoint::limits`] instead.

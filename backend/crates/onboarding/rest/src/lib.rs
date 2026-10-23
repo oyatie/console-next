@@ -66,10 +66,14 @@ pub fn router(state: OnboardingRestState) -> Router {
         .route(CHECKLIST_PATH, get(checklist))
         .route(GO_LIVE_PREVIEW_PATH, get(go_live_preview))
         .route(GO_LIVE_PATH, post(go_live))
-        .route(TERMS_PATH, get(terms).post(accept_terms))
+        .route(TERMS_PATH, post(accept_terms))
         .route(STEP_SKIP_PATH, post(skip_step))
-        .with_state(state);
-    console_platform_request_context::with_request_context(router, verifier, pool)
+        .with_state(state.clone());
+    console_platform_request_context::with_request_context(router, verifier, pool).merge(
+        Router::new()
+            .route(TERMS_PATH, get(terms))
+            .with_state(state),
+    )
 }
 
 async fn actor(s: &OnboardingRestState, headers: &HeaderMap) -> Result<OnboardingActor, RestError> {
@@ -212,8 +216,57 @@ struct TermsBody {
 }
 
 async fn terms(State(s): State<OnboardingRestState>, h: HeaderMap) -> Result<Response, RestError> {
-    let a = actor(&s, &h).await?;
-    Ok(Json(s.store.terms(&a).await?).into_response())
+    // Published legal documents are readable before enrollment and by either account tier.
+    let token = h
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .ok_or_else(|| document_error(StatusCode::UNAUTHORIZED, "unauthorized"))?;
+    let claims = s
+        .jwt_verifier
+        .as_ref()
+        .ok_or_else(|| document_error(StatusCode::SERVICE_UNAVAILABLE, "unavailable"))?
+        .verify_access_token(token)
+        .map_err(|_| document_error(StatusCode::UNAUTHORIZED, "unauthorized"))?;
+    let (user, org) =
+        console_platform_request_context::validate_current_claims(s.store.pool(), &claims)
+            .await
+            .map_err(|_| document_error(StatusCode::UNAUTHORIZED, "unauthorized"))?;
+    let mut tx = s
+        .store
+        .pool()
+        .begin()
+        .await
+        .map_err(|_| document_error(StatusCode::INTERNAL_SERVER_ERROR, "internal"))?;
+    let documents = match console_platform_request_context::privacy::documents_in_tx(&mut tx).await
+    {
+        Ok(documents) => documents,
+        Err(sqlx::Error::RowNotFound) => {
+            tx.rollback()
+                .await
+                .map_err(|_| document_error(StatusCode::INTERNAL_SERVER_ERROR, "internal"))?;
+            let actor = OnboardingActor {
+                org,
+                user,
+                roles: claims.roles,
+                trace: TraceContext::generate(),
+            };
+            s.store
+                .record_refusal(&actor, "terms_not_published", &[])
+                .await?;
+            return Err(document_error(StatusCode::CONFLICT, "terms_not_published"));
+        }
+        Err(_) => {
+            return Err(document_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal",
+            ));
+        }
+    };
+    tx.commit()
+        .await
+        .map_err(|_| document_error(StatusCode::INTERNAL_SERVER_ERROR, "internal"))?;
+    Ok(Json(documents).into_response())
 }
 
 async fn accept_terms(
@@ -250,4 +303,15 @@ async fn skip_step(
     let a = actor(&s, &h).await?;
     s.store.skip_step(&a, &step).await?;
     Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+fn document_error(status: StatusCode, code: &'static str) -> RestError {
+    RestError(
+        status,
+        code,
+        code.into(),
+        vec![],
+        (code == "terms_not_published").then_some("contact_service_operator"),
+        None,
+    )
 }

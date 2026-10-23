@@ -1,0 +1,16 @@
+{
+  "baseline": {
+    "apps/web/src/auth/Login.tsx#SetupPasskey": 0,
+    "apps/web/src/auth/SetupPasskey.tsx#SetupPasskey": 21
+  },
+  "newScreens": {
+    "apps/web/src/auth/SetupPasskey.tsx#SetupPasskey": {
+      "FACT": 12,
+      "REFUSAL": 3,
+      "EMPTY": 0,
+      "LEGAL": 6,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

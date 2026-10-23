@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { KeyRound, LogOut } from "lucide-react";
-import { ApiError, lastSignInId, lastSignInProfile, loginWithPasskey, logout, PASSKEY_ENROLLED, passkeyAutofill, redeemOtp, registerPasskey, session } from "@console/api";
+import { KeyRound } from "lucide-react";
+import { ApiError, lastSignInId, lastSignInProfile, loginWithPasskey, logout, passkeyAutofill, redeemOtp, session } from "@console/api";
 import { t } from "@console/i18n";
 import { signInError } from "../lib/refusal";
 import { Banner } from "../ui/banner/banner";
@@ -10,6 +10,8 @@ import { Field, TextInput } from "../ui/field/field";
 import { PageHead } from "../ui/page-head/page-head";
 import { IDLE_EXPIRED } from "./idle";
 import { autofillPaused, parseSignInId, rememberDomain, rememberedDomains, resumeAutofill } from "./sign-in-id";
+
+export { SetupPasskey } from "./SetupPasskey";
 
 const loginRoute = getRouteApi("/login");
 
@@ -28,7 +30,7 @@ const passkeyRecovery = (e: unknown): Recovery => (signInError(e) === null ? "pa
  * renewed before its ceremony expires, aborted before any modal ceremony (a pending one makes the next fail). Not
  * started after a sign-out or a failed sign-in in this tab (auth/sign-in-id.ts) until the next sign-in.
  */
-function useAutofill(signedIn: () => Promise<void>, failed: (e: unknown) => void) {
+function useAutofill(signedIn: () => Promise<void>) {
   const pending = useRef<AbortController | null>(null);
   // Set once a modal ceremony starts or the screen leaves: a start still awaiting the feature check then stays out.
   const stopped = useRef(false);
@@ -47,8 +49,8 @@ function useAutofill(signedIn: () => Promise<void>, failed: (e: unknown) => void
       await loginWithPasskey({ mediation: "conditional", signal: ctl.signal, onStart });
       await signedIn();
     } catch (e) {
-      // A dismissed or aborted autofill is no error; a refused one is.
-      if (!ctl.signal.aborted && signInError(e) !== null) failed(e);
+      void e;
+      // Conditional autofill is passive: failures are never displayed as error banners (issue #44).
     } finally {
       clearTimeout(renew);
       if (pending.current === ctl) pending.current = null;
@@ -96,7 +98,7 @@ export function Login() {
     resumeAutofill();
     await nav({ to: session.stage === "enroll" ? "/setup-passkey" : session.claims?.platform ? "/platform" : "/" });
   };
-  const abortAutofill = useAutofill(signedIn, (e) => setError(signInError(e)));
+  const abortAutofill = useAutofill(signedIn);
   const run = async (fn: () => Promise<void>, onFail: (e: unknown) => Recovery) => {
     abortAutofill();
     setBusy(true);
@@ -196,44 +198,6 @@ export function Login() {
           </Field>
           <Button type="submit" disabled={busy || otp.length !== OTP_LENGTH}>{t("auth.login.submitCode")}</Button>
         </Form>
-      </div>
-    </main>
-  );
-}
-
-export function SetupPasskey() {
-  const nav = useNavigate();
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const enroll = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const signInId = await registerPasskey();
-      if (signInId) rememberDomain(signInId.split("@")[1]!);
-      await nav({ to: session.claims?.platform ? "/platform" : "/" });
-    } catch (e) {
-      // The passkey was registered and only the sign-in with it failed. Losing the session already
-      // left this screen, so the sign-in screen carries the outcome (and offers the passkey sign-in).
-      if (e instanceof Error && e.message === PASSKEY_ENROLLED) return void (await nav({ to: "/login", search: { enrolled: true } }));
-      setError(signInError(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <main className="auth">
-      <div className="card auth__card">
-        <PageHead title={t("auth.setup.title")} />
-        {error && <Banner tone="danger" live="assertive">{error}</Banner>}
-        <Button variant="primary" disabled={busy} onClick={enroll}>
-          <KeyRound size={16} aria-hidden /> {t("auth.setup.register")}
-        </Button>
-        {/* Ends the one-time-code session; the sign-in screen takes a passkey or another code. */}
-        <Button variant="ghost" disabled={busy} onClick={() => void logout()}>
-          <LogOut size={16} aria-hidden /> {t("auth.setup.cancel")}
-        </Button>
       </div>
     </main>
   );

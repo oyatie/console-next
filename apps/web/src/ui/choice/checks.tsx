@@ -10,7 +10,7 @@ import s from "./checks.module.css";
  */
 export function Checks({ label, items, value, onChange, error, isDisabled, required = true }: {
   label: string;
-  items: readonly { id: string; label: ReactNode }[];
+  items: readonly { id: string; label: ReactNode; description?: string }[];
   value: readonly string[];
   onChange: (value: string[]) => void;
   error?: ReactNode;
@@ -22,7 +22,7 @@ export function Checks({ label, items, value, onChange, error, isDisabled, requi
     <CheckboxGroup className={s.group} value={[...value]} onChange={onChange} isRequired={required} isInvalid={error != null} isDisabled={isDisabled} validationBehavior="aria">
       <Label className={s.label}>{label}{required && <Marker required />}</Label>
       {items.map((i) => (
-        <Checkbox key={i.id} value={i.id} className={s.item}>
+        <Checkbox key={i.id} value={i.id} aria-describedby={i.description} className={s.item}>
           {({ isSelected }) => (
             <>
               <span className={s.box} aria-hidden="true">{isSelected && <Check size={12} strokeWidth={3} />}</span>

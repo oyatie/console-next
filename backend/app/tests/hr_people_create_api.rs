@@ -1,5 +1,12 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Real `console_rt` coverage for People & Workforce employee creation.
+
+#[path = "hr_people_create/consent.rs"]
+mod consent;
+#[path = "hr_people_create/fixture.rs"]
+mod fixture;
+use fixture::app_state;
 
 use axum::body::{Body, to_bytes};
 use console_app::{AppConfig, AppRole, AppState, DatabaseDependency, build_router};
@@ -61,7 +68,7 @@ async fn readiness_counts_only_inspectable_active_payroll_close_statuses(pool: P
         app_state(
             runtime_role_pool(&pool).await,
             leave_command_role_pool(&pool).await,
-            keys.public_pem.clone(),
+            &keys,
         )
         .unwrap(),
     );
@@ -115,7 +122,7 @@ async fn employee_create_is_idempotent_unique_and_tenant_scoped(pool: PgPool) {
         app_state(
             runtime_role_pool(&pool).await,
             leave_command_role_pool(&pool).await,
-            keys.public_pem.clone(),
+            &keys,
         )
         .unwrap(),
     );
@@ -607,7 +614,7 @@ async fn employee_create_assigns_numbers_warns_on_same_name_and_masks_readers(po
         app_state(
             runtime_role_pool(&pool).await,
             leave_command_role_pool(&pool).await,
-            keys.public_pem.clone(),
+            &keys,
         )
         .unwrap(),
     );
@@ -722,7 +729,7 @@ async fn employee_create_rejects_unknown_org_unit_uuid(pool: PgPool) {
         app_state(
             runtime_role_pool(&pool).await,
             leave_command_role_pool(&pool).await,
-            keys.public_pem.clone(),
+            &keys,
         )
         .unwrap(),
     );
@@ -759,7 +766,7 @@ async fn deactivated_super_admin_cannot_create_employee(pool: PgPool) {
         app_state(
             runtime_role_pool(&pool).await,
             leave_command_role_pool(&pool).await,
-            keys.public_pem.clone(),
+            &keys,
         )
         .unwrap(),
     );
@@ -858,7 +865,7 @@ async fn revoked_grant_executive_cannot_create_employee(pool: PgPool) {
         app_state(
             runtime_role_pool(&pool).await,
             leave_command_role_pool(&pool).await,
-            keys.public_pem.clone(),
+            &keys,
         )
         .unwrap(),
     );
@@ -1241,22 +1248,6 @@ async fn scoped_role_pool(owner_pool: &PgPool, role: &'static str) -> PgPool {
         .connect_with(options)
         .await
         .unwrap()
-}
-
-fn app_state(
-    runtime_pool: PgPool,
-    leave_command_pool: PgPool,
-    public_key_pem: String,
-) -> Result<AppState, console_app::AppError> {
-    let config = AppConfig::from_pairs([
-        ("CONSOLE_APP_ROLE", AppRole::Api.to_string()),
-        ("CONSOLE_HTTP_ADDR", "127.0.0.1:0".to_owned()),
-        ("CONSOLE_JWT_ISSUER", TEST_ISSUER.to_owned()),
-        ("CONSOLE_JWT_AUDIENCE", TEST_AUDIENCE.to_owned()),
-        ("CONSOLE_JWT_PUBLIC_KEY_PEM", public_key_pem),
-    ])?;
-    AppState::new(config, DatabaseDependency::Postgres(runtime_pool))
-        .map(|state| state.with_leave_command_database(leave_command_pool))
 }
 
 #[path = "hr_people_create/hire_date.rs"]

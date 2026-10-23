@@ -30,7 +30,7 @@ const login = createRoute({
   beforeLoad: leaveSignInWhenSignedIn,
   component: lazyRouteComponent(() => chunk(import("../auth/Login")), "Login"),
 });
-const setupPasskey = createRoute({ getParentRoute: () => root, path: "/setup-passkey", beforeLoad: ensureEnrolling, component: lazyRouteComponent(() => chunk(import("../auth/Login")), "SetupPasskey") });
+const setupPasskey = createRoute({ getParentRoute: () => root, path: "/setup-passkey", beforeLoad: ensureEnrolling, component: lazyRouteComponent(() => chunk(import("../auth/SetupPasskey")), "SetupPasskey") });
 export const app = createRoute({ getParentRoute: () => root, id: "app", beforeLoad: ensureSession, component: lazyRouteComponent(screen(() => import("../shell/shell")), "Shell") });
 
 const tenants = createRoute({

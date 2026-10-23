@@ -21,6 +21,19 @@ pub(super) fn error_response(status: StatusCode, message: &str) -> Response {
 
 pub(super) fn error_response_for(err: &RequestContextError) -> Response {
     let status = match err {
+        RequestContextError::AccessScope(error)
+            if error.kind == ErrorKind::Forbidden
+                && error.code == Some("privacy_consent_required") =>
+        {
+            return (
+                StatusCode::FORBIDDEN,
+                Json(serde_json::json!({"error": {
+                    "code": "privacy_consent_required",
+                    "message": error.message,
+                }})),
+            )
+                .into_response();
+        }
         RequestContextError::VerifierUnavailable => StatusCode::SERVICE_UNAVAILABLE,
         RequestContextError::BranchScope(_) | RequestContextError::EffectivePolicy(_) => {
             StatusCode::INTERNAL_SERVER_ERROR
@@ -120,6 +133,22 @@ mod tests {
         ] {
             assert_refusal(error_response_for(&error), status, code, &error.to_string()).await;
         }
+    }
+
+    #[tokio::test]
+    async fn privacy_consent_refusal_preserves_code_and_message() {
+        let message =
+            "required privacy notice and terms must be accepted before personal data writes";
+        let error = RequestContextError::AccessScope(
+            KernelError::forbidden(message).with_code("privacy_consent_required"),
+        );
+        assert_refusal(
+            error_response_for(&error),
+            StatusCode::FORBIDDEN,
+            "privacy_consent_required",
+            message,
+        )
+        .await;
     }
 
     #[tokio::test]

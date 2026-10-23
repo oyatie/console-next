@@ -1,14 +1,12 @@
 use crate::error::RestError;
 use crate::limits::DEFAULT_OTP_TTL;
 use crate::limits::MAX_OTP_TTL;
-use crate::limits::REQUIRED_PRIVACY_TERMS_VERSION;
 use crate::state::AuthServices;
 use axum::http::HeaderMap;
 use axum::http::header;
 use console_kernel_core::KernelError;
 use console_kernel_core::OrgId;
 use console_platform_authz::Principal;
-use console_platform_db::with_org_conn;
 use sqlx::PgPool;
 use time::Duration;
 use time::OffsetDateTime;
@@ -60,7 +58,8 @@ pub(crate) async fn authenticated_user_context(
     services: &AuthServices,
     headers: &HeaderMap,
 ) -> Result<(Uuid, OrgId), RestError> {
-    user_context(pool, services, headers, false).await
+    let (user_id, org_id, _) = user_context(pool, services, headers, false).await?;
+    Ok((user_id, org_id))
 }
 
 /// [`authenticated_user_context`] that also admits an OTP enrollment session
@@ -69,7 +68,7 @@ pub(crate) async fn enrollment_user_context(
     pool: &PgPool,
     services: &AuthServices,
     headers: &HeaderMap,
-) -> Result<(Uuid, OrgId), RestError> {
+) -> Result<(Uuid, OrgId, bool), RestError> {
     user_context(pool, services, headers, true).await
 }
 
@@ -78,7 +77,7 @@ pub(crate) async fn user_context(
     services: &AuthServices,
     headers: &HeaderMap,
     allow_enrollment: bool,
-) -> Result<(Uuid, OrgId), RestError> {
+) -> Result<(Uuid, OrgId, bool), RestError> {
     let token = bearer_token(headers)?;
     let claims = services
         .jwt_verifier
@@ -101,7 +100,7 @@ pub(crate) async fn user_context(
     if claims.enrollment && !allow_enrollment {
         return Err(RestError::passkey_required());
     }
-    Ok((*user.as_uuid(), org))
+    Ok((*user.as_uuid(), org, claims.enrollment))
 }
 
 pub(crate) fn session_family_from_headers(
@@ -125,31 +124,9 @@ pub(crate) async fn required_privacy_consent_accepted_at(
     org_id: OrgId,
     user_id: Uuid,
 ) -> Result<Option<OffsetDateTime>, RestError> {
-    let org_uuid = *org_id.as_uuid();
-    with_org_conn(pool, org_id, |tx| {
-        Box::pin(async move {
-            sqlx::query_scalar::<_, OffsetDateTime>(
-                r#"
-                SELECT occurred_at
-                FROM audit_events
-                WHERE org_id = $1
-                  AND actor = $2
-                  AND action = 'privacy.required_accept'
-                  AND target_type = 'privacy_terms'
-                  AND target_id = $3
-                ORDER BY occurred_at DESC
-                LIMIT 1
-                "#,
-            )
-            .bind(org_uuid)
-            .bind(user_id)
-            .bind(REQUIRED_PRIVACY_TERMS_VERSION)
-            .fetch_optional(tx.as_mut())
-            .await
-            .map_err(|err| RestError::internal(err.to_string()))
-        })
-    })
-    .await
+    console_platform_request_context::privacy::accepted_at(pool, org_id, user_id)
+        .await
+        .map_err(|err| RestError::internal(err.to_string()))
 }
 
 pub(crate) fn bearer_token(headers: &HeaderMap) -> Result<&str, RestError> {

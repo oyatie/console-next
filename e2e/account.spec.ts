@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectAccessible, fits } from "./a11y";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { clickCounter } from "./clicks";
-import { go, newContext, passkeyLogin, vendorPage } from "./flows";
+import { acceptConsent, go, newContext, passkeyLogin, vendorPage } from "./flows";
 import { inviteAccount } from "./access-flows";
 import { tenantWithExecutive } from "./setup-flows";
 import { openTenant } from "./helpers/tenant";
@@ -27,8 +27,7 @@ test("my account: add a second passkey, sign in with it, remove the first", { ta
   // Decision #3: enrollment records no inferred privacy consent; legacy consent history stays read-only.
   await expect(main.getByText("직원 기록과 연결되지 않은 계정입니다")).toBeVisible();
   await expect(main.getByText(/개인정보 처리 고지 \S+/)).toBeVisible();
-  await expect(main.getByText("아직 동의하지 않았습니다")).toBeVisible();
-  await expect(main.getByText(/동의함$/)).toHaveCount(0);
+  await expect(main.getByText(/동의함$/)).toBeVisible();
   await expect(main.getByRole("checkbox")).toHaveCount(0);
   await expect(main.getByRole("button", { name: "이 기기에서 로그아웃" })).toHaveAccessibleName("이 기기에서 로그아웃");
   const passkeys = admin.getByRole("table", { name: "패스키" });
@@ -141,10 +140,10 @@ test("a refused sign-in right after enrollment lands on the login screen, and th
   });
   await page.goto("/login");
   await page.getByLabel("일회용 코드").fill(code);
-  const agree = page.getByRole("button", { name: "패스키 등록" });
   await page.getByRole("button", { name: "코드로 로그인" }).click();
+  await acceptConsent(page);
+  const agree = page.getByRole("button", { name: /동의하고 패스키 등록|패스키 등록/ });
   await expect(agree).toBeVisible();
-  await expect(page.getByRole("checkbox")).toHaveCount(0);
   await agree.click();
   // A next step, not an error: announced as a status, with no alert.
   await expect(page.getByRole("status").filter({ hasText: "패스키를 등록했지만 이어서 로그인하지 못했습니다" })).toBeVisible();

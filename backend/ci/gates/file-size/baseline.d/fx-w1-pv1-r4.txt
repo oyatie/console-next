@@ -1,0 +1,9 @@
+# Oversize Rust files, pinned at their code-line count (see ci/gates/file-size).
+# Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
+app/tests/auth_rest.rs	4487
+app/tests/current_authority.rs	855
+app/tests/hr_people_create_api.rs	1144
+app/tests/platform_onboarding_e2e.rs	544
+app/tests/registry_api.rs	577
+crates/platform/db/tests/auth_command_role.rs	492
+crates/platform/request-context/src/lib.rs	366

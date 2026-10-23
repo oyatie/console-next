@@ -38,7 +38,11 @@ pub(crate) async fn start_registration(
     Json(body): Json<RegisterStartRequest>,
 ) -> Result<Json<RegisterStartResponse>, RestError> {
     let services = state.services()?;
-    let (user_id, org_id) = enrollment_user_context(&state.pool, services, &headers).await?;
+    let (user_id, org_id, is_enrollment) =
+        enrollment_user_context(&state.pool, services, &headers).await?;
+    if is_enrollment {
+        crate::consent::ensure_privacy_consent_accepted(&state.pool, org_id, user_id).await?;
+    }
     let user = load_user_auth_context_in_org(&state.pool, org_id, user_id).await?;
 
     // Step-up gate: an already-enrolled user MUST assert an existing passkey (UV)
@@ -193,7 +197,11 @@ pub(crate) async fn finish_registration(
     Json(body): Json<RegisterFinishRequest>,
 ) -> Result<(StatusCode, Json<RegisterFinishResponse>), RestError> {
     let services = state.services()?;
-    let (user_id, org_id) = enrollment_user_context(&state.pool, services, &headers).await?;
+    let (user_id, org_id, is_enrollment) =
+        enrollment_user_context(&state.pool, services, &headers).await?;
+    if is_enrollment {
+        crate::consent::ensure_privacy_consent_accepted(&state.pool, org_id, user_id).await?;
+    }
     let family_id = session_family_from_headers(services, &headers)?;
     ensure_registration_ceremony_owner(&state.pool, body.ceremony_id, user_id).await?;
     let now = OffsetDateTime::now_utc();

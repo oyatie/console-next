@@ -2489,6 +2489,13 @@ export interface paths {
                 };
                 400: components["responses"]["ValidationError"];
                 401: components["responses"]["Unauthorized"];
+                /** @description terms_text_changed when either displayed version/hash differs, or terms_not_published. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         delete?: never;
@@ -9185,7 +9192,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read the latest published service terms */
+        /** Read the exact current service terms and required privacy notice, including before passkey enrollment */
         get: operations["readTerms"];
         put?: never;
         /** 이용약관 acceptance by the contracting admin */
@@ -24729,8 +24736,14 @@ export interface components {
         PrioritySupportBasis: "ANNEX_1" | "SME_ACT" | "GRACE_5Y" | "NOT_ELIGIBLE";
         /** @description Required initial-login Korean privacy collection/use and service-terms acknowledgement. These required agreements are explicit booleans so the client cannot bundle them into one generic "agree all" flag. Optional marketing consent and GPS/location consent are not collected by this request. */
         PrivacyConsentAcceptRequest: {
-            /** @description Required privacy/terms notice version being accepted. */
-            policy_version: string;
+            privacy: {
+                version: string;
+                sha256: string;
+            };
+            terms: {
+                version: string;
+                sha256: string;
+            };
             /** @description Required acknowledgement of collection/use purpose, items, retention period, refusal right, and refusal consequence. */
             privacy_collection: boolean;
             /** @description Required acknowledgement of service terms, security controls, and audit-log processing needed to operate the console. */
@@ -24747,6 +24760,14 @@ export interface components {
              * @description UTC timestamp of the latest acceptance for the current version.
              */
             accepted_at?: string | null;
+            privacy: {
+                version: string;
+                sha256: string;
+            };
+            terms: {
+                version: string;
+                sha256: string;
+            };
         };
         /** @enum {string} */
         ProcessingStatus: "PROCESSING" | "READY" | "FAILED";
@@ -26828,6 +26849,14 @@ export interface components {
             sha256: string;
             /** @description Exact published UTF-8 text whose SHA-256 is returned. */
             body: string;
+            /** @description Required privacy notice from the same immutable store, including its legal review state. */
+            privacy: {
+                version: string;
+                sha256: string;
+                body: string;
+                policy_url: string;
+                review_pending: boolean;
+            };
         };
         TimeChangeCoverageEvidence: {
             /**
@@ -46604,13 +46633,6 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            /** @description Contracting ops administrator required. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
             /** @description terms_not_published; ask the service operator for approved terms. */
             409: {
                 headers: {

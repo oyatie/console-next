@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! End-to-end proof of the PLATFORM tier + tenant onboarding, running as the
 //! genuine NON-OWNER runtime role `console_rt` (so RLS is actually enforced, exactly
 //! as in production).
@@ -11,6 +12,9 @@
 //!      `console_rt`, so RLS is the gate.
 //!   3. A TENANT token is REJECTED on /api/platform/* (403).
 //!   4. A PLATFORM token is REJECTED on a tenant /api/v1/* route (403).
+
+#[path = "platform_onboarding/consent.rs"]
+mod consent;
 
 use axum::body::{Body, to_bytes};
 use console_app::{AppConfig, AppRole, AppState, DatabaseDependency, build_router};
@@ -39,24 +43,9 @@ const TEST_AUDIENCE: &str = "console-api";
 const TEST_RP_ID: &str = "example.com";
 const TEST_ORIGIN: &str = "https://auth.example.com";
 
-struct Keys {
-    private_pem: String,
-    public_pem: String,
-}
-
-fn gen_keys() -> Keys {
-    let signing_key = SigningKey::random(&mut OsRng);
-    Keys {
-        private_pem: signing_key
-            .to_pkcs8_pem(LineEnding::LF)
-            .unwrap()
-            .to_string(),
-        public_pem: signing_key
-            .verifying_key()
-            .to_public_key_pem(LineEnding::LF)
-            .unwrap(),
-    }
-}
+#[path = "platform_onboarding/fixture.rs"]
+mod fixture;
+use fixture::{Keys, gen_keys};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn platform_onboards_tenant_and_rls_isolates(super_pool: PgPool) {
