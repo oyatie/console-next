@@ -15,7 +15,7 @@ for (const [index, path] of routes.entries()) {
       const request = route.request();
       const url = new URL(request.url());
       // Keep the authenticated principal and capabilities real, so screen-specific reads are exercised.
-      if (request.method() !== "GET" || url.pathname.startsWith("/api/v1/auth/") || ["/api/v1/users/me", "/api/v1/me/authz", "/api/v1/events"].includes(url.pathname)) return route.fallback();
+      if (!url.pathname.startsWith("/api/") || request.method() !== "GET" || url.pathname.startsWith("/api/v1/auth/") || ["/api/v1/users/me", "/api/v1/me/authz", "/api/v1/events"].includes(url.pathname)) return route.fallback();
       url.searchParams.sort();
       const key = url.pathname + url.search;
       counts.set(key, (counts.get(key) ?? 0) + 1);
