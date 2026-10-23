@@ -68,6 +68,31 @@ every first-step action's bounds and accessibility. Due/urgency ordering is defe
 changing the immutable creation-time cursor needs a separate source-wide traversal
 change rather than sorting only the loaded browser page.
 
+Round-5 logs are in `lanes/eco-g2-inbox/round5-logs/`. The exact `npm run check`
+passes in the isolated proof clone with `dev` at the public base: **2,043 Vitest
+tests**, **3 Node tests**, production build/bundle, quality ratchets, licences and
+secrets. Rust fmt, the CI workspace clippy command, workspace test compilation
+and **all 13 backend gates** pass; file-size measures **2,420 files / 297 pins /
+zero violations**. No generated baseline changed. The range secrets scan covers
+the complete rebased lane. All commits retain Jason Lee's attribution only.
+
+The focused DB suites pass **27 PostgreSQL tests plus 3 helper tests**: inbox
+journeys (excluding the unchanged 2,000-person scale case), grants, people,
+resilience, native Workbench, the two request regressions, MVP routes, period
+unlock decisions and HR change requests/answers. Native Workbench's support and
+dispatch fixtures run with `workspace,support,dispatch`; compiling those modules
+out intentionally removes their source rows. The unnecessary scale rerun was
+stopped during fixture creation; this round makes no new latency claim.
+
+Chromium's root retry is **3/3** green; all ten retry routes, statutory, the 390 px
+rail/axe check, solo first-run and two-tab SSE removal pass. J5 passes separately
+with `--project=clock --no-deps`. The combined run has **15 passes / 1 existing
+skip / 1 failure** at the already-reported `setup-truth.spec.ts:180` layout
+assertion, before reaching Home. The isolated full setup-truth rerun is **2/2**
+green; the pre-fix layout comparison is also **2/2** green. Keep that intermittent
+layout result visible in merge-result verification. Full DB/browser sweeps and
+mutation runs remain release-batch checks.
+
 Round-5 files outside the original owned paths:
 
 - `apps/web/src/ui/setup-rail/setup-rail.module.css` — narrow setup actions.
