@@ -1,3 +1,2 @@
-fn main() {
-    println!("cargo:rerun-if-changed=../db/migrations");
-}
+// SPDX-License-Identifier: LicenseRef-Proprietary
+include!("../db/build.rs");

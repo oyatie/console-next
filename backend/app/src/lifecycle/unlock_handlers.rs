@@ -84,19 +84,25 @@ pub(super) async fn unlock_period_lock(
             load_lock_for_update(tx, lock_id)
                 .await?
                 .ok_or_else(|| LifecycleError::from_kernel(KernelError::not_found("period lock was not found")))?;
+            let actor = sqlx::query_as::<_,(bool,Option<Uuid>)>(
+                "SELECT public.console_setup_phase($1),maker_person FROM public.console_decision_people($1,$2,$2)"
+            ).bind(org.as_uuid()).bind(user).fetch_one(tx.as_mut()).await;
+            let Ok((setup,Some(_))) = actor else {
+                return Err(coded(StatusCode::FORBIDDEN,"period_unlock.refuse.identity_unbound",
+                    "unlock requests require a bound natural person"));
+            };
             let fact = second_person(tx, org, user, now, &settings).await?;
-            // Fail closed: anything but the documented loosening reads as refuse.
             let sole_holder_refuse = !matches!(
                 settings.get(&SettingKey::AuthzSoleHolderMode),
                 Some(Ok(resolved)) if matches!(resolved.value, SettingValue::Code("step_up_notice_review"))
             );
-            let setup_person: bool = sqlx::query_scalar("SELECT public.console_setup_person($1,$2)")
-                .bind(org.as_uuid()).bind(user).fetch_one(tx.as_mut()).await?;
-            let admins = console_identity_adapter_postgres::second_person::PgHolderResolver {
-                tx, org, capability: console_identity_adapter_postgres::second_person::HolderCapability::AccessAdmin,
-                exclude_account: None, exclude_employee: None, include_ops: true, now,
-            }.resolve_at_most(2).await.map_err(LifecycleError::from_kernel)?;
-            let setup_single_admin = setup_person && admins.len()==1 && admins.contains(&user);
+            let setup_single_admin = if setup && fact.other_eligible_holders==0 {
+                let admins = console_identity_adapter_postgres::second_person::PgHolderResolver {
+                    tx, org, capability: console_identity_adapter_postgres::second_person::HolderCapability::AccessAdmin,
+                    exclude_account: None, exclude_employee: None, include_ops: true, now,
+                }.resolve_at_most(2).await.map_err(LifecycleError::from_kernel)?;
+                admins.len()==1 && admins.contains(&user)
+            } else { false };
             // Admission is a separate Cedar decision; no assertion has been verified yet.
             if !unlock_admitted(&user.to_string(), &org.to_string(), fact.other_eligible_holders, sole_holder_refuse, setup_single_admin) {
                 return Err(coded(

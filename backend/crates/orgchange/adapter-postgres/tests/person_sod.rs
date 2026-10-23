@@ -35,7 +35,7 @@ async fn routed_approval_refuses_same_person_accounts_without_decision_or_audit(
             let err = scope_org(org, store.decide_step(actor, request, step, approved, None))
                 .await
                 .unwrap_err();
-            assert_eq!(err.kind(), ErrorKind::Forbidden);
+            assert_eq!(err.kind(), ErrorKind::Conflict);
             assert!(
                 matches!(err, console_orgchange_adapter_postgres::PgOrgChangeError::Domain(ref e) if e.code==Some("org_change_sod_violation"))
             );

@@ -1,16 +1,11 @@
 //! BW-15 period unlock (decisions #8b, D0.1/D0.2, #7).
 //!
 //! `POST /period-locks/{lockId}/unlock { reasonCode, note?, relockAt, stepUp }`
-//! needs a PERIOD_UNLOCK step-up and a time box (`relockAt`, at most
-//! `period_lock.unlock_max_days` out). When another eligible holder of
-//! `period_lock_manage` exists (identity's D0.2 fact) it opens a request (202)
-//! and that second person performs the unlock with
-//! `POST /period-locks/{lockId}/unlock/approve { stepUp }`. With no other
-//! holder, `authz.sole_holder.mode` decides: `step_up_notice_review` unlocks at
-//! once, flags the lock for review and records the 예외 처리 whose due time is
-//! the 사후 검토 item (`sole_holder_unlock.rs`); anything else refuses. A sole
-//! holder is refused only in `refuse` mode; while another eligible holder
-//! exists the unlock waits for that second person.
+//! needs a PERIOD_UNLOCK step-up and a configured time box. Another eligible
+//! holder opens a request (202), then approves it with their own passkey.
+//! Only the sole bound administrator during setup may use the configured
+//! `step_up_notice_review` exception; go-live switches that solo path off.
+//! The exception flags the lock and creates its due review item.
 //!
 //! Step-up payloads (lowercase hex SHA-256 of the UTF-8 text, `\n`-joined):
 //! - unlock: `PERIOD_UNLOCK\n{lockId}\n{reasonCode}\n{relockAt as sent}`, object `lockId`;

@@ -6,14 +6,13 @@ SET LOCAL lock_timeout = '2s';
 
 -- Expand the operations principal shape to admit an explicitly bound bootstrap Person.
 -- Ordinary operations inserts still have no Person; the decision resolver never invents one.
-ALTER TABLE users ADD CONSTRAINT users_principal_person_bound_check CHECK (
+ALTER TABLE users DROP CONSTRAINT users_principal_person_check;
+ALTER TABLE users ADD CONSTRAINT users_principal_person_check CHECK (
     (principal_kind='TENANT_PERSON' AND person_id IS NOT NULL AND NOT is_tenant_ops)
     OR (principal_kind='OPERATIONS' AND is_tenant_ops)
     OR (principal_kind='VENDOR' AND person_id IS NULL AND NOT is_tenant_ops)
 ) NOT VALID;
-ALTER TABLE users VALIDATE CONSTRAINT users_principal_person_bound_check;
-ALTER TABLE users DROP CONSTRAINT users_principal_person_check;
-ALTER TABLE users RENAME CONSTRAINT users_principal_person_bound_check TO users_principal_person_check;
+ALTER TABLE users VALIDATE CONSTRAINT users_principal_person_check;
 
 CREATE OR REPLACE FUNCTION console_account_binding() RETURNS TRIGGER
 LANGUAGE plpgsql SET search_path=pg_catalog AS $$
@@ -179,18 +178,17 @@ CREATE TRIGGER trg_account_link_person_sod BEFORE INSERT OR UPDATE OF status,app
 
 
 -- Serialize the setup-only exception with go-live and concurrent account creation.
-CREATE FUNCTION public.console_setup_person(p_org UUID,p_actor UUID)
+CREATE FUNCTION public.console_setup_phase(p_org UUID)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE phase TEXT;
 BEGIN
     IF p_org IS NULL OR p_org IS DISTINCT FROM NULLIF(current_setting('app.current_org',true),'')::uuid THEN
         RETURN false;
     END IF;
-    PERFORM id FROM public.organizations WHERE id=p_org FOR UPDATE;
     SELECT t.phase INTO phase FROM public.tenant_phase t WHERE t.org_id=p_org FOR SHARE;
     IF phase IS DISTINCT FROM 'SETUP' THEN RETURN false; END IF;
-    RETURN EXISTS (SELECT 1 FROM public.users u JOIN public.persons p ON p.org_id=u.org_id AND p.id=u.person_id
-        WHERE u.org_id=p_org AND u.id=p_actor);
+    PERFORM id FROM public.organizations WHERE id=p_org FOR UPDATE;
+    RETURN true;
 END $$;
-REVOKE ALL ON FUNCTION public.console_setup_person(UUID,UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.console_setup_person(UUID,UUID) TO console_rt;
+REVOKE ALL ON FUNCTION public.console_setup_phase(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.console_setup_phase(UUID) TO console_rt;

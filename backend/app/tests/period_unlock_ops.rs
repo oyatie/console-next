@@ -108,9 +108,7 @@ async fn active(owner: &PgPool, lock_id: Uuid) -> bool {
         .unwrap()
 }
 
-/// regression (decisions #26 item d): before it, ops was refused
-/// `second_person_ineligible` and an unlock waiting on an absent holder could
-/// not be performed by anyone in the tenant.
+/// Unbound operations accounts cannot approve or request a governed unlock.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn unbound_operations_accounts_cannot_be_either_decision_party(owner: PgPool) {
     let (service, issuer) = router(&owner).await;
@@ -142,7 +140,7 @@ async fn unbound_operations_accounts_cannot_be_either_decision_party(owner: PgPo
     assert!(active(&owner, lock_id).await);
     assert!(unlocks(&owner, lock_id).await.is_empty());
 
-    // The unbound ops account keeps its own reviewed break-glass path.
+    // Operations privileges and step-up do not substitute for a Person binding.
     sqlx::query("UPDATE authz_grant_ledger SET occurred_at=now() WHERE user_id=$1")
         .bind(ops.id)
         .execute(&owner)
@@ -166,7 +164,16 @@ async fn unbound_operations_accounts_cannot_be_either_decision_party(owner: PgPo
     );
     assert!(active(&owner, lock_id).await);
     assert!(unlocks(&owner, lock_id).await.is_empty());
-    let (lock_id, request_id) = lock_and_request(&service, &owner, &svc, &mut ops, "07").await;
+    // A legacy request whose maker loses its person binding is refused too.
+    let mut identity = owner.begin().await.unwrap();
+    sqlx::query("UPDATE users SET is_tenant_ops=false,person_id=(SELECT person_id FROM users WHERE id=$2) WHERE id=$1")
+        .bind(ops.id).bind(absent.id).execute(identity.as_mut()).await.unwrap();
+    sqlx::query("UPDATE users SET is_tenant_ops=true WHERE id=$1")
+        .bind(requester.id)
+        .execute(identity.as_mut())
+        .await
+        .unwrap();
+    identity.commit().await.unwrap();
     let (status, refused) = approve(
         &service,
         &owner,
@@ -184,4 +191,20 @@ async fn unbound_operations_accounts_cannot_be_either_decision_party(owner: PgPo
     );
     assert!(active(&owner, lock_id).await);
     assert!(unlocks(&owner, lock_id).await.is_empty());
+    let relock_at = (OffsetDateTime::now_utc() + Duration::days(1))
+        .format(&Rfc3339)
+        .unwrap();
+    let (status, refused) = send(
+        &service,
+        &format!("{LOCKS}/{lock_id}/unlock"),
+        &requester.token,
+        None,
+        json!({"reasonCode":"PAYROLL_ERROR","relockAt":relock_at}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
+    assert_eq!(
+        refused["error"]["code"],
+        "period_unlock.refuse.identity_unbound"
+    );
 }
