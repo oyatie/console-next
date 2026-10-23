@@ -70,6 +70,7 @@ test("go waits for the destination render, loader and initial read before absenc
   expect(returned, "go must still be waiting for the route loader").toBe(false);
   loader.resolve();
   await expect(page.getByRole("heading", { name: "Destination" })).toBeVisible();
+  await expect(page.locator("[data-route-ready]")).toHaveCount(0);
   expect(returned, "a heading alone must not skip the destination read").toBe(false);
   read.resolve();
   await navigating;
@@ -101,6 +102,7 @@ test("a paused destination read is not ready until it resumes and renders", asyn
   let returned = false;
   const navigating = go(page, "/destination?revision=paused").then(() => { returned = true; });
   await expect(page.getByRole("status")).toHaveText("Loading");
+  await expect(page.locator("[data-route-ready]")).toHaveCount(0);
   expect(returned, "a paused read still owes the destination its answer").toBe(false);
   await page.evaluate(() => window.dispatchEvent(new CustomEvent("network-online", { detail: true })));
   await navigating;
@@ -109,9 +111,43 @@ test("a paused destination read is not ready until it resumes and renders", asyn
 
 test("a missing route signal cannot produce a green absence check", async ({ page }) => {
   await page.route("**/*", route => route.fulfill({ contentType: "text/html", body: "<main><h1>Unready</h1></main>" }));
+  await page.goto(server.resolvedUrls!.local[0]!);
   page.setDefaultTimeout(200);
-  await expect(go(page, server.resolvedUrls!.local[0]!)).rejects.toThrow("page.waitForFunction: Timeout");
+  await expect(go(page, "/destination")).rejects.toThrow("page.waitForFunction: Timeout");
 });
+
+test("go refuses an unexpected redirect unless mayRedirect is explicit", async ({ page }) => {
+  await page.route("**/loader", route => route.fulfill({ body: "loaded" }));
+  await page.route("**/read?*", route => route.fulfill({ body: "Redirected action" }));
+  await go(page, server.resolvedUrls!.local[0]!);
+  page.setDefaultTimeout(1000);
+  await expect(go(page, "/redirect")).rejects.toThrow("page.waitForFunction: Timeout");
+  await expect(page.getByRole("button", { name: "Redirected action" })).toBeVisible();
+  await go(page, "/redirect", true);
+  await expect(page).toHaveURL(/destination\?revision=redirect$/);
+});
+
+for (const stale of ["routeKey", "routeReady"] as const) {
+  test(`go refuses a marker with stale ${stale} even when the other identity matches`, async ({ page }) => {
+    await page.route("**/*", route => route.fulfill({ contentType: "text/html", body: '<main><h1>Previous screen</h1></main><span hidden data-route-ready data-route-key></span>' }));
+    await page.goto(server.resolvedUrls!.local[0]!);
+    // Isolate an uncommitted history entry from the router's independent pending/reads guards.
+    await page.evaluate(stale => {
+      const marker = document.querySelector<HTMLElement>("[data-route-ready]")!;
+      history.replaceState({ __TSR_key: "previous" }, "");
+      marker.dataset.routeKey = history.state.__TSR_key;
+      marker.dataset.routeReady = location.pathname + location.search + location.hash;
+      const push = history.pushState.bind(history);
+      history.pushState = (state, unused, url) => {
+        push(state, unused, url);
+        if (stale !== "routeKey") marker.dataset.routeKey = history.state.__TSR_key;
+        if (stale !== "routeReady") marker.dataset.routeReady = location.pathname + location.search + location.hash;
+      };
+    }, stale);
+    page.setDefaultTimeout(200);
+    await expect(go(page, "/destination?revision=next")).rejects.toThrow("page.waitForFunction: Timeout");
+  });
+}
 
 test("measure ready-route navigation without fixed waits", async ({ page }, testInfo) => {
   await go(page, server.resolvedUrls!.local[0]!);

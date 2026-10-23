@@ -18,6 +18,7 @@ test("onboarding creates every account through the product", { tag: "@smoke" }, 
   await expectAccessible(exec, "home");
   // A direct link to registration says the executive lacks access, instead of a form the server refuses.
   await go(exec, "/people/new");
+  await expect(exec.getByRole("region", { name: "이 화면에 접근 권한이 없습니다" })).toBeInViewport();
   await expect(exec.getByRole("heading", { name: "접근 권한이 없습니다" })).toBeVisible();
   await expect(exec.getByLabel("이름", { exact: true })).toHaveCount(0);
   await go(exec, "/");
