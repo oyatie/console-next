@@ -53,7 +53,7 @@ beforeAll(async () => {
   browser = await chromium.launch();
   page = await browser.newPage();
   page.setDefaultTimeout(10000);
-});
+}, 60_000);
 
 test.each([390, 1440])("resolving a page block keeps both controls fixed at %ipx", async (width) => {
   await page.setViewportSize({ width, height: 900 });

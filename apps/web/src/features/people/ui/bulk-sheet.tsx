@@ -217,7 +217,6 @@ export function BulkSheet({ source, matching, onClose, onDone }: {
       tone={danger ? "danger" : "primary"}
       onSubmit={submit}
       blocked={blockedWhy ? { reason: blockedWhy, press: submit } : undefined}
-      missing={tried ? missingCount : 0}
       recovery={cmd.lost ? <><Button onClick={onClose}>{t("composer.dismiss")}</Button><Button variant="primary" onClick={() => void cmd.send(batches(rows))}>{t("bulk.lost.check")}</Button></> : undefined}
     >
       <div id={bodyId} className={s.lines}>
