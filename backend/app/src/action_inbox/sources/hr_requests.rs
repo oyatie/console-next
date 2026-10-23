@@ -36,7 +36,7 @@ pub(crate) async fn page(
             id: format!("{INBOX_ID_PREFIX}{}", request.id),
             kind: "hr_request".to_owned(),
             ref_code: String::new(),
-            title: String::new(),
+            title: request.title,
             site: None,
             who: None,
             due: None,

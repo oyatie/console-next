@@ -50,6 +50,34 @@ on. Source-specific SSE topics invalidate the queue. Account work emits a payloa
 `inbox` hint, so its holder needs no user/role administration grant. Own-write echo
 and sheet holds keep record snapshots stable while the queue still refreshes.
 
+## Round 5 consumer regressions
+
+Rebased onto public/dev `ebe3857c3`. The bounded-read browser test scopes Home's
+retry to the 업무함 alert and checks its support reference before pressing it;
+the shell's separate checklist retry remains covered. Change requests carry the
+subject's current person name (the requester for non-person subjects), and unlock
+requests carry the requester's current display name. Both remain display-ready in
+Workbench, while the typed context retains the localized decision facts on Home.
+`workbench_inbox_requests.rs` creates both request kinds through the product API
+and checks their mounted Workbench entries; both fail with
+`action_inbox_unavailable` on rebased pre-fix `7330298ed`.
+
+The setup rail stacks its actions below the title when its own container is
+narrow, including inside the Home card at 390 px. The browser regression checks
+every first-step action's bounds and accessibility. Due/urgency ordering is deferred:
+changing the immutable creation-time cursor needs a separate source-wide traversal
+change rather than sorting only the loaded browser page.
+
+Round-5 files outside the original owned paths:
+
+- `apps/web/src/ui/setup-rail/setup-rail.module.css` — narrow setup actions.
+- `backend/app/src/lifecycle/inbox.rs` — unlock display title.
+- `backend/crates/hr/adapter-postgres/src/requests/inbox.rs` — current subject name.
+- `backend/app/tests/inbox_journey.rs`, `backend/app/tests/inbox_people_journey.rs` — display-title contract.
+- `backend/app/tests/workbench_inbox_requests.rs` — consumer regression tests.
+- `e2e/read-retry-bound.spec.ts`, `e2e/ideal-first-run-rail.spec.ts` — retry and narrow-rail verification.
+- `docs/product/action-inbox.md` — integration evidence and scope inventory.
+
 ## Next ownership slice
 
 Source relocation is deferred to keep the permission/record behavior verifiable in
@@ -312,6 +340,7 @@ contracts are regenerated with the repository OpenAPI and TypeScript generators.
 - `backend/app/tests/inbox_people_journey.rs`
 - `backend/app/tests/inbox_pool/mod.rs`
 - `backend/app/tests/inbox_resilience.rs`
+- `backend/app/tests/workbench_inbox_requests.rs`
 - `backend/ci/gates/file-size/baseline.txt`
 - `backend/crates/hr/adapter-postgres/src/requests/inbox.rs`
 - `backend/crates/hr/adapter-postgres/src/statutory/filing_query.rs`

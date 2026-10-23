@@ -419,7 +419,7 @@ async fn pending_period_unlock_is_only_the_eligible_second_persons_work_and_leav
     assert_eq!(rows.len(), 1, "{page}");
     assert_eq!(rows[0]["id"], format!("period_unlock:{request}"));
     assert_eq!(rows[0]["ref"], "");
-    assert_eq!(rows[0]["title"], "");
+    assert_eq!(rows[0]["title"], "업무함 요청자");
     assert_eq!(
         rows[0]["context"]["unlock"],
         json!({
