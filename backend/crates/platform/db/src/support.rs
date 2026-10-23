@@ -91,7 +91,7 @@ pub fn live(session: &Session, now: OffsetDateTime) -> Result<(), SupportError> 
         return Err(SupportError::Refused("support.refuse.session_ended"));
     }
     if session.expires_at.is_some_and(|until| until <= now)
-        || (session.state == "EXPIRED" && session.tenant_approved_at.is_some())
+        || (session.state == "EXPIRED" && session.expires_at.is_some())
     {
         return Err(SupportError::Refused("support.refuse.session_expired"));
     }

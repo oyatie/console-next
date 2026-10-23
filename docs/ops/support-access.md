@@ -26,9 +26,19 @@ The verifier runs `e2e/support-access.spec.ts` in Chromium: real bound WebAuthn 
 
 Slice 2 is deferred to OC0-API/OC0-WEB. No ops origin/process migration or operator screen is included here. Proposed OC0-WEB paths remain `apps/ops/src/features/{tenants,support}/`. The current platform surface is retained for operators until that slice; tenant sessions opening `/platform*` receive the Korean 404.
 
+## Recorded local proof (base `70de61dc`)
+
+- Exact Rust CI: `cargo fmt --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, release-parity build/run of all 13 `console-gate-*` packages, and `cargo check --workspace --tests`: passed. The final status ledger is `ci-ready-status.json` in the lane evidence directory.
+- Exact web command: 272 files / 1,816 tests passed, typecheck/lint/build passed, bundle 144.4 KB gzip against the 151 KB budget, and history/build gitleaks passed. It then hits the same local license-gate failure as clean public/dev: the shared local `dev` ref has no merge base with public history. Running the header gate against `public/dev` passes for all 46 new source files; fixture, dependency-license and script checks pass separately. See `base-check-complete.log` and `web-check-final-tip.log`.
+- The 99 affected crates and direct dependents were exercised against the supplied lane DB. The first batch recorded 3,281 passes. Failed binaries were rebuilt or rerun with the prescribed serial execution for cluster-global migrations; affected doctests also pass after restoring the shared target cache. Current focused proof includes all 45 platform REST tests (19 support DB tests), 68 shared-boundary tests, the access-catalog test, 38 settings tests, 11 support Cedar tests, 18 full-feature OpenAPI drift tests and the tenant UI/refusal tests.
+- One DB refusal remains identical on clean public/dev and the tip: `leave_command_preprovision_and_privilege_matrix_are_fail_closed` sees the pre-existing `leave_api.employee_import_rollback_audit_required` trigger helper among public entrypoints. Both logs have exactly the same actual/expected function lists (`base-leave-privileges.log`, `tip-leave-privileges.log`). The source is migration `20261023061209000_employee_import_rollback.sql`; this is a hand-off to the import-rollback owner, not a support change.
+- Fail-before logs retain the absent base ledger/Cedar/UI contracts, old HTTP refusal, second-operator refusal, WebSocket boundary, duration clamp, read problem-details, approved-but-unstarted request expiry, pre-start withdrawal and all three nested/container/array masking regressions. The terminal-state end guard was additionally checked without changing its implementation.
+
+Chromium product E2E, its 1440/390 light/dark axe checks, first-run-solo and the release unit's full browser/mutation/released-spec verification remain with the verifier and CI, as directed by the brief. No push was performed.
+
 ## Touch inventory
 
-The brief authorizes support implementation and its verification across shared call sites. The inventory includes shared token fixtures, error mappings, generated contracts, copy and ratchet registries outside the named support files. No excluded lane-owned file is edited.
+The brief authorizes support implementation and its verification across shared call sites. The inventory includes shared token fixtures, error mappings, generated contracts, copy and ratchet registries outside the named support files. No excluded lane-owned file is edited. The external hand-off file `/Users/jasonlee/Developer/console-handoff/units/ops-cockpit.md` is updated only to close this P0 slice with its evidence.
 
 - `apps/web/src/features/platform/ui/tenant-panel.tsx`
 - `apps/web/src/features/support-access/api.ts`

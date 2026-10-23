@@ -202,3 +202,25 @@ async fn a_personal_grant_reveals_only_classified_personal_fields_with_a_record(
     );
     assert_eq!(h.accesses(id).await, 1);
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn tenant_approved_but_unstarted_request_expires_as_a_request(owner: PgPool) {
+    let mut h = Support::new(owner).await;
+    let id = Uuid::new_v4();
+    ok(h.request(id).await, StatusCode::CREATED);
+    ok(h.approve(id).await, StatusCode::OK);
+    ok(h.decide(id, "APPROVE").await, StatusCode::OK);
+    sqlx::query(
+        "UPDATE support_sessions SET request_expires_at=now()-interval '1 second' WHERE id=$1",
+    )
+    .bind(id)
+    .execute(&h.owner)
+    .await
+    .unwrap();
+    assert_eq!(expire_support_sessions(&h.rt).await.unwrap(), 1);
+    code(
+        h.start(id).await,
+        StatusCode::CONFLICT,
+        "support.refuse.request_expired",
+    );
+}
