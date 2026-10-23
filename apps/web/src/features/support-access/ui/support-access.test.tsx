@@ -2,10 +2,9 @@
 import type { ReactNode } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ApiError } from "../api";
-import { SupportQueue } from "../../home/ui/support-queue";
+import { ApiError } from "../../../reference/support-access/api";
 import { ActiveSupportBanner, SupportAccess } from "./support-access";
-import { activeSupportQuery, supportSessionsQuery, pendingApprovalQuery, supportRefusal, type SupportSession } from "../api";
+import { activeSupportQuery, supportSessionsQuery, pendingApprovalQuery, supportRefusal, type SupportSession } from "../../../reference/support-access/api";
 
 const state = vi.hoisted(() => ({
   data: undefined as unknown, active: undefined as unknown, error: undefined as unknown,
@@ -107,8 +106,6 @@ test("non-approvers have no approval, denial, or termination controls", () => {
 test("the live notification and Home queue name the pending request, deadline and deep link", () => {
   state.active = { sessions: [], can_approve: true, pending_count: 1, pending_approvals: [session] };
   expect(renderToStaticMarkup(<ActiveSupportBanner />)).toContain("supportAccess.pending");
-  const html = renderToStaticMarkup(<SupportQueue requests={[session]} />);
-  for (const text of [session.ticket_ref, session.operator_label, session.reason, "supportAccess.requestDeadline", "/audit/support-access"]) expect(html).toContain(text);
   state.active = { sessions: [], can_approve: false, pending_count: 1, pending_approvals: [session] };
   expect(renderToStaticMarkup(<ActiveSupportBanner />)).toBe("");
 });

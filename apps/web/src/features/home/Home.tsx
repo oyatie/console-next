@@ -37,7 +37,7 @@ import { buttonClass } from "../../ui/button/button-class";
 import { filingsQuery } from "../../reference/statutory/api";
 import { inForceLocksQuery } from "../../reference/periods/api";
 import { toDecide } from "../../reference/periods/domain/request";
-import { activeSupportQuery } from "../support-access/api";
+import { activeSupportQuery } from "../../reference/support-access/api";
 import { SupportQueue } from "./ui/support-queue";
 import { UnlockQueue } from "./ui/unlock-queue";
 import { GrantNotices } from "./ui/grant-notices";

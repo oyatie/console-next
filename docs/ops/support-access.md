@@ -41,7 +41,7 @@ Chromium product E2E, its 1440/390 light/dark axe checks, first-run-solo and the
 The brief authorizes support implementation and its verification across shared call sites. The inventory includes shared token fixtures, error mappings, generated contracts, copy and ratchet registries outside the named support files. No excluded lane-owned file is edited. The external hand-off file `/Users/jasonlee/Developer/console-handoff/units/ops-cockpit.md` is updated only to close this P0 slice with its evidence.
 
 - `apps/web/src/features/platform/ui/tenant-panel.tsx`
-- `apps/web/src/features/support-access/api.ts`
+- `apps/web/src/reference/support-access/api.ts`
 - `apps/web/src/features/support-access/ui/support-access.test.tsx`
 - `apps/web/src/features/support-access/ui/support-access.tsx`
 - `apps/web/src/lib/live/live.ts`

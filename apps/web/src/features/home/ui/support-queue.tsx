@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { buttonClass } from "../../../ui/button/button-class";
-import type { ActiveSessions } from "../../support-access/api";
+import type { ActiveSessions } from "../../../reference/support-access/api";
 import { QueueSection } from "./change-rows";
 
 /** G2 absorbs this source into the inbox; decisions stay on the shared support-access screen. */

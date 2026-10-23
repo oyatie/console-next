@@ -18,7 +18,7 @@ import { PageHead } from "../../../ui/page-head/page-head";
 import { Table } from "../../../ui/table";
 import { codeText } from "../../../lib/labels";
 import { buttonClass } from "../../../ui/button/button-class";
-import { ApiError, activeSupportQuery, decideSupportSession, endSupportSession, SUPPORT_READS, supportRefusal, supportSessionsQuery, type Sessions, type SupportDecision, type SupportSession } from "../api";
+import { ApiError, activeSupportQuery, decideSupportSession, endSupportSession, SUPPORT_READS, supportRefusal, supportSessionsQuery, type Sessions, type SupportDecision, type SupportSession } from "../../../reference/support-access/api";
 
 const route = getRouteApi("/app/audit/support-access");
 const durationText = (seconds: number) => t("supportAccess.duration", { hours: fmtNumber(Math.floor(seconds / 3600)), minutes: fmtNumber((seconds % 3600) / 60) });

@@ -1,4 +1,4 @@
-import { activeSupportQuery } from "../features/support-access/api";
+import { activeSupportQuery } from "../reference/support-access/api";
 import { ActiveSupportBanner } from "../features/support-access/ui/support-access";
 import { DomainNotice } from "../auth/domain-notice";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
