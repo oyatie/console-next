@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useIsFetching } from "@tanstack/react-query";
+import { useCallback, useSyncExternalStore } from "react";
+import { notifyManager, useQueryClient } from "@tanstack/react-query";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 
 /**
@@ -8,9 +9,14 @@ import { Outlet, useRouterState } from "@tanstack/react-router";
  */
 export function RouteFrame() {
   const { location, status, isLoading } = useRouterState();
-  const fetching = useIsFetching({ type: "active" });
+  const cache = useQueryClient().getQueryCache();
+  const reading = useSyncExternalStore(
+    useCallback((changed: () => void) => cache.subscribe(notifyManager.batchCalls(changed)), [cache]),
+    // A paused read still owes an answer; useIsFetching counts only requests currently on the wire.
+    () => cache.findAll({ type: "active", predicate: q => q.state.fetchStatus !== "idle" }).length,
+  );
   return <>
     <Outlet />
-    <span hidden data-route-ready={status === "idle" && !isLoading && !fetching ? location.href : undefined} data-route-key={location.state.__TSR_key} />
+    <span hidden data-route-ready={status === "idle" && !isLoading && !reading ? location.href : undefined} data-route-key={location.state.__TSR_key} />
   </>;
 }

@@ -23,9 +23,10 @@ test.beforeAll(async () => {
       resolveId: id => id.startsWith("/__navigation-") ? id : undefined,
       load: id => id === "/__navigation-ready.tsx" ? `
         import { createRoot } from "react-dom/client";
-        import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+        import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
         import { createRoute, createRouter, lazyRouteComponent, Navigate, Outlet, RouterProvider } from "@tanstack/react-router";
         import { root } from "/apps/web/src/routes/app.ts";
+        window.addEventListener("network-online", event => onlineManager.setOnline(event.detail));
         const shell = createRoute({ getParentRoute: () => root, id: "shell", component: () => <main><Outlet /></main> });
         const start = createRoute({ getParentRoute: () => shell, path: "/", component: () => <h1>Start</h1> });
         const destination = createRoute({
@@ -89,6 +90,21 @@ test("go also waits on a fresh page and repeated navigation to the same URL", as
   await expect(page.getByRole("heading", { name: "Start" })).toBeVisible();
   await go(page, "/");
   await expect(page.getByRole("heading", { name: "Start" })).toBeVisible();
+});
+
+test("a paused destination read is not ready until it resumes and renders", async ({ page }) => {
+  await page.goto(server.resolvedUrls!.local[0]!);
+  await expect(page.getByRole("heading", { name: "Start" })).toBeVisible();
+  await page.route("**/loader", route => route.fulfill({ body: "loaded" }));
+  await page.route("**/read?*", route => route.fulfill({ body: "Resumed action" }));
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("network-online", { detail: false })));
+  let returned = false;
+  const navigating = go(page, "/destination?revision=paused").then(() => { returned = true; });
+  await expect(page.getByRole("status")).toHaveText("Loading");
+  expect(returned, "a paused read still owes the destination its answer").toBe(false);
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("network-online", { detail: true })));
+  await navigating;
+  await expect(page.getByRole("button", { name: "Resumed action" })).toBeVisible();
 });
 
 test("a missing route signal cannot produce a green absence check", async ({ page }) => {
