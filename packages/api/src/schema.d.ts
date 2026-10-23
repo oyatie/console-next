@@ -5741,7 +5741,7 @@ export interface paths {
         };
         /**
          * Open the server-sent change stream (one per tab)
-         * @description text/event-stream of hello/change/reset frames (ids, type and version only; no PII) plus the messenger and notification frames. Every change frame passed the caller's read check. A 25 s comment heartbeat keeps the stream alive; the body ends at the bearer's exp, on shutdown, or when the principal changes. Reconnect with Last-Event-ID to replay.
+         * @description text/event-stream of hello/change/reset frames (ids, type and version only; no PII) plus the messenger and notification frames. The privacy_consent frame carries {"accepted": boolean} for this session when required documents are published; false requires immediate consent review. Every change frame passed the caller's read check. A 25 s comment heartbeat keeps the stream alive; the body ends at the bearer's exp, on shutdown, or when the principal changes. Reconnect with Last-Event-ID to replay.
          */
         get: operations["openRealtimeEventStream"];
         put?: never;
@@ -40401,6 +40401,15 @@ export interface operations {
             };
             /** @description token_expired — a well-formed bearer past its exp (renew it and reconnect); unauthorized — any other missing or invalid bearer. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description privacy_consent_required — review the current required documents before reconnecting. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

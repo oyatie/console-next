@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Exact published documents and session-family consent, shared by enrollment and app writes.
+//! Exact published documents and session-family consent, shared by enrollment and protected requests.
 use super::*;
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, Transaction};
 
 /// Refusal shown until the account accepts the current notice and terms.
 pub const PRIVACY_CONSENT_REQUIRED_MESSAGE: &str =
-    "required privacy notice and terms must be accepted before personal data writes";
+    "required privacy notice and terms must be accepted before protected requests";
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DocumentRef {
@@ -137,19 +137,12 @@ pub async fn accepted_at(
     Ok(at)
 }
 
-/// A primary-key family lookup replaces a per-write audit-history scan.
-pub async fn ensure_write_consent(
+/// A primary-key family lookup replaces a per-request audit-history scan.
+pub async fn ensure_consent(
     pool: &PgPool,
     verifier: &JwtVerifier,
     headers: &HeaderMap,
-    method: &http::Method,
 ) -> Result<(), RequestContextError> {
-    if matches!(
-        *method,
-        http::Method::GET | http::Method::HEAD | http::Method::OPTIONS
-    ) {
-        return Ok(());
-    }
     let claims = verifier
         .verify_access_token(bearer_token(headers)?)
         .map_err(|_| RequestContextError::InvalidToken)?;
@@ -170,16 +163,10 @@ pub async fn ensure_write_consent(
         .execute(tx.as_mut())
         .await
         .map_err(unavailable)?;
-    let documents = current_references_in_tx(&mut tx).await;
-    let accepted = match documents {
-        Ok(d) => {
-            let refs = serde_json::to_value(d)
-                .map_err(|e| RequestContextError::EffectivePolicy(e.to_string()))?;
-            sqlx::query_scalar::<_, bool>("SELECT COALESCE(privacy_acceptance @> $2, false) FROM auth_refresh_token_families WHERE id=$1")
-                .bind(family).bind(refs).fetch_optional(tx.as_mut()).await.map_err(unavailable)?.unwrap_or(false)
-        }
+    let accepted = match family_accepted_in_tx(&mut tx, family).await {
+        Ok(accepted) => accepted,
         Err(sqlx::Error::RowNotFound) => false,
-        Err(e) => return Err(unavailable(e)),
+        Err(error) => return Err(unavailable(error)),
     };
     tx.commit().await.map_err(unavailable)?;
     if accepted {
@@ -192,6 +179,20 @@ pub async fn ensure_write_consent(
     }
 }
 
+/// The one predicate used at token issuance, request enforcement and live document changes.
+pub async fn family_accepted_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    family: uuid::Uuid,
+) -> Result<bool, sqlx::Error> {
+    let refs = match current_references_in_tx(tx).await {
+        Ok(refs) => serde_json::to_value(refs).map_err(|e| sqlx::Error::Decode(Box::new(e)))?,
+        Err(sqlx::Error::RowNotFound) => return Ok(false),
+        Err(error) => return Err(error),
+    };
+    sqlx::query_scalar("SELECT COALESCE(privacy_acceptance @> $2, false) FROM auth_refresh_token_families WHERE id=$1")
+        .bind(family).bind(refs).fetch_one(tx.as_mut()).await
+}
+
 pub(super) async fn run_tenant(
     pool: &PgPool,
     verifier: &JwtVerifier,
@@ -199,9 +200,7 @@ pub(super) async fn run_tenant(
     mut request: Request,
     next: Next,
 ) -> axum::response::Response {
-    if let Err(err) =
-        ensure_write_consent(pool, verifier, request.headers(), request.method()).await
-    {
+    if let Err(err) = ensure_consent(pool, verifier, request.headers()).await {
         return error_response_for(&err);
     }
     let org = principal.org_id;
@@ -226,9 +225,7 @@ pub(super) async fn run_platform(
     mut request: Request,
     next: Next,
 ) -> axum::response::Response {
-    if let Err(err) =
-        ensure_write_consent(pool, verifier, request.headers(), request.method()).await
-    {
+    if let Err(err) = ensure_consent(pool, verifier, request.headers()).await {
         return error_response_for(&err);
     }
     let user_id = match UserId::from_str(&claims.sub) {

@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { apiAs, soloTenant } from "./chaos";
-import { acceptConsent, go } from "./flows";
+import { acceptConsent, go, vendorPage } from "./flows";
 import { setupCompany } from "./setup-flows";
 import { publishTestTerms } from "./terms-fixture";
 
@@ -17,12 +17,17 @@ test("BL-015: a newer immutable document restores the blocker and asks for its e
   await accept.click();
   await expect(accept).toBeHidden();
   const version = `e2e-v${info.repeatEachIndex + 2}` as const;
+  const vendor = await vendorPage(browser);
   await publishTestTerms(version);
-  await go(admin, "/");
+  // Publication interrupts an idle screen through SSE, before any request or navigation.
   await expect(admin).toHaveURL(/\/setup-passkey$/);
+  await expect(vendor).toHaveURL(/\/setup-passkey$/);
+  await vendorPage(browser);
+  await expect(vendor).not.toHaveURL(/\/setup-passkey$/);
   await acceptConsent(admin);
   await admin.getByRole("button", { name: "동의하고 계속", exact: true }).click();
   await expect(admin).not.toHaveURL(/\/setup-passkey$/);
+  await expect(admin).toHaveURL(/\/setup\/go-live$/);
   await go(admin, "/setup/go-live");
   await expect(admin.getByRole("alert", { name: "고객 계정의 이용약관 동의가 없습니다" })).toBeVisible();
   await admin.getByRole("button", { name: "이용약관 읽기" }).click();

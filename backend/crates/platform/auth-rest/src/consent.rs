@@ -22,16 +22,15 @@ use time::OffsetDateTime;
 
 pub(crate) const PRIVACY_CONSENT_REQUIRED_CODE: &str = "privacy_consent_required";
 
-/// Auth writes outside enrollment and session recovery use the same gate as business writes.
+/// Protected auth requests outside enrollment and session recovery use the business-request gate.
 pub(crate) async fn require_app_write_consent(
     State(state): State<AuthRestState>,
     request: Request,
     next: Next,
 ) -> Result<Response, RestError> {
-    if request.method().is_safe()
-        || !request
-            .headers()
-            .contains_key(axum::http::header::AUTHORIZATION)
+    if !request
+        .headers()
+        .contains_key(axum::http::header::AUTHORIZATION)
         || matches!(
             request.uri().path(),
             crate::SIGNUP_PATH
@@ -60,25 +59,20 @@ pub(crate) async fn require_app_write_consent(
         .map_err(|_| RestError::unauthorized("invalid bearer token"))?;
     if !claims.enrollment {
         // Handlers keep their authority checks and Account lock order; this gate only reads consent.
-        privacy::ensure_write_consent(
-            &state.pool,
-            &services.jwt_verifier,
-            request.headers(),
-            request.method(),
-        )
-        .await
-        .map_err(|error| match error {
-            RequestContextError::AccessScope(error)
-                if error.code == Some(PRIVACY_CONSENT_REQUIRED_CODE) =>
-            {
-                RestError {
-                    status: axum::http::StatusCode::FORBIDDEN,
-                    code: PRIVACY_CONSENT_REQUIRED_CODE,
-                    message: error.message,
+        privacy::ensure_consent(&state.pool, &services.jwt_verifier, request.headers())
+            .await
+            .map_err(|error| match error {
+                RequestContextError::AccessScope(error)
+                    if error.code == Some(PRIVACY_CONSENT_REQUIRED_CODE) =>
+                {
+                    RestError {
+                        status: axum::http::StatusCode::FORBIDDEN,
+                        code: PRIVACY_CONSENT_REQUIRED_CODE,
+                        message: error.message,
+                    }
                 }
-            }
-            error => rest_error_from_request_context(error),
-        })?;
+                error => rest_error_from_request_context(error),
+            })?;
     }
     Ok(next.run(request).await)
 }
@@ -227,17 +221,12 @@ fn document_error(error: sqlx::Error) -> RestError {
     }
 }
 
-/// A routing snapshot at issuance/rotation; protected writes independently check current documents.
+/// A routing snapshot at issuance/rotation; protected requests independently check current documents.
 pub(crate) async fn session_consent_accepted(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     family: uuid::Uuid,
 ) -> Result<bool, RestError> {
-    let refs = match privacy::current_references_in_tx(tx).await {
-        Ok(refs) => serde_json::to_value(refs).map_err(|e| RestError::internal(e.to_string()))?,
-        Err(sqlx::Error::RowNotFound) => return Ok(false),
-        Err(error) => return Err(RestError::internal(error.to_string())),
-    };
-    sqlx::query_scalar("SELECT COALESCE(privacy_acceptance @> $2, false) FROM auth_refresh_token_families WHERE id=$1")
-        .bind(family).bind(refs).fetch_one(tx.as_mut()).await
+    privacy::family_accepted_in_tx(tx, family)
+        .await
         .map_err(|error| RestError::internal(error.to_string()))
 }

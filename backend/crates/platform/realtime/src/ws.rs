@@ -56,6 +56,7 @@ async fn websocket_handler(
         .ok_or_else(RealtimeApiError::unavailable)?;
     let token = bearer_token(&headers)?.to_owned();
     let reader = reader_from_token(&state, &token).await?;
+    crate::auth::require_consent(&state, &token).await?;
     let claims = verifier
         .verify_access_token(&token)
         .map_err(|_| RealtimeApiError::unauthorized("invalid bearer token"))?;

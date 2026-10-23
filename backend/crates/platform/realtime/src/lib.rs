@@ -8,6 +8,7 @@
 
 mod auth;
 mod changes;
+mod consent;
 mod deliver;
 mod error;
 mod event;

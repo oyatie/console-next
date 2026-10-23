@@ -42,6 +42,22 @@ pub(crate) async fn prepare(
     recheck: &mut Recheck,
     hint: RealtimeEvent,
 ) -> Result<RealtimeEvent, RealtimeApiError> {
+    if matches!(hint, RealtimeEvent::PrivacyConsent { .. }) {
+        if reader_from_token(state, token).await? != *reader {
+            return Err(RealtimeApiError::unauthorized("realtime access changed"));
+        }
+        let accepted = match crate::auth::require_consent(state, token).await {
+            Ok(()) => true,
+            Err(error)
+                if error.status == axum::http::StatusCode::FORBIDDEN
+                    && error.code == "privacy_consent_required" =>
+            {
+                false
+            }
+            Err(error) => return Err(error),
+        };
+        return Ok(RealtimeEvent::PrivacyConsent { accepted });
+    }
     if !matches!(
         hint,
         RealtimeEvent::Hello { .. } | RealtimeEvent::Change { .. } | RealtimeEvent::Reset { .. }
@@ -103,7 +119,8 @@ pub(crate) async fn materialize_event(
             } => (message_id, thread_id, false),
             change @ (RealtimeEvent::Hello { .. }
             | RealtimeEvent::Change { .. }
-            | RealtimeEvent::Reset { .. }) => return Ok(change),
+            | RealtimeEvent::Reset { .. }
+            | RealtimeEvent::PrivacyConsent { .. }) => return Ok(change),
         };
         let message = PgMessengerStore::new(pool.clone())
             .message(MessageQuery {

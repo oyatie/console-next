@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import { firstSignIn, newContext, takeCode, tenantSlugField, unique, vendorPage, go } from "./flows";
+import { acceptConsent, firstSignIn, newContext, takeCode, tenantSlugField, unique, vendorPage, go } from "./flows";
 import { virtualAuthenticator } from "./auth";
 
 // PV1: Privacy notice and consent before the first personal-data field (P0)
@@ -137,9 +137,13 @@ test("unpublished consent documents show operator action and allow sign out", { 
   const page = await firstSignIn(browser, await takeCode(v));
   const unavailable = { status: 409, contentType: "application/json", body: JSON.stringify({ error: { code: "terms_not_published", message: "No terms published" } }) };
   try {
-    await page.route("**/api/v1/auth/token/refresh", async (route) => {
-      const response = await route.fetch();
-      await route.fulfill({ response, json: { ...await response.json(), privacy_consent_accepted: false } });
+    await page.addInitScript(() => {
+      const fetch = window.fetch;
+      window.fetch = async (...args) => {
+        const response = await fetch(...args);
+        if (new URL(response.url).pathname !== "/api/v1/auth/token/refresh" || !response.ok) return response;
+        return new Response(JSON.stringify({ ...await response.json(), privacy_consent_accepted: false }), { status: response.status, headers: response.headers });
+      };
     });
     await page.route("**/api/v1/onboarding/terms", (route) => route.fulfill(unavailable));
     await page.goto("/people");
@@ -176,4 +180,13 @@ test("ten in-app navigations make no consent requests after first sign-in", { ta
   await page.reload();
   await expect(page.getByRole("heading", { name: "회사 도메인", exact: true }).first()).toBeVisible();
   expect(consentRequests).toEqual([]);
+
+  // The shared transport also catches a missed publication hint, without a reload or an automatic replay.
+  await page.route("**/api/v1/legal-entities", (route) => route.fulfill({ status: 403, contentType: "application/json", json: { error: { code: "privacy_consent_required", message: "Review current documents" } } }), { times: 1 });
+  await go(page, "/org/entities?add=true#entities-title", true);
+  await expect(page).toHaveURL(/\/setup-passkey$/);
+  await acceptConsent(page);
+  await page.getByRole("button", { name: "동의하고 계속", exact: true }).click();
+  await expect(page).toHaveURL(/\/org\/entities\?add=true#entities-title$/);
+  await expect(page.locator("#entities-title")).toBeVisible();
 });

@@ -6,6 +6,7 @@ import { KeyRound, LogOut } from "lucide-react";
 import { ApiError, acceptConsent, consentDocuments, logout, PASSKEY_ENROLLED, registerPasskey, session } from "@console/api";
 import { t } from "@console/i18n";
 import { freshOnOpen, read } from "../lib/query";
+import { consentDestination } from "../lib/react/session";
 import { signInError } from "../lib/refusal";
 import { Banner } from "../ui/banner/banner";
 import { Button } from "../ui/button/button";
@@ -42,7 +43,7 @@ export function SetupPasskey() {
         const signInId = await registerPasskey();
         if (signInId) rememberDomain(signInId.split("@")[1]!);
       }
-      await nav({ to: session.claims?.platform ? "/platform" : "/" });
+      await nav({ href: isAppSession ? consentDestination() : session.claims?.platform ? "/platform" : "/" });
     } catch (e) {
       // Registration succeeded; a failed automatic sign-in continues on the login screen.
       if (e instanceof Error && e.message === PASSKEY_ENROLLED) return void (await nav({ to: "/login", search: { enrolled: true } }));

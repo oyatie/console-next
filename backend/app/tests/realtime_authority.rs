@@ -23,6 +23,9 @@ use tokio::{
     time::timeout,
 };
 
+#[path = "realtime_authority/consent.rs"]
+mod consent;
+
 struct Fixture {
     owner: PgPool,
     runtime: PgPool,
@@ -108,6 +111,7 @@ impl Fixture {
             )
             .await
             .unwrap();
+        console_platform_test_support::seed_session_consent(&owner, family.family_id).await;
         let token = issuer
             .issue_session_access_token(
                 AccessTokenInput {
@@ -159,21 +163,7 @@ impl Fixture {
         }
     }
     async fn connect(&self, cursor: Option<MessageId>) -> TcpStream {
-        let mut stream = TcpStream::connect(self.addr).await.unwrap();
-        let path = cursor.map_or("/api/v1/ws".to_owned(), |id| {
-            format!("/api/v1/ws?last_message_id={id}")
-        });
-        stream.write_all(format!("GET {path} HTTP/1.1\r\nHost: {}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nAuthorization: Bearer {}\r\n\r\n",self.addr,self.token).as_bytes()).await.unwrap();
-        let header = timeout(StdDuration::from_secs(4), async {
-            let mut bytes = Vec::new();
-            while !bytes.ends_with(b"\r\n\r\n") {
-                assert!(bytes.len() < 8192);
-                bytes.push(stream.read_u8().await.unwrap());
-            }
-            String::from_utf8(bytes).unwrap()
-        })
-        .await
-        .unwrap();
+        let (stream, header) = self.handshake(cursor).await;
         assert!(
             header.starts_with("HTTP/1.1 101"),
             "upgrade status: {}",

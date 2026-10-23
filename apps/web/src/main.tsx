@@ -86,15 +86,23 @@ let streaming: string | null = null;
 // A sign-out (not a session lost in use), or a reload after the server ended the session for inactivity, pauses the
 // sign-in field's autofill in this tab (auth/sign-in-id.ts): nobody is signed back in by the first suggestion.
 let signedIn = false;
+let consentAccepted = false;
 session.subscribe(() => {
   if (session.lost) return;
+  const needsConsent = consentAccepted && !session.consentAccepted && Boolean(session.token);
+  consentAccepted = session.consentAccepted;
+  if (needsConsent) void router.invalidate();
   if ((signedIn && !session.token) || session.ended === IDLE_EXPIRED) pauseAutofill();
   signedIn = Boolean(session.token);
   const next = session.token ? (session.claims?.sub ?? null) : null;
-  const streams = next && session.stage === "app" ? next : null;
+  const streams = next && session.stage === "app" && session.consentAccepted ? next : null;
   if (streams === streaming) return;
   streaming = streams;
-  if (streams) openLive(queryClient);
+  if (streams) {
+    // Consent review can miss change frames; shown data re-reads after acceptance.
+    void queryClient.invalidateQueries({ refetchType: "none" });
+    openLive(queryClient);
+  }
   else closeLive();
 });
 

@@ -2,7 +2,7 @@
 // loader, and closed when the principal changes. Frames only invalidate reads (topics.ts); nothing here writes the
 // cache, and nothing here re-reads on a timer.
 import type { QueryClient } from "@tanstack/react-query";
-import { refresh, session } from "@console/api";
+import { ApiError, refresh, session } from "@console/api";
 import { openEventStream, type EventStream, type StreamFrame, type StreamOptions, type StreamSnapshot } from "@console/api/events";
 import { invalidateWhere, shownWhere } from "../query";
 import { INVALIDATE_DEBOUNCE_MS, OWN_ECHO_MS, REALTIME, RESET_JITTER_MAX_MS } from "../freshness";
@@ -119,6 +119,10 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
   applyHeld = () => void qc.refetchQueries({ type: "active", predicate: (q) => q.state.isInvalidated });
 
   const onFrame = ({ event, data }: StreamFrame) => {
+    if (event === "privacy_consent") {
+      if ((data as { accepted?: unknown } | null)?.accepted === false) session.setConsentAccepted(false);
+      return;
+    }
     const d = (data ?? {}) as { type?: unknown; id?: unknown; at?: unknown; wide?: unknown };
     if (event === "reset") return later(() => queue(ALL), jitter(RESET_JITTER_MAX_MS));
     if (event !== "change" || typeof d.type !== "string") return;
@@ -143,7 +147,12 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
     else queue(m);
   };
 
-  const s = source({ url, token: () => session.token, refresh, onFrame, tune: REALTIME });
+  const s = source({ url, token: () => session.token, refresh, onFrame, tune: REALTIME, fetch: async (input, init) => {
+    const principal = session.principal;
+    const response = await fetch(input, { headers: init.headers, signal: init.signal as AbortSignal });
+    if (response.status === 403) await ApiError.from(ApiError.withRequestKey(response.clone(), undefined, principal));
+    return response;
+  } });
   // A reconnect that could not resume (no cursor to send) may have missed changes: everything shown re-reads
   // once. A reconnect that sends `Last-Event-ID` is caught up by the server's replay, or told `reset`.
   // the first connection does not re-read reads that landed before it registered (a change in that

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { acceptConsent, configure, session } from "@console/api";
-import { ensureSession, ensureEnrolling } from "./session";
+import { consentDestination, ensureSession, ensureEnrolling } from "./session";
 
 const pair = (accepted?: boolean) => ({
   access_token: `h.${btoa(JSON.stringify({ sub: "user", org: "tenant", platform: false }))}.s`,
@@ -56,4 +56,15 @@ test("a late acceptance cannot open a replacement account", async () => {
   deliver(new Response(JSON.stringify({ accepted: true })));
   await accepting;
   await expect(ensureSession({ location: { pathname: "/people" } })).rejects.toMatchObject({ options: { to: "/setup-passkey" } });
+});
+
+test("changed documents preserve the interrupted URL for this account only", async () => {
+  session.set(pair(true));
+  session.setConsentAccepted(false);
+  await expect(ensureSession({ location: { pathname: "/people", href: "/people?q=Kim#person" } })).rejects.toMatchObject({ options: { to: "/setup-passkey" } });
+  await expect(ensureEnrolling()).resolves.toBeUndefined();
+  session.setConsentAccepted(true);
+  expect(consentDestination()).toBe("/people?q=Kim#person");
+  session.set({ ...pair(true), access_token: `h.${btoa(JSON.stringify({ sub: "other", org: "tenant" }))}.s` });
+  expect(consentDestination()).toBe("/");
 });

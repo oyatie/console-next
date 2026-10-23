@@ -45,6 +45,7 @@ async fn session(owner: PgPool) -> Session {
         )
         .await
         .unwrap();
+    console_platform_test_support::seed_session_consent(&owner, issue.family_id).await;
     let issuer = JwtIssuer::from_es256_pem(
         JwtSettings {
             issuer: "console-platform-auth".into(),

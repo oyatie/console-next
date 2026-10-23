@@ -51,3 +51,24 @@ async fn migrations_publish_reader_documents_and_preserve_old_versions(pool: PgP
         "historical evidence must remain byte-exact"
     );
 }
+
+#[sqlx::test(migrator = "MIGRATOR")]
+async fn runtime_can_schedule_publication_without_reading_unpublished_text(pool: PgPool) {
+    sqlx::query("INSERT INTO terms_documents(version,body,published_at) VALUES ('future-consent','Unpublished text',now()+interval '1 day')").execute(&pool).await.unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SET LOCAL ROLE console_rt")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let visible: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM terms_documents WHERE version='future-consent'")
+            .fetch_one(tx.as_mut())
+            .await
+            .unwrap();
+    assert_eq!(visible, 0);
+    let scheduled: bool = sqlx::query_scalar("SELECT next_consent_publication() > now()")
+        .fetch_one(tx.as_mut())
+        .await
+        .unwrap();
+    assert!(scheduled);
+}
