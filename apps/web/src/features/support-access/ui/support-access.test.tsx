@@ -13,7 +13,7 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock("@console/api", async (original) => ({ ...await original<object>(), api: { GET: state.get, POST: state.post } }));
 vi.mock("@console/i18n", async (original) => ({ ...await original<object>(), t: (key: string) => key, isMessageId: () => true }));
-vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({ review: undefined }) }), Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-to={to}>{children}</span> }));
+vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({ review: undefined }), useNavigate: () => vi.fn() }), Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-to={to}>{children}</span> }));
 vi.mock("@tanstack/react-query", async (original) => ({ ...await original<object>(), useQuery: (q: unknown) => ({
   data: q === activeSupportQuery ? state.active : q === supportSessionsQuery ? state.data : undefined,
   error: state.error, isError: !!state.error, isPending: state.pending, refetch: vi.fn(),

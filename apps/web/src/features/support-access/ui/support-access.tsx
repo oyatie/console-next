@@ -62,9 +62,9 @@ export function SupportAccess() {
 
 function SessionsList({ data }: { data: Sessions }) {
   const { review } = route.useSearch();
-  const [selected, setSelected] = useState<string | undefined>(review);
-  const current = data.sessions.find((s) => s.id === selected)?.id ?? data.sessions[0]?.id;
-  return <Table label={t("supportAccess.title")} rows={data.sessions} rowId={(s) => s.id} selected={current} onSelect={setSelected}
+  const navigate = route.useNavigate();
+  const current = data.sessions.find((s) => s.id === review)?.id ?? data.sessions[0]?.id;
+  return <Table label={t("supportAccess.title")} rows={data.sessions} rowId={(s) => s.id} selected={current} onSelect={(id) => void navigate({ search: { review: id }, replace: true })}
     columns={[
       { header: t("supportAccess.operator"), cell: (s) => <>{s.operator_label}<div className="muted">{s.ticket_ref}</div></> },
       { header: t("supportAccess.state"), cell: (s) => <Chip tone={s.state === "ACTIVE" ? "warn" : "neutral"}>{stateText(s.state)}</Chip> },
