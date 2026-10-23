@@ -93,7 +93,11 @@ async fn pending_worker_activation_emits_access_topics_once_at_the_deadline(pool
     );
     assert_eq!(
         topics().await,
-        [("role".into(), None), ("user".into(), None)]
+        [
+            ("role".into(), None),
+            ("tenant".into(), None),
+            ("user".into(), None)
+        ]
     );
 }
 
