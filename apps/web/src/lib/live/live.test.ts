@@ -247,3 +247,14 @@ test("an own write refreshes the inbox while record snapshots keep their echo ho
   expect(stale()).toEqual([false, false, false, false]);
   off();
 });
+
+test("a second person's correction decision survives this tab's recent-write window", async () => {
+  const mine = get("/api/v1/me/action-inbox");
+  const detail = get("/api/v1/entity-identifier-corrections/{id}", { params: { path: { id: "case" } } });
+  await load(mine, detail);
+  await qc.getMutationCache().build(qc, { mutationFn: async () => 1 }).execute(undefined);
+  frame("change", { type: "identifier_correction", id: "case" });
+  await vi.advanceTimersByTimeAsync(250);
+  expect(isInvalidated(qc, mine)).toBe(true);
+  expect(isInvalidated(qc, detail)).toBe(true);
+});
