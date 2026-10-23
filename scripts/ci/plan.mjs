@@ -76,6 +76,17 @@ export function affected(files, cargo, npm, root, force = false) {
   return { full, crates, workspaces, backend, web, e2e: full || (app !== undefined && crates.includes(app.name)) || web || files.some((f) => /^(e2e\/|playwright.*\.ts$)/.test(f)) };
 }
 
+export function tierPlan(event, files, cargo, npm, root, config, force = false) {
+  const release = event === "workflow_dispatch";
+  const plan = affected(files, cargo, npm, root, force || release);
+  return {
+    ...plan,
+    tier: release ? "release" : "fast",
+    browsers: release ? config.releaseBrowsers : config.fastBrowsers,
+    e2eFiles: release ? null : [...new Set([...config.fastE2eFiles, ...files.filter((f) => /^e2e\/.*\.spec\.ts$/.test(f)).map((f) => f.slice(4))])].sort(),
+  };
+}
+
 export function requiredJobs(plan) {
   return {
     web: plan.web || plan.e2e,
@@ -93,7 +104,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const root = process.cwd();
   const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
   const base = event.pull_request?.base.sha ?? event.merge_group?.base_sha ?? event.before;
-  const force = process.env.GITHUB_EVENT_NAME === "merge_group" || !base || /^0+$/.test(base);
+  const force = !base || /^0+$/.test(base);
   const files = force ? [] : execFileSync("git", ["diff", "--name-only", "-z", base, "HEAD"], { encoding: "utf8" }).split("\0").filter(Boolean);
   const cargo = JSON.parse(execFileSync("cargo", ["metadata", "--manifest-path", "backend/Cargo.toml", "--format-version", "1", "--no-deps", "--locked"], { encoding: "utf8" })).packages;
   const npm = JSON.parse(readFileSync("package.json", "utf8")).workspaces.flatMap((glob) => {
@@ -103,10 +114,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       catch (error) { if (error.code === "ENOENT") return []; throw error; }
     });
   });
-  const plan = affected(files, cargo, npm, root, force);
+  const config = JSON.parse(readFileSync("scripts/ci/config.json", "utf8"));
+  const plan = tierPlan(process.env.GITHUB_EVENT_NAME, files, cargo, npm, root, config, force);
   // The existing census harness owns the image pin; service jobs consume this output.
   const pin = postgresImage();
-  const config = JSON.parse(readFileSync("scripts/ci/config.json", "utf8"));
   const app = cargo.find((pkg) => path.relative(root, path.dirname(pkg.manifest_path)) === "backend/app")?.name;
   const build = { ...rustBuild(plan.backend ? plan.crates : plan.e2e ? [app] : [], cargo), full: plan.full };
   const db = dbCrates(cargo);

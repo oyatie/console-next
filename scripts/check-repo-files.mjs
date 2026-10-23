@@ -18,7 +18,7 @@ export function fileProblems(file, bytes) {
   return problems;
 }
 
-export function checkRepoFiles({ full = false, base = process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "dev" } = {}) {
+export function checkRepoFiles({ full = false, base = process.env.CI_BASE_SHA || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "dev") } = {}) {
   const git = (...args) => execFileSync("git", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   const changed = full ? null : new Set(git("diff", "--name-only", "--no-renames", "--diff-filter=ACMT", "-z", `${base}...HEAD`, "--").split("\0").filter(Boolean));
   // Read committed sizes, not working files: local edits and symlink targets cannot hide a large blob.

@@ -1,5 +1,5 @@
 {
-  "name": "dev-protected",
+  "name": "dev-pr-only",
   "target": "branch",
   "enforcement": "active",
   "bypass_actors": [],
