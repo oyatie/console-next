@@ -78,7 +78,7 @@ async fn v1_wire_shape_is_frozen_and_v2_requires_modern_exact_cas(owner_pool: Pg
     );
 
     // An unavailable fact resolver still produces the stable refusal over HTTP.
-    sqlx::query("REVOKE EXECUTE ON FUNCTION public.console_decision_identities(UUID,UUID,UUID) FROM console_leave_cmd,console_leave_definer")
+    sqlx::query("REVOKE EXECUTE ON FUNCTION public.console_decision_people(UUID,UUID,UUID) FROM console_leave_cmd,console_leave_definer")
         .execute(&owner_pool).await.unwrap();
     let unknown = request_json(
         service.clone(),
@@ -91,12 +91,12 @@ async fn v1_wire_shape_is_frozen_and_v2_requires_modern_exact_cas(owner_pool: Pg
     assert_eq!(unknown.status, StatusCode::FORBIDDEN);
     assert_eq!(
         unknown.body["error"]["code"],
-        "leave_decide_requester_forbidden"
+        "leave.refuse.identity_unbound"
     );
-    sqlx::query("GRANT EXECUTE ON FUNCTION public.console_decision_identities(UUID,UUID,UUID) TO console_leave_cmd,console_leave_definer")
+    sqlx::query("GRANT EXECUTE ON FUNCTION public.console_decision_people(UUID,UUID,UUID) TO console_leave_cmd,console_leave_definer")
         .execute(&owner_pool).await.unwrap();
 
-    // A known unbound decider uses account identity without changing the frozen v1 response.
+    // G5 binds this account to a Person even without an employee link; v1 stays frozen.
     let versionless = request_json(
         service.clone(),
         "POST",
