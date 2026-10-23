@@ -29,7 +29,8 @@ mod surface;
 mod tx_wrapper;
 use context::compute_test_mask;
 use surface::{
-    accepts_transaction, is_handler_surface, path_contains_components, path_ends_with_repo_relative,
+    accepts_transaction, is_handler_surface, path_contains_components,
+    path_ends_with_repo_relative, should_skip_dir,
 };
 
 /// An allowed audit carve-out, bound to the exact writer it covers.
@@ -494,7 +495,8 @@ fn strip_comments_and_strings(source: &str) -> String {
 fn collect_rust_files(root: &Path) -> Result<Vec<PathBuf>, String> {
     let mut files = Vec::new();
     collect_rust_files_inner(root, &mut files)?;
-    Ok(files)
+    console_gate_writer_ownership::source_scope::production_files(root, files)
+        .map_err(|e| e.to_string())
 }
 
 fn collect_rust_files_inner(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
@@ -518,21 +520,4 @@ fn collect_rust_files_inner(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), 
         }
     }
     Ok(())
-}
-
-fn should_skip_dir(path: &Path) -> bool {
-    let components: Vec<String> = path
-        .components()
-        .map(|component| component.as_os_str().to_string_lossy().into_owned())
-        .collect();
-
-    components
-        .iter()
-        // `tests` dirs hold integration tests, never handlers — auditing them for
-        // AuditEvent/with_audit is a false positive (a test that exercises a
-        // state-changing path is not itself a state-changing handler).
-        .any(|part| part == "target" || part == ".git" || part == "tests")
-        || components
-            .windows(2)
-            .any(|window| window[0] == "ci" && window[1] == "gates")
 }

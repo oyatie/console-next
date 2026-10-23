@@ -15,5 +15,8 @@ path = "src/main.rs"
 name = "console_gate_rls_arming"
 path = "src/lib.rs"
 
+[dependencies]
+console-gate-writer-ownership = { path = "../writer-ownership" }
+
 [lints]
 workspace = true

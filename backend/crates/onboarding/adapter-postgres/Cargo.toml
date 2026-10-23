@@ -14,6 +14,7 @@ console-kernel-core.workspace = true
 console-onboarding-domain.workspace = true
 console-platform-authz.workspace = true
 console-platform-db.workspace = true
+console-platform-request-context.workspace = true
 # D26: approval.policy.org_structure in the setup facts (named edge in
 # ci/gates/layer-boundary rules/named_edges.rs).
 console-settings-adapter-postgres = { path = "../../settings/adapter-postgres" }

@@ -63,3 +63,20 @@ pub(crate) fn path_ends_with_repo_relative(file: &Path, repo_relative: &str) -> 
         .zip(expected.iter())
         .all(|(actual_part, expected_part)| actual_part == expected_part)
 }
+
+pub(crate) fn should_skip_dir(path: &Path) -> bool {
+    let components: Vec<String> = path
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy().into_owned())
+        .collect();
+
+    components
+        .iter()
+        // `tests` dirs hold integration tests, never handlers — auditing them for
+        // AuditEvent/with_audit is a false positive (a test that exercises a
+        // state-changing path is not itself a state-changing handler).
+        .any(|part| part == "target" || part == ".git" || part == "tests")
+        || components
+            .windows(2)
+            .any(|window| window[0] == "ci" && window[1] == "gates")
+}

@@ -51,6 +51,29 @@ pub(crate) async fn acceptance(
 }
 
 impl PgOnboardingStore {
+    /// Read the published service terms and privacy notice in one transaction.
+    /// # Errors
+    /// Database faults; `None` means a required document has not been published.
+    pub async fn published_documents(
+        &self,
+    ) -> Result<
+        Option<console_platform_request_context::privacy::ConsentDocuments>,
+        PgOnboardingError,
+    > {
+        let mut tx = self.pool.begin().await?;
+        match console_platform_request_context::privacy::documents_in_tx(&mut tx).await {
+            Ok(documents) => {
+                tx.commit().await?;
+                Ok(Some(documents))
+            }
+            Err(sqlx::Error::RowNotFound) => {
+                tx.rollback().await?;
+                Ok(None)
+            }
+            Err(error) => Err(error.into()),
+        }
+    }
+
     /// Read published terms for the contracting administrator.
     /// # Errors
     /// `terms_not_published`, Cedar refusal, or database faults.
