@@ -17,7 +17,7 @@ export function RegisterRoute() {
   // Registering is org-wide on the server: a caller without that grant is told so, never handed a form it refuses.
   const authz = useQuery(authzQuery);
   if (authz.isPending || (authz.isSuccess && !granted(authz.data.capabilities)("employee_directory_manage", "all"))) {
-    return <Composer open wide title={t("register.title")} onClose={onClose} loading={authz.isPending} action={{ kind: "ONBOARD", mode: "apply", count: 1 }} onSubmit={() => false} recovery={<Button onClick={onClose}>{t("composer.dismiss")}</Button>}><Denied /></Composer>;
+    return <Composer open wide title={t("register.title")} onClose={onClose} loading={authz.isPending} action={{ kind: "ONBOARD", mode: "apply", count: 1 }} recovery={<Button onClick={onClose}>{t("composer.dismiss")}</Button>}><Denied /></Composer>;
   }
   return (
     <RegisterSheet

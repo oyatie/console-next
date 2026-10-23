@@ -14,7 +14,7 @@ vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({
   data: state.pending || state.failed ? undefined : { capabilities: state.allowed ? [{ feature: "employee_directory_manage", permission: "allow", org_wide: true }] : [] },
 }) }));
 vi.mock("../../../lib/react/denied", () => ({ Denied: () => <section aria-label="Access refused" /> }));
-vi.mock("../../../ui/composer/composer", () => ({ Composer: (p: ComponentProps<typeof Composer>) => <div role="dialog" aria-label={p.title}>{p.loading ? <p role="status" /> : p.children}{p.recovery ?? <Button type="submit">{p.title}</Button>}</div> }));
+vi.mock("../../../ui/composer/composer", () => ({ Composer: (p: ComponentProps<typeof Composer>) => <div role="dialog" aria-label={p.title}>{p.loading ? <p role="status" /> : p.children}{p.recovery ?? (p.onSubmit && <Button type="submit">{p.title}</Button>)}</div> }));
 vi.mock("./register-sheet", () => ({ RegisterSheet: () => <section aria-label="Registration form" /> }));
 beforeAll(() => loadCatalog("ko"));
 
@@ -23,6 +23,7 @@ test("a registration refusal stays in the action dialog above the roster", () =>
   expect(html).toMatch(/role="dialog"[^>]*><section aria-label="Access refused"/);
   expect(html).not.toContain('aria-label="Registration form"');
   expect(html).not.toContain('type="submit"');
+  expect(html).toContain(">닫기</button>");
 });
 
 test("registration waits for authorization before presenting the form", () => {

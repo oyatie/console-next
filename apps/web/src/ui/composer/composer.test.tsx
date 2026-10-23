@@ -1,11 +1,19 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { Composer } from "./composer";
 import { commitLabel } from "./actions";
+import { Button, Form } from "../button/button";
 
 beforeAll(() => loadCatalog("ko"));
+
+test("a refused composer leaves recovery forms independent and omits its commit", () => {
+  const html = renderToStaticMarkup(<Composer layout="inline" title="registration" action={{ kind: "ONBOARD", mode: "apply", count: 1 }} onClose={() => {}}><Form onSubmit={() => {}}><Button type="submit">{t("common.denied.request.send")}</Button></Form></Composer>);
+  expect(html.match(/<form\b/g)).toHaveLength(1);
+  expect(html).not.toContain('form="');
+  expect(html).not.toContain("직원 등록 1명 반영");
+});
 
 test("the composer orders populated preview sections and omits empty ones", () => {
   const fields = "fields";
