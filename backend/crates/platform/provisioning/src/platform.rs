@@ -164,6 +164,8 @@ pub enum TenantRemovalOutcome {
     /// tenant (reversible) before force-removing it. Only the FORCE
     /// [`PlatformProvisioner::force_remove_tenant`] path can return this.
     BlockedActive,
+    /// An active legal hold preserves the tenant and its audit attribution.
+    BlockedLegalHold,
     /// No such tenant (or the platform sentinel was targeted); nothing changed.
     NotFound,
 }

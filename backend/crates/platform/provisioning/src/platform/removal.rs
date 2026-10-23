@@ -42,6 +42,10 @@ impl PlatformProvisioner {
 
         let outcome = match outcome_code.as_str() {
             "removed" => TenantRemovalOutcome::Removed,
+            "blocked_legal_hold" => {
+                tx.rollback().await?;
+                return Ok(TenantRemovalOutcome::BlockedLegalHold);
+            }
             "blocked_has_data" => {
                 // Nothing was changed by the function; roll back and refuse so the
                 // REST layer returns 409 "archive instead".
@@ -137,6 +141,7 @@ impl PlatformProvisioner {
 
         match outcome_code.as_str() {
             "removed" => Ok(TenantRemovalOutcome::Removed),
+            "blocked_legal_hold" => Ok(TenantRemovalOutcome::BlockedLegalHold),
             "blocked_active" => Ok(TenantRemovalOutcome::BlockedActive),
             "not_found" => Ok(TenantRemovalOutcome::NotFound),
             other => Err(ProvisioningError::InvalidRoster(format!(

@@ -1,6 +1,10 @@
 //! Migration-safety gate.
 
+mod privileges;
 mod versions;
+use privileges::{
+    check_audit_events_grants, check_audit_events_trigger, check_table_owner_revokes,
+};
 use versions::check_migration_versions;
 
 use std::path::{Path, PathBuf};
@@ -17,6 +21,7 @@ pub enum ViolationKind {
     DropAuditedColumn,
     GrantAuditEventsMutation,
     DisableAuditEventsTrigger,
+    RevokeTableOwnerPrivileges,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -167,6 +172,7 @@ fn check_migration_file(
         check_concurrent_index_if_not_exists(file, tokens, result);
         check_audit_events_grants(file, tokens, result);
         check_audit_events_trigger(file, tokens, result);
+        check_table_owner_revokes(file, tokens, result);
     }
 }
 
@@ -297,41 +303,6 @@ fn table_name_after_alter_table(tokens: &[String], start: usize) -> Option<(&str
     }
 
     Some((table, index))
-}
-
-fn check_audit_events_grants(file: &Path, tokens: &[String], result: &mut GateResult) {
-    if !tokens.iter().any(|token| token == "grant")
-        || !tokens.iter().any(|token| token == "audit_events")
-    {
-        return;
-    }
-
-    let on_index = tokens.iter().position(|token| token == "on");
-    let grants_mutation = tokens
-        .iter()
-        .take(on_index.unwrap_or(tokens.len()))
-        .any(|token| token == "update" || token == "delete");
-
-    if grants_mutation {
-        result.violations.push(Violation {
-            kind: ViolationKind::GrantAuditEventsMutation,
-            file: file.to_path_buf(),
-            detail: "GRANT UPDATE/DELETE on audit_events is forbidden".to_string(),
-        });
-    }
-}
-
-fn check_audit_events_trigger(file: &Path, tokens: &[String], result: &mut GateResult) {
-    let disables_trigger = tokens
-        .windows(2)
-        .any(|window| window[0].as_str() == "disable" && window[1].as_str() == "trigger");
-    if disables_trigger && tokens.iter().any(|token| token == "audit_events") {
-        result.violations.push(Violation {
-            kind: ViolationKind::DisableAuditEventsTrigger,
-            file: file.to_path_buf(),
-            detail: "DISABLE TRIGGER on audit_events is forbidden".to_string(),
-        });
-    }
 }
 
 fn sanitize_sql(content: &str) -> String {

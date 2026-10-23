@@ -94,6 +94,11 @@ pub(crate) async fn delete_org(
             "tenant_has_data",
             "tenant has operational data and cannot be removed; archive it instead",
         )),
+        TenantRemovalOutcome::BlockedLegalHold => Err(PlatformError::new(
+            StatusCode::CONFLICT,
+            "blocked_legal_hold",
+            "법적 보존 조치가 적용되어 삭제하지 않았습니다. 보존 담당자에게 사건 상태를 확인하십시오.",
+        )),
         TenantRemovalOutcome::BlockedActive => Err(PlatformError::new(
             StatusCode::CONFLICT,
             "tenant_active",
