@@ -3,9 +3,11 @@ import { expectAccessible } from "./a11y";
 import { apiAs, sent, soloTenant } from "./chaos";
 import { go, kstDate } from "./flows";
 import { openRegistered, pressRegister, receiptOf, registerSheet } from "./helpers/register";
+import { requireActionInbox } from "./require-action-inbox";
 
 for (const explicit of [false, true]) {
   test(`name and hire date register ${explicit ? "explicitly" : "implicitly"} unplaced with statutory follow-ups`, { tag: ["@hr", "@regression"] }, async ({ browser }) => {
+    await requireActionInbox();
     const page = await soloTenant(browser, `minimum-${explicit}`, "최소등록");
     const api = apiAs(page);
     await go(page, "/people/new");

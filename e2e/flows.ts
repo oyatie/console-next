@@ -190,7 +190,7 @@ export const chooseRadio = (scope: Locator, name: RegExp) => scope.getByRole("ra
 /** Clicks a dialog's command that first asks for the signed-in user's own passkey (step-up), and waits for `done`. */
 export async function stepUp(dialog: Locator, button: string, done: Locator) {
   await dialog.getByRole("button", { name: button }).click();
-  await done.waitFor({ state: "visible" });
+  await expect(done).toBeVisible();
 }
 
 // E2E_REUSE=1 keeps the last run's database (playwright.config.ts): what must be unique gets this run's suffix.

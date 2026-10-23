@@ -149,7 +149,7 @@ const bucket = (name) =>
     req.end();
   });
 
-if (!existsSync(BIN)) throw new Error(`no backend binary at ${BIN}; build with \`cargo build -p console-app\` or set CONSOLE_APP_BIN`);
+if (!existsSync(BIN)) throw new Error(`no backend binary at ${BIN}; build with \`cargo build -p console-app\` (add --features full,e2e-test-support for the complete E2E suite) or set CONSOLE_APP_BIN`);
 
 // --reset: start from an empty database (E2E runs the whole onboarding path, and the
 // cold-start code is single-use).
