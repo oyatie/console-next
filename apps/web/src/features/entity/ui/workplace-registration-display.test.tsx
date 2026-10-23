@@ -24,7 +24,7 @@ for (const answer of ["registered", "exempt", "abstract", "later", "no-filing-nu
     const brn = "000-81-00009";
     const e = { id: "e1", read_only: true, workplaces: [w], registrations: [{ id: "r1", brn: { display: brn }, current: { status: "CONTINUING" } }] } as unknown as LegalEntity;
     const html = renderToStaticMarkup(<WorkplacesCard e={e} />);
-    const cells = [...html.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]!.replace(/<[^>]*>/g, ""));
+    const cells = [...html.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]!.split(/<[^>]*>/).join("")); // text of each cell for assertions, not sanitising output
     expect(cells[2]).toBe(registered ? brn : `${t("workplace.filing.entityBasis")}${answer === "no-filing-number" ? "" : ` · ${brn}`}`);
     if (finished) expect(cells[3]).toBe(w.not_registered_reason!.label);
     if (!registered && !finished) expect(cells[3]).toBe(t("workplace.registration.prompt"));
