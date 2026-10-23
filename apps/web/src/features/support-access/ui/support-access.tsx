@@ -19,6 +19,7 @@ import { Table } from "../../../ui/table";
 import { codeText } from "../../../lib/labels";
 import { buttonClass } from "../../../ui/button/button-class";
 import { ApiError, activeSupportQuery, decideSupportSession, endSupportSession, SUPPORT_READS, supportRefusal, supportSessionsQuery, type Sessions, type SupportDecision, type SupportSession } from "../../../reference/support-access/api";
+import s from "./support-access.module.css";
 
 const route = getRouteApi("/app/audit/support-access");
 const durationText = (seconds: number) => t("supportAccess.duration", { hours: fmtNumber(Math.floor(seconds / 3600)), minutes: fmtNumber((seconds % 3600) / 60) });
@@ -33,9 +34,10 @@ const stateText = (state:string) => {const key=`supportAccess.state.${state}`;re
 /** Visible on every tenant page; the shell's SSE stream invalidates this read. */
 export function ActiveSupportBanner() {
   const q = useQuery(activeSupportQuery);
-  if (q.error) return <CommandError error={q.error} own={supportRefusal}><Button onClick={() => void q.refetch()}>{t("common.retry")}</Button></CommandError>;
-  if (!q.data) return null;
-  return <>
+  // Keep the security status slot mounted so an SSE notification cannot move page controls.
+  return <section className={s.status} aria-label={t("supportAccess.title")}>
+    {q.error ? <CommandError error={q.error} own={supportRefusal}><Button onClick={() => void q.refetch()}>{t("common.retry")}</Button></CommandError> : q.data && <>
+    {!q.data.pending_count && !q.data.sessions.length && <Banner placement="page" title={t("supportAccess.idle")} />}
     {q.data.can_approve && q.data.pending_count > 0 && <Banner placement="page" tone="warn" live="polite" title={t("supportAccess.pending", { count: fmtNumber(q.data.pending_count) })}
       actions={<Link to="/audit/support-access" search={{ review: q.data.pending_approvals[0]?.id }} className={buttonClass()}>{t("supportAccess.review")}</Link>}>
       {q.data.pending_approvals.map((s) => <p key={s.id}>{s.operator_label} · {t("supportAccess.requestDeadline", { at: fmtDateTime(s.request_expires_at) })}</p>)}
@@ -44,7 +46,8 @@ export function ActiveSupportBanner() {
       actions={q.data.can_approve ? <Link to="/audit/support-access" className={buttonClass()}>{t("supportAccess.bannerAction")}</Link> : undefined}>
       {q.data.sessions.map((s) => <p key={s.id}>{s.operator_label} · {t("supportAccess.bannerExpiry", { at: s.expires_at ? fmtDateTime(s.expires_at) : "—" })}</p>)}
     </Banner>}
-  </>;
+    </>}
+  </section>;
 }
 
 export function SupportAccess() {

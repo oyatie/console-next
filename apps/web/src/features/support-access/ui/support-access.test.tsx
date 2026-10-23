@@ -74,7 +74,7 @@ test("approval and end commands use the shared authenticated API and retain thei
   expect(state.post).toHaveBeenLastCalledWith("/api/v1/support-sessions/{id}/end", { params:{path:{id:"session-a"}},headers: { "Idempotency-Key": "intent-b" } });
 });
 test("the banner names an active operator and expiry on any tenant page", () => {
-  expect(renderToStaticMarkup(<ActiveSupportBanner />)).toBe("");
+  expect(renderToStaticMarkup(<ActiveSupportBanner />)).toContain("supportAccess.idle");
   state.active = { sessions: [{ id: session.id, operator_label: session.operator_label, expires_at: "2026-10-23T00:30:00Z" }], can_approve: false };
   const html = renderToStaticMarkup(<ActiveSupportBanner />);
   expect(html).toContain(session.operator_label);
@@ -103,11 +103,11 @@ test("non-approvers have no approval, denial, or termination controls", () => {
   for (const control of ["supportAccess.approve", "supportAccess.deny", "supportAccess.end"])
     expect(html).not.toContain(`>${control}</button>`);
 });
-test("the live notification and Home queue name the pending request, deadline and deep link", () => {
+test("the live notification deep-links to the pending request for approvers only", () => {
   state.active = { sessions: [], can_approve: true, pending_count: 1, pending_approvals: [session] };
   expect(renderToStaticMarkup(<ActiveSupportBanner />)).toContain("supportAccess.pending");
   state.active = { sessions: [], can_approve: false, pending_count: 1, pending_approvals: [session] };
-  expect(renderToStaticMarkup(<ActiveSupportBanner />)).toBe("");
+  expect(renderToStaticMarkup(<ActiveSupportBanner />)).not.toContain("supportAccess.pending");
 });
 
 test("active details show the support deadline without an approval form or pending deadline", () => {

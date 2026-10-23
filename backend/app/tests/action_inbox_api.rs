@@ -30,6 +30,8 @@ use std::sync::atomic::{AtomicU16, Ordering};
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
 const PATH: &str = "/api/v1/me/action-inbox";
+#[path = "action_inbox/support_access.rs"]
+mod support_access;
 static EQUIPMENT_SEQUENCE: AtomicU16 = AtomicU16::new(1);
 
 struct Keys {

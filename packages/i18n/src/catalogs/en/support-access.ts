@@ -5,6 +5,7 @@ export const enSupportAccess = {
   "supportAccess.emptyTitle": "No support access requests",
   "supportAccess.emptyReason": "When a vendor requests access, review its purpose, scope and duration before approving or denying it.",
   "supportAccess.banner": "Vendor support access is active",
+  "supportAccess.idle": "No vendor support access is active",
   "supportAccess.bannerExpiry": "Ends {at}",
   "supportAccess.bannerAction": "Review access · end support",
   "supportAccess.operator": "Vendor operator",

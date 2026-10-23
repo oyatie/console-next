@@ -10,6 +10,7 @@ import { tenantInSetup } from "./setup-flows";
 import { addDepartments } from "./structure-flows";
 import { openTenant } from "./helpers/tenant";
 import { PORTS } from "./slot";
+import { forgetResize } from "./stability";
 
 const TENANT_SUPPORT = "/api/v1/support-sessions";
 
@@ -43,6 +44,7 @@ async function operatorBearer(page: Page) {
 
 async function auditLayouts(page: Page, context: string) {
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await forgetResize(page);
   await expectAccessible(page, `${context} at 1440px`);
   await atPhoneWidth(page, async () => {
     await expectAccessible(page, `${context} at 390px`);
@@ -50,8 +52,7 @@ async function auditLayouts(page: Page, context: string) {
   });
 }
 
-test("two operators and the customer authorize support; every read arrives live and termination revokes the token", { tag: ["@auth", "@live"] }, async ({ browser, browserName, request }) => {
-  test.skip(browserName !== "chromium", "The support ceremony and live-flow acceptance is exercised in Chromium.");
+test("two operators and the customer authorize support; every read arrives live and termination revokes the token", { tag: ["@auth", "@live"] }, async ({ browser, request }) => {
   test.setTimeout(240_000);
   const operator = await vendorPage(browser);
   const requesterBearer = await operatorBearer(operator);
@@ -101,14 +102,19 @@ test("two operators and the customer authorize support; every read arrives live 
     org_id: org, step_up: await boundStepUp(approver, approverBearer(), id, JSON.stringify([org, id, "approve"])),
   });
   expect(approvedByOperator.state).toBe("OPERATOR_APPROVED");
-  // SSE delivers both the notification and Home queue, including the exact pending request and deadline.
+  // SSE delivers the notification; pending work belongs to the shared action-inbox backend.
   await expect(tenant.getByText("지원 접근 승인 대기 1건", { exact: true }).first()).toBeVisible();
-  const queue = tenant.locator("section").filter({ has: tenant.getByRole("heading", { name: "지원 접근 승인 대기 1건", exact: true }) }).last();
-  await expect(queue).toContainText(body.ticket_ref);
-  await expect(queue).toContainText("승인 대기 만료");
-  await expect(queue.getByRole("link", { name: "지원 요청 확인", exact: true })).toHaveAttribute("href", `/audit/support-access?review=${id}`);
-  await auditLayouts(tenant, "Home support approval queue");
-  await queue.getByRole("link", { name: "지원 요청 확인", exact: true }).click();
+  const inbox = await apiOf(tenant, tenantBearer)("/me/action-inbox");
+  expect(inbox.ok()).toBe(true);
+  const actions = await inbox.json() as components["schemas"]["ActionInboxPage"];
+  expect(actions.items.find((item) => item.id === `support_access:${id}`)).toMatchObject({
+    kind: "support_access", ref: body.ticket_ref, title: body.reason,
+    due: expect.any(String), links: [{ kind: "support_session", id }],
+  });
+  const review = tenant.getByRole("link", { name: "지원 요청 확인", exact: true });
+  await expect(review).toHaveAttribute("href", `/audit/support-access?review=${id}`);
+  await auditLayouts(tenant, "Home support approval notice");
+  await review.click();
   await expect(tenant.getByText(body.ticket_ref, { exact: true }).first()).toBeVisible();
   for (const suffix of ["decision", "end"]) {
     const denied = await nonApprover.request.post(`${TENANT_SUPPORT}/${id}/${suffix}`, { headers: { authorization: readerBearer() }, data: suffix === "decision" ? { decision: "APPROVE", approved_duration_seconds: duration, reveal_classes: ["personal"] } : {} });
@@ -117,13 +123,16 @@ test("two operators and the customer authorize support; every read arrives live 
   }
   await expect(tenant.getByRole("button", { name: "지원 접근 승인", exact: true })).toBeVisible();
   await expect(tenant.getByRole("checkbox", { name: "이 세션에서 개인정보 열람을 허용합니다" })).not.toBeChecked();
-  await expect(tenant.getByRole("spinbutton", { name: "허용할 시간(분)", exact: true })).toHaveValue(String(duration / 60));
+  await expect(tenant.getByLabel("허용할 시간(분)")).toHaveValue(String(duration / 60));
   await auditLayouts(tenant, "support approval");
   const decision = tenant.waitForResponse((r) => new URL(r.url()).pathname === `${TENANT_SUPPORT}/${id}/decision` && r.request().method() === "POST");
   await tenant.getByRole("button", { name: "지원 접근 승인", exact: true }).click();
   const recordedDecision = await decision;
   expect(recordedDecision.ok()).toBe(true);
-  expect(recordedDecision.request().postDataJSON().approved_duration_seconds).toBe(duration);
+  const decidedList = await apiOf(tenant, tenantBearer)("/support-sessions");
+  expect(decidedList.ok()).toBe(true);
+  const decidedSessions = await decidedList.json() as components["schemas"]["SupportSessions"];
+  expect(decidedSessions.sessions.find((s) => s.id === id)?.approved_duration_seconds).toBe(duration);
   await expect(tenant.getByRole("table", { name: "요청·승인·종료 기록", exact: true }).getByText("고객 승인", { exact: true })).toBeVisible();
   const started = await vendorStepUp(async () => requester.start(id, {
     org_id: org, step_up: await boundStepUp(operator, requesterBearer(), id, JSON.stringify([org, id, "start"])),

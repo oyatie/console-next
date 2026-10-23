@@ -30940,7 +30940,7 @@ components:
     AccessDomain:
       type: string
       description: Platform-fixed data domain (access-model §2.6). `discipline` is listed but not grantable.
-      enum:
+      x-extensible-enum:
       - org
       - hr_basic
       - appointment
@@ -31489,6 +31489,42 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/AccessLevel'
+    AccessRoleLineInput:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - domain
+      - levels
+      properties:
+        domain:
+          type: string
+          enum:
+          - org
+          - hr_basic
+          - appointment
+          - exit
+          - attendance
+          - pay
+          - bank
+          - evaluation
+          - discipline
+          - sensitive
+          - documents
+          - notice
+          - access
+          - audit
+          - settings
+          - exceptions
+          - retention
+          - tenant
+          - support_access
+
+        levels:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/AccessLevel'
     AccessRoleStatus:
       type: string
       enum:
@@ -31641,7 +31677,7 @@ components:
           description: '"{kind}:{uuid}" — source-namespaced so ids never collide.'
         kind:
           type: string
-          enum:
+          x-extensible-enum:
           - approval
           - dispatch
           - work
@@ -31650,6 +31686,7 @@ components:
           - hr_exit
           - hr_lifecycle
           - hr_request
+          - support_access
         urg:
           type: string
           enum:
@@ -35702,7 +35739,7 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: '#/components/schemas/AccessRoleLine'
+            $ref: '#/components/schemas/AccessRoleLineInput'
     CreateBranchRequest:
       type: object
       required:
@@ -57912,7 +57949,7 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: '#/components/schemas/AccessRoleLine'
+            $ref: '#/components/schemas/AccessRoleLineInput'
         reason_code:
           type: string
           description: Domain `role_change`; required when `lines` change on a held role.

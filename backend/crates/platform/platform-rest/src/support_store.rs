@@ -47,7 +47,7 @@ pub(super) async fn limit(
     }
 }
 
-pub(super) async fn tenant_permission(
+pub async fn tenant_permission(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
     user: Uuid,

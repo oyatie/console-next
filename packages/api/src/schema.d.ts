@@ -14045,11 +14045,8 @@ export interface components {
             /** @description true = `include_descendants` must be true in the pilot. */
             descendants_only: boolean;
         };
-        /**
-         * @description Platform-fixed data domain (access-model §2.6). `discipline` is listed but not grantable.
-         * @enum {string}
-         */
-        AccessDomain: "org" | "hr_basic" | "appointment" | "exit" | "attendance" | "pay" | "bank" | "evaluation" | "discipline" | "sensitive" | "documents" | "notice" | "access" | "audit" | "settings" | "exceptions" | "retention" | "tenant" | "support_access";
+        /** @description Platform-fixed data domain (access-model §2.6). `discipline` is listed but not grantable. */
+        AccessDomain: string;
         AccessEffectLine: {
             domain: components["schemas"]["AccessDomain"];
             level: components["schemas"]["AccessLevel"];
@@ -14245,6 +14242,11 @@ export interface components {
             domain: components["schemas"]["AccessDomain"];
             levels: components["schemas"]["AccessLevel"][];
         };
+        AccessRoleLineInput: {
+            /** @enum {string} */
+            domain: "org" | "hr_basic" | "appointment" | "exit" | "attendance" | "pay" | "bank" | "evaluation" | "discipline" | "sensitive" | "documents" | "notice" | "access" | "audit" | "settings" | "exceptions" | "retention" | "tenant" | "support_access";
+            levels: components["schemas"]["AccessLevel"][];
+        };
         /** @enum {string} */
         AccessRoleStatus: "DRAFT" | "ACTIVE" | "RETIRED";
         AccessRoleVersion: {
@@ -14304,8 +14306,7 @@ export interface components {
         ActionInboxItem: {
             /** @description "{kind}:{uuid}" — source-namespaced so ids never collide. */
             id: string;
-            /** @enum {string} */
-            kind: "approval" | "dispatch" | "work" | "support" | "org_change" | "hr_exit" | "hr_lifecycle" | "hr_request";
+            kind: string;
             /** @enum {string} */
             urg: "now" | "today" | "wait";
             /** @description Source reference (work order request_no, ticket id, or the workflow run/object id). Not a canonical AP-/CS- object code. */
@@ -16917,7 +16918,7 @@ export interface components {
              * @enum {string}
              */
             status: "DRAFT" | "ACTIVE";
-            lines: components["schemas"]["AccessRoleLine"][];
+            lines: components["schemas"]["AccessRoleLineInput"][];
         };
         CreateBranchRequest: {
             region_id: components["schemas"]["Uuid"];
@@ -27593,7 +27594,7 @@ export interface components {
             name_ko?: string;
             name_en?: string | null;
             description?: string | null;
-            lines?: components["schemas"]["AccessRoleLine"][];
+            lines?: components["schemas"]["AccessRoleLineInput"][];
             /** @description Domain `role_change`; required when `lines` change on a held role. */
             reason_code?: string;
             reason_note?: string | null;

@@ -5,6 +5,7 @@ export const koSupportAccess = {
   "supportAccess.emptyTitle": "지원 접근 요청이 없습니다",
   "supportAccess.emptyReason": "공급사가 지원을 요청하면 목적, 조회 범위와 요청 시간을 확인한 뒤 승인하거나 거절할 수 있습니다.",
   "supportAccess.banner": "공급사 지원 접근이 진행 중입니다",
+  "supportAccess.idle": "진행 중인 공급사 지원 접근이 없습니다",
   "supportAccess.bannerExpiry": "종료 예정 {at}",
   "supportAccess.bannerAction": "지원 기록 확인 · 종료",
   "supportAccess.operator": "공급사 운영자",

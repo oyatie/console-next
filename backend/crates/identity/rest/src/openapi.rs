@@ -1163,6 +1163,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/AccessRoleLine.yaml"),
     },
     NamedYaml {
+        name: "AccessRoleLineInput",
+        body: include_str!("../openapi/schemas/AccessRoleLineInput.yaml"),
+    },
+    NamedYaml {
         name: "AccessRoleStatus",
         body: include_str!("../openapi/schemas/AccessRoleStatus.yaml"),
     },

@@ -248,6 +248,9 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                 ActionInboxSource::HrInsurance => {
                     sources::hr_insurance::page(&self.pool, &self.principal, query).await
                 }
+                ActionInboxSource::SupportAccess => {
+                    sources::support_access::page(&self.pool, &self.principal, query).await
+                }
             }
         })
     }

@@ -395,6 +395,7 @@
     "AccessRequestReason",
     "AccessRole",
     "AccessRoleLine",
+    "AccessRoleLineInput",
     "AccessRoleStatus",
     "AccessRoleVersion",
     "AccessScope",

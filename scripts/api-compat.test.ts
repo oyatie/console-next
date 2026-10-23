@@ -19,6 +19,8 @@ test.each([
   ["leave v2 leave_type", schemas.LeaveRequestV2View!.properties!.leave_type!, 2],
   ["change request kind", schemas.ChangeRequest!.properties!.kind!, 9],
   ["change request subject_type", schemas.ChangeRequest!.properties!.subject_type!, 5],
+  ["access domain", schemas.AccessDomain!, 19],
+  ["action inbox source", schemas.ActionInboxItem!.properties!.kind!, 9],
 ] as const)("%s permits future response values and retains every documented value", (_, schema, count) => {
   expect(schema.type).toBe("string");
   expect(schema.enum).toBeUndefined();
@@ -51,5 +53,6 @@ test("step-up command enums retain every value accepted by the response", () => 
 
 
 test("the access contract publishes the support approval domain", () => {
-  expect(schemas.AccessDomain!.enum).toContain("support_access");
+  expect(schemas.AccessDomain!["x-extensible-enum"]).toContain("support_access");
+  expect(schemas.AccessRoleLineInput!.properties!.domain!.enum).toEqual(schemas.AccessDomain!["x-extensible-enum"]);
 });

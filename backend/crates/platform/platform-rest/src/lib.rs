@@ -37,6 +37,7 @@ mod listings_tests;
 
 pub use company_domain::TENANT_DOMAIN_REQUEST_PATH;
 pub use state_builders::{OpsNotices, PlatformRestState};
+pub use support_store::tenant_permission as tenant_support_permission;
 
 pub use support::{
     PLATFORM_SUPPORT_APPROVE_PATH, PLATFORM_SUPPORT_END_PATH, PLATFORM_SUPPORT_SESSIONS_PATH,
