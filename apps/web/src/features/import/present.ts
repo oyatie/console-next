@@ -2,7 +2,7 @@ import { LEAVE_TYPE, label } from "../../lib/labels";
 // Words for the import contract's codes. Every enum on screen goes through here, never the raw code.
 import { i18n, isMessageId, t } from "@console/i18n";
 import type { Classification, ImportDeferred, ImportOutcome, ImportRow, ReasonCatalogEntry, ReviewItem, SheetStatus } from "./domain/contract";
-import type { ImportRunStatus } from "./domain/pending";
+import type { ImportRun } from "./api";
 
 type Tone = "ok" | "warn" | "danger" | "info" | "neutral";
 
@@ -10,7 +10,7 @@ type Tone = "ok" | "warn" | "danger" | "info" | "neutral";
 const known = (id: string, code: string) => (isMessageId(id) ? t(id) : code);
 
 /** A target, diff or deferred field, worded as the employee field it fills. */
-export const fieldLabel = (field: string) => known(`import.target.${field}`, field);
+export const fieldLabel = (field: string) => field === "home_branch_id" ? t("importRollback.homeBranch") : known(`import.target.${field}`, field);
 
 export const CLASS_TONE: Record<Classification, Tone> = { canonical: "ok", retained: "neutral", restricted: "warn", location: "info" };
 export const classLabel = (c: Classification) => t(`import.class.${c}`);
@@ -25,8 +25,9 @@ export const OUTCOME_TONE: Record<ImportOutcome, Tone> = {
 };
 export const outcomeLabel = (o: ImportOutcome) => t(`import.outcome.${o}`);
 
-export const STATUS_TONE: Record<ImportRunStatus, Tone> = { PREVIEW: "neutral", DRY_RUN: "neutral", APPLIED: "ok", ROLLBACK_REQUESTED: "warn", ROLLED_BACK: "neutral" };
-export const statusLabel = (s: ImportRunStatus) => t(`import.status.${s}`);
+type RunStatus = ImportRun["status"] | "PREVIEW";
+export const STATUS_TONE: Record<RunStatus, Tone> = { PREVIEW: "neutral", PREVIEWED: "neutral", DRY_RUN: "neutral", APPLIED: "ok", FAILED: "danger", ROLLBACK_REQUESTED: "warn", ROLLBACK_RUNNING: "warn", ROLLED_BACK: "neutral" };
+export const statusLabel = (s: RunStatus) => s === "FAILED" ? t("importJob.failed") : t(`import.status.${s === "PREVIEWED" ? "PREVIEW" : s}`);
 
 export const SHEET_TONE: Record<SheetStatus, Tone> = { mapped: "ok", needs_mapping: "danger", empty: "neutral", skipped: "neutral" };
 export const sheetStatusLabel = (s: SheetStatus) => t(`importSheet.status.${s}`);

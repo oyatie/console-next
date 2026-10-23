@@ -21,6 +21,7 @@ pub async fn apply_requested_correction_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,
     request: &ChangeRequestResponse,
+    holders: super::SecondPersonContext,
 ) -> Result<Vec<AuditEvent>, HrError> {
     match ChangeRequestKind::parse(&request.kind)? {
         ChangeRequestKind::ProfileCorrection => {
@@ -30,6 +31,10 @@ pub async fn apply_requested_correction_in_tx(
             if request.payload.get("verdict").and_then(Value::as_str) == Some("SAME") =>
         {
             apply_requested_merge_in_tx(tx, principal, request).await
+        }
+        ChangeRequestKind::ImportRollback => {
+            crate::import::rollback::apply_requested_rollback_in_tx(tx, principal, request, holders)
+                .await
         }
         ChangeRequestKind::EmployeeVoid => {
             crate::registration_void::apply_requested_void_in_tx(tx, principal, request).await
@@ -57,6 +62,7 @@ async fn apply_profile_correction(
     let org = *principal.org_id.as_uuid();
     let head = lock_employee(tx, org, request.subject_id).await?;
     let meta = LedgerMeta {
+        import_run_id: None,
         reason_code: &request.reason_code,
         note: request.note.as_deref(),
         corrected_by: *principal.user_id.as_uuid(),

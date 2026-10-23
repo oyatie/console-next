@@ -6,7 +6,9 @@
 
 use console_hr_domain::profile::facts::validate_probation_end;
 use console_hr_domain::text::parse_yyyy_mm_dd;
-use console_ontology_canonical_adapter_postgres::employee_correction::correct_employee_head_in_tx;
+use console_ontology_canonical_adapter_postgres::employee_correction::{
+    correct_employee_head_in_tx, restore_import_employee_head_in_tx,
+};
 use console_ontology_canonical_adapter_postgres::employee_void::include_voided;
 use http::StatusCode;
 use serde_json::json;
@@ -25,6 +27,7 @@ pub(crate) type FieldValue = (String, Option<String>);
 
 /// Who applied a correction, why, and through which request.
 pub(crate) struct LedgerMeta<'a> {
+    pub import_run_id: Option<Uuid>,
     pub reason_code: &'a str,
     pub note: Option<&'a str>,
     pub corrected_by: Uuid,
@@ -224,7 +227,11 @@ pub(crate) async fn apply_fields_in_tx(
         .collect();
     // An empty column list still bumps updated_at: a profile-only 정정 moves
     // the record's version too.
-    let updated_at = correct_employee_head_in_tx(tx, org, employee_id, &columns).await?;
+    let updated_at = if meta.import_run_id.is_some() {
+        restore_import_employee_head_in_tx(tx, org, employee_id, &columns).await?
+    } else {
+        correct_employee_head_in_tx(tx, org, employee_id, &columns).await?
+    };
     if let (Some(_), Some(old)) = (
         value_of(fields, "employee_number"),
         head.current("employee_number"),
@@ -234,8 +241,8 @@ pub(crate) async fn apply_fields_in_tx(
     for (field, value) in fields {
         sqlx::query(
             "INSERT INTO employee_corrections (org_id, employee_id, field, old_value, new_value, \
-             reason_code, note, corrected_by, change_request_id, review_required, batch_id) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+             reason_code, note, corrected_by, change_request_id, review_required, batch_id, import_run_id) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
         )
         .bind(org)
         .bind(employee_id)
@@ -248,6 +255,7 @@ pub(crate) async fn apply_fields_in_tx(
         .bind(meta.change_request_id)
         .bind(meta.review_required)
         .bind(meta.batch_id)
+        .bind(meta.import_run_id)
         .execute(tx.as_mut())
         .await?;
     }

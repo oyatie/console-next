@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [employees]
+operationId: rollbackEmployeeImport
+summary: Reverse the acknowledged employee import
+security:
+  - bearerAuth: []
+parameters:
+  - name: run_id
+    in: path
+    required: true
+    schema:
+      $ref: '#/components/schemas/Uuid'
+  - name: Idempotency-Key
+    in: header
+    required: true
+    schema:
+      type: string
+      minLength: 16
+      maxLength: 200
+  - name: Prefer
+    in: header
+    required: false
+    description: respond-async accepts a tracked rollback job. Large inverses always use the job path.
+    schema:
+      type: string
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/EmployeeImportRollbackRequest'
+responses:
+  '200':
+    description: Run reversed atomically; an exact idempotency replay returns this original outcome.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeImportRollbackOutcome'
+  '202':
+    description: Tracked rollback job accepted, or IMPORT_ROLLBACK request filed for a different eligible holder. The run record and import_run events carry progress and completion.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeImportRollbackOutcome'
+  '401':
+    description: Rollback refused before any changes.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '403':
+    description: Rollback refused before any changes.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Rollback refused before any changes.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Rollback refused before any changes.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: Rollback refused before any changes.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

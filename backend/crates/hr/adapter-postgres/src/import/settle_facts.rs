@@ -80,6 +80,17 @@ async fn first_sex(
     let Some(sex) = person["sex"].as_str() else {
         return Ok(false);
     };
+    let created: Option<Uuid> = sqlx::query_scalar(
+        "INSERT INTO employee_register_facts (org_id, employee_id) VALUES ($1, $2) \
+         ON CONFLICT (org_id, employee_id) DO NOTHING RETURNING employee_id",
+    )
+    .bind(org)
+    .bind(employee)
+    .fetch_optional(tx.as_mut())
+    .await?;
+    if created.is_none() {
+        return Ok(false);
+    }
     crate::register_facts::store::write_in_tx(
         tx,
         org,
@@ -89,6 +100,9 @@ async fn first_sex(
         None,
     )
     .await?;
+    if created.is_some() {
+        super::effects::record(tx, org, run, employee, "register_fact", employee).await?;
+    }
     ledger(
         tx,
         org,
@@ -109,11 +123,11 @@ async fn ledger(
     employee: Uuid,
     change: &Value,
 ) -> Result<bool, HrError> {
-    let done = sqlx::query(
+    let inserted: Option<Uuid> = sqlx::query_scalar(
         "INSERT INTO employee_corrections (org_id, employee_id, field, old_value, new_value, \
            reason_code, corrected_by, import_run_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
-         ON CONFLICT (org_id, import_run_id, employee_id, field) WHERE import_run_id IS NOT NULL \
-         DO NOTHING",
+         ON CONFLICT (org_id, import_run_id, employee_id, field, reason_code) \
+         WHERE import_run_id IS NOT NULL DO NOTHING RETURNING id",
     )
     .bind(org)
     .bind(employee)
@@ -123,9 +137,12 @@ async fn ledger(
     .bind(IMPORT_REASON)
     .bind(actor)
     .bind(run)
-    .execute(tx.as_mut())
+    .fetch_optional(tx.as_mut())
     .await?;
-    Ok(done.rows_affected() == 1)
+    if let Some(id) = inserted {
+        super::effects::record(tx, org, run, employee, "ledger", id).await?;
+    }
+    Ok(inserted.is_some())
 }
 
 /// The first assignment of a current person the plan placed, unless they
@@ -136,9 +153,9 @@ async fn place(
     actor: Uuid,
     employee: Uuid,
     person: &Value,
-) -> Result<bool, HrError> {
+) -> Result<Option<Uuid>, HrError> {
     let Some(workplace) = person["workplace_id"].as_str() else {
-        return Ok(false);
+        return Ok(None);
     };
     let placed: bool = sqlx::query_scalar(
         "SELECT EXISTS (SELECT 1 FROM employment_assignments \
@@ -149,22 +166,33 @@ async fn place(
     .fetch_one(tx.as_mut())
     .await?;
     if placed || person["status"] == "EXITED" {
-        return Ok(false);
+        return Ok(None);
     }
     let workplace = Uuid::parse_str(workplace)
         .map_err(|_| HrError::internal("stored import plan has a malformed workplace id"))?;
     let hire = parse_yyyy_mm_dd(person["hire_date"].as_str().unwrap_or_default())?;
+    let command_id = Uuid::new_v4();
     let write = MoveWrite {
         org_id: org,
         employee_id: employee,
         actor_id: actor,
-        command_id: Uuid::new_v4(),
+        command_id,
     };
     match hire_in_tx(tx.as_mut(), write, workplace, hire).await {
-        Ok(_) => Ok(true),
+        Ok(_) => Ok(Some(
+            sqlx::query_scalar(
+                "SELECT id FROM employment_assignments \
+                 WHERE org_id = $1 AND employee_id = $2 AND command_id = $3",
+            )
+            .bind(org)
+            .bind(employee)
+            .bind(command_id)
+            .fetch_one(tx.as_mut())
+            .await?,
+        )),
         // Closed after the apply re-planned (which re-checks it): the person
         // stays 미배치 rather than a settle that can never finish.
-        Err(error) if error.code == Some("workplace_not_open") => Ok(false),
+        Err(error) if error.code == Some("workplace_not_open") => Ok(None),
         Err(error) => Err(coded(error)),
     }
 }
@@ -203,12 +231,15 @@ pub async fn record_import_facts(
             if let Some(kind) = person["employment_type"].as_str()
                 && profile(tx, who, kind, (phone, person), &key).await?
             {
+                super::effects::record(tx, org, run, *employee, "profile_created", *employee)
+                    .await?;
                 recorded.profiles += 1;
             }
             if first_sex(tx, (org, actor, run, *employee), person).await? {
                 recorded.ledgered += 1;
             }
-            if place(tx, org, actor, *employee, person).await? {
+            if let Some(assignment) = place(tx, org, actor, *employee, person).await? {
+                super::effects::record(tx, org, run, *employee, "placed", assignment).await?;
                 recorded.placed += 1;
             }
             continue;
@@ -218,6 +249,8 @@ pub async fn record_import_facts(
                 && let Some(kind) = change["to"].as_str()
                 && profile(tx, who, kind, (None, &Value::Null), &key).await?
             {
+                super::effects::record(tx, org, run, *employee, "profile_created", *employee)
+                    .await?;
                 recorded.profiles += 1;
             }
             if ledger(tx, org, actor, run, *employee, change).await? {

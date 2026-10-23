@@ -53,9 +53,6 @@ export function PreviewStep({ preview, picks, mapping, rereading, onRemap, onDry
     <>
       <section className="card">
         <div className="stats">
-          <div className="stat"><span className="stat__label">{t("import.stat.file")}</span><span className="stat__value">{preview.source_filename}</span></div>
-          <div className="stat"><span className="stat__label">{t("import.stat.rows")}</span><span className="stat__value num">{fmtNumber(preview.input_rows)}</span></div>
-          <div className="stat"><span className="stat__label">{t("import.stat.candidates")}</span><span className="stat__value num">{fmtNumber(preview.candidate_rows)}</span></div>
           <div className="stat"><span className="stat__label">{t("import.stat.preserved")}</span><span className="stat__value num">{fmtNumber(preview.preserved_rows)}</span></div>
           <div className="stat"><span className="stat__label">{t("import.stat.sealed")}</span><span className="stat__value num">{fmtNumber(preview.sealed_identities)}</span></div>
         </div>
@@ -81,7 +78,7 @@ export function PreviewStep({ preview, picks, mapping, rereading, onRemap, onDry
           )}
           <Card titleId="import-order" title={t("import.order.title")}>
             <ol className={s.order}>
-              {(["number", "rrn", "name"] as const).map((k, i) => <li key={k}><Chip>{i + 1}</Chip> <b>{t(`import.order.${k}`)}</b> <span className="muted">{t(`import.order.${k}.how`)}</span></li>)}
+              {(["number", "rrn", "name"] as const).map((k, i) => <li key={k}><Chip>{i + 1}</Chip> <b>{t(`import.order.${k}`)}</b></li>)}
             </ol>
           </Card>
           <SheetsPanel key={preview.run_id} preview={preview} mapping={mapping} busy={rereading} onRemap={onRemap} />

@@ -1,10 +1,15 @@
-// Employee import: the served preview → dry run → apply (BW-10, MR-7), and the requested run record (domain/pending).
+// Employee import: preview → dry run → apply and stored run history (BW-10, MR-7).
 import { api, ApiError, unwrap } from "@console/api";
 import { get, read } from "../../lib/query";
 import { REFUSED_BEFORE_WRITE } from "../../lib/react/command";
 import type { ApplyJob, ImportDecisions, ImportPreview, ImportReport } from "./domain/contract";
-import type { ImportRun } from "./domain/pending";
+import type { components } from "@console/api/schema";
+export type ImportRun = components["schemas"]["EmployeeImportRun"];
+export type RollbackPreview = components["schemas"]["EmployeeImportRollbackPreview"];
+type RollbackRequest = components["schemas"]["EmployeeImportRollbackRequest"];
 import { HEAD_BYTES, workbookKind } from "./domain/workbook";
+
+export { ApiError, assertBoundPasskey } from "@console/api";
 
 const idem = (key: string) => ({ header: { "Idempotency-Key": key } });
 
@@ -89,19 +94,16 @@ export const lostAnswer = (e: unknown) => !(e instanceof ApiError) || e.status =
 
 export const excludeReasonsQuery = get("/api/v1/reason-codes", { params: { query: { domain: EXCLUDE_REASONS } } });
 
-// ---- Requested, not served (domain/pending): the run record and its two-person rollback. Not mounted.
-type Raw = Record<"GET" | "POST", (path: string, init?: { body?: unknown; params?: { header?: Record<string, string> } }) => Promise<{ data?: unknown; error?: unknown; response: Response }>>;
-const raw = () => api as unknown as Raw;
+// Run records and inverse commands share the generated API contract.
 export const RUNS = "/api/v1/employee-import-runs";
 export const ROLLBACK_REASONS = "import_rollback";
-export const MEMO_MAX = 500;
-export const runsQuery = read(RUNS, () => unwrap(raw().GET(`${RUNS}?limit=20`)) as Promise<{ items: ImportRun[] }>);
-export const runQuery = (id: string) => read(`${RUNS}/${id}`, () => unwrap(raw().GET(`${RUNS}/${id}`)) as Promise<ImportRun>);
+export const runsQuery = get(RUNS);
+export const runQuery = (id: string) => get("/api/v1/employee-import-runs/{run_id}", { params: { path: { run_id: id } } });
 export const rollbackReasonsQuery = get("/api/v1/reason-codes", { params: { query: { domain: ROLLBACK_REASONS } } });
-export const requestRollback = (id: string, reason: { code: string; memo: string }, key: string) =>
-  unwrap(raw().POST(`${RUNS}/${id}/rollback`, { params: idem(key), body: { reason_code: reason.code, memo: reason.memo || null } })) as Promise<ImportRun>;
-export const decideRollback = (id: string, decision: "APPROVE" | "REFUSE", key: string) =>
-  unwrap(raw().POST(`${RUNS}/${id}/rollback/decision`, { params: idem(key), body: { decision } })) as Promise<ImportRun>;
+export const previewRollback = (id: string) => unwrap(api.POST("/api/v1/employee-import-runs/{run_id}/rollback/preview", { params: { path: { run_id: id } } }));
+export const rollbackPreviewQuery = (id: string) => read("/api/v1/employee-import-runs/{run_id}/rollback/preview", () => previewRollback(id), { path: { run_id: id } });
+export const requestRollback = (id: string, body: RollbackRequest, key: string) =>
+  unwrap(api.POST("/api/v1/employee-import-runs/{run_id}/rollback", { params: { path: { run_id: id }, header: { ...idem(key).header, Prefer: "respond-async" } }, body }));
 
 // --- the migration check: the applied run checked row by row and signed off (spec E7-reconcile/-row/-signoff, BE-EMP-UI §5) ---
 const onRun = (runId: string) => ({ path: { run_id: runId } });

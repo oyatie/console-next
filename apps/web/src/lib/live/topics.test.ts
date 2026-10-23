@@ -3,6 +3,13 @@ import { matchChange, matchRecord, TOPICS } from "./topics";
 
 const detail = (id: string) => ({ path: { id } });
 
+test.each(["employee", "change_request", "exit_case"])("a %s change refreshes import records and rollback dependency previews", (topic) => {
+  const matches = matchChange(topic, "changed-record");
+  expect(matches("/api/v1/employee-import-runs", null)).toBe(true);
+  expect(matches("/api/v1/employee-import-runs/{run_id}", { path: { run_id: "run" } })).toBe(true);
+  expect(matches("/api/v1/employee-import-runs/{run_id}/rollback/preview", { path: { run_id: "run" } })).toBe(true);
+});
+
 test("a change to one employee re-reads that employee and the lists, not another employee or other modules", () => {
   const m = matchChange("employee", "e1");
   expect(m("/api/v1/employees", { query: { limit: 100 } })).toBe(true);

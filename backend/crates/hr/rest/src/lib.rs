@@ -29,6 +29,7 @@ pub use directory::{employee_facets, export_employees_csv};
 pub mod registration;
 
 // --- lane: IMPORT ---
+pub mod import_runs;
 pub mod intake;
 
 // --- lane: EMP-FACTS ---

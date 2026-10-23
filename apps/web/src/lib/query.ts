@@ -20,7 +20,7 @@ export const get = <P extends Gettable>(path: P, init?: { params: Params<P> }) =
 });
 
 /** A read the API client wraps (not a plain GET), keyed by its path all the same. */
-export const read = <T>(path: string, queryFn: () => Promise<T>) => ({ queryKey: [path, null] as const, queryFn });
+export const read = <T>(path: string, queryFn: () => Promise<T>, params?: unknown) => ({ queryKey: [path, params ?? null] as const, queryFn });
 
 /** Every path prefix of an API path ("/api/v1/employees" for "/api/v1/employees/{id}"). */
 type Prefix<S extends string> = S extends `${infer H}/${infer T}` ? H | `${H}/${Prefix<T>}` : S;

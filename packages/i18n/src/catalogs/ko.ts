@@ -1,5 +1,6 @@
 import { koCommon } from "./ko/common";
 import { koOpsRecovery } from "./ko/ops-recovery";
+import { koImportRollback } from "./ko/import-rollback";
 import { koStatutory } from "./ko/statutory";
 import { koRequestOutcome } from "./ko/request-outcome";
 // Source catalog for the screens (Korean first); other locales translate these ids. Sign-in,
@@ -137,6 +138,7 @@ export const ko = {
   ...koAttendanceCrews,
   ...koAttendanceRecords,
   ...koImport,
+  ...koImportRollback,
   ...koImportSheet,
   ...koImportReview,
   ...koNotice,

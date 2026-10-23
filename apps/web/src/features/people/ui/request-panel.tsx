@@ -40,7 +40,7 @@ export function RequestPanel({ r, subject, hr, onClose, onDecided }: { r: Change
       </div>
       <dl className="kv">
         <dt>{t("requests.col.subject")}</dt>
-        <dd>{subject ? <Link to="/people/$id" params={{ id: subject.id }} search={{}}>{subjectText(r, subject)}</Link> : subjectText(r, subject)}</dd>
+        <dd>{r.kind === "IMPORT_ROLLBACK" ? <Link to="/people/import" search={{ run: r.subject_id }}>{t("importRollback.reviewRun")}</Link> : subject ? <Link to="/people/$id" params={{ id: subject.id }} search={{}}>{subjectText(r, subject)}</Link> : subjectText(r, subject)}</dd>
         <dt>{t("requests.col.at")}</dt>
         <dd className="num">{fmtDateTime(r.created_at)}{mine ? ` · ${t("requests.mine")}` : ""}</dd>
         <dt>{t("requests.col.reason")}</dt>
@@ -104,7 +104,7 @@ function Decide({ r, choices, onDecided }: { r: ChangeRequest; choices: Decision
         </div>
       )}
       {tried && !decision && <p className="field__error">{t("requests.decision.missing")}</p>}
-      {decision && <p className="muted">{t(`requests.consequence.${decision}`)}</p>}
+      {decision && <p className="muted">{t(r.kind === "IMPORT_ROLLBACK" && decision === "APPLY" ? "importRollback.applyConsequence" : `requests.consequence.${decision}`)}</p>}
       <Field label={t("requests.decision.reason")} required hint={t("lifecycle.reason.count", { count: reason.length, max: REASON_MAX })} error={tried && !reason.trim() ? t("lifecycle.reason.missing") : undefined}>
         {(p) => <TextInput {...p} value={reason} maxLength={REASON_MAX} onChange={(e) => (run.reset(), setReason(e.target.value))} />}
       </Field>

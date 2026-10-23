@@ -84,3 +84,18 @@ pub async fn destroy_voided_pii_in_tx(
         .await
         .map(drop)
 }
+
+/// Close only canonical employments opened by this import; retain revisions and source bindings.
+///
+/// # Errors
+/// The database driver error verbatim.
+pub async fn close_import_employments_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    org: Uuid,
+    run: Uuid,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE employment_heads h SET valid_to=greatest(clock_timestamp(),h.valid_from+interval '1 microsecond') \
+        FROM import_run_effects f WHERE f.org_id=$1 AND f.run_id=$2 AND f.effect='employment_opened' \
+        AND h.org_id=f.org_id AND h.id=f.target_id AND h.valid_to IS NULL")
+        .bind(org).bind(run).execute(tx.as_mut()).await.map(drop)
+}

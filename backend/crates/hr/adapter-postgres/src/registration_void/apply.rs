@@ -26,7 +26,7 @@ const CANCEL_REASON: &str = "등록 취소 (registration voided)";
 /// brings the person back on the hire date), supersedes the 법인 · 사업장
 /// assignment, then marks the record. `destroy` tombstones it in the same
 /// transaction; `Some(true)` also frees the 사번 (SETUP only).
-pub(super) async fn void_in_tx(
+pub(crate) async fn void_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
     employee_id: Uuid,
@@ -66,7 +66,7 @@ pub(super) async fn void_in_tx(
 }
 
 /// The audit row of a void: ids, 사번, reason and basis; no other PII.
-pub(super) fn void_event(
+pub(crate) fn void_event(
     principal: &Principal,
     action: &str,
     employee_id: Uuid,

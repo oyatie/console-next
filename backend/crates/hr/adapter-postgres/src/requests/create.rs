@@ -84,7 +84,10 @@ fn payload(kind: ChangeRequestKind, raw: Option<Value>) -> Result<Value, HrError
     if !payload.is_object() {
         return Err(HrError::validation("payload must be an object"));
     }
-    if kind == ChangeRequestKind::EmployeeVoid {
+    if matches!(
+        kind,
+        ChangeRequestKind::EmployeeVoid | ChangeRequestKind::ImportRollback
+    ) {
         // Fail closed: a void is filed with its checks and attestation by
         // POST /employees/{id}/void, never by hand.
         return Err(HrError::validation(

@@ -62,4 +62,6 @@ export const enRequests: Partial<Record<keyof typeof koRequests, string>> = {
   "requests.done.APPLIED": "Applied the {kind} request",
   "requests.done.DECLINED": "Declined the {kind} request",
   "requests.done.WITHDRAWN": "Withdrew the {kind} request",
+  "requests.kind.IMPORT_ROLLBACK": "Import rollback",
+  "requests.subject.DATA_IMPORT_RUN": "Import run",
 };

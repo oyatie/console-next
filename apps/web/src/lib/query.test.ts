@@ -59,3 +59,11 @@ test("regression (row editor closing on the old row): a read under two prefixes 
   expect(fetches, "one re-read, not a second that cancels the first").toBe(2);
   off();
 });
+
+test("wrapped reads keep different run parameters in separate cache entries", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
+  const at = (id: string) => read("/api/v1/employee-import-runs/{run_id}/rollback/preview", async () => id, { path: { run_id: id } });
+  expect(await client.fetchQuery(at("first"))).toBe("first");
+  expect(await client.fetchQuery(at("second"))).toBe("second");
+  expect(readIdentity(at("first"))).not.toBe(readIdentity(at("second")));
+});

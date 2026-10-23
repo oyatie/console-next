@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - employees
+operationId: getEmployeeImportRun
+summary: Read an employee import's stored record
+description: Requires org-wide employee_directory_manage. Unknown runs, other tenants' runs and non-employee runs all return import_run_not_found. Read once on open and after an import_run live frame; never poll.
+security:
+  - bearerAuth: []
+parameters:
+  - name: run_id
+    in: path
+    required: true
+    schema:
+      $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: The import's file, actor, time and immutable apply result.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeImportRun'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

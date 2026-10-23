@@ -32,6 +32,18 @@
     "/api/v1/change-sets/{id}/lines/{line_id}": [
       "delete"
     ],
+    "/api/v1/employee-import-runs": [
+      "get"
+    ],
+    "/api/v1/employee-import-runs/{run_id}": [
+      "get"
+    ],
+    "/api/v1/employee-import-runs/{run_id}/rollback": [
+      "post"
+    ],
+    "/api/v1/employee-import-runs/{run_id}/rollback/preview": [
+      "post"
+    ],
     "/api/v1/employee-number-rules": [
       "delete",
       "get",
@@ -426,6 +438,11 @@
     "EmployeeImportReport",
     "EmployeeImportReviewItem",
     "EmployeeImportReviewQueue",
+    "EmployeeImportRollbackOutcome",
+    "EmployeeImportRollbackPreview",
+    "EmployeeImportRollbackRequest",
+    "EmployeeImportRun",
+    "EmployeeImportRunPage",
     "EmployeeImportSheetReport",
     "EmployeeImportSignoff",
     "EmployeeImportUnplaced",

@@ -7,10 +7,10 @@ use std::collections::HashSet;
 /// 34 App. A keys (`doc_class.{a,b}` is two) + 17 retention classes +
 /// `exit.settlement.wage_deviation_pct` + `authz.cross_entity_grant.basis_required`
 /// (decisions #15.2) + `retention.entity_registration_document` + 10 EMP-RECORD
-/// section switches + PEOPLE-A's two `people.void_*` + D26's five
-/// `approval.policy.*` + IMPORT-2's eight `import.*` + BE-MIG's
+/// section switches + PEOPLE-A's two `people.void_*` + D26's six
+/// `approval.policy.*` + IMPORT-2's nine `import.*` + BE-MIG's
 /// `import.apply.max_rows` + PERF-BE's six `db.pool.*`.
-const EXPECTED_KEYS: usize = 34 + 17 + 1 + 1 + 1 + 10 + 2 + 5 + 8 + 1 + 6 + 3 + 2 + 1;
+const EXPECTED_KEYS: usize = 34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 1;
 
 #[test]
 fn roster_has_every_key_once_and_round_trips() {
@@ -36,6 +36,14 @@ fn roster_has_every_key_once_and_round_trips() {
 
 #[test]
 fn keys_consumed_by_other_lanes_keep_their_wire_strings() {
+    assert_eq!(
+        SettingKey::ApprovalPolicyImportRollback.as_str(),
+        "approval.policy.import_rollback"
+    );
+    assert_eq!(
+        SettingKey::ImportRollbackWindowDays.as_str(),
+        "import.rollback.window_days"
+    );
     // BW-29 reads these as consts (concurrency challenge D2).
     assert_eq!(
         SettingKey::AuthzSecondPersonMinGrantAge.as_str(),

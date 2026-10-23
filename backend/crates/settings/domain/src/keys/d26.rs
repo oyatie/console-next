@@ -14,4 +14,5 @@ macro_rules! d26 { ([$($acc:tt)*] $($rest:tt)*) => { roster! { [$($acc)*
     ApprovalPolicyRegistrationVoid => "approval.policy.registration_void" = D::code(APPROVAL_POLICIES, "none", Higher);
     // 퇴직 확인: `route` = the HQ tier is a different person than the HR tier.
     ApprovalPolicyExit => "approval.policy.exit" = D::code(APPROVAL_POLICIES, "none", Higher);
+    ApprovalPolicyImportRollback => "approval.policy.import_rollback" = D::code(APPROVAL_POLICIES, "none", Higher);
 ] $($rest)* } }; }

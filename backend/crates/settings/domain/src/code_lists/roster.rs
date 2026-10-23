@@ -132,6 +132,7 @@ reason_domains! {
     Deactivate => "deactivate" ["EXIT", "LEAVE", "SECURITY_INCIDENT", "DUPLICATE_ACCOUNT"];
     CredentialReset => "credential_reset" ["DEVICE_LOST", "DEVICE_REPLACED", "COMPROMISE_SUSPECTED"];
     // --- import (BW-10) ---
+    ImportRollback => "import_rollback" ["WRONG_FILE", "WRONG_MAPPING", "DUPLICATE_RUN"];
     ImportExclude => "import_exclude" ["DUPLICATE", "FORMAT_ERROR", "OUT_OF_SCOPE"];
     // --- governed exceptions (BW-06) ---
     // OTHER only; per-rule codes are F-EXC's to add here.

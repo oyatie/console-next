@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [run_id, mode, basis, window_until, window_days, rows, blockers, preview_digest, allowed]
+properties:
+  run_id:
+    $ref: '#/components/schemas/Uuid'
+  mode:
+    type: string
+    enum: [SETUP, GOVERNED]
+  basis:
+    type: string
+    enum: [DIRECT, STEP_UP, SECOND_PERSON]
+  window_until:
+    type: string
+    format: date-time
+    nullable: true
+  window_days:
+    type: integer
+  preview_digest:
+    type: string
+  allowed:
+    type: array
+    items:
+      type: string
+  rows:
+    type: array
+    items:
+      type: object
+      required: [employee_id, employee_number, inserted, fields, effects]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        employee_number:
+          type: string
+          nullable: true
+        inserted:
+          type: boolean
+        fields:
+          type: array
+          items:
+            type: object
+            required: [field, current, before]
+            properties:
+              field:
+                type: string
+              current:
+                type: string
+                nullable: true
+              before:
+                type: string
+                nullable: true
+        effects:
+          type: array
+          items:
+            type: string
+  blockers:
+    type: array
+    items:
+      type: object
+      required: [employee_id, employee_number, kind, field, record, since]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        employee_number:
+          type: string
+          nullable: true
+        kind:
+          type: string
+          enum: [work_record, changed_since, later_run, account_linked]
+        field:
+          type: string
+          nullable: true
+        record:
+          type: string
+        since:
+          type: string

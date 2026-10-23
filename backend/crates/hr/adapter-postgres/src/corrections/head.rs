@@ -21,6 +21,9 @@ pub(crate) struct LockedEmployee {
     pub exit_date: Option<String>,
     pub employee_number: Option<String>,
     pub job: Option<String>,
+    pub position: Option<String>,
+    pub worksite_name: Option<String>,
+    pub worksite_address: Option<String>,
     pub birth_date: Option<String>,
     pub work_email: Option<String>,
     pub id_type: Option<String>,
@@ -49,6 +52,9 @@ impl LockedEmployee {
             "exit_date" => self.exit_date.as_deref(),
             "employee_number" => self.employee_number.as_deref(),
             "job" => self.job.as_deref(),
+            "position" => self.position.as_deref(),
+            "worksite_name" => self.worksite_name.as_deref(),
+            "worksite_address" => self.worksite_address.as_deref(),
             "birth_date" => self.birth_date.as_deref(),
             "work_email" => self.work_email.as_deref(),
             "id_type" => self.id_type.as_deref(),
@@ -88,6 +94,7 @@ async fn load_employee(
     macro_rules! select {
         () => {
             "SELECT e.name, e.hire_date, e.exit_date, e.employee_number, e.job, \
+         e.position, e.worksite_name, e.worksite_address, \
          to_char(e.birth_date, 'YYYY-MM-DD') AS birth_date, e.work_email, e.id_type, \
          e.grade_id::text, e.job_title_id::text, e.position_kind_id::text, e.job_id::text, e.job_family_id::text, \
          e.employment_status, e.updated_at, e.identity_review_required, \
@@ -129,6 +136,41 @@ async fn load_employee(
             format!("this record was merged into employee {kept}; correct that record"),
         ));
     }
+    from_row(
+        &row,
+        register_facts::store::load_in_tx(tx, org, employee_id).await?,
+        personal_facts::store::load_in_tx(tx, org, employee_id).await?,
+    )
+}
+
+impl LockedEmployee {
+    /// Import restores only its six scalar/profile fields; other fact sections are never consulted.
+    pub(crate) fn for_import_rollback(
+        row: &sqlx::postgres::PgRow,
+        fields: &[String],
+    ) -> Result<Self, HrError> {
+        if fields.iter().any(|field| {
+            ![
+                "job",
+                "position",
+                "worksite_name",
+                "worksite_address",
+                "birth_date",
+                "employment_type",
+            ]
+            .contains(&field.as_str())
+        }) {
+            return Err(HrError::internal("unsupported import inverse field"));
+        }
+        from_row(row, Default::default(), Default::default())
+    }
+}
+
+fn from_row(
+    row: &sqlx::postgres::PgRow,
+    register: register_facts::store::RegisterRow,
+    personal: PersonalRow,
+) -> Result<LockedEmployee, HrError> {
     Ok(LockedEmployee {
         catalog: [
             row.try_get("grade_id")?,
@@ -142,14 +184,17 @@ async fn load_employee(
         exit_date: row.try_get("exit_date")?,
         employee_number: row.try_get("employee_number")?,
         job: row.try_get("job")?,
+        position: row.try_get("position")?,
+        worksite_name: row.try_get("worksite_name")?,
+        worksite_address: row.try_get("worksite_address")?,
         birth_date: row.try_get("birth_date")?,
         work_email: row.try_get("work_email")?,
         id_type: row.try_get("id_type")?,
         employment_status: row.try_get("employment_status")?,
         updated_at: row.try_get("updated_at")?,
         identity_review_required: row.try_get("identity_review_required")?,
-        profile: profile::profile_from_row(&row)?,
-        register: register_facts::store::load_in_tx(tx, org, employee_id).await?,
-        personal: personal_facts::store::load_in_tx(tx, org, employee_id).await?,
+        profile: profile::profile_from_row(row)?,
+        register,
+        personal,
     })
 }

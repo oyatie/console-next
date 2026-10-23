@@ -137,24 +137,29 @@ pub async fn record(
 ) -> Result<usize, HrError> {
     let keys: Vec<&String> = people.keys().collect();
     let employees: Vec<Uuid> = people.values().copied().collect();
-    let done = sqlx::query(
-        "INSERT INTO employee_rrn (org_id, employee_id, rrn_hmac, hmac_key_version, ciphertext, \
+    let count: i64 = sqlx::query_scalar(
+        "WITH recorded AS ( \
+         INSERT INTO employee_rrn (org_id, employee_id, rrn_hmac, hmac_key_version, ciphertext, \
            nonce, dek_wrapped, dek_nonce, key_version, masked, source, import_run_id, recorded_by) \
          SELECT s.org_id, p.employee, s.rrn_hmac, s.hmac_key_version, s.ciphertext, s.nonce, \
                 s.dek_wrapped, s.dek_nonce, s.key_version, s.masked, 'IMPORT', s.run_id, $5 \
          FROM unnest($3::TEXT[], $4::UUID[]) WITH ORDINALITY p(source_key, employee, n) \
          JOIN data_import_row_identities s ON s.source_key = p.source_key \
          WHERE s.org_id = $1 AND s.run_id = $2 ORDER BY p.n \
-         ON CONFLICT (org_id, employee_id) DO NOTHING",
+         ON CONFLICT (org_id, employee_id) DO NOTHING RETURNING org_id, employee_id) \
+         , effects AS (INSERT INTO import_run_effects (org_id, run_id, employee_id, effect, target_id) \
+         SELECT org_id, $2, employee_id, 'rrn_recorded', employee_id FROM recorded \
+         ON CONFLICT (org_id, run_id, employee_id, effect, target_id) DO NOTHING RETURNING 1) \
+         SELECT count(*) FROM recorded",
     )
     .bind(org)
     .bind(run)
     .bind(&keys)
     .bind(&employees)
     .bind(actor)
-    .execute(tx.as_mut())
+    .fetch_one(tx.as_mut())
     .await?;
-    let recorded = usize::try_from(done.rows_affected()).unwrap_or(0);
+    let recorded = usize::try_from(count).unwrap_or(0);
     sqlx::query(
         "DELETE FROM data_import_row_identities \
           WHERE org_id = $1 AND run_id = $2 AND source_key = ANY($3)",

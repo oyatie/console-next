@@ -115,6 +115,15 @@ impl HrService {
                 if decides && !holds {
                     cedar()?;
                 }
+                if decides && kind == ChangeRequestKind::ImportRollback {
+                    crate::import::rollback::enforce(&principal,
+                        console_platform_authz::cedar_pbac::actions::import_rollback::RollbackFacts {
+                            actor_holds_permission: holds, setup: false, routed: true,
+                            other_eligible_holders: i64::try_from(holders.other_eligible_holders).unwrap_or(i64::MAX),
+                            sole_holder_refuse: holders.sole_holder_refuse, step_up: false,
+                            filing: false, actor_is_requester: current.requested_by == me,
+                        })?;
+                }
                 check_close(
                     &current.status,
                     current.requested_by,
@@ -129,7 +138,7 @@ impl HrService {
                 }
                 // Kinds with something to carry out apply it in this transaction.
                 let mut events = if decision == ChangeRequestDecision::Apply {
-                    apply_requested_correction_in_tx(tx, &principal, &current).await?
+                    apply_requested_correction_in_tx(tx, &principal, &current, holders).await?
                 } else {
                     Vec::new()
                 };
@@ -168,6 +177,9 @@ impl HrService {
                     })),
                 );
                 events.push(event);
+                if kind == ChangeRequestKind::ImportRollback && decision != ChangeRequestDecision::Apply {
+                    events.push(crate::import::rollback::request_closed_event(&principal, &closed)?);
+                }
                 Ok((closed, events))
             })
         })

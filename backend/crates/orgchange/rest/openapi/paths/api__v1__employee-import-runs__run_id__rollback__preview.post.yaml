@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [employees]
+operationId: previewEmployeeImportRollback
+summary: Preview the inverse employee import plan
+security:
+  - bearerAuth: []
+parameters:
+  - name: run_id
+    in: path
+    required: true
+    schema:
+      $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: Inverse plan and blockers; nothing written.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeImportRollbackPreview'
+  '401':
+    description: Rollback refused before any changes.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '403':
+    description: Rollback refused before any changes.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Rollback refused before any changes.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Rollback refused before any changes.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: Rollback refused before any changes.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
