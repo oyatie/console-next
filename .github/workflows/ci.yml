@@ -73,3 +73,19 @@ jobs:
       # Workspace members only: --all would also format the vendored path dependencies in third-party/.
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      # Clippy fills the registry first so the release commands below can run offline.
+      # Same discovery, build and no-argument execution as console-infra's code-gates image stage.
+      - name: Backend code gates (release parity)
+        shell: bash
+        run: |
+          pkgs="$(sed -n 's/^name = "\(console-gate-[a-z0-9-]*\)"$/\1/p' ci/gates/*/Cargo.toml | sort -u)"
+          test -n "$pkgs"
+          args=()
+          for p in ${pkgs}; do args+=(-p "$p"); done
+          cargo build --locked --offline "${args[@]}"
+          failed=0
+          for p in ${pkgs}; do
+            cargo run -q --locked --offline -p "${p}" || failed=1
+          done
+          echo "Backend code gates: ${SECONDS}s"
+          exit "$failed"

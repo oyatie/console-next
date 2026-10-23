@@ -1867,6 +1867,9 @@ dependencies = [
 [[package]]
 name = "console-gate-audit-coverage"
 version = "0.1.0"
+dependencies = [
+ "console-gate-writer-ownership",
+]
 
 [[package]]
 name = "console-gate-dev-auth-absence"
@@ -1914,6 +1917,9 @@ version = "0.1.0"
 [[package]]
 name = "console-gate-rls-arming"
 version = "0.1.0"
+dependencies = [
+ "console-gate-writer-ownership",
+]
 
 [[package]]
 name = "console-gate-tenant-isolation"
@@ -2754,6 +2760,7 @@ dependencies = [
  "console-onboarding-domain",
  "console-platform-authz",
  "console-platform-db",
+ "console-platform-request-context",
  "console-platform-test-support",
  "console-settings-adapter-postgres",
  "console-settings-domain",

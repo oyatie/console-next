@@ -15,6 +15,7 @@ const run = (cmd: string, args: string[]) => {
 test("check-source: imports, derived keys, slice placement, max-lines pins", () => run("node", ["scripts/check-source.mjs"]));
 test("check-toolchain-pins: stable pins match the root and fuzz stays on nightly", () => run("node", ["scripts/check-toolchain-pins.mjs", "--check"]));
 test("check-toolchain-pins rejects planted mismatches", () => run("node", ["--test", "scripts/check-toolchain-pins.test.mjs"]));
+test("backend CI runs every release code gate and propagates failures", () => run("node", ["--test", "scripts/backend-code-gates.test.mjs"]));
 test("check-ds: no new raw controls, hand-written DS classes, control restyles or literal sizes (ratchet)", () => run("node", ["scripts/check-ds.mjs"]));
 test("tsconfig.pure: domain rings and neutral packages compile without DOM", () => run("node_modules/.bin/tsc", ["-p", "apps/web/tsconfig.pure.json"]), 60000);
 test("ai-quality: clones, error masking, test behavior, dead code and dependency evidence (ratchet)", () => run("node", ["scripts/check-ai-quality.mjs"]), 120000);

@@ -73,6 +73,8 @@ const ALLOW_MARKER: &str = "rls-arming: ok";
 pub fn check_workspace(workspace_dir: &Path) -> Result<GateResult, String> {
     let files = collect_scanned_files(workspace_dir)?;
     let mut result = GateResult::default();
+    let files = console_gate_writer_ownership::source_scope::production_files(workspace_dir, files)
+        .map_err(|e| e.to_string())?;
     for file in files {
         let content = fs::read_to_string(&file)
             .map_err(|e| format!("cannot read {}: {e}", file.display()))?;

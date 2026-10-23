@@ -232,19 +232,9 @@ async fn terms(State(s): State<OnboardingRestState>, h: HeaderMap) -> Result<Res
         console_platform_request_context::validate_current_claims(s.store.pool(), &claims)
             .await
             .map_err(|_| document_error(StatusCode::UNAUTHORIZED, "unauthorized"))?;
-    let mut tx = s
-        .store
-        .pool()
-        .begin()
-        .await
-        .map_err(|_| document_error(StatusCode::INTERNAL_SERVER_ERROR, "internal"))?;
-    let documents = match console_platform_request_context::privacy::documents_in_tx(&mut tx).await
-    {
-        Ok(documents) => documents,
-        Err(sqlx::Error::RowNotFound) => {
-            tx.rollback()
-                .await
-                .map_err(|_| document_error(StatusCode::INTERNAL_SERVER_ERROR, "internal"))?;
+    let documents = match s.store.published_documents().await {
+        Ok(Some(documents)) => documents,
+        Ok(None) => {
             let actor = OnboardingActor {
                 org,
                 user,
@@ -263,9 +253,6 @@ async fn terms(State(s): State<OnboardingRestState>, h: HeaderMap) -> Result<Res
             ));
         }
     };
-    tx.commit()
-        .await
-        .map_err(|_| document_error(StatusCode::INTERNAL_SERVER_ERROR, "internal"))?;
     Ok(Json(documents).into_response())
 }
 
