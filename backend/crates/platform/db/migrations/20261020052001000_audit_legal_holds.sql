@@ -23,11 +23,8 @@ CREATE UNIQUE INDEX docs_evidence_legal_holds_active_audit_case_key
     WHERE evidence_object_id IS NULL AND status = 'ACTIVE';
 
 -- Tenant document commands keep INSERT/UPDATE; tenant audit holds require the platform command role.
-DROP POLICY org_isolation ON docs_evidence_legal_holds;
-CREATE POLICY org_isolation ON docs_evidence_legal_holds
-    USING (org_id = NULLIF(current_setting('app.current_org', true), '')::uuid)
-    WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::uuid
-                AND evidence_object_id IS NOT NULL);
+CREATE POLICY legal_hold_platform_authority ON docs_evidence_legal_holds
+    AS RESTRICTIVE USING (true) WITH CHECK (evidence_object_id IS NOT NULL);
 -- Keep owner rights: SECURITY DEFINER commands and the removal sweep run as console_app.
 REVOKE DELETE, TRUNCATE ON docs_evidence_legal_holds FROM console_rt;
 

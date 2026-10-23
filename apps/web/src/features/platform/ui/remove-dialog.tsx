@@ -3,6 +3,7 @@ import { t } from "@console/i18n";
 import { PasskeyError } from "../../../lib/react/passkey-error";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
+import { BlockedPanel } from "../../../ui/blocker/blocked-panel";
 import { Button } from "../../../ui/button/button";
 import { Dialog } from "../../../ui/dialog";
 import { Field, TextInput } from "../../../ui/field/field";
@@ -11,6 +12,14 @@ import { conflict, removeTenant, rereadTenants, type Org, type Recorded } from "
 import s from "./tenants.module.css";
 
 type Props = { org: Org; open: boolean; onClose: () => void; onDone: (r: Recorded) => void; onArchive: () => void };
+
+const LegalHoldRefusal = ({ onClose }: Pick<Props, "onClose">) => (
+  <BlockedPanel kind="lock" code="blocked_legal_hold" title={t("tenants.remove.legalHold.title")}
+    unblockers={[{ name: t("tenants.remove.legalHold.officer") }]}
+    actions={<Button onClick={onClose}>{t("common.back")}</Button>}>
+    {t("tenants.remove.legalHold")}
+  </BlockedPanel>
+);
 
 /** A removal with no idempotency key: a lost response counts as done when the tenant is gone on a re-read. */
 const useRemove = (org: Org, force: boolean, onDone: (r: Recorded) => void) =>
@@ -41,14 +50,14 @@ export function RemoveDialog({ org, open, onClose, onDone, onArchive }: Props) {
       <span>{t("tenants.remove.consequence")}</span>
       <span>{t("tenants.remove.adminToo")}</span>
       {held ? (
-        <div className="alert" role="alert">{t("tenants.remove.legalHold")}</div>
+        <LegalHoldRefusal onClose={close} />
       ) : hasData ? (
         <div className="alert" role="alert">{t("tenants.remove.hasData", { org: org.name })}</div>
       ) : (
         <CommandError error={remove.error} />
       )}
       <div className="form__actions">
-        <Button onClick={close}>{t("common.back")}</Button>
+        {!held && <Button onClick={close}>{t("common.back")}</Button>}
         {hasData ? <ArchiveRemedy org={org} onArchive={onArchive} /> : (
           <Button variant="danger" disabled={held || remove.isPending} onClick={() => remove.mutate(undefined)}>{t("tenants.remove", { org: org.name })}</Button>
         )}
@@ -83,14 +92,14 @@ export function ForceRemoveDialog({ org, users, open, onClose, onDone, onArchive
         {(p) => <TextInput {...p} className="code" autoComplete="off" spellCheck={false} value={typed} onChange={(e) => setTyped(e.target.value)} />}
       </Field>
       {held ? (
-        <div className="alert" role="alert">{t("tenants.remove.legalHold")}</div>
+        <LegalHoldRefusal onClose={close} />
       ) : conflict(remove.error, "tenant_active") ? (
         <div className="alert" role="alert">{t("tenants.remove.force.active", { org: org.name })}</div>
       ) : (
         <PasskeyError error={remove.error} />
       )}
       <div className="form__actions">
-        <Button onClick={close}>{t("common.back")}</Button>
+        {!held && <Button onClick={close}>{t("common.back")}</Button>}
         {conflict(remove.error, "tenant_active") && <ArchiveRemedy org={org} onArchive={onArchive} />}
         <Button variant="danger" disabled={held || !match || remove.isPending} onClick={() => remove.mutate(undefined)}>{t("tenants.remove.force.commit", { org: org.name })}</Button>
       </div>
