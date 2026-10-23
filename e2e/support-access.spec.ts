@@ -83,6 +83,9 @@ test("two operators and the customer authorize support; every read arrives live 
   expect(typeof durationHours).toBe("number");
   const duration = Number(durationHours) * 60 * 60;
   expect(duration).toBeGreaterThan(0);
+  const tenantWorkplacesResponse = await apiOf(tenant, tenantBearer)("/workplaces");
+  expect(tenantWorkplacesResponse.ok()).toBe(true);
+  const tenantWorkplaces = await tenantWorkplacesResponse.json() as components["schemas"]["WorkplaceList"];
   const id = randomUUID();
   const body = { id, org_id: org, ticket_ref: unique("HELP"), reason_code: "DIAGNOSE", reason: "조직 조회 오류 확인", scope: ["org", "hr_basic"], duration_seconds: duration };
   const headers = { authorization: requesterBearer() };
@@ -155,9 +158,12 @@ test("two operators and the customer authorize support; every read arrives live 
   expect(unit?.updatedAt).not.toBe("••••");
   const entities = await read("/api/v1/legal-entities") as components["schemas"]["LegalEntityList"];
   expect(entities.items[0]?.current?.name).toContain("지원 승인 고객");
+  expect(entities.items[0]?.current?.head_office_address?.road_addr_part1).toBeTruthy();
+  expect(entities.items[0]?.current?.head_office_address?.road_addr_part1).not.toBe("••••");
   const workplaces = await read("/api/v1/workplaces") as components["schemas"]["WorkplaceList"];
   expect(workplaces.items[0]?.current?.name).toBe("지원 본점");
   expect(workplaces.items[0]?.headcount).toBe(1);
+  expect(workplaces.items[0]?.current?.address).toEqual(tenantWorkplaces.items[0]?.current?.address);
   const employees = await read("/api/v1/employees") as components["schemas"]["EmployeePage"];
   expect(employees.total).toBe(1);
   expect(employees.items[0]?.name).toBe("••••");

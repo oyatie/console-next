@@ -56,12 +56,17 @@ async fn every_reviewed_surface_preserves_metadata_and_masks_personal_fields(own
             "/api/v1/legal-entities" => {
                 assert_eq!(value["items"][0]["current"]["name"], "고객 법인");
                 assert_eq!(value["items"][0]["founding"], false);
+                assert_eq!(
+                    value["items"][0]["current"]["head_office_address"]["road_addr_part1"],
+                    "서울특별시 테스트로 1"
+                );
                 assert!(value["items"][0]["current"]["representatives"].is_null());
             }
             "/api/v1/workplaces" => {
                 let row = &value["items"][0];
                 assert_eq!(row["kind_code"], "OFFICE");
                 assert_eq!(row["headcount"], 5);
+                assert_eq!(row["current"]["address"]["zip_no"], "00000");
                 assert_eq!(row["current"]["name"], "서울 사업장");
                 assert_eq!(row["current"]["representative_name"], "••••");
                 assert_eq!(row["current"]["email"], "••••");
