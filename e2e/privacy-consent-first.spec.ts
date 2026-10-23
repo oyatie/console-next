@@ -18,7 +18,7 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
   const code = await takeCode(v);
 
   const page = await (await newContext(browser)).newPage();
-  await page.goto("/login");
+  await go(page, "/login");
 
   // False error regression check (#44): fresh visit shows no error banner
   await expect(page.getByRole("alert")).toHaveCount(0);

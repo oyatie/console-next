@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { go, passkeyLogin, stepUp } from "./flows";
+import { go, passkeyLogin, routeReady, stepUp } from "./flows";
 import { tenantWithExecutive } from "./setup-flows";
 
 // The production path from an empty database: vendor cold start → tenant → admin → executive → setup → operating.
@@ -46,6 +46,7 @@ test("onboarding creates every account through the product", { tag: "@smoke" }, 
   await expect(admin.getByRole("group", { name: "역할" })).toHaveCount(0);
   await expectAccessible(admin, "accounts list");
   await admin.getByRole("row", { name: /이임원/ }).click();
+  await routeReady(admin);
   const panel = admin.getByRole("complementary", { name: "이임원" });
   await expect(panel.getByRole("button", { name: "역할 변경" })).toHaveCount(0);
   await expect(panel.getByRole("link", { name: "이 사람이 할 수 있는 일" })).toBeVisible();

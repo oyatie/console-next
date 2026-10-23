@@ -5,7 +5,7 @@ import { expectAccessible } from "./a11y";
 import type { clickCounter } from "./clicks";
 import { inviteAccount, type Access } from "./access-flows";
 import { addDepartments } from "./structure-flows";
-import { firstSignIn, go, option, plain, takeCode, tenantSlugField, unique, vendorPage } from "./flows";
+import { firstSignIn, go, option, plain, routeReady, takeCode, tenantSlugField, unique, vendorPage } from "./flows";
 
 type C = Pick<ReturnType<typeof clickCounter>, "click">;
 type RegistrationIds = { brn: string; crn: string };
@@ -265,7 +265,7 @@ export async function startOperations(admin: Page, audit = false, c: C = plain) 
   const started = answer(admin, "POST", /^\/api\/v1\/onboarding\/go-live$/);
   await c.click(start);
   await expectSuccess(started, "operations start");
-  await admin.waitForURL((u) => u.pathname === "/");
+  await routeReady(admin, "/");
   await expect(setupRail(admin)).toBeHidden();
 }
 

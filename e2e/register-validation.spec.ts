@@ -29,7 +29,7 @@ for (const width of [1280, 390]) {
       await route.fulfill({ response });
     });
     const creates = sent(admin, /\/api\/v1\/employees$/);
-    await go(admin, href!);
+    const navigating = go(admin, href!);
     await reading;
     const sheet = registerSheet(admin);
     await sheet.getByRole("textbox", { name: /^이름/ }).fill("김검증");
@@ -40,6 +40,7 @@ for (const width of [1280, 390]) {
     const read = admin.waitForResponse((response) => response.url().endsWith("/api/v1/org-units"));
     release();
     await read;
+    await navigating;
     await admin.unrouteAll({ behavior: "wait" });
     // A refused press must stay refused when both the draft and its placement reads become complete.
     await expectAccessible(admin, "registration after a delayed placement read");

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { clickCounter } from "./clicks";
 import { withLifecycleDate } from "./clock";
-import { go, kstDate, koDate, registerEmployee } from "./flows";
+import { go, kstDate, koDate, registerEmployee, routeReady } from "./flows";
 import { cardVerbs, expectNoHrActs, openCard, openHistory } from "./record";
 import { staffedTenant } from "./setup-flows";
 import { signOff } from "./sheet";
@@ -228,6 +228,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   // stays, read-only, saying who did it, and the memo stays readable (not a journey click).
   const caseHref = await exitPanel(admin).getByRole("link", { name: "퇴직 건 열기" }).getAttribute("href");
   await exec.goto(caseHref!);
+  await routeReady(exec);
   await expect(exec.getByRole("button", { name: "퇴직 취소" })).toBeVisible();
   const open = exec.getByRole("region", { name: /지금/ });
   await open.getByLabel("확인 메모").fill("계약 종료 서류 확인 중");

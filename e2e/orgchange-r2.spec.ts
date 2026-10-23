@@ -61,12 +61,13 @@ test("an org change moves its people with the unit, stays on the chart with a re
   // The person moved with the unit: 사업장 본점, and a dated 발령 in their history (was: still 판교연구소, no 발령).
   // A cached pre-move history must not draw controls before the fresh transfer read lands.
   const events = await holdRead(admin, `**/api/v1/employees/${park.split("/").at(-1)}/lifecycle-events`);
-  await go(admin, park);
+  const navigating = go(admin, park);
   await events.requested;
   try {
     await expect(admin.getByRole("group", { name: "인사카드 동작" })).toBeHidden();
   } finally {
     await events.release();
+    await navigating;
   }
   // 사업장 본점 from today, 판교연구소 until today: the assignment split on the 시행일 (was: 판교연구소 with no end).
   // On the card: section 2 (재직·배치) holds the placement history; the 발령 이력 tab holds the history.

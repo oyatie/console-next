@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import { apiAs, soloTenant } from "./chaos";
-import { firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, stepUp, takeCode } from "./flows";
+import { firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, routeReady, stepUp, takeCode } from "./flows";
 import { setupCompany, startOperations, tenantInSetup } from "./setup-flows";
 import { expectAccessible } from "./a11y";
 
@@ -144,6 +144,7 @@ test("exit-report draft survives close/reload, discards explicitly, and never cr
   const sibling = await admin.context().newPage();
   await sibling.goto(record);
   await expect(admin).toHaveURL(/\/login/);
+  await routeReady(admin);
   expect(await drafts(admin)).toHaveLength(0);
   await expect(admin.getByText(note)).toHaveCount(0);
   await sibling.getByRole("button", { name: "퇴직 보고", exact: true }).click();

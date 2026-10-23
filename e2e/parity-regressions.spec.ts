@@ -138,9 +138,13 @@ test("zero-facet roster waits for its delayed list before claiming first-use emp
     await held;
     await route.fulfill({ response });
   });
-  await go(page, "/people");
-  await expect(page.getByRole("grid", { name: "직원", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "아직 직원이 없습니다" })).toBeHidden();
-  release();
+  const navigating = go(page, "/people");
+  try {
+    await expect(page.getByRole("grid", { name: "직원", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "아직 직원이 없습니다" })).toBeHidden();
+  } finally {
+    release();
+    await navigating;
+  }
   await expect(page.getByRole("heading", { name: "아직 직원이 없습니다" })).toBeVisible();
 });

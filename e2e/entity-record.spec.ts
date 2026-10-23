@@ -3,7 +3,7 @@ import { fillDate } from "./sheet";
 import { fmtDate } from "@console/i18n/format";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
-import { go, kstDate, option } from "./flows";
+import { go, kstDate, option, routeReady } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { REGISTRATION_FIXTURES, registerEntity, SECOND, staffedTenant, brnDisplay } from "./setup-flows";
 
@@ -113,11 +113,13 @@ test("법인 종료 after 운영 시작: blockers first and the date locked; a n
   await registerEntity(admin, "새온바이오", false, undefined, SECOND);
   await go(admin, "/org/entities");
   await admin.getByRole("row", { name: /새온바이오/ }).click();
+  await routeReady(admin);
   await expect(admin.getByRole("button", { name: "법인 종료 계획 보기" })).toHaveCount(0);
   await admin.getByRole("button", { name: "법인 삭제 미리보기" }).click();
   const remove = admin.getByRole("dialog", { name: "법인 삭제" });
   await option(admin, "삭제 사유", "중복 등록").click();
   await remove.getByRole("button", { name: "법인 삭제" }).click();
   await expect(admin).toHaveURL(/\/org\/entities$/);
+  await routeReady(admin);
   await expect(admin.getByRole("row", { name: /새온바이오/ })).toHaveCount(0);
 });

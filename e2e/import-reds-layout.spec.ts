@@ -18,12 +18,13 @@ test("Home waits for the checklist arrival read before offering cached actions",
     await held;
     await r.fulfill({ response });
   });
+  const navigating = go(admin, "/");
   try {
-    await go(admin, "/");
     await expect.poll(() => requested).toBe(true);
     await expect(admin.getByRole("heading", { name: "운영 준비", exact: true })).toBeHidden();
   } finally {
     release();
+    await navigating;
   }
   await expect(admin.getByRole("heading", { name: "운영 준비", exact: true })).toBeVisible();
   await expectAccessible(admin, "Home: checklist arrival read settled");

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { chooseRadio, firstSignIn, go, stepUp } from "./flows";
+import { chooseRadio, firstSignIn, go, routeReady, stepUp } from "./flows";
 import { inviteAccount } from "./access-flows";
 import { startOperations, tenantInSetup } from "./setup-flows";
 
@@ -24,6 +24,7 @@ test("pilot roles: no presets, a role made in setup, granted for go-live, enforc
 
   // A role from the grid: view on HR records and the organization. Nothing is preselected.
   await admin.getByRole("link", { name: "역할 추가" }).first().click();
+  await routeReady(admin);
   await expect(admin.getByRole("button", { name: "인사기본 조회", pressed: true })).toHaveCount(0);
   await admin.getByRole("button", { name: "역할 추가" }).click();
   await expect(admin.getByText("역할 이름을 입력하십시오.")).toBeVisible();

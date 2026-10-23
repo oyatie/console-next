@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
-import { go, koDate, kstDate, registerEmployee, registerSheet, submitRegistration } from "./flows";
+import { go, koDate, kstDate, registerEmployee, registerSheet, routeReady, submitRegistration } from "./flows";
 import { todayPreset } from "./sheet";
 import { staffedTenant } from "./setup-flows";
 
@@ -13,6 +13,7 @@ test("J1 register: the sheet asks for nothing in advance, names every gap on com
 
   await go(admin, "/people");
   await c.click(admin.getByRole("link", { name: "직원 등록", exact: true }).first());
+  await routeReady(admin);
   const s = registerSheet(admin);
   // Nothing is chosen: no type, no date, no place; the foot lists what is still to fill and nothing is red.
   await expect(s.getByRole("radiogroup", { name: /^고용형태/ }).getByRole("radio", { checked: true })).toHaveCount(0);
