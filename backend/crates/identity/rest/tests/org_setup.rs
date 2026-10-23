@@ -429,7 +429,7 @@ async fn people_directory_filters_scope_orders_and_counts_truthfully(pool: PgPoo
         .iter()
         .map(|item| item["display_name"].as_str().unwrap())
         .collect();
-    assert_eq!(names, ["alpha", "ALPHA"]);
+    assert_eq!(names, ["alpha", "Alpha Employee"]);
     let linked = page["items"]
         .as_array()
         .unwrap()
@@ -513,7 +513,7 @@ async fn people_directory_filters_scope_orders_and_counts_truthfully(pool: PgPoo
         scoped_names,
         [
             "alpha",
-            "ALPHA",
+            "Alpha Employee",
             "beta shared",
             "same name",
             "same name",

@@ -170,15 +170,15 @@ async fn conflict_paths_reserve_only_actual_new_accounts(owner: PgPool) {
     let id = Uuid::new_v4();
     let unused = Uuid::new_v4();
     let org = *OrgId::one().as_uuid();
-    insert(&rt, org, id).await.unwrap();
     let mut tx = rt.begin().await.unwrap();
     sqlx::query("SELECT set_config('app.current_org',$1,true)")
         .bind(org.to_string())
         .execute(&mut *tx)
         .await
         .unwrap();
-    sqlx::query("UPDATE users SET phone='01099998888' WHERE id=$1")
+    sqlx::query("INSERT INTO users(id,org_id,display_name,phone,roles) VALUES($1,$2,'Original','01099998888',ARRAY['MEMBER'])")
         .bind(id)
+        .bind(org)
         .execute(&mut *tx)
         .await
         .unwrap();
