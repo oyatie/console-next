@@ -25,6 +25,7 @@ beforeAll(async () => {
         import { createRoot } from 'react-dom/client';
         import { loadCatalog } from '@console/i18n';
         import { ServerPicker } from '/apps/web/src/ui/server-picker/server-picker.tsx';
+        import { Dialog, Modal, ModalOverlay } from 'react-aria-components';
         import '/apps/web/src/app.css';
         await loadCatalog('en');
         function Picker() {
@@ -32,6 +33,15 @@ beforeAll(async () => {
           const [value, setValue] = useState(null);
           const [clicks, setClicks] = useState(0);
           const [mounted, setMounted] = useState(true);
+          const [sheetOpen, setSheetOpen] = useState(true);
+          window.closeSheet = () => setSheetOpen(false);
+          const picker = mounted && h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query,
+            onQueryChange: setQuery, value, onChange: setValue,
+            options: [{ id: 'a', name: 'Namesake', display: 'Namesake · HR' }, { id: 'b', name: 'Namesake', display: 'Namesake · Sales' }, { id: 'c', name: 'Coded', code: 'E-3', display: 'Coded · E-3' }] });
+          if (location.hash === '#sheet') return h('main', null,
+            h('button', { id: 'outside', onClick: () => setClicks(n => n + 1) }, 'Outside'),
+            h('output', { id: 'clicks' }, clicks),
+            h(ModalOverlay, { isOpen: sheetOpen, onOpenChange: setSheetOpen }, h(Modal, null, h(Dialog, { 'aria-label': 'Sheet' }, picker))));
           return h('main', null,
             h('div', { inert: true }, h('button', { id: 'already-inert' }, 'Unavailable')),
             h('button', { id: 'outside', onClick: () => setClicks(n => n + 1) }, 'Outside'),
@@ -118,6 +128,19 @@ test("unmounting an open picker retains outside restrictions", async () => {
   await page.locator("#unmount").evaluate((el: HTMLButtonElement) => el.click());
   await expectElement(page.getByRole("combobox")).toHaveCount(0);
   await expectElement(page.locator("#already-inert").locator("..")).toHaveJSProperty("inert", true);
+}, 10000);
+
+test("a Sheet that closes while its picker list is open leaves the page usable", async () => {
+  await page.goto("about:blank"); // a hash-only change would not reload the harness
+  await page.goto(`${server.resolvedUrls!.local[0]}picker-test#sheet`);
+  await page.getByRole("combobox", { name: "Person" }).fill("Namesake");
+  await page.getByRole("option").first().waitFor();
+  // Back or a route change unmounts the Sheet (ui/sheet wraps this same ModalOverlay) with its picker in one commit while the list is open.
+  await page.evaluate(() => (window as unknown as { closeSheet: () => void }).closeSheet());
+  await expectElement(page.getByRole("dialog")).toHaveCount(0);
+  await expectElement(page.locator("[inert]")).toHaveCount(0);
+  await page.locator("#outside").click();
+  await expectElement(page.locator("#clicks")).toHaveText("1");
 }, 10000);
 
 test("one outside click activates its control while the picker is open", async () => {
