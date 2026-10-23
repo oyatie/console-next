@@ -44,6 +44,7 @@ const tenants = createRoute({
   }),
   component: lazyRouteComponent(screen(() => import("../features/platform/Tenants")), "Tenants"),
 });
+const supportAccess = createRoute({getParentRoute:()=>app,path:"/audit/support-access",component:lazyRouteComponent(screen(()=>import("../features/support-access/ui/support-access")),"SupportAccess")});
 // Home with the setup checklist composed in (routes compose slices).
 const home = createRoute({ getParentRoute: () => app, path: "/", component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
 const account = createRoute({ getParentRoute: () => app, path: "/account", component: lazyRouteComponent(screen(() => import("../features/account/Account")), "Account") });
@@ -54,4 +55,4 @@ const dev = import.meta.env.DEV
   ? [createRoute({ getParentRoute: () => root, path: "/_gallery", component: lazyRouteComponent(screen(() => import("../gallery/gallery")), "Gallery") })]
   : [];
 
-export const frame = { signIn: [login, setupPasskey, ...dev], screens: [tenants, home, account] };
+export const frame = { signIn: [login, setupPasskey, ...dev], screens: [tenants, home, account, supportAccess] };

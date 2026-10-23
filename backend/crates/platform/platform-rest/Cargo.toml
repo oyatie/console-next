@@ -15,8 +15,10 @@ console-platform-authz = { path = "../authz" }
 console-platform-db = { workspace = true }
 console-platform-provisioning = { path = "../provisioning" }
 console-platform-request-context = { workspace = true }
+console-settings-domain = { path = "../../settings/domain" }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = { workspace = true }
 sqlx = { workspace = true }
 thiserror = { workspace = true }
 time = { workspace = true }

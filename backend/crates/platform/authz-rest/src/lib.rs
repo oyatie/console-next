@@ -495,9 +495,7 @@ fn rest_error_from_request_context(
         E::VerifierUnavailable => {
             RestError::unavailable("JWT verification is not configured for policy API")
         }
-        E::WrongTokenTier => RestError::from_kernel(KernelError::forbidden(
-            "token tier is not valid for this route",
-        )),
+        E::WrongTokenTier => RestError::unauthorized("token tier is not valid for this route"),
         E::AccessScope(error) => RestError::from_kernel(error),
         E::BranchScope(message) | E::EffectivePolicy(message) => RestError::internal(message),
         E::MissingOrg => RestError::internal("no tenant context is bound to the current request"),

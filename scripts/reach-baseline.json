@@ -779,26 +779,6 @@
   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
   "when": "mvp"
  },
- "POST /api/platform/tenant-context": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/platform/tenant-context/exit": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/platform/view-as": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/platform/view-as/exit": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
  "POST /api/v1/attendance/closes": {
   "lane": "A6",
   "reason": "A6 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",

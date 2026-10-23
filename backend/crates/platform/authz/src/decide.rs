@@ -20,6 +20,9 @@ pub(crate) const fn feature_available_in_v1(feature: Feature) -> bool {
 /// this gate. Branch-narrow custom grants may still authorize concrete branch
 /// requests through [`authorize`], but never widen into an all-branch read.
 pub fn authorize_org_wide(principal: &Principal, action: Action) -> Result<(), KernelError> {
+    if principal.support.is_some() {
+        return support_permission(principal, action);
+    }
     if !feature_available_in_v1(action.feature()) {
         return Err(KernelError::forbidden("feature is unavailable in v1"));
     }
@@ -173,6 +176,9 @@ fn authorize_inner(
     branch: Option<BranchId>,
     at: Option<Timestamp>,
 ) -> Result<(), KernelError> {
+    if principal.support.is_some() {
+        return support_permission(principal, action);
+    }
     if !feature_available_in_v1(action.feature()) {
         return Err(KernelError::forbidden("feature is unavailable in v1"));
     }
@@ -220,6 +226,33 @@ fn authorize_inner(
     }
 
     Ok(())
+}
+
+fn support_permission(principal: &Principal, action: Action) -> Result<(), KernelError> {
+    use crate::cedar_pbac::actions::support_session::{self, Facts};
+    let Some(support) = &principal.support else {
+        return Err(KernelError::forbidden("support principal required"));
+    };
+    let in_scope = crate::access::tag(action.feature())
+        .is_some_and(|(domain, _)| support.scope.iter().any(|scope| scope == domain.as_str()));
+    let allowed = support_session::decide_feature(
+        action.feature(),
+        &support.session_id.to_string(),
+        &principal.org_id.to_string(),
+        Facts {
+            active: true,
+            operator_approved: true,
+            tenant_approved: true,
+            in_scope,
+            ..Facts::default()
+        },
+    );
+    if allowed {
+        Ok(())
+    } else {
+        Err(KernelError::forbidden("support scope refuses this action")
+            .with_code("support.refuse.out_of_scope"))
+    }
 }
 
 /// The BRANCH-SCOPED authorization door: the decision instant is an argument and

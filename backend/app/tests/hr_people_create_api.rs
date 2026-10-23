@@ -1204,7 +1204,7 @@ async fn bearer(pool: &PgPool, keys: &Keys, org: OrgId, user: UserId, roles: &[&
             roles: roles.iter().map(|role| (*role).to_owned()).collect(),
             branches: Vec::new(),
             platform: false,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: None,
             feature_grants: Vec::new(),

@@ -91,7 +91,7 @@ impl Harness {
                 roles: vec!["SUPER_ADMIN".to_owned()],
                 branches: vec![],
                 platform,
-                view_as: false,
+                support: None,
                 read_only: false,
                 display_name: None,
                 feature_grants: Vec::new(),

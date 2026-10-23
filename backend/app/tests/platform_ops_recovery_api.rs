@@ -21,7 +21,7 @@ async fn platform_token(pool: &PgPool, issuer: &JwtIssuer, id: Uuid) -> String {
             roles: vec!["SUPER_ADMIN".into()],
             branches: vec![],
             platform: true,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: None,
             feature_grants: vec![],
@@ -88,7 +88,7 @@ async fn platform_ops_recovery_is_mounted_and_step_up_is_required(owner: PgPool)
         )
         .await
         .0,
-        StatusCode::FORBIDDEN
+        StatusCode::UNAUTHORIZED
     );
 }
 
@@ -124,39 +124,6 @@ async fn regression_pin_platform_ops_recovery_has_no_admin_reset_bypass(owner: P
     )
     .await;
     let token = platform_token(&owner, &issuer, vendor.id).await;
-    let bound = step_up_as(
-        &owner,
-        &svc,
-        &mut vendor,
-        MobileStepUpActionKind::OperatorRecovery,
-        Uuid::new_v4(),
-        "regression-pin-context",
-    )
-    .await;
-    let path = console_platform_rest::PLATFORM_TENANT_CONTEXT_START_PATH
-        .replace("{id}", &OrgId::one().to_string());
-    let (status, context) = send(
-        &service,
-        &path,
-        &token,
-        None,
-        json!({"org_id":OrgId::one(),"step_up":bound["assertion"]}),
-    )
-    .await;
-    assert_eq!(status, StatusCode::OK, "{context}");
-    let delegated = context["access_token"].as_str().unwrap();
-    refusal(
-        send(
-            &service,
-            "/api/v1/auth/admin/credential-reset",
-            delegated,
-            None,
-            json!({"user_id":ops.id}),
-        )
-        .await,
-        StatusCode::FORBIDDEN,
-        "passkey_required",
-    );
     let remaining: i64 =
         sqlx::query_scalar("SELECT count(*) FROM auth_webauthn_credentials WHERE user_id=$1")
             .bind(ops.id)

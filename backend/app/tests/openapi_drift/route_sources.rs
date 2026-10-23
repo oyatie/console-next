@@ -142,9 +142,9 @@ pub(super) const CONFIGURED_ROUTE_SOURCES: &[RouteSource] = &[
         ignored_route_refs: &[],
     },
     RouteSource {
-        name: "platform view-as router",
+        name: "platform support router",
         surface: "platform",
-        source: include_str!("../../../crates/platform/platform-rest/src/view_as.rs"),
+        source: include_str!("../../../crates/platform/platform-rest/src/support.rs"),
         ignored_route_refs: &[],
     },
     RouteSource {

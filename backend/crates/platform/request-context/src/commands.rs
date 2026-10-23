@@ -29,7 +29,9 @@ pub(crate) async fn run(
     next: Next,
 ) -> Response {
     let mut audit = AuditCommandContext::for_actor(Some(p.user_id));
-    audit.actor_kind = if p.is_tenant_ops {
+    audit.actor_kind = if p.support.is_some() {
+        ActorKind::SupportOperator
+    } else if p.is_tenant_ops {
         ActorKind::OpsAccount
     } else if p.access_scope.level == console_kernel_core::AccessScopeLevel::Group {
         ActorKind::GroupAdmin
@@ -37,7 +39,12 @@ pub(crate) async fn run(
         ActorKind::TenantUser
     };
     audit.org_id = Some(p.org_id);
-    audit.session_id = transport.session_id;
+    audit.session_id = p
+        .support
+        .as_ref()
+        .map(|s| s.session_id)
+        .or(transport.session_id);
+    audit.actor_display = p.support.as_ref().map(|s| s.operator_label.clone());
     audit.source = if request.headers().contains_key("sec-fetch-mode") {
         AuditSource::Form
     } else {

@@ -20,11 +20,12 @@ pub enum MobileStepUpActionKind {
     CredentialReset,
     TenantOffboard,
     OperatorRecovery,
+    SupportSession,
 }
 
 impl MobileStepUpActionKind {
     /// Every kind, in the migration's order.
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 13] = [
         Self::ApprovalDecision,
         Self::PollVote,
         Self::ExitConfirm,
@@ -37,6 +38,7 @@ impl MobileStepUpActionKind {
         Self::CredentialReset,
         Self::TenantOffboard,
         Self::OperatorRecovery,
+        Self::SupportSession,
     ];
 
     /// The two pre-BW-29 mobile kinds: no payload hash, replay attempts allowed.
@@ -58,6 +60,7 @@ impl MobileStepUpActionKind {
             Self::CredentialReset => "CREDENTIAL_RESET",
             Self::TenantOffboard => "TENANT_OFFBOARD",
             Self::OperatorRecovery => "OPERATOR_RECOVERY",
+            Self::SupportSession => "SUPPORT_SESSION",
         }
     }
 
@@ -75,6 +78,7 @@ impl MobileStepUpActionKind {
             Self::CredentialReset => "passkey_step_up_credential_reset",
             Self::TenantOffboard => "passkey_step_up_tenant_offboard",
             Self::OperatorRecovery => "passkey_step_up_operator_recovery",
+            Self::SupportSession => "passkey_step_up_support_session",
         }
     }
 

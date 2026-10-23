@@ -63,7 +63,7 @@ async fn evidence_presign_without_object_storage_is_503_and_writes_nothing(pool:
                 roles: vec!["MECHANIC".to_owned()],
                 branches: vec![branch_id],
                 platform: false,
-                view_as: false,
+                support: None,
                 read_only: false,
                 display_name: None,
                 feature_grants: Vec::new(),

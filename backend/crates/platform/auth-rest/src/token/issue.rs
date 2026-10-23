@@ -96,7 +96,7 @@ pub(crate) fn issue_access_token(
         // on tenant `/api/*`). Every real tenant user gets `false`.
         platform: user.org_id == OrgId::platform(),
         // The ordinary refresh path never mints an impersonation token.
-        view_as: false,
+        support: None,
         read_only: false,
         // DISPLAY-ONLY identity for the topbar; re-loaded from the user on
         // every refresh so a renamed user's token reflects it. Never authz.

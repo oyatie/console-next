@@ -119,6 +119,10 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
     const d = (data ?? {}) as { type?: unknown; id?: unknown; at?: unknown; wide?: unknown };
     if (event === "reset") return later(() => queue(ALL), jitter(RESET_JITTER_MAX_MS));
     if (event !== "change" || typeof d.type !== "string") return;
+    if (d.type === "support_session") {
+      void invalidateWhere(qc, matchChange(d.type, str(d.id)), true);
+      return;
+    }
     // Imports keep running and recovery has other actors: a recent write cannot suppress their next step.
     if (d.type !== "import_run" && d.type !== "ops_recovery" && ownWrite(qc)) return;
     const id = str(d.id);

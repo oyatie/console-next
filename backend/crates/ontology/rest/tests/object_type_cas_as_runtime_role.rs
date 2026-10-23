@@ -1306,7 +1306,7 @@ async fn test_auth(pool: &sqlx::PgPool, user_id: UserId, org: OrgId) -> TestAuth
             roles: vec!["SUPER_ADMIN".to_owned()],
             branches: Vec::new(),
             platform: false,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: None,
             feature_grants: Vec::new(),

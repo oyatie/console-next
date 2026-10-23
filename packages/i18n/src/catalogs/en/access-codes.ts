@@ -35,6 +35,8 @@ export const enAccessCodes: Partial<Record<keyof typeof koAccessCodes, string>> 
   "accessCodes.domain.exceptions.help": "Exception approvals, correction requests, period locks",
   "accessCodes.domain.retention": "Retention & disposal",
   "accessCodes.domain.retention.help": "Retained records and disposal",
+  "accessCodes.domain.support_access": "Support access",
+  "accessCodes.domain.support_access.help": "Approve and end vendor support reads",
   "accessCodes.domain.tenant": "Customer account operations",
   "accessCodes.domain.tenant.help": "Starting operations",
   "accessCodes.level.view": "View",

@@ -37,7 +37,7 @@ fn public_key_verifier_accepts_es256_access_token() {
             roles: vec!["ADMIN".to_owned()],
             branches: vec![branch_id],
             platform: false,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: None,
             feature_grants: Vec::new(),

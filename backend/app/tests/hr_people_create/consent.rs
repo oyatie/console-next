@@ -254,7 +254,7 @@ async fn unaccepted_bearer(pool: &PgPool, keys: &Keys, org: OrgId, user: UserId)
                 roles: vec!["SUPER_ADMIN".into()],
                 branches: vec![],
                 platform: false,
-                view_as: false,
+                support: None,
                 read_only: false,
                 display_name: None,
                 feature_grants: vec![],

@@ -1,4 +1,4 @@
-//! JWT verifier, auth-REST, view-as issuer and policy step-up configuration.
+//! JWT verifier, auth-REST, support issuer and policy step-up configuration.
 
 use crate::config::DEFAULT_AUTH_CEREMONY_TTL_SECS;
 use crate::config::DEFAULT_REFRESH_FAMILY_ABSOLUTE_TTL_SECS;
@@ -77,23 +77,20 @@ impl JwtVerifierConfig {
     }
 }
 
-/// Build the JWT issuer the PLATFORM view-as START path uses to mint short-lived
-/// read-only impersonation tokens. It signs with the SAME ES256 keypair as the
-/// auth-rest issuer (sourced from [`AuthRestConfig`]), so the tokens it mints
-/// verify against the live `jwt_verifier`. The settings' `access_token_ttl` is
-/// set to the view-as ceiling as a backstop; the START handler additionally
-/// clamps every minted token to that ceiling explicitly.
-pub(crate) fn build_view_as_issuer(config: &AuthRestConfig) -> Result<JwtIssuer, AppError> {
+/// Build the JWT issuer the PLATFORM support START path uses to mint short-lived
+/// roleless support tokens for the configured tenant origin. The START handler
+/// resolves the policy ceiling and binds the token to its operator session.
+pub(crate) fn build_support_issuer(config: &AuthRestConfig) -> Result<JwtIssuer, AppError> {
     JwtIssuer::from_es256_pem(
         JwtSettings {
             issuer: config.jwt_issuer.clone(),
-            audience: config.jwt_audience.clone(),
-            access_token_ttl: console_platform_rest::VIEW_AS_TOKEN_TTL,
+            audience: config.rp_origin.clone(),
+            access_token_ttl: config.access_token_ttl,
         },
         config.jwt_private_key_pem.as_bytes(),
         config.jwt_public_key_pem.as_bytes(),
     )
-    .map_err(|err| AppError::Config(format!("invalid view-as issuer key material: {err}")))
+    .map_err(|err| AppError::Config(format!("invalid support issuer key material: {err}")))
 }
 
 pub(crate) fn policy_step_up_from_auth_config(

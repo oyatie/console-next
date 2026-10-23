@@ -1,3 +1,4 @@
+import { ActiveSupportBanner } from "../features/support-access/ui/support-access";
 import { DomainNotice } from "../auth/domain-notice";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
@@ -107,7 +108,7 @@ export function Shell() {
       <main className="main" id="main" tabIndex={0} aria-label={t("shell.main")}>
         <ChangeNotice key={pathname} />
         <HeldNotice />
-        {!platform && <DomainNotice />}
+        {!platform && <DomainNotice />}{!platform && <ActiveSupportBanner />}
         {platform ? <Outlet /> : <PhaseBand><Outlet /></PhaseBand>}
       </main>
       {jump && (

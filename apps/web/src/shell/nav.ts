@@ -32,7 +32,7 @@ const NAV = [
   },
   // Tenant roles and grants (decision #26). listed with the account-management grant until /me/authz
   // projects the access domain; the access API decides every read and write.
-  { hub: "shell.hub.admin", links: [{ to: "/access", label: "shell.link.access", icon: KeyRound, anyOf: [["user_manage"]] as readonly Grant[] }] },
+  { hub: "shell.hub.admin", links: [{to:"/audit/support-access",label:"supportAccess.title",icon:Lock},{ to: "/access", label: "shell.link.access", icon: KeyRound, anyOf: [["user_manage"]] as readonly Grant[] }] },
 ] as const;
 export const PLATFORM_NAV = [{ hub: "shell.hub.platform", links: [{ to: "/platform", label: "shell.link.tenants", icon: Building }] }] as const;
 

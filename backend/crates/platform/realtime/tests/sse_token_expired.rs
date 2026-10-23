@@ -69,7 +69,7 @@ async fn an_expired_access_token_is_refused_as_token_expired(owner: PgPool) {
         roles: vec!["SUPER_ADMIN".into()],
         branches: vec![branch],
         platform: false,
-        view_as: false,
+        support: None,
         read_only: false,
         display_name: None,
         feature_grants: vec![],

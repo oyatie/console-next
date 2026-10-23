@@ -75,7 +75,7 @@ async fn metrics_endpoint_exposes_the_slo_http_duration_histogram()
     // generic RED histogram and feature-specific operation counters are exposed.
     metrics::counter!(
         "policy_studio_operation_total",
-        "operation" => "preview_assignments",
+        "operation" => "presupportsignments",
         "outcome" => "success",
     )
     .increment(1);
@@ -96,7 +96,7 @@ async fn metrics_endpoint_exposes_the_slo_http_duration_histogram()
     );
     assert!(
         text.contains("policy_studio_operation_total")
-            && text.contains("operation=\"preview_assignments\"")
+            && text.contains("operation=\"presupportsignments\"")
             && text.contains("outcome=\"success\""),
         "policy studio counter must expose only bounded operation/outcome labels; got:\n{text}"
     );

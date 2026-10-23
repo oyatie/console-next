@@ -42,10 +42,8 @@ pub(super) fn error_response_for(err: &RequestContextError) -> Response {
             StatusCode::FORBIDDEN
         }
         RequestContextError::AccessScope(_) => StatusCode::INTERNAL_SERVER_ERROR,
-        // A valid token presented to the wrong tier is an authorization failure,
-        // not an authentication one: the caller IS authenticated, just not for
-        // this route. 403 keeps it distinct from "no/!invalid token" (401).
-        RequestContextError::WrongTokenTier => StatusCode::FORBIDDEN,
+        // A token from another realm cannot authenticate this route.
+        RequestContextError::WrongTokenTier => StatusCode::UNAUTHORIZED,
         _ => StatusCode::UNAUTHORIZED,
     };
     error_response(status, &err.to_string())
@@ -127,8 +125,8 @@ mod tests {
             ),
             (
                 RequestContextError::WrongTokenTier,
-                StatusCode::FORBIDDEN,
-                "forbidden",
+                StatusCode::UNAUTHORIZED,
+                "unauthorized",
             ),
         ] {
             assert_refusal(error_response_for(&error), status, code, &error.to_string()).await;

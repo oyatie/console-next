@@ -112,6 +112,11 @@ impl PlatformError {
 
 impl IntoResponse for PlatformError {
     fn into_response(self) -> Response {
+        if self.code.starts_with("support.refuse.") {
+            return console_platform_request_context::support::refusal(
+                &console_platform_db::support::SupportError::Refused(self.code),
+            );
+        }
         (
             self.status,
             Json(ErrorBody {
@@ -129,6 +134,19 @@ impl IntoResponse for PlatformError {
             }),
         )
             .into_response()
+    }
+}
+
+impl From<console_platform_db::support::SupportError> for PlatformError {
+    fn from(error: console_platform_db::support::SupportError) -> Self {
+        if error.status() >= 500 {
+            tracing::error!(%error,"support storage failed");
+        }
+        Self::new(
+            StatusCode::from_u16(error.status()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            error.code(),
+            error.code(),
+        )
     }
 }
 

@@ -49,12 +49,12 @@ pub struct AppState {
     #[cfg(any(debug_assertions, feature = "e2e-test-support"))]
     pub(crate) e2e_fixture_database: DatabaseDependency,
     pub(crate) jwt_verifier: Option<JwtVerifier>,
-    /// JWT issuer used ONLY by the PLATFORM view-as START path to mint
+    /// JWT issuer used ONLY by the PLATFORM support START path to mint
     /// short-lived read-only impersonation tokens. Built from the same ES256
-    /// keypair as the auth-rest issuer (so view-as tokens verify with the live
-    /// `jwt_verifier`). `None` when no private key is configured — the view-as
+    /// keypair as the auth-rest issuer (so support tokens verify with the live
+    /// `jwt_verifier`). `None` when no private key is configured — the support
     /// START endpoint then returns 503.
-    pub(crate) view_as_issuer: Option<JwtIssuer>,
+    pub(crate) support_issuer: Option<JwtIssuer>,
     /// Fresh passkey step-up verifier for sensitive policy-authoring actions.
     /// Built from the auth-rest WebAuthn RP settings; if auth-rest is disabled,
     /// policy lifecycle changes fail closed instead of accepting bearer-only

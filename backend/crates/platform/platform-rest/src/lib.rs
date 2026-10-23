@@ -2,7 +2,7 @@
 //!
 //! These routes live under `/api/platform/*` and are mounted behind the PLATFORM
 //! extractor ([`console_platform_request_context::with_platform_context`]), NOT the
-//! tenant org middleware. A TENANT token is rejected here (403) and a PLATFORM
+//! tenant org middleware. A TENANT token is rejected here (401) and a PLATFORM
 //! token is rejected on the tenant `/api/v1/*` routes â the two tiers are strictly
 //! separated, so a tenant admin can never reach a platform endpoint.
 //!
@@ -26,8 +26,10 @@ use onboard::{create_group, create_org};
 mod routes;
 mod state_builders;
 mod step_up;
+mod support;
+mod support_store;
+mod support_tenant;
 mod tenant_delete;
-mod view_as;
 
 #[cfg(test)]
 #[path = "../tests/fixtures/listings.rs"]
@@ -36,10 +38,13 @@ mod listings_tests;
 pub use company_domain::TENANT_DOMAIN_REQUEST_PATH;
 pub use state_builders::{OpsNotices, PlatformRestState};
 
-pub use view_as::{
-    PLATFORM_TENANT_CONTEXT_EXIT_PATH, PLATFORM_TENANT_CONTEXT_START_PATH,
-    PLATFORM_VIEW_AS_EXIT_PATH, PLATFORM_VIEW_AS_START_PATH, TENANT_CONTEXT_TOKEN_TTL,
-    VIEW_AS_READ_ONLY_CODE, VIEW_AS_TOKEN_TTL, with_view_as_read_only_gate,
+pub use support::{
+    PLATFORM_SUPPORT_APPROVE_PATH, PLATFORM_SUPPORT_END_PATH, PLATFORM_SUPPORT_SESSIONS_PATH,
+    PLATFORM_SUPPORT_START_PATH,
+};
+pub use support_tenant::{
+    TENANT_SUPPORT_ACTIVE_PATH, TENANT_SUPPORT_DECISION_PATH, TENANT_SUPPORT_END_PATH,
+    TENANT_SUPPORT_SESSIONS_PATH, expire_support_sessions,
 };
 
 use axum::extract::{Path, State};
@@ -142,27 +147,32 @@ pub fn router(state: PlatformRestState) -> Router {
         .route(PLATFORM_OPS_PATH, get(ops_dashboard));
     // View-as START + EXIT (read-only impersonation). Both are PLATFORM-tier
     // routes behind the platform extractor below; EXIT is platform-scoped so it
-    // is reachable with the operator's platform token, never the view_as token.
+    // is reachable with the operator's platform token, never the support token.
     let tenant = console_platform_request_context::with_request_context(
-        Router::new()
-            .route(TENANT_OPS_RECOVERY_PATH, get(ops_recovery::tenant_read))
-            .route(
-                TENANT_OPS_RECOVERY_CANCEL_PATH,
-                axum::routing::post(ops_recovery::tenant_cancel),
-            )
-            .route(
-                TENANT_DOMAIN_REQUEST_PATH,
-                get(company_domain::own_request).post(company_domain::request_domain),
-            )
-            .with_state(state.clone()),
+        support_tenant::routes(
+            Router::new()
+                .route(TENANT_OPS_RECOVERY_PATH, get(ops_recovery::tenant_read))
+                .route(
+                    TENANT_OPS_RECOVERY_CANCEL_PATH,
+                    axum::routing::post(ops_recovery::tenant_cancel),
+                )
+                .route(
+                    TENANT_DOMAIN_REQUEST_PATH,
+                    get(company_domain::own_request).post(company_domain::request_domain),
+                ),
+        )
+        .with_state(state.clone()),
         verifier.clone(),
         pool.clone(),
     );
-    let router = view_as::routes(router).with_state(state);
+    let router = support::routes(router).with_state(state);
     // PLATFORM extractor: resolves the PlatformPrincipal and REJECTS any tenant
     // token. Deliberately NOT the tenant org middleware â the platform tier is
     // not tenant-scoped, and each handler arms the TARGET org per action.
-    console_platform_request_context::with_platform_context(router, verifier, pool).merge(tenant)
+    console_platform_request_context::support::with_support_problem_details(
+        console_platform_request_context::with_platform_context(router, verifier, pool)
+            .merge(tenant),
+    )
 }
 
 // ---------------------------------------------------------------------------

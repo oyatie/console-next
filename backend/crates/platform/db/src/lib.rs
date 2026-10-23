@@ -38,6 +38,7 @@ pub mod idempotency;
 pub mod lifecycle;
 pub mod period_lock;
 pub mod settings_read;
+pub mod support;
 pub mod versioning;
 
 pub use audit_tx::{

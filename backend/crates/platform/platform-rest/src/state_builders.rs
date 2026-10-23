@@ -17,10 +17,9 @@ pub struct PlatformRestState {
     /// capability pool; `pool` remains the general runtime/read path.
     pub(crate) force_remove_command_pool: Option<PgPool>,
     pub(crate) jwt_verifier: Option<JwtVerifier>,
-    /// Issuer used only by platform START paths that mint short-lived tenant
-    /// context tokens (read-only view-as and writable tenant management).
-    /// `None` disables those START endpoints (503), so token issuance is opt-in.
-    pub(crate) view_as_issuer: Option<JwtIssuer>,
+    /// Issuer for tenant-approved, read-only support sessions.
+    /// `None` refuses START, so token issuance is opt-in.
+    pub(crate) support_issuer: Option<JwtIssuer>,
     pub(crate) provisioner: PlatformProvisioner,
     /// Engine-backed catalog seeder run once per new tenant on onboarding. `None`
     /// leaves onboarding to create only the shell (org + admin + OTP).
@@ -44,7 +43,7 @@ impl PlatformRestState {
             pool,
             force_remove_command_pool: None,
             jwt_verifier,
-            view_as_issuer: None,
+            support_issuer: None,
             provisioner,
             tenant_config_seeder: None,
             passkey_step_up: None,
@@ -89,8 +88,8 @@ impl PlatformRestState {
     /// context tokens. Without it START endpoints return 503; EXIT and the
     /// read-only gate do not need an issuer.
     #[must_use]
-    pub fn with_view_as_issuer(mut self, issuer: Option<JwtIssuer>) -> Self {
-        self.view_as_issuer = issuer;
+    pub fn with_support_issuer(mut self, issuer: Option<JwtIssuer>) -> Self {
+        self.support_issuer = issuer;
         self
     }
 }

@@ -66,7 +66,7 @@ async fn a_signed_out_session_is_refused_and_its_open_stream_ends_unsent(owner: 
         roles: vec!["SUPER_ADMIN".into()],
         branches: vec![branch],
         platform: false,
-        view_as: false,
+        support: None,
         read_only: false,
         display_name: None,
         feature_grants: vec![],

@@ -25,6 +25,7 @@ pub enum Domain {
     Exceptions,
     Retention,
     Tenant,
+    SupportAccess,
 }
 
 /// 조회 · 등록·수정 · 결재 · 내보내기.
@@ -66,7 +67,7 @@ const VIEW_EDIT_EXPORT: &[Level] = &[Level::View, Level::Edit, Level::Export];
 const VIEW_EDIT_APPROVE: &[Level] = &[Level::View, Level::Edit, Level::Approve];
 
 impl Domain {
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 19] = [
         Self::Org,
         Self::HrBasic,
         Self::Appointment,
@@ -85,6 +86,7 @@ impl Domain {
         Self::Exceptions,
         Self::Retention,
         Self::Tenant,
+        Self::SupportAccess,
     ];
 
     #[must_use]
@@ -108,6 +110,7 @@ impl Domain {
             Self::Exceptions => "exceptions",
             Self::Retention => "retention",
             Self::Tenant => "tenant",
+            Self::SupportAccess => "support_access",
         }
     }
 
@@ -138,7 +141,7 @@ impl Domain {
             Self::Notice => &[Level::View, Level::Edit],
             Self::Audit => &[Level::View, Level::Approve, Level::Export],
             Self::Settings | Self::Exceptions | Self::Retention => VIEW_EDIT_APPROVE,
-            Self::Tenant => &[Level::Approve],
+            Self::Tenant | Self::SupportAccess => &[Level::Approve],
             Self::Discipline => &[],
         }
     }

@@ -14,6 +14,7 @@ pub mod org_unit_manage;
 // --- lane: F7 ---
 pub mod reason_code_manage;
 pub mod settings_manage;
+pub mod support_session;
 
 use super::action_schema::ActionSchema;
 

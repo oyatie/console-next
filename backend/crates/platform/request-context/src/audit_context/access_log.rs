@@ -36,10 +36,11 @@ pub struct AccessRecord<'a> {
 }
 
 /// `principal_type` for a tenant route: a group admin acting in a delegated
-/// tenant context, or the tenant's own user. Support operators are logged
-/// by SEC's view-as path (GOV-SEC-1), never here.
+/// tenant context, the tenant's own user, or a tenant-approved support principal.
 fn principal_type(principal: &Principal) -> &'static str {
-    if principal.access_scope.level == AccessScopeLevel::Group {
+    if principal.support.is_some() {
+        "SUPPORT_OPERATOR"
+    } else if principal.access_scope.level == AccessScopeLevel::Group {
         "GROUP_ADMIN"
     } else {
         "TENANT_USER"

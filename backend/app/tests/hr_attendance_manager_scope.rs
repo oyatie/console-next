@@ -343,7 +343,7 @@ async fn bearer(pool: &sqlx::PgPool, keys: &Keys, user: UserId, role: &str) -> S
             roles: vec![role.into()],
             branches: vec![],
             platform: false,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: None,
             feature_grants: vec![],

@@ -5,9 +5,20 @@ use console_kernel_core::{AccessScope, BranchId, BranchScope, OrgId, ServicePrin
 use crate::access::ScopeGrant;
 use crate::{DatedFeatureGrant, EffectiveFeatureGrant, Feature, Role, SubjectFreshness};
 
+/// Live session authority; no tenant roles or account grants are attached.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SupportPrincipal {
+    pub session_id: uuid::Uuid,
+    pub operator_label: String,
+    pub scope: Vec<String>,
+    pub reveal_classes: Vec<String>,
+}
+
 /// Authenticated principal plus its already-resolved branch scope.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Principal {
+    #[serde(default)]
+    pub support: Option<SupportPrincipal>,
     pub user_id: UserId,
     /// The tenant this principal belongs to, taken from the verified token's
     /// `org` claim. Used to arm `app.current_org` for RLS on this request.
@@ -91,6 +102,7 @@ impl Principal {
         branch_scope: BranchScope,
     ) -> Self {
         Self {
+            support: None,
             user_id,
             org_id,
             access_scope: AccessScope::legacy_org(org_id),

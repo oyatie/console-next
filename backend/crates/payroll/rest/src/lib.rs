@@ -450,9 +450,9 @@ fn rest_error_from_request_context(err: RequestContextError) -> RestError {
         RequestContextError::VerifierUnavailable => {
             RestError::unavailable("JWT verification is not configured for the payroll API")
         }
-        RequestContextError::WrongTokenTier => RestError::from_kernel(KernelError::forbidden(
-            "token tier is not valid for this route",
-        )),
+        RequestContextError::WrongTokenTier => {
+            RestError::unauthorized("token tier is not valid for this route")
+        }
         RequestContextError::AccessScope(error) => RestError::from_kernel(error),
         RequestContextError::BranchScope(message)
         | RequestContextError::EffectivePolicy(message) => {

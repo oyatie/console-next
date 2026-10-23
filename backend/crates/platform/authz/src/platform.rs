@@ -71,6 +71,13 @@ pub struct PlatformPrincipal {
 }
 
 impl PlatformPrincipal {
+    /// The current operator identity contract. Support eligibility uses the same door as authentication.
+    #[must_use]
+    pub fn accepts_roles(roles: &[String]) -> bool {
+        roles
+            .iter()
+            .any(|role| role == crate::Role::SuperAdmin.as_str())
+    }
     #[must_use]
     pub const fn new(user_id: UserId) -> Self {
         Self {

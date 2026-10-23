@@ -102,11 +102,14 @@ pub(crate) async fn principal(
                 "unauthorized",
                 "missing, malformed, or invalid bearer token",
             ),
-            RequestContextError::WrongTokenTier | RequestContextError::AccessScope(_) => {
-                RestError::kernel(KernelError::forbidden(
-                    "token is not authorized for org changes",
-                ))
-            }
+            RequestContextError::WrongTokenTier => RestError::new(
+                StatusCode::UNAUTHORIZED,
+                "unauthorized",
+                "token tier is not valid for this route",
+            ),
+            RequestContextError::AccessScope(_) => RestError::kernel(KernelError::forbidden(
+                "token is not authorized for org changes",
+            )),
             RequestContextError::VerifierUnavailable => RestError::new(
                 StatusCode::SERVICE_UNAVAILABLE,
                 "unavailable",

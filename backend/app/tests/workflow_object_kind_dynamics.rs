@@ -110,7 +110,7 @@ async fn bearer(pool: &sqlx::PgPool, keys: &Keys, user_id: UserId, role: &str) -
             roles: vec![role.to_owned()],
             branches: Vec::<BranchId>::new(),
             platform: false,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: None,
             feature_grants: Vec::new(),

@@ -1,5 +1,5 @@
 use console_kernel_core::{AccessScope, AccessScopeLevel, BranchId, OrgId, ScopeNodeId, UserId};
-use jsonwebtoken::{Algorithm, EncodingKey, Header, Validation, decode, encode};
+use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use time::Duration;
@@ -34,22 +34,12 @@ pub struct AccessTokenInput {
     /// token is rejected on `/api/platform/*` — the two tiers are strictly
     /// separated. Tenant tokens always set this `false`.
     pub platform: bool,
-    /// PLATFORM "view as" impersonation marker. When `true` this is a short-lived
-    /// token minted by a platform operator to view a tenant strictly READ-ONLY.
-    /// It is a TENANT-tier token (`platform = false`, `org_id = acting tenant`),
-    /// so it flows through the tenant org middleware and arms `app.current_org`
-    /// to the target tenant — but the blanket read-only method gate rejects every
-    /// non-GET/HEAD request that carries it. An ordinary token always sets this
-    /// `false`.
-    pub view_as: bool,
-    /// Companion to [`Self::view_as`]: the impersonation token is read-only. Kept
-    /// as a distinct flag (not implied by `view_as`) so the read-only contract is
-    /// explicit in the token and a future non-read-only impersonation mode would
-    /// be an additive change, never a silent reinterpretation.
+    /// Opaque approved support-session id; never a tenant account or role.
+    pub support: Option<Uuid>,
     pub read_only: bool,
     /// The authenticated user's display name, stamped into the optional `name`
     /// claim for DISPLAY ONLY (topbar identity, etc.). Never consulted for
-    /// authorization. `None` omits the claim entirely, which keeps view-as and
+    /// authorization. `None` omits the claim entirely, which keeps support and
     /// any future operator-less mint backward compatible.
     pub display_name: Option<String>,
     /// Runtime-effective custom-role feature keys resolved at token issuance for
@@ -108,15 +98,9 @@ pub struct AccessClaims {
     /// platform token.
     #[serde(default)]
     pub platform: bool,
-    /// `true` for a PLATFORM "view as" impersonation token (read-only tenant
-    /// view minted by a platform operator). Absent in every ordinary token →
-    /// defaults to `false`, so a normal tenant/platform token is never mistaken
-    /// for an impersonation token. The read-only method gate keys off this flag.
-    #[serde(default)]
-    pub view_as: bool,
-    /// `true` when the `view_as` token is read-only. Defaults to `false` when
-    /// absent. Today every `view_as` token sets this `true`; it is a separate,
-    /// explicit claim so the read-only contract is self-describing.
+    /// Opaque approved support session, live-checked on every request.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub support: Option<Uuid>,
     #[serde(default)]
     pub read_only: bool,
     /// The user's display name, for DISPLAY ONLY (e.g. the topbar identity).
@@ -133,7 +117,7 @@ pub struct AccessClaims {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scope_node: Option<ScopeNodeId>,
     /// Group roles are carried for future group-scoped authorization. They are
-    /// never allowed on read-only platform view-as tokens.
+    /// never allowed on read-only platform support tokens.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub group_roles: Vec<String>,
     /// Optional delegated tenant-context marker. Ordinary tenant tokens omit it.
@@ -245,7 +229,7 @@ fn validate_tenant_context(
     roles: &[String],
     group_roles: &[String],
     platform: bool,
-    view_as: bool,
+    support: bool,
     read_only: bool,
 ) -> Result<(), AuthError> {
     match tenant_context {
@@ -262,7 +246,7 @@ fn validate_tenant_context(
             }
         }
         Some(TenantAccessContext::GroupAdmin) => {
-            if platform || view_as || read_only {
+            if platform || support || read_only {
                 return Err(AuthError::InvalidStoredData(
                     "group-admin tenant context must be writable tenant-tier only".to_owned(),
                 ));
@@ -483,8 +467,8 @@ impl JwtIssuer {
     /// Mint an access token with an EXPLICIT lifetime, overriding the issuer's
     /// default `access_token_ttl`.
     ///
-    /// Used by the PLATFORM "view as" START path, which must mint a deliberately
-    /// SHORT-LIVED (≤30 min) impersonation token regardless of the configured
+    /// Used by the approved support START path, which must mint a deliberately
+    /// time-boxed support token regardless of the configured
     /// session TTL. `ttl` is clamped to a positive duration; a non-positive value
     /// is treated as a zero-length (immediately-expired) token rather than a
     /// long-lived one, so a misconfiguration fails closed.
@@ -508,7 +492,7 @@ impl JwtIssuer {
     }
 
     /// Platform delegation carries an explicit original account binding.
-    pub fn issue_platform_tenant_context_access_token(
+    pub fn issue_support_access_token(
         &self,
         input: AccessTokenInput,
         actor_session: ActorSession,
@@ -542,9 +526,19 @@ impl JwtIssuer {
         session_family_id: Option<Uuid>,
         enrollment: bool,
     ) -> Result<String, AuthError> {
-        if input.view_as && !group_roles.is_empty() {
+        if input.support.is_some() && !group_roles.is_empty() {
             return Err(AuthError::InvalidStoredData(
-                "view-as tokens cannot carry group roles".to_owned(),
+                "support tokens cannot carry group roles".to_owned(),
+            ));
+        }
+        if input.support.is_some()
+            && (input.platform
+                || !input.read_only
+                || !input.roles.is_empty()
+                || actor_session.is_none())
+        {
+            return Err(AuthError::InvalidStoredData(
+                "support requires a read-only roleless operator binding".into(),
             ));
         }
         validate_group_roles(&group_roles)?;
@@ -555,7 +549,7 @@ impl JwtIssuer {
             &input.roles,
             &group_roles,
             input.platform,
-            input.view_as,
+            input.support.is_some(),
             input.read_only,
         )?;
         let ttl = if ttl.is_positive() {
@@ -592,7 +586,7 @@ impl JwtIssuer {
                 .map(|branch| branch.to_string())
                 .collect(),
             platform: input.platform,
-            view_as: input.view_as,
+            support: input.support,
             read_only: input.read_only,
             name: input.display_name,
             scope_level,
@@ -621,41 +615,6 @@ impl JwtIssuer {
     }
 }
 
-pub(crate) fn verify_access_token(
-    token: &str,
-    decoding_key: &jsonwebtoken::DecodingKey,
-    settings: &JwtSettings,
-) -> Result<AccessClaims, AuthError> {
-    let mut validation = Validation::new(Algorithm::ES256);
-    validation.leeway = 0;
-    validation.set_issuer(&[settings.issuer.as_str()]);
-    validation.set_audience(&[settings.audience.as_str()]);
-    validation.set_required_spec_claims(&["exp", "iss", "aud", "sub"]);
-    let token = decode::<AccessClaims>(token, decoding_key, &validation)?;
-    token.claims.validate_expiry()?;
-    // Fail closed on a malformed tenant claim: the `org` claim arms
-    // `app.current_org` for RLS, so a token whose `org` is not a valid UUID must
-    // never be accepted — it could otherwise reach the DB with an unparseable or
-    // empty tenant context.
-    OrgId::from_str(&token.claims.org).map_err(|_| {
-        AuthError::InvalidStoredData("token org claim is not a valid uuid".to_owned())
-    })?;
-    token.claims.access_scope()?;
-    if token.claims.view_as && !token.claims.group_roles.is_empty() {
-        return Err(AuthError::InvalidStoredData(
-            "view-as tokens cannot carry group roles".to_owned(),
-        ));
-    }
-    validate_group_roles(&token.claims.group_roles)?;
-    validate_tenant_context(
-        token.claims.tenant_context,
-        token.claims.group_context_id.as_deref(),
-        token.claims.actor_home_org.as_deref(),
-        &token.claims.roles,
-        &token.claims.group_roles,
-        token.claims.platform,
-        token.claims.view_as,
-        token.claims.read_only,
-    )?;
-    Ok(token.claims)
-}
+#[path = "jwt/verify.rs"]
+mod verify;
+pub(crate) use verify::{verify_access_token, verify_support_token};
