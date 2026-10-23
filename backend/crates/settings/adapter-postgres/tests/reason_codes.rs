@@ -243,9 +243,9 @@ async fn tenant_codes_are_isolated(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn registration_void_catalog_serves_system_and_tenant_reasons(pool: PgPool) {
+async fn business_registration_end_catalog_serves_system_and_tenant_reasons(pool: PgPool) {
     let (actor, store) = tenant(&pool).await;
-    let domain: ReasonDomain = "registration_void".parse().unwrap();
+    let domain: ReasonDomain = "business_registration_end".parse().unwrap();
     let mut input = add("잘못 발급한 등록증", false);
     input.domain = domain.as_str().into();
     let added = store

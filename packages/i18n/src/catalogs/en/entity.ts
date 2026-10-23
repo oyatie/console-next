@@ -120,7 +120,7 @@ export const enEntity: Record<keyof typeof koEntity, string> = {
   "entity.regVoid.previewRetry": "Retry deletion preview",
   "entity.regVoid.title": "Delete business registration certificate",
   "entity.regVoid.consequence": "Deletes certificate {name} and {revisions, number} revision(s). Attached documents stay for their retention period, and the reason is audited.",
-  "entity.regVoid.inUse": "{count, number} workplace(s) ({names}) still use this certificate, so it cannot be deleted. Clear or re-link those workplaces first.",
+  "entity.regVoid.inUse": "Delete the {count, number} linked workplace(s) before deleting this certificate",
   "entity.regVoid.operatingWhy": "After going live, a business registration certificate cannot be deleted",
   "entity.regVoid.confirm": "Delete business registration certificate",
   "entity.regVoid.done": "Deleted certificate {name}",

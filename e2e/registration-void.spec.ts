@@ -57,7 +57,7 @@ test("certificate void fails closed during preview loading/failure and rechecks 
     await route.fulfill({ response, json: { ...await response.json(), can_manage: false } });
   });
   await sheet(admin).getByRole("button", { name: "삭제 미리보기 다시 읽기" }).click();
-  await expect(sheet(admin).getByText("이 계정에는 이 일을 할 권한이 없습니다", { exact: true })).toHaveCount(1);
+  await expect(sheet(admin).getByText("이 계정에는 이 일을 할 권한이 없습니다 · 운영 계정 담당자에게 요청하십시오", { exact: true })).toHaveCount(1);
   await expect(confirm(admin)).toBeDisabled();
   expect(writes).toEqual([]);
   await sheet(admin).getByRole("button", { name: "돌아가기", exact: true }).click();
@@ -97,7 +97,7 @@ test("a linked workplace refuses registration void after reason selection and at
   const end = await (await preview).json();
   expect(end.delete).toEqual({ allowed: false, refusal: "record_in_use" });
   expect(end.linked_workplaces).toContainEqual({ id: before.workplaces[0].id, name: "본사" });
-  await expect(sheet(admin)).toContainText("본사");
+  await expect(sheet(admin).getByRole("link", { name: "본사", exact: true })).toHaveAttribute("href", `${new URL(admin.url()).pathname}?wp=${before.workplaces[0].id}`);
   await expect(option(admin, "삭제 사유", "시험 입력")).toBeDisabled();
   await expect(confirm(admin)).toBeDisabled();
   const denied = await api(`/business-registrations/${id}/void`, "POST", { reason_code: "TEST_ENTRY" }, { "Idempotency-Key": crypto.randomUUID() });
@@ -106,7 +106,11 @@ test("a linked workplace refuses registration void after reason selection and at
   expect((await (await api(`/legal-entities/${entityId}`)).json()).registrations).toEqual(before.registrations);
 
   // A stale allowed preview cannot bypass the command's current workplace check.
-  await sheet(admin).getByRole("button", { name: "돌아가기", exact: true }).click();
+  await sheet(admin).getByRole("link", { name: "본사", exact: true }).click();
+  await expect(sheet(admin)).toBeHidden();
+  await expect(admin).toHaveURL(new RegExp(`wp=${before.workplaces[0].id}`));
+  await expect(admin.getByRole("complementary", { name: "본사", exact: true })).toBeVisible();
+  await admin.goto(`/org/entities/${entityId}`);
   await admin.route(previewPath, async (route) => {
     const response = await route.fetch();
     await route.fulfill({ response, json: { ...await response.json(), delete: { allowed: true }, linked_workplaces: [] } });

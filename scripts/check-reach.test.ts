@@ -231,7 +231,7 @@ test("registration end is reached from the certificate menu; restoring its old b
   const entry = { record: "Entity.business_registration", op: "end", lane: "unit: crud-g10" };
   expect(baseline).not.toContainEqual(expect.objectContaining({ record: entry.record, op: entry.op }));
   expect(REACH).toContainEqual({ record: entry.record, op: entry.op, page: "entity", phase: "setup", via: [
-    { role: "button", name: "사업자등록증(?: · 본점)? .+ 더보기", any: true },
+    { role: "button", name: "사업자등록증 · 본점 ", prefix: true },
     { role: "menuitem", name: "삭제", exact: true },
   ] });
   const planted = check({ lifecycle, reach: REACH, baseline: [...baseline, entry], facts: [], untracked: [], labels: new Map(), units: new Set(baseline.map((b: { lane: string }) => b.lane.match(/unit: ([^ ]+)/)?.[1]).concat("crud-g10")) });

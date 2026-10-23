@@ -117,7 +117,7 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
         <FactRow label={t("entityRecord.field.issued")} action={fix(f.issued)}><span className="num">{c?.cert_issued_on ? fmtDate(c.cert_issued_on) : "—"}</span> · {c?.tax_office_label || "—"}</FactRow>
       </div>
       {statusing && <RegistrationStatusSheet e={e} r={r} onClose={() => setStatusing(false)} />}
-      {voiding && <VoidRegistration r={r} onClose={() => { setVoiding(false); requestAnimationFrame(() => voidTrigger.current?.focus()); }} />}
+      {voiding && <VoidRegistration r={r} entityId={e.id} onClose={() => { setVoiding(false); requestAnimationFrame(() => voidTrigger.current?.focus()); }} />}
     </section>
   );
 }

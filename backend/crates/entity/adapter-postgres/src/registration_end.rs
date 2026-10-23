@@ -72,7 +72,7 @@ impl PgEntityStore {
                 .await?;
                 let entity = entity.ok_or_else(|| Refusal::not_found("registration_not_found"))?;
                 let phase = read_phase(tx, false).await?;
-                let today = crate::registration_calendar::today(tx, entity).await?;
+                let today = crate::today_kst(tx).await?;
                 let mut linked_workplaces = linked_workplaces(tx, id, today).await?;
                 let refused = if phase != TenantPhase::Setup {
                     Some("phase_not_setup")

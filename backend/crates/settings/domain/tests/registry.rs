@@ -10,7 +10,7 @@ use std::collections::HashSet;
 /// section switches + PEOPLE-A's two `people.void_*` + D26's six
 /// `approval.policy.*` + IMPORT-2's nine `import.*` + BE-MIG's
 /// `import.apply.max_rows` + PERF-BE's six `db.pool.*`.
-const EXPECTED_KEYS: usize = 34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 1 + 1;
+const EXPECTED_KEYS: usize = 34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 1;
 
 #[test]
 fn roster_has_every_key_once_and_round_trips() {
@@ -85,10 +85,7 @@ fn only_neutral_keys_skip_a_risk_direction() {
         let def = key.def();
         if def.looser_when == LooserWhen::Neutral {
             assert!(
-                // The calendar is a neutral fact with a compatibility default.
-                def.is_fact()
-                    || def.governance != Governance::Tenant
-                    || *key == SettingKey::CalendarTimeZone,
+                def.is_fact() || def.governance != Governance::Tenant,
                 "{key:?}: a tenant-editable policy value needs a risk direction"
             );
         }

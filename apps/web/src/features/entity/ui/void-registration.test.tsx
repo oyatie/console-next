@@ -6,7 +6,20 @@ import { options, previewPath, voidPath, registrationVoidBrowser, type Reply } f
 const h = registrationVoidBrowser();
 const { dialog, confirm, open, choose, mount } = h;
 
-for (const [label, code] of [["중복 등록", "DUPLICATE"], ["시험 입력", "TEST_ENTRY"], ["다른 법인의 등록증", "WRONG_DOCUMENT"]]) {
+test("blocking workplaces are a list of links to their entity panels", async () => {
+  h.preview = async () => ({ json: options({ delete: { allowed: false, refusal: "record_in_use" }, linked_workplaces: Array.from({ length: 14 }, (_, i) => ({ id: `wp-${i}`, name: `연결 사업장 ${i + 1}` })) }) });
+  await mount();
+  await open();
+  await expect(dialog().getByRole("listitem")).toHaveCount(14);
+  await expect(dialog().getByRole("link", { name: "연결 사업장 1", exact: true })).toHaveAttribute("href", "/org/entities/ent-1?wp=wp-0");
+  await expect(dialog().getByText("연결된 사업장 14곳을 먼저 삭제해야 이 등록증을 삭제할 수 있습니다", { exact: true })).toHaveCount(1);
+  await expect(confirm()).toBeDisabled();
+  await dialog().getByRole("link", { name: "연결 사업장 1", exact: true }).click();
+  await expect(dialog()).toHaveCount(0);
+  expect(h.writes).toEqual([]);
+});
+
+for (const [label, code] of [["중복 등록", "DUPLICATE"], ["시험 입력", "TEST_ENTRY"], ["다른 사업자의 등록증", "WRONG_DOCUMENT"]]) {
   test(`mounted certificate menu → ${label} → registration void`, async () => {
     await mount();
     await open();

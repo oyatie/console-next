@@ -119,7 +119,7 @@ export const koEntity = {
   "entity.regVoid.previewRetry": "삭제 미리보기 다시 읽기",
   "entity.regVoid.title": "사업자등록증 삭제",
   "entity.regVoid.consequence": "사업자등록증 {name}, 개정 이력 {revisions, number}건을 삭제합니다. 첨부한 문서는 보관 기간 동안 남고 감사 기록에 사유가 남습니다.",
-  "entity.regVoid.inUse": "연결된 사업장 {count, number}곳({names})이 이 등록증을 쓰고 있어 삭제할 수 없습니다. 먼저 사업장을 정리하거나 등록증 연결을 변경하십시오.",
+  "entity.regVoid.inUse": "연결된 사업장 {count, number}곳을 먼저 삭제해야 이 등록증을 삭제할 수 있습니다",
   "entity.regVoid.operatingWhy": "운영을 시작한 뒤에는 사업자등록증을 삭제할 수 없습니다",
   "entity.regVoid.confirm": "사업자등록증 삭제",
   "entity.regVoid.done": "사업자등록증 {name|을를} 삭제했습니다",

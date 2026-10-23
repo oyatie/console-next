@@ -1,30 +1,18 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used)]
-//! Registration deletion uses the registered calendar and reason catalog.
+//! Registration deletion shares the existing calendar and owns a distinct reason catalog.
+use console_settings_domain::SettingKey;
 use console_settings_domain::code_lists::ReasonDomain;
-use console_settings_domain::{SettingKey, resolve};
-use serde_json::json;
 
 #[test]
-fn calendar_time_zone_uses_the_iana_catalog_and_rejects_unknown_zones() {
-    let key: SettingKey = "calendar.time_zone".parse().unwrap();
-    for zone in [
-        "Asia/Seoul",
-        "Pacific/Honolulu",
-        "Pacific/Kiritimati",
-        "Europe/Paris",
-        "UTC",
-    ] {
-        assert!(key.def().parse(&json!(zone)).is_some());
-    }
-    assert!(key.def().parse(&json!("Mars/Olympus")).is_none());
-    assert!(key.def().parse(&json!(9)).is_none());
-    assert!(resolve(key, &[], None, time::OffsetDateTime::now_utc()).is_ok());
+fn no_registration_only_calendar_setting_is_exposed() {
+    assert!("calendar.time_zone".parse::<SettingKey>().is_err());
 }
 
 #[test]
-fn registration_void_reasons_are_registered_and_need_no_note() {
-    let domain: ReasonDomain = "registration_void".parse().unwrap();
+fn business_registration_end_reasons_are_registered_and_need_no_note() {
+    let domain: ReasonDomain = "business_registration_end".parse().unwrap();
+    assert!("registration_void".parse::<ReasonDomain>().is_err());
     let codes: Vec<_> = domain
         .system_codes()
         .iter()

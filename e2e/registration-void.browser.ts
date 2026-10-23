@@ -67,7 +67,7 @@ export function registrationVoidBrowser() {
         reads.push(path);
         await route.fulfill(await preview());
       } else if (request.method() === "GET" && path === "/api/v1/reason-codes") {
-        expect(new URL(request.url()).searchParams.get("domain")).toBe("registration_void");
+        expect(new URL(request.url()).searchParams.get("domain")).toBe("business_registration_end");
         await route.fulfill({ json: { items: catalog } });
       } else if (request.method() === "POST" && path === voidPath) {
         writes.push(request);

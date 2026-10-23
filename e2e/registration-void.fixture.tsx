@@ -84,7 +84,8 @@ if (typeof document !== "undefined") {
   if (params.has("closed")) r.current!.status = "CLOSED";
   const root = createRootRoute({ component: () => <RecordLockProvider value={lockOf(e)}><><CertCard e={e} r={r} act={noopAct} operating={params.has("operating")} />{params.has("multiple") && <CertCard e={e} r={reg({ id: "reg-2", brn: { value: "0008100071", display: "000-81-00071" } })} act={noopAct} operating={false} />}</></RecordLockProvider> });
   const requests = createRoute({ getParentRoute: () => root, path: "/requests/$id" });
-  const router = createRouter({ routeTree: root.addChildren([requests]), history: createMemoryHistory({ initialEntries: ["/"] }) });
+  const entityRoute = createRoute({ getParentRoute: () => root, path: "/org/entities/$id" });
+  const router = createRouter({ routeTree: root.addChildren([requests, entityRoute]), history: createMemoryHistory({ initialEntries: ["/"] }) });
   await router.load();
   createRoot(document.getElementById("root")!).render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
 }

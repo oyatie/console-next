@@ -3,9 +3,9 @@
 // `reason.field.` ids are the shared reason-code field (reference/reason). Only the domains these screens record;
 // a lane recording another domain appends its block.
 export const koReason = {
-  "reason.registration_void.DUPLICATE": "중복 등록",
-  "reason.registration_void.TEST_ENTRY": "시험 입력",
-  "reason.registration_void.WRONG_DOCUMENT": "다른 법인의 등록증",
+  "reason.business_registration_end.DUPLICATE": "중복 등록",
+  "reason.business_registration_end.TEST_ENTRY": "시험 입력",
+  "reason.business_registration_end.WRONG_DOCUMENT": "다른 사업자의 등록증",
 
   "reason.lifecycle_transfer.REGULAR_RESHUFFLE": "정기 인사",
   "reason.lifecycle_transfer.REORGANIZATION": "조직 개편",

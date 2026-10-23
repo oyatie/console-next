@@ -3829,7 +3829,6 @@ dependencies = [
 name = "console-settings-domain"
 version = "0.1.0"
 dependencies = [
- "chrono-tz",
  "console-kernel-core",
  "serde",
  "serde_json",
