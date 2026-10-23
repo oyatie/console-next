@@ -3,7 +3,8 @@ import type { ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog } from "@console/i18n";
-import type { Sheet } from "../../../ui/sheet/sheet";
+import { Button } from "../../../ui/button/button";
+import type { Composer } from "../../../ui/composer/composer";
 import { RegisterRoute } from "./register-route";
 
 const state = vi.hoisted(() => ({ pending: false, failed: false, allowed: false }));
@@ -13,7 +14,7 @@ vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({
   data: state.pending || state.failed ? undefined : { capabilities: state.allowed ? [{ feature: "employee_directory_manage", permission: "allow", org_wide: true }] : [] },
 }) }));
 vi.mock("../../../lib/react/denied", () => ({ Denied: () => <section aria-label="Access refused" /> }));
-vi.mock("../../../ui/sheet/sheet", () => ({ Sheet: (p: ComponentProps<typeof Sheet>) => <div role="dialog" aria-label={p.title}>{p.loading ? <p role="status" /> : p.children}</div> }));
+vi.mock("../../../ui/composer/composer", () => ({ Composer: (p: ComponentProps<typeof Composer>) => <div role="dialog" aria-label={p.title}>{p.loading ? <p role="status" /> : p.children}{p.recovery ?? <Button type="submit">{p.title}</Button>}</div> }));
 vi.mock("./register-sheet", () => ({ RegisterSheet: () => <section aria-label="Registration form" /> }));
 beforeAll(() => loadCatalog("ko"));
 
@@ -21,6 +22,7 @@ test("a registration refusal stays in the action dialog above the roster", () =>
   const html = renderToStaticMarkup(<RegisterRoute />);
   expect(html).toMatch(/role="dialog"[^>]*><section aria-label="Access refused"/);
   expect(html).not.toContain('aria-label="Registration form"');
+  expect(html).not.toContain('type="submit"');
 });
 
 test("registration waits for authorization before presenting the form", () => {
@@ -30,6 +32,7 @@ test("registration waits for authorization before presenting the form", () => {
     expect(html).toContain('role="status"');
     expect(html).not.toContain('aria-label="Registration form"');
     expect(html).not.toContain('aria-label="Access refused"');
+    expect(html).not.toContain('type="submit"');
   } finally { state.pending = false; }
 });
 
