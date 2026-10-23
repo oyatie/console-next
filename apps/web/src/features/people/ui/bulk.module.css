@@ -9,5 +9,4 @@
 .result { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 /* Two lines fit the 40 px row; the full text is the cell title and the issue list above. */
 .resultText { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; font-size: var(--text-sm); }
-.why { font-size: var(--text-sm); color: var(--danger-tx); }
 .notice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }

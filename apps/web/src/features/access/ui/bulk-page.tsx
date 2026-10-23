@@ -9,6 +9,7 @@ import { inOrder } from "../../../lib/pure/in-order";
 import { Banner } from "../../../ui/banner/banner";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { SearchField } from "../../../ui/search/search-field";
@@ -16,7 +17,7 @@ import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
 import { NO_SELECTION, type Selection } from "../../../ui/long-table/selection";
 import { SelectField } from "../../../ui/select/select-field";
 import { orgStructureRef } from "../../../reference/entity/api";
-import { grantOp, missing, ready, blankLine, type DraftLine } from "../domain/grants";
+import { bulkBlock, grantOp, missing, ready, blankLine, type DraftLine } from "../domain/grants";
 import { flatten, type OrgNode } from "../domain/scope";
 import { ACCESS_READS, applyGrants, previewGrants, type AccessGrantPreview, type Account, type Batch } from "../api";
 import { scopeLabel } from "../present";
@@ -73,7 +74,8 @@ export function BulkPage() {
     onSuccess: (out) => (setDone(t("access.bulk.done", { count: out.items.length })), setPreview(null), setSel(NO_SELECTION)),
   });
   const gaps = missing(d.line, [d.line], today);
-  const bad = !ids.length || gaps.length > 0 || (ctx.setup && !d.when) || !d.reason.code || (d.reason.code === "OTHER" && !d.reason.memo.trim());
+  const block = bulkBlock({ picked: ids.length, gaps, setup: ctx.setup, when: d.when, reason: d.reason });
+  const previewPicked = () => block ? setTried(true) : check.mutate(ids);
   const columns: LongColumn<Account>[] = [
     { id: "name", header: t("access.col.name"), rowHeader: true, cell: (a: Account) => <span className={s.chips}>{a.display_name}{namesake(a) && <Chip>{t("access.bulk.namesake")}</Chip>}</span> },
     { id: "no", header: t("access.col.number"), width: 120, cell: (a: Account) => a.employee_number ?? "" },
@@ -134,7 +136,12 @@ export function BulkPage() {
           {ctx.cat.data && (
             <BulkForm roles={ctx.roles} setup={ctx.setup} today={today} value={d} onChange={setD} tried={tried} gaps={gaps} picked={ids.length} onPickScope={() => setPicking(true)}>
               <PasskeyError error={check.error} />
-              <Button variant="primary" className={s.wide} disabled={check.isPending} onClick={() => (bad ? setTried(true) : check.mutate(ids))}>{t("access.bulk.preview", { count: ids.length })}</Button>
+              {block ? (
+                <DisabledReason
+                  control={(p) => <Button variant="primary" {...p} className={`${s.wide} ${p.className}`} onClick={(e) => { p.onClick(e); previewPicked(); }}>{t("access.bulk.preview", { count: ids.length })}</Button>}
+                  reason={t(block.id, block.params ? { label: t(block.params.label) } : undefined)}
+                />
+              ) : <Button variant="primary" className={s.wide} disabled={check.isPending} onClick={previewPicked}>{t("access.bulk.preview", { count: ids.length })}</Button>}
             </BulkForm>
           )}
         </div>

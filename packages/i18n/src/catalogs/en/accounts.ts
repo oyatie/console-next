@@ -51,7 +51,6 @@ export const enAccounts: Partial<Record<keyof typeof koAccounts, string>> = {
   "accounts.activate": "Activate account",
   "accounts.activated": "Activated {name}’s account",
 
-  "accounts.missing": "{count, plural, one {# field} other {# fields}} to complete",
 
   "accounts.invite.who": "Employee to invite",
   "accounts.invite.who.group": "Employees",

@@ -52,7 +52,6 @@ export const koAccounts = {
   "accounts.activate": "계정 활성화",
   "accounts.activated": "{name}님의 계정을 활성화했습니다",
 
-  "accounts.missing": "{count, plural, other {#개}} 항목을 채워야 합니다",
 
   // Invite sheet (from a person; no role: access is granted after)
   "accounts.invite.who": "초대할 직원",

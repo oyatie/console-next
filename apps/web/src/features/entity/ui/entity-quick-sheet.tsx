@@ -1,6 +1,6 @@
-import { entityName, latinName, legalNameTaken, personName } from "../../../reference/entity/domain/names";
+import { entityName, legalNameTaken } from "../../../reference/entity/domain/names";
 import { buttonClass } from "../../../ui/button/button-class";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, ClipboardPaste, FileText, Upload } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -10,11 +10,12 @@ import { useCommand } from "../../../lib/react/command";
 import { EntityError } from "./entity-error";
 import { entitiesRef } from "../../../reference/entity/api";
 import { Button } from "../../../ui/button/button";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Field, TextInput } from "../../../ui/field/field";
 import { Sheet } from "../../../ui/sheet/sheet";
 import { createEntity, ENTITY_READS } from "../api";
 import { emptyDraft } from "../domain/draft";
-import { entityBody, entityGaps } from "../domain/create";
+import { entityBody, quickBlock } from "../domain/create";
 import { KindAndName, OtherNames } from "./create-kind-and-name";
 import s from "./entity-create.module.css";
 
@@ -31,16 +32,14 @@ export function EntityQuickSheet({ open, onClose, onSaved }: { open: boolean; on
   const [rep, setRep] = useState("");
   const [alias, setAlias] = useState("");
   const [english, setEnglish] = useState("");
-  const why = useId();
   const nav = useNavigate();
   const entities = useQuery(entitiesRef).data?.items ?? [];
   const n = entities.filter((e) => !e.closed_on).length + 1;
   const clash = legalNameTaken(name, entities);
   const draft = { ...emptyDraft(), bizKind: kind, name, representatives: [rep], displayName: alias, englishName: english };
-  const gaps = entityGaps(draft);
   // The server still asks a corporation for its CRN and head office before it records one (CS-BE); say so and offer the certificate.
-  const hold = personName(name, [rep]) ? t("entity.refusal.legal_name_is_person") : alias.trim() && personName(alias.trim(), [rep]) ? t("entity.refusal.display_name_is_person")
-    : english.trim() && (!latinName(english.trim()) || personName(english.trim(), [rep])) ? t(latinName(english.trim()) ? "entity.refusal.english_name_is_person" : "entity.refusal.english_name_not_latin") : !kind || !name.trim() || !rep.trim() ? t("entityQuick.hold.basics") : gaps.length ? t("entityQuick.hold.corp") : null;
+  const block = quickBlock(draft);
+  const hold = block ? t(block) : null;
   const save = useCommand({
     run: (_then: "stay" | "workplace", key: string) => createEntity(key, entityBody(draft)),
     invalidates: ENTITY_READS,
@@ -55,7 +54,6 @@ export function EntityQuickSheet({ open, onClose, onSaved }: { open: boolean; on
       onSaved({ id: r.record.id, name: entityName(r.record) }, then);
     },
   });
-  const off = hold ? { "aria-disabled": true as const, "aria-describedby": why } : {};
   const go = (then: "stay" | "workplace") => !hold && save.mutate(then);
   const full = () => void nav({ to: "/org/entities/new", search: { kind: kind ?? undefined, name: name.trim() || undefined } });
   return (
@@ -66,12 +64,19 @@ export function EntityQuickSheet({ open, onClose, onSaved }: { open: boolean; on
       title={t("entityQuick.title")}
       subtitle={<span className={s.kicker}><Building2 size={14} aria-hidden /> {t("entityQuick.kicker", { n })}</span>}
       notice={<EntityError error={save.error} />}
-      consequence={<span id={why}>{hold ?? t("entityQuick.consequence", { name: name.trim() })}</span>}
+      consequence={hold ? null : <span>{t("entityQuick.consequence", { name: name.trim() })}</span>}
       actions={
         <>
           <Button onClick={onClose}>{t("entityQuick.cancel")}</Button>
-          <Button {...off} onClick={() => go("workplace")}>{t("entityQuick.createAndWorkplace")}</Button>
-          <Button variant="primary" {...off} onClick={() => go("stay")}>{t("entityQuick.create")}</Button>
+          {!hold && <Button onClick={() => go("workplace")}>{t("entityQuick.createAndWorkplace")}</Button>}
+          {hold ? (
+            <DisabledReason
+              control={(p) => <Button variant="primary" {...p}>{t("entityQuick.create")}</Button>}
+              reason={hold}
+            />
+          ) : (
+            <Button variant="primary" onClick={() => go("stay")}>{t("entityQuick.create")}</Button>
+          )}
         </>
       }
     >

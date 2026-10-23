@@ -163,3 +163,13 @@ export const monthEnd = (today: string) => ymd(year(today), month(today) + 1, 0)
 export type When = "none" | "past" | "today" | "future";
 export const whenOf = (date: string, today: string): When =>
   !/^\d{4}-\d{2}-\d{2}$/.test(date) ? "none" : date < today ? "past" : date === today ? "today" : "future";
+
+/** The first refusal in the sheet's reading order; counts describe actual missing fields or rows. */
+export function bulkBlock(v: { missingCount: number; errorLines: number; count: number; checking: boolean; failed: boolean; progress: { done: number; total: number } }) {
+  if (v.missingCount) return { id: "bulk.missing", params: { count: v.missingCount } } as const;
+  if (v.errorLines) return { id: "bulk.errorsLeft", params: { count: v.errorLines } } as const;
+  if (v.failed) return { id: "bulk.paste.failed" } as const;
+  if (v.checking) return { id: "bulk.paste.checking", params: v.progress } as const;
+  if (!v.count) return { id: "bulk.noTargets" } as const;
+  return null;
+}

@@ -38,7 +38,7 @@
   "apps/web/src/features/people/ui/notice-list-page.tsx#NoticeListPage": 32,
   "apps/web/src/features/people/ui/notice-new-page.tsx#NoticeNewPage": 25,
   "apps/web/src/features/people/ui/notice-page.tsx#NoticePage": 35,
-  "apps/web/src/features/people/ui/people-route.tsx#PeopleRoute": 221,
+  "apps/web/src/features/people/ui/people-route.tsx#PeopleRoute": 219,
   "apps/web/src/features/people/ui/register-route.tsx#RegisterRoute": 84,
   "apps/web/src/features/people/ui/register-run-page.tsx#RegisterRunPage": 88,
   "apps/web/src/features/people/ui/renew-page.tsx#RenewPage": 47,
