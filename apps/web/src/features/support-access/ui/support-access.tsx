@@ -105,7 +105,7 @@ function SessionDetails({ session: s, canApprove }: { session: SupportSession; c
         <Button variant="danger" disabled={busy} onClick={() => decide.mutate({ decision: "DENY", approved_duration_seconds: s.requested_duration_seconds, reveal_classes: [] })}>{t("supportAccess.deny")}</Button>
       </div>
     </Form>}
-    {canApprove && s.state === "ACTIVE" && <Button variant="danger" disabled={busy} onClick={() => end.mutate(undefined)}>{t("supportAccess.end")}</Button>}
+    {canApprove && (s.state === "ACTIVE" || (s.state === "OPERATOR_APPROVED" && s.tenant_approved_at)) && <Button variant="danger" disabled={busy} onClick={() => end.mutate(undefined)}>{t("supportAccess.end")}</Button>}
     <CommandError error={decide.error ?? end.error} own={supportRefusal} />
     <h3>{t("supportAccess.decisions")}</h3>
     {s.decisions.length ? <Table label={t("supportAccess.decisions")} rows={s.decisions} rowId={(d) => `${d.at}:${d.actor_label}:${d.decision}`} columns={[

@@ -151,3 +151,54 @@ async fn policy_duration_is_honored_and_the_operator_family_still_revokes_suppor
         "support.refuse.session_ended",
     );
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_support_read_validation_refusal_is_problem_details_and_is_recorded(owner: PgPool) {
+    let mut h = Support::new(owner).await;
+    let (id, token) = h.active().await;
+    code(
+        h.send("GET", &format!("{READ}?page=invalid"), Value::Null, &token)
+            .await,
+        StatusCode::BAD_REQUEST,
+        "validation",
+    );
+    assert_eq!(h.accesses(id).await, 1);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_personal_grant_reveals_only_classified_personal_fields_with_a_record(owner: PgPool) {
+    let mut h = Support::new(owner).await;
+    let id = Uuid::new_v4();
+    ok(h.request(id).await, StatusCode::CREATED);
+    ok(h.approve(id).await, StatusCode::OK);
+    ok(
+        h.send(
+            "POST",
+            &format!("{TENANT}/{id}/decision"),
+            json!({
+                "decision":"APPROVE","approved_duration_seconds":60,"reveal_classes":["personal"]
+            }),
+            &h.tenant,
+        )
+        .await,
+        StatusCode::OK,
+    );
+    let started = h.start(id).await;
+    assert_eq!(started.0, StatusCode::OK, "{}", started.1);
+    let read = h
+        .send(
+            "GET",
+            READ,
+            Value::Null,
+            started.1["access_token"].as_str().unwrap(),
+        )
+        .await;
+    assert_eq!(read.0, StatusCode::OK, "{}", read.1);
+    assert_eq!(read.1["display_name"], "고객 이름");
+    assert_eq!(read.1["personal_email"], "private@example.com");
+    assert_eq!(
+        read.1["phone"], "••••",
+        "an unclassified alias remains masked"
+    );
+    assert_eq!(h.accesses(id).await, 1);
+}

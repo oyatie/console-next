@@ -174,8 +174,8 @@ async fn end(
 
 /// Worker hook. Deadlines were resolved from registry keys when the request/session was approved.
 pub async fn expire_support_sessions(pool: &sqlx::PgPool) -> Result<u64, SupportError> {
-    // Sanctioned cross-tenant metadata listing; each subsequent write is tenant-armed.
     let orgs: Vec<Uuid> = sqlx::query_scalar("SELECT id FROM platform_list_organizations()")
+        // rls-arming: ok platform_list_organizations is a SECURITY DEFINER metadata listing; writes below are tenant-armed.
         .fetch_all(pool)
         .await?;
     let mut expired = 0;

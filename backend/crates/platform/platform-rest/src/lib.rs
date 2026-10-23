@@ -2,7 +2,7 @@
 //!
 //! These routes live under `/api/platform/*` and are mounted behind the PLATFORM
 //! extractor ([`console_platform_request_context::with_platform_context`]), NOT the
-//! tenant org middleware. A TENANT token is rejected here (401) and a PLATFORM
+//! tenant org middleware. A TENANT token is rejected here (403) and a PLATFORM
 //! token is rejected on the tenant `/api/v1/*` routes â the two tiers are strictly
 //! separated, so a tenant admin can never reach a platform endpoint.
 //!

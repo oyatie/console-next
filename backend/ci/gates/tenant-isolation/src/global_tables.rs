@@ -8,6 +8,10 @@
 #[must_use]
 pub fn global_table_allowlist() -> &'static [(&'static str, &'static str)] {
     &[
+        (
+            "support_read_surfaces",
+            "migration-owned read-surface and field-classification reference data; no tenant content",
+        ),
         // Conglomerate grouping identity only. Authorization data is NOT here:
         // group_memberships and group_role_grants are owner-only resolver tables.
         ("groups", "group identity metadata only, no tenant data"),

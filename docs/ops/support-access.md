@@ -15,11 +15,12 @@ Only reviewed rows in `support_read_surfaces` permit content reads. The initial 
 
 - Removed `POST /api/platform/view-as`, `/api/platform/view-as/exit`, `/api/platform/tenant-context`, and `/api/platform/tenant-context/exit`. Existing vendor impersonation tokens no longer resolve as tenant principals. The separate tenant-owned group-admin context remains supported.
 - A platform token presented to a tenant route now receives **401** rather than 403. Support refusals use RFC 9457 problem details with stable `support.refuse.*` codes and retain the shared `error.code` envelope for current clients.
+- The access catalog adds the `support_access` domain with its approval permission.
 - Operator clients use the typed `supportSessionsApi` client and `/api/platform/support-sessions`; tenant clients use `/api/v1/support-sessions`. The published contract and generated client types replace the deleted endpoints.
 
 ## Verification and hand-off
 
-The fail-before worktree and logs are under `/Users/jasonlee/Developer/frontend/lanes/eco-g1-support`. They include missing-ledger RLS failure, missing Cedar support contract, missing tenant UI, old HTTP refusal behavior, WebSocket scope regression and the approved-duration regression. Focused DB tests cover all support refusal codes, forced RLS, target-org audit identity, refusal before writes, audit failure, policy duration and immediate revocation. UI tests cover every refusal, history, consent commands, banner and the G2 query source.
+The fail-before worktree and logs are under `/Users/jasonlee/Developer/frontend/lanes/eco-g1-support`. They include missing-ledger RLS failure, missing Cedar support contract, missing tenant UI, old HTTP refusal behavior, WebSocket scope regression the approved-duration regression, read-validation problem details and withdrawal before start. Focused DB tests cover all support refusal codes, forced RLS, target-org audit identity, refusal before writes, audit failure, policy duration and immediate revocation. UI tests cover every refusal, history, consent commands, banner and the G2 query source.
 
 The verifier runs `e2e/support-access.spec.ts` in Chromium: real bound WebAuthn assertions for two operators, tenant approval, banner, read, SSE history, tenant termination, next-call 401 and tenant `/platform*` 404. Its accessibility checks exercise 1440/390 in light/dark. Run first-run-solo and released-contract compatibility checks as part of the release verification. Full multi-browser E2E and mutations remain release-unit CI work.
 
@@ -64,7 +65,7 @@ The brief authorizes support implementation and its verification across shared c
 - `backend/app/tests/dispatch_pipeline_api.rs`
 - `backend/app/tests/emp_ui_routes/harness.rs`
 - `backend/app/tests/entity_capture_journey.rs`
-- `backend/app/tests/entity_registration_void_api.rs`
+- `backend/app/tests/entity_registration_void/permissions.rs`
 - `backend/app/tests/equipment_3r_api.rs`
 - `backend/app/tests/evaluation_cycle_api.rs`
 - `backend/app/tests/facilities_pilot_story.rs`
@@ -120,6 +121,7 @@ The brief authorizes support implementation and its verification across shared c
 - `backend/app/tests/workflow_runtime_instance_api.rs`
 - `backend/app/tests/workorder_api.rs`
 - `backend/ci/gates/file-size/baseline.d/eco-g1-support.txt`
+- `backend/ci/gates/tenant-isolation/src/global_tables.rs`
 - `backend/crates/comms/rest/src/lib.rs`
 - `backend/crates/comms/rest/tests/readiness.rs`
 - `backend/crates/consulting/rest/tests/audit_atomicity.rs`
@@ -141,6 +143,7 @@ The brief authorizes support implementation and its verification across shared c
 - `backend/crates/identity/rest/openapi/paths/api__v1__support-sessions__active.get.yaml`
 - `backend/crates/identity/rest/openapi/paths/api__v1__support-sessions__id__decision.post.yaml`
 - `backend/crates/identity/rest/openapi/paths/api__v1__support-sessions__id__end.post.yaml`
+- `backend/crates/identity/rest/openapi/schemas/AccessDomain.yaml`
 - `backend/crates/identity/rest/openapi/schemas/ActiveSupportSessions.yaml`
 - `backend/crates/identity/rest/openapi/schemas/MobilePasskeyStepUpStartResponse.yaml`
 - `backend/crates/identity/rest/openapi/schemas/PlatformExitResponse.yaml`

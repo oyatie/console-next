@@ -120,7 +120,7 @@ impl Support {
         );
         let writes = Arc::new(AtomicUsize::new(0));
         let count = writes.clone();
-        let probe = Router::new().route(READ,get(|Extension(_):Extension<Principal>|async {
+        let probe = Router::new().route(READ,get(|Extension(_):Extension<Principal>, _:axum::extract::Query<std::collections::BTreeMap<String,u64>>|async {
             Json(json!({"display_name":"고객 이름","phone":"010-private","personal_email":"private@example.com"}))
         }).post(move || {let count=count.clone();async move {count.fetch_add(1,Ordering::SeqCst);Json(json!({"mutated":true}))}}));
         let app = with_support_gate(

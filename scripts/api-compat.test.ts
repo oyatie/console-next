@@ -48,3 +48,8 @@ test("step-up command enums retain every value accepted by the response", () => 
   expect(schemas.MobileStepUpActionKind!.enum).toEqual(responseBinding.action_kind!["x-extensible-enum"]);
   expect(schemas.MobilePasskeyStepUpBinding!.properties!.reason_key!.enum).toEqual(responseBinding.reason_key!["x-extensible-enum"]);
 });
+
+
+test("the access contract publishes the support approval domain", () => {
+  expect(schemas.AccessDomain!.enum).toContain("support_access");
+});

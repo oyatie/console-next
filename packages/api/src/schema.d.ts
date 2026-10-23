@@ -14033,7 +14033,7 @@ export interface components {
          * @description Platform-fixed data domain (access-model §2.6). `discipline` is listed but not grantable.
          * @enum {string}
          */
-        AccessDomain: "org" | "hr_basic" | "appointment" | "exit" | "attendance" | "pay" | "bank" | "evaluation" | "discipline" | "sensitive" | "documents" | "notice" | "access" | "audit" | "settings" | "exceptions" | "retention" | "tenant";
+        AccessDomain: "org" | "hr_basic" | "appointment" | "exit" | "attendance" | "pay" | "bank" | "evaluation" | "discipline" | "sensitive" | "documents" | "notice" | "access" | "audit" | "settings" | "exceptions" | "retention" | "tenant" | "support_access";
         AccessEffectLine: {
             domain: components["schemas"]["AccessDomain"];
             level: components["schemas"]["AccessLevel"];

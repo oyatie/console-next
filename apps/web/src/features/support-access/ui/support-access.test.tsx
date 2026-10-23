@@ -88,3 +88,10 @@ test("loading, empty and failed active-session reads remain honest", () => {
   state.error = new ApiError(503, "unavailable", "", []); state.active = undefined;
   expect(renderToStaticMarkup(<ActiveSupportBanner />)).toContain("common.retry");
 });
+
+test("the tenant can withdraw approval before the operator starts", () => {
+  state.data = { sessions: [{ ...session, tenant_approved_at: "2026-10-23T00:02:00Z" }], can_approve: true };
+  const html = renderToStaticMarkup(<SupportAccess />);
+  expect(html).toContain("supportAccess.end");
+  expect(html).not.toContain(">supportAccess.approve</button>");
+});

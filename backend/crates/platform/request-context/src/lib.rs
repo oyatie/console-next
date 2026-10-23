@@ -425,6 +425,12 @@ where
                 let claims = match resolve_platform_claims(verifier, &pool, request.headers()).await
                 {
                     Ok(principal) => principal,
+                    Err(RequestContextError::WrongTokenTier) => {
+                        return error_response(
+                            StatusCode::FORBIDDEN,
+                            "token tier is not valid for this route",
+                        );
+                    }
                     Err(err) => return error_response_for(&err),
                 };
                 privacy::run_platform(&pool, verifier, claims, request, next).await

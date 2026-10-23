@@ -85,6 +85,7 @@ pub fn with_support_gate<S: Clone + Send + Sync + 'static>(
                     Ok(response) => response,
                     Err(error) => refusal(&error),
                 };
+                let response = crate::support_problem::normalize(response).await;
                 match record(&pool, &claims, &method, &path, response.status(), transport).await {
                     Ok(()) => response,
                     Err(error) => refusal(&error),
@@ -244,9 +245,10 @@ fn mask(value: &mut Value, classes: &BTreeMap<String, String>, grants: &[String]
                     continue;
                 }
                 let class = classes.get(key).map_or("sensitive", String::as_str);
-                if class != "metadata"
-                    && !grants.iter().any(|grant| grant == class)
-                    && !value.is_null()
+                if !console_platform_authz::cedar_pbac::actions::support_session::field_visible(
+                    class != "metadata",
+                    grants.iter().any(|grant| grant == class),
+                ) && !value.is_null()
                 {
                     *value = if value.is_string() {
                         Value::String("••••".into())
