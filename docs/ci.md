@@ -547,3 +547,60 @@ survivors is now killed individually in the lane's detached proof worktree.
 Logs and run IDs are under the owner's lane receipts (`r6-*.log`). Hosted/browser
 execution remains verifier/orchestrator work; the unmodified 90-minute cold
 Rust timeout and all sizing caps require the first hosted receipts.
+
+## GitOps cutover proof (2026-10-23)
+
+The lane is rebased onto public `dev` at `bfc65fc7`, after the requested
+`385a97be` cutover. Neither deleted CD file appears in the diff, and the initial
+owns list contains no `cd.yml`. Probe remains disabled until its secrets and
+`PROBE_ENABLED` are configured. Workflow checks execute the CI contract.
+
+Nine new regression controls cover the cutover, opt-in Telegram probe, both tiers,
+actual fast shard selection, Chromium unit-test setup, existing ruleset update,
+queue base selection and empty dispatch bases. Eight fail on pre-change tip
+`4dd5c041`; the empty-base control fails on the incomplete cutover draft. The stale
+topology assertion also fails on that tip: GitOps files under `deploy/` are allowed
+by policy and must not be treated as private ops material.
+
+Local receipts are retained in the lane as `r8-*.log`:
+
+- Exact `npm run check` passes in an isolated checkout of `eb9f779a` with a local
+  `dev` ref at public `bfc65fc7`: 263 Vitest files / 1,768 tests and 92 Node tests.
+  No dependency installation was needed. In the shared worktree, Chromium first
+  hit the macOS sandbox boundary; an unsandboxed run then timed out in the
+  unchanged onboarding browser test during Vite reloads. Both the base's complete
+  1,768-test run and the isolated tip's complete run pass without retries.
+- All three exact strict Clippy commands, `cargo fmt --check` and
+  `cargo check --workspace --tests` pass. Actionlint, YAML/action properties,
+  hermetic static inputs, repository policy (8,245 tracked files), quality ratchet,
+  structural/term scans, gitleaks, synthetic fixtures and licences pass.
+- A fresh current-source nextest archive, the production image pin and the exact
+  CI prepare/bootstrap/partition commands pass two DB suites: 42 unique tests
+  across eight partitions, zero failures and no duplicate/missing JUnit IDs.
+  The topology census enforces all 20 canonical tables.
+- Full release planning selects 196 Cargo members, two unit partitions, eight DB
+  partitions and 19 browser shards. Both browsers reserve first-run-solo in shard
+  1. Real Cargo metadata plus controlled docs-only and one-crate diffs exercise
+  the planner and actual gate CLI: unrelated jobs skip and `ci-ok` reports success.
+  These controls demonstrate selection, not hosted timing or execution receipts.
+
+Three gates have identical findings on `4dd5c041` and the tip. No baseline or lint
+was weakened:
+
+| Gate | Inherited finding | Base/tip receipts |
+| --- | --- | --- |
+| file-size | `app/tests/entity_registration_void_api.rs`: 608 code lines, ceiling 300 | `r8-base-file-size.log`, `r8-file-size.log` |
+| rls-arming | Seven bare-pool queries in `app/src/http/support_reference_platform_tests.rs`, `crates/platform/access/src/grants_store/tests.rs` and `crates/platform/test-support/src/lib.rs` | `r8-base-rls-arming.log`, `r8-rls-arming.log` |
+| audit-coverage | `app/src/http/support_reference_platform_tests.rs::fixture` lacks an audit event | `r8-base-audit-coverage.log`, `r8-audit-coverage.log` |
+
+Classification, pii-no-logs and tenant-isolation pass. The shared checkout's old
+private-history `dev` ref also makes the default licence diff lack a merge base;
+the base reproduces it, and the isolated checkout with public `dev` passes the
+unchanged command. All files outside initial owns are listed above; this round
+changes only the workflow/ruleset/docs, package check wiring and CI helper tests.
+
+The verifier must run the merge-result workflow and one emitted shard per browser,
+then the long release-unit dispatch. Hosted cold/warm/docs-only/one-crate receipts,
+cache totals, live Telegram delivery and owner ruleset application remain external
+proof. No full E2E, full workspace DB sweep, scheduled battery, push or GitHub API
+write was performed by this lane.
