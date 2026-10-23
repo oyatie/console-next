@@ -106,6 +106,8 @@ for (const explicit of [false, true]) {
 
 test("zero-facet roster shows a failed read and retry before the first-use empty state", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   const page = await soloTenant(browser, "roster-failed", "목록실패");
+  // Exhaust the longest retry jitter, which can outlast an assertion's default deadline.
+  await page.evaluate(() => { Math.random = () => 1 - Number.EPSILON; });
   let fail = true;
   let requests = 0;
   await page.route("**/api/v1/employees?*", async (route) => {
@@ -114,6 +116,7 @@ test("zero-facet roster shows a failed read and retry before the first-use empty
     else await route.continue();
   });
   await go(page, "/people");
+  await page.getByText("목록을 받지 못했습니다", { exact: true }).waitFor({ state: "visible" });
   await expect(page.getByText("목록을 받지 못했습니다", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "아직 직원이 없습니다" })).toBeHidden();
   fail = false;
