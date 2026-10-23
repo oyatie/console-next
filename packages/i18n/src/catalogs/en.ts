@@ -74,6 +74,7 @@ import { enOrgChange } from "./en/org-change";
 import { enUiTimelineLanes } from "./en/ui-timeline-lanes";
 import { enEntity } from "./en/entity";
 import { enWorkplace } from "./en/workplace";
+import { enWorkplaceRegChange } from "./en/workplace-reg-change";
 import { enCapture } from "./en/capture";
 import { enEntityCreate } from "./en/entity-create";
 import { enEntityQuick } from "./en/entity-quick";
@@ -182,6 +183,7 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enUiTimelineLanes,
   ...enEntity,
   ...enWorkplace,
+  ...enWorkplaceRegChange,
   ...enCapture,
   ...enEntityCreate,
   ...enEntityQuick,

@@ -79,6 +79,7 @@ import { koOrgChange } from "./ko/org-change";
 import { koUiTimelineLanes } from "./ko/ui-timeline-lanes";
 import { koEntity } from "./ko/entity";
 import { koWorkplace } from "./ko/workplace";
+import { koWorkplaceRegChange } from "./ko/workplace-reg-change";
 import { koCapture } from "./ko/capture";
 import { koEntityCreate } from "./ko/entity-create";
 import { koEntityQuick } from "./ko/entity-quick";
@@ -186,6 +187,7 @@ export const ko = {
   ...koUiTimelineLanes,
   ...koEntity,
   ...koWorkplace,
+  ...koWorkplaceRegChange,
   ...koCapture,
   ...koEntityCreate,
   ...koEntityQuick,
