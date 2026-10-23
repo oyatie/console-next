@@ -108,7 +108,7 @@ test("setup phase: contacts, photo, entries and careers are added, edited, trace
   expect((await recorded).status(), "the photo is recorded, not refused against the delete").toBe(200);
   await release();
   await expect(photo).toBeHidden();
-  await expect(admin.getByRole("img", { name: `${w.person} 사진` }).first()).toBeVisible();
+  await expect(admin.locator(`img[alt="${w.person} 사진"]`).first()).toBeVisible();
   await expect(personal.getByRole("button", { name: "사진 수정" })).toBeVisible();
 
   // Regression (사번 변경 409 against the user's own write): every writer of the record goes past this tab's own writes

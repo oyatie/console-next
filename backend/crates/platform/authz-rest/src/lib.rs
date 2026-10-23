@@ -391,7 +391,7 @@ async fn authorize_admin(
 
 #[derive(Debug)]
 struct RestError {
-    code_override: Option<&'static str>,
+    code: Option<&'static str>,
     status: StatusCode,
     kind: ErrorKind,
     message: String,
@@ -401,7 +401,7 @@ impl RestError {
     fn unavailable(message: impl Into<String>) -> Self {
         Self {
             status: StatusCode::SERVICE_UNAVAILABLE,
-            code_override: None,
+            code: None,
             kind: ErrorKind::Internal,
             message: message.into(),
         }
@@ -410,7 +410,7 @@ impl RestError {
     fn unauthorized(message: impl Into<String>) -> Self {
         Self {
             status: StatusCode::UNAUTHORIZED,
-            code_override: None,
+            code: None,
             kind: ErrorKind::Forbidden,
             message: message.into(),
         }
@@ -419,7 +419,7 @@ impl RestError {
     fn internal(message: impl Into<String>) -> Self {
         Self {
             status: StatusCode::INTERNAL_SERVER_ERROR,
-            code_override: None,
+            code: None,
             kind: ErrorKind::Internal,
             message: message.into(),
         }
@@ -428,7 +428,7 @@ impl RestError {
     fn from_kernel(error: KernelError) -> Self {
         Self {
             status: status_for_error_kind(error.kind),
-            code_override: None,
+            code: error.code,
             kind: error.kind,
             message: error.message,
         }
@@ -483,7 +483,7 @@ impl RestError {
     }
 
     fn code(&self) -> &'static str {
-        if let Some(code) = self.code_override {
+        if let Some(code) = self.code {
             return code;
         }
         self.kind.code()
@@ -546,6 +546,10 @@ fn status_for_error_kind(kind: ErrorKind) -> StatusCode {
 #[cfg(test)]
 #[path = "lib_unknown_fields.rs"]
 mod unknown_fields_tests;
+
+#[cfg(test)]
+#[path = "lib_errors.rs"]
+mod error_tests;
 
 mod request_bodies;
 use request_bodies::*;
