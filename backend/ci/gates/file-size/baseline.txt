@@ -218,7 +218,7 @@ crates/platform/auth/tests/credential_identity.rs	425
 crates/platform/auth/tests/jwt_es256.rs	485
 crates/platform/auth/tests/session_locking.rs	411
 crates/platform/auth/tests/webauthn_contention.rs	953
-crates/platform/authz-rest/src/lib.rs	470
+crates/platform/authz-rest/src/lib.rs	467
 crates/platform/authz-rest/src/store.rs	741
 crates/platform/authz/tests/cedar_pbac_readiness_cases.rs	499
 crates/platform/authz/tests/policy.rs	1449
