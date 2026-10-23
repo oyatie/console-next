@@ -39,7 +39,9 @@ async function grant(admin: Page, who: string, roleName: string, scope: RegExp) 
   await chooseRadio(sheet, new RegExp(`^${ko["accessGrants.start.NOW"]}`));
   await chooseRadio(sheet, /^업무 배정·변경/);
   await sheet.getByRole("button", { name: "패스키로 확인하고 부여 1건 저장" }).click();
+  const applied = admin.waitForResponse((r) => r.url().endsWith("/access/grants/apply") && r.request().method() === "POST");
   await stepUp(sheet, "패스키로 확인하고 부여 1건 저장", admin.getByRole("status").filter({ hasText: `${who}님에게 부여 1건을 저장했습니다` }));
+  expect((await applied).ok()).toBeTruthy();
   await activatePendingGrants(admin, token);
 }
 
