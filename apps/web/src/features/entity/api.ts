@@ -1,6 +1,7 @@
 // Legal entities, business registrations, workplaces and the reference reads they use: query descriptors and
 // commands (pending contract, packages/api/src/pending/entity.ts).
 import { api, ApiError, assertBoundPasskey, type components } from "@console/api";
+export { ApiError };
 import type { CloseReason, CreateRegistrationRequest, CreateWorkplaceRequest, EntityDocument, IdentifierCorrectionReason, InsurerInput, LegalEntityInput, RefListKey, RegistrationInput, RegistrationReissue, WorkplaceInput } from "@console/api/pending";
 import type { AsOf } from "../../reference/entity/api";
 import { get, type PathPrefix } from "../../lib/query";

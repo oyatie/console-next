@@ -99,6 +99,7 @@ export function workplaceInput(e: LegalEntity, w: Workplace): WorkplaceInput | n
     withholding_mode: c.withholding_mode ?? null,
     bulk_filed_on: c.bulk_filed_on ?? null,
     independent_lsa_unit: c.independent_lsa_unit ?? null,
+    independent_lsa_evidence: c.independent_lsa_evidence ?? null,
     status: c.status,
     status_since: c.status_since ?? null,
     // A suspension's expected end rides along with any other revision of the workplace (never cleared unasked).

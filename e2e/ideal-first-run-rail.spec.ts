@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { apiAs, soloTenant } from "./chaos";
@@ -78,8 +79,8 @@ test("BL-013 bulk paths keep legal facts and lock a pending employee paste read"
   const mode = admin.getByRole("radiogroup", { name: /^대표 방식/ });
   await chooseRadio(mode, /^단독대표$/);
   await preview.click();
-  await admin.getByRole("button", { name: "법인 1개 등록" }).click();
-  await expect(admin.getByRole("status").filter({ hasText: "법인 1개를 등록했습니다" }).first()).toBeVisible();
+  await admin.getByRole("button", { name: "기록 1건 반영" }).click();
+  await expect(admin.getByRole("status").filter({ hasText: "기록 1건을 반영했습니다" }).first()).toBeVisible();
   await probeActions(admin);
   await go(admin, "/people/import?mode=paste");
   await admin.getByRole("textbox", { name: "직원 목록" }).fill("성명\t사번\t입사일\n목록직원\tP-1\t2025-01-01");

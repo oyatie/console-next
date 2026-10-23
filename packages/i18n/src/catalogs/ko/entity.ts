@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Korean source for `entity.` ids (apps/web/src/features/entity). Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koEntity = {
   "entity.list.title": "법인·사업장",
@@ -178,6 +179,8 @@ export const koEntity = {
   "entity.list.tax_office": "세무서",
   "entity.list.nts_industry_code": "국세청 업종코드",
   "entity.refusal.line": "{field}: {reason}",
+  "entity.history.field.effective_from": "변경일",
+  "entity.history.field.reason_code": "변경 사유",
   "entity.refusal.field": "입력한 값",
   "entity.refusal.other": "이 값은 받아들여지지 않았습니다",
   "entity.refusal.required": "필수 항목입니다",
@@ -259,4 +262,6 @@ export const koEntity = {
   "entity.refusal.english_name_not_latin": "영문명에는 영문, 숫자, 공백과 & . , - ' ( )만 입력할 수 있습니다.",
   "entity.refusal.name_review_choice": "등록증 상호 또는 지금의 법인명 중 하나를 선택하십시오.",
   "entity.refused.name_review_not_found": "이미 처리되었거나 없는 확인 항목입니다.",
+  "entity.refusal.registration_unchanged": "지금 연결된 사업자등록과 같습니다. 다른 사업자등록이나 일련번호를 선택하십시오.",
+  "entity.refusal.use_registration_change": "등록 변경에서 사업자등록과 일련번호를 변경하십시오.",
 } as const;

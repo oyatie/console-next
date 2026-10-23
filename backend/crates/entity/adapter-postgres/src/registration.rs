@@ -224,6 +224,12 @@ impl PgEntityStore {
                 }
                 let admitted = admit(tx, WriteClass::SetupVoid).await?;
                 let reason = void_reason(cmd.reason_code.as_deref())?;
+                let entity = registration_entity(tx, id).await?;
+                // Workplace creation takes this parent lock before checking its registration.
+                sqlx::query("SELECT id FROM legal_entities WHERE id = $1 FOR UPDATE")
+                    .bind(entity)
+                    .fetch_one(tx.as_mut())
+                    .await?;
                 let used: i64 = sqlx::query_scalar("SELECT count(*) FROM workplaces WHERE registration_id = $1 AND voided_at IS NULL")
                     .bind(id)
                     .fetch_one(tx.as_mut())
