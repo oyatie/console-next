@@ -1621,7 +1621,6 @@ const UNCLASSIFIED_TABLE_BASELINE: &[(&str, &[&str])] = &[
             "audit_event_id",
             "basis",
             "case_ref",
-            "evidence_object_id",
             "id",
             "org_id",
             "reason",

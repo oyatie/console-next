@@ -1446,7 +1446,7 @@ const LEGAL_HOLD_SELECT_SQL_PREFIX: &str = "SELECT id, evidence_object_id, statu
     FROM docs_evidence_legal_holds";
 const LEGAL_HOLD_SELECT_SQL: &str = "SELECT id, evidence_object_id, status, case_ref, \
     basis, reason, applied_by, applied_at, released_by, released_at, release_reason, audit_event_id \
-    FROM docs_evidence_legal_holds WHERE id = $1";
+    FROM docs_evidence_legal_holds WHERE id = $1 AND evidence_object_id IS NOT NULL";
 
 async fn fetch_exports_tx(
     tx: &mut Transaction<'_, Postgres>,

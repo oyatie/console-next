@@ -610,6 +610,7 @@ export interface paths {
          * Remove a tenant — guarded shell removal, or opt-in force-delete with data (platform vendor tier)
          * @description Remove a tenant organization. Platform-super-admin (vendor tier) ONLY: the route sits behind the platform extractor, so a tenant token is rejected with 403 before the handler runs and a tenant's own admin can never reach it.
          *
+         *     An active legal hold refuses either path with 409 (`code` = `blocked_legal_hold`); nothing is deleted. Released hold history requires the force path.
          *     Two paths, selected by the opt-in `delete_data` query parameter (default false):
          *
          *     - `delete_data=false` (default) — GUARDED removal, audited as `platform.tenant.remove`. Deletes only an empty/test tenant's onboarding shell (the seeded admin user, its auth credentials, branch memberships, branches, and regions). REFUSED with 409 (`code` = `tenant_has_data`) when the tenant owns real operational data (equipment, work orders, sites, customers, inspections, sales, financial, messenger, consents, attendance, or governance findings) — archive the tenant instead.

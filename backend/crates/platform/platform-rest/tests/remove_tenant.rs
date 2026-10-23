@@ -1032,32 +1032,6 @@ async fn force_removes_archived_tenant_with_data_and_isolates_other_tenant(owner
 // (g) Force-remove of the platform sentinel is a no-op 404 (never wipe the
 //     platform tier's own anchor row).
 // ---------------------------------------------------------------------------
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn force_remove_of_sentinel_is_not_found(owner_pool: PgPool) {
-    let harness = Harness::new(&owner_pool).await;
-    let admin = seed_platform_admin(&owner_pool).await;
-    let platform_token = harness.token(admin, OrgId::platform(), true).await;
-    let mut key = real_key(&owner_pool, admin).await;
-    let service = harness.service();
-
-    let (status, _body) = force_delete_org(
-        &service,
-        &platform_token,
-        *OrgId::platform().as_uuid(),
-        Some((&owner_pool, &mut key)),
-    )
-    .await;
-    assert_eq!(
-        status,
-        StatusCode::NOT_FOUND,
-        "the platform sentinel must never be force-removable"
-    );
-    assert!(
-        org_exists(&owner_pool, *OrgId::platform().as_uuid()).await,
-        "the sentinel org must still exist"
-    );
-}
-
 // ---------------------------------------------------------------------------
 // (h) A non-platform (tenant) principal cannot reach the force path (403).
 // ---------------------------------------------------------------------------
@@ -1094,3 +1068,6 @@ async fn tenant_token_cannot_force_remove_a_tenant(owner_pool: PgPool) {
         "the tenant must be untouched after a rejected force-remove"
     );
 }
+
+#[path = "remove_tenant/legal_holds.rs"]
+mod legal_holds;

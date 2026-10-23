@@ -7,6 +7,9 @@ description: 'Remove a tenant organization. Platform-super-admin (vendor tier) O
   it.
 
 
+  An active legal hold refuses either path with 409 (`code` = `blocked_legal_hold`); nothing is deleted.
+  Released hold history requires the force path.
+
   Two paths, selected by the opt-in `delete_data` query parameter (default false):
 
 
