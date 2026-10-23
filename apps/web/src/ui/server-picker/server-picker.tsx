@@ -46,8 +46,11 @@ export function ServerPicker(p: {
     const body = input.current!.ownerDocument.body;
     const preserved = [...body.querySelectorAll<HTMLElement>("[inert]")];
     return () => {
-      // React Aria clears inert with aria-hidden; retain restrictions that predate this picker.
-      queueMicrotask(() => { for (const el of preserved) el.inert = true; });
+      const restore = () => { for (const el of preserved) el.inert = true; };
+      // A rapid reopen must snapshot the original restrictions before any microtask runs.
+      restore();
+      // On unmount, React Aria's child cleanup runs after ours and clears inert with aria-hidden.
+      queueMicrotask(restore);
     };
   }, [open]);
   const homonyms = homonymOf(p.options, pending);
