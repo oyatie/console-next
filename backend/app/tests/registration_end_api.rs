@@ -57,7 +57,8 @@ async fn registration_preview_uses_its_own_links_before_void(owner: PgPool) {
             Some(support::employee_body("REG-1", &branch, &unit)),
         )
         .await;
-    assert_eq!(status, StatusCode::CREATED, "{employee}");
+    // The employee body carries personal data: a failure prints only its error code.
+    assert_eq!(status, StatusCode::CREATED, "{}", employee["code"]);
     let (status, end) = ctx
         .call(
             "GET",
