@@ -73,8 +73,11 @@ impl IntoResponse for Error {
         let support = Uuid::new_v4().to_string();
         tracing::warn!(support_ref=%support,code=self.0.code,status=self.0.status.as_u16(),"certificate request refused");
         let mut error = json!({"code":self.0.code,"message":self.0.message,"trace_id":support});
+        if let Some(errors) = self.0.errors {
+            error["errors"] = json!(errors);
+        }
         if let Some(refusals) = self.0.refusals {
-            error["refusals"] = refusals;
+            error["refusals"] = *refusals;
         }
         (self.0.status, Json(json!({"error":error}))).into_response()
     }
@@ -153,6 +156,7 @@ mod tests {
             status: StatusCode::FORBIDDEN,
             code: "certificate_forbidden",
             message: "refused".into(),
+            errors: None,
             refusals: None,
         })
         .into_response();

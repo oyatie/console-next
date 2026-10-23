@@ -77,6 +77,7 @@ fn refused(status: http::StatusCode, code: &'static str, message: &str) -> crate
         status,
         code,
         message: message.into(),
+        errors: None,
         refusals: None,
     }
 }

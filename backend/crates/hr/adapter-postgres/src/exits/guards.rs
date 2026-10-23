@@ -139,13 +139,13 @@ pub(super) async fn check_exit_guards(
     };
     let error = if error.code == Some("exit_protected_period") {
         HrError {
-            refusals: Some(json!(
+            refusals: Some(Box::new(json!(
                 periods
                     .iter()
                     .filter(|p| p.blocks(date))
                     .map(ProtectedPeriodView::from)
                     .collect::<Vec<_>>()
-            )),
+            ))),
             ..coded(error)
         }
     } else {

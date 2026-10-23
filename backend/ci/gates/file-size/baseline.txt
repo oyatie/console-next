@@ -205,7 +205,7 @@ crates/payroll/adapter-postgres/tests/pay_run_port_as_runtime_role.rs	1190
 crates/payroll/adapter-postgres/tests/payroll_lifecycle_rls_as_runtime_role.rs	417
 crates/payroll/adapter-postgres/tests/payroll_rls_surfaces_as_runtime_role.rs	393
 crates/payroll/domain/src/lib.rs	1400
-crates/payroll/rest/src/lib.rs	398
+crates/payroll/rest/src/lib.rs	390
 crates/payroll/rest/src/lifecycle.rs	615
 crates/payroll/rest/src/payslip_draft.rs	371
 crates/payroll/rest/tests/api.rs	853

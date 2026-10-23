@@ -88,6 +88,7 @@ impl HrService {
                     status: http::StatusCode::CONFLICT,
                     code: "exit_cancel_after_hr_confirmation",
                     message: "an HR-confirmed exit report cannot be cancelled; reject it with a reason".to_owned(),
+                    errors: None,
                     refusals: None,
                 });
             }
