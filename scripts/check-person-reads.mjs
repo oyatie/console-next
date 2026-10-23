@@ -8,7 +8,7 @@ import { atBase, baselineGrowth, digest, ratchet } from "./quality/ratchet.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const BASELINE = "scripts/person-reads-baseline.json";
-const FACTS = { employees: ["name", "birth_date"], users: ["display_name", "phone"] };
+const FACTS = { employees: ["name", "birth_date"], users: ["display_name"] };
 const RESERVED = new Set(["where", "join", "left", "right", "inner", "outer", "on", "order", "group", "limit", "offset", "union", "for", "set", "returning"]);
 
 export function rawReads(source) {

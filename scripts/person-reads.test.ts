@@ -17,6 +17,10 @@ test("query-builder and concatenated SQL fragments retain their table context", 
   expect(rawReads('new QueryBuilder("SELECT e.name").push(" FROM employees e").push(" WHERE e.birth_date=$1")')).toHaveLength(2);
   expect(rawReads('"SELECT e.name FROM person_employees_current e"; "SELECT e.id FROM employees e"')).toEqual([]);
 });
+test("account contact phones are separate from the inventoried human facts", () => {
+  expect(rawReads('"SELECT u.phone FROM users u"')).toEqual([]);
+  expect(rawReads('"SELECT u.display_name,u.phone FROM users u"')[0]).toMatch(/^users.display_name:/);
+});
 test("canonical views, unrelated columns, writes and prose are not legacy fact readers", () => {
   for (const source of ['"SELECT e.name FROM person_employees_current e"', '"SELECT u.phone FROM person_accounts_current u"', '"SELECT e.id FROM employees e"', '"UPDATE users SET display_name=$1 WHERE id=$2"', '"employees name"']) expect(rawReads(source)).toEqual([]);
 });

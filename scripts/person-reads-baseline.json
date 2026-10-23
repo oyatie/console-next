@@ -1,7 +1,6 @@
 {
   "backend/app/src/action_inbox/sources/hr_lifecycle.rs:employees.name:e6d76eba193d5a20db6f": 1,
   "backend/app/src/lifecycle/period_lock_view.rs:users.display_name:6f63adb4b962b305faa6": 1,
-  "backend/app/src/run/serve.rs:users.phone:efda10790feba1b16eb0": 1,
   "backend/crates/attendance/adapter-postgres/src/lib.rs:employees.name:209ff7e59bf97937858d": 1,
   "backend/crates/attendance/adapter-postgres/src/lib.rs:employees.name:64ae9edf8d1c59b1a75f": 1,
   "backend/crates/attendance/adapter-postgres/src/lib.rs:employees.name:973faba12afc22a521d1": 1,
@@ -54,7 +53,6 @@
   "backend/crates/platform/access/src/effective.rs:users.display_name:a32bed499aada60d620f": 1,
   "backend/crates/platform/db/src/period_lock/request.rs:users.display_name:2e492edf8e3f7e9e4253": 1,
   "backend/crates/platform/provisioning/src/bootstrap/cold_start.rs:users.display_name:1269a61b073251475502": 1,
-  "backend/crates/platform/provisioning/src/roster/apply.rs:users.phone:941b85896aa569011815": 2,
   "backend/crates/support/adapter-postgres/src/lib.rs:users.display_name:0052b7c4af10689e0eb4": 1,
   "backend/crates/support/adapter-postgres/src/lib.rs:users.display_name:0975fecc75bbb0802bfd": 1,
   "backend/crates/support/adapter-postgres/src/lib.rs:users.display_name:45273b8023b5991d2b43": 1,

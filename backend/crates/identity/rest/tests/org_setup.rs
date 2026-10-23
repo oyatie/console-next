@@ -46,6 +46,8 @@ const TEST_AUDIENCE: &str = "console-api";
 #[path = "org_setup/account_link_guard.rs"]
 mod account_link_guard;
 use account_link_guard::seed_employee_link;
+#[path = "org_setup/account_contact.rs"]
+mod account_contact;
 
 struct Harness {
     private_pem: String,
@@ -1029,30 +1031,6 @@ async fn admin_cannot_remove_existing_executive_role_on_update(pool: PgPool) {
     )
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{body:?}");
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn any_authenticated_user_edits_own_profile(pool: PgPool) {
-    let harness = Harness::new(pool.clone()).await;
-    // The seeded cold-start admin fixes its own display name via /users/me.
-    let me = seed_user(&pool, "Cold Start Admin", &["SUPER_ADMIN"], None).await;
-    let token = harness.token(me, &["SUPER_ADMIN"], vec![]).await;
-
-    let (status, before) = send(&harness, "GET", "/api/v1/users/me", &token, None).await;
-    assert_eq!(status, StatusCode::OK, "{before:?}");
-    assert_eq!(before["display_name"], "Cold Start Admin");
-
-    let (status, after) = send(
-        &harness,
-        "PATCH",
-        "/api/v1/users/me",
-        &token,
-        Some(json!({ "display_name": "박관리자", "phone": "010-9999-0000" })),
-    )
-    .await;
-    assert_eq!(status, StatusCode::OK, "{after:?}");
-    assert_eq!(after["display_name"], "박관리자");
-    assert_eq!(after["phone"], "+821099990000");
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
