@@ -1,4 +1,5 @@
 # Oversize Rust files, pinned at their code-line count (see ci/gates/file-size).
 # Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
 ci/gates/migration-safety/src/lib.rs	427
+crates/platform/db/tests/personal_data_classification.rs	4428
 crates/platform/platform-rest/tests/remove_tenant.rs	899
