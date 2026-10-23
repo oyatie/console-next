@@ -85,8 +85,6 @@ export const enTenants: Partial<Record<keyof typeof koTenants, string>> = {
   "tenants.remove.consequence": "Only a newly opened customer account with no operational data is removed. If it has data, nothing is removed and archiving is suggested.",
   "tenants.remove.adminToo": "The first admin account and any code issued go with it. This cannot be undone.",
   "tenants.remove.hasData": "{org} has operational data, so it was not removed.",
-  "tenants.remove.legalHold.title": "Removal is blocked by a legal hold",
-  "tenants.remove.legalHold.officer": "Preservation officer",
   "tenants.remove.legalHold": "Nothing was removed because a legal hold is active. Ask the preservation officer to confirm the case status.",
   "tenants.remove.done": "Removed {org}",
   "tenants.remove.force": "Remove {org} and all its data",

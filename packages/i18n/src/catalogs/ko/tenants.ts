@@ -90,8 +90,6 @@ export const koTenants = {
   "tenants.remove.consequence": "운영 데이터가 없는, 개설 직후 고객 계정만 삭제됩니다. 데이터가 있으면 삭제하지 않고 보관을 권합니다.",
   "tenants.remove.adminToo": "첫 관리자 계정과 발급한 코드도 함께 삭제됩니다. 되돌릴 수 없습니다.",
   "tenants.remove.hasData": "{org}에 운영 데이터가 있어 삭제하지 않았습니다.",
-  "tenants.remove.legalHold.title": "법적 보존 조치로 삭제할 수 없습니다",
-  "tenants.remove.legalHold.officer": "보존 담당자",
   "tenants.remove.legalHold": "법적 보존 조치가 적용되어 삭제하지 않았습니다. 보존 담당자에게 사건 상태를 확인하십시오.",
   "tenants.remove.done": "{org|을를} 삭제했습니다",
   "tenants.remove.force": "{org|과와} 모든 데이터 삭제",
