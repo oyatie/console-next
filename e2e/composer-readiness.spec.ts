@@ -35,7 +35,7 @@ test("empty composers explain their blocks, keep focus and reveal access field e
   await blocked(invitePrimary, "초대할 직원을 선택하십시오");
   await invite.getByRole("button", { name: "직원이 아닌 사람 초대" }).click();
   await invite.getByRole("textbox", { name: /^이름/ }).fill("홍길동");
-  await invite.getByRole("textbox", { name: "아이디", exact: true }).fill("홍길동");
+  await invite.getByRole("textbox", { name: /^아이디/ }).fill("홍길동");
   await blocked(invitePrimary, "한글이나 전각 문자는 쓸 수 없습니다. 한/영 키를 확인하십시오.");
   await invite.getByRole("button", { name: "돌아가기" }).click();
 

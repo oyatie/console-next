@@ -75,7 +75,7 @@ test.each(["existing", "checking"] as const)("an employee invite blocked by %s e
   const html = renderToStaticMarkup(<InviteSheet onClose={vi.fn()} onIssued={vi.fn()} onOpenAccount={vi.fn()} />);
   const button = html.match(/<button[^>]*class="[^"]*btn--primary[^>]*>/)![0];
   expect(button).toContain('aria-disabled="true"');
-  const id = button.match(/aria-describedby="([^\"]+)"/)![1];
+  const id = button.match(/aria-describedby="([^"]+)"/)![1];
   expect(html).toContain(`id="${id}">${t(state === "existing" ? "accounts.invite.exists" : "accounts.invite.checking")}<`);
   const preventDefault = vi.fn();
   view.buttons.find((p) => p.variant === "primary")!.onClick!({ preventDefault } as unknown as MouseEvent<HTMLButtonElement>);
