@@ -1,4 +1,5 @@
 export const koRequestOutcome = {
+  "requestOutcome.code.period_unlock_sole_holder_refused": "단독 해제 조건을 충족하지 않습니다. 권한 관리 담당자에게 다른 마감 권한자를 지정해 달라고 요청한 뒤 다시 신청하십시오.",
   "requestOutcome.code.org_change_sod_violation": "기안자와 같은 사람은 결재할 수 없습니다. 결재 권한이 있는 다른 사람에게 요청하십시오.",
   "requestOutcome.code.leave_decide_requester_forbidden": "신청자와 같은 사람은 결정할 수 없습니다. 휴가 결정 권한이 있는 다른 사람에게 요청하십시오.",
   "requestOutcome.code.sod_violation": "제출자와 같은 사람은 결재할 수 없습니다. 급여 결재 권한이 있는 다른 사람에게 요청하십시오.",

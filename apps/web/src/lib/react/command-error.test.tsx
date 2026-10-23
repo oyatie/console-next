@@ -27,6 +27,13 @@ test.each(["org_change", "leave", "payroll", "period_unlock", "account_link", "g
   expect(banner).toContain('role="alert"');
 });
 
+test("unavailable solo unlock names the second-person remedy", async () => {
+  const banner = await html(new ApiError(409, "period_unlock_sole_holder_refused", "diagnostic", [], undefined, true));
+  expect(banner).toContain("다른 마감 권한자");
+  expect(banner).toContain("다시 신청");
+  expect(banner).not.toContain("diagnostic");
+});
+
 async function html(error: unknown, props: { children?: ReactNode; historyHref?: string; fieldLabel?: (field: string) => string | null | undefined; own?: (code: string) => string | undefined; live?: "polite" | "assertive"; recover?: boolean; onFocusField?: (field: string) => void; formId?: string; formFields?: string[] } = {}) {
   const root = createRootRoute({ component: () => <CommandError error={error} {...props} /> });
   const outcome = createRoute({ getParentRoute: () => root, path: "/requests/$id" });
