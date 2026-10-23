@@ -2,6 +2,11 @@
 
 # E2E fixture limits
 
+Build `console-app` with `--features full,e2e-test-support` and point
+`CONSOLE_APP_BIN` at that binary. The suite exercises workspace routes, including
+the action inbox, which the default MVP profile deliberately excludes. Setup
+checks that the inbox requires authentication before creating test tenants.
+
 Build synthetic tenants through the product. Pending elevated grants use
 `activatePendingGrants`: it moves only that tenant's debug worker clock to the
 configured deadline. Release builds ignore this clock. This does not advance

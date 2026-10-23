@@ -37,5 +37,6 @@ export const said = (sentence: string, ymd: string) =>
 export const statement = (box: Locator) => box.locator("xpath=ancestor::label[1]");
 /** Ticks every sign-off the sheet shows (each is its own click: no "check all"). */
 export async function signOff(s: Locator, click: (l: Locator) => Promise<void> = (l) => l.click()) {
+  await s.waitFor({ state: "visible" });
   for (const box of await s.getByRole("checkbox").all()) await click(statement(box));
 }
