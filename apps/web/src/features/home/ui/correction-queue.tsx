@@ -13,10 +13,9 @@ export function CorrectionQueue({ items, more, today }: { items: IdentifierCorre
     <QueueSection id="corrections" title={t("home.corrections.title", { count: items.length })}>
       <ul className="list-plain">
         {items.map((item) => <li key={item.id} className="row">
-          <span className="grow">{item.entity_name} · {t(`entityRecord.corrections.status.${item.status}`)}</span>
           {item.review_due_at && <><time dateTime={item.review_due_at}>{fmtDateTimeShort(item.review_due_at)}</time><DDay date={todayKst(new Date(item.review_due_at))} today={today} /></>}
-          <Link className={buttonClass("primary")} to="/org/entities" search={{ correction: item.id }} hash="identifier-corrections">
-            {t(item.can_apply ? "entityRecord.corrections.apply" : item.can_review ? "entityRecord.corrections.review" : "home.corrections.decide")}
+          <Link className="grow" to="/org/entities" search={{ correction: item.id }} hash="identifier-corrections">
+            {item.entity_name} · {t(`entityRecord.corrections.status.${item.status}`)} · {t(item.can_apply ? "entityRecord.corrections.apply" : item.can_review ? "entityRecord.corrections.review" : "home.corrections.decide")}
           </Link>
         </li>)}
       </ul>

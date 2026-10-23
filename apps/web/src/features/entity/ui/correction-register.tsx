@@ -52,7 +52,7 @@ function Register({ entityId, correctionId, onSelect }: { entityId?: string; cor
         {(data) => <>
           <Table label={t("entityRecord.corrections.title")} rows={data.items} rowId={(r) => r.id} onSelect={select} columns={[
             { header: t("entityRecord.corrections.subject"), cell: (r) => <>{r.entity_name} · {fieldText(r)} <b>{valueText(r)}</b></> },
-            { header: t("entityRecord.corrections.state"), cell: (r) => <span className={s.status}>{(["APPROVED", "RECORDED"] as const).map((status) => <span key={status} aria-hidden className={s.measure}><Chip>{t(`entityRecord.corrections.status.${status}`)}</Chip></span>)}<span><Chip tone={r.status === "PENDING" || r.status === "RECORDED" && !r.reviewed_at ? "warn" : "neutral"}>{statusText(r)}</Chip></span></span>, fit: true },
+            { header: t("entityRecord.corrections.state"), cell: (r) => <div className={s.status}>{(["APPROVED", "RECORDED"] as const).map((status) => <div key={status} aria-hidden className={s.measure}><Chip>{t(`entityRecord.corrections.status.${status}`)}</Chip></div>)}<div><Chip tone={r.status === "PENDING" || r.status === "RECORDED" && !r.reviewed_at ? "warn" : "neutral"}>{statusText(r)}</Chip></div></div>, fit: true },
             { header: t("entityRecord.corrections.due"), cell: (r) => fmtDateTimeShort(r.review_due_at ?? r.expires_at), fit: true },
           ]} />
           <ActionBar actions={<>
@@ -90,13 +90,13 @@ function CorrectionDetail({ id, row, onClose }: { id: string; row?: Case; onClos
     <Sheet open onClose={onClose} pending={busy} title={t("entityRecord.corrections.detail")}
       notice={<EntityError error={command.error} own={(code) => correctionRefusal(code)} />}
       consequence={<div className={s.consequence}>{(["applyHelp", "reviewHelp", "decisionHelp"] as const).map((key) =>
-        <span key={key} className={key === help ? undefined : s.measure} aria-hidden={key !== help || undefined}>{t(`entityRecord.corrections.${key}`)}</span>
+        <div key={key} className={key === help ? undefined : s.measure} aria-hidden={key !== help || undefined}>{t(`entityRecord.corrections.${key}`)}</div>
       )}</div>}
       actions={<div className={s.actions}>
         <div aria-hidden className={s.measure}>
-          <span className={buttonClass()}>{t("common.back")}</span>
-          <span className={buttonClass()}>{t("entityRecord.corrections.decline")}</span>
-          <span className={buttonClass("primary")}>{t("entityRecord.corrections.approve")}</span>
+          <Button disabled tabIndex={-1}>{t("common.back")}</Button>
+          <Button disabled tabIndex={-1}>{t("entityRecord.corrections.decline")}</Button>
+          <Button variant="primary" disabled tabIndex={-1}>{t("entityRecord.corrections.approve")}</Button>
         </div>
         <div>
           <Button onClick={onClose} disabled={busy}>{t("common.back")}</Button>

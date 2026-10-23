@@ -88,7 +88,7 @@ test("identifier correction: a second person approves, requester applies, and a 
 
   await go(reviewer, "/");
   const queue = reviewer.getByRole("region", { name: "처리할 번호 정정 1건" });
-  await queue.getByRole("link", { name: "정정 요청 검토", exact: true }).click();
+  await queue.getByRole("link", { name: /정정 요청 검토$/ }).click();
   await expect(reviewer).toHaveURL(new RegExp(`correction=${requested.id}#identifier-corrections`));
   await expect(detail(reviewer)).toContainText(FORMATS.corpRegNo.display(REGISTRATION_FIXTURES.second.crn));
   await expectAccessible(reviewer, "identifier correction decision");
@@ -99,7 +99,7 @@ test("identifier correction: a second person approves, requester applies, and a 
   await detail(reviewer).getByRole("button", { name: "돌아가기", exact: true }).click();
 
   await go(admin, "/");
-  await admin.getByRole("region", { name: "처리할 번호 정정 1건" }).getByRole("link", { name: "승인된 정정 적용", exact: true }).click();
+  await admin.getByRole("region", { name: "처리할 번호 정정 1건" }).getByRole("link", { name: /승인된 정정 적용$/ }).click();
   await expect(detail(admin).getByRole("button", { name: "승인된 정정 적용", exact: true })).toBeVisible();
   const ready = register(admin).getByRole("row").filter({ hasText: FORMATS.corpRegNo.display(REGISTRATION_FIXTURES.second.crn) });
   await expect(ready).toContainText("승인됨 · 적용 대기");
