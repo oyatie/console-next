@@ -12,6 +12,8 @@ let page: Page;
 
 beforeAll(async () => {
   server = await createServer({
+    // Pre-bundle the page's deps: a cold cache otherwise re-optimizes mid-test and loads React twice.
+    optimizeDeps: { include: ["react", "react/jsx-dev-runtime", "react-dom/client", "intl-messageformat", "lucide-react", "react-aria-components"] },
     resolve: { dedupe: ["react", "react-dom"] },
     configFile: false, cacheDir: ".cache/server-picker-test", logLevel: "error",
     server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), realpathSync("node_modules/pretendard")] } },
