@@ -20,3 +20,12 @@ test("an illustrative open comment inside fenced code cannot hide later requirem
     { line: 5, endLine: 5, section: "Visible", summary: "Actual requirement" },
   ]);
 });
+
+test.each([
+  "Before <!<!-- nested -->-- hidden --> after",
+  "Before <<!-- overlapping -->!-- hidden --> after",
+])("stripping nested or overlapping comments cannot manufacture another opener: %s", (text) => {
+  expect(markdownBlocks(text)).toEqual([
+    { line: 1, endLine: 1, section: "", summary: "Before  after" },
+  ]);
+});

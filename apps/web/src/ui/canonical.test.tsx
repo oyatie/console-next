@@ -155,7 +155,7 @@ test("a record's photo is named when it stands for the person, an initial is dec
   const { Avatar } = await import("./avatar/avatar");
   expect(html(<Avatar name="김" />)).toContain('aria-hidden="true"');
   expect(html(<Avatar name="김" size="lg" fallbackAlt={x} />)).toMatch(/role="img" aria-label="x"/);
-  expect(html(<Avatar name="김" size="lg" src="/p.jpg" alt={y} />)).toMatch(/<img[^>]*alt="y"/);
+  expect(html(<Avatar name="김" size="lg" src="https://media.example/p.jpg" alt={y} />)).toMatch(/<img[^>]*alt="y"/);
 });
 
 test("a docked receipt is still one polite status region", async () => {

@@ -38,7 +38,12 @@ export function markdownBlocks(text) {
         line = line.slice(closing + 3);
         comment = false;
       }
-      line = line.replace(/<!--[\s\S]*?-->/g, "");
+      // Removing a comment can join its surrounding text into another comment.
+      let previous;
+      do {
+        previous = line;
+        line = line.replace(/<!--[\s\S]*?-->/g, "");
+      } while (line !== previous);
       const opening = line.indexOf("<!--");
       if (opening >= 0) { comment = true; line = line.slice(0, opening); }
       line = line.trim();

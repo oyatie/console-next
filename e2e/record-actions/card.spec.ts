@@ -193,6 +193,18 @@ test("setup phase: contacts, photo, entries and careers are added, edited, trace
   await expect(personal.getByText(/번호 입력·정정은 승인 절차/)).toBeVisible();
   await expect(admin.getByRole("region", { name: "문서" }).getByRole("button")).toHaveCount(0);
   await expectAccessible(admin, "personnel card, record actions");
+
+  // A refused photo URL names the missing photo in both the card head and the personal-facts row.
+  const personalUrl = `**/api/v1/employees/${w.personId}/personal-facts`;
+  await admin.route(personalUrl, async (route) => {
+    const response = await route.fetch();
+    const facts = await response.json();
+    await route.fulfill({ response, json: { ...facts, photo: { ...facts.photo, url: "javascript:alert(1)" } } });
+  });
+  await admin.reload();
+  await expect(admin.getByRole("img", { name: "사진 없음", exact: true })).toHaveCount(2);
+  await expect(admin.locator(`img[alt="${w.person} 사진"]`)).toHaveCount(0);
+  await admin.unroute(personalUrl);
 });
 
 test("after 운영 시작: the same 수정 is recorded as a correction and no hard delete is offered", { tag: "@record-actions" }, async ({ browser }) => {

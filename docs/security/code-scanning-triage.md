@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
 # Code-scanning triage
 
-Repository: `oyatie/console-next`. Initial inventory reviewed at `708adea2`; round-two implementation rebased onto public `dev` at `bfc65fc7` (after `385a97be`).
+Repository: `oyatie/console-next`. Initial inventory reviewed at `708adea2`; round three starts from PR #29 head `ba82d167`, replayed onto public `dev` at `70de61dc`.
 The GitHub API inventory on 2026-10-23 has **69 open alerts** from the brief's historical 70-alert set (#1–#70): #2 was already fixed upstream. The table retains all 70 numbers; #71 and #72 were already dismissed and are outside that set. No alert was dismissed by this change. False-positive verdicts below are proposed, evidence-backed dismissal reasons for the orchestrator; do not dismiss test findings automatically.
 
 **Merge requirement / PR body:** Disable GitHub CodeQL default setup when this advanced-setup workflow merges. The orchestrator owns that switch. Keep it disabled thereafter so the scheduled/push-only workflow is authoritative and CodeQL does not return to the per-PR tier. After the first successful advanced run, verify that no high/critical first-party runtime alert remains open; a new one blocks the release unit.
@@ -12,7 +12,7 @@ Bulk authorization now has process resource ceilings in `authz-rest/src/limits.r
 
 The other reported runtime allocations already reject more than 20 goals, 10 evidence entries or 200 mobile operations, or clamp inbox page size to 1–200. The named Rust cleartext sites are test assertions, including those in `src/lib.rs`; no production logging change or PII-gate exemption is warranted. Test-only dummy keys are retained as deterministic fixtures.
 
-Photos accept HTTPS, same-origin root-relative paths, blob URLs and base64 raster image data. HTTP is allowed only for loopback hosts (`127.0.0.1`, `::1`, `localhost`), preserving local presigned photo URLs. SVG/HTML data, active schemes, protocol-relative URLs and other HTTP hosts are refused. PDF previews accept local blob URLs. Both components use one allowlist. Initials use a separate missing-photo label and never reuse the photo label; the photo E2E asserts a real `img[alt]`.
+Photos accept HTTPS, same-origin root-relative paths, blob URLs and base64 raster image data. Absolute HTTP URLs are allowed only for loopback hosts (`127.0.0.1`, `::1`, `localhost`), preserving local presigned photo URLs. SVG/HTML data, active schemes, protocol-relative URLs and other HTTP hosts are refused. Every accepted URL, including a root-relative photo resolved against the browser origin, is returned from the parsed URL’s `href` after protocol/host checks. The unused DocumentPane, its tests and its seven catalog keys per locale were deleted; no production module imported it. The live certificate capture remains in CreateCertAside. Initials use a separate missing-photo label and never reuse the photo label; the photo E2E asserts a real `img[alt]`.
 
 Locations below are the original scanner locations, not post-patch line numbers. Reasons are at most 200 characters.
 
@@ -20,10 +20,10 @@ Locations below are the original scanner locations, not post-patch line numbers.
 | --- | --- | --- | --- | --- |
 | [#1](https://github.com/oyatie/console-next/security/code-scanning/1) | `js/redos` | `scripts/check-request-body-contract.mjs:641` | fixed in this PR | Parse Rust attributes with the existing delimiter scanner; the adversarial 32-attribute regression completes without backtracking. |
 | [#2](https://github.com/oyatie/console-next/security/code-scanning/2) | `js/identity-replacement` | `apps/web/src/features/people/ui/register-export.tsx:60` | false positive | Already fixed upstream at 90802a4: the as-of label uses fmtDate(todayKst()); no identity replacement remains. Alert is already closed. |
-| [#3](https://github.com/oyatie/console-next/security/code-scanning/3) | `js/xss-through-dom` | `apps/web/src/features/entity/ui/document-pane.tsx:65` | fixed in this PR | Route the locally minted PDF object URL through the shared document allowlist. |
-| [#4](https://github.com/oyatie/console-next/security/code-scanning/4) | `js/xss-through-dom` | `apps/web/src/features/entity/ui/document-pane.tsx:69` | fixed in this PR | Route the locally minted image object URL through the shared image allowlist. |
+| [#3](https://github.com/oyatie/console-next/security/code-scanning/3) | `js/xss-through-dom` | `apps/web/src/features/entity/ui/document-pane.tsx:65` | fixed in this PR | Delete the unused DocumentPane and its tests/catalog keys; no production import or PDF object sink remains. |
+| [#4](https://github.com/oyatie/console-next/security/code-scanning/4) | `js/xss-through-dom` | `apps/web/src/features/entity/ui/document-pane.tsx:69` | fixed in this PR | Delete the unused DocumentPane; live certificate capture uses CreateCertAside and is unaffected. |
 | [#5](https://github.com/oyatie/console-next/security/code-scanning/5) | `js/xss-through-dom` | `apps/web/src/ui/avatar/avatar.tsx:9` | fixed in this PR | Validate photo URLs once with the shared media allowlist; unsafe URLs render the accessible initial. |
-| [#6](https://github.com/oyatie/console-next/security/code-scanning/6) | `js/bad-tag-filter` | `scripts/backlog-sources.mjs:43` | fixed in this PR | Strip complete and unclosed multiline HTML comments while preserving source line numbers. |
+| [#6](https://github.com/oyatie/console-next/security/code-scanning/6) | `js/bad-tag-filter` | `scripts/backlog-sources.mjs:43` | fixed in this PR | Strip complete comments to a fixed point before tracking unclosed multiline comments; preserve source line numbers and fenced code. |
 | [#7](https://github.com/oyatie/console-next/security/code-scanning/7) | `js/incomplete-sanitization` | `e2e/entity-capture.spec.ts:23` | fixed in this PR | Escape every regular-expression metacharacter in the literal label prefix; add a browser regression. |
 | [#8](https://github.com/oyatie/console-next/security/code-scanning/8) | `js/biased-cryptographic-random` | `scripts/hygiene.test.ts:45` | fixed in this PR | Use crypto.randomInt for unbiased base-62 canary generation; the planted-token gate still detects it. |
 | [#9](https://github.com/oyatie/console-next/security/code-scanning/9) | `js/incomplete-url-substring-sanitization` | `scripts/check-korean-institutional-connectivity.mjs:389` | false positive | source_urls is an array; Array.includes compares the full URL string, so a different host containing the text cannot pass. |
@@ -89,6 +89,24 @@ Locations below are the original scanner locations, not post-patch line numbers.
 | [#69](https://github.com/oyatie/console-next/security/code-scanning/69) | `js/incomplete-sanitization` | `e2e/session-recovery.spec.ts:194` | fixed in this PR | Use a literal containment assertion on the copied value, avoiding dynamic regular-expression construction. |
 | [#70](https://github.com/oyatie/console-next/security/code-scanning/70) | `rust/cleartext-logging` | `backend/crates/platform/provisioning/tests/fixtures/ops_recovery.rs:38` | false positive | The reported sink is an assertion/panic in a test using synthetic users, IDs or response fixtures; no production data reaches a runtime log. |
 
+
+## Round-three PR alerts and verification
+
+The four new alerts below belong to `refs/pull/29/head`, separately from the 69 open default-branch alerts. #78 currently flags the sanitized `src={url}` sink (source: FileDrop's file input). Its proposed false-positive reason is recorded verbatim below for use only if a fresh CodeQL run retains the alert. No dismissal or scanner exemption is applied here.
+
+| Alert | Rule | Scanner location | Verdict | Reason |
+| --- | --- | --- | --- | --- |
+| [#75](https://github.com/oyatie/console-next/security/code-scanning/75) | `js/incomplete-multi-character-sanitization` | `scripts/backlog-sources.mjs:41` | fixed in this PR | Repeat complete-comment removal to a fixed point; nested/overlapping openers cannot survive a removal pass. Both adversarial regressions fail before the fix. |
+| [#76](https://github.com/oyatie/console-next/security/code-scanning/76) | `js/xss-through-dom` | `apps/web/src/features/entity/ui/document-pane.tsx:71` | fixed in this PR | Delete the dead DocumentPane, its tests and unused catalog entries; no production importer exists. |
+| [#77](https://github.com/oyatie/console-next/security/code-scanning/77) | `js/xss-through-dom` | `apps/web/src/features/entity/ui/document-pane.tsx:67` | fixed in this PR | Delete the dead DocumentPane, its tests and unused catalog entries; no production importer exists. |
+| [#78](https://github.com/oyatie/console-next/security/code-scanning/78) | `js/xss-through-dom` | `apps/web/src/ui/avatar/avatar.tsx:11` | false positive | img.src receives parsed URL.href after same-origin path, HTTPS, loopback HTTP, blob-origin or raster-data checks; active schemes and SVG/HTML data are refused. FileDrop mints blob URLs. |
+
+The comment loop follows the [CodeQL fixed-point recommendation](https://codeql.github.com/codeql-query-help/javascript/js-incomplete-multi-character-sanitization/). No fixed deployment origin is introduced. Browser-origin tests cover relative photos; the application mounts with `createRoot` and does not server-render Avatar.
+
+Fail-before worktree: `lanes/sec-scan-triage/round3-base` at `ba82d167`. The parsed-relative-URL tests across HTTPS, localhost HTTP and same-origin LAN HTTP, plus both nested/overlapping comment tests, fail on that base (5 failures). The personnel photo integration tests keep the real Avatar and render both CardHead and PhotoRow with missing, refused and valid photos. Independently deleting each caller’s `fallbackAlt` produces 2 failures while the valid-photo control passes (both mutations were reverted). The focused post-fix suite passes all 56 media/comment/personnel tests (75 including the canonical UI and triage checks). The existing record-actions browser journey also checks both missing-photo labels after a javascript: URL arrives in personal facts. Full E2E and the refreshed CodeQL run belong to the verifier/merge CI.
+
+Local checks: `npm run check` passed all 1,855 tests in 276 files, typecheck, lint, build, bundle budget and both secret scans, then stopped at the license-header script because the shared checkout's private `dev` has no merge base with public history. `node scripts/check-license-headers.mjs` fails identically at `ba82d167`; rerunning it with `public/dev` passes, and the remaining fixture-ID, package-license and three Node tests pass. CI's checkout creates `dev` from the public base and does not have this local ref mismatch. No shared branch was changed. `cargo fmt --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings` and `cargo check --workspace --tests` pass; ci.yml has no additional Clippy feature sets. The policy crate passes 9 unit and 12 DB tests with the lane's db.env. The 117 request-contract/ref/prototype tests and their three live census commands pass. All 13 backend gate binaries, Actionlint, quality/design ratchets and the file-size ratchet pass. The vendor gate was rerun after frontend tests removed their temporary directories and deletions were staged. Browser E2E is enumerated locally and left for the verifier; CodeQL must be rerun there.
+
 ## Files outside the brief owns
 
 These files are necessary callers, regression tests, contract fragments or regenerated outputs; no excluded lane file is changed. The file-size generator consolidates four inherited `baseline.d` contributions into `baseline.txt`.
@@ -123,3 +141,19 @@ These files are necessary callers, regression tests, contract fragments or regen
 - `scripts/codeql-workflow.test.ts`
 - `scripts/quality/baseline.json`
 - `scripts/request-body-contract-undecidable.json`
+
+Round three touches these 13 files outside the brief’s named source owns (all are required callers, tests, catalogs or generated baseline):
+
+- `apps/web/src/features/entity/ui/document-pane.test.tsx` (deleted)
+- `apps/web/src/features/entity/ui/entity.module.css`
+- `apps/web/src/features/people/ui/photo-accessibility.test.tsx`
+- `apps/web/src/lib/media-url.ts`
+- `apps/web/src/lib/media-url.test.ts`
+- `apps/web/src/ui/avatar/avatar.test.tsx`
+- `apps/web/src/ui/canonical.test.tsx`
+- `e2e/record-actions/card.spec.ts`
+- `packages/i18n/src/catalogs/en/entity.ts`
+- `packages/i18n/src/catalogs/ko/entity.ts`
+- `scripts/backlog-sources.test.ts`
+- `scripts/codeql-workflow.test.ts`
+- `scripts/ds-baseline.json` (regenerated with `node scripts/check-ds.mjs --lower`)
