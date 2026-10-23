@@ -159,3 +159,30 @@ test("diff mode checks a regular file changed to a symlink", (t) => {
   assert.equal(result.status, 1, result.stdout);
   assert.match(result.stderr, /environment/);
 });
+
+test("merge-queue diff mode uses the planner base without a local dev branch", (t) => {
+  const { dir, git, write, commit } = repository(t);
+  write("safe.txt"); commit();
+  const base = git("rev-parse", "HEAD").trim();
+  git("checkout", "-qb", "feature");
+  git("branch", "-D", "dev");
+  write(".env.refused"); commit();
+  const result = spawnSync(process.execPath, [new URL("./check-repo-files.mjs", import.meta.url).pathname], {
+    cwd: dir, encoding: "utf8", env: { ...process.env, CI_BASE_SHA: base, GITHUB_BASE_REF: "missing-ref" },
+  });
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /\.env\.refused.*environment/);
+  assert.doesNotMatch(result.stderr, /unknown revision|ambiguous argument/);
+});
+
+test("release dispatch with an empty planner base falls back to dev", (t) => {
+  const { dir, git, write, commit } = repository(t);
+  write("safe.txt"); commit();
+  git("checkout", "-qb", "feature");
+  write(".env.refused"); commit();
+  const result = spawnSync(process.execPath, [new URL("./check-repo-files.mjs", import.meta.url).pathname], {
+    cwd: dir, encoding: "utf8", env: { ...process.env, CI_BASE_SHA: "", GITHUB_BASE_REF: "" },
+  });
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /\.env\.refused.*environment/);
+});

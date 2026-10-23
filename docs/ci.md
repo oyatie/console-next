@@ -2,7 +2,8 @@
 # GitHub Actions proof
 
 `ci-ok` is the single required check for `dev`. Pull requests get affected proof;
-`merge_group` proves the full merge result before the merge queue can admit it.
+`merge_group` proves the affected merge result once per queue group. Dispatch `ci.yml`
+once for each release unit (the merged batch selected for release) for full proof.
 Local checks are useful feedback. Their results never replace the queue check.
 Forks use plain `pull_request`, a read-only token and no secrets. There is no
 `pull_request_target` path. Superseded PR runs are cancelled; queue runs finish.
@@ -18,7 +19,7 @@ Forks use plain `pull_request`, a read-only token and no secrets. There is no
 | `backend-test` | Non-DB library tests from the shared archive, using nextest `slice:` partitions |
 | `backend-db` | All remaining tests, including mixed SQLx library tests, from the shared archive, with an isolated PostgreSQL service per partition |
 | Five personal-data jobs | Existing classification, pii-no-logs, tenant-isolation, rls-arming and audit-coverage gate executables built once by `rust-build` |
-| `e2e-plan`, `e2e` | Existing duration bin packing, Chromium and Firefox; clock projects stay serial; first-run-solo is always in browser shard 1 |
+| `e2e-plan`, `e2e` | Existing duration bin packing; fast Chromium smoke/changed specs, full Chromium and Firefox per release unit; clock projects stay serial; first-run-solo is always in browser shard 1 |
 | `ci-ok` | Every required job succeeded; skips pass only when `plan` explicitly marked that job unnecessary |
 
 An npm consumer or backend change also needs the web build used by E2E. Every
@@ -60,8 +61,18 @@ the original blanket November 5 expiry. Hosted passing IDs must be removed too.
 Strict Clippy needs no baseline.
 
 Cargo.lock, toolchain manifests, package manifests/lock, migrations, OpenAPI,
-registry, third-party, scripts, ops and workflow changes force full proof. A docs-only
-PR runs plan/hygiene/ci-ok. A queue run always runs every proof job.
+registry, third-party, scripts, ops and workflow changes expand the affected set
+to the full workspace. A docs-only PR runs plan/hygiene/ci-ok. Queue runs use the
+same affected fast tier as PRs. Only a release-unit dispatch requests the full
+Chromium/Firefox suite; fast runs use Chromium, the configured smoke files and
+directly changed E2E specs. The planner is the only source for both tiers.
+
+Cut a release unit by dispatching `ci.yml` on the selected `dev` commit. The planner
+sets `tier=release`, selects every Cargo member and both configured browsers, and
+leaves `e2eFiles=null` for the complete inventory. Its `matrix.include` contract
+stays `{browser, project, files, shard, est}`; Rust partitions and both JUnit paths
+stay unchanged for test-speed consumers. The follow-up CI-TIERS promotion,
+scheduled battery and candidate scheduling work is tracked in the handoff.
 
 The reachability gate reads its debt-owner IDs from `registry/reach-units.json`,
 seeded from the unchanged cutover baseline. Existing reachability, stale-entry and
@@ -272,7 +283,18 @@ red baseline or lint exception was needed. Every set keeps `-D warnings`.
 Use the run's **Re-run failed jobs** for transient runner/network failures, or
 **Re-run all jobs** when validating shared artifacts and a complete queue result.
 If GitHub expires/rebuilds a merge group, re-enqueue the PR so the new merge SHA
-gets its own full proof. Never substitute local receipts or a previous SHA's green.
+gets its own affected proof. Never substitute local receipts or a previous SHA's green.
+
+## Availability notifications
+
+Deployment is GitOps. The deleted script-CD workflow and its tests stay deleted;
+`workflows-check` runs `scripts/ci.test.mjs` for the shared CI safety contract.
+Probe failures use `scripts/ci/notify-telegram.sh` and never send email. Set
+`PROBE_URL` and `CONSOLE_PUBLIC_HOST` as repository secrets and
+`CONSOLE_TELEGRAM_BOT_TOKEN` / `CONSOLE_TELEGRAM_CHAT_ID` as repository secrets
+or secrets in environment `probe`. After configuring them, set repository variable
+`PROBE_ENABLED=true`; until then both scheduled and manual probes stay skipped.
+Use **Run workflow** on `probe.yml` to verify access and the Telegram notice path.
 
 ## Owner applies the dev ruleset
 
@@ -282,21 +304,18 @@ push. Run from the repository checkout with the owner's administrative `gh` logi
 ```sh
 repo=oyatie/console-next
 gh api "repos/$repo/rulesets" --jq '.[] | {id,name,enforcement}'
-ruleset_id="$(gh api "repos/$repo/rulesets" --jq '.[] | select(.name == "dev-protected") | .id')"
-if [ -n "$ruleset_id" ]; then
-  gh api --method PUT "repos/$repo/rulesets/$ruleset_id" --input .github/rulesets/dev.json
-else
-  gh api --method POST "repos/$repo/rulesets" --input .github/rulesets/dev.json
-fi
-gh api "repos/$repo/rulesets" --jq '.[] | select(.name == "dev-protected") | .id' |
-  while read -r id; do gh api "repos/$repo/rulesets/$id"; done
+gh api --method PUT "repos/$repo/rulesets/25624651" --input .github/rulesets/dev.json
+gh api "repos/$repo/rulesets/25624651"
+gh api --method DELETE "repos/$repo/rulesets/25552233"
 ```
 
-The JSON requires PRs with **zero** approvals, the merge queue, GitHub Actions'
+After this lane merges, these commands replace the existing `dev-pr-only` ruleset
+and delete the disabled `push-restrictions` ruleset, which public source repositories
+cannot enforce. The JSON requires PRs with **zero** approvals, the merge queue, GitHub Actions'
 `ci-ok` context, resolved conversations, and blocks deletion/force push. Its empty
 bypass list applies to administrators too. Check other active org/repo rulesets
 for conflicting approval/direct-push rules before applying. Do not change Actions
-permissions, enable CD, or add an administrative check bypass to make a red pass.
+permissions or add an administrative check bypass to make a red pass.
 
 ## Post-flip proof receipt
 
@@ -311,34 +330,34 @@ cache counters and repository cache usage from the hosted runs:
 
 | Run | Before minutes | After minutes | Cache hit % | Total cache bytes | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| Cold full merge group | Unmeasured | Pending | Pending | Pending | Actions run URL + merge SHA |
-| Warm full merge group | Unmeasured | Pending | Pending | Pending | Actions run URL + merge SHA |
+| Cold release unit | Unmeasured | Pending | Pending | Pending | Actions dispatch URL + candidate SHA |
+| Warm release unit | Unmeasured | Pending | Pending | Pending | Actions dispatch URL + candidate SHA |
 | Docs-only PR | Unmeasured | Pending | Pending | Pending | plan + hygiene + ci-ok, proof jobs intentionally skipped |
 | One crate PR | Unmeasured | Pending | Pending | Pending | planned reverse dependencies + nextest selected packages + ci-ok |
 
 Verifier: run one generated shard per browser using the curated test topology;
 run two DB suites through the shared bootstrap/archive commands; confirm every SQLx
 suite appears in the DB inventory; exercise a failed rust-build whose dependent
-tests skip and verify ci-ok is red; then run the full merge group, inspect JUnit,
+tests skip and verify ci-ok is red; then dispatch the full release unit, inspect JUnit,
 traces, privacy controls, cache writes/size and required-check enforcement. The
 merge result in GitHub Actions is the final proof.
 
 ## Hosted verifier sequence
 
-1. Exercise a cold full merge group with no matching trusted caches. Record the
-   merge SHA, run URL, every job's duration, hit counts and total cache bytes from
+1. Dispatch a cold release unit with no matching trusted caches. Record the
+   candidate SHA, run URL, every job's duration, hit counts and total cache bytes from
    `ci-ok`. Check every SQLx suite is present in the DB inventory and both browsers
    report JUnit. Deliberately fail a build and confirm dependent skips make `ci-ok`
    fail. Inspect a failed browser shard's scanned trace artifact.
 2. After the successful queue result lands, the `push: dev` run seeds trusted
-   caches. Run another full merge group with unchanged locks/toolchain for the
-   warm comparison. Re-running a PR or merge group alone cannot warm caches:
-   those events restore only. Confirm total repository cache bytes remain below
+   caches. Dispatch again with unchanged locks/toolchain for the warm comparison.
+   Re-running a PR, merge group or dispatch alone cannot warm caches: those events
+   restore only. Confirm total repository cache bytes remain below
    `cacheBudgetBytes`; all artifacts use `retentionDays`.
 3. Open a docs-only PR: only plan, hygiene and the always-reporting `ci-ok` run.
    Then use a leaf Cargo gate crate change to show the affected crate selection,
-   skipped web/E2E jobs and a reporting `ci-ok`. Queueing either PR must force
-   the full proof on the merge SHA.
+   skipped web/E2E jobs and a reporting `ci-ok`. Queueing either PR must report
+   the same affected fast tier on the merge SHA; dispatch must expand to full proof.
 4. Reproduce `e2e-plan` locally, preserving its `E2E_TIMINGS_FILE` when available;
    set `SHARD` to one emitted matrix entry per browser, then run
    `node scripts/ci/e2e.mjs run` with the workflow's prebuilt artifacts/environment.
@@ -423,7 +442,7 @@ browser, cold/warm/docs-only/one-crate runs, actual amd64 disk/cache measurement
 and the owner-applied ruleset. No push, GitHub API call, ruleset application, live
 production inspection or sandbox browser run was performed. Probe additionally
 requires the existing workflow input secret `CONSOLE_PUBLIC_HOST`; Telegram uses
-`CONSOLE_TELEGRAM_BOT_TOKEN` / `CONSOLE_TELEGRAM_CHAT_ID`. CD remains opt-in and inert.
+`CONSOLE_TELEGRAM_BOT_TOKEN` / `CONSOLE_TELEGRAM_CHAT_ID`. Deployment is GitOps; the superseded script CD workflow and test stay deleted.
 
 ## Round 5 proof and scope
 
@@ -467,13 +486,13 @@ These support the workflow and its required proof (including the explicitly
 requested round-2 test topology/scanner). No excluded lane file was touched:
 
 - `.client-data-allow`, `.config/nextest.toml`
-- `.github/workflows/workflows-check.yml`
+- `.github/rulesets/dev.json`, `.github/workflows/workflows-check.yml`
 - `e2e/stack/compose.yml`, `e2e/stack/otel-collector.yml`
 - `package.json`, `playwright.config.ts`, `vitest.config.ts`
 - `scripts/backend-dev.mjs`, `scripts/client-data-scan.py`
-- `scripts/cd-workflow.test.mjs`
-- `scripts/ci.test.mjs`, `scripts/ci-privacy.test.mjs`, `scripts/ci-results.test.mjs`, `scripts/ci-regressions.test.mjs`
+- `scripts/ci.test.mjs`, `scripts/ci-cutover.test.mjs`, `scripts/ci-privacy.test.mjs`, `scripts/ci-results.test.mjs`, `scripts/ci-regressions.test.mjs`
 - `scripts/check-fixture-ids.mjs`, `scripts/check-fixture-ids.d.mts`, `scripts/fixture-synthetic-ranges.json`
+- `scripts/check-repo-files.mjs`, `scripts/check-repo-files.test.mjs`, `scripts/repo-files.policy.json`
 - `e2e/helpers/import.ts`, `e2e/helpers/import-layouts.ts`, `e2e/access-parity.spec.ts`
 - `e2e/parity/e3.ts`, `e2e/people-actions/register-run.spec.ts`
 - `scripts/ci/baseline.json`, `scripts/ci/test-results.py`, `scripts/ci/disk-budget.py`, `scripts/ci/rust-build.mjs`
@@ -488,6 +507,7 @@ requested round-2 test topology/scanner). No excluded lane file was touched:
 Relocation also updates these Rust-side readers/documentation outside the initial owns:
 
 - `backend/ci/gates/writer-ownership/canonical-enforce.sh`
+- `backend/ci/gates/file-size/baseline.txt` (regenerated)
 - `backend/ci/gates/writer-ownership/tests/census_executes_against_postgres.rs`
 - `backend/ci/gates/writer-ownership/tests/gate_detects_violation.rs`
 - `backend/crates/ontology/canonical-adapter-postgres/src/company.rs`

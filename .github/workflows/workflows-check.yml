@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-# Checks workflow changes with actionlint (with shellcheck) and the CD workflow's
-# safety properties.
+# Checks workflow syntax and the shared CI safety contract.
 name: workflows-check
 on:
   pull_request:
-    paths: [".github/**", "scripts/cd-workflow.test.mjs"]
+    paths: [".github/**", "scripts/ci*.mjs", "scripts/ci/**"]
   push:
     branches: [dev]
-    paths: [".github/**", "scripts/cd-workflow.test.mjs"]
+    paths: [".github/**", "scripts/ci*.mjs", "scripts/ci/**"]
 permissions: {}
 jobs:
   workflows:
@@ -32,7 +31,7 @@ jobs:
         with:
           node-version-file: package.json
           package-manager-cache: false
-      - name: CD workflow properties
+      - name: CI workflow properties
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
-          node --test scripts/cd-workflow.test.mjs scripts/ci.test.mjs
+          node --test scripts/ci.test.mjs
