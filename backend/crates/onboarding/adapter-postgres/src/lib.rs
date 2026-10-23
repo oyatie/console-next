@@ -47,7 +47,7 @@ pub enum PgOnboardingError {
 
 impl From<sqlx::Error> for PgOnboardingError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

@@ -36,6 +36,7 @@ const JOB_BUDGET: std::time::Duration = std::time::Duration::from_secs(30);
 
 fn timed_out() -> HrError {
     HrError {
+        errors: None,
         status: http::StatusCode::SERVICE_UNAVAILABLE,
         code: "bulk_job_timed_out",
         message: "the 발령 did not finish within 30 s and nothing was recorded; send it again"

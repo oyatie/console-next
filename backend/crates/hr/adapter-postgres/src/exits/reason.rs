@@ -42,7 +42,9 @@ pub(super) async fn confirmation_reason(
     let code = supplied.or(stored.as_deref()).ok_or_else(|| {
         super::guards::record_refusal(org, context.employee_id, "confirm", "exit_reason_required");
         HrError {
-            refusals: Some(serde_json::json!([{ "field": "exit_reason_code" }])),
+            refusals: Some(Box::new(
+                serde_json::json!([{ "field": "exit_reason_code" }]),
+            )),
             ..crate::lifecycle::title_reason::coded(
                 console_kernel_core::KernelError::validation(
                     "an exit reason is required for HR confirmation",

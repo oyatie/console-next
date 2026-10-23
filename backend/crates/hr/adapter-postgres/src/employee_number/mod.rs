@@ -38,6 +38,7 @@ pub(crate) fn audit(
 
 pub(crate) fn coded(status: http::StatusCode, code: &'static str, message: &str) -> HrError {
     HrError {
+        errors: None,
         status,
         code,
         message: message.to_owned(),

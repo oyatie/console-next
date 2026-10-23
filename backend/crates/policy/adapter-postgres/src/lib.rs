@@ -31,7 +31,7 @@ pub enum PgPolicyError {
 
 impl From<sqlx::Error> for PgPolicyError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 
@@ -40,10 +40,7 @@ impl PgPolicyError {
     pub const fn kind(&self) -> ErrorKind {
         match self {
             Self::Domain(error) => error.kind,
-            Self::Db(DbError::Sqlx(sqlx::Error::RowNotFound)) => ErrorKind::NotFound,
-            Self::Db(DbError::Sqlx(_))
-            | Self::Db(DbError::Serialize(_))
-            | Self::Db(DbError::CodeIssuance(_)) => ErrorKind::Internal,
+            Self::Db(error) => error.kind(),
         }
     }
 }

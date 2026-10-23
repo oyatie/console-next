@@ -21,14 +21,15 @@ use crate::directory::types::{EmployeeCreateWarning, NormalizedCreateEmployeeReq
 /// 409 `employee_number_taken`, naming the holder (any status).
 pub fn employee_number_taken(holder: Option<(Uuid, String)>) -> HrError {
     HrError {
+        errors: None,
         status: StatusCode::CONFLICT,
         code: "employee_number_taken",
         message: "employee number is already held by another employee".to_owned(),
-        refusals: Some(json!(
+        refusals: Some(Box::new(json!(
             holder
                 .map(|(id, status)| vec![json!({ "holder": { "id": id, "status": status } })])
                 .unwrap_or_default()
-        )),
+        ))),
     }
 }
 

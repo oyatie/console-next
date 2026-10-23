@@ -42,15 +42,14 @@ impl PgPayrollError {
     pub fn kind(&self) -> ErrorKind {
         match self {
             Self::Domain(err) => err.kind,
-            Self::Db(DbError::Sqlx(sqlx::Error::RowNotFound)) => ErrorKind::NotFound,
-            Self::Db(_) => ErrorKind::Internal,
+            Self::Db(error) => error.kind(),
         }
     }
 }
 
 impl From<sqlx::Error> for PgPayrollError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

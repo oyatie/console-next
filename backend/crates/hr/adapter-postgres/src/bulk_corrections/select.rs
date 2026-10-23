@@ -48,12 +48,15 @@ fn filters(selection: &BulkSelection) -> Result<EmployeeListFilters, HrError> {
 
 fn too_many(count: usize) -> HrError {
     HrError {
+        errors: None,
         status: http::StatusCode::UNPROCESSABLE_ENTITY,
         code: "bulk_selection_too_large",
         message: format!(
             "{count} employees are selected; one bulk correction takes at most {MAX_BULK_CORRECTION_ROWS}"
         ),
-        refusals: Some(serde_json::json!([{ "selected": count, "max": MAX_BULK_CORRECTION_ROWS }])),
+        refusals: Some(Box::new(
+            serde_json::json!([{ "selected": count, "max": MAX_BULK_CORRECTION_ROWS }]),
+        )),
     }
 }
 

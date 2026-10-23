@@ -94,6 +94,7 @@ pub fn validate_bulk_targets(
 /// employees than the confirmation showed; nothing was recorded.
 pub fn bulk_selection_changed(expected: usize, found: usize) -> HrError {
     HrError {
+        errors: None,
         status: StatusCode::CONFLICT,
         code: "bulk_selection_changed",
         message: format!(

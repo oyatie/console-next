@@ -45,6 +45,9 @@ impl RestError {
             ErrorKind::Conflict | ErrorKind::InvalidTransition => {
                 Self::new(StatusCode::CONFLICT, "conflict", e.message)
             }
+            ErrorKind::Unavailable => {
+                Self::new(StatusCode::SERVICE_UNAVAILABLE, "unavailable", e.message)
+            }
             ErrorKind::Internal => {
                 Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", e.message)
             }
@@ -71,6 +74,9 @@ impl RestError {
             ErrorKind::Forbidden => Self::new(StatusCode::FORBIDDEN, "forbidden", message),
             ErrorKind::Conflict | ErrorKind::InvalidTransition => {
                 Self::new(StatusCode::CONFLICT, "conflict", message)
+            }
+            ErrorKind::Unavailable => {
+                Self::new(StatusCode::SERVICE_UNAVAILABLE, "unavailable", message)
             }
             ErrorKind::Internal => {
                 Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", message)

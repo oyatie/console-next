@@ -39,7 +39,8 @@ pub(super) fn notice_refusal(missing: Vec<&'static str>) -> HrError {
         status: http::StatusCode::UNPROCESSABLE_ENTITY,
         code: "notice_evidence_missing",
         message: "written dismissal notice evidence is required".into(),
-        refusals: Some(json!([{ "missing": missing }])),
+        errors: None,
+        refusals: Some(Box::new(json!([{ "missing": missing }]))),
     }
 }
 pub(super) fn checked_notice(

@@ -45,7 +45,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use console_kernel_core::{AuditAction, AuditEvent, ErrorKind, KernelError, TraceContext};
+use console_kernel_core::{AuditAction, AuditEvent, KernelError, TraceContext};
 use console_payroll_adapter_postgres::{
     MyPayrollLinePage, PayrollRunDetail, PayrollRunPage, PayrollRunSummary, PgPayrollError,
     PgPayrollStore, get_run_in_tx, list_runs_in_tx,
@@ -383,19 +383,11 @@ impl RestError {
     }
 
     pub(crate) fn from_kernel(err: KernelError) -> Self {
-        match err.kind {
-            ErrorKind::Validation => {
-                Self::new(StatusCode::UNPROCESSABLE_ENTITY, "validation", err.message)
-            }
-            ErrorKind::NotFound => Self::new(StatusCode::NOT_FOUND, "not_found", err.message),
-            ErrorKind::Forbidden => Self::new(StatusCode::FORBIDDEN, "forbidden", err.message),
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => {
-                Self::new(StatusCode::CONFLICT, "conflict", err.message)
-            }
-            ErrorKind::Internal => {
-                Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", err.message)
-            }
-        }
+        Self::new(
+            StatusCode::from_u16(err.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            err.code.unwrap_or(err.kind.code()),
+            err.message,
+        )
     }
 
     pub(crate) fn from_store(err: PgPayrollError) -> Self {

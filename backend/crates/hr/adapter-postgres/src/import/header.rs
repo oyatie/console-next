@@ -42,6 +42,7 @@ pub fn employee_import_column(
 /// `workbook_not_xlsx` otherwise.
 pub fn check_employee_workbook(bytes: &[u8]) -> Result<(), HrError> {
     console_hr_domain::import::workbook::check_workbook_signature(bytes).map_err(|code| HrError {
+        errors: None,
         status: http::StatusCode::UNPROCESSABLE_ENTITY,
         code,
         message: match code {

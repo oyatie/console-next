@@ -18,7 +18,7 @@ export function RegisterPerson({ d, set, shown }: { d: Draft; set: Set; shown: R
   return (
     <div className={s.personRow}>
       <Field label={t("register.name")} required error={shown.has("name") ? t("register.err.name") : undefined}>
-        {(p) => <TextInput {...p} placeholder={t("register.name.placeholder")} value={d.name} onChange={(e) => set("name", e.target.value)} />}
+        {(p) => <TextInput {...p} name="name" placeholder={t("register.name.placeholder")} value={d.name} onChange={(e) => set("name", e.target.value)} />}
       </Field>
       <Field
         label={t("register.birth")}

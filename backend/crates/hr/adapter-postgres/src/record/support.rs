@@ -98,6 +98,7 @@ pub(crate) async fn target(
 
 pub(crate) fn single_entry_exists(section: Section) -> HrError {
     HrError {
+        errors: None,
         status: http::StatusCode::CONFLICT,
         code: "record_single_entry_exists",
         message: format!(

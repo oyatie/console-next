@@ -210,7 +210,7 @@ pub fn refused(result: Result<impl std::fmt::Debug, HrError>) -> (u16, &'static 
     (
         err.status.as_u16(),
         err.code,
-        err.refusals.unwrap_or_default(),
+        *err.refusals.unwrap_or_default(),
     )
 }
 

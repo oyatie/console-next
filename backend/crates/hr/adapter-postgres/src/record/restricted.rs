@@ -33,6 +33,7 @@ pub struct RecordPurpose {
 
 fn refused(status: StatusCode, code: &'static str, message: &str) -> HrError {
     HrError {
+        errors: None,
         status,
         code,
         message: message.to_owned(),

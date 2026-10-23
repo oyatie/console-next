@@ -16,23 +16,28 @@ pub struct HrError {
     pub status: StatusCode,
     pub code: &'static str,
     pub message: String,
+    pub errors: Option<Vec<FieldError>>,
     /// Per-item refusals of an all-or-nothing batch (`error.refusals`).
-    pub refusals: Option<Value>,
+    /// Boxed so the shared error stays small on every command's return path.
+    pub refusals: Option<Box<Value>>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct FieldError {
+    pub field: String,
+    pub code: &'static str,
 }
 
 impl HrError {
     pub fn from_kernel(error: KernelError) -> Self {
-        let status = match error.kind {
-            ErrorKind::Validation => StatusCode::UNPROCESSABLE_ENTITY,
-            ErrorKind::NotFound => StatusCode::NOT_FOUND,
-            ErrorKind::Forbidden => StatusCode::FORBIDDEN,
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => StatusCode::CONFLICT,
-            ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-        };
+        let status =
+            StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        let code = error.code.unwrap_or_else(|| error.kind.code());
         Self {
             status,
-            code: error_code(error.kind),
+            code,
             message: error.message,
+            errors: error.field.map(|field| vec![FieldError { field, code }]),
             refusals: None,
         }
     }
@@ -44,6 +49,7 @@ impl HrError {
     /// 422 `lifecycle_signoff_required`: the named ack is missing for the event.
     pub fn signoff_required(ack: &str, event_type: &str) -> Self {
         Self {
+            errors: None,
             status: StatusCode::UNPROCESSABLE_ENTITY,
             code: "lifecycle_signoff_required",
             message: format!("{ack} is required for {event_type}"),
@@ -55,13 +61,14 @@ impl HrError {
     /// cannot take the change; nothing was written. `refusals` names each one.
     pub fn bulk_refused(refusals: Vec<Value>, requested: usize) -> Self {
         Self {
+            errors: None,
             status: StatusCode::UNPROCESSABLE_ENTITY,
             code: "bulk_lifecycle_refused",
             message: format!(
                 "{} of {requested} employees cannot take this change; nothing was recorded",
                 refusals.len()
             ),
-            refusals: Some(Value::Array(refusals)),
+            refusals: Some(Box::new(Value::Array(refusals))),
         }
     }
 
@@ -70,13 +77,14 @@ impl HrError {
     /// written. `refusals` names each event and why.
     pub fn schedule_conflict(refusals: Vec<Value>) -> Self {
         Self {
+            errors: None,
             status: StatusCode::CONFLICT,
             code: "lifecycle_schedule_conflict",
             message: format!(
                 "{} scheduled lifecycle events would no longer apply after this change; cancel or change them first",
                 refusals.len()
             ),
-            refusals: Some(Value::Array(refusals)),
+            refusals: Some(Box::new(Value::Array(refusals))),
         }
     }
 
@@ -84,6 +92,7 @@ impl HrError {
     /// stand in `status` because of an earlier scheduled event.
     pub fn scheduled_state(status: &str, date: &str, event_type: &str) -> Self {
         Self {
+            errors: None,
             status: StatusCode::CONFLICT,
             code: "lifecycle_scheduled_state",
             message: format!(
@@ -96,6 +105,7 @@ impl HrError {
     /// 422 `lifecycle_noop`: the event would change nothing.
     pub fn lifecycle_noop(event_type: &str) -> Self {
         Self {
+            errors: None,
             status: StatusCode::UNPROCESSABLE_ENTITY,
             code: "lifecycle_noop",
             message: format!("{event_type} would not change the employee"),
@@ -105,6 +115,7 @@ impl HrError {
 
     pub fn workbook(message: impl Into<String>) -> Self {
         Self {
+            errors: None,
             status: StatusCode::UNPROCESSABLE_ENTITY,
             code: "workbook",
             message: message.into(),
@@ -114,6 +125,7 @@ impl HrError {
 
     pub fn internal(message: impl Into<String>) -> Self {
         Self {
+            errors: None,
             status: StatusCode::INTERNAL_SERVER_ERROR,
             code: "internal",
             message: message.into(),
@@ -123,6 +135,7 @@ impl HrError {
 
     pub fn unavailable(message: impl Into<String>) -> Self {
         Self {
+            errors: None,
             status: StatusCode::SERVICE_UNAVAILABLE,
             code: "service_unavailable",
             message: message.into(),
@@ -164,19 +177,20 @@ impl From<DbError> for HrError {
             && db.constraint() == Some(EMPLOYEE_NUMBER_INDEX)
         {
             return Self {
+                errors: None,
                 status: StatusCode::CONFLICT,
                 code: "employee_number_taken",
                 message: "another employee, or a cancelled registration, already holds this employee number".into(),
                 refusals: None,
             };
         }
-        // No pooled connection in time is overload, not a fault (decisions #28):
-        // 503, and the app's redact layer adds Retry-After on this exact text.
-        if matches!(value, DbError::Sqlx(sqlx::Error::PoolTimedOut)) {
+        // Pool and connection failures are overload, not application faults (decisions #28).
+        if matches!(value, DbError::Unavailable(_)) {
             return Self {
+                errors: None,
                 status: StatusCode::SERVICE_UNAVAILABLE,
                 code: "unavailable",
-                message: sqlx::Error::PoolTimedOut.to_string(),
+                message: "service temporarily unavailable".into(),
                 refusals: None,
             };
         }
@@ -187,7 +201,7 @@ impl From<DbError> for HrError {
 
 impl From<sqlx::Error> for HrError {
     fn from(value: sqlx::Error) -> Self {
-        HrError::from(DbError::Sqlx(value))
+        HrError::from(DbError::from(value))
     }
 }
 
@@ -246,16 +260,5 @@ impl From<employment::EmploymentError> for HrError {
             // variant fails loud rather than as a wrong HTTP status.
             other => Self::from_kernel(KernelError::internal(other.to_string())),
         }
-    }
-}
-
-fn error_code(kind: ErrorKind) -> &'static str {
-    match kind {
-        ErrorKind::Validation => "validation",
-        ErrorKind::NotFound => "not_found",
-        ErrorKind::Forbidden => "forbidden",
-        ErrorKind::Conflict => "conflict",
-        ErrorKind::InvalidTransition => "invalid_transition",
-        ErrorKind::Internal => "internal",
     }
 }

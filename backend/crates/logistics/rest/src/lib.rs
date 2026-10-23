@@ -11,7 +11,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::post,
 };
-use console_kernel_core::{BranchId, BranchScope, ErrorKind, KernelError};
+use console_kernel_core::{BranchId, BranchScope, KernelError};
 use console_logistics_adapter_postgres::{PgLogisticsError, PgLogisticsStore};
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::{Action, Feature, Principal, authorize, authorize_org_wide};
@@ -448,19 +448,11 @@ impl RestError {
         }
     }
     fn kernel(e: KernelError) -> Self {
-        match e.kind {
-            ErrorKind::Validation => {
-                Self::new(StatusCode::UNPROCESSABLE_ENTITY, "validation", e.message)
-            }
-            ErrorKind::NotFound => Self::new(StatusCode::NOT_FOUND, "not_found", e.message),
-            ErrorKind::Forbidden => Self::new(StatusCode::FORBIDDEN, "forbidden", e.message),
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => {
-                Self::new(StatusCode::CONFLICT, "conflict", e.message)
-            }
-            ErrorKind::Internal => {
-                Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", e.message)
-            }
-        }
+        Self::new(
+            StatusCode::from_u16(e.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            e.code.unwrap_or(e.kind.code()),
+            e.message,
+        )
     }
     fn store(e: PgLogisticsError) -> Self {
         match e {

@@ -119,7 +119,7 @@ pub enum PgGovernanceError {
 
 impl From<sqlx::Error> for PgGovernanceError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

@@ -83,17 +83,18 @@ pub async fn lifecycle_change_mode(
 /// 법인; that move is a 전적 (decisions #30). Nothing is written.
 fn cross_entity(field: &str, value: Uuid, from: Uuid, to: Uuid) -> HrError {
     HrError {
+        errors: None,
         status: StatusCode::UNPROCESSABLE_ENTITY,
         code: "transfer_cross_entity",
         message: "a transfer stays inside the employee's 법인; moving to another 법인 is a 전적"
             .to_owned(),
-        refusals: Some(json!([{
+        refusals: Some(Box::new(json!([{
             "field": field,
             "code": "transfer_cross_entity",
             "value": value,
             "from_legal_entity_id": from,
             "to_legal_entity_id": to,
-        }])),
+        }]))),
     }
 }
 

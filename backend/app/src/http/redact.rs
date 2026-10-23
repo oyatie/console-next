@@ -7,10 +7,10 @@
 //!   the envelope (`/readyz`'s dependency report) passes untouched.
 //! * A `text/plain` error (an axum extractor rejection such as malformed JSON,
 //!   or a panic) becomes the JSON envelope `{"error":{code,message}}`.
-//! * A connection-pool timeout is overload, not a fault: 503 + `Retry-After`
+//! * A typed connection-pool timeout is overload, not a fault: 503 + `Retry-After`
 //!   (no other 503 gets the header: "not configured" is not transient). It is
-//!   seen by sqlx's text, or by a `with_*` database helper inside the request
-//!   timing out (`watch_pool_timeouts`) where a crate answered an opaque 500.
+//!   seen by a database helper inside the request timing out
+//!   (`watch_pool_timeouts`) where a crate answered an opaque 500.
 //!
 //! Mounted inside `error_i18n::localize`, so the Korean layer translates the
 //! generic message by code.
@@ -24,11 +24,6 @@ use serde_json::{Map, Value, json};
 
 use crate::error_i18n::buffer_small_body;
 use crate::http::overload::RETRY_AFTER_SECS;
-
-// sqlx's `PoolTimedOut` reaches here only as text, through ~48
-// per-crate `From<sqlx::Error>` impls; matching the Display text is the one
-// place that sees them all. Upgrade path: a typed `DbError::Unavailable`.
-const POOL_TIMED_OUT: &str = "pool timed out while waiting for an open connection";
 
 /// The client-facing text for a 5xx status.
 fn generic_message(status: StatusCode) -> &'static str {
@@ -98,7 +93,7 @@ fn rewrite(
         None if json => String::new(),
         None => String::from_utf8_lossy(bytes).trim().to_owned(),
     };
-    let retry = status.is_server_error() && (pool_timed_out || original.contains(POOL_TIMED_OUT));
+    let retry = status.is_server_error() && pool_timed_out;
     let status = if retry {
         error.insert("code".into(), "unavailable".into());
         StatusCode::SERVICE_UNAVAILABLE
@@ -199,17 +194,6 @@ mod tests {
         assert_eq!(json["error"]["code"], "bad_gateway");
     }
 
-    #[test]
-    fn a_pool_timeout_is_a_503_unavailable() {
-        let body = format!(
-            r#"{{"error":{{"code":"internal","message":"database error: {POOL_TIMED_OUT}"}}}}"#
-        );
-        let (status, json) = run(StatusCode::INTERNAL_SERVER_ERROR, true, &body);
-        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
-        assert_eq!(json["error"]["code"], "unavailable");
-        assert_eq!(json["error"]["message"], "service temporarily unavailable");
-    }
-
     /// regression (PERF-BE): a crate that maps the session check's pool
     /// timeout to an opaque 500 (`/org-structure`: code `internal`, no text)
     /// answered 500 under load; the request's helper timeout makes it a shed.
@@ -260,21 +244,21 @@ mod tests {
 
     #[test]
     fn a_pool_timeout_alone_earns_retry_after_and_readyz_is_untouched() {
-        let pool = format!(r#"{{"error":{{"code":"internal","message":"{POOL_TIMED_OUT}"}}}}"#);
-        let check = |body: &str| {
+        let pool = r#"{"error":{"code":"internal","message":"internal server error"}}"#;
+        let check = |body: &str, timed_out| {
             rewrite(
                 StatusCode::SERVICE_UNAVAILABLE,
-                (true, false),
+                (true, timed_out),
                 body.as_bytes(),
                 String::new,
             )
         };
-        assert!(check(&pool).unwrap().retry);
+        assert!(check(pool, true).unwrap().retry);
         let unconfigured =
             r#"{"error":{"code":"service_unavailable","message":"x is not configured"}}"#;
-        assert!(!check(unconfigured).unwrap().retry);
+        assert!(!check(unconfigured, false).unwrap().retry);
         // /readyz reports its dependencies in its own 503 body: not an envelope.
-        assert!(check(r#"{"status":"not_ready","database":"unreachable"}"#).is_none());
+        assert!(check(r#"{"status":"not_ready","database":"unreachable"}"#, false).is_none());
     }
 
     #[test]

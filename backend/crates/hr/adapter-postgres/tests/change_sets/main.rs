@@ -166,7 +166,7 @@ fn wire(e: console_hr_adapter_postgres::HrError) -> (u16, String, Value) {
     (
         e.status.as_u16(),
         e.code.to_owned(),
-        e.refusals.unwrap_or(Value::Null),
+        *e.refusals.unwrap_or_default(),
     )
 }
 

@@ -118,6 +118,7 @@ impl HrService {
             // is refused and bulk corrections take entry ids from the
             // purposed one-by-one read.
             return Err(HrError {
+                errors: None,
                 status: http::StatusCode::CONFLICT,
                 code: "record_restricted_export_unavailable",
                 message: "a restricted section cannot be exported as a sheet".to_owned(),

@@ -75,6 +75,7 @@ async fn require_employee(
 
 fn unavailable() -> HrError {
     HrError {
+        errors: None,
         status: http::StatusCode::SERVICE_UNAVAILABLE,
         code: "rrn_vault_unavailable",
         message: "resident registration numbers cannot be opened on this server".to_owned(),

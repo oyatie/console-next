@@ -55,7 +55,7 @@ impl From<sqlx::Error> for PgOntologyError {
             }
         }
 
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

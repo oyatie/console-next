@@ -175,6 +175,7 @@ pub async fn withdraw_settlement_case(
 #[must_use]
 pub fn follows_group_transfer() -> HrError {
     HrError {
+        errors: None,
         status: StatusCode::CONFLICT,
         code: "exit_case_follows_group_transfer",
         message: "this exit case is the sending legal entity's side of a group transfer; withdraw or rescind the group transfer instead".to_owned(),

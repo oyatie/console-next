@@ -254,6 +254,7 @@ impl HrService {
                 let planned = plan(tx, org, section, &request.rows, g.as_ref()).await?;
                 if planned.digest != expected {
                     return Err(HrError {
+                        errors: None,
                         status: http::StatusCode::CONFLICT,
                         code: "record_import_plan_changed",
                         message: "the sheet or the records changed since the preview; preview again".to_owned(),

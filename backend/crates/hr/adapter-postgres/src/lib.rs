@@ -4,7 +4,7 @@
 
 // --- lane: R2 shared ---
 mod error;
-pub use error::HrError;
+pub use error::{FieldError, HrError};
 mod service;
 pub use service::HrService;
 pub mod authz;

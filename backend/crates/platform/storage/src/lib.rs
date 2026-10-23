@@ -53,7 +53,7 @@ pub enum StorageError {
 
 impl From<sqlx::Error> for StorageError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

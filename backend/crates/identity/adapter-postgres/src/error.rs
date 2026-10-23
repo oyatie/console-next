@@ -15,7 +15,6 @@ impl PgOrgError {
     pub fn kind(&self) -> ErrorKind {
         match self {
             Self::Domain(error) => error.kind,
-            Self::Db(DbError::Sqlx(sqlx::Error::RowNotFound)) => ErrorKind::NotFound,
             Self::Db(DbError::Sqlx(sqlx::Error::Database(error)))
                 if error.code().is_some_and(|code| code == "23505") =>
             {
@@ -27,13 +26,13 @@ impl PgOrgError {
             {
                 ErrorKind::Validation
             }
-            Self::Db(_) => ErrorKind::Internal,
+            Self::Db(error) => error.kind(),
         }
     }
 }
 
 impl From<sqlx::Error> for PgOrgError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }

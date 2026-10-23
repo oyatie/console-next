@@ -22,7 +22,7 @@ pub enum PgOrgChangeError {
 
 impl From<sqlx::Error> for PgOrgChangeError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 
@@ -32,7 +32,6 @@ impl PgOrgChangeError {
         match self {
             Self::Domain(e) | Self::Frozen(e) => e.kind,
             Self::PreflightBlocked(_) => ErrorKind::Conflict,
-            Self::Db(DbError::Sqlx(sqlx::Error::RowNotFound)) => ErrorKind::NotFound,
             Self::Db(DbError::Sqlx(sqlx::Error::Database(e)))
                 // unique violation (idempotency/code race), CHECK violation
                 // (gov_approvals self-approval), FK violation (referential net)
@@ -40,7 +39,7 @@ impl PgOrgChangeError {
             {
                 ErrorKind::Conflict
             }
-            Self::Db(_) => ErrorKind::Internal,
+            Self::Db(error) => error.kind(),
         }
     }
 

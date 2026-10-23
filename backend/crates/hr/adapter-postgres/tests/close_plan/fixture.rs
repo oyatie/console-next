@@ -182,7 +182,7 @@ pub async fn exited(owner: &PgPool, people: &[Uuid]) {
 pub fn named(e: &HrError) -> Vec<(String, String)> {
     let mut out: Vec<(String, String)> = e
         .refusals
-        .as_ref()
+        .as_deref()
         .and_then(Value::as_array)
         .map(|rs| {
             rs.iter()

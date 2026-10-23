@@ -1,16 +1,51 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "@console/api";
-import { t } from "@console/i18n";
+import { isMessageId, t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { Banner } from "../../ui/banner/banner";
 import { Button } from "../../ui/button/button";
 import { Chip } from "../../ui/chip";
+import { ErrorSummary, type ErrorSummaryItem } from "../../ui/error-summary";
 import { failureText } from "../refusal";
 import { outcomeUnknown, recoveryOf } from "./command";
+import { OutcomeLink } from "./outcome-link";
+
+type FieldRefusal = {
+  field: string;
+  code: string;
+};
+
+function CommandReference({ requestKey, operationId }: { requestKey?: string; operationId?: string }) {
+  return (
+    <>
+      {requestKey && <p><OutcomeLink id={requestKey} /></p>}
+      {operationId && <div className="muted">{t("common.operationId")} <span className="code">{operationId}</span></div>}
+    </>
+  );
+}
+
+/** Extracts field-level validation refusals from an API or boundary error. */
+function extractFieldErrors(error: unknown): FieldRefusal[] {
+  return error instanceof ApiError && error.status === 422
+    ? error.errors.filter((item) => Boolean(item.field))
+    : [];
+}
 
 /** A command's refusal, uncertainty remedy and authorized latest-change metadata. */
-export function CommandError({ error, children, own, historyHref, fieldLabel, live, recover = true }: {
+export function CommandError({
+  error,
+  children,
+  own,
+  historyHref,
+  fieldLabel,
+  fieldReason,
+  live,
+  recover = true,
+  onFocusField,
+  formId,
+  formFields,
+}: {
   error: unknown;
   /** False where the screen offers the uncertain command's recovery itself (its own button or its submit). */
   recover?: boolean;
@@ -19,7 +54,11 @@ export function CommandError({ error, children, own, historyHref, fieldLabel, li
   /** The caller's record-history route; never shown for redacted metadata. */
   historyHref?: string;
   fieldLabel?: (field: string) => string | null | undefined;
+  fieldReason?: (field: string, code: string) => string | undefined;
   live?: "polite" | "assertive";
+  onFocusField?: (field: string) => void;
+  formId?: string;
+  formFields?: string[];
 }) {
   if (!error) return null;
   const api = error instanceof ApiError ? error : undefined;
@@ -32,6 +71,39 @@ export function CommandError({ error, children, own, historyHref, fieldLabel, li
   const unnamed = (fields?.length ?? 0) - knownFields.length;
   const labels = [...knownFields, ...(unnamed ? [t("requestOutcome.fieldsOther", { count: unnamed })] : [])];
   const actor = change?.actor_kind === "SYSTEM" ? t("timeline.system") : change?.actor_name ?? t("requestOutcome.other");
+
+  const fieldErrors = extractFieldErrors(error);
+  if (fieldErrors.length > 0) {
+    const summaryItems: ErrorSummaryItem[] = fieldErrors.map((fe) => {
+      const mine = own?.(fe.code);
+      const label = fe.field ? fieldLabel?.(fe.field) : undefined;
+      const byCode = `common.failed.code.${fe.code}`;
+      const outcome = `requestOutcome.code.${fe.code}`;
+      const fallback = fieldReason?.(fe.field, fe.code) ?? t("common.failed.code.validation");
+      const codeText = mine ?? (isMessageId(byCode) ? t(byCode) : isMessageId(outcome) ? t(outcome) : fallback);
+      const message = label && !codeText.includes(label) ? `${label}: ${codeText}` : codeText;
+      return {
+        field: fe.field,
+        code: fe.code,
+        message,
+      };
+    });
+
+    return (
+      <ErrorSummary
+        errors={summaryItems}
+        title={t("common.validation.title")}
+        focusKey={error}
+        formId={formId}
+        formFields={formFields}
+        onFocusField={onFocusField}
+      >
+        {children}
+        <CommandReference requestKey={key} operationId={api?.operationId} />
+      </ErrorSummary>
+    );
+  }
+
   return (
     <Banner tone={checking ? "info" : "danger"} live={live ?? (checking ? "polite" : "assertive")} title={checking ? t("requestOutcome.checking") : undefined}
       actions={finish && <Button variant="primary" onClick={finish}>{t("requestOutcome.check")}</Button>}>
@@ -46,8 +118,8 @@ export function CommandError({ error, children, own, historyHref, fieldLabel, li
         {historyHref && change.audit_id && <p><Link to={historyHref as "/"}>{t("requestOutcome.history")}</Link></p>}
       </>)}
       {children}
-      {key && <p><Link to="/requests/$id" params={{ id: key }}>{t("requestOutcome.open")}</Link></p>}
-      {api?.operationId && <div className="muted">{t("common.operationId")} <span className="code">{api.operationId}</span></div>}
+      <CommandReference requestKey={key} operationId={api?.operationId} />
     </Banner>
   );
 }
+

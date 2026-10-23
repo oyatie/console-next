@@ -29,7 +29,7 @@ pub enum PgIntegrityError {
 
 impl From<sqlx::Error> for PgIntegrityError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 
@@ -38,8 +38,7 @@ impl PgIntegrityError {
     pub const fn kind(&self) -> ErrorKind {
         match self {
             Self::Domain(e) => e.kind,
-            Self::Db(DbError::Sqlx(sqlx::Error::RowNotFound)) => ErrorKind::NotFound,
-            Self::Db(_) => ErrorKind::Internal,
+            Self::Db(error) => error.kind(),
         }
     }
 }

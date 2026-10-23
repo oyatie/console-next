@@ -21,6 +21,7 @@ use crate::import::sheet::{SheetContext, sheet_rows};
 
 fn unprocessable(code: &'static str, message: String) -> HrError {
     HrError {
+        errors: None,
         status: http::StatusCode::UNPROCESSABLE_ENTITY,
         code,
         message,

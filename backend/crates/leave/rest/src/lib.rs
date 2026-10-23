@@ -23,7 +23,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use console_kernel_core::{
-    BranchScope, Date, ErrorKind, KernelError, LeaveRequestId, Timestamp, TraceContext, UserId,
+    BranchScope, Date, KernelError, LeaveRequestId, Timestamp, TraceContext, UserId,
 };
 use console_leave_adapter_postgres::{PgLeaveError, PgLeaveStore};
 use console_leave_application::{
@@ -840,19 +840,11 @@ impl RestError {
     }
 
     fn from_kernel(err: KernelError) -> Self {
-        match err.kind {
-            ErrorKind::Validation => {
-                Self::new(StatusCode::UNPROCESSABLE_ENTITY, "validation", err.message)
-            }
-            ErrorKind::NotFound => Self::new(StatusCode::NOT_FOUND, "not_found", err.message),
-            ErrorKind::Forbidden => Self::new(StatusCode::FORBIDDEN, "forbidden", err.message),
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => {
-                Self::new(StatusCode::CONFLICT, "conflict", err.message)
-            }
-            ErrorKind::Internal => {
-                Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", err.message)
-            }
-        }
+        Self::new(
+            StatusCode::from_u16(err.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            err.code.unwrap_or(err.kind.code()),
+            err.message,
+        )
     }
 
     fn from_store(err: PgLeaveError) -> Self {

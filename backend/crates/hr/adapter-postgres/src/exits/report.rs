@@ -239,14 +239,15 @@ pub(crate) async fn exit_case_open(
     .fetch_one(tx.as_mut())
     .await?;
     Ok(HrError {
+        errors: None,
         status: StatusCode::CONFLICT,
         code: "exit_case_open",
         message: "the employee already has an open exit case".to_owned(),
-        refusals: Some(json!([{
+        refusals: Some(Box::new(json!([{
             "case_id": case_id,
             "reported_by": reported_by,
             "reported_at": reported_at.format(&time::format_description::well_known::Rfc3339)
                 .map_err(|_| HrError::internal("exit case timestamp is not representable"))?,
-        }])),
+        }]))),
     })
 }

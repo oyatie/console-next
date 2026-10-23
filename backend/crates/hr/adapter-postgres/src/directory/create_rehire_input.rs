@@ -102,12 +102,13 @@ pub(super) fn validate_period(exit: Option<&str>, hire: &str) -> Result<(), HrEr
     let exit_date = exit.map(parse_yyyy_mm_dd).transpose()?;
     console_hr_domain::lifecycle::rehire::check_rehire_date(hire_date, exit_date).map_err(|error| {
         HrError {
+            errors: None,
             status: http::StatusCode::UNPROCESSABLE_ENTITY,
             code: error.code.unwrap_or("validation"),
             message: error.message,
-            refusals: Some(
+            refusals: Some(Box::new(
                 serde_json::json!([{ "field": "hire_date", "exit_date": exit, "hire_date": hire }]),
-            ),
+            )),
         }
     })
 }

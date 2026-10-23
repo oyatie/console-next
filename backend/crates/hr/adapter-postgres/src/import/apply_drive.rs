@@ -184,6 +184,7 @@ impl HrService {
                 (Ok(Checked::Replay(_)), _) => {}
                 (Ok(Checked::Apply(_)), None) => {
                     let error = HrError {
+                        errors: None,
                         status: http::StatusCode::CONFLICT,
                         code: "apply_interrupted",
                         message: "the apply stopped before it wrote anything; send it again".into(),

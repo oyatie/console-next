@@ -33,13 +33,7 @@ impl IntoResponse for RestError {
 }
 
 fn status(kind: ErrorKind) -> StatusCode {
-    match kind {
-        ErrorKind::Validation => StatusCode::UNPROCESSABLE_ENTITY,
-        ErrorKind::NotFound => StatusCode::NOT_FOUND,
-        ErrorKind::Forbidden => StatusCode::FORBIDDEN,
-        ErrorKind::Conflict | ErrorKind::InvalidTransition => StatusCode::CONFLICT,
-        ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-    }
+    StatusCode::from_u16(kind.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 impl From<PgOnboardingError> for RestError {
@@ -52,6 +46,14 @@ impl From<PgOnboardingError> for RestError {
                 remedy,
                 details,
             } => Self(status(kind), code, code.to_owned(), fields, remedy, details),
+            PgOnboardingError::Db(e) if e.is_unavailable() => Self(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "unavailable",
+                "onboarding database unavailable".into(),
+                vec![],
+                None,
+                None,
+            ),
             PgOnboardingError::Db(e) => {
                 tracing::error!(error = %e, "onboarding store error");
                 Self(

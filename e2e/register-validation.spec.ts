@@ -61,3 +61,33 @@ for (const width of [1280, 390]) {
     expect(creates.count()).toBe(1);
   });
 }
+
+test("a named server refusal focuses once and its summary link returns to the field", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
+  const admin = await soloTenant(browser, "reg-server-field", "서버검증");
+  await setupCompany(admin, "서버검증", "본사");
+  await go(admin, "/people/new");
+  // The client accepts a non-empty name; the real server enforces its text bound.
+  await fillRegister(admin, { name: "김".repeat(201), hired: kstDate() });
+  const refused = admin.waitForResponse((response) => response.url().endsWith("/api/v1/employees") && response.request().method() === "POST");
+  await pressRegister(admin);
+  const response = await refused;
+  expect(response.status()).toBe(422);
+  const body = await response.json();
+  expect(body.error.errors).toEqual([{ field: "name", code: "validation" }]);
+  expect(body.error.operation_id).toEqual(expect.any(String));
+  const sheet = registerSheet(admin);
+  const name = sheet.getByRole("textbox", { name: /^이름/ });
+  const phone = sheet.getByLabel("휴대전화");
+  const summary = sheet.locator('[data-component="error-summary"]');
+  await expect(summary).toBeVisible();
+  await expect(name).toBeFocused();
+  await phone.fill("01012345678");
+  await expect(phone).toBeFocused();
+  await summary.getByRole("link", { name: /이름/ }).click();
+  await expect(name).toBeFocused();
+  await name.fill("김".repeat(200));
+  const created = admin.waitForResponse((response) => response.url().endsWith("/api/v1/employees") && response.request().method() === "POST");
+  await pressRegister(admin);
+  expect((await created).status()).toBe(201);
+  await expect(sheet).toBeHidden();
+});

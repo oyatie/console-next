@@ -33,10 +33,11 @@ pub struct RecordGuards {
 
 fn refused(status: StatusCode, code: &'static str, message: String, detail: Value) -> HrError {
     HrError {
+        errors: None,
         status,
         code,
         message,
-        refusals: Some(Value::Array(vec![detail])),
+        refusals: Some(Box::new(Value::Array(vec![detail]))),
     }
 }
 

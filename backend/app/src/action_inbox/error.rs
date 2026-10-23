@@ -1,46 +1,31 @@
-use axum::Json;
-use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use console_kernel_core::{ErrorKind, KernelError};
+use console_kernel_core::KernelError;
+
+use crate::http::error::{FieldError, MappedKernelError, error_response};
 
 #[derive(Debug)]
 pub(super) struct InboxError {
-    status: StatusCode,
+    status: axum::http::StatusCode,
     code: &'static str,
     message: String,
+    errors: Option<Vec<FieldError>>,
 }
 
 impl From<KernelError> for InboxError {
     fn from(error: KernelError) -> Self {
-        let code = match error.kind {
-            ErrorKind::Validation => "validation",
-            ErrorKind::Internal => "internal",
-            _ => "error",
-        };
-        let status = match error.kind {
-            ErrorKind::Validation => StatusCode::UNPROCESSABLE_ENTITY,
-            ErrorKind::Forbidden => StatusCode::FORBIDDEN,
-            ErrorKind::NotFound => StatusCode::NOT_FOUND,
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => StatusCode::CONFLICT,
-            ErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-        };
+        let mapped = MappedKernelError::from(error);
         Self {
-            status,
-            code,
-            message: error.message,
+            status: mapped.status,
+            code: mapped.code,
+            message: mapped.message,
+            errors: mapped.errors,
         }
     }
 }
 
 impl IntoResponse for InboxError {
     fn into_response(self) -> Response {
-        (
-            self.status,
-            Json(serde_json::json!({
-                "error": { "code": self.code, "message": self.message }
-            })),
-        )
-            .into_response()
+        error_response(self.status, self.code, self.message, self.errors)
     }
 }
 

@@ -123,15 +123,14 @@ impl PgLeaveError {
             Self::MissingHomeBranch | Self::ChargeReviewRequired(_) => ErrorKind::Conflict,
             Self::ConcurrentModification => ErrorKind::Conflict,
             Self::CommandUnavailable => ErrorKind::Internal,
-            Self::Db(DbError::Sqlx(sqlx::Error::RowNotFound)) => ErrorKind::NotFound,
-            Self::Db(_) => ErrorKind::Internal,
+            Self::Db(error) => error.kind(),
         }
     }
 }
 
 impl From<sqlx::Error> for PgLeaveError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

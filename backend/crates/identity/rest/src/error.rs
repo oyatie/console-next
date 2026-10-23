@@ -61,11 +61,7 @@ impl RestError {
     }
 
     pub(crate) fn unavailable(message: impl Into<String>) -> Self {
-        Self::new(
-            StatusCode::SERVICE_UNAVAILABLE,
-            "service_unavailable",
-            message,
-        )
+        Self::new(StatusCode::SERVICE_UNAVAILABLE, "unavailable", message)
     }
 
     pub(crate) fn internal(message: impl Into<String>) -> Self {
@@ -80,6 +76,7 @@ impl RestError {
             ErrorKind::Conflict | ErrorKind::InvalidTransition => {
                 Self::new(StatusCode::CONFLICT, "conflict", error.message)
             }
+            ErrorKind::Unavailable => return Self::unavailable(error.message),
             ErrorKind::Internal => return Self::internal(error.message),
         };
         // A typed refusal (`sign_in_id_taken`, a reason code's) keeps its code.

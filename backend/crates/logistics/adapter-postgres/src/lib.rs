@@ -27,7 +27,7 @@ pub struct PgLogisticsStore {
 }
 impl From<sqlx::Error> for PgLogisticsError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 impl PgLogisticsStore {

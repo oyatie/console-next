@@ -11,7 +11,7 @@
 
 use std::collections::BTreeSet;
 
-use console_kernel_core::{BranchScope, ErrorKind, OrgId, UserId};
+use console_kernel_core::{BranchScope, OrgId, UserId};
 use console_ontology_adapter_postgres::PgOntologyError;
 use console_ontology_adapter_postgres::PgOntologyStore;
 use console_ontology_adapter_postgres::instances::{
@@ -119,15 +119,7 @@ fn normalize(error: ActionError) -> Failure {
 fn normalize_store(error: PgOntologyError) -> Failure {
     match error {
         PgOntologyError::Domain(kernel) => Failure {
-            code: match kernel.kind {
-                ErrorKind::Validation => "validation",
-                ErrorKind::NotFound => "not_found",
-                ErrorKind::Forbidden => "forbidden",
-                ErrorKind::Conflict => "conflict",
-                ErrorKind::InvalidTransition => "invalid_transition",
-                ErrorKind::Internal => "internal",
-            }
-            .to_owned(),
+            code: kernel.kind.code().to_owned(),
             message: kernel.message,
         },
         PgOntologyError::ActionPreconditionFailed { current } => Failure {

@@ -95,7 +95,7 @@ fn hr_error(e: HrError) -> Response {
     };
     let mut error = json!({ "code": e.code, "message": message });
     if let Some(refusals) = e.refusals {
-        error["refusals"] = refusals;
+        error["refusals"] = *refusals;
     }
     (e.status, Json(json!({ "error": error }))).into_response()
 }

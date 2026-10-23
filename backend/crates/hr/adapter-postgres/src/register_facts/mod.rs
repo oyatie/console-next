@@ -103,7 +103,10 @@ fn address(value: &Value) -> Result<Option<String>, HrError> {
             .map(Some)
             .map_err(|_| HrError::validation("changes.address could not be stored")),
         _ => Err(HrError {
-            refusals: Some(serde_json::to_value(issues.into_vec()).unwrap_or_default()),
+            errors: None,
+            refusals: Some(Box::new(
+                serde_json::to_value(issues.into_vec()).unwrap_or_default(),
+            )),
             ..HrError::validation("address is incomplete or invalid")
         }),
     }

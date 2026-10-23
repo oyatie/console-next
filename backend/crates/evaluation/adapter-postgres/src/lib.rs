@@ -34,7 +34,7 @@ pub enum PgEvaluationError {
 
 impl From<sqlx::Error> for PgEvaluationError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

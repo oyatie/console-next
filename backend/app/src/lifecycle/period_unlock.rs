@@ -223,6 +223,7 @@ pub(super) fn coded(status: StatusCode, code: &'static str, message: &str) -> Li
         status,
         code,
         message: message.to_owned(),
+        errors: None,
     }
 }
 

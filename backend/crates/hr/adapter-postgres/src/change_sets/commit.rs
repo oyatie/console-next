@@ -58,13 +58,14 @@ fn line_row(row: &PgRow) -> Result<LineRow, HrError> {
 
 fn stale_lines(stale: Vec<Value>) -> HrError {
     HrError {
+        errors: None,
         status: StatusCode::CONFLICT,
         code: "stale_record",
         message: format!(
             "{} drafted lines are stale: their employees changed since they were drafted; nothing was recorded",
             stale.len()
         ),
-        refusals: Some(Value::Array(stale)),
+        refusals: Some(Box::new(Value::Array(stale))),
     }
 }
 

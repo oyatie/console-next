@@ -743,21 +743,11 @@ impl RestError {
     }
 
     fn from_kernel(error: KernelError) -> Self {
-        match error.kind {
-            ErrorKind::Validation => Self::new(
-                StatusCode::UNPROCESSABLE_ENTITY,
-                "validation",
-                error.message,
-            ),
-            ErrorKind::NotFound => Self::new(StatusCode::NOT_FOUND, "not_found", error.message),
-            ErrorKind::Forbidden => Self::new(StatusCode::FORBIDDEN, "forbidden", error.message),
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => {
-                Self::new(StatusCode::CONFLICT, "conflict", error.message)
-            }
-            ErrorKind::Internal => {
-                Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", error.message)
-            }
-        }
+        Self::new(
+            StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            error.code.unwrap_or(error.kind.code()),
+            error.message,
+        )
     }
 
     fn from_store(error: PgInventoryError) -> Self {
@@ -772,6 +762,11 @@ impl RestError {
                 ErrorKind::Conflict | ErrorKind::InvalidTransition => {
                     Self::new(StatusCode::CONFLICT, "conflict", "inventory state conflict")
                 }
+                ErrorKind::Unavailable => Self::new(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "unavailable",
+                    "inventory database unavailable",
+                ),
                 ErrorKind::Validation | ErrorKind::Forbidden | ErrorKind::Internal => {
                     tracing::error!(error = %error, "inventory store error");
                     Self::new(

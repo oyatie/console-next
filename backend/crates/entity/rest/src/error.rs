@@ -73,6 +73,7 @@ impl IntoResponse for RestError {
             (ErrorKind::NotFound, _) => StatusCode::NOT_FOUND,
             (ErrorKind::Forbidden, _) => StatusCode::FORBIDDEN,
             (ErrorKind::Conflict | ErrorKind::InvalidTransition, _) => StatusCode::CONFLICT,
+            (ErrorKind::Unavailable, _) => StatusCode::SERVICE_UNAVAILABLE,
             (ErrorKind::Internal, "unavailable") => StatusCode::SERVICE_UNAVAILABLE,
             (ErrorKind::Internal, _) => StatusCode::INTERNAL_SERVER_ERROR,
         };

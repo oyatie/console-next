@@ -67,10 +67,11 @@ async fn lock_exited_head(
     };
     if status != "EXITED" || merged_into.is_some() {
         return Err(HrError {
+            errors: None,
             status: http::StatusCode::CONFLICT,
             code: "rehire_requires_exited",
             message: "only an EXITED employee can be rehired".to_owned(),
-            refusals: Some(json!([{ "status": status }])),
+            refusals: Some(Box::new(json!([{ "status": status }]))),
         });
     }
     Ok(ExitedHead {

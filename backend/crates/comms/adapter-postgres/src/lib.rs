@@ -51,7 +51,6 @@ impl PgMailError {
         match self {
             Self::Domain(error) => error.kind,
             Self::OperationConflict => ErrorKind::Conflict,
-            Self::Db(DbError::Sqlx(sqlx::Error::RowNotFound)) => ErrorKind::NotFound,
             Self::Db(DbError::Sqlx(sqlx::Error::Database(error)))
                 if error.code().is_some_and(|code| code == "23505") =>
             {
@@ -62,14 +61,14 @@ impl PgMailError {
             {
                 ErrorKind::Validation
             }
-            Self::Db(_) => ErrorKind::Internal,
+            Self::Db(error) => error.kind(),
         }
     }
 }
 
 impl From<sqlx::Error> for PgMailError {
     fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::Sqlx(value))
+        Self::Db(DbError::from(value))
     }
 }
 

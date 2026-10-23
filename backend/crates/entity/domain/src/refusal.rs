@@ -102,6 +102,7 @@ impl From<KernelError> for Refusal {
             ErrorKind::NotFound => "not_found",
             ErrorKind::Forbidden => "forbidden",
             ErrorKind::Conflict | ErrorKind::InvalidTransition => "conflict",
+            ErrorKind::Unavailable => "unavailable",
             ErrorKind::Internal => "internal",
         });
         let mut refusal = Self::new(err.kind, code, err.message);

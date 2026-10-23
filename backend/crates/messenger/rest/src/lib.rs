@@ -10,8 +10,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post, put};
 use axum::{Json, Router};
 use console_kernel_core::{
-    BranchId, ErrorKind, EvidenceId, KernelError, MessageId, ThreadId, TraceContext, UserId,
-    WorkOrderId,
+    BranchId, EvidenceId, KernelError, MessageId, ThreadId, TraceContext, UserId, WorkOrderId,
 };
 use console_messenger_adapter_postgres::{PgMessengerError, PgMessengerStore};
 use console_messenger_application::{
@@ -453,19 +452,11 @@ impl RestError {
     }
 
     fn from_kernel(err: KernelError) -> Self {
-        match err.kind {
-            ErrorKind::Validation => {
-                Self::new(StatusCode::UNPROCESSABLE_ENTITY, "validation", err.message)
-            }
-            ErrorKind::NotFound => Self::new(StatusCode::NOT_FOUND, "not_found", err.message),
-            ErrorKind::Forbidden => Self::new(StatusCode::FORBIDDEN, "forbidden", err.message),
-            ErrorKind::Conflict | ErrorKind::InvalidTransition => {
-                Self::new(StatusCode::CONFLICT, "conflict", err.message)
-            }
-            ErrorKind::Internal => {
-                Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", err.message)
-            }
-        }
+        Self::new(
+            StatusCode::from_u16(err.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            err.code.unwrap_or(err.kind.code()),
+            err.message,
+        )
     }
 
     fn from_store(err: PgMessengerError) -> Self {

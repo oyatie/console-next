@@ -82,17 +82,29 @@ impl AccessError {
         tracing::error!(error = %detail, "access store error");
         Self::new(Refusal::Internal, "internal", "internal server error")
     }
+
+    fn unavailable() -> Self {
+        Self::new(
+            Refusal::Unavailable,
+            "unavailable",
+            "access database unavailable",
+        )
+    }
 }
 
 impl From<DbError> for AccessError {
     fn from(err: DbError) -> Self {
-        Self::internal(err)
+        if err.is_unavailable() {
+            Self::unavailable()
+        } else {
+            Self::internal(err)
+        }
     }
 }
 
 impl From<sqlx::Error> for AccessError {
     fn from(err: sqlx::Error) -> Self {
-        Self::internal(err)
+        Self::from(DbError::from(err))
     }
 }
 
@@ -103,11 +115,12 @@ impl From<KernelError> for AccessError {
             ErrorKind::NotFound => Refusal::NotFound,
             ErrorKind::Forbidden => Refusal::Forbidden,
             ErrorKind::Conflict | ErrorKind::InvalidTransition => Refusal::Conflict,
+            ErrorKind::Unavailable => Refusal::Unavailable,
             ErrorKind::Internal => return Self::internal(err.message),
         };
         Self {
             field: err.field,
-            ..Self::new(kind, err.code.unwrap_or("validation"), err.message)
+            ..Self::new(kind, err.code.unwrap_or(err.kind.code()), err.message)
         }
     }
 }
