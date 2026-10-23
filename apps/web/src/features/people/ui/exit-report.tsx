@@ -70,11 +70,12 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
         onClose,
       }}
       run={run}
+      loading={reasons.isPending}
       employeeId={employee.id}
       consequence={date ? t("exit.report.consequence.dated", { name: employee.name, date: when }) : t("exit.report.consequence", { name: employee.name })}
       note={draft.problem || draft.restored ? <output>{t(draft.problem ? "draft.unavailable" : "draft.restored")}</output> : undefined}
       missing={tried ? missing : 0}
-      aside={<>{draft.restored && !draft.problem && <Button variant="ghost" onClick={draft.discard} disabled={run.pending}>{t("draft.discard")}</Button></>}<Button variant="ghost" onClick={onClose} disabled={run.pending}>{t("composer.dismiss")}</Button></>}
+      aside={draft.restored && !draft.problem && <Button variant="ghost" onClick={draft.discard} disabled={run.pending}>{t("draft.discard")}</Button>}
       action={{ kind: "exitReport", mode: "apply", count: 1 }}
     >
       <OpsExitNote employeeId={employee.id} search={employee.employee_number || employee.name} />

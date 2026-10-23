@@ -81,7 +81,7 @@ test("an empty tenant builds its structure on the chart", { tag: "@org" }, async
   await revealUnit(admin, "생산2팀");
   await admin.keyboard.press("Delete");
   const del = admin.getByRole("dialog", { name: "생산2팀 삭제 · 폐지" });
-  await del.getByRole("button", { name: "생산2팀 삭제" }).click();
+  await del.getByRole("button", { name: "부서 1개 삭제" }).click();
   await expect(box(admin, "생산2팀")).toHaveCount(0);
 
   // Search to focus: type and Enter, no clicks; the current hit says so.

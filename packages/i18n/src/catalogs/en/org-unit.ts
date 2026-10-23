@@ -109,7 +109,7 @@ export const enOrgUnit: Record<keyof typeof koOrgUnit, string> = {
   "orgUnit.code.none": "None",
   "orgUnit.code.hint": "Letters, digits, . _ - up to 30 · empty clears it",
   "orgUnit.code.invalid": "Only letters, digits and . _ -, up to 30",
-  "orgUnit.details.save": "Save",
+  "orgUnit.details.title": "Unit details",
   "orgUnit.details.done": "Saved the head and code of {name}",
   "orgUnit.target.search": "Search {label}",
   "orgUnit.target.searchHint": "Search by name",

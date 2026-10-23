@@ -113,7 +113,7 @@ export async function captureE5(page: Page) {
     const reason = sheet(page).getByRole("radiogroup", { name: /사유 분류/ });
     if (await reason.isVisible()) await reason.getByRole("radio").first().locator("xpath=ancestor::label[1]").click();
     await sheet(page).getByRole("textbox", { name: /사유 메모|^사유/ }).fill("라인 재배치");
-    await sheet(page).getByRole("button", { name: `전보 예약 · ${koDate(kstDate(50))} 시행`, exact: true }).click();
+    await sheet(page).getByRole("button", { name: "전보 1명 예약", exact: true }).click();
     await expect(page.getByRole("dialog")).toBeHidden({ timeout: 15_000 });
     await act(page, contract, "exit.report");
     await sheet(page).getByRole("button", { name: /^계약 종료일/ }).click();

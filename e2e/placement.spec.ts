@@ -164,7 +164,7 @@ test("placement: 법인 · 사업장 follow the 부서, a 전근 moves them, a �
     await expect(s.getByRole("alert")).toContainText("전적");
     await expectAccessible(admin, "transfer refused: another 법인's 부서");
     await shot(admin, "move-01-transfer-refused");
-    await s.getByRole("button", { name: "취소", exact: true }).click();
+    await s.getByRole("button", { name: "닫기", exact: true }).last().click();
     expect(await profile.innerText()).toBe(was);
     // The server, directly: TR-33's 422 transfer_cross_entity (one code for a 전보 across 법인), and the record and its history are as they were.
     const events = async () => {

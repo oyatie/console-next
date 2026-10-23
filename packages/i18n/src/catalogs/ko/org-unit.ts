@@ -108,7 +108,7 @@ export const koOrgUnit = {
   "orgUnit.code.none": "없음",
   "orgUnit.code.hint": "영문·숫자·. _ - 30자까지 · 비우면 코드를 삭제합니다",
   "orgUnit.code.invalid": "영문·숫자와 . _ - 만 쓸 수 있고 30자까지입니다",
-  "orgUnit.details.save": "저장",
+  "orgUnit.details.title": "부서 정보",
   "orgUnit.details.done": "{name}의 부서장과 부서 코드를 저장했습니다",
   "orgUnit.target.search": "{label} 찾기",
   "orgUnit.target.searchHint": "이름으로 찾기",

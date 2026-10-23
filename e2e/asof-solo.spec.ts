@@ -191,11 +191,11 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   };
   admin.on("request", observeDraftWrites);
   await admin.getByRole("button", { name: "이 날짜로 개편안 작성" }).click();
-  const proposal = admin.getByRole("region", { name: "본사 아래에 부서 신설", exact: true });
+  const proposal = admin.getByRole("dialog", { name: "본사 아래에 부서 신설", exact: true });
   await expect(proposal).toBeVisible();
   await expect(proposal.getByRole("term").filter({ hasText: "상위 조직" }).locator("xpath=following-sibling::dd[1]")).toContainText("본사");
   await expect(proposal.getByRole("textbox", { name: /^시행일/ })).toHaveValue(koDate(due));
-  await proposal.getByRole("button", { name: "제안 닫기", exact: true }).click();
+  await proposal.getByRole("button", { name: "닫기", exact: true }).last().click();
   await expect(proposal).toHaveCount(0);
   expect(draftWrites).toEqual([]);
   admin.off("request", observeDraftWrites);

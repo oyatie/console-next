@@ -41,7 +41,7 @@ export function FixRevise({ c, field, onClose, onCorrected, onChanged }: { c: Ca
       }
       actions={
         <>
-          <Button variant="ghost" onClick={onClose}>{t("empFix.cancel")}</Button>
+
           <Button variant="primary" aria-disabled={pick ? undefined : true} onClick={next}>{t("empFix.revise.next")}</Button>
         </>
       }

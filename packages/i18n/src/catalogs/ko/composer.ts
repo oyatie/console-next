@@ -50,6 +50,8 @@ export const koComposer = {
   "composer.verb.reject": "반려",
   "composer.verb.save": "저장",
   "composer.verb.remove": "삭제",
+  "composer.action.employeeNumber": "사번",
+  "composer.commit.next": "{label} · 다음 직원",
   "composer.action.profile": "인사 정보",
   "composer.verb.approve": "승인",
   "composer.verb.complete": "완료",

@@ -79,13 +79,13 @@ function OpenItem({ d, it, refetch, onNote }: { d: Detail; it: Item; refetch: Re
         <Chip>{t("orgChange.settle.waiting")}</Chip>
       </span>
     );
-  if (transfer && !units.data) return <span>{it.label}</span>;
+  if (transfer && !unit) return <span role="status">{it.label} · {t("common.loading")}</span>;
   if (transfer) {
     const left = unit?.headcount ?? 0;
     const name = unit?.name ?? "—";
-    return <Composer layout="page" title={it.label} action={{ kind: "orgSettlement", mode: "complete" }} pending={complete.isPending}
-      blocked={left > 0 || !unit ? { reason: t("orgChange.settle.transfer.left", { name, count: left }), remedy: <Link to="/org" search={{ sel: unitId, act: "reassign" }}>{t("orgChange.settle.moveMembers", { count: left })}</Link> } : undefined}
-      consequence={t("orgChange.settle.transfer.zero", { name })}
+    return <Composer layout="inline" headingLevel={3} title={it.label} action={{ kind: "orgSettlement", mode: "complete" }} pending={complete.isPending}
+      blocked={left > 0 ? { reason: t("orgChange.settle.transfer.left", { name, count: left }), remedy: <Link to="/org" search={{ sel: unitId, act: "reassign" }}>{t("orgChange.settle.moveMembers", { count: left })}</Link> } : undefined}
+      consequence={unit && left === 0 ? t("orgChange.settle.transfer.zero", { name }) : undefined}
       notice={<CommandError error={complete.error} />}
       onSubmit={() => { if (left === 0 && unit) complete.mutate(undefined); }}
     ><Link to="/org" search={{ sel: unitId }}>{t("orgChange.openUnit")}</Link></Composer>;
@@ -93,7 +93,7 @@ function OpenItem({ d, it, refetch, onNote }: { d: Detail; it: Item; refetch: Re
 
   const missing = tried && !memo.trim();
   return (
-    <Composer layout="page" title={it.label} action={{ kind: "orgSettlement", mode: "complete" }} pending={complete.isPending}
+    <Composer layout="inline" headingLevel={3} title={it.label} action={{ kind: "orgSettlement", mode: "complete" }} pending={complete.isPending}
       notice={<CommandError error={complete.error} />}
       onSubmit={() => { setTried(true); if (memo.trim()) complete.mutate(undefined); else memoRef.current?.querySelector("textarea")?.focus(); }}
     ><div ref={memoRef} className={css.fix}>

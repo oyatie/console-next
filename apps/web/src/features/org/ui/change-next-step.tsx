@@ -137,7 +137,7 @@ function Submit({ d, title, report, refetch, onNote, onEdit, onPreflight }: {
   const { consequence } = submitWords(d, routed, todayKst());
   return (
     <>
-      <Composer layout="page" title={title} pending={submit.isPending}
+      <Composer layout="inline" headingLevel={3} title={title} pending={submit.isPending}
         action={{ kind: "orgChange", mode: routed ? "request" : d.effectiveDate > todayKst() ? "schedule" : "apply" }}
         consequence={consequence}
         sections={{ approvals: routed ? t("orgPropose.route") : null }}

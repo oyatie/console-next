@@ -21,7 +21,9 @@ const escape = (s) => s.replace(/[.*+?^$()|[\]\\{}]/g, "\\$&");
 
 // Governed org/lifecycle forms have one owner for commit and dismiss copy, including their page-sized variants.
 export function checkComposer(file, text) {
-  if (!/apps\/web\/src\/features\/(?:org\/ui\/|people\/ui\/(?:lifecycle-|bulk-(?:page|sheet|exit-sheet|rescind)|group-transfer-sheet|cancel-sheet|exit-|identity-sheet|profile-sheet|register-rehire))/.test(file)) return [];
+  if (!/^apps\/web\/src\/features\/(?:org|people)\/ui\/.*\.tsx$/.test(file)) return [];
+  const governed = /\b(?:Composer|LifecycleFrame|ApprovalCard|recordLifecycleEvent|correctEmployee|changeEmployeeNumber|useRegister|useBulkCommand|useLifecycleCommand|useExitCommand|changeCommands)\b/.test(text);
+  if (!governed && !/<Sheet\b/.test(text)) return [];
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const problems = [];
   const visit = (node) => {
@@ -30,11 +32,11 @@ export function checkComposer(file, text) {
       const attributes = node.attributes.properties.filter(ts.isJsxAttribute);
       const attr = (name) => attributes.find((a) => a.name.getText(source) === name)?.initializer?.getText(source) ?? "";
       const refuse = (why) => problems.push(`${file}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}: composer.verb: ${why}; use Composer's typed action and canonical dismiss`);
-      if (["Sheet", "LifecycleFrame", "ApprovalCard"].includes(tag)) refuse("parallel governed frame");
+      if (["LifecycleFrame", "ApprovalCard"].includes(tag) || (tag === "Sheet" && (governed || !attr("actions")))) refuse("parallel governed frame");
       if (tag === "Composer" && attributes.some((a) => ["commit", "dismissLabel", "actions"].includes(a.name.getText(source)))) refuse("per-screen commit/dismiss label");
       if (tag === "Button") {
-        if ((attr("type") === '"submit"' || /\.(?:mutate|submit)\(/.test(attr("onClick"))) && !node.parent.getText(source).includes("commitLabel(")) refuse("per-screen commit control");
-        if (/\b(?:onClose|close)\b/.test(attr("onClick")) && ts.isJsxOpeningElement(node)) {
+        if ((attr("type") === '"submit"' || (governed && /\.(?:mutate|submit)\(/.test(attr("onClick")))) && !node.parent.getText(source).includes("commitLabel(")) refuse("per-screen commit control");
+        if (governed && /\b(?:onClose|close)\b/.test(attr("onClick")) && ts.isJsxOpeningElement(node)) {
           const label = node.parent.children.map((c) => c.getText(source)).join("");
           if (!/^\{t\("composer.dismiss"\)\}$/.test(label)) refuse("noncanonical dismiss label");
         }

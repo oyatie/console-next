@@ -13,7 +13,8 @@ import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Kbd } from "../../../ui/kbd/kbd";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
+import { commitLabel } from "../../../ui/composer/actions";
 import { duplicateCandidates, numberHolder } from "../api";
 import { EMPTY, gaps, nextPerson, NO_PICK, type Draft, type DupPick } from "../domain/register";
 import { placeOptions, resolvePlace, workplaceChoices } from "../domain/register-place";
@@ -108,7 +109,7 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
   });
   useEffect(() => {
     const keys = (e: KeyboardEvent) => {
-      if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey) || e.isComposing) return;
+      if (e.key !== "Enter" || !e.shiftKey || !(e.metaKey || e.ctrlKey) || e.isComposing || !body.current?.closest('[role="dialog"]')?.contains(document.activeElement)) return;
       e.preventDefault();
       latest.current(!e.shiftKey);
     };
@@ -119,7 +120,7 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
   const status = d.hire > today ? t("register.foot.statusFuture") : t("register.foot.statusNow");
 
   return (
-    <Sheet
+    <Composer
       open
       wide
       kicker={<><Users size={12} aria-hidden />{t("register.kicker", { scope })}</>}
@@ -129,12 +130,14 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
       locked={reg.isChecking}
       notice={cands.length === 0 ? (reg.error ? <CommandError error={reg.error} live="assertive" fieldLabel={(field) => field === "name" ? t("register.name") : undefined} own={(code) => (code === "employee_number_taken" && d.numberMode === "manual" && d.number.trim() ? t(`people.new.numberTaken.${numberHolder(reg.error)}`, { number: d.number.trim() }) : peopleRefusal(code))} /> : <RegisterToast inline />) : undefined}
       consequence={<RegisterFoot d={d} gaps={g} tried={tried} dup={cands.length > 0} place={place?.site && place.unit.kind !== "SITE" ? `${place.site} › ${place.unit.name}` : (place?.unit.name ?? "")} status={status} setup={setup} />}
-      actions={
+      action={{ kind: "ONBOARD", mode: "apply", count: 1, continuation: "next" }}
+      onSubmit={() => { submit(true); }}
+      incomplete={(cands.length > 0 && (!pick.verdict || (pick.verdict === "other" && !pick.code))) || undefined}
+      secondary={
         <>
           <Link to="/people/import" className={buttonClass("ghost", { className: s.many })}><ClipboardPaste size={16} aria-hidden />{t("register.many")}</Link>
           <Link to="/people/run" className={buttonClass("ghost")}><ListPlus size={16} aria-hidden />{t("register.run.open")}</Link>
-          <Button disabled={reg.isPending} onClick={() => submit(false)}>{t("register.saveClose")}<Kbd keys="⌘⇧↵" /></Button>
-          <Button variant="primary" disabled={reg.isPending} aria-disabled={(cands.length > 0 && (!pick.verdict || (pick.verdict === "other" && !pick.code))) || undefined} onClick={() => submit(true)}>{t("register.saveNext")}<Kbd keys="⌘↵" /></Button>
+          <Button disabled={reg.isPending} onClick={() => submit(false)}>{commitLabel({ kind: "ONBOARD", mode: "apply", count: 1 })}<Kbd keys="⌘⇧↵" /></Button>
         </>
       }
     >
@@ -153,6 +156,6 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
         <RegisterPlace d={d} set={set} units={units} options={options} workplaces={placesRead && place && !place.own ? workplaceChoices(entities) : []} shown={shown} hireLabel={d.hire ? fmtDate(d.hire) : null} />
         <RegisterTerms d={d} set={set} shown={shown} today={today} tried={tried} />
       </div>
-    </Sheet>
+    </Composer>
   );
 }

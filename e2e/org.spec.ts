@@ -32,7 +32,7 @@ test.fixme("an org change is drafted, submitted from its page, rejected with a r
   await expectAccessible(admin, "org change page (draft)");
 
   // Re-dating starts from an empty date: nothing is chosen for the user.
-  await admin.getByRole("button", { name: "시행일·사유 수정" }).click();
+  await admin.getByRole("button", { name: "시행일·사유 변경" }).click();
   await expect(admin.getByRole("textbox", { name: /^시행일/ })).toHaveValue("");
   await admin.getByRole("button", { name: /^다음 주 월요일/ }).click();
   await admin.getByRole("button", { name: "임시 저장" }).click();

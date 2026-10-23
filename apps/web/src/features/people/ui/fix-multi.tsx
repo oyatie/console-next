@@ -1,11 +1,11 @@
+import { Button } from "../../../ui/button/button";
 import { useState } from "react";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
-import { Button } from "../../../ui/button/button";
 import { ChipChoice } from "../../../ui/choice/chip-choice";
 import { Chip } from "../../../ui/chip";
-import { Sheet } from "../../../ui/sheet/sheet";
+import { Composer } from "../../../ui/composer/composer";
 import { correctEmployee, type Correction, type CorrectionChanges } from "../api";
 import { FIX_REASONS, routeOf, type FixField } from "../domain/fix";
 import { currentOf, draftText, toChange, type Draft } from "./use-fix-draft";
@@ -38,7 +38,7 @@ export function FixMulti({ c, onClose, onDone, onAct }: { c: Card; onClose: () =
   const missing = !changes.length ? "multi-fields" : !why ? "multi-why" : null;
   const press = () => (missing ? document.getElementById(missing)?.querySelector<HTMLElement>("input")?.focus() : run.mutate(undefined));
   return (
-    <Sheet
+    <Composer
       open
       kicker={<Who c={c} />}
       title={t("empFix.multi.title", { count: changes.length })}
@@ -51,12 +51,9 @@ export function FixMulti({ c, onClose, onDone, onAct }: { c: Card; onClose: () =
           <span className={s.s12}>{t("empFix.multi.rule")}</span>
         </>
       }
-      actions={
-        <>
-          <Button variant="ghost" onClick={onClose}>{t("empFix.cancel")}</Button>
-          <Button variant="primary" aria-disabled={missing ? true : undefined} onClick={press}>{t("empFix.multi.commit", counts)}</Button>
-        </>
-      }
+      action={{ kind: "profile", mode: "correct", count: 1 }}
+      incomplete={Boolean(missing)}
+      onSubmit={press}
     >
       <Surface id="multi-fields" look="outline">
         {/* A field being changed says before → after and how it is recorded (E4-multi); the order never moves under typing. */}
@@ -80,6 +77,6 @@ export function FixMulti({ c, onClose, onDone, onAct }: { c: Card; onClose: () =
         </div>
       </Surface>
       <div id="multi-why"><ChipChoice label={t("empFix.multi.why")} options={FIX_REASONS.map((r) => ({ value: r, label: t(`empFix.reason.${r}`) }))} value={why} onChange={setWhy} /></div>
-    </Sheet>
+    </Composer>
   );
 }

@@ -24,6 +24,15 @@ test("every preview section keeps the ideal's order and empty previews stay abse
   expect(render({ preflight: false, effects: "", documents: [], approvals: null })).not.toContain("data-composer-section");
 });
 
+test("embedded composers use the caller's heading level and keep signoffs in preflight", () => {
+  const html = renderToStaticMarkup(<Composer layout="inline" headingLevel={3} title="부서 정보" action={{ kind: "orgDetails", mode: "change" }} onSubmit={() => {}} signoffs={{ items: [{ id: "review", label: "Reviewed" }], value: [], onChange: () => {}, missing: false }}>{null}</Composer>);
+  expect(html).not.toContain("<h1");
+  expect(html.match(/<section[^>]*data-composer-root[^>]*>/)?.[0]).not.toContain("aria-labelledby");
+  expect(html).toMatch(/<h3[^>]*>부서 정보<\/h3>/);
+  expect(html).toMatch(/data-composer-section="preflight"[\s\S]*Reviewed/);
+  expect(html).toContain("<h4");
+});
+
 test.each([
   [{ kind: "TRANSFER", mode: "apply", count: 2 }, "전보 2명 반영"],
   [{ kind: "LEAVE_OF_ABSENCE", mode: "schedule", count: 1 }, "휴직 1명 예약"],
@@ -33,6 +42,7 @@ test.each([
   [{ kind: "TRANSFER", mode: "revoke", count: 1 }, "전보 1명 철회"],
   [{ kind: "orgChange", mode: "withdraw" }, "조직 변경 회수"],
   [{ kind: "appointment", mode: "apply", count: 0 }, "발령 반영"],
+  [{ kind: "ONBOARD", mode: "apply", count: 1, continuation: "next" }, "직원 등록 1명 반영 · 다음 직원"],
 ] as const)("builds a single outcome label for %j", (action, expected) => {
   expect(commitLabel(action)).toBe(expected);
 });

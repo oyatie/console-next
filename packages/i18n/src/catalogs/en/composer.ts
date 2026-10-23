@@ -50,6 +50,8 @@ export const enComposer = {
   "composer.verb.reject": "Reject",
   "composer.verb.save": "Save",
   "composer.verb.remove": "Delete",
+  "composer.action.employeeNumber": "Employee number",
+  "composer.commit.next": "{label} · next employee",
   "composer.action.profile": "personnel data",
   "composer.verb.approve": "Approve",
   "composer.verb.complete": "Complete",

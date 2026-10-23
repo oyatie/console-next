@@ -35,7 +35,7 @@ test("부서: panel, delete with the sub-units raised, merge into another workpl
   await c.click(qa.getByRole("button", { name: "폐지" }));
   const del = sheet(admin, "품질관리부 삭제 · 폐지");
   await expect(del.getByRole("radio", { checked: true })).toHaveCount(0);
-  const confirm = del.getByRole("button", { name: "품질관리부 삭제" });
+  const confirm = del.getByRole("button", { name: "부서 1개 삭제" });
   await expect(confirm).toHaveAttribute("aria-disabled", "true");
   await expect(confirm).toHaveAccessibleDescription("하위 부서를 어떻게 할지 선택하면 삭제합니다");
   await expect(del.getByRole("radio", { name: /^함께 삭제/ })).toBeDisabled();
@@ -73,6 +73,6 @@ test("부서: panel, delete with the sub-units raised, merge into another workpl
   await expect(del2).toContainText("구성원 1명이 아직 있습니다 · 먼저 전보하십시오");
   await expect(del2.getByRole("link", { name: "구성원 1명 보기" })).toBeVisible();
   await expect(del2.getByRole("button", { name: /^공정품질팀 (삭제|폐지)$/ })).toHaveCount(0);
-  await del2.getByRole("button", { name: "취소" }).click();
+  await del2.getByRole("button", { name: "닫기", exact: true }).last().click();
   await expect(panel(admin, "공정품질팀")).toBeVisible();
 });

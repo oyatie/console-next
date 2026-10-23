@@ -29,7 +29,7 @@ export async function gradeJourney(page: Page) {
   await statement(change.getByRole("radio", { name: /^오늘/ })).click();
   await statement(change.getByRole("radio", { name: "정기 승진", exact: true })).click();
   await expectAccessible(page, "grade: inline add and dated change");
-  await change.getByRole("button", { name: "승진 기록", exact: true }).click();
+  await change.getByRole("button", { name: "승진 1명 반영", exact: true }).click();
   await expect(change).toBeHidden();
   await expect(page.locator("#f-grade")).toContainText("G1");
 
@@ -39,7 +39,7 @@ export async function gradeJourney(page: Page) {
   await statement(correct.getByRole("radio", { name: "입력 실수", exact: true })).click();
   await expect(correct).toContainText("G1 → G2");
   await expectAccessible(page, "grade: catalog correction");
-  await correct.getByRole("button", { name: "정정", exact: true }).click();
+  await correct.getByRole("button", { name: "인사 정보 1명 정정", exact: true }).click();
   await expect(correct).toBeHidden();
   await expect(page.locator("#f-grade")).toContainText("G2");
 

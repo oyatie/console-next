@@ -45,7 +45,7 @@ test(`regression: after the only person's exit (${lastDay}) the 법인 counts no
   await report.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(lastDay));
   await report.getByLabel("퇴직 경위").fill("개인 사정");
   await report.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
-  await report.getByRole("button", { name: /퇴직 보고$/ }).click();
+  await report.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
   await expect(exitPanel).toContainText("보고됨");
   await exitPanel.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
   await signOff(admin.getByRole("dialog").getByRole("group", { name: "확인 사항" }));

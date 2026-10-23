@@ -19,7 +19,7 @@ async function reportExit(page: Page, name: string, date: string) {
   await s.getByRole("textbox", { name: /^마지막 근무일/ }).fill(date);
   await s.getByLabel("퇴직 경위").fill("개인 사정");
   await s.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
-  await s.getByRole("button", { name: /퇴직 보고$/ }).click();
+  await s.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
   return s;
 }
 
@@ -32,7 +32,7 @@ test("퇴직 from the record, refused where it must be, closed alone, and the pe
   await registerEmployee(admin, { name: "미래입사", number: "CX-0001", hired: kstDate(3), unit: "본사" });
   let s = await reportExit(admin, "미래입사", kstDate(0));
   await expect(s.getByRole("alert")).toContainText("퇴직일이 입사일보다 빠릅니다");
-  await s.getByRole("button", { name: "취소", exact: true }).click();
+  await s.getByRole("button", { name: "닫기", exact: true }).last().click();
   await expect(admin.getByRole("region", { name: "퇴직", exact: true })).not.toContainText("보고됨");
 
   // 퇴직 is in the record's action row, not only in the rail's card.

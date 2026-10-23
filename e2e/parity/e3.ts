@@ -47,7 +47,7 @@ export async function captureE3(page: Page) {
   const s = sheet(page);
   await s.getByRole("textbox", { name: /^생년월일/ }).fill("1999-11-03");
   await s.getByRole("textbox", { name: /^입사일/ }).fill("2026-13-01");
-  await s.getByRole("button", { name: /^등록하고 다음 사람/ }).click();
+  await s.getByRole("button", { name: /^직원 등록 1명 반영 · 다음 직원/ }).click();
   await expect(s.getByRole("alert").filter({ hasText: "수정해야 등록됩니다" })).toContainText("수정해야 등록됩니다");
   await shot(page, "E3-register-error");
   await s.getByRole("button", { name: "닫기", exact: true }).click();
@@ -55,7 +55,7 @@ export async function captureE3(page: Page) {
   for (const round of [0, 1]) {
     await openRegister(page);
     await fillRegister(page, { name: "김민서", birth: "1998-04-17", unit: "생산2팀" });
-    await sheet(page).getByRole("button", { name: round ? /^등록하고 다음 사람/ : /^등록하고 닫기/ }).click();
+    await sheet(page).getByRole("button", { name: round ? /^직원 등록 1명 반영 · 다음 직원/ : /^직원 등록 1명 반영(?: ⌘|$)/ }).click();
     if (!round) await expect(sheet(page)).toBeHidden();
   }
   await expect(sheet(page).getByText(/같은 사람일 수 있습니다/)).toBeVisible();

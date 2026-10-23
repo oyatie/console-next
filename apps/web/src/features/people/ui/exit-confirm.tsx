@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
-import { Button } from "../../../ui/button/button";
 import { Checks } from "../../../ui/choice/checks";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
@@ -17,7 +16,6 @@ import { CaseFacts } from "./exit-facts";
 import { CancelLink, StepFrame, type SheetSpec } from "./exit-foot";
 import { focusFirstInvalid, useExitCommand } from "./use-exit-command";
 import { useExitClass } from "../../../lib/reason-codes";
-import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { ExitGuardFields } from "./exit-notice";
 import s from "./exit.module.css";
 
@@ -103,7 +101,8 @@ export function ConfirmForm({ c, hq, aside, sheet, stale, follow, onDone }: {
         )
       }
       missing={tried ? missing : 0}
-      aside={aside ?? (sheet && <Button onClick={sheet.onClose} disabled={run.pending}>{t("composer.dismiss")}</Button>)}
+      aside={aside}
+      blocked={blockReason ? { reason: blockReason } : undefined}
       action={{ kind: hq ? "exitHq" : "exit", mode: !hq && scheduled ? "schedule" : "apply", count: 1 }}
       tone={!hq && !scheduled ? "danger" : "primary"}
     >

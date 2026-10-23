@@ -35,6 +35,6 @@ test("the cancellation refusal directs the user to the existing reasoned rejecti
 test("rejection explains the compensating event and requires a reason", () => {
   const html = render("APPLIED", true);
   expect(html).toContain("퇴직 전 상태로 복원");
-  expect(html).toContain("반려 사유");
+  expect(html).toContain("철회 사유");
   expect(html).toContain('required=""');
 });

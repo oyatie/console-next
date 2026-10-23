@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { koDate } from "./flows";
 import { koDay } from "./dates";
 
@@ -37,5 +37,7 @@ export const said = (sentence: string, ymd: string) =>
 export const statement = (box: Locator) => box.locator("xpath=ancestor::label[1]");
 /** Ticks every sign-off the sheet shows (each is its own click: no "check all"). */
 export async function signOff(s: Locator, click: (l: Locator) => Promise<void> = (l) => l.click()) {
+  // A named group has signoffs; a whole sheet may legitimately require none.
+  if ("getAttribute" in s && await s.getAttribute("role") === "group") await expect(s.getByRole("checkbox").first()).toBeVisible();
   for (const box of await s.getByRole("checkbox").all()) await click(statement(box));
 }

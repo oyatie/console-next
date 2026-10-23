@@ -166,7 +166,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await fillDate(renewal, "2027-12-31", "새 계약 종료일");
   await reasonBox(renewal).fill("계약 1년 연장");
   await expect(renewal.getByRole("checkbox")).toHaveCount(0); // BW-11 A13: no statement to tick
-  await c.click(renewal.getByRole("button", { name: "오늘 계약 갱신", exact: true }));
+  await c.click(renewal.getByRole("button", { name: "계약 갱신 1명 반영", exact: true }));
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /한가람의 계약을 .+까지 갱신했습니다/ })).toBeVisible();
   expect(c.done("renew contract")).toBeLessThanOrEqual(4);
 
@@ -193,7 +193,7 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await admin.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(0));
   await admin.getByLabel("퇴직 경위").fill("개인 사유 퇴직");
   await admin.getByRole("dialog").getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
-  await c.click(admin.getByRole("dialog").getByRole("button", { name: "퇴직 보고" }));
+  await c.click(admin.getByRole("dialog").getByRole("button", { name: "퇴직 보고 1명 반영" }));
   await c.click(admin.getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
   await expectAccessible(admin, "exit: HR confirmation dialog");
   await signOff(admin.getByRole("dialog"), c.click);

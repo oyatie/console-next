@@ -41,7 +41,7 @@ export async function fillRegister(page: Page, p: Person, c: C = plain) {
 
 /** 「등록하고 닫기」 (or 「등록하고 다음 사람」 with `next`). */
 export const pressRegister = (page: Page, next = false, c: C = plain) =>
-  c.click(registerSheet(page).getByRole("button", { name: next ? /^등록하고 다음 사람/ : /^등록하고 닫기/ }));
+  c.click(registerSheet(page).getByRole("button", { name: next ? /^직원 등록 1명 반영 · 다음 직원/ : /^직원 등록 1명 반영(?: ⌘|$)/ }));
 
 /** The receipt a registration leaves (in the sheet while it stays open, on the roster once it closes). */
 export const receiptOf = (page: Page, name: string) => page.getByRole("status").filter({ hasText: new RegExp(`${name}.* 등록했습니다 · 사번 `) }).first();

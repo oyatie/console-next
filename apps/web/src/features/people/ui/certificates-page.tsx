@@ -80,7 +80,7 @@ function SettingsForm({ entity, settings, maxBytes, onClose, picker }: { entity:
   return <Sheet open title={t("empDoc.certificate.settings")} onClose={onClose} pending={save.isSending} locked={save.isChecking}
     consequence={t("empDoc.certificate.sealHelp")}
     notice={<CommandError error={save.error} own={certificateError} />}
-    actions={<><Button onClick={onClose}>{t("empFix.cancel")}</Button><Button variant="primary" aria-disabled={!ready || save.isPending} onClick={() => { if (ready && !save.isPending) save.mutate(undefined); }}>{t("empDoc.certificate.save")}</Button></>}><div className={s.form}>
+    actions={<><Button variant="primary" aria-disabled={!ready || save.isPending} onClick={() => { if (ready && !save.isPending) save.mutate(undefined); }}>{t("empDoc.certificate.save")}</Button></>}><div className={s.form}>
     {picker}
     <Field label={t("empDoc.certificate.prefix")} required>{(p) => <TextInput {...p} maxLength={40} value={prefix} onChange={(e) => setPrefix(e.target.value)} />}</Field>
     <Field label={t("empDoc.certificate.width")} required>{(p) => <TextInput {...p} type="number" min={1} max={12} value={width} onChange={(e) => setWidth(e.target.value)} />}</Field>

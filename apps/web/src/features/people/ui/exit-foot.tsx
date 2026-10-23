@@ -38,6 +38,7 @@ export function StepFrame(p: {
   run: ExitCommand;
   /** Another command of the same form in flight (the settlement's draft save). */
   busy?: boolean;
+  loading?: boolean;
   stale?: Effect | null;
   /** What follows a stale form (the current step). */
   follow?: ReactNode;
@@ -63,8 +64,6 @@ export function StepFrame(p: {
   const { phase } = run;
   const lost = phase.kind === "lost";
   const elsewhere = phase.kind === "elsewhere" ? phase.effect : (p.stale ?? null);
-  const onClose = sheet?.onClose;
-  const back = onClose && <Button onClick={onClose} disabled={run.pending}>{t("composer.dismiss")}</Button>;
   const consequence = (
     <>
       <p className={s.consequence}>{p.consequence}</p>
@@ -84,21 +83,23 @@ export function StepFrame(p: {
       {phase.kind === "notRecorded" && <p className={s.note} role="status">{t("exit.check.notRecorded")}</p>}
     </>
   );
-  const recovery = lost ? <>{back}<Button variant="primary" disabled={run.checking} onClick={run.checkNow}>{t("exit.check")}</Button></> : elsewhere ? <>{p.follow ?? back}</> : undefined;
+  const recovery = lost ? <Button variant="primary" disabled={run.checking} onClick={run.checkNow}>{t("exit.check")}</Button> : elsewhere ? <>{p.follow}</> : undefined;
   return <Composer
     formId={p.formId}
-    layout={sheet ? "drawer" : "page"}
+    layout={sheet ? "drawer" : "inline"}
+    headingLevel={sheet ? 2 : 3}
     kicker={sheet?.kicker}
     title={sheet?.title ?? commitLabel(p.action)}
     subtitle={sheet?.subtitle}
     onClose={sheet?.onClose}
     pending={run.pending || run.checking || p.busy}
+    loading={p.loading}
     locked={run.locked || Boolean(elsewhere)}
     consequence={consequence}
     sections={{ preflight: p.signoffs }}
     notice={notice}
     recovery={recovery}
-    secondary={<>{!sheet && p.aside}{p.secondary}</>}
+    secondary={<>{p.aside}{p.secondary}</>}
     action={p.action}
     tone={p.tone}
     blocked={p.blocked}

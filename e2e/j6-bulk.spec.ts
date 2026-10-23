@@ -60,7 +60,7 @@ test("J6 bulk transfer: a refused person is named and nothing is recorded; retry
   // The rescind reasons are read once the batch exists; held back here so they land after the sheet opens (the race a
   // loaded machine hits), for the regression below.
   await admin.route(/\/api\/v1\/reason-codes\?.*lifecycle_cancel/, async (r) => (await new Promise((ok) => setTimeout(ok, 2_000)), r.continue()));
-  await c.click(admin.getByRole("button", { name: "거부된 1명 제외 후 다시 시도" }));
+  await c.click(admin.getByRole("button", { name: "전보 2명 반영" }));
   await expect(admin.getByRole("status").filter({ hasText: "2명 전보 반영함" })).toBeVisible();
   // Base 3 picks + open + kind + unit + date + reason code + commit + retry.
   expect(c.done("J6 bulk transfer of 3 (one refused, retried without)")).toBeLessThanOrEqual(10);

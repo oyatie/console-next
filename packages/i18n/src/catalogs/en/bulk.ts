@@ -169,4 +169,17 @@ export const enBulk = {
   "bulk.page.doneFuture": "scheduled",
   "bulk.page.doneNow": "recorded",
   "bulk.position.catalogMissing": "Choose an active catalog title. Pasted titles must match the catalog label exactly.",
+  "bulk.commit.none": "Assign {count, plural, one {# employee} other {# employees}}",
+  "bulk.commit.TRANSFER.none": "Schedule {count, plural, one {# transfer} other {# transfers}}",
+  "bulk.commit.TRANSFER.future": "Schedule {count, plural, one {# transfer} other {# transfers}} for {date}",
+  "bulk.commit.TRANSFER.today": "Transfer {count, plural, one {# employee} other {# employees}} today",
+  "bulk.commit.TRANSFER.past": "Transfer {count, plural, one {# employee} other {# employees}} as of {date} (past date)",
+  "bulk.commit.PROMOTE.none": "Schedule {count, plural, one {# promotion} other {# promotions}}",
+  "bulk.commit.PROMOTE.future": "Schedule {count, plural, one {# promotion} other {# promotions}} for {date}",
+  "bulk.commit.PROMOTE.today": "Promote {count, plural, one {# employee} other {# employees}} today",
+  "bulk.commit.PROMOTE.past": "Promote {count, plural, one {# employee} other {# employees}} as of {date} (past date)",
+  "bulk.missing": "{count, plural, one {# field} other {# fields}} to complete",
+  "bulk.close": "Close",
+  "bulk.stale.repin": "Checked: reload {count, number} people against their record now",
+
 } as const;

@@ -91,7 +91,7 @@ export function ChangeDecision({ d, s, n, refetch, onNote, onReopen }: {
   return (
     <section id="next-step" ref={ref} tabIndex={-1} aria-label={t("orgChange.next.title")} className={css.receipt}>
       <Composer
-        layout="page"
+        layout="inline" headingLevel={3}
         kicker={<>{t("orgChange.list.title")} · <span className="code">{d.code}</span></>}
         subtitle={t("orgChange.decide.step", { role, n: s.n, total: s.total })}
         title={t("orgChange.turn", { role })}

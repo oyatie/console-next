@@ -41,7 +41,7 @@ export function FixHost({ c, act, onClose, onAct }: { c: Card; act?: string; onC
     <>
       {said && !act && <Toast state="done" actions={<Button variant="ghost" onClick={() => setSaid(null)}>{t("empCard.quick.dismiss")}</Button>}>{said}</Toast>}
       {field && FIELDS.has(field) && (!c.d.employment && !c.d.pending_employment && ["employment_type", "phone", "base_pay"].includes(field)
-        ? <Sheet open title={t("people.employment.missing.title")} onClose={onClose} consequence={null} actions={<Button onClick={onClose}>{t("empFix.cancel")}</Button>}><MissingEmployment number={c.e.employee_number} /></Sheet>
+        ? <Sheet open title={t("people.employment.missing.title")} onClose={onClose} consequence={null} actions={null}><MissingEmployment number={c.e.employee_number} /></Sheet>
         : FIELD_CLASS[field] === "rev"
         ? <FixRevise key={field} c={c} field={field} onClose={onClose} onCorrected={corrected} onChanged={changed} />
         : <FixCorrect key={field} c={c} field={field} onClose={onClose} onDone={corrected} />)}

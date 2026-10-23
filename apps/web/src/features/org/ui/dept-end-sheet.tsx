@@ -55,6 +55,7 @@ export function DeptEndSheet({ place, setup, onClose, onDone, onPropose }: { pla
   const whole: Plan | null = !o ? null : o.delete.allowed ? "erase" : o.dissolve.allowed ? "dissolve" : null;
   const plan: Plan | null = ask ? (children === "raise" ? "raise" : children === "cascade" ? whole : null) : whole;
   const run = { erase, dissolve, raise };
+  const deleting = plan === "erase" || plan === "raise" || (ask && !children);
   const consequence = !o
     ? null
     : plan === "raise"
@@ -76,7 +77,7 @@ export function DeptEndSheet({ place, setup, onClose, onDone, onPropose }: { pla
       pending={pending}
       notice={<CommandError error={erase.error ?? dissolve.error ?? raise.error} own={ownRefusal} />}
       consequence={<span id="crud-unit-consequence">{consequence}</span>}
-      action={{ kind: plan === "erase" ? "orgDelete" : "orgDissolve", mode: plan === "erase" ? "remove" : "apply", count: 1 }}
+      action={{ kind: deleting ? "orgDelete" : "orgDissolve", mode: deleting ? "remove" : "apply", count: 1 }}
       tone="danger"
       onSubmit={() => { if (o?.can_manage && plan) run[plan].mutate(Number(o.version)); }}
       blocked={!o?.can_manage || !plan ? { reason: consequence ?? t("crud.noPermission") } : undefined}

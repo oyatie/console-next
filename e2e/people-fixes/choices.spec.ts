@@ -53,10 +53,10 @@ test("solo: bulk catalog promotions preserve IDs and demotion rules; inactive en
   await expect(reasons).toContainText("강등(징계)");
   await todayPreset(admin).click();
   await admin.getByRole("textbox", { name: /^메모/ }).fill("징계 결정에 따른 강등");
-  await admin.getByRole("button", { name: "승진 1명 반영" }).click();
+  await admin.getByRole("button", { name: "강등 1명 반영" }).click();
   expect((await read()).classification.job_title_id).toBe(titles.find((x) => x.label === "선임")!.id);
   await reasons.getByText("강등(징계)", { exact: true }).click();
-  await admin.getByRole("button", { name: "승진 1명 반영" }).click();
+  await admin.getByRole("button", { name: "강등 1명 반영" }).click();
   await expect(admin.getByRole("status").filter({ hasText: /1명 승진/ }).first()).toBeVisible();
   expect((await read()).classification.job_title_id).toBe(titles.find((x) => x.label === "사원")!.id);
 
@@ -109,7 +109,7 @@ test("solo: a conversion correction keeps its contract end and a fixed-term refu
   const events = async () => (await (await api(`/employees/${worker.id}/lifecycle-events`)).json()) as object;
   const eventsBefore = await events();
   const refused = admin.waitForResponse((r) => r.request().method() === "POST" && r.url().endsWith(`/employees/${worker.id}/lifecycle-events`));
-  await renew.getByRole("button", { name: /^계약 갱신 예약/ }).click();
+  await renew.getByRole("button", { name: "계약 갱신 1명 예약" }).click();
   expect((await refused).status()).toBe(409);
   expect(await codeOf(await refused)).toBe("fixed_term_limit");
   await expect(renew.getByRole("alert")).toContainText("이 화면에서 신청하는 기능은 아직 없습니다");

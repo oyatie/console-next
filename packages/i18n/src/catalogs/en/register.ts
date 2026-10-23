@@ -72,8 +72,6 @@ export const enRegister: Record<keyof typeof koRegister, string> = {
   "register.foot.readyHintOp": "In operation, the registration is recorded in the change history",
   "register.foot.dup": "Choose whether this is the same person to register. Register moves to that choice.",
   "register.many": "Many people · paste / file",
-  "register.saveClose": "Register and close",
-  "register.saveNext": "Register and add next",
   "register.saved": "Registered {name} · employee no. {number}",
   "register.openRecord": "Open the record",
   "register.dup.title": "May be the same person · {n, number} candidate(s)",

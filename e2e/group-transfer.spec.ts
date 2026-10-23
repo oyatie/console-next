@@ -81,7 +81,7 @@ test("전적: nowhere to go says why, then one act records the exit and the hire
   await go(admin, `/people/${person}`);
   await hrAct(admin, "전적");
   await expect(g).toContainText("주식회사 가나홀딩스에서 퇴직하고 받을 법인에 채용합니다(전적)");
-  await g.getByRole("button", { name: "전적 예약", exact: true }).click();
+  await g.getByRole("button", { name: "전적 1명 예약", exact: true }).click();
   await expect(g.getByText("동의 증빙을 입력하십시오")).toBeVisible();
   await expect(g.getByText("퇴직금을 정산할지 승계할지 선택하십시오")).toBeVisible();
   await expect(g.getByText("남은 연차를 수당으로 지급할지 넘길지 선택하십시오")).toBeVisible();

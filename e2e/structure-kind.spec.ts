@@ -94,7 +94,7 @@ test("사업장 kind, code and order; 부서 head, code and order; a new 사업�
   await admin.getByRole("option", { name: /한부서/ }).click();
   await hr.getByRole("textbox", { name: /^부서 코드/ }).fill("HR");
   await expectAccessible(admin, "department head and code (setup)");
-  await hr.getByRole("button", { name: "저장", exact: true }).click();
+  await hr.getByRole("button", { name: "부서 정보 1개 변경", exact: true }).click();
   await expect(hr.getByRole("definition").filter({ hasText: /한부서 · .*부터/ })).toBeVisible();
   await expect(hr.getByRole("definition").filter({ hasText: /^HR$/ })).toBeVisible();
 
@@ -104,6 +104,6 @@ test("사업장 kind, code and order; 부서 head, code and order; a new 사업�
   const after = await openUnit(admin, "인사부");
   await after.getByRole("button", { name: "부서 코드 수정" }).click();
   await after.getByRole("textbox", { name: /^부서 코드/ }).fill("HR-1");
-  await after.getByRole("button", { name: "저장", exact: true }).click();
+  await after.getByRole("button", { name: "부서 정보 1개 변경", exact: true }).click();
   await expect(panel(admin, "인사부").getByRole("definition").filter({ hasText: /^HR-1$/ })).toBeVisible();
 });

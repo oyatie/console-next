@@ -52,7 +52,7 @@ export function DeptDetails({ node, onDone }: { node: Node; onDone: () => void }
   });
   return (
     <div ref={box} className={css.stack}>
-      <Composer title={t("orgUnit.details.save")} layout="page" action={{ kind: "orgDetails", mode: "change", count: 1 }} pending={save.isPending} onClose={onDone} blocked={same ? { reason: t("orgChange.edit.nothing") } : undefined} onSubmit={() => { if (!bad && !same) save.mutate(undefined); }}>
+      <Composer title={t("orgUnit.details.title")} layout="inline" headingLevel={3} action={{ kind: "orgDetails", mode: "change", count: 1 }} pending={save.isPending} onClose={onDone} blocked={same ? { reason: t("orgChange.edit.nothing") } : undefined} onSubmit={() => { if (!bad && !same) save.mutate(undefined); }}>
         <ServerPicker
           label={t("orgUnit.fact.head")}
           query={query}

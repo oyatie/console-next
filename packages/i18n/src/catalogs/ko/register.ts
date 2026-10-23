@@ -72,8 +72,6 @@ export const koRegister = {
   "register.foot.readyHintOp": "운영 중이라 등록은 변경 이력에 남습니다",
   "register.foot.dup": "같은 사람인지 선택하면 등록할 수 있습니다. 선택 전에는 등록되지 않고, 「등록」을 누르면 선택할 곳으로 갑니다.",
   "register.many": "여러 명이면 · 붙여넣기 / 파일",
-  "register.saveClose": "등록하고 닫기",
-  "register.saveNext": "등록하고 다음 사람",
   "register.saved": "{name|을를} 등록했습니다 · 사번 {number}",
   "register.openRecord": "인사카드 열기",
   "register.dup.title": "같은 사람일 수 있습니다 · 후보 {n, number}명",

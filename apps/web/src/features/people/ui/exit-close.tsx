@@ -5,7 +5,6 @@ import { exitUndoVerb } from "../domain/exits";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
-import { Button } from "../../../ui/button/button";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { onRecordChange } from "../../../lib/live/live";
@@ -60,7 +59,6 @@ export function CloseForm({ c: opened, reject, onClose, onDone }: { c: Case; rej
       draft={reason.trim()}
       consequence={unavailable ? null : t(exited ? "exit.close.consequence.reverse" : scheduled ? "exit.close.consequence.scheduled" : "exit.close.consequence", { name, date: fmtDate(c.effective_exit_date) })}
       missing={tried ? missing : 0}
-      aside={<Button onClick={onClose} disabled={run.pending}>{t("composer.dismiss")}</Button>}
       action={{ kind: "exit", mode, count: 1 }}
       tone="danger"
     >

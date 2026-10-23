@@ -2,7 +2,6 @@ import { useId, useState, type ReactNode } from "react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate, fmtNumber } from "@console/i18n/format";
-import { Button } from "../../../ui/button/button";
 import { DateField } from "../../../ui/date/date-field";
 import { Field, TextInput } from "../../../ui/field/field";
 import { CommandError } from "../../../lib/react/command-error";
@@ -110,7 +109,7 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
       employeeId={c.employee_id}
       consequence={t("exit.settlement.consequence", { name })}
       missing={tried ? empty.length : 0}
-      aside={aside ?? (sheet && <Button onClick={sheet.onClose} disabled={locked}>{t("composer.dismiss")}</Button>)}
+      aside={aside}
       action={{ kind: "settlement", mode: "request", count: 1 }}
       tone="danger"
       blocked={why ? { reason: why } : undefined}

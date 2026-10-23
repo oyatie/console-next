@@ -29,7 +29,7 @@ export function DeptNameComposer({ mode, place, onClose }: { mode: "create" | "r
     ...gov.missing,
   ].filter((x): x is string => Boolean(x));
   const submit = useGovernSubmit(() => creating ? {
-    kind: "NEW", target: { kind: "ORG_UNIT", ref: unitIdOf(d), label: value }, title: t("orgChange.title.create", { name: value }), proposal: [createGovOp(d, name)],
+    select: d.id, kind: "NEW", target: { kind: "ORG_UNIT", ref: unitIdOf(d), label: value }, title: t("orgChange.title.create", { name: value }), proposal: [createGovOp(d, name)],
   } : {
     kind: "REORG", target: { kind: "ORG_UNIT", ref: d.id, label: t("orgChange.title.rename", { from: d.name, to: value }) }, proposal: [{ op: "RENAME_ORG_UNIT", orgUnitId: d.id, name: value }],
   }, gov);

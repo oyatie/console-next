@@ -28,12 +28,12 @@ async function reportAndConfirm(admin: Page, c: ReturnType<typeof clickCounter>,
   await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(0));
   await sheet.getByLabel("퇴직 경위").fill(reason);
   await sheet.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
-  await c.click(sheet.getByRole("button", { name: "퇴직 보고" }));
+  await c.click(sheet.getByRole("button", { name: "퇴직 보고 1명 반영" }));
   await expect(exitPanel(admin)).toContainText("보고됨");
   await c.click(exitPanel(admin).getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
   await confirmAsHr(admin, c, opts);
   await expect(exitPanel(admin)).toContainText("인사 확인됨");
-  await expect(exitPanel(admin).getByRole("button", { name: "퇴직 보고 취소" })).toHaveCount(0);
+  await expect(exitPanel(admin).getByRole("button", { name: "퇴직 취소" })).toHaveCount(0);
 }
 
 /** HR confirmation needs all four statements, each ticked on its own; the server refuses it otherwise. */
@@ -175,7 +175,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await c.click(exitPanel(exec).getByRole("button", { name: "퇴직 철회" }));
   const reject = exec.getByRole("dialog", { name: "퇴직 철회" });
   await expect(reject).toContainText("퇴직 전 상태로 복원");
-  await reject.getByLabel("반려 사유").fill("결근 사유 확인됨");
+  await reject.getByLabel("철회 사유").fill("결근 사유 확인됨");
   await expectAccessible(exec, "J5: reject dialog");
   await c.click(reject.getByRole("button", { name: "퇴직 1명 철회" }));
   await expect(exitPanel(exec)).toContainText("반려됨");
@@ -196,12 +196,12 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await admin.getByRole("textbox", { name: /^마지막 근무일/ }).fill(exitOn);
   await admin.getByLabel("퇴직 경위").fill("계약 만료 예정");
   await admin.getByRole("dialog").getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
-  await c.click(admin.getByRole("dialog").getByRole("button", { name: "퇴직 보고" }));
+  await c.click(admin.getByRole("dialog").getByRole("button", { name: "퇴직 보고 1명 반영" }));
   // A report withdrawal left open must follow another tab's HR confirmation through SSE, even while sheets hold list refreshes.
   const otherHr = await admin.context().newPage();
   await otherHr.goto(new URL(admin.url()).pathname);
-  await exitPanel(otherHr).getByRole("button", { name: "퇴직 보고 취소" }).click();
-  const staleCancel = otherHr.getByRole("dialog", { name: "퇴직 보고 취소" });
+  await exitPanel(otherHr).getByRole("button", { name: "퇴직 취소" }).click();
+  const staleCancel = otherHr.getByRole("dialog", { name: "퇴직 취소" });
   await staleCancel.getByLabel("취소 사유").fill("담당자 확인 중");
   await c.click(exitPanel(admin).getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
   await expect(admin.getByRole("dialog")).toContainText(`${koDate(exitOn)}자로 퇴직 처리하도록 예약합니다`);
@@ -210,10 +210,10 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await expectAccessible(admin, "J5: HR confirmation of a future exit");
   await confirmAsHr(admin, c);
   await expect(staleCancel).toContainText("이 조치는 지금 할 수 없습니다");
-  await expect(staleCancel.getByRole("button", { name: "퇴직 보고 취소" })).toHaveCount(0);
+  await expect(staleCancel.getByRole("button", { name: "퇴직 취소" })).toHaveCount(0);
   await expect(staleCancel).not.toContainText("아직 퇴직 처리 전이라 재직 상태는 그대로입니다");
   await expect(staleCancel).toContainText("담당자 확인 중");
-  await staleCancel.getByRole("button", { name: "돌아가기", exact: true }).click();
+  await staleCancel.getByRole("button", { name: "닫기", exact: true }).click();
   await otherHr.close();
   await expect(exitPanel(admin)).toContainText("효력 예정");
   await expect(exitPanel(admin)).toContainText(`${koDate(exitOn)}에 퇴직 처리가 반영됩니다`);
@@ -228,18 +228,18 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   // stays, read-only, saying who did it, and the memo stays readable (not a journey click).
   const caseHref = await exitPanel(admin).getByRole("link", { name: "퇴직 건 열기" }).getAttribute("href");
   await exec.goto(caseHref!);
-  await expect(exec.getByRole("button", { name: "퇴직 보고 취소" })).toHaveCount(0);
+  await expect(exec.getByRole("button", { name: "퇴직 취소" })).toBeVisible();
   const open = exec.getByRole("region", { name: /지금/ });
   await open.getByLabel("확인 메모").fill("계약 종료 서류 확인 중");
 
-  await expect(exitPanel(admin).getByRole("button", { name: "퇴직 보고 취소" })).toHaveCount(0);
-  await c.click(exitPanel(admin).getByRole("button", { name: "퇴직 반려" }));
-  const withdraw = admin.getByRole("dialog", { name: "퇴직 반려" });
+  await expect(exitPanel(admin).getByRole("button", { name: "퇴직 취소" })).toBeVisible();
+  await c.click(exitPanel(admin).getByRole("button", { name: "퇴직 취소" }));
+  const withdraw = admin.getByRole("dialog", { name: "퇴직 취소" });
   await expect(withdraw).toContainText(`${koDate(exitOn)}자 퇴직 예약을 거둡니다`);
-  await withdraw.getByRole("button", { name: "퇴직 반려" }).click();
-  await expect(withdraw.getByRole("textbox", { name: /^반려 사유/ })).toBeFocused();
-  await withdraw.getByLabel("반려 사유").fill("계약 연장 합의");
-  await c.click(withdraw.getByRole("button", { name: "퇴직 반려" }));
+  await withdraw.getByRole("button", { name: "퇴직 1명 취소" }).click();
+  await expect(withdraw.getByRole("textbox", { name: /^취소 사유/ })).toBeFocused();
+  await withdraw.getByLabel("취소 사유").fill("계약 연장 합의");
+  await c.click(withdraw.getByRole("button", { name: "퇴직 1명 취소" }));
   await expect(exitPanel(admin)).toContainText("반려됨");
   await expect(head(admin, "예정퇴직").getByText("효력 예정")).toHaveCount(0);
   expect(c.done("J5 withdraw the scheduled exit")).toBeLessThanOrEqual(2);
@@ -247,7 +247,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   // The event stream says the case changed, and the open page re-reads it (decision #27: nothing polls).
   await expect(open).toContainText("이미 처리했습니다", { timeout: 45_000 });
   await expect(open).toContainText("계약 종료 서류 확인 중");
-  await expect(open.getByRole("button", { name: "본사 퇴직 확인" })).toHaveCount(0);
+  await expect(open.getByRole("button", { name: "퇴직 본사 확인 1명 반영" })).toHaveCount(0);
   await expectAccessible(exec, "J5: a step someone else took while the form was open");
   await open.getByRole("button", { name: "지금 단계 보기" }).click();
   await expect(exitPanel(exec)).toContainText("반려됨");
@@ -260,7 +260,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await admin.getByRole("textbox", { name: /^마지막 근무일/ }).fill(leaveOn);
   await admin.getByLabel("퇴직 경위").fill("이직 확정");
   await admin.getByRole("dialog").getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
-  await c.click(admin.getByRole("dialog").getByRole("button", { name: "퇴직 보고" }));
+  await c.click(admin.getByRole("dialog").getByRole("button", { name: "퇴직 보고 1명 반영" }));
   await c.click(exitPanel(admin).getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
   await confirmAsHr(admin, c);
   await expect(exitPanel(admin)).toContainText("효력 예정");

@@ -42,7 +42,7 @@ test("parity grade: catalog-backed change, correction, promotion, roster and set
   await statement(change.getByRole("radio", { name: "정기 승진", exact: true })).click();
   await capture(a, "people", ["E4-grade-change"], "Actual inline-created 사원 grade, today and explicit promotion reason, with a period table; future-overlap fixture not exercised.");
   await inspect(a, "people", "grade-change");
-  await change.getByRole("button", { name: "승진 기록", exact: true }).click();
+  await change.getByRole("button", { name: "승진 1명 반영", exact: true }).click();
   await expect(change).toBeHidden();
   await expect(a.locator("#f-grade")).toContainText("사원");
   await supplement(a, "grade-change-receipt", "Real applied grade write/read-back; card resolves the catalog label.");

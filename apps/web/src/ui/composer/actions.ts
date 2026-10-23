@@ -36,6 +36,7 @@ const ACTION_KINDS = {
   identityDifferent: ["composer.action.identityDifferent", "people"],
   rehire: ["composer.action.rehire", "people"],
   demotion: ["composer.action.demotion", "people"],
+  employeeNumber: ["composer.action.employeeNumber", "people"],
   profile: ["composer.action.profile", "people"],
   registration: ["composer.action.registration", "people"],
 } as const;
@@ -58,13 +59,14 @@ const ACTION_VERBS = {
   remove: "composer.verb.remove",
 } as const;
 
-export type ActionDescription = { kind: keyof typeof ACTION_KINDS; mode: keyof typeof ACTION_VERBS; count?: number };
+export type ActionDescription = { kind: keyof typeof ACTION_KINDS; mode: keyof typeof ACTION_VERBS; count?: number; continuation?: "next" };
 
 export const verbLabel = (mode: ActionDescription["mode"]): string => t(ACTION_VERBS[mode]);
 
-export function commitLabel({ kind, mode, count }: ActionDescription): string {
+export function commitLabel({ kind, mode, count, continuation }: ActionDescription): string {
   const [noun, unit] = ACTION_KINDS[kind];
-  return t(count && count > 0 ? "composer.commit.count" : "composer.commit", {
+  const label = t(count && count > 0 ? "composer.commit.count" : "composer.commit", {
     action: t(noun), verb: verbLabel(mode), count: count ?? 0, unit: t(`composer.unit.${unit}`),
   });
+  return continuation ? t("composer.commit.next", { label }) : label;
 }

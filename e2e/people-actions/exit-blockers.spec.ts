@@ -36,7 +36,7 @@ test("exit report: a later reservation is named first and withdrawn in place; a 
   await fillDate(transfer, move);
   await reasonChip(transfer, "업무 필요").click();
   await reasonBox(transfer).fill("채용팀 합류");
-  await transfer.getByRole("button", { name: `전보 예약 · ${koDate(move)} 시행`, exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 예약", exact: true }).click();
   await expect(history.getByText(/정예약을 채용팀으로 전보하도록 예약했습니다/)).toBeVisible();
 
   // The report: the reservation after the last working day is named first, with its own withdrawal.

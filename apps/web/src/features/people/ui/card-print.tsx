@@ -49,7 +49,7 @@ export function CardPrint({ c, onClose }: { c: Card; onClose: () => void }) {
       <Band edge="top" tone="canvas" className={s.printFoot}>
         <span>{missing ? <b>{t("empDoc.print.pick")}</b> : <b>{t("empDoc.print.ready", { count: parts.length })}</b>} {t("empDoc.print.unserved")}</span>
         <span className="grow" />
-        <Button variant="ghost" onClick={onClose}>{t("empFix.cancel")}</Button>
+        <Button variant="ghost" onClick={onClose}>{t("composer.dismiss")}</Button>
         <Button variant="primary" aria-disabled={missing ? true : undefined} onClick={print}><Printer size={16} aria-hidden /> {t("empDoc.print.commit")}</Button>
       </Band>
     </div>

@@ -100,7 +100,7 @@ function Archive({ d, s, title, n, refetch, onNote }: { d: Detail; s: Extract<Ap
     <>
       {s.open.length > 0 && <p>{t("orgChange.settling.left", { count: s.open.length })}</p>}
       {isBranch && <p className={css.caution}>{t("orgChange.archive.branchUsers")}</p>}
-      {s.canArchive && <Composer layout="page" title={t("orgChange.archive", { title })}
+      {s.canArchive && <Composer layout="inline" headingLevel={3} title={t("orgChange.archive", { title })}
         action={{ kind: "orgDissolve", mode: "complete" }} tone="danger" pending={archive.isPending}
         blocked={reasons.length ? { reason: reasons.join(" · ") } : undefined}
         consequence={t("orgChange.archive.consequence", { name })}

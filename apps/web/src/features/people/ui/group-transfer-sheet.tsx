@@ -4,7 +4,6 @@ import { Link } from "@tanstack/react-router";
 import { User } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
 import { keepsKey } from "../../../lib/react/command";
 import { todayKst } from "../../../lib/pure/today";
 import { entitiesRef, orgStructureRef } from "../../../reference/entity/api";
@@ -106,7 +105,7 @@ export function GroupTransferSheet({ d, events, head, units, act, offer, seed, c
   const kicker = <><User size={12} aria-hidden />{t("lifecycle.kicker", { name: e.name, number: e.employee_number ?? "—", where: [from, e.org_unit, e.position].filter(Boolean).join(" · ") })}</>;
   if (!ready)
     return (
-      <Composer action={{ kind: "GROUP_TRANSFER", mode: "apply", count: 1 }} onSubmit={() => false} locked kicker={kicker} title={t("groupTransfer.title")} onClose={onClose} consequence={null} recovery={<Button onClick={onClose}>{t("composer.dismiss")}</Button>}>
+      <Composer action={{ kind: "GROUP_TRANSFER", mode: "apply", count: 1 }} onSubmit={() => false} kicker={kicker} title={t("groupTransfer.title")} onClose={onClose} consequence={null} recovery={<Button onClick={onClose}>{t("composer.dismiss")}</Button>}>
         {targets.kind !== "ready" && <GroupBlocked targets={targets} onTransfer={() => onOpen("TRANSFER")} />}
       </Composer>
     );

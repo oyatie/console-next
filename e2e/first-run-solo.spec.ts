@@ -88,7 +88,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   await expect(admin.getByRole("option", { name: /› 판교지점 \d+명$/ })).toBeVisible();
   // Dismiss the picker and sheet before reopening; rapid history changes can keep the probe mounted.
   await placement.press("Escape");
-  await c.click(probe.getByRole("button", { name: "닫기", exact: true }));
+  await c.click(probe.getByRole("button", { name: "닫기", exact: true }).last());
   await expect(probe).toBeHidden();
   expect(c.done("org: two departments, applied at once")).toBeLessThanOrEqual(BUDGET.org);
 

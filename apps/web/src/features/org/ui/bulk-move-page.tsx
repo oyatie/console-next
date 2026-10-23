@@ -74,12 +74,8 @@ function Body({ chosen, places, setup, company }: { chosen: string[]; places: Ma
       layout="page"
       title={count === 1 ? t("bulkMove.titleOne", { name: roots[0]!.name }) : t("bulkMove.title", { n: count })}
       kicker={<span className={s.crumb}><Network size={14} aria-hidden />{t("bulkMove.from")} · {[t("orgStructure.title"), ...first.path].join(" › ")}</span>}
-      subtitle={<>
-        {t("bulkMove.titleSub", { m: total })}
-        {carried.length > 0 && <p className={s.lead}>{t("bulkMove.collapsed", { names: carried.map((c) => c.name).join("·"), parent: carried.map((c) => places.get(c.id)?.parent?.name).join("·"), n: roots.length })}</p>}
-        <AddMore entity={entity} chosen={chosen} />
-        <Chip tone={setup ? "ok" : "info"}>{t(setup ? "bulkMove.phaseSetup" : "bulkMove.phaseOperating")}</Chip>
-      </>}
+      subtitle={t("bulkMove.titleSub", { m: total })}
+      tools={<><AddMore entity={entity} chosen={chosen} /><Chip tone={setup ? "ok" : "info"}>{t(setup ? "bulkMove.phaseSetup" : "bulkMove.phaseOperating")}</Chip></>}
       onClose={close}
       pending={run.isPending || submit.isPending}
       action={{ kind: "orgMove", mode: !setup && gov.routed ? "request" : !setup && gov.mode === "schedule" ? "schedule" : "apply", count }}
@@ -88,7 +84,10 @@ function Body({ chosen, places, setup, company }: { chosen: string[]; places: Ma
       onSaveDraft={!setup && blockers.length === 0 ? () => submit.mutate(false) : undefined}
       notice={<CommandError error={run.error ?? submit.error} />}
       sections={{
-        preflight: blockers.length ? <span className={s.reason}><Lock size={14} aria-hidden />{blockers[0]}</span> : null,
+        preflight: blockers.length || carried.length ? <>
+          {blockers.length > 0 && <span className={s.reason}><Lock size={14} aria-hidden />{blockers[0]}</span>}
+          {carried.length > 0 && <p className={s.lead}>{t("bulkMove.collapsed", { names: carried.map((c) => c.name).join("·"), parent: carried.map((c) => places.get(c.id)?.parent?.name).join("·"), n: roots.length })}</p>}
+        </> : null,
         effects: !blockers.length ? <>
           <span>{t(setup ? "bulkMove.consequence" : "bulkMove.consequenceGoverned", { n: count, m: total, p: plan!.totals.members, to: target!.workplace!.name, date: gov.g.date, items, moves: plan!.items.moves, renames: plan!.items.renames })}</span>
           <Muted>{t(setup ? "bulkMove.consequenceSetupNote" : "bulkMove.consequenceGovNote", { p: plan!.totals.siteChanged })}</Muted>
@@ -101,8 +100,8 @@ function Body({ chosen, places, setup, company }: { chosen: string[]; places: Ma
           <TargetTree
             label={t("bulkMove.where")}
             entity={entity}
-            show={(n) => !excluded.has(n.id)}
-            why={(n) => (here(n) ? t("orgUnit.target.here") : undefined)}
+            show={() => true}
+            why={(n) => excluded.has(n.id) ? t("bulkMove.addTaken") : here(n) ? t("orgUnit.target.here") : undefined}
             right={(n) => (n.kind === "WORKPLACE" ? t("orgUnit.target.depts", { count: descendants(n).length }) : "")}
             workplaces
             value={to}

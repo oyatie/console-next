@@ -19,7 +19,7 @@ test("regression: an erase from the panel ends the chart's earlier receipt (org-
   await p.locator("#act-dept-delete").click();
   const s = sheet(admin, "임시팀 삭제 · 폐지");
   await expect(s.getByText("확인 중…")).toHaveCount(0);
-  await s.getByRole("button", { name: "임시팀 삭제" }).click();
+  await s.getByRole("button", { name: "부서 1개 삭제" }).click();
   await expect(s).toBeHidden();
   await expect(box(admin, "임시팀")).toHaveCount(0);
   // The older receipt is gone with its undo; what it recorded stays.
@@ -40,7 +40,7 @@ test.fixme("an erase never re-reads the erased unit (org-13)", { tag: ["@regress
   await p.locator("#act-dept-delete").click();
   const s = sheet(admin, "임시팀 삭제 · 폐지");
   await expect(s.getByText("확인 중…")).toHaveCount(0);
-  await s.getByRole("button", { name: "임시팀 삭제" }).click();
+  await s.getByRole("button", { name: "부서 1개 삭제" }).click();
   await expect(box(admin, "임시팀")).toHaveCount(0);
   await admin.waitForLoadState("networkidle");
   expect(missing).toEqual([]);

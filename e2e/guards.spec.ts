@@ -112,7 +112,7 @@ test("nobody acts on their own record, the ops account keeps its sign-in path, a
     await empno.getByRole("textbox", { name: "새 사번" }).fill("HB-1001");
     await empno.getByRole("radiogroup", { name: /언제부터/ }).getByText("오늘부터", { exact: true }).click();
     await reasonChip(empno, "사번 체계 변경", "사유").click();
-    await empno.getByRole("button", { name: "사번 변경", exact: true }).click();
+    await empno.getByRole("button", { name: "사번 1명 변경", exact: true }).click();
     await expect(admin.getByText("사번을 HB-1001로 변경했습니다")).toBeVisible();
 
     await registerEmployee(admin, { name: "최자동", unit: "인사부" });

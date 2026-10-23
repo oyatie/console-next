@@ -50,13 +50,13 @@ test("wrong-kind, inactive and missing catalog IDs are refused visibly without c
       await route.continue({ postData: JSON.stringify({ ...body, changes: { grade_id: id } }) });
     });
     const response = admin.waitForResponse((r) => r.request().method() === "PATCH" && path.test(new URL(r.url()).pathname));
-    await correct.getByRole("button", { name: "정정", exact: true }).click();
+    await correct.getByRole("button", { name: "인사 정보 1명 정정", exact: true }).click();
     const refused = await response;
     expect(refused.status()).toBe(422);
     expect((await refused.json()).error.code).toBe("job_title_unknown");
     await expect(correct.getByRole("alert")).toContainText("저장하지 않았습니다");
     await expect(correct.getByRole("radio", { name: "Valid", exact: true })).toBeChecked();
-    await correct.getByRole("button", { name: "취소", exact: true }).click();
+    await correct.getByRole("button", { name: "닫기", exact: true }).last().click();
     await admin.unroute(path);
     await go(admin, card);
     await expect(admin.locator("#f-grade")).not.toContainText("Valid");
@@ -71,7 +71,7 @@ test("wrong-kind, inactive and missing catalog IDs are refused visibly without c
   await correct.getByRole("button", { name: "다시 사용하고 선택", exact: true }).click();
   await expect(correct.getByRole("radio", { name: "Inactive", exact: true })).toBeChecked();
   await statement(correct.getByRole("radio", { name: "입력 실수", exact: true })).click();
-  await correct.getByRole("button", { name: "정정", exact: true }).click();
+  await correct.getByRole("button", { name: "인사 정보 1명 정정", exact: true }).click();
   await expect(correct).toBeHidden();
   await expect(admin.locator("#f-grade")).toContainText("Inactive");
   const reused = (await (await api("/job-titles")).json()).items.find((x: { label: string }) => x.label === "Inactive");

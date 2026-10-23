@@ -44,7 +44,7 @@ test("lifecycle sheets: a schedule conflict names the reservation, its withdrawa
   await fillDate(transfer, move);
   await reasonChip(transfer, "업무 필요").click();
   await reasonBox(transfer).fill("채용팀 합류");
-  await transfer.getByRole("button", { name: `전보 예약 · ${koDate(move)} 시행`, exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 예약", exact: true }).click();
   await expect(history.getByText(/충돌이를 채용팀으로 전보하도록 예약했습니다/)).toBeVisible();
   await expect(history.getByRole("button", { name: "접수 번호 복사" })).toBeVisible();
 
@@ -87,7 +87,7 @@ test("lifecycle sheets: a schedule conflict names the reservation, its withdrawa
   const ret = sheet(admin, "충돌이 복직 처리");
   await fillDate(ret, back);
   await reasonBox(ret).fill("복귀 예정");
-  await ret.getByRole("button", { name: `복직 예약 · ${koDate(back)} 시행`, exact: true }).click();
+  await ret.getByRole("button", { name: "복직 1명 예약", exact: true }).click();
   await expect(history.getByText(/충돌이를 복직 처리하도록 예약했습니다/)).toBeVisible();
   // On leave until then: a transfer is not offered now, only after the return (from the day after it).
   await hrAct(admin, "전보");
@@ -141,7 +141,7 @@ test("lifecycle sheets: a lost response freezes the sheet until it is checked, a
   await fillDate(transfer, later);
   await reasonChip(transfer, "정기 인사").click();
   await reasonBox(transfer).fill("인사부 복귀 예약");
-  await transfer.getByRole("button", { name: `전보 예약 · ${koDate(later)} 시행`, exact: true }).click();
+  await transfer.getByRole("button", { name: "전보 1명 예약", exact: true }).click();
   const reserved = history.getByRole("listitem").filter({ hasText: "인사부 복귀 예약" });
   await expect(reserved).toContainText("효력 예정");
 

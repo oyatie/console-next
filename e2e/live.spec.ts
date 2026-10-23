@@ -165,7 +165,7 @@ test("a sheet holds a change made elsewhere to the record under it, and closing 
   await expect(exitPanel(b.page)).not.toContainText("보고됨");
 
   // Closing applies the held change: one re-read, the record shows the report.
-  await open.getByRole("button", { name: "닫기" }).click();
+  await open.getByRole("button", { name: "닫기", exact: true }).last().click();
   await expect(open).toBeHidden();
   await expect(exitPanel(b.page)).toContainText("보고됨", { timeout: 15_000 });
 });

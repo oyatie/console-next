@@ -3,9 +3,8 @@ import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
-import { useNeedsNote, useReasonCodesReady } from "../../../lib/reason-codes";
+import { reasonCodesQuery, useNeedsNote, useReasonCodesReady } from "../../../lib/reason-codes";
 import { keepsKey } from "../../../lib/react/command";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
@@ -116,6 +115,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
   const sameDay = when === "future" ? events.find((x) => x.state === "SCHEDULED" && x.event_type === kind && x.effective_date === v0.date && x.id !== from?.id) : undefined;
   const replaces = seed?.mode === "edit" ? from!.id : (sameDay?.id ?? (conflict?.date === v0.date ? conflict.id : undefined));
   const coded = kind === "TRANSFER" || kind === "PROMOTE";
+  const reasons = useQuery({ ...reasonCodesQuery(kind === "PROMOTE" ? "lifecycle_promote" : "lifecycle_transfer"), enabled: coded });
   const codes = useReasonCodesReady(kind === "TRANSFER" ? "lifecycle_transfer" : kind === "PROMOTE" ? "lifecycle_promote" : null);
   const voidNote = useNeedsNote("lifecycle_cancel", v0.voidCode);
   // Each still-missing input, in screen order; the frame focuses the first after a refused submit.
@@ -224,6 +224,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
       subtitle={here ? t("lifecycle.nowSince", { where: here, date: since }) : t("lifecycle.now", { where: whoLine(e) })}
       onClose={onClose}
       pending={run.isSending}
+      loading={titles.isPending || (coded && reasons.isPending)}
       locked={checking || noCatalog}
       notice={
         <>

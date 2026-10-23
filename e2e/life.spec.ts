@@ -107,7 +107,7 @@ test("lifecycle: correct and rescind the latest change, re-read a stale sheet, r
       await expect(transfer).toContainText(`${koMonthDay(on)} 전보 예약을 이 내용으로 변경합니다`);
       await reasonChip(transfer, "일정 변경", "변경 사유").click();
     }
-    await transfer.getByRole("button", { name: `전보 예약 · ${koDate(on)} 시행`, exact: true }).click();
+    await transfer.getByRole("button", { name: "전보 1명 예약", exact: true }).click();
     await expect(history.getByRole("listitem").filter({ hasText: why })).toContainText("효력 예정");
   }
   await expect(history.getByRole("listitem").filter({ hasText: "인사부 복귀 예정" })).toHaveCount(0);
@@ -127,7 +127,7 @@ test("lifecycle: a renewal past the two-year fixed-term limit is refused with it
   await expect(renewal).toContainText("2년 한도");
   await expect(renewal).toContainText("단서 사유의 예외가 기록돼 있지 않으면 서버가 거부합니다");
   await reasonBox(renewal).fill("계약 1년 연장");
-  await renewal.getByRole("button", { name: `계약 갱신 예약 · ${koDate(kstDate(21))} 시행`, exact: true }).click();
+  await renewal.getByRole("button", { name: "계약 갱신 1명 예약", exact: true }).click();
   const refused = renewal.getByRole("alert");
   await expect(refused).toContainText("기간제 2년 한도를 넘습니다");
   await expect(refused).toContainText("휴직·파견 등으로 빈자리를");
@@ -135,7 +135,7 @@ test("lifecycle: a renewal past the two-year fixed-term limit is refused with it
   await expectAccessible(admin, "life: renewal refused past the fixed-term limit");
   await refused.getByRole("button", { name: "새 종료일 다시 선택" }).click();
   await fillDate(renewal, kstDate(25), "새 계약 종료일");
-  await renewal.getByRole("button", { name: `계약 갱신 예약 · ${koDate(kstDate(21))} 시행`, exact: true }).click();
+  await renewal.getByRole("button", { name: "계약 갱신 1명 예약", exact: true }).click();
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("status")).toContainText("기간이님의 계약 갱신을");
 });
 
@@ -159,7 +159,7 @@ test("people: HR corrects a record", { tag: "@hr" }, async ({ browser }) => {
   const fix = sheet(admin, /입사일 정정/);
   await fix.getByRole("textbox", { name: "입사일" }).fill(kstDate(-1));
   await fix.getByRole("radiogroup", { name: /왜 정정합니까/ }).getByText("원본 서류와 다름", { exact: true }).click();
-  await fix.getByRole("button", { name: "정정 요청", exact: true }).click();
+  await fix.getByRole("button", { name: "인사 정보 1명 정정", exact: true }).click();
   await expect(admin.getByRole("status").filter({ hasText: "검토 표시" })).toBeVisible();
 
 });
