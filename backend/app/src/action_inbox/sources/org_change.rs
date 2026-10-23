@@ -33,7 +33,7 @@ struct Change {
 macro_rules! eligible {
     () => {
         "WITH classified AS (SELECT r.id, r.code, r.target_label, r.effective_date, r.created_at, r.reason, \
-         (SELECT u.display_name FROM users u WHERE u.org_id = r.org_id AND u.id = r.drafted_by) AS drafted_by_name, \
+         (SELECT u.display_name FROM person_accounts_current u WHERE u.org_id = r.org_id AND u.id = r.drafted_by) AS drafted_by_name, \
          (SELECT e.command_id FROM audit_events e WHERE e.org_id = r.org_id \
           AND e.target_type = 'org_change_request' AND e.target_id = r.id::text \
           AND e.outcome = 'ALLOWED' AND e.command_id IS NOT NULL \

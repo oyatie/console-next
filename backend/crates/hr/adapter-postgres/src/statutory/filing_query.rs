@@ -25,7 +25,7 @@ pub(super) fn non_employee_types() -> Vec<&'static str> {
 }
 // Historical placement, including both employers of a 전적. No current-employer scope shortcut.
 const FROM: &str = " FROM sources l \
- JOIN employees x ON x.org_id = l.org_id AND x.id = l.employee_id \
+ JOIN person_employees_current x ON x.org_id = l.org_id AND x.id = l.employee_id \
  CROSS JOIN LATERAL (SELECT k FROM unnest(CASE \
    WHEN l.event_type = 'GROUP_TRANSFER' THEN ARRAY['LOSE','ACQUIRE','AGE60'] \
    WHEN l.event_type IN ('ONBOARD','REHIRE') THEN ARRAY['ACQUIRE','AGE60'] \
