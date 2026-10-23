@@ -8,6 +8,8 @@ use crate::{DatedFeatureGrant, EffectiveFeatureGrant, Feature, Role, SubjectFres
 /// Live session authority; no tenant roles or account grants are attached.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SupportPrincipal {
+    pub operator_approved: bool,
+    pub tenant_approved: bool,
     pub session_id: uuid::Uuid,
     pub operator_label: String,
     pub scope: Vec<String>,

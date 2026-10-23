@@ -49,8 +49,14 @@ async fn active(
     let permission = store::tenant_permission(&mut tx, p.org_id, *p.user_id.as_uuid()).await?;
     let rows:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'operator_label',operator_label,'expires_at',expires_at) FROM support_sessions WHERE org_id=$1 AND state='ACTIVE' AND expires_at>clock_timestamp() ORDER BY requested_at")
         .bind(p.org_id.as_uuid()).fetch_all(tx.as_mut()).await.map_err(SupportError::from)?;
+    let pending: Vec<Value> = if permission {
+        sqlx::query_scalar("SELECT jsonb_build_object('id',id,'operator_label',operator_label,'ticket_ref',ticket_ref,'reason',reason,'request_expires_at',request_expires_at) FROM support_sessions WHERE org_id=$1 AND state='OPERATOR_APPROVED' AND tenant_approved_at IS NULL AND request_expires_at>clock_timestamp() ORDER BY request_expires_at,id")
+            .bind(p.org_id.as_uuid()).fetch_all(tx.as_mut()).await.map_err(SupportError::from)?
+    } else {
+        Vec::new()
+    };
     tx.commit().await.map_err(SupportError::from)?;
-    Ok(Json(json!({"sessions":rows,"can_approve":permission})).into_response())
+    Ok(Json(json!({"sessions":rows,"can_approve":permission,"pending_count":pending.len(),"pending_approvals":pending})).into_response())
 }
 
 async fn list(
@@ -60,7 +66,7 @@ async fn list(
     let mut tx = state.pool.begin().await.map_err(SupportError::from)?;
     let permission = store::tenant_permission(&mut tx, p.org_id, *p.user_id.as_uuid()).await?;
     if !permission {
-        return Ok(Json(json!({"sessions":[],"can_approve":false})).into_response());
+        return Err(SupportError::Refused("forbidden").into());
     }
     let rows:Vec<Value>=sqlx::query_scalar("SELECT (to_jsonb(s)-'request_assertion'-'approval_assertion') || jsonb_build_object('decisions',COALESCE((SELECT jsonb_agg(jsonb_build_object('actor_label',d.actor_label,'decision',d.decision,'at',d.at) ORDER BY d.at,d.id) FROM support_session_decisions d WHERE d.org_id=s.org_id AND d.session_id=s.id),'[]'::jsonb),'records',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',a.id,'method',a.after_snap->>'method','path',a.after_snap->>'path','at',a.occurred_at) ORDER BY a.occurred_at,a.id) FROM audit_events a WHERE a.org_id=s.org_id AND a.target_id=s.id::text AND a.action='support.access'),'[]'::jsonb)) FROM support_sessions s WHERE s.org_id=$1 ORDER BY s.requested_at DESC,s.id")
         .bind(p.org_id.as_uuid()).fetch_all(tx.as_mut()).await.map_err(SupportError::from)?;
@@ -107,7 +113,10 @@ async fn decide(
             .ok_or(SupportError::Refused("validation"))?;
         if seconds <= 0
             || seconds > session.requested_duration_seconds
-            || seconds > store::limit(SettingKey::SupportMaxDuration)?.whole_seconds()
+            || seconds
+                > store::limit(&mut tx, p.org_id, SettingKey::SupportMaxDuration)
+                    .await?
+                    .whole_seconds()
         {
             return Err(SupportError::Refused("validation").into());
         }

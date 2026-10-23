@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, getRouteApi } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { isMessageId, t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
+import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
@@ -18,8 +18,10 @@ import { PageHead } from "../../../ui/page-head/page-head";
 import { Table } from "../../../ui/table";
 import { codeText } from "../../../lib/labels";
 import { buttonClass } from "../../../ui/button/button-class";
-import { activeSupportQuery, decideSupportSession, endSupportSession, SUPPORT_READS, supportRefusal, supportSessionsQuery, type Sessions, type SupportDecision, type SupportSession } from "../api";
+import { ApiError, activeSupportQuery, decideSupportSession, endSupportSession, SUPPORT_READS, supportRefusal, supportSessionsQuery, type Sessions, type SupportDecision, type SupportSession } from "../api";
 
+const route = getRouteApi("/app/audit/support-access");
+const durationText = (seconds: number) => t("supportAccess.duration", { hours: fmtNumber(Math.floor(seconds / 3600)), minutes: fmtNumber((seconds % 3600) / 60) });
 const scopeText = (scope: string) => scope === "metadata" ? t("supportAccess.scopeMetadata") : codeText(`accessCodes.domain.${scope}`, scope);
 const decisionText = (decision: string) => {
   const key = `supportAccess.decision.${decision}`;
@@ -32,19 +34,26 @@ const stateText = (state:string) => {const key=`supportAccess.state.${state}`;re
 export function ActiveSupportBanner() {
   const q = useQuery(activeSupportQuery);
   if (q.error) return <CommandError error={q.error} own={supportRefusal}><Button onClick={() => void q.refetch()}>{t("common.retry")}</Button></CommandError>;
-  if (!q.data?.sessions.length) return null;
-  return <Banner placement="page" tone="warn" live="polite" title={t("supportAccess.banner")}
-    actions={<Link to="/audit/support-access" className={buttonClass()}>{t("supportAccess.bannerAction")}</Link>}>
-    {q.data.sessions.map((s) => <p key={s.id}>{s.operator_label} · {t("supportAccess.bannerExpiry", { at: s.expires_at ? fmtDateTime(s.expires_at) : "—" })}</p>)}
-  </Banner>;
+  if (!q.data) return null;
+  return <>
+    {q.data.can_approve && q.data.pending_count > 0 && <Banner placement="page" tone="warn" live="polite" title={t("supportAccess.pending", { count: fmtNumber(q.data.pending_count) })}
+      actions={<Link to="/audit/support-access" search={{ review: q.data.pending_approvals[0]?.id }} className={buttonClass()}>{t("supportAccess.review")}</Link>}>
+      {q.data.pending_approvals.map((s) => <p key={s.id}>{s.operator_label} · {t("supportAccess.requestDeadline", { at: fmtDateTime(s.request_expires_at) })}</p>)}
+    </Banner>}
+    {q.data.sessions.length > 0 && <Banner placement="page" tone="warn" live="polite" title={t("supportAccess.banner")}
+      actions={q.data.can_approve ? <Link to="/audit/support-access" className={buttonClass()}>{t("supportAccess.bannerAction")}</Link> : undefined}>
+      {q.data.sessions.map((s) => <p key={s.id}>{s.operator_label} · {t("supportAccess.bannerExpiry", { at: s.expires_at ? fmtDateTime(s.expires_at) : "—" })}</p>)}
+    </Banner>}
+  </>;
 }
 
 export function SupportAccess() {
   const q = useQuery(supportSessionsQuery);
+  const visible = q.error instanceof ApiError && q.error.status === 403 ? { ...q, data: undefined } : q;
   return <div className="page">
     <PageHead title={t("supportAccess.title")} sub={t("supportAccess.description")} />
     <Card flush>
-      <QueryState q={q} own={supportRefusal} empty={(data) => !data.sessions.length ? <EmptyState title={t("supportAccess.emptyTitle")} reason={t("supportAccess.emptyReason")} /> : null}>
+      <QueryState q={visible} own={supportRefusal} empty={(data) => !data.sessions.length ? <EmptyState title={t("supportAccess.emptyTitle")} reason={t("supportAccess.emptyReason")} /> : null}>
         {(data) => <SessionsList data={data} />}
       </QueryState>
     </Card>
@@ -52,7 +61,8 @@ export function SupportAccess() {
 }
 
 function SessionsList({ data }: { data: Sessions }) {
-  const [selected, setSelected] = useState<string>();
+  const { review } = route.useSearch();
+  const [selected, setSelected] = useState<string | undefined>(review);
   const current = data.sessions.find((s) => s.id === selected)?.id ?? data.sessions[0]?.id;
   return <Table label={t("supportAccess.title")} rows={data.sessions} rowId={(s) => s.id} selected={current} onSelect={setSelected}
     columns={[
@@ -66,10 +76,10 @@ function SessionsList({ data }: { data: Sessions }) {
 }
 
 function SessionDetails({ session: s, canApprove }: { session: SupportSession; canApprove: boolean }) {
-  const [duration, setDuration] = useState(String(s.requested_duration_seconds));
+  const [duration, setDuration] = useState(String(s.requested_duration_seconds / 60));
   const [reveal, setReveal] = useState(false);
   const [tried, setTried] = useState(false);
-  const validDuration = Number.isSafeInteger(Number(duration)) && Number(duration) > 0 && Number(duration) <= s.requested_duration_seconds;
+  const validDuration = Number.isSafeInteger(Number(duration) * 60) && Number(duration) > 0 && Number(duration) * 60 <= s.requested_duration_seconds;
   const decide = useCommand({
     run: (body: SupportDecision, key: string) => decideSupportSession(s.id, body, key),
     invalidates: SUPPORT_READS, settle: true, announce: () => t("supportAccess.decisionSaved"),
@@ -84,19 +94,19 @@ function SessionDetails({ session: s, canApprove }: { session: SupportSession; c
       { key: "ticket", label: t("supportAccess.ticket"), value: s.ticket_ref },
       { key: "reason", label: t("supportAccess.reason"), value: <>{s.reason} <span className="muted">({s.reason_code})</span></> },
       { key: "scope", label: t("supportAccess.scope"), value: <>{s.scope.map(scopeText).join(" · ")} · {t("supportAccess.readOnly")}</> },
-      { key: "requested", label: t("supportAccess.requestedDuration"), value: t("supportAccess.durationSeconds", { count: s.requested_duration_seconds }) },
-      { key: "approved", label: t("supportAccess.approvedDuration"), value: s.approved_duration_seconds == null ? "—" : t("supportAccess.durationSeconds", { count: s.approved_duration_seconds }) },
-      { key: "request_expiry", label: t("supportAccess.requestExpiresAt"), value: fmtDateTime(s.request_expires_at) },
+      { key: "requested", label: t("supportAccess.requestedDuration"), value: durationText(s.requested_duration_seconds) },
+      { key: "approved", label: t("supportAccess.approvedDuration"), value: s.approved_duration_seconds == null ? "—" : durationText(s.approved_duration_seconds) },
+      ...(["REQUESTED", "OPERATOR_APPROVED"].includes(s.state) ? [{ key: "request_expiry", label: t("supportAccess.requestExpiresAt"), value: fmtDateTime(s.request_expires_at) }] : []),
       { key: "expiry", label: t("supportAccess.expiresAt"), value: s.expires_at ? fmtDateTime(s.expires_at) : "—" },
     ]} />
     <p>{t(s.masked ? "supportAccess.masked" : "supportAccess.unmasked")}</p>
     {canApprove && s.state === "OPERATOR_APPROVED" && !s.tenant_approved_at && <Form className="form" noValidate onSubmit={() => {
       setTried(true);
-      if (validDuration) decide.mutate({ decision: "APPROVE", approved_duration_seconds: Number(duration), reveal_classes: reveal ? ["personal"] : [] });
+      if (validDuration) decide.mutate({ decision: "APPROVE", approved_duration_seconds: Number(duration) * 60, reveal_classes: reveal ? ["personal"] : [] });
     }}>
       <p>{t("supportAccess.approvalHint")}</p>
-      <Field label={t("supportAccess.approvedDuration")} required hint={t("supportAccess.durationSeconds", { count: s.requested_duration_seconds })} error={tried && !validDuration ? t("supportAccess.durationInvalid") : undefined}>
-        {(p) => <TextInput {...p} type="number" min={1} max={s.requested_duration_seconds} step={1} value={duration} onChange={(e) => setDuration(e.target.value)} />}
+      <Field label={t("supportAccess.durationMinutes")} required hint={durationText(s.requested_duration_seconds)} error={tried && !validDuration ? t("supportAccess.durationInvalid") : undefined}>
+        {(p) => <TextInput {...p} type="number" min={0} max={s.requested_duration_seconds / 60} step="any" value={duration} onChange={(e) => setDuration(e.target.value)} />}
       </Field>
       <Check checked={reveal} onChange={setReveal}>{t("supportAccess.revealPersonal")}</Check>
       <p className="muted">{t("supportAccess.revealHint")}</p>

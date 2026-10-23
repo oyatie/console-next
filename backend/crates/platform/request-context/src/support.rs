@@ -46,6 +46,8 @@ pub(crate) async fn principal(
     tx.commit().await.map_err(SupportError::from)?;
     let mut principal = Principal::new(user, org, BTreeSet::new(), BranchScope::All);
     principal.support = Some(SupportPrincipal {
+        operator_approved: session.operator_approver_ref.is_some(),
+        tenant_approved: session.tenant_approved_at.is_some(),
         session_id: id,
         operator_label: session.operator_label,
         scope: session.scope,
@@ -127,12 +129,13 @@ async fn run(
     if !matches!(*request.method(), Method::GET | Method::HEAD) {
         return Err(SupportError::Refused("support.refuse.read_only"));
     }
-    let surface: Option<(String, String,Vec<String>,Value)> =
-        sqlx::query_as("SELECT domain,feature,classification_tables,field_classes FROM support_read_surfaces WHERE path=$1")
-            .bind(&path)
-            .fetch_optional(tx.as_mut())
-            .await?;
-    let Some((domain, feature, tables, aliases)) = surface else {
+    let surface: Option<(String, String, Value)> = sqlx::query_as(
+        "SELECT domain,feature,field_classes FROM support_read_surfaces WHERE path=$1",
+    )
+    .bind(&path)
+    .fetch_optional(tx.as_mut())
+    .await?;
+    let Some((domain, feature, aliases)) = surface else {
         return Err(SupportError::Refused("support.refuse.out_of_scope"));
     };
     if !session.scope.contains(&domain) {
@@ -163,7 +166,7 @@ async fn run(
     let mut tx = pool.begin().await?;
     let session = support::lock(&mut tx, org, id).await?;
     support::live(&session, OffsetDateTime::now_utc())?;
-    let mut classes = field_classes(&mut tx, &tables).await?;
+    let mut classes = BTreeMap::new();
     if let Value::Object(aliases) = aliases {
         for (field, class) in aliases {
             if let Some(class) = class.as_str() {
@@ -221,16 +224,6 @@ async fn record(
     Ok(())
 }
 
-/// Classification comes from the schema; ambiguous aliases and unclassified derived fields stay masked.
-async fn field_classes(
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    tables: &[String],
-) -> Result<BTreeMap<String, String>, SupportError> {
-    let rows:Vec<(String,String)>=sqlx::query_as("SELECT a.attname, CASE WHEN bool_and(COALESCE(col_description(c.oid,a.attnum) LIKE 'pd:none %',false)) THEN 'metadata' WHEN bool_and(COALESCE(col_description(c.oid,a.attnum) LIKE 'pd:personal %',false)) THEN 'personal' ELSE 'sensitive' END FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND a.attnum>0 AND NOT a.attisdropped AND c.relkind='r' AND c.relname=ANY($1) GROUP BY a.attname")
-        .bind(tables).fetch_all(tx.as_mut()).await?;
-    Ok(rows.into_iter().collect())
-}
-
 fn field_class<'a>(classes: &'a BTreeMap<String, String>, path: &str) -> Option<&'a str> {
     let mut suffix = path;
     loop {
@@ -249,8 +242,12 @@ fn mask(value: &mut Value, classes: &BTreeMap<String, String>, grants: &[String]
             grants.iter().any(|grant| grant == class),
         )
     };
-    // A classified JSON column is one protected field, including its object keys.
-    if (value.is_object() || value.is_array()) && class.is_some_and(|class| !visible(class)) {
+    // Only reviewed containers may expose children; a familiar leaf name cannot bless an unknown object.
+    if (value.is_object() || value.is_array())
+        && !path.is_empty()
+        && class != Some("container")
+        && !class.is_some_and(visible)
+    {
         *value = Value::Null;
         return;
     }
@@ -303,6 +300,9 @@ mod tests {
     fn nested_personal_aliases_override_metadata_names_at_every_tree_depth() {
         let classes = BTreeMap::from([
             ("name".into(), "metadata".into()),
+            ("entities".into(), "container".into()),
+            ("children".into(), "container".into()),
+            ("head".into(), "container".into()),
             ("head.name".into(), "personal".into()),
         ]);
         let mut value = json!({"entities":[{"name":"부서","children":[{"name":"하위 부서","head":{"name":"담당자"}}]}]});
@@ -337,6 +337,7 @@ mod tests {
     #[test]
     fn unknown_and_sensitive_fields_stay_masked_with_a_personal_grant() {
         let classes = BTreeMap::from([
+            ("items".into(), "container".into()),
             ("count".into(), "metadata".into()),
             ("name".into(), "personal".into()),
             ("rrn".into(), "sensitive".into()),
@@ -350,5 +351,17 @@ mod tests {
         mask(&mut value, &classes, &["personal".into()], "");
         assert_eq!(value["name"], "이름");
         assert_eq!(value["rrn"], "••••");
+    }
+}
+
+#[cfg(test)]
+mod container_tests {
+    use super::*;
+    #[test]
+    fn unknown_objects_cannot_expose_metadata_named_children() {
+        let classes = BTreeMap::from([("name".into(), "metadata".into())]);
+        let mut value = json!({"unreviewed":{"name":"private"}});
+        mask(&mut value, &classes, &[], "");
+        assert!(value["unreviewed"].is_null());
     }
 }

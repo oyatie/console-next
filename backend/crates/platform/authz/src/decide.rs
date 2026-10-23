@@ -241,8 +241,8 @@ fn support_permission(principal: &Principal, action: Action) -> Result<(), Kerne
         &principal.org_id.to_string(),
         Facts {
             active: true,
-            operator_approved: true,
-            tenant_approved: true,
+            operator_approved: support.operator_approved,
+            tenant_approved: support.tenant_approved,
             in_scope,
             ..Facts::default()
         },

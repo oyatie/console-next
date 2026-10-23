@@ -37,6 +37,8 @@ import { buttonClass } from "../../ui/button/button-class";
 import { filingsQuery } from "../../reference/statutory/api";
 import { inForceLocksQuery } from "../../reference/periods/api";
 import { toDecide } from "../../reference/periods/domain/request";
+import { activeSupportQuery } from "../support-access/api";
+import { SupportQueue } from "./ui/support-queue";
 import { UnlockQueue } from "./ui/unlock-queue";
 import { GrantNotices } from "./ui/grant-notices";
 type Summary = components["schemas"]["OrgChangeSummary"];
@@ -49,7 +51,7 @@ const LIST = 8;
 const employees = (query: EmployeeQuery, enabled: boolean) => ({ ...get("/api/v1/employees", { params: { query } }), enabled });
 
 /** The my-turn sections, most urgent first, and the view each also appears in besides "all" ("requests": approvals, exit reports and BW-17 change requests to me). */
-const SECTIONS = { failed: "failures", due: "deadlines", exits: "requests", decide: "requests", unlocks: "requests", asks: "requests", renewals: "deadlines", insurance: "deadlines", mine: "all", review: "all" } as const satisfies Record<string, View>;
+const SECTIONS = { failed: "failures", due: "deadlines", exits: "requests", decide: "requests", unlocks: "requests", support: "requests", asks: "requests", renewals: "deadlines", insurance: "deadlines", mine: "all", review: "all" } as const satisfies Record<string, View>;
 type Section = keyof typeof SECTIONS;
 
 /**
@@ -66,6 +68,7 @@ export function Home({ setup, setupPending = false, account }: { setup?: ReactNo
   const me = useQuery(meQuery);
   const authz = useQuery(authzQuery);
   const can = granted(authz.data?.capabilities, authz.isError);
+  const support = useQuery(activeSupportQuery);
   const myAccess = useQuery(myAccessQuery); // with the queue: GrantNotices lands with it, never pushing it down
   const exitRouted = usePolicyRouted("exit");
   const org = can("org_change_read");
@@ -104,6 +107,7 @@ export function Home({ setup, setupPending = false, account }: { setup?: ReactNo
   ] });
 
   const reads = [
+    ["support", support] as const,
     ...(can("employee_directory_manage", "branch") ? [["insurance", insurance]] as const : []),
     ...(hr ? [["review", identityReview], ["review", branchReview]] as const : []),
     ...(manage ? [["review", registerReview], ["renewals", contracts], ["failedActions", failedActions], ["requests", asks]] as const : []),
@@ -155,6 +159,7 @@ export function Home({ setup, setupPending = false, account }: { setup?: ReactNo
     exits: exitQueue.length,
     decide: toDecideChanges.length,
     unlocks: unlocks.length,
+    support: support.data?.pending_count ?? 0,
     asks: asks.data?.total ?? 0,
     renewals: contracts.data?.items.length ? contracts.data.total : 0,
     insurance: insurance.data?.pending ?? 0,
@@ -173,7 +178,7 @@ export function Home({ setup, setupPending = false, account }: { setup?: ReactNo
   const tiles = ([["register", manage], ["import", manage], ["org", draft], ["invite", can("user_manage")]] as const).filter(([, ok]) => ok).map(([k]) => k as Tile);
   const settled = !loading;
   // No grant at all (decisions #18: in the pilot only ops and HR workers sign in), not merely none Home lists.
-  const noWork = settled && quiet && !hasWork(can);
+  const noWork = settled && quiet && !hasWork(can) && !support.data?.can_approve;
   const retry = () => sources.filter((q) => readState(q) === "failed").forEach((q) => void q.refetch());
 
   return (
@@ -225,6 +230,7 @@ export function Home({ setup, setupPending = false, account }: { setup?: ReactNo
             </QueueSection>
           )}
           {shown("unlocks") && <UnlockQueue locks={unlocks} />}
+          {shown("support") && support.data && <SupportQueue requests={support.data.pending_approvals} />}
           {shown("asks") && asks.data && <RequestQueue page={asks.data} />}
           {shown("renewals") && contracts.data && <Renewals page={contracts.data} />}
           {shown("insurance") && <QueueSection id="insurance" title={t("statutory.home", { count: count.insurance })}><Link to="/statutory" className={buttonClass()}>{t("statutory.open")}</Link></QueueSection>}

@@ -1,3 +1,4 @@
+import { activeSupportQuery } from "../features/support-access/api";
 import { ActiveSupportBanner } from "../features/support-access/ui/support-access";
 import { DomainNotice } from "../auth/domain-notice";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
@@ -28,7 +29,8 @@ export function Shell() {
   const platform = !!session.claims?.platform;
   // Platform tokens are refused by /me/authz; the vendor menu is fixed.
   const authz = useQuery({ ...authzQuery, enabled: !platform });
-  const menu = platform ? PLATFORM_NAV : tenantNav(authz.data?.capabilities, authz.isError);
+  const support = useQuery({ ...activeSupportQuery, enabled: !platform });
+  const menu = platform ? PLATFORM_NAV : tenantNav(authz.data?.capabilities, authz.isError, support.data?.can_approve);
   // Phone widths hide the rail; the top bar's menu button discloses it.
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);

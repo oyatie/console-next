@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ApiError } from "../api";
+import { SupportQueue } from "../../home/ui/support-queue";
 import { ActiveSupportBanner, SupportAccess } from "./support-access";
 import { activeSupportQuery, supportSessionsQuery, pendingApprovalQuery, supportRefusal, type SupportSession } from "../api";
 
@@ -13,9 +14,9 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock("@console/api", async (original) => ({ ...await original<object>(), api: { GET: state.get, POST: state.post } }));
 vi.mock("@console/i18n", async (original) => ({ ...await original<object>(), t: (key: string) => key, isMessageId: () => true }));
-vi.mock("@tanstack/react-router", () => ({ Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-to={to}>{children}</span> }));
+vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({ review: undefined }) }), Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-to={to}>{children}</span> }));
 vi.mock("@tanstack/react-query", async (original) => ({ ...await original<object>(), useQuery: (q: unknown) => ({
-  data: q === activeSupportQuery ? state.active : state.data,
+  data: q === activeSupportQuery ? state.active : q === supportSessionsQuery ? state.data : undefined,
   error: state.error, isError: !!state.error, isPending: state.pending, refetch: vi.fn(),
 }) }));
 vi.mock("../../../lib/react/command", () => ({ useCommand: (opts: typeof state.calls[number]) => {
@@ -32,7 +33,7 @@ const session: SupportSession = {
 };
 beforeEach(() => {
   state.data = { sessions: [session], can_approve: true };
-  state.active = { sessions: [], can_approve: true };
+  state.active = { sessions: [], can_approve: true, pending_count: 0, pending_approvals: [] };
   state.error = undefined; state.pending = false; state.calls = [];
   state.get.mockReset(); state.post.mockReset();
   state.post.mockResolvedValue({ data: {}, response: new Response(null, { status: 200 }) });
@@ -55,14 +56,15 @@ test("wrong-realm 401 has support-specific copy; unknown errors keep the shared 
 });
 test("the G2 source contains only requests the tenant can approve", () => {
   const select = pendingApprovalQuery.select;
-  expect(select({ sessions: [session, { ...session, id: "active", state: "ACTIVE" }], can_approve: true })).toEqual([session]);
-  expect(select({ sessions: [session], can_approve: false })).toEqual([]);
-  expect(pendingApprovalQuery).toMatchObject(supportSessionsQuery);
+  const data = { sessions: [], can_approve: true, pending_count: 1, pending_approvals: [session] };
+  expect(select(data)).toEqual([session]);
+  expect(select({ ...data, can_approve: false })).toEqual([]);
+  expect(pendingApprovalQuery).toMatchObject(activeSupportQuery);
 });
 test("the tenant sees purpose, scope, bounded duration, decisions and access records", () => {
   const html = renderToStaticMarkup(<SupportAccess />);
-  for (const text of ["HELP-123", session.reason, session.operator_label, "1800", "supportAccess.masked", "supportAccess.approve", "supportAccess.deny", "운영자 B", "/api/v1/employees"]) expect(html).toContain(text);
-  expect(html).toContain("max=\"1800\"");
+  for (const text of ["HELP-123", session.reason, session.operator_label, "supportAccess.duration", "supportAccess.masked", "supportAccess.approve", "supportAccess.deny", "운영자 B", "/api/v1/employees"]) expect(html).toContain(text);
+  expect(html).toContain("max=\"30\"");
   expect(html).toContain("supportAccess.revealPersonal");
 });
 test("approval and end commands use the shared authenticated API and retain their intent key", async () => {
@@ -78,7 +80,7 @@ test("the banner names an active operator and expiry on any tenant page", () => 
   const html = renderToStaticMarkup(<ActiveSupportBanner />);
   expect(html).toContain(session.operator_label);
   expect(html).toContain("supportAccess.bannerExpiry");
-  expect(html).toContain("/audit/support-access");
+  expect(html).not.toContain("supportAccess.bannerAction");
 });
 test("loading, empty and failed active-session reads remain honest", () => {
   state.pending = true;
@@ -94,4 +96,35 @@ test("the tenant can withdraw approval before the operator starts", () => {
   const html = renderToStaticMarkup(<SupportAccess />);
   expect(html).toContain("supportAccess.end");
   expect(html).not.toContain(">supportAccess.approve</button>");
+});
+
+test("non-approvers have no approval, denial, or termination controls", () => {
+  state.data = { sessions: [session], can_approve: false };
+  const html = renderToStaticMarkup(<SupportAccess />);
+  for (const control of ["supportAccess.approve", "supportAccess.deny", "supportAccess.end"])
+    expect(html).not.toContain(`>${control}</button>`);
+});
+test("the live notification and Home queue name the pending request, deadline and deep link", () => {
+  state.active = { sessions: [], can_approve: true, pending_count: 1, pending_approvals: [session] };
+  expect(renderToStaticMarkup(<ActiveSupportBanner />)).toContain("supportAccess.pending");
+  const html = renderToStaticMarkup(<SupportQueue requests={[session]} />);
+  for (const text of [session.ticket_ref, session.operator_label, session.reason, "supportAccess.requestDeadline", "/audit/support-access"]) expect(html).toContain(text);
+  state.active = { sessions: [], can_approve: false, pending_count: 1, pending_approvals: [session] };
+  expect(renderToStaticMarkup(<ActiveSupportBanner />)).toBe("");
+});
+
+test("active details show the support deadline without an approval form or pending deadline", () => {
+  state.data = { sessions: [{ ...session, state: "ACTIVE", approved_duration_seconds: 1800 }], can_approve: true };
+  const html = renderToStaticMarkup(<SupportAccess />);
+  expect(html).toContain("supportAccess.expiresAt");
+  expect(html).not.toContain("supportAccess.requestExpiresAt");
+  expect(html).not.toContain("supportAccess.durationMinutes");
+});
+
+test("a revoked approver cannot retain cached support details or controls after a 403", () => {
+  state.error = new ApiError(403, "forbidden", "", []);
+  const html = renderToStaticMarkup(<SupportAccess />);
+  expect(html).not.toContain(session.operator_label);
+  expect(html).not.toContain(">supportAccess.approve</button>");
+  expect(html).not.toContain(">supportAccess.deny</button>");
 });

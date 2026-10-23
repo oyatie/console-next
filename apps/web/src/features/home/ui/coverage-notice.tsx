@@ -2,7 +2,7 @@ import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
 import type { Coverage } from "../domain/coverage";
 
-export type Part = "changes" | "decide" | "exits" | "review" | "renewals" | "failedActions" | "requests" | "insurance" | "unlocks";
+export type Part = "changes" | "decide" | "exits" | "review" | "renewals" | "failedActions" | "requests" | "insurance" | "unlocks" | "support";
 
 /**
  * What the queue below could not show: parts this account may not read (no retry: asking again gets the same answer)

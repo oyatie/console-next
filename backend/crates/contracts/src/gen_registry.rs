@@ -3278,6 +3278,13 @@ const ENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/workplaces",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../../entity/rest/openapi/paths/api__v1__workplaces.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/workplaces/{workplaceId}",
         operations: &[
             Operation {

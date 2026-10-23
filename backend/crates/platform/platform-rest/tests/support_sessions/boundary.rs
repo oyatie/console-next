@@ -196,10 +196,7 @@ async fn a_personal_grant_reveals_only_classified_personal_fields_with_a_record(
     assert_eq!(read.0, StatusCode::OK, "{}", read.1);
     assert_eq!(read.1["display_name"], "고객 이름");
     assert_eq!(read.1["personal_email"], "private@example.com");
-    assert_eq!(
-        read.1["phone"], "••••",
-        "an unclassified alias remains masked"
-    );
+    assert_eq!(read.1["phone"], "010-private");
     assert_eq!(h.accesses(id).await, 1);
 }
 

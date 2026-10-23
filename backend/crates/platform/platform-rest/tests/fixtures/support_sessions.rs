@@ -37,7 +37,9 @@ use uuid::Uuid;
 
 #[path = "support_proof.rs"]
 mod support_proof;
-use support_proof::proof;
+use support_proof::{operator, proof, token};
+#[path = "support_surfaces.rs"]
+mod support_surfaces;
 
 pub const PLATFORM: &str = "/api/platform/support-sessions";
 pub const TENANT: &str = "/api/v1/support-sessions";
@@ -55,6 +57,7 @@ pub struct Support {
     pub app: Router,
     pub org: Uuid,
     pub tenant: String,
+    pub reader: String,
     pub a: Operator,
     pub b: Operator,
     pub writes: Arc<AtomicUsize>,
@@ -109,6 +112,18 @@ impl Support {
             vec![],
         )
         .await;
+        let reader_id = UserId::new();
+        sqlx::query("INSERT INTO users(id,org_id,display_name,roles) VALUES($1,$2,'Tenant reader',ARRAY[]::text[])")
+            .bind(reader_id.as_uuid()).bind(org).execute(&owner).await.unwrap();
+        let reader = token(
+            &rt,
+            &issuer,
+            reader_id,
+            OrgId::from_uuid(org),
+            false,
+            vec![],
+        )
+        .await;
         let service = router(
             PlatformRestState::new(
                 rt.clone(),
@@ -120,12 +135,17 @@ impl Support {
         );
         let writes = Arc::new(AtomicUsize::new(0));
         let count = writes.clone();
-        let probe = Router::new().route(READ,get(|Extension(_):Extension<Principal>, _:axum::extract::Query<std::collections::BTreeMap<String,u64>>|async {
-            Json(json!({"display_name":"고객 이름","phone":"010-private","personal_email":"private@example.com"}))
-        }).post(move || {let count=count.clone();async move {count.fetch_add(1,Ordering::SeqCst);Json(json!({"mutated":true}))}}));
+        let handler_pool = owner.clone();
+        let probe = Router::new().route(READ,get(move |Extension(p):Extension<Principal>, q:axum::extract::Query<std::collections::BTreeMap<String,u64>>| { let pool=handler_pool.clone(); async move {
+            if q.contains_key("revoke") {
+                sqlx::query("UPDATE support_sessions SET state='REVOKED',ended_at=now() WHERE id=$1")
+                    .bind(p.support.unwrap().session_id).execute(&pool).await.unwrap();
+            }
+            Json(json!({"display_name":"고객 이름","phone":"010-private","personal_email":"private@example.com","total":1,"name":"고객 이름","unknown":"private"}))
+        }}).post(move || {let count=count.clone();async move {count.fetch_add(1,Ordering::SeqCst);Json(json!({"mutated":true}))}}));
         let app = with_support_gate(
             service.merge(with_request_context(
-                probe,
+                probe.merge(support_surfaces::probes()),
                 Some(verifier.clone()),
                 rt.clone(),
             )),
@@ -138,6 +158,7 @@ impl Support {
             app,
             org,
             tenant,
+            reader,
             a,
             b,
             writes,
@@ -256,55 +277,6 @@ impl Support {
         sqlx::query_scalar("SELECT count(*) FROM audit_events WHERE org_id=$1 AND target_id=$2 AND action='support.access'")
             .bind(self.org).bind(id.to_string()).fetch_one(&self.owner).await.unwrap()
     }
-}
-
-async fn operator(owner: &PgPool, rt: &PgPool, issuer: &JwtIssuer) -> Operator {
-    let id = UserId::new();
-    let roles = vec![Role::SuperAdmin.as_str().to_owned()];
-    sqlx::query(
-        "INSERT INTO users(id,org_id,display_name,roles) VALUES($1,$2,'Support operator',$3)",
-    )
-    .bind(id.as_uuid())
-    .bind(OrgId::platform().as_uuid())
-    .bind(&roles)
-    .execute(owner)
-    .await
-    .unwrap();
-    let key = SoftKey::enroll(owner, OrgId::platform(), id).await;
-    let token = token(rt, issuer, id, OrgId::platform(), true, roles).await;
-    Operator { id, key, token }
-}
-
-async fn token(
-    pool: &PgPool,
-    issuer: &JwtIssuer,
-    user: UserId,
-    org: OrgId,
-    platform: bool,
-    roles: Vec<String>,
-) -> String {
-    issue_session_token(
-        pool,
-        issuer,
-        AccessTokenInput {
-            subject: user,
-            org_id: org,
-            roles,
-            branches: vec![],
-            platform,
-            support: None,
-            read_only: false,
-            display_name: None,
-            feature_grants: vec![],
-            authz_subject_version: 0,
-            authz_policy_version: 0,
-            session_generation: 0,
-            issued_at: OffsetDateTime::now_utc(),
-        },
-        None,
-        vec![],
-    )
-    .await
 }
 
 pub fn ok(result: (StatusCode, Value), status: StatusCode) {

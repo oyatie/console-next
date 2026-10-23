@@ -13499,6 +13499,22 @@ export interface paths {
         patch: operations["updateWorkplaceKind"];
         trace?: never;
     };
+    "/api/v1/workplaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listWorkplaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workplaces/{workplaceId}": {
         parameters: {
             query?: never;
@@ -14328,6 +14344,16 @@ export interface components {
                 operator_label: string;
                 /** Format: date-time */
                 expires_at: string | null;
+            }[];
+            pending_count: number;
+            pending_approvals: {
+                /** Format: uuid */
+                id: string;
+                operator_label: string;
+                ticket_ref: string;
+                reason: string;
+                /** Format: date-time */
+                request_expires_at: string;
             }[];
             can_approve: boolean;
         };
@@ -56603,6 +56629,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
+            };
+        };
+    };
+    listWorkplaces: {
+        parameters: {
+            query?: {
+                as_of?: string;
+                known_at?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Workplaces within the reader's granted scope. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkplaceList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Not permitted. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

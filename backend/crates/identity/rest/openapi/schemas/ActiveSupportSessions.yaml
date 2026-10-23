@@ -20,8 +20,24 @@ properties:
         - id
         - operator_label
         - expires_at
+  pending_count:
+    type: integer
+    minimum: 0
+  pending_approvals:
+    type: array
+    items:
+      type: object
+      required: [id, operator_label, ticket_ref, reason, request_expires_at]
+      properties:
+        id: {type: string, format: uuid}
+        operator_label: {type: string}
+        ticket_ref: {type: string}
+        reason: {type: string}
+        request_expires_at: {type: string, format: date-time}
   can_approve:
     type: boolean
 required:
   - sessions
   - can_approve
+  - pending_count
+  - pending_approvals

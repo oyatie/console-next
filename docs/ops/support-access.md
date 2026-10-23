@@ -3,13 +3,13 @@
 
 OPS-SUPPORT-ACCESS-GATE is implemented by the support ledger, two distinct device-bound operator assertions, tenant `support_access::approve` permission, and the live read boundary. A deployment with no eligible second operator refuses with `support.refuse.no_second_operator`; one with no tenant approver refuses with `support.refuse.no_tenant_approver`.
 
-The tenant page is `/audit/support-access`. The shell banner and history update through the existing SSE stream. The G2 inbox source is `pendingApprovalQuery` in `features/support-access/api.ts`; it selects requests awaiting this tenant's approval from the same authorized read. G2 owns mounting that source.
+The tenant page is `/audit/support-access`. The shell banner and history update through the existing SSE stream. `/support-sessions/active` is the shared Cedar-backed visibility projection for navigation, the pending notification and Home’s support approval `QueueSection`. It returns pending requests only to approval holders, including the deadline and a request-specific deep link. G2 must absorb `pendingApprovalQuery` and `features/home/ui/support-queue.tsx` into 업무함; the decision and end actions remain on this screen. Expired and already-decided requests leave the pending source.
 
-Requests and decisions belong to the target tenant under forced RLS. Vendor lists project opaque identifiers, state and times only. Every support-token request appends `support.access` to that tenant's existing audit chain before its response leaves. Revocation is checked again after the handler and at audit commit. Failed audit writes withhold the response. Audit identities carry the vendor name and opaque operator label.
+Requests and decisions belong to the target tenant under forced RLS. Vendor lists project opaque identifiers, state and times only. Every support-token request appends `support.access` to that tenant's existing audit chain before its response leaves. Revocation is checked again after the handler and at audit commit. Failed audit writes withhold the response. Audit identities carry the operator display name and operator organization; opaque references remain stored separately.
 
-Only reviewed rows in `support_read_surfaces` permit content reads. The initial reference data covers organization structure, organization units, legal entities, workplaces and the employee list. Unknown routes, write methods and ungranted field classes fail closed. Schema classifications mask personal fields by default; a tenant can explicitly grant the personal class. Sensitive and unknown fields remain masked. Dotted response aliases protect nested personal names separately from organization names; protected JSON columns are masked as a whole, including their object keys. Scope review and field aliases belong in this reference data, never a fallback tenant role.
+Only reviewed rows in `support_read_surfaces` permit content reads. The initial reference data covers organization structure, organization units, legal entities, workplaces and the employee list. Unknown routes, write methods and ungranted field classes fail closed. Reviewed API-field classifications follow the personal-data registry rather than matching database column names. They mask personal fields by default; a tenant can explicitly grant the personal class. Sensitive and unknown fields remain masked. Every returned leaf is classified in the response registry. Reviewed containers allow traversal; unknown containers stay masked even if they contain familiar names. Dotted response paths protect nested personal names separately from organization names; protected JSON columns are masked as a whole, including their object keys. Scope review and field aliases belong in this reference data, never a fallback tenant role.
 
-`support.request_expiry` and `support.max_duration` are settings-registry keys with vendor defaults. Tenant writes remain refused pending G7. The approved support deadline controls token expiry; operator family logout, revocation, authority changes and tenant suspension still invalidate reads immediately.
+`support.request_expiry` and `support.max_duration` are settings-registry keys with vendor defaults. Tenant-scoped settings overrides resolve through the shared settings store. Registry ranges cap both values at their vendor defaults, so a tenant can only tighten the defaults. The API and database reject larger values. The approved support deadline controls token expiry; operator family logout, revocation, authority changes and tenant suspension still invalidate reads immediately.
 
 ## Declared API compatibility changes
 
@@ -292,3 +292,17 @@ The brief authorizes support implementation and its verification across shared c
 - `scripts/api-compat.test.ts`
 - `scripts/reach-baseline.json`
 - `scripts/standing-text.d/eco-g1-support.json`
+
+## Round 2 reviewed surfaces and regression proof
+
+| Surface | Readable within granted domain | Protected without a personal grant | Content proof |
+| --- | --- | --- | --- |
+| `/api/v1/org-units` | id, kind, name, parentId, status, effectiveFrom, updatedAt, headcount | head name and employee reference | `support_sessions/surfaces.rs`; real-handler E2E asserts name, kind, status, dates and headcount |
+| `/api/v1/org-structure` | tenant_name, phase, as_of, organization names, counts and status chips | head identity and individual assignment facts | same DB test; real-handler E2E asserts tenant, phase, date and entity name |
+| `/api/v1/legal-entities` | entity identity, business state, registration facts and counts | representatives, directors, co-owners and named reviews | same DB test; real-handler E2E asserts entity name |
+| `/api/v1/workplaces` | workplace identity, name, kind, business state and counts | representative name, contact email and mobile | same DB test; real-handler E2E asserts name and headcount; tenant-wide route reuses the existing scoped, dated entity read |
+| `/api/v1/employees` | pagination totals and the registry’s structural org_unit_id | individual facts (0211), including name, contacts and employment facts | same DB test; real-handler E2E asserts count and masked names |
+
+The response registry is `20261023100100000_support_response_classes.sql`; unknown paths, containers and fields fail closed. Tenant durations are entered in minutes and shown with locale-formatted hours and minutes. Active-session details show the support deadline rather than a stale approval deadline.
+
+Negative DB tests cover non-holder list/approve/deny/end with no ledger change, post-verification hardware-key eligibility for both operators, and revocation inside a handler with an audited 401. The key-upgrade injection isolates the support hardware guard from WebAuthn’s independent backup-flag check. Policy tests set both tenant keys, prove the resulting deadlines and cap, and reject values above registry defaults. A capacity fixture finds a custom approval holder among 2,000 active accounts with one existence query, then proves revoking that grant refuses the next request.

@@ -32,7 +32,7 @@ pub(crate) fn routes(router: Router<PlatformRestState>) -> Router<PlatformRestSt
         )
         .route(PLATFORM_SUPPORT_APPROVE_PATH, post(approve))
         .route(PLATFORM_SUPPORT_START_PATH, post(start))
-        .route(PLATFORM_SUPPORT_END_PATH, post(end))
+        .route(PLATFORM_SUPPORT_END_PATH, post(store::end))
 }
 
 #[derive(Deserialize)]
@@ -97,7 +97,15 @@ async fn request(
         p.user_id,
         OrgId::platform(),
         org,
-        store::vendor_facts(other, true),
+        store::vendor_facts(
+            &mut tx,
+            p.user_id,
+            *p.user_id.as_uuid(),
+            other,
+            Some(assertion),
+            None,
+        )
+        .await?,
     )?;
     support::arm(&mut tx, org).await?;
     let active: Option<bool> =
@@ -121,10 +129,12 @@ async fn request(
         return Err(SupportError::Refused("support.refuse.out_of_scope").into());
     }
     let now = OffsetDateTime::now_utc();
-    let seconds = body
-        .duration_seconds
-        .min(store::limit(SettingKey::SupportMaxDuration)?.whole_seconds());
-    let deadline = now + store::limit(SettingKey::SupportRequestExpiry)?;
+    let seconds = body.duration_seconds.min(
+        store::limit(&mut tx, org, SettingKey::SupportMaxDuration)
+            .await?
+            .whole_seconds(),
+    );
+    let deadline = now + store::limit(&mut tx, org, SettingKey::SupportRequestExpiry).await?;
     sqlx::query("INSERT INTO support_sessions(org_id,id,operator_ref,operator_label,ticket_ref,reason_code,reason,scope,requested_duration_seconds,requested_at,request_expires_at,request_assertion) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)")
         .bind(body.org_id).bind(body.id).bind(p.user_id.as_uuid()).bind(&label).bind(body.ticket_ref.trim()).bind(body.reason_code.trim()).bind(body.reason.trim()).bind(body.scope).bind(seconds).bind(now).bind(deadline).bind(assertion).execute(tx.as_mut()).await.map_err(SupportError::from)?;
     support::decision(
@@ -164,15 +174,20 @@ async fn approve(
     let org = OrgId::from_uuid(body.org_id);
     let session = support::lock(&mut tx, org, id).await?;
     support::live(&session, OffsetDateTime::now_utc())?;
-    if session.operator_ref == *p.user_id.as_uuid() {
-        return Err(SupportError::Refused("support.refuse.requester_cannot_approve").into());
-    }
     store::authorize(
         Action::OperatorApprove,
         p.user_id,
         OrgId::platform(),
         org,
-        store::vendor_facts(other, false),
+        store::vendor_facts(
+            &mut tx,
+            p.user_id,
+            session.operator_ref,
+            other,
+            Some(assertion),
+            Some(&session),
+        )
+        .await?,
     )?;
     if session.state != "REQUESTED" {
         return Err(SupportError::Refused("conflict").into());
@@ -200,7 +215,7 @@ async fn start(
     Path(id): Path<Uuid>,
     Json(body): Json<DecisionBody>,
 ) -> Result<Response, PlatformError> {
-    let (mut tx, _) = store::step_up(
+    let (mut tx, assertion) = store::step_up(
         &state,
         &claims,
         id,
@@ -215,9 +230,15 @@ async fn start(
     if session.tenant_approved_at.is_none() {
         return Err(SupportError::Refused("support.refuse.not_tenant_approved").into());
     }
-    let mut facts = store::vendor_facts(other, session.operator_ref == *p.user_id.as_uuid());
-    facts.operator_approved = session.operator_approver_ref.is_some();
-    facts.tenant_approved = true;
+    let facts = store::vendor_facts(
+        &mut tx,
+        p.user_id,
+        session.operator_ref,
+        other,
+        Some(assertion),
+        Some(&session),
+    )
+    .await?;
     store::authorize(Action::Start, p.user_id, OrgId::platform(), org, facts)?;
     if session.state != "OPERATOR_APPROVED" {
         return Err(SupportError::Refused("conflict").into());
@@ -226,7 +247,11 @@ async fn start(
     let seconds = session
         .approved_duration_seconds
         .ok_or(SupportError::Refused("support.refuse.not_tenant_approved"))?
-        .min(store::limit(SettingKey::SupportMaxDuration)?.whole_seconds());
+        .min(
+            store::limit(&mut tx, org, SettingKey::SupportMaxDuration)
+                .await?
+                .whole_seconds(),
+        );
     let expires_at = now + time::Duration::seconds(seconds);
     let issuer = state
         .support_issuer
@@ -275,35 +300,4 @@ async fn start(
     .await?;
     tx.commit().await.map_err(SupportError::from)?;
     Ok(Json(json!({"id":id,"access_token":token,"token_type":"Bearer","expires_at":expires_at.format(&time::format_description::well_known::Rfc3339).map_err(|_|SupportError::Refused("internal"))?})).into_response())
-}
-
-async fn end(
-    State(state): State<PlatformRestState>,
-    Extension(p): Extension<PlatformPrincipal>,
-    Path(id): Path<Uuid>,
-    Json(body): Json<Target>,
-) -> Result<Response, PlatformError> {
-    let mut tx = state.pool.begin().await.map_err(SupportError::from)?;
-    let org = OrgId::from_uuid(body.org_id);
-    let session = support::lock(&mut tx, org, id).await?;
-    store::authorize(
-        Action::End,
-        p.user_id,
-        OrgId::platform(),
-        org,
-        store::vendor_facts(0, session.operator_ref == *p.user_id.as_uuid()),
-    )?;
-    sqlx::query("UPDATE support_sessions SET state='ENDED',ended_at=now() WHERE org_id=$1 AND id=$2 AND state NOT IN ('ENDED','DENIED','REVOKED','EXPIRED')").bind(body.org_id).bind(id).execute(tx.as_mut()).await.map_err(SupportError::from)?;
-    support::decision(
-        &mut tx,
-        org,
-        id,
-        *p.user_id.as_uuid(),
-        &session.operator_label,
-        true,
-        "END",
-    )
-    .await?;
-    tx.commit().await.map_err(SupportError::from)?;
-    Ok(Json(json!({"ended":true})).into_response())
 }

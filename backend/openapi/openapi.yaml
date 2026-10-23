@@ -29309,6 +29309,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/workplaces:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [entity]
+      operationId: listWorkplaces
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: as_of
+        in: query
+        schema: {type: string, format: date}
+      - name: known_at
+        in: query
+        schema: {type: string, format: date}
+      responses:
+        '200':
+          description: Workplaces within the reader's granted scope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkplaceList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not permitted.
   /api/v1/workplaces/{workplaceId}:
     get:
       tags:
@@ -31732,11 +31757,27 @@ components:
               - id
               - operator_label
               - expires_at
+        pending_count:
+          type: integer
+          minimum: 0
+        pending_approvals:
+          type: array
+          items:
+            type: object
+            required: [id, operator_label, ticket_ref, reason, request_expires_at]
+            properties:
+              id: {type: string, format: uuid}
+              operator_label: {type: string}
+              ticket_ref: {type: string}
+              reason: {type: string}
+              request_expires_at: {type: string, format: date-time}
         can_approve:
           type: boolean
       required:
         - sessions
         - can_approve
+        - pending_count
+        - pending_approvals
     ActorKind:
       type: string
       enum: [TENANT_USER, OPS_ACCOUNT, GROUP_ADMIN, SUPPORT_OPERATOR, SYSTEM]

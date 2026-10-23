@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-use crate::PlatformRestState;
-use axum::response::IntoResponse;
+use crate::{PlatformError, PlatformRestState};
+use axum::{
+    Extension, Json,
+    extract::{Path, State},
+    response::{IntoResponse, Response},
+};
 use console_kernel_core::{OrgId, UserId};
 use console_platform_auth::{
     AccessClaims, MobilePasskeyStepUpBinding, MobilePasskeyStepUpEnvelope, MobileStepUpActionKind,
 };
+use console_platform_authz::PlatformPrincipal;
 use console_platform_authz::access::{AccessSlice, NodePath, load_access_subject};
 use console_platform_authz::cedar_pbac::actions::support_session::{
     self, Action, Facts, PrincipalKind,
@@ -17,8 +22,26 @@ use sqlx::{Postgres, Transaction};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-pub(super) fn limit(key: SettingKey) -> Result<Duration, SupportError> {
-    match key.def().default {
+pub(super) async fn limit(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    key: SettingKey,
+) -> Result<Duration, SupportError> {
+    support::arm(tx, org).await?;
+    let resolved = console_platform_db::settings_read::resolve_in_tx(
+        tx.as_mut(),
+        org,
+        &[key],
+        None,
+        OffsetDateTime::now_utc(),
+    )
+    .await
+    .map_err(|_| SupportError::Refused("internal"))?;
+    match resolved
+        .get(&key)
+        .and_then(|v| v.as_ref().ok())
+        .map(|v| v.value)
+    {
         Some(SettingValue::Int(hours)) => Ok(Duration::hours(hours)),
         _ => Err(SupportError::Refused("internal")),
     }
@@ -43,17 +66,10 @@ pub(super) async fn has_tenant_approver(
     org: OrgId,
 ) -> Result<bool, SupportError> {
     support::arm(tx, org).await?;
-    let accounts: Vec<Uuid> =
-        sqlx::query_scalar("SELECT id FROM users WHERE org_id=$1 AND is_active")
-            .bind(org.as_uuid())
-            .fetch_all(tx.as_mut())
-            .await?;
-    for account in accounts {
-        if tenant_permission(tx, org, account).await? {
-            return Ok(true);
-        }
-    }
-    Ok(false)
+    // Only a tenant-wide enforced grant can approve a tenant-wide support session.
+    Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users u WHERE u.org_id=$1 AND u.is_active AND (u.is_tenant_ops OR EXISTS(SELECT 1 FROM access_grants g JOIN access_roles r ON r.org_id=g.org_id AND r.id=g.role_id JOIN access_role_lines l ON l.org_id=r.org_id AND l.role_id=r.id AND l.version=r.version WHERE g.org_id=u.org_id AND g.account_id=u.id AND g.status='ACTIVE' AND r.status='ACTIVE' AND g.scope_kind='TENANT' AND g.include_descendants AND g.valid_from<=now() AND (g.valid_to IS NULL OR g.valid_to>now()) AND (COALESCE((SELECT phase FROM tenant_phase WHERE org_id=$1),'OPERATING')<>'SETUP' OR g.effective_in_setup) AND l.domain=$2 AND $3=ANY(l.levels))))")
+        .bind(org.as_uuid()).bind(console_platform_authz::access::Domain::SupportAccess.as_str())
+        .bind(console_platform_authz::access::Level::Approve.as_str()).fetch_one(tx.as_mut()).await?)
 }
 
 pub(super) async fn eligible(
@@ -80,7 +96,7 @@ pub(super) async fn label(
 ) -> Result<String, SupportError> {
     support::arm(tx, org).await?;
     let sql = if vendor {
-        "SELECT o.name||' · '||md5(u.id::text) FROM users u JOIN organizations o ON o.id=u.org_id WHERE u.id=$1 AND u.org_id=$2"
+        "SELECT u.display_name||' · '||o.name FROM users u JOIN organizations o ON o.id=u.org_id WHERE u.id=$1 AND u.org_id=$2"
     } else {
         "SELECT display_name FROM users WHERE id=$1 AND org_id=$2"
     };
@@ -158,20 +174,45 @@ pub(super) fn authorize(
     ) {
         Ok(())
     } else {
-        Err(SupportError::Refused("forbidden"))
+        Err(SupportError::Refused(
+            if action == Action::OperatorApprove && facts.actor_is_requester {
+                "support.refuse.requester_cannot_approve"
+            } else {
+                "forbidden"
+            },
+        ))
     }
 }
 
-pub(super) fn vendor_facts(other: i64, requester: bool) -> Facts {
-    Facts {
-        active: true,
-        vendor: true,
-        step_up: true,
-        other_eligible_holders: other,
-        actor_is_requester: requester,
-        actor_holds_permission: true,
-        ..Facts::default()
+pub(super) async fn vendor_facts(
+    tx: &mut Transaction<'_, Postgres>,
+    user: UserId,
+    requester: Uuid,
+    other: i64,
+    assertion: Option<Uuid>,
+    session: Option<&support::Session>,
+) -> Result<Facts, SupportError> {
+    support::arm(tx, OrgId::platform()).await?;
+    let (active, roles): (bool, Vec<String>) =
+        sqlx::query_as("SELECT is_active,roles FROM users WHERE org_id=$1 AND id=$2")
+            .bind(OrgId::platform().as_uuid())
+            .bind(user.as_uuid())
+            .fetch_one(tx.as_mut())
+            .await?;
+    if let Some(session) = session {
+        support::arm(tx, OrgId::from_uuid(session.org_id)).await?;
     }
+    Ok(Facts {
+        active,
+        vendor: console_platform_authz::PlatformPrincipal::accepts_roles(&roles),
+        step_up: assertion.is_some(),
+        other_eligible_holders: other,
+        actor_is_requester: requester == *user.as_uuid(),
+        actor_holds_permission: console_platform_authz::PlatformPrincipal::accepts_roles(&roles),
+        operator_approved: session.is_some_and(|s| s.operator_approver_ref.is_some()),
+        tenant_approved: session.is_some_and(|s| s.tenant_approved_at.is_some()),
+        ..Facts::default()
+    })
 }
 
 pub(super) async fn list(
@@ -185,4 +226,43 @@ pub(super) async fn list(
         .bind(target.org_id).fetch_all(tx.as_mut()).await.map_err(SupportError::from)?;
     tx.commit().await.map_err(SupportError::from)?;
     Ok(axum::Json(serde_json::json!({"sessions":rows})).into_response())
+}
+
+pub(super) async fn end(
+    State(state): State<PlatformRestState>,
+    Extension(p): Extension<PlatformPrincipal>,
+    Path(id): Path<Uuid>,
+    Json(body): Json<super::support::Target>,
+) -> Result<Response, PlatformError> {
+    let mut tx = state.pool.begin().await.map_err(SupportError::from)?;
+    let org = OrgId::from_uuid(body.org_id);
+    let session = support::lock(&mut tx, org, id).await?;
+    authorize(
+        Action::End,
+        p.user_id,
+        OrgId::platform(),
+        org,
+        vendor_facts(
+            &mut tx,
+            p.user_id,
+            session.operator_ref,
+            0,
+            None,
+            Some(&session),
+        )
+        .await?,
+    )?;
+    sqlx::query("UPDATE support_sessions SET state='ENDED',ended_at=now() WHERE org_id=$1 AND id=$2 AND state NOT IN ('ENDED','DENIED','REVOKED','EXPIRED')").bind(body.org_id).bind(id).execute(tx.as_mut()).await.map_err(SupportError::from)?;
+    support::decision(
+        &mut tx,
+        org,
+        id,
+        *p.user_id.as_uuid(),
+        &session.operator_label,
+        true,
+        "END",
+    )
+    .await?;
+    tx.commit().await.map_err(SupportError::from)?;
+    Ok(Json(json!({"ended":true})).into_response())
 }

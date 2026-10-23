@@ -255,3 +255,12 @@ async fn bound_assertion_cannot_authorize_changed_request_payload(owner: PgPool)
 
 #[path = "support_sessions/boundary.rs"]
 mod boundary;
+
+#[path = "support_sessions/round2.rs"]
+mod round2;
+
+#[path = "support_sessions/surfaces.rs"]
+mod surfaces;
+
+#[path = "support_sessions/policy.rs"]
+mod policy;
