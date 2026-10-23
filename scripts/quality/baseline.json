@@ -317,7 +317,6 @@
   "unused-export:e2e/flows.ts:NewEmployee": 1,
   "unused-export:e2e/flows.ts:propose": 1,
   "unused-export:e2e/global-setup.ts:default": 1,
-  "unused-export:e2e/helpers/attendance.ts:fillDay": 1,
   "unused-export:e2e/helpers/import-queue.ts:detail": 1,
   "unused-export:e2e/helpers/import.ts:RosterSheet": 1,
   "unused-export:e2e/helpers/import.ts:XLSX_MIME": 1,

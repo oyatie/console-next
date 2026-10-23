@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/attendance/ui/person-schedule-sheet.tsx#PersonScheduleSheet": 63
+  },
+  "newScreens": {
+    "apps/web/src/features/attendance/ui/person-schedule-sheet.tsx#PersonScheduleSheet": {
+      "FACT": 40,
+      "REFUSAL": 21,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

@@ -31,6 +31,7 @@ pub struct BoardQuery {
     pub workplace_id: Option<Uuid>,
     pub unit_id: Option<Uuid>,
     pub issues_only: bool,
+    pub no_schedule_only: bool,
 }
 
 pub(crate) fn group_name(org: &OrgModel, p: &Person) -> String {
@@ -62,7 +63,7 @@ fn classify(l: &mut Ledger, judged: bool, row: &BoardRow) {
         .map(|e| e.kind)
         .filter(|k| *k != EntryKind::Void);
     let slot = match (d.plan.kind, kind) {
-        (DayKind::NoSchedule, None) => &mut l.no_schedule,
+        (DayKind::NoSchedule, _) => &mut l.no_schedule,
         (_, None) if !work => &mut l.rest,
         (_, None) if !judged => &mut l.pending,
         (_, None) => &mut l.no_record,
@@ -160,11 +161,13 @@ impl PgAttendanceStore {
                                 name,
                                 people: 0,
                                 normal: 0,
+                                no_schedule: 0,
                                 marks: MarkCounts::default(),
                                 rows: Vec::new(),
                                 hidden: 0,
                             });
                         g.people += 1;
+                        g.no_schedule += i64::from(row.day.plan.kind == DayKind::NoSchedule);
                         count(&mut g.marks, &row.day.marks);
                         let open = q.unit_id.is_some() && q.unit_id == p.unit;
                         if row.day.marks.is_empty() {
@@ -181,6 +184,10 @@ impl PgAttendanceStore {
                         groups.retain(|g| g.marks.blocking + g.marks.decision + g.marks.info > 0);
                     }
                     for g in &mut groups {
+                        if q.no_schedule_only {
+                            g.rows.retain(|r| r.day.plan.kind == DayKind::NoSchedule);
+                            g.hidden = 0;
+                        }
                         g.rows.sort_by_key(|r| {
                             (
                                 r.day.marks.is_empty(),
@@ -188,6 +195,9 @@ impl PgAttendanceStore {
                                 r.employee_number.clone(),
                             )
                         });
+                    }
+                    if q.no_schedule_only {
+                        groups.retain(|g| g.no_schedule > 0);
                     }
                     Ok(DayBoard {
                         date,

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "@console/i18n";
 import { Banner } from "../../../ui/banner/banner";
+import { Button } from "../../../ui/button/button";
 import { Field, TextInput } from "../../../ui/field/field";
 import { Table } from "../../../ui/table";
 import { previewEntries, type BoardRow, type DayBoard } from "../api";
@@ -16,7 +17,7 @@ import { usePreview } from "./use-preview";
  * employee number (never by name) and says how many matched. The recognition column is the server's preview of the
  * drafts, "computing recognition" while it is on its way, never a guessed number.
  */
-export function DayDetail({ board, store }: { board: DayBoard; store: ReturnType<typeof useDrafts> }) {
+export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: ReturnType<typeof useDrafts>; onAssign: (row: BoardRow) => void }) {
   const rows = board.groups.flatMap((g) => g.rows);
   const date = board.date;
   const [pasted, setPasted] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export function DayDetail({ board, store }: { board: DayBoard; store: ReturnType
         columns={[
           { header: t("attendanceRecords.grid.number"), cell: (r) => r.employee_number ?? "", fit: true },
           { header: t("attendanceRecords.grid.name"), cell: (r) => r.name },
-          { header: t("attendanceRecords.day.plan"), cell: (r) => (r.day.plan.shift ? shiftText(r.day.plan.shift) : t(`attendance.dayKind.${r.day.plan.kind}`)) },
+          { header: t("attendanceRecords.day.plan"), cell: (r) => <>{r.day.plan.shift ? shiftText(r.day.plan.shift) : t(`attendance.dayKind.${r.day.plan.kind}`)}{r.day.plan.kind === "NO_SCHEDULE" && <> <Button size="sm" onClick={() => onAssign(r)}>{t("attendanceRecords.unscheduled.assign")}</Button></>}</> },
           {
             header: t("attendanceRecords.detail.input"),
             cell: (r) => {

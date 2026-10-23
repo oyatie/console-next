@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getRouteApi } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { QueryState } from "../../../lib/react/query-state";
 import { Banner } from "../../../ui/banner/banner";
@@ -24,7 +24,7 @@ import { PublicHolidaysView } from "./public-holidays-view";
 
 export type View = "calendar" | "types" | "crews" | "holidays" | "public";
 export type Tab = "month" | "day" | "schedule";
-export type AttendanceSearch = { view?: View; kind?: ScopeKind; id?: string; month?: string; tab?: Tab; date?: string; wp?: string; unit?: string; person?: string; detail?: boolean; issues?: boolean };
+export type AttendanceSearch = { view?: View; kind?: ScopeKind; id?: string; month?: string; tab?: Tab; date?: string; wp?: string; unit?: string; person?: string; detail?: boolean; issues?: boolean; unscheduled?: boolean };
 
 const route = getRouteApi("/app/attendance");
 /** What the page has open over it: one sheet at a time (no sheet over a sheet). */
@@ -95,7 +95,7 @@ function ScheduleTab() {
         {(tr) => (
           <>
             {tr.people_unscheduled > 0 && (
-              <Banner tone="warn">{t("attendanceSchedule.unscheduled.banner", { count: tr.people_unscheduled, total: tr.people_total })}</Banner>
+              <Banner tone="warn" actions={<Link to="/attendance" search={{ tab: "day", date: tr.date, unscheduled: true }}>{t("attendanceRecords.unscheduled.view", { count: tr.people_unscheduled })}</Link>}>{t("attendanceSchedule.unscheduled.banner", { count: tr.people_unscheduled, total: tr.people_total })}</Banner>
             )}
             {!tr.holidays_loaded && <Banner tone="warn">{t("attendanceHolidays.holidays.notLoaded", { year: tr.date.slice(0, 4) })}</Banner>}
             {tr.people_total > 0 && tr.people_unscheduled === tr.people_total && !tr.nodes.some((n) => n.layer) ? (

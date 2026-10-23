@@ -23,6 +23,8 @@ import { MonthGridView, type GridAct } from "./month-grid-view";
 import { MonthStateBanner } from "./month-state-banner";
 import { SaveDock } from "./save-dock";
 import { ScopePicker } from "./scope-picker";
+import { PersonScheduleSheet } from "./person-schedule-sheet";
+import type { AssignTarget } from "./assign-sheet";
 import { UndoBatchSheet } from "./undo-batch-sheet";
 import { useDrafts } from "./use-drafts";
 import { useOnline } from "./use-online";
@@ -60,6 +62,7 @@ export function MonthTab() {
   const feedback = [note, store.problem && t(`attendanceRecords.drafts.${store.problem}`)].filter(Boolean).join(" · ");
   const [receipt, setReceipt] = useState<SaveReceipt | null>(null);
   const [undo, setUndo] = useState(false);
+  const [assign, setAssign] = useState<AssignTarget | null>(null);
   const go = (patch: Record<string, unknown>) => void navigate({ search: (x) => ({ ...x, ...patch }) });
 
   const drafts = Object.entries(store.drafts);
@@ -73,6 +76,7 @@ export function MonthTab() {
     if (a.kind === "save") setDock({ kind: "save" });
     else if (a.kind === "month") go({ month: stepMonth(month, a.step) });
     else if (a.kind === "note") setNote(a.message);
+    else if (a.kind === "assign") setAssign({ kind: "PERSON", id: a.row.employee_id, name: a.row.name });
     else setDock({ kind: "day", employeeId: a.row.employee_id, date: days[a.day]!, own: a.row.own });
   };
   const focusCell = (key: string) => {
@@ -154,6 +158,7 @@ export function MonthTab() {
         )}
       </div>
       {undo && receipt && <UndoBatchSheet batchId={receipt.batch_id} saved={receipt.saved} month={month} onClose={() => setUndo(false)} onDone={(m) => (setUndo(false), setReceipt(null), setNote(m))} />}
+      {assign && <PersonScheduleSheet target={assign} onClose={() => setAssign(null)} onAssigned={(message) => (setAssign(null), setNote(message))} />}
     </div>
   );
 }

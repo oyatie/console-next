@@ -41,10 +41,11 @@ export function fill(cells: readonly CellFacts[], value: string, drafts: Drafts)
 /** Fill as scheduled (A3-fill): only empty work days; rest days, holidays, saved days, own and closed cells are skipped. */
 export function fillSchedule(cells: readonly CellFacts[], drafts: Drafts) {
   const next: Record<string, Draft> = { ...drafts };
-  const skipped = { rest: 0, recorded: 0, locked: 0 };
+  const skipped = { rest: 0, recorded: 0, locked: 0, unscheduled: 0 };
   let filled = 0;
   for (const c of cells) {
     if (c.own || c.closed) skipped.locked += 1;
+    else if (c.planKind === "NO_SCHEDULE") skipped.unscheduled += 1;
     else if (c.planKind !== "WORK") skipped.rest += 1;
     else if (c.entryId) skipped.recorded += 1;
     else {

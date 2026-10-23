@@ -34,7 +34,13 @@ pub(crate) fn evaluate_day(
         Some(e) if e.kind != EntryKind::Void => (Some(e.kind), e.segments.as_slice()),
         _ => (None, &[][..]),
     };
-    let (recorded, rec) = evaluate(&plan, kind, segments, approved);
+    let (recorded, mut rec) = evaluate(&plan, kind, segments, approved);
+    // A shortfall is judged only after the KST work date has ended.
+    if date >= today {
+        rec.late_in = 0;
+        rec.early_out = 0;
+        rec.away = 0;
+    }
     let marks = marks(
         plan.kind,
         plan.holiday_work,
