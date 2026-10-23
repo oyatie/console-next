@@ -40,21 +40,22 @@ pub struct RehireEmployeeRequest {
 impl RehireEmployeeRequest {
     /// The idempotency hash: this person and every normalised field.
     pub fn request_hash(&self, employee_id: Uuid) -> String {
-        sha256_hex(
-            format!(
-                "rehire:{employee_id}:{}:{}:{}:{}:{:?}:{:?}:{:?}:{:?}:{:?}",
-                self.hire_date,
-                self.employment_type,
-                self.org_unit_id,
-                self.position,
-                self.company,
-                self.contract_end_date,
-                self.phone,
-                self.base_pay_won,
-                self.pay_unit
-            )
-            .as_bytes(),
-        )
+        let payload = format!(
+            "rehire:{employee_id}:{}:{}:{}:{}:{:?}:{:?}:{:?}:{:?}",
+            self.hire_date,
+            self.employment_type,
+            self.org_unit_id,
+            self.position,
+            self.company,
+            self.contract_end_date,
+            self.phone,
+            self.base_pay_won,
+        );
+        let payload = match &self.pay_unit {
+            Some(unit) => format!("{payload}:pay_unit:{unit}"),
+            None => payload,
+        };
+        sha256_hex(payload.as_bytes())
     }
 }
 
@@ -136,4 +137,37 @@ where
             "FREELANCE",
         ],
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn omitted_pay_unit_keeps_the_released_rehire_idempotency_hash() {
+        let employee = Uuid::new_v4();
+        let unit = Uuid::new_v4();
+        let request = RehireEmployeeRequest {
+            hire_date: "2027-01-02".into(),
+            employment_type: "REGULAR".into(),
+            org_unit_id: unit,
+            position: "Staff".into(),
+            company: None,
+            contract_end_date: None,
+            phone: None,
+            base_pay_won: None,
+            pay_unit: None,
+            idempotency_key: "rehire-replay".into(),
+        };
+        let released = sha256_hex(
+            format!("rehire:{employee}:2027-01-02:REGULAR:{unit}:Staff:None:None:None:None")
+                .as_bytes(),
+        );
+        assert_eq!(request.request_hash(employee), released);
+        let with_unit = RehireEmployeeRequest {
+            pay_unit: Some("HOURLY".into()),
+            ..request
+        };
+        assert_ne!(with_unit.request_hash(employee), released);
+    }
 }
