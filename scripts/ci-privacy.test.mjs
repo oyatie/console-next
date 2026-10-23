@@ -59,7 +59,7 @@ test("clean upload payload passes the existing structural and checksum gates", (
 test("private terms are scoped to upload scans on trusted runs", () => {
   for (const job of Object.values(workflow().jobs)) {
     const scans = job.steps.filter((step) => step.run?.includes("scripts/ci/privacy.mjs"));
-    assert.ok(scans.length);
+    if (job.steps.some((s) => /^actions\/(upload-artifact|cache\/save)@/.test(s.uses ?? "") || s.run?.includes("$GITHUB_STEP_SUMMARY"))) assert.ok(scans.length);
     for (const step of scans) {
       const terms = step.env?.CLIENT_DATA_TERMS;
       assert.equal(typeof terms, "string");
@@ -80,7 +80,10 @@ test("upload scan roots include data-bearing artifacts without compiler output",
   assert.ok(workflow().jobs["rust-build"].needs.includes("hygiene"), "public-source checks must pass before compiled artifacts can publish");
   for (const [name, job] of Object.entries(workflow().jobs)) {
     const scan = job.steps.find((step) => step.run?.includes("scripts/ci/privacy.mjs"));
-    assert.ok(scan, name);
+    if (!scan) {
+      assert.ok(!job.steps.some((s) => /^actions\/(upload-artifact|cache\/save)@/.test(s.uses ?? "") || s.run?.includes("$GITHUB_STEP_SUMMARY")), name);
+      continue;
+    }
     assert.doesNotMatch(scan.run, /\.cache\/ci\/build(?:[\s/]|$)|\.cache\/sccache(?:[\s/]|$)/, name);
     for (const target of scan.run.matchAll(/(?:backend\/target\/nextest|\.cache\/ci\/extracted\/target\/nextest)[^\s]*/g)) {
       assert.match(target[0], /(?:\.xml|\.baseline\.json)$/, `${name}: ${target[0]}`);

@@ -6,8 +6,6 @@ import { fileURLToPath } from "node:url";
 import { load } from "js-yaml";
 import { dbContract, postgresImage } from "./db-contract.mjs";
 
-const privacyGates = ["personal-data-classification", "pii-no-logs", "tenant-isolation", "rls-arming", "audit-coverage"];
-
 export function rustBuild(crates, packages) {
   const selected = packages.filter((pkg) => crates.includes(pkg.name));
   const db = [...dbCrates(packages)].filter((name) => crates.includes(name)).sort();
@@ -22,14 +20,14 @@ export function rustBuild(crates, packages) {
 export function planBudget(plan, config, shards, workflow = load(readFileSync(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8")).jobs) {
   const queue = JSON.parse(readFileSync(new URL("../../.github/rulesets/dev.json", import.meta.url), "utf8")).rules.find((rule) => rule.type === "merge_queue");
   const chain = (name) => workflow[name]["timeout-minutes"] + Math.max(0, ...[workflow[name].needs ?? []].flat().map(chain));
-  const wallMinutes = chain("ci-ok"), queueMinutes = queue.parameters.check_response_timeout_minutes;
+  const wallMinutes = Math.max(...Object.keys(workflow).map(chain)), queueMinutes = queue.parameters.check_response_timeout_minutes;
   if (!Number.isFinite(wallMinutes) || wallMinutes >= queueMinutes) throw new Error("CI timeout chain must be below the merge-queue timeout");
   const e = config.jobMinutes;
-  const perJob = { plan: e.plan, hygiene: e.hygiene, "ci-ok": e.gate };
-  if (plan.web || plan.e2e) perJob.web = e.web;
+  const perJob = { plan: e.plan, hygiene: e.hygiene, "ci-ok": e.gate, backend: e.gate, web: e.gate };
+  if (plan.web || plan.e2e) perJob["web-check"] = e.web;
   if (plan.backend || plan.e2e) perJob["rust-build"] = e.build;
   if (plan.backend) {
-    for (const name of privacyGates) perJob[name] = e.privacyGate;
+    perJob["code-gates"] = e.codeGates;
     for (const mode of ["unit", "db"]) if (plan[mode]) for (let i = 1; i <= config.nextestPartitions[mode]; i++) perJob[`backend-${mode === "unit" ? "test" : "db"}-${i}`] = e[mode];
   }
   if (plan.e2e) {
@@ -89,13 +87,13 @@ export function tierPlan(event, files, cargo, npm, root, config, force = false) 
 
 export function requiredJobs(plan) {
   return {
-    web: plan.web || plan.e2e,
+    "web-check": plan.web || plan.e2e,
     "rust-build": plan.backend || plan.e2e,
     "backend-test": plan.unit ?? plan.backend,
     "backend-db": plan.db ?? plan.backend,
     "e2e-plan": plan.e2e,
     e2e: plan.e2e,
-    ...Object.fromEntries(privacyGates.map((name) => [name, plan.backend])),
+    "code-gates": plan.backend,
     hygiene: true,
   };
 }
