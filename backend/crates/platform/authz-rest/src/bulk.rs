@@ -33,8 +33,9 @@ pub(super) async fn authorize_bulk(
         .await
         .map_err(RestError::from_store)?;
     let BulkAuthorizeBody { subject, checks } = body;
-    let mut decisions = Vec::with_capacity(checks.len());
-    let mut entries = Vec::with_capacity(checks.len());
+    // Grow with the bounded input rather than pre-sizing from it (CodeQL rust/uncontrolled-allocation-size).
+    let mut decisions = Vec::new();
+    let mut entries = Vec::new();
     for check in checks {
         let request = SimRequest {
             subject: subject.clone(),
