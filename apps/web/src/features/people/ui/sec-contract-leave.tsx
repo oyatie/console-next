@@ -2,6 +2,7 @@ import { EnumValue } from "../../../ui/enum-value";
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { t } from "@console/i18n";
+import { retirementDate } from "../domain/employment";
 import { fmtDate } from "@console/i18n/format";
 import { LEAVE_TYPE } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
@@ -51,7 +52,7 @@ export function SecLeave({ c, act }: { c: Card; act?: string }) {
       )}
       {/* Trunk's personal card showed the leave balance once the server sends one: kept here. */}
       {c.e.leave_remaining != null && <SectionLine><span>{t("people.field.leave")} · {t("people.field.leaveLeft", { days: c.e.leave_remaining })}</span></SectionLine>}
-      {c.e.status === "EXITED" && <SectionLine>{t("empCard.leave.exited", { date: fmtDate(c.e.exit_date) })}</SectionLine>}
+      {c.e.status === "EXITED" && <SectionLine>{t("empCard.leave.exited", { date: fmtDate(c.e.exit_date ? retirementDate(c.e.exit_date) : c.e.exit_date) })}</SectionLine>}
       <ExitCases employee={c.e} act={act} />
     </RecordSection>
   );

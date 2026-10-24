@@ -11,6 +11,7 @@ import { reasonLabel } from "../../lib/reason-codes";
 import { continuityShape } from "./domain/group-transfer";
 import { daysBetween, type VerbWhy } from "./domain/lifecycle";
 import { tenure, type NextItem } from "./domain/roster";
+import { retirementDate } from "./domain/employment";
 import type { PlaceOption } from "./domain/register-place";
 import { entityNameText } from "../../reference/entity/present";
 import { unitPath } from "../../reference/org/present";
@@ -22,7 +23,7 @@ type NextEvent = NonNullable<components["schemas"]["Employee"]["next_event"]>;
 type Case = components["schemas"]["EmployeeExitCase"];
 
 /** The nearest scheduled action as "<action> · <date>". */
-export const nextEventText = (n: NextEvent) => t("people.nextEvent.value", { action: label(LIFECYCLE_EVENT, n.event_type), date: fmtDate(n.effective_date) });
+export const nextEventText = (n: NextEvent) => t("people.nextEvent.value", { action: label(LIFECYCLE_EVENT, n.event_type), date: fmtDate(n.event_type === "TERMINATE" || n.event_type === "OFFBOARD" ? retirementDate(n.effective_date) : n.effective_date) });
 
 /** A transfer's or promotion's reason code (or a rescission's) in words, before the note. */
 const coded = (x: LifecycleEvent, comment: string) => {
@@ -48,7 +49,7 @@ export function describeEvent(x: LifecycleEvent, name: string, byId: (id: string
     toCompany: x.to_company ?? "—",
   };
   const comment = coded(x, commentText(x.comment));
-  const date = fmtDate(x.effective_date);
+  const date = fmtDate(x.event_type === "TERMINATE" || x.event_type === "OFFBOARD" ? retirementDate(x.effective_date) : x.effective_date);
   if (x.event_type === "RESCIND") {
     const voided = x.voids_event_id ? byId(x.voids_event_id) : undefined;
     return { title: t("people.event.RESCIND", { ...v, action: voided ? label(LIFECYCLE_EVENT, voided.event_type) : "—", date }), detail: t("people.event.detail", { date, comment }) };

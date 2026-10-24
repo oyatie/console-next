@@ -6,6 +6,11 @@ type Employee = components["schemas"]["Employee"];
 const person = (p: Partial<Employee>): Employee => ({ id: "1", company: "c", name: "n", org_unit_id: null, legal_entity_id: null, workplace_id: null, home_branch_review_required: false, identity_resolution_strategy: "employee_number", identity_resolution_confidence: "high", identity_review_required: false, identity_name_only_merge: false, next_event: null, failed_event: null, created_at: "", updated_at: "", status: "ACTIVE", ...p });
 const TODAY = "2026-10-02";
 
+test("the roster next exit and its distance use the first non-employed day", () => {
+  const e = person({ next_event: { id: "exit", event_type: "TERMINATE", effective_date: "2026-10-31" } as Employee["next_event"] });
+  expect(nextItems(e, "2026-10-31", 60)).toEqual([{ kind: "event", event: "TERMINATE", date: "2026-11-01", days: 1 }]);
+});
+
 describe("filters in the URL", () => {
   test("status: nothing means the current staff; unknown values fall back to it", () => {
     expect(parseStatus(undefined)).toBe("current");

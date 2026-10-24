@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { retirementDate } from "../../people/domain/employment";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { todayKst } from "../../../lib/pure/today";
@@ -80,7 +81,7 @@ export function OpenEntityExits({ entityId }: { entityId: string }) {
         {cases.map((c) => (
           <li key={c.case_id}>
             <Link to="/people/exits/$id" params={{ id: c.case_id }} className={buttonClass("ghost", { size: "sm" })}>
-              {t("entityRecordClose.case", { name: c.employee_name, date: fmtDate(c.effective_exit_date), due: fmtDate(settleBy(c.effective_exit_date)) })}
+              {t("entityRecordClose.case", { name: c.employee_name, date: fmtDate(retirementDate(c.effective_exit_date)), due: fmtDate(settleBy(c.effective_exit_date)) })}
             </Link>
           </li>
         ))}

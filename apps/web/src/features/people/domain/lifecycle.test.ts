@@ -76,8 +76,8 @@ test("verbs: a scheduled exit is read from the history, not the nearest record; 
   const states = verbStates(detail({ allowed_events: allowed("TRANSFER"), schedule_after: "2026-11-30" }), events);
   // 전보 is still offered before the exit date (the server listed it); 승진 is not, and the exit is why.
   expect(states[0]).toEqual({ verb: "TRANSFER", enabled: true, max: "2026-11-29", before: "2026-11-30" });
-  expect(states[1]).toEqual({ verb: "GROUP_TRANSFER", enabled: false, why: { kind: "exitScheduled", date: "2026-11-30" } });
-  expect(states[2]).toEqual({ verb: "PROMOTE", enabled: false, why: { kind: "exitScheduled", date: "2026-11-30" } });
+  expect(states[1]).toEqual({ verb: "GROUP_TRANSFER", enabled: false, why: { kind: "exitScheduled", date: "2026-12-01" } });
+  expect(states[2]).toEqual({ verb: "PROMOTE", enabled: false, why: { kind: "exitScheduled", date: "2026-12-01" } });
 });
 
 test("verbs: offered only after the last scheduled record gets a lower bound; offered in both lists, no bound", () => {

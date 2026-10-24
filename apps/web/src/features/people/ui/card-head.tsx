@@ -18,6 +18,7 @@ import { FieldMark } from "../../../ui/record/field-row";
 import { Kbd } from "../../../ui/record/record-section";
 import { listPosition, serviceSpan } from "../domain/card";
 import { verbStates } from "../domain/lifecycle";
+import { retirementDate } from "../domain/employment";
 import { whyText, plannedWhat } from "../present";
 import { useOwnRecord } from "./use-case-actions";
 import { unitListQuery } from "../api/record";
@@ -74,8 +75,8 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
   const p = c.planned;
   // What the reservation does, in the words of the field it changes (duty title: foreman), else the act's name.
   const next = p
-    ? { date: p.effective_date, what: plannedWhat(p, c.title), by: p.created_by_name && t("empCard.next.by", { who: p.created_by_name, date: fmtDateTime(p.created_at) }) }
-    : e.next_event && { date: e.next_event.effective_date, what: label(LIFECYCLE_EVENT, e.next_event.event_type), by: null };
+    ? { date: p.event_type === "TERMINATE" || p.event_type === "OFFBOARD" ? retirementDate(p.effective_date) : p.effective_date, what: plannedWhat(p, c.title), by: p.created_by_name && t("empCard.next.by", { who: p.created_by_name, date: fmtDateTime(p.created_at) }) }
+    : e.next_event && { date: e.next_event.event_type === "TERMINATE" || e.next_event.event_type === "OFFBOARD" ? retirementDate(e.next_event.effective_date) : e.next_event.effective_date, what: label(LIFECYCLE_EVENT, e.next_event.event_type), by: null };
   return (
     <Band as="header" className={s.head}>
       <div className={s.top}>
@@ -132,7 +133,7 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
         {e.status === "EXITED" && (
           // Trunk's head said when the person left and led to the exit case: the card keeps both.
           <p className={s.readOnly}>
-            {t("person.exited", { date: fmtDate(e.exit_date) })}
+            {t("person.exited", { date: fmtDate(e.exit_date ? retirementDate(e.exit_date) : e.exit_date) })}
             <Button variant="ghost" onClick={() => (onTab("card"), focusSoon("exit"))}>{t("person.exit.open")}</Button>
           </p>
         )}

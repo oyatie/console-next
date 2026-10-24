@@ -148,7 +148,7 @@ export const enPeople: Partial<Record<keyof typeof koPeople, string>> = {
   "people.employment.missing.title": "Record employment details first",
   "people.employment.missing.open": "Complete employment through roster re-import",
   "people.employment.missing.body": "Add an employment-type column to a roster with employee number {number} and the same name. In roster import, match the existing employee by number, review the employment-type diff, and apply it. Keep the existing employee record. Then record mobile and pay on this card.",
-  "people.refusal.rehire_date_not_after_exit": "Choose a rehire date after the last exit date, {date}. Review the exit record to correct the earlier employment period.",
+  "people.refusal.rehire_date_not_after_exit": "Choose a rehire date on or after the retirement date, {date}. Review the exit record to correct the earlier employment period.",
   "people.lifecycle.action.GROUP_TRANSFER": "Group transfer",
   "people.event.scheduled.GROUP_TRANSFER": "{actor} scheduled {name}’s group transfer to {toCompany}",
   "people.event.applied.GROUP_TRANSFER": "{name}’s group transfer from {fromCompany} to {toCompany} took effect on {date} (scheduled by {actor})",

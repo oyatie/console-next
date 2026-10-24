@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { retirementDate } from "../../people/domain/employment";
 import type { StructureNode } from "@console/api/pending";
 import type { ClosePlanView } from "../../../reference/close/api";
 import { preview, settleBy, type Draft } from "../../../reference/close/domain/plan";
@@ -33,7 +34,7 @@ export function ClosePreview({ view, draft, entity, date, insurance }: { view: C
             {view.exit_cases.map((c) => (
               <li key={c.case_id}>
                 <Link to="/people/exits/$id" params={{ id: c.case_id }}>
-                  {t("workplace.close.openCase", { name: named.get(c.employee_id) ?? "", date: fmtDate(c.effective_exit_date), due: fmtDate(settleBy(c.effective_exit_date)) })}
+                  {t("workplace.close.openCase", { name: named.get(c.employee_id) ?? "", date: fmtDate(retirementDate(c.effective_exit_date)), due: fmtDate(settleBy(c.effective_exit_date)) })}
                 </Link>
               </li>
             ))}

@@ -114,7 +114,10 @@ export type NextItem =
 export function nextItems(e: Employee, today: string, soonDays: number): NextItem[] {
   const items: NextItem[] = [];
   if (e.failed_event) items.push({ kind: "failed", event: e.failed_event.event_type, date: e.failed_event.effective_date });
-  if (e.next_event) items.push({ kind: "event", event: e.next_event.event_type, date: e.next_event.effective_date, days: daysBetween(today, e.next_event.effective_date) });
+  if (e.next_event) {
+    const date = e.next_event.event_type === "TERMINATE" || e.next_event.event_type === "OFFBOARD" ? retirementDate(e.next_event.effective_date) : e.next_event.effective_date;
+    items.push({ kind: "event", event: e.next_event.event_type, date, days: daysBetween(today, date) });
+  }
   const end = e.contract_end_date;
   if (end && e.status !== "EXITED" && daysBetween(today, end) <= soonDays) items.push({ kind: "contract", date: end, days: daysBetween(today, end) });
   const back = e.status === "ON_LEAVE" ? e.expected_return_date : undefined;

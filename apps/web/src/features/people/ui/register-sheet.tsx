@@ -88,7 +88,7 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
   const cands = duplicateCandidates(reg.error);
   const openingRefused = problemOf(reg.error)?.code === "workplace_not_open_on_date";
   const hireRefusal = beforeOpening || openingRefused
-    ? place?.opensOn ? t("register.err.beforeOpening", { site: place.site, date: fmtDate(place.opensOn) }) : t("common.failed.code.workplace_not_open_on_date")
+    ? place?.opensOn ? t("register.err.beforeOpening", { site: place.site, date: fmtDate(place.opensOn) }) : t("register.err.beforeOpeningUnknown")
     : null;
 
   // A press made while the places are still being read is kept and made once they land (it was a dead click: the

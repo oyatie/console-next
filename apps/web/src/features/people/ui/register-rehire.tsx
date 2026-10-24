@@ -50,7 +50,7 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
   const [tried, setTried] = useState(false);
   const minHire = e.exit_date ? retirementDate(e.exit_date) : undefined;
-  const dateRefusal = e.exit_date ? t("people.refusal.rehire_date_not_after_exit", { date: e.exit_date }) : undefined;
+  const dateRefusal = e.exit_date ? t("people.refusal.rehire_date_not_after_exit", { date: fmtDate(retirementDate(e.exit_date)) }) : undefined;
   const gaps: (typeof NEEDED[number] | "phone" | "pay" | "payUnit")[] = NEEDED.filter((k) => (k === "end" ? f.type === "CONTRACT" && !f.end : k === "type" ? !f.type : k === "hire" ? !f.hire || Boolean(minHire && f.hire < minHire) : !f[k]));
   if (!d.employment) {
     if (!phoneE164(f.phone)) gaps.push("phone");
@@ -99,7 +99,7 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
     >
       <div className={s.form}>
         <div className={s.before}>
-          <span>{t("register.rehire.before", { name: e.name, number: e.employee_number ?? "—", place: [e.company, e.org_unit].filter(Boolean).join(" › "), from: e.hire_date ?? "—", to: e.exit_date ?? "—" })}</span>
+          <span>{t("register.rehire.before", { name: e.name, number: e.employee_number ?? "—", place: [e.company, e.org_unit].filter(Boolean).join(" › "), from: fmtDate(e.hire_date), to: fmtDate(e.exit_date ? retirementDate(e.exit_date) : e.exit_date) })}</span>
           <Chip>{t("register.rehire.kept")}</Chip>
           <span className={s.hint}>{t("register.rehire.same")}</span>
         </div>

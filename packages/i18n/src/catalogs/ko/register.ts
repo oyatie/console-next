@@ -2,6 +2,7 @@
 // 연속 등록 and 재입사. 합니다체, no exclamation marks.
 export const koRegister = {
   "register.err.beforeOpening": "{site} 개설일({date}) 전 입사자는 입사일을 그대로 두고 명부 가져오기로 등록합니다.",
+  "register.err.beforeOpeningUnknown": "사업장 또는 법인의 개설일 전 입사자는 입사일을 그대로 두고 명부 가져오기로 등록합니다.",
   "register.kicker": "직원 › 한 명씩 · 범위 {scope}",
   "register.scopeAll": "전체",
   "register.title": "직원 등록",
