@@ -86,8 +86,8 @@ export function EntityList() {
           )}
         </QueryState>
       </section>
-      {/* Below the list: arriving with the read, it never pushes the table down (layout shift budget). */}
-      {!readOnly && <CorrectionRegister correctionId={correction} onSelect={(id) => void navigate({ search: (s) => ({ ...s, correction: id ?? undefined }), hash: "identifier-corrections", replace: true })} />}
+      {/* The list above must settle before these controls can be aimed at. */}
+      {!list.isPending && !readOnly && <CorrectionRegister correctionId={correction} onSelect={(id) => void navigate({ search: (s) => ({ ...s, correction: id ?? undefined }), hash: "identifier-corrections", replace: true })} />}
       {list.data && <UnattachedWorkplaces entities={list.data.items} />}
       {!readOnly && <QuickAdd open={add === true} onClose={() => void navigate({ search: (s) => ({ ...s, add: undefined }) })} />}
     </div>
