@@ -78,8 +78,8 @@ shrink-only checks remain. Public proof validates this reviewed registry rather
 than the Mac's private queue, which is absent from a GitHub runner.
 
 Base comparisons share `scripts/git-base.mjs`: an explicit CLI base takes precedence,
-then `CI_BASE_SHA`, the PR/merge-group/push event base, the legacy `QUALITY_BASE`
-override, `origin/dev`, and `public/dev`. A missing requested commit refuses the check;
+then `CI_BASE_SHA`, the PR/merge-group/push event base, `origin/dev`, and `public/dev`.
+A missing requested commit refuses the check;
 it never silently substitutes another base. With no usable evidence the error names
 `CI_BASE_SHA` and the remote refs to fetch. Local `dev` is never a default: it can
 still refer to the private repository. Both CI and workflows-check fetch full history
