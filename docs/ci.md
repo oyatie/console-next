@@ -200,8 +200,8 @@ Local reproduction for run 40090735082 / round 14:
 node scripts/ci/generate-egress.mjs --check
 node --test scripts/ci-delivery.test.mjs scripts/ci-egress.test.mjs
 env -u BACKLOG_QUEUE_DIR node scripts/check-reach.mjs
-CARGO_TARGET_DIR=/Users/jasonlee/.cache/console-target/drain/item-ci-1 RUSTC_WRAPPER=sccache npm run desktop:test -- --locked
-CI_BASE_SHA=df5feeb QUALITY_BASE=df5feeb CARGO_TARGET_DIR=/Users/jasonlee/.cache/console-target/drain/item-ci-1 RUSTC_WRAPPER=sccache npm run check
+RUSTC_WRAPPER=sccache npm run desktop:test -- --locked
+CI_BASE_SHA=df5feeb QUALITY_BASE=df5feeb RUSTC_WRAPPER=sccache npm run check
 ```
 
 The untouched `b5a0ffc76` worktree failed three new controls: empty block lists,
