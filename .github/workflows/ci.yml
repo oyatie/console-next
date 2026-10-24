@@ -31,7 +31,7 @@ jobs:
             github.com:443 api.github.com:443 codeload.github.com:443 objects.githubusercontent.com:443
             release-assets.githubusercontent.com:443 *.actions.githubusercontent.com:443 *.blob.core.windows.net:443
             registry.npmjs.org:443 static.rust-lang.org:443 index.crates.io:443 static.crates.io:443 crates.io:443
-            registry-1.docker.io:443 auth.docker.io:443 production.cloudflare.docker.com:443 ghcr.io:443
+            registry-1.docker.io:443 auth.docker.io:443 production.cloudflare.docker.com:443 production.cloudfront.docker.com:443 ghcr.io:443
             pkg-containers.githubusercontent.com:443 cdn.playwright.dev:443 playwright.download.prss.microsoft.com:443
             storage.googleapis.com:443
             archive.ubuntu.com:80 azure.archive.ubuntu.com:80 security.ubuntu.com:80
@@ -118,11 +118,9 @@ jobs:
       - *node
       - *npm-restore
       - *npm-ci
-      - run: bash scripts/ci/install-tools.sh gitleaks
+      - run: bash scripts/ci/install-tools.sh gitleaks actionlint
       - name: actionlint
-        run: >-
-          docker run --rm -v "${PWD}:/repo" -w /repo
-          rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+        run: actionlint -color
       - name: Workflow regression and safety checks
         run: node --test scripts/ci.test.mjs scripts/ci-privacy.test.mjs scripts/ci-results.test.mjs scripts/dev-secrets.test.mjs scripts/check-repo-files.test.mjs
       - name: Check hermetic repository inputs
