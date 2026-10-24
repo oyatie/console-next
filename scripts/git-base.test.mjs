@@ -71,3 +71,20 @@ test("licence and file-policy CLIs work in a detached checkout and refuse unavai
     git("update-ref", "refs/remotes/origin/dev", base);
   }
 });
+
+test("branch scans and backlog state share the remote base and refuse missing CI evidence", (t) => {
+  const { root, git, base } = repository(t);
+  const env = { ...process.env, CI_BASE_SHA: "", GITHUB_EVENT_PATH: "", QUALITY_BASE: "" };
+  const backlog = `import {gitBranchState} from ${JSON.stringify(new URL("./backlog-claims.mjs", import.meta.url).href)}; console.log(gitBranchState(process.cwd()).trunk);`;
+  const run = (command, args, extra = {}) => spawnSync(command, args, { cwd: root, encoding: "utf8", env: { ...env, ...extra } });
+  const scan = [new URL("./client-data-scan.py", import.meta.url).pathname, "--branch"];
+  const state = ["--input-type=module", "-e", backlog];
+  assert.equal(run(process.execPath, state).stdout.trim(), base);
+  assert.equal(run("python3", scan).status, 0);
+  git("branch", "dev", base);
+  for (const [command, args, status] of [[process.execPath, state, 1], ["python3", scan, 2]]) {
+    const result = run(command, args, { CI_BASE_SHA: "missing-branch-base" });
+    assert.equal(result.status, status, result.stderr);
+    assert.match(result.stderr, /missing-branch-base.*CI_BASE_SHA/);
+  }
+});

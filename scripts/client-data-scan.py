@@ -1033,9 +1033,13 @@ def main(argv=None):
     elif a.tree is not None:
         hits = tree(sc, root, a.tree, counts)
     else:
-        if a.branch:  # git log HEAD --not dev --remotes: what this checkout adds over the trunk
-            a.range = ["HEAD", "--not", *(["dev"] if git(root, "rev-parse", "-q", "--verify", "refs/heads/dev", check=False)
-                                          else []), "--remotes"]
+        if a.branch:
+            base = subprocess.run(["node", str(Path(__file__).with_name("git-base.mjs"))], cwd=root,
+                                  capture_output=True, text=True)
+            if base.returncode:
+                print("client-data-scan: base unavailable; " + base.stderr.strip(), file=sys.stderr)
+                return 2
+            a.range = ["HEAD", "--not", base.stdout.strip(), "--remotes"]
         # A bare --history reads HEAD after the repo's clean point, so a commit already pushed (and its file since
         # deleted) cannot hide from a check. ponytail: the range grows until the owner advances 'clean'.
         if a.history == [] and git(root, "rev-parse", "--is-shallow-repository").strip() == b"true":
