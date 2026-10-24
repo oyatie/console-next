@@ -49,13 +49,14 @@ test("the reported last working day counts in live, compare, list and exports un
   await expect(report).toContainText(`4대보험 상실일 ${koDate(exitDay)}`);
   await shot(admin, "exit-last-working-day-report");
   await report.getByLabel("퇴직 경위").fill("개인 사정");
-  await report.getByRole("button", { name: /퇴직 보고$/ }).click();
+  await report.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
+  await report.getByRole("button", { name: "퇴직 보고 1명 반영" }).click();
   const exit = admin.getByRole("region", { name: "퇴직", exact: true });
   await exit.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();
   const confirm = admin.getByRole("dialog");
   await expect(confirm).toContainText(`${koDate(exitDay)}자로 퇴직 처리하도록 예약합니다`);
   await signOff(confirm.getByRole("group", { name: "확인 사항" }));
-  await confirm.getByRole("button", { name: /인사 확인하고/ }).click();
+  await confirm.getByRole("button", { name: "퇴직 1명 예약" }).click();
   await expect(confirm).toBeHidden();
   await expect(exit).toContainText("효력 예정");
   await expect(exit).toContainText(`${koDate(exitDay)}에 퇴직 처리가 반영됩니다`);
