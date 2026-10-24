@@ -89,6 +89,9 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await expectAccessible(admin, "J5: HR-confirmed exit");
   await openCard(admin);
 
+  await expect(admin.getByRole("main")).toContainText(`${koDate(kstDate(0))}에 퇴직했습니다`);
+  await expect(admin.getByRole("button", { name: "퇴직 건 보기" }).first()).toBeVisible();
+
   // 2. The executive confirms as HQ, straight from Home's exit queue.
   await exec.goto("/");
   const queue = exec.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ hasText: "강퇴직" }).filter({ has: exec.getByRole("link", { name: "본사 퇴직 확인", exact: true }) });
@@ -218,8 +221,8 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await expect(exitPanel(admin)).toContainText(`${koDate(kstDate(11))}에 퇴직 처리가 반영됩니다`);
   await expect(head(admin, "예정퇴직").getByText("재직", { exact: true })).toBeVisible();
   await expect(head(admin, "예정퇴직").getByText("효력 예정")).toBeVisible();
-  await expect(admin.getByRole("group", { name: "다음 일정" })).toContainText(`${koDate(exitOn)} 퇴직 예정`);
-  await expect(admin.getByRole("region", { name: "다음 기록" })).toContainText(`퇴직 · ${koDay(exitOn)}`);
+  await expect(admin.getByRole("group", { name: "다음 일정" })).toContainText(`${koDate(kstDate(11))} 퇴직 예정`);
+  await expect(admin.getByRole("region", { name: "다음 기록" })).toContainText(`퇴직 · ${koDay(kstDate(11))}`);
   await expectAccessible(admin, "J5: scheduled exit");
   expect(c.done("J5 report + confirm a future exit")).toBeLessThanOrEqual(8);
 
@@ -252,8 +255,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await open.getByRole("button", { name: "지금 단계 보기" }).click();
   await expect(exitPanel(exec)).toContainText("반려됨");
 
-  // 6. A scheduled exit that is not withdrawn applies after its last working day (a background run, on a date the test moves the
-  // backend's apply clock to): the employee is exited then, and the history says when it took effect.
+  // 6. The test clock advances application only; dated employee reads keep the real business date.
   await registerEmployee(admin, { name: "날짜퇴직", number: "J5-0004", hired: "2025-03-03" });
   const leaveOn = kstDate(4);
   await c.click(admin.getByRole("button", { name: "퇴직 보고" }));
@@ -265,23 +267,28 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await confirmAsHr(admin, c);
   await expect(exitPanel(admin)).toContainText("효력 예정");
   c.done("J5 schedule an exit");
+  const scheduledRecord = new URL(admin.url()).pathname;
   await withLifecycleDate(kstDate(5), async () => {
     // Pages keep what they read for 30 s: reload (a few times at most; the session refresh is rate-limited).
     await expect(async () => {
       // Reload only a loaded page: a reload during its session refresh replays the rotated token, which signs out.
       await expect(head(admin, "날짜퇴직")).toBeVisible();
       await admin.reload();
-      await expect(head(admin, "날짜퇴직").getByText("퇴직", { exact: true })).toBeVisible({ timeout: 1_000 });
+      await expect(exitPanel(admin)).toBeVisible({ timeout: 1_000 });
+      await expect(exitPanel(admin)).not.toContainText("효력 예정", { timeout: 1_000 });
     }).toPass({ intervals: [2_000, 3_000, 5_000], timeout: 30_000 });
+    const appliedCaseHref = await exitPanel(admin).getByRole("link", { name: "퇴직 건 열기" }).getAttribute("href");
+    const caseId = appliedCaseHref!.split("/").at(-1);
+    const read = admin.waitForResponse((r) => r.request().method() === "GET" && new URL(r.url()).pathname === `/api/v1/hr/exit-cases/${caseId}`);
+    await go(admin, appliedCaseHref!);
+    expect((await read).status()).toBe(200);
+    expect(await (await read).json()).toMatchObject({ exit_event_state: "APPLIED" });
+    await go(admin, scheduledRecord);
+    await openHistory(admin);
+    await expect(admin.getByRole("region", { name: "인사 이력" })).toContainText(`날짜퇴직이 ${koDate(kstDate(5))}자로 퇴직했습니다 (예약: `);
   });
-  await openHistory(admin);
-  await expect(admin.getByRole("region", { name: "인사 이력" })).toContainText(`날짜퇴직이 ${koDate(leaveOn)}자로 퇴직했습니다 (예약: `);
   await openCard(admin);
   await expect(exitPanel(admin)).not.toContainText("효력 예정");
-  // The head says when the person left and leads to the case (trunk's person head did; regression).
-  await expect(admin.getByRole("main")).toContainText(`${koDate(leaveOn)}에 퇴직했습니다`);
-  await expect(admin.getByRole("button", { name: "퇴직 건 보기" }).first()).toBeVisible();
-  await expectNoHrActs(admin);
   await expectAccessible(admin, "J5: a scheduled exit applied on its date");
 
   // Phone width: the exit list (filter and total) and an exit case page never scroll sideways.

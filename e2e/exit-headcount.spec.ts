@@ -45,6 +45,7 @@ test("the reported last working day counts in live, compare, list and exports un
   await admin.getByRole("button", { name: "퇴직 보고" }).click();
   const report = admin.getByRole("dialog");
   await report.getByRole("textbox", { name: /^마지막 근무일/ }).fill(lastDay);
+  await report.getByRole("textbox", { name: /^마지막 근무일/ }).press("Tab");
   await expect(report).toContainText(`퇴직일(근로기준법·퇴직금) ${koDate(exitDay)}`);
   await expect(report).toContainText(`4대보험 상실일 ${koDate(exitDay)}`);
   await shot(admin, "exit-last-working-day-report");
