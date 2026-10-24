@@ -255,7 +255,7 @@ crates/policy/adapter-postgres/src/lib.rs	323
 crates/policy/application/src/lib.rs	344
 crates/policy/domain/src/lib.rs	446
 crates/production/rest/src/lib.rs	1446
-crates/production/rest/tests/production_lifecycle_http.rs	1362
+crates/production/rest/tests/production_lifecycle_http.rs	1351
 crates/recruiting/adapter-postgres/src/lib.rs	1642
 crates/recruiting/rest/src/lib.rs	707
 crates/registry/adapter-postgres/src/lib.rs	3610

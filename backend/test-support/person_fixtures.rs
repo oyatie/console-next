@@ -21,8 +21,8 @@ pub async fn bind_user_to_distinct_person(owner: &PgPool, user: UserId) -> (Uuid
 
 /// Preserve the employee link and explicitly replace its fixture person binding.
 pub async fn bind_user_to_person(owner: &PgPool, user: UserId, person: Uuid) -> Uuid {
-    let (org, linked): (Uuid, Option<Uuid>) =
-        sqlx::query_as("SELECT org_id, employee_id FROM users WHERE id = $1")
+    let (org, linked, name): (Uuid, Option<Uuid>, String) =
+        sqlx::query_as("SELECT org_id, employee_id, display_name FROM users WHERE id = $1")
             .bind(*user.as_uuid())
             .fetch_one(owner)
             .await
@@ -32,10 +32,11 @@ pub async fn bind_user_to_person(owner: &PgPool, user: UserId, person: Uuid) -> 
         None => sqlx::query_scalar(
             "INSERT INTO employees \
                  (org_id, company, name, source_filename, source_sheet, source_row, source_key) \
-                 VALUES ($1, 'ACME', $2, 'person-fixture.xlsx', 'People', 1, $2) RETURNING id",
+                 VALUES ($1, 'ACME', $3, 'person-fixture.xlsx', 'People', 1, $2) RETURNING id",
         )
         .bind(org)
         .bind(format!("person-fixture-{user}"))
+        .bind(name)
         .fetch_one(owner)
         .await
         .unwrap(),

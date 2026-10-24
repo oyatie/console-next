@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
+#[path = "../../../test-support/person_fixtures.rs"]
+mod person_fixtures;
 
 pub(super) async fn assert_unbound_refusal(
     pool: &PgPool,
@@ -51,5 +53,6 @@ pub(super) async fn seed_user(pool: &PgPool, org: OrgId, role: &str) -> UserId {
     .execute(pool)
     .await
     .unwrap();
+    person_fixtures::bind_user_to_distinct_person(pool, user).await;
     user
 }
