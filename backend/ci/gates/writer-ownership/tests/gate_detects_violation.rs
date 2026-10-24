@@ -2492,22 +2492,15 @@ fn topology_script_names_the_roles_that_lose_dml() -> Result<(), Box<dyn std::er
     // structural blind spots.
     assert_eq!(
         marked_list(&block, "expected writers")?,
-        [
-            "console_app",
-            "*",
-            "console_rt",
-            "*",
-            "console_leave_definer",
-            "employees",
-            "console_leave_definer",
-            "persons",
-            "console_leave_definer",
-            "person_revisions",
-            "console_leave_definer",
-            "employee_person_bindings",
-            "pg_write_all_data",
-            "*",
-        ],
+        "console_app *
+         console_rt *
+         console_leave_definer employees
+         console_leave_definer persons
+         console_leave_definer person_revisions
+         console_leave_definer employee_person_bindings
+         pg_write_all_data *"
+            .split_whitespace()
+            .collect::<Vec<_>>(),
         "the expected-writer ratchet drifted; every role that can write a \
          canonical relation must be named here with the lane that removes it"
     );
