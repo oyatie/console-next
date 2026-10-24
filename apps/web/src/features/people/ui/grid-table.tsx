@@ -31,7 +31,7 @@ const viewport = (grid: HTMLDivElement) => {
   const top = (scroller ? Math.max(0, scroller.getBoundingClientRect().top + scroller.clientTop) : 0) + (parseFloat(padding.scrollPaddingTop) || 0);
   const bottom = (scroller ? Math.min(window.innerHeight, scroller.getBoundingClientRect().top + scroller.clientTop + scroller.clientHeight) : window.innerHeight) - (parseFloat(padding.scrollPaddingBottom) || 0);
   const rowsTop = grid.getBoundingClientRect().top + grid.clientTop + (grid.firstElementChild?.firstElementChild?.getBoundingClientRect().height ?? 0);
-  return { scroller: scroller ?? window, top, bottom, rowsTop };
+  return { scroller: scroller ?? window, top, bottom: bottom - (grid.querySelector<HTMLElement>(':scope > [role="status"]')?.offsetHeight ?? 0), rowsTop };
 };
 
 const nextCell = (key: string, r: number, c: number, rc: number, cc: number, ctrl?: boolean, page = DEFAULT_VISIBLE): At =>
@@ -84,8 +84,7 @@ export function GridTable({
   // A blur during a move runs before re-render; handlers must read the edited cell synchronously.
   const editingNow = useRef<At | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const [rowHeight, setRowHeight] = useState(1);
-  const [scrollTop, setScrollTop] = useState(0);
+  const [rowHeight, setRowHeight] = useState(1), [scrollTop, setScrollTop] = useState(0);
   const [viewportRows, setViewportRows] = useState(visibleRows);
 
   const windowSize = viewportRows + overscan;
@@ -97,6 +96,7 @@ export function GridTable({
   const shown = (row: GridRow, c: number) => row.typed[c] ?? row.current[c] ?? "";
   const inRange = (r: number, c: number) => range && range.col === c && r >= Math.min(range.from, range.to) && r <= Math.max(range.from, range.to);
   const validActive = Boolean(active && rows[active.r]?.cells[active.c] && columns[active.c]);
+  const mounted = validActive && active!.r >= first && active!.r < last;
   useLayoutEffect(() => {
     if (!active || !validActive) return;
     focusPending.current = true;
@@ -244,8 +244,8 @@ export function GridTable({
 
   const at = active && rows[active.r]?.cells[active.c];
   return (
-    <div ref={gridRef} className={`${s.grid} ${m.grid}`} role="grid" tabIndex={active ? -1 : 0} onKeyDown={onGridKeyDown}
-      onFocus={(e) => e.target === e.currentTarget && !parkingFocus.current && !active && move(0, 0)}
+    <div ref={gridRef} className={`${s.grid} ${m.grid}`} role="grid" tabIndex={mounted ? -1 : 0} onKeyDown={onGridKeyDown}
+      onFocus={(e) => e.target === e.currentTarget && !parkingFocus.current && !mounted && move(active?.r ?? 0, active?.c ?? 0)}
       aria-label={label} aria-rowcount={rows.length + 1} data-cols={columns.length}>
       <div role="row" aria-rowindex={1} className={s.head}>
         <span role="columnheader" className={s.n}>{t("bulkGrid.col.row")}</span>

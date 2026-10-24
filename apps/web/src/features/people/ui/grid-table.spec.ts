@@ -1,48 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, mount, expectWindowAt } from "./grid-table-fixture.playwright";
 import { bootKo } from "../../../../../../packages/i18n/src/catalogs/boot";
 
 const unicode = `${bootKo["app.name"]} 😀`;
-
-async function mount(page: Page, bounded = false, variant = "table") {
-  // Mount just this entry through the real dev route; unrelated galleries can open body portals.
-  await page.route("**/src/gallery/gallery.tsx", (route) => route.fulfill({
-    contentType: "text/javascript",
-    body: 'export { default as Gallery } from "/src/features/people/ui/grid-table.gallery.tsx";',
-  }));
-  await page.goto(`/_gallery?grid=${variant}&bounded=${bounded}`);
-  await page.locator("#gallery-grid-table").getByRole("grid").waitFor();
-}
-
-let errors: string[] = [];
-test.beforeEach(async ({ page }) => {
-  errors = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  await page.addInitScript(() => localStorage.setItem("console.locale", "en"));
-});
-test.afterEach(() => {
-  expect(errors).toEqual([]);
-});
-
-async function expectWindowAt(page: Page, row: number) {
-  await expect.poll(() => page.getByRole("rowheader").allTextContents()).toContain(String(row));
-  expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
-  // Check geometry, not just DOM presence: the rendered rows must cover the viewport.
-  const coverage = await page.evaluate(() => {
-    const wrapper = document.getElementById("scroller")!;
-    const bounds = wrapper.getBoundingClientRect();
-    const top = Math.max(0, bounds.top + wrapper.clientTop);
-    const bottom = Math.min(innerHeight, bounds.top + wrapper.clientTop + wrapper.clientHeight);
-    const cells = [...wrapper.querySelectorAll('[role="rowheader"]')];
-    const first = cells[0]!.getBoundingClientRect();
-    const last = cells.at(-1)!.getBoundingClientRect();
-    return { coversTop: first.top <= top, coversBottom: last.bottom >= bottom, visible: cells.some((cell) => {
-      const rect = cell.getBoundingClientRect();
-      return rect.bottom > top && rect.top < bottom;
-    }) };
-  });
-  expect(coverage).toEqual({ coversTop: true, coversBottom: true, visible: true });
-}
 
 test("document scrolling renders the visible rows with the GridPage wrapper", async ({ page }) => {
   await mount(page);
@@ -179,6 +139,7 @@ test("Shift+Tab leaves the grid's single tab stop", async ({ page }) => {
   expect(await page.locator("#after").evaluate((el) => el === document.activeElement)).toBe(true);
 });
 
+
 test("density changes keep virtual spacers aligned with rows", async ({ page }) => {
   await mount(page, true);
   for (const [density, height] of [["regular", 40], ["compact", 32], ["regular", 40]] as const) {
@@ -280,6 +241,7 @@ test("F8 explains the error at row 1000 inside the scroller", async ({ page }) =
     return bounds.top >= scroller.top && bounds.bottom <= scroller.bottom && bounds.left >= scroller.left && bounds.right <= scroller.right;
   })).toBe(true);
 });
+
 
 test("ArrowUp keeps the active row below the sticky column headers", async ({ page }) => {
   await mount(page, true, "page");

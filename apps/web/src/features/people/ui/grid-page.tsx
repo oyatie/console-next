@@ -160,7 +160,7 @@ export function GridPage() {
             <span className={s.verbOff} title={t("bulkGrid.verb.changeClosed")}>{t("bulkGrid.verb.change")}</span>
             <span className={s.note}>{t("bulkGrid.verb.changeClosed")}</span>
           </div>
-          <div className={s.gridWrap}>
+          <div className={s.gridWrap} tabIndex={-1}>
             <GridTable rows={shown} columns={fields} activeCell={activeCell} onActiveChange={setActiveCell} label={t("bulkGrid.title", { scope: t("bulkGrid.scopeAll") })} onCell={(id, ci, text) => (setTyped((x) => ({ ...x, [id]: { ...x[id], [fields[ci]!.key]: text } })), setMarks((m) => (m[id] ? { ...m, [id]: {} } : m)))} statusOf={(r) => {
               const st = states[rows.indexOf(r)]!;
               return st.errors ? { tone: "error", text: t("bulkGrid.status.error") } : st.changed ? { tone: "changed", text: t("bulkGrid.status.changed", { n: st.changed }) } : { tone: "same", text: t("bulkGrid.status.same") };

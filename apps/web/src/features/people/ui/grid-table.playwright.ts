@@ -9,7 +9,7 @@ const origin = `http://127.0.0.1:${port}`;
 // Component journeys use the dev gallery and cached query fixtures, without a database.
 export default defineConfig({
   testDir: ".",
-  testMatch: "grid-table.spec.ts",
+  testMatch: ["grid-table.spec.ts", "grid-table-focus.spec.ts"],
   outputDir: path.join(repo, "node_modules/.cache/grid-playwright"),
   workers: 2,
   retries: 0,

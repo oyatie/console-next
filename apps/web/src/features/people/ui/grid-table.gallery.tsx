@@ -49,7 +49,7 @@ function TableFixture() {
     <header className={g.before}>
       <Button id="filter-empty" onClick={() => setRows([])}>{tg("empty.title")}</Button>
     </header>
-    <div id="scroller" className={`${s.gridWrap} ${g.scroller}`}>
+    <div id="scroller" className={`${s.gridWrap} ${g.scroller}`} tabIndex={-1}>
       <GridTable rows={rows} columns={GRID_FIELDS.filter((f) => DEFAULT_COLUMNS.includes(f.key))}
         label={t("bulkGrid.title", { scope: t("bulkGrid.scopeAll") })}
         activeCell={activeCell} onActiveChange={(at) => { setActiveCell(at); setActiveChanges((n) => n + 1); }}
