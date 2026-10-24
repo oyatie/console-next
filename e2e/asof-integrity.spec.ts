@@ -6,6 +6,7 @@ import { openUnit, panel, sheet } from "./helpers/structure";
 import { openTenant } from "./helpers/tenant";
 import { SETUP_DEPARTMENT, setupCompany, startOperations } from "./setup-flows";
 import { leaveScreen, revealUnit } from "./structure-flows";
+import { forgetResize } from "./stability";
 
 async function datedLabels(page: Page, date: string, mode: "과거" | "예정", entity = false) {
   const main = page.getByRole("main");
@@ -26,7 +27,7 @@ async function readOnlyPanel(selected: Locator, date: string) {
 
 async function accessibleAtBothWidths(page: Page, label: string) {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await leaveScreen(page);
+  await forgetResize(page);
   await expectAccessible(page, `${label}, 1440px`);
   await atPhoneWidth(page, async () => {
     await leaveScreen(page);
