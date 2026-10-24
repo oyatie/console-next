@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { createElement, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog } from "@console/i18n";
@@ -14,7 +14,7 @@ vi.mock("@tanstack/react-query", () => ({
 vi.mock("@tanstack/react-router", () => ({
   getRouteApi: () => ({ useSearch: () => ({}), useNavigate: () => vi.fn() }),
   useNavigate: () => vi.fn(),
-  Link: ({ children }: { children: ReactNode }) => createElement("a", null, children),
+  Link: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 vi.mock("./correction-register", () => ({ CorrectionRegister: () => <section data-testid="correction-register" /> }));
 vi.mock("./entity-quick-add", () => ({ QuickAdd: () => null }));
