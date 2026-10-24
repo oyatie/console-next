@@ -58,7 +58,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   await expect(registry).toContainText("02-555-0142");
   await expect(registry).not.toContainText("02-555-0143");
   await expect(admin.getByRole("button", { name: /수정|정정$|법인 종료|법인 삭제/ })).toHaveCount(0);
-  await control.getByRole("button", { name: "오늘로 돌아가기" }).focus();
+  await control.getByRole("button", { name: "오늘로" }).focus();
   await admin.keyboard.press("Enter");
   await expect(registry).toContainText("02-555-0143");
 
@@ -79,9 +79,9 @@ test("solo ops reads past and projected records, preserves known-at corrections 
     error: { code: "validation_failed", errors: [{ field: "known_at", code: "date_invalid" }] },
   });
   await expect(control).toContainText("올바른 날짜를 선택하십시오");
-  await expect(control.getByRole("button", { name: "오늘로 돌아가기" })).toBeVisible();
+  await expect(control.getByRole("button", { name: "오늘로" })).toBeVisible();
   await expect(admin.getByRole("button", { name: /수정|정정$|법인 종료|법인 삭제/ })).toHaveCount(0);
-  await control.getByRole("button", { name: "오늘로 돌아가기" }).click();
+  await control.getByRole("button", { name: "오늘로" }).click();
   await expect(registry).toContainText("02-555-0143");
   await expect(registry).not.toContainText("02-555-0142");
   expect(writes).toEqual([]);
@@ -117,7 +117,7 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   await expect(workplace.getByRole("button", { name: /수정|더보기|추가|휴업|재개/ })).toHaveCount(0);
   await leaveScreen(admin);
   await expectAccessible(admin, "as-of: historical legal entity and workplace, light and dark");
-  await control.getByRole("button", { name: "오늘로 돌아가기" }).click();
+  await control.getByRole("button", { name: "오늘로" }).click();
   await go(admin, `/org/entities?as_of=${yesterday}&add=true`);
   await expect(admin.getByRole("row", { name: /시점상사/ })).toBeVisible();
   await expect(admin.getByRole("dialog")).toHaveCount(0);
@@ -183,14 +183,14 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   await expect(box(admin, "미래팀")).toHaveAttribute("data-scheduled", "true");
   await expect(box(admin, "미래팀")).toHaveAttribute("data-s", /\bscheduled\b/);
   await expect(box(admin, "미래팀")).toHaveCSS("border-top-style", "dashed");
-  await expect(admin.getByRole("button", { name: "이 날짜로 개편안 작성" })).toBeVisible();
+  await expect(admin.getByRole("button", { name: "이 날짜로 조직 변경 작성" })).toBeVisible();
   await revealUnit(admin, "본사");
   const draftWrites: string[] = [];
   const observeDraftWrites = (r: Request) => {
     if (!["GET", "HEAD"].includes(r.method()) && new URL(r.url()).pathname.startsWith("/api/v1/org-changes")) draftWrites.push(r.url());
   };
   admin.on("request", observeDraftWrites);
-  await admin.getByRole("button", { name: "이 날짜로 개편안 작성" }).click();
+  await admin.getByRole("button", { name: "이 날짜로 조직 변경 작성" }).click();
   const proposal = admin.getByRole("dialog", { name: "본사 아래에 부서 신설", exact: true });
   await expect(proposal).toBeVisible();
   await expect(proposal.getByRole("term").filter({ hasText: "상위 조직" }).locator("xpath=following-sibling::dd[1]")).toContainText("본사");

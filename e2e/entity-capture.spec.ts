@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { tenantSlugField, firstSignIn, go, option, takeCode, unique, vendorPage } from "./flows";
+import { tenantSlugField, firstSignIn, go, koDate, kstDate, option, takeCode, unique, vendorPage } from "./flows";
 import { registerEntity } from "./setup-flows";
 
 // 사업자등록증 capture (gate U2, U3) with bundled reference lists and no outside lookup (decision #16): the 행정구역 list
@@ -65,7 +65,7 @@ test("capture: the district comes from the bundled list, other lists say they ar
   const headcount = a.getByRole("group", { name: "상시근로자수" });
   await expect(headcount).toContainText("산정 보류");
   await expect(headcount).toContainText("노무사 확인 전");
-  await expect(headcount).toContainText("지금 재직 0명");
+  await expect(headcount).toContainText(`${koDate(kstDate())} 재직 0명`);
 
   // Its workplace asks the NHIS branch office from its list, which has no verified source yet.
   await a.getByRole("link", { name: "사업장 추가" }).first().click();
