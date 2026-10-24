@@ -1,4 +1,17 @@
 export const enRequestOutcome = {
+  "requestOutcome.code.period_unlock_sole_holder_refused": "Solo unlock is unavailable. Ask an access administrator to assign another person with close authority, then request the unlock again.",
+  "requestOutcome.code.org_change_sod_violation": "The drafter cannot approve through another account. Ask a different person with approval authority.",
+  "requestOutcome.code.leave_decide_requester_forbidden": "The requester cannot decide through another account. Ask a different person with leave decision authority.",
+  "requestOutcome.code.sod_violation": "The submitter cannot approve through another account. Ask a different person with payroll approval authority.",
+  "requestOutcome.code.second_person_required": "The requester cannot decide through another account. Ask a different person with decision authority.",
+  "requestOutcome.code.org_change.refuse.identity_unbound": "The requester or decider identity could not be verified. Ask someone with account management permission to link the account to its personnel record or complete its identity review.",
+  "requestOutcome.code.leave.refuse.identity_unbound": "The requester or decider identity could not be verified. Ask someone with account management permission to link the account to its personnel record or complete its identity review.",
+  "requestOutcome.code.payroll.refuse.identity_unbound": "The requester or decider identity could not be verified. Ask someone with account management permission to link the account to its personnel record or complete its identity review.",
+  "requestOutcome.code.period_unlock.refuse.identity_unbound": "The requester or decider identity could not be verified. Ask someone with account management permission to link the account to its personnel record or complete its identity review.",
+  "requestOutcome.code.account_link.refuse.identity_unbound": "The requester or decider identity could not be verified. Ask someone with account management permission to link the account to its personnel record or complete its identity review.",
+  "requestOutcome.code.governance.refuse.identity_unbound": "The requester or decider identity could not be verified. Ask someone with account management permission to link the account to its personnel record or complete its identity review.",
+  "requestOutcome.code.governance.refuse.same_person": "The requester cannot decide through another account. Ask a different person with decision authority.",
+
   "requestOutcome.lookup": "Request ID or key",
   "requestOutcome.find": "Check result",
   "requestOutcome.empty": "Enter a request ID to check its outcome.",

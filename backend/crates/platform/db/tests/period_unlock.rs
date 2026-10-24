@@ -5,7 +5,9 @@
 //! with two runners at once.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use console_kernel_core::{ErrorKind, OrgId};
+#[path = "../../../../test-support/person_fixtures.rs"]
+mod person_fixtures;
+use console_kernel_core::{ErrorKind, OrgId, UserId};
 use console_platform_db::period_lock::{
     NewUnlockRequest, UnlockWrite, approve_unlock_request_in_tx,
     load_open_unlock_request_for_update, open_unlock_request_in_tx, relock_expired_in_tx,
@@ -43,6 +45,9 @@ async fn setup(owner_pool: &PgPool) -> (PgPool, Uuid, Uuid, Uuid) {
             .await
             .unwrap(),
         );
+    }
+    for user in &users {
+        person_fixtures::bind_user_to_distinct_person(owner_pool, UserId::from_uuid(*user)).await;
     }
     let options = owner_pool.connect_options().as_ref().clone();
     let rt = PgPoolOptions::new()
@@ -156,10 +161,7 @@ async fn a_second_person_performs_the_requested_unlock(owner_pool: PgPool) {
     })
     .await;
     let message = self_unlock.unwrap_err().to_string();
-    assert!(
-        message.contains("period_locks_unlock_second_person"),
-        "{message}"
-    );
+    assert!(message.contains("second_person_required"), "{message}");
     assert!(!june_open(&rt).await, "still locked");
 
     let unlocked = with_org_conn::<_, _, DbError>(&rt, OrgId::one(), move |tx| {

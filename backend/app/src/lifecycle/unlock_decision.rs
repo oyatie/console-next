@@ -3,8 +3,7 @@
 //!
 //! Cedar `period_unlock_decide` decides: another person than the requester
 //! (the `independent_people` bindings) who is an eligible second person
-//! (identity's D0.2 fact), or the tenant ops account as break-glass
-//! (decisions #26 item d, flagged for review on approve).
+//! (identity's D0.2 fact). An account without a Person binding is refused.
 
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -42,9 +41,7 @@ pub(super) struct RejectPeriodUnlockRequest {
     pub(super) note: String,
 }
 
-/// How the caller stands as the second person of `request`: `"eligible"` or
-/// `"ops_break_glass"`; refused (403) for the requester's own person or anyone
-/// else not eligible.
+/// Whether the caller is an independent, eligible second person of this request.
 pub(super) async fn decider_stands(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     principal: &Principal,
@@ -52,8 +49,19 @@ pub(super) async fn decider_stands(
     settings: &ResolvedSettings,
 ) -> Result<&'static str, LifecycleError> {
     let me = *principal.user_id.as_uuid();
-    let independent =
-        independent_people::authorized_in_tx(tx, Some(request.requested_by), me).await?;
+    if let Some(refusal) =
+        independent_people::refusal_in_tx(tx.as_mut(), Some(request.requested_by), me).await
+    {
+        return Err(coded(
+            StatusCode::FORBIDDEN,
+            refusal.code(
+                "period_unlock.refuse.identity_unbound",
+                "second_person_required",
+            ),
+            "unlock decisions require two bound, distinct natural persons",
+        ));
+    }
+    let independent = true;
     let fact = second_person(
         tx,
         principal.org_id,
@@ -65,7 +73,6 @@ pub(super) async fn decider_stands(
     let facts = DecideFacts {
         independent,
         eligible: fact.eligible.contains(&me),
-        ops: principal.is_tenant_ops,
     };
     let org = principal.org_id.as_uuid().to_string();
     // The request was read under the transaction's armed tenant (RLS).
@@ -75,25 +82,13 @@ pub(super) async fn decider_stands(
             .await?;
     let lock_org = armed.unwrap_or_default();
     if period_unlock_decide::decide(&me.to_string(), &org, &lock_org, facts) {
-        return Ok(if facts.eligible {
-            "eligible"
-        } else {
-            "ops_break_glass"
-        });
+        return Ok("eligible");
     }
-    Err(if independent {
-        coded(
-            StatusCode::FORBIDDEN,
-            "second_person_ineligible",
-            "you are not an eligible second person for this unlock",
-        )
-    } else {
-        coded(
-            StatusCode::FORBIDDEN,
-            "second_person_required",
-            "the requester cannot decide their own unlock",
-        )
-    })
+    Err(coded(
+        StatusCode::FORBIDDEN,
+        "second_person_ineligible",
+        "you are not an eligible second person for this unlock",
+    ))
 }
 
 /// The lock's open request, locked, still the one the caller saw (409 when a

@@ -55,6 +55,7 @@ async fn requester_cannot_approve_even_with_another_holder_present(pool: PgPool)
 async fn young_or_unnoticed_holder_cannot_approve(pool: PgPool) {
     let (h, actor, target, employee) = fixture(&pool).await;
     let young = seed_user(&pool, "Young holder", &["SUPER_ADMIN"], None).await;
+    seed_employee_link(&pool, young, "K1-YOUNG", "Young holder").await;
     let (_, body) = request_unlink(&h, actor, target, None).await;
     let id = body["account_link"]["request_id"]
         .as_str()
@@ -220,3 +221,6 @@ async fn a_second_account_of_the_requesters_person_cannot_approve(pool: PgPool) 
     assert_eq!(body["error"]["code"], "account_link_second_person_required");
     assert_eq!(employee_link(&pool, target).await, Some(employee));
 }
+
+#[path = "person_identity.rs"]
+mod person_identity;

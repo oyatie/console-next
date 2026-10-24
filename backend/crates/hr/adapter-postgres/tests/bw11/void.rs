@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::{fixture, promote};
+use crate::{fixture, person_fixtures, promote};
 
 fn rescind(confirm: bool) -> RescindLifecycleEventRequest {
     serde_json::from_value(json!({"reason_code": "INPUT_ERROR", "confirm_cascades": confirm}))
@@ -134,6 +134,7 @@ async fn a_correction_replaces_the_event_on_its_date(pool: PgPool) {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn sensitive_correction_accepts_an_independent_current_holder(pool: PgPool) {
     let f = fixture(pool).await;
+    person_fixtures::bind_user_to_distinct_person(&f.owner, f.principal.user_id).await;
     let leave = |date: &str| {
         serde_json::from_value(json!({
         "event_type": "LEAVE_OF_ABSENCE", "leave_type": "PERSONAL", "effective_date": "2026-09-01",
@@ -146,6 +147,11 @@ async fn sensitive_correction_accepts_an_independent_current_holder(pool: PgPool
     let other = Uuid::new_v4();
     sqlx::query("INSERT INTO users (id, org_id, display_name, roles, is_tenant_ops) VALUES ($1,$2,'다른 담당자',ARRAY['SUPER_ADMIN'],true)")
         .bind(other).bind(f.principal.org_id.as_uuid()).execute(&f.owner).await.unwrap();
+    person_fixtures::bind_user_to_distinct_person(
+        &f.owner,
+        console_kernel_core::UserId::from_uuid(other),
+    )
+    .await;
     let p = console_platform_authz::Principal::new(
         console_kernel_core::UserId::from_uuid(other),
         f.principal.org_id,

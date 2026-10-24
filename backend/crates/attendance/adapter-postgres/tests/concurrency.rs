@@ -18,6 +18,10 @@ use sqlx::{PgPool, Postgres, Transaction};
 use time::{Date, Month};
 use uuid::Uuid;
 
+#[path = "concurrency/leave.rs"]
+mod leave;
+use leave::seed_approved_leave;
+
 const CLOSE_MONTH: &str = "2026-07";
 const SUBSTITUTION_KEY: &str = "attendance-substitution-race-key-0001";
 const LOCK_WITNESS_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(10);
@@ -481,38 +485,6 @@ fn substitution_command(
         exception_id: None,
         idempotency_key: SUBSTITUTION_KEY.to_owned(),
     }
-}
-
-async fn seed_approved_leave(
-    pool: &PgPool,
-    branch: BranchId,
-    requester: UserId,
-    decider: UserId,
-    employee: Uuid,
-) {
-    let mut tx = pool.begin().await.unwrap();
-    sqlx::query("SET LOCAL ROLE console_leave_definer")
-        .execute(tx.as_mut())
-        .await
-        .unwrap();
-    sqlx::query("SELECT set_config('app.current_org', $1, true)")
-        .bind(OrgId::one().as_uuid().to_string())
-        .execute(tx.as_mut())
-        .await
-        .unwrap();
-    sqlx::query(
-        "INSERT INTO leave_requests (id,org_id,branch_id,requester_user_id,subject_employee_id,leave_type,days,start_date,end_date,status,decided_by,decided_at,charge_state,charge_review_reasons,charge_units) VALUES ($1,$2,$3,$4,$5,'annual',1,DATE '2026-07-02',DATE '2026-07-02','approved',$6,now(),'legacy_unverified',ARRAY[]::text[],1)",
-    )
-    .bind(Uuid::new_v4())
-    .bind(*OrgId::one().as_uuid())
-    .bind(*branch.as_uuid())
-    .bind(*requester.as_uuid())
-    .bind(employee)
-    .bind(*decider.as_uuid())
-    .execute(tx.as_mut())
-    .await
-    .unwrap();
-    tx.commit().await.unwrap();
 }
 
 async fn seed_employee(pool: &PgPool, branch: BranchId, actor: UserId, name: &str) -> Uuid {

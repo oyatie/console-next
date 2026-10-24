@@ -23,6 +23,9 @@ use uuid::Uuid;
 use webauthn_authenticator_rs::WebauthnAuthenticator;
 use webauthn_authenticator_rs::softpasskey::SoftPasskey;
 
+#[path = "../../../test-support/person_fixtures.rs"]
+pub mod person_fixtures;
+
 pub const ORIGIN: &str = "https://auth.example.com";
 pub const LOCKS: &str = "/api/v1/period-locks";
 
@@ -72,6 +75,7 @@ pub async fn admin_in(
     .fetch_one(owner)
     .await
     .unwrap();
+    person_fixtures::bind_user_to_distinct_person(owner, UserId::from_uuid(id)).await;
     for sql in [
         "UPDATE authz_grant_ledger SET occurred_at = now() - interval '400 days' WHERE user_id = $1",
         "INSERT INTO authz_grant_ledger (org_id, user_id, grant_kind, grant_ref, event, source, channel) \

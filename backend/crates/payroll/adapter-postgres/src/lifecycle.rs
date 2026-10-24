@@ -23,13 +23,11 @@
 //!   record registered in `payroll_draft_runs.legal_basis.release_gate`;
 //!   an unregistered gate is a 409, never a fake payslip.
 
-use console_kernel_core::KernelError;
 use console_payroll_domain::{
     DeductionCode, GoldenPayrollCase, LineCalculationInput, PayrollReleaseGateInput,
     ProfessionalReviewerKind, ProfessionalValidation, VerifiedNtsTaxRow, build_line_calculation,
     payroll_sources_verified_on, validate_release_gate,
 };
-use console_platform_db::DbError;
 use serde::Serialize;
 use serde_json::{Value, json};
 use sqlx::{Postgres, Row, Transaction};
@@ -179,81 +177,9 @@ pub struct CalculationOutcome {
     pub exceptions_created: i64,
 }
 
-// ---------------------------------------------------------------------------
-// Error surface
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, thiserror::Error)]
-pub enum LifecycleError {
-    /// Not found or other-org (RLS-indistinguishable).
-    #[error("payroll run not found")]
-    NotFound,
-    #[error("attendance close preflight is blocked")]
-    PreflightBlocked(ClosePreflight),
-    #[error("{0}")]
-    InvalidState(String),
-    #[error("{0} exceptions are still open")]
-    ExceptionsOpen(i64),
-    #[error("the decider must not be the submitter (separation of duties)")]
-    SodViolation,
-    #[error("exception is already resolved")]
-    AlreadyResolved,
-    #[error("{0}")]
-    InvalidTransition(String),
-    #[error("payslip release gate is not satisfied: {0}")]
-    LegalGate(String),
-    #[error("{0}")]
-    Validation(String),
-    #[error(transparent)]
-    Db(#[from] DbError),
-}
-
-impl From<sqlx::Error> for LifecycleError {
-    fn from(value: sqlx::Error) -> Self {
-        Self::Db(DbError::from(value))
-    }
-}
-
-impl From<KernelError> for LifecycleError {
-    fn from(value: KernelError) -> Self {
-        Self::Validation(value.message)
-    }
-}
-
-/// Map lifecycle failures onto [`KernelError`] kinds that match the REST
-/// `from_lifecycle` status surface (404 / 422 / 409 / 500) and the CanonicalPort
-/// PayRun path (`pay_run::lifecycle_into_kernel_error`). Store/REST callers that
-/// convert via [`PgPayrollError`] must not flatten Validation / Conflict /
-/// InvalidTransition arms to `Internal` (5xx).
-impl LifecycleError {
-    #[must_use]
-    pub fn into_kernel_error(self) -> KernelError {
-        let message = self.to_string();
-        match self {
-            Self::NotFound => KernelError::not_found("run not found"),
-            Self::Validation(_) => KernelError::validation(message),
-            Self::InvalidTransition(_) => KernelError::invalid_transition(message),
-            Self::InvalidState(_)
-            | Self::PreflightBlocked(_)
-            | Self::ExceptionsOpen(_)
-            | Self::SodViolation
-            | Self::AlreadyResolved
-            | Self::LegalGate(_) => KernelError::conflict(message),
-            Self::Db(_) => KernelError::internal(message),
-        }
-    }
-}
-
-impl From<LifecycleError> for crate::PgPayrollError {
-    fn from(value: LifecycleError) -> Self {
-        match value {
-            // Preserve Db so `PgPayrollError::kind` can still distinguish
-            // sqlx RowNotFound from other DB failures.
-            LifecycleError::Db(err) => Self::Db(err),
-            other => Self::Domain(other.into_kernel_error()),
-        }
-    }
-}
+#[path = "lifecycle_error.rs"]
+mod error;
+pub use error::LifecycleError;
 
 // ---------------------------------------------------------------------------
 // Run head loading

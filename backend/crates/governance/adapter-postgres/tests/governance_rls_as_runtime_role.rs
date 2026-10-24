@@ -75,18 +75,9 @@ async fn seed_org(pool: &PgPool, org_id: Uuid, slug: &str) {
         .unwrap();
 }
 
-async fn seed_user(pool: &PgPool, org_id: Uuid, name: &str) -> UserId {
-    let id: Uuid = sqlx::query_scalar(
-        "INSERT INTO users (display_name, roles, org_id) VALUES ($1, $2, $3) RETURNING id",
-    )
-    .bind(name)
-    .bind(["SUPER_ADMIN"].as_slice())
-    .bind(org_id)
-    .fetch_one(pool)
-    .await
-    .unwrap();
-    UserId::from_uuid(id)
-}
+#[path = "fixtures/bound_admin.rs"]
+mod bound_admin;
+use bound_admin::seed_user;
 
 fn trace() -> TraceContext {
     TraceContext::generate()

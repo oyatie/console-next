@@ -44,28 +44,9 @@ async fn command_role_pool(owner_pool: &PgPool) -> PgPool {
     role_pool(owner_pool, "console_ontology_cmd").await
 }
 
-async fn seed_org_and_user(owner_pool: &PgPool, org: Uuid, tag: &str) -> UserId {
-    let slug = format!("cas-{}", &org.simple().to_string()[..12]);
-    sqlx::query(
-        "INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING",
-    )
-    .bind(org)
-    .bind(slug)
-    .bind(format!("CAS {tag}"))
-    .execute(owner_pool)
-    .await
-    .unwrap();
-    let user = UserId::new();
-    sqlx::query("INSERT INTO users (id, display_name, roles, org_id) VALUES ($1, $2, $3, $4)")
-        .bind(*user.as_uuid())
-        .bind(format!("CAS {tag}"))
-        .bind(["SUPER_ADMIN"].as_slice())
-        .bind(org)
-        .execute(owner_pool)
-        .await
-        .unwrap();
-    user
-}
+#[path = "fixtures/verified_user.rs"]
+mod people;
+use people::seed_org_and_user;
 
 fn draft(key: &str, title: &str) -> CreateObjectTypeDraft {
     CreateObjectTypeDraft {
@@ -224,6 +205,12 @@ async fn key_revision_is_tenant_scoped_and_advances_once_for_stage_and_publish(o
     .await;
     let approver_a = seed_org_and_user(&owner_pool, *org_a.as_uuid(), "approver-a").await;
     let approval_ref_v1 = Uuid::new_v4();
+    let mut approval = owner_pool.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org_a.to_string())
+        .execute(approval.as_mut())
+        .await
+        .unwrap();
     sqlx::query(
         "INSERT INTO gov_approval_requests (org_id, request_ref, kind, requested_by, payload_summary, target_ref) VALUES ($1, $2, 'ontology.schema.publish', $3, jsonb_build_object('key_revision', $4::bigint), $5)",
     )
@@ -232,7 +219,7 @@ async fn key_revision_is_tenant_scoped_and_advances_once_for_stage_and_publish(o
     .bind(*actor_a.as_uuid())
     .bind(a_review_v1.key_write_revision)
     .bind(*a_v1.id.as_uuid())
-    .execute(&owner_pool)
+    .execute(approval.as_mut())
     .await
     .unwrap();
     sqlx::query(
@@ -243,9 +230,10 @@ async fn key_revision_is_tenant_scoped_and_advances_once_for_stage_and_publish(o
     .bind(*actor_a.as_uuid())
     .bind(*approver_a.as_uuid())
     .bind(*a_v1.id.as_uuid())
-    .execute(&owner_pool)
+    .execute(approval.as_mut())
     .await
     .unwrap();
+    approval.commit().await.unwrap();
     let a_published_v1 = console_platform_request_context::scope_org(org_a, async {
         PgOntologyStore::new(rt_pool.clone())
             .with_command_pool(cmd_pool.clone())
@@ -299,6 +287,12 @@ async fn key_revision_is_tenant_scoped_and_advances_once_for_stage_and_publish(o
     })
     .await;
     let approval_ref_v2 = Uuid::new_v4();
+    let mut approval = owner_pool.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org_a.to_string())
+        .execute(approval.as_mut())
+        .await
+        .unwrap();
     sqlx::query(
         "INSERT INTO gov_approval_requests (org_id, request_ref, kind, requested_by, payload_summary, target_ref) VALUES ($1, $2, 'ontology.schema.publish', $3, jsonb_build_object('key_revision', $4::bigint), $5)",
     )
@@ -307,7 +301,7 @@ async fn key_revision_is_tenant_scoped_and_advances_once_for_stage_and_publish(o
     .bind(*actor_a.as_uuid())
     .bind(a_review_v2.key_write_revision)
     .bind(*a_v2.id.as_uuid())
-    .execute(&owner_pool)
+    .execute(approval.as_mut())
     .await
     .unwrap();
     sqlx::query(
@@ -318,9 +312,10 @@ async fn key_revision_is_tenant_scoped_and_advances_once_for_stage_and_publish(o
     .bind(*actor_a.as_uuid())
     .bind(*approver_a.as_uuid())
     .bind(*a_v2.id.as_uuid())
-    .execute(&owner_pool)
+    .execute(approval.as_mut())
     .await
     .unwrap();
+    approval.commit().await.unwrap();
     let a_published_v2 = console_platform_request_context::scope_org(org_a, async {
         PgOntologyStore::new(rt_pool.clone())
             .with_command_pool(cmd_pool.clone())

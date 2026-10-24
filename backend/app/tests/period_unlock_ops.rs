@@ -1,9 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Decisions #26 item d through the router: when an unlock waits for a second
-//! person, the tenant ops account may be that person (break-glass: its own
-//! step-up, flagged for review, audited). Anyone else who is not an eligible
-//! holder is still refused with no side effect, and ops never approves its
-//! own request.
+//! Unbound operations accounts fail the same person rule as every other account.
 
 mod period_unlock_support;
 
@@ -112,17 +108,13 @@ async fn active(owner: &PgPool, lock_id: Uuid) -> bool {
         .unwrap()
 }
 
-/// regression (decisions #26 item d): before it, ops was refused
-/// `second_person_ineligible` and an unlock waiting on an absent holder could
-/// not be performed by anyone in the tenant.
+/// Unbound operations accounts cannot approve or request a governed unlock.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn regression_d26_ops_is_the_second_person_only_with_a_step_up_and_never_for_itself(
-    owner: PgPool,
-) {
+async fn unbound_operations_accounts_cannot_be_either_decision_party(owner: PgPool) {
     let (service, issuer) = router(&owner).await;
     let svc = passkey_service();
     let mut requester = admin(&owner, &svc, &issuer, "요청자").await;
-    let _absent = admin(&owner, &svc, &issuer, "부재자").await;
+    let mut absent = admin(&owner, &svc, &issuer, "부재자").await;
     let mut ops = unlinked(&owner, &svc, &issuer, "운영 관리자", true).await;
     let mut outsider = unlinked(&owner, &svc, &issuer, "외부자", false).await;
     let (lock_id, request_id) =
@@ -141,52 +133,78 @@ async fn regression_d26_ops_is_the_second_person_only_with_a_step_up_and_never_f
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
     assert_eq!(
-        refused["error"]["code"], "second_person_ineligible",
-        "{refused}"
-    );
-    // Negative: ops without its own step-up is refused.
-    let (status, refused) =
-        approve(&service, &owner, &svc, &mut ops, lock_id, request_id, false).await;
-    assert_eq!(status, StatusCode::UNAUTHORIZED, "{refused}");
-    assert_eq!(
-        refused["error"]["code"], "passkey_step_up_required",
+        refused["error"]["code"], "period_unlock.refuse.identity_unbound",
         "{refused}"
     );
     // No side effect from either refusal.
     assert!(active(&owner, lock_id).await);
     assert!(unlocks(&owner, lock_id).await.is_empty());
 
-    // Ops with its own step-up performs it, flagged for review and audited.
-    let (status, unlocked) =
-        approve(&service, &owner, &svc, &mut ops, lock_id, request_id, true).await;
-    assert_eq!(status, StatusCode::OK, "{unlocked}");
-    assert_eq!(unlocked["lock"]["active"], false);
-    assert_eq!(unlocked["lock"]["unlockedBy"], requester.id.to_string());
-    assert_eq!(unlocked["lock"]["unlockApprovedBy"], ops.id.to_string());
-    assert_eq!(unlocked["lock"]["unlockReviewRequired"], true);
-    let audits = unlocks(&owner, lock_id).await;
-    assert_eq!(audits.len(), 1, "{audits:?}");
-    assert_eq!(audits[0]["second_person"], "ops_break_glass");
-    assert_eq!(audits[0]["review_required"], true);
-    assert!(audits[0]["step_up_assertion_id"].is_string(), "{audits:?}");
+    // Operations privileges and step-up do not substitute for a Person binding.
+    sqlx::query("UPDATE authz_grant_ledger SET occurred_at=now() WHERE user_id=$1")
+        .bind(ops.id)
+        .execute(&owner)
+        .await
+        .unwrap();
+    // Missing identity refuses before a step-up ceremony is requested.
+    let (status, refused) =
+        approve(&service, &owner, &svc, &mut ops, lock_id, request_id, false).await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
+    assert_eq!(
+        refused["error"]["code"], "period_unlock.refuse.identity_unbound",
+        "{refused}"
+    );
 
-    // Negative: ops is never the second person of its own request.
-    let (own_lock, own_request) = lock_and_request(&service, &owner, &svc, &mut ops, "07").await;
+    let (status, refused) =
+        approve(&service, &owner, &svc, &mut ops, lock_id, request_id, true).await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
+    assert_eq!(
+        refused["error"]["code"],
+        "period_unlock.refuse.identity_unbound"
+    );
+    assert!(active(&owner, lock_id).await);
+    assert!(unlocks(&owner, lock_id).await.is_empty());
+    // A legacy request whose maker loses its person binding is refused too.
+    let mut identity = owner.begin().await.unwrap();
+    sqlx::query("UPDATE users SET is_tenant_ops=false,person_id=(SELECT person_id FROM users WHERE id=$2) WHERE id=$1")
+        .bind(ops.id).bind(absent.id).execute(identity.as_mut()).await.unwrap();
+    sqlx::query("UPDATE users SET is_tenant_ops=true WHERE id=$1")
+        .bind(requester.id)
+        .execute(identity.as_mut())
+        .await
+        .unwrap();
+    identity.commit().await.unwrap();
     let (status, refused) = approve(
         &service,
         &owner,
         &svc,
-        &mut ops,
-        own_lock,
-        own_request,
+        &mut absent,
+        lock_id,
+        request_id,
         true,
     )
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
     assert_eq!(
-        refused["error"]["code"], "second_person_required",
-        "{refused}"
+        refused["error"]["code"],
+        "period_unlock.refuse.identity_unbound"
     );
-    assert!(active(&owner, own_lock).await);
-    assert!(unlocks(&owner, own_lock).await.is_empty());
+    assert!(active(&owner, lock_id).await);
+    assert!(unlocks(&owner, lock_id).await.is_empty());
+    let relock_at = (OffsetDateTime::now_utc() + Duration::days(1))
+        .format(&Rfc3339)
+        .unwrap();
+    let (status, refused) = send(
+        &service,
+        &format!("{LOCKS}/{lock_id}/unlock"),
+        &requester.token,
+        None,
+        json!({"reasonCode":"PAYROLL_ERROR","relockAt":relock_at}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
+    assert_eq!(
+        refused["error"]["code"],
+        "period_unlock.refuse.identity_unbound"
+    );
 }

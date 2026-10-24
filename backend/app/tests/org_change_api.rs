@@ -21,6 +21,9 @@ use time::{Duration, OffsetDateTime, macros::offset};
 use tower::ServiceExt;
 use uuid::Uuid;
 
+mod org_change_support;
+use org_change_support::seed_user;
+
 /// `(org_id, actor, anomaly, reason)` as read back from `audit_events` — every
 /// column is nullable in the table, so the row shape is wide enough that
 /// `clippy::type_complexity` (denied workspace-wide) rejects it inline.
@@ -578,6 +581,10 @@ async fn reorg_lifecycle_runs_draft_to_applied_with_ordered_sod(pool: PgPool) {
     )
     .await;
     assert_eq!(status, StatusCode::CONFLICT, "self-approval: {sod}");
+    assert_eq!(sod["error"]["code"], "org_change_sod_violation");
+    org_change_support::assert_unbound_refusal(&pool, &rt, &keys, &id, &step_ids[0], &exec_token)
+        .await;
+
     let (status, out_of_order) = send(
         &rt,
         &keys,
@@ -1894,22 +1901,6 @@ async fn seed_branch(pool: &PgPool, org: OrgId, region: Uuid, name: &str) -> Uui
     .fetch_one(pool)
     .await
     .unwrap()
-}
-
-async fn seed_user(pool: &PgPool, org: OrgId, role: &str) -> UserId {
-    let user = UserId::new();
-    sqlx::query(
-        "WITH u AS (INSERT INTO users (id, display_name, roles, is_active, org_id) VALUES ($1, $2, $3, true, $4) RETURNING id, org_id) \
-         INSERT INTO tenant_setting_overrides (org_id, key, value, set_by, reason_code) SELECT org_id, 'approval.policy.org_structure', '\"route\"', id, 'BW01' FROM u",
-    )
-    .bind(*user.as_uuid())
-    .bind(format!("story-{user}"))
-    .bind(vec![role])
-    .bind(*org.as_uuid())
-    .execute(pool)
-    .await
-    .unwrap();
-    user
 }
 
 async fn seed_user_in_branch(pool: &PgPool, org: OrgId, role: &str, branch: Uuid) -> UserId {

@@ -24,13 +24,14 @@ use console_platform_authz::cedar_pbac::authoring::{
     Effect, NoCodeBlocks, SimEffect, SimRequest, SimResource, SimSubject,
 };
 use console_platform_request_context::scope_org;
-use console_platform_test_support::{runtime_role_pool, seed_org_and_super_admin};
+#[path = "fixtures/governed_setup.rs"]
+mod governed;
+use governed::{command_role_pool, runtime_role_pool, seed_org_and_super_admin};
 use p256::ecdsa::SigningKey;
 use p256::elliptic_curve::rand_core::OsRng;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -4259,23 +4260,6 @@ async fn issue_token(
         Vec::new(),
     )
     .await
-}
-
-async fn command_role_pool(owner_pool: &PgPool) -> PgPool {
-    let options = owner_pool.connect_options().as_ref().clone();
-    PgPoolOptions::new()
-        .max_connections(4)
-        .after_connect(|conn, _meta| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_ontology_cmd")
-                    .execute(conn)
-                    .await?;
-                Ok(())
-            })
-        })
-        .connect_with(options)
-        .await
-        .unwrap()
 }
 
 // ---------------------------------------------------------------------------

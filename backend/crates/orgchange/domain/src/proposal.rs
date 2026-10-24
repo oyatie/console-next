@@ -160,7 +160,9 @@ pub const ORG_CHANGE_SCHEDULED_LOCKED: &str = "org_change_scheduled_locked";
 /// The codes an org change answers with when it cannot move its people
 /// (org-01, org-04): the person-move refusals keep their own code, so the
 /// console names the reason (a 법인 crossed, a later scheduled event …).
-pub const ORG_CHANGE_CODES: [&str; 11] = [
+pub const ORG_CHANGE_CODES: [&str; 13] = [
+    "org_change_sod_violation",
+    "org_change.refuse.identity_unbound",
     ORG_CHANGE_SCHEDULED_CONTENT,
     ORG_CHANGE_SCHEDULED_LOCKED,
     "transfer_cross_entity",

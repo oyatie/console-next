@@ -49,17 +49,10 @@ async fn seed_org(pool: &PgPool) {
         .unwrap();
 }
 
+#[path = "fixtures/bound_admin.rs"]
+mod bound_admin;
 async fn seed_user(pool: &PgPool, name: &str) -> UserId {
-    let id: Uuid = sqlx::query_scalar(
-        "INSERT INTO users (display_name, roles, org_id) VALUES ($1, $2, $3) RETURNING id",
-    )
-    .bind(name)
-    .bind(["SUPER_ADMIN"].as_slice())
-    .bind(ORG)
-    .fetch_one(pool)
-    .await
-    .unwrap();
-    UserId::from_uuid(id)
+    bound_admin::seed_user(pool, ORG, name).await
 }
 
 /// Record a distinct-approver `approved` decision bound to (`KIND`, `target`) and

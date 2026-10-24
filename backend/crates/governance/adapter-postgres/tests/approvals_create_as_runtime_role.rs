@@ -14,8 +14,7 @@
 //!   (d) a cross-org request is invisible under another tenant's GUC (RLS);
 //!   (e) console-dgo.1: Company/HR/Payroll kinds deny same-Person different
 //!       accounts (would pass a mere user_id inequality), fail closed for
-//!       unbound requesters, and leave the generic four-eyes path alone for
-//!       NULL `users.employee_id` accounts.
+//!       unbound requesters, including generic approval kinds.
 
 use console_governance_adapter_postgres::PgGovernanceStore;
 use console_governance_application::{
@@ -56,7 +55,7 @@ async fn seed_org(pool: &PgPool, org: Uuid, tag: &str) {
         .unwrap();
 }
 
-async fn seed_user(pool: &PgPool, org: Uuid, name: &str) -> UserId {
+async fn seed_unbound_user(pool: &PgPool, org: Uuid, name: &str) -> UserId {
     let id = Uuid::new_v4();
     sqlx::query("INSERT INTO users (id, display_name, roles, org_id) VALUES ($1, $2, $3, $4)")
         .bind(id)
@@ -67,6 +66,12 @@ async fn seed_user(pool: &PgPool, org: Uuid, name: &str) -> UserId {
         .await
         .unwrap();
     UserId::from_uuid(id)
+}
+
+async fn seed_user(pool: &PgPool, org: Uuid, name: &str) -> UserId {
+    let user = seed_unbound_user(pool, org, name).await;
+    person_fixtures::bind_user_to_distinct_person(pool, user).await;
+    user
 }
 
 fn trace() -> TraceContext {
@@ -296,62 +301,10 @@ async fn cross_org_requests_are_invisible(pool: PgPool) {
 
 const NATURAL_PERSON_KIND: &str = "company.revise";
 
-async fn seed_employee(pool: &PgPool, org: Uuid, source_key: &str) -> Uuid {
-    sqlx::query_scalar(
-        "INSERT INTO employees \
-         (org_id, company, name, source_filename, source_sheet, source_row, source_key) \
-         VALUES ($1, 'ACME', $2, 'seed.xlsx', 'Sheet1', 1, $2) RETURNING id",
-    )
-    .bind(org)
-    .bind(source_key)
-    .fetch_one(pool)
-    .await
-    .unwrap()
-}
+#[path = "fixtures/governance_people.rs"]
+mod people;
+use people::{seed_employee, seed_person, seed_person_bound_user};
 
-async fn seed_person_bound_user(
-    pool: &PgPool,
-    org: Uuid,
-    name: &str,
-    employee_id: Uuid,
-    person_id: Uuid,
-    binder: UserId,
-) -> UserId {
-    let user = seed_user(pool, org, name).await;
-    sqlx::query(
-        "INSERT INTO employee_person_bindings \
-         (org_id, employee_id, person_id, actor_id, payload_digest) \
-         VALUES ($1, $2, $3, $4, $5)",
-    )
-    .bind(org)
-    .bind(employee_id)
-    .bind(person_id)
-    .bind(*binder.as_uuid())
-    .bind([7_u8; 32].as_slice())
-    .execute(pool)
-    .await
-    .unwrap();
-    sqlx::query("UPDATE users SET employee_id = $1 WHERE id = $2 AND org_id = $3")
-        .bind(employee_id)
-        .bind(*user.as_uuid())
-        .bind(org)
-        .execute(pool)
-        .await
-        .unwrap();
-    user
-}
-
-async fn seed_person(pool: &PgPool, org: Uuid) -> Uuid {
-    sqlx::query_scalar("INSERT INTO persons (org_id) VALUES ($1) RETURNING id")
-        .bind(org)
-        .fetch_one(pool)
-        .await
-        .unwrap()
-}
-
-/// Two DISTINCT accounts bound to the SAME Person must be denied on
-/// Company/HR/Payroll kinds. A mere `user_id != user_id` check would ALLOW this
-/// fixture — that is the whole point of the bar.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn same_person_different_accounts_denied_on_company_kind(pool: PgPool) {
     seed_org(&pool, ORG_A, "np-same").await;
@@ -403,11 +356,7 @@ async fn same_person_different_accounts_denied_on_company_kind(pool: PgPool) {
     match refused {
         console_governance_adapter_postgres::PgGovernanceError::Domain(err) => {
             assert_eq!(err.kind, ErrorKind::Forbidden);
-            assert!(
-                err.message.contains("same Person"),
-                "refusal must name the Person bar, got {:?}",
-                err.message
-            );
+            assert_eq!(err.code, Some("governance.refuse.same_person"));
         }
         other => panic!("expected Domain forbidden, got {other:?}"),
     }
@@ -466,7 +415,7 @@ async fn distinct_persons_may_decide_company_kind(pool: PgPool) {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn unbound_requester_fails_closed_on_company_kind_open(pool: PgPool) {
     seed_org(&pool, ORG_A, "np-unbound").await;
-    let unbound = seed_user(&pool, ORG_A, "Unbound").await;
+    let unbound = seed_unbound_user(&pool, ORG_A, "Unbound").await;
     let store = PgGovernanceStore::new(runtime_role_pool(&pool).await);
 
     let refused = scope_org(OrgId::from_uuid(ORG_A), async {
@@ -488,6 +437,7 @@ async fn unbound_requester_fails_closed_on_company_kind_open(pool: PgPool) {
     match refused {
         console_governance_adapter_postgres::PgGovernanceError::Domain(err) => {
             assert_eq!(err.kind, ErrorKind::Forbidden);
+            assert_eq!(err.code, Some("governance.refuse.identity_unbound"));
             assert!(
                 err.message.contains("unbound") || err.message.contains("natural person"),
                 "got {:?}",
@@ -501,50 +451,28 @@ async fn unbound_requester_fails_closed_on_company_kind_open(pool: PgPool) {
 /// Regression pin: the generic four-eyes path must still accept NULL
 /// `users.employee_id` accounts — the failure mode of the P2 retrofit.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn generic_kind_still_allows_null_employee_id_accounts(pool: PgPool) {
-    seed_org(&pool, ORG_A, "np-generic").await;
-    let requester = seed_user(&pool, ORG_A, "NullEmp-Req").await;
-    let approver = seed_user(&pool, ORG_A, "NullEmp-App").await;
-
-    let null_emp: Option<Uuid> = sqlx::query_scalar("SELECT employee_id FROM users WHERE id = $1")
-        .bind(*requester.as_uuid())
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    assert!(
-        null_emp.is_none(),
-        "fixture must be the migration-0076 normal state"
-    );
-
+async fn generic_kind_also_refuses_unlinked_accounts(pool: PgPool) {
+    seed_org(&pool, ORG_A, "generic-unbound").await;
+    let requester = seed_unbound_user(&pool, ORG_A, "NullEmp-Req").await;
     let store = PgGovernanceStore::new(runtime_role_pool(&pool).await);
-    let request_ref = Uuid::new_v4();
-
-    scope_org(OrgId::from_uuid(ORG_A), async {
-        store
-            .create_approval(CreateApprovalCommand {
-                requester,
-                request_ref,
-                kind: "override".to_owned(),
-                target_ref: None,
-                payload_summary: json!({}),
-                trace: trace(),
-                occurred_at: now(),
-            })
-            .await
-            .unwrap();
-        store
-            .decide_pending_approval(DecidePendingApprovalCommand {
-                approver,
-                request_ref,
-                kind: "override".to_owned(),
-                decision: ApprovalDecision::Approved,
-                trace: trace(),
-                occurred_at: now(),
-            })
-            .await
-            .unwrap()
-    })
-    .await;
+    let error = scope_org(
+        OrgId::from_uuid(ORG_A),
+        store.create_approval(CreateApprovalCommand {
+            requester,
+            request_ref: Uuid::new_v4(),
+            kind: "override".to_owned(),
+            target_ref: None,
+            payload_summary: json!({}),
+            trace: trace(),
+            occurred_at: now(),
+        }),
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        matches!(error, console_governance_adapter_postgres::PgGovernanceError::Domain(ref e)
+        if e.code==Some("governance.refuse.identity_unbound"))
+    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -680,3 +608,8 @@ async fn pending_inbox_page_excludes_requester_decided_and_other_org(pool: PgPoo
     assert_eq!(other_org_for_requester.1, 0);
     assert!(other_org_for_requester.0.is_empty());
 }
+
+#[path = "fixtures/governance_identity.rs"]
+mod identity;
+#[path = "../../../../test-support/person_fixtures.rs"]
+mod person_fixtures;

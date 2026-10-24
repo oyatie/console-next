@@ -1,4 +1,17 @@
 export const koRequestOutcome = {
+  "requestOutcome.code.period_unlock_sole_holder_refused": "단독 해제 조건을 충족하지 않습니다. 권한 관리 담당자에게 다른 마감 권한자를 지정해 달라고 요청한 뒤 다시 신청하십시오.",
+  "requestOutcome.code.org_change_sod_violation": "기안자와 같은 사람은 결재할 수 없습니다. 결재 권한이 있는 다른 사람에게 요청하십시오.",
+  "requestOutcome.code.leave_decide_requester_forbidden": "신청자와 같은 사람은 결정할 수 없습니다. 휴가 결정 권한이 있는 다른 사람에게 요청하십시오.",
+  "requestOutcome.code.sod_violation": "제출자와 같은 사람은 결재할 수 없습니다. 급여 결재 권한이 있는 다른 사람에게 요청하십시오.",
+  "requestOutcome.code.second_person_required": "요청자와 같은 사람은 결정할 수 없습니다. 해당 업무의 결정 권한이 있는 다른 사람에게 요청하십시오.",
+  "requestOutcome.code.org_change.refuse.identity_unbound": "요청자 또는 결정자의 본인 정보를 확인할 수 없어 거부했습니다. 계정 관리 권한이 있는 담당자에게 계정을 인사카드에 연결하거나 동일인 확인을 완료해 달라고 요청하십시오.",
+  "requestOutcome.code.leave.refuse.identity_unbound": "요청자 또는 결정자의 본인 정보를 확인할 수 없어 거부했습니다. 계정 관리 권한이 있는 담당자에게 계정을 인사카드에 연결하거나 동일인 확인을 완료해 달라고 요청하십시오.",
+  "requestOutcome.code.payroll.refuse.identity_unbound": "요청자 또는 결정자의 본인 정보를 확인할 수 없어 거부했습니다. 계정 관리 권한이 있는 담당자에게 계정을 인사카드에 연결하거나 동일인 확인을 완료해 달라고 요청하십시오.",
+  "requestOutcome.code.period_unlock.refuse.identity_unbound": "요청자 또는 결정자의 본인 정보를 확인할 수 없어 거부했습니다. 계정 관리 권한이 있는 담당자에게 계정을 인사카드에 연결하거나 동일인 확인을 완료해 달라고 요청하십시오.",
+  "requestOutcome.code.account_link.refuse.identity_unbound": "요청자 또는 결정자의 본인 정보를 확인할 수 없어 거부했습니다. 계정 관리 권한이 있는 담당자에게 계정을 인사카드에 연결하거나 동일인 확인을 완료해 달라고 요청하십시오.",
+  "requestOutcome.code.governance.refuse.identity_unbound": "요청자 또는 결정자의 본인 정보를 확인할 수 없어 거부했습니다. 계정 관리 권한이 있는 담당자에게 계정을 인사카드에 연결하거나 동일인 확인을 완료해 달라고 요청하십시오.",
+  "requestOutcome.code.governance.refuse.same_person": "요청자와 같은 사람은 결정할 수 없습니다. 해당 업무의 결정 권한이 있는 다른 사람에게 요청하십시오.",
+
   "requestOutcome.lookup": "요청 번호 또는 요청 키",
   "requestOutcome.find": "결과 확인",
   "requestOutcome.empty": "요청 번호로 처리 결과를 확인하십시오.",

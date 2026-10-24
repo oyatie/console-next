@@ -19,7 +19,33 @@ use uuid::Uuid;
 async fn a_sole_holder_unlocks_at_once_and_is_flagged_for_review(owner: PgPool) {
     let (service, issuer) = router(&owner).await;
     let svc = passkey_service();
-    let mut only = admin(&owner, &svc, &issuer, "단독").await;
+    let org = Uuid::new_v4();
+    sqlx::query("INSERT INTO organizations(id,slug,name) VALUES($1,$2,'Solo setup')")
+        .bind(org)
+        .bind(org.to_string())
+        .execute(&owner)
+        .await
+        .unwrap();
+    let mut only = period_unlock_support::admin_in(
+        &owner,
+        &svc,
+        &issuer,
+        console_kernel_core::OrgId::from_uuid(org),
+        "단독",
+    )
+    .await;
+    sqlx::query("UPDATE users SET employee_id=NULL,is_tenant_ops=true WHERE id=$1")
+        .bind(only.id)
+        .execute(&owner)
+        .await
+        .unwrap();
+    // Setup's sole administrator must not use the normal identity resolver at all.
+    sqlx::query(
+        "REVOKE EXECUTE ON FUNCTION public.console_decision_people(UUID,UUID,UUID) FROM console_rt",
+    )
+    .execute(&owner)
+    .await
+    .unwrap();
     let lock = json!({"domain": "accounting", "periodStart": "2026-06-01",
                       "periodEnd": "2026-06-30", "reasonCode": "BOOKS_CLOSE"});
     let (status, locked) = send(&service, LOCKS, &only.token, None, lock).await;
@@ -78,6 +104,39 @@ async fn a_sole_holder_unlocks_at_once_and_is_flagged_for_review(owner: PgPool) 
             true,
             true
         )
+    );
+    sqlx::query(
+        "GRANT EXECUTE ON FUNCTION public.console_decision_people(UUID,UUID,UUID) TO console_rt",
+    )
+    .execute(&owner)
+    .await
+    .unwrap();
+    sqlx::query("UPDATE tenant_phase SET phase='OPERATING',go_live_at=now(),go_live_by=$2,go_live_preview_digest=repeat('a',64) WHERE org_id=$1")
+        .bind(org).bind(only.id).execute(&owner).await.unwrap();
+    let (_,locked)=send(&service,LOCKS,&only.token,None,json!({"domain":"accounting","periodStart":"2026-07-01","periodEnd":"2026-07-31","reasonCode":"BOOKS_CLOSE"})).await;
+    let id: Uuid = locked["id"].as_str().unwrap().parse().unwrap();
+    let payload = format!("PERIOD_UNLOCK\n{id}\nAUDIT_FINDING\n{relock_at}");
+    let assertion = step_up(&owner, &svc, &mut only, id, &payload).await;
+    let (status, refused) = send(
+        &service,
+        &format!("{LOCKS}/{id}/unlock"),
+        &only.token,
+        None,
+        json!({"reasonCode":"AUDIT_FINDING","relockAt":relock_at,"stepUp":assertion}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
+    assert_eq!(
+        refused["error"]["code"],
+        "period_unlock.refuse.identity_unbound"
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM governed_exceptions WHERE org_id=$1")
+            .bind(org)
+            .fetch_one(&owner)
+            .await
+            .unwrap(),
+        1
     );
 }
 

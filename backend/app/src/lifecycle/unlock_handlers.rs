@@ -84,14 +84,25 @@ pub(super) async fn unlock_period_lock(
             load_lock_for_update(tx, lock_id)
                 .await?
                 .ok_or_else(|| LifecycleError::from_kernel(KernelError::not_found("period lock was not found")))?;
+            let setup: bool = sqlx::query_scalar("SELECT public.console_setup_phase($1)")
+                .bind(org.as_uuid()).fetch_one(tx.as_mut()).await?;
             let fact = second_person(tx, org, user, now, &settings).await?;
-            // Fail closed: anything but the documented loosening reads as refuse.
             let sole_holder_refuse = !matches!(
                 settings.get(&SettingKey::AuthzSoleHolderMode),
                 Some(Ok(resolved)) if matches!(resolved.value, SettingValue::Code("step_up_notice_review"))
             );
+            let setup_single_admin = setup && fact.other_eligible_holders == 0;
+            if !setup_single_admin {
+                let actor = sqlx::query_scalar::<_,Option<Uuid>>(
+                    "SELECT maker_person FROM public.console_decision_people($1,$2,$2)"
+                ).bind(org.as_uuid()).bind(user).fetch_one(tx.as_mut()).await;
+                if !matches!(actor, Ok(Some(_))) {
+                    return Err(coded(StatusCode::FORBIDDEN,"period_unlock.refuse.identity_unbound",
+                        "unlock requests require a reviewed employee-bound natural person"));
+                }
+            }
             // Admission is a separate Cedar decision; no assertion has been verified yet.
-            if !unlock_admitted(&user.to_string(), &org.to_string(), fact.other_eligible_holders, sole_holder_refuse) {
+            if !unlock_admitted(&user.to_string(), &org.to_string(), fact.other_eligible_holders, sole_holder_refuse, setup_single_admin) {
                 return Err(coded(
                     StatusCode::CONFLICT,
                     "period_unlock_sole_holder_refused",
@@ -102,7 +113,7 @@ pub(super) async fn unlock_period_lock(
             let step_up =
                 verify_step_up(verifier.as_ref(), tx, body.step_up, user, &binding(lock_id, &payload)).await?;
             // This fact is true only after verify_step_up returned a bound assertion.
-            let path = unlock_path(&user.to_string(), &org.to_string(), fact.other_eligible_holders, sole_holder_refuse, true);
+            let path = unlock_path(&user.to_string(), &org.to_string(), fact.other_eligible_holders, sole_holder_refuse, setup_single_admin, true);
             if path == UnlockPath::Refused {
                 return Err(coded(StatusCode::CONFLICT, "period_unlock_sole_holder_refused", "기간 잠금 해제가 허용되지 않았습니다"));
             }

@@ -19,7 +19,7 @@ use sqlx::PgPool;
 use sqlx::postgres::PgListener;
 use tokio::time::timeout;
 
-async fn commit_as_import_definer(pool: &PgPool, org: OrgId, events: &[AuditEvent]) {
+async fn commit_as_leave_definer(pool: &PgPool, org: OrgId, events: &[AuditEvent]) {
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("SELECT set_config('app.current_org', $1, true)")
         .bind(org.as_uuid().to_string())
@@ -84,10 +84,12 @@ async fn every_mapped_audit_emits_its_change_in_the_same_transaction(pool: PgPoo
             event(org, (&target_type, &id), &action, None),
             event(org, (&target_type, &id), &action, None),
         ];
-        if action == "data_import.apply" {
-            // The leave guard (0166) admits this action only from the import
-            // command definer, as the SQL apply function writes it.
-            commit_as_import_definer(&pool, org, &events).await;
+        if matches!(
+            action.as_str(),
+            "data_import.apply" | "leave_request.decide"
+        ) {
+            // These protected audits are emitted by the leave/import command writer.
+            commit_as_leave_definer(&pool, org, &events).await;
         } else {
             commit(&pool, org, events).await;
         }

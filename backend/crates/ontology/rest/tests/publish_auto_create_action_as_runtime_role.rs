@@ -27,10 +27,11 @@ use console_ontology_adapter_postgres::{
 use console_ontology_domain::{ActionDispatch, BackingKind, SchemaLifecycleState};
 use console_ontology_rest::{ActionCommand, OntologyRestState};
 use console_platform_authz::{Principal, Role};
-use console_platform_test_support::{runtime_role_pool, seed_org_and_super_admin};
+#[path = "fixtures/governed_setup.rs"]
+mod governed;
+use governed::{command_role_pool, runtime_role_pool, seed_org_and_super_admin};
 use serde_json::json;
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 use std::collections::BTreeSet;
 use time::macros::datetime;
 use uuid::Uuid;
@@ -44,23 +45,6 @@ fn super_admin(user_id: UserId, org: OrgId) -> Principal {
         BTreeSet::from([Role::SuperAdmin]),
         BranchScope::All,
     )
-}
-
-async fn command_role_pool(owner_pool: &PgPool) -> PgPool {
-    let options = owner_pool.connect_options().as_ref().clone();
-    PgPoolOptions::new()
-        .max_connections(4)
-        .after_connect(|conn, _meta| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_ontology_cmd")
-                    .execute(conn)
-                    .await?;
-                Ok(())
-            })
-        })
-        .connect_with(options)
-        .await
-        .unwrap()
 }
 
 async fn assert_effective_role(owner_pool: &PgPool, role_pool: &PgPool, expected_role: &str) {

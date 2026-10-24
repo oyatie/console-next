@@ -1,4 +1,5 @@
 use crate::*;
+use console_platform_authz::cedar_pbac::actions::independent_people::{self, Refusal};
 
 impl PgOrgChangeStore {
     pub async fn decide_step(
@@ -23,12 +24,25 @@ impl PgOrgChangeStore {
                     )
                     .into());
                 }
-                if !console_platform_authz::cedar_pbac::actions::independent_people::authorized_in_tx(
-                    tx, Some(request.drafted_by), *actor.as_uuid(),
-                ).await? {
-                    return Err(KernelError::conflict(
-                        "기안자는 자신의 조직 개편을 승인할 수 없습니다.",
+                if let Some(refusal) = independent_people::refusal_in_tx(
+                    tx.as_mut(),
+                    Some(request.drafted_by),
+                    *actor.as_uuid(),
+                )
+                .await
+                {
+                    let kind = match refusal {
+                        Refusal::IdentityUnbound => ErrorKind::Forbidden,
+                        Refusal::SamePerson => ErrorKind::Conflict,
+                    };
+                    return Err(KernelError::new(
+                        kind,
+                        "approval requires two bound, distinct natural persons",
                     )
+                    .with_code(refusal.code(
+                        "org_change.refuse.identity_unbound",
+                        "org_change_sod_violation",
+                    ))
                     .into());
                 }
                 let step = sqlx::query(

@@ -4,6 +4,7 @@ use super::*;
 async fn fixture(pool: &PgPool) -> (Harness, UserId, UserId, uuid::Uuid) {
     let harness = Harness::new(pool.clone()).await;
     let actor = seed_user(pool, "Link manager", &["SUPER_ADMIN"], None).await;
+    seed_employee_link(pool, actor, "K1-MANAGER", "Link manager").await;
     let target = seed_user(pool, "Linked account", &["MECHANIC"], None).await;
     let employee = seed_employee_link(pool, target, "K1-001", "김하나").await;
     (harness, actor, target, employee)
@@ -148,8 +149,8 @@ pub(super) async fn seed_employee_link(
         Box::pin(async move {
             sqlx::query(
                 "INSERT INTO employees \
-                 (id, org_id, company, name, employee_number, source_filename, source_sheet, source_row, source_key) \
-                 VALUES ($1, $2, 'Test Company', $3, $4, 'test.csv', 'employees', 1, $5)",
+                 (id, org_id, company, name, employee_number, source_filename, source_sheet, source_row, source_key, identity_review_required) \
+                 VALUES ($1, $2, 'Test Company', $3, $4, 'test.csv', 'employees', 1, $5, false)",
             )
             .bind(employee_id)
             .bind(*OrgId::one().as_uuid())

@@ -31,6 +31,28 @@ impl PgLeaveStore {
         }
 
         let decision = command.decision;
+        let mut tx = self.command_pool()?.begin().await?;
+        sqlx::query("SELECT set_config('app.current_org',$1,true)")
+            .bind(org.to_string())
+            .execute(tx.as_mut())
+            .await?;
+        if let Some(refusal) =
+            console_platform_authz::cedar_pbac::actions::independent_people::refusal_in_tx(
+                tx.as_mut(),
+                Some(*existing.requester_user_id.as_uuid()),
+                *decider.as_uuid(),
+            )
+            .await
+        {
+            return Err(KernelError::forbidden(
+                "leave decisions require two bound, distinct natural persons",
+            )
+            .with_code(refusal.code(
+                "leave.refuse.identity_unbound",
+                "leave_decide_requester_forbidden",
+            ))
+            .into());
+        }
         if decision.writes_ledger() && existing.charge_resolved_by == Some(decider) {
             return Err(KernelError::forbidden(
                 "leave charge resolver cannot approve the same request",
@@ -38,23 +60,6 @@ impl PgLeaveStore {
             .into());
         }
 
-        let mut tx = self.command_pool()?.begin().await?;
-        sqlx::query("SELECT set_config('app.current_org',$1,true)")
-            .bind(org.to_string())
-            .execute(tx.as_mut())
-            .await?;
-        if !console_platform_authz::cedar_pbac::actions::independent_people::authorized_in_tx(
-            &mut tx,
-            Some(*existing.requester_user_id.as_uuid()),
-            *decider.as_uuid(),
-        )
-        .await?
-        {
-            return Err(KernelError::forbidden(
-                "a leave request cannot be decided by its own requester (separation of duties)",
-            )
-            .into());
-        }
         console_platform_db::command_outcomes::execution::bind(&mut tx).await?;
         let row = sqlx::query(
             "SELECT * FROM leave_api.decide_request(\

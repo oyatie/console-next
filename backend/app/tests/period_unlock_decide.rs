@@ -6,6 +6,8 @@
 //! holder, a lower grant, another tenant, a replaced or expired request, a
 //! blank note — leaves the lock and the request untouched.
 
+#[path = "period_unlock_support/identity_refusals.rs"]
+mod identity_refusals;
 mod period_unlock_support;
 
 use axum::body::{Body, to_bytes};
@@ -168,19 +170,10 @@ async fn the_second_person_refuses_with_a_note_and_every_refusal_leaves_no_trace
         "{body}"
     );
 
-    // An account holding the feature but not eligible (no employee link, not ops).
-    let unlinked = admin(&owner, &svc, &issuer, "연결 없음").await;
-    sqlx::query("UPDATE users SET employee_id = NULL WHERE id = $1")
-        .bind(unlinked.id)
-        .execute(&owner)
-        .await
-        .unwrap();
-    let (status, body) = reject(&service, &unlinked.token, lock_id, request_id, "반려").await;
-    assert_eq!(
-        (status, code(&body)),
-        (StatusCode::FORBIDDEN, "second_person_ineligible"),
-        "{body}"
-    );
+    identity_refusals::check(
+        &service, &owner, &svc, &issuer, &requester, lock_id, request_id,
+    )
+    .await;
 
     // A lower grant: no close authority at all.
     let lower_id: Uuid = sqlx::query_scalar(

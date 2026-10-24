@@ -2,12 +2,19 @@
 import { expect, test } from "@playwright/test";
 import { inviteAccount } from "./access-flows";
 import { apiAs } from "./chaos";
-import { go } from "./flows";
+import { go, unique } from "./flows";
+import { letGrantsAge } from "./second-person-fixture";
 import { fillRegister, openRegistered, pressRegister, receiptOf } from "./helpers/register";
 import { tenantInSetup } from "./setup-flows";
 
 test("employee account binding requires passkey and waits for a second person, including after reload", { tag: "@hr" }, async ({ browser }) => {
-  const { admin } = await tenantInSetup(browser, "linkguard", "연결검증");
+  const slug = "linkguard";
+  const { admin, exec } = await tenantInSetup(browser, slug, "연결검증", false, "본점", "full");
+  await go(exec, "/");
+  const notices = exec.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ has: exec.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true }) });
+  await notices.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
+  await expect(notices).toBeHidden();
+  letGrantsAge(unique(slug), "이임원");
   await inviteAccount(admin, "연결대상", "none");
   const read = apiAs(admin);
   let authorization = "";
@@ -55,4 +62,5 @@ test("employee account binding requires passkey and waits for a second person, i
   await expect(card).toContainText(pending.requester_name);
   await expect(card).not.toContainText(pending.requested_by);
   expect((await read<{ employee_id: string | null }>(`/api/v1/users/${target}`)).employee_id).toBeNull();
+
 });

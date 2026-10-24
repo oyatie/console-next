@@ -66,7 +66,12 @@ impl PgOrgStore {
                 .bind(org.as_uuid()).bind(vec![*actor.as_uuid(), *target.as_uuid(), *requester.as_uuid()])
                 .fetch_all(tx.as_mut()).await?;
             let before = fetch_user_tx(tx, target).await?;
-            let subject_is_self = !independent_people::authorized_in_tx(tx, Some(*target.as_uuid()), *actor.as_uuid()).await?;
+            let subject_is_self: bool = sqlx::query_scalar(
+                "SELECT $2::uuid=$3::uuid OR EXISTS (SELECT 1 FROM users target JOIN users actor ON actor.org_id=target.org_id \
+                 WHERE target.org_id=$1 AND target.id=$2 AND actor.id=$3 AND target.employee_id=actor.employee_id) \
+                 OR EXISTS (SELECT 1 FROM public.console_decision_people($1,$2,$3) \
+                 WHERE maker_person IS NOT NULL AND maker_person=checker_person)")
+                .bind(org.as_uuid()).bind(target.as_uuid()).bind(actor.as_uuid()).fetch_one(tx.as_mut()).await.unwrap_or(true);
             let mut facts = account_link::LinkFacts { subject_is_self, approving: false, independent: false, eligible: false };
             if !account_link::decide(&actor.to_string(), &org.to_string(), &org.to_string(), facts) {
                 return Err(KernelError::forbidden("본인 계정의 직원 연결은 변경할 수 없습니다. 다른 담당자에게 요청하십시오")
@@ -103,7 +108,11 @@ impl PgOrgStore {
                     return Err(account_link_stale().into());
                 }
                 facts.approving = true;
-                facts.independent = independent_people::authorized_in_tx(tx, Some(*requester.as_uuid()), *actor.as_uuid()).await?;
+                if let Some(refusal) = independent_people::refusal_in_tx(tx.as_mut(), Some(*requester.as_uuid()), *actor.as_uuid()).await {
+                    return Err(KernelError::forbidden("account linking requires two bound, distinct natural persons")
+                        .with_code(refusal.code("account_link.refuse.identity_unbound", "account_link_second_person_required")).into());
+                }
+                facts.independent = true;
                 facts.eligible = second.eligible.contains(actor.as_uuid());
                 if !account_link::decide(&actor.to_string(), &org.to_string(), &org.to_string(), facts) {
                     return Err(KernelError::forbidden("요청자와 다른 확인 권한자가 승인해야 합니다")

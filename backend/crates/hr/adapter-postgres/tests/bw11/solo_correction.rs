@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::{Fixture, fixture};
+use crate::{Fixture, fixture, person_fixtures};
 
 #[path = "../../../../identity/adapter-postgres/tests/second_person_support/mod.rs"]
 mod second_person_support;
@@ -42,6 +42,7 @@ async fn solo(pool: PgPool) -> Fixture {
         .execute(&f.owner)
         .await
         .unwrap();
+    person_fixtures::bind_user_to_distinct_person(&f.owner, f.principal.user_id).await;
     f.principal = f.principal.with_tenant_ops(true);
     f
 }
@@ -160,6 +161,11 @@ async fn another_holder_prevents_the_recorders_solo_correction(pool: PgPool) {
     .execute(&f.owner)
     .await
     .unwrap();
+    person_fixtures::bind_user_to_distinct_person(
+        &f.owner,
+        console_kernel_core::UserId::from_uuid(other),
+    )
+    .await;
     second_person_support::access::grant(
         &f.owner,
         *f.principal.org_id.as_uuid(),

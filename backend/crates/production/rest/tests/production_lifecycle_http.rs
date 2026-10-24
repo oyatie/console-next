@@ -331,27 +331,9 @@ async fn seed_fixture(pool: &PgPool) -> Fixture {
     }
 }
 
-async fn seed_user(pool: &PgPool, org: OrgId, branch: BranchId, role: &str, name: &str) -> UserId {
-    let user = UserId::new();
-    sqlx::query(
-        "INSERT INTO users (id, display_name, roles, org_id, is_active) VALUES ($1,$2,$3,$4,true)",
-    )
-    .bind(*user.as_uuid())
-    .bind(name)
-    .bind(vec![role.to_owned()])
-    .bind(*org.as_uuid())
-    .execute(pool)
-    .await
-    .unwrap();
-    sqlx::query("INSERT INTO user_branches (user_id, branch_id, org_id) VALUES ($1,$2,$3)")
-        .bind(*user.as_uuid())
-        .bind(*branch.as_uuid())
-        .bind(*org.as_uuid())
-        .execute(pool)
-        .await
-        .unwrap();
-    user
-}
+#[path = "fixtures/people.rs"]
+mod people;
+use people::seed_user;
 
 async fn seed_isolated_tenant(pool: &PgPool) -> (OrgId, BranchId, UserId) {
     let org = OrgId::from_uuid(Uuid::new_v4());
@@ -414,10 +396,17 @@ fn create_body(fixture: &Fixture, key: &str) -> Value {
 
 async fn release_body(pool: &PgPool, fixture: &Fixture, plan: &Value, key: &str) -> Value {
     let approval = Uuid::new_v4();
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(fixture.org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
     let plan_id = plan["id"].as_str().unwrap();
     let digest = plan["plan_digest"].as_str().unwrap();
     sqlx::query("INSERT INTO gov_approvals (id,org_id,request_ref,kind,target_ref,requested_by,approver_id,decision) VALUES ($1,$2,$3,$4,$5,$6,$7,'approved')")
-        .bind(approval).bind(*fixture.org.as_uuid()).bind(Uuid::new_v4()).bind(format!("release:v1:{digest}")).bind(Uuid::parse_str(plan_id).unwrap()).bind(*fixture.planner.as_uuid()).bind(*fixture.reviewer.as_uuid()).execute(pool).await.unwrap();
+        .bind(approval).bind(*fixture.org.as_uuid()).bind(Uuid::new_v4()).bind(format!("release:v1:{digest}")).bind(Uuid::parse_str(plan_id).unwrap()).bind(*fixture.planner.as_uuid()).bind(*fixture.reviewer.as_uuid()).execute(tx.as_mut()).await.unwrap();
+    tx.commit().await.unwrap();
     json!({"expected_version": 1, "approval_ref": approval, "idempotency_key": key})
 }
 

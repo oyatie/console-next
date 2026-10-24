@@ -7,12 +7,9 @@
 //!
 //! # Distinct-natural-person four-eyes (console-dgo.1)
 //!
-//! For kinds under `company.*` / `hr.*` / `payroll.*` only, open and decide
-//! resolve each party via `users.employee_id → employee_person_bindings →
-//! Person`. Unbound or non-person accounts fail closed; two accounts that map
-//! to the same `person_id` are denied even when `user_id` differs. Generic
-//! kinds keep the account-level `approver_id <> requested_by` bar so NULL
-//! `users.employee_id` (migration 0076's normal admin-gated state) still works.
+//! All approval kinds resolve canonical Person bindings through the shared SoD
+//! resolver and Cedar decision. Missing identities deny; different accounts of
+//! one Person are never independent.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 use console_governance_application::{
@@ -22,8 +19,7 @@ use console_governance_application::{
 };
 use console_governance_domain::{
     AuthorityEffect, GateChainConfig, GateChainOutcome, GateEvidence, LifecycleState,
-    TransitionRequirements, evaluate_gate_chain, requires_natural_person_four_eyes,
-    validate_lifecycle_transition,
+    TransitionRequirements, evaluate_gate_chain, validate_lifecycle_transition,
 };
 use console_kernel_core::{KernelError, UserId};
 use console_platform_authz::cedar_pbac::DecisionEffect;
@@ -231,12 +227,9 @@ impl PgGovernanceStore {
 
         with_audit::<_, ApprovalRequestSummary, PgGovernanceError>(&self.pool, event, |tx| {
             Box::pin(async move {
-                // Company/HR/Payroll opens fail closed when the requester cannot
-                // be resolved to a natural person. Generic kinds skip this so
-                // NULL employee_id accounts keep working.
+                // The requester needs the same reviewed employee binding as the decider.
                 require_natural_person_bound_conn(
                     tx.as_mut(),
-                    command.kind.trim(),
                     command.requester,
                     "requester",
                 )
@@ -467,20 +460,8 @@ impl PgGovernanceStore {
                     ))
                     .into());
                 }
-                // Self-approval is blocked here (fast, clear error) and at the DB
-                // CHECK (`approver_id <> requested_by`). Defense in depth.
-                if command.approver == requested_by {
-                    return Err(KernelError::forbidden(
-                        "self-approval is not allowed: approver must differ from requester",
-                    )
-                    .into());
-                }
-                // Company/HR/Payroll: distinct *natural persons*, not merely
-                // distinct accounts. Same Person under two capacities is denied;
-                // unbound/service (non-person) parties fail closed.
                 enforce_natural_person_four_eyes_conn(
                     tx.as_mut(),
-                    command.kind.trim(),
                     requested_by,
                     command.approver,
                 )
@@ -822,80 +803,54 @@ async fn pending_request_binding_conn(
     }))
 }
 
-/// Resolve a platform account to its bound natural `person_id`, or `None` when
-/// the account has no `users.employee_id`, no binding row, or is otherwise not a
-/// natural person (service / unbound). RLS-scoped by the armed org.
+/// Resolve an employee-bound Person without an open identity review through
+/// the same resolver as Cedar and the SQL invariant. RLS-scoped by the armed org.
 async fn natural_person_id_conn(
     conn: &mut PgConnection,
     user_id: Uuid,
 ) -> Result<Option<Uuid>, PgGovernanceError> {
-    let person_id: Option<Uuid> = sqlx::query_scalar(
-        r#"
-        SELECT b.person_id
-        FROM users u
-        INNER JOIN employee_person_bindings b
-            ON b.org_id = u.org_id
-           AND b.employee_id = u.employee_id
-        WHERE u.id = $1
-          AND u.employee_id IS NOT NULL
-        "#,
-    )
-    .bind(user_id)
-    .fetch_optional(conn)
-    .await?;
-    Ok(person_id)
+    Ok(sqlx::query_scalar(
+        "SELECT maker_person FROM public.console_decision_people(NULLIF(current_setting('app.current_org',true),'')::uuid,$1,$1)",
+    ).bind(user_id).fetch_one(conn).await.unwrap_or(None))
 }
 
-/// For Company/HR/Payroll kinds, the named party must resolve to a Person.
-/// No-op for every other kind (generic four-eyes path).
+/// Every approval requester must resolve through the shared person resolver.
 async fn require_natural_person_bound_conn(
     conn: &mut PgConnection,
-    kind: &str,
     user: UserId,
     role: &str,
 ) -> Result<(), PgGovernanceError> {
-    if !requires_natural_person_four_eyes(kind) {
-        return Ok(());
-    }
     match natural_person_id_conn(conn, *user.as_uuid()).await? {
         Some(_) => Ok(()),
         None => Err(KernelError::forbidden(format!(
             "natural-person four-eyes: {role} is unbound or not a natural person"
         ))
+        .with_code("governance.refuse.identity_unbound")
         .into()),
     }
 }
 
-/// Deny same-Person (different capacity) and fail closed on unbound parties for
-/// Company/HR/Payroll kinds. Account-level self-approval is already rejected
-/// before this runs; this layer catches two user_ids that share one Person.
+/// Every approval requires two known, distinct people through the shared Cedar rule.
 async fn enforce_natural_person_four_eyes_conn(
     conn: &mut PgConnection,
-    kind: &str,
     requester: UserId,
     approver: UserId,
 ) -> Result<(), PgGovernanceError> {
-    if !requires_natural_person_four_eyes(kind) {
-        return Ok(());
-    }
-    let requester_person = natural_person_id_conn(conn, *requester.as_uuid())
-        .await?
-        .ok_or_else(|| {
-            KernelError::forbidden(
-                "natural-person four-eyes: requester is unbound or not a natural person",
-            )
-        })?;
-    let approver_person = natural_person_id_conn(conn, *approver.as_uuid())
-        .await?
-        .ok_or_else(|| {
-            KernelError::forbidden(
-                "natural-person four-eyes: approver is unbound or not a natural person",
-            )
-        })?;
-    if requester_person == approver_person {
-        return Err(KernelError::forbidden(
-            "natural-person four-eyes: approver and requester resolve to the same Person",
+    if let Some(refusal) =
+        console_platform_authz::cedar_pbac::actions::independent_people::refusal_in_tx(
+            conn,
+            Some(*requester.as_uuid()),
+            *approver.as_uuid(),
         )
+        .await
+    {
+        return Err(KernelError::forbidden(
+            "self-approval and approval by another account of the same person are forbidden",
+        )
+        .with_code(refusal.code(
+            "governance.refuse.identity_unbound",
+            "governance.refuse.same_person",
+        ))
         .into());
     }
     Ok(())

@@ -11,6 +11,29 @@ import { useCommand } from "./command";
 
 beforeAll(() => loadCatalog("ko"));
 
+test.each(["org_change_sod_violation", "leave_decide_requester_forbidden", "sod_violation", "second_person_required"])("%s explains identity refusal and who can decide", async (code) => {
+  const banner = await html(new ApiError(403, code, "internal diagnostic", [], undefined, true));
+  expect(banner).toContain("다른 사람");
+  expect(banner).toContain("같은 사람");
+  expect(banner).not.toContain("internal diagnostic");
+  expect(banner).toContain('role="alert"');
+});
+
+test.each(["org_change", "leave", "payroll", "period_unlock", "account_link", "governance"])("%s unbound identity refusal names the personnel-record fix", async (domain) => {
+  const banner = await html(new ApiError(403, `${domain}.refuse.identity_unbound`, "diagnostic", [], undefined, true));
+  expect(banner).toContain("인사카드");
+  expect(banner).toContain("계정 관리 권한");
+  expect(banner).not.toContain("diagnostic");
+  expect(banner).toContain('role="alert"');
+});
+
+test("unavailable solo unlock names the second-person remedy", async () => {
+  const banner = await html(new ApiError(409, "period_unlock_sole_holder_refused", "diagnostic", [], undefined, true));
+  expect(banner).toContain("다른 마감 권한자");
+  expect(banner).toContain("다시 신청");
+  expect(banner).not.toContain("diagnostic");
+});
+
 async function html(error: unknown, props: { children?: ReactNode; historyHref?: string; fieldLabel?: (field: string) => string | null | undefined; own?: (code: string) => string | undefined; live?: "polite" | "assertive"; recover?: boolean; onFocusField?: (field: string) => void; formId?: string; formFields?: string[] } = {}) {
   const root = createRootRoute({ component: () => <CommandError error={error} {...props} /> });
   const outcome = createRoute({ getParentRoute: () => root, path: "/requests/$id" });

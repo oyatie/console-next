@@ -30,15 +30,14 @@ async fn routed_approval_refuses_same_person_accounts_without_decision_or_audit(
         .bind(org.as_uuid()).bind(request).fetch_one(&pool).await.unwrap();
     let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
     let before = snapshot(&pool, step).await;
-    for actor in [same, same_person_alias, same] {
+    for actor in [maker, same, same_person_alias] {
         for approved in [true, false] {
             let err = scope_org(org, store.decide_step(actor, request, step, approved, None))
                 .await
                 .unwrap_err();
             assert_eq!(err.kind(), ErrorKind::Conflict);
             assert!(
-                err.to_string()
-                    .contains("기안자는 자신의 조직 개편을 승인할 수 없습니다.")
+                matches!(err, console_orgchange_adapter_postgres::PgOrgChangeError::Domain(ref e) if e.code==Some("org_change_sod_violation"))
             );
             assert_eq!(snapshot(&pool, step).await, before);
         }
@@ -55,9 +54,7 @@ async fn snapshot(pool: &PgPool, step: Uuid) -> (Value, i64, i64, i64) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn distinct_accounts_can_approve_and_reject_with_zero_one_or_two_person_bindings(
-    pool: PgPool,
-) {
+async fn decisions_require_both_employee_links(pool: PgPool) {
     let org = OrgId::from_uuid(Uuid::new_v4());
     let maker = seed_org_and_super_admin(&pool, *org.as_uuid(), "unlinked-orgchange").await;
     let checker = seed_active_user(&pool, *org.as_uuid(), "ADMIN", "checker").await;
@@ -75,12 +72,19 @@ async fn distinct_accounts_can_approve_and_reject_with_zero_one_or_two_person_bi
             let step: Uuid = sqlx::query_scalar("INSERT INTO org_change_approval_steps (org_id,request_id,step_order,role_key) VALUES ($1,$2,1,'hr') RETURNING id")
                 .bind(org.as_uuid()).bind(request).fetch_one(&pool).await.unwrap();
             let before = snapshot(&pool, step).await;
-            scope_org(
+            let result = scope_org(
                 org,
                 store.decide_step(checker, request, step, approved, None),
             )
-            .await
-            .unwrap();
+            .await;
+            if bindings < 2 {
+                assert!(
+                    matches!(result, Err(console_orgchange_adapter_postgres::PgOrgChangeError::Domain(ref e)) if e.code==Some("org_change.refuse.identity_unbound"))
+                );
+                assert_eq!(snapshot(&pool, step).await, before);
+                continue;
+            }
+            result.unwrap();
             let after = snapshot(&pool, step).await;
             assert_eq!(
                 after.0["decision"],
@@ -92,5 +96,29 @@ async fn distinct_accounts_can_approve_and_reject_with_zero_one_or_two_person_bi
                 (before.1 + 1, before.2 + 1, before.3 + 1)
             );
         }
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn unbound_maker_or_checker_has_its_own_refusal(pool: PgPool) {
+    let org = OrgId::from_uuid(Uuid::new_v4());
+    let maker = seed_org_and_super_admin(&pool, *org.as_uuid(), "unbound-orgchange").await;
+    let checker = seed_active_user(&pool, *org.as_uuid(), "ADMIN", "checker").await;
+    let store = PgOrgChangeStore::new(runtime_role_pool(&pool).await);
+    person_fixtures::bind_user_to_distinct_person(&pool, maker).await;
+    person_fixtures::bind_user_to_distinct_person(&pool, checker).await;
+    let cases = person_fixtures::unverified_decision_parties(&pool, maker, checker).await;
+    for (index, (case, maker, checker)) in cases.into_iter().enumerate() {
+        let request:Uuid=sqlx::query_scalar("INSERT INTO org_change_requests(org_id,code,kind,status,target_kind,target_ref,target_label,effective_date,reason,proposal,drafted_by,idempotency_key,request_fingerprint) VALUES($1,$2,'REORG','IN_APPROVAL','REGION','region','Region',CURRENT_DATE,'Review','[]',$3,$4,repeat('a',64)) RETURNING id").bind(org.as_uuid()).bind(format!("OC-2026-{:04}",index+1)).bind(maker.as_uuid()).bind(Uuid::new_v4().to_string()).fetch_one(&pool).await.unwrap();
+        let step:Uuid=sqlx::query_scalar("INSERT INTO org_change_approval_steps(org_id,request_id,step_order,role_key) VALUES($1,$2,1,'hr') RETURNING id").bind(org.as_uuid()).bind(request).fetch_one(&pool).await.unwrap();
+        let before = snapshot(&pool, step).await;
+        let error = scope_org(org, store.decide_step(checker, request, step, true, None))
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(error,console_orgchange_adapter_postgres::PgOrgChangeError::Domain(ref e) if e.code==Some("org_change.refuse.identity_unbound")),
+            "{case}"
+        );
+        assert_eq!(snapshot(&pool, step).await, before);
     }
 }

@@ -126,5 +126,5 @@ export function UnlockRequestDialog({ lock, asOf, onClose, onDone }: { lock: Per
 }
 
 /** The decision's refusals in this screen's words (every code the approve and reject routes return). */
-const OWN = new Set(["second_person_required", "second_person_ineligible", "period_unlock_request_changed", "period_unlock_request_expired", "period_unlock_reject_note_invalid", "not_found"]);
+const OWN = new Set(["period_unlock.refuse.identity_unbound", "second_person_required", "second_person_ineligible", "period_unlock_request_changed", "period_unlock_request_expired", "period_unlock_reject_note_invalid", "not_found"]);
 const ownRefusal = (code: string) => (OWN.has(code) ? t(`periodLocks.request.refused.${code}` as "periodLocks.request.refused.not_found") : undefined);

@@ -1,16 +1,11 @@
 //! BW-15 period unlock (decisions #8b, D0.1/D0.2, #7).
 //!
 //! `POST /period-locks/{lockId}/unlock { reasonCode, note?, relockAt, stepUp }`
-//! needs a PERIOD_UNLOCK step-up and a time box (`relockAt`, at most
-//! `period_lock.unlock_max_days` out). When another eligible holder of
-//! `period_lock_manage` exists (identity's D0.2 fact) it opens a request (202)
-//! and that second person performs the unlock with
-//! `POST /period-locks/{lockId}/unlock/approve { stepUp }`. With no other
-//! holder, `authz.sole_holder.mode` decides: `step_up_notice_review` unlocks at
-//! once, flags the lock for review and records the 예외 처리 whose due time is
-//! the 사후 검토 item (`sole_holder_unlock.rs`); anything else refuses. A sole
-//! holder is refused only in `refuse` mode; while another eligible holder
-//! exists the unlock waits for that second person.
+//! needs a PERIOD_UNLOCK step-up and a configured time box. Another eligible
+//! holder opens a request (202), then approves it with their own passkey.
+//! During setup, a holder with no eligible second person may use the configured
+//! `step_up_notice_review` exception; go-live switches that solo path off.
+//! The exception flags the lock and creates its due review item.
 //!
 //! Step-up payloads (lowercase hex SHA-256 of the UTF-8 text, `\n`-joined):
 //! - unlock: `PERIOD_UNLOCK\n{lockId}\n{reasonCode}\n{relockAt as sent}`, object `lockId`;
@@ -92,6 +87,7 @@ pub(super) fn unlock_path(
     org: &str,
     other_eligible_holders: i64,
     sole_holder_refuse: bool,
+    setup_single_admin: bool,
     step_up: bool,
 ) -> UnlockPath {
     use console_platform_authz::cedar_pbac::actions::period_unlock::{Intent, UnlockFacts, decide};
@@ -100,6 +96,7 @@ pub(super) fn unlock_path(
         other_eligible_holders,
         step_up,
         sole_holder_allowed: !sole_holder_refuse,
+        setup_single_admin,
         intent: Intent::Wait,
     };
     if decide(user, org, org, f) {
@@ -125,6 +122,7 @@ pub(super) fn unlock_admitted(
     org: &str,
     other_eligible_holders: i64,
     sole_holder_refuse: bool,
+    setup_single_admin: bool,
 ) -> bool {
     use console_platform_authz::cedar_pbac::actions::period_unlock::{Intent, UnlockFacts, decide};
     decide(
@@ -136,6 +134,7 @@ pub(super) fn unlock_admitted(
             other_eligible_holders,
             step_up: false,
             sole_holder_allowed: !sole_holder_refuse,
+            setup_single_admin,
             intent: Intent::Request,
         },
     )
@@ -189,7 +188,7 @@ pub(super) async fn second_person(
         SettingKey::AuthzSecondPersonMinGrantAge,
     )?)
     .map_err(|_| internal("authz.second_person.min_grant_age is out of range"))?;
-    Ok(second_person_fact_in_tx(
+    let mut fact = second_person_fact_in_tx(
         tx,
         &SecondPersonQuery {
             org,
@@ -201,7 +200,28 @@ pub(super) async fn second_person(
             min_grant_age_days,
         },
     )
-    .await?)
+    .await?;
+    if fact.eligible.is_empty() {
+        return Ok(fact);
+    }
+    let candidates: Vec<_> = fact.eligible.iter().copied().collect();
+    // An unbound requester is checked by the caller; it cannot hide eligible people.
+    fact.eligible = sqlx::query_scalar::<_, Uuid>(
+        "SELECT u.id FROM users u \
+         CROSS JOIN LATERAL public.console_decision_people($1,$2,u.id) p \
+         WHERE u.org_id=$1 AND u.id=ANY($3) AND NOT u.is_tenant_ops \
+           AND p.checker_person IS NOT NULL \
+           AND p.checker_person IS DISTINCT FROM p.maker_person",
+    )
+    .bind(org.as_uuid())
+    .bind(requester)
+    .bind(&candidates)
+    .fetch_all(tx.as_mut())
+    .await?
+    .into_iter()
+    .collect();
+    fact.other_eligible_holders = i64::try_from(fact.eligible.len()).unwrap_or(i64::MAX);
+    Ok(fact)
 }
 
 pub(super) const SETTING_KEYS: [SettingKey; 5] = [
@@ -323,14 +343,17 @@ mod tests {
     #[test]
     fn a_second_person_wins_and_a_sole_holder_follows_the_mode() {
         assert_eq!(
-            unlock_path("u", "o", 1, true, true),
+            unlock_path("u", "o", 1, true, true, true),
             UnlockPath::SecondPerson
         );
         assert_eq!(
-            unlock_path("u", "o", 0, false, true),
+            unlock_path("u", "o", 0, false, true, true),
             UnlockPath::SoleHolderReview
         );
-        assert_eq!(unlock_path("u", "o", 0, true, true), UnlockPath::Refused);
+        assert_eq!(
+            unlock_path("u", "o", 0, true, true, true),
+            UnlockPath::Refused
+        );
     }
 
     #[test]

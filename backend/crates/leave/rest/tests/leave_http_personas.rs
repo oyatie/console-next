@@ -6,6 +6,11 @@
 //! authority, managed reads remain denied to a member, and client-supplied
 //! employee/branch identifiers cannot influence filing.
 
+#[path = "fixtures/leave_http_people.rs"]
+mod people;
+#[path = "../../../../test-support/person_fixtures.rs"]
+mod person_fixtures;
+use people::{seed_branch_admin, seed_subject};
 use std::sync::Arc;
 
 use axum::body::{Body, to_bytes};
@@ -157,175 +162,8 @@ async fn member_self_service_is_server_bound_and_missing_home_branch_is_explicit
     );
 }
 
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn v1_wire_shape_is_frozen_and_v2_requires_modern_exact_cas(owner_pool: PgPool) {
-    let org = OrgId::new();
-    let branch = BranchId::new();
-    let requester = UserId::new();
-    let decider = UserId::new();
-    let employee = Uuid::new_v4();
-    seed_subject(&owner_pool, org, branch, requester, employee).await;
-    seed_branch_admin(&owner_pool, org, branch, decider).await;
-    grant_console_rt(
-        &owner_pool,
-        &[
-            "GRANT SELECT ON leave_requests TO console_rt",
-            "GRANT SELECT ON users TO console_rt",
-            "GRANT SELECT ON user_branches TO console_rt",
-            "GRANT SELECT ON branches TO console_rt",
-            "GRANT SELECT ON organizations TO console_rt",
-        ],
-    )
-    .await;
-
-    let v1_request = Uuid::new_v4();
-    let modern_request = Uuid::new_v4();
-    let definer_pool = leave_definer_role_pool(&owner_pool).await;
-    sqlx::query("SELECT set_config('app.current_org', $1, false)")
-        .bind(org.as_uuid().to_string())
-        .execute(&definer_pool)
-        .await
-        .unwrap();
-    for id in [v1_request, modern_request] {
-        sqlx::query(
-            "INSERT INTO leave_requests \
-             (id, org_id, branch_id, requester_user_id, subject_employee_id, leave_type, days, \
-              start_date, end_date, status) \
-             VALUES ($1, $2, $3, $4, $5, 'annual', 1, DATE '2026-10-01', \
-                     DATE '2026-10-01', 'pending')",
-        )
-        .bind(id)
-        .bind(*org.as_uuid())
-        .bind(*branch.as_uuid())
-        .bind(*requester.as_uuid())
-        .bind(employee)
-        .execute(&definer_pool)
-        .await
-        .unwrap();
-    }
-
-    let auth = test_auth_with_roles(&owner_pool, decider, org, vec![branch], vec!["ADMIN"]).await;
-    let runtime_pool = runtime_role_pool(&owner_pool).await;
-    let command_pool = leave_command_role_pool(&owner_pool).await;
-    let service = router(LeaveRestState::new(
-        PgLeaveStore::new(
-            runtime_pool.clone(),
-            Arc::new(PgInboxStore::new(runtime_pool)),
-        )
-        .with_leave_command_pool(command_pool),
-        Some(auth.verifier),
-    ));
-
-    // 근로기준법 §60: refusal is not a decision — even the frozen v1 route must
-    // fail closed rather than mint a 'rejected' row.
-    let refusal = request_json(
-        service.clone(),
-        "POST",
-        &format!("/api/v1/leave/requests/{v1_request}/decide"),
-        &auth.token,
-        Some(json!({"decision": "reject", "comment": "v1 reject"})),
-    )
-    .await;
-    assert_eq!(
-        refusal.status,
-        StatusCode::UNPROCESSABLE_ENTITY,
-        "{:?}",
-        refusal.body
-    );
-
-    let versionless = request_json(
-        service.clone(),
-        "POST",
-        &format!("/api/v1/leave/requests/{v1_request}/decide"),
-        &auth.token,
-        Some(json!({"decision": "time_change", "comment": "성수기 — 시기 변경 협의"})),
-    )
-    .await;
-    assert_eq!(versionless.status, StatusCode::OK, "{:?}", versionless.body);
-    assert_eq!(versionless.body["status"], "time_change_consult");
-    let legacy_keys = versionless
-        .body
-        .as_object()
-        .expect("v1 decision response must be an object")
-        .keys()
-        .map(String::as_str)
-        .collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(
-        legacy_keys,
-        std::collections::BTreeSet::from([
-            "branch_id",
-            "created_at",
-            "days",
-            "decided_at",
-            "decided_by",
-            "decision_comment",
-            "end_date",
-            "id",
-            "leave_type",
-            "reason",
-            "requester_user_id",
-            "start_date",
-            "status",
-            "subject_employee_id",
-        ]),
-        "v1 must remain byte-shape compatible with the deployed strict client"
-    );
-
-    let repeated = request_json(
-        service.clone(),
-        "POST",
-        &format!("/api/v1/leave/requests/{v1_request}/decide"),
-        &auth.token,
-        Some(json!({"decision": "time_change", "comment": "repeated"})),
-    )
-    .await;
-    assert_eq!(repeated.status, StatusCode::CONFLICT, "{:?}", repeated.body);
-    assert_eq!(repeated.body["error"]["code"], "conflict");
-
-    let stale_modern = request_json(
-        service.clone(),
-        "POST",
-        &format!("/api/v2/leave/requests/{modern_request}/decide"),
-        &auth.token,
-        Some(json!({
-            "expected_version": 99,
-            "decision": "time_change",
-            "comment": "stale"
-        })),
-    )
-    .await;
-    assert_eq!(
-        stale_modern.status,
-        StatusCode::CONFLICT,
-        "{:?}",
-        stale_modern.body
-    );
-    assert_eq!(
-        stale_modern.body["error"]["code"],
-        "leave_concurrent_modification"
-    );
-
-    let legacy_page = request_json(
-        service.clone(),
-        "GET",
-        "/api/v1/leave/requests",
-        &auth.token,
-        None,
-    )
-    .await;
-    assert_eq!(legacy_page.status, StatusCode::OK, "{:?}", legacy_page.body);
-    assert!(legacy_page.body.get("next_cursor").is_none());
-    assert!(
-        legacy_page.body["items"][0]
-            .get("request_version")
-            .is_none()
-    );
-
-    let v2_page = request_json(service, "GET", "/api/v2/leave/requests", &auth.token, None).await;
-    assert_eq!(v2_page.status, StatusCode::OK, "{:?}", v2_page.body);
-    assert!(v2_page.body.get("next_cursor").is_some());
-    assert!(v2_page.body["items"][0].get("request_version").is_some());
-}
+#[path = "fixtures/leave_http_decisions.rs"]
+mod decisions;
 
 /// 근로기준법 제61조 at the transport boundary.
 ///
@@ -604,89 +442,6 @@ async fn leave_definer_role_pool(owner_pool: &PgPool) -> PgPool {
         .connect_with(options)
         .await
         .unwrap()
-}
-
-async fn seed_branch_admin(pool: &PgPool, org: OrgId, branch: BranchId, user: UserId) {
-    sqlx::query(
-        "INSERT INTO users (id, display_name, roles, org_id) \
-         VALUES ($1, 'Leave branch admin', ARRAY['ADMIN'], $2)",
-    )
-    .bind(*user.as_uuid())
-    .bind(*org.as_uuid())
-    .execute(pool)
-    .await
-    .unwrap();
-    sqlx::query("INSERT INTO user_branches (user_id, branch_id, org_id) VALUES ($1, $2, $3)")
-        .bind(*user.as_uuid())
-        .bind(*branch.as_uuid())
-        .bind(*org.as_uuid())
-        .execute(pool)
-        .await
-        .unwrap();
-}
-
-async fn seed_subject(pool: &PgPool, org: OrgId, branch: BranchId, user: UserId, employee: Uuid) {
-    let region = Uuid::new_v4();
-    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3)")
-        .bind(*org.as_uuid())
-        .bind(format!(
-            "leave-http-{}",
-            &org.as_uuid().simple().to_string()[..12]
-        ))
-        .bind("Leave HTTP proof")
-        .execute(pool)
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO regions (id, name, org_id) VALUES ($1, $2, $3)")
-        .bind(region)
-        .bind(format!("Leave HTTP region {region}"))
-        .bind(*org.as_uuid())
-        .execute(pool)
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO branches (id, region_id, name, org_id) VALUES ($1, $2, $3, $4)")
-        .bind(*branch.as_uuid())
-        .bind(region)
-        .bind("Leave HTTP branch")
-        .bind(*org.as_uuid())
-        .execute(pool)
-        .await
-        .unwrap();
-    let definer_pool = leave_definer_role_pool(pool).await;
-    sqlx::query("SELECT set_config('app.current_org', $1, false)")
-        .bind(org.as_uuid().to_string())
-        .execute(&definer_pool)
-        .await
-        .unwrap();
-    sqlx::query(
-        "INSERT INTO employees (id, org_id, company, name, source_filename, source_sheet, \
-         source_row, source_key, leave_accrued, leave_used, leave_remaining, home_branch_id) \
-         VALUES ($1, $2, 'OYATIE', 'Member employee', 'test.xlsx', 'employees', 1, $3, 15, 2, 13, $4)",
-    )
-    .bind(employee)
-    .bind(*org.as_uuid())
-    .bind(format!("leave-http-{employee}"))
-    .bind(*branch.as_uuid())
-    .execute(&definer_pool)
-    .await
-    .unwrap();
-    sqlx::query(
-        "INSERT INTO users (id, display_name, roles, org_id, employee_id) \
-         VALUES ($1, 'Leave member', ARRAY['MEMBER'], $2, $3)",
-    )
-    .bind(*user.as_uuid())
-    .bind(*org.as_uuid())
-    .bind(employee)
-    .execute(pool)
-    .await
-    .unwrap();
-    sqlx::query("INSERT INTO user_branches (user_id, branch_id, org_id) VALUES ($1, $2, $3)")
-        .bind(*user.as_uuid())
-        .bind(*branch.as_uuid())
-        .bind(*org.as_uuid())
-        .execute(pool)
-        .await
-        .unwrap();
 }
 
 struct JsonResponse {
