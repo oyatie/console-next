@@ -11,7 +11,8 @@ vi.mock("../../../lib/query", async (original) => {
   const actual = await original<typeof import("../../../lib/query")>();
   return { ...actual, get: (...args: Parameters<typeof actual.get>) => ({ ...actual.get(...args), path: args[0], params: args[1]?.params }) };
 });
-vi.mock("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", async (original) => ({
+  ...await original<typeof import("@tanstack/react-query")>(),
   useQuery: (options: Record<string, unknown>) => {
     state.reads.push(options);
     return { isPending: false, data: String(options.path).endsWith("/members") ? { headcount: 1, items: [{ employeeId: "historical", name: "과거구성원" }] } : undefined };
