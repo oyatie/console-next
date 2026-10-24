@@ -69,6 +69,9 @@ test("network tool map covers direct and indirect downloads independently of job
   assert.deepEqual(endpoints("node ../scripts/ci/rust-tests.mjs db 1"), ["static.rust-lang.org:443"]);
   assert.deepEqual(endpoints("node scripts/ci/rust-build.mjs"), ["index.crates.io:443", "static.crates.io:443", "static.rust-lang.org:443"]);
   assert.deepEqual(endpoints("npm ci --no-audit"), ["registry.npmjs.org:443"]);
+  assert.deepEqual(endpoints("npm run desktop:test -- --locked"), ["index.crates.io:443", "static.crates.io:443", "static.rust-lang.org:443"]);
+  assert.deepEqual(endpoints("CONSOLE_URL=https://console.invalid cargo test"), ["index.crates.io:443", "static.crates.io:443", "static.rust-lang.org:443"]);
+  assert.deepEqual(endpoints("curl --url=https://download.example.invalid/tool"), ["download.example.invalid:443"]);
   assert.deepEqual(endpoints("node scripts/ci/report.mjs", { CI_CACHE_TOTAL: "1" }), ["api.github.com:443"]);
   assert.deepEqual(endpoints("node scripts/ci/report.mjs"), []);
   assert.deepEqual(endpoints("sccache --show-stats"), []);
