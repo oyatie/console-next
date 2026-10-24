@@ -13,6 +13,7 @@
 //   7. Versioned writes: a file that sends a request carrying `expected_updated_at` takes the version through
 //      lib/record-versions (`pinned` / `versionToSend`), so a command read before this tab's own earlier write is not
 //      refused against it (docs/design/concurrent-editing.md ME-6); a version read straight off the screen is refused.
+//   8. Public tree: no tracked delivery directories or local machine paths; deliberate refusal fixtures need a reason.
 // BASELINE holds today's known violations. It may only shrink: an entry that no longer matches fails
 // too, so a fix deletes its entry in the same diff.
 import { mkdtempSync, readFileSync, readdirSync, statSync, existsSync, writeFileSync } from "node:fs";
@@ -26,6 +27,11 @@ const ROOTS = [APP, "packages/api/src", "packages/i18n/src"];
 const GENERATED = new Set(["packages/api/src/schema.d.ts"]);
 
 const BASELINE = {
+  // Deliberate refusal fixtures only, using the same file -> reason convention as LOOP_ALLOW.
+  localPaths: {
+    "scripts/check-hermetic.test.mjs": "Plants host dependencies to prove npm check rejects machine-local inputs.",
+    "scripts/check-source.test.ts": "Plants machine paths to prove the public-tree gate refuses them.",
+  },
   // from -> to
   imports: [
   ],
@@ -58,6 +64,25 @@ ROOTS.forEach(walk);
 
 const problems = [];
 const seen = { imports: new Set(), queryKey: {}, cacheWrites: {}, placement: new Set(), loops: new Set() };
+
+// A relative product path such as features/home/ui is not an absolute home directory.
+const LOCAL_PATH = /(?<![\w.-])(?:\/(?:Users\/[^/\s"'`<>\\]+\/|home\/(?!runner\/)[^/\s"'`<>\\]+\/|private\/tmp\/)|[Cc]:\\+Users\\+)/;
+const tracked = spawnSync("git", ["ls-files", "-z"], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+if (tracked.status !== 0) throw new Error(`cannot enumerate tracked files: ${tracked.stderr}`);
+const localPaths = new Set();
+for (const f of tracked.stdout.split("\0").filter(Boolean)) {
+  if (/^(?:relay|lanes|docs\/lanes)\//.test(f))
+    problems.push(`${f}: delivery evidence belongs outside the product repository`);
+  if (!existsSync(f) || !statSync(f).isFile()) continue;
+  const bytes = readFileSync(f);
+  if (bytes.includes(0)) continue;
+  bytes.toString("utf8").split("\n").forEach((line, i) => {
+    if (!LOCAL_PATH.test(line)) return;
+    localPaths.add(f);
+    if (!BASELINE.localPaths[f]?.trim()) problems.push(`${f}:${i + 1}: local machine path; keep delivery evidence outside the product repository`);
+  });
+}
+for (const f of Object.keys(BASELINE.localPaths)) if (!localPaths.has(f)) problems.push(`stale baseline local-path fixture (delete it): ${f}`);
 
 // Zone of a file: "features/<slice>", "reference/<slice>", "lib", "ui", "routes", ..., or "packages".
 const zone = (f) => {

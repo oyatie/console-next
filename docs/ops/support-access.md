@@ -1,399 +1,50 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
-# Tenant-approved support access — slice 1
+# Tenant-approved support access
 
-OPS-SUPPORT-ACCESS-GATE is implemented by the support ledger, two distinct device-bound operator assertions, tenant `support_access::approve` permission, and the live read boundary. A deployment with no eligible second operator refuses with `support.refuse.no_second_operator`; one with no tenant approver refuses with `support.refuse.no_tenant_approver`.
+Support access gives a vendor operator temporary, read-only access to a tenant's explicitly approved scope. It requires two distinct operators with device-bound assertions, tenant consent through the `support_access::approve` permission, and a live support-session ledger. It creates no standing tenant account or fallback tenant role. A deployment with no eligible second operator refuses with `support.refuse.no_second_operator`; one with no tenant approver refuses with `support.refuse.no_tenant_approver`.
 
-The tenant page is `/audit/support-access`. The shell banner and history update through the existing SSE stream. `/support-sessions/active` is the shared catalog-backed visibility projection for navigation and the pending notification. It returns pending requests only to approval holders, including the deadline and a request-specific deep link. Approval work is registered in `crates/action-inbox` as `SupportAccess` and composed through `/api/v1/me/action-inbox` with kind `support_access` and target `support_session`. It reuses the decision endpoint’s permission resolver, confines rows to the tenant, and excludes expired or decided requests. G2 consumes that existing backend source; there is no Home-local support queue. Decisions and end actions remain on this screen. Expired and already-decided requests leave the pending source.
+## Grant, end and review access
 
-Requests and decisions belong to the target tenant under forced RLS. Vendor lists project opaque identifiers, state and times only. Every support-token request appends `support.access` to that tenant's existing audit chain before its response leaves. Revocation is checked again after the handler and at audit commit. Failed audit writes withhold the response. Audit identities carry the operator display name and operator organization; opaque references remain stored separately.
+1. The requesting operator submits a ticket reference, reason code, reason, reviewed read scope and requested duration through `/api/platform/support-sessions`, using a bound step-up assertion.
+2. A distinct eligible operator supplies a separate bound assertion to approve the request at `/api/platform/support-sessions/{id}/approve`. The requester cannot approve their own request.
+3. A tenant holder of `support_access::approve` reviews the operator, ticket, reason, scope and request deadline at `/audit/support-access`. They may deny the request or approve a positive duration no longer than the requested duration and the tenant's configured maximum. Personal-field disclosure requires an explicit grant of the `personal` class.
+4. After both approvals, the requesting operator starts the session through `/api/platform/support-sessions/{id}/start`, using a bound step-up assertion. Approval alone does not start access. An approved but unstarted request still expires at its request deadline.
+5. The tenant can withdraw consent before start or end active access from the same page through `/api/v1/support-sessions/{id}/end`. Operators can end access through `/api/platform/support-sessions/{id}/end`. Ended, revoked, denied and expired sessions cannot be reactivated by an end action.
 
-Only reviewed rows in `support_read_surfaces` permit content reads. The initial reference data covers organization structure, organization units, legal entities, workplaces and the employee list. Unknown routes, write methods and ungranted field classes fail closed. Reviewed API-field classifications follow the personal-data registry rather than matching database column names. They mask personal fields by default; a tenant can explicitly grant the personal class. Sensitive and unknown fields remain masked. Every returned leaf is classified in the response registry. Reviewed containers allow traversal; unknown containers stay masked even if they contain familiar names. Dotted response paths protect nested personal names separately from organization names; protected JSON columns are masked as a whole, including their object keys. Scope review and field aliases belong in this reference data, never a fallback tenant role.
+Tenant history includes decisions, actor labels, read methods, paths and times. Requests and decisions belong to the target tenant under forced row-level security. Vendor lists project opaque identifiers, state and times only; tenant content, ticket details and stated reasons do not cross into that list.
 
-`support.request_expiry` and `support.max_duration` are settings-registry keys with vendor defaults. Tenant-scoped settings overrides resolve through the shared settings store. Registry ranges cap both values at their vendor defaults, so a tenant can only tighten the defaults. The API and database reject larger values. The approved support deadline controls token expiry; operator family logout, revocation, authority changes and tenant suspension still invalidate reads immediately.
+The support notice and history update through the existing server-sent event stream. Idle support reads render no banner or empty landmark; pending and active notices keep all operator rows and actions in the page flow. Active-session details show the support deadline rather than the earlier request deadline. Durations are entered in minutes and displayed with locale-formatted hours and minutes.
+
+`/api/v1/support-sessions/active` is the shared visibility projection for navigation and pending notifications. It returns pending requests only to approval holders, including the deadline and a request-specific deep link. Approval work also appears through `/api/v1/me/action-inbox` with kind `support_access`, target `support_session` and destination `/audit/support-access?review=<id>`. This source uses the decision endpoint's permission resolver, confines rows to the tenant and excludes expired or decided requests. Decisions and end actions remain on the support-access page.
+
+Operators use the current platform surface. Tenant sessions opening `/platform*` receive the Korean 404 page. A separate operator origin and application are not part of this surface.
+
+## Read scope and masking
+
+Only reviewed rows in `support_read_surfaces` permit content reads. Unknown routes, write methods and ungranted field classes fail closed. Reviewed API-field classifications follow the personal-data registry rather than matching database column names. Personal fields are masked by default; a tenant can explicitly grant the personal class. Sensitive and unknown fields remain masked.
+
+| Surface | Readable within the granted domain | Protected without a personal grant |
+| --- | --- | --- |
+| `/api/v1/org-units` | Identity, kind, name, parent, status, effective date, update time and headcount | Head name and employee reference |
+| `/api/v1/org-structure` | Tenant name, phase, snapshot date, organization names, counts and status | Head identity and individual assignment facts |
+| `/api/v1/legal-entities` | Entity identity, business state, registration facts and counts | Representatives, directors, co-owners and named reviews |
+| `/api/v1/workplaces` | Workplace identity, name, kind, business state and counts | Representative name, contact email and mobile |
+| `/api/v1/employees` | Pagination totals and the registry's structural organization-unit identifier | Individual facts, including name, contacts and employment facts |
+
+Every returned leaf is classified in the response registry, defined by `20261023100100000_support_response_classes.sql`. Reviewed containers allow traversal; unknown containers stay masked even if they contain familiar names. Dotted response paths protect nested personal names separately from organization names. Protected JSON columns are masked as a whole, including their object keys. Scope review and field aliases belong in reference data.
+
+## Duration, revocation and audit
+
+`support.request_expiry` and `support.max_duration` are settings-registry keys with vendor defaults. Tenant overrides resolve through the shared settings store. Registry ranges cap both values at their vendor defaults, so a tenant can only tighten them. The API and database reject settings above those caps.
+
+The approved duration determines the active-session deadline and token expiry. Operator family logout, revocation, authority changes and tenant suspension invalidate reads immediately. Deadline checks apply on reads without waiting for the expiry worker.
+
+Every support-token request appends `support.access` to the target tenant's existing audit chain before its response leaves. Revocation is checked again after the handler and at audit commit. Failed audit writes withhold the response. Audit identities carry the operator display name and operator organization; opaque references remain stored separately.
 
 ## Declared API compatibility changes
 
 - Removed `POST /api/platform/view-as`, `/api/platform/view-as/exit`, `/api/platform/tenant-context`, and `/api/platform/tenant-context/exit`. Existing vendor impersonation tokens no longer resolve as tenant principals. The separate tenant-owned group-admin context remains supported.
-- A platform token presented to a tenant route now receives **401** rather than 403. Support refusals use RFC 9457 problem details with stable `support.refuse.*` codes and retain the shared `error.code` envelope for current clients.
+- A platform token presented to a tenant route receives **401** rather than 403. Support refusals use RFC 9457 problem details with stable `support.refuse.*` codes and retain the shared `error.code` envelope for current clients.
 - The access catalog adds the `support_access` domain with its approval permission.
 - Operator clients use the typed `supportSessionsApi` client and `/api/platform/support-sessions`; tenant clients use `/api/v1/support-sessions`. The published contract and generated client types replace the deleted endpoints.
-
-## Verification and hand-off
-
-The fail-before worktree and logs are under `/Users/jasonlee/Developer/frontend/lanes/eco-g1-support`. They include missing-ledger RLS failure, missing Cedar support contract, missing tenant UI, old HTTP refusal behavior, WebSocket scope regression the approved-duration regression, read-validation problem details and withdrawal before start. Focused DB tests cover all support refusal codes, forced RLS, target-org audit identity, refusal before writes, audit failure, policy duration and immediate revocation. UI tests cover every refusal, history, consent commands, banner and the G2 query source.
-
-The support acceptance runs `e2e/support-access.spec.ts` in Chromium and Firefox: real bound WebAuthn assertions for two operators, tenant approval, banner, read, SSE history, tenant termination, next-call 401 and tenant `/platform*` 404. Its accessibility checks exercise 1440/390 in light/dark. Run first-run-solo and released-contract compatibility checks as part of the release verification. Full multi-browser E2E and mutations remain release-unit CI work.
-
-Slice 2 is deferred to OC0-API/OC0-WEB. No ops origin/process migration or operator screen is included here. Proposed OC0-WEB paths remain `apps/ops/src/features/{tenants,support}/`. The current platform surface is retained for operators until that slice; tenant sessions opening `/platform*` receive the Korean 404.
-
-## Recorded local proof (base `70de61dc`)
-
-- Exact Rust CI: `cargo fmt --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, release-parity build/run of all 13 `console-gate-*` packages, and `cargo check --workspace --tests`: passed. The final status ledger is `ci-ready-status.json` in the lane evidence directory.
-- Exact web command: 272 files / 1,816 tests passed, typecheck/lint/build passed, bundle 144.4 KB gzip against the 151 KB budget, and history/build gitleaks passed. It then hits the same local license-gate failure as clean public/dev: the shared local `dev` ref has no merge base with public history. Running the header gate against `public/dev` passes for all 46 new source files; fixture, dependency-license and script checks pass separately. See `base-check-complete.log` and `web-check-final-tip.log`.
-- The 99 affected crates and direct dependents were exercised against the supplied lane DB. The first batch recorded 3,281 passes. Failed binaries were rebuilt or rerun with the prescribed serial execution for cluster-global migrations; affected doctests also pass after restoring the shared target cache. Current focused proof includes all 45 platform REST tests (19 support DB tests), 68 shared-boundary tests, the access-catalog test, 38 settings tests, 11 support Cedar tests, 18 full-feature OpenAPI drift tests and the tenant UI/refusal tests.
-- One DB refusal remains identical on clean public/dev and the tip: `leave_command_preprovision_and_privilege_matrix_are_fail_closed` sees the pre-existing `leave_api.employee_import_rollback_audit_required` trigger helper among public entrypoints. Both logs have exactly the same actual/expected function lists (`base-leave-privileges.log`, `tip-leave-privileges.log`). The source is migration `20261023061209000_employee_import_rollback.sql`; this is a hand-off to the import-rollback owner, not a support change.
-- Fail-before logs retain the absent base ledger/Cedar/UI contracts, old HTTP refusal, second-operator refusal, WebSocket boundary, duration clamp, read problem-details, approved-but-unstarted request expiry, pre-start withdrawal and all three nested/container/array masking regressions. The terminal-state end guard was additionally checked without changing its implementation.
-
-The paragraph above records earlier rounds. Round 3 runs the focused support browser acceptance and first-run-solo locally; the results below supersede that earlier browser remainder. No push was performed.
-
-## Touch inventory
-
-The brief authorizes support implementation and its verification across shared call sites. The inventory includes shared token fixtures, error mappings, generated contracts, copy and ratchet registries outside the named support files. No excluded lane-owned file is edited. The external hand-off file `/Users/jasonlee/Developer/console-handoff/units/ops-cockpit.md` is updated only to close this P0 slice with its evidence.
-
-- `apps/web/src/features/platform/ui/tenant-panel.tsx`
-- `apps/web/src/reference/support-access/api.ts`
-- `apps/web/src/features/support-access/ui/support-access.test.tsx`
-- `apps/web/src/features/support-access/ui/support-access.tsx`
-- `apps/web/src/lib/live/live.ts`
-- `apps/web/src/lib/live/topics.ts`
-- `apps/web/src/lib/react/session.ts`
-- `apps/web/src/routes/app.ts`
-- `apps/web/src/shell/nav.test.ts`
-- `apps/web/src/shell/nav.ts`
-- `apps/web/src/shell/shell.tsx`
-- `backend/Cargo.lock`
-- `backend/app/src/config/auth.rs`
-- `backend/app/src/lifecycle_schedule.rs`
-- `backend/app/src/routes/platform.rs`
-- `backend/app/src/state/build.rs`
-- `backend/app/src/state/mod.rs`
-- `backend/app/tests/access_log_reads/support.rs`
-- `backend/app/tests/action_inbox_api.rs`
-- `backend/app/tests/attendance_persona_api.rs`
-- `backend/app/tests/audit_api.rs`
-- `backend/app/tests/auth_idle_sign_out.rs`
-- `backend/app/tests/benefit_catalog_api.rs`
-- `backend/app/tests/board_ack_api.rs`
-- `backend/app/tests/cedar_freshness_mint.rs`
-- `backend/app/tests/compliance_api.rs`
-- `backend/app/tests/compliance_catalog_api.rs`
-- `backend/app/tests/console_kill_switch.rs`
-- `backend/app/tests/console_route_telemetry.rs`
-- `backend/app/tests/consulting_engagement_api.rs`
-- `backend/app/tests/current_authority.rs`
-- `backend/app/tests/current_authority/fixture.rs`
-- `backend/app/tests/dispatch_pipeline_api.rs`
-- `backend/app/tests/emp_ui_routes/harness.rs`
-- `backend/app/tests/entity_capture_journey.rs`
-- `backend/app/tests/entity_registration_void/permissions.rs`
-- `backend/app/tests/equipment_3r_api.rs`
-- `backend/app/tests/evaluation_cycle_api.rs`
-- `backend/app/tests/facilities_pilot_story.rs`
-- `backend/app/tests/field_visit_api.rs`
-- `backend/app/tests/finance_gl_voucher_sod.rs`
-- `backend/app/tests/go_live_truth_journey.rs`
-- `backend/app/tests/h5_reason_notes.rs`
-- `backend/app/tests/health_readiness.rs`
-- `backend/app/tests/hr_attendance_manager_scope.rs`
-- `backend/app/tests/hr_attendance_self_read.rs`
-- `backend/app/tests/hr_ingest_checklist_gate.rs`
-- `backend/app/tests/hr_lifecycle_stage_d.rs`
-- `backend/app/tests/hr_people_create/consent.rs`
-- `backend/app/tests/hr_people_create_api.rs`
-- `backend/app/tests/logistics_pilot_story.rs`
-- `backend/app/tests/maintenance_chain_api.rs`
-- `backend/app/tests/mobile_api.rs`
-- `backend/app/tests/mvp_build_surface.rs`
-- `backend/app/tests/notif_routing_api.rs`
-- `backend/app/tests/notifications_api.rs`
-- `backend/app/tests/object_graph_api.rs`
-- `backend/app/tests/object_links_api.rs`
-- `backend/app/tests/object_ontology_api.rs`
-- `backend/app/tests/object_resolve_api.rs`
-- `backend/app/tests/openapi_drift/route_sources.rs`
-- `backend/app/tests/org_change_api.rs`
-- `backend/app/tests/org_units_api.rs`
-- `backend/app/tests/perf_pool_shed.rs`
-- `backend/app/tests/period_locks_api.rs`
-- `backend/app/tests/period_unlock_support/mod.rs`
-- `backend/app/tests/persona_ess_http.rs`
-- `backend/app/tests/platform_onboarding_e2e.rs`
-- `backend/app/tests/platform_ops_recovery_api.rs`
-- `backend/app/tests/purchase_request_collection_api.rs`
-- `backend/app/tests/realtime_authority.rs`
-- `backend/app/tests/recruiting_pipeline_api.rs`
-- `backend/app/tests/registry_api.rs`
-- `backend/app/tests/router_layers.rs`
-- `backend/app/tests/search_api.rs`
-- `backend/app/tests/settings_support/mod.rs`
-- `backend/app/tests/submittable_definitions_api.rs`
-- `backend/app/tests/support/http.rs`
-- `backend/app/tests/support/perf.rs`
-- `backend/app/tests/tenant_context_e2e.rs`
-- `backend/app/tests/tenant_setup_first_run_journey.rs`
-- `backend/app/tests/ux_r1_entity_routes.rs`
-- `backend/app/tests/workbench_native_api.rs`
-- `backend/app/tests/workflow_four_eyes_publish.rs`
-- `backend/app/tests/workflow_object_context_api.rs`
-- `backend/app/tests/workflow_object_kind_dynamics.rs`
-- `backend/app/tests/workflow_run_read_surface.rs`
-- `backend/app/tests/workflow_runtime_finalize_api.rs`
-- `backend/app/tests/workflow_runtime_instance_api.rs`
-- `backend/app/tests/workorder_api.rs`
-- `backend/ci/gates/file-size/baseline.d/eco-g1-support.txt`
-- `backend/ci/gates/tenant-isolation/src/global_tables.rs`
-- `backend/crates/comms/rest/src/lib.rs`
-- `backend/crates/comms/rest/tests/readiness.rs`
-- `backend/crates/consulting/rest/tests/audit_atomicity.rs`
-- `backend/crates/contracts/src/gen_registry.rs`
-- `backend/crates/financial/rest/tests/purchase_request_list.rs`
-- `backend/crates/governance/rest/src/lib.rs`
-- `backend/crates/hr/rest/tests/directory_http.rs`
-- `backend/crates/identity/rest/openapi/manifest.json`
-- `backend/crates/identity/rest/openapi/paths/api__platform__support-sessions.get.yaml`
-- `backend/crates/identity/rest/openapi/paths/api__platform__support-sessions.post.yaml`
-- `backend/crates/identity/rest/openapi/paths/api__platform__support-sessions__id__approve.post.yaml`
-- `backend/crates/identity/rest/openapi/paths/api__platform__support-sessions__id__end.post.yaml`
-- `backend/crates/identity/rest/openapi/paths/api__platform__support-sessions__id__start.post.yaml`
-- `backend/crates/identity/rest/openapi/paths/api__platform__tenant-context.post.yaml`
-- `backend/crates/identity/rest/openapi/paths/api__platform__tenant-context__exit.post.yaml`
-- `backend/crates/identity/rest/openapi/paths/api__platform__view-as.post.yaml`
-- `backend/crates/identity/rest/openapi/paths/api__platform__view-as__exit.post.yaml`
-- `backend/crates/identity/rest/openapi/paths/api__v1__support-sessions.get.yaml`
-- `backend/crates/identity/rest/openapi/paths/api__v1__support-sessions__active.get.yaml`
-- `backend/crates/identity/rest/openapi/paths/api__v1__support-sessions__id__decision.post.yaml`
-- `backend/crates/identity/rest/openapi/paths/api__v1__support-sessions__id__end.post.yaml`
-- `backend/crates/identity/rest/openapi/schemas/AccessDomain.yaml`
-- `backend/crates/identity/rest/openapi/schemas/ActiveSupportSessions.yaml`
-- `backend/crates/identity/rest/openapi/schemas/MobilePasskeyStepUpStartResponse.yaml`
-- `backend/crates/identity/rest/openapi/schemas/PlatformExitResponse.yaml`
-- `backend/crates/identity/rest/openapi/schemas/PlatformTenantContextStartRequest.yaml`
-- `backend/crates/identity/rest/openapi/schemas/PlatformTenantContextStartResponse.yaml`
-- `backend/crates/identity/rest/openapi/schemas/PlatformViewAsStartRequest.yaml`
-- `backend/crates/identity/rest/openapi/schemas/PlatformViewAsStartResponse.yaml`
-- `backend/crates/identity/rest/openapi/schemas/SupportAccessRecord.yaml`
-- `backend/crates/identity/rest/openapi/schemas/SupportOperatorDecision.yaml`
-- `backend/crates/identity/rest/openapi/schemas/SupportRefusal.yaml`
-- `backend/crates/identity/rest/openapi/schemas/SupportRequest.yaml`
-- `backend/crates/identity/rest/openapi/schemas/SupportSession.yaml`
-- `backend/crates/identity/rest/openapi/schemas/SupportSessionDecision.yaml`
-- `backend/crates/identity/rest/openapi/schemas/SupportSessionMetadata.yaml`
-- `backend/crates/identity/rest/openapi/schemas/SupportSessions.yaml`
-- `backend/crates/identity/rest/openapi/schemas/SupportTenantDecision.yaml`
-- `backend/crates/identity/rest/src/context.rs`
-- `backend/crates/identity/rest/src/openapi.rs`
-- `backend/crates/identity/rest/src/policy/preview.rs`
-- `backend/crates/identity/rest/tests/authentication_locking.rs`
-- `backend/crates/identity/rest/tests/org_setup.rs`
-- `backend/crates/inbox/rest/tests/api.rs`
-- `backend/crates/leave/rest/tests/leave_http_personas.rs`
-- `backend/crates/messenger/rest/tests/api.rs`
-- `backend/crates/notices/rest/src/lib.rs`
-- `backend/crates/notices/rest/tests/api.rs`
-- `backend/crates/notifications/rest/tests/api.rs`
-- `backend/crates/onboarding/rest/tests/common/mod.rs`
-- `backend/crates/ontology/rest/src/lib.rs`
-- `backend/crates/ontology/rest/tests/company_conformance/harness.rs`
-- `backend/crates/ontology/rest/tests/object_policy_attach_as_runtime_role.rs`
-- `backend/crates/ontology/rest/tests/object_type_cas_as_runtime_role.rs`
-- `backend/crates/ontology/rest/tests/object_type_lifecycle_over_http.rs`
-- `backend/crates/orgchange/rest/src/access.rs`
-- `backend/crates/payroll/rest/src/lib.rs`
-- `backend/crates/payroll/rest/tests/api.rs`
-- `backend/crates/payroll/rest/tests/payslip_draft_api.rs`
-- `backend/crates/payroll/rest/tests/run_lifecycle_api.rs`
-- `backend/crates/platform/access-rest/src/catalog.rs`
-- `backend/crates/platform/access-rest/tests/support/mod.rs`
-- `backend/crates/platform/auth-rest/src/context/request.rs`
-- `backend/crates/platform/auth-rest/src/group_admin/actor.rs`
-- `backend/crates/platform/auth-rest/src/group_admin/routes.rs`
-- `backend/crates/platform/auth-rest/src/token/issue.rs`
-- `backend/crates/platform/auth-rest/tests/group_admin_tenant_context.rs`
-- `backend/crates/platform/auth/src/jwt.rs`
-- `backend/crates/platform/auth/src/jwt/verify.rs`
-- `backend/crates/platform/auth/src/jwt_keys.rs`
-- `backend/crates/platform/auth/src/webauthn/step_up_kind.rs`
-- `backend/crates/platform/auth/tests/jwt_es256.rs`
-- `backend/crates/platform/auth/tests/jwt_key_rotation.rs`
-- `backend/crates/platform/auth/tests/jwt_verifier.rs`
-- `backend/crates/platform/authz-rest/src/lib.rs`
-- `backend/crates/platform/authz/src/access/catalog.rs`
-- `backend/crates/platform/authz/src/access/project.rs`
-- `backend/crates/platform/authz/src/cedar_pbac/actions/mod.rs`
-- `backend/crates/platform/authz/src/cedar_pbac/actions/support_session.rs`
-- `backend/crates/platform/authz/src/decide.rs`
-- `backend/crates/platform/authz/src/platform.rs`
-- `backend/crates/platform/authz/src/principal.rs`
-- `backend/crates/platform/authz/tests/support_session.rs`
-- `backend/crates/platform/authz/tests/support_session/reads.rs`
-- `backend/crates/platform/db/migrations/20261023090000000_support_sessions.sql`
-- `backend/crates/platform/db/src/audit_tx.rs`
-- `backend/crates/platform/db/src/lib.rs`
-- `backend/crates/platform/db/src/support.rs`
-- `backend/crates/platform/platform-rest/Cargo.toml`
-- `backend/crates/platform/platform-rest/src/error.rs`
-- `backend/crates/platform/platform-rest/src/lib.rs`
-- `backend/crates/platform/platform-rest/src/routes.rs`
-- `backend/crates/platform/platform-rest/src/state_builders.rs`
-- `backend/crates/platform/platform-rest/src/support.rs`
-- `backend/crates/platform/platform-rest/src/support_store.rs`
-- `backend/crates/platform/platform-rest/src/support_tenant.rs`
-- `backend/crates/platform/platform-rest/src/view_as.rs`
-- `backend/crates/platform/platform-rest/tests/fixtures/rename.rs`
-- `backend/crates/platform/platform-rest/tests/fixtures/support_proof.rs`
-- `backend/crates/platform/platform-rest/tests/fixtures/support_sessions.rs`
-- `backend/crates/platform/platform-rest/tests/onboard_seeds_config_objects.rs`
-- `backend/crates/platform/platform-rest/tests/ops_dashboard.rs`
-- `backend/crates/platform/platform-rest/tests/ops_recovery.rs`
-- `backend/crates/platform/platform-rest/tests/platform_groups.rs`
-- `backend/crates/platform/platform-rest/tests/remove_tenant.rs`
-- `backend/crates/platform/platform-rest/tests/support_ledger.rs`
-- `backend/crates/platform/platform-rest/tests/support_sessions.rs`
-- `backend/crates/platform/platform-rest/tests/support_sessions/boundary.rs`
-- `backend/crates/platform/platform-rest/tests/view_as.rs`
-- `backend/crates/platform/realtime/src/auth.rs`
-- `backend/crates/platform/realtime/src/reader.rs`
-- `backend/crates/platform/realtime/tests/sse_session.rs`
-- `backend/crates/platform/realtime/tests/sse_token_expired.rs`
-- `backend/crates/platform/realtime/tests/ws_stream.rs`
-- `backend/crates/platform/request-context/src/audit_context/access_log.rs`
-- `backend/crates/platform/request-context/src/commands.rs`
-- `backend/crates/platform/request-context/src/current_claims.rs`
-- `backend/crates/platform/request-context/src/error_response.rs`
-- `backend/crates/platform/request-context/src/lib.rs`
-- `backend/crates/platform/request-context/src/principal.rs`
-- `backend/crates/platform/request-context/src/support.rs`
-- `backend/crates/platform/request-context/src/support_problem.rs`
-- `backend/crates/production/rest/tests/production_lifecycle_http.rs`
-- `backend/crates/registry/rest/src/lib.rs`
-- `backend/crates/registry/rest/tests/equipment_admin.rs`
-- `backend/crates/sales/rest/src/lib.rs`
-- `backend/crates/settings/domain/src/keys/mod.rs`
-- `backend/crates/settings/domain/src/keys/support.rs`
-- `backend/crates/settings/domain/tests/registry.rs`
-- `backend/crates/settings/domain/tests/sql_definitions.rs`
-- `backend/crates/support/rest/src/lib.rs`
-- `backend/crates/support/rest/tests/authz.rs`
-- `backend/crates/support/rest/tests/intake.rs`
-- `backend/crates/todos/rest/src/lib.rs`
-- `backend/crates/workorder/rest/tests/evidence_without_storage.rs`
-- `backend/crates/workorder/rest/tests/mobile_device_registration.rs`
-- `backend/crates/workorder/rest/tests/mobile_evidence.rs`
-- `backend/crates/workorder/rest/tests/mobile_sync.rs`
-- `backend/openapi/openapi.yaml`
-- `backend/openapi/shared/schemas/MobilePasskeyStepUpBinding.yaml`
-- `backend/openapi/shared/schemas/MobileStepUpActionKind.yaml`
-- `docs/ops/support-access.md`
-- `e2e/support-access.spec.ts`
-- `packages/api/src/index.ts`
-- `packages/api/src/schema.d.ts`
-- `packages/api/src/step-up.ts`
-- `packages/api/src/support-sessions.ts`
-- `packages/i18n/src/catalogs/en.ts`
-- `packages/i18n/src/catalogs/en/access-codes.ts`
-- `packages/i18n/src/catalogs/en/enum.ts`
-- `packages/i18n/src/catalogs/en/support-access.ts`
-- `packages/i18n/src/catalogs/en/support.ts`
-- `packages/i18n/src/catalogs/ko.ts`
-- `packages/i18n/src/catalogs/ko/access-codes.ts`
-- `packages/i18n/src/catalogs/ko/enum.ts`
-- `packages/i18n/src/catalogs/ko/support-access.ts`
-- `packages/i18n/src/catalogs/ko/support.ts`
-- `scripts/api-compat.test.ts`
-- `scripts/reach-baseline.json`
-- `scripts/standing-text.d/eco-g1-support.json`
-
-## Round 2 reviewed surfaces and regression proof
-
-| Surface | Readable within granted domain | Protected without a personal grant | Content proof |
-| --- | --- | --- | --- |
-| `/api/v1/org-units` | id, kind, name, parentId, status, effectiveFrom, updatedAt, headcount | head name and employee reference | `support_sessions/surfaces.rs`; real-handler E2E asserts name, kind, status, dates and headcount |
-| `/api/v1/org-structure` | tenant_name, phase, as_of, organization names, counts and status chips | head identity and individual assignment facts | same DB test; real-handler E2E asserts tenant, phase, date and entity name |
-| `/api/v1/legal-entities` | entity identity, business state, registration facts and counts | representatives, directors, co-owners and named reviews | same DB test; real-handler E2E asserts entity name |
-| `/api/v1/workplaces` | workplace identity, name, kind, business state and counts | representative name, contact email and mobile | same DB test; real-handler E2E asserts name and headcount; tenant-wide route reuses the existing scoped, dated entity read |
-| `/api/v1/employees` | pagination totals and the registry’s structural org_unit_id | individual facts (0211), including name, contacts and employment facts | same DB test; real-handler E2E asserts count and masked names |
-
-The response registry is `20261023100100000_support_response_classes.sql`; unknown paths, containers and fields fail closed. Tenant durations are entered in minutes and shown with locale-formatted hours and minutes. Active-session details show the support deadline rather than a stale approval deadline.
-
-Negative DB tests cover non-holder list/approve/deny/end with no ledger change, post-verification hardware-key eligibility for both operators, and revocation inside a handler with an audited 401. The key-upgrade injection isolates the support hardware guard from WebAuthn’s independent backup-flag check. Policy tests set both tenant keys, prove the resulting deadlines and cap, and reject values above registry defaults. A capacity fixture finds a custom approval holder among 2,000 active accounts with one existence query, then proves revoking that grant refuses the next request.
-
-
-## Round 3 corrections and proof
-
-Rebased first onto public/dev `581367052` (#37 and #32 included), with pre-fix support tip `656979915`. After composer #38 landed during verification, rebased again onto `9004241bc`; all three prerequisites are included. The two public bases have identical backend trees and composed contracts, so the DB proof applies unchanged; web and browser checks are repeated after the final rebase. Evidence is under `/Users/jasonlee/Developer/frontend/lanes/eco-g1-support/round3/`.
-
-- The E2E duration lookup uses its field label without hard-coding the required marker. Approval duration is asserted on the persisted tenant session rather than a response request body that Playwright may omit.
-- The clean public/dev setup rail also fails the phone layout regression: its action row crowds the title. The shared grid now uses a shrinkable title track and moves actions below it when its container is narrow. The 390px Home audit remains in SETUP. Real support screens pass axe at 1440/390, light/dark.
-- Live support status retains its layout slot before loading and through pending/active/idle states. This fixes the observed unsolicited notification shift (0.0362); the E2E also clears shifts from its own initial viewport resize, using the existing helper.
-- Support approvals are an existing action-inbox source, with no Home-local support queue. The new real-router DB regression covers a custom approval grant, revocation, non-holder refusal to see items, tenant isolation, expiry, already-approved requests and keyset pagination. It fails on `656979915` because both pending items are missing, then passes on the candidate. The component regression fails on clean public/dev and passes after the shared grid fix. Contract assertions fail with the former strict response enum.
-- The rebase’s person-read ratchet is satisfied by using `person_accounts_current` for operator/tenant labels. The full-feature finance refusal test now uses a roleless support token with its operator binding and approved session ledger, including the real operator in the platform realm so refusals can be audited. No standing tenant account is created.
-- Released contract: see [per-class N-1 decisions](release-api-compat-2.md). The pinned oasdiff run has **zero unaccepted errors**: 2,972 inherited support-reference format errors and exactly four accepted unused operator POST-path removals. All eleven new domain-enum errors are gone. Response domains and inbox kinds are extensible; access-role commands retain the strict catalog vocabulary. Composed OpenAPI, face registry and TypeScript types were regenerated.
-- Support E2E: Chromium **2/2 on each of three consecutive runs** (99s, 96s, 101s); Firefox **2/2** (105s), with no browser skip. First-run-solo **1 passed, 1 pre-existing skip** (114s). The skipped governed-change journey remains explicitly disabled in the existing spec.
-- Exact web CI: **283 files / 1,930 tests**, typecheck, lint, build, 145.9 KB initial gzip against 151 KB, history/build secrets. The default license step has the same `no merge base found` failure on clean public/dev and the candidate because local `dev` belongs to the private history. Header validation against public/dev, fixture IDs, third-party licenses and the remaining three Node tests pass separately.
-- Rust: exact CI format/clippy, workspace test compilation, all 13 backend code gates including expand-only migration safety and the shrink-only file-size ratchet, plus full-feature application clippy. Focused crate proof: platform-rest 53 (including 25 support DB tests), identity-rest 99, contracts/action-inbox 55, application action-inbox 12 and finance 2. Both direct-dependent reads lead to console-app; its affected DB suites are covered.
-
-The file-size contribution was generated with the existing gate, retaining only this lane’s entries because the local private `dev` ref otherwise includes other lanes’ contributions. No pin is raised. The source dispatch implementation moved to its existing `sources` module; source DB regressions remain grouped separately from the oversized test root.
-
-Slice 2 remains the OC0 origin/application hand-off. G2 should render backend kind `support_access` with its `support_session` target as `/audit/support-access?review=<id>`; it must not reconstruct approvals from Home state. Full release-unit DB/E2E/mutation sweeps and merge-result CI remain release verification work.
-
-### Round 3 cross-module inventory
-
-This round also touches shared Home/setup-rail, the existing action-inbox composition/application and tests, a finance token fixture, generated contract registries/types, release documentation, catalogs and the lane’s size contribution. The complete round inventory (including files within the brief) follows; no excluded running-lane file is edited.
-
-- `apps/web/src/features/home/Home.tsx`
-- `apps/web/src/features/home/ui/support-queue.test.tsx`
-- `apps/web/src/features/home/ui/support-queue.tsx`
-- `apps/web/src/features/support-access/ui/support-access.module.css`
-- `apps/web/src/features/support-access/ui/support-access.test.tsx`
-- `apps/web/src/features/support-access/ui/support-access.tsx`
-- `apps/web/src/reference/support-access/api.ts`
-- `apps/web/src/ui/setup-rail/setup-rail.browser.test.tsx`
-- `apps/web/src/ui/setup-rail/setup-rail.module.css`
-- `backend/app/src/action_inbox.rs`
-- `backend/app/src/action_inbox/sources/mod.rs`
-- `backend/app/src/action_inbox/sources/support_access.rs`
-- `backend/app/tests/action_inbox/sources.rs`
-- `backend/app/tests/action_inbox/support_access.rs`
-- `backend/app/tests/action_inbox_api.rs`
-- `backend/app/tests/finance_gl_voucher_sod.rs`
-- `backend/ci/gates/file-size/baseline.d/eco-g1-support.txt`
-- `backend/crates/action-inbox/application/src/lib.rs`
-- `backend/crates/action-inbox/application/src/namespaced_id.rs`
-- `backend/crates/action-inbox/application/src/source.rs`
-- `backend/crates/contracts/src/gen_registry.rs`
-- `backend/crates/identity/rest/openapi/manifest.json`
-- `backend/crates/identity/rest/openapi/schemas/AccessDomain.yaml`
-- `backend/crates/identity/rest/openapi/schemas/AccessRoleLineInput.yaml`
-- `backend/crates/identity/rest/openapi/schemas/ActionInboxItem.yaml`
-- `backend/crates/identity/rest/openapi/schemas/CreateAccessRoleRequest.yaml`
-- `backend/crates/identity/rest/openapi/schemas/UpdateAccessRoleRequest.yaml`
-- `backend/crates/identity/rest/src/openapi.rs`
-- `backend/crates/platform/platform-rest/src/lib.rs`
-- `backend/crates/platform/platform-rest/src/support_store.rs`
-- `backend/openapi/openapi.yaml`
-- `docs/ops/release-api-compat-2.md`
-- `docs/ops/support-access.md`
-- `e2e/support-access.spec.ts`
-- `packages/api/src/schema.d.ts`
-- `packages/i18n/src/catalogs/en/support-access.ts`
-- `packages/i18n/src/catalogs/ko/support-access.ts`
-- `scripts/api-compat.test.ts`
-
-
-## Round 4 — current-dev compatibility and visible support notices
-
-Rebased first onto current `public/dev` (`ebe3857c3`); G2 has not landed and `ActionInboxSource::ALL` still contains 13 sources. Evidence, the detached fail-before worktree and screenshots are under `/Users/jasonlee/Developer/frontend/lanes/eco-g1-support/round4/`.
-
-- Replaced the stale `view_as` member in dev's bulk-limit token fixture with `support: None`. The isolated rebased base reproduces E0560 at `bulk_limits.rs:59` (`bulk-fail-before.log`).
-- Idle/loading support reads render no banner or empty landmark. Pending and active notices have natural height, with every operator row and action in the page flow. The unused idle copy is removed from both catalogs.
-- Added a compact, catalog-backed `SupportAccessIndicator` using the same SSE-invalidated query. Approvers get a history link and readers get a status without an unauthorized link. It is silent when idle or pending only for another user. **Its shell mount is an owning-lane hand-off:** this round explicitly excludes `apps/web/src/shell/shell.tsx`, so this file is unchanged. The owner should add `SupportAccessIndicator` to the existing banner import and place `{!platform && <SupportAccessIndicator />}` immediately after `<LiveStatus />`. The reviewable patch is `round4/header-indicator.patch` and passes `git apply --check`.
-- The browser regression tests idle, pending, active and crowded notices at 390/1440 in both themes, checking computed overflow, every row and action against the enclosing bounds, and horizontal fit. All eight cases fail on the isolated base; all eight pass after the fix. The support unit suite also covers the compact indicator, idle/loading and non-approver visibility (23 cases).
-- The source-level DB regression creates requests before, exactly at and after `as_of`, then checks exact totals, both keyset pages and an empty earlier snapshot on a runtime-role pool. It passes on the base because the guards already exist. Removing each SQL guard independently makes it fail: the count becomes 3 instead of 2; the rows incorrectly advertise another page. Both mutations are restored (`as-of-mutations.json`).
-- The acceptance E2E uses MVP support surfaces. The workspace-only inbox assertion remains in the existing real-router DB suite. The E2E now records idle/pending/active screenshots at 1440/390 in light/dark and checks for internal scrolling.
-- Regenerated composed OpenAPI and TypeScript types with the repository generators (no contract drift). Regenerated this lane's size contribution against public/dev while excluding paths already registered by another lane's contribution; the private local `dev` branch is not changed.
-
-Round 4 files outside the brief's support/session/UI owns:
-
-- `backend/crates/platform/authz-rest/tests/bulk_limits.rs`: required integration repair for this lane's removed token field.
-- `backend/app/src/action_inbox/sources/support_access.rs`: the requested `as_of` source DB regression; production SQL is unchanged.
-- `backend/ci/gates/file-size/baseline.d/eco-g1-support.txt`: repository-generated size contribution after rebase.
-- `docs/ops/support-access.md`: this evidence and the excluded header mount hand-off.
-
-No excluded file is edited. Slice 2 remains the existing OC0 hand-off; this round adds no new product scope.
-
-
-Round 4 final verification: exact CI `cargo fmt --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, all 13 discovered code gates, `cargo clippy --workspace --tests -- -D warnings`, `cargo check --workspace --tests`, the workspace-feature app clippy and public-base size/quality ratchets pass. Affected Rust suites pass 63 tests: authz REST 21, app source 4, real-router inbox 12, support sessions/ledger 26. All DB suites use the sourced lane database.
-
-The exact `npm run check` passes 289 files / 1,998 tests, typecheck, lint, build, bundle budget and secrets, then stops at the inherited private-`dev` licence reference (`no merge base found`). The identical default-header failure is recorded on the isolated base. Public-base headers (59 added sources), fixture identifiers, 38 production dependency licences and the final three Node tests pass separately. No quality baseline was raised.
-
-Default MVP plus E2E-only fixtures (without `workspace`): Chromium `support-access.spec.ts --repeat-each=3` passes 6/6, Firefox with one worker passes 2/2. The runs include axe and fit checks at 1440/390 in light/dark. Preserved screenshots: `round4/screenshots/chromium/` (36), `round4/screenshots/firefox/` (12); manually inspected pending/active 390 and idle 1440. The header mount is still excluded and is not represented as delivered by these screenshots. The owning lane must apply the checked patch and verify the complete header at 390 with the support indicator and `LiveStatus` together. Full release-unit DB/E2E/mutation sweeps and merge-result GitHub CI remain verifier/release work.
+- Response domains and action-inbox kinds are extensible; access-role commands retain the strict catalog vocabulary. See the [per-class N-1 compatibility decisions](release-api-compat-2.md).
