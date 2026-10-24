@@ -8,6 +8,19 @@ import { test } from "node:test";
 import { load } from "js-yaml";
 import "./ci-regressions.test.mjs";
 
+test("the rollback capacity proof reserves the runner without widening its timeout or quarantine", () => {
+  const result = spawnSync("python3", ["-c", `import json,tomllib
+from pathlib import Path
+name='two_thousand_people_rollback_atomically_with_bounded_dependency_reads'
+config=tomllib.loads(Path('.config/nextest.toml').read_text())['profile']['ci']
+assert config['slow-timeout']=={'period':'120s','terminate-after':3}
+assert any('binary(import2)' in item['filter'] and name in item['filter']
+           and item.get('threads-required')=='num-test-threads' for item in config['overrides'])
+assert not any(name in item['test'] for item in json.loads(Path('scripts/ci/baseline.json').read_text()))
+`], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+});
+
 test("CI folds shard durations into restored history with the existing rolling average", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-rolling-timings-"));
   try {

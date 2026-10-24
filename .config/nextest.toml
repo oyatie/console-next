@@ -35,6 +35,11 @@ slow-timeout = { period = "120s", terminate-after = 3 }
 filter = 'binary(action_inbox_api) + (binary(inbox_journey) & test(two_thousand_product_created_people))'
 threads-required = "num-test-threads"
 
+# The 2,000-person import/rollback is a capacity proof: concurrent migrations exhausted its budget.
+[[profile.ci.overrides]]
+filter = 'binary(import2) & test(two_thousand_people_rollback_atomically_with_bounded_dependency_reads)'
+threads-required = "num-test-threads"
+
 # census_binds_to_an_executed_database is EIGHT sequential migrate+enforce
 # cycles against a Docker PostgreSQL in one test -- the mutation matrix for the
 # canonical-enforcement census. Measured 263s locally and it hit the 360s
