@@ -168,7 +168,7 @@ test("operations: the CLI rejects a removed release-operation allowance against 
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "reach-cli-")));
   try {
     for (const dir of ["scripts/quality", "apps/web"]) mkdirSync(path.join(root, dir), { recursive: true });
-    for (const file of ["check-reach.mjs", "backlog-claims.mjs", "backlog-sources.mjs", "quality/ratchet.mjs", "reach-baseline.json"]) copyFileSync(`scripts/${file}`, path.join(root, "scripts", file));
+    for (const file of ["check-reach.mjs", "reach-metadata.py", "backlog-claims.mjs", "backlog-sources.mjs", "quality/ratchet.mjs", "reach-baseline.json"]) copyFileSync(`scripts/${file}`, path.join(root, "scripts", file));
     for (const dir of ["node_modules", "backend", "docs", "e2e", "packages", "registry", "apps/web/src", "apps/web/public"]) symlinkSync(path.resolve(dir), path.join(root, dir), "dir");
     for (const args of [["init"], ["add", "scripts/reach-baseline.json"], ["-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test: seed reach baseline"]]) {
       const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
@@ -199,7 +199,7 @@ test("operations: the --lower CLI persists removal of newly called debt without 
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "reach-cli-")));
   try {
     for (const dir of ["scripts/quality", "apps/web/public"]) mkdirSync(path.join(root, dir), { recursive: true });
-    for (const file of ["check-reach.mjs", "backlog-claims.mjs", "backlog-sources.mjs", "quality/ratchet.mjs"]) copyFileSync(`scripts/${file}`, path.join(root, "scripts", file));
+    for (const file of ["check-reach.mjs", "reach-metadata.py", "backlog-claims.mjs", "backlog-sources.mjs", "quality/ratchet.mjs"]) copyFileSync(`scripts/${file}`, path.join(root, "scripts", file));
     for (const dir of ["node_modules", "backend", "docs", "e2e", "packages", "registry"]) symlinkSync(path.resolve(dir), path.join(root, dir), "dir");
     symlinkSync(path.resolve("apps/web/src"), path.join(root, "apps/web/src"), "dir");
     const data = JSON.parse(readFileSync("scripts/reach-baseline.json", "utf8"));

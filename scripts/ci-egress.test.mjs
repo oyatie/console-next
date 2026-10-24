@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test } from "node:test";
 import { load } from "js-yaml";
 import { allowedEndpoints, endpointProblems, requiredEndpoints } from "./ci/egress.mjs";
@@ -11,6 +13,42 @@ const versions = () => JSON.parse(read("scripts/ci/versions.json"));
 const workflows = () => readdirSync(new URL(".github/workflows/", root))
   .filter((file) => /\.ya?ml$/.test(file)).map((file) => [file, load(read(`.github/workflows/${file}`))]);
 const missingEndpoints = (job) => endpointProblems(job).missing;
+
+test("toolchain contracts follow Node test flags, local imports and subprocess scripts", (t) => {
+  const dir = mkdtempSync(path.join(tmpdir(), "console-egress-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  mkdirSync(path.join(dir, "scripts"));
+  writeFileSync(path.join(dir, "scripts/suite.mjs"), 'import "./helper.mjs";\n');
+  writeFileSync(path.join(dir, "scripts/helper.mjs"), 'import { spawnSync } from "node:child_process";\nspawnSync(process.execPath, ["scripts/probe.mjs"]);\n');
+  for (const command of ['spawnSync("cargo", ["metadata", "--offline"]);', 'spawnSync("rustup", ["show"]);', 'spawnSync("rustc", ["--version"]);']) {
+    writeFileSync(path.join(dir, "scripts/probe.mjs"), `import { spawnSync } from "node:child_process";\n${command}\n`);
+    for (const run of ["node --test scripts/suite.mjs", 'node --test --test-name-pattern="probe" scripts/suite.mjs']) {
+      const job = { steps: [{ run }] };
+      assert.deepEqual([...requiredEndpoints(job, dir)], ["static.rust-lang.org:443"], `${run}: ${command}`);
+    }
+  }
+  for (const [file, source] of [["probe.sh", "cargo metadata --offline"], ["probe.py", 'import subprocess\nsubprocess.run(["cargo", "metadata"])']]) {
+    writeFileSync(path.join(dir, "scripts", file), source);
+    assert.deepEqual([...requiredEndpoints({ steps: [{ run: `${file.endsWith(".sh") ? "bash" : "python3"} scripts/${file}` }] }, dir)], ["static.rust-lang.org:443"]);
+  }
+  writeFileSync(path.join(dir, "scripts/probe.mjs"), 'import { spawnSync } from "node:child_process";\nspawnSync("cargo", ["metadata"], { env: { PATH: process.env.PATH } });\n');
+  assert.deepEqual([...requiredEndpoints({ steps: [{ run: "node scripts/probe.mjs" }] }, dir)], ["static.rust-lang.org:443"]);
+  writeFileSync(path.join(dir, "scripts/inherited-path.test.mjs"), 'import { spawnSync } from "node:child_process";\nspawnSync("node", ["scripts/probe.mjs"], { env: { PATH: process.env.PATH } });\n');
+  assert.deepEqual([...requiredEndpoints({ steps: [{ run: "node --test scripts/inherited-path.test.mjs" }] }, dir)], ["static.rust-lang.org:443"]);
+});
+
+test("every actual job rejects a transitive Rust call without toolchain access", (t) => {
+  const file = new URL("scripts/ci/fixtures/toolchain-probe.mjs", root);
+  writeFileSync(file, '// SPDX-License-Identifier: LicenseRef-Proprietary\nimport { spawnSync } from "node:child_process";\nspawnSync("cargo", ["metadata", "--offline"]);\n');
+  t.after(() => rmSync(file));
+  for (const [workflowFile, workflow] of workflows()) for (const [name, job] of Object.entries(workflow.jobs)) {
+    const copy = structuredClone(job);
+    const input = copy.steps.find((step) => step.with?.["egress-policy"] === "block").with;
+    input["allowed-endpoints"] = allowedEndpoints(copy).filter((endpoint) => endpoint !== "static.rust-lang.org:443").join(" ");
+    copy.steps.push({ run: "node --test scripts/ci/fixtures/toolchain-probe.mjs" });
+    assert.ok(missingEndpoints(copy).includes("static.rust-lang.org:443"), `${workflowFile}:${name}: hidden Rust invocation accepted`);
+  }
+});
 
 test("every block-mode job allows its step download endpoints, including redirects", () => {
   for (const [file, workflow] of workflows()) for (const [name, job] of Object.entries(workflow.jobs)) {
@@ -100,8 +138,13 @@ test("block jobs reject unused allowances, broad wildcard substitutions and inco
   assert.throws(() => allowedEndpoints(job), /invalid egress endpoint/);
 });
 
-test("hosted web-check follows npm scripts to reach's Cargo metadata invocation", () => {
-  const job = load(read("scripts/ci/fixtures/web-check-egress-missing.yml")).jobs["web-check"];
-  assert.deepEqual(missingEndpoints(job), ["static.rust-lang.org:443"]);
-  assert.deepEqual([...requiredEndpoints({ steps: [{ run: "node scripts/check-reach.mjs" }] })], ["static.rust-lang.org:443"]);
+test("reach and lint jobs need no toolchain endpoints; every other job is audited", () => {
+  assert.deepEqual([...requiredEndpoints({ steps: [{ run: "node scripts/check-reach.mjs" }] })], []);
+  const web = load(read("scripts/ci/fixtures/web-check-egress-missing.yml")).jobs["web-check"];
+  assert.deepEqual(missingEndpoints(web), ["static.rust-lang.org:443"]);
+  // web-check conservatively includes the licence renderer's optional --cargo mode.
+  const rustJobs = new Set(["plan", "web-check", "rust-build", "backend-test", "backend-db", "desktop-test", "ci-ok"]);
+  for (const [file, workflow] of workflows()) for (const [name, job] of Object.entries(workflow.jobs)) {
+    assert.equal(requiredEndpoints(job).has("static.rust-lang.org:443"), file === "ci.yml" && rustJobs.has(name), `${file}:${name}`);
+  }
 });

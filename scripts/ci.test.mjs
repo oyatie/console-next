@@ -231,12 +231,16 @@ test("Telegram adapter keeps credentials out of argv and sends only the supplied
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("Telegram refuses malformed credentials before making a request", () => {
+test("Telegram refuses malformed credentials before making a request", (t) => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-invalid-telegram-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  writeFileSync(path.join(dir, "curl"), "#!/bin/sh\necho 'unexpected request' >&2\nexit 97\n", { mode: 0o700 });
   const result = spawnSync("bash", ["scripts/ci/notify-telegram.sh", "send", "page", "page", "console probe failed"], {
-    encoding: "utf8", env: { ...process.env, CONSOLE_TELEGRAM_BOT_TOKEN: "invalid", CONSOLE_TELEGRAM_CHAT_ID: "-1" },
+    encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, CONSOLE_TELEGRAM_BOT_TOKEN: "invalid", CONSOLE_TELEGRAM_CHAT_ID: "-1" },
   });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /malformed/);
+  assert.doesNotMatch(result.stderr, /unexpected request/);
 });
 
 test("DB test setup derives the guarded admin and connection marker from the migration", async () => {
