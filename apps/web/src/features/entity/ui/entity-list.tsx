@@ -1,4 +1,4 @@
-import { verificationState } from "../present-verification";
+import { verificationState } from "../present";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";

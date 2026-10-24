@@ -1,4 +1,4 @@
-import { verificationState } from "../present-verification";
+import { verificationState } from "../present";
 import { CheckCircle2, CircleAlert, CircleHelp } from "lucide-react";
 import type { BusinessRegistration } from "@console/api/pending";
 import { t } from "@console/i18n";

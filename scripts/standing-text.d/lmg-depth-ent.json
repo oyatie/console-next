@@ -1,0 +1,24 @@
+{
+  "baseline": {
+    "apps/web/src/features/entity/ui/nts-check.tsx#NtsCheck": 41,
+    "apps/web/src/features/entity/ui/nts-preview.tsx#NtsPreview": 42
+  },
+  "newScreens": {
+    "apps/web/src/features/entity/ui/nts-check.tsx#NtsCheck": {
+      "FACT": 21,
+      "REFUSAL": 16,
+      "EMPTY": 1,
+      "LEGAL": 1,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/entity/ui/nts-preview.tsx#NtsPreview": {
+      "FACT": 22,
+      "REFUSAL": 15,
+      "EMPTY": 2,
+      "LEGAL": 1,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    }
+  }
+}

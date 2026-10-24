@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { checkState } from "../present-verification";
-import { useId, useState } from "react";
+import { checkState } from "../present";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { BusinessRegistration, LegalEntity } from "@console/api/pending";
@@ -14,7 +14,7 @@ import { KeyValue } from "../../../ui/key-value/key-value";
 import { Sheet } from "../../../ui/sheet/sheet";
 import { ApiError, checkRegistration, ENTITY_READS, registrationChecksQuery, type CheckEvidence, type CheckAnswer } from "../api";
 import { EntityError } from "./entity-error";
-import s from "./record.module.css";
+import { Card } from "../../../ui/card/card";
 
 const UNAVAILABLE = {
   NOT_CONFIGURED: "nts.unavailable.NOT_CONFIGURED", KEY_EXPIRED: "nts.unavailable.KEY_EXPIRED",
@@ -25,7 +25,6 @@ const UNAVAILABLE = {
 export function NtsCheck({ registration: r, entity, canManage = entity.can_manage, onAttach, historical = false }: {
   registration: BusinessRegistration; entity: LegalEntity; canManage?: boolean; onAttach: () => void; historical?: boolean;
 }) {
-  const title = useId();
   const live = useQuery({ ...registrationChecksQuery(r.id), enabled: !historical });
   const stored = r.nts_check;
   const q = historical ? { ...live, isPending: false, error: null, data: { items: stored ? [stored] : [], latest_status: stored?.kind === "STATUS" ? stored : null, latest_validate: stored?.kind === "VALIDATE" ? stored : null, availability: { available: true, reason: null } } } : live;
@@ -46,9 +45,7 @@ export function NtsCheck({ registration: r, entity, canManage = entity.can_manag
   const reportedReason = error?.code === "registration_check_unavailable" ? error.details.reason : null;
   const failedReason = typeof reportedReason === "string" && Object.hasOwn(UNAVAILABLE, reportedReason) ? reportedReason as keyof typeof UNAVAILABLE : null;
   return (
-    <section className="card" aria-labelledby={title} id={`nts-${r.id}`}>
-      <div className={s.cardHead}><h2 id={title} className={s.cardTitle}>{t("nts.title")}</h2></div>
-      <div className={s.cardBody}>
+    <Card title={t("nts.title")} id={`nts-${r.id}`}>
         <QueryState q={q}>
           {(history) => {
             const checks = [history.latest_status, history.latest_validate].filter((check): check is CheckEvidence => Boolean(check));
@@ -97,8 +94,7 @@ export function NtsCheck({ registration: r, entity, canManage = entity.can_manag
             </>;
           }}
         </QueryState>
-      </div>
-    </section>
+    </Card>
   );
 }
 

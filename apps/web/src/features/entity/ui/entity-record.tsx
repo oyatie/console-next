@@ -1,4 +1,4 @@
-import { verificationState } from "../present-verification";
+import { verificationState } from "../present";
 import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";

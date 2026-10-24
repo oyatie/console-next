@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useId, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { FORMATS } from "../../../lib/pure/formats";
@@ -13,14 +13,13 @@ import { Sheet } from "../../../ui/sheet/sheet";
 import { ApiError, previewRegistrationCheck, registrationCheckAvailabilityQuery, type CheckPreview } from "../api";
 import { EntityError } from "./entity-error";
 import { Chip } from "../../../ui/chip";
-import { checkState } from "../present-verification";
+import { checkState } from "../present";
 import { NtsResult } from "./nts-check";
 import type { CreateState } from "./use-create";
-import s from "./entity-create.module.css";
+import { Card } from "../../../ui/card/card";
 
 /** Optional authority check before saving; an answer is adopted only with the values that produced it. */
 export function NtsPreview({ c }: { c: CreateState }) {
-  const title = useId();
   const q = useQuery(registrationCheckAvailabilityQuery);
   const [reviewing, setReviewing] = useState(false);
   const values = { brn: c.draft.brn, opened_on: c.draft.openedOn, representative: (c.draft.representatives[0] ?? "").trim() };
@@ -42,9 +41,7 @@ export function NtsPreview({ c }: { c: CreateState }) {
     c.setPreview(null);
     send.mutate(kind);
   };
-  return <section className="card" aria-labelledby={title}>
-    <div className={s.cardHead}><h3 id={title} className={s.cardTitle}>{t("nts.preview.title")}</h3></div>
-    <div className={s.cardBody}>
+  return <Card title={t("nts.preview.title")} level={3}>
       <QueryState q={q}>
         {(availability) => {
           const available = availability.available && error?.code !== "registration_check_unavailable";
@@ -94,6 +91,5 @@ export function NtsPreview({ c }: { c: CreateState }) {
           </>;
         }}
       </QueryState>
-    </div>
-  </section>;
+  </Card>;
 }

@@ -1,4 +1,4 @@
-import { checkState } from "../present-verification";
+import { checkState } from "../present";
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { Eye, Lock, Plus, TriangleAlert, X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
