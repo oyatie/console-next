@@ -114,7 +114,8 @@ locally; no third-party installation action is involved.
 keyed on toolchain/lock/test profile (falling back to the toolchain), npm keyed on
 package-lock, Playwright keyed on its resolved package version, and passing E2E
 duration records. Only successful `push: dev` jobs can save; PRs and merge groups
-never save. `setup-node` has no implicit cache writer. sccache is bounded by config.
+never save. Only the measured-duration cache may also save after a successful
+release dispatch on dev. `setup-node` has no implicit cache writer. sccache is bounded by config.
 `ci-ok` reports repository cache usage and warns when it exceeds the configured
 budget. Cache eviction lag does not block product merges. GitHub evicts old entries; cold/warm runs
 establish how much of the budget this workspace consumes. The compiler cache key is
@@ -175,8 +176,10 @@ binary. No partition invokes a compiler. All discovered gate executables and the
 backend binary are built once alongside the archive; the web-check job produces one dist.
 
 Browser shards reuse both prebuilt outputs. The checked-in timing seed contains
-observed served-test durations and timestamps; trusted dev-push timing caches
-override it. Regenerate from the autoshard record with
+observed served-test durations and timestamps; timing caches from trusted dev pushes
+and release dispatches on dev override it. The gate folds measured shard results
+into the restored record with the existing rolling average, preserving unvisited
+tests and aging out stale entries. Each run/attempt saves a distinct cache key. Regenerate from the autoshard record with
 `E2E_SERVED=1 GITHUB_OUTPUT=/tmp/ci-plan node scripts/ci/e2e.mjs seed`.
 
 The planner reserves at most 24 browser shards. When recorded times need more,
@@ -299,30 +302,14 @@ cover every current manifest plus a synthetic future gate, a red gate, a missing
 binary, an empty discovery and a failed build. The three focused backend controls
 failed before the fix on `c929ca367` in the lane's `rebase-base` worktree.
 
-Inherited reds were reproduced unchanged on that rebased pre-fix base:
-
-- The workflow suite passes 101/102; the remaining safety assertion rejects
-  #40's `codeql.yml` job's `egress-policy: audit` (that workflow also uses the
-  `github/codeql-action` namespace outside the CI-1 allow-list).
-- The executed topology census passes 20/22 controls on both tip and base. Its
-  two DB failures reject unaccounted `console_leave_definer` INSERT grants on
-  `employee_person_bindings`, `person_revisions` and `persons` after the new
-  migrations. The other writer-ownership tests pass (66 controls). This is an
-  exact base reproduction, not an unexecuted DB check.
-- Full repository policy rejects `docs/ops/release-api-compat-2.md`.
-- Structural scanning finds three phone-shaped values across
-  `backend/crates/platform/db/tests/person_binding_lifecycle.rs` and
-  `backend/crates/platform/db/tests/person_fact_validation.rs`.
-- `npm run check` passes through unit tests, build and secrets, then its licence
-  script stops because the shared local `dev` branch belongs to unrelated
-  pre-flip history. The same error occurs on the base; the explicit licence
-  check against `public/dev` passes (29 added source files). Remaining check
-  commands were run separately; their only red is the CodeQL assertion above.
-
-Lane receipts use the `rebase-` prefix. No lint or privacy rule was weakened;
-these inherited reds still require their owners' fixes before hosted CI is green.
-Full browser/release-unit proof and hosted measurements remain the verifier's
-work below; no push or GitHub API mutation was performed.
+Round 10 closes the inherited workflow, file-policy, synthetic-fixture and
+canonical-census failures on the rebased public tree. CodeQL uses blocked egress
+and SHA-pinned GitHub-owned actions. API compatibility decisions live next to the
+OpenAPI contract at [release-api-compat-2](../backend/openapi/release-api-compat-2.md);
+support-access decisions live in [security](security/support-access.md).
+The leave/import definer's required Person writes are named in the census with
+their concrete function/trigger path. No writer violation is quarantined.
+Current local receipts and remaining hosted proof live in the lane handoff.
 
 ## Post-flip proof receipt
 

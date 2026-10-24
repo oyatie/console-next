@@ -163,7 +163,7 @@ async fn compatibility_revisions_never_invent_a_human_actor(pool: PgPool) {
     .fetch_one(&pool)
     .await
     .unwrap();
-    sqlx::query("INSERT INTO employee_employment_profiles(org_id,employee_id,employment_type,phone_e164,idempotency_key,request_hash,created_by) VALUES($1,$2,'REGULAR','+821098761234','subject',repeat('a',64),$3)")
+    sqlx::query("INSERT INTO employee_employment_profiles(org_id,employee_id,employment_type,phone_e164,idempotency_key,request_hash,created_by) VALUES($1,$2,'REGULAR','+821012341234','subject',repeat('a',64),$3)")
         .bind(org).bind(employee).bind(creator).execute(&pool).await.unwrap();
     sqlx::query("UPDATE users SET display_name='Edited' WHERE id=$1")
         .bind(account)

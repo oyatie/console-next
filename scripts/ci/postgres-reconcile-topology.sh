@@ -1078,6 +1078,13 @@ BEGIN
                 -- console_leave_definer: migration 0166 GRANT INSERT, UPDATE ON
                 -- public.employees. Deleted by console-kmb (EmploymentPort).
                 ('console_leave_definer', 'employees'),
+                -- leave_api.create_employee / apply_employee_import_batch insert an
+                -- employee; console_bind_command_employee calls the invoker
+                -- console_bind_employee_person / console_revise_person_facts.
+                -- Deleted when the retained leave/import writers use PersonPort.
+                ('console_leave_definer', 'persons'),
+                ('console_leave_definer', 'person_revisions'),
+                ('console_leave_definer', 'employee_person_bindings'),
                 -- pg_write_all_data: a PostgreSQL predefined role that holds DML
                 -- on every table in every cluster. Nothing deletes it; naming
                 -- the role is what makes every MEMBER of it fail below.

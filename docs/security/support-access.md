@@ -47,4 +47,4 @@ Every support-token request appends `support.access` to the target tenant's exis
 - A platform token presented to a tenant route receives **401** rather than 403. Support refusals use RFC 9457 problem details with stable `support.refuse.*` codes and retain the shared `error.code` envelope for current clients.
 - The access catalog adds the `support_access` domain with its approval permission.
 - Operator clients use the typed `supportSessionsApi` client and `/api/platform/support-sessions`; tenant clients use `/api/v1/support-sessions`. The published contract and generated client types replace the deleted endpoints.
-- Response domains and action-inbox kinds are extensible; access-role commands retain the strict catalog vocabulary. See the [per-class N-1 compatibility decisions](release-api-compat-2.md).
+- Response domains and action-inbox kinds are extensible; access-role commands retain the strict catalog vocabulary. See the [per-class N-1 compatibility decisions](../../backend/openapi/release-api-compat-2.md).
