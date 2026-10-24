@@ -91,8 +91,8 @@ impl PgEntityStore {
         if let Some(done) = saved {
             return Ok(done);
         }
-        let checked_at = time::OffsetDateTime::now_utc();
         let answer = crate::registration_check_request::call(port.as_ref(), kind, &values).await?;
+        let checked_at = time::OffsetDateTime::now_utc();
         let actor = actor.clone();
         with_audits(&self.pool,actor.org,move |tx| Box::pin(async move {
             if claim(tx,&actor,"business_registration.check_preview",request).await?.is_some() {

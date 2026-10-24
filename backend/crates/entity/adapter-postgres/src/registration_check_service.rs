@@ -86,8 +86,8 @@ impl PgEntityStore {
             Prepared::Current(values) => values,
             Prepared::Replay(done) => return Ok(*done),
         };
-        let checked_at = time::OffsetDateTime::now_utc();
         let answer = call(port.as_ref(), kind, &current).await?;
+        let checked_at = time::OffsetDateTime::now_utc();
         let actor = actor.clone();
         with_audits(&self.pool, actor.org, move |tx| Box::pin(async move {
             if let Some(done) = claim(tx, &actor, "business_registration.check", request).await? {

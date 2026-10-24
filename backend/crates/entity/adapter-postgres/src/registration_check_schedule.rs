@@ -69,7 +69,6 @@ impl PgEntityStore {
             return Ok(0);
         }
         let numbers: Vec<String> = rows.iter().map(|(_, n)| n.clone()).collect();
-        let checked_at = time::OffsetDateTime::now_utc();
         let answers = match port.status(&numbers).await {
             Ok(answers) => answers,
             Err(_) => {
@@ -77,6 +76,7 @@ impl PgEntityStore {
                 return Ok(0);
             }
         };
+        let checked_at = time::OffsetDateTime::now_utc();
         with_audits(&self.pool, org, move |tx| Box::pin(async move {
             let mut events = Vec::new();
             let mut count = 0;

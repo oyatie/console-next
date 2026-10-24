@@ -10,7 +10,7 @@ use std::{
     pin::Pin,
     sync::{
         Arc,
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicI64, AtomicUsize, Ordering},
     },
 };
 use uuid::Uuid;
@@ -19,6 +19,7 @@ struct Unlocked {
     pool: PgPool,
     id: Uuid,
     calls: AtomicUsize,
+    answered_micros: AtomicI64,
     during_call: Option<&'static str>,
 }
 impl Unlocked {
@@ -48,6 +49,10 @@ impl Unlocked {
         let mut answer = CheckAnswer::status(BRN, "01");
         answer.reported_status = Some(console_entity_domain::codes::OperatingStatus::Continuing);
         answer.response_sha256 = "f".repeat(64);
+        self.answered_micros.store(
+            i64::try_from(time::OffsetDateTime::now_utc().unix_timestamp_nanos() / 1000).unwrap(),
+            Ordering::SeqCst,
+        );
         Ok(answer)
     }
 }
@@ -84,6 +89,7 @@ async fn manual_and_preview_calls_release_locks_and_replay_without_another_http_
         pool: pool.clone(),
         id,
         calls: AtomicUsize::new(0),
+        answered_micros: AtomicI64::new(0),
         during_call: None,
     });
     for kind in [CheckKind::Status, CheckKind::Validate] {
@@ -92,6 +98,11 @@ async fn manual_and_preview_calls_release_locks_and_replay_without_another_http_
             .check_registration(&command, id, kind, port.clone())
             .await
             .unwrap();
+        assert!(
+            first.checked_at.unix_timestamp_nanos() / 1000
+                >= i128::from(port.answered_micros.load(Ordering::SeqCst)),
+            "evidence cannot predate the provider answer"
+        );
         assert_eq!(
             store
                 .check_registration(&command, id, kind, port.clone())
@@ -118,6 +129,17 @@ async fn manual_and_preview_calls_release_locks_and_replay_without_another_http_
             .unwrap(),
         first
     );
+    let checked_at: time::OffsetDateTime = sqlx::query_scalar(
+        "SELECT (outcome->>'checked_at')::timestamptz FROM entity_commands WHERE command_id=$1",
+    )
+    .bind(command.command_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(
+        checked_at.unix_timestamp_nanos() / 1000
+            >= i128::from(port.answered_micros.load(Ordering::SeqCst))
+    );
     assert_eq!(port.calls.load(Ordering::SeqCst), 3);
 }
 
@@ -128,6 +150,7 @@ async fn scheduled_http_releases_claimed_registration_and_schedule_locks(pool: P
         pool: pool.clone(),
         id,
         calls: AtomicUsize::new(0),
+        answered_micros: AtomicI64::new(0),
         during_call: None,
     });
     assert_eq!(
@@ -144,6 +167,16 @@ async fn scheduled_http_releases_claimed_registration_and_schedule_locks(pool: P
             .unwrap(),
         0
     );
+    let check = store
+        .registration_checks(&actor, id, 20, None)
+        .await
+        .unwrap()
+        .items
+        .remove(0);
+    assert!(
+        check.checked_at.unix_timestamp_nanos() / 1000
+            >= i128::from(port.answered_micros.load(Ordering::SeqCst))
+    );
     assert_eq!(port.calls.load(Ordering::SeqCst), 1);
 }
 
@@ -155,6 +188,7 @@ async fn a_number_changed_during_http_cannot_accept_the_old_answer(pool: PgPool)
             pool: pool.clone(),
             id,
             calls: AtomicUsize::new(0),
+            answered_micros: AtomicI64::new(0),
             during_call: Some("UPDATE business_registrations SET brn='0008100071' WHERE id=$1"),
         });
         if scheduled {
@@ -213,6 +247,7 @@ async fn a_partial_daily_budget_leaves_unclaimed_registrations_due(pool: PgPool)
         pool: pool.clone(),
         id,
         calls: AtomicUsize::new(0),
+        answered_micros: AtomicI64::new(0),
         during_call: None,
     });
     assert_eq!(
