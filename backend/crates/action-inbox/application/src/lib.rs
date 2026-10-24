@@ -898,6 +898,7 @@ mod tests {
             ActionInboxSource::PeriodUnlock => "period_unlock",
             ActionInboxSource::Setup => "setup_entity",
             ActionInboxSource::GrantNotice => "grant_notice",
+            ActionInboxSource::SupportAccess => "support_access",
             ActionInboxSource::HrInsurance => "insurance_filing_ACQUIRE_NPS",
         }
     }

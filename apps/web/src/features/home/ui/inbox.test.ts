@@ -272,3 +272,19 @@ test.each([
   expect(confirm).toBeDefined();
   expect(Boolean(confirm!.disabled)).toBe(!enabled);
 });
+
+test("support approvals keep their source label and selected review destination", () => {
+  view.list.data = { pages: [page([item("support-approval", { kind: "support_access", title: "조직 조회 오류 확인", ref: "HELP-123", who: "공급사 운영자", links: [{ kind: "support_session", id: "pending-support" }] })])] };
+  const markup = html();
+  expect(markup).toContain(t("home.part.support"));
+  expect(markup).toContain(t("supportAccess.review"));
+  expect(markup).toContain('href="/audit/support-access?review=pending-support"');
+  for (const fact of ["조직 조회 오류 확인", "HELP-123", "공급사 운영자"]) expect(markup).toContain(fact);
+});
+
+test("a failed support-approval source keeps its own retry label", () => {
+  view.list.data = { pages: [page([], { unavailable: [{ source: "support_access", support_reference: "support-reference" }] })] };
+  const markup = html();
+  expect(markup).toContain(t("home.inbox.unavailable", { part: t("home.part.support") }));
+  expect(markup).toContain("support-reference");
+});

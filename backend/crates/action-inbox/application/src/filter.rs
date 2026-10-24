@@ -241,6 +241,7 @@ mod tests {
             S::HrInsurance,
             S::HrContract,
             S::PeriodUnlock,
+            S::SupportAccess,
         ];
         for (filter, expected) in [
             (InboxFilter::Waiting, &[S::OrgChange][..]),

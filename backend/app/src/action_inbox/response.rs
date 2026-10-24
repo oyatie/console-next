@@ -15,6 +15,7 @@ pub(super) fn project(
     response["unavailable"] = serde_json::json!(unavailable);
     use console_platform_authz::Feature as F;
     let can = |feature| sources::org_change::holds(&sources.principal, feature);
+    let support_work = sources.support_can_approve.get().copied().unwrap_or(false);
     response["has_work"] = serde_json::json!(
         [
             F::OrgChangeRead,
@@ -33,6 +34,7 @@ pub(super) fn project(
         ]
         .into_iter()
         .any(can)
+            || support_work
     );
     let org_work = can(F::OrgChangeRead);
     let people_work = [
@@ -47,10 +49,10 @@ pub(super) fn project(
     .any(can);
     response["available_filters"] = serde_json::json!(
         [
-            ("turn", org_work || people_work),
+            ("turn", org_work || people_work || support_work),
             ("waiting", org_work),
             ("scheduled", org_work),
-            ("deadlines", org_work || people_work),
+            ("deadlines", org_work || people_work || support_work),
             (
                 "failures",
                 console_platform_authz::authorize_org_wide(

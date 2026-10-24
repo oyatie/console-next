@@ -115,6 +115,7 @@ async fn list_action_inbox(
             .trace_id()
             .to_owned(),
         setup: tokio::sync::OnceCell::new(),
+        support_can_approve: tokio::sync::OnceCell::new(),
         setup_created_at: created_at,
     };
     let page = run_action_inbox(
@@ -137,6 +138,7 @@ struct PgActionInboxSources {
     pool: PgPool,
     principal: Principal,
     setup: tokio::sync::OnceCell<Option<serde_json::Value>>,
+    support_can_approve: tokio::sync::OnceCell<bool>,
     setup_created_at: OffsetDateTime,
     read_permits: std::sync::Arc<tokio::sync::Semaphore>,
     support_reference: String,
@@ -191,7 +193,7 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                     sources::grants::page(&self.pool, &self.principal, query).await
                 }
                 ActionInboxSource::SupportAccess => {
-                    sources::support_access::page(&self.pool, &self.principal, query).await
+                    sources::support_access::page(&self.pool, &self.principal, query, &self.support_can_approve).await
                 }
                 ActionInboxSource::OrgChange => {
                     sources::org_change::page(&self.pool, &self.principal, query).await

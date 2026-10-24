@@ -47,6 +47,10 @@ async fn support_approvals_share_catalog_visibility_expiry_and_inbox_pagination(
     loop {
         let response = get(service.clone(), &path, &token).await;
         assert_eq!(response.status, StatusCode::OK, "{:?}", response.json);
+        assert_eq!(
+            response.json["has_work"], true,
+            "support-only approvers have work capability"
+        );
         for item in response.json["items"].as_array().unwrap() {
             if item["kind"] == "support_access" {
                 assert_eq!(item["ref"], "HELP-123");

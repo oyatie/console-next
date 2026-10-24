@@ -24,6 +24,7 @@ pub(crate) async fn read_workbench_action_inbox(
         pool: pool.clone(),
         principal: principal.clone(),
         setup: tokio::sync::OnceCell::new(),
+        support_can_approve: tokio::sync::OnceCell::new(),
         setup_created_at: as_of,
         read_permits,
         support_reference: crate::telemetry::current_trace_context()

@@ -110,7 +110,9 @@ AS $$
         ('ops_recovery.hold_hours', 'int', 24::BIGINT, 168::BIGINT, 72::BIGINT, 'lower', 'platform_only', NULL::TEXT[]),
         ('ops_recovery.code_ttl_minutes', 'int', 5::BIGINT, 10::BIGINT, 10::BIGINT, 'higher', 'platform_only', NULL::TEXT[]),
         ('hr.contract_soon_days', 'int', 1::BIGINT, 365::BIGINT, 60::BIGINT, 'higher', 'tenant', NULL::TEXT[]),
-        ('display.page_size', 'int', 1::BIGINT, 500::BIGINT, 100::BIGINT, 'higher', 'tenant', NULL::TEXT[])
+        ('display.page_size', 'int', 1::BIGINT, 500::BIGINT, 100::BIGINT, 'higher', 'tenant', NULL::TEXT[]),
+        ('support.request_expiry', 'int', 1::BIGINT, 12::BIGINT, 12::BIGINT, 'higher', 'tenant', NULL::TEXT[]),
+        ('support.max_duration', 'int', 1::BIGINT, 4::BIGINT, 4::BIGINT, 'higher', 'tenant', NULL::TEXT[])
     ) AS d (key, kind, min_value, max_value, default_ordinal, looser_when, governance, codes)
     WHERE d.key = p_key
 $$;
