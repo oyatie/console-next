@@ -690,3 +690,48 @@ Round 16 files outside the initial workflow/CI-helper/file-policy slice:
 - `scripts/quality/ratchet.mjs`
 
 No excluded lane file or generated file was edited.
+
+## Round 17: current-dev replay and resource cleanup
+
+The lane's 27 commits were rebased onto public dev
+`09d495cd559975c20e26f0feec7f4c702a79eddd`. Base and candidate use independently
+compiled Linux archives and the same partition runner, bootstrap, Postgres pin
+and nextest profile. For a local base/tip comparison, give each checkout its own
+clean target contents, even when its `CARGO_TARGET_DIR` path must stay fixed.
+Share sccache, not raw Cargo outputs across checkout roots. Record the source
+commit and target provenance before accepting an archive as proof; immutable
+archives can still contain stale binaries if their producer reused mixed outputs.
+
+The public-dev replay executes 4,052 DB and 1,158 non-DB cases. Its 23 DB reds
+include invalid approval fixtures, missing private harness paths and timestamp
+precision assertions; the unit red is the synthetic registration census. The
+readiness receipt compares all 18 round-16 failures individually and lists every
+job exit. Only standing reds proven by that public-dev replay may be quarantined:
+exact test, owner, reason, UTC receipt, expiry and a separate handoff backlog row.
+A passing deterministic entry fails until removed. First-run-solo is never
+quarantined. The new standing entries expire on **2026-10-31**.
+
+The retained round-16 rollback binary passes alone in **38.985 s** under its
+original **360 s** ceiling. Its prior **360.013 s** timeout is contention; the
+2,000-person capacity proof now reserves the partition's nextest threads without
+changing its timeout, assertions or retry policy. The clean candidate completes
+the same capacity proof in **15.137 s** inside its partition.
+
+`backend-dev --reset` releases its own Compose volumes and network on exit,
+failed startup, SIGINT and SIGTERM. Playwright permits graceful teardown. Four
+subprocess controls fail before that change and pass afterward. The upload
+scanner also scans multipart headers, fields, nested workbook bytes and epilogues
+in failed browser traces; eleven controls and an actual captured request prove
+that it refuses private data, opaque bytes, unsupported encodings and truncation.
+
+The workflow fixtures reuse the verified-person and runtime-role helpers; the
+generated size pin shrinks 967→956. A domain-alias assertion uses DB-precision
+time. The browser journey fixes preserve access-link position while support
+capabilities load and assert the actual nested posting response. The readiness
+receipt lists all files outside the original CI helper surface; no excluded lane
+file was edited. File-size pins were changed through the repository generator.
+
+Local replay does not emulate GitHub action services, authenticated cache usage
+or hosted egress enforcement. Merge-result CI and the release-unit dispatch are
+the authoritative hosted proof and supply the cold/warm/docs-only timing table.
+Ruleset application and pushing remain owner actions.
