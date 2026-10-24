@@ -188,7 +188,14 @@ async fn a_number_changed_during_http_cannot_accept_the_old_answer(pool: PgPool)
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_partial_daily_budget_leaves_unclaimed_registrations_due(pool: PgPool) {
     let (store, actor, id) = subject(&pool, None).await;
-    let entity = store.list_entities(&actor, true).await.unwrap().remove(0);
+    let entity = store
+        .create_entity(
+            &common::cmd(&actor),
+            common::corporation("예산 법인", "000211-0006241"),
+        )
+        .await
+        .unwrap()
+        .record;
     store
         .create_registration(
             &common::cmd(&actor),

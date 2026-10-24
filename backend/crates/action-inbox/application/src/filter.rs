@@ -154,6 +154,7 @@ impl ActionInboxSourcePort for ViewPort<'_> {
                     | S::GrantNotice
                     | S::Payroll
                     | S::Governance
+                    | S::RegistrationChecks
             ),
             _ => true,
         };

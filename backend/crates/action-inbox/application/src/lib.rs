@@ -353,6 +353,7 @@ mod tests {
                 ActionInboxSource::Payroll,
                 ActionInboxSource::Governance,
                 ActionInboxSource::EntityCorrections,
+                ActionInboxSource::RegistrationChecks,
                 ActionInboxSource::OrgChange,
                 ActionInboxSource::HrExit,
                 ActionInboxSource::HrLifecycle,
