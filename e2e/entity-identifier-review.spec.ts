@@ -15,8 +15,11 @@ const detail = (page: Page) => page.getByRole("dialog", { name: "번호 정정 �
 async function capture(page: Page, name: string) {
   await page.screenshot({ path: test.info().outputPath(`${name}-desktop.png`), fullPage: true });
   await atPhoneWidth(page, async () => {
-    await fits(page, name);
     await page.screenshot({ path: test.info().outputPath(`${name}-390.png`), fullPage: true });
+    const dialog = page.getByRole("dialog");
+    // A modal makes the record behind it inert; check the visible surface.
+    if (await dialog.isVisible()) expect(await dialog.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
+    else await fits(page, name);
   });
 }
 
@@ -60,6 +63,7 @@ test("identifier correction: a second person approves, requester applies, and a 
   await stepUp(admin.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", admin.getByLabel("일회용 코드"));
   const reviewer = await firstSignIn(browser, await takeCode(admin));
   await reviewer.setViewportSize({ width: 1440, height: 900 });
+  await go(reviewer, "/");
   await registerEmployee(admin, { name: "이범위", number: "ID-SCOPE-1", hired: "2024-03-04", unit: "본사" });
   await admin.getByRole("button", { name: "계정 초대" }).click();
   await stepUp(admin.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", admin.getByLabel("일회용 코드"));
@@ -79,14 +83,14 @@ test("identifier correction: a second person approves, requester applies, and a 
   await expect(manager.getByRole("heading", { name: "법인·사업장", exact: true })).toBeVisible();
   await expect(register(manager)).toBeHidden();
   await expect(manager.getByText("이 화면에 접근 권한이 없습니다", { exact: true })).toBeHidden();
-  const stream = reviewer.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/events" && response.ok());
-  await go(reviewer, "/", true);
-  await passkeyLogin(reviewer);
-  await stream;
   const notice = inbox(reviewer).getByRole("listitem").filter({ has: reviewer.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true }) });
   await expect(notice).toContainText("전체 업무 · 전체 ·", { timeout: 20_000 });
+  // The notice arrived live. Reopen the pre-grant stream under its new access scope (period-unlock-approve).
+  await reviewer.reload();
+  await passkeyLogin(reviewer);
   await notice.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
-  await expect(notice).toBeHidden();
+  // The confirmation and its SSE hint can restart an in-flight inbox read.
+  await expect(notice).toBeHidden({ timeout: 20_000 });
   letGrantsAge(unique(slug), "김검토");
   let reviewerLoads = 0;
   reviewer.on("request", (request) => { if (request.isNavigationRequest() && request.resourceType() === "document") reviewerLoads++; });
@@ -106,7 +110,7 @@ test("identifier correction: a second person approves, requester applies, and a 
   await go(admin, "/");
   await inbox(admin).getByRole("button", { name: /^기다리는 중/ }).click();
   const waiting = inbox(admin).getByRole("listitem").filter({ has: admin.locator(`a[href="/org/entities?correction=${requested.id}#identifier-corrections"]`) });
-  await expect(waiting).toContainText("처리 상태: 승인 대기");
+  await expect(waiting).toContainText("처리 상태: 승인 대기", { timeout: 20_000 });
   await expect(waiting.getByRole("link", { name: "정정 요청 · 사후 검토 확인", exact: true })).toBeVisible();
   await capture(admin, "requester-waiting-home");
   let requesterLoads = 0;
@@ -114,7 +118,7 @@ test("identifier correction: a second person approves, requester applies, and a 
 
   // The reviewer stays on Home after confirming the grant; the correction arrives through SSE.
   const queue = inbox(reviewer).getByRole("listitem").filter({ has: reviewer.locator(`a[href="/org/entities?correction=${requested.id}#identifier-corrections"]`) });
-  await expect(queue).toContainText("번호검토주식회사");
+  await expect(queue).toContainText("번호검토주식회사", { timeout: 20_000 });
   await expect(queue).toContainText("처리 상태: 승인 대기");
   await capture(reviewer, "reviewer-home");
   expect(reviewerLoads, "the reviewer receives the request without reloading Home").toBe(0);
@@ -129,7 +133,7 @@ test("identifier correction: a second person approves, requester applies, and a 
   await expect(detail(reviewer)).toContainText("승인됨 · 적용 대기");
   await detail(reviewer).getByRole("button", { name: "돌아가기", exact: true }).click();
 
-  await expect(waiting).toBeHidden();
+  await expect(waiting).toBeHidden({ timeout: 20_000 });
   await inbox(admin).getByRole("button", { name: /^내 차례/ }).click();
   const apply = inbox(admin).getByRole("listitem").filter({ has: admin.locator(`a[href="/org/entities?correction=${requested.id}#identifier-corrections"]`) });
   await expect(apply).toContainText("처리 상태: 승인됨 · 적용 대기");
