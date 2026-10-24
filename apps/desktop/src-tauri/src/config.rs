@@ -80,9 +80,13 @@ pub fn same_origin(console: &Url, url: &Url) -> bool {
     url.origin() == console.origin()
 }
 
-/// Links the shell hands to the default browser. Anything else (file:, data:, javascript:, other schemes) is dropped.
+/// Links the shell hands to the default browser. Only https: URLs without credentials are allowed.
+/// Anything else (http:, mailto:, file:, data:, javascript:, userinfo) is dropped.
 pub fn external(url: &Url) -> bool {
-    matches!(url.scheme(), "https" | "http" | "mailto")
+    url.scheme() == "https"
+        && url.host_str().is_some()
+        && url.username().is_empty()
+        && url.password().is_none()
 }
 
 /// `<scheme>://people/123?tab=x` -> `<console>/people/123?tab=x`. Deep links are untrusted input:
@@ -160,6 +164,9 @@ pub fn diag(msg: &str) {
         let _ = writeln!(f, "{secs} {} {msg}", env!("CARGO_PKG_VERSION"));
     }
 }
+
+#[cfg(test)]
+mod external_tests;
 
 #[cfg(test)]
 mod tests {
@@ -279,7 +286,8 @@ mod tests {
         assert!(!same_origin(&c, &url("http://c.test/")));
         assert!(!same_origin(&c, &url("https://evil.test/")));
         assert!(!same_origin(&c, &url("data:text/html,x")));
-        assert!(external(&url("https://evil.test/")) && external(&url("mailto:a@b.test")));
+        assert!(external(&url("https://evil.test/")));
+        assert!(!external(&url("mailto:a@b.test")));
         assert!(!external(&url("file:///C:/Windows")) && !external(&url("javascript:alert(1)")));
     }
 
