@@ -3,7 +3,7 @@ use crate::*;
 /// Headcount, everywhere this adapter counts people (preflight impact, the
 /// dissolve blocker, the org tree and unit detail): employees who are not
 /// EXITED — ACTIVE, ON_LEAVE (휴직: employed, still assigned to the unit) and
-/// UNKNOWN. One predicate, `employment_status <> 'EXITED'`, shared with the
+/// UNKNOWN. One predicate, `entity_employed_on(entity_today(), hire_on, exit_on, employment_status)`, shared with the
 /// `ReassignOrgUnit` transfer set, so every member that blocks a dissolve is one
 /// a reassign can move.
 pub(crate) async fn scope_headcount(
@@ -15,7 +15,7 @@ pub(crate) async fn scope_headcount(
             count_by_text(
                 tx,
                 "SELECT count(*) FROM employees \
-                 WHERE company = $1 AND employment_status <> 'EXITED'",
+                 WHERE company = $1 AND entity_employed_on(entity_today(), hire_on, exit_on, employment_status)",
                 &target.label,
             )
             .await?
@@ -25,7 +25,7 @@ pub(crate) async fn scope_headcount(
                 tx,
                 "SELECT count(*) FROM employees \
                  WHERE (org_unit_id::text = $1 OR org_unit = $1) \
-                   AND employment_status <> 'EXITED'",
+                   AND entity_employed_on(entity_today(), hire_on, exit_on, employment_status)",
                 &target.target_ref,
             )
             .await?
@@ -35,7 +35,7 @@ pub(crate) async fn scope_headcount(
             count_by_uuid(
                 tx,
                 "SELECT count(*) FROM employees \
-                 WHERE home_branch_id = $1 AND employment_status <> 'EXITED'",
+                 WHERE home_branch_id = $1 AND entity_employed_on(entity_today(), hire_on, exit_on, employment_status)",
                 branch,
             )
             .await?
@@ -45,7 +45,7 @@ pub(crate) async fn scope_headcount(
             count_by_uuid(
                 tx,
                 "SELECT count(*) FROM employees \
-                 WHERE employment_status <> 'EXITED' AND home_branch_id IN \
+                 WHERE entity_employed_on(entity_today(), hire_on, exit_on, employment_status) AND home_branch_id IN \
                  (SELECT id FROM branches WHERE region_id = $1)",
                 region,
             )

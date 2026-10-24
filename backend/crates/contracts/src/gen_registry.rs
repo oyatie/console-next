@@ -2811,6 +2811,7 @@ const ENTITY_FRAGMENT_EXTERNAL: &[&str] = &[
     "GroupTransferFacts",
     "KrAddress",
     "MobilePasskeyStepUpEnvelope",
+    "OrgUnitMembers",
     "Uuid",
 ];
 
@@ -3258,6 +3259,15 @@ const ENTITY_FRAGMENT_PATHS: &[PathItem] = &[
             method: "post",
             body: include_str!(
                 "../../entity/rest/openapi/paths/api__v1__org-structure__units__orgUnitId__erase.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/org-structure/units/{orgUnitId}/members",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../entity/rest/openapi/paths/api__v1__org-structure__units__orgUnitId__members.get.yaml"
             ),
         }],
     },

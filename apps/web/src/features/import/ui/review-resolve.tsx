@@ -68,6 +68,7 @@ export function ReviewResolve({ item, dry, picks, busy, onResolve, onSheets }: {
 
 /** What happens to an item with nothing to answer: a difference another flow makes, an RRN that is set aside. */
 function info(item: ReviewItem, route?: string) {
+  if (item.reason === "workplace_not_open_on_date") return t("importReview.info.workplace_not_open_on_date", { date: item.value ?? "" });
   if (item.reason === "deferred_change" && route) return t("importReview.info.deferred", { route: routeLabel(route as Parameters<typeof routeLabel>[0]) });
   return t(item.reason === "rrn_unavailable" || item.reason === "rrn_invalid" ? `importReview.info.${item.reason}` : "importReview.info.other");
 }

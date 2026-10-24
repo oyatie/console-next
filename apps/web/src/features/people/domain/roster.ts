@@ -1,3 +1,4 @@
+import { retirementDate } from "./employment";
 // The roster's rules: which filters the URL holds and the server query they make, how the status chips
 // add up from server totals, the one "next" item a row shows, tenure, and the exact employee-number jump.
 import type { components } from "@console/api/schema";
@@ -165,6 +166,6 @@ export const VIEWS: View[] = [
 /** Retention of an exited person's register (Labor Standards Act §42, Decree §22): 3 years from the exit date (the day after the last working day). */
 export const RETENTION_YEARS = 3;
 export function retentionEnd(lastDay: string): string {
-  const exit = addDays(lastDay, 1);
+  const exit = retirementDate(lastDay);
   return `${Number(exit.slice(0, 4)) + RETENTION_YEARS}${exit.slice(4)}`;
 }

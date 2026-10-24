@@ -87,7 +87,7 @@ pub(crate) async fn unit_members(tx: Tx<'_, '_>, id: Uuid) -> Result<i64, PgOrgC
     // `org_unit` text is checked too: rows moved by the pre-binding reassign
     // path stored the unit UUID there.
     Ok(sqlx::query_scalar(
-        "SELECT count(*) FROM employees WHERE employment_status <> 'EXITED' \
+        "SELECT count(*) FROM employees WHERE entity_employed_on(entity_today(), hire_on, exit_on, employment_status) \
          AND (org_unit_id = $1 OR org_unit = $1::text)",
     )
     .bind(id)
@@ -137,7 +137,7 @@ pub(crate) async fn members_left(
         return Ok(0);
     }
     Ok(sqlx::query_scalar(
-        "SELECT count(*) FROM employees WHERE employment_status <> 'EXITED' \
+        "SELECT count(*) FROM employees WHERE entity_employed_on(entity_today(), hire_on, exit_on, employment_status) \
          AND (org_unit_id = $1 OR org_unit = $1::text) AND id <> ALL($2)",
     )
     .bind(id)

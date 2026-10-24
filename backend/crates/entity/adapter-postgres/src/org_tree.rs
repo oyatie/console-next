@@ -162,7 +162,7 @@ pub(crate) async fn workplace_open(
 /// People placed in any of `units` who have not left.
 pub(crate) async fn members(tx: &mut Tx<'_>, units: &[Uuid]) -> Result<i64, PgEntityError> {
     Ok(sqlx::query_scalar(
-        "SELECT count(*) FROM employees WHERE org_unit_id = ANY($1) AND employment_status <> 'EXITED'",
+        "SELECT count(*) FROM employees WHERE org_unit_id = ANY($1) AND entity_employed_on(entity_today(), hire_on, exit_on, employment_status)",
     )
     .bind(units)
     .fetch_one(tx.as_mut())
@@ -205,7 +205,7 @@ pub(crate) async fn rebind_members(
     to: Uuid,
 ) -> Result<u64, PgEntityError> {
     let rows = sqlx::query(
-        "WITH people AS (SELECT id FROM employees WHERE org_unit_id = ANY($1) AND employment_status <> 'EXITED' \
+        "WITH people AS (SELECT id FROM employees WHERE org_unit_id = ANY($1) AND entity_employed_on(entity_today(), hire_on, exit_on, employment_status) \
                          ORDER BY id FOR UPDATE) \
          SELECT a.id, a.employee_id, a.valid_from FROM employment_assignments a JOIN people p ON p.id = a.employee_id \
          WHERE a.workplace_id = $2 AND a.superseded_at IS NULL AND a.valid_to IS NULL",

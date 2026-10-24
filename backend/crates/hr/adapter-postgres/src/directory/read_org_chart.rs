@@ -155,6 +155,7 @@ impl HrService {
                       AND x.effective_from <= (now() AT TIME ZONE 'Asia/Seoul')::date
                     ORDER BY x.effective_from DESC, x.version DESC LIMIT 1
                 ) le ON ea.legal_entity_id IS NOT NULL
+                WHERE entity_employed_on(entity_today(), e.hire_on, e.exit_on, e.employment_status)
                 ORDER BY 3 ASC, 2 ASC NULLS LAST, 7 ASC, 8 ASC, e.name ASC, e.source_sheet ASC, e.source_row ASC
                 LIMIT 5000
                 "#

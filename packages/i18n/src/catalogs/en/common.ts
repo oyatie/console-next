@@ -15,6 +15,7 @@ export const enCommon = {
   "common.failed.code.org_setup_batch_not_found": "The change to undo wasn’t found. Reload the page.",
   "common.failed.code.phase_not_setup": "Operations have started, so this can’t change directly. Draft an org change instead.",
   "common.failed.code.contract_overlap": "The period overlaps an existing contract. Correct the overlapping contract in contract history.",
+  "common.failed.code.workplace_not_open_on_date": "The workplace and its legal entity must both be open on the placement date. Choose the opening date or a later date.",
   "common.failed.code.rehire_date_not_after_exit": "Choose a rehire date after the last exit date.",
   "common.failed.code.filing_applicability_unverified": "Nothing was saved because filing applicability is unverified. Confirm the required facts, and correct a conflicting birth date in the employee record.",
   "common.failed.code.support_reference_cross_tenant_denied": "This support reference belongs to another customer account.",

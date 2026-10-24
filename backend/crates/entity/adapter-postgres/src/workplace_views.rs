@@ -56,10 +56,7 @@ pub(crate) async fn views_at(
                 r.withholding_mode, r.bulk_filed_on, r.independent_lsa_unit, r.independent_lsa_evidence, r.change_mode, r.effective_from > $2 AS before_first, \
                 r.not_registered_reason_code AS rev_reason_code, r.not_registered_reason_label AS rev_reason_label, r.not_registered_reason_version AS rev_reason_version, \
                 r.is_abstract AS rev_is_abstract, \
-                (SELECT count(*) FROM employment_assignments a WHERE a.workplace_id = w.id \
-                   AND (a.superseded_at IS NULL OR a.superseded_at > $4) \
-                   AND ($4::timestamptz IS NULL OR a.created_at <= $4) \
-                   AND a.valid_from <= $2 AND (a.valid_to IS NULL OR a.valid_to > $2 OR a.valid_to_recorded_at > $4)) AS headcount \
+                0::bigint AS headcount \
          FROM (SELECT (jsonb_populate_record(NULL::workplaces, entity_known_row(to_jsonb(b), $4))).* FROM workplaces b) w \
          JOIN (SELECT (jsonb_populate_record(NULL::legal_entities, entity_known_row(to_jsonb(b), $4))).* FROM legal_entities b) e ON e.id = w.legal_entity_id \
          LEFT JOIN LATERAL (SELECT * FROM workplace_revisions x WHERE x.workplace_id = w.id \

@@ -18,6 +18,12 @@ fn internal(error: sqlx::Error) -> KernelError {
     KernelError::internal(format!("employment assignment end failed: {error}"))
 }
 
+/// The first non-employed day after the stored 마지막 근무일.
+#[must_use]
+pub fn retirement_date(last_day: Date) -> Date {
+    last_day.next_day().unwrap_or(last_day)
+}
+
 /// End every live assignment that runs past `last_day` on the day after it.
 /// An open row is closed in place (`valid_to` is set once, 0259); a row that
 /// already ends later is shortened by supersede + copy. Returns the rows ended.
@@ -29,7 +35,7 @@ pub async fn end_on_exit_in_tx(
     w: MoveWrite,
     last_day: Date,
 ) -> Result<u64, KernelError> {
-    let end = last_day.next_day().unwrap_or(last_day);
+    let end = retirement_date(last_day);
     let rows: Vec<(Uuid, Option<Date>)> = sqlx::query_as(
         "SELECT id, valid_to FROM employment_assignments WHERE org_id = $1 AND employee_id = $2 \
          AND superseded_at IS NULL AND valid_from < $3 AND (valid_to IS NULL OR valid_to > $3) FOR UPDATE",
@@ -74,7 +80,7 @@ pub async fn reopen_on_exit_in_tx(
     w: MoveWrite,
     last_day: Date,
 ) -> Result<u64, KernelError> {
-    let end = last_day.next_day().unwrap_or(last_day);
+    let end = retirement_date(last_day);
     let rows: Vec<(Uuid, Option<Date>)> = sqlx::query_as(
         "SELECT a.id, (SELECT min(b.valid_from) FROM employment_assignments b WHERE b.org_id = a.org_id \
            AND b.employee_id = a.employee_id AND b.superseded_at IS NULL AND b.valid_from >= $3) \
@@ -114,7 +120,7 @@ pub async fn rehire_in_tx(
     let Some(at) = unit_placement(conn, w.org_id, unit).await? else {
         return Ok(None);
     };
-    let entity = open_workplace_entity(conn, w.org_id, at.workplace_id).await?;
+    let entity = open_workplace_entity(conn, w.org_id, at.workplace_id, Some(from)).await?;
     let live: bool = sqlx::query_scalar(
         "SELECT EXISTS (SELECT 1 FROM employment_assignments WHERE org_id = $1 AND employee_id = $2 \
            AND superseded_at IS NULL AND (valid_to IS NULL OR valid_to > $3))",

@@ -1,6 +1,8 @@
 import type { koImportReview } from "../ko/import-review";
 
 export const enImportReview: Partial<Record<keyof typeof koImportReview, string>> = {
+  "importReview.reason.workplace_not_open_on_date": "Hire date precedes the workplace or employer opening date",
+  "importReview.info.workplace_not_open_on_date": "Placement starts on {date}. The original hire date is retained.",
   "importReview.title": "To check: {count, number}",
   "importReview.none": "Nothing to check. You can apply.",
   "importReview.caption": "{shown, number} of {count, number}",

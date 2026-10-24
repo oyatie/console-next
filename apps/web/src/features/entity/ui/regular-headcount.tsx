@@ -1,5 +1,7 @@
 import type { RegularWorkers } from "@console/api/pending";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
+import { todayKst } from "../../../lib/pure/today";
 import { Chip } from "../../../ui/chip";
 import { DerivedValue } from "../../../ui/field/derived-value";
 
@@ -8,7 +10,7 @@ import { DerivedValue } from "../../../ui/field/derived-value";
  * by the server, never typed. While the method is held for a labor attorney (BW-35) the server sends no value, so the
  * field says it is held, what it still needs, and the live roster count beside it, never as the headcount itself.
  */
-export function RegularHeadcount({ r }: { r: RegularWorkers }) {
+export function RegularHeadcount({ r, asOf }: { r: RegularWorkers; asOf?: string }) {
   return (
     <DerivedValue
       label={t("capture.headcount.label")}
@@ -20,7 +22,7 @@ export function RegularHeadcount({ r }: { r: RegularWorkers }) {
       }
       basis={
         <>
-          {t("capture.headcount.live", { count: r.live_headcount })}
+          {t("capture.headcount.live", { count: r.live_headcount, date: fmtDate(asOf ?? todayKst()) })}
           {r.missing.length > 0 && <> · {t("capture.headcount.missing")} {r.missing.map((m) => t(`capture.headcount.missing.${m}`)).join(", ")}</>}
         </>
       }

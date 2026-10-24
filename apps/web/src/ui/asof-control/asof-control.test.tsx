@@ -1,11 +1,12 @@
-import { beforeAll, expect, test } from "vitest";
+import { afterEach, beforeAll, expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { loadCatalog, t } from "@console/i18n";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { AsOfControl } from "./asof-control";
 import { nearestDate } from "./dates";
 
-beforeAll(() => loadCatalog("en"));
+beforeAll(() => Promise.all([loadCatalog("ko"), loadCatalog("en")]));
+afterEach(() => i18n.set("ko"));
 const today = "2026-10-09";
 const render = (props: Partial<Parameters<typeof AsOfControl>[0]> = {}) => renderToStaticMarkup(<AsOfControl today={today} value={today} onChange={() => undefined} {...props} />);
 
@@ -38,16 +39,27 @@ test("date markers are unique, sorted and selectable with native non-submit butt
   expect(html).toContain(t("asof.today"));
 });
 
-test("past, future and knowledge-date bands offer the read-only remedy", () => {
+test.each(["ko", "en"] as const)("%s dated bands show one date line and a return action without a read-only claim", (locale) => {
+  i18n.set(locale);
   const past = "2026-09-01", future = "2026-11-01", knownAt = "2026-09-15";
-  expect(render({ value: past })).toContain(t("asof.past", { date: fmtDate(past) }));
-  expect(render({ value: past, entity: true })).toContain(t("asof.recordPast", { date: fmtDate(past) }));
-  expect(render({ value: future })).toContain(t("asof.future", { date: fmtDate(future) }));
-  const known = render({ value: past, knownAt });
-  expect(known).toContain(t("asof.known", { date: fmtDate(past), known: fmtDate(knownAt) }));
-  expect(known).toContain(t("asof.readOnly"));
-  expect(known).toContain(t("asof.returnToday"));
-  expect(known).toContain(t("asof.knownAt"));
+  const cases = [
+    { props: { value: past }, title: t("asof.past", { date: fmtDate(past) }) },
+    { props: { value: past, entity: true }, title: t("asof.recordPast", { date: fmtDate(past) }) },
+    { props: { value: future }, title: t("asof.future", { date: fmtDate(future) }) },
+    { props: { value: past, knownAt }, title: t("asof.known", { date: fmtDate(past), known: fmtDate(knownAt) }) },
+  ];
+  for (const { props, title } of cases) {
+    const html = render(props);
+    const band = html.slice(html.indexOf('data-placement="page"'));
+    expect(band.match(/<strong[^>]*>(.*?)<\/strong>/)?.[1]).toBe(title);
+    expect(band.split(fmtDate(props.value))).toHaveLength(2);
+    expect(band).toContain(t("asof.returnToday"));
+    expect(band).not.toContain(t("asof.readOnly"));
+    expect(band).not.toContain('class="prose ');
+    expect(html).not.toMatch(/오늘\(|지금 상태|지금 재직/);
+  }
+  expect(render({ value: past, knownAt })).toContain(t("asof.knownAt"));
+  expect(render()).not.toContain('data-placement="page"');
   expect(render()).not.toContain(t("asof.readOnly"));
   expect(render({ knownAt: "" })).not.toContain('aria-invalid="true"');
 });

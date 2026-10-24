@@ -100,7 +100,9 @@ pub async fn remembered_for_run(
     let mut usable = BTreeMap::new();
     for (text, id) in std::mem::take(&mut memory.workplace_map) {
         let ok = match id {
-            Some(place) => open_workplace_entity(tx.as_mut(), org, place).await.is_ok(),
+            Some(place) => open_workplace_entity(tx.as_mut(), org, place, None)
+                .await
+                .is_ok(),
             None => true,
         };
         if ok {
@@ -147,6 +149,38 @@ pub async fn review_of(
     console_hr_domain::import::company_review::append_company_review(
         &mut queue, rows, plans, decisions, &cell,
     );
+    for plan in plans {
+        let Some(person) = &plan.new_person else {
+            continue;
+        };
+        let Some(workplace) = person.workplace_id else {
+            continue;
+        };
+        let opened: Option<time::Date> = sqlx::query_scalar("SELECT entity_workplace_opens_on($1)")
+            .bind(workplace)
+            .fetch_one(tx.as_mut())
+            .await?;
+        let hire = console_hr_domain::text::parse_yyyy_mm_dd(&person.hire_date)?;
+        if let Some(opened) = opened.filter(|opened| hire < *opened) {
+            queue
+                .items
+                .push(console_hr_domain::import::review::ReviewItem {
+                    source_column: None,
+                    id: format!("{}#workplace_not_open_on_date", plan.source_key),
+                    reason: "workplace_not_open_on_date",
+                    blocking: false,
+                    sheet: plan.sheet.clone(),
+                    row: Some(plan.row),
+                    cell: cell(&plan.source_key, "hire_date"),
+                    field: Some("hire_date"),
+                    value: Some(opened.to_string()),
+                    rows: 1,
+                    resolution: None,
+                    candidates: vec![],
+                });
+        }
+    }
+    queue.count = queue.items.len();
     let confirmed = console_entity_adapter_postgres::name_evidence::company_candidates(tx, org)
         .await
         .map_err(|e| HrError::internal(e.to_string()))?;

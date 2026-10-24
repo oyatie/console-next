@@ -8,7 +8,7 @@ macro_rules! current { () => { "WITH RECURSIVE today AS (SELECT (now() AT TIME Z
  FROM employees e LEFT JOIN employment_assignments a ON a.employee_id = e.id AND a.org_id = e.org_id \
  AND a.superseded_at IS NULL AND a.valid_from <= (SELECT d FROM today) \
  AND (a.valid_to IS NULL OR a.valid_to > (SELECT d FROM today)) \
- WHERE e.employment_status IN ('ACTIVE', 'ON_LEAVE', 'UNKNOWN') AND e.merged_into_employee_id IS NULL) " }; }
+ WHERE entity_employed_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AND e.merged_into_employee_id IS NULL) " }; }
 
 pub(crate) async fn records(
     tx: &mut Transaction<'_, Postgres>,

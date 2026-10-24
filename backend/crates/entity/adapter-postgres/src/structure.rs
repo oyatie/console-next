@@ -61,9 +61,16 @@ pub(crate) async fn compose(
     );
     let changed = crate::asof::dates::changed(tx, point).await?;
     let mut nodes = Vec::new();
-    for e in &entities {
+    for e in entities
+        .iter()
+        .filter(|e| !e.current.as_ref().is_some_and(|c| c.before_first_record))
+    {
         let mut wp_nodes = Vec::new();
-        for w in &e.workplaces {
+        for w in e
+            .workplaces
+            .iter()
+            .filter(|w| !w.current.as_ref().is_some_and(|c| c.before_first_record))
+        {
             let site = represented
                 .get(&w.id)
                 .filter(|s| tree.units.contains_key(s));

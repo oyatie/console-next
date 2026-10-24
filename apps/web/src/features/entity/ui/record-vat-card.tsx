@@ -32,7 +32,7 @@ export function VatCard({ e, act }: { e: LegalEntity; act: Act }) {
           <span className={s.sub}> {t("entityRecord.vat.priorityBasis")}</span>
         </FactRow>
         <FactRow label={t("entityRecord.field.largeGroup")} action={{ kind: "fix", onPress: () => act.field(f.largeGroup) }}>{f.largeGroup.current}</FactRow>
-        <div className={s.wideCell}><RegularHeadcount r={rw} /></div>
+        <div className={s.wideCell}><RegularHeadcount r={rw} asOf={e.as_of} /></div>
       </div>
     </section>
   );

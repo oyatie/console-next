@@ -10151,6 +10151,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/org-structure/units/{orgUnitId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Direct members from the same authorized snapshot as the chart. */
+        get: operations["getStructureMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/org-units": {
         parameters: {
             query?: never;
@@ -18344,6 +18361,11 @@ export interface components {
             contract_end_date?: string;
             /** @description The employment profile's type (REGULAR, CONTRACT, PART_TIME, INTERN); absent for a roster-import row with no profile. */
             employment_type?: string;
+            /**
+             * Format: date
+             * @description Effective date on which the current status began; exits use the first non-employed day.
+             */
+            status_since?: string;
             /**
              * Format: date
              * @description While ON_LEAVE, the expected return date of the leave that put the employee there; absent otherwise or when the leave named none.
@@ -50057,6 +50079,53 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
+            };
+        };
+    };
+    getStructureMembers: {
+        parameters: {
+            query?: {
+                as_of?: string;
+                known_at?: string;
+            };
+            header?: never;
+            path: {
+                orgUnitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Direct employed members, ordered by name; count is uncapped. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgUnitMembers"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Not permitted. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unit is not visible in the authorized snapshot. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid temporal coordinates. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

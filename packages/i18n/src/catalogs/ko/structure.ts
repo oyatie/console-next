@@ -26,7 +26,7 @@ export const koStructure = {
   "structure.loadFailed.detail": "연결이 끊겼거나 서버가 답하지 않았습니다 · 아래는 마지막으로 불러온 {at} 모습입니다",
   "structure.loadFailed.retry": "다시 시도",
   "structure.dismiss": "닫기",
-  "structure.caption": "오늘({date}) 기준 구조입니다 · 인원은 하위 조직을 포함한, 퇴직자를 제외한 재직자(휴직 포함)이며 고용형태와 관계없이 모두 셉니다 · 겸직은 주 소속에서만 셉니다",
+  "structure.caption": "{date} 기준 구조입니다 · 인원은 하위 조직을 포함한, 퇴직자를 제외한 재직자(휴직 포함)이며 고용형태와 관계없이 모두 셉니다 · 겸직은 주 소속에서만 셉니다",
   "structure.hint": "클릭 선택 · Shift 클릭 여러 개 · A 하위 추가 · M 이동 · Space 펼쳐 보기 · F 이 단위만 보기",
   "structure.collapseAll": "모두 접기",
   "structure.chart.label": "조직도",

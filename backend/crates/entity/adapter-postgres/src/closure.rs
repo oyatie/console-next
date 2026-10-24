@@ -30,10 +30,10 @@ pub(crate) async fn ensure_vacant(
                 WHERE p.valid_to IS NULL AND p.represents_workplace AND p.workplace_id IN (SELECT id FROM places)) \
          SELECT (SELECT count(DISTINCT x) FROM ( \
                    SELECT a.employee_id AS x FROM employment_assignments a JOIN employees e ON e.id = a.employee_id \
-                    WHERE a.superseded_at IS NULL AND (a.valid_to IS NULL OR a.valid_to > $3) AND e.employment_status <> 'EXITED' \
+                    WHERE a.superseded_at IS NULL AND a.valid_from <= $3 AND (a.valid_to IS NULL OR a.valid_to > $3) AND entity_employed_on($3, e.hire_on, e.exit_on, e.employment_status) \
                       AND (a.workplace_id IN (SELECT id FROM places) OR $2 AND a.legal_entity_id = $1) \
                    UNION SELECT e.id FROM employees e \
-                    WHERE e.org_unit_id IN (SELECT org_unit_id FROM sites) AND e.employment_status <> 'EXITED') people), \
+                    WHERE e.org_unit_id IN (SELECT org_unit_id FROM sites) AND entity_employed_on($3, e.hire_on, e.exit_on, e.employment_status)) people), \
                 (SELECT count(*) FROM org_unit_placements p WHERE p.valid_to IS NULL AND NOT p.represents_workplace \
                    AND (p.workplace_id IN (SELECT id FROM places) OR $2 AND p.legal_entity_id = $1)) \
                 + (SELECT count(*) FROM (SELECT DISTINCT ON (r.org_unit_id) r.attributes FROM org_unit_revisions r \

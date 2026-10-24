@@ -1,3 +1,4 @@
+import type { OrgStructure } from "@console/api/pending";
 import { useState, type ReactNode } from "react";
 import { getRouteApi } from "@tanstack/react-router";
 import { todayKst } from "../../../lib/pure/today";
@@ -33,7 +34,7 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
   /** The proposal card for `?act=` (the org slice). */
   proposal: ReactNode;
   /** The side panel of the one selected box (the org and entity slices). */
-  panel: (sel: string) => ReactNode;
+  panel: (sel: string, snapshot: OrgStructure, readOnly: boolean) => ReactNode;
   /** The sheets a panel's acts open (`?act=`), over the page. */
   sheets: ReactNode;
 }) {
@@ -97,7 +98,7 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
           <QueryState q={{ ...tree, error: tree.data ? null : tree.error }}>
             {() =>
               !s ? null
-              : empty ? (s.readOnly ? <EmptyState title={t("asof.noRecords")} reason={t("asof.readOnly")} /> : <FirstRun />)
+              : empty ? (s.readOnly ? <EmptyState title={t("asof.noRecords")} reason={null} /> : <FirstRun />)
               : view === "list" ? <RegistryView s={s} cmd={cmd} sel={sel} onSelect={select} />
               : view === "outline" ? <OutlineView s={s} cmd={cmd} sel={sel} onSelect={select} />
               : <ChartView key={focus ?? "tenant"} pick={jump} dimmed={!!tree.error} s={s} cmd={cmd} focusId={focus} onFocus={onFocus} sel={sel} onSelect={select} />
@@ -106,7 +107,7 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
         )}
         {/* The setup panel belongs to the home view (S1); a focused chart (S2) takes the full width. */}
         {proposing ? <aside className={css.side} aria-label={t("structure.side")}>{proposal}</aside>
-          : paneled && !cmd.readOnly ? <div className={css.side}>{panel(url.last!)}</div>
+          : paneled && tree.data ? <div className={css.side}>{panel(url.last!, tree.data, cmd.readOnly)}</div>
           : s?.phase === "SETUP" && !s.readOnly && view === "chart" && !focus && <SetupPanel s={s} first={empty} fixLink={fixLink} />}
       </div>
       {!cmd.readOnly && sheets}

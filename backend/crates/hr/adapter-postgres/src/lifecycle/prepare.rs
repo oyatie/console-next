@@ -70,7 +70,7 @@ pub async fn prepare_lifecycle_event(
     // Exit dates store 마지막 근무일: employment ends only after that day.
     let effective_date = parse_yyyy_mm_dd(&transition.effective_date)?;
     let scheduled = if matches!(transition.event_type.as_str(), "TERMINATE" | "OFFBOARD") {
-        effective_date >= today
+        console_entity_adapter_postgres::employment_end::retirement_date(effective_date) > today
     } else {
         effective_date > today
     };

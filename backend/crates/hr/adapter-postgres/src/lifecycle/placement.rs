@@ -178,7 +178,7 @@ pub async fn resolve_workplace_move(
     if !group && covering.workplace_id == Some(workplace) {
         return Ok(None);
     }
-    let entity = open_workplace_entity(tx.as_mut(), org, workplace)
+    let entity = open_workplace_entity(tx.as_mut(), org, workplace, Some(on))
         .await
         .map_err(coded)?;
     match (group, from == entity) {

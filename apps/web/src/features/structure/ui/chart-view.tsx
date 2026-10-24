@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { CornerDownRight, History } from "lucide-react";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { CommandError } from "../../../lib/react/command-error";
 import { focusSoon } from "../../../lib/react/announce";
 import { OrgCanvas, type CanvasHandle } from "../../../ui/org-canvas/org-canvas";
@@ -150,7 +151,7 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
   ) : cmd.last && !quiet ? receipt : note ? (
     <ChangeReceipt />
   ) : (
-    <p className={`${css.hint} card`}>{c.L.lod === "far" ? t("structureChart.farHint", { wrap: WRAP_SITES }) : c.focus.kind === "tenant" ? t("structure.caption", { date: todayKst() }) : t("structure.hint")}</p>
+    <p className={`${css.hint} card`}>{c.L.lod === "far" ? t("structureChart.farHint", { wrap: WRAP_SITES }) : c.focus.kind === "tenant" ? t("structure.caption", { date: fmtDate(s.asOf ?? todayKst()) }) : t("structure.hint")}</p>
   );
 
   return (

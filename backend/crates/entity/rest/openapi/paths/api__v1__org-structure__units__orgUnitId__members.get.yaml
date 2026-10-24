@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [entity]
+operationId: getStructureMembers
+summary: Direct members from the same authorized snapshot as the chart.
+security:
+- bearerAuth: []
+parameters:
+- name: orgUnitId
+  in: path
+  required: true
+  schema: {type: string, format: uuid}
+- name: as_of
+  in: query
+  schema: {type: string, format: date}
+- name: known_at
+  in: query
+  schema: {type: string}
+responses:
+  '200':
+    description: Direct employed members, ordered by name; count is uncapped.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OrgUnitMembers'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+  '404':
+    description: Unit is not visible in the authorized snapshot.
+  '422':
+    description: Invalid temporal coordinates.

@@ -26,7 +26,7 @@ export const enStructure: Record<keyof typeof koStructure, string> = {
   "structure.loadFailed.detail": "The connection dropped or the server did not answer · below is the chart as last loaded at {at}",
   "structure.loadFailed.retry": "Try again",
   "structure.dismiss": "Close",
-  "structure.caption": "Structure as of today ({date}) · headcount includes every unit below, counting employees on the payroll (on leave included) of every employment type · concurrent posts count only at the main post",
+  "structure.caption": "Structure as of {date} · headcount includes every unit below, counting employees on the payroll (on leave included) of every employment type · concurrent posts count only at the main post",
   "structure.hint": "Click to select · Shift-click for several · A add below · M move · Space expand · F show only this unit",
   "structure.collapseAll": "Collapse all",
   "structure.chart.label": "Org chart",

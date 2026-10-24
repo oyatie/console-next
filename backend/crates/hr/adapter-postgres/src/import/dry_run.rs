@@ -151,7 +151,7 @@ async fn check_decisions(
         require_assignable_org_unit(tx, *org.as_uuid(), *unit).await?;
     }
     for workplace in decisions.workplace_map.values().flatten() {
-        open_workplace_entity(tx.as_mut(), *org.as_uuid(), *workplace)
+        open_workplace_entity(tx.as_mut(), *org.as_uuid(), *workplace, None)
             .await
             .map_err(coded)?;
     }

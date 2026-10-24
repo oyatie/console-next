@@ -93,9 +93,10 @@ pub async fn open_workplace_entity(
     conn: &mut PgConnection,
     org: Uuid,
     workplace: Uuid,
+    on: Option<Date>,
 ) -> Result<Uuid, KernelError> {
-    let entity: Option<Uuid> = sqlx::query_scalar(
-        "SELECT w.legal_entity_id FROM workplaces w JOIN legal_entities e \
+    let entity: Option<(Uuid, Option<Date>)> = sqlx::query_as(
+        "SELECT w.legal_entity_id, entity_workplace_opens_on(w.id) FROM workplaces w JOIN legal_entities e \
            ON e.org_id = w.org_id AND e.id = w.legal_entity_id \
          WHERE w.org_id = $1 AND w.id = $2 AND w.voided_at IS NULL AND w.closed_on IS NULL \
            AND e.voided_at IS NULL AND e.closed_on IS NULL",
@@ -105,10 +106,17 @@ pub async fn open_workplace_entity(
     .fetch_optional(&mut *conn)
     .await
     .map_err(internal)?;
-    entity.ok_or_else(|| {
+    let (entity, opened) = entity.ok_or_else(|| {
         KernelError::validation("to_workplace_id must be an open 사업장")
             .with_code("workplace_not_open")
-    })
+    })?;
+    if on.zip(opened).is_some_and(|(on, opened)| on < opened) {
+        return Err(KernelError::validation(
+            "the workplace or its legal entity was not open on the placement date",
+        )
+        .with_code("workplace_not_open_on_date"));
+    }
+    Ok(entity)
 }
 
 /// The 법인's exact name on `on` when it has a confirmed, non-voided
@@ -196,6 +204,13 @@ pub async fn move_in_tx(
     to: MoveTarget,
     on: Date,
 ) -> Result<Placement, KernelError> {
+    let entity = open_workplace_entity(conn, w.org_id, to.workplace_id, Some(on)).await?;
+    if entity != to.legal_entity_id {
+        return Err(
+            KernelError::validation("the workplace belongs to another legal entity")
+                .with_code("workplace_of_other_entity"),
+        );
+    }
     if later_exists(conn, w, on, None).await? {
         return Err(later_refusal());
     }

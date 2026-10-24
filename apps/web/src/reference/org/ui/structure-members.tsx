@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { t } from "@console/i18n";
 import { get } from "../../../lib/query";
+import { todayKst } from "../../../lib/pure/today";
 import { useFreshOnArrival } from "../../../lib/react/arrival";
 import { useCan } from "../../authz/ui/use-can";
 import { Chip } from "../../../ui/chip";
@@ -21,16 +22,19 @@ export function Members({
   unitId,
   total,
   expected,
-  joiners,
+  joiners, as_of, known_at,
 }: {
   unitId?: string;
   total: number;
   expected: number;
   joiners?: number;
+  as_of?: string;
+  known_at?: string;
 }) {
   const can = useCan();
   const directory = can("employee_directory_read", "all");
-  const read = { ...get("/api/v1/org-units/{id}", { params: { path: { id: unitId ?? "" } } }), enabled: Boolean(unitId) };
+  const historic = Boolean((as_of && as_of !== todayKst()) || known_at);
+  const read = { ...get("/api/v1/org-structure/units/{orgUnitId}/members", { params: { path: { orgUnitId: unitId ?? "" }, query: { as_of, known_at } } }), enabled: Boolean(unitId) };
   // A list a command changed since it was cached (someone registered here) holds its rows until re-read, so a row
   // landing late never pushes the list under the pointer.
   const q = useFreshOnArrival(useQuery(read), read);
@@ -39,18 +43,18 @@ export function Members({
       // Matching the preview's (name, id) order covers every displayed joiner within SHOWN rows.
       params: { query: { org_unit_id: unitId ?? "", status: ["PRE_HIRE"], sort: "name", limit: SHOWN } },
     }),
-    enabled: Boolean(unitId) && directory,
+    enabled: Boolean(unitId) && directory && !historic,
   };
   const preHireQ = useFreshOnArrival(useQuery(preHireRead), preHireRead);
-  const items = q.data?.members.items ?? [];
-  const preHire = directory && !preHireQ.isError ? preHireQ.data : undefined;
+  const items = q.data?.items ?? [];
+  const preHire = !historic && directory && !preHireQ.isError ? preHireQ.data : undefined;
   const preHireIds = new Set((preHire?.items ?? []).map((m) => m.id));
-  const preHireCount = joiners ?? preHire?.total;
+  const preHireCount = historic ? undefined : joiners ?? preHire?.total;
   // The count is known from the structure before the names arrive: their rows are held, so nothing below moves.
   const held = q.isPending && unitId ? Math.min(expected, SHOWN) : 0;
   const empty = held === 0 && items.length === 0;
   let joinerNote: string | undefined;
-  if (unitId) {
+  if (unitId && !historic) {
     if (!directory && preHireCount === undefined) joinerNote = t("orgStructure.members.joinersRestricted");
     else if (directory && preHireQ.isError) joinerNote = t("orgStructure.members.joinersFailed");
     else if (directory && preHireQ.isPending && preHireCount === undefined) {
@@ -96,7 +100,7 @@ export function Members({
           })}
         </ul>
       )}
-      {directory && unitId && total > 0 && (
+      {!historic && directory && unitId && total > 0 && (
         <Link to="/people" search={{ unit: unitId }} className="row">
           {t("orgStructure.members.all", { count: total })}
           <ChevronRight size={14} aria-hidden />

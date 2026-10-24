@@ -84,6 +84,69 @@ async fn company(i: &Importer, name: &str) -> String {
         .unwrap()
 }
 
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn regression_an_import_before_workplace_opening_needs_review_and_keeps_the_hire_date(
+    pool: PgPool,
+) {
+    let i = importer(pool).await;
+    let workplace = headquarters(&i).await;
+    let run = i
+        .preview(
+            "승계명부.xlsx",
+            &[table(
+                "명부",
+                0,
+                &[
+                    &["사번", "성명", "입사일", "고용형태", "근무지"],
+                    &["EARLY-1", "김승계", "2016-03-02", "정규직", "본사"],
+                    &["OPEN-1", "이개설", "2020-01-01", "정규직", "본사"],
+                ],
+            )],
+            &WorkbookMappingRequest::default(),
+        )
+        .await
+        .unwrap()
+        .run_id;
+    let mut answers = decisions();
+    answers.workplace_map.insert("본사".into(), Some(workplace));
+    let plan = i.dry_run(run, answers).await;
+    assert_eq!(plan.review.blocking, 0, "{:?}", plan.review.items);
+    let opening_items: Vec<_> = plan
+        .review
+        .items
+        .iter()
+        .filter(|item| item.reason == "workplace_not_open_on_date")
+        .collect();
+    assert_eq!(opening_items.len(), 1, "{:?}", plan.review.items);
+    let item = opening_items[0];
+    assert!(!item.blocking);
+    assert_eq!(item.sheet, "명부");
+    assert_eq!(item.row, Some(2));
+    assert_eq!(item.cell.as_deref(), Some("C2"));
+    assert_eq!(item.field, Some("hire_date"));
+    assert_eq!(item.value.as_deref(), Some("2020-01-01"));
+    assert!(item.resolution.is_none());
+    i.apply(run, &plan.dry_run_digest).await.unwrap();
+    let placed: Vec<(String, String, String)> = sqlx::query_as(
+        "SELECT e.name, e.hire_date, a.valid_from::text FROM employees e \
+         JOIN employment_assignments a ON a.org_id=e.org_id AND a.employee_id=e.id \
+         WHERE e.org_id=$1 AND a.workplace_id=$2 AND a.superseded_at IS NULL \
+         ORDER BY e.employee_number",
+    )
+    .bind(i.org())
+    .bind(workplace)
+    .fetch_all(&i.owner)
+    .await
+    .unwrap();
+    assert_eq!(
+        placed,
+        vec![
+            ("김승계".into(), "2016-03-02".into(), "2020-01-01".into()),
+            ("이개설".into(), "2020-01-01".into(), "2020-01-01".into()),
+        ]
+    );
+}
+
 /// regression (r3:hire-01, hire-22): every person of a sheet with no 법인
 /// column got the sheet's name (「퇴직자 명단」) as their 법인, and a former
 /// employee lost their 사업장.

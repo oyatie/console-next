@@ -178,7 +178,12 @@ async fn place(
         actor_id: actor,
         command_id,
     };
-    match hire_in_tx(tx.as_mut(), write, workplace, hire).await {
+    let opened: Option<time::Date> = sqlx::query_scalar("SELECT entity_workplace_opens_on($1)")
+        .bind(workplace)
+        .fetch_one(tx.as_mut())
+        .await?;
+    let from = opened.map_or(hire, |opened| hire.max(opened));
+    match hire_in_tx(tx.as_mut(), write, workplace, from).await {
         Ok(_) => Ok(Some(
             sqlx::query_scalar(
                 "SELECT id FROM employment_assignments \

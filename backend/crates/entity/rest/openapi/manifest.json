@@ -136,6 +136,9 @@
     "/api/v1/org-structure/units/{orgUnitId}/erase": [
       "post"
     ],
+    "/api/v1/org-structure/units/{orgUnitId}/members": [
+      "get"
+    ],
     "/api/v1/ref/address-detail": [
       "get"
     ],
@@ -330,6 +333,7 @@
     "GroupTransferFacts",
     "KrAddress",
     "MobilePasskeyStepUpEnvelope",
+    "OrgUnitMembers",
     "Uuid"
   ]
 }

@@ -111,7 +111,7 @@ pub(crate) async fn ensure_unused(
                 AND (a.workplace_id = $1 OR $2 AND (a.legal_entity_id = $1 \
                      OR a.workplace_id IN (SELECT w.id FROM workplaces w WHERE w.legal_entity_id = $1))) \
               UNION SELECT e.id FROM employees e \
-               WHERE e.org_unit_id = ANY($3) AND e.employment_status <> 'EXITED') x), \
+               WHERE e.org_unit_id = ANY($3) AND entity_employed_on(entity_today(), e.hire_on, e.exit_on, e.employment_status)) x), \
            (SELECT count(*) FROM org_unit_placements p WHERE p.valid_to IS NULL AND NOT p.represents_workplace \
               AND (p.workplace_id = $1 OR $2 AND (p.legal_entity_id = $1 \
                    OR p.workplace_id IN (SELECT w.id FROM workplaces w WHERE w.legal_entity_id = $1))))",

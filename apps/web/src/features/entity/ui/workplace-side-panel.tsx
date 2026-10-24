@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { MapPin } from "lucide-react";
 import type { LegalEntity, Workplace } from "@console/api/pending";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { labeled, RECORD_STATUS } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
 import { Chip } from "../../../ui/chip";
@@ -17,27 +18,28 @@ import { WorkplaceInsurance } from "./workplace-insurance-table";
 import { Members } from "../../../reference/org/ui/structure-members";
 import { WorkplaceActions } from "./workplace-actions";
 import { WorkplaceFacts } from "./workplace-facts";
+import { lockOf, RecordLockProvider } from "./use-record-lock";
 import { focusSoon } from "../../../lib/react/announce";
 import css from "../../../reference/org/ui/structure.module.css";
 
 /** A workplace beside the chart (S5-panel): its numbers, facts with their verbs, social insurance, people, actions and history. */
-export function WorkplaceSidePanel({ place, tenant, setup, onClose, onAct }: WorkplacePanelProps) {
-  const q = useQuery(entityQuery(place.entity.id));
+export function WorkplaceSidePanel({ place, tenant, setup, onClose, onAct, as_of, known_at, readOnly = false }: WorkplacePanelProps) {
+  const q = useQuery(entityQuery(place.entity.id, { as_of, known_at }));
   return (
     <QueryState q={q}>
       {(e) => {
         const w = e.workplaces.find((x) => x.id === place.node.id);
-        return w ? <Body e={e} w={w} place={place} tenant={tenant} setup={setup} onClose={onClose} onAct={onAct} /> : null;
+        return w ? <RecordLockProvider value={readOnly ? "asof" : lockOf(e)}><Body e={e} w={w} place={place} tenant={tenant} setup={setup} onClose={onClose} onAct={onAct} as_of={as_of} known_at={known_at} readOnly={readOnly || Boolean(e.read_only)} /></RecordLockProvider> : null;
       }}
     </QueryState>
   );
 }
 
-function Body({ e, w, place, setup, onClose, onAct }: WorkplacePanelProps & { e: LegalEntity; w: Workplace }) {
+function Body({ e, w, place, setup, onClose, onAct, as_of, known_at, readOnly = false }: WorkplacePanelProps & { e: LegalEntity; w: Workplace }) {
   const kinds = useQuery(kindsQuery).data?.items;
-  const history = useQuery({ ...workplaceHistoryQuery(w.id), retry: false });
+  const history = useQuery({ ...workplaceHistoryQuery(w.id), retry: false, select: (data) => ({ ...data, items: data.items.filter((r) => (!as_of || r.effective_from <= as_of) && (!known_at || Date.parse(r.recorded_at) <= Date.parse(known_at))) }) });
   const n = place.node;
-  const name = workplaceName(w);
+  const name = readOnly ? n.name : workplaceName(w);
   const st = labeled(RECORD_STATUS, w.current?.status ?? "CONTINUING");
   const toHistory = () => (document.getElementById("wp-history")?.scrollIntoView({ block: "start" }), focusSoon("wp-history-h"));
   return (
@@ -49,13 +51,14 @@ function Body({ e, w, place, setup, onClose, onAct }: WorkplacePanelProps & { e:
         <>
           {w.kind_code && <Chip>{kindName(kinds, w.kind_code)}</Chip>}
           <Chip tone={st.tone}>{st.label}</Chip>
+          {as_of && <Chip>{t("orgStructure.asOf", { date: fmtDate(as_of) })}</Chip>}
         </>
       }
-      open={<Link to="/org/entities/$id" params={{ id: e.id }} search={{ wp: w.id }} className="btn btn--ghost" aria-label={t("orgStructure.openFull", { name })}><FullIcon /></Link>}
+      open={<Link to="/org/entities/$id" params={{ id: e.id }} search={{ wp: w.id, as_of, known_at }} className="btn btn--ghost" aria-label={t("orgStructure.openFull", { name })}><FullIcon /></Link>}
       anchors={[
         { id: "wp-basic", label: t("orgStructure.tab.basic") },
         { id: "wp-insurance", label: t("workplace.field.insurance") },
-        { id: "wp-actions", label: t("orgStructure.tab.actions") },
+        ...(!readOnly ? [{ id: "wp-actions", label: t("orgStructure.tab.actions") }] : []),
         { id: "wp-people", label: t("orgStructure.tab.people") },
         { id: "wp-history", label: t("orgStructure.tab.history", { count: history.data?.items.length ?? 0 }) },
       ]}
@@ -75,11 +78,11 @@ function Body({ e, w, place, setup, onClose, onAct }: WorkplacePanelProps & { e:
       <Sec id="wp-insurance" title={t("orgStructure.wp.insurance")}>
         <WorkplaceInsurance e={e} w={w} onHistory={toHistory} />
       </Sec>
-      <Sec id="wp-actions" title={t("orgStructure.tab.actions")}>
+      {!readOnly && <Sec id="wp-actions" title={t("orgStructure.tab.actions")}>
         {w.can_manage ? <WorkplaceActions place={place} setup={setup} onAct={onAct} /> : <p className="muted">{t("entityOps.lock.reachWorkplace")}</p>}
-      </Sec>
+      </Sec>}
       <Sec id="wp-people" title={t("orgStructure.wp.people", { count: direct(n) })}>
-        <Members unitId={n.org_unit_id} total={n.headcount} expected={direct(n)} />
+        <Members unitId={n.org_unit_id} total={n.headcount} expected={direct(n)} as_of={as_of} known_at={known_at} />
       </Sec>
       <Sec id="wp-history" title={t("entity.history.title")}>
         <History target={{ id: e.id, wp: w.id }} q={history} subject={name} known={w.current ? [w.current] : []} />

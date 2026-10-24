@@ -27,17 +27,11 @@ const EXTERNAL_SCHEMAS: &[&str] = &[
     "GroupTransferFacts",
     "KrAddress",
     "MobilePasskeyStepUpEnvelope",
+    "OrgUnitMembers",
     "Uuid",
 ];
 
 const PATHS: &[PathItem] = &[
-    PathItem {
-        path: "/api/v1/workplaces",
-        operations: &[Operation {
-            method: "get",
-            body: include_str!("../openapi/paths/api__v1__workplaces.get.yaml"),
-        }],
-    },
     PathItem {
         path: "/api/v1/business-registrations/{registrationId}",
         operations: &[Operation {
@@ -449,6 +443,15 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/org-structure/units/{orgUnitId}/members",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../openapi/paths/api__v1__org-structure__units__orgUnitId__members.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/ref/address-detail",
         operations: &[Operation {
             method: "get",
@@ -487,6 +490,13 @@ const PATHS: &[PathItem] = &[
         operations: &[Operation {
             method: "patch",
             body: include_str!("../openapi/paths/api__v1__workplace-kinds__code.patch.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/workplaces",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__workplaces.get.yaml"),
         }],
     },
     PathItem {

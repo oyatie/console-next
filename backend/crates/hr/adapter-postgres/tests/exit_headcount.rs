@@ -27,6 +27,7 @@ struct World {
     actor: Actor,
     employee: Uuid,
     workplace: Uuid,
+    unit: Uuid,
     today: Date,
 }
 
@@ -62,6 +63,7 @@ async fn world(owner: &PgPool) -> World {
         actor,
         employee,
         workplace,
+        unit,
         today,
     }
 }
@@ -76,7 +78,7 @@ impl World {
         );
         let report: ReportEmployeeExitCaseRequest = serde_json::from_value(json!({
             "employee_id": self.employee, "effective_exit_date": last_day.to_string(),
-            "site_manager_note": "개인 사정으로 퇴직",
+            "site_manager_note": "개인 사정으로 퇴직", "exit_reason_code": "PERSONAL",
         }))
         .unwrap();
         let (_, case) = self
@@ -133,6 +135,19 @@ impl World {
                     .await
                     .unwrap();
                 assert_eq!(self.count(&chart), expected, "chart at {date}");
+                // The fixture's SITE was recorded today; assert its direct placement from then onward.
+                if date >= self.today {
+                    let node = chart
+                        .entities
+                        .iter()
+                        .flat_map(|e| &e.children)
+                        .find(|w| w.id == self.workplace)
+                        .unwrap();
+                    assert_eq!(
+                        node.direct_headcount, expected,
+                        "direct SITE members at {date}"
+                    );
+                }
                 let list = self
                     .store
                     .list_entities_at(&self.actor, false, options)
@@ -185,7 +200,7 @@ async fn reported_last_working_day_counts_until_the_next_day(owner: PgPool) {
         w.state(&owner).await,
         ("EXITED".into(), "APPLIED".into(), w.today.to_string())
     );
-    assert_eq!(w.live().await, 0);
+    assert_eq!(w.live().await, 1);
     assert_eq!(
         w.hr.apply_due(w.today.next_day().unwrap()).await.unwrap(),
         0
@@ -253,6 +268,62 @@ async fn legacy_offboard_waits_until_after_the_last_working_day(owner: PgPool) {
         w.hr.apply_due(last_day.next_day().unwrap()).await.unwrap(),
         1
     );
-    assert_eq!(w.live().await, 0);
+    assert_eq!(w.live().await, 1);
     w.boundary(&owner, last_day).await;
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_writer_recorded_future_rehire_waits_and_preserves_the_original_period(owner: PgPool) {
+    let w = world(&owner).await;
+    let last_day = w.today - Duration::days(5);
+    w.confirm(last_day).await;
+    let hired = w.today + Duration::days(10);
+    let principal = Principal::new(
+        w.actor.user,
+        w.actor.org,
+        BTreeSet::from([Role::SuperAdmin]),
+        BranchScope::All,
+    );
+    let request = serde_json::from_value(json!({
+        "hire_date": hired.to_string(), "employment_type": "REGULAR", "org_unit_id": w.unit,
+        "position": "사원", "phone": "010-1234-5678", "base_pay_won": 3_000_000,
+        "pay_unit": "MONTHLY", "idempotency_key": Uuid::new_v4().to_string(),
+    }))
+    .unwrap();
+    let (_, detail) =
+        w.hr.rehire_employee(principal, w.employee, request)
+            .await
+            .unwrap();
+    assert_eq!(detail.employee.status.as_deref(), Some("PRE_HIRE"));
+    assert_eq!(
+        detail.employee.hire_date.as_deref(),
+        Some(hired.to_string().as_str())
+    );
+    assert_eq!(w.live().await, 0);
+    let cutoff = sqlx::query_scalar("SELECT clock_timestamp()")
+        .fetch_one(&owner)
+        .await
+        .unwrap();
+    for known_at in [None, Some(cutoff)] {
+        for (date, expected) in [
+            (last_day, 1),
+            (last_day + Duration::days(1), 0),
+            (w.today, 0),
+            (hired - Duration::days(1), 0),
+            (hired, 1),
+        ] {
+            let chart = w
+                .store
+                .org_structure_at(
+                    &w.actor,
+                    ReadOptions {
+                        as_of: Some(date),
+                        known_at,
+                    },
+                )
+                .await
+                .unwrap();
+            assert_eq!(w.count(&chart), expected, "rehire boundary at {date}");
+        }
+    }
 }

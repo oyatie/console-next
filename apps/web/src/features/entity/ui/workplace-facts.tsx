@@ -102,8 +102,8 @@ export function WorkplaceFacts({ e, w, place, onAct, onHistory }: { e: LegalEnti
                   {t("workplaceRegChange.action")}
                 </Button>
               )}
-              {manage && !why && !reg.closed_on && <Link to="/org/entities/$id" params={{ id: e.id }} search={{ wp: w.id, reissue: reg.id }} className="link" aria-label={t("entityReissue.actionOf", { brn: reg.brn?.display ?? "" })}>{t("entityReissue.action")}</Link>}
-              {place && <Link to="/org/entities/$id" params={{ id: e.id }} className="link">{t("orgStructure.open")}</Link>}
+              {manage && !why && !reg.closed_on && <Link to="/org/entities/$id" params={{ id: e.id }} search={{ as_of: e.as_of, known_at: e.known_at ?? undefined, wp: w.id, reissue: reg.id }} className="link" aria-label={t("entityReissue.actionOf", { brn: reg.brn?.display ?? "" })}>{t("entityReissue.action")}</Link>}
+              {place && <Link to="/org/entities/$id" params={{ id: e.id }} search={{ as_of: e.as_of, known_at: e.known_at ?? undefined }} className="link">{t("orgStructure.open")}</Link>}
             </div>
           ),
         }

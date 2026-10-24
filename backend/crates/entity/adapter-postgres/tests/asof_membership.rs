@@ -16,6 +16,8 @@ use uuid::Uuid;
 
 #[path = "asof_membership/exits.rs"]
 mod exits;
+#[path = "asof_membership/future_rehire.rs"]
+mod future_rehire;
 
 struct World {
     store: PgEntityStore,

@@ -37,6 +37,24 @@ macro_rules! leave_return_lateral {
     };
 }
 
+/// `ss`: when the current status began; stored exit dates are the last working day.
+#[macro_export]
+macro_rules! status_since_lateral {
+    () => {
+        " LEFT JOIN LATERAL (SELECT CASE WHEN e.employment_status = 'EXITED' \
+             THEN entity_retirement_on(entity_try_iso_date(COALESCE(opened.effective_date,e.exit_date)))::TEXT \
+             ELSE COALESCE(opened.effective_date,e.hire_date) END AS status_since \
+           FROM (SELECT (SELECT l.effective_date FROM employee_lifecycle_events l \
+             WHERE l.org_id = e.org_id AND l.employee_id = e.id AND l.state = 'APPLIED' \
+               AND l.event_type <> 'RESCIND' AND l.to_status = e.employment_status \
+               AND l.from_status IS DISTINCT FROM l.to_status \
+               AND NOT EXISTS (SELECT 1 FROM employee_lifecycle_events v \
+                 WHERE v.org_id = l.org_id AND v.employee_id = l.employee_id \
+                   AND v.voids_event_id = l.id AND v.state NOT IN ('CANCELLED','APPLY_FAILED')) \
+             ORDER BY l.effective_date DESC,l.created_at DESC,l.id DESC LIMIT 1) AS effective_date) opened) ss ON TRUE "
+    };
+}
+
 /// `ea`: the employee's 법인 / 사업장 by id (E-S3a): the live assignment
 /// covering today (KST), else the last one before it (an exited employee), else
 /// the first future one (a pre-hire). Superseded rows never count.
@@ -81,6 +99,7 @@ const FILTERED_FROM: &str = concat!(
        ORDER BY n.effective_date, n.created_at LIMIT 1) ne ON TRUE",
     failed_event_lateral!(),
     leave_return_lateral!(),
+    status_since_lateral!(),
     assignment_lateral!(),
     " WHERE TRUE"
 );

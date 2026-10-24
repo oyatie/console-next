@@ -38,7 +38,7 @@ export function RecordAside({ e, phase, depts, docs, act, onTab }: { e: LegalEnt
   return (
     <aside className={s.aside}>
       <section className="card" aria-labelledby="state-title">
-        <div className={s.cardHead}><h2 id="state-title" className={s.cardTitle}>{t("entityRecord.state.title")}</h2><Chip tone={setup ? "ok" : "info"}>{t(setup ? "entityRecord.phase.setup" : "entityRecord.phase.operating")}</Chip></div>
+        <div className={s.cardHead}><h2 id="state-title" className={s.cardTitle}>{t("entityRecord.state.title", { date: fmtDate(e.as_of ?? todayKst()) })}</h2><Chip tone={setup ? "ok" : "info"}>{t(setup ? "entityRecord.phase.setup" : "entityRecord.phase.operating")}</Chip></div>
         <div className={s.cardBody}>
           <div className={s.stats}>
             <div><small>{t("entityRecord.state.people")}</small><b className="num">{fmtNumber(headcount(e))}</b></div>
