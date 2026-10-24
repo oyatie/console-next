@@ -88,7 +88,9 @@ test("identifier correction: a second person approves, requester applies, and a 
   // The notice arrived live. Reopen the pre-grant stream under its new access scope (period-unlock-approve).
   await reviewer.reload();
   await passkeyLogin(reviewer);
+  const confirmed = reviewer.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/notice"));
   await notice.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
+  expect((await confirmed).status()).toBe(200);
   // The confirmation and its SSE hint can restart an in-flight inbox read.
   await expect(notice).toBeHidden({ timeout: 20_000 });
   letGrantsAge(unique(slug), "김검토");
