@@ -8,6 +8,32 @@ import { test } from "node:test";
 import { load } from "js-yaml";
 import "./ci-regressions.test.mjs";
 
+test("CI folds shard durations into restored history with the existing rolling average", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-rolling-timings-"));
+  try {
+    mkdirSync(path.join(dir, "scripts"));
+    copyFileSync(new URL("./e2e-timings.mjs", import.meta.url), path.join(dir, "scripts/e2e-timings.mjs"));
+    mkdirSync(path.join(dir, ".cache/e2e-timings"), { recursive: true });
+    const file = path.join(dir, ".cache/e2e-timings/timings.json");
+    const at = Date.now();
+    writeFileSync(file, JSON.stringify({ untouched: { s: 8, at }, repeated: { s: 20, at }, stale: { s: 4, at: 0 } }));
+    for (const [shard, values] of [[1, { repeated: { s: 40, at } }], [2, { added: { s: 12, at } }]]) {
+      const target = path.join(dir, `.cache/ci/e2e-collected/shard-${shard}`);
+      mkdirSync(target, { recursive: true });
+      writeFileSync(path.join(target, "timings.json"), JSON.stringify(values));
+    }
+    const wf = load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
+    const step = wf.jobs["ci-ok"].steps.find((s) => s.name === "Merge measured durations");
+    const result = spawnSync("bash", ["-e", "-c", step.run], { cwd: dir, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    const timings = JSON.parse(readFileSync(file, "utf8"));
+    assert.deepEqual(timings.untouched, { s: 8, at });
+    assert.equal(timings.repeated.s, 30);
+    assert.equal(timings.added.s, 12);
+    assert.equal(timings.stale, undefined);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("JUnit baseline reports known reds, refuses new reds, crashes, missing proof and expired quarantine", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-baseline-"));
   try {
