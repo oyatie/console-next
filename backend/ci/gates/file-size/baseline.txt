@@ -45,14 +45,14 @@ app/tests/org_change_api.rs	1735
 app/tests/org_units_api.rs	716
 app/tests/platform_onboarding_e2e.rs	544
 app/tests/purchase_request_collection_api.rs	645
-app/tests/realtime_authority.rs	660
+app/tests/realtime_authority.rs	649
 app/tests/recruiting_pipeline_api.rs	782
 app/tests/registry_api.rs	577
 app/tests/search_api.rs	505
 app/tests/submittable_definitions_api.rs	385
 app/tests/workbench_native_api.rs	619
 app/tests/workflow_automation_triggers.rs	333
-app/tests/workflow_four_eyes_publish.rs	967
+app/tests/workflow_four_eyes_publish.rs	956
 app/tests/workflow_object_context_api.rs	564
 app/tests/workflow_run_read_surface.rs	606
 app/tests/workflow_runtime_finalize_api.rs	835
