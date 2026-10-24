@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 
 pub(crate) enum Prepared {
-    Replay(console_entity_application::registration_check::CheckEvidence),
+    Replay(Box<console_entity_application::registration_check::CheckEvidence>),
     Current(UserValidation),
 }
 

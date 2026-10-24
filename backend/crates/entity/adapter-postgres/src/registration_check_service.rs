@@ -69,9 +69,9 @@ impl PgEntityStore {
                     let check_id = serde_json::from_value::<Outcome>(done)?
                         .target
                         .ok_or_else(|| Refusal::not_found("registration_not_found"))?;
-                    return Ok::<_, PgEntityError>(Prepared::Replay(
+                    return Ok::<_, PgEntityError>(Prepared::Replay(Box::new(
                         evidence(tx, check_id, port_read.reflection_lag_days()).await?,
-                    ));
+                    )));
                 }
                 let current = values(tx, &actor_read, id, port_read.pack(), kind, false).await?;
                 if let Some(expected) = &expected {
@@ -84,7 +84,7 @@ impl PgEntityStore {
         .await?;
         let current = match prepared {
             Prepared::Current(values) => values,
-            Prepared::Replay(done) => return Ok(done),
+            Prepared::Replay(done) => return Ok(*done),
         };
         let checked_at = time::OffsetDateTime::now_utc();
         let answer = call(port.as_ref(), kind, &current).await?;
