@@ -23,6 +23,12 @@ test("ten route changes use the accepted session with zero consent requests", as
   await expect(ensureEnrolling()).rejects.toMatchObject({ options: { to: "/" } });
 });
 
+test("tenant sessions keep the platform not-found guard without a consent read", async () => {
+  session.set(pair(true));
+  await expect(ensureSession({ location: { pathname: "/platform" } })).rejects.toMatchObject({ isNotFound: true });
+  expect(fetch).toHaveBeenCalledTimes(0);
+});
+
 test.each([false, undefined])("consent %s keeps a deep link on setup without a request", async (accepted) => {
   session.set(pair(accepted));
   await expect(ensureSession({ location: { pathname: "/people/new" } })).rejects.toMatchObject({ options: { to: "/setup-passkey" } });

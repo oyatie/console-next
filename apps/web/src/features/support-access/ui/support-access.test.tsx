@@ -3,21 +3,22 @@ import type { ReactNode } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ApiError } from "../../../reference/support-access/api";
+import { readIdentity } from "../../../lib/query";
 import { ActiveSupportBanner, SupportAccess, SupportAccessIndicator } from "./support-access";
 import { activeSupportQuery, supportSessionsQuery, supportRefusal, type SupportSession } from "../../../reference/support-access/api";
 
 const state = vi.hoisted(() => ({
   data: undefined as unknown, active: undefined as unknown, error: undefined as unknown,
   pending: false, calls: [] as { run: (input: unknown, key: string) => Promise<unknown> }[],
-  get: vi.fn(), post: vi.fn(),
+  get: vi.fn(), post: vi.fn(), query: vi.fn(), auth: { token: null as string | null },
 }));
-vi.mock("@console/api", async (original) => ({ ...await original<object>(), api: { GET: state.get, POST: state.post } }));
+vi.mock("@console/api", async (original) => ({ ...await original<object>(), api: { GET: state.get, POST: state.post }, session: state.auth }));
 vi.mock("@console/i18n", async (original) => ({ ...await original<object>(), t: (key: string) => key, isMessageId: () => true }));
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({ review: undefined }), useNavigate: () => vi.fn() }), Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-to={to}>{children}</span> }));
-vi.mock("@tanstack/react-query", async (original) => ({ ...await original<object>(), useQuery: (q: unknown) => ({
-  data: q === activeSupportQuery ? state.active : q === supportSessionsQuery ? state.data : undefined,
+vi.mock("@tanstack/react-query", async (original) => ({ ...await original<object>(), useQuery: (q: Parameters<typeof readIdentity>[0]) => { state.query(q); return {
+  data: readIdentity(q) === readIdentity(activeSupportQuery) ? state.active : readIdentity(q) === readIdentity(supportSessionsQuery) ? state.data : undefined,
   error: state.error, isError: !!state.error, isPending: state.pending, refetch: vi.fn(),
-}) }));
+}; } }));
 vi.mock("../../../lib/react/command", () => ({ useCommand: (opts: typeof state.calls[number]) => {
   state.calls.push(opts);
   return { mutate: vi.fn(), isPending: false, error: undefined };
@@ -34,8 +35,18 @@ beforeEach(() => {
   state.data = { sessions: [session], can_approve: true };
   state.active = { sessions: [], can_approve: true, pending_count: 0, pending_approvals: [] };
   state.error = undefined; state.pending = false; state.calls = [];
-  state.get.mockReset(); state.post.mockReset();
+  state.get.mockReset(); state.post.mockReset(); state.query.mockReset();
+  state.auth.token = null;
   state.post.mockResolvedValue({ data: {}, response: new Response(null, { status: 200 }) });
+});
+
+test("support reads wait for a session token", () => {
+  renderToStaticMarkup(<><ActiveSupportBanner /><SupportAccessIndicator /><SupportAccess /></>);
+  expect(state.query.mock.calls.map(([q]) => q.enabled)).toEqual([false, false, false]);
+  state.auth.token = "session-token";
+  state.query.mockClear();
+  renderToStaticMarkup(<><ActiveSupportBanner /><SupportAccessIndicator /><SupportAccess /></>);
+  expect(state.query.mock.calls.map(([q]) => q.enabled)).toEqual([true, true, true]);
 });
 
 const refusals = [
