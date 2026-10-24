@@ -613,3 +613,80 @@ and `backend/app/tests/inbox_profile_ci1.rs` was removed. The lane's local
 `db.env` admin credential was rotated after a diagnostic printed its temporary
 URI; both admin URLs were updated and verified without changing runtime or owner
 credentials. No credential or diagnostic fixture was added to the repository.
+
+## Round 16 checkout replay
+
+The public repository was cloned with full history and remote refs, detached at
+the candidate commits, and the local `dev` branch removed. Unpublished fixes
+were imported by bundle; no private remote or branch was imported. Non-Rust jobs
+used a fresh Linux home, no orchestra queue/pointer and a PATH without Rust.
+An initial x86 emulation attempt exposed child Node processes receiving SIGSEGV;
+the retained diagnostic identifies the signal. Native Linux ARM then passed the
+same workflow contracts. Rust checks and archived test partitions used macOS and
+the prescribed lane target. Hosted Ubuntu merge-result proof remains required.
+
+The replay found both the reported reach failure and a second bare `dev` read in
+standing-text. Both now share the resolver. The standing-text negative control
+passed an unavailable CI commit on the previous tip; it now refuses it. Branch
+scanning and backlog comparisons also use the resolver: their negative controls
+previously returned success with an invalid `CI_BASE_SHA`, and now return their
+documented refusal statuses. Missing references, malformed event JSON, explicit
+base precedence, PR/queue/push events and both public remote fallbacks are covered.
+Workflows-check now fetches the base history too; the contract refuses local
+branch creation as a workaround.
+
+Command lists were emitted from both YAML workflows, preserving step commands,
+conditions and environments. Local replay supplies event/plan/matrix values;
+Actions service operations, authenticated cache accounting and uploads remain
+hosted proof. The complete web command passed 2,094 Vitest cases in 292 files and
+124 Node cases. Both Rust unit partitions passed 576 cases each. All 13 discovered
+code gates, format, three Clippy feature sets, workspace test compilation, both
+ratchets and the production-image role bootstrap passed. No lint, test budget,
+baseline, quarantine or retry policy was relaxed in this round.
+
+| Job | Local command result |
+| --- | --- |
+| `plan` | 0 |
+| `hygiene` | 0 |
+| `web-check` | 0 |
+| `desktop-test` | 0; 9 native tests, Linux dependency install checked separately |
+| `rust-build` | 0; 821 archived binaries, backend builds and disk check |
+| `backend-test` | 0 / 0 |
+| `backend-db` | 0 / 1 / 1 / 1 / 1 / 1 / 1 / 1; 3,976 passed, 17 failed, 1 timed out |
+| `e2e-plan` | 0; one fast Chromium shard containing all four selected files |
+| `e2e` | 1 before any browser test: the shared Docker daemon exhausted its network address pools |
+| `ci-ok` | 1; refuses the failed DB and browser dependencies |
+| `backend` | 1; correctly propagates `ci-ok` failure |
+| `web` | 1; correctly propagates `ci-ok` failure |
+| `workflows-check / workflows` | 0 |
+
+The unpartitioned DB inventory contains 4,002 cases, including eight pre-existing
+ignored cases; the eight partitions executed the other 3,994 without retries.
+Authenticated cache-total reporting could not be measured locally: the CLI
+refused the missing Actions token. The actual task base `df5feeb` was compiled
+separately. Governance requester
+separation, support-approval inbox visibility, and the workbench change-request
+case fail there too. Additional DB failures are retained in JUnit; several did
+not reproduce in diagnostic controls and remain reported as local flakes.
+The browser installer, distribution manifest and upload privacy scan passed;
+backend startup failed at Docker network allocation. The verifier must run the
+merge-result workflow and a real Chromium/Firefox shard with fresh Docker
+capacity, and inspect every retained DB failure. Hosted timing/cache receipts
+remain required.
+
+Round 16 files outside the initial workflow/CI-helper/file-policy slice:
+
+- `scripts/backlog-claims.mjs`
+- `scripts/check-ai-quality.mjs`
+- `scripts/check-license-headers.mjs`
+- `scripts/check-license-headers.test.ts`
+- `scripts/check-person-reads.mjs`
+- `scripts/check-reach.mjs`
+- `scripts/check-reach.test.ts`
+- `scripts/check-standing-text.mjs`
+- `scripts/client-data-scan.py`
+- `scripts/git-base.mjs`
+- `scripts/git-base.test.mjs`
+- `scripts/quality/ratchet.mjs`
+
+No excluded lane file or generated file was edited.
