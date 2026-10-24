@@ -10,6 +10,55 @@ use super::save::{cell, save, scheduled};
 use super::support::{assign, key, office, rows, world};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn the_same_draft_uses_the_current_schedule_in_preview_and_save(owner: PgPool) {
+    let w = world(owner).await;
+    let date = date!(2026 - 10 - 06);
+    let cells = vec![cell(&w, 0, date, "=")];
+    let preview = w
+        .store
+        .preview_entries(
+            &w.hr(),
+            PreviewInput {
+                cells: cells.clone(),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(preview.cells[0].code, Some("no_shift_to_copy"));
+    let (pattern, _) = w
+        .store
+        .create_pattern(&w.hr(), &key(), office("소정 근무"))
+        .await
+        .unwrap();
+    w.store
+        .assign_schedule(
+            &w.hr(),
+            &key(),
+            assign(Level::Workplace, w.workplaces[0], pattern.id, date),
+        )
+        .await
+        .unwrap();
+    let preview = w
+        .store
+        .preview_entries(
+            &w.hr(),
+            PreviewInput {
+                cells: cells.clone(),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!((preview.ok, preview.refused), (1, 0));
+    let (receipt, _) = w
+        .store
+        .save_entries(&w.hr(), &key(), save(cells))
+        .await
+        .unwrap();
+    assert_eq!(receipt.saved, 1);
+    assert_eq!(rows(&w, "attendance_entries").await, 1);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn day_off_words_on_a_planned_rest_day_agree_in_preview_and_save(owner: PgPool) {
     let w = scheduled(owner).await;
     let table: serde_json::Value = serde_json::from_str(include_str!(

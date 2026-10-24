@@ -10,11 +10,11 @@ export const splitKey = (key: string) => {
   return { employee_id, work_date };
 };
 
-export type Draft = { value: string; base: string | null; planKind?: string };
+export type Draft = { value: string; base: string | null };
 export type Drafts = Readonly<Record<string, Draft>>;
 type DraftState = { ok: true } | { ok: false; code: DraftCode; at?: number };
-export const draftState = (d: Draft): DraftState => {
-  const p = parseDraft(d.value, undefined, false, { kind: d.planKind });
+export const draftState = (d: Draft, planKind: string | undefined): DraftState => {
+  const p = parseDraft(d.value, undefined, false, { kind: planKind });
   return p.ok ? { ok: true } : { ok: false, code: p.code, at: p.at };
 };
 
@@ -25,7 +25,7 @@ export const draftState = (d: Draft): DraftState => {
 export const baseOf = (drafts: Drafts, key: string, current: string | null) => (key in drafts ? drafts[key]!.base : current);
 
 /** What a grid cell holds for the drafting tools: its plan kind and the entry the typist sees (If-Match base). */
-export type CellFacts = { key: string; planKind: string; entryId: string | null; own: boolean; closed: boolean };
+export type CellFacts = { key: string; planKind: string | undefined; entryId: string | null; own: boolean; closed: boolean };
 
 /** One value into every writable cell of a selection (⌘↵, fill down); own and closed cells are skipped and counted. */
 export function fill(cells: readonly CellFacts[], value: string, drafts: Drafts) {
@@ -33,7 +33,7 @@ export function fill(cells: readonly CellFacts[], value: string, drafts: Drafts)
   let skipped = 0;
   for (const c of cells) {
     if (c.own || c.closed) skipped += 1;
-    else next[c.key] = { value, base: baseOf(drafts, c.key, c.entryId), planKind: c.planKind };
+    else next[c.key] = { value, base: baseOf(drafts, c.key, c.entryId) };
   }
   return { drafts: next, skipped };
 }
@@ -49,7 +49,7 @@ export function fillSchedule(cells: readonly CellFacts[], drafts: Drafts) {
     else if (c.planKind !== "WORK") skipped.rest += 1;
     else if (c.entryId) skipped.recorded += 1;
     else {
-      next[c.key] = { value: "=", base: baseOf(drafts, c.key, null), planKind: c.planKind };
+      next[c.key] = { value: "=", base: baseOf(drafts, c.key, null) };
       filled += 1;
     }
   }

@@ -21,7 +21,11 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
   const rows = board.groups.flatMap((g) => g.rows);
   const date = board.date;
   const [pasted, setPasted] = useState<string | null>(null);
-  const cells = Object.entries(store.drafts).filter(([, d]) => draftState(d).ok).map(([k, d]) => ({ ...splitKey(k), value: d.value, base_entry_id: d.base ?? undefined }));
+  const kindOf = (key: string) => {
+    const { employee_id, work_date } = splitKey(key);
+    return work_date === date ? rows.find((r) => r.employee_id === employee_id)?.day.plan.kind : undefined;
+  };
+  const cells = Object.entries(store.drafts).filter(([k, d]) => draftState(d, kindOf(k)).ok).map(([k, d]) => ({ ...splitKey(k), value: d.value, base_entry_id: d.base ?? undefined }));
   const preview = usePreview(cells.length ? cells : null, previewEntries);
   const after = (r: BoardRow) => preview.data?.cells.find((c) => c.employee_id === r.employee_id);
   const recognised = (r: BoardRow) => {
@@ -42,7 +46,7 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
         for (const c of p.cells.filter((x) => x.c === 0)) {
           const row = rows[c.r]!;
           if (row.own) locked += 1;
-          else next[cellKey(row.employee_id, date)] = { value: c.value, base: baseOf(store.drafts, cellKey(row.employee_id, date), row.day.entry?.id ?? null), planKind: row.day.plan.kind };
+          else next[cellKey(row.employee_id, date)] = { value: c.value, base: baseOf(store.drafts, cellKey(row.employee_id, date), row.day.entry?.id ?? null) };
         }
         store.set(next);
         setPasted(t("attendanceRecords.paste.matched", { rows: p.matched + p.missing.length, matched: p.matched, missing: p.missing.length, locked }));
@@ -62,11 +66,11 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
             cell: (r) => {
               const k = cellKey(r.employee_id, date);
               const d = store.drafts[k];
-              const s = d ? draftState(d) : null;
+              const s = d ? draftState(d, r.day.plan.kind) : null;
               if (r.own) return <span className="muted">{t("attendanceRecords.grid.ownRow")}</span>;
               return (
                 <Field label={t("attendanceRecords.detail.inputFor", { name: r.name })} required={false} error={s && !s.ok ? refusalText(s.code) : undefined}>
-                  {(p) => <TextInput {...p} value={d?.value ?? ""} placeholder={undefined} maxLength={40} onChange={(e) => store.put(k, e.target.value.trim() ? { value: e.target.value, base: baseOf(store.drafts, k, r.day.entry?.id ?? null), planKind: r.day.plan.kind } : null)} />}
+                  {(p) => <TextInput {...p} value={d?.value ?? ""} placeholder={undefined} maxLength={40} onChange={(e) => store.put(k, e.target.value.trim() ? { value: e.target.value, base: baseOf(store.drafts, k, r.day.entry?.id ?? null) } : null)} />}
                 </Field>
               );
             },

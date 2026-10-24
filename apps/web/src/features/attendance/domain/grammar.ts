@@ -190,7 +190,7 @@ export function parseDraft(...args: Parameters<typeof parseEntry>): Parsed | { o
   const kind = args[3]?.kind;
   switch (parsed.entry.kind) {
     // shortcut: month cells omit holiday_work; include holiday shifts when that payload exposes them.
-    case "DAY_OFF": return { ok: false, code: kind && kind !== "WORK" && kind !== "NO_SCHEDULE" ? "already_day_off" : "schedule_change_needed" };
+    case "DAY_OFF": return kind === undefined ? parsed : { ok: false, code: kind !== "WORK" && kind !== "NO_SCHEDULE" ? "already_day_off" : "schedule_change_needed" };
     case "AS_SCHEDULED": return kind && kind !== "WORK" ? { ok: false, code: "no_shift_to_copy" } : parsed;
     case "SHIFT": return { ok: false, code: "schedule_change_needed" };
     case "CLOCK_OUT_ONLY": return { ok: false, code: "clock_out_only_not_stored" };

@@ -66,11 +66,15 @@ export function MonthTab() {
   const go = (patch: Record<string, unknown>) => void navigate({ search: (x) => ({ ...x, ...patch }) });
 
   const drafts = Object.entries(store.drafts);
-  const bad = drafts.filter(([, d]) => !draftState(d).ok);
+  const kindOf = (key: string) => {
+    const { employee_id, work_date } = splitKey(key);
+    return rows.find((r) => r.employee_id === employee_id)?.cells[days.indexOf(work_date)]?.plan_kind;
+  };
+  const bad = drafts.filter(([k, d]) => !draftState(d, kindOf(k)).ok);
   const size = rectSize(rectIn(range, { rows: rows.map((r) => r.employee_id), cols: days }));
   const focusKey = range ? cellKey(range.focus.row, range.focus.col) : null;
   const focusDraft = focusKey ? store.drafts[focusKey] : undefined;
-  const focusState = focusDraft ? draftState(focusDraft) : null;
+  const focusState = focusDraft ? draftState(focusDraft, kindOf(focusKey!)) : null;
   const fix = focusDraft && focusState && !focusState.ok ? suggestFix(focusDraft.value) : null;
   const act = (a: GridAct) => {
     if (a.kind === "save") setDock({ kind: "save" });
@@ -151,7 +155,7 @@ export function MonthTab() {
           )}
         </div>
         {dock?.kind === "save" && (
-          <SaveDockSlot rows={rows} month={month} store={store} onClose={() => setDock(null)} onFocusCell={focusCell} onSaved={(r) => (setDock(null), setReceipt(r))} />
+          <SaveDock drafts={store.drafts} rows={rows} kindOf={kindOf} month={month} onClose={() => setDock(null)} onFocusCell={focusCell} onSaved={(r, keys) => (store.saved(keys), setDock(null), setReceipt(r))} />
         )}
         {dock?.kind === "day" && (
           <DayDock employeeId={dock.employeeId} date={dock.date} own={dock.own} onClose={() => setDock(null)} onRewrite={() => setDock(null)} onDone={(m) => (setDock(null), setNote(m))} />
@@ -161,8 +165,4 @@ export function MonthTab() {
       {assign && <PersonScheduleSheet target={assign} onClose={() => setAssign(null)} onAssigned={(message) => (setAssign(null), setNote(message))} />}
     </div>
   );
-}
-
-function SaveDockSlot({ rows, month, store, onClose, onSaved, onFocusCell }: { rows: GridRow[]; month: string; store: ReturnType<typeof useDrafts>; onClose: () => void; onSaved: (r: SaveReceipt) => void; onFocusCell: (k: string) => void }) {
-  return <SaveDock drafts={store.drafts} rows={rows} month={month} onClose={onClose} onFocusCell={onFocusCell} onSaved={(r, keys) => (store.saved(keys), onSaved(r))} />;
 }

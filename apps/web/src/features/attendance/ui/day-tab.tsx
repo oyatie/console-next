@@ -13,7 +13,7 @@ import { EmptyState } from "../../../ui/empty-state";
 import { ItemList } from "../../../ui/item-list/item-list";
 import { addDays } from "../../../ui/date/days";
 import { dayBoardQuery, type DayBoard } from "../api";
-import { baseOf, cellKey, fillSchedule, ledgerParts } from "../domain/grid";
+import { baseOf, cellKey, fillSchedule, ledgerParts, splitKey } from "../domain/grid";
 import { closed, pageState } from "../domain/month-state";
 import { dateText, refusalText } from "../present";
 import { DayDetail } from "./day-detail";
@@ -50,6 +50,10 @@ export function DayTab() {
   const go = (patch: Record<string, unknown>) => void navigate({ search: (x) => ({ ...x, ...patch }) });
   const drafts = Object.keys(store.drafts).length;
   const names = (b?: DayBoard) => (b?.groups ?? []).flatMap((g) => g.rows.map((r) => ({ employee_id: r.employee_id, name: r.name })));
+  const kindOf = (key: string) => {
+    const { employee_id, work_date } = splitKey(key);
+    return work_date === date ? board.data?.groups.flatMap((g) => g.rows).find((r) => r.employee_id === employee_id)?.day.plan.kind : undefined;
+  };
   const saveWhy = !online ? t("attendanceRecords.save.offline") : !drafts ? t("attendanceRecords.save.nothing") : null;
 
   return (
@@ -100,7 +104,7 @@ export function DayTab() {
                         tools={g.hidden > 0 && g.unit_id ? <Button size="sm" variant="ghost" onClick={() => go({ unit: g.unit_id })}>{t("attendanceRecords.board.expand", { count: g.hidden })}</Button> : undefined}
                       >
                         {g.rows.map((r) => (
-                          <DayRow key={r.employee_id} row={r} draft={store.drafts[cellKey(r.employee_id, date)]} onDraft={(v) => store.put(cellKey(r.employee_id, date), v ? { value: v, base: baseOf(store.drafts, cellKey(r.employee_id, date), r.day.entry?.id ?? null), planKind: r.day.plan.kind } : null)} onOpen={() => setOpen({ id: r.employee_id, own: r.own })} onAssign={() => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
+                          <DayRow key={r.employee_id} row={r} draft={store.drafts[cellKey(r.employee_id, date)]} onDraft={(v) => store.put(cellKey(r.employee_id, date), v ? { value: v, base: baseOf(store.drafts, cellKey(r.employee_id, date), r.day.entry?.id ?? null) } : null)} onOpen={() => setOpen({ id: r.employee_id, own: r.own })} onAssign={() => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                         ))}
                       </Card>
                     ))
@@ -125,7 +129,7 @@ export function DayTab() {
                   <Button variant="ghost" onClick={() => window.print()}>{t("attendanceRecords.rail.print")}</Button>
                 </Card>
               </div>
-              {save && <SaveDock drafts={store.drafts} rows={names(b)} month={date.slice(0, 7)} onClose={() => setSave(false)} onFocusCell={() => setSave(false)} onSaved={(r, keys) => (store.saved(keys), setSave(false), setNote(t("attendanceRecords.receipt.saved", { saved: r.saved, opens: r.opens.blocking + r.opens.decision })))} />}
+              {save && <SaveDock drafts={store.drafts} rows={names(b)} kindOf={kindOf} month={date.slice(0, 7)} onClose={() => setSave(false)} onFocusCell={() => setSave(false)} onSaved={(r, keys) => (store.saved(keys), setSave(false), setNote(t("attendanceRecords.receipt.saved", { saved: r.saved, opens: r.opens.blocking + r.opens.decision })))} />}
               {!save && open && <DayDock employeeId={open.id} date={date} own={open.own} onClose={() => setOpen(null)} onRewrite={() => setOpen(null)} onDone={(m) => (setOpen(null), setNote(m))} />}
             </div>
           );
