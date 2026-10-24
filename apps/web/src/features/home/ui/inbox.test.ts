@@ -78,7 +78,7 @@ test.each([
   view.list.data = { pages: [page([item("업무 대상", { kind, title: "김직원", links: [{ kind: link, id: "record" }], context })])] };
   const markup = html();
   for (const text of labels) expect(markup).toContain(text);
-  const visible = markup.match(/<li class="form">.*?<\/li>/s)![0].replace(/<[^>]*>/g, "");
+  const visible = markup.match(/<li class="form">.*?<\/li>/s)![0].split(/<[^>]*>/).join("");
   expect(visible).not.toMatch(/[A-Z]{2,}_?[A-Z]*|payroll/);
 });
 
