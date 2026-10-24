@@ -126,7 +126,7 @@ test("all actions are allowed and SHA pinned; every job is bounded and hardened"
       assert.ok(job["timeout-minutes"] > 0, `${file}:${name}`);
       assert.match(job.steps[0].uses, /^step-security\/harden-runner@[a-f0-9]{40}$/);
       assert.equal(job.steps[0].with["egress-policy"], "block", `${file}:${name}`);
-      assert.ok(job.steps[0].with["allowed-endpoints"]);
+      assert.equal(typeof job.steps[0].with["allowed-endpoints"], "string");
       for (const step of job.steps) if (step.uses) assert.match(step.uses, /^(actions\/[a-z/-]+|github\/codeql-action\/[a-z-]+|step-security\/harden-runner)@[a-f0-9]{40}$/);
     }
   }

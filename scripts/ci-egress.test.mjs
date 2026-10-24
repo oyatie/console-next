@@ -3,61 +3,14 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { load } from "js-yaml";
+import { allowedEndpoints, endpointProblems, requiredEndpoints } from "./ci/egress.mjs";
 
 const root = new URL("../", import.meta.url);
 const read = (file) => readFileSync(new URL(file, root), "utf8");
 const versions = () => JSON.parse(read("scripts/ci/versions.json"));
 const workflows = () => readdirSync(new URL(".github/workflows/", root))
   .filter((file) => /\.ya?ml$/.test(file)).map((file) => [file, load(read(`.github/workflows/${file}`))]);
-const releases = ["github.com:443", "release-assets.githubusercontent.com:443"];
-const cargo = ["static.rust-lang.org:443", "index.crates.io:443", "static.crates.io:443", "crates.io:443"];
-// Indirect downloads need contracts too: a URL-only scan misses registry/CDN redirects.
-const docker = ["registry-1.docker.io:443", "auth.docker.io:443", "production.cloudflare.docker.com:443", "production.cloudfront.docker.com:443"];
-const contracts = [
-  [/actions\/checkout@/, ["github.com:443", "api.github.com:443", "codeload.github.com:443"]],
-  [/actions\/setup-node@/, releases],
-  [/actions\/(?:cache\/|upload-artifact@|download-artifact@)/, ["*.actions.githubusercontent.com:443", "*.blob.core.windows.net:443"]],
-  [/github\/codeql-action\//, [...releases, "api.github.com:443", "uploads.github.com:443", "ghcr.io:443", "pkg-containers.githubusercontent.com:443"]],
-  [/\bnpm ci\b/, ["registry.npmjs.org:443"]],
-  [/\bcargo (?:fetch|build|clippy)\b|scripts\/ci\/rust-build\.mjs/, cargo],
-  [/\bgh (?:api|run)\b/, ["api.github.com:443"]],
-  [/\bdocker (?:run|pull)\b|scripts\/ci\/e2e\.mjs run/, docker],
-  [/playwright install\b/, ["cdn.playwright.dev:443", "playwright.download.prss.microsoft.com:443", "storage.googleapis.com:443"]],
-  [/playwright install\b[^\n]*--with-deps/, ["archive.ubuntu.com:80", "azure.archive.ubuntu.com:80", "security.ubuntu.com:80"]],
-  [/notify-telegram\.sh send/, ["api.telegram.org:443"]],
-];
-
-function requiredEndpoints(job) {
-  const required = new Set();
-  for (const step of job.steps) {
-    const command = `${step.uses ?? ""}\n${step.run ?? ""}`;
-    for (const [pattern, endpoints] of contracts) if (pattern.test(command)) endpoints.forEach((endpoint) => required.add(endpoint));
-    for (const [url] of command.matchAll(/https?:\/\/[a-z0-9.-]+(?::\d+)?/g)) {
-      const parsed = new URL(url);
-      required.add(`${parsed.hostname}:${parsed.port || (parsed.protocol === "https:" ? 443 : 80)}`);
-    }
-    for (const [, tools] of command.matchAll(/scripts\/ci\/install-tools\.sh ([\w -]+)/g)) {
-      for (const tool of tools.trim().split(/\s+/)) {
-        const pin = versions()[tool];
-        assert.ok(pin, `unconfigured release tool: ${tool}`);
-        assert.match(pin.sha256, /^[a-f0-9]{64}$/);
-        assert.ok(pin.url.includes(pin.version), `${tool}: unversioned download`);
-        required.add(`${new URL(pin.url).hostname}:443`);
-        releases.forEach((endpoint) => required.add(endpoint));
-      }
-    }
-    if (step.env?.URL === "${{ secrets.PROBE_URL }}") required.add("${{ secrets.CONSOLE_PUBLIC_HOST }}:443");
-    if (step.env?.CI_CACHE_TOTAL === "1") required.add("api.github.com:443");
-  }
-  return required;
-}
-
-function missingEndpoints(job) {
-  const allowed = job.steps.find((step) => step.with?.["egress-policy"] === "block").with["allowed-endpoints"] ?? "";
-  const entries = allowed.match(/\$\{\{[^}]+\}\}:\d+|[^\s]+/g) ?? [];
-  return [...requiredEndpoints(job)].filter((endpoint) => !entries.some((entry) => entry === endpoint ||
-    (entry.startsWith("*.") && endpoint.endsWith(entry.slice(1)))));
-}
+const missingEndpoints = (job) => endpointProblems(job).missing;
 
 test("every block-mode job allows its step download endpoints, including redirects", () => {
   for (const [file, workflow] of workflows()) for (const [name, job] of Object.entries(workflow.jobs)) {
@@ -67,7 +20,7 @@ test("every block-mode job allows its step download endpoints, including redirec
 });
 
 test("endpoint controls reject each missing required endpoint and accept a network-free job", () => {
-  assert.deepEqual(missingEndpoints({ steps: [{ with: { "egress-policy": "block" } }, { run: "echo local" }] }), []);
+  assert.deepEqual(missingEndpoints({ steps: [{ uses: "step-security/harden-runner@pin", with: { "egress-policy": "block" } }, { run: "echo local" }] }), []);
   assert.deepEqual(missingEndpoints({ steps: [
     { with: { "egress-policy": "block", "allowed-endpoints": "github.com:443" } },
     { run: "bash scripts/ci/install-tools.sh actionlint\nnpm ci\ncurl https://download.example.invalid:8443/tool" },
@@ -77,7 +30,7 @@ test("endpoint controls reject each missing required endpoint and accept a netwo
     for (const endpoint of requiredEndpoints(job)) {
       const copy = structuredClone(job);
       copy.steps.find((step) => step.with?.["egress-policy"] === "block").with["allowed-endpoints"] =
-        [...requiredEndpoints(job)].filter((value) => value !== endpoint).join("\n");
+        [...requiredEndpoints(job)].filter((value) => value !== endpoint).join(" ");
       assert.deepEqual(missingEndpoints(copy), [endpoint], `${file}:${name}: ${endpoint}`);
     }
   }
@@ -92,4 +45,53 @@ test("actionlint runs a checksum-pinned release binary in both lint jobs without
     assert.doesNotMatch(JSON.stringify(job), /rhysd\/actionlint@|docker (?:run|pull)/);
     assert.equal(versions().actionlint.binary, "actionlint");
   }
+});
+
+test("hosted plan fixture refuses both missing checkout and implicit rustup endpoints", () => {
+  const job = load(read("scripts/ci/fixtures/plan-egress-missing.yml")).jobs.plan;
+  assert.deepEqual(missingEndpoints(job).sort(), ["github.com:443", "static.rust-lang.org:443"]);
+  assert.deepEqual([...requiredEndpoints({ steps: [{ run: "node scripts/ci/plan.mjs" }] })], ["static.rust-lang.org:443"]);
+});
+
+test("block jobs have no unused endpoint allowances", () => {
+  for (const [file, workflow] of workflows()) for (const [name, job] of Object.entries(workflow.jobs)) {
+    const harden = job.steps.find((step) => step.with?.["egress-policy"] === "block");
+    if (!harden) continue;
+    const allowed = allowedEndpoints(job);
+    assert.deepEqual(allowed.filter((entry) => !requiredEndpoints(job).has(entry)), [], `${file}:${name}: unused endpoints`);
+  }
+});
+
+test("network tool map covers direct and indirect downloads independently of job allowances", () => {
+  const endpoints = (run, env) => [...requiredEndpoints({ steps: [{ run, env }] })].sort();
+  assert.deepEqual(endpoints("cargo metadata --no-deps --locked"), ["static.rust-lang.org:443"]);
+  assert.deepEqual(endpoints("cargo fetch --locked"), ["index.crates.io:443", "static.crates.io:443", "static.rust-lang.org:443"]);
+  assert.deepEqual(endpoints("node ../scripts/ci/rust-tests.mjs db 1"), ["static.rust-lang.org:443"]);
+  assert.deepEqual(endpoints("npm ci --no-audit"), ["registry.npmjs.org:443"]);
+  assert.deepEqual(endpoints("node scripts/ci/report.mjs", { CI_CACHE_TOTAL: "1" }), ["api.github.com:443"]);
+  assert.deepEqual(endpoints("node scripts/ci/report.mjs"), []);
+  assert.deepEqual(endpoints("sccache --show-stats"), []);
+  assert.deepEqual(endpoints("playwright install --with-deps chromium"), ["archive.ubuntu.com:443", "azure.archive.ubuntu.com:80", "cdn.playwright.dev:443", "packages.microsoft.com:443", "playwright.download.prss.microsoft.com:443", "security.ubuntu.com:443", "storage.googleapis.com:443"]);
+  assert.deepEqual(endpoints("node scripts/ci/e2e.mjs run"), ["auth.docker.io:443", "production.cloudflare.docker.com:443", "production.cloudfront.docker.com:443", "registry-1.docker.io:443"]);
+  assert.deepEqual(endpoints("docker pull ghcr.io/example/image"), ["ghcr.io:443", "pkg-containers.githubusercontent.com:443"]);
+  for (const tool of Object.keys(versions())) {
+    assert.deepEqual(endpoints(`bash scripts/ci/install-tools.sh ${tool}`), ["github.com:443", "release-assets.githubusercontent.com:443"]);
+  }
+  assert.throws(() => requiredEndpoints({ steps: [{ uses: "actions/new-network-tool@pin" }] }), /unmapped network tool/);
+});
+
+test("block jobs reject unused allowances, broad wildcard substitutions and incompatible input separators", () => {
+  for (const [file, workflow] of workflows()) for (const [name, job] of Object.entries(workflow.jobs)) {
+    if (!job.steps.some((step) => step.with?.["egress-policy"] === "block")) continue;
+    const copy = structuredClone(job);
+    const input = copy.steps.find((step) => step.with?.["egress-policy"] === "block").with;
+    input["allowed-endpoints"] = [...requiredEndpoints(copy), "unused.example.invalid:443"].join(" ");
+    assert.deepEqual(endpointProblems(copy).unused, ["unused.example.invalid:443"], `${file}:${name}`);
+    input["allowed-endpoints"] = "*.github.com:443";
+    assert.deepEqual(endpointProblems(copy).unused, ["*.github.com:443"], `${file}:${name}`);
+  }
+  const job = { steps: [{ with: { "egress-policy": "block", "allowed-endpoints": "github.com:443\nstatic.rust-lang.org:443" } }] };
+  assert.throws(() => allowedEndpoints(job), /invalid egress endpoint/);
+  job.steps[0].with["allowed-endpoints"] = "github.com:443 \nstatic.rust-lang.org:443";
+  assert.throws(() => allowedEndpoints(job), /invalid egress endpoint/);
 });
