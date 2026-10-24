@@ -99,7 +99,7 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
     >
       <div className={s.form}>
         <div className={s.before}>
-          <span>{t("register.rehire.before", { name: e.name, number: e.employee_number ?? "—", place: [e.company, e.org_unit].filter(Boolean).join(" › "), from: fmtDate(e.hire_date), to: fmtDate(e.exit_date ? retirementDate(e.exit_date) : e.exit_date) })}</span>
+          <span>{t("register.rehire.before", { name: e.name, number: e.employee_number ?? "—", place: [e.company, e.org_unit].filter(Boolean).join(" › "), from: fmtDate(e.hire_date), to: fmtDate(e.exit_date) })}</span>
           <Chip>{t("register.rehire.kept")}</Chip>
           <span className={s.hint}>{t("register.rehire.same")}</span>
         </div>

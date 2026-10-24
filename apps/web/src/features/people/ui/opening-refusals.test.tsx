@@ -38,11 +38,12 @@ test("a refused rehire offers a valid date or another workplace", () => {
   expect(html).not.toContain("명부 가져오기");
 });
 
-test("the previous period and rehire refusal format the derived retirement date", () => {
+test("the previous period ends on the last working day and rehire starts on retirement day", () => {
   state.code = "rehire_date_not_after_exit";
   const d = { employee: { id: "person", name: "경계직원", hire_date: "2020-01-02", exit_date: "2026-10-31" }, employment: {} } as ComponentProps<typeof RehireSheet>["d"];
   const html = renderToStaticMarkup(<RehireSheet d={d} onClose={() => {}} onDone={() => {}} />);
   expect(html).toContain("퇴직일 2026. 11. 01.부터");
-  expect(html).toContain("2020. 01. 02. ~ 2026. 11. 01.");
+  expect(html).toContain("2020. 01. 02. ~ 2026. 10. 31.");
+  expect(html).not.toContain("2020. 01. 02. ~ 2026. 11. 01.");
   expect(html).not.toContain("2026-10-31");
 });
