@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required:
+  - "available"
+  - "reason"
+properties:
+  available:
+    type: "boolean"
+  reason:
+    type:
+      - "string"
+      - "null"
+    enum:
+      - "NOT_CONFIGURED"
+      - "KEY_EXPIRED"
+      - "KEY_REJECTED"
+      - "PROVIDER_DOWN"
+      - null

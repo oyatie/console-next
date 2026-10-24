@@ -58,8 +58,8 @@ export type GoLiveRecord = GoLiveItem["records"][number];
  * Where a record's fix opens: its legal entity's record, with the workplace selected for a workplace (the registration,
  * social insurance and address fixes live on it). A registration is fixed on its legal entity.
  */
-export const recordFix = (r: GoLiveRecord) => r.kind === "employee" ? ({ to: "/people/unplaced" as const, params: {}, search: {} }) : ["legal_entity", "registration", "workplace"].includes(r.kind) ? ({
+export const recordFix = (r: GoLiveRecord, remedy?: string) => r.kind === "employee" ? ({ to: "/people/unplaced" as const, params: {}, search: {} }) : ["legal_entity", "registration", "workplace"].includes(r.kind) ? ({
   to: "/org/entities/$id" as const,
   params: { id: r.legal_entity_id },
-  search: r.kind === "workplace" ? { wp: r.id } : {},
+  search: r.kind === "workplace" ? { wp: r.id } : r.kind === "registration" && remedy === "verify_registration" ? { nts: r.id } : {},
 }) : undefined;

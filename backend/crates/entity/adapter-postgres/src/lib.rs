@@ -56,6 +56,11 @@ mod read;
 // --- lane: CRUD ---
 mod record_end;
 mod registration;
+mod registration_check;
+mod registration_check_preview;
+mod registration_check_schedule;
+mod registration_check_service;
+pub use registration_check_schedule::CheckSchedulePolicy;
 mod registration_change;
 mod registration_end;
 mod registration_revision;

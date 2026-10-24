@@ -80,7 +80,11 @@ async fn serve_api(config: AppConfig, state: AppState) -> Result<(), AppError> {
     // Scheduled personnel actions also run here: the dev/E2E launcher starts
     // only this role (see `lifecycle_schedule`).
     let lifecycle_schedule_handle = match &state.database {
-        DatabaseDependency::Postgres(pool) => Some(lifecycle_schedule::spawn(pool.clone(), false)),
+        DatabaseDependency::Postgres(pool) => Some(lifecycle_schedule::spawn(
+            pool.clone(),
+            false,
+            state.nts.clone(),
+        )),
         DatabaseDependency::NotConfigured => None,
     };
     let internal = spawn_internal_listener(&state).await?;

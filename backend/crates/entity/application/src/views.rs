@@ -112,6 +112,9 @@ pub struct RegistrationView {
     pub brn_pending_reason: Option<BrnPendingReason>,
     pub holder_workplace_id: Option<Uuid>,
     pub verification_tier: String,
+    pub voided: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nts_check: Option<crate::registration_check::CheckEvidence>,
     pub unverified_reason: Option<UnverifiedReason>,
     pub needs_confirmation: bool,
     pub identity_locked: bool,

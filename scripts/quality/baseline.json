@@ -61,7 +61,6 @@
   "unused-export:apps/web/src/features/entity/domain/create.ts:CertItem": 1,
   "unused-export:apps/web/src/features/entity/domain/create.ts:EntityGap": 1,
   "unused-export:apps/web/src/features/entity/domain/create.ts:ItemKey": 1,
-  "unused-export:apps/web/src/features/entity/domain/create.ts:registrationReady": 1,
   "unused-export:apps/web/src/features/entity/domain/create.ts:Taken": 1,
   "unused-export:apps/web/src/features/entity/domain/history.ts:RevisionKind": 1,
   "unused-export:apps/web/src/features/entity/domain/plan.ts:EntityCreate": 1,

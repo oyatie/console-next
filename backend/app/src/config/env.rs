@@ -258,6 +258,7 @@ impl AppConfig {
             auth_rest,
             storage,
             juso: console_entity_adapter_juso::JusoConfig::from_lookup(|k| vars.get(k).cloned()),
+            nts: console_entity_adapter_nts::NtsConfig::from_lookup(|k| vars.get(k).cloned()),
             dispatch_timers,
             dispatch_jobs_enabled,
             evidence_transcode_concurrency,

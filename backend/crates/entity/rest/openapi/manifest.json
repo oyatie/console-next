@@ -4,6 +4,10 @@
     "/api/v1/business-registrations/{registrationId}": [
       "put"
     ],
+    "/api/v1/business-registrations/{registrationId}/checks": [
+      "get",
+      "post"
+    ],
     "/api/v1/business-registrations/{registrationId}/end-options": [
       "get"
     ],
@@ -145,6 +149,12 @@
     "/api/v1/ref/lists/{key}/codes": [
       "get"
     ],
+    "/api/v1/registration-checks/availability": [
+      "get"
+    ],
+    "/api/v1/registration-checks/preview": [
+      "post"
+    ],
     "/api/v1/workplace-kinds": [
       "get",
       "post"
@@ -279,6 +289,12 @@
     "RefCodePage",
     "RefList",
     "RefListSource",
+    "RegistrationCheckAnswer",
+    "RegistrationCheckAvailability",
+    "RegistrationCheckEvidence",
+    "RegistrationCheckHistory",
+    "RegistrationCheckPreview",
+    "RegistrationCheckRequest",
     "RegistrationEndOptions",
     "RegistrationInput",
     "RegistrationReissueRequest",

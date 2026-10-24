@@ -62,6 +62,8 @@ license = "LicenseRef-Proprietary"
 publish = false
 
 [workspace.dependencies]
+console-platform-key-notice = { path = "crates/platform/key-notice" }
+console-entity-adapter-nts = { path = "crates/entity/adapter-nts" }
 # Versions verified live against crates.io at add time (project mandate:
 # never from training data). Re-verify on every new `cargo add`.
 serde = { version = "1", features = ["derive"] }

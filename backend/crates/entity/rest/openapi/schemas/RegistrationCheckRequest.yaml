@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required:
+  - "kind"
+properties:
+  kind:
+    type: "string"
+    enum:
+      - "STATUS"
+      - "VALIDATE"
+  expected:
+    type: object
+    required: [brn, opened_on, representative]
+    properties:
+      brn:
+        type: string
+      opened_on:
+        type: string
+        format: date
+      representative:
+        type: string
+    description: Values disclosed in the user confirmation. A changed value refuses with stale_revision before any external call.
+additionalProperties: false

@@ -9,6 +9,10 @@
 pub fn global_table_allowlist() -> &'static [(&'static str, &'static str)] {
     &[
         (
+            "registration_check_daily_budget",
+            "platform-wide UTC outbound quota counter; no tenant content; runtime role can only claim a bounded count through SECURITY DEFINER",
+        ),
+        (
             "support_read_surfaces",
             "migration-owned read-surface and field-classification reference data; no tenant content",
         ),

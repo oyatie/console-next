@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required:
+  - "brn_checked"
+  - "kind"
+  - "not_registered"
+  - "fields_sent"
+  - "response_sha256"
+  - "provider_version"
+properties:
+  brn_checked:
+    type: "string"
+  kind:
+    type: "string"
+    enum:
+      - "STATUS"
+      - "VALIDATE"
+  status_code:
+    type:
+      - "string"
+      - "null"
+  reported_status:
+    type:
+      - "string"
+      - "null"
+    enum:
+      - "CONTINUING"
+      - "SUSPENDED"
+      - "CLOSED"
+      - null
+  valid:
+    type:
+      - "string"
+      - "null"
+  not_registered:
+    type: "boolean"
+  fields_sent:
+    type: "array"
+    items:
+      type: "string"
+  response_sha256:
+    type: "string"
+  provider_version:
+    type: "string"
+  tax_type_cd:
+    type:
+      - "string"
+      - "null"
+  end_dt:
+    type:
+      - "string"
+      - "null"
+  utcc_yn:
+    type:
+      - "string"
+      - "null"
+  tax_type_change_dt:
+    type:
+      - "string"
+      - "null"
+  invoice_apply_dt:
+    type:
+      - "string"
+      - "null"
+  rbf_tax_type_cd:
+    type:
+      - "string"
+      - "null"

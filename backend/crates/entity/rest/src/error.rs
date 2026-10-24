@@ -68,7 +68,9 @@ impl IntoResponse for RestError {
         let status = match (r.kind, r.code) {
             (_, "unauthorized") => StatusCode::UNAUTHORIZED,
             (_, "passkey_step_up_required") => StatusCode::PRECONDITION_REQUIRED,
-            (_, "rate_limited") => StatusCode::TOO_MANY_REQUESTS,
+            (_, "rate_limited" | "registration_check_rate_limited") => {
+                StatusCode::TOO_MANY_REQUESTS
+            }
             (ErrorKind::Validation, _) => StatusCode::UNPROCESSABLE_ENTITY,
             (ErrorKind::NotFound, _) => StatusCode::NOT_FOUND,
             (ErrorKind::Forbidden, _) => StatusCode::FORBIDDEN,
@@ -77,6 +79,7 @@ impl IntoResponse for RestError {
             (ErrorKind::Internal, "unavailable") => StatusCode::SERVICE_UNAVAILABLE,
             (ErrorKind::Internal, _) => StatusCode::INTERNAL_SERVER_ERROR,
         };
+        let retry_after = r.retry_after_seconds.map(std::num::NonZeroU64::get);
         let mut error = json!({ "code": r.code, "message": r.message });
         if !r.fields.is_empty() {
             error["errors"] = json!(r.fields);
@@ -87,6 +90,20 @@ impl IntoResponse for RestError {
         if let Some(remedy) = r.remedy {
             error["reasons"] = json!([remedy]);
         }
-        (status, Json(json!({ "error": error }))).into_response()
+        if let Some(seconds) = retry_after {
+            error["retry_after_seconds"] = json!(seconds);
+        }
+        if r.code == "registration_check_unavailable" {
+            error["reason"] = json!(r.remedy);
+        }
+        let mut response = (status, Json(json!({ "error": error }))).into_response();
+        if let Some(seconds) = retry_after
+            && let Ok(value) = axum::http::HeaderValue::from_str(&seconds.to_string())
+        {
+            response
+                .headers_mut()
+                .insert(axum::http::header::RETRY_AFTER, value);
+        }
+        response
     }
 }

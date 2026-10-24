@@ -119,6 +119,7 @@ pub(crate) fn router(
     jwt: Option<JwtVerifier>,
     passkey: Option<PasskeyService>,
     juso: Arc<JusoClient>,
+    nts: Arc<console_entity_adapter_nts::NtsClient>,
 ) -> Router {
     let exceptions = exceptions::router(pool.clone(), jwt.clone(), passkey.clone());
     let entity = console_entity_rest::router(
@@ -128,6 +129,7 @@ pub(crate) fn router(
             Some(Arc::new(CanonicalOrgUnitSetupPort)),
         )
         .with_juso(juso)
+        .with_registration_check(nts)
         .with_governed_corrections(Arc::new(GovernedIdentifierCorrections {
             passkeys: passkey.clone(),
         })),

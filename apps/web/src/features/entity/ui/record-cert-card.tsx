@@ -17,6 +17,7 @@ import { useRecordLock } from "./use-record-lock";
 import { VoidRegistration } from "./void-registration";
 import { RegistrationStatusSheet } from "./workplace-status";
 import s from "./record.module.css";
+import { NtsCheck } from "./nts-check";
 import { Muted } from "../../../ui/muted/muted";
 
 /**
@@ -24,7 +25,7 @@ import { Muted } from "../../../ui/muted/muted";
  * that identify (the registration number, item 4 the CRN) are set directly in setup and only corrected, with evidence,
  * after going live.
  */
-export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity; r: BusinessRegistration; act: Act; operating: boolean; onOriginal?: () => void }) {
+export function CertCard({ e, r, act, operating, onOriginal, showCheck = false }: { e: LegalEntity; r: BusinessRegistration; act: Act; operating: boolean; onOriginal?: () => void; showCheck?: boolean }) {
   const c = r.current;
   const f = registrationFields(r);
   const ef = entityFields(e);
@@ -38,7 +39,8 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
   const [statusing, setStatusing] = useState(false);
   const [voiding, setVoiding] = useState(false);
   const voidTrigger = useRef<HTMLButtonElement>(null);
-  const locked = useRecordLock() !== null;
+  const lock = useRecordLock();
+  const locked = lock !== null;
   const suspended = c?.status === "SUSPENDED";
   const fix = <V,>(spec: FieldSpec<V>) => ({ kind: "fix" as const, onPress: () => act.field(spec) });
   const idAction = (field: "brn" | "crn") => ({ kind: operating ? ("lock" as const) : ("fix" as const), onPress: () => act.identifier(field, r.id) });
@@ -116,6 +118,7 @@ export function CertCard({ e, r, act, operating, onOriginal }: { e: LegalEntity;
         <FactRow no={11} label={t("entityRecord.field.email")} action={fix(f.email)}>{c?.e_invoice_email || "—"}</FactRow>
         <FactRow label={t("entityRecord.field.issued")} action={fix(f.issued)}><span className="num">{c?.cert_issued_on ? fmtDate(c.cert_issued_on) : "—"}</span> · {c?.tax_office_label || "—"}</FactRow>
       </div>
+      {showCheck && <NtsCheck historical={lock === "asof"} registration={r} entity={e} canManage={e.can_manage && !locked} onAttach={() => act.reissue(r.id)} />}
       {statusing && <RegistrationStatusSheet e={e} r={r} onClose={() => setStatusing(false)} />}
       {voiding && <VoidRegistration r={r} entityId={e.id} onClose={() => { setVoiding(false); requestAnimationFrame(() => voidTrigger.current?.focus()); }} />}
     </section>

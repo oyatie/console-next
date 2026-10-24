@@ -1,18 +1,16 @@
+import { verificationState } from "../present-verification";
 import { CheckCircle2, CircleAlert, CircleHelp } from "lucide-react";
 import type { BusinessRegistration } from "@console/api/pending";
 import { t } from "@console/i18n";
-import { label, labeled, UNVERIFIED_REASON, VERIFICATION } from "../../../lib/labels";
+import { label, UNVERIFIED_REASON } from "../../../lib/labels";
 import { Chip } from "../../../ui/chip";
 import { Muted } from "../../../ui/muted/muted";
 
 const ICON = { NONE: CircleHelp, T1: CircleAlert, T2: CheckCircle2 } as const;
 
-/**
- * The registration's authenticity check as the server records it. The MVP checks nothing with the NTS
- * (decisions #16), so a registration honestly reads "not done"; a reason shows only when it says more than that.
- */
+/** State derived from current-number authority evidence. */
 export function VerificationBadge({ r }: { r: BusinessRegistration }) {
-  const tier = labeled(VERIFICATION, r.verification_tier);
+  const tier = verificationState(r);
   const Icon = ICON[r.verification_tier];
   return (
     <div className="row" role="group" aria-label={t("entity.verify.label")}>

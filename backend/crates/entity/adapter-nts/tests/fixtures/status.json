@@ -1,0 +1,27 @@
+{
+  "_license": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "status_code": "OK",
+  "request_cnt": 4,
+  "match_cnt": 3,
+  "errors": [
+    [400, "BAD_JSON_REQUEST"], [404, "NOT_FOUND"], [411, "REQUEST_DATA_MALFORMED"],
+    [413, "TOO_LARGE_REQUEST"], [500, "INTERNAL_ERROR"], [500, "-5"],
+    [500, "01"], [500, "04"], [500, "05"], [400, "10"], [404, "12"], [403, "29"]
+  ],
+  "validation": [
+    {"b_no":"0008100009","valid":"01","request_param":{"p_nm":"홍길동"},"status":{"b_stt_cd":"01"}},
+    {"b_no":"0008100071","valid":"02","valid_msg":"확인할 수 없습니다","request_param":{"p_nm":"홍길동"}}
+  ],
+  "malformed": [
+    ["STATUS", "missing_data", {"status_code":"OK"}],
+    ["STATUS", "invalid_response_number", {"status_code":"OK","data":[{"b_no":"123"}]}],
+    ["STATUS", "unknown_business_status", {"status_code":"OK","data":[{"b_no":"0008100009","b_stt_cd":"04"}]}],
+    ["VALIDATE", "unknown_validation_result", {"status_code":"OK","data":[{"b_no":"0008100009","valid":"03"}]}]
+  ],
+  "data": [
+    {"b_no":"0008100009","b_stt":"계속사업자","b_stt_cd":"01","tax_type_cd":"01","end_dt":"","utcc_yn":"N","tax_type_change_dt":"20200101","invoice_apply_dt":"20200102","rbf_tax_type_cd":"01"},
+    {"b_no":"0008100071","b_stt":"휴업자","b_stt_cd":"02","tax_type_cd":"02","end_dt":"","utcc_yn":"N","tax_type_change_dt":"","invoice_apply_dt":"","rbf_tax_type_cd":"02"},
+    {"b_no":"0008100080","b_stt":"폐업자","b_stt_cd":"03","tax_type_cd":"07","end_dt":"20260930","utcc_yn":"Y","tax_type_change_dt":"","invoice_apply_dt":"","rbf_tax_type_cd":"07"},
+    {"b_no":"0008100090","b_stt":"","b_stt_cd":"","tax_type":"국세청에 등록되지 않은 사업자등록번호입니다","tax_type_cd":"","end_dt":"","utcc_yn":"","tax_type_change_dt":"","invoice_apply_dt":"","rbf_tax_type_cd":""}
+  ]
+}

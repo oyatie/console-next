@@ -15,7 +15,7 @@ import { Field, TextInput } from "../../../ui/field/field";
 import { Sheet } from "../../../ui/sheet/sheet";
 import { createEntity, ENTITY_READS } from "../api";
 import { emptyDraft } from "../domain/draft";
-import { entityBody, quickBlock } from "../domain/create";
+import { createRequirements, entityBody, quickBlock } from "../domain/create";
 import { KindAndName, OtherNames } from "./create-kind-and-name";
 import s from "./entity-create.module.css";
 
@@ -84,7 +84,7 @@ export function EntityQuickSheet({ open, onClose, onSaved }: { open: boolean; on
       {/* The optional names follow the legal name, never the representative's box. */}
       <OtherNames representatives={[rep]} displayName={alias} onDisplayName={setAlias} englishName={english} onEnglishName={setEnglish} />
       {/* The server also requires a named representative (CS-BE). */}
-      <Field label={t(kind === "INDIVIDUAL" ? "entityCreate.field.ownerName" : "entityCreate.field.representative")} required >
+      <Field label={t(kind === "INDIVIDUAL" ? "entityCreate.field.ownerName" : "entityCreate.field.representative")} required={createRequirements(draft).entity.includes("representatives")} >
         {(f) => <TextInput {...f} maxLength={100} autoComplete="off" value={rep} onChange={(e) => setRep(e.target.value)} />}
       </Field>
       <div className="form__actions">

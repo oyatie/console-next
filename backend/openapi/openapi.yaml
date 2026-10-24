@@ -4746,6 +4746,117 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/business-registrations/{registrationId}/checks:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - "Entity"
+      summary: "Read issuing-authority check evidence"
+      operationId: "readRegistrationCheckHistory"
+      security:
+        -
+          bearerAuth: []
+      parameters:
+        -
+          name: "registrationId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 100
+        -
+          name: "before"
+          in: "query"
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        200:
+          description: "Evidence or honest current availability"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationCheckHistory"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        409:
+          description: "registration_check_unavailable (reason NOT_CONFIGURED, KEY_EXPIRED, KEY_REJECTED, PROVIDER_DOWN), registration_check_no_number, registration_check_registration_ended, idempotency_key_reused"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        429:
+          description: "registration_check_rate_limited, retry_after_seconds and Retry-After"
+          headers:
+            Retry-After:
+              schema:
+                type: "integer"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - "Entity"
+      summary: "Explicit issuing-authority check; never blocks saving"
+      operationId: "createRegistrationCheckEvidence"
+      security:
+        -
+          bearerAuth: []
+      parameters:
+        -
+          name: "registrationId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+        -
+          name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        200:
+          description: "Evidence or honest current availability"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationCheckEvidence"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        409:
+          description: "registration_check_unavailable (reason NOT_CONFIGURED, KEY_EXPIRED, KEY_REJECTED, PROVIDER_DOWN), registration_check_no_number, registration_check_registration_ended, idempotency_key_reused"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        429:
+          description: "registration_check_rate_limited, retry_after_seconds and Retry-After"
+          headers:
+            Retry-After:
+              schema:
+                type: "integer"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrationCheckRequest"
   /api/v1/business-registrations/{registrationId}/end-options:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -25254,6 +25365,91 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/registration-checks/availability:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - "Entity"
+      summary: "Read issuing-authority check evidence"
+      operationId: "readRegistrationCheckAvailability"
+      security:
+        -
+          bearerAuth: []
+      parameters: []
+      responses:
+        200:
+          description: "Evidence or honest current availability"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationCheckAvailability"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        409:
+          description: "registration_check_unavailable (reason NOT_CONFIGURED, KEY_EXPIRED, KEY_REJECTED, PROVIDER_DOWN), registration_check_no_number, registration_check_registration_ended, idempotency_key_reused"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        429:
+          description: "registration_check_rate_limited, retry_after_seconds and Retry-After"
+          headers:
+            Retry-After:
+              schema:
+                type: "integer"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/v1/registration-checks/preview:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - "Entity"
+      summary: "Explicit issuing-authority check; never blocks saving"
+      operationId: "createRegistrationCheckAnswer"
+      security:
+        -
+          bearerAuth: []
+      parameters:
+        -
+          name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        200:
+          description: "Evidence or honest current availability"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationCheckAnswer"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        409:
+          description: "registration_check_unavailable (reason NOT_CONFIGURED, KEY_EXPIRED, KEY_REJECTED, PROVIDER_DOWN), registration_check_no_number, registration_check_registration_ended, idempotency_key_reused"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        429:
+          description: "registration_check_rate_limited, retry_after_seconds and Retry-After"
+          headers:
+            Retry-After:
+              schema:
+                type: "integer"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrationCheckPreview"
   /api/v1/release-toggles:
     get:
       tags:
@@ -34697,6 +34893,11 @@ components:
           anyOf:
           - $ref: '#/components/schemas/RegistrationState'
           - type: 'null'
+        nts_check:
+          $ref: '#/components/schemas/RegistrationCheckEvidence'
+        voided:
+          type: boolean
+          description: True only for a voided registration; recorded closure does not prevent authority rechecks.
     CalendarEventListResponse:
       type: object
       required:
@@ -36147,6 +36348,20 @@ components:
             description: The kept 사업자등록증 this registration is typed from, attached in the same transaction and named
               as the first revision's evidence (422 document_not_found, document_not_certificate,
               document_attached_elsewhere, document_not_new).
+          check_preview:
+            type: object
+            required: [command_id, acknowledged]
+            properties:
+              command_id:
+                type: string
+                format: uuid
+              acknowledged:
+                type: boolean
+              status_since:
+                type: [string, 'null']
+                format: date
+                description: Explicit suspension date when the authority reports suspension without a date.
+            description: Explicitly accepted pre-save issuing-authority check. Suspension or closure requires acknowledgment. Saving without checking stays available.
     CreateCalendarEventRequest:
       type: object
       required:
@@ -51951,6 +52166,7 @@ components:
                 enum:
                 - STREET_JUSO_API_KEY
                 - DETAILED_JUSO_API_KEY
+                - NTS_BUSINESSMAN_API_KEY
               state:
                 type: string
                 enum:
@@ -54516,6 +54732,272 @@ components:
       properties:
         branch_id: {$ref: '#/components/schemas/Uuid'}
         source_system: {type: string, minLength: 1, maxLength: 80}
+    RegistrationCheckAnswer:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required:
+        - "brn_checked"
+        - "kind"
+        - "not_registered"
+        - "fields_sent"
+        - "response_sha256"
+        - "provider_version"
+      properties:
+        brn_checked:
+          type: "string"
+        kind:
+          type: "string"
+          enum:
+            - "STATUS"
+            - "VALIDATE"
+        status_code:
+          type:
+            - "string"
+            - "null"
+        reported_status:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "CONTINUING"
+            - "SUSPENDED"
+            - "CLOSED"
+            - null
+        valid:
+          type:
+            - "string"
+            - "null"
+        not_registered:
+          type: "boolean"
+        fields_sent:
+          type: "array"
+          items:
+            type: "string"
+        response_sha256:
+          type: "string"
+        provider_version:
+          type: "string"
+        tax_type_cd:
+          type:
+            - "string"
+            - "null"
+        end_dt:
+          type:
+            - "string"
+            - "null"
+        utcc_yn:
+          type:
+            - "string"
+            - "null"
+        tax_type_change_dt:
+          type:
+            - "string"
+            - "null"
+        invoice_apply_dt:
+          type:
+            - "string"
+            - "null"
+        rbf_tax_type_cd:
+          type:
+            - "string"
+            - "null"
+    RegistrationCheckAvailability:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required:
+        - "available"
+        - "reason"
+      properties:
+        available:
+          type: "boolean"
+        reason:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "NOT_CONFIGURED"
+            - "KEY_EXPIRED"
+            - "KEY_REJECTED"
+            - "PROVIDER_DOWN"
+            - null
+    RegistrationCheckEvidence:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required:
+        - "brn_checked"
+        - "response_sha256"
+        - "provider_version"
+        - "id"
+        - "registration_id"
+        - "checked_at"
+        - "kind"
+        - "not_registered"
+        - "fields_sent"
+        - "recorded_status_mismatch"
+        - "reflection_pending"
+      properties:
+        brn_checked:
+          type: "string"
+        kind:
+          type: "string"
+          enum:
+            - "STATUS"
+            - "VALIDATE"
+        status_code:
+          type:
+            - "string"
+            - "null"
+        reported_status:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "CONTINUING"
+            - "SUSPENDED"
+            - "CLOSED"
+            - null
+        valid:
+          type:
+            - "string"
+            - "null"
+        not_registered:
+          type: "boolean"
+        fields_sent:
+          type: "array"
+          items:
+            type: "string"
+        response_sha256:
+          type: "string"
+        provider_version:
+          type: "string"
+        tax_type_cd:
+          type:
+            - "string"
+            - "null"
+        end_dt:
+          type:
+            - "string"
+            - "null"
+        utcc_yn:
+          type:
+            - "string"
+            - "null"
+        tax_type_change_dt:
+          type:
+            - "string"
+            - "null"
+        invoice_apply_dt:
+          type:
+            - "string"
+            - "null"
+        rbf_tax_type_cd:
+          type:
+            - "string"
+            - "null"
+        id:
+          type: "string"
+          format: "uuid"
+        registration_id:
+          type: "string"
+          format: "uuid"
+        trigger:
+          type: "string"
+          enum:
+            - "USER"
+            - "SCHEDULE"
+        actor_id:
+          type:
+            - "string"
+            - "null"
+          format: "uuid"
+        checked_at:
+          type: "string"
+          format: "date-time"
+        recorded_status_mismatch:
+          type: "boolean"
+        reflection_pending:
+          type: "boolean"
+        inbox_item_id:
+          type:
+            - "string"
+            - "null"
+          format: "uuid"
+    RegistrationCheckHistory:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required:
+        - "items"
+        - "availability"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/RegistrationCheckEvidence"
+        latest_status:
+          anyOf:
+            -
+              $ref: "#/components/schemas/RegistrationCheckEvidence"
+            -
+              type: "null"
+        latest_validate:
+          anyOf:
+            -
+              $ref: "#/components/schemas/RegistrationCheckEvidence"
+            -
+              type: "null"
+        availability:
+          $ref: "#/components/schemas/RegistrationCheckAvailability"
+        next_cursor:
+          type:
+            - "string"
+            - "null"
+          format: "uuid"
+    RegistrationCheckPreview:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required:
+        - "kind"
+        - "brn"
+        - "opened_on"
+        - "representative"
+      properties:
+        kind:
+          type: "string"
+          enum:
+            - "STATUS"
+            - "VALIDATE"
+        brn:
+          type: "string"
+        opened_on:
+          type: "string"
+          format: "date"
+        representative:
+          type: "string"
+      additionalProperties: false
+    RegistrationCheckRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required:
+        - "kind"
+      properties:
+        kind:
+          type: "string"
+          enum:
+            - "STATUS"
+            - "VALIDATE"
+        expected:
+          type: object
+          required: [brn, opened_on, representative]
+          properties:
+            brn:
+              type: string
+            opened_on:
+              type: string
+              format: date
+            representative:
+              type: string
+          description: Values disclosed in the user confirmation. A changed value refuses with stale_revision before any external call.
+      additionalProperties: false
     RegistrationEndOptions:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object

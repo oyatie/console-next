@@ -42,6 +42,7 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
             state.jwt_verifier.clone(),
             state.policy_step_up.clone(),
             state.juso.clone(),
+            state.nts.clone(),
         ))
 }
 

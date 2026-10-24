@@ -101,6 +101,7 @@ pub struct AppState {
     pub(crate) audit_attestation_signer: Arc<dyn SealSigner>,
     /// The juso proxies' client, shared by the entity face and the ops notices.
     pub(crate) juso: Arc<console_entity_adapter_juso::JusoClient>,
+    pub(crate) nts: Arc<console_entity_adapter_nts::NtsClient>,
     /// BG-8: set on SIGTERM; `/readyz` answers 503 from then on.
     pub(crate) draining: Arc<std::sync::atomic::AtomicBool>,
 }

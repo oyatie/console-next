@@ -2825,6 +2825,23 @@ const ENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/business-registrations/{registrationId}/checks",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../entity/rest/openapi/paths/api__v1__business-registrations__registrationId__checks.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../entity/rest/openapi/paths/api__v1__business-registrations__registrationId__checks.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
         path: "/api/v1/business-registrations/{registrationId}/end-options",
         operations: &[Operation {
             method: "get",
@@ -3285,6 +3302,24 @@ const ENTITY_FRAGMENT_PATHS: &[PathItem] = &[
             method: "get",
             body: include_str!(
                 "../../entity/rest/openapi/paths/api__v1__ref__lists__key__codes.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/registration-checks/availability",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../entity/rest/openapi/paths/api__v1__registration-checks__availability.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/registration-checks/preview",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../entity/rest/openapi/paths/api__v1__registration-checks__preview.post.yaml"
             ),
         }],
     },
@@ -3791,6 +3826,30 @@ const ENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "RefListSource",
         body: include_str!("../../entity/rest/openapi/schemas/RefListSource.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationCheckAnswer",
+        body: include_str!("../../entity/rest/openapi/schemas/RegistrationCheckAnswer.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationCheckAvailability",
+        body: include_str!("../../entity/rest/openapi/schemas/RegistrationCheckAvailability.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationCheckEvidence",
+        body: include_str!("../../entity/rest/openapi/schemas/RegistrationCheckEvidence.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationCheckHistory",
+        body: include_str!("../../entity/rest/openapi/schemas/RegistrationCheckHistory.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationCheckPreview",
+        body: include_str!("../../entity/rest/openapi/schemas/RegistrationCheckPreview.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationCheckRequest",
+        body: include_str!("../../entity/rest/openapi/schemas/RegistrationCheckRequest.yaml"),
     },
     NamedYaml {
         name: "RegistrationEndOptions",

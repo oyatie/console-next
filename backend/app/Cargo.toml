@@ -193,6 +193,8 @@ console-governance-adapter-postgres = { workspace = true }
 console-governance-domain = { workspace = true }
 console-governance-rest = { workspace = true, optional = true }
 console-entity-adapter-juso = { path = "../crates/entity/adapter-juso" }
+console-entity-adapter-nts.workspace = true
+console-entity-application.workspace = true
 console-entity-adapter-postgres = { workspace = true }
 console-entity-rest = { workspace = true }
 console-onboarding-adapter-postgres = { workspace = true }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Adding a entity (S4): the quick two-input save and the certificate wizard. Pure: the draft and what the tenant
 // already holds in, the request bodies or the reasons they cannot be sent out. Empty items never refuse; they
 // stay on the box as to-dos. Only a typed value that cannot be right refuses (spec S4 "R"), and the CRN check
@@ -61,34 +62,46 @@ export function createProblems(d: Draft, f: { today: string; taken: Taken | null
 export const crnWarns = (d: Draft) =>
   d.crn.length === FORMATS.corpRegNo.max && (!d.incorporatedOn || d.incorporatedOn < CORP_CHECK_DIGIT_UNTIL) && !corpRegNoChecksumOk(d.crn);
 
-/** Every value the server needs to record the certificate itself (RegistrationInput's required set). */
-export const registrationReady = (d: Draft) =>
-  d.brn.length === FORMATS.bizRegNo.max && !blank(d.name) && d.openedOn !== "" && d.businessAddress !== null &&
-  d.businessTypes.length > 0 && d.businessTypes.every((b) => !blank(b.sector) && !blank(b.item)) &&
-  d.unitTaxation !== null && d.taxType !== null && !blank(d.taxOfficePrinted);
-
-/**
- * What the server takes before it records a entity at all: a named representative, and for a corporation its CRN
- * and a head office address (legal_entity validation). Spec S4 wants kind + name only, a backend gap (CS-BE).
- */
 export type EntityGap = "kind" | "name" | "representatives" | "crn" | "headOffice" | "representationMode";
-export function entityGaps(d: Draft): EntityGap[] {
-  const gaps: EntityGap[] = [];
-  if (!d.bizKind) gaps.push("kind");
-  if (blank(d.name)) gaps.push("name");
-  // The server records no entity without a named representative (legal_entity validation).
-  if (namedReps(d).length === 0) gaps.push("representatives");
-  // More than one named representative: how they represent is asked, never assumed.
-  if (namedReps(d).length > 1 && !d.representationMode) gaps.push("representationMode");
-  if (d.bizKind === "CORPORATION") {
-    // A corporation being founded has no number until its incorporation registry (company-08).
-    if (!isFounding(d) && d.crn.length !== FORMATS.corpRegNo.max) gaps.push("crn");
-    if (!headOfficeAddress(d)) gaps.push("headOffice");
-  }
-  return gaps;
-}
+type RegistrationRequirement = "brn" | "name" | "openedOn" | "businessAddress" | "businessTypes" | "unitTaxation" | "taxType" | "taxOfficePrinted";
 const namedReps = (d: Draft) => d.representatives.map((n) => n.trim()).filter(Boolean);
 const headOfficeAddress = (d: Draft) => (d.headOffice === "SAME" ? d.businessAddress : d.headOfficeAddress);
+
+/** Server create requirements: field markers and save readiness share this source. */
+export function createRequirements(d: Draft): { entity: EntityGap[]; registration: RegistrationRequirement[] } {
+  const entity: EntityGap[] = ["kind", "name", "representatives", "representationMode"];
+  if (d.bizKind === "CORPORATION") {
+    if (!isFounding(d)) entity.push("crn");
+    entity.push("headOffice");
+  }
+  return {
+    entity,
+    registration: ["brn", "name", "openedOn", "businessAddress", "businessTypes", "unitTaxation", "taxType", "taxOfficePrinted"],
+  };
+}
+
+const requirementMet: Record<EntityGap | RegistrationRequirement, (d: Draft) => boolean> = {
+  kind: (d) => d.bizKind !== null,
+  name: (d) => !blank(d.name),
+  representatives: (d) => namedReps(d).length > 0,
+  // A sole representative's SINGLE value is supplied by entityBody.
+  representationMode: (d) => namedReps(d).length <= 1 || d.representationMode !== null,
+  crn: (d) => d.crn.length === FORMATS.corpRegNo.max,
+  headOffice: (d) => headOfficeAddress(d) !== null,
+  brn: (d) => d.brn.length === FORMATS.bizRegNo.max,
+  openedOn: (d) => d.openedOn !== "",
+  businessAddress: (d) => d.businessAddress !== null,
+  businessTypes: (d) => d.businessTypes.length > 0 && d.businessTypes.every((b) => !blank(b.sector) && !blank(b.item)),
+  unitTaxation: (d) => d.unitTaxation !== null,
+  taxType: (d) => d.taxType !== null,
+  taxOfficePrinted: (d) => !blank(d.taxOfficePrinted),
+};
+
+/** What must still be entered before recording the entity. */
+export const entityGaps = (d: Draft): EntityGap[] => createRequirements(d).entity.filter((field) => !requirementMet[field](d));
+/** Every value needed to record the certificate itself. */
+export const registrationGaps = (d: Draft) => createRequirements(d).registration.filter((field) => !requirementMet[field](d));
+export const registrationReady = (d: Draft) => registrationGaps(d).length === 0;
 
 /** The quick sheet shares this refusal between its save controls and command guard. */
 export function quickBlock(d: Draft) {

@@ -10,3 +10,17 @@ allOf:
       description: The kept 사업자등록증 this registration is typed from, attached in the same transaction and named
         as the first revision's evidence (422 document_not_found, document_not_certificate,
         document_attached_elsewhere, document_not_new).
+    check_preview:
+      type: object
+      required: [command_id, acknowledged]
+      properties:
+        command_id:
+          type: string
+          format: uuid
+        acknowledged:
+          type: boolean
+        status_since:
+          type: [string, 'null']
+          format: date
+          description: Explicit suspension date when the authority reports suspension without a date.
+      description: Explicitly accepted pre-save issuing-authority check. Suspension or closure requires acknowledgment. Saving without checking stays available.

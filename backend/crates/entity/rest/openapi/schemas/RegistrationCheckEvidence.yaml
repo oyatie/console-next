@@ -1,0 +1,101 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required:
+  - "brn_checked"
+  - "response_sha256"
+  - "provider_version"
+  - "id"
+  - "registration_id"
+  - "checked_at"
+  - "kind"
+  - "not_registered"
+  - "fields_sent"
+  - "recorded_status_mismatch"
+  - "reflection_pending"
+properties:
+  brn_checked:
+    type: "string"
+  kind:
+    type: "string"
+    enum:
+      - "STATUS"
+      - "VALIDATE"
+  status_code:
+    type:
+      - "string"
+      - "null"
+  reported_status:
+    type:
+      - "string"
+      - "null"
+    enum:
+      - "CONTINUING"
+      - "SUSPENDED"
+      - "CLOSED"
+      - null
+  valid:
+    type:
+      - "string"
+      - "null"
+  not_registered:
+    type: "boolean"
+  fields_sent:
+    type: "array"
+    items:
+      type: "string"
+  response_sha256:
+    type: "string"
+  provider_version:
+    type: "string"
+  tax_type_cd:
+    type:
+      - "string"
+      - "null"
+  end_dt:
+    type:
+      - "string"
+      - "null"
+  utcc_yn:
+    type:
+      - "string"
+      - "null"
+  tax_type_change_dt:
+    type:
+      - "string"
+      - "null"
+  invoice_apply_dt:
+    type:
+      - "string"
+      - "null"
+  rbf_tax_type_cd:
+    type:
+      - "string"
+      - "null"
+  id:
+    type: "string"
+    format: "uuid"
+  registration_id:
+    type: "string"
+    format: "uuid"
+  trigger:
+    type: "string"
+    enum:
+      - "USER"
+      - "SCHEDULE"
+  actor_id:
+    type:
+      - "string"
+      - "null"
+    format: "uuid"
+  checked_at:
+    type: "string"
+    format: "date-time"
+  recorded_status_mismatch:
+    type: "boolean"
+  reflection_pending:
+    type: "boolean"
+  inbox_item_id:
+    type:
+      - "string"
+      - "null"
+    format: "uuid"

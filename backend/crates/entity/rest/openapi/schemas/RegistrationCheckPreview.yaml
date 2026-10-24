@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required:
+  - "kind"
+  - "brn"
+  - "opened_on"
+  - "representative"
+properties:
+  kind:
+    type: "string"
+    enum:
+      - "STATUS"
+      - "VALIDATE"
+  brn:
+    type: "string"
+  opened_on:
+    type: "string"
+    format: "date"
+  representative:
+    type: "string"
+additionalProperties: false

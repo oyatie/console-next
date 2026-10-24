@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - "Entity"
+summary: "Explicit issuing-authority check; never blocks saving"
+operationId: "createRegistrationCheckAnswer"
+security:
+  -
+    bearerAuth: []
+parameters:
+  -
+    name: "Idempotency-Key"
+    in: "header"
+    required: true
+    schema:
+      type: "string"
+      format: "uuid"
+responses:
+  200:
+    description: "Evidence or honest current availability"
+    content:
+      application/json:
+        schema:
+          $ref: "#/components/schemas/RegistrationCheckAnswer"
+  403:
+    $ref: "#/components/responses/Forbidden"
+  409:
+    description: "registration_check_unavailable (reason NOT_CONFIGURED, KEY_EXPIRED, KEY_REJECTED, PROVIDER_DOWN), registration_check_no_number, registration_check_registration_ended, idempotency_key_reused"
+    content:
+      application/json:
+        schema:
+          $ref: "#/components/schemas/ErrorBody"
+  429:
+    description: "registration_check_rate_limited, retry_after_seconds and Retry-After"
+    headers:
+      Retry-After:
+        schema:
+          type: "integer"
+    content:
+      application/json:
+        schema:
+          $ref: "#/components/schemas/ErrorBody"
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: "#/components/schemas/RegistrationCheckPreview"

@@ -2810,6 +2810,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/business-registrations/{registrationId}/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read issuing-authority check evidence */
+        get: operations["readRegistrationCheckHistory"];
+        put?: never;
+        /** Explicit issuing-authority check; never blocks saving */
+        post: operations["createRegistrationCheckEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/business-registrations/{registrationId}/end-options": {
         parameters: {
             query?: never;
@@ -11722,6 +11740,40 @@ export interface paths {
         patch: operations["updateRegion"];
         trace?: never;
     };
+    "/api/v1/registration-checks/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read issuing-authority check evidence */
+        get: operations["readRegistrationCheckAvailability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/registration-checks/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Explicit issuing-authority check; never blocks saving */
+        post: operations["createRegistrationCheckAnswer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/release-toggles": {
         parameters: {
             query?: never;
@@ -16242,6 +16294,9 @@ export interface components {
             /** Format: date */
             closed_on?: string | null;
             current?: components["schemas"]["RegistrationState"] | null;
+            nts_check?: components["schemas"]["RegistrationCheckEvidence"];
+            /** @description True only for a voided registration; recorded closure does not prevent authority rechecks. */
+            voided?: boolean;
         };
         CalendarEventListResponse: {
             items: components["schemas"]["CalendarEventResponse"][];
@@ -17069,6 +17124,17 @@ export interface components {
              * @description The kept 사업자등록증 this registration is typed from, attached in the same transaction and named as the first revision's evidence (422 document_not_found, document_not_certificate, document_attached_elsewhere, document_not_new).
              */
             document_id?: string | null;
+            /** @description Explicitly accepted pre-save issuing-authority check. Suspension or closure requires acknowledgment. Saving without checking stays available. */
+            check_preview?: {
+                /** Format: uuid */
+                command_id: string;
+                acknowledged: boolean;
+                /**
+                 * Format: date
+                 * @description Explicit suspension date when the authority reports suspension without a date.
+                 */
+                status_since?: string | null;
+            };
         };
         CreateCalendarEventRequest: {
             scope_type: components["schemas"]["CollaborationScopeType"];
@@ -24937,7 +25003,7 @@ export interface components {
                  * @description The environment variable holding the key (never the key).
                  * @enum {string}
                  */
-                env: "STREET_JUSO_API_KEY" | "DETAILED_JUSO_API_KEY";
+                env: "STREET_JUSO_API_KEY" | "DETAILED_JUSO_API_KEY" | "NTS_BUSINESSMAN_API_KEY";
                 /** @enum {string} */
                 state: "EXPIRING" | "EXPIRED" | "REJECTED";
                 /** Format: date */
@@ -26058,6 +26124,90 @@ export interface components {
         RegisterProductionSourceSystem: {
             branch_id: components["schemas"]["Uuid"];
             source_system: string;
+        };
+        RegistrationCheckAnswer: {
+            brn_checked: string;
+            /** @enum {string} */
+            kind: "STATUS" | "VALIDATE";
+            status_code?: string | null;
+            /** @enum {string|null} */
+            reported_status?: "CONTINUING" | "SUSPENDED" | "CLOSED" | null;
+            valid?: string | null;
+            not_registered: boolean;
+            fields_sent: string[];
+            response_sha256: string;
+            provider_version: string;
+            tax_type_cd?: string | null;
+            end_dt?: string | null;
+            utcc_yn?: string | null;
+            tax_type_change_dt?: string | null;
+            invoice_apply_dt?: string | null;
+            rbf_tax_type_cd?: string | null;
+        };
+        RegistrationCheckAvailability: {
+            available: boolean;
+            /** @enum {string|null} */
+            reason: "NOT_CONFIGURED" | "KEY_EXPIRED" | "KEY_REJECTED" | "PROVIDER_DOWN" | null;
+        };
+        RegistrationCheckEvidence: {
+            brn_checked: string;
+            /** @enum {string} */
+            kind: "STATUS" | "VALIDATE";
+            status_code?: string | null;
+            /** @enum {string|null} */
+            reported_status?: "CONTINUING" | "SUSPENDED" | "CLOSED" | null;
+            valid?: string | null;
+            not_registered: boolean;
+            fields_sent: string[];
+            response_sha256: string;
+            provider_version: string;
+            tax_type_cd?: string | null;
+            end_dt?: string | null;
+            utcc_yn?: string | null;
+            tax_type_change_dt?: string | null;
+            invoice_apply_dt?: string | null;
+            rbf_tax_type_cd?: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            registration_id: string;
+            /** @enum {string} */
+            trigger?: "USER" | "SCHEDULE";
+            /** Format: uuid */
+            actor_id?: string | null;
+            /** Format: date-time */
+            checked_at: string;
+            recorded_status_mismatch: boolean;
+            reflection_pending: boolean;
+            /** Format: uuid */
+            inbox_item_id?: string | null;
+        };
+        RegistrationCheckHistory: {
+            items: components["schemas"]["RegistrationCheckEvidence"][];
+            latest_status?: components["schemas"]["RegistrationCheckEvidence"] | null;
+            latest_validate?: components["schemas"]["RegistrationCheckEvidence"] | null;
+            availability: components["schemas"]["RegistrationCheckAvailability"];
+            /** Format: uuid */
+            next_cursor?: string | null;
+        };
+        RegistrationCheckPreview: {
+            /** @enum {string} */
+            kind: "STATUS" | "VALIDATE";
+            brn: string;
+            /** Format: date */
+            opened_on: string;
+            representative: string;
+        };
+        RegistrationCheckRequest: {
+            /** @enum {string} */
+            kind: "STATUS" | "VALIDATE";
+            /** @description Values disclosed in the user confirmation. A changed value refuses with stale_revision before any external call. */
+            expected?: {
+                brn: string;
+                /** Format: date */
+                opened_on: string;
+                representative: string;
+            };
         };
         RegistrationEndOptions: {
             /** Format: uuid */
@@ -33653,6 +33803,99 @@ export interface operations {
             /** @description Field issues: errors[{field, code}] (with document_id: document_not_found, document_not_certificate, document_attached_elsewhere, document_not_new). */
             422: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    readRegistrationCheckHistory: {
+        parameters: {
+            query?: {
+                limit?: number;
+                before?: string;
+            };
+            header?: never;
+            path: {
+                registrationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence or honest current availability */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationCheckHistory"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description registration_check_unavailable (reason NOT_CONFIGURED, KEY_EXPIRED, KEY_REJECTED, PROVIDER_DOWN), registration_check_no_number, registration_check_registration_ended, idempotency_key_reused */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description registration_check_rate_limited, retry_after_seconds and Retry-After */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    createRegistrationCheckEvidence: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                registrationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrationCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description Evidence or honest current availability */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationCheckEvidence"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description registration_check_unavailable (reason NOT_CONFIGURED, KEY_EXPIRED, KEY_REJECTED, PROVIDER_DOWN), registration_check_no_number, registration_check_registration_ended, idempotency_key_reused */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description registration_check_rate_limited, retry_after_seconds and Retry-After */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -53208,6 +53451,92 @@ export interface operations {
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
             503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    readRegistrationCheckAvailability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence or honest current availability */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationCheckAvailability"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description registration_check_unavailable (reason NOT_CONFIGURED, KEY_EXPIRED, KEY_REJECTED, PROVIDER_DOWN), registration_check_no_number, registration_check_registration_ended, idempotency_key_reused */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description registration_check_rate_limited, retry_after_seconds and Retry-After */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    createRegistrationCheckAnswer: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrationCheckPreview"];
+            };
+        };
+        responses: {
+            /** @description Evidence or honest current availability */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationCheckAnswer"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description registration_check_unavailable (reason NOT_CONFIGURED, KEY_EXPIRED, KEY_REJECTED, PROVIDER_DOWN), registration_check_no_number, registration_check_registration_ended, idempotency_key_reused */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description registration_check_rate_limited, retry_after_seconds and Retry-After */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     listReleaseToggles: {
