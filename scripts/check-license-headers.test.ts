@@ -41,15 +41,15 @@ test("CLI uses the planned CI base, with an explicit argument taking precedence"
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-licence-base-"));
   try {
     const capture = path.join(dir, "args");
-    writeFileSync(path.join(dir, "git"), '#!/bin/sh\nprintf "%s\\n" "$*" > "$LICENSE_ARGS"\n', { mode: 0o700 });
+    writeFileSync(path.join(dir, "git"), '#!/bin/sh\nif [ "$1" = rev-parse ]; then printf "%s\\n" "$4" | sed "s/\\^{commit}$//"; else printf "%s\\n" "$*" > "$LICENSE_ARGS"; fi\n', { mode: 0o700 });
     const script = fileURLToPath(new URL("./check-license-headers.mjs", import.meta.url));
     for (const [planned, args, expected] of [
       ["planned-base", [], "planned-base"],
       ["planned-base", ["explicit-base"], "explicit-base"],
-      ["", [], "dev"],
+      ["", [], "refs/remotes/origin/dev"],
     ] as const) {
       const result = spawnSync(process.execPath, [script, ...args], {
-        encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, LICENSE_ARGS: capture, CI_BASE_SHA: planned },
+        encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, LICENSE_ARGS: capture, CI_BASE_SHA: planned, GITHUB_EVENT_PATH: "", QUALITY_BASE: "" },
       });
       expect(result.status, result.stderr).toBe(0);
       expect(readFileSync(capture, "utf8").trim()).toBe(`diff --merge-base ${expected} --name-only --diff-filter=A`);

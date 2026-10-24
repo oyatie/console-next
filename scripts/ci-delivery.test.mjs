@@ -13,6 +13,15 @@ import { releasePackages } from "./check-reach.mjs";
 const workflows = () => readdirSync(".github/workflows").filter((file) => /\.ya?ml$/.test(file))
   .map((file) => [file, load(readFileSync(`.github/workflows/${file}`, "utf8"))]);
 
+test("jobs running the shared CI contract fetch its base without creating a local dev branch", () => {
+  for (const [file, workflow] of workflows()) for (const [name, job] of Object.entries(workflow.jobs)) {
+    if (!job.steps.some((step) => /scripts\/ci\.test\.mjs|npm run check/.test(step.run ?? ""))) continue;
+    const checkout = job.steps.find((step) => step.uses?.startsWith("actions/checkout@"));
+    assert.equal(checkout?.with?.["fetch-depth"], 0, `${file}:${name}: base commit must be fetched`);
+    assert.ok(!job.steps.some((step) => /git branch dev/.test(step.run ?? "")), `${file}:${name}: local dev masks base-resolution defects`);
+  }
+});
+
 test("every checkout job allows GitHub HTTPS; removing it is refused", () => {
   for (const [file, workflow] of workflows()) for (const [name, job] of Object.entries(workflow.jobs)) {
     if (!job.steps.some((step) => step.uses?.startsWith("actions/checkout@"))) continue;

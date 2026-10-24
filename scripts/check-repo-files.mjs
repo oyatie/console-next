@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// Usage: node scripts/check-repo-files.mjs [base-ref | --full]. Default: the PR base, or dev locally.
+// Usage: node scripts/check-repo-files.mjs [base-ref | --full]. Default: CI evidence, then remote dev.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { resolveBase } from "./git-base.mjs";
 
 export const policy = JSON.parse(readFileSync(new URL("./repo-files.policy.json", import.meta.url), "utf8"));
 
@@ -18,8 +19,9 @@ export function fileProblems(file, bytes) {
   return problems;
 }
 
-export function checkRepoFiles({ full = false, base = process.env.CI_BASE_SHA || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "dev") } = {}) {
+export function checkRepoFiles({ full = false, base } = {}) {
   const git = (...args) => execFileSync("git", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  if (!full) base = resolveBase(process.cwd(), { base });
   const changed = full ? null : new Set(git("diff", "--name-only", "--no-renames", "--diff-filter=ACMT", "-z", `${base}...HEAD`, "--").split("\0").filter(Boolean));
   // Read committed sizes, not working files: local edits and symlink targets cannot hide a large blob.
   const files = git("ls-tree", "-rlz", "HEAD").split("\0").filter(Boolean).map((entry) => {

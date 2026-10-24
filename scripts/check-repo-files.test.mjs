@@ -57,7 +57,7 @@ test("policy covers every refusal and names the relocated, scanned topology file
 function repository(t) {
   const dir = mkdtempSync(path.join(tmpdir(), "repo-file-guard-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
-  const env = { ...process.env, GIT_AUTHOR_NAME: "Jason Lee", GIT_AUTHOR_EMAIL: "56489493+jason931225@users.noreply.github.com", GIT_COMMITTER_NAME: "Jason Lee", GIT_COMMITTER_EMAIL: "56489493+jason931225@users.noreply.github.com" };
+  const env = { ...process.env, CI_BASE_SHA: "", GITHUB_EVENT_PATH: "", QUALITY_BASE: "", GIT_AUTHOR_NAME: "Jason Lee", GIT_AUTHOR_EMAIL: "56489493+jason931225@users.noreply.github.com", GIT_COMMITTER_NAME: "Jason Lee", GIT_COMMITTER_EMAIL: "56489493+jason931225@users.noreply.github.com" };
   const git = (...args) => execFileSync("git", args, { cwd: dir, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   const write = (file, value = "synthetic control\n") => {
     mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
@@ -175,13 +175,14 @@ test("merge-queue diff mode uses the planner base without a local dev branch", (
   assert.doesNotMatch(result.stderr, /unknown revision|ambiguous argument/);
 });
 
-test("release dispatch with an empty planner base falls back to dev", (t) => {
+test("release dispatch with an empty planner base falls back to remote dev", (t) => {
   const { dir, git, write, commit } = repository(t);
   write("safe.txt"); commit();
+  git("update-ref", "refs/remotes/origin/dev", "HEAD");
   git("checkout", "-qb", "feature");
   write(".env.refused"); commit();
   const result = spawnSync(process.execPath, [new URL("./check-repo-files.mjs", import.meta.url).pathname], {
-    cwd: dir, encoding: "utf8", env: { ...process.env, CI_BASE_SHA: "", GITHUB_BASE_REF: "" },
+    cwd: dir, encoding: "utf8", env: { ...process.env, CI_BASE_SHA: "", GITHUB_BASE_REF: "", GITHUB_EVENT_PATH: "", QUALITY_BASE: "" },
   });
   assert.equal(result.status, 1, result.stdout);
   assert.match(result.stderr, /\.env\.refused.*environment/);

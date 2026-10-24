@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { resolveBase } from "../git-base.mjs";
 
 export const digest = (text) => createHash("sha256").update(text).digest("hex").slice(0, 20);
 
@@ -19,9 +20,8 @@ export function baselineGrowth(current, previous) {
 
 // Git distinguishes a missing path from an invalid base; unknown evidence must not become green.
 export function atBase(root, base, file) {
+  base = resolveBase(root, { base });
   const git = (args) => spawnSync("git", args, { cwd: root, encoding: "utf8" });
-  const valid = git(["rev-parse", "--verify", `${base}^{commit}`]);
-  if (valid.status !== 0) throw new Error(`quality: cannot resolve base ${base}: ${valid.stderr}`);
   const list = git(["ls-tree", "--name-only", base, "--", file]);
   if (list.status !== 0) throw new Error(list.stderr);
   if (!list.stdout.trim()) return undefined;

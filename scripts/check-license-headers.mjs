@@ -4,9 +4,10 @@
 // one backend/Cargo.toml already declares, and it means "no licence granted; see LICENSE". Existing files are not
 // back-filled by this check (a ratchet: new files only). Formats without comments (JSON, lockfiles, images) and
 // vendored third-party code, which keeps its own licence, are out of scope.
-//   node scripts/check-license-headers.mjs [base-ref]   (default: CI_BASE_SHA, then dev)
+//   node scripts/check-license-headers.mjs [base-ref]   (default: CI evidence, then remote dev)
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { resolveBase } from "./git-base.mjs";
 
 export const HEADER = "SPDX-License-Identifier: LicenseRef-Proprietary";
 const EXT = /\.(?:[cm]?[jt]sx?|rs|sh|py|css|sql|ya?ml|toml|html)$/;
@@ -30,7 +31,7 @@ export function headerProblems(file, src) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const base = process.argv[2] ?? (process.env.CI_BASE_SHA || process.env.QUALITY_BASE || "dev");
+  const base = resolveBase(process.cwd(), { base: process.argv[2] });
   const added = execFileSync("git", ["diff", "--merge-base", base, "--name-only", "--diff-filter=A"], { encoding: "utf8" })
     .split("\n")
     .filter(checked);

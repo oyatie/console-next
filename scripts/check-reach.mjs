@@ -11,6 +11,7 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { atBase, baselineGrowth } from "./quality/ratchet.mjs";
+import { resolveBase } from "./git-base.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MODULES = new Set(["Entity", "Org", "HR"]);
@@ -271,7 +272,7 @@ async function main() {
     return;
   }
   const at = process.argv.indexOf("--base");
-  tree.previous = await atBaseOf(at > 0 ? process.argv[at + 1] : (process.env.QUALITY_BASE ?? "dev"));
+  tree.previous = await atBaseOf(resolveBase(ROOT, { base: at > 0 ? process.argv[at + 1] : undefined }));
   const problems = [...check(tree), ...checkOperations({ ...opTree, operations, previous: tree.previous.operations })];
   if (problems.length) {
     console.error(`reach: ${problems.length} problem(s):\n${problems.join("\n")}`);

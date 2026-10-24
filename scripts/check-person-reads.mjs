@@ -61,7 +61,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     writeFileSync(path.join(ROOT, BASELINE), `${JSON.stringify(found, null, 2)}\n`);
   } else {
     const baseline = JSON.parse(readFileSync(path.join(ROOT, BASELINE), "utf8"));
-    const previous = atBase(ROOT, process.env.QUALITY_BASE ?? "dev", BASELINE);
+    const previous = atBase(ROOT, undefined, BASELINE);
     const problems = [...ratchet(found, baseline), ...(previous ? baselineGrowth(baseline, JSON.parse(previous)) : [])];
     if (problems.length) { console.error(problems.join("\n")); process.exitCode = 1; }
     else console.log(`person-reads: ${Object.values(found).reduce((a, b) => a + b, 0)} inherited SQL readers; no new or stale entries`);

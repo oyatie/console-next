@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import "./git-base.test.mjs";
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -51,7 +52,7 @@ test("merge-group CLI handles metadata above 1 MiB and uses its base SHA for doc
   try {
     writeFileSync(path.join(dir, "event.json"), JSON.stringify({ merge_group: { base_sha: "base-sha" } }));
     writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nprocess.stdout.write(JSON.stringify({packages:${JSON.stringify(packages)},padding:'x'.repeat(2*1024*1024)}));\n`, { mode: 0o700 });
-    writeFileSync(path.join(dir, "git"), `#!${process.execPath}\nprocess.stdout.write('docs/ci.md\\0');\n`, { mode: 0o700 });
+    writeFileSync(path.join(dir, "git"), `#!${process.execPath}\nprocess.stdout.write(process.argv[2]==='rev-parse'?'base-sha':'docs/ci.md\\0');\n`, { mode: 0o700 });
     const output = path.join(dir, "outputs");
     const result = spawnSync(process.execPath, ["scripts/ci/plan.mjs"], { encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, GITHUB_EVENT_PATH: path.join(dir, "event.json"), GITHUB_EVENT_NAME: "merge_group", GITHUB_OUTPUT: output } });
     assert.equal(result.status, 0, result.stderr);
