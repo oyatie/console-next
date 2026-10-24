@@ -89,6 +89,10 @@ pub(crate) async fn append(
         .bind(&answer.utcc_yn).bind(&answer.tax_type_change_dt).bind(&answer.invoice_apply_dt)
         .bind(&answer.rbf_tax_type_cd).bind(&answer.valid).bind(answer.not_registered).bind(&answer.fields_sent)
         .bind(&answer.response_sha256).bind(&answer.provider_version).bind(actor).bind(checked_at).execute(tx.as_mut()).await?;
+    if actor.is_some() {
+        sqlx::query("UPDATE business_registration_check_schedule SET due_at=(SELECT checked_at FROM business_registration_checks WHERE id=$1)+$2::bigint*interval '1 hour' WHERE registration_id=$3")
+            .bind(id).bind(crate::CheckSchedulePolicy::default().cadence_hours).bind(registration).execute(tx.as_mut()).await?;
+    }
     Ok(id)
 }
 

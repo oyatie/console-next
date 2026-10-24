@@ -132,7 +132,7 @@ pub(crate) async fn registrations(
         }
         let tier: String = r.try_get("derived_tier")?;
         let number: Option<String> = r.try_get("brn")?;
-        let unverified_reason = if tier != "NONE" {
+        let unverified_reason = if tier != "NONE" || nts_check.is_some() {
             None
         } else if number.is_none() {
             Some(UnverifiedReason::NewRegistrationPending)

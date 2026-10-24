@@ -22,6 +22,13 @@ async fn evidence_replay_deduplication_and_inbox_source_never_overwrite_recorded
         .check_registration(&command, id, CheckKind::Status, fake("02"))
         .await
         .unwrap();
+    let cadence = i32::try_from(CheckSchedulePolicy::default().cadence_hours).unwrap();
+    let deferred: bool = sqlx::query_scalar("SELECT s.due_at=c.checked_at+make_interval(hours=>$2) FROM business_registration_check_schedule s JOIN business_registration_checks c ON c.registration_id=s.registration_id WHERE c.id=$1")
+        .bind(first.id).bind(cadence).fetch_one(&pool).await.unwrap();
+    assert!(
+        deferred,
+        "a fresh manual check starts the configured schedule cadence"
+    );
     assert!(first.recorded_status_mismatch);
     assert_eq!(
         first.id,

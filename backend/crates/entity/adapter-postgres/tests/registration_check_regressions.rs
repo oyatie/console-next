@@ -54,6 +54,11 @@ async fn a_new_number_can_raise_an_item_and_invalid_validation_does_not_resolve_
         store.registration_check_items(&actor).await.unwrap().len(),
         1
     );
+    let current = store.list_entities(&actor, true).await.unwrap().remove(0);
+    assert!(
+        current.registrations[0].unverified_reason.is_none(),
+        "an invalid answer is already a check; its evidence carries the result"
+    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

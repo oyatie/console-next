@@ -5,6 +5,7 @@ import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import type { BusinessRegistration, LegalEntity } from "@console/api/pending";
 import { loadCatalog, t } from "@console/i18n";
 import { NtsCheck } from "./nts-check";
+import { verificationState } from "../present";
 import { ApiError, type CheckEvidence, type CheckHistory } from "../api";
 import type { Button } from "../../../ui/button/button";
 import type { Sheet } from "../../../ui/sheet/sheet";
@@ -64,6 +65,7 @@ test.each([
   view.data = history(check);
   const out = html();
   expect(out).toContain(t(state));
+  expect(verificationState({ ...registration, nts_check: check, verification_tier: check.valid === "01" ? "T2" : check.status_code ? "T1" : "NONE", unverified_reason: "NOT_CHECKED" }).label).toBe(t(state));
   expect(out).toContain(result === "nts.result.closed" ? t(result, { date: "2026. 10. 20." }) : t(result));
   expect(out).toContain("2026. 10. 24. 11:00 KST");
   if (check.valid === "02") {
@@ -74,7 +76,9 @@ test.each([
 });
 
 test.each([true, false])("not registered reflection pending=%s keeps the provider lag honest", (pending) => {
-  view.data = history(evidence({ status_code: null, not_registered: true, reflection_pending: pending, recorded_status_mismatch: !pending, inbox_item_id: pending ? null : "inbox-item" }));
+  const check = evidence({ status_code: null, not_registered: true, reflection_pending: pending, recorded_status_mismatch: !pending, inbox_item_id: pending ? null : "inbox-item" });
+  view.data = history(check);
+  expect(verificationState({ ...registration, nts_check: check, verification_tier: "NONE", unverified_reason: "NOT_CHECKED" }).label).toBe(t("nts.state.unavailable"));
   const out = html();
   expect(out).toContain(t("nts.result.notRegistered"));
   expect(out.includes(t("nts.reflectionPending"))).toBe(pending);

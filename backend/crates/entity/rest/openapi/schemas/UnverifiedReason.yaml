@@ -1,5 +1,5 @@
 type: string
-description: Why the registration is saved unverified. NOT_CHECKED = 「진위 확인 - 하지 않음」 (the MVP never calls 국세청); NEW_REGISTRATION_PENDING = no 사업자등록번호 yet; SERVICE_UNAVAILABLE is reserved for the post-MVP verifier and never written today.
+description: Derived reason when no current-number authority check exists. NEW_REGISTRATION_PENDING means no registration number; NOT_CHECKED means no check yet; SERVICE_UNAVAILABLE means automatic checking is currently unavailable. Recorded evidence determines the verification tier independently of these retained N-1 columns.
 enum:
 - NEW_REGISTRATION_PENDING
 - SERVICE_UNAVAILABLE
