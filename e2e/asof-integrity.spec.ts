@@ -51,7 +51,7 @@ test("past and future views keep dated labels and readable inspectors; future ch
 
   await go(admin, `/org?as_of=${past}&sel=${workplace}`);
   await datedLabels(admin, past, "과거");
-  await expect(admin.getByRole("main").getByText(`${koDate(past)} 기준 구조입니다`, { exact: false })).toBeVisible();
+  await expect(admin.getByRole("main").getByText(`${past} 기준 구조입니다`, { exact: false })).toBeVisible();
   await readOnlyPanel(panel(admin, "본사"), past);
   await accessibleAtBothWidths(admin, "past workplace inspector");
 
@@ -69,7 +69,7 @@ test("past and future views keep dated labels and readable inspectors; future ch
   await readOnlyPanel(panel(admin, SETUP_DEPARTMENT), future);
   expect((await members).status()).toBe(200);
   await expect(panel(admin, SETUP_DEPARTMENT)).toContainText("시점구성원");
-  await expect(admin.getByRole("main").getByText(`${koDate(future)} 기준 구조입니다`, { exact: false })).toBeVisible();
+  await expect(admin.getByRole("main").getByText(`${future} 기준 구조입니다`, { exact: false })).toBeVisible();
   await accessibleAtBothWidths(admin, "future department inspector");
 
   await go(admin, `/org?compare_a=${today}&compare_b=${future}&sel=${department}`);

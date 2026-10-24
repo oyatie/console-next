@@ -19,6 +19,6 @@ test.each(["2026-09-01", "2026-11-01"])("record labels carry the snapshot date %
   expect(html).toContain(`${fmtDate(asOf)} 기준 상태`);
   expect(html).toContain(`${fmtDate(asOf)} 재직`);
   expect(html).not.toMatch(/오늘\(|지금 상태|지금 재직/);
-  expect(t("structure.caption", { date: fmtDate(asOf) })).toContain(`${fmtDate(asOf)} 기준`);
-  expect(t("structure.caption", { date: fmtDate(asOf) })).not.toContain("오늘");
+  expect(t("structure.caption", { date: asOf })).toContain(`${asOf} 기준`);
+  expect(t("structure.caption", { date: asOf })).not.toContain("오늘");
 });
