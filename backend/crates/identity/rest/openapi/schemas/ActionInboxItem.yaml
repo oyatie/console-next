@@ -20,7 +20,7 @@ properties:
     description: '"{kind}:{uuid}" — source-namespaced so ids never collide.'
   kind:
     type: string
-    enum:
+    x-extensible-enum:
     - approval
     - dispatch
     - work

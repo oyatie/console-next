@@ -14308,8 +14308,7 @@ export interface components {
         ActionInboxItem: {
             /** @description "{kind}:{uuid}" — source-namespaced so ids never collide. */
             id: string;
-            /** @enum {string} */
-            kind: "approval" | "dispatch" | "work" | "support" | "payroll" | "governance" | "org_change" | "org_change_approve" | "org_change_draft" | "org_change_apply" | "org_change_waiting" | "org_change_scheduled" | "org_change_rejected" | "org_change_settle" | "hr_exit" | "hr_exit_confirm" | "hr_exit_confirm_hq" | "hr_exit_settle" | "hr_lifecycle" | "lifecycle_apply_failed" | "hr_request" | "register_review" | "insurance_filing" | "identity_review" | "home_branch_review" | "contract_renewal" | "period_unlock" | "grant_notice" | "account_security" | "setup_entity" | "setup_workplace" | "setup_org" | "setup_approval" | "setup_people" | "setup_passkey" | "setup_employees" | "setup_roles" | "setup_golive" | "support_access";
+            kind: string;
             /** @enum {string} */
             urg: "now" | "today" | "wait";
             /** @description Source reference (work order request_no, ticket id, or the workflow run/object id). Not a canonical AP-/CS- object code. */
