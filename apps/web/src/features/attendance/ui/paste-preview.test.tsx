@@ -34,9 +34,10 @@ test("the attendance paste sheet shows destinations, ignored input, and an expli
 });
 
 test("a refused paste explains the issue and exposes no accept action", () => {
-  const html = render({ ...preview, cells: [], identities: [], refusal: "unlabelledMultiRow" });
+  const html = render({ ...preview, refusal: "unlabelledMultiRow" });
+  expect(html).toContain('<p role="alert">');
   expect(html).toContain("한 직원이 여러 행에 있습니다");
-  expect(html).not.toContain("초안에 1칸 반영");
+  expect(html).not.toMatch(/<button[^>]*>[^<]*초안에/);
 });
 
 test("a closed-month row is shown as locked and cannot be accepted", () => {

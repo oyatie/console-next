@@ -76,7 +76,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
           {saveWhy ? <DisabledReason reason={saveWhy} control={(p) => <Button {...p} variant="primary">{t("attendanceRecords.toolbar.save")}</Button>} /> : <Button variant="primary" onClick={() => setSave(true)}>{t("attendanceRecords.toolbar.save")}</Button>}
         </>}
       </div>}
-      {feedback && <p className="muted" role="status">{feedback}</p>}
+      {(drafts > 0 || feedback) && <p className="muted" role="status">{[drafts > 0 ? t("attendanceRecords.toolbar.unsaved", { count: drafts, refused: 0 }) : null, feedback].filter(Boolean).join(" · ")}</p>}
 
       <QueryState q={restoringDetail ? { ...board, isPending: true } : board} own={refusalText} layout="grid">{b => {
         const ledger = ledgerParts(b.ledger);

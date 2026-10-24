@@ -149,6 +149,7 @@ export function readPaste(text: string, numbers: readonly (string | null)[], day
   if (identityHeader && header < 0) return empty(wrongMonthHeader ? "wrongMonth" : "dayHeaderRequired");
   if (header >= 0) {
     if (idCol < 0) return empty("employeeNumberHeader");
+    if (wrongMonthHeader) return empty("wrongMonth");
     const titleMonth = rows.slice(0, header).map((r) => r.join(" ")).join(" ").match(new RegExp(`((?:19|20)\\d{2})\\s*${YEAR_WORD}\\s*(\\d{1,2})\\s*${MONTH_WORD}`));
     if (titleMonth && `${titleMonth[1]}-${titleMonth[2]!.padStart(2, "0")}` !== month) return empty("wrongMonth");
     const seenDays = new Set<number>();
@@ -243,6 +244,7 @@ export function readPaste(text: string, numbers: readonly (string | null)[], day
   }
   for (const row of rows) {
     const number = employeeKey(row[0] ?? "");
+    if (!number && row.slice(1).some((value) => value.trim())) return empty(matched.size ? "unlabelledMultiRow" : "employeeNumberRequired", [...missing]);
     const r = byNumber.get(number);
     if (r === undefined) {
       if (number) missing.add(number);
