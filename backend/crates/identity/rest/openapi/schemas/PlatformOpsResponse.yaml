@@ -23,7 +23,33 @@ properties:
           enum:
           - STREET_JUSO_API_KEY
           - DETAILED_JUSO_API_KEY
-          - NTS_BUSINESSMAN_API_KEY
+        state:
+          type: string
+          enum:
+          - EXPIRING
+          - EXPIRED
+          - REJECTED
+        expires_on:
+          type:
+          - string
+          - 'null'
+          format: date
+        days_left:
+          type:
+          - integer
+          - 'null'
+  registration_check_notices:
+    type: array
+    description: Authority-key notices for vendor operators; separate from the N-1 address-key enum.
+    items:
+      type: object
+      required:
+      - env
+      - state
+      properties:
+        env:
+          type: string
+          description: Configuration variable name only, never its value.
         state:
           type: string
           enum:

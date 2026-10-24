@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const koNts = {
-  "nts.preview.missingFields": "등록증을 함께 기록하려면 입력하십시오 · {fields}",
+  "nts.preview.missing": "등록증을 함께 기록하려면 입력하십시오 · {fields}",
   "nts.preview.statusSince": "휴업 시작일",
   "nts.preview.clear": "조회 결과 사용 안 함",
   "nts.title": "국세청 진위확인·상태조회",
@@ -43,5 +43,11 @@ export const koNts = {
   "nts.preview.ack": "조회 결과와 폐업일을 확인했으며 이 상태로 기록합니다",
   "nts.preview.skipped": "조회 없이 등록증을 보고 저장할 수 있습니다.",
   "nts.preview.status": "상태조회",
-  "nts.preview.stale": "입력한 값이 바뀌어 이전 조회 결과는 저장에 사용하지 않습니다."
+  "nts.preview.stale": "입력한 값이 바뀌어 이전 조회 결과는 저장에 사용하지 않습니다.",
+  "nts.ops.title": "연동 키 확인",
+  "nts.ops.EXPIRING": "{env} 키의 사용 기한이 다가옵니다. 갱신하십시오.",
+  "nts.ops.EXPIRED": "{env} 키가 만료되었습니다. 갱신하십시오.",
+  "nts.ops.REJECTED": "연동 서비스가 {env} 키를 거부했습니다. 등록 상태를 확인하십시오.",
+  "nts.ops.expiry": "만료일",
+  "nts.ops.daysLeft": "남은 일수"
 } as const;

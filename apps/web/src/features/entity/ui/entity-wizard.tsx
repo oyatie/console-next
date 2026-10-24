@@ -136,7 +136,7 @@ function Foot({ c, step, steps, go }: { c: CreateState; step: WizardStep; steps:
     focusFlagged();
   };
   const missingRegistration = registrationGaps(c.draft);
-  const registrationNote = !isFounding(c.draft) && missingRegistration.length ? t("nts.preview.missingFields", { fields: missingRegistration.map((field) => field === "taxOfficePrinted" ? t("entityCreate.field.taxOffice") : t(`entityCreate.items.${field}`)).join(", ") }) : null;
+  const registrationNote = !isFounding(c.draft) && missingRegistration.length ? t("nts.preview.missing", { fields: missingRegistration.map((field) => field === "taxOfficePrinted" ? t("entityCreate.field.taxOffice") : t(`entityCreate.items.${field}`)).join(", ") }) : null;
   const name = c.draft.name.trim();
   const off = (held: unknown) => (held ? { "aria-disabled": true as const, "aria-describedby": why, onClick: undefined } : {});
   // worst-case-29: the first press latches until the save settles, so a double press never sends a second create.

@@ -75,11 +75,18 @@ pub(super) fn compose(router: Router, domain_router: Router, deps: &TenantDeps<'
         .with_ops_notices({
             // Renewal notices for the juso keys (D-14, expired, rejected): vendor ops only.
             let juso = state.juso.clone();
-            let nts = state.nts.clone();
             std::sync::Arc::new(move || {
                 juso.key_notices()
                     .into_iter()
-                    .chain(nts.key_notices())
+                    .filter_map(|n| serde_json::to_value(n).ok())
+                    .collect()
+            })
+        })
+        .with_registration_check_notices({
+            let nts = state.nts.clone();
+            std::sync::Arc::new(move || {
+                nts.key_notices()
+                    .into_iter()
                     .filter_map(|n| serde_json::to_value(n).ok())
                     .collect()
             })

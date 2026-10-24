@@ -2,7 +2,7 @@
 import type { koNts } from "../ko/nts";
 
 export const enNts: Record<keyof typeof koNts, string> = {
-  "nts.preview.missingFields": "To record the certificate, enter · {fields}",
+  "nts.preview.missing": "To record the certificate, enter · {fields}",
   "nts.preview.statusSince": "Suspension start date",
   "nts.preview.clear": "Save without this check",
   "nts.title": "National Tax Service checks",
@@ -45,5 +45,11 @@ export const enNts: Record<keyof typeof koNts, string> = {
   "nts.preview.ack": "I reviewed the result and closure date and will record this status",
   "nts.preview.skipped": "You can save from the certificate without an automatic check.",
   "nts.preview.status": "Check status",
-  "nts.preview.stale": "Changed values mean the previous check will not be used when saving."
+  "nts.preview.stale": "Changed values mean the previous check will not be used when saving.",
+  "nts.ops.title": "Integration key notices",
+  "nts.ops.EXPIRING": "The {env} key is nearing expiry. Renew it.",
+  "nts.ops.EXPIRED": "The {env} key has expired. Renew it.",
+  "nts.ops.REJECTED": "The provider rejected the {env} key. Check its registration.",
+  "nts.ops.expiry": "Expires on",
+  "nts.ops.daysLeft": "Days remaining"
 };

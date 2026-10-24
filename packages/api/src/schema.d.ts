@@ -25003,7 +25003,17 @@ export interface components {
                  * @description The environment variable holding the key (never the key).
                  * @enum {string}
                  */
-                env: "STREET_JUSO_API_KEY" | "DETAILED_JUSO_API_KEY" | "NTS_BUSINESSMAN_API_KEY";
+                env: "STREET_JUSO_API_KEY" | "DETAILED_JUSO_API_KEY";
+                /** @enum {string} */
+                state: "EXPIRING" | "EXPIRED" | "REJECTED";
+                /** Format: date */
+                expires_on?: string | null;
+                days_left?: number | null;
+            }[];
+            /** @description Authority-key notices for vendor operators; separate from the N-1 address-key enum. */
+            registration_check_notices?: {
+                /** @description Configuration variable name only, never its value. */
+                env: string;
                 /** @enum {string} */
                 state: "EXPIRING" | "EXPIRED" | "REJECTED";
                 /** Format: date */

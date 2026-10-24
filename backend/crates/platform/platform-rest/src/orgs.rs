@@ -134,7 +134,17 @@ pub(crate) async fn ops_dashboard(
 
     let tenants = health.into_iter().map(TenantHealthResponse::from).collect();
     let notices = state.ops_notices.as_ref().map(|f| f()).unwrap_or_default();
-    Ok(Json(PlatformOpsResponse { tenants, notices }).into_response())
+    let registration_check_notices = state
+        .registration_check_notices
+        .as_ref()
+        .map(|f| f())
+        .unwrap_or_default();
+    Ok(Json(PlatformOpsResponse {
+        tenants,
+        notices,
+        registration_check_notices,
+    })
+    .into_response())
 }
 
 /// Body of `PATCH /api/platform/orgs/{id}`: any of the three; at least one.

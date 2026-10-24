@@ -30,6 +30,7 @@ pub struct PlatformRestState {
     /// Operator notices for the vendor ops screen (e.g. an address-search key
     /// about to expire), supplied by the App tier. Never on a tenant surface.
     pub(crate) ops_notices: Option<OpsNotices>,
+    pub(crate) registration_check_notices: Option<OpsNotices>,
 }
 
 impl PlatformRestState {
@@ -48,6 +49,7 @@ impl PlatformRestState {
             tenant_config_seeder: None,
             passkey_step_up: None,
             ops_notices: None,
+            registration_check_notices: None,
         }
     }
 }
@@ -57,6 +59,13 @@ impl PlatformRestState {
     #[must_use]
     pub fn with_ops_notices(mut self, notices: OpsNotices) -> Self {
         self.ops_notices = Some(notices);
+        self
+    }
+
+    /// Authority-key notices use an additive field so N-1 notice enums remain valid.
+    #[must_use]
+    pub fn with_registration_check_notices(mut self, notices: OpsNotices) -> Self {
+        self.registration_check_notices = Some(notices);
         self
     }
 
