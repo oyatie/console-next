@@ -68,3 +68,36 @@ async fn a_chart_before_the_first_entity_has_no_records_or_people(owner: PgPool)
     assert!(chart.unplaced.is_empty());
     assert_eq!(chart.entity_unknown_headcount, Some(0));
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn an_import_clamped_to_opening_does_not_become_unplaced_before_opening(owner: PgPool) {
+    let w = world(&owner, "2020-03-02", "2020-05-01").await;
+    let person = employee(&owner, &w.actor).await;
+    let opening = Date::from_calendar_date(2020, Month::May, 1).unwrap();
+    hire(&owner, &w.actor, person, w.target, opening)
+        .await
+        .unwrap();
+    for on in [
+        Date::from_calendar_date(2020, Month::March, 1).unwrap(),
+        opening.previous_day().unwrap(),
+        opening,
+    ] {
+        let chart = w
+            .store
+            .org_structure_at(
+                &w.actor,
+                ReadOptions {
+                    as_of: Some(on),
+                    known_at: None,
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            chart.entities.iter().map(|e| e.headcount).sum::<i64>()
+                + chart.entity_unknown_headcount.unwrap_or_default(),
+            i64::from(on >= opening),
+            "the original seniority date must not create a placement before {opening}: {on}",
+        );
+    }
+}

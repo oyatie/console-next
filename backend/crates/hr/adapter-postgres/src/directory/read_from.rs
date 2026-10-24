@@ -41,12 +41,12 @@ macro_rules! leave_return_lateral {
 #[macro_export]
 macro_rules! status_since_lateral {
     () => {
-        " LEFT JOIN LATERAL (SELECT CASE WHEN e.employment_status = 'EXITED' \
+        " LEFT JOIN LATERAL (SELECT CASE WHEN entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) = 'EXITED' \
              THEN entity_retirement_on(entity_try_iso_date(COALESCE(opened.effective_date,e.exit_date)))::TEXT \
              ELSE COALESCE(opened.effective_date,e.hire_date) END AS status_since \
            FROM (SELECT (SELECT l.effective_date FROM employee_lifecycle_events l \
              WHERE l.org_id = e.org_id AND l.employee_id = e.id AND l.state = 'APPLIED' \
-               AND l.event_type <> 'RESCIND' AND l.to_status = e.employment_status \
+               AND l.event_type <> 'RESCIND' AND l.to_status = entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) \
                AND l.from_status IS DISTINCT FROM l.to_status \
                AND NOT EXISTS (SELECT 1 FROM employee_lifecycle_events v \
                  WHERE v.org_id = l.org_id AND v.employee_id = l.employee_id \

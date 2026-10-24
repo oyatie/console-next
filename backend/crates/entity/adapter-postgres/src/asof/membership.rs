@@ -43,6 +43,9 @@ pub(crate) async fn load(
              JOIN employment_revisions x ON x.employment_id=b.employment_id \
              WHERE x.valid_from < (($1::date+1)::timestamp AT TIME ZONE 'Asia/Seoul') AND x.created_at <= COALESCE($2::timestamptz,now()) \
              ORDER BY b.employee_id,x.valid_from DESC,x.version DESC), \
+         first_assignments AS (SELECT DISTINCT ON (employee_id) employee_id,workplace_id FROM employment_assignments \
+             WHERE created_at <= COALESCE($2::timestamptz,now()) AND (superseded_at IS NULL OR superseded_at > $2) \
+             ORDER BY employee_id,valid_from,created_at), \
          assignments AS (SELECT DISTINCT ON (employee_id) employee_id,legal_entity_id,workplace_id,valid_from,created_at FROM employment_assignments \
              WHERE valid_from <= $1 AND created_at <= COALESCE($2::timestamptz,now()) \
              AND (superseded_at IS NULL OR superseded_at > $2) \
@@ -66,6 +69,7 @@ pub(crate) async fn load(
          LEFT JOIN workplaces wp ON wp.id=w.to_workplace_id \
          LEFT JOIN latest_type t ON t.employee_id=e.id \
          LEFT JOIN first_types first_type ON first_type.employee_id=e.id \
+         LEFT JOIN first_assignments initial ON initial.employee_id=e.id \
          LEFT JOIN assignments a ON a.employee_id=e.id \
          WHERE e.created_at <= COALESCE($2::timestamptz,now()) \
            AND entity_employed_on($1, \
@@ -79,7 +83,7 @@ pub(crate) async fn load(
              COALESCE(l.to_status,r.attributes->>'employment_status',first_event.from_status,e.employment_status)) \
            AND COALESCE(entity_workplace_opens_on(CASE WHEN w.id IS NOT NULL AND (a.employee_id IS NULL \
              OR (entity_try_iso_date(w.effective_date),w.created_at) > (a.valid_from,a.created_at)) \
-             THEN w.to_workplace_id ELSE a.workplace_id END,$2),$1) <= $1",
+             THEN w.to_workplace_id ELSE COALESCE(a.workplace_id,initial.workplace_id) END,$2),$1) <= $1",
     ).bind(point.as_of).bind(point.known_at).fetch_all(tx.as_mut()).await?;
     rows.iter()
         .map(|r| {

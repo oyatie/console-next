@@ -16,7 +16,7 @@ export const daysBetween = (from: string, to: string) => Math.round((utc(to) - u
 
 /**
  * The status views, one at a time. `current` (the default, nothing in the URL) is everyone but exited people, starting soon
- * included as rows (counted apart from headcount = active + on leave, spec G2).
+ * included as rows, apart from the employed population counted by the chart.
  */
 export const STATUS_VIEWS = ["current", "ACTIVE", "ON_LEAVE", "PRE_HIRE", "UNKNOWN", "EXITED", "all"] as const;
 export type StatusView = (typeof STATUS_VIEWS)[number];
@@ -130,8 +130,8 @@ export function tenure(hire: string | null | undefined, today: string): { years:
   return { years: Math.floor(months / 12), months: months % 12 };
 }
 
-/** Headcount (spec G2): active + on leave; people starting soon are listed apart and never counted in it. */
-export const headcount = (t: Record<StatusView, number | undefined>) => (t.ACTIVE === undefined || t.ON_LEAVE === undefined ? undefined : t.ACTIVE + t.ON_LEAVE);
+/** The chart's employed population; people starting soon are listed apart. */
+export const headcount = (t: Record<StatusView, number | undefined>) => (t.ACTIVE === undefined || t.ON_LEAVE === undefined || t.UNKNOWN === undefined ? undefined : t.ACTIVE + t.ON_LEAVE + t.UNKNOWN);
 
 /**
  * The one person whose employee number is exactly the typed text (trimmed, any case), else null: Enter then

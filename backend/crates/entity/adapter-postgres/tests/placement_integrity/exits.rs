@@ -92,7 +92,7 @@ async fn confirmed_exit_counts_agree_without_changing_dated_placement(owner: PgP
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn imported_exit_uses_live_status_and_retains_last_day_membership(owner: PgPool) {
+async fn imported_exit_retains_last_day_membership_in_live_and_dated_reads(owner: PgPool) {
     let (store, actor) = tenant(&owner, Uuid::new_v4(), "placement-imported-exit").await;
     let (entity, [(workplace, site), _]) = two_workplaces(&store, &actor).await;
     let p = person(
@@ -113,7 +113,7 @@ async fn imported_exit_uses_live_status_and_retains_last_day_membership(owner: P
         .execute(&owner)
         .await
         .unwrap();
-    counts(&store, &actor, entity, workplace, ReadOptions::default(), 0).await;
+    counts(&store, &actor, entity, workplace, ReadOptions::default(), 1).await;
     counts(
         &store,
         &actor,
@@ -124,6 +124,18 @@ async fn imported_exit_uses_live_status_and_retains_last_day_membership(owner: P
             known_at: None,
         },
         1,
+    )
+    .await;
+    counts(
+        &store,
+        &actor,
+        entity,
+        workplace,
+        ReadOptions {
+            as_of: Some(today + Duration::days(1)),
+            known_at: None,
+        },
+        0,
     )
     .await;
 }

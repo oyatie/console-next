@@ -53,9 +53,10 @@ describe("chip totals are server totals, added up", () => {
     expect(statusTotals([10, 2, 1, 5, 3])).toMatchObject({ current: 16, all: 21, EXITED: 5, PRE_HIRE: 3 });
     expect(statusTotals([10, undefined, 1, 5, 0])).toMatchObject({ current: undefined, all: undefined, ACTIVE: 10 });
   });
-  test("인원 is 재직 + 휴직 only (입사 예정 apart)", () => {
-    expect(headcount(statusTotals([10, 2, 1, 5, 3]))).toBe(12);
+  test("인원 matches the chart's employed population (입사 예정 apart)", () => {
+    expect(headcount(statusTotals([10, 2, 1, 5, 3]))).toBe(13);
     expect(headcount(statusTotals([10, undefined, 1, 5, 3]))).toBeUndefined();
+    expect(headcount(statusTotals([10, 2, undefined, 5, 3]))).toBeUndefined();
   });
   test("contracts ending within the window exclude those already over", () => {
     expect(reviewTotals([2, 17, 3, 21, 7, 1])).toEqual({ contractPast: 2, contractSoon: 15, identity: 3, branch: 21, register: 7, failed: 1 });

@@ -138,7 +138,7 @@ impl HrService {
                         '소속 미지정'
                     ) AS org_unit,
                     COALESCE(NULLIF(e.position, ''), '직책 미지정') AS position,
-                    e.employment_status
+                    entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AS employment_status
                 FROM person_employees_current e
                 LEFT JOIN LATERAL (
                     SELECT r.attributes FROM org_unit_revisions r
