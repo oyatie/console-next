@@ -4,9 +4,11 @@
 import base64
 import codecs
 import datetime
+from email.header import decode_header, make_header
 import gzip
 import hashlib
 import importlib.util
+from http.client import parse_headers
 import io
 import json
 import os
@@ -82,6 +84,54 @@ def public_dependency(file):
     return False
 
 
+def scan_multipart(stream, name, boundary, depth, office):
+    delimiter = b"--" + boundary
+    if stream.readline(len(delimiter) + 3).rstrip(b"\r\n") != delimiter:
+        raise Refusal("invalid multipart boundary")
+    final = False
+    while not final:
+        start = stream.tell()
+        # The standard HTTP parser bounds both header length and header count.
+        headers = parse_headers(stream)
+        end = stream.tell()
+        stream.seek(start)
+        text_hits(stream.read(end - start).decode("utf-8", "replace"))
+        if headers.defects or not headers.get("Content-Disposition"):
+            raise Refusal("invalid multipart headers")
+        if headers.get("Content-Transfer-Encoding", "binary").lower() not in ("binary", "7bit", "8bit"):
+            raise Refusal("unsupported multipart transfer encoding")
+        for value in headers.values():
+            text_hits(str(make_header(decode_header(value))))
+        filename = headers.get_filename() or name + ".part"
+        text_hits(filename)
+        with tempfile.TemporaryFile() as body:
+            at_line_start = True
+            while line := stream.readline(1024 * 1024):
+                marker = line.rstrip(b"\r\n")
+                if at_line_start and marker in (delimiter, delimiter + b"--"):
+                    size = body.tell()
+                    if size:
+                        body.seek(max(0, size - 2))
+                        if body.read() != b"\r\n":
+                            raise Refusal("invalid multipart framing")
+                        body.truncate(size - 2)
+                    body.seek(0)
+                    counts["members"] += 1
+                    scan(body, filename, depth + 1, office)
+                    final = marker == delimiter + b"--"
+                    break
+                body.write(line)
+                at_line_start = line.endswith(b"\n")
+            else:
+                raise Refusal("incomplete multipart payload")
+    with tempfile.TemporaryFile() as tail:
+        while chunk := stream.read(1024 * 1024):
+            tail.write(chunk)
+        if tail.tell():
+            tail.seek(0)
+            scan(tail, name + ".epilogue", depth + 1, office)
+
+
 def scan(stream, name, depth=0, office=False):
     if depth > 8:
         raise Refusal("archive nesting exceeds limit")
@@ -137,6 +187,13 @@ def scan(stream, name, depth=0, office=False):
         return
     # The structural scanner deliberately does not OCR raster media; it checks names.
     if rules.is_media(head):
+        return
+    first = head.partition(b"\r\n")[0]
+    if first.startswith(b"--") and b"content-disposition:" in head.lower():
+        boundary = first[2:]
+        if not re.fullmatch(rb"[-0-9A-Za-z'()+_,./:=? ]{1,70}", boundary):
+            raise Refusal("invalid multipart boundary")
+        scan_multipart(stream, name, boundary, depth, office)
         return
     encoding = "utf-16" if head.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8"
     decoder = codecs.getincrementaldecoder(encoding)(errors="replace")

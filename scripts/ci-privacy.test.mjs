@@ -139,6 +139,43 @@ test("data-bearing JUnit and trace archives still refuse real-shaped phone and v
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test("multipart trace uploads scan every field, header and nested workbook without accepting opaque bytes", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-multipart-trace-"));
+  try {
+    const boundary = "console-synthetic-boundary";
+    const email = ["contact", "planted.invalid-domain.kr"].join("@");
+    const workbook = (text) => {
+      const result = spawnSync("python3", ["-c", "import io,sys,zipfile\nb=io.BytesIO()\nwith zipfile.ZipFile(b,'w') as z:\n z.writestr('[Content_Types].xml','<Types/>')\n z.writestr('xl/sharedStrings.xml','<text>'+sys.argv[1]+'</text>')\nsys.stdout.buffer.write(b.getvalue())", text]);
+      assert.equal(result.status, 0);
+      return result.stdout;
+    };
+    const part = (headers, body, token = boundary) => Buffer.concat([Buffer.from(`--${token}\r\n${headers}\r\n\r\n`), Buffer.from(body), Buffer.from("\r\n")]);
+    const headers = 'Content-Disposition: form-data; name="upload"; filename="synthetic.xlsx"\r\nContent-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const clean = part(headers, workbook("contact@example.invalid"));
+    const end = Buffer.from(`--${boundary}--\r\n`);
+    const cases = [
+      [Buffer.concat([clean, end]), 0],
+      [Buffer.concat([part('Content-Disposition: form-data; name="note"', "synthetic"), clean, end]), 0],
+      [Buffer.concat([part(headers, workbook(email)), end]), 1],
+      [Buffer.concat([part('Content-Disposition: form-data; name="note"', email), clean, end]), 1],
+      [Buffer.concat([part(`Content-Disposition: form-data; name="upload"; filename*=utf-8''${encodeURIComponent(email)}`, "synthetic"), end]), 1],
+      [Buffer.concat([part(headers, Buffer.from([0, 1, 2, 3])), end]), 1],
+      [Buffer.concat([part(headers + "\r\nContent-Transfer-Encoding: base64", "c3ludGhldGlj"), end]), 1],
+      [clean, 1],
+      [Buffer.concat([clean, end, Buffer.from(email)]), 1],
+      [Buffer.concat([part('Content-Disposition: form-data; name="note"', "x".repeat(1024 * 1024) + `--${boundary}`), end]), 0],
+      [Buffer.concat([part('Content-Disposition: form-data; name="note"', "synthetic", boundary + "--"), part(headers, workbook("synthetic"), boundary + "--"), Buffer.from(`--${boundary}----\r\n`)]), 0],
+    ];
+    for (const [bytes, expected] of cases) {
+      const file = path.join(dir, "request.dat");
+      writeFileSync(file, bytes);
+      const result = spawnSync("node", ["scripts/ci/privacy.mjs", file], { encoding: "utf8" });
+      assert.equal(result.status, expected, result.stderr);
+      assert.ok(!(result.stdout + result.stderr).includes(email));
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("upload scanner inspects archives, encodings and private terms without echoing controls", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-upload-controls-"));
   try {
