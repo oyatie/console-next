@@ -3,7 +3,7 @@
 //! `POST /period-locks/{lockId}/unlock { reasonCode, note?, relockAt, stepUp }`
 //! needs a PERIOD_UNLOCK step-up and a configured time box. Another eligible
 //! holder opens a request (202), then approves it with their own passkey.
-//! Only the sole bound administrator during setup may use the configured
+//! During setup, a holder with no eligible second person may use the configured
 //! `step_up_notice_review` exception; go-live switches that solo path off.
 //! The exception flags the lock and creates its due review item.
 //!
@@ -188,7 +188,7 @@ pub(super) async fn second_person(
         SettingKey::AuthzSecondPersonMinGrantAge,
     )?)
     .map_err(|_| internal("authz.second_person.min_grant_age is out of range"))?;
-    Ok(second_person_fact_in_tx(
+    let mut fact = second_person_fact_in_tx(
         tx,
         &SecondPersonQuery {
             org,
@@ -200,7 +200,28 @@ pub(super) async fn second_person(
             min_grant_age_days,
         },
     )
-    .await?)
+    .await?;
+    if fact.eligible.is_empty() {
+        return Ok(fact);
+    }
+    let candidates: Vec<_> = fact.eligible.iter().copied().collect();
+    // An unbound requester is checked by the caller; it cannot hide eligible people.
+    fact.eligible = sqlx::query_scalar::<_, Uuid>(
+        "SELECT u.id FROM users u \
+         CROSS JOIN LATERAL public.console_decision_people($1,$2,u.id) p \
+         WHERE u.org_id=$1 AND u.id=ANY($3) AND NOT u.is_tenant_ops \
+           AND p.checker_person IS NOT NULL \
+           AND p.checker_person IS DISTINCT FROM p.maker_person",
+    )
+    .bind(org.as_uuid())
+    .bind(requester)
+    .bind(&candidates)
+    .fetch_all(tx.as_mut())
+    .await?
+    .into_iter()
+    .collect();
+    fact.other_eligible_holders = i64::try_from(fact.eligible.len()).unwrap_or(i64::MAX);
+    Ok(fact)
 }
 
 pub(super) const SETTING_KEYS: [SettingKey; 5] = [

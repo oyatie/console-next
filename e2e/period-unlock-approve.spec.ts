@@ -13,6 +13,15 @@ const lastMonth = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slic
 const month = new Intl.DateTimeFormat("ko-KR", { timeZone: "UTC", year: "numeric", month: "long" }).format(new Date(`${lastMonth}-15T00:00:00Z`));
 const LOCKS = "/people/period-locks";
 
+async function lockPayroll(admin: Page) {
+  await go(admin, LOCKS);
+  await option(admin, "업무 영역", "급여").click();
+  await admin.getByRole("combobox", { name: /^월/ }).selectOption(lastMonth);
+  await option(admin, "잠금 사유", "월 급여 마감").click();
+  await admin.getByRole("button", { name: `급여 ${month} 잠금` }).click();
+  await expect(admin.getByRole("status").filter({ hasText: `급여 ${month} 기간을 잠갔습니다` })).toBeVisible();
+}
+
 /** The requester's unlock, reason and time box, ending in the waiting receipt. */
 async function requestUnlock(admin: Page) {
   const row = admin.getByRole("row", { name: /월 급여 마감/ });
@@ -66,12 +75,7 @@ test("period unlock: a second close authority refuses, then approves; the reques
 
   // The linked requester locks last month, then asks to unlock it; another authority decides.
   const adminBearer = bearerOf(admin);
-  await go(admin, LOCKS);
-  await option(admin, "업무 영역", "급여").click();
-  await admin.getByRole("combobox", { name: /^월/ }).selectOption(lastMonth);
-  await option(admin, "잠금 사유", "월 급여 마감").click();
-  await admin.getByRole("button", { name: `급여 ${month} 잠금` }).click();
-  await expect(admin.getByRole("status").filter({ hasText: `급여 ${month} 기간을 잠갔습니다` })).toBeVisible();
+  await lockPayroll(admin);
   const row = await requestUnlock(admin);
 
   // The requester sees the request and whose turn it is, never a decision of their own.
@@ -163,4 +167,44 @@ test("period unlock: a second close authority refuses, then approves; the reques
   const opened = admin.getByRole("row", { name: /월 급여 마감/ });
   await expect(opened).toContainText("다른 마감 권한자가 확인함");
   await expect(opened).not.toContainText("사후 검토 필요");
+});
+
+test("setup with ops and one linked close authority unlocks with review; go-live closes the solo path", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
+  test.setTimeout(8 * 60_000);
+  const slug = "unlocksolo";
+  const { admin: operator } = await tenantInSetup(browser, slug, "단독마감회사", false, "본사", "none");
+  await registerEmployee(operator, { name: "단독마감", number: "UL-0003", hired: "2024-03-04", unit: "본사" });
+  await operator.getByRole("button", { name: "계정 초대" }).click();
+  await stepUp(operator.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", operator.getByLabel("일회용 코드"));
+  const human = await firstSignIn(browser, await takeCode(operator));
+  await grantAccess(operator, "단독마감", "full");
+  await go(human, "/", true);
+  await passkeyLogin(human);
+  const notice = human.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ has: human.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true }) });
+  await notice.getByRole("button", { name: "전체 업무 부여 확인 기록" }).click();
+  await expect(notice).toBeHidden();
+  letGrantsAge(unique(slug), "단독마감");
+  const bearer = bearerOf(human);
+  await lockPayroll(human);
+  const row = human.getByRole("row", { name: /월 급여 마감/ });
+  await row.getByRole("button", { name: `급여 ${month} 잠금 해제` }).click();
+  const dialog = human.getByRole("dialog", { name: `급여 ${month} 잠금 해제` });
+  await option(human, "해제 사유", "소급 정정").click();
+  await dialog.getByLabel("해제 메모").fill("설정 중 급여 확인");
+  await dialog.getByRole("button", { name: /^3일 동안/ }).click();
+  const response = human.waitForResponse((r) => r.url().endsWith("/unlock") && r.request().method() === "POST");
+  await dialog.getByRole("button", { name: "패스키로 확인하고 잠금 해제" }).click();
+  const unlocked = await response;
+  expect(unlocked.status()).toBe(200);
+  const outcome = await unlocked.json();
+  expect(outcome.lock.unlockReviewRequired).toBe(true);
+  expect(outcome.exception.id).toBeTruthy();
+  await expect(dialog).toBeHidden();
+  await startOperations(operator);
+  await lockPayroll(human);
+  const api = apiOf(human, bearer);
+  const { items } = await (await api("/period-locks?active=true")).json();
+  const { id } = items[0];
+  const refused = await api(`/period-locks/${id}/unlock`, "POST", { reasonCode: "RETRO_CORRECTION", note: "운영 시작 뒤 단독 요청", relockAt: new Date(Date.now() + 86_400_000).toISOString() });
+  expect([refused.status(), await codeOf(refused)]).toEqual([409, "period_unlock_sole_holder_refused"]);
 });

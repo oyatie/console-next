@@ -91,13 +91,7 @@ pub(super) async fn unlock_period_lock(
                 settings.get(&SettingKey::AuthzSoleHolderMode),
                 Some(Ok(resolved)) if matches!(resolved.value, SettingValue::Code("step_up_notice_review"))
             );
-            let setup_single_admin = if setup && fact.other_eligible_holders==0 {
-                let admins = console_identity_adapter_postgres::second_person::PgHolderResolver {
-                    tx, org, capability: console_identity_adapter_postgres::second_person::HolderCapability::AccessAdmin,
-                    exclude_account: None, exclude_employee: None, include_ops: true, now,
-                }.resolve_at_most(2).await.map_err(LifecycleError::from_kernel)?;
-                admins.len()==1 && admins.contains(&user)
-            } else { false };
+            let setup_single_admin = setup && fact.other_eligible_holders == 0;
             if !setup_single_admin {
                 let actor = sqlx::query_scalar::<_,Option<Uuid>>(
                     "SELECT maker_person FROM public.console_decision_people($1,$2,$2)"
