@@ -45,6 +45,33 @@ pub(crate) const fn reason_code(reason: UnavailableReason) -> &'static str {
     }
 }
 
+pub(crate) async fn audit_failure<T>(
+    store: &crate::PgEntityStore,
+    actor: &console_entity_application::Actor,
+    target: Uuid,
+    kind: console_entity_application::registration_check::CheckKind,
+    result: Result<T, PgEntityError>,
+) -> Result<T, PgEntityError> {
+    if let Err(PgEntityError::Refused(refusal)) = &result {
+        let fields: &[&str] = match kind {
+            console_entity_application::registration_check::CheckKind::Status => &["brn"],
+            console_entity_application::registration_check::CheckKind::Validate => {
+                &["brn", "opened_on", "representative"]
+            }
+        };
+        let event = console_kernel_core::AuditEvent::new(
+            Some(actor.user),
+            console_kernel_core::AuditAction::new("business_registration.check_refused").map_err(Refusal::from)?,
+            "business_registration", target.to_string(), actor.trace.clone(), time::OffsetDateTime::now_utc(),
+        ).with_org(actor.org).with_snapshots(None, Some(json!({"kind":kind,"purpose":"registration_evidence","fields_requested":fields,"code":refusal.code})));
+        console_platform_db::with_audit(&store.pool, event, |_tx| {
+            Box::pin(async { Ok::<_, PgEntityError>(()) })
+        })
+        .await?;
+    }
+    result
+}
+
 pub(crate) async fn append(
     tx: &mut Tx<'_>,
     registration: Uuid,

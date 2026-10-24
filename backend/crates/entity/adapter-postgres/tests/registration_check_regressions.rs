@@ -3,7 +3,7 @@
 mod common;
 mod registration_checks_support;
 use console_entity_application::registration_check::{
-    CheckAnswer, CheckKind, FakeRegistrationCheck, UserValidation,
+    CheckAnswer, CheckKind, FakeRegistrationCheck, UnavailableReason, UserValidation,
 };
 use registration_checks_support::*;
 use sqlx::PgPool;
@@ -128,4 +128,50 @@ async fn a_reflection_pending_answer_does_not_count_as_agreement(pool: PgPool) {
         store.registration_check_items(&actor).await.unwrap().len(),
         1
     );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn refused_external_actions_record_the_purpose_without_personal_values(pool: PgPool) {
+    let (store, actor, id) = subject(&pool, None).await;
+    let unavailable = Arc::new(FakeRegistrationCheck::unavailable(
+        UnavailableReason::ProviderDown,
+    ));
+    assert!(
+        store
+            .check_registration(
+                &common::cmd(&actor),
+                id,
+                CheckKind::Validate,
+                unavailable.clone()
+            )
+            .await
+            .is_err()
+    );
+    assert!(
+        store
+            .preview_registration_check(
+                &common::cmd(&actor),
+                CheckKind::Validate,
+                UserValidation {
+                    brn: BRN.into(),
+                    opened_on: "2020-03-02".into(),
+                    representative: "Private fixture person".into()
+                },
+                unavailable
+            )
+            .await
+            .is_err()
+    );
+    let snapshots:Vec<serde_json::Value>=sqlx::query_scalar("SELECT after_snap FROM audit_events WHERE org_id=$1 AND action='business_registration.check_refused'")
+        .bind(actor.org.as_uuid()).fetch_all(&pool).await.unwrap();
+    assert_eq!(snapshots.len(), 2);
+    for snapshot in snapshots {
+        assert_eq!(snapshot["purpose"], "registration_evidence");
+        assert_eq!(snapshot["code"], "registration_check_unavailable");
+        assert_eq!(
+            snapshot["fields_requested"],
+            serde_json::json!(["brn", "opened_on", "representative"])
+        );
+        assert!(!snapshot.to_string().contains("Private fixture person"));
+    }
 }

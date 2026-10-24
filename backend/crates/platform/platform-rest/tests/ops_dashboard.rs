@@ -134,7 +134,13 @@ async fn authority_notices_are_additive_and_only_visible_to_platform_operators(p
         body["registration_check_notices"],
         serde_json::json!([{"env":"NTS_BUSINESSMAN_API_KEY","state":"REJECTED"}])
     );
-    let tenant_token = harness.token(admin, OrgId::one(), false).await;
+    let tenant_user = console_platform_test_support::seed_org_and_super_admin(
+        &pool,
+        *OrgId::one().as_uuid(),
+        "notice-tier-denial",
+    )
+    .await;
+    let tenant_token = harness.token(tenant_user, OrgId::one(), false).await;
     assert_eq!(
         get(&service, PLATFORM_OPS_PATH, &tenant_token).await.0,
         StatusCode::FORBIDDEN

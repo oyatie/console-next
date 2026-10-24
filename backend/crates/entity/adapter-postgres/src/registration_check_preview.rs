@@ -24,7 +24,8 @@ impl PgEntityStore {
         port: Arc<dyn RegistrationCheck>,
     ) -> Result<CheckAnswer, PgEntityError> {
         let actor = actor.clone();
-        with_audits(&self.pool,actor.org,move |tx| Box::pin(async move {
+        let refusal_actor = actor.clone();
+        let result = with_audits(&self.pool,actor.org,move |tx| Box::pin(async move {
             if claim(tx,&actor,"business_registration.check_preview",json!({"kind":kind,"values":values})).await?.is_some() {
                 let value: serde_json::Value = sqlx::query_scalar("SELECT outcome->'preview' FROM entity_commands WHERE command_id=$1").bind(actor.command_id).fetch_one(tx.as_mut()).await?;
                 return Ok((serde_json::from_value(value)?,vec![]));
@@ -44,7 +45,17 @@ impl PgEntityStore {
             sqlx::query("UPDATE entity_commands SET outcome=$2 WHERE command_id=$1").bind(actor.command_id).bind(json!({"preview":answer,"checked_at":time::OffsetDateTime::now_utc().to_string()})).execute(tx.as_mut()).await?;
             let event=audit(&actor,"business_registration.check_preview","business_registration_preview",actor.command_id.ok_or_else(|| Refusal::field("Idempotency-Key","required"))?,admitted,json!({"kind":kind,"fields_sent":answer.fields_sent,"purpose":"registration_evidence"}))?;
             Ok((answer,vec![event]))
-        })).await
+        })).await;
+        crate::registration_check::audit_failure(
+            self,
+            &refusal_actor,
+            refusal_actor
+                .command_id
+                .unwrap_or(*refusal_actor.org.as_uuid()),
+            kind,
+            result,
+        )
+        .await
     }
 }
 

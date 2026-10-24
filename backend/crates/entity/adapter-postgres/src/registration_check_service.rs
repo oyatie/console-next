@@ -42,7 +42,8 @@ impl PgEntityStore {
         port: Arc<dyn RegistrationCheck>,
     ) -> Result<CheckEvidence, PgEntityError> {
         let actor = actor.clone();
-        with_audits(&self.pool, actor.org, move |tx| Box::pin(async move {
+        let refusal_actor = actor.clone();
+        let result = with_audits(&self.pool, actor.org, move |tx| Box::pin(async move {
             if let Some(done) = claim(tx, &actor, "business_registration.check", json!({"id":id,"kind":kind,"expected":expected})).await? {
                 return Ok((evidence(tx, done.target.ok_or_else(|| Refusal::not_found("registration_not_found"))?, port.reflection_lag_days()).await?, vec![]));
             }
@@ -67,7 +68,8 @@ impl PgEntityStore {
             let event = audit(&actor, "business_registration.check", "business_registration", id, admitted,
                 json!({"check_id": check_id,"kind":kind,"fields_sent":answer.fields_sent,"purpose":"registration_evidence"}))?;
             Ok((evidence(tx, check_id, port.reflection_lag_days()).await?, vec![event]))
-        })).await
+        })).await;
+        crate::registration_check::audit_failure(self, &refusal_actor, id, kind, result).await
     }
 
     /// # Errors
