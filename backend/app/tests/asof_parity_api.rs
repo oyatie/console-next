@@ -2,6 +2,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! Real-router, runtime-RLS parity for chart, comparison, cards and dated inspector members.
 
+#[path = "asof_parity_api/statutory.rs"]
+mod statutory;
 #[path = "support/http.rs"]
 mod support;
 
@@ -167,6 +169,9 @@ async fn parity(c: &Ctx, groups: &[Group; 2], on: Date, expected: &[Vec<Uuid>; 2
     let diff = get(c, &format!("/api/v1/org-structure/diff?a={on}&b={on}")).await;
     for (g, expected) in groups.iter().zip(expected) {
         let total = expected.len() as i64;
+        if !live {
+            statutory::probe(c, g, on, expected).await;
+        }
         for snapshot in [&chart, &diff["structure"]] {
             for id in [g.entity, g.workplace, g.department] {
                 assert_eq!(
