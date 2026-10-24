@@ -14,7 +14,10 @@ use time::{Duration, OffsetDateTime};
 async fn rename_keeps_alias_sign_in_and_updates_all_accounts(owner: PgPool) {
     let rt = runtime_role_pool(&owner).await;
     let p = PlatformProvisioner::new(Duration::minutes(15));
-    let now = OffsetDateTime::now_utc();
+    let now = sqlx::query_scalar::<_, OffsetDateTime>("SELECT clock_timestamp()")
+        .fetch_one(&owner)
+        .await
+        .unwrap();
     let created = p
         .onboard_tenant(&rt, None, "domain-before", "Customer", now)
         .await
