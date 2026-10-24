@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
 // Network contracts include redirects and cold-cache paths, even when a warm run skips them.
-// Keep indirect script calls here too: cargo metadata invokes rustup before Cargo starts.
+// Script subprocesses are discovered below: cargo metadata invokes rustup before Cargo starts.
 const tools = {
   "github-release": { endpoints: ["github.com:443", "release-assets.githubusercontent.com:443"] },
   "actions/checkout": { endpoints: ["github.com:443", "api.github.com:443", "codeload.github.com:443"] },
@@ -21,7 +24,7 @@ const tools = {
   "github/codeql-action/analyze": { endpoints: ["api.github.com:443", "uploads.github.com:443"] },
   "step-security/harden-runner": { endpoints: [] }, // The action manages its own control-plane endpoints.
   rustup: { run: /\b(?:rustup|cargo)\s/, endpoints: ["static.rust-lang.org:443"] },
-  cargo: { run: /\bcargo\s+(?:fetch|build|clippy|check)\b/, endpoints: ["index.crates.io:443", "static.crates.io:443"] },
+  cargo: { run: /\bcargo\s+(?:fetch|build|clippy|check|test|nextest\s+archive)\b/, endpoints: ["index.crates.io:443", "static.crates.io:443"] },
   npm: { run: /\bnpm\s+(?:ci|install)\b/, endpoints: ["registry.npmjs.org:443"] },
   playwright: {
     run: /\bplaywright\s+install\b/,
@@ -40,9 +43,6 @@ const tools = {
   ghcr: { run: /\bghcr\.io\//, endpoints: ["ghcr.io:443", "pkg-containers.githubusercontent.com:443"] },
   gh: { run: /\bgh\s+(?:api|run)\b/, endpoints: ["api.github.com:443"] },
   telegram: { run: /notify-telegram\.sh\s+(?:send|health)\b/, endpoints: ["api.telegram.org:443"] },
-  "ci-plan": { run: /scripts\/ci\/plan\.mjs\b/, needs: ["rustup"] },
-  "ci-rust-build": { run: /scripts\/ci\/rust-build\.mjs\b/, needs: ["rustup", "cargo", "sccache"] },
-  "ci-rust-tests": { run: /scripts\/ci\/rust-tests\.mjs\b/, needs: ["rustup"] },
   "ci-e2e": { run: /scripts\/ci\/e2e\.mjs\s+run\b/, needs: ["docker"] },
   "ci-cache-metrics": { env: { CI_CACHE_TOTAL: "1" }, needs: ["gh"] },
   probe: { env: { URL: "${{ secrets.PROBE_URL }}" }, endpoints: ["${{ secrets.CONSOLE_PUBLIC_HOST }}:443"] },
@@ -51,15 +51,44 @@ const tools = {
 
 export function requiredEndpoints(job) {
   const required = new Set();
+  const visited = new Set();
+  const root = fileURLToPath(new URL("../../", import.meta.url));
   function use(name) {
     const tool = tools[name];
     if (!tool) throw new Error(`unmapped network tool: ${name}`);
     for (const dependency of tool.needs ?? []) use(dependency);
     for (const endpoint of tool.endpoints ?? []) required.add(endpoint);
   }
-  for (const step of job.steps ?? []) {
-    if (step.uses) use(step.uses.split("@")[0]);
-    const command = step.run ?? "";
+  function commands(command, step) {
+    // Expand the checked-in npm/Node entrypoints; job names cannot describe their subprocesses.
+    for (const [, name] of command.matchAll(/\bnpm\s+(?:run\s+([\w:-]+)|(test))\b/g)) {
+      const script = name || "test";
+      if (visited.has(`npm:${script}`)) continue;
+      visited.add(`npm:${script}`);
+      const scripts = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).scripts;
+      if (!scripts[script]) throw new Error(`unmapped npm script: ${script}`);
+      commands(scripts[script], step);
+    }
+    for (const [, file] of command.matchAll(/\bnode\s+((?:\.\.\/|\.\/)?scripts\/[\w/.-]+\.m?js)\b/g)) {
+      const relative = file.replace(/^\.\.\//, "");
+      if (visited.has(relative)) continue;
+      visited.add(relative);
+      const script = path.join(root, relative);
+      if (!existsSync(script)) throw new Error(`missing invoked script: ${relative}`);
+      const source = ts.createSourceFile(script, readFileSync(script, "utf8"), ts.ScriptTarget.Latest, true);
+      function visit(node) {
+        if (ts.isCallExpression(node) && /^(?:spawn|spawnSync|execFile|execFileSync|exec|execSync)$/.test(node.expression.getText(source))) {
+          const [program, args] = node.arguments;
+          if (program && ts.isStringLiteral(program)) {
+            const literals = args && ts.isArrayLiteralExpression(args) ? args.elements.filter(ts.isStringLiteral).map((arg) => arg.text) : [];
+            // Cache metrics calls gh only when explicitly enabled for this step.
+            if (program.text !== "gh" || (step.env?.CI_CACHE_TOTAL ?? job.env?.CI_CACHE_TOTAL) === "1") commands([program.text, ...literals].join(" "), step);
+          }
+        }
+        ts.forEachChild(node, visit);
+      }
+      visit(source);
+    }
     for (const [name, tool] of Object.entries(tools)) {
       if (tool.run?.test(command) || (tool.env && Object.entries(tool.env).every(([key, value]) => (step.env?.[key] ?? job.env?.[key]) === value))) use(name);
     }
@@ -77,6 +106,10 @@ export function requiredEndpoints(job) {
       const url = new URL(literal);
       if (!["localhost", "127.0.0.1"].includes(url.hostname)) required.add(`${url.hostname}:${url.port || (url.protocol === "https:" ? 443 : 80)}`);
     }
+  }
+  for (const step of job.steps ?? []) {
+    if (step.uses) use(step.uses.split("@")[0]);
+    commands(step.run ?? "", step);
   }
   return required;
 }

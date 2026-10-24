@@ -67,6 +67,7 @@ test("network tool map covers direct and indirect downloads independently of job
   assert.deepEqual(endpoints("cargo metadata --no-deps --locked"), ["static.rust-lang.org:443"]);
   assert.deepEqual(endpoints("cargo fetch --locked"), ["index.crates.io:443", "static.crates.io:443", "static.rust-lang.org:443"]);
   assert.deepEqual(endpoints("node ../scripts/ci/rust-tests.mjs db 1"), ["static.rust-lang.org:443"]);
+  assert.deepEqual(endpoints("node scripts/ci/rust-build.mjs"), ["index.crates.io:443", "static.crates.io:443", "static.rust-lang.org:443"]);
   assert.deepEqual(endpoints("npm ci --no-audit"), ["registry.npmjs.org:443"]);
   assert.deepEqual(endpoints("node scripts/ci/report.mjs", { CI_CACHE_TOTAL: "1" }), ["api.github.com:443"]);
   assert.deepEqual(endpoints("node scripts/ci/report.mjs"), []);
@@ -94,4 +95,10 @@ test("block jobs reject unused allowances, broad wildcard substitutions and inco
   assert.throws(() => allowedEndpoints(job), /invalid egress endpoint/);
   job.steps[0].with["allowed-endpoints"] = "github.com:443 \nstatic.rust-lang.org:443";
   assert.throws(() => allowedEndpoints(job), /invalid egress endpoint/);
+});
+
+test("hosted web-check follows npm scripts to reach's Cargo metadata invocation", () => {
+  const job = load(read("scripts/ci/fixtures/web-check-egress-missing.yml")).jobs["web-check"];
+  assert.deepEqual(missingEndpoints(job), ["static.rust-lang.org:443"]);
+  assert.deepEqual([...requiredEndpoints({ steps: [{ run: "node scripts/check-reach.mjs" }] })], ["static.rust-lang.org:443"]);
 });

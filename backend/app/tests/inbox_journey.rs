@@ -9,6 +9,7 @@ mod inbox_pool;
 mod period_support;
 
 use ::http::StatusCode;
+use futures::StreamExt;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use std::collections::BTreeSet;
@@ -205,15 +206,31 @@ async fn two_thousand_product_created_people_keep_first_page_under_budget_and_cu
     inbox(&ctx).await;
     let (_, _, branch, unit) = http::structure(&ctx).await;
     let mut expected = BTreeSet::new();
-    for index in 0..2_000 {
-        let body = http::employee_body(&format!("INBOX-{index:04}"), &branch, &unit);
-        let (status, created) = ctx.call("POST", "/api/v1/employees", Some(body)).await;
-        assert_eq!(status, StatusCode::CREATED, "person {index}: {created}");
-        expected.insert(format!(
-            "hr_register:{}",
-            created["employee"]["id"].as_str().unwrap()
-        ));
+    let setup_started = Instant::now();
+    let mut creates = futures::stream::iter(0..2_000)
+        .map(|index| {
+            let (ctx, branch, unit) = (&ctx, &branch, &unit);
+            async move {
+                let body = http::employee_body(&format!("INBOX-{index:04}"), branch, unit);
+                let (status, created) = ctx.call("POST", "/api/v1/employees", Some(body)).await;
+                assert_eq!(status, StatusCode::CREATED, "person {index}: {created}");
+                format!(
+                    "hr_register:{}",
+                    created["employee"]["id"].as_str().unwrap()
+                )
+            }
+        })
+        .buffer_unordered(probe.cap());
+    while let Some(id) = creates.next().await {
+        assert!(
+            expected.insert(id),
+            "product creates must have distinct ids"
+        );
     }
+    eprintln!(
+        "inbox: 2,000 HTTP fixture creates in {:?}",
+        setup_started.elapsed()
+    );
     let mut elapsed = Vec::new();
     let mut peak = 0;
     probe.reset();

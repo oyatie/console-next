@@ -209,6 +209,7 @@ jobs:
             registry.npmjs.org:443
             release-assets.githubusercontent.com:443
             security.ubuntu.com:443
+            static.rust-lang.org:443
             storage.googleapis.com:443
       - *checkout
       - *duration-start
@@ -309,8 +310,7 @@ jobs:
       - run: |-
           bash scripts/ci/install-tools.sh nextest sccache cargo-deny
           echo "SCCACHE_CACHE_SIZE=$(jq -r .sccacheBytes scripts/ci/config.json)" >>"$GITHUB_ENV"
-      - &free-rust-disk
-        name: Reclaim unused hosted SDKs for the shared archive
+      - name: Reclaim unused hosted SDKs for the shared archive
         run: |-
           jq -r '.runnerUnusedPaths[]' scripts/ci/config.json | while IFS= read -r unused; do sudo rm -rf -- "$unused"; done
       - name: Format and all Clippy feature sets
@@ -425,7 +425,6 @@ jobs:
             release-assets.githubusercontent.com:443
             static.rust-lang.org:443
       - *checkout
-      - *free-rust-disk
       - *duration-start
       - *node
       - run: bash scripts/ci/install-tools.sh nextest
@@ -501,7 +500,6 @@ jobs:
             release-assets.githubusercontent.com:443
             static.rust-lang.org:443
       - *checkout
-      - *free-rust-disk
       - *duration-start
       - *node
       - name: Generate isolated test credentials

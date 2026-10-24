@@ -204,7 +204,8 @@ fn binary_exits_non_zero_on_registry_violation() -> Result<(), Box<dyn std::erro
         ],
     )?;
 
-    let mut command = git_fixture_command(env!("CARGO_BIN_EXE_console-gate-vendor-lockin"));
+    let mut command =
+        git_fixture_command(&std::env::var("CARGO_BIN_EXE_console-gate-vendor-lockin")?);
     let output = command.current_dir(&repo).output()?;
 
     assert!(
