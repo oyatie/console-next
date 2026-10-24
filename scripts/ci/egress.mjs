@@ -23,7 +23,7 @@ const tools = {
   },
   "github/codeql-action/analyze": { endpoints: ["api.github.com:443", "uploads.github.com:443"] },
   "step-security/harden-runner": { endpoints: [] }, // The action manages its own control-plane endpoints.
-  rustup: { run: /\b(?:rustup|cargo)\s/, endpoints: ["static.rust-lang.org:443"] },
+  rustup: { run: /\b(?:rustup|rustc|cargo)(?:\s|$)/, endpoints: ["static.rust-lang.org:443"] },
   cargo: { run: /\bcargo\s+(?:fetch|build|clippy|check|test|nextest\s+archive)\b/, endpoints: ["index.crates.io:443", "static.crates.io:443"] },
   npm: { run: /\bnpm\s+(?:ci|install)\b/, endpoints: ["registry.npmjs.org:443"] },
   playwright: {
@@ -49,10 +49,9 @@ const tools = {
   sccache: { run: /\bsccache\b/, endpoints: [] }, // SCCACHE_DIR is local; actions/cache transfers it.
 };
 
-export function requiredEndpoints(job) {
+export function requiredEndpoints(job, root = fileURLToPath(new URL("../../", import.meta.url))) {
   const required = new Set();
   const visited = new Set();
-  const root = fileURLToPath(new URL("../../", import.meta.url));
   function use(name) {
     const tool = tools[name];
     if (!tool) throw new Error(`unmapped network tool: ${name}`);
@@ -69,25 +68,15 @@ export function requiredEndpoints(job) {
       if (!scripts[script]) throw new Error(`unmapped npm script: ${script}`);
       commands(scripts[script], step);
     }
-    for (const [, file] of command.matchAll(/\bnode\s+((?:\.\.\/|\.\/)?scripts\/[\w/.-]+\.m?js)\b/g)) {
+    for (const [, args] of command.matchAll(/\bnode\s+([^\n;&|]+)/g))
+      for (const [file] of args.matchAll(/(?:\.\.\/|\.\/)?scripts\/[\w/.-]+\.m?js\b/g)) inspectScript(path.join(root, file.replace(/^\.\.\//, "")), step, false);
+    for (const [, file] of command.matchAll(/\b(?:bash|sh|python3)\s+((?:\.\.\/|\.\/)?scripts\/[\w/.-]+\.(?:sh|py))\b/g)) {
       const relative = file.replace(/^\.\.\//, "");
       if (visited.has(relative)) continue;
       visited.add(relative);
-      const script = path.join(root, relative);
-      if (!existsSync(script)) throw new Error(`missing invoked script: ${relative}`);
-      const source = ts.createSourceFile(script, readFileSync(script, "utf8"), ts.ScriptTarget.Latest, true);
-      function visit(node) {
-        if (ts.isCallExpression(node) && /^(?:spawn|spawnSync|execFile|execFileSync|exec|execSync)$/.test(node.expression.getText(source))) {
-          const [program, args] = node.arguments;
-          if (program && ts.isStringLiteral(program)) {
-            const literals = args && ts.isArrayLiteralExpression(args) ? args.elements.filter(ts.isStringLiteral).map((arg) => arg.text) : [];
-            // Cache metrics calls gh only when explicitly enabled for this step.
-            if (program.text !== "gh" || (step.env?.CI_CACHE_TOTAL ?? job.env?.CI_CACHE_TOTAL) === "1") commands([program.text, ...literals].join(" "), step);
-          }
-        }
-        ts.forEachChild(node, visit);
-      }
-      visit(source);
+      const source = readFileSync(path.join(root, relative), "utf8");
+      if (file.endsWith(".sh")) commands(source, step);
+      else for (const [, program] of source.matchAll(/\b(?:run|Popen|check_call|check_output|call)\(\s*\[\s*["'](cargo|rustc|rustup)["']/g)) commands(program, step);
     }
     for (const [name, tool] of Object.entries(tools)) {
       if (tool.run?.test(command) || (tool.env && Object.entries(tool.env).every(([key, value]) => (step.env?.[key] ?? job.env?.[key]) === value))) use(name);
@@ -110,7 +99,35 @@ export function requiredEndpoints(job) {
       if (!["localhost", "127.0.0.1"].includes(url.hostname)) required.add(`${url.hostname}:${url.port || (url.protocol === "https:" ? 443 : 80)}`);
     }
   }
+  function inspectScript(script, step, imported) {
+    const key = `${script}:${imported}`;
+    if (visited.has(key)) return;
+    visited.add(key);
+    if (!existsSync(script)) throw new Error(`missing invoked script: ${path.relative(root, script)}`);
+    const source = ts.createSourceFile(script, readFileSync(script, "utf8"), ts.ScriptTarget.Latest, true);
+    function visit(node) {
+      // Imported CLI modules do not execute their guarded main entrypoint.
+      if (imported && ts.isIfStatement(node) && /process\.argv\[1\].*import\.meta\.url/.test(node.expression.getText(source))) return;
+      if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith("."))
+        inspectScript(path.resolve(path.dirname(script), node.moduleSpecifier.text), step, true);
+      if (ts.isCallExpression(node) && /^(?:spawn|spawnSync|execFile|execFileSync|exec|execSync)$/.test(node.expression.getText(source))) {
+        const [program, args, options] = node.arguments;
+        const name = program && ts.isStringLiteral(program) ? program.text : program?.getText(source) === "process.execPath" ? "node" : undefined;
+        // CLI tests supply a synthetic PATH with local cargo/git stubs, not runner tools.
+        const stubbed = /\.test\.mjs$/.test(script) && ["node", "bash", "python3"].includes(name) && options &&
+          /\bPATH\s*:\s*`[^`\n]+:\$\{process\.env\.PATH(?:\s*\?\?[^}]+)?\}`/.test(options.getText(source));
+        if (name && !stubbed) {
+          const literals = args && ts.isArrayLiteralExpression(args) ? args.elements.filter(ts.isStringLiteral).map((arg) => arg.text) : [];
+          // Cache metrics calls gh only when explicitly enabled for this step.
+          if (name !== "gh" || (step.env?.CI_CACHE_TOTAL ?? job.env?.CI_CACHE_TOTAL) === "1") commands([name, ...literals].join(" "), step);
+        }
+      }
+      ts.forEachChild(node, visit);
+    }
+    visit(source);
+  }
   for (const step of job.steps ?? []) {
+    visited.clear();
     if (step.uses) use(step.uses.split("@")[0]);
     commands(step.run ?? "", step);
   }

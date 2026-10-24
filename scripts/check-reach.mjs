@@ -98,7 +98,10 @@ export function releasePackages(app) {
     enabled.add(feature);
     pending.push(...(app.features[feature] ?? []));
   }
-  return new Set(app.dependencies.filter((d) => (d.kind == null) && (!d.optional || enabled.has(`dep:${d.name}`) || enabled.has(d.name) || [...enabled].some((f) => f.startsWith(`${d.name}/`)))).map((d) => d.name));
+  return new Set(app.dependencies.filter((d) => {
+    const name = d.rename ?? d.name;
+    return (d.kind == null) && (!d.optional || enabled.has(`dep:${name}`) || enabled.has(name) || [...enabled].some((f) => f.startsWith(`${name}/`)));
+  }).map((d) => d.name));
 }
 
 /** Only executable call expressions count; types, cache prefixes and test fixtures cannot reach an op. */
@@ -169,7 +172,7 @@ export function checkOperations({ gaps, operations, previous, uncalled }) {
 export const lowerOperations = (operations, uncalled) => Object.fromEntries(Object.entries(operations).filter(([op]) => uncalled.includes(op)));
 
 function operationTree(files) {
-  const metadata = spawnSync("cargo", ["metadata", "--offline", "--no-deps", "--format-version", "1"], { cwd: path.join(ROOT, "backend"), encoding: "utf8", maxBuffer: 1 << 26 });
+  const metadata = spawnSync("python3", [path.join(ROOT, "scripts/reach-metadata.py"), path.join(ROOT, "backend")], { encoding: "utf8", maxBuffer: 1 << 26 });
   if (metadata.status !== 0) throw new Error(`reach: release metadata unreadable: ${metadata.stderr}`);
   const { packages } = JSON.parse(metadata.stdout);
   const shipped = releasePackages(packages.find((p) => p.name === "console-app"));
