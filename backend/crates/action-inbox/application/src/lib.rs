@@ -327,6 +327,21 @@ mod tests {
     use super::*;
 
     #[test]
+    fn corrections_project_requester_waiting_separately_from_actions() {
+        let now = OffsetDateTime::UNIX_EPOCH;
+        for (kind, lane) in [
+            ("identifier_correction_waiting", "waiting"),
+            ("identifier_correction_decide", "turn"),
+            ("identifier_correction_apply", "turn"),
+            ("identifier_correction_review", "turn"),
+        ] {
+            let mut source = item("identifier_correction", 1, now);
+            source.kind = kind.into();
+            assert_eq!(project_item(source, now).lane, lane);
+        }
+    }
+
+    #[test]
     fn all_sources_are_payroll_and_governance_inclusive() {
         assert_eq!(
             ActionInboxSource::ALL,

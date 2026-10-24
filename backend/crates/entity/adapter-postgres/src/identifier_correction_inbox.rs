@@ -32,7 +32,7 @@ pub async fn open_conn(
            UNION SELECT actor_id FROM entity_identifier_corrections WHERE \
              (e.subject_type='LEGAL_ENTITY' AND legal_entity_id=e.subject_id AND registration_id IS NULL) OR \
              (e.subject_type='BUSINESS_REGISTRATION' AND registration_id=e.subject_id)) contributors WHERE actor IS NOT NULL) AS excluded \
-         FROM governed_exceptions e JOIN users u ON u.id=e.requested_by \
+         FROM governed_exceptions e JOIN person_accounts_current u ON u.id=e.requested_by \
          LEFT JOIN business_registrations b ON e.subject_type='BUSINESS_REGISTRATION' AND b.id=e.subject_id \
          JOIN legal_entities h ON h.id=CASE WHEN e.subject_type='LEGAL_ENTITY' THEN e.subject_id ELSE b.legal_entity_id END \
          JOIN LATERAL (SELECT name FROM legal_entity_revisions WHERE legal_entity_id=h.id ORDER BY version DESC LIMIT 1) r ON true \

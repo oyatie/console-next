@@ -47,7 +47,7 @@ pub async fn list_conn(
           COALESCE(p.after_snap->'proposal', \
             jsonb_build_object('field', c.field, 'value', c.new_value, 'document_id', c.document_id, 'reason_code', c.reason_code)) AS proposal, \
           u.display_name AS requester_name, v.created_at AS reviewed_at, v.after_snap->>'note' AS review_note \
-         FROM governed_exceptions e JOIN users u ON u.id=e.requested_by \
+         FROM governed_exceptions e JOIN person_accounts_current u ON u.id=e.requested_by \
          LEFT JOIN business_registrations b ON e.subject_type='BUSINESS_REGISTRATION' AND b.id=e.subject_id \
          JOIN legal_entities h ON h.id=CASE WHEN e.subject_type='LEGAL_ENTITY' THEN e.subject_id ELSE b.legal_entity_id END \
          JOIN LATERAL (SELECT name FROM legal_entity_revisions WHERE legal_entity_id=h.id ORDER BY version DESC LIMIT 1) r ON true \

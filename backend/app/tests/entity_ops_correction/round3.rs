@@ -214,3 +214,34 @@ async fn correction_inbox_cursor_keeps_tied_cases_without_duplicates(owner: PgPo
     assert_eq!(seen.len() as u64, expected_total);
     assert_eq!(corrections.len(), 3);
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn correction_register_and_inbox_follow_requester_person_name(owner: PgPool) {
+    let mut s = setup::setup(&owner).await;
+    let (_, receipt, _) = request(&owner, &mut s).await;
+    let id: Uuid = receipt["exception_id"].as_str().unwrap().parse().unwrap();
+    // Operations principals have no natural person; use a tenant person for this read fixture.
+    let id: Uuid = sqlx::query_scalar("INSERT INTO governed_exceptions (org_id,rule_code,risk,subject_type,subject_id,reason_code,fingerprint,affected_periods,settings_snapshot,requested_by,status,fallback_kind,expires_at) SELECT org_id,rule_code,risk,subject_type,subject_id,reason_code,fingerprint,affected_periods,settings_snapshot,$2,status,fallback_kind,expires_at FROM governed_exceptions WHERE id=$1 RETURNING id")
+        .bind(id).bind(s.member.id).fetch_one(&owner).await.unwrap();
+    sqlx::query(
+        "SELECT console_revise_person_facts(org_id,person_id,$2,id) FROM users WHERE id=$1",
+    )
+    .bind(s.member.id)
+    .bind(json!({"display_name":"현재 요청자"}))
+    .execute(&owner)
+    .await
+    .unwrap();
+    let (_, case) = get(
+        &s,
+        &format!("/api/v1/entity-identifier-corrections/{id}"),
+        &s.ops.token,
+    )
+    .await;
+    assert_eq!(case["items"][0]["requester_name"], "현재 요청자");
+    let rows = inbox(&s, &s.approver.token).await;
+    let row = rows
+        .iter()
+        .find(|row| row["links"][0]["id"] == id.to_string())
+        .unwrap();
+    assert_eq!(row["who"], "현재 요청자");
+}
