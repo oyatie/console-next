@@ -138,7 +138,7 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
       pending={reg.isSending}
       locked={reg.isChecking}
       notice={cands.length === 0 ? (reg.error && !openingRefused ? <CommandError error={reg.error} live="assertive" fieldLabel={(field) => field === "name" ? t("register.name") : undefined} own={(code) => (code === "employee_number_taken" && d.numberMode === "manual" && d.number.trim() ? t(`people.new.numberTaken.${numberHolder(reg.error)}`, { number: d.number.trim() }) : peopleRefusal(code))} /> : <RegisterToast inline />) : undefined}
-      consequence={hireRefusal ? <p role="alert">{hireRefusal}</p> : <RegisterFoot d={d} gaps={g} tried={tried} dup={cands.length > 0} place={place?.site && place.unit.kind !== "SITE" ? `${place.site} › ${place.unit.name}` : (place?.unit.name ?? "")} status={status} setup={setup} />}
+      consequence={hireRefusal ?? <RegisterFoot d={d} gaps={g} tried={tried} dup={cands.length > 0} place={place?.site && place.unit.kind !== "SITE" ? `${place.site} › ${place.unit.name}` : (place?.unit.name ?? "")} status={status} setup={setup} />}
       action={{ kind: "ONBOARD", mode: "apply", count: 1, continuation: "next" }}
       onSubmit={() => { submit(true); }}
       incomplete={(cands.length > 0 && (!pick.verdict || (pick.verdict === "other" && !pick.code))) || undefined}
