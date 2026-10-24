@@ -129,8 +129,38 @@ async fn regression_a_same_day_exit_keeps_every_count_through_the_last_working_d
             .unwrap(),
         1
     );
-    assert_eq!(chart(&t).await, (1, vec![0, 1]));
-    assert_eq!(record(&t).await, [0, 1]);
+    // Advancing the runner does not advance the read clock; today still includes the last day.
+    assert_eq!(chart(&t).await, (2, vec![0, 2]));
+    assert_eq!(record(&t).await, [0, 2]);
+    let tomorrow = day(1);
+    let (status, dated) = t
+        .ops
+        .call(
+            "GET",
+            &format!("/api/v1/org-structure?as_of={tomorrow}"),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{dated}");
+    assert_eq!(dated["entities"][0]["headcount"], 1);
+    let (status, dated) = t
+        .ops
+        .call(
+            "GET",
+            &format!("/api/v1/legal-entities/{}?as_of={tomorrow}", t.entity),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{dated}");
+    assert_eq!(
+        dated["workplaces"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|w| w["headcount"].as_i64().unwrap())
+            .sum::<i64>(),
+        1
+    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
