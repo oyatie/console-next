@@ -2,6 +2,7 @@
 // Count message/hint sites on each screen surface, including delegated shared components.
 import { readFileSync, readdirSync } from "node:fs";
 import { readRegistry } from "./standing-text-registry.mjs";
+import { resolveBase } from "./git-base.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -157,7 +158,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const sources = Object.fromEntries(filesIn("apps/web/src").filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f)).map((f) => [f, readFileSync(f, "utf8")]));
   const { baseline, newScreens } = readRegistry();
   const now = screenCounts(sources, newScreens);
-  const previous = readRegistry("dev").baseline;
+  const previous = readRegistry(resolveBase(ROOT)).baseline;
   const problems = ratchet(now, baseline, previous, newScreens);
   if (problems.length) {
     console.error(`standing-text: ${problems.length} problem(s):\n${problems.join("\n")}`);
