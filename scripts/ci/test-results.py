@@ -87,10 +87,14 @@ def check(kind, context, file, status, entries):
         raise ValueError("test runner did not complete")
     root = ET.parse(file).getroot()
     cases = list(root.iter("testcase"))
+    # Playwright emits case-level errors for test timeouts; runner/worker errors stay fatal.
+    timeouts = {error for case in cases for error in case.findall("error")
+                if kind == "playwright" and re.fullmatch(r"Test timeout of [1-9][0-9]*ms exceeded\.", error.get("message", ""))}
     empty_group = kind == "nextest" and status == 0 and root.tag == "testsuites" and root.get("tests") == "0" and root.get("failures", "0") == "0"
-    if (not cases and not empty_group) or list(root.iter("error")) or any(int(node.get("errors", "0")) for node in root.iter()):
+    if ((not cases and not empty_group) or any(error not in timeouts for error in root.iter("error"))
+            or any(int(node.get("errors", "0")) > len(timeouts) for node in root.iter())):
         raise ValueError("missing tests or test infrastructure error")
-    failed = [case for case in cases if case.find("failure") is not None]
+    failed = [case for case in cases if case.find("failure") is not None or case.find("error") in timeouts]
     if (status == 0 and failed) or max((int(node.get("failures", "0")) for node in root.iter()), default=0) > len(failed):
         raise ValueError("JUnit failures do not match the completed run")
     if status and not failed:
@@ -101,7 +105,7 @@ def check(kind, context, file, status, entries):
             suite = suite.replace("\\", "/").removeprefix("e2e/")
         return (kind, context, suite, re.sub(r"(?: @[\w-]+)+$", "", case.get("name", "")))
     ids = {case_key(case) for case in failed}
-    passed = {case_key(case) for case in cases if case.find("failure") is None and case.find("skipped") is None}
+    passed = {case_key(case) for case in cases if case.find("failure") is None and case.find("error") is None and case.find("skipped") is None}
     fresh = ids - set(entries)
     strict = {ident for ident, entry in entries.items() if entry.get("class", "deterministic") == "deterministic"}
     fixed = passed & strict

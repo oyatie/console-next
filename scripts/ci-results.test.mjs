@@ -69,6 +69,28 @@ test("JUnit baseline reports known reds, refuses new reds, crashes, missing proo
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test("owned Playwright test timeouts are reds; worker crashes and unaccounted errors stay blocking", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-timeout-junit-"));
+  try {
+    const baseline = path.join(dir, "baseline.json"), junit = path.join(dir, "junit.xml");
+    const entry = { kind: "playwright", context: "chromium", suite: "slow.spec.ts", test: "known timeout", owner: "ci-1", expires: "2099-01-01" };
+    writeFileSync(baseline, JSON.stringify([entry]));
+    const run = (message = "Test timeout of 120000ms exceeded.", { kind = "playwright", title = entry.test, status = "1", errors = 1, outside = "" } = {}) => {
+      writeFileSync(baseline, JSON.stringify([{ ...entry, kind }]));
+      writeFileSync(junit, `<testsuites errors="${errors}"><testsuite><testcase classname="${entry.suite}" name="${title}"><error message="${message}" type="Error">withheld</error></testcase>${outside}</testsuite></testsuites>`);
+      return spawnSync("python3", ["scripts/ci/test-results.py", kind, "chromium", junit, status, baseline], { encoding: "utf8" });
+    };
+    assert.equal(run().status, 0);
+    assert.equal(run(undefined, { title: "new timeout" }).status, 1);
+    assert.equal(run(undefined, { status: "0" }).status, 1);
+    assert.equal(run(undefined, { errors: 2 }).status, 1);
+    assert.equal(run(undefined, { outside: '<error message="Test timeout of 120000ms exceeded."/>' }).status, 1);
+    assert.equal(run("Worker process exited unexpectedly").status, 1);
+    assert.equal(run("Test timeout of invalidms exceeded.").status, 1);
+    assert.equal(run(undefined, { kind: "nextest", status: "100" }).status, 1);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("the strict baseline can shrink or expire sooner but cannot grow, change owner, or move", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-baseline-ratchet-"));
   try {
