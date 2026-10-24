@@ -238,16 +238,17 @@ test("actual roster generators keep unique phones and RRNs inside the synthetic 
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("release tools refuse a well-formed archive with the wrong pinned checksum", () => {
+for (const tool of ["nextest", "actionlint"]) test(`${tool} refuses a well-formed archive with the wrong pinned checksum`, () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-tool-integrity-"));
   try {
     const archive = path.join(dir, "fixture.tar.gz");
-    const binary = JSON.parse(readFileSync(new URL("./ci/versions.json", import.meta.url), "utf8")).nextest.binary;
+    const binary = JSON.parse(readFileSync(new URL("./ci/versions.json", import.meta.url), "utf8"))[tool].binary;
     const create = spawnSync("python3", ["-c", "import io,sys,tarfile\nwith tarfile.open(sys.argv[1],'w:gz') as t:\n i=tarfile.TarInfo(sys.argv[2]);data=b'#!/bin/sh\\nexit 0\\n';i.size=len(data);i.mode=0o755;t.addfile(i,io.BytesIO(data))", archive, binary], { encoding: "utf8" });
     assert.equal(create.status, 0, create.stderr);
     writeFileSync(path.join(dir, "curl"), `#!${process.execPath}\nconst fs=require('node:fs');const a=process.argv.slice(2);fs.copyFileSync(process.env.TOOL_FIXTURE,a[a.indexOf('-o')+1]);\n`, { mode: 0o700 });
-    const result = spawnSync("bash", ["scripts/ci/install-tools.sh", "nextest"], { encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, TOOL_FIXTURE: archive, RUNNER_TEMP: dir, GITHUB_PATH: path.join(dir, "path") } });
+    const result = spawnSync("bash", ["scripts/ci/install-tools.sh", tool], { encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, TOOL_FIXTURE: archive, RUNNER_TEMP: dir, GITHUB_PATH: path.join(dir, "path") } });
     assert.notEqual(result.status, 0);
+    assert.equal(spawnSync("test", ["-e", path.join(dir, "console-tools/bin", binary)]).status, 1);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
