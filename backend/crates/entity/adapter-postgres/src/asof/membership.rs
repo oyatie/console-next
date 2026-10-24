@@ -55,7 +55,7 @@ pub(crate) async fn load(
            CASE WHEN w.id IS NOT NULL AND (a.employee_id IS NULL OR (entity_try_iso_date(w.effective_date),w.created_at) > (a.valid_from,a.created_at)) THEN w.to_workplace_id ELSE a.workplace_id END AS workplace_id, \
            COALESCE(t.to_employment_type,first_type.from_employment_type,CASE WHEN $2::timestamptz IS NULL THEN f.employment_type ELSE entity_known_row(to_jsonb(f),$2)->>'employment_type' END) \
                IN ('DISPATCHED_IN','OUTSOURCED_ON_SITE') AS dispatched \
-         FROM employees e LEFT JOIN employee_employment_profiles f ON f.employee_id=e.id \
+         FROM person_employees_current e LEFT JOIN employee_employment_profiles f ON f.employee_id=e.id \
          LEFT JOIN revisions r ON r.employee_id=e.id \
          LEFT JOIN first_events first_event ON first_event.employee_id=e.id \
          LEFT JOIN latest_status l ON l.employee_id=e.id AND (r.valid_from IS NULL \

@@ -5,7 +5,7 @@ use sqlx::{Postgres, Row, Transaction};
 
 macro_rules! current { () => { "WITH RECURSIVE today AS (SELECT (now() AT TIME ZONE 'Asia/Seoul')::date AS d), \
  people AS (SELECT e.id, e.name, e.org_unit_id, e.source_metadata, a.legal_entity_id, a.workplace_id \
- FROM employees e LEFT JOIN employment_assignments a ON a.employee_id = e.id AND a.org_id = e.org_id \
+ FROM person_employees_current e LEFT JOIN employment_assignments a ON a.employee_id = e.id AND a.org_id = e.org_id \
  AND a.superseded_at IS NULL AND a.valid_from <= (SELECT d FROM today) \
  AND (a.valid_to IS NULL OR a.valid_to > (SELECT d FROM today)) \
  WHERE entity_employed_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AND e.merged_into_employee_id IS NULL) " }; }

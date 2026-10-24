@@ -99,7 +99,7 @@ impl PgOrgChangeStore {
                     (head_view(head, org, headcount), revisions)
                 };
                 let member_rows = sqlx::query(
-                    "SELECT id, name, employee_number, position FROM employees \
+                    "SELECT id, name, employee_number, position FROM person_employees_current \
                      WHERE entity_employed_on(entity_today(), hire_on, exit_on, employment_status) \
                        AND ($2 OR org_unit_id = $1 OR org_unit = $1::text) \
                      ORDER BY name, id LIMIT 200",
