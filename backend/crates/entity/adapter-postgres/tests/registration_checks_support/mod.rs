@@ -56,13 +56,33 @@ pub(super) async fn due(pool: &PgPool, id: Uuid) {
 }
 
 pub(super) async fn tick(
+    owner: &PgPool,
     store: &PgEntityStore,
     actor: &Actor,
     status: &str,
     policy: CheckSchedulePolicy,
 ) -> usize {
+    set_policy(owner, policy).await;
     store
-        .check_due_registrations(actor.org, fake(status), policy)
+        .check_due_registrations(actor.org, fake(status))
         .await
         .unwrap()
+}
+
+pub(super) async fn set_policy(pool: &PgPool, policy: CheckSchedulePolicy) {
+    for (key, value) in [
+        ("nts.check.cadence_hours", policy.cadence_hours),
+        ("nts.check.batch_size", policy.batch_size),
+        ("nts.check.daily_budget", policy.daily_budget),
+        ("nts.check.backoff_seconds", policy.backoff_seconds),
+    ] {
+        sqlx::query(
+            "INSERT INTO platform_setting_overrides(key,value) VALUES($1,to_jsonb($2::bigint))",
+        )
+        .bind(key)
+        .bind(value)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
 }

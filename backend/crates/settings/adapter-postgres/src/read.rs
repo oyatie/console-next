@@ -2,8 +2,9 @@
 //! for `GET /api/v1/settings`, and one key's history.
 
 use console_kernel_core::{KernelError, OrgId, Resolved, SettingVersionId, Timestamp};
+use console_platform_db::settings_read::resolve_loaded;
 use console_settings_domain::{
-    Direction, Governance, LooserWhen, OverrideRow, SettingKey, SettingKind, SettingValue, resolve,
+    Direction, Governance, LooserWhen, OverrideRow, SettingKey, SettingKind, SettingValue,
 };
 use serde::Serialize;
 use sqlx::{PgConnection, Row};
@@ -85,7 +86,7 @@ pub(crate) fn effective_settings(
         .iter()
         .map(|&key| {
             let rows = rows.get(&key).map_or(&[][..], Vec::as_slice);
-            let resolved = resolve(key, rows, entity, now).ok();
+            let resolved = resolve_loaded(key, rows, entity, now).ok();
             let effective_from = match resolved.map(|r| r.version) {
                 Some(SettingVersionId::Override(id)) => {
                     rows.iter().find(|r| r.id == id).map(|r| r.effective_from)

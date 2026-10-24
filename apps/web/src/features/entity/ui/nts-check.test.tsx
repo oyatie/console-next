@@ -109,6 +109,35 @@ test("read-only readers cannot invoke governed checks", () => {
   expect(button("nts.action.validate")).toBeUndefined();
 });
 
+test("read-only readers cannot attach an original through the unavailable fallback", () => {
+  view.data = history(undefined, false);
+  const attach = vi.fn();
+  expect(html({ canManage: false, onAttach: attach })).toContain(t("nts.fallback"));
+  expect(button("nts.attach")).toBeUndefined();
+  expect(attach).not.toHaveBeenCalled();
+});
+
+test("a later status poll preserves authenticity while displaying the latest status evidence", () => {
+  const validated = evidence({ kind: "VALIDATE", valid: "01" });
+  const status = evidence({ checked_at: "2026-10-25T02:00:00Z", status_code: "02" });
+  view.data = { ...history(status), latest_validate: validated };
+  const out = html();
+  expect(out).toContain(t("enum.verification.T2"));
+  expect(out).toContain(t("nts.result.suspended"));
+  expect(out).toContain("2026. 10. 25. 11:00 KST");
+  expect(verificationState({ ...registration, nts_check: status, verification_tier: "T2" }).label).toBe(t("enum.verification.T2"));
+});
+
+test("an invalid validation does not hide an independently confirmed status", () => {
+  const status = evidence();
+  const invalid = evidence({ kind: "VALIDATE", valid: "02", status_code: null, checked_at: "2026-10-25T02:00:00Z" });
+  view.data = { ...history(status), latest_validate: invalid };
+  const out = html();
+  expect(out).toContain(t("enum.verification.T1"));
+  expect(out).toContain(t("nts.result.invalid"));
+  expect(verificationState({ ...registration, nts_check: invalid, verification_tier: "T1" }).label).toBe(t("enum.verification.T1"));
+});
+
 test.each([
   { ...entity, current: { representatives: [] } },
   { ...entity, current: null },

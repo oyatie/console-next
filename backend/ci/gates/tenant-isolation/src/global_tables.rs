@@ -9,6 +9,10 @@
 pub fn global_table_allowlist() -> &'static [(&'static str, &'static str)] {
     &[
         (
+            "platform_setting_overrides",
+            "operator-owned registry values, no tenant content or secrets; runtime SELECT only",
+        ),
+        (
             "registration_check_daily_budget",
             "platform-wide UTC outbound quota counter; no tenant content; runtime role can only claim a bounded count through SECURITY DEFINER",
         ),

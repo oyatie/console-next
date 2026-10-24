@@ -34,6 +34,46 @@ impl Default for CheckSchedulePolicy {
         }
     }
 }
+impl CheckSchedulePolicy {
+    /// Resolve platform-owned registry values on the caller's armed transaction.
+    /// # Errors
+    /// Invalid or unreadable configuration fails closed.
+    pub(crate) async fn in_tx(tx: &mut crate::Tx<'_>, org: OrgId) -> Result<Self, PgEntityError> {
+        use SettingKey::{
+            NtsCheckBackoffSeconds, NtsCheckBatchSize, NtsCheckCadenceHours, NtsCheckDailyBudget,
+            NtsCheckReflectionLagDays,
+        };
+        let keys = [
+            NtsCheckCadenceHours,
+            NtsCheckBatchSize,
+            NtsCheckDailyBudget,
+            NtsCheckReflectionLagDays,
+            NtsCheckBackoffSeconds,
+        ];
+        let now = sqlx::query_scalar("SELECT now()")
+            .fetch_one(tx.as_mut())
+            .await?;
+        let values =
+            console_platform_db::settings_read::resolve_in_tx(tx.as_mut(), org, &keys, None, now)
+                .await?;
+        let int = |key| {
+            values
+                .get(&key)
+                .and_then(|value| value.as_ref().ok())
+                .and_then(|value| value.value.as_int())
+                .ok_or_else(|| {
+                    console_kernel_core::KernelError::internal("NTS schedule setting is invalid")
+                })
+        };
+        Ok(Self {
+            cadence_hours: int(NtsCheckCadenceHours)?,
+            batch_size: int(NtsCheckBatchSize)?,
+            daily_budget: int(NtsCheckDailyBudget)?,
+            reflection_lag_days: int(NtsCheckReflectionLagDays)?,
+            backoff_seconds: int(NtsCheckBackoffSeconds)?,
+        })
+    }
+}
 impl PgEntityStore {
     /// Claim one batch. The port exposes only STATUS to this path, never user validation data.
     /// # Errors
@@ -42,14 +82,14 @@ impl PgEntityStore {
         &self,
         org: OrgId,
         port: Arc<dyn RegistrationCheck>,
-        policy: CheckSchedulePolicy,
     ) -> Result<usize, PgEntityError> {
         if !port.availability().available {
             return Ok(0);
         }
         let pack = port.pack();
         let max_batch = i64::try_from(port.max_batch()).unwrap_or(i64::MAX);
-        let (rows, lease) = with_org_conn(&self.pool, org, move |tx| Box::pin(async move {
+        let (rows, lease, policy) = with_org_conn(&self.pool, org, move |tx| Box::pin(async move {
+            let policy = CheckSchedulePolicy::in_tx(tx, org).await?;
             let mut rows: Vec<(Uuid,String)> = sqlx::query_as("SELECT r.id,r.brn FROM business_registration_check_schedule s JOIN business_registrations r ON r.id=s.registration_id \
                 WHERE s.due_at<=now() AND r.brn IS NOT NULL AND r.voided_at IS NULL AND r.check_pack=$1 \
                 ORDER BY s.due_at,r.id LIMIT $2 FOR UPDATE OF s,r SKIP LOCKED")
@@ -63,7 +103,7 @@ impl PgEntityStore {
             // Commit the retry time before I/O, releasing both tenant and platform-budget locks.
             sqlx::query("UPDATE business_registration_check_schedule SET due_at=$2 WHERE registration_id=ANY($1)")
                 .bind(&ids).bind(lease).execute(tx.as_mut()).await?;
-            Ok::<_, PgEntityError>((rows, lease))
+            Ok::<_, PgEntityError>((rows, lease, policy))
         })).await?;
         if rows.is_empty() {
             return Ok(0);

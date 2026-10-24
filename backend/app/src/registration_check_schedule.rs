@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-use console_entity_adapter_postgres::{CheckSchedulePolicy, PgEntityStore};
+use console_entity_adapter_postgres::PgEntityStore;
 use console_entity_application::registration_check::RegistrationCheck;
 use console_kernel_core::OrgId;
 use std::sync::Arc;
@@ -24,11 +24,7 @@ pub(crate) async fn tick(pool: &sqlx::PgPool, port: Arc<dyn RegistrationCheck>) 
     let store = PgEntityStore::new(pool.clone());
     for id in tenants {
         if let Err(error) = store
-            .check_due_registrations(
-                OrgId::from_uuid(id),
-                port.clone(),
-                CheckSchedulePolicy::default(),
-            )
+            .check_due_registrations(OrgId::from_uuid(id), port.clone())
             .await
         {
             tracing::warn!(%error,"registration check batch failed");

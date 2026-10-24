@@ -174,8 +174,9 @@ async fn schedule_claims_skip_locked_respect_budget_and_use_configured_cadence(p
     };
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("SELECT registration_id FROM business_registration_check_schedule WHERE registration_id=$1 FOR UPDATE").bind(id).fetch_one(&mut *tx).await.unwrap();
-    assert_eq!(tick(&store, &actor, "02", policy).await, 0);
+    assert_eq!(tick(&pool, &store, &actor, "02", policy).await, 0);
     tx.rollback().await.unwrap();
+    set_policy(&pool, policy).await;
     let mut forbidden = CheckAnswer::status(BRN, "01");
     forbidden.kind = CheckKind::Validate;
     forbidden.valid = Some("01".into());
@@ -184,16 +185,15 @@ async fn schedule_claims_skip_locked_respect_budget_and_use_configured_cadence(p
         store
             .check_due_registrations(
                 actor.org,
-                Arc::new(FakeRegistrationCheck::configured(vec![forbidden])),
-                policy
+                Arc::new(FakeRegistrationCheck::configured(vec![forbidden]))
             )
             .await
             .is_err()
     );
     // The provider attempt spends budget even when its answer violates the contract.
     due(&pool, id).await;
-    assert_eq!(tick(&store, &actor, "02", policy).await, 1);
-    assert_eq!(tick(&store, &actor, "02", policy).await, 0);
+    assert_eq!(tick(&pool, &store, &actor, "02", policy).await, 1);
+    assert_eq!(tick(&pool, &store, &actor, "02", policy).await, 0);
     let row = store
         .registration_checks(&actor, id, 20, None)
         .await
@@ -207,13 +207,13 @@ async fn schedule_claims_skip_locked_respect_budget_and_use_configured_cadence(p
     let hours: f64 = sqlx::query_scalar("SELECT extract(epoch FROM (due_at-now()))::float8/3600 FROM business_registration_check_schedule WHERE registration_id=$1").bind(id).fetch_one(&pool).await.unwrap();
     assert!((6.9..=7.0).contains(&hours));
     due(&pool, id).await;
-    assert_eq!(tick(&store, &actor, "01", policy).await, 0);
+    assert_eq!(tick(&pool, &store, &actor, "01", policy).await, 0);
     let policy = CheckSchedulePolicy {
         daily_budget: 3,
         cadence_hours: 3,
         ..policy
     };
-    assert_eq!(tick(&store, &actor, "01", policy).await, 1);
+    assert_eq!(tick(&pool, &store, &actor, "01", policy).await, 1);
     assert!(
         store
             .registration_check_items(&actor)
@@ -239,7 +239,7 @@ async fn unregistered_numbers_honor_reflection_lag_then_open_exactly_one_item(po
         .to_string();
     let (recent, recent_actor, recent_id) = subject(&pool, Some(yesterday)).await;
     let policy = CheckSchedulePolicy::default();
-    assert_eq!(tick(&recent, &recent_actor, "", policy).await, 1);
+    assert_eq!(tick(&pool, &recent, &recent_actor, "", policy).await, 1);
     assert!(
         recent
             .registration_check_items(&recent_actor)
@@ -256,13 +256,13 @@ async fn unregistered_numbers_honor_reflection_lag_then_open_exactly_one_item(po
             .reflection_pending
     );
     let (store, actor, id) = subject(&pool, None).await;
-    assert_eq!(tick(&store, &actor, "", policy).await, 1);
+    assert_eq!(tick(&pool, &store, &actor, "", policy).await, 1);
     assert_eq!(
         store.registration_check_items(&actor).await.unwrap().len(),
         1
     );
     due(&pool, id).await;
-    tick(&store, &actor, "", policy).await;
+    tick(&pool, &store, &actor, "", policy).await;
     assert_eq!(
         store.registration_check_items(&actor).await.unwrap().len(),
         1

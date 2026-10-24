@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { checkState } from "../present";
+import { checkState, verificationState } from "../present";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -52,7 +52,7 @@ export function NtsCheck({ registration: r, entity, canManage = entity.can_manag
             const latest = checks.reduce<CheckEvidence | undefined>((last, check) => !last || check.checked_at > last.checked_at ? check : last, undefined);
             const available = history.availability.available && error?.code !== "registration_check_unavailable";
             const reason = failedReason ?? history.availability.reason ?? "PROVIDER_DOWN";
-            const badge = checkState(latest, available);
+            const badge = historical ? verificationState(r) : checkState(history.latest_validate?.valid === "01" ? history.latest_validate : history.latest_status ?? latest, available);
             return <>
               <Chip tone={badge.tone}>{badge.label}</Chip>
               {latest && <>

@@ -74,6 +74,7 @@ test("a solo administrator checks NTS explicitly and a scheduled closed answer r
     expect(checked.inbox_item_id).toBeTruthy();
     expect((await read<LegalEntity>(`/api/v1/legal-entities/${id}`)).registrations[0]!.current?.status).toBe("CONTINUING");
     await page.reload();
+    await expect(card(page).getByText(t("enum.verification.T2"), { exact: true })).toBeVisible();
     await expect(card(page)).toContainText(t("nts.mismatch"));
     await expect(card(page)).toContainText("2026. 10. 01.");
     await expect(card(page).getByRole("link", { name: t("nts.inbox"), exact: true })).toHaveAttribute("href", `/#nts-${checked.inbox_item_id}`);

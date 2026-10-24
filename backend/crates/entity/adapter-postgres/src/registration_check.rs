@@ -90,8 +90,16 @@ pub(crate) async fn append(
         .bind(&answer.rbf_tax_type_cd).bind(&answer.valid).bind(answer.not_registered).bind(&answer.fields_sent)
         .bind(&answer.response_sha256).bind(&answer.provider_version).bind(actor).bind(checked_at).execute(tx.as_mut()).await?;
     if actor.is_some() {
+        let org = sqlx::query_scalar::<_, Uuid>(
+            "SELECT NULLIF(current_setting('app.current_org',true),'')::uuid",
+        )
+        .fetch_one(tx.as_mut())
+        .await?;
+        let policy =
+            crate::CheckSchedulePolicy::in_tx(tx, console_kernel_core::OrgId::from_uuid(org))
+                .await?;
         sqlx::query("UPDATE business_registration_check_schedule SET due_at=(SELECT checked_at FROM business_registration_checks WHERE id=$1)+$2::bigint*interval '1 hour' WHERE registration_id=$3")
-            .bind(id).bind(crate::CheckSchedulePolicy::default().cadence_hours).bind(registration).execute(tx.as_mut()).await?;
+            .bind(id).bind(policy.cadence_hours).bind(registration).execute(tx.as_mut()).await?;
     }
     Ok(id)
 }

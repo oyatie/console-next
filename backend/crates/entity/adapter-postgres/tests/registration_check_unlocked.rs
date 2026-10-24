@@ -15,6 +15,87 @@ use std::{
 };
 use uuid::Uuid;
 type Reply<'a, T> = Pin<Box<dyn Future<Output = Result<T, CheckFailure>> + Send + 'a>>;
+struct FailedCall(AtomicUsize);
+impl RegistrationCheck for FailedCall {
+    fn pack(&self) -> &'static str {
+        "KR"
+    }
+    fn reflection_lag_days(&self) -> i64 {
+        2
+    }
+    fn max_batch(&self) -> usize {
+        100
+    }
+    fn availability(&self) -> CheckAvailability {
+        CheckAvailability::available()
+    }
+    fn status<'a>(&'a self, _: &'a [String]) -> Reply<'a, Vec<CheckAnswer>> {
+        self.0.fetch_add(1, Ordering::SeqCst);
+        Box::pin(async { Err(CheckFailure::Unavailable(UnavailableReason::ProviderDown)) })
+    }
+    fn validate<'a>(&'a self, _: &'a UserValidation) -> Reply<'a, CheckAnswer> {
+        unreachable!("the schedule must only request status")
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_failed_provider_call_commits_backoff_without_evidence_or_an_immediate_retry(
+    pool: PgPool,
+) {
+    let (store, actor, id) = subject(&pool, None).await;
+    let port = Arc::new(FailedCall(AtomicUsize::new(0)));
+    for (attempt, backoff_seconds) in [(1, 120), (2, 180)] {
+        let policy = console_entity_adapter_postgres::CheckSchedulePolicy {
+            backoff_seconds,
+            ..Default::default()
+        };
+        set_policy(&pool, policy).await;
+        due(&pool, id).await;
+        let before: time::OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            store
+                .check_due_registrations(actor.org, port.clone())
+                .await
+                .unwrap(),
+            0
+        );
+        let after: time::OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let due: time::OffsetDateTime = sqlx::query_scalar(
+            "SELECT due_at FROM business_registration_check_schedule WHERE registration_id=$1",
+        )
+        .bind(id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        let delay = time::Duration::seconds(policy.backoff_seconds);
+        assert!(
+            due >= before + delay && due <= after + delay,
+            "failed calls must defer the next attempt by the configured backoff"
+        );
+        assert_eq!(
+            store
+                .check_due_registrations(actor.org, port.clone())
+                .await
+                .unwrap(),
+            0
+        );
+        assert_eq!(port.0.load(Ordering::SeqCst), attempt);
+        assert!(
+            store
+                .registration_checks(&actor, id, 20, None)
+                .await
+                .unwrap()
+                .items
+                .is_empty()
+        );
+    }
+}
 struct Unlocked {
     pool: PgPool,
     id: Uuid,
@@ -155,14 +236,14 @@ async fn scheduled_http_releases_claimed_registration_and_schedule_locks(pool: P
     });
     assert_eq!(
         store
-            .check_due_registrations(actor.org, port.clone(), Default::default())
+            .check_due_registrations(actor.org, port.clone())
             .await
             .unwrap(),
         1
     );
     assert_eq!(
         store
-            .check_due_registrations(actor.org, port.clone(), Default::default())
+            .check_due_registrations(actor.org, port.clone())
             .await
             .unwrap(),
         0
@@ -194,7 +275,7 @@ async fn a_number_changed_during_http_cannot_accept_the_old_answer(pool: PgPool)
         if scheduled {
             assert_eq!(
                 store
-                    .check_due_registrations(actor.org, port, Default::default())
+                    .check_due_registrations(actor.org, port)
                     .await
                     .unwrap(),
                 0
@@ -243,6 +324,7 @@ async fn a_partial_daily_budget_leaves_unclaimed_registrations_due(pool: PgPool)
         daily_budget: 2,
         ..Default::default()
     };
+    set_policy(&pool, policy).await;
     let port = Arc::new(Unlocked {
         pool: pool.clone(),
         id,
@@ -252,7 +334,7 @@ async fn a_partial_daily_budget_leaves_unclaimed_registrations_due(pool: PgPool)
     });
     assert_eq!(
         store
-            .check_due_registrations(actor.org, port, policy)
+            .check_due_registrations(actor.org, port)
             .await
             .unwrap(),
         1

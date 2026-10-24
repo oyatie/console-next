@@ -122,6 +122,37 @@ async fn mismatch_reaches_only_the_holder_and_disappears_after_agreement(pool: P
                 .any(|row| row["id"] == expected)
         );
     }
+    // Reach the tenant source through a read grant, then exercise the command's separate Cedar gate.
+    use console_kernel_core::BranchScope;
+    use console_platform_authz::{
+        Action, EffectiveFeatureGrant, Feature, PermissionLevel, Principal, Role,
+        authorize_capability,
+    };
+    let reader = Principal::new(member, actor.org, [Role::Member].into(), BranchScope::All)
+        .with_effective_feature_grants(vec![EffectiveFeatureGrant::new(
+            Feature::OrgChangeRead,
+            PermissionLevel::Allow,
+            BranchScope::All,
+        )]);
+    assert!(authorize_capability(&reader, Action::new(Feature::OrgChangeRead)).is_ok());
+    let source = store
+        .registration_check_items(&console_entity_application::Actor {
+            user: member,
+            ..actor.clone()
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        source.len(),
+        1,
+        "entity read scope must reach the row before Cedar filters it"
+    );
+    assert!(
+        console_entity_rest::registration_check_inbox(&store, &reader)
+            .await
+            .unwrap()
+            .is_empty()
+    );
     let mut retry = actor.clone();
     retry.command_id = Some(Uuid::new_v4());
     store
@@ -136,4 +167,57 @@ async fn mismatch_reaches_only_the_holder_and_disappears_after_agreement(pool: P
             .iter()
             .any(|row| row["id"] == expected)
     );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn original_attachment_refuses_other_documents_and_voided_registrations(pool: PgPool) {
+    let (ctx, _, id, _) = context(&pool, None).await;
+    let store = PgEntityStore::new(support::role_pool(&pool, "console_rt", None).await);
+    let actor = console_entity_application::Actor {
+        org: console_kernel_core::OrgId::from_uuid(ctx.org),
+        user: ctx.user,
+        trace: console_kernel_core::TraceContext::generate(),
+        command_id: None,
+        scope: console_entity_application::EntityScope::Tenant,
+    };
+    let path = format!("/api/v1/business-registrations/{id}/original");
+    for kind in ["OTHER", "BIZ_REG_CERT"] {
+        let upload = console_entity_domain::document::validate_upload(
+            Some(kind),
+            Some(&format!("{kind}.pdf")),
+            b"%PDF-1.4 refusal fixture".to_vec(),
+        )
+        .unwrap();
+        let doc = store.upload_document(&actor, upload).await.unwrap();
+        if kind == "BIZ_REG_CERT" {
+            let (status, body) = ctx
+                .call(
+                    "POST",
+                    &format!("/api/v1/business-registrations/{id}/void"),
+                    Some(json!({"reason_code":"DUPLICATE"})),
+                )
+                .await;
+            assert_eq!(status, StatusCode::NO_CONTENT, "{body}");
+        }
+        let (status, body) = ctx
+            .call("POST", &path, Some(json!({"document_id":doc.id})))
+            .await;
+        if kind == "OTHER" {
+            assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+            assert_eq!(
+                body["error"]["errors"][0]["code"], "document_not_certificate",
+                "{body}"
+            );
+        } else {
+            assert_eq!(status, StatusCode::CONFLICT, "{body}");
+            assert_eq!(code(&body), "registration_voided");
+        }
+        let attached: Option<Uuid> =
+            sqlx::query_scalar("SELECT registration_id FROM entity_documents WHERE id=$1")
+                .bind(doc.id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert!(attached.is_none());
+    }
 }

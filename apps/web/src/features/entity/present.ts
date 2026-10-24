@@ -140,6 +140,7 @@ export const INFO_LABEL: Record<InfoKey, () => string> = {
 
 
 export function verificationState(registration: BusinessRegistration) {
+  if (registration.verification_tier !== "NONE") return labeled(VERIFICATION, registration.verification_tier);
   if (registration.nts_check) return checkState(registration.nts_check);
   return registration.verification_tier === "NONE" && registration.unverified_reason === "SERVICE_UNAVAILABLE"
     ? { tone: "neutral" as const, label: t("nts.state.unavailable") }

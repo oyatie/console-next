@@ -115,18 +115,19 @@ impl PgEntityStore {
     ) -> Result<CheckHistory, PgEntityError> {
         let actor = actor.clone();
         with_org_conn(&self.pool, actor.org, move |tx| Box::pin(async move {
+            let policy = crate::CheckSchedulePolicy::in_tx(tx, actor.org).await?;
             let allowed: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM business_registrations r WHERE id=$1 AND ($2::uuid[] IS NULL OR legal_entity_id=ANY($2)))").bind(id).bind(actor.scope.granted()).fetch_one(tx.as_mut()).await?;
             if !allowed { return Err(Refusal::not_found("registration_not_found").into()); }
             let limit = limit.clamp(1, 100);
             let ids: Vec<Uuid> = sqlx::query_scalar("SELECT id FROM business_registration_checks WHERE registration_id=$1 AND ($2::uuid IS NULL OR (checked_at,id)<(SELECT checked_at,id FROM business_registration_checks WHERE id=$2 AND registration_id=$1)) ORDER BY checked_at DESC,id DESC LIMIT $3")
                 .bind(id).bind(before).bind(limit + 1).fetch_all(tx.as_mut()).await?;
             let mut items = Vec::new();
-            for check_id in ids.iter().take(usize::try_from(limit).unwrap_or(100)) { items.push(evidence(tx, *check_id, crate::registration_check_schedule::CheckSchedulePolicy::default().reflection_lag_days).await?); }
+            for check_id in ids.iter().take(usize::try_from(limit).unwrap_or(100)) { items.push(evidence(tx, *check_id, policy.reflection_lag_days).await?); }
             let latest: Vec<Uuid> = sqlx::query_scalar("SELECT DISTINCT ON(c.kind) c.id FROM business_registration_checks c JOIN business_registrations r ON r.id=c.registration_id AND r.brn=c.brn_checked WHERE r.id=$1 ORDER BY c.kind,c.checked_at DESC,c.id DESC").bind(id).fetch_all(tx.as_mut()).await?;
             let mut latest_status = None;
             let mut latest_validate = None;
             for check_id in latest {
-                let check = evidence(tx, check_id, crate::registration_check_schedule::CheckSchedulePolicy::default().reflection_lag_days).await?;
+                let check = evidence(tx, check_id, policy.reflection_lag_days).await?;
                 match check.answer.kind { CheckKind::Status => latest_status=Some(check), CheckKind::Validate => latest_validate=Some(check) }
             }
             Ok(CheckHistory { next_cursor: (ids.len() > usize::try_from(limit).unwrap_or(100)).then(|| items.last().map(|i| i.id)).flatten(), items, latest_status, latest_validate })
