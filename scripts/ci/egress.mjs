@@ -102,7 +102,10 @@ export function requiredEndpoints(job) {
         use("github-release");
       }
     }
-    for (const [literal] of command.matchAll(/https?:\/\/[a-z0-9.-]+(?::\d+)?/g)) {
+    for (const match of command.matchAll(/https?:\/\/[a-z0-9.-]+(?::\d+)?/g)) {
+      // Shell configuration assignments (e.g. a compiled desktop origin) do not make requests.
+      if (/(?:^|\s)[A-Za-z_]\w*=["']?$/.test(command.slice(0, match.index))) continue;
+      const [literal] = match;
       const url = new URL(literal);
       if (!["localhost", "127.0.0.1"].includes(url.hostname)) required.add(`${url.hostname}:${url.port || (url.protocol === "https:" ? 443 : 80)}`);
     }
