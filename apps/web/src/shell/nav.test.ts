@@ -52,8 +52,17 @@ describe("tenantNav", () => {
     expect(menu.map((g) => g.hub)).toEqual(["shell.hub.work"]);
   });
   it("shows support access only when the shared Cedar projection allows approval", () => {
-    expect(links(tenantNav(undefined, false, true))).toContain("/audit/support-access");
+    expect(links(tenantNav(undefined, false, true))).toEqual(["/", "/requests"]);
+    expect(links(tenantNav([], false, true))).toContain("/audit/support-access");
+    expect(links(tenantNav(undefined, true, true))).toContain("/audit/support-access");
     expect(links(tenantNav([], true, false))).not.toContain("/audit/support-access");
+  });
+  it("appends a late support approval without moving links already available to the user", () => {
+    const caps = [cap("user_manage")];
+    const before = links(tenantNav(caps));
+    const after = links(tenantNav(caps, false, true));
+    expect(after.slice(0, before.length)).toEqual(before);
+    expect(after.at(-1)).toBe("/audit/support-access");
   });
   it("lights only the deepest link a path sits under", () => {
     const people = tenantNav(undefined, true).find((g) => g.hub === "shell.hub.people")!.links;

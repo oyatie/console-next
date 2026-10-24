@@ -30,7 +30,7 @@ test("a publish refusal keeps its preflight checklist over the assembled HTTP st
     expect(body.checks).toEqual(expect.arrayContaining([expect.objectContaining({ key: "exposure_attested", ok: false })]));
     const unchanged = await api(`/recruiting/postings/${posting.id}`);
     expect(unchanged.status()).toBe(200);
-    expect(await unchanged.json()).toMatchObject({ status: "DRAFT", updated_at: posting.updated_at });
+    expect(await unchanged.json()).toMatchObject({ posting: { status: "DRAFT", updated_at: posting.updated_at } });
   } finally {
     await page.context().close();
   }
