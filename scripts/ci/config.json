@@ -25,6 +25,7 @@
     "hygiene": 3,
     "gate": 2,
     "web": 8,
+    "desktop": 10,
     "build": 50,
     "unit": 3,
     "db": 5,

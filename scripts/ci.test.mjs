@@ -10,6 +10,7 @@ import { load } from "js-yaml";
 
 import "./ci-cutover.test.mjs";
 import "./ci-egress.test.mjs";
+import "./ci-delivery.test.mjs";
 
 const root = new URL("../", import.meta.url);
 const workflow = () => load(readFileSync(new URL(".github/workflows/ci.yml", root), "utf8"));

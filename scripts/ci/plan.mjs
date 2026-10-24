@@ -25,6 +25,7 @@ export function planBudget(plan, config, shards, workflow = load(readFileSync(ne
   const e = config.jobMinutes;
   const perJob = { plan: e.plan, hygiene: e.hygiene, "ci-ok": e.gate + e.codeGates, backend: e.gate, web: e.gate };
   if (plan.web || plan.e2e) perJob["web-check"] = e.web;
+  if (plan.desktop) perJob["desktop-test"] = e.desktop;
   if (plan.backend || plan.e2e) perJob["rust-build"] = e.build;
   if (plan.backend) {
     for (const mode of ["unit", "db"]) if (plan[mode]) for (let i = 1; i <= config.nextestPartitions[mode]; i++) perJob[`backend-${mode === "unit" ? "test" : "db"}-${i}`] = e[mode];
@@ -68,9 +69,10 @@ export function affected(files, cargo, npm, root, force = false) {
   const workspaces = full ? npm.map((p) => p.name).sort() : dependents(new Set(npm.filter((p) => files.some((f) => within(f, p.dir))).map((p) => p.name)), npm,
     (pkg) => Object.keys({ ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies }));
   const backend = full || crates.length > 0;
-  const web = full || workspaces.length > 0 || files.some((f) => /^(apps|packages)\//.test(f));
+  const web = full || workspaces.length > 0 || files.some((f) => /^(apps\/web|packages)\//.test(f));
+  const desktop = full || files.some((f) => within(f, "apps/desktop"));
   const app = cargo.find((pkg) => relative(pkg) === "backend/app");
-  return { full, crates, workspaces, backend, web, e2e: full || (app !== undefined && crates.includes(app.name)) || web || files.some((f) => /^(e2e\/|playwright.*\.ts$)/.test(f)) };
+  return { full, crates, workspaces, backend, web, desktop, e2e: full || (app !== undefined && crates.includes(app.name)) || web || files.some((f) => /^(e2e\/|playwright.*\.ts$)/.test(f)) };
 }
 
 export function tierPlan(event, files, cargo, npm, root, config, force = false) {
@@ -87,6 +89,7 @@ export function tierPlan(event, files, cargo, npm, root, config, force = false) 
 export function requiredJobs(plan) {
   return {
     "web-check": plan.web || plan.e2e,
+    "desktop-test": plan.desktop,
     "rust-build": plan.backend || plan.e2e,
     "backend-test": plan.unit ?? plan.backend,
     "backend-db": plan.db ?? plan.backend,

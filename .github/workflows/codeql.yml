@@ -23,21 +23,10 @@ jobs:
       matrix:
         language: [actions, javascript-typescript, python, rust]
     steps:
-      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
         with:
           egress-policy: block
-          allowed-endpoints: >-
-            *.actions.githubusercontent.com:443
-            *.blob.core.windows.net:443
-            api.github.com:443
-            codeload.github.com:443
-            ghcr.io:443
-            github.com:443
-            objects.githubusercontent.com:443
-            pkg-containers.githubusercontent.com:443
-            raw.githubusercontent.com:443
-            release-assets.githubusercontent.com:443
-            uploads.github.com:443
+          allowed-endpoints: "*.actions.githubusercontent.com:443 *.blob.core.windows.net:443 api.github.com:443 codeload.github.com:443 ghcr.io:443 github.com:443 objects.githubusercontent.com:443 pkg-containers.githubusercontent.com:443 raw.githubusercontent.com:443 release-assets.githubusercontent.com:443 uploads.github.com:443"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
