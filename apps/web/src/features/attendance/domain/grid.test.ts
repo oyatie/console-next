@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { baseOf, draftState, fill, fillSchedule, ledgerParts, readPaste, type CellFacts } from "./grid";
+import { baseOf, draftState, fill, fillSchedule, ledgerParts, readPaste, type CellFacts, type PasteRefusal } from "./grid";
 
 const { drafts: fixtureDrafts } = JSON.parse(readFileSync(new URL("../../../../../../scripts/fixtures/attendance-grammar-cases.json", import.meta.url), "utf8")) as {
   drafts: { plan_kinds: string[]; cases: { raw: string[]; expect: string; by_plan?: Record<string, string> }[] };
@@ -154,6 +154,37 @@ test("a partial month paste maps its numbered columns even when out of order and
 test("an unlabelled continuation row is refused instead of dropping the second line", () => {
   const paste = readPaste("사번\t성명\t1\n20007\t홍길동\t09:00\n\t\t18:00", ["20007"], october, { r: 0, c: 0 });
   expect(paste.refusal).toBe("unlabelledMultiRow");
+  expect(paste.cells).toEqual([]);
+});
+
+test("the as-is headerless two-row shape never silently drops clock-outs", () => {
+  const paste = readPaste("MW-0001\t09:00\t09:10\n\t18:00\t18:30\nMW-0002\t09:00\t08:55\n\t18:00\t19:00", ["MW-0001", "MW-0002"], october, { r: 0, c: 0 });
+  expect(paste.refusal).toBe("unlabelledMultiRow");
+  expect(paste.cells).toEqual([]);
+});
+
+test.each<{ shape: string; text: string; refusal: PasteRefusal; c?: number }>([
+  { shape: "name-only header", text: "성명\t1\n홍길동\t9-18", refusal: "employeeNumberHeader" },
+  { shape: "missing employee before labelled rows", text: "사번\t구분\t1\n\t출근\t09:00", refusal: "employeeNumberRequired" },
+  { shape: "missing employee in a plain row", text: "사번\t1\n\t9-18", refusal: "employeeNumberRequired" },
+  { shape: "no day header", text: "사번\t성명\n20007\t홍길동", refusal: "dayHeaderRequired" },
+  { shape: "wrong title month", text: "2026년 9월 근태현황\n사번\t1\n20007\t9-18", refusal: "wrongMonth" },
+  { shape: "wrong dated header month", text: "사번\t2026-09-01\n20007\t9-18", refusal: "wrongMonth" },
+  { shape: "wrong dated header beside a valid day", text: "사번\t1\t2026-09-15\n20007\t9-18\t10-19", refusal: "wrongMonth" },
+  { shape: "day beyond month", text: "사번\t32\n20007\t9-18", refusal: "dayOutsideMonth" },
+  { shape: "duplicate day aliases", text: "사번\t1\t2026-10-01\n20007\t9-18\t10-19", refusal: "duplicateDay" },
+  { shape: "three rows including overtime", text: "사번\t구분\t1\n20007\t출근\t09:00\n\t퇴근\t18:00\n\t연장\t2", refusal: "unsupportedRowType" },
+  { shape: "duplicate clock-in rows", text: "사번\t구분\t1\n20007\t출근\t09:00\n\t출근\t10:00", refusal: "unsupportedRowType" },
+  { shape: "clock-out without clock-in", text: "사번\t구분\t1\n20007\t퇴근\t18:00", refusal: "clockOutOnly" },
+  { shape: "plain and paired rows mixed", text: "사번\t구분\t1\n20007\t\t9-18\n\t출근\t09:00\n\t퇴근\t18:00", refusal: "unlabelledMultiRow" },
+  { shape: "duplicate positional destination", text: "20007\t9-18\n20007\t10-19", refusal: "unlabelledMultiRow" },
+  { shape: "single-row positional overflow", text: "9-18\t10-19", c: 30, refusal: "dayOutsideMonth" },
+  { shape: "employee-row positional overflow", text: "20007\t9-18\t10-19", c: 30, refusal: "dayOutsideMonth" },
+  { shape: "empty clipboard", text: "\t\n", refusal: "noCells" },
+  { shape: "empty matrix", text: "사번\t1\n20007\t", refusal: "noCells" },
+])("refuses $shape with $refusal and no partial writes", ({ text, refusal, c = 0 }) => {
+  const paste = readPaste(text, ["20007"], october, { r: 0, c });
+  expect(paste.refusal).toBe(refusal);
   expect(paste.cells).toEqual([]);
 });
 

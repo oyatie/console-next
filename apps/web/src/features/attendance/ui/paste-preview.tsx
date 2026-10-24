@@ -55,7 +55,7 @@ export function PastePreviewSheet({ plan, people, month, onClose, onAccept }: { 
       title={t("attendanceRecords.paste.preview.title")}
       onClose={onClose}
       consequence={t("attendanceRecords.paste.preview.summary", { month, people: rows.length, cells, writable, locked: cells - writable })}
-      notice={plan.refusal && <strong role="alert">{t(refusalKey[plan.refusal])}</strong>}
+      notice={plan.refusal && <p role="alert">{t(refusalKey[plan.refusal])}</p>}
       actions={
         <>
           <Button onClick={onClose}>{t("attendance.close")}</Button>

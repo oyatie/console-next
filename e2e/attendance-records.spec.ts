@@ -82,9 +82,29 @@ test("월간 근무표: type, refuse, fix, paste, save with 근거, undo, correc
   await admin.getByRole("button", { name: "1칸 일괄 취소" }).click();
   await expect(admin.getByText("1칸을 일괄 취소했습니다 · 이력에 남았습니다")).toBeVisible();
 
-  // Paste two rows by employee number (never by name): both land as drafts in the anchored column.
-  await cellOf(admin, "윤하준", other).click();
-  await pasteText(admin, "R-0001\t9-18\nR-0002\t=\nX-9999\t9-18");
+  // A headerless clock-out continuation refuses the whole paste, leaving no partial drafts.
+  await cellOf(admin, "윤하준", date).click();
+  await pasteText(admin, "R-0001\t09:00\t09:10\n\t18:00\t18:30");
+  const paste = admin.getByRole("dialog", { name: "붙여넣기 미리보기" });
+  await expect(paste.getByRole("alert")).toContainText("한 직원이 여러 행에 있습니다");
+  await expect(paste.getByRole("button", { name: /초안에/ })).toHaveCount(0);
+  await admin.keyboard.press("Escape");
+  await expect(paste).not.toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: /^저장 안 된 칸 0 / })).toBeVisible();
+
+  // The dated header, away from focus, determines the destination; preview and acceptance precede drafts and save.
+  await cellOf(admin, "윤하준", date).click();
+  await pasteText(admin, `사번\t성명\t${other}\t근무일수\nR-0001\t윤하준\t9-18\t21\nR-0002\t황정우\t=\t20\nX-9999\t없음\t9-18\t21`);
+  await expect(paste.getByRole("columnheader", { name: other.slice(5), exact: true })).toBeVisible();
+  await expect(paste).toContainText("X-9999");
+  await expect(paste).toContainText("근무일수");
+  await expect(admin.getByRole("gridcell", { name: new RegExp(`^윤하준 ${other}`), includeHidden: true })).not.toHaveAttribute("aria-label", /초안/);
+  const beforeAccept = (await (await api(`/attendance/people/${yoon}/month?month=${month}`)).json()) as { days: { date: string; entry: unknown }[] };
+  expect(beforeAccept.days.find((d) => d.date === other)?.entry).toBeNull();
+  await paste.getByRole("button", { name: "초안에 2칸 반영" }).click();
+  await expect(cellOf(admin, "윤하준", other)).toHaveAccessibleName(/초안 9-18/);
+  await expect(cellOf(admin, "황정우", other)).toHaveAccessibleName(/초안 =/);
+  await expect(cellOf(admin, "윤하준", date)).not.toHaveAccessibleName(/초안/);
   await expect(admin.getByText(/붙여넣은 3행을 사번으로 맞췄습니다 · 일치 2 · 없음 1/)).toBeVisible();
   await grid.focus();
   await admin.keyboard.press("ControlOrMeta+s");
