@@ -101,6 +101,15 @@ test("root reach CLI passes without Rust, an orchestra queue or a local pointer"
   assert.equal(result.status, 0, result.stderr);
 });
 
+test("standing-text CLI uses the shared base and refuses an unavailable CI commit", () => {
+  const run = (base) => spawnSync("node", ["scripts/check-standing-text.mjs"], { encoding: "utf8", env: { ...process.env, CI_BASE_SHA: base } });
+  const clean = run("HEAD");
+  assert.equal(clean.status, 0, clean.stderr);
+  const refused = run("missing-standing-text-base");
+  assert.equal(refused.status, 1, refused.stdout);
+  assert.match(refused.stderr, /missing-standing-text-base.*CI_BASE_SHA/);
+});
+
 test("reach metadata follows manifest features, inherited aliases and implicit path members", (t) => {
   const dir = mkdtempSync(path.join(tmpdir(), "console-reach-manifests-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
