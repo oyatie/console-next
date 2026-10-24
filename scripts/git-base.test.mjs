@@ -26,6 +26,7 @@ function repository(t) {
 test("detached checkout resolves origin/dev, then the public remote; a local dev never wins", (t) => {
   const { root, git, base } = repository(t);
   assert.equal(resolveBase(root, { env: {} }), base);
+  assert.equal(resolveBase(root, { env: { QUALITY_BASE: "dev" } }), base);
   assert.equal(atBase(root, base, "safe.txt"), "base\n");
   git("update-ref", "refs/remotes/public/dev", base);
   git("update-ref", "-d", "refs/remotes/origin/dev");

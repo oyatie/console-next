@@ -14,7 +14,6 @@ export function resolveBase(root = process.cwd(), { base, env = process.env } = 
     requested = event.pull_request?.base.sha || event.merge_group?.base_sha || event.before;
     if (/^0+$/.test(requested ?? "")) requested = undefined;
   }
-  requested ||= env.QUALITY_BASE;
   const candidates = requested ? [requested] : ["refs/remotes/origin/dev", "refs/remotes/public/dev"];
   for (const ref of candidates) {
     const result = spawnSync("git", ["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`], { cwd: root, encoding: "utf8" });
