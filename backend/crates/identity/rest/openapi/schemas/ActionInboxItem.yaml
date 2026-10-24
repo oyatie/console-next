@@ -18,7 +18,7 @@ properties:
     description: '"{kind}:{uuid}" — source-namespaced so ids never collide.'
   kind:
     type: string
-    enum:
+    x-extensible-enum:
     - approval
     - dispatch
     - work
@@ -27,6 +27,7 @@ properties:
     - hr_exit
     - hr_lifecycle
     - hr_request
+    - support_access
   urg:
     type: string
     enum:

@@ -140,6 +140,9 @@
     "/api/v1/workplace-kinds/{code}": [
       "patch"
     ],
+    "/api/v1/workplaces": [
+      "get"
+    ],
     "/api/v1/workplaces/{workplaceId}": [
       "get",
       "put"

@@ -32,7 +32,7 @@ const NAV = [
   },
   // Tenant roles and grants (decision #26). listed with the account-management grant until /me/authz
   // projects the access domain; the access API decides every read and write.
-  { hub: "shell.hub.admin", links: [{ to: "/access", label: "shell.link.access", icon: KeyRound, anyOf: [["user_manage"]] as readonly Grant[] }] },
+  { hub: "shell.hub.admin", links: [{to:"/audit/support-access",label:"supportAccess.title",icon:Lock, supportApproval: true},{ to: "/access", label: "shell.link.access", icon: KeyRound, anyOf: [["user_manage"]] as readonly Grant[] }] },
 ] as const;
 export const PLATFORM_NAV = [{ hub: "shell.hub.platform", links: [{ to: "/platform", label: "shell.link.tenants", icon: Building }] }] as const;
 
@@ -41,9 +41,9 @@ export const PLATFORM_NAV = [{ hub: "shell.hub.platform", links: [{ to: "/platfo
  * stay hidden (no flash of a wrong menu). `failed` = the projection is unavailable: list every
  * link and let the server decide. A hub with no visible links is dropped.
  */
-export function tenantNav(caps: readonly Capability[] | undefined, failed = false) {
+export function tenantNav(caps: readonly Capability[] | undefined, failed = false, supportApproval = false) {
   const can = granted(caps, failed);
-  const shown = (l: (typeof NAV)[number]["links"][number]) => !("anyOf" in l) || l.anyOf.some(([f, scope]) => can(f, scope));
+  const shown = (l: (typeof NAV)[number]["links"][number]) => "supportApproval" in l ? supportApproval : !("anyOf" in l) || l.anyOf.some(([f, scope]) => can(f, scope));
   return NAV.map((g) => ({ ...g, links: g.links.filter(shown) })).filter((g) => g.links.length);
 }
 

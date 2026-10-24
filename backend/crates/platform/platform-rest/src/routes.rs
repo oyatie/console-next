@@ -1,7 +1,7 @@
 //! Public route and method inventory for platform contract checks.
 use crate::{
-    PLATFORM_TENANT_CONTEXT_EXIT_PATH, PLATFORM_TENANT_CONTEXT_START_PATH,
-    PLATFORM_VIEW_AS_EXIT_PATH, PLATFORM_VIEW_AS_START_PATH, TENANT_DOMAIN_REQUEST_PATH,
+    PLATFORM_SUPPORT_APPROVE_PATH, PLATFORM_SUPPORT_END_PATH, PLATFORM_SUPPORT_SESSIONS_PATH,
+    PLATFORM_SUPPORT_START_PATH, TENANT_DOMAIN_REQUEST_PATH,
 };
 
 pub const PLATFORM_OPS_RECOVERY_PATH: &str = "/api/platform/orgs/{id}/ops-recovery";
@@ -51,19 +51,23 @@ pub const PLATFORM_ROUTE_PATHS: &[&str] = &[
     PLATFORM_GROUP_ACCOUNT_ROLE_PATH_TEMPLATE,
     PLATFORM_GROUP_ORG_PATH_TEMPLATE,
     PLATFORM_OPS_PATH,
-    PLATFORM_VIEW_AS_START_PATH,
-    PLATFORM_VIEW_AS_EXIT_PATH,
-    PLATFORM_TENANT_CONTEXT_START_PATH,
-    PLATFORM_TENANT_CONTEXT_EXIT_PATH,
+    PLATFORM_SUPPORT_START_PATH,
+    PLATFORM_SUPPORT_END_PATH,
+    PLATFORM_SUPPORT_SESSIONS_PATH,
+    PLATFORM_SUPPORT_APPROVE_PATH,
 ];
 
 /// Path+method inventory for the platform contract drift gate.
 ///
 /// `PLATFORM_ROUTE_PATHS` keeps the legacy mounted-path coverage check green, but
 /// it cannot detect a new method on an already-documented path. Keep this list in
-/// lockstep with `router` and `view_as::routes`; `backend/app/tests/openapi_drift.rs`
+/// lockstep with `router` and `support::routes`; `backend/app/tests/openapi_drift.rs`
 /// fails CI when any `/api/platform/*` operation here is missing from OpenAPI.
 pub const PLATFORM_ROUTE_OPERATIONS: &[PlatformRouteOperation] = &[
+    PlatformRouteOperation {
+        method: "GET",
+        path: PLATFORM_SUPPORT_SESSIONS_PATH,
+    },
     PlatformRouteOperation {
         method: "GET",
         path: PLATFORM_OPS_RECOVERY_PATH,
@@ -162,18 +166,18 @@ pub const PLATFORM_ROUTE_OPERATIONS: &[PlatformRouteOperation] = &[
     },
     PlatformRouteOperation {
         method: "POST",
-        path: PLATFORM_VIEW_AS_START_PATH,
+        path: PLATFORM_SUPPORT_START_PATH,
     },
     PlatformRouteOperation {
         method: "POST",
-        path: PLATFORM_VIEW_AS_EXIT_PATH,
+        path: PLATFORM_SUPPORT_END_PATH,
     },
     PlatformRouteOperation {
         method: "POST",
-        path: PLATFORM_TENANT_CONTEXT_START_PATH,
+        path: PLATFORM_SUPPORT_SESSIONS_PATH,
     },
     PlatformRouteOperation {
         method: "POST",
-        path: PLATFORM_TENANT_CONTEXT_EXIT_PATH,
+        path: PLATFORM_SUPPORT_APPROVE_PATH,
     },
 ];

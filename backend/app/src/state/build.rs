@@ -3,7 +3,7 @@
 use crate::audit_chain_signer;
 use crate::config::AppConfig;
 use crate::config::auth::JwtVerifierConfig;
-use crate::config::auth::build_view_as_issuer;
+use crate::config::auth::build_support_issuer;
 use crate::config::auth::policy_step_up_from_auth_config;
 use crate::config::role::AppRole;
 use crate::error::AppError;
@@ -30,15 +30,19 @@ impl AppState {
             .jwt
             .as_ref()
             .map(JwtVerifierConfig::build)
-            .transpose()?;
-        // The view-as issuer is built from the SAME ES256 keypair as auth-rest,
+            .transpose()?
+            .map(|verifier| match &config.auth_rest {
+                Some(auth) => verifier.with_support_audience(auth.rp_origin.clone()),
+                None => verifier,
+            });
+        // The support issuer is built from the SAME ES256 keypair as auth-rest,
         // so impersonation tokens it mints verify against the live `jwt_verifier`.
         // The per-call TTL override (≤30 min) is enforced in the START handler;
         // the issuer's default TTL here is a backstop of the same length.
-        let view_as_issuer = config
+        let support_issuer = config
             .auth_rest
             .as_ref()
-            .map(build_view_as_issuer)
+            .map(build_support_issuer)
             .transpose()?;
         let policy_step_up = config
             .auth_rest
@@ -87,7 +91,7 @@ impl AppState {
             #[cfg(any(debug_assertions, feature = "e2e-test-support"))]
             e2e_fixture_database: DatabaseDependency::NotConfigured,
             jwt_verifier,
-            view_as_issuer,
+            support_issuer,
             policy_step_up,
             auth_rest,
             evidence_storage: None,

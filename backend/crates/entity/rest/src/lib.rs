@@ -54,6 +54,7 @@ pub const REGISTRATION_PATH: &str = "/api/v1/business-registrations/{registratio
 pub const REGISTRATION_END_OPTIONS_PATH: &str =
     "/api/v1/business-registrations/{registrationId}/end-options";
 pub const REGISTRATION_VOID_PATH: &str = "/api/v1/business-registrations/{registrationId}/void";
+pub const WORKPLACES_PATH: &str = "/api/v1/workplaces";
 pub const WORKPLACE_PATH: &str = "/api/v1/workplaces/{workplaceId}";
 pub const WORKPLACE_VOID_PATH: &str = "/api/v1/workplaces/{workplaceId}/void";
 pub const WORKPLACE_KIND_PATH: &str = "/api/v1/workplaces/{workplaceId}/kind";
@@ -193,6 +194,7 @@ pub fn router(state: EntityRestState) -> Router {
         )
         .route(REGISTRATION_PATH, put(docs::revise_registration))
         .route(REGISTRATION_VOID_PATH, post(h::void_registration))
+        .route(WORKPLACES_PATH, get(h::list_workplaces))
         .route(
             REGISTRATION_END_OPTIONS_PATH,
             get(ends::registration_end_options),

@@ -22,7 +22,7 @@ import s from "./tenants.module.css";
 /**
  * One tenant: its facts (the list row plus its usage rollup; there is no detail read) and its lifecycle,
  * offering only the moves its status allows. Slots for later tabs: group, health (route adoption),
- * and viewing as the tenant (tenant-context / view-as; an owner decision).
+ * and approved support access (managed through tenant consent).
  */
 export function TenantPanel({ org, health, enrolled, onEnrolled, onIssued, onRecorded, onRemoved, onClose }: {
   org: Org;

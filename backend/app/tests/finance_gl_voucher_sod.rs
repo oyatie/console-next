@@ -1,12 +1,12 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! Finance-GL voucher separation-of-duties + impersonation-wall integration
+//! Finance-GL voucher separation-of-duties + support-wall integration
 //! tests, driven through the REAL assembled app router (`build_router`).
 //!
 //! Proves, end-to-end over the wired stack:
 //!   (a) SoD (M2) — a preparer's own `승인` is rejected 403 at the REST surface; a
 //!       DISTINCT approver clears it and the approver is recorded on the response;
-//!   (b) coverage-gap #3 — a PLATFORM `view_as` (read-only impersonation) token is
-//!       rejected 403 `view_as_read_only` on EVERY finance voucher mutation
+//!   (b) coverage-gap #3 — an approved read-only support session token is
+//!       rejected 403 `support.refuse.read_only` on EVERY finance voucher mutation
 //!       (create/submit/approve/post/reverse), blocked by the blanket method wall
 //!       BEFORE any handler runs.
 //!
@@ -133,17 +133,17 @@ async fn rest_rejects_self_approval_and_accepts_distinct_approver(pool: PgPool) 
     );
 }
 
-/// Coverage-gap #3: a `view_as` token is read-only — EVERY finance voucher
-/// mutation is rejected 403 `view_as_read_only` by the blanket method wall before
-/// any handler (and any per-handler authz) runs. No DB rows are needed: the wall
-/// rejects on method + token claim ahead of the tenant middleware.
+/// Coverage-gap #3: a `support` token is read-only — EVERY finance voucher
+/// mutation is rejected 403 `support.refuse.read_only` by the blanket method wall before
+/// any handler (and any per-handler authz) runs. The approved session ledger
+/// lets each refusal be audited in the tenant partition.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn view_as_token_cannot_mutate_finance_vouchers(pool: PgPool) {
+async fn support_token_cannot_mutate_finance_vouchers(pool: PgPool) {
     let keys = Keys::generate();
     let rt = runtime_role_pool(&pool).await;
 
-    // A read-only impersonation token (view_as = true) for any tenant/user.
-    let view_as_token = keys.token(&pool, UserId::new(), Vec::new(), true).await;
+    // An approved support session without a standing tenant account.
+    let support_token = keys.token(&pool, UserId::new(), Vec::new(), true).await;
 
     let id = Uuid::new_v4();
     let mutations = [
@@ -155,14 +155,14 @@ async fn view_as_token_cannot_mutate_finance_vouchers(pool: PgPool) {
     ];
 
     for (method, path) in mutations {
-        let (status, body) = send(&rt, &keys, method, &path, &view_as_token, None).await;
+        let (status, body) = send(&rt, &keys, method, &path, &support_token, None).await;
         assert_eq!(
             status,
             StatusCode::FORBIDDEN,
-            "{method} {path} under view_as must be 403: {body}"
+            "{method} {path} under support must be 403: {body}"
         );
         assert_eq!(
-            body["error"]["code"], "view_as_read_only",
+            body["error"]["code"], "support.refuse.read_only",
             "{method} {path} must be blocked by the read-only wall, not a plain \
              authz denial: {body}"
         );
@@ -198,13 +198,14 @@ impl Keys {
         pool: &sqlx::PgPool,
         user_id: UserId,
         branches: Vec<BranchId>,
-        view_as: bool,
+        support: bool,
     ) -> String {
+        let lifetime = Duration::minutes(15);
         let issuer = JwtIssuer::from_es256_pem(
             JwtSettings {
                 issuer: TEST_ISSUER.to_owned(),
                 audience: TEST_AUDIENCE.to_owned(),
-                access_token_ttl: Duration::minutes(15),
+                access_token_ttl: lifetime,
             },
             self.private_pem.as_bytes(),
             self.public_pem.as_bytes(),
@@ -213,11 +214,15 @@ impl Keys {
         let input = AccessTokenInput {
             subject: user_id,
             org_id: OrgId::one(),
-            roles: vec!["ADMIN".to_owned()],
+            roles: if support {
+                Vec::new()
+            } else {
+                vec!["ADMIN".to_owned()]
+            },
             branches,
             platform: false,
-            view_as,
-            read_only: view_as,
+            support: support.then(uuid::Uuid::new_v4),
+            read_only: support,
             display_name: None,
             feature_grants: Vec::new(),
             authz_subject_version: 0,
@@ -225,10 +230,23 @@ impl Keys {
             session_generation: 0,
             issued_at: OffsetDateTime::now_utc(),
         };
-        // The view-as wall refuses on the claim alone, before any session check,
-        // so that token needs no account or family behind it.
-        if view_as {
-            return issuer.issue_access_token(input).unwrap();
+        // Seed the approval ledger; the method wall still runs before finance handlers.
+        if support {
+            sqlx::query("INSERT INTO users(id,org_id,display_name,roles) VALUES($1,$2,'Support operator',ARRAY['SUPER_ADMIN'])")
+                .bind(user_id.as_uuid()).bind(OrgId::platform().as_uuid()).execute(pool).await.unwrap();
+            let actor = console_platform_auth::ActorSession {
+                family_id: uuid::Uuid::new_v4(),
+                expires_at: (input.issued_at + lifetime).unix_timestamp(),
+                home_org: OrgId::platform(),
+                subject_version: 0,
+                session_generation: 0,
+            };
+            sqlx::query("INSERT INTO support_sessions(org_id,id,operator_ref,operator_label,ticket_ref,reason_code,reason,scope,requested_duration_seconds,approved_duration_seconds,state,request_expires_at,request_assertion,operator_approver_ref,operator_approved_at,approval_assertion,tenant_approver_ref,tenant_approved_at,started_at,expires_at) VALUES($1,$2,$3,'Support operator','FINANCE-TEST','DIAGNOSE','Method wall regression',ARRAY['org'],$4,$4,'ACTIVE',now()+$4*interval '1 second',gen_random_uuid(),gen_random_uuid(),now(),gen_random_uuid(),gen_random_uuid(),now(),now(),now()+$4*interval '1 second')")
+                .bind(OrgId::one().as_uuid()).bind(input.support).bind(user_id.as_uuid())
+                .bind(lifetime.whole_seconds()).execute(pool).await.unwrap();
+            return issuer
+                .issue_support_access_token(input, actor, lifetime)
+                .unwrap();
         }
         console_platform_test_support::issue_session_token(pool, &issuer, input, None, Vec::new())
             .await

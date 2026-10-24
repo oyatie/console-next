@@ -51,6 +51,10 @@ describe("tenantNav", () => {
     const menu = tenantNav([cap("org_change_read", "request_only"), cap("org_change_draft")]);
     expect(menu.map((g) => g.hub)).toEqual(["shell.hub.work"]);
   });
+  it("shows support access only when the shared Cedar projection allows approval", () => {
+    expect(links(tenantNav(undefined, false, true))).toContain("/audit/support-access");
+    expect(links(tenantNav([], true, false))).not.toContain("/audit/support-access");
+  });
   it("lights only the deepest link a path sits under", () => {
     const people = tenantNav(undefined, true).find((g) => g.hub === "shell.hub.people")!.links;
     expect(activeLink("/people/period-locks", people)).toBe("/people/period-locks");

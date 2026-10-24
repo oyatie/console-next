@@ -85,7 +85,7 @@ async fn void_registration_outside_the_managers_scope_is_forbidden(pool: PgPool)
             display_name: None,
             feature_grants: Vec::new(),
             platform: false,
-            view_as: false,
+            support: None,
             read_only: false,
             authz_subject_version: 0,
             authz_policy_version: 0,

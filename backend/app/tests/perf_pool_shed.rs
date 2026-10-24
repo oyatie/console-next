@@ -154,7 +154,7 @@ async fn token(pool: &PgPool, keys: &(String, String), org: Uuid, user: UserId) 
             roles: vec!["SUPER_ADMIN".to_owned()],
             branches: Vec::new(),
             platform: false,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: None,
             feature_grants: Vec::new(),

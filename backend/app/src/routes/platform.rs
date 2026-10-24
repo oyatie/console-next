@@ -45,19 +45,6 @@ pub(super) fn compose(router: Router, domain_router: Router, deps: &TenantDeps<'
         }
         DatabaseDependency::NotConfigured => None,
     };
-    // READ-ONLY WALL for PLATFORM "view as": wrap the WHOLE tenant
-    // domain router so any request carrying a `view_as` token may use
-    // ONLY GET/HEAD — every other method is rejected 403 `view_as_read_only`
-    // BEFORE any handler or per-handler authz runs. This is a blanket
-    // method gate keyed purely on the token's `view_as` claim, so no
-    // mutation handler on any tenant route is reachable while
-    // impersonating, regardless of the acting role. It is orthogonal to
-    // (and does not replace) the tenant org middleware each domain router
-    // already applies; an ordinary tenant/platform token is untouched.
-    let domain_router = console_platform_rest::with_view_as_read_only_gate(
-        domain_router,
-        state.jwt_verifier.clone(),
-    );
     // The realtime WS upgrade and the pre-auth login/refresh endpoints are
     // intentionally NOT under the org middleware: a login request has no
     // tenant yet, and the WS handler runs its own auth over the socket
@@ -78,7 +65,7 @@ pub(super) fn compose(router: Router, domain_router: Router, deps: &TenantDeps<'
             state.jwt_verifier.clone(),
             PlatformProvisioner::new(state.config.coldstart_otp_ttl),
         )
-        .with_view_as_issuer(state.view_as_issuer.clone())
+        .with_support_issuer(state.support_issuer.clone())
         .with_passkey_step_up(state.policy_step_up.clone())
         .with_force_remove_command_pool(match &state.platform_force_command_database {
             DatabaseDependency::Postgres(pool) => Some(pool.clone()),
@@ -104,17 +91,7 @@ pub(super) fn compose(router: Router, domain_router: Router, deps: &TenantDeps<'
         let shed = domain_router.merge(platform_router);
         let shed = match state.auth_rest.clone() {
             Some(auth_rest) => {
-                // The auth-rest router carries authenticated tenant
-                // mutations (issue-OTP, credential-reset, enroll-handoff,
-                // passkey register/finish). They live OUTSIDE the tenant
-                // domain router, so the view-as read-only wall must also
-                // wrap them — otherwise an impersonation token could reach
-                // a write here. The pre-auth POSTs (login/refresh/redeem)
-                // carry no view_as token, so the gate is a no-op for them.
-                let auth_router = console_platform_rest::with_view_as_read_only_gate(
-                    console_platform_auth_rest::router(auth_rest),
-                    state.jwt_verifier.clone(),
-                );
+                let auth_router = console_platform_auth_rest::router(auth_rest);
                 shed.merge(auth_router)
             }
             None => shed,
@@ -135,10 +112,15 @@ pub(super) fn compose(router: Router, domain_router: Router, deps: &TenantDeps<'
     // intentionally NOT under the org middleware: each handler resolves its
     // own bearer and holds the principal for the connection's lifetime.
     let realtime = RealtimeRestState::new(realtime_hub, state.jwt_verifier.clone());
-    timed
+    let router = timed
         .merge(console_platform_realtime::router(realtime.clone()))
         .merge(console_platform_realtime::sse::router(SseState::new(
             realtime,
             SseConfig::default(),
-        )))
+        )));
+    console_platform_request_context::support::with_support_gate(
+        router,
+        state.jwt_verifier.clone(),
+        pool.clone(),
+    )
 }

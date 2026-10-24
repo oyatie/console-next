@@ -1,0 +1,79 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+  operator_label:
+    type: string
+  ticket_ref:
+    type: string
+  reason_code:
+    type: string
+  reason:
+    type: string
+  scope:
+    type: array
+    items:
+      type: string
+  state:
+    type: string
+    x-extensible-enum:
+      - REQUESTED
+      - OPERATOR_APPROVED
+      - ACTIVE
+      - ENDED
+      - EXPIRED
+      - DENIED
+      - REVOKED
+  masked:
+    type: boolean
+  requested_duration_seconds:
+    type: integer
+    format: int64
+  approved_duration_seconds:
+    type:
+      - integer
+      - 'null'
+    format: int64
+  requested_at:
+    type: string
+    format: date-time
+  request_expires_at:
+    type: string
+    format: date-time
+  expires_at:
+    type:
+      - string
+      - 'null'
+    format: date-time
+  tenant_approved_at:
+    type:
+      - string
+      - 'null'
+    format: date-time
+  decisions:
+    type: array
+    items:
+      $ref: '#/components/schemas/SupportSessionDecision'
+  records:
+    type: array
+    items:
+      $ref: '#/components/schemas/SupportAccessRecord'
+required:
+  - id
+  - operator_label
+  - ticket_ref
+  - reason_code
+  - reason
+  - scope
+  - state
+  - masked
+  - requested_duration_seconds
+  - approved_duration_seconds
+  - requested_at
+  - request_expires_at
+  - expires_at
+  - tenant_approved_at
+  - decisions
+  - records

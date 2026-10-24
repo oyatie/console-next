@@ -20,6 +20,7 @@ const ENTITY_READS = ["/api/v1/org-structure", "/api/v1/legal-entities", "/api/v
 // passes that resource's REST read check, and never an unknown one.
 export const TOPICS: Readonly<Record<string, Topic>> = {
   // Go-live, setup steps, terms and renames change what every screen offers.
+  support_session: { paths: ["/api/v1/support-sessions", "/api/v1/me/action-inbox"] },
   ops_recovery: { paths: ["/api/platform/orgs", "/api/v1/tenant/ops-recovery"] },
   command_outcome: { paths: ["/api/v1/requests"] },
   tenant: { paths: ["/api/v1"] },

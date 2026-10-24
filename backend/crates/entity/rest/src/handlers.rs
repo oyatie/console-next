@@ -50,6 +50,25 @@ pub(crate) async fn list_entities(
     Ok(Json(json!({ "items": items })).into_response())
 }
 
+pub(crate) async fn list_workplaces(
+    State(s): State<EntityRestState>,
+    h: HeaderMap,
+    Query(q): Query<AsOfQuery>,
+) -> Result<Response> {
+    let (a, personal, gate) = read_gate(&s, &h, Need::Read, Target::Tenant).await?;
+    let mut entities = s
+        .store
+        .list_entities_at(
+            &a,
+            personal,
+            crate::asof::validated(&s, &a, q.parse()).await?,
+        )
+        .await?;
+    entities.iter_mut().for_each(|e| mark(&gate, e));
+    let items: Vec<_> = entities.into_iter().flat_map(|e| e.workplaces).collect();
+    Ok(Json(json!({"items":items})).into_response())
+}
+
 pub(crate) async fn get_entity(
     State(s): State<EntityRestState>,
     h: HeaderMap,

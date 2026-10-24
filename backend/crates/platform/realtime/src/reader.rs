@@ -35,7 +35,12 @@ impl ChangeReader {
     }
     pub(crate) fn may_read(&self, row: &ChangeRow) -> bool {
         match self {
-            Self::Tenant(p) => row.resource_type == "ops_recovery" || may_read(p, row),
+            Self::Tenant(p) => {
+                matches!(
+                    row.resource_type.as_str(),
+                    "ops_recovery" | "support_session"
+                ) || may_read(p, row)
+            }
             Self::Platform(p) => {
                 row.resource_type == "ops_recovery"
                     && p.authorize(PlatformFeature::TenantCreate).is_ok()

@@ -256,7 +256,7 @@ pub struct SubjectAuthzFreshness {
 /// [`with_org_conn`]).
 ///
 /// This is the read the non-login access-token mint paths — the platform
-/// view-as / tenant-context tokens and the group-admin tenant-context token —
+/// support / tenant-context tokens and the group-admin tenant-context token —
 /// use to stamp REAL freshness instead of the zero baseline (Cedar/PBAC
 /// activation, ADR-0021). The Cedar shadow/enforcing guard re-reads the SAME
 /// `(org, user)` from the SAME tables at guard time, so a token minted with this

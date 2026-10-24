@@ -11,14 +11,16 @@ const schemas = spec.components.schemas;
 const responseBinding = schemas.MobilePasskeyStepUpStartResponse!.properties!.binding!.properties ?? schemas.MobilePasskeyStepUpBinding!.properties!;
 
 test.each([
-  ["step-up response action_kind", responseBinding.action_kind!, 12],
-  ["step-up response reason_key", responseBinding.reason_key!, 12],
+  ["step-up response action_kind", responseBinding.action_kind!, 13],
+  ["step-up response reason_key", responseBinding.reason_key!, 13],
   ["EmployeeLifecycleEvent.leave_type", schemas.EmployeeLifecycleEvent!.properties!.leave_type!, 6],
   ["import leave_type", schemas.EmployeeImportPlannedRow!.properties!.new_person!.properties!.leave!.properties!.leave_type!, 5],
   ["leave request leave_type", schemas.LeaveRequestView!.properties!.leave_type!, 2],
   ["leave v2 leave_type", schemas.LeaveRequestV2View!.properties!.leave_type!, 2],
   ["change request kind", schemas.ChangeRequest!.properties!.kind!, 9],
   ["change request subject_type", schemas.ChangeRequest!.properties!.subject_type!, 5],
+  ["access domain", schemas.AccessDomain!, 19],
+  ["action inbox source", schemas.ActionInboxItem!.properties!.kind!, 9],
 ] as const)("%s permits future response values and retains every documented value", (_, schema, count) => {
   expect(schema.type).toBe("string");
   expect(schema.enum).toBeUndefined();
@@ -47,4 +49,10 @@ test("leave commands still reject misspelled known types", () => {
 test("step-up command enums retain every value accepted by the response", () => {
   expect(schemas.MobileStepUpActionKind!.enum).toEqual(responseBinding.action_kind!["x-extensible-enum"]);
   expect(schemas.MobilePasskeyStepUpBinding!.properties!.reason_key!.enum).toEqual(responseBinding.reason_key!["x-extensible-enum"]);
+});
+
+
+test("the access contract publishes the support approval domain", () => {
+  expect(schemas.AccessDomain!["x-extensible-enum"]).toContain("support_access");
+  expect(schemas.AccessRoleLineInput!.properties!.domain!.enum).toEqual(schemas.AccessDomain!["x-extensible-enum"]);
 });

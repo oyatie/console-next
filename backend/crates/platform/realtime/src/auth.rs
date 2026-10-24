@@ -85,6 +85,13 @@ pub(crate) async fn reader_from_token(
     let claims = verifier
         .verify_access_token(token)
         .map_err(|_| RealtimeApiError::unauthorized("invalid bearer token"))?;
+    if claims.support.is_some() {
+        return Err(RealtimeApiError::new(
+            StatusCode::FORBIDDEN,
+            "support.refuse.out_of_scope",
+            "support realtime access is outside the reviewed read surfaces",
+        ));
+    }
     if claims.platform {
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -158,8 +165,8 @@ fn realtime_error_from_request_context(err: RequestContextError) -> RealtimeApiE
             "JWT verification is not configured for realtime",
         ),
         RequestContextError::WrongTokenTier => RealtimeApiError::new(
-            StatusCode::FORBIDDEN,
-            "forbidden",
+            StatusCode::UNAUTHORIZED,
+            "unauthorized",
             "token tier is not valid for this route",
         ),
         RequestContextError::AccessScope(error) if error.kind == ErrorKind::Forbidden => {

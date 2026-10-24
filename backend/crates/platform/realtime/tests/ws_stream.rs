@@ -92,7 +92,7 @@ async fn a_change_subscribed_socket_gets_hello_change_and_pings(owner: PgPool) {
                 roles: vec!["SUPER_ADMIN".into()],
                 branches: vec![branch],
                 platform: false,
-                view_as: false,
+                support: None,
                 read_only: false,
                 display_name: None,
                 feature_grants: vec![],

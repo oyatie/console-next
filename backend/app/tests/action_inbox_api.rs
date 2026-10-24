@@ -1176,7 +1176,7 @@ async fn bearer(
             roles: vec![role.to_owned()],
             branches: vec![branch],
             platform: false,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: None,
             feature_grants: Vec::new(),
@@ -1217,5 +1217,5 @@ fn app_state(pool: PgPool, public_key_pem: String) -> Result<AppState, console_a
     AppState::new(config, DatabaseDependency::Postgres(pool))
 }
 
-#[path = "action_inbox/governance.rs"]
-mod governance;
+#[path = "action_inbox/sources.rs"]
+mod sources;

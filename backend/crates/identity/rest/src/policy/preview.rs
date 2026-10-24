@@ -140,12 +140,12 @@ pub(crate) async fn preview_policy_assignments(
         &current_assignments,
     )?;
     ensure_policy_roles_inside_delegated_authority_for_operation(
-        "preview_assignments",
+        "presupportsignments",
         &principal,
         &authorized_roles,
     )?;
     ensure_policy_roles_inside_actor_permission_ceiling_for_operation(
-        "preview_assignments",
+        "presupportsignments",
         &principal,
         &authorized_roles,
     )?;
@@ -252,10 +252,10 @@ pub(crate) async fn preview_policy_assignments(
         .await
         .map_err(RestError::from_store)?;
 
-    record_policy_studio_operation("preview_assignments", "success");
+    record_policy_studio_operation("presupportsignments", "success");
     tracing::info!(
         event = "policy_studio_assignment_previewed",
-        operation = "preview_assignments",
+        operation = "presupportsignments",
         outcome = "success",
         actor_user_id = %principal.user_id,
         target_user_id = %user_id,

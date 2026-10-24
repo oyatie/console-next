@@ -589,7 +589,7 @@ impl Fixture {
                 roles,
                 branches,
                 platform: false,
-                view_as: false,
+                support: None,
                 read_only: false,
                 display_name: None,
                 feature_grants: vec![],

@@ -1,3 +1,5 @@
+import { enSupport } from "./en/support";
+import { enSupportAccess } from "./en/support-access";
 import { enCommon } from "./en/common";
 import { enOpsRecovery } from "./en/ops-recovery";
 import { enImportRollback } from "./en/import-rollback";
@@ -226,4 +228,6 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enPeopleJump,
   ...enOpsRecovery,
   ...enCommon,
+  ...enSupport,
+  ...enSupportAccess,
 };

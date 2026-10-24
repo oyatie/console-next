@@ -37,6 +37,7 @@ import { buttonClass } from "../../ui/button/button-class";
 import { filingsQuery } from "../../reference/statutory/api";
 import { inForceLocksQuery } from "../../reference/periods/api";
 import { toDecide } from "../../reference/periods/domain/request";
+import { activeSupportQuery } from "../../reference/support-access/api";
 import { UnlockQueue } from "./ui/unlock-queue";
 import { GrantNotices } from "./ui/grant-notices";
 type Summary = components["schemas"]["OrgChangeSummary"];
@@ -66,6 +67,7 @@ export function Home({ setup, setupPending = false, account }: { setup?: ReactNo
   const me = useQuery(meQuery);
   const authz = useQuery(authzQuery);
   const can = granted(authz.data?.capabilities, authz.isError);
+  const support = useQuery(activeSupportQuery);
   const myAccess = useQuery(myAccessQuery); // with the queue: GrantNotices lands with it, never pushing it down
   const exitRouted = usePolicyRouted("exit");
   const org = can("org_change_read");
@@ -173,7 +175,7 @@ export function Home({ setup, setupPending = false, account }: { setup?: ReactNo
   const tiles = ([["register", manage], ["import", manage], ["org", draft], ["invite", can("user_manage")]] as const).filter(([, ok]) => ok).map(([k]) => k as Tile);
   const settled = !loading;
   // No grant at all (decisions #18: in the pilot only ops and HR workers sign in), not merely none Home lists.
-  const noWork = settled && quiet && !hasWork(can);
+  const noWork = settled && quiet && !hasWork(can) && !support.data?.can_approve;
   const retry = () => sources.filter((q) => readState(q) === "failed").forEach((q) => void q.refetch());
 
   return (

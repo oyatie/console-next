@@ -187,7 +187,7 @@ async fn platform_onboards_tenant_and_rls_isolates(super_pool: PgPool) {
         .unwrap();
     assert_eq!(
         response.status(),
-        StatusCode::FORBIDDEN,
+        StatusCode::UNAUTHORIZED,
         "a platform token must be rejected on tenant /api/* routes (tier crossing)"
     );
 
@@ -598,7 +598,7 @@ async fn issue_token(
             roles,
             branches: Vec::<BranchId>::new(),
             platform,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: None,
             feature_grants: Vec::new(),

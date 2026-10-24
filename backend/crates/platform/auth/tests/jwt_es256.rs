@@ -50,7 +50,7 @@ fn es256_access_token_round_trips_with_expected_claims() {
             roles: vec!["MECHANIC".to_owned()],
             branches: vec![branch_id],
             platform: false,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: None,
             feature_grants: Vec::new(),
@@ -93,7 +93,7 @@ fn es256_access_token_carries_feature_grant_ui_hints() {
             roles: vec!["MEMBER".to_owned()],
             branches: vec![],
             platform: false,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: None,
             feature_grants: vec!["mail_use".to_owned(), "role_manage".to_owned()],
@@ -118,7 +118,7 @@ fn es256_rejects_actor_home_org_on_non_delegated_tokens() {
             roles: vec!["ADMIN".to_owned()],
             branches: Vec::new(),
             platform: false,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: None,
             feature_grants: Vec::new(),
@@ -155,7 +155,7 @@ fn es256_access_token_carries_optional_display_name_claim() {
             roles: vec!["ADMIN".to_owned()],
             branches: vec![],
             platform: false,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: Some("홍길동".to_owned()),
             feature_grants: Vec::new(),
@@ -187,7 +187,7 @@ fn es256_access_token_can_carry_group_roles_without_widening_scope() {
                 roles: vec!["MEMBER".to_owned()],
                 branches: vec![],
                 platform: false,
-                view_as: false,
+                support: None,
                 read_only: false,
                 display_name: None,
                 feature_grants: Vec::new(),
@@ -224,7 +224,7 @@ fn group_admin_tenant_context_token_is_bounded_and_distinct_from_super_admin() {
                 roles: vec!["ADMIN".to_owned()],
                 branches: vec![],
                 platform: false,
-                view_as: false,
+                support: None,
                 read_only: false,
                 display_name: None,
                 feature_grants: Vec::new(),
@@ -268,7 +268,7 @@ fn group_admin_tenant_context_token_rejects_super_admin_role() {
                 roles: vec!["SUPER_ADMIN".to_owned()],
                 branches: vec![],
                 platform: false,
-                view_as: false,
+                support: None,
                 read_only: false,
                 display_name: None,
                 feature_grants: Vec::new(),
@@ -308,7 +308,7 @@ fn es256_access_token_round_trips_explicit_access_scope_claims() {
                 roles: vec!["ADMIN".to_owned()],
                 branches: Vec::new(),
                 platform: false,
-                view_as: false,
+                support: None,
                 read_only: false,
                 display_name: None,
                 feature_grants: Vec::new(),
@@ -341,7 +341,7 @@ fn es256_scoped_token_rejects_unknown_group_role_on_issue() {
                 roles: vec!["ADMIN".to_owned()],
                 branches: Vec::new(),
                 platform: false,
-                view_as: false,
+                support: None,
                 read_only: false,
                 display_name: None,
                 feature_grants: Vec::new(),
@@ -374,7 +374,7 @@ fn es256_scoped_token_rejects_unknown_group_role_on_verify() {
         roles: vec!["ADMIN".to_owned()],
         branches: Vec::new(),
         platform: false,
-        view_as: false,
+        support: None,
         read_only: false,
         name: None,
         scope_level: Some(AccessScopeLevel::Group),
@@ -404,7 +404,7 @@ fn es256_scoped_token_rejects_unknown_group_role_on_verify() {
 }
 
 #[test]
-fn es256_view_as_token_refuses_group_roles() {
+fn es256_support_token_refuses_group_roles() {
     let issuer = es256_issuer();
 
     let err = issuer
@@ -415,7 +415,7 @@ fn es256_view_as_token_refuses_group_roles() {
                 roles: vec!["ADMIN".to_owned()],
                 branches: Vec::new(),
                 platform: false,
-                view_as: true,
+                support: Some(uuid::Uuid::new_v4()),
                 read_only: true,
                 display_name: None,
                 feature_grants: Vec::new(),
@@ -431,7 +431,7 @@ fn es256_view_as_token_refuses_group_roles() {
 
     assert!(
         err.to_string()
-            .contains("view-as tokens cannot carry group roles")
+            .contains("support tokens cannot carry group roles")
     );
 }
 
@@ -449,7 +449,7 @@ fn access_scope_claims_must_be_a_complete_pair() {
         roles: Vec::new(),
         branches: Vec::new(),
         platform: false,
-        view_as: false,
+        support: None,
         read_only: false,
         name: None,
         scope_level: Some(AccessScopeLevel::Org),
@@ -489,7 +489,7 @@ fn es256_access_token_stamps_subject_authz_freshness() {
             roles: vec!["SUPER_ADMIN".to_owned()],
             branches: Vec::new(),
             platform: false,
-            view_as: false,
+            support: None,
             read_only: false,
             display_name: None,
             feature_grants: Vec::new(),

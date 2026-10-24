@@ -87,4 +87,5 @@ export const koHome = {
   "home.grantNotices.title": "확인할 새 권한 {count, number}건",
   "home.grantNotices.confirm": "{role} 부여 확인 기록",
   "home.grantNotices.done": "{role} 부여 확인을 기록했습니다",
+  "home.part.support": "지원 접근 승인",
 } as const;

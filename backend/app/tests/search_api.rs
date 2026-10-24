@@ -562,7 +562,7 @@ impl Keys {
                 roles: roles.iter().map(|r| (*r).to_owned()).collect(),
                 branches: branches.to_vec(),
                 platform: false,
-                view_as: false,
+                support: None,
                 read_only: false,
                 display_name: None,
                 feature_grants: Vec::new(),

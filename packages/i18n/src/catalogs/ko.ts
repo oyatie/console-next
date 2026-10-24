@@ -1,3 +1,5 @@
+import { koSupport } from "./ko/support";
+import { koSupportAccess } from "./ko/support-access";
 import { koCommon } from "./ko/common";
 import { koOpsRecovery } from "./ko/ops-recovery";
 import { koImportRollback } from "./ko/import-rollback";
@@ -230,6 +232,8 @@ export const ko = {
   ...koPeopleJump,
   ...koOpsRecovery,
   ...koCommon,
+  ...koSupport,
+  ...koSupportAccess,
 } as const;
 
 export type ScreenMessageId = keyof typeof ko;

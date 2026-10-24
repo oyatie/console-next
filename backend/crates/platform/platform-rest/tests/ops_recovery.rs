@@ -223,7 +223,7 @@ async fn ops_recovery_http_step_up_and_tier_boundaries(owner: PgPool) {
         )
         .await
         .0,
-        StatusCode::FORBIDDEN
+        StatusCode::UNAUTHORIZED
     );
     let other = h.onboard("recovery-foreign").await;
     let other_user = enrolled(&h, other).await;

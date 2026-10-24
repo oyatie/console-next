@@ -1963,7 +1963,7 @@ fn rest_error_from_request_context(
             RestError::unavailable("JWT verification is not configured for registry API")
         }
         console_platform_request_context::RequestContextError::WrongTokenTier => {
-            RestError::forbidden("token tier is not valid for this route")
+            RestError::unauthorized("token tier is not valid for this route")
         }
         console_platform_request_context::RequestContextError::AccessScope(error) => {
             RestError::from_kernel(error)

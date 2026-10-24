@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [entity]
+operationId: listWorkplaces
+security:
+- bearerAuth: []
+parameters:
+- name: as_of
+  in: query
+  schema: {type: string, format: date}
+- name: known_at
+  in: query
+  schema: {type: string, format: date}
+responses:
+  '200':
+    description: Workplaces within the reader's granted scope.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/WorkplaceList'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.

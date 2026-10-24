@@ -1739,122 +1739,454 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/platform/tenant-context:
-    post:
+  /api/platform/support-sessions:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
         - platform
-      operationId: startPlatformTenantContext
-      summary: Start a writable platform-managed tenant context
-      description: Mints a short-lived writable tenant token with SUPER_ADMIN for exactly one active tenant. Platform token and
-        TenantManage authority required; the operator identity comes from the verified bearer token and the start is audited.
+      operationId: listSupportSessionMetadata
+      summary: list support session metadata
+      description: >-
+        Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and
+        audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The
+        metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current support session state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SupportSessionMetadata'
+                required:
+                  - sessions
+        '401':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '403':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '404':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '409':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '422':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '500':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+      parameters:
+        - name: org_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: requestSupportSession
+      summary: request support session
+      description: >-
+        Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and
+        audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The
+        metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Current support session state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  state:
+                    type: string
+                  request_expires_at:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - state
+                  - request_expires_at
+        '401':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '403':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '404':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '409':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '422':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '500':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PlatformTenantContextStartRequest'
+              $ref: '#/components/schemas/SupportRequest'
+  /api/platform/support-sessions/{id}/approve:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: approveSupportOperator
+      summary: approve support operator
+      description: >-
+        Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and
+        audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The
+        metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
+      security:
+        - bearerAuth: []
       responses:
         '200':
-          description: The short-lived writable tenant token and banner context.
+          description: Current support session state.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PlatformTenantContextStartResponse'
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  state:
+                    type: string
+                required:
+                  - id
+                  - state
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
         '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailable'
-  /api/platform/tenant-context/exit:
-    post:
-      tags:
-        - platform
-      operationId: exitPlatformTenantContext
-      summary: End a writable platform-managed tenant context audit trail
-      description: Records the platform.tenant_context.stop audit event. Called with the operator's real platform token after
-        restoring the platform session.
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          description: The exit audit acknowledgement.
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
           content:
-            application/json:
+            application/problem+json:
               schema:
-                $ref: '#/components/schemas/PlatformExitResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailable'
-  /api/platform/view-as:
-    post:
-      tags:
-        - platform
-      operationId: startPlatformViewAs
-      summary: Start a read-only platform view-as session for one tenant
-      description: Mints a short-lived tenant token pinned to the requested organization and role with view_as/read_only flags.
-        Platform token and TenantHealthRead authority required; the operator identity comes from the verified bearer token.
-      security:
-      - bearerAuth: []
+                $ref: '#/components/schemas/SupportRefusal'
+        '409':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '422':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '500':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PlatformViewAsStartRequest'
-      responses:
-        '200':
-          description: The short-lived read-only tenant token and banner context.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlatformViewAsStartResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailable'
-  /api/platform/view-as/exit:
+              $ref: '#/components/schemas/SupportOperatorDecision'
+  /api/platform/support-sessions/{id}/end:
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
         - platform
-      operationId: exitPlatformViewAs
-      summary: End a read-only platform view-as session audit trail
-      description: Records the platform.view_as.stop audit event. Called with the operator's real platform token, not the
-        impersonation token.
+      operationId: endOperatorSupportSession
+      summary: end operator support session
+      description: >-
+        Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and
+        audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The
+        metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       responses:
         '200':
-          description: The exit audit acknowledgement.
+          description: Current support session state.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PlatformExitResponse'
+                type: object
+                properties:
+                  ended:
+                    type: boolean
+                required:
+                  - ended
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
         '403':
-          $ref: '#/components/responses/Forbidden'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailable'
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '404':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '409':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '422':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '500':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                org_id:
+                  type: string
+                  format: uuid
+              required:
+                - org_id
+              additionalProperties: false
+  /api/platform/support-sessions/{id}/start:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: startSupportSession
+      summary: start support session
+      description: >-
+        Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and
+        audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The
+        metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current support session state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - access_token
+                  - token_type
+                  - expires_at
+        '401':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '403':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '404':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '409':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '422':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '500':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupportOperatorDecision'
   /api/target-change-requests/{requestId}/review:
     post:
       tags:
@@ -25957,6 +26289,312 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/support-sessions:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - identity
+      operationId: listTenantSupportSessions
+      summary: list tenant support sessions
+      description: >-
+        Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and
+        audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The
+        metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current support session state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportSessions'
+        '401':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '403':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '404':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '409':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '422':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '500':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+  /api/v1/support-sessions/active:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - identity
+      operationId: activeSupportSessions
+      summary: active support sessions
+      description: >-
+        Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and
+        audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The
+        metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current support session state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveSupportSessions'
+        '401':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '403':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '404':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '409':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '422':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '500':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+  /api/v1/support-sessions/{id}/decision:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - identity
+      operationId: decideTenantSupportSession
+      summary: decide tenant support session
+      description: >-
+        Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and
+        audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The
+        metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current support session state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  decision:
+                    type: string
+                required:
+                  - id
+                  - decision
+        '401':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '403':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '404':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '409':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '422':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '500':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupportTenantDecision'
+  /api/v1/support-sessions/{id}/end:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - identity
+      operationId: endTenantSupportSession
+      summary: end tenant support session
+      description: >-
+        Tenant-approved, two-operator, device-bound passkey support access. Support tokens are roleless, read-only and
+        audience-bound to the tenant origin. Limits resolve from support.request_expiry and support.max_duration. The
+        metadata-only operator list omits all ticket, reason text, tenant identity, decisions and tenant payloads.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current support session state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ended:
+                    type: boolean
+                required:
+                  - ended
+        '401':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '403':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '404':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '409':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '422':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+        '500':
+          description: >-
+            Support refusal with a stable code; step-up, separation of duties, consent, expiry, scope and read-only gates fail
+            closed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/SupportRefusal'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
   /api/v1/support/intake:
     post:
       tags:
@@ -28671,6 +29309,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/workplaces:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [entity]
+      operationId: listWorkplaces
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: as_of
+        in: query
+        schema: {type: string, format: date}
+      - name: known_at
+        in: query
+        schema: {type: string, format: date}
+      responses:
+        '200':
+          description: Workplaces within the reader's granted scope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkplaceList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not permitted.
   /api/v1/workplaces/{workplaceId}:
     get:
       tags:
@@ -30277,7 +30940,7 @@ components:
     AccessDomain:
       type: string
       description: Platform-fixed data domain (access-model §2.6). `discipline` is listed but not grantable.
-      enum:
+      x-extensible-enum:
       - org
       - hr_basic
       - appointment
@@ -30296,6 +30959,7 @@ components:
       - exceptions
       - retention
       - tenant
+      - support_access
     AccessEffectLine:
       type: object
       required:
@@ -30825,6 +31489,42 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/AccessLevel'
+    AccessRoleLineInput:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - domain
+      - levels
+      properties:
+        domain:
+          type: string
+          enum:
+          - org
+          - hr_basic
+          - appointment
+          - exit
+          - attendance
+          - pay
+          - bank
+          - evaluation
+          - discipline
+          - sensitive
+          - documents
+          - notice
+          - access
+          - audit
+          - settings
+          - exceptions
+          - retention
+          - tenant
+          - support_access
+
+        levels:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/AccessLevel'
     AccessRoleStatus:
       type: string
       enum:
@@ -30977,7 +31677,7 @@ components:
           description: '"{kind}:{uuid}" — source-namespaced so ids never collide.'
         kind:
           type: string
-          enum:
+          x-extensible-enum:
           - approval
           - dispatch
           - work
@@ -30986,6 +31686,7 @@ components:
           - hr_exit
           - hr_lifecycle
           - hr_request
+          - support_access
         urg:
           type: string
           enum:
@@ -31070,6 +31771,50 @@ components:
           - string
           - 'null'
           description: Opaque cursor for the next immutable-keyset page, or null when exhausted.
+    ActiveSupportSessions:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      properties:
+        sessions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              operator_label:
+                type: string
+              expires_at:
+                type:
+                  - string
+                  - 'null'
+                format: date-time
+            required:
+              - id
+              - operator_label
+              - expires_at
+        pending_count:
+          type: integer
+          minimum: 0
+        pending_approvals:
+          type: array
+          items:
+            type: object
+            required: [id, operator_label, ticket_ref, reason, request_expires_at]
+            properties:
+              id: {type: string, format: uuid}
+              operator_label: {type: string}
+              ticket_ref: {type: string}
+              reason: {type: string}
+              request_expires_at: {type: string, format: date-time}
+        can_approve:
+          type: boolean
+      required:
+        - sessions
+        - can_approve
+        - pending_count
+        - pending_approvals
     ActorKind:
       type: string
       enum: [TENANT_USER, OPS_ACCOUNT, GROUP_ADMIN, SUPPORT_OPERATOR, SYSTEM]
@@ -34994,7 +35739,7 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: '#/components/schemas/AccessRoleLine'
+            $ref: '#/components/schemas/AccessRoleLineInput'
     CreateBranchRequest:
       type: object
       required:
@@ -46385,12 +47130,13 @@ components:
         step_up:
           $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     MobilePasskeyStepUpBinding:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
-      - action_kind
-      - object_id
-      - reason_key
-      - replay_attempt
+        - action_kind
+        - object_id
+        - reason_key
+        - replay_attempt
       properties:
         action_kind:
           $ref: '#/components/schemas/MobileStepUpActionKind'
@@ -46399,30 +47145,31 @@ components:
         reason_key:
           type: string
           enum:
-          - operations_passkey_approval_decision
-          - operations_passkey_poll_vote
-          - passkey_step_up_exit_confirm
-          - passkey_step_up_exit_rescind
-          - passkey_step_up_elevated_grant
-          - passkey_step_up_period_unlock
-          - passkey_step_up_identity_merge
-          - passkey_step_up_exception_decide
-          - passkey_step_up_settings_change
-          - passkey_step_up_credential_reset
-          - passkey_step_up_tenant_offboard
-          - passkey_step_up_operator_recovery
+            - operations_passkey_approval_decision
+            - operations_passkey_poll_vote
+            - passkey_step_up_exit_confirm
+            - passkey_step_up_exit_rescind
+            - passkey_step_up_elevated_grant
+            - passkey_step_up_period_unlock
+            - passkey_step_up_identity_merge
+            - passkey_step_up_exception_decide
+            - passkey_step_up_settings_change
+            - passkey_step_up_credential_reset
+            - passkey_step_up_tenant_offboard
+            - passkey_step_up_operator_recovery
+            - passkey_step_up_support_session
         replay_attempt:
           type:
-          - integer
-          - 'null'
+            - integer
+            - 'null'
           format: int32
           minimum: 1
           description: Null for an immediate online action; 1-based for queued replay attempts.
         payload_hash:
           type:
-          - string
-          - 'null'
-          pattern: '^[a-f0-9]{64}$'
+            - string
+            - 'null'
+          pattern: ^[a-f0-9]{64}$
           description: Required for BW-29 actions including OPERATOR_RECOVERY; SHA-256 of the command payload.
     MobilePasskeyStepUpEnvelope:
       type: object
@@ -46442,12 +47189,13 @@ components:
         binding:
           $ref: '#/components/schemas/MobilePasskeyStepUpBinding'
     MobilePasskeyStepUpStartResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
-      - ceremony_id
-      - challenge
-      - expires_at
-      - binding
+        - ceremony_id
+        - challenge
+        - expires_at
+        - binding
       properties:
         ceremony_id:
           $ref: '#/components/schemas/Uuid'
@@ -46457,74 +47205,77 @@ components:
         expires_at:
           $ref: '#/components/schemas/Timestamp'
         binding:
-          # Response values may grow while command bindings keep their validated enums.
           type: object
           required:
-          - action_kind
-          - object_id
-          - reason_key
-          - replay_attempt
+            - action_kind
+            - object_id
+            - reason_key
+            - replay_attempt
           properties:
             action_kind:
               type: string
               x-extensible-enum:
-              - APPROVAL_DECISION
-              - POLL_VOTE
-              - EXIT_CONFIRM
-              - EXIT_RESCIND
-              - ELEVATED_GRANT
-              - PERIOD_UNLOCK
-              - IDENTITY_MERGE
-              - EXCEPTION_DECIDE
-              - SETTINGS_CHANGE
-              - CREDENTIAL_RESET
-              - TENANT_OFFBOARD
-              - OPERATOR_RECOVERY
+                - APPROVAL_DECISION
+                - POLL_VOTE
+                - EXIT_CONFIRM
+                - EXIT_RESCIND
+                - ELEVATED_GRANT
+                - PERIOD_UNLOCK
+                - IDENTITY_MERGE
+                - EXCEPTION_DECIDE
+                - SETTINGS_CHANGE
+                - CREDENTIAL_RESET
+                - TENANT_OFFBOARD
+                - OPERATOR_RECOVERY
+                - SUPPORT_SESSION
             object_id:
               $ref: '#/components/schemas/Uuid'
             reason_key:
               type: string
               x-extensible-enum:
-              - operations_passkey_approval_decision
-              - operations_passkey_poll_vote
-              - passkey_step_up_exit_confirm
-              - passkey_step_up_exit_rescind
-              - passkey_step_up_elevated_grant
-              - passkey_step_up_period_unlock
-              - passkey_step_up_identity_merge
-              - passkey_step_up_exception_decide
-              - passkey_step_up_settings_change
-              - passkey_step_up_credential_reset
-              - passkey_step_up_tenant_offboard
-              - passkey_step_up_operator_recovery
+                - operations_passkey_approval_decision
+                - operations_passkey_poll_vote
+                - passkey_step_up_exit_confirm
+                - passkey_step_up_exit_rescind
+                - passkey_step_up_elevated_grant
+                - passkey_step_up_period_unlock
+                - passkey_step_up_identity_merge
+                - passkey_step_up_exception_decide
+                - passkey_step_up_settings_change
+                - passkey_step_up_credential_reset
+                - passkey_step_up_tenant_offboard
+                - passkey_step_up_operator_recovery
+                - passkey_step_up_support_session
             replay_attempt:
               type:
-              - integer
-              - 'null'
+                - integer
+                - 'null'
               format: int32
               minimum: 1
               description: Null for an immediate online action; 1-based for queued replay attempts.
             payload_hash:
               type:
-              - string
-              - 'null'
-              pattern: '^[a-f0-9]{64}$'
+                - string
+                - 'null'
+              pattern: ^[a-f0-9]{64}$
               description: Required for BW-29 actions including OPERATOR_RECOVERY; SHA-256 of the command payload.
     MobileStepUpActionKind:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum:
-      - APPROVAL_DECISION
-      - POLL_VOTE
-      - EXIT_CONFIRM
-      - EXIT_RESCIND
-      - ELEVATED_GRANT
-      - PERIOD_UNLOCK
-      - IDENTITY_MERGE
-      - EXCEPTION_DECIDE
-      - SETTINGS_CHANGE
-      - CREDENTIAL_RESET
-      - TENANT_OFFBOARD
-      - OPERATOR_RECOVERY
+        - APPROVAL_DECISION
+        - POLL_VOTE
+        - EXIT_CONFIRM
+        - EXIT_RESCIND
+        - ELEVATED_GRANT
+        - PERIOD_UNLOCK
+        - IDENTITY_MERGE
+        - EXCEPTION_DECIDE
+        - SETTINGS_CHANGE
+        - CREDENTIAL_RESET
+        - TENANT_OFFBOARD
+        - OPERATOR_RECOVERY
+        - SUPPORT_SESSION
     MobileVotePollRequest:
       type: object
       required:
@@ -50642,13 +51393,6 @@ components:
       - ACTIVE
       - PENDING_SETUP
       - DEACTIVATED
-    PlatformExitResponse:
-      type: object
-      required:
-      - ended
-      properties:
-        ended:
-          type: boolean
     PlatformGroup:
       type: object
       required:
@@ -50887,40 +51631,6 @@ components:
       - ACTIVE
       - SUSPENDED
       - ARCHIVED
-    PlatformTenantContextStartRequest:
-      type: object
-      required:
-      - org_id
-      properties:
-        org_id:
-          $ref: '#/components/schemas/Uuid'
-    PlatformTenantContextStartResponse:
-      type: object
-      required:
-      - access_token
-      - token_type
-      - acting_org_id
-      - acting_org_name
-      - acting_role
-      - expires_at
-      properties:
-        access_token:
-          type: string
-          minLength: 1
-        token_type:
-          type: string
-          enum:
-          - Bearer
-        acting_org_id:
-          $ref: '#/components/schemas/Uuid'
-        acting_org_name:
-          type: string
-        acting_role:
-          type: string
-          enum:
-          - SUPER_ADMIN
-        expires_at:
-          $ref: '#/components/schemas/Timestamp'
     PlatformTenantHealth:
       type: object
       required:
@@ -50995,41 +51705,6 @@ components:
       - RECEPTIONIST
       - EXECUTIVE
       - MEMBER
-    PlatformViewAsStartRequest:
-      type: object
-      required:
-      - org_id
-      - role
-      properties:
-        org_id:
-          $ref: '#/components/schemas/Uuid'
-        role:
-          $ref: '#/components/schemas/PlatformTenantRole'
-    PlatformViewAsStartResponse:
-      type: object
-      required:
-      - access_token
-      - token_type
-      - acting_org_id
-      - acting_org_name
-      - acting_role
-      - expires_at
-      properties:
-        access_token:
-          type: string
-          minLength: 1
-        token_type:
-          type: string
-          enum:
-          - Bearer
-        acting_org_id:
-          $ref: '#/components/schemas/Uuid'
-        acting_org_name:
-          type: string
-        acting_role:
-          $ref: '#/components/schemas/PlatformTenantRole'
-        expires_at:
-          $ref: '#/components/schemas/Timestamp'
     PolicyAssignmentPreviewResponse:
       type: object
       required:
@@ -56121,6 +56796,25 @@ components:
       - exact_ton
       - nearest_above
       - unknown_ton_exact_text
+    SupportAccessRecord:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        method:
+          type: string
+        path:
+          type: string
+        at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - method
+        - path
+        - at
     SupportIntakeAck:
       type: object
       required:
@@ -56128,6 +56822,259 @@ components:
       properties:
         status:
           type: string
+    SupportOperatorDecision:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      properties:
+        org_id:
+          type: string
+          format: uuid
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+      required:
+        - org_id
+      additionalProperties: false
+    SupportRefusal:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+          required:
+            - code
+            - message
+      required:
+        - type
+        - title
+        - status
+        - detail
+        - code
+        - error
+    SupportRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        org_id:
+          type: string
+          format: uuid
+        ticket_ref:
+          type: string
+          minLength: 1
+          maxLength: 200
+        reason_code:
+          type: string
+          minLength: 1
+          maxLength: 100
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        scope:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        duration_seconds:
+          type: integer
+          format: int64
+          minimum: 1
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+      required:
+        - id
+        - org_id
+        - ticket_ref
+        - reason_code
+        - reason
+        - scope
+        - duration_seconds
+      additionalProperties: false
+    SupportSession:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        operator_label:
+          type: string
+        ticket_ref:
+          type: string
+        reason_code:
+          type: string
+        reason:
+          type: string
+        scope:
+          type: array
+          items:
+            type: string
+        state:
+          type: string
+          x-extensible-enum:
+            - REQUESTED
+            - OPERATOR_APPROVED
+            - ACTIVE
+            - ENDED
+            - EXPIRED
+            - DENIED
+            - REVOKED
+        masked:
+          type: boolean
+        requested_duration_seconds:
+          type: integer
+          format: int64
+        approved_duration_seconds:
+          type:
+            - integer
+            - 'null'
+          format: int64
+        requested_at:
+          type: string
+          format: date-time
+        request_expires_at:
+          type: string
+          format: date-time
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        tenant_approved_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        decisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupportSessionDecision'
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupportAccessRecord'
+      required:
+        - id
+        - operator_label
+        - ticket_ref
+        - reason_code
+        - reason
+        - scope
+        - state
+        - masked
+        - requested_duration_seconds
+        - approved_duration_seconds
+        - requested_at
+        - request_expires_at
+        - expires_at
+        - tenant_approved_at
+        - decisions
+        - records
+    SupportSessionDecision:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      properties:
+        actor_label:
+          type: string
+        decision:
+          type: string
+          x-extensible-enum:
+            - REQUEST
+            - OPERATOR_APPROVE
+            - APPROVE
+            - DENY
+            - START
+            - END
+            - EXPIRE
+        at:
+          type: string
+          format: date-time
+      required:
+        - actor_label
+        - decision
+        - at
+    SupportSessionMetadata:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        org_id:
+          type: string
+          format: uuid
+        operator_ref:
+          type: string
+          format: uuid
+        state:
+          type: string
+        requested_at:
+          type: string
+          format: date-time
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+      required:
+        - id
+        - org_id
+        - operator_ref
+        - state
+        - requested_at
+        - expires_at
+    SupportSessions:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupportSession'
+        can_approve:
+          type: boolean
+      required:
+        - sessions
+        - can_approve
+    SupportTenantDecision:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      properties:
+        decision:
+          type: string
+          enum:
+            - APPROVE
+            - DENY
+        approved_duration_seconds:
+          type: integer
+          format: int64
+          minimum: 1
+        reveal_classes:
+          type: array
+          items:
+            type: string
+            enum:
+              - personal
+      required:
+        - decision
+      additionalProperties: false
     SupportTicketAcceptance:
       type: object
       required:
@@ -57002,7 +57949,7 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: '#/components/schemas/AccessRoleLine'
+            $ref: '#/components/schemas/AccessRoleLineInput'
         reason_code:
           type: string
           description: Domain `role_change`; required when `lines` change on a held role.

@@ -62,9 +62,9 @@ async fn validate_in_tx(
                 }
                 None => {
                     if session.home_org != OrgId::platform()
-                        || claims.view_as != claims.read_only
-                        || (claims.view_as && roles.len() != 1)
-                        || (!claims.view_as && roles != BTreeSet::from([Role::SuperAdmin]))
+                        || claims.support.is_none()
+                        || !claims.read_only
+                        || !roles.is_empty()
                         || !claims.group_roles.is_empty()
                     {
                         return Err(RequestContextError::InvalidToken);
@@ -73,7 +73,10 @@ async fn validate_in_tx(
             }
             session
         }
-        None if claims.tenant_context.is_none() && !claims.view_as && !claims.read_only => {
+        None if claims.tenant_context.is_none()
+            && claims.support.is_none()
+            && !claims.read_only =>
+        {
             ActorSession {
                 family_id: claims
                     .session_family_id
@@ -86,7 +89,7 @@ async fn validate_in_tx(
         }
         _ => return Err(RequestContextError::InvalidToken),
     };
-    if claims.platform && !roles.contains(&Role::SuperAdmin) {
+    if claims.platform && !PlatformPrincipal::accepts_roles(&claims.roles) {
         return Err(RequestContextError::InvalidToken);
     }
     let home = session.home_org;
@@ -154,7 +157,7 @@ async fn validate_in_tx(
         || u64::try_from(subject_version).ok() != Some(session.subject_version)
         || u64::try_from(session_generation).ok() != Some(session.session_generation)
         || (!delegated && claims.roles.iter().any(|role| !live_roles.contains(role)))
-        || (home == OrgId::platform() && !live_roles.iter().any(|role| role == "SUPER_ADMIN"))
+        || (home == OrgId::platform() && !PlatformPrincipal::accepts_roles(&live_roles))
     {
         return Err(RequestContextError::InvalidToken);
     }

@@ -46,7 +46,12 @@ impl Projection {
 const fn moves_data_scope(domain: Domain) -> bool {
     !matches!(
         domain,
-        Domain::Access | Domain::Audit | Domain::Settings | Domain::Retention | Domain::Tenant
+        Domain::Access
+            | Domain::Audit
+            | Domain::Settings
+            | Domain::Retention
+            | Domain::Tenant
+            | Domain::SupportAccess
     )
 }
 

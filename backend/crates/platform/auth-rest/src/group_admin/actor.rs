@@ -34,9 +34,9 @@ pub(crate) async fn authenticated_group_actor(
             "platform tokens cannot use tenant group-admin endpoints",
         ));
     }
-    if claims.view_as {
+    if claims.support.is_some() {
         return Err(RestError::forbidden(
-            "read-only view-as tokens cannot manage group subsidiaries",
+            "read-only support tokens cannot manage group subsidiaries",
         ));
     }
     if claims.tenant_context.is_some() || claims.actor_session.is_some() {

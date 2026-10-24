@@ -78,6 +78,9 @@ pub fn spawn(pool: sqlx::PgPool, worker: bool) -> LifecycleScheduleHandle {
                     crate::workplace_close_schedule::tick(&pool, today).await;
                     crate::org_change_schedule::tick(&pool, today).await;
                     crate::requests::tick(&pool).await;
+                    if let Err(error)=console_platform_rest::expire_support_sessions(&pool).await {
+                        tracing::error!(%error,"support session expiry failed");
+                    }
                     // BW-15: expired unlock windows get their successor lock row.
                     match crate::lifecycle::period_relock::relock_due(&pool).await {
                         Ok(0) => {},

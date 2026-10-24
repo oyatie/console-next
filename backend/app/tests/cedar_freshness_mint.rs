@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! Cedar/PBAC subject-freshness mint-path hardening tests.
 //!
-//! The non-login access-token mint paths (platform view-as / tenant-context and
+//! The non-login access-token mint paths (platform support / tenant-context and
 //! the group-admin tenant-context) used to stamp a hardcoded ZERO freshness,
 //! which a promoted Cedar guard would deny as `MissingSubjectFreshness` /
 //! `StaleSubject`. They now source REAL freshness for the token's own
@@ -22,7 +22,7 @@
 //!   * the group-admin tenant-context issuer (site 3) carries the sourced
 //!     freshness onto the verified token claims (the construction seam the two
 //!     platform mints share — those two get end-to-end HTTP coverage in
-//!     `platform-rest/tests/view_as.rs`);
+//!     `platform-rest/tests/support.rs`);
 //!   * a token minted with the sourced snapshot SATISFIES the guard-time
 //!     requirement (neither missing nor stale), and after a version bump an older
 //!     carried snapshot trips `StaleSubject` — proving the freshness comparison is
@@ -318,7 +318,7 @@ async fn group_admin_issuer_seam_carries_all_three_fields(owner_pool: PgPool) {
                 roles: vec!["ADMIN".to_owned()],
                 branches: Vec::new(),
                 platform: false,
-                view_as: false,
+                support: None,
                 read_only: false,
                 display_name: None,
                 feature_grants: Vec::new(),

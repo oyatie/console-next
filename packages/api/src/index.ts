@@ -4,3 +4,4 @@ export * from "./auth";
 export * from "./step-up";
 export type { Platform } from "./platform";
 export type { paths, components } from "./schema";
+export * from "./support-sessions";

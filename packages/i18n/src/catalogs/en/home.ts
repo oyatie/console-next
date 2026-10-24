@@ -87,4 +87,5 @@ export const enHome: Partial<Record<keyof typeof koHome, string>> = {
   "home.grantNotices.title": "New access to confirm: {count, number}",
   "home.grantNotices.confirm": "Record seeing the {role} grant",
   "home.grantNotices.done": "Recorded that you saw the {role} grant",
+  "home.part.support": "Support access approvals",
 };

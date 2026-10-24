@@ -1,5 +1,5 @@
 // Route guards over the signed-in session: who may see sign-in, passkey set-up and the app.
-import { redirect } from "@tanstack/react-router";
+import { notFound, redirect } from "@tanstack/react-router";
 import { ApiError, consentStatus, logout, refresh, session } from "@console/api";
 
 /** A session whose token and passkey state disagree cannot recover in place: sign out and sign in again. */
@@ -27,7 +27,7 @@ export async function ensureSession({ location }: { location: { pathname: string
   if (location.pathname === "/account") return;
   const platformPath = location.pathname.startsWith("/platform");
   if (session.claims?.platform && !platformPath) throw redirect({ to: "/platform" });
-  if (!session.claims?.platform && platformPath) throw redirect({ to: "/" });
+  if (!session.claims?.platform && platformPath) throw notFound();
 }
 
 /** A signed-in session goes home instead of redeeming another principal's code over it. */

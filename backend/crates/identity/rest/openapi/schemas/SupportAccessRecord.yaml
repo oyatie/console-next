@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+  method:
+    type: string
+  path:
+    type: string
+  at:
+    type: string
+    format: date-time
+required:
+  - id
+  - method
+  - path
+  - at

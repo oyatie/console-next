@@ -23,6 +23,7 @@ const MAX_LOGGED_KID: usize = 64;
 pub struct JwtVerifier {
     settings: JwtSettings,
     keys: KeySet,
+    support_audience: Option<String>,
 }
 
 impl JwtVerifier {
@@ -36,13 +37,53 @@ impl JwtVerifier {
         Ok(Self {
             settings,
             keys: KeySet::from_pem_bundle(public_key_pem)?,
+            support_audience: None,
         })
     }
 
     pub fn verify_access_token(&self, token: &str) -> Result<AccessClaims, AuthError> {
         let header = decode_header(token)?;
         let key = self.keys.select(header.kid.as_deref())?;
-        verify_access_token(token, key, &self.settings)
+        let claims = verify_access_token(token, key, &self.settings).or_else(|error| {
+            let Some(audience) = &self.support_audience else {
+                return Err(error);
+            };
+            let mut settings = self.settings.clone();
+            settings.audience = audience.clone();
+            let claims = verify_access_token(token, key, &settings)?;
+            if claims.support.is_none() {
+                return Err(error);
+            }
+            Ok(claims)
+        })?;
+        if claims.support.is_some()
+            && self
+                .support_audience
+                .as_ref()
+                .is_some_and(|aud| *aud != claims.aud)
+        {
+            return Err(AuthError::InvalidStoredData(
+                "support audience must be the tenant origin".into(),
+            ));
+        }
+        Ok(claims)
+    }
+
+    #[must_use]
+    pub fn with_support_audience(mut self, origin: String) -> Self {
+        self.support_audience = Some(origin);
+        self
+    }
+
+    /// Signature and audience still verify; only an expired SUPPORT token is returned so its ledger supplies the refusal.
+    pub fn verify_support_token(&self, token: &str) -> Result<AccessClaims, AuthError> {
+        let header = decode_header(token)?;
+        let key = self.keys.select(header.kid.as_deref())?;
+        let mut settings = self.settings.clone();
+        if let Some(origin) = &self.support_audience {
+            settings.audience = origin.clone();
+        }
+        crate::jwt::verify_support_token(token, key, &settings)
     }
 
     pub(crate) fn trusts(&self, kid: &str) -> bool {

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+properties:
+  org_id:
+    type: string
+    format: uuid
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+required:
+  - org_id
+additionalProperties: false

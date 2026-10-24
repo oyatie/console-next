@@ -122,5 +122,7 @@ mod ops_recovery;
 
 #[macro_use]
 mod display;
+#[macro_use]
+mod support;
 
-roster!([] found, pa_ent, ent_capture, emp_record, people_a, d26, import2, mig, perf, attendance, ops_recovery, display);
+roster!([] found, pa_ent, ent_capture, emp_record, people_a, d26, import2, mig, perf, attendance, ops_recovery, display, support);

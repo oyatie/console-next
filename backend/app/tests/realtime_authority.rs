@@ -116,7 +116,7 @@ impl Fixture {
                     roles: vec!["MECHANIC".into()],
                     branches: vec![branch],
                     platform: false,
-                    view_as: false,
+                    support: None,
                     read_only: false,
                     display_name: None,
                     feature_grants: vec![],

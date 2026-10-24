@@ -369,6 +369,7 @@ mod tests {
                 ActionInboxSource::HrRequests,
                 ActionInboxSource::HrRegister,
                 ActionInboxSource::HrInsurance,
+                ActionInboxSource::SupportAccess,
             ]
         );
         for source in ActionInboxSource::ALL {
@@ -912,6 +913,7 @@ mod tests {
             ActionInboxSource::HrRequests => "hr_request",
             ActionInboxSource::HrRegister => "hr_register",
             ActionInboxSource::HrInsurance => "insurance_filing_ACQUIRE_NPS",
+            ActionInboxSource::SupportAccess => "support_access",
         }
     }
 

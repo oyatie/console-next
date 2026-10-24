@@ -31,6 +31,13 @@ const EXTERNAL_SCHEMAS: &[&str] = &[
 
 const PATHS: &[PathItem] = &[
     PathItem {
+        path: "/api/v1/workplaces",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__workplaces.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/business-registrations/{registrationId}",
         operations: &[Operation {
             method: "put",

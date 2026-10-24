@@ -169,7 +169,7 @@ impl Fixture {
                 Some(self.verifier.clone()),
                 console_platform_provisioning::PlatformProvisioner::new(Duration::minutes(15)),
             )
-            .with_view_as_issuer(Some(self.issuer.clone())),
+            .with_support_issuer(Some(self.issuer.clone())),
         )
     }
     fn platform_token(&self, role: &str) -> String {
@@ -275,58 +275,6 @@ async fn platform_roles_cannot_expand_old_tokens_and_revocation_is_live(owner: P
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn platform_delegation_binds_home_session_and_live_target(owner: PgPool) {
-    let f = Fixture::with_home(owner, true).await;
-    let source = f.platform_token("SUPER_ADMIN");
-    for path in ["/api/platform/view-as", "/api/platform/tenant-context"] {
-        let (status, body) = request(
-            f.platform(),
-            &source,
-            "POST",
-            path,
-            json!({"org_id":f.org,"role":"SUPER_ADMIN"}),
-        )
-        .await;
-        assert_eq!(status, StatusCode::OK, "{path}: {body}");
-        let token = body["access_token"].as_str().unwrap();
-        let claims = serde_json::to_value(f.verifier.verify_access_token(token).unwrap()).unwrap();
-        assert_eq!(
-            claims["actor_session"],
-            json!({"home_org":OrgId::platform(),"subject_version":0,"session_generation":0,"family_id":f.family_id,"expires_at":f.verifier.verify_access_token(&source).unwrap().exp})
-        );
-        assert_eq!(claims["authz_subject_version"], 0);
-        assert!(f.allowed(token).await);
-        assert!(
-            !f.allowed(&f.resign(token, json!({"actor_session":null})))
-                .await
-        );
-        assert!(!f.allowed(&f.resign(token, json!({"actor_session":{"home_org":f.org,"subject_version":0,"session_generation":0,"family_id":f.family_id,"expires_at":f.verifier.verify_access_token(&source).unwrap().exp}}))).await);
-        sqlx::query("UPDATE organizations SET status='SUSPENDED' WHERE id=$1")
-            .bind(*f.org.as_uuid())
-            .execute(&f.owner)
-            .await
-            .unwrap();
-        assert!(!f.allowed(token).await);
-        sqlx::query("UPDATE organizations SET status='ACTIVE' WHERE id=$1")
-            .bind(*f.org.as_uuid())
-            .execute(&f.owner)
-            .await
-            .unwrap();
-        sqlx::query("UPDATE users SET is_active=false WHERE id=$1")
-            .bind(*f.user.as_uuid())
-            .execute(&f.owner)
-            .await
-            .unwrap();
-        assert!(!f.allowed(token).await);
-        sqlx::query("UPDATE users SET is_active=true WHERE id=$1")
-            .bind(*f.user.as_uuid())
-            .execute(&f.owner)
-            .await
-            .unwrap();
-    }
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn group_delegate_keeps_target_freshness_and_denies_home_revocation(owner: PgPool) {
     let f = Fixture::new(owner).await;
     f.group().await;
@@ -424,46 +372,6 @@ async fn auth_self_service_rejects_stale_session(owner: PgPool) {
         .0,
         StatusCode::UNAUTHORIZED
     );
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn revocation_during_delegate_mint_cannot_renew_source_session(owner: PgPool) {
-    let f = Fixture::with_home(owner, true).await;
-    let source = f.platform_token("SUPER_ADMIN");
-    let mut lock = f.owner.begin().await.unwrap();
-    sqlx::query("LOCK TABLE policy_versions IN ACCESS EXCLUSIVE MODE")
-        .execute(&mut *lock)
-        .await
-        .unwrap();
-    let router = f.platform();
-    let target = f.org;
-    let mint = tokio::spawn(async move {
-        request(
-            router,
-            &source,
-            "POST",
-            "/api/platform/tenant-context",
-            json!({"org_id":target}),
-        )
-        .await
-    });
-    tokio::time::timeout(std::time::Duration::from_secs(5),async {
-        loop {
-            let blocked: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE usename='console_rt' AND wait_event_type='Lock' AND query LIKE '%policy_versions%')")
-                .fetch_one(&f.owner).await.unwrap();
-            if blocked { break; }
-            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-        }
-    }).await.expect("mint reached target freshness after source validation");
-    sqlx::query("INSERT INTO subject_authz_versions(org_id,user_id,version,session_generation) VALUES ($1,$2,1,1)")
-        .bind(*OrgId::platform().as_uuid()).bind(*f.user.as_uuid()).execute(&f.owner).await.unwrap();
-    lock.rollback().await.unwrap();
-    let (status, body) = mint.await.unwrap();
-    assert_eq!(status, StatusCode::OK, "{body}");
-    let token = body["access_token"].as_str().unwrap();
-    let claims = serde_json::to_value(f.verifier.verify_access_token(token).unwrap()).unwrap();
-    assert_eq!(claims["actor_session"]["session_generation"], 0);
-    assert!(!f.allowed(token).await);
 }
 
 struct SessionFixture {
@@ -681,43 +589,6 @@ async fn group_delegate_cannot_outlive_or_escape_source_family(owner: PgPool) {
         );
     }
     f.logout(&session).await;
-    assert!(!f.allowed(child).await);
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn family_revocation_during_platform_mint_cannot_create_a_live_child(owner: PgPool) {
-    let f = Fixture::with_home(owner, true).await;
-    let session = f.session().await;
-    let mut lock = f.owner.begin().await.unwrap();
-    sqlx::query("LOCK TABLE policy_versions IN ACCESS EXCLUSIVE MODE")
-        .execute(&mut *lock)
-        .await
-        .unwrap();
-    let router = f.platform();
-    let target = f.org;
-    let source = session.access.clone();
-    let mint = tokio::spawn(async move {
-        request(
-            router,
-            &source,
-            "POST",
-            "/api/platform/tenant-context",
-            json!({"org_id":target}),
-        )
-        .await
-    });
-    tokio::time::timeout(std::time::Duration::from_secs(5),async {
-        loop {
-            let blocked:bool=sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE usename='console_rt' AND wait_event_type='Lock' AND query LIKE '%policy_versions%')").fetch_one(&f.owner).await.unwrap();
-            if blocked {break;}
-            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-        }
-    }).await.expect("delegate mint reached target read after source validation");
-    f.logout(&session).await;
-    lock.rollback().await.unwrap();
-    let (status, body) = mint.await.unwrap();
-    assert_eq!(status, StatusCode::OK, "{body}");
-    let child = body["access_token"].as_str().unwrap();
     assert!(!f.allowed(child).await);
 }
 

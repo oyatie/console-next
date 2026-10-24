@@ -35,6 +35,8 @@ export const koAccessCodes = {
   "accessCodes.domain.exceptions.help": "예외 승인, 정정 요청, 기간 잠금",
   "accessCodes.domain.retention": "보존·파기",
   "accessCodes.domain.retention.help": "보존 기록과 파기",
+  "accessCodes.domain.support_access": "지원 접근",
+  "accessCodes.domain.support_access.help": "공급사의 조회 지원 승인과 종료",
   "accessCodes.domain.tenant": "고객 계정 운영",
   "accessCodes.domain.tenant.help": "운영 시작",
   "accessCodes.level.view": "조회",
