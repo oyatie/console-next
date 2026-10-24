@@ -92,6 +92,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
 
   await expect(admin.getByRole("main")).toContainText(`${koDate(kstDate(0))}에 퇴직했습니다`);
   await expect(admin.getByRole("button", { name: "퇴직 건 보기" }).first()).toBeVisible();
+  await expectAccessible(admin, "J5: exited card");
 
   // 2. The executive confirms as HQ, straight from Home's exit queue.
   await exec.goto("/");
@@ -275,28 +276,29 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   c.done("J5 schedule an exit");
   const scheduledRecord = new URL(admin.url()).pathname;
   await withLifecycleDate(kstDate(5), async () => {
-    // Pages keep what they read for 30 s: reload (a few times at most; the session refresh is rate-limited).
+    // The moved apply clock runs ahead of the business date: a state production never reaches, so it is read on
+    // its own page and never audited on the admin's.
+    const p = await admin.context().newPage();
+    await p.goto(scheduledRecord);
+    await routeReady(p);
     await expect(async () => {
-      // Reload only a loaded page: a reload during its session refresh replays the rotated token, which signs out.
-      await expect(head(admin, "날짜퇴직")).toBeVisible();
-      await admin.reload();
-      await routeReady(admin);
-      await expect(exitPanel(admin)).toBeVisible({ timeout: 1_000 });
-      await expect(exitPanel(admin)).not.toContainText("효력 예정", { timeout: 1_000 });
+      await expect(head(p, "날짜퇴직")).toBeVisible();
+      await p.reload();
+      await routeReady(p);
+      await expect(exitPanel(p)).toBeVisible({ timeout: 1_000 });
+      await expect(exitPanel(p)).not.toContainText("효력 예정", { timeout: 1_000 });
     }).toPass({ intervals: [2_000, 3_000, 5_000], timeout: 30_000 });
-    const appliedCaseHref = await exitPanel(admin).getByRole("link", { name: "퇴직 건 열기" }).getAttribute("href");
+    const appliedCaseHref = await exitPanel(p).getByRole("link", { name: "퇴직 건 열기" }).getAttribute("href");
     const caseId = appliedCaseHref!.split("/").at(-1);
-    const read = admin.waitForResponse((r) => r.request().method() === "GET" && new URL(r.url()).pathname === `/api/v1/hr/exit-cases/${caseId}`);
-    await go(admin, appliedCaseHref!);
+    const read = p.waitForResponse((r) => r.request().method() === "GET" && new URL(r.url()).pathname === `/api/v1/hr/exit-cases/${caseId}`);
+    await go(p, appliedCaseHref!);
     expect((await read).status()).toBe(200);
     expect(await (await read).json()).toMatchObject({ exit_event_state: "APPLIED" });
-    await go(admin, scheduledRecord);
-    await openHistory(admin);
-    await expect(admin.getByRole("region", { name: "인사 이력" })).toContainText(`날짜퇴직이 ${koDate(kstDate(5))}자로 퇴직했습니다 (예약: `);
+    await go(p, scheduledRecord);
+    await openHistory(p);
+    await expect(p.getByRole("region", { name: "인사 이력" })).toContainText(`날짜퇴직이 ${koDate(kstDate(5))}자로 퇴직했습니다 (예약: `);
+    await p.close();
   });
-  await openCard(admin);
-  await expect(exitPanel(admin)).not.toContainText("효력 예정");
-  await expectAccessible(admin, "J5: a scheduled exit applied on its date");
 
   // Phone width: the exit list (filter and total) and an exit case page never scroll sideways.
   await atPhoneWidth(admin, async () => {
