@@ -33,7 +33,7 @@ async fn void_registration_serializes_with_workplace_creation(pool: PgPool) {
         Some("SET test.registration_void_barrier = 'on'"),
     )
     .await;
-    let reg = create_unattached_registration(&creator, "000-81-00010").await;
+    let reg = create_unattached_registration(&creator, "000-81-00014").await;
     let reg_id = Uuid::parse_str(&reg).unwrap();
     let entity: Uuid =
         sqlx::query_scalar("SELECT legal_entity_id FROM business_registrations WHERE id = $1")

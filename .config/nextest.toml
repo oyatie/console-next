@@ -30,6 +30,11 @@ test-group = 'cluster-global'
 # Hosted: no flake-hide retries. Slow timeout generous for PG.
 slow-timeout = { period = "120s", terminate-after = 3 }
 
+# These exercise wall-clock latency limits; concurrent migrations distort the measured request.
+[[profile.ci.overrides]]
+filter = 'binary(action_inbox_api) + (binary(inbox_journey) & test(two_thousand_product_created_people))'
+threads-required = "num-test-threads"
+
 # census_binds_to_an_executed_database is EIGHT sequential migrate+enforce
 # cycles against a Docker PostgreSQL in one test -- the mutation matrix for the
 # canonical-enforcement census. Measured 263s locally and it hit the 360s

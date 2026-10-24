@@ -105,6 +105,9 @@ both local proof and the hosted service. `prepare-db.mjs` creates fresh credenti
 masks them and exports the test URLs without printing fixture/request contents.
 The dedicated SQLx admin role and startup marker are derived from migration 0196;
 connections carry its explicit test marker, preserving the production refusal.
+Apalis owner/runtime/admin URLs instead target `apalisContractDatabase` from the
+same config. Bootstrap creates that isolated `*_contract` database owned by
+`console_app`; its destructive schema contract never uses the SQLx control database.
 
 ## Caches, artifacts and public data
 
@@ -118,8 +121,10 @@ Both actionlint jobs use the [pinned release binary](https://github.com/rhysd/ac
 so workflow linting needs only GitHub release downloads, without Docker Hub.
 `scripts/ci/egress.mjs` is the per-tool endpoint map. Every block-mode job has
 its own explicit list; `scripts/ci-egress.test.mjs` resolves its actions, commands
-and indirect CI script tools against that map and rejects both missing and unused
-entries. The planner's `cargo metadata` and archived nextest jobs still need
+and the subprocesses in invoked Node entrypoints and npm scripts against that map,
+rejecting both missing and unused entries. `npm run check` reaches Cargo through
+`check-reach.mjs`; its hosted-failure fixture prevents that dependency being dropped.
+The planner's `cargo metadata`, web checks and archived nextest jobs still need
 `static.rust-lang.org` for rustup on a fresh runner. Node setup includes its
 [direct-download fallback](https://github.com/actions/setup-node/blob/820762786026740c76f36085b0efc47a31fe5020/src/distributions/official_builds/official_builds.ts).
 Sccache uses the local `SCCACHE_DIR`; its remote transfers use `actions/cache`.
@@ -229,6 +234,22 @@ a full compiler-cache reserve, artifacts and peak extraction, then refuses more
 than the provisional 57 GiB or less than 3 GiB free before publication. The disk-budget workflow
 step is mandatory and regression-tested. Extraction jobs need the shared archive's
 expanded size too; their hosted disk receipts must pass before the check is enabled.
+Archive-only jobs perform that free-space check before extraction without deleting
+SDKs. In run 40068047426, DB partition 1 lost runner communication during SDK
+cleanup, before credentials, bootstrap or tests; GitHub's check annotation confirms
+the runner loss, rather than a test hang or job timeout.
+
+Archive tests resolve executable and fixture paths from runtime Cargo environment
+variables, as required by [nextest relocation](https://nexte.st/docs/ci-features/archiving/).
+Wall-clock inbox assertions reserve all nextest slots so concurrent migrations
+cannot distort their measurements. The 2,000-person fixture still creates every
+person through HTTP, with bounded concurrency derived from its pool's existing
+source cap; the 300 ms read assertion and 360-second test ceiling are unchanged.
+Once setup completed locally, that assertion exposed an empty account-work source
+expanding the entire effective-access catalog. It now first checks its own grant
+and passkey predicates, returning an empty page when neither can contribute work.
+The DB regression removes catalog read privileges and proves an empty source
+still succeeds; scheduled notices and personal security tasks retain their journey tests.
 
 ## Repository file policy
 
@@ -430,3 +451,76 @@ Relocation also updates these Rust-side readers/documentation outside the initia
 
 Handoff amendments outside the repository: `units/cicd/briefs/CI-1.md` and
 `units/cicd/ADR-CICD-enterprise.md` align the brief and ADR with CI-TIERS.
+
+## Round 13 hosted failures
+
+Run [40068047426](https://github.com/oyatie/console-next/actions/runs/40068047426)
+at `79e3b7ba` supplied the failure cases. The relevant product tests and migrations
+are byte-identical to `public/dev` (`df5feeb`), confirmed with `git diff`.
+Local negative controls reproduced the fixture classifier failure, leaked trigger
+EXECUTE permission, Apalis database guard, relocated gate executable failure,
+JSON refusal mismatch and the 360-second inbox setup timeout. An explicit
+nanosecond timestamp reproduces the Linux/PostgreSQL precision mismatch on macOS.
+New controls also fail before the npm script egress discovery, isolated Apalis
+URL preparation, archive-only SDK cleanup removal and empty account-source fixes.
+The hosted governance case passed locally in isolation; its CI profile now reserves
+all test slots, retaining its production source timeout.
+
+Round 13 edits outside the workflow/scripts/docs slice (all permitted by the brief):
+
+- `backend/app/src/action_inbox/sources/grants.rs`
+- `backend/app/src/http/redact.rs`
+- `backend/app/src/http/redact_tests.rs`
+- `backend/app/tests/dispatch_pipeline_api.rs`
+- `backend/app/tests/entity_registration_void/concurrency.rs`
+- `backend/app/tests/entity_registration_void/replay.rs`
+- `backend/app/tests/inbox_journey.rs`
+- `backend/ci/gates/file-size/tests/ratchet.rs`
+- `backend/ci/gates/vendor-lockin/tests/gate_detects_violation.rs`
+- `backend/crates/entity/adapter-postgres/tests/registration_end.rs`
+- `backend/crates/entity/domain/src/registration_classification.rs`
+- `backend/crates/platform/access/src/grants_store/tests/revisions.rs`
+- `backend/crates/platform/db/migrations/20261024080000000_revoke_import_rollback_trigger_execute.sql`
+- `e2e/refusal-contract.spec.ts`
+- `scripts/check-license-headers.mjs`
+- `scripts/check-license-headers.test.ts`
+
+The direct-dependent sweep also reached a recruiting journey absent from the lost
+hosted partition. Its preflight refusal lost `checks` and `publishable` in the
+shared error envelope. The middleware now preserves typed 4xx extension fields;
+5xx responses retain their existing generic message and outer-field stripping.
+The base fails both the journey and the new focused redaction regression.
+
+`e2e/refusal-contract.spec.ts` covers the same refusal through a browser-created
+session and the real HTTP stack, then reads the unchanged draft. The verifier
+runs it with the full-feature backend in Chromium and Firefox.
+
+The licence-header CLI honors the planner's existing `CI_BASE_SHA`, with an
+explicit CLI argument taking precedence and the local `dev` fallback retained
+when the plan has no base. Its CLI regression fails before this change; the
+complete `npm run check` now passes even when a checkout retains an unrelated
+private `dev` ref. No baseline or lint is relaxed.
+
+Round 13 local proof includes 3,177 distinct passing cases across an 81-crate
+sweep of touched crates and direct dependents, 41 relocated gate tests and 17
+tests through the pinned-image bootstrap. The broad sweep found the recruiting
+failure above; the rebuilt application suite proves its fix. `npm run check`
+passes 2,094 Vitest cases and 109 Node cases; format, all three workflow Clippy
+sets, workspace test compilation, all 13 discovered code gates and both ratchets
+pass. No skip, quarantine, retry policy or performance budget was added.
+
+Latency evidence needs the hosted merge-result proof: the complete 2,000-person
+journey passed in 193 seconds, but a later application sweep passed 669/670 cases
+with that journey's p95 at 400 ms under shared-host load. A controlled comparison
+against the same retained 2,000-person database exceeded the unchanged 300 ms
+assertion on the base (371 ms) and passed on the tip (266 ms). An experimental
+`ANALYZE` made latency worse and was removed. The verifier must specifically
+confirm this journey and governance on the isolated hosted runner, alongside the
+new refusal E2E in both browsers; the shared Mac is not the release gate.
+
+Temporary profiling edits to `backend/app/src/action_inbox.rs` and
+`backend/crates/hr/adapter-postgres/src/directory/register_review.rs` were restored,
+and `backend/app/tests/inbox_profile_ci1.rs` was removed. The lane's local
+`db.env` admin credential was rotated after a diagnostic printed its temporary
+URI; both admin URLs were updated and verified without changing runtime or owner
+credentials. No credential or diagnostic fixture was added to the repository.

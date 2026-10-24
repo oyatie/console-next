@@ -14,14 +14,26 @@ pub(crate) async fn page(
     principal: &Principal,
     query: ActionInboxSourceQuery,
 ) -> Result<ActionInboxSourcePage, KernelError> {
+    let org = principal.org_id;
+    let user = principal.user_id;
+    // Most accounts have no notices; do not expand every effective permission for an empty source.
+    let has_work = console_platform_db::with_org_conn::<_, _, console_platform_db::DbError>(pool, org, move |tx| Box::pin(async move {
+        Ok(sqlx::query_scalar::<_, bool>("SELECT EXISTS (SELECT 1 FROM access_grants WHERE org_id=$1 AND account_id=$2 AND status='ACTIVE' AND (valid_to IS NULL OR valid_to>now())) OR \
+            ((SELECT count(*) FROM auth_webauthn_credentials WHERE org_id=$1 AND user_id=$2)=1 AND NOT EXISTS (SELECT 1 FROM tenant_phase WHERE org_id=$1 AND phase='SETUP'))")
+            .bind(org.as_uuid()).bind(user.as_uuid()).fetch_one(tx.as_mut()).await?)
+    })).await.map_err(|e| {
+        tracing::error!(error = ?e, "account inbox availability failed");
+        KernelError::internal("failed to load account work")
+    })?;
+    if !has_work {
+        return Ok(super::super::empty_source_page());
+    }
     let mut access = effective::me(&AccessService::new(pool.clone(), None), principal.clone())
         .await
         .map_err(|e| {
             tracing::error!(error = ?e, "grant inbox source failed");
             KernelError::internal("failed to load grant notices")
         })?;
-    let org = principal.org_id;
-    let user = principal.user_id;
     let scopes: Vec<_> = access["entries"]
         .as_array()
         .into_iter()
@@ -143,6 +155,39 @@ mod tests {
     };
     use serde_json::json;
     use uuid::Uuid;
+
+    #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+    async fn no_account_work_does_not_expand_the_effective_access_catalog(pool: sqlx::PgPool) {
+        let org = OrgId::new();
+        let user = seed_org_and_super_admin(&pool, *org.as_uuid(), "empty-account-work").await;
+        sqlx::query("REVOKE SELECT ON access_roles FROM console_rt")
+            .execute(&pool)
+            .await
+            .unwrap();
+        let runtime = runtime_role_pool(&pool).await;
+        let principal = Principal::new(user, org, BTreeSet::new(), BranchScope::All);
+        let now = sqlx::query_scalar("SELECT clock_timestamp()")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let page = page(
+            &runtime,
+            &principal,
+            ActionInboxSourceQuery {
+                filter: Default::default(),
+                require_exact_total: false,
+                now,
+                as_of: now,
+                after: None,
+                limit: 20,
+            },
+        )
+        .await
+        .expect("an empty account source needs no effective-access expansion");
+        assert!(page.items.is_empty());
+        assert_eq!(page.total, 0);
+        assert!(page.total_is_exact);
+    }
 
     #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
     async fn a_scheduled_scoped_hr_grant_discloses_its_name_without_org_read_before_confirmation(

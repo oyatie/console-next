@@ -330,6 +330,10 @@ test("service preparation exports guarded URLs and refuses invalid ports", async
     assert.equal(url.searchParams.get("options"), `-c ${contract.key}=${contract.marker}`);
     assert.ok(result.stdout.includes("::add-mask::"));
     assert.notEqual(values.CONSOLE_TEST_RUNTIME_PASSWORD, values.CONSOLE_TEST_FORCE_PASSWORD);
+    const apalis = ["ADMIN", "OWNER", "RUNTIME"].map((role) => new URL(values[`CONSOLE_APALIS_${role}_DATABASE_URL`]));
+    assert.ok(apalis.every((value) => value.pathname.endsWith("_contract")));
+    assert.equal(new Set(apalis.map((value) => value.pathname)).size, 1);
+    assert.notEqual(apalis[0].pathname, url.pathname, "destructive Apalis tests must not share the SQLx database");
     assert.notEqual(spawnSync("node", ["scripts/ci/prepare-db.mjs"], { encoding: "utf8", env: { ...env, PG_PORT: "99999" } }).status, 0);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

@@ -43,7 +43,7 @@ async fn add_revision(store: &PgEntityStore, actor: &Actor, registration: Uuid, 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn preview_matches_void_and_hides_missing_voided_and_out_of_scope_records(owner: PgPool) {
     let (store, actor) = tenant(&owner, ORG, "registration-preview").await;
-    let mut input = corporation("주식회사 가나", "130111-0006246");
+    let mut input = corporation("주식회사 가나", "000211-0006241");
     input.vat_unit_mode = Some("PER_WORKPLACE".into());
     let entity = store
         .create_entity(&cmd(&actor), input)

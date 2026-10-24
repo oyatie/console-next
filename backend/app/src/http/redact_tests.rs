@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used)]
 use super::*;
+use serde_json::json;
 
 fn run(status: StatusCode, json: bool, body: &str) -> (StatusCode, Value) {
     let rewritten = rewrite(status, (json, false), body.as_bytes(), || "t-1".to_owned()).unwrap();
@@ -133,4 +134,16 @@ async fn an_existing_reference_is_reused_and_localized_as_problem_json() {
     assert_eq!(body["error"]["support_ref"], reference);
     assert_ne!(body["error"]["message"], "forbidden");
     assert_eq!(body["title"], body["error"]["message"]);
+}
+
+#[test]
+fn client_refusal_keeps_its_typed_preflight_fields() {
+    let body = json!({"error":{"code":"PREFLIGHT_FAILED","message":"publish preflight failed"},
+        "checks":[{"key":"exposure_attested","ok":false}], "publishable":false});
+    let (_, refused) = run(StatusCode::UNPROCESSABLE_ENTITY, true, &body.to_string());
+    assert_eq!(refused, body);
+    let (_, fault) = run(StatusCode::INTERNAL_SERVER_ERROR, true, &body.to_string());
+    assert!(fault.get("checks").is_none());
+    assert!(fault.get("publishable").is_none());
+    assert_eq!(fault["error"]["message"], "internal server error");
 }
