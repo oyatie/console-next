@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium, expect, type Browser, type BrowserContext, type Page, type Request } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
-import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
 import { fixtureUrl } from "./registration-void.fixture";
 
 export const previewPath = "/api/v1/business-registrations/reg-1/end-options";
@@ -29,8 +29,6 @@ export function registrationVoidBrowser() {
   let catalog: unknown[];
   let submit: () => Promise<Reply | { status: 204 }>;
 
-  // Each test is several mount/open/confirm steps whose waits can each take seconds on a loaded CI runner.
-  vi.setConfig({ testTimeout: 15_000 });
   beforeAll(async () => {
     server = await createServer({
       root: resolve("apps/web"), configFile: resolve("apps/web/vite.config.ts"),
