@@ -260,7 +260,7 @@ fn project_item(item: ActionInboxSourceItem, now: OffsetDateTime) -> ActionInbox
     ActionInboxItem {
         context: item.context,
         lane: match item.kind.as_str() {
-            "org_change_waiting" => "waiting",
+            "org_change_waiting" | "identifier_correction_waiting" => "waiting",
             "org_change_scheduled" => "scheduled",
             _ => "turn",
         },

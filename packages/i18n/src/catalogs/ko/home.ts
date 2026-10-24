@@ -1,5 +1,6 @@
 // Korean source for `home.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koHome = {
+  "home.inbox.correction.decide": "정정 요청 검토",
   "home.requests.review": "요청 검토",
   "home.inbox.title": "업무함",
   "home.inbox.filter.turn": "내 차례",

@@ -33,12 +33,31 @@ async fn correction_inbox_is_my_work_and_moves_from_reviewer_to_requester(owner:
     let (status, receipt, _) = request(&owner, &mut s).await;
     assert_eq!(status, StatusCode::ACCEPTED, "{receipt}");
     let id: Uuid = receipt["exception_id"].as_str().unwrap().parse().unwrap();
-    for token in [&s.ops.token, &s.member.token, &s.contributor.token] {
+    let waiting = inbox(&s, &s.ops.token).await;
+    assert_eq!(
+        waiting.len(),
+        1,
+        "the requester tracks the pending request on Home"
+    );
+    assert_eq!(waiting[0]["kind"], "identifier_correction_waiting");
+    assert_eq!(waiting[0]["lane"], "waiting");
+    assert_eq!(waiting[0]["context"]["correction"]["status"], "PENDING");
+    let (_, page) = get(&s, &format!("{INBOX}?filter=waiting"), &s.ops.token).await;
+    assert!(
+        page["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["id"] == waiting[0]["id"])
+    );
+    for token in [&s.member.token, &s.contributor.token] {
         assert!(inbox(&s, token).await.is_empty());
     }
     let rows = inbox(&s, &s.approver.token).await;
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0]["kind"], "identifier_correction_decide");
+    assert_eq!(rows[0]["lane"], "turn");
+    assert_eq!(rows[0]["context"]["correction"]["status"], "PENDING");
     changes(&owner, id, "exception.request").await;
     assert_eq!(
         rows[0]["links"][0],
@@ -80,6 +99,8 @@ async fn correction_inbox_is_my_work_and_moves_from_reviewer_to_requester(owner:
     let rows = inbox(&s, &s.ops.token).await;
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0]["kind"], "identifier_correction_apply");
+    assert_eq!(rows[0]["lane"], "turn");
+    assert_eq!(rows[0]["context"]["correction"]["status"], "APPROVED");
     let (_, detail) = get(
         &s,
         &format!("/api/v1/entity-identifier-corrections/{id}"),

@@ -140,7 +140,8 @@ impl ActionInboxSourcePort for ViewPort<'_> {
     ) -> crate::ActionInboxSourceFuture<'_> {
         use crate::ActionInboxSource as S;
         let included = match self.filter {
-            InboxFilter::Waiting | InboxFilter::Scheduled => source == S::OrgChange,
+            InboxFilter::Waiting => matches!(source, S::OrgChange | S::EntityCorrections),
+            InboxFilter::Scheduled => source == S::OrgChange,
             InboxFilter::Failures => source == S::HrLifecycle,
             InboxFilter::Deadlines => !matches!(
                 source,
@@ -242,9 +243,13 @@ mod tests {
             S::HrContract,
             S::PeriodUnlock,
             S::SupportAccess,
+            S::EntityCorrections,
         ];
         for (filter, expected) in [
-            (InboxFilter::Waiting, &[S::OrgChange][..]),
+            (
+                InboxFilter::Waiting,
+                &[S::OrgChange, S::EntityCorrections][..],
+            ),
             (InboxFilter::Scheduled, &[S::OrgChange][..]),
             (InboxFilter::Failures, &[S::HrLifecycle][..]),
             (InboxFilter::Deadlines, &deadlines[..]),

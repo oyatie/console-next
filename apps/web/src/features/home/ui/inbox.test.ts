@@ -288,3 +288,19 @@ test("a failed support-approval source keeps its own retry label", () => {
   expect(markup).toContain(t("home.inbox.unavailable", { part: t("home.part.support") }));
   expect(markup).toContain("support-reference");
 });
+
+test.each([
+  ["identifier_correction_waiting", "PENDING", "정정 요청 · 사후 검토 확인", "waiting"],
+  ["identifier_correction_decide", "PENDING", "정정 요청 검토", "turn"],
+  ["identifier_correction_apply", "APPROVED", "승인된 정정 적용", "turn"],
+  ["identifier_correction_review", "RECORDED", "사후 검토 기록", "turn"],
+] as const)("Home renders labelled correction context and its record verb for %s", (kind, status, verb, lane) => {
+  view.list.data = { pages: [page([item("correction", { kind, lane, title: "번호검토주식회사", who: "김요청", links: [{ kind: "identifier_correction", id: "case" }], context: { correction: { status } } })])] };
+  const markup = html();
+  expect(markup).toContain("번호검토주식회사");
+  expect(markup).toContain("요청자: 김요청");
+  expect(markup).toContain("처리 상태: " + t(`entityRecord.corrections.status.${status}`));
+  expect(markup).toContain(verb);
+  expect(markup).toContain('href="/org/entities?correction=case#identifier-corrections"');
+  expect(markup).not.toContain(`<strong>${t("home.inbox.unknown")}</strong>`);
+});

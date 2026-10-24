@@ -27,6 +27,10 @@ properties:
     - support
     - payroll
     - governance
+    - identifier_correction_waiting
+    - identifier_correction_decide
+    - identifier_correction_apply
+    - identifier_correction_review
     - org_change
     - org_change_approve
     - org_change_draft
@@ -104,6 +108,13 @@ properties:
     type: object
     description: Source-owned facts for the row's command and informed grant confirmation.
     properties:
+      correction:
+        type: object
+        required: [status]
+        properties:
+          status:
+            type: string
+            enum: [PENDING, APPROVED, RECORDED]
       unlock:
         type: object
         required: [domain, periodStart, periodEnd, requester, reason_code]

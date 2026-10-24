@@ -18,6 +18,7 @@ pub(super) fn project(
     let support_work = sources.support_can_approve.get().copied().unwrap_or(false);
     response["has_work"] = serde_json::json!(
         [
+            F::LegalEntityManage,
             F::OrgChangeRead,
             F::OrgChangeDraft,
             F::OrgChangeApprove,
@@ -36,6 +37,10 @@ pub(super) fn project(
         .any(can)
             || support_work
     );
+    let correction_work = sources.principal.branch_scope == console_kernel_core::BranchScope::All
+        && [F::LegalEntityManage, F::OrgChangeApply]
+            .into_iter()
+            .any(can);
     let org_work = can(F::OrgChangeRead);
     let people_work = [
         F::EmployeeDirectoryRead,
@@ -49,10 +54,16 @@ pub(super) fn project(
     .any(can);
     response["available_filters"] = serde_json::json!(
         [
-            ("turn", org_work || people_work || support_work),
-            ("waiting", org_work),
+            (
+                "turn",
+                org_work || people_work || support_work || correction_work
+            ),
+            ("waiting", org_work || correction_work),
             ("scheduled", org_work),
-            ("deadlines", org_work || people_work || support_work),
+            (
+                "deadlines",
+                org_work || people_work || support_work || correction_work
+            ),
             (
                 "failures",
                 console_platform_authz::authorize_org_wide(

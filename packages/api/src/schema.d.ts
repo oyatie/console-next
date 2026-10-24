@@ -14399,6 +14399,10 @@ export interface components {
             days_remaining: number | null;
             /** @description Source-owned facts for the row's command and informed grant confirmation. */
             context?: {
+                correction?: {
+                    /** @enum {string} */
+                    status: "PENDING" | "APPROVED" | "RECORDED";
+                };
                 unlock?: {
                     domain: string;
                     periodStart: string;

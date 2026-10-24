@@ -1,6 +1,5 @@
-use crate::workbench::SourceFailure as WorkbenchSourceFailure;
 use axum::response::{IntoResponse, Response};
-use console_kernel_core::{ErrorKind, KernelError};
+use console_kernel_core::KernelError;
 
 use crate::http::error::{FieldError, MappedKernelError, error_response};
 
@@ -27,18 +26,6 @@ impl From<KernelError> for InboxError {
 impl IntoResponse for InboxError {
     fn into_response(self) -> Response {
         error_response(self.status, self.code, self.message, self.errors)
-    }
-}
-
-pub(super) fn workbench_source_error(error: KernelError) -> WorkbenchSourceFailure {
-    if error.kind == ErrorKind::Forbidden {
-        WorkbenchSourceFailure::Denied {
-            code: "action_inbox_access_denied",
-        }
-    } else {
-        WorkbenchSourceFailure::Unavailable {
-            code: "action_inbox_unavailable",
-        }
     }
 }
 

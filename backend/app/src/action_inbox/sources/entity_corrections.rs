@@ -57,7 +57,9 @@ pub(crate) async fn page(
             let holds = authorize_capability(&p, Action::new(Feature::OrgChangeApply)).is_ok();
             let mut items = Vec::new();
             for (case, fact) in cases.into_iter().zip(eligibility) {
-                let kind = if case.status == "APPROVED" && case.requested_by == *p.user_id.as_uuid()
+                let kind = if case.status == "PENDING" && case.requested_by == *p.user_id.as_uuid() {
+                    "identifier_correction_waiting"
+                } else if case.status == "APPROVED" && case.requested_by == *p.user_id.as_uuid()
                 {
                     "identifier_correction_apply"
                 } else if holds && fact.eligible.contains(p.user_id.as_uuid()) {
@@ -72,7 +74,7 @@ pub(crate) async fn page(
                     continue;
                 };
                 items.push(ActionInboxSourceItem {
-                    context: None,
+                    context: Some(serde_json::json!({"correction": {"status": case.status}})),
                     id: format!("identifier_correction:{}", case.id),
                     kind: kind.into(),
                     ref_code: String::new(),
