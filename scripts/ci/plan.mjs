@@ -102,7 +102,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const base = event.pull_request?.base.sha ?? event.merge_group?.base_sha ?? event.before;
   const force = !base || /^0+$/.test(base);
   const files = force ? [] : execFileSync("git", ["diff", "--name-only", "-z", base, "HEAD"], { encoding: "utf8" }).split("\0").filter(Boolean);
-  const cargo = JSON.parse(execFileSync("cargo", ["metadata", "--manifest-path", "backend/Cargo.toml", "--format-version", "1", "--no-deps", "--locked"], { encoding: "utf8" })).packages;
+  const cargo = JSON.parse(execFileSync("cargo", ["metadata", "--manifest-path", "backend/Cargo.toml", "--format-version", "1", "--no-deps", "--locked"], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })).packages;
   const npm = JSON.parse(readFileSync("package.json", "utf8")).workspaces.flatMap((glob) => {
     const parent = glob.replace(/\/\*$/, "");
     return readdirSync(parent, { withFileTypes: true }).filter((d) => d.isDirectory()).flatMap((d) => {

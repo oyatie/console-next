@@ -44,11 +44,11 @@ test("shared inputs and release units force full proof; unknown paths fail safe"
   assert.equal(affected(["docs/ci.md"], packages, [], "/repo", true).full, true);
 });
 
-test("merge-group CLI uses its base SHA for affected docs-only fast proof", () => {
+test("merge-group CLI handles metadata above 1 MiB and uses its base SHA for docs-only proof", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-merge-plan-"));
   try {
     writeFileSync(path.join(dir, "event.json"), JSON.stringify({ merge_group: { base_sha: "base-sha" } }));
-    writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nprocess.stdout.write(${JSON.stringify(JSON.stringify({ packages }))});\n`, { mode: 0o700 });
+    writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nprocess.stdout.write(JSON.stringify({packages:${JSON.stringify(packages)},padding:'x'.repeat(2*1024*1024)}));\n`, { mode: 0o700 });
     writeFileSync(path.join(dir, "git"), `#!${process.execPath}\nprocess.stdout.write('docs/ci.md\\0');\n`, { mode: 0o700 });
     const output = path.join(dir, "outputs");
     const result = spawnSync(process.execPath, ["scripts/ci/plan.mjs"], { encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, GITHUB_EVENT_PATH: path.join(dir, "event.json"), GITHUB_EVENT_NAME: "merge_group", GITHUB_OUTPUT: output } });
@@ -126,18 +126,23 @@ test("all actions are allowed and SHA pinned; every job is bounded and hardened"
       assert.match(job.steps[0].uses, /^step-security\/harden-runner@[a-f0-9]{40}$/);
       assert.equal(job.steps[0].with["egress-policy"], "block", `${file}:${name}`);
       assert.ok(job.steps[0].with["allowed-endpoints"]);
-      for (const step of job.steps) if (step.uses) assert.match(step.uses, /^(actions\/[a-z/-]+|step-security\/harden-runner)@[a-f0-9]{40}$/);
+      for (const step of job.steps) if (step.uses) assert.match(step.uses, /^(actions\/[a-z/-]+|github\/codeql-action\/[a-z-]+|step-security\/harden-runner)@[a-f0-9]{40}$/);
     }
   }
 });
 
-test("cache writes are dev-push only; uploads have a preceding successful personal-data scan", () => {
+test("cache writes are trusted dev runs only; uploads follow a successful personal-data scan", () => {
   const wf = workflow();
   for (const [name, job] of Object.entries(wf.jobs)) {
     for (const [i, step] of job.steps.entries()) {
       if (/^actions\/cache\/save@/.test(step.uses ?? "")) {
         assert.match(step.if, /github.event_name == 'push'/);
         assert.match(step.if, /github.ref == 'refs\/heads\/dev'/);
+        if (step.with.path === ".cache/e2e-timings") {
+          assert.match(step.if, /github.event_name == 'workflow_dispatch'/);
+          assert.match(step.with.key, /github.run_id/);
+          assert.match(step.with.key, /github.run_attempt/);
+        } else assert.doesNotMatch(step.if, /workflow_dispatch/);
       }
       if (/^actions\/(upload-artifact|cache\/save)@/.test(step.uses ?? "")) {
         const scan = job.steps.slice(0, i).findLast((s) => s.id === "privacy");
