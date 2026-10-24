@@ -55,6 +55,7 @@ async fn requester_cannot_approve_even_with_another_holder_present(pool: PgPool)
 async fn young_or_unnoticed_holder_cannot_approve(pool: PgPool) {
     let (h, actor, target, employee) = fixture(&pool).await;
     let young = seed_user(&pool, "Young holder", &["SUPER_ADMIN"], None).await;
+    seed_employee_link(&pool, young, "K1-YOUNG", "Young holder").await;
     let (_, body) = request_unlink(&h, actor, target, None).await;
     let id = body["account_link"]["request_id"]
         .as_str()
