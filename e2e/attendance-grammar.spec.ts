@@ -28,7 +28,11 @@ test("grammar refusals explain the input and preserve an empty record", { tag: "
   expect(rest, "a planned past rest day from the month payload").toBeTruthy();
   await cellOf(admin, "윤하준", rest!.date).click();
   await pasteText(admin, "휴");
+  await expect(cellOf(admin, "윤하준", rest!.date)).toHaveAttribute("data-look", "refused");
   await expect(admin.getByText("이 날은 이미 휴무입니다", { exact: false }).first()).toBeVisible();
+  await pasteText(admin, "9-18");
+  await expect(cellOf(admin, "윤하준", rest!.date)).toHaveAttribute("data-look", "draft");
+  await pasteText(admin, "휴");
   const preview = await api("/attendance/entries/preview", "POST", { cells: [{ employee_id: person, work_date: rest!.date, value: "휴" }] });
   expect(preview.ok()).toBe(true);
   expect((await preview.json()).cells[0]).toMatchObject({ status: "REFUSED", code: "already_day_off" });
@@ -53,6 +57,25 @@ test("grammar refusals explain the input and preserve an empty record", { tag: "
     await expect(admin.getByText(copy!, { exact: false }).first()).toBeVisible();
   }
   expect((await (await api(`/attendance/people/${person}/month?month=${month}`)).json()).history).toHaveLength(0);
+
+  // The day row and its save dock use the same live plan, including before a server preview.
+  await go(admin, `/attendance?tab=day&date=${date}`);
+  const dayInput = admin.getByRole("textbox", { name: /^윤하준 기록/ });
+  await dayInput.fill("휴");
+  await expect(dayInput).toHaveAttribute("aria-invalid", "true");
+  await expect(admin.getByText("이 날의 근무 일정과 다른 값입니다", { exact: false }).first()).toBeVisible();
+  const dayPreviews: string[] = [];
+  admin.on("request", request => {
+    if (new URL(request.url()).pathname.endsWith("/attendance/entries/preview")) dayPreviews.push(request.url());
+  });
+  await admin.getByRole("button", { name: "저장", exact: true }).click();
+  const daySave = admin.getByRole("complementary", { name: /저장 · 초안 1칸/ });
+  await expect(daySave.getByText("이 날의 근무 일정과 다른 값입니다", { exact: false })).toBeVisible();
+  await expect(daySave.getByRole("list", { name: "저장하지 않는 칸 1 · 초안으로 남습니다" })).toBeVisible();
+  expect(dayPreviews).toEqual([]);
+  await daySave.getByRole("button", { name: "닫기", exact: true }).last().click();
+  await dayInput.fill("9-18");
+  await expect(dayInput).not.toHaveAttribute("aria-invalid", "true");
 
   // A correction uses the same current rest-day plan as the grid.
   const recorded = await api("/attendance/entries", "POST", {

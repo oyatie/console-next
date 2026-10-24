@@ -28,6 +28,7 @@ import type { AssignTarget } from "./assign-sheet";
 import { UndoBatchSheet } from "./undo-batch-sheet";
 import { useDrafts } from "./use-drafts";
 import { useOnline } from "./use-online";
+import { usePlanKinds } from "./use-plan-kinds";
 import s from "./records.module.css";
 
 const route = getRouteApi("/app/attendance");
@@ -66,10 +67,7 @@ export function MonthTab() {
   const go = (patch: Record<string, unknown>) => void navigate({ search: (x) => ({ ...x, ...patch }) });
 
   const drafts = Object.entries(store.drafts);
-  const kindOf = (key: string) => {
-    const { employee_id, work_date } = splitKey(key);
-    return rows.find((r) => r.employee_id === employee_id)?.cells[days.indexOf(work_date)]?.plan_kind;
-  };
+  const kindOf = usePlanKinds(rows, days);
   const bad = drafts.filter(([k, d]) => !draftState(d, kindOf(k)).ok);
   const size = rectSize(rectIn(range, { rows: rows.map((r) => r.employee_id), cols: days }));
   const focusKey = range ? cellKey(range.focus.row, range.focus.col) : null;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
@@ -12,8 +12,8 @@ import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { EmptyState } from "../../../ui/empty-state";
 import { ItemList } from "../../../ui/item-list/item-list";
 import { addDays } from "../../../ui/date/days";
-import { dayBoardQuery, type DayBoard } from "../api";
-import { baseOf, cellKey, fillSchedule, ledgerParts, splitKey } from "../domain/grid";
+import { dayBoardQuery } from "../api";
+import { baseOf, cellKey, fillSchedule, ledgerParts } from "../domain/grid";
 import { closed, pageState } from "../domain/month-state";
 import { dateText, refusalText } from "../present";
 import { DayDetail } from "./day-detail";
@@ -26,6 +26,7 @@ import { PersonScheduleSheet } from "./person-schedule-sheet";
 import type { AssignTarget } from "./assign-sheet";
 import { useDrafts } from "./use-drafts";
 import { useOnline } from "./use-online";
+import { usePlanKinds } from "./use-plan-kinds";
 import s from "./records.module.css";
 
 const route = getRouteApi("/app/attendance");
@@ -40,6 +41,8 @@ export function DayTab() {
   const navigate = route.useNavigate();
   const date = search.date ?? addDays(todayKst(), -1);
   const board = useQuery(dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled));
+  const rows = useMemo(() => board.data?.groups.flatMap(g => g.rows) ?? [], [board.data]);
+  const kindOf = usePlanKinds(rows, date);
   const store = useDrafts(`day:${date}`);
   const online = useOnline();
   const [save, setSave] = useState(false);
@@ -49,11 +52,6 @@ export function DayTab() {
   const feedback = [note, store.problem && t(`attendanceRecords.drafts.${store.problem}`)].filter(Boolean).join(" · ");
   const go = (patch: Record<string, unknown>) => void navigate({ search: (x) => ({ ...x, ...patch }) });
   const drafts = Object.keys(store.drafts).length;
-  const names = (b?: DayBoard) => (b?.groups ?? []).flatMap((g) => g.rows.map((r) => ({ employee_id: r.employee_id, name: r.name })));
-  const kindOf = (key: string) => {
-    const { employee_id, work_date } = splitKey(key);
-    return work_date === date ? board.data?.groups.flatMap((g) => g.rows).find((r) => r.employee_id === employee_id)?.day.plan.kind : undefined;
-  };
   const saveWhy = !online ? t("attendanceRecords.save.offline") : !drafts ? t("attendanceRecords.save.nothing") : null;
 
   return (
@@ -129,7 +127,7 @@ export function DayTab() {
                   <Button variant="ghost" onClick={() => window.print()}>{t("attendanceRecords.rail.print")}</Button>
                 </Card>
               </div>
-              {save && <SaveDock drafts={store.drafts} rows={names(b)} kindOf={kindOf} month={date.slice(0, 7)} onClose={() => setSave(false)} onFocusCell={() => setSave(false)} onSaved={(r, keys) => (store.saved(keys), setSave(false), setNote(t("attendanceRecords.receipt.saved", { saved: r.saved, opens: r.opens.blocking + r.opens.decision })))} />}
+              {save && <SaveDock drafts={store.drafts} rows={rows} kindOf={kindOf} month={date.slice(0, 7)} onClose={() => setSave(false)} onFocusCell={() => setSave(false)} onSaved={(r, keys) => (store.saved(keys), setSave(false), setNote(t("attendanceRecords.receipt.saved", { saved: r.saved, opens: r.opens.blocking + r.opens.decision })))} />}
               {!save && open && <DayDock employeeId={open.id} date={date} own={open.own} onClose={() => setOpen(null)} onRewrite={() => setOpen(null)} onDone={(m) => (setOpen(null), setNote(m))} />}
             </div>
           );
