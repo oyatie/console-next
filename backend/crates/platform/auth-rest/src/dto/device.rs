@@ -59,6 +59,7 @@ pub(crate) struct DeviceLoginPollResponse {
     #[serde(with = "time::serde::rfc3339::option")]
     pub(crate) refresh_expires_at: Option<OffsetDateTime>,
     pub(crate) requires_passkey_setup: Option<bool>,
+    pub(crate) privacy_consent_accepted: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]

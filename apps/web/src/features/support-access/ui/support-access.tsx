@@ -18,7 +18,7 @@ import { PageHead } from "../../../ui/page-head/page-head";
 import { Table } from "../../../ui/table";
 import { codeText } from "../../../lib/labels";
 import { buttonClass } from "../../../ui/button/button-class";
-import { ApiError, activeSupportQuery, decideSupportSession, endSupportSession, SUPPORT_READS, supportRefusal, supportSessionsQuery, type Sessions, type SupportDecision, type SupportSession } from "../../../reference/support-access/api";
+import { ApiError, activeSupportQuery, decideSupportSession, endSupportSession, session, SUPPORT_READS, supportRefusal, supportSessionsQuery, type Sessions, type SupportDecision, type SupportSession } from "../../../reference/support-access/api";
 import styles from "./support-access.module.css";
 
 const route = getRouteApi("/app/audit/support-access");
@@ -33,7 +33,7 @@ const stateText = (state:string) => {const key=`supportAccess.state.${state}`;re
 
 /** Visible on every tenant page; the shell's SSE stream invalidates this read. */
 export function ActiveSupportBanner() {
-  const q = useQuery(activeSupportQuery);
+  const q = useQuery({ ...activeSupportQuery, enabled: !!session.token });
   if (!q.error && (!q.data || (!q.data.sessions.length && !(q.data.can_approve && q.data.pending_count)))) return null;
   return <section className={styles.status} aria-label={t("supportAccess.title")}>
     {q.error ? <CommandError error={q.error} own={supportRefusal}><Button onClick={() => void q.refetch()}>{t("common.retry")}</Button></CommandError> : q.data && <>
@@ -51,7 +51,7 @@ export function ActiveSupportBanner() {
 
 /** The shell header keeps this visible while the page's detailed notice scrolls. */
 export function SupportAccessIndicator() {
-  const q = useQuery(activeSupportQuery);
+  const q = useQuery({ ...activeSupportQuery, enabled: !!session.token });
   if (q.error || !q.data) return null;
   const active = q.data.sessions.length;
   const pending = q.data.can_approve ? q.data.pending_count : 0;
@@ -64,7 +64,7 @@ export function SupportAccessIndicator() {
 }
 
 export function SupportAccess() {
-  const q = useQuery(supportSessionsQuery);
+  const q = useQuery({ ...supportSessionsQuery, enabled: !!session.token });
   const visible = q.error instanceof ApiError && q.error.status === 403 ? { ...q, data: undefined } : q;
   return <div className="page">
     <PageHead title={t("supportAccess.title")} sub={t("supportAccess.description")} />

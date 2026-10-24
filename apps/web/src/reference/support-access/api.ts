@@ -20,4 +20,4 @@ const REFUSALS = new Set([
 ].map((code) => `support.refuse.${code}`));
 export const supportRefusal = (code: string) => code === "unauthorized" ? t("supportAccess.wrongRealm") : REFUSALS.has(code) && isMessageId(code) ? t(code) : undefined;
 
-export { ApiError } from "@console/api";
+export { ApiError, session } from "@console/api";

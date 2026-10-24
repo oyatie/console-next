@@ -42,6 +42,8 @@ impl PgRealtimeHub {
         listener.listen(MESSAGE_ACK_CHANNEL).await?;
         listener.listen(NOTIFICATION_CREATED_CHANNEL).await?;
         listener.listen(RESOURCE_CHANGED_CHANNEL).await?;
+        listener.listen(crate::consent::CHANNEL).await?;
+        let mut publication = crate::consent::next_publication(&mut listener).await?;
         let (ping_tx, mut ping_rx) =
             tokio::sync::mpsc::channel::<tokio::sync::oneshot::Sender<bool>>(1);
         *self.status_ping.lock().await = Some(ping_tx);
@@ -52,6 +54,17 @@ impl PgRealtimeHub {
             let mut pruned: HashMap<OrgId, Instant> = HashMap::new();
             loop {
                 let notification = tokio::select! {
+                    () = crate::consent::wait_until(publication) => {
+                        hub.consent_changed().await;
+                        publication = match crate::consent::next_publication(&mut listener).await {
+                            Ok(next) => next,
+                            Err(err) => {
+                                tracing::warn!(error = %err, "failed to schedule consent publication");
+                                Some(tokio::time::Instant::now() + crate::SOCKET_IO_TIMEOUT)
+                            }
+                        };
+                        continue;
+                    }
                     Some(reply) = ping_rx.recv() => {
                         // Probe the actual LISTEN connection without publishing or reading tenant data.
                         let healthy = tokio::time::timeout(crate::SOCKET_IO_TIMEOUT,
@@ -75,6 +88,8 @@ impl PgRealtimeHub {
                     Ok(None) => {
                         tracing::warn!("Postgres realtime listener reconnected; sending reset");
                         hub.reset_all(ResetReason::Gap).await;
+                        hub.consent_changed().await;
+                        publication = Some(tokio::time::Instant::now());
                         continue;
                     }
                     Err(err) => {
@@ -84,6 +99,14 @@ impl PgRealtimeHub {
                     }
                 };
                 let result = match notification.channel() {
+                    crate::consent::CHANNEL => {
+                        hub.consent_changed().await;
+                        publication = Some(tokio::time::Instant::now() + crate::SOCKET_IO_TIMEOUT);
+                        crate::consent::next_publication(&mut listener)
+                            .await
+                            .map(|next| publication = next)
+                            .map_err(Into::into)
+                    }
                     MESSAGE_POSTED_CHANNEL => {
                         hub.handle_notify_payload(notification.payload()).await
                     }

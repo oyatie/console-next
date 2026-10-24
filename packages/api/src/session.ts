@@ -16,7 +16,7 @@ export type LastChange = {
   audit_id: string | null;
   redacted: boolean;
 };
-const requestKeys = new WeakMap<Response, string>();
+const requests = new WeakMap<Response, { key?: string; principal: string | null }>();
 /** What a refusal carries besides its code and message. */
 export type ErrorExtras = {
   /** Diagnostic correlation issued by the server; absent for network failures. */
@@ -78,8 +78,8 @@ export class ApiError extends Error {
   }
 
   /** Keep the native response intact, including its URL and immutable headers. */
-  static withRequestKey(res: Response, key?: string): Response {
-    if (key) requestKeys.set(res, key);
+  static withRequestKey(res: Response, key?: string, principal = session.principal): Response {
+    requests.set(res, { key, principal });
     return res;
   }
 
@@ -90,6 +90,8 @@ export class ApiError extends Error {
   /** From an already-parsed body (openapi-fetch consumes the response stream). */
   static fromBody(res: Response, body: unknown): ApiError {
     const e = (body as { error?: ErrorBody } | null)?.error;
+    const request = requests.get(res);
+    if (res.status === 403 && e?.code === "privacy_consent_required" && (!request || request.principal === session.principal)) session.setConsentAccepted(false);
     return new ApiError(res.status, e?.code ?? `http_${res.status}`, e?.message ?? res.statusText, e?.reasons, e?.operation_id ?? res.headers.get("operation-id") ?? undefined, Boolean(e?.message), e?.refusals, {
       traceId: e?.trace_id,
       supportRef: e?.support_ref,
@@ -97,7 +99,7 @@ export class ApiError extends Error {
       errors: e?.errors,
       details: e?.details,
       retryAfterMs: retryAfterMs(res.headers.get("retry-after")),
-      requestKey: requestKeys.get(res),
+      requestKey: request?.key,
       lastChange: e?.last_change ?? undefined,
       originalOperationId: e?.original_operation_id,
     });
@@ -112,6 +114,7 @@ let acceptLanguage = "ko";
 export const setAcceptLanguage = (tag: string) => void (acceptLanguage = tag);
 export const languageHeader = () => acceptLanguage;
 let passkeySetupRequired = false;
+let privacyConsentAccepted = false;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
@@ -193,6 +196,15 @@ function scheduleRenewal() {
 }
 
 export const session = {
+  /** Session routing hint; the server enforces current consent on protected requests. */
+  get consentAccepted() {
+    return privacyConsentAccepted;
+  },
+  setConsentAccepted(accepted: boolean) {
+    if (privacyConsentAccepted === accepted) return;
+    privacyConsentAccepted = accepted;
+    emit();
+  },
   /** Tenant and account together own drafts and interrupted writes. */
   get principal() {
     return claims ? JSON.stringify([claims.org, claims.sub]) : null;
@@ -225,6 +237,7 @@ export const session = {
     accessToken = pair?.access_token ?? null;
     claims = decode(accessToken);
     passkeySetupRequired = pair?.requires_passkey_setup ?? false;
+    privacyConsentAccepted = pair?.privacy_consent_accepted === true;
     lost = false;
     ended = null;
     scheduleRenewal();
@@ -278,6 +291,7 @@ export function reauthenticated(principal: string, signal: AbortSignal): Promise
  * Bearer calls (consent, passkey enrollment) refresh once on 401 and retry, like authFetch.
  */
 export async function authPost<T>(path: string, body?: unknown, bearer = false): Promise<T> {
+  const principal = session.principal;
   const p = platform();
   const send = () => {
     const headers: Record<string, string> = { "content-type": "application/json", "accept-language": acceptLanguage };
@@ -296,7 +310,7 @@ export async function authPost<T>(path: string, body?: unknown, bearer = false):
     res = await send();
     noteServerDate(res);
   }
-  if (!res.ok) throw await ApiError.from(res);
+  if (!res.ok) throw await ApiError.from(ApiError.withRequestKey(res, undefined, principal));
   const data = (res.status === 204 ? undefined : await res.json()) as T;
   // Native transport: persist the rotated refresh token wherever one is returned.
   const rotated = (data as { refresh_token?: string | null } | undefined)?.refresh_token;

@@ -84,6 +84,7 @@ async fn a_change_subscribed_socket_gets_hello_change_and_pings(owner: PgPool) {
         .issue_family(&runtime, *user.as_uuid(), org, now, Duration::hours(1))
         .await
         .unwrap();
+    console_platform_test_support::seed_session_consent(&owner, family.family_id).await;
     let token = issuer
         .issue_session_access_token(
             AccessTokenInput {

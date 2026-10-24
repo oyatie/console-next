@@ -110,6 +110,8 @@ pub(crate) async fn refresh_token(
     .fetch_one(tx.as_mut())
     .await
     .map_err(DbError::Sqlx)?;
+    let privacy_consent_accepted =
+        crate::consent::session_consent_accepted(&mut tx, issue.family_id).await?;
     let access_token = issue_access_token(services, &user, &issue, enrollment)?;
     tx.commit().await.map_err(DbError::Sqlx)?;
     if cookie_mode {
@@ -121,6 +123,7 @@ pub(crate) async fn refresh_token(
             token_type: "Bearer",
             refresh_expires_at: issue.expires_at,
             requires_passkey_setup,
+            privacy_consent_accepted,
             passkey_profile: None,
         })
         .into_response();
@@ -132,6 +135,7 @@ pub(crate) async fn refresh_token(
             token_type: "Bearer",
             refresh_expires_at: issue.expires_at,
             requires_passkey_setup,
+            privacy_consent_accepted,
             passkey_profile: None,
         })
         .into_response())

@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RealtimeEvent {
+    /// Account session consent, re-read at delivery after publication or reconnect.
+    PrivacyConsent {
+        accepted: bool,
+    },
     MessagePosted {
         message: MessageSummary,
     },

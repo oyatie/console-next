@@ -41,8 +41,10 @@ export async function authFetch(input: Request): Promise<Response> {
       }
     }
     // Resolve interrupted/malformed JSON while the transport still owns the intent key.
+    ApiError.withRequestKey(res, key, principal);
+    if (res.status === 403) ApiError.fromBody(res, await res.clone().json().catch(() => null));
     if (key && res.status !== 204 && res.headers.get("content-type")?.includes("application/json")) await res.clone().json();
-    return ApiError.withRequestKey(res, key);
+    return res;
   } catch (error) {
     if (!key) throw error;
     if (error instanceof ApiError) throw new ApiError(error.status, error.code, error.message, error.reasons, error.operationId, error.fromServer, error.refusals, { ...error, requestKey: key });

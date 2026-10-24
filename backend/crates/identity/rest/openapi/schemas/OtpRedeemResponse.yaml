@@ -5,6 +5,9 @@ required:
 - refresh_expires_at
 - requires_passkey_setup
 properties:
+  privacy_consent_accepted:
+    type: boolean
+    description: Current required document acceptance for this session, checked on issuance and refresh. Absent means consent is required.
   access_token:
     type: string
   refresh_token:

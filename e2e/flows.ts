@@ -166,8 +166,7 @@ const keepVendorPasskey = async (page: Page) => writeFileSync(VENDOR_PASSKEY, JS
 let vendor: Page | null = null;
 /** The platform vendor: bootstrapped once per database, then signs in with its passkey. */
 export async function vendorPage(browser: Browser) {
-  if (vendor) return vendor;
-  return (vendor = await withVendorPasskey(async () => {
+  vendor ??= await withVendorPasskey(async () => {
     // Checked under the lock: a worker that waited out the cold start signs in with the passkey it kept.
     if (!existsSync(VENDOR_PASSKEY)) return firstSignIn(browser, readDevSecrets().coldstartOtp, VENDOR_PASSKEY);
     const page = await (await newContext(browser)).newPage();
@@ -176,7 +175,14 @@ export async function vendorPage(browser: Browser) {
     await passkeyLogin(page);
     await keepVendorPasskey(page);
     return page;
-  }));
+  });
+  // A previous terms-publication journey also interrupts the shared vendor account.
+  if (new URL(vendor.url()).pathname === "/setup-passkey") {
+    await acceptConsent(vendor);
+    await vendor.getByRole("button", { name: "동의하고 계속", exact: true }).click();
+    await expect(vendor).not.toHaveURL(/\/setup-passkey$/);
+  }
+  return vendor;
 }
 
 /** A step-up with the vendor's passkey (e.g. a code reissue): `body` asserts it with the latest kept counter. */

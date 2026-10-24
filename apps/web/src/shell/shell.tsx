@@ -29,7 +29,7 @@ export function Shell() {
   const platform = !!session.claims?.platform;
   // Platform tokens are refused by /me/authz; the vendor menu is fixed.
   const authz = useQuery({ ...authzQuery, enabled: !platform });
-  const support = useQuery({ ...activeSupportQuery, enabled: !platform });
+  const support = useQuery({ ...activeSupportQuery, enabled: !!session.token && !platform });
   const menu = platform ? PLATFORM_NAV : tenantNav(authz.data?.capabilities, authz.isError, support.data?.can_approve);
   // Phone widths hide the rail; the top bar's menu button discloses it.
   const [open, setOpen] = useState(false);

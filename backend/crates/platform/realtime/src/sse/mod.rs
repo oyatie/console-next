@@ -116,6 +116,7 @@ async fn events_handler(
         }
     })?;
     let reader = reader_from_token(&state.rest, &token).await?;
+    crate::auth::require_consent(&state.rest, &token).await?;
     let expires_at = time::OffsetDateTime::from_unix_timestamp(claims.exp)
         .map_err(|_| RealtimeApiError::unauthorized("invalid access deadline"))?;
     let remaining =
@@ -207,6 +208,9 @@ async fn next_frame(mut live: Live) -> Option<(Result<Event, Infallible>, Live)>
 pub(crate) fn frame(event: &RealtimeEvent) -> Option<Event> {
     let frame = Event::default();
     match event {
+        RealtimeEvent::PrivacyConsent { accepted } => frame
+            .event("privacy_consent")
+            .json_data(serde_json::json!({"accepted": accepted})),
         RealtimeEvent::Hello { id, data } => frame.event("hello").id(id).json_data(data),
         RealtimeEvent::Change { id, data } => frame.event("change").id(id).json_data(data),
         RealtimeEvent::Reset { data } => frame.event("reset").json_data(data),

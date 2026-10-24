@@ -21,6 +21,7 @@ pub(crate) fn device_login_status(status: &'static str) -> DeviceLoginPollRespon
         token_type: None,
         refresh_expires_at: None,
         requires_passkey_setup: None,
+        privacy_consent_accepted: None,
     }
 }
 
@@ -38,6 +39,7 @@ pub(crate) fn device_login_token_response(
             token_type: Some("Bearer"),
             refresh_expires_at: Some(tokens.refresh_expires_at),
             requires_passkey_setup: Some(false),
+            privacy_consent_accepted: Some(tokens.privacy_consent_accepted),
         };
         with_refresh_cookie(
             Json(body).into_response(),
@@ -51,6 +53,7 @@ pub(crate) fn device_login_token_response(
             token_type: Some("Bearer"),
             refresh_expires_at: Some(tokens.refresh_expires_at),
             requires_passkey_setup: Some(false),
+            privacy_consent_accepted: Some(tokens.privacy_consent_accepted),
         };
         Json(body).into_response()
     }

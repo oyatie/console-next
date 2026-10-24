@@ -157,6 +157,32 @@ pub(crate) fn websocket_protocol_bearer_token(
     Ok(token)
 }
 
+/// Realtime handshakes and publication hints use the same current-consent gate as REST.
+pub(crate) async fn require_consent(
+    state: &RealtimeRestState,
+    token: &str,
+) -> Result<(), RealtimeApiError> {
+    let verifier = state
+        .jwt_verifier
+        .as_ref()
+        .ok_or_else(RealtimeApiError::unavailable)?;
+    let pool = state
+        .hub
+        .pool
+        .as_ref()
+        .ok_or_else(RealtimeApiError::unavailable)?;
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::AUTHORIZATION,
+        format!("Bearer {token}")
+            .parse()
+            .map_err(|_| RealtimeApiError::unauthorized("invalid bearer token"))?,
+    );
+    console_platform_request_context::privacy::ensure_consent(pool, verifier, &headers)
+        .await
+        .map_err(realtime_error_from_request_context)
+}
+
 fn realtime_error_from_request_context(err: RequestContextError) -> RealtimeApiError {
     match err {
         RequestContextError::VerifierUnavailable => RealtimeApiError::new(
@@ -169,6 +195,16 @@ fn realtime_error_from_request_context(err: RequestContextError) -> RealtimeApiE
             "unauthorized",
             "token tier is not valid for this route",
         ),
+        RequestContextError::AccessScope(error)
+            if error.kind == ErrorKind::Forbidden
+                && error.code == Some("privacy_consent_required") =>
+        {
+            RealtimeApiError::new(
+                StatusCode::FORBIDDEN,
+                "privacy_consent_required",
+                error.message,
+            )
+        }
         RequestContextError::AccessScope(error) if error.kind == ErrorKind::Forbidden => {
             RealtimeApiError::new(StatusCode::FORBIDDEN, "forbidden", error.message)
         }

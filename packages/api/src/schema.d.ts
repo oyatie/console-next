@@ -5792,7 +5792,7 @@ export interface paths {
         };
         /**
          * Open the server-sent change stream (one per tab)
-         * @description text/event-stream of hello/change/reset frames (ids, type and version only; no PII) plus the messenger and notification frames. Every change frame passed the caller's read check. A 25 s comment heartbeat keeps the stream alive; the body ends at the bearer's exp, on shutdown, or when the principal changes. Reconnect with Last-Event-ID to replay.
+         * @description text/event-stream of hello/change/reset frames (ids, type and version only; no PII) plus the messenger and notification frames. The privacy_consent frame carries {"accepted": boolean} for this session when required documents are published; false requires immediate consent review. Every change frame passed the caller's read check. A 25 s comment heartbeat keeps the stream alive; the body ends at the bearer's exp, on shutdown, or when the principal changes. Reconnect with Last-Event-ID to replay.
          */
         get: operations["openRealtimeEventStream"];
         put?: never;
@@ -18099,6 +18099,8 @@ export interface components {
             poll_token: string;
         };
         DeviceLoginPollResponse: {
+            /** @description Current required document acceptance for this session, checked on issuance and refresh. Absent means consent is required. */
+            privacy_consent_accepted?: boolean | null;
             /** @enum {string} */
             status: "pending" | "approved" | "expired";
             access_token?: string | null;
@@ -23948,6 +23950,8 @@ export interface components {
             otp: string;
         };
         OtpRedeemResponse: {
+            /** @description Current required document acceptance for this session, checked on issuance and refresh. Absent means consent is required. */
+            privacy_consent_accepted?: boolean;
             access_token: string;
             /** @description The opaque rotating refresh token in the body transport (mobile). It is null in the cookie transport (web), where the token is set as an HttpOnly `console_refresh` cookie and must never reach web JS. */
             refresh_token?: string | null;
@@ -27640,6 +27644,8 @@ export interface components {
             done_at: string | null;
         };
         TokenPairResponse: {
+            /** @description Current required document acceptance for this session, checked on issuance and refresh. Absent means consent is required. */
+            privacy_consent_accepted?: boolean;
             /** @description Current verified account labels, returned only after successful passkey authentication. */
             passkey_profile?: {
                 user_id: components["schemas"]["Uuid"];
@@ -40661,6 +40667,15 @@ export interface operations {
             };
             /** @description token_expired — a well-formed bearer past its exp (renew it and reconnect); unauthorized — any other missing or invalid bearer. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description privacy_consent_required — review the current required documents before reconnecting. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

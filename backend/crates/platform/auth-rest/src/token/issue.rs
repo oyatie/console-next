@@ -18,6 +18,7 @@ pub(crate) struct IssuedTokenPair {
     pub(crate) refresh_token: String,
     pub(crate) refresh_expires_at: OffsetDateTime,
     pub(crate) family_id: Uuid,
+    pub(crate) privacy_consent_accepted: bool,
 }
 
 impl IssuedTokenPair {
@@ -29,6 +30,7 @@ impl IssuedTokenPair {
             token_type: "Bearer",
             refresh_expires_at: self.refresh_expires_at,
             requires_passkey_setup: false,
+            privacy_consent_accepted: self.privacy_consent_accepted,
             passkey_profile: None,
         }
     }
@@ -68,6 +70,8 @@ pub(crate) async fn issue_token_pair_in_tx(
         )
         .await
         .map_err(|err| RestError::internal(err.to_string()))?;
+    let privacy_consent_accepted =
+        crate::consent::session_consent_accepted(tx, refresh.family_id).await?;
     let access_token = issue_access_token(services, user, &refresh, enrollment)?;
     insert_audit_event(tx, &audit).await?;
     Ok(IssuedTokenPair {
@@ -75,6 +79,7 @@ pub(crate) async fn issue_token_pair_in_tx(
         refresh_token: refresh.token.as_str().to_owned(),
         refresh_expires_at: refresh.expires_at,
         family_id: refresh.family_id,
+        privacy_consent_accepted,
     })
 }
 

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
-import { interactionHeaders, lastTouch } from "@console/api";
+import { interactionHeaders, lastTouch, session } from "@console/api";
 import type { StreamOptions, StreamSnapshot, StreamState } from "@console/api/events";
 import { get, isInvalidated } from "../query";
 import { closeLive, holdLive, liveHeld, liveStatus, onRecordChange, openLive, showHeld } from "./live";
@@ -20,6 +20,7 @@ vi.mock("@console/api/events", () => ({
         return fake.lastEventId;
       },
       close: () => void fake.closed++,
+      reconnect: () => {},
     };
   },
 }));
@@ -47,7 +48,31 @@ beforeEach(async () => {
 });
 afterEach(() => {
   closeLive();
+  session.set(null);
+  vi.unstubAllGlobals();
   vi.useRealTimers();
+});
+
+test("document publication interrupts consent immediately even while changes are held or a write is pending", () => {
+  session.set({ access_token: "token", token_type: "Bearer", refresh_expires_at: "2027-01-01T00:00:00Z", requires_passkey_setup: false, privacy_consent_accepted: true });
+  const release = holdLive(true);
+  qc.getMutationCache().build(qc, {}).state.status = "pending";
+  try {
+    frame("privacy_consent", { accepted: false });
+    expect(session.consentAccepted).toBe(false);
+    expect(stale()).toEqual([false, false, false, false]);
+  } finally { release(); }
+});
+
+test("a refused reconnect uses the shared consent handler without reporting input", async () => {
+  session.set({ access_token: "token", token_type: "Bearer", refresh_expires_at: "2027-01-01T00:00:00Z", requires_passkey_setup: false, privacy_consent_accepted: true });
+  const send = vi.fn(async (_input: string, _init: RequestInit) => new Response(JSON.stringify({ error: { code: "privacy_consent_required", message: "Review documents" } }), { status: 403 }));
+  vi.stubGlobal("fetch", send);
+  const response = await fake.opts!.fetch!("http://test/api/v1/events", { headers: { authorization: "Bearer token" }, signal: new AbortController().signal });
+  expect(response.status).toBe(403);
+  expect(session.consentAccepted).toBe(false);
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(send.mock.calls[0]![1].headers).not.toHaveProperty("x-last-interaction");
 });
 
 test("a change frame invalidates its record and lists after the debounce, nothing else", async () => {

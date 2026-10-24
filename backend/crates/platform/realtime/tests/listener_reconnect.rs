@@ -44,9 +44,10 @@ async fn wake(owner: &PgPool, recipient: UserId) -> NotificationId {
 }
 
 async fn kill_listener(owner: &PgPool) -> i64 {
+    // This test owns its database; the listener's last query may be a health or publication read.
     sqlx::query_scalar(
         "SELECT count(*) FILTER (WHERE pg_terminate_backend(pid)) FROM pg_stat_activity \
-         WHERE datname = current_database() AND pid <> pg_backend_pid() AND query ILIKE 'LISTEN %'",
+         WHERE datname = current_database() AND pid <> pg_backend_pid()",
     )
     .fetch_one(owner)
     .await
