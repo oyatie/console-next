@@ -13,6 +13,7 @@ import { MenuButton, type MenuEntry } from "../../../ui/menu/menu-button";
 import { employeeQuery } from "../api";
 import { maskedAddress, maskedBirth, type RegisterItem } from "../domain/card";
 import { daysBetween, offeredVerbs } from "../domain/roster";
+import { retirementDate } from "../domain/employment";
 import { EndActions } from "./end-actions";
 import { useCardRegister } from "./use-card-register";
 import { ExitPeek } from "./exit-peek";
@@ -49,7 +50,7 @@ function Peek({ d, today, onClose }: { d: Detail; today: string; onClose: () => 
   const m = d.employment ?? d.pending_employment;
   const end = m?.contract_end_date ?? e.contract_end_date;
   const p = c.planned;
-  const next = p ? { date: p.effective_date, what: plannedWhat(p, c.title) } : e.next_event && { date: e.next_event.effective_date, what: label(LIFECYCLE_EVENT, e.next_event.event_type) };
+  const next = p ? { date: p.event_type === "TERMINATE" || p.event_type === "OFFBOARD" ? retirementDate(p.effective_date) : p.effective_date, what: plannedWhat(p, c.title) } : e.next_event && { date: e.next_event.event_type === "TERMINATE" ? retirementDate(e.next_event.effective_date) : e.next_event.effective_date, what: label(LIFECYCLE_EVENT, e.next_event.event_type) };
   const sub = [c.title(d.classification.grade_id) ?? e.position, d.employment?.employment_type && label(EMPLOYMENT_TYPE, d.employment.employment_type), e.hire_date && t("empCard.hired", { date: fmtDate(e.hire_date) })].filter(Boolean).join(" · ");
   // A peek shows what each register item holds without revealing: birth date and address stay masked.
   const shown = (i: RegisterItem) => (!i.present ? value(i) : i.key === "birth" ? maskedBirth() : i.key === "address" && r?.address ? maskedAddress(r.address) : value(i));

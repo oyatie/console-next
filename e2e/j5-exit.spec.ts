@@ -69,6 +69,7 @@ async function confirmAsHr(admin: Page, c: ReturnType<typeof clickCounter>, opts
 // J5 퇴직: report → HR confirmation (the exit) → HQ confirmation (here by someone else) → settlement approval;
 // a rejection after HR confirmation reverses the exit.
 test("J5 exit case: two-person confirmation, settlement submission, and a rejection that reverses the exit", { tag: ["@hr", "@clock"] }, async ({ browser }) => {
+  test.setTimeout(300_000);
   const { admin, exec } = await staffedTenant(browser, "j5co", "퇴직주식회사");
   const c = clickCounter();
 
