@@ -4,7 +4,7 @@
 //      nothing imports routes/ (main.tsx excepted); packages never import apps.
 //   2. Data layer: query keys are derived in lib/query.ts only (`queryKey`); no cache writes
 //      (`setQueryData` / `setQueriesData`).
-//   3. Placement: inside a slice only {api,present}.ts, api/*.ts, *.test.ts, domain/*.ts and ui/{*.tsx,use-*.ts}.
+//   3. Placement: inside a slice only {api,present}.ts, api/*.ts, *.test.ts, domain/*.ts and ui/{*.tsx,use-*.ts,*.spec.ts,*.playwright.ts}.
 //   4. Freshness loops (scripts/check-loops.mjs): no setInterval, refetchInterval or focus refetch.
 //   5. Ratchet: every `max-lines` pin in oxlint.json equals the file's current count, so a shrink
 //      forces the pin down in the same diff.
@@ -82,7 +82,7 @@ const importRule = (from, to) => {
   return undefined;
 };
 
-const SLICE_FILE = /^(?:(?:api|present)\.ts|api\/[a-z0-9-]+\.ts|[a-z0-9-]+\.test\.ts|domain\/[a-z0-9/-]+(?:\.test)?\.ts|ui\/(?:[a-z0-9-]+(?:\.[a-z0-9-]+)*\.tsx|use-[a-z0-9-]+\.ts|[a-z0-9-]+\.module\.css|[a-z0-9-]+\.test\.tsx?))$/;
+const SLICE_FILE = /^(?:(?:api|present)\.ts|api\/[a-z0-9-]+\.ts|[a-z0-9-]+\.test\.ts|domain\/[a-z0-9/-]+(?:\.test)?\.ts|ui\/(?:[a-z0-9-]+(?:\.[a-z0-9-]+)*\.tsx|use-[a-z0-9-]+\.ts|[a-z0-9-]+(?:\.gallery)?\.module\.css|[a-z0-9-]+\.(?:test\.tsx?|spec\.ts|playwright\.ts)))$/;
 
 const count = (src, re) => src.match(re)?.length ?? 0;
 for (const f of files) {
@@ -96,9 +96,11 @@ for (const f of files) {
     seen.imports.add(key);
     if (!BASELINE.imports.includes(key)) problems.push(`${key}: ${why}`);
   }
-  const keys = f === `${APP}/lib/query.ts` ? 0 : count(src, /\bqueryKey\b/g);
+  // Dev gallery fixtures may seed API-derived cache entries; production screens only invalidate.
+  const fixture = f.endsWith(".gallery.tsx");
+  const keys = fixture || f === `${APP}/lib/query.ts` ? 0 : count(src, /\bqueryKey\b/g);
   if (keys) seen.queryKey[f] = keys;
-  const writes = count(src, /\.set(?:Query|Queries)Data\(/g);
+  const writes = fixture ? 0 : count(src, /\.set(?:Query|Queries)Data\(/g);
   if (writes) seen.cacheWrites[f] = writes;
   const loops = loopProblems(f, src);
   if (loops.length) seen.loops.add(f);

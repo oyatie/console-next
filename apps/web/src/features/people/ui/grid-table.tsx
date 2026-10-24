@@ -1,27 +1,39 @@
 import { useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import { AlertTriangle } from "lucide-react";
 import { t } from "@console/i18n";
-import { parseTsv, type Cell, type GridField } from "../domain/grid";
+import { parseTsv, TYPES, type Cell, type GridField } from "../domain/grid";
 import { TextInput } from "../../../ui/field/field";
 import { refusedText } from "../present";
 import { label as enumLabel } from "../../../lib/labels";
-import { TYPES } from "../domain/grid";
 import { narrow } from "../domain/grid-choices";
+import { gridViewport, useGridWindow } from "./use-grid-window";
 import s from "./grid.module.css";
 import k from "./grid-input.module.css";
+import m from "./grid-table.module.css";
+
+const DEFAULT_VISIBLE = 25;
+const DEFAULT_OVERSCAN = 10;
 
 export type GridRow = { id: string; number: string; name: string; current: readonly string[]; typed: readonly (string | undefined)[]; cells: readonly Cell[] };
 type Range = { col: number; from: number; to: number } | null;
 type At = { r: number; c: number };
 
 const id = (r: number, c: number) => `grid-${r}-${c}`;
-const focusCell = (r: number, c: number) => document.getElementById(id(r, c))?.focus();
 const same = (a: At | null, r: number, c: number) => a?.r === r && a.c === c;
 const TYPE = { type: "employmentType", values: TYPES };
-/** Every option of a choice column (sex, employment type), as the grid reads and shows them; none for the others. */
 const choiceWords = (f: GridField): readonly string[] =>
   f.kind === "sex" ? [t("bulkGrid.sex.MALE"), t("bulkGrid.sex.FEMALE")] : f.kind === "type" ? TYPES.map((v) => enumLabel(TYPE, v)) : [];
 const pickable = (f: GridField, text: string) => narrow(choiceWords(f), text);
+
+const nextCell = (key: string, r: number, c: number, rc: number, cc: number, ctrl?: boolean, page = DEFAULT_VISIBLE): At =>
+  key === "ArrowDown" ? { r: Math.min(rc - 1, r + 1), c }
+  : key === "ArrowUp" ? { r: Math.max(0, r - 1), c }
+  : key === "ArrowLeft" ? { r, c: Math.max(0, c - 1) }
+  : key === "ArrowRight" ? { r, c: Math.min(cc - 1, c + 1) }
+  : key === "PageDown" ? { r: Math.min(rc - 1, r + page), c }
+  : key === "PageUp" ? { r: Math.max(0, r - page), c }
+  : key === "Home" ? (ctrl ? { r: 0, c: 0 } : { r, c: 0 })
+  : key === "End" ? (ctrl ? { r: rc - 1, c: cc - 1 } : { r, c: cc - 1 }) : { r, c };
 
 /**
  * The correction grid (spec E6-grid, APG grid keys): arrows move, typing or F2 edits, Enter/Esc leave the cell,
@@ -33,7 +45,10 @@ const pickable = (f: GridField, text: string) => narrow(choiceWords(f), text);
  * included) lands in it before anything re-renders: no character is lost and the value committed is the one shown.
  * r3:records-17: sex and employment type edit through their options (↑↓ and Enter, or type to narrow).
  */
-export function GridTable({ rows, columns, label, onCell, statusOf, fieldLabel, suggestionOf }: {
+export function GridTable({
+  rows, columns, label, onCell, statusOf, fieldLabel, suggestionOf, activeCell, onActiveChange,
+  visibleRows = DEFAULT_VISIBLE, overscan = DEFAULT_OVERSCAN,
+}: {
   rows: readonly GridRow[];
   columns: readonly GridField[];
   label: string;
@@ -41,28 +56,38 @@ export function GridTable({ rows, columns, label, onCell, statusOf, fieldLabel, 
   statusOf: (r: GridRow) => { tone: "changed" | "error" | "same"; text: string };
   fieldLabel: (f: GridField) => string;
   suggestionOf: (c: Cell) => string | undefined;
+  activeCell?: At | null;
+  onActiveChange?: (at: At | null) => void;
+  visibleRows?: number; overscan?: number;
 }) {
-  const [active, setActive] = useState<At | null>(null);
+  const [uncontrolledActive, setUncontrolledActive] = useState<At | null>(null);
+  const active = activeCell !== undefined ? activeCell : uncontrolledActive;
+  const setActive = (next: At | null) => {
+    setUncontrolledActive(next);
+    onActiveChange?.(next);
+  };
   const [editing, setEditing] = useState<At | null>(null);
   const [typed, setTyped] = useState("");
   const [opt, setOpt] = useState(0);
   const [range, setRange] = useState<Range>(null);
   const input = useRef<HTMLInputElement>(null);
-  // What the handlers read (a blur during a move runs before the re-render): the edited cell, and an Enter an IME
-  // composition swallowed, applied when the composition ends.
+  const focusPending = useRef(false), parkingFocus = useRef(false);
+  // A blur during a move runs before re-render; handlers must read the edited cell synchronously.
   const editingNow = useRef<At | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const enterAfterIme = useRef(false);
   const startEditing = (r: number, c: number) => ((editingNow.current = { r, c }), setEditing({ r, c }));
   const shown = (row: GridRow, c: number) => row.typed[c] ?? row.current[c] ?? "";
   const inRange = (r: number, c: number) => range && range.col === c && r >= Math.min(range.from, range.to) && r <= Math.max(range.from, range.to);
-  // The input moves with the focused cell and takes the focus in the same commit.
-  useLayoutEffect(() => void (active && input.current?.focus()), [active]);
-
-  const move = (r: number, c: number) => focusCell(Math.max(0, Math.min(rows.length - 1, r)), Math.max(0, Math.min(columns.length - 1, c)));
+  const validActive = Boolean(active && rows[active.r]?.cells[active.c] && columns[active.c]);
+  const move = (r: number, c: number) => {
+    if (!rows.length || !columns.length) return;
+    setActive({ r: Math.max(0, Math.min(rows.length - 1, r)), c: Math.max(0, Math.min(columns.length - 1, c)) });
+  };
   const nextError = (r: number, c: number) => {
     const flat = rows.flatMap((row, ri) => row.cells.map((cell, ci) => ({ ri, ci, bad: "bad" in cell })));
     const after = flat.find((x) => x.bad && (x.ri > r || (x.ri === r && x.ci > c))) ?? flat.find((x) => x.bad);
-    if (after) focusCell(after.ri, after.ci);
+    if (after) move(after.ri, after.ci);
   };
   const fillDown = () => {
     if (!range) return;
@@ -94,19 +119,52 @@ export function GridTable({ rows, columns, label, onCell, statusOf, fieldLabel, 
     setTyped("");
     if (to) move(to.r, to.c);
   };
-  // Keys while a cell is focused but not edited (the input is empty and unseen).
-  const nav = (e: KeyboardEvent<HTMLInputElement>, r: number, c: number) => {
+  const { first, last, rowHeight, viewportRows, setScrollTop } = useGridWindow(gridRef, rows.length, visibleRows, overscan, (top, bottom) => {
+    if (input.current && document.activeElement === input.current) {
+      const bounds = input.current.getBoundingClientRect();
+      if (bounds.bottom <= top || bounds.top >= bottom) {
+        leave(true);
+        parkingFocus.current = true;
+        gridRef.current!.focus({ preventScroll: true });
+        parkingFocus.current = false;
+      }
+    }
+  });
+
+  const mounted = validActive && active!.r >= first && active!.r < last;
+  useLayoutEffect(() => {
+    if (!active || !validActive) return;
+    focusPending.current = true;
+    if (gridRef.current) {
+      const { scroller, top, bottom, rowsTop } = gridViewport(gridRef.current);
+      const cellTop = rowsTop + active.r * rowHeight;
+      const delta = cellTop < top ? cellTop - top : Math.max(0, cellTop + rowHeight - bottom);
+      scroller.scrollBy({ top: delta, behavior: "instant" });
+      setScrollTop(Math.max(0, top - rowsTop + delta));
+    }
+  }, [active, validActive, rowHeight, setScrollTop, gridRef]);
+  // Scrolling may need a second render to mount the requested cell's input.
+  useLayoutEffect(() => {
+    if (focusPending.current && input.current) {
+      input.current.parentElement?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+      input.current.focus({ preventScroll: true });
+      focusPending.current = false;
+    }
+  });
+
+  const nav = (e: KeyboardEvent<HTMLElement>, r: number, c: number) => {
+    if (!rows[r]?.cells[c] || !columns[c]) return;
     const key = e.key;
     if (key === "ArrowDown" && e.shiftKey) {
       e.preventDefault();
       setRange((x) => ({ col: c, from: x?.col === c ? x.from : r, to: Math.min(rows.length - 1, r + 1) }));
       return move(r + 1, c);
     }
-    const arrows: Record<string, [number, number]> = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
-    if (arrows[key]) {
+    if (["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "PageDown", "PageUp", "Home", "End"].includes(key)) {
       e.preventDefault();
       setRange(null);
-      return move(r + arrows[key]![0], c + arrows[key]![1]);
+      const next = nextCell(key, r, c, rows.length, columns.length, e.ctrlKey || e.metaKey, Math.max(1, viewportRows - 1));
+      return move(next.r, next.c);
     }
     if (key === "F8") return (e.preventDefault(), nextError(r, c));
     if ((e.ctrlKey || e.metaKey) && key.toLowerCase() === "d") return (e.preventDefault(), fillDown());
@@ -140,20 +198,30 @@ export function GridTable({ rows, columns, label, onCell, statusOf, fieldLabel, 
     }));
   };
 
+  const onGridKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement | null)?.tagName === "INPUT") return;
+    const curr = active ?? { r: 0, c: 0 };
+    nav(e, curr.r, curr.c);
+  };
+
   const at = active && rows[active.r]?.cells[active.c];
   return (
-    <div className={s.grid} role="grid" aria-label={label} aria-rowcount={rows.length + 1} data-cols={columns.length}>
-      <div role="row" className={s.head}>
+    <div ref={gridRef} className={`${s.grid} ${m.grid}`} role="grid" tabIndex={mounted ? -1 : 0} onKeyDown={onGridKeyDown}
+      onFocus={(e) => e.target === e.currentTarget && !parkingFocus.current && !mounted && move(active?.r ?? 0, active?.c ?? 0)}
+      aria-label={label} aria-rowcount={rows.length + 1} data-cols={columns.length}>
+      <div role="row" aria-rowindex={1} className={s.head}>
         <span role="columnheader" className={s.n}>{t("bulkGrid.col.row")}</span>
         <span role="columnheader">{t("bulkGrid.col.number")}</span>
         <span role="columnheader">{t("bulkGrid.col.name")}</span>
         {columns.map((f) => <span key={f.key} role="columnheader" className={s.colHead}>{fieldLabel(f)}<span className={s.tag} data-cls={f.cls}>{t(`bulkGrid.tag.${f.cls}`)}</span></span>)}
         <span role="columnheader">{t("bulkGrid.col.status")}</span>
       </div>
-      {rows.map((row, r) => {
+      {first > 0 && <svg height={first * rowHeight} className={m.spacer} aria-hidden />}
+      {rows.slice(first, last).map((row, idx) => {
+        const r = first + idx;
         const st = statusOf(row);
         return (
-          <div key={row.id} role="row" className={s.row}>
+          <div key={row.id} role="row" aria-rowindex={r + 2} className={`${s.row} ${m.row}`}>
             <span role="rowheader" className={s.n}>{r + 1}</span>
             <span role="gridcell" className="num">{row.number}</span>
             <span role="gridcell">{row.name}</span>
@@ -168,18 +236,9 @@ export function GridTable({ rows, columns, label, onCell, statusOf, fieldLabel, 
               const listId = `${id(r, c)}-options`;
               return (
                 <span
-                  key={f.key}
-                  id={id(r, c)}
-                  role="gridcell"
-                  tabIndex={!active && r === 0 && c === 0 ? 0 : -1}
-                  aria-label={cellName}
-                  aria-invalid={bad || undefined}
-                  className={`${s.cell} ${k.cell}`}
-                  data-changed={changed || undefined}
-                  data-bad={bad || undefined}
-                  data-range={inRange(r, c) || undefined}
-                  data-editing={isEditing || undefined}
-                  onPaste={(e) => paste(e, r, c)}
+                  key={f.key} id={id(r, c)} role="gridcell" tabIndex={-1} aria-label={cellName} aria-invalid={bad || undefined} className={`${s.cell} ${k.cell}`}
+                  data-changed={changed || undefined} data-bad={bad || undefined} data-range={inRange(r, c) || undefined}
+                  data-editing={isEditing || undefined} onPaste={(e) => paste(e, r, c)}
                   onFocus={(e) => e.target === e.currentTarget && (same(active, r, c) ? input.current?.focus() : setActive({ r, c }))}
                   onDoubleClick={() => (same(active, r, c) ? begin(r, c, shown(row, c)) : undefined)}
                   onPointerDown={(e) => (e.shiftKey && active?.c === c ? setRange({ col: c, from: active.r, to: r }) : setRange(null))}
@@ -188,14 +247,9 @@ export function GridTable({ rows, columns, label, onCell, statusOf, fieldLabel, 
                   {!isEditing && <span className={changed ? s.new : undefined}>{shown(row, c)}</span>}
                   {same(active, r, c) && (
                     <TextInput
-                      ref={input}
-                      aria-label={cellName}
-                      className={isEditing ? k.edit : k.catch}
-                      autoComplete="off"
-                      role={choiceWords(f).length ? "combobox" : undefined}
-                      aria-expanded={choiceWords(f).length ? isEditing : undefined}
-                      aria-controls={options.length ? listId : undefined}
-                      aria-activedescendant={options.length ? `${listId}-${Math.min(opt, options.length - 1)}` : undefined}
+                      ref={input} aria-label={cellName} className={isEditing ? k.edit : k.catch} autoComplete="off"
+                      role={choiceWords(f).length ? "combobox" : undefined} aria-expanded={choiceWords(f).length ? isEditing : undefined}
+                      aria-controls={options.length ? listId : undefined} aria-activedescendant={options.length ? `${listId}-${Math.min(opt, options.length - 1)}` : undefined}
                       onInput={(e) => (setTyped(e.currentTarget.value), setOpt(0), editingNow.current || startEditing(r, c))}
                       onCompositionStart={() => editingNow.current || startEditing(r, c)}
                       onCompositionEnd={() => enterAfterIme.current && leave(true, { r: r + 1, c })}
@@ -220,6 +274,7 @@ export function GridTable({ rows, columns, label, onCell, statusOf, fieldLabel, 
           </div>
         );
       })}
+      {last < rows.length && <svg height={(rows.length - last) * rowHeight} className={m.spacer} aria-hidden />}
       {at && "bad" in at && active && (
         <div className={s.tip} role="status">
           <AlertTriangle size={14} aria-hidden />

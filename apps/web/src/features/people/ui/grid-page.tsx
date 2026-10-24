@@ -41,6 +41,7 @@ export function GridPage() {
   const closePick = useCallback(() => setPick(false), []);
   const [typed, setTyped] = useState<Record<string, Partial<Record<GridKey, string>>>>({});
   const [filter, setFilter] = useState<Filter>("all");
+  const [activeCell, setActiveCell] = useState<{ r: number; c: number } | null>(null);
   const [step, setStep] = useState<"edit" | "check" | "done">("edit");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [reason, setReason] = useState<string | null>(null);
@@ -70,6 +71,17 @@ export function GridPage() {
   const shown = rows.filter((_, i) => filter === "all" || (filter === "error" ? states[i]!.errors > 0 : filter === "changed" ? states[i]!.changed > 0 && !states[i]!.errors : !states[i]!.changed && !states[i]!.errors));
   const cellsBy = (cls: "now" | "second") => rows.reduce((n, r) => n + r.cells.filter((c, i) => "send" in c && fields[i]!.cls === cls && r.typed[i] !== r.current[i]).length, 0);
   const errors = states.reduce((n, x) => n + x.errors, 0);
+  const firstError = () => {
+    let source = shown;
+    let r = source.findIndex((row) => row.cells.some((cell) => "bad" in cell));
+    if (r < 0) {
+      source = rows;
+      r = source.findIndex((row) => row.cells.some((cell) => "bad" in cell));
+      if (r < 0) return;
+      setFilter("all");
+    }
+    setActiveCell({ r, c: source[r]!.cells.findIndex((cell) => "bad" in cell) });
+  };
 
   const body = () => ({
     rows: rows.flatMap((r, i) => {
@@ -138,7 +150,7 @@ export function GridPage() {
             </div>
             <span className={s.grow} />
             <Button aria-expanded={pick} onClick={() => setPick((x) => !x)}><Columns3 size={16} aria-hidden />{t("bulkGrid.columns", { n: cols.length })}</Button>
-            <Button onClick={() => document.getElementById("grid-0-0")?.focus()}><ClipboardPaste size={16} aria-hidden />{t("bulkGrid.paste")}<Kbd keys="⌘V" /></Button>
+            <Button onClick={() => setActiveCell({ r: 0, c: 0 })}><ClipboardPaste size={16} aria-hidden />{t("bulkGrid.paste")}<Kbd keys="⌘V" /></Button>
             <Button onClick={() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "d", ctrlKey: true, bubbles: true }))}>{t("bulkGrid.fill")}<Kbd keys="Ctrl+D" /></Button>
           </div>
           <div className={s.verbs}>
@@ -148,8 +160,8 @@ export function GridPage() {
             <span className={s.verbOff} title={t("bulkGrid.verb.changeClosed")}>{t("bulkGrid.verb.change")}</span>
             <span className={s.note}>{t("bulkGrid.verb.changeClosed")}</span>
           </div>
-          <div className={s.gridWrap}>
-            <GridTable rows={shown} columns={fields} label={t("bulkGrid.title", { scope: t("bulkGrid.scopeAll") })} onCell={(id, ci, text) => (setTyped((x) => ({ ...x, [id]: { ...x[id], [fields[ci]!.key]: text } })), setMarks((m) => (m[id] ? { ...m, [id]: {} } : m)))} statusOf={(r) => {
+          <div className={s.gridWrap} tabIndex={-1}>
+            <GridTable rows={shown} columns={fields} activeCell={activeCell} onActiveChange={setActiveCell} label={t("bulkGrid.title", { scope: t("bulkGrid.scopeAll") })} onCell={(id, ci, text) => (setTyped((x) => ({ ...x, [id]: { ...x[id], [fields[ci]!.key]: text } })), setMarks((m) => (m[id] ? { ...m, [id]: {} } : m)))} statusOf={(r) => {
               const st = states[rows.indexOf(r)]!;
               return st.errors ? { tone: "error", text: t("bulkGrid.status.error") } : st.changed ? { tone: "changed", text: t("bulkGrid.status.changed", { n: st.changed }) } : { tone: "same", text: t("bulkGrid.status.same") };
             }} fieldLabel={(f) => fieldLabel(f.key)} suggestionOf={(cell) => ("bad" in cell ? cell.suggest : undefined)} />
@@ -164,7 +176,7 @@ export function GridPage() {
           : <><b>{t("bulkGrid.foot", { n: rows.filter((_, i) => states[i]!.changed > 0).length, now: cellsBy("now"), second: cellsBy("second"), errors })}</b></>}
           <CommandError error={check.error ?? commit.error} own={(code) => (code === "rows_changed_since_preview" ? t("bulkGrid.changedMeanwhile") : undefined)} />
         </div>
-        {step === "edit" && errors > 0 && <Button onClick={() => document.querySelector<HTMLElement>('[role="gridcell"][aria-invalid="true"]')?.focus()}>{t("bulkGrid.firstError")}<Kbd keys="F8" /></Button>}
+        {step === "edit" && errors > 0 && <Button onClick={firstError}>{t("bulkGrid.firstError")}<Kbd keys="F8" /></Button>}
         {step === "edit" && <Button variant="primary" aria-disabled={check.isPending || body().rows.length === 0 || undefined} onClick={() => body().rows.length > 0 && check.mutate()}>{errors ? t("bulkGrid.toCheck", { n: errors }) : t("bulkGrid.toCheckClean")}<Kbd keys="⌘↵" /></Button>}
         {step === "check" && <Button variant="ghost" onClick={() => (preview && setMarks(refusedCells(preview)), setStep("edit"))}>{t("bulkGrid.back")}</Button>}
         {step === "check" && c && <Button variant="primary" aria-disabled={commit.isPending || undefined} onClick={() => (setTried(true), reason && commit.mutate())}>{t("bulkGrid.commit", { n: c.people, cells: c.cells })}<Kbd keys="⌘↵" /></Button>}

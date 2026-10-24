@@ -1,0 +1,28 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* Virtual spacers for 2,000-row capacity (spec E6-grid, P-08, #28). Tokens only. */
+/* Virtual spacers own the scroll offset; browser anchoring must not adjust it. */
+.grid { overflow-anchor: none; }
+
+.spacer {
+  grid-column: 1 / -1;
+  pointer-events: none;
+}
+
+/* Keep rendered rows the same height as their virtual spacers. */
+.row > span {
+  height: var(--row-h);
+  min-height: 0;
+}
+
+[data-density="compact"] .grid { --row-h: var(--row-h-compact); }
+.grid [role="columnheader"] { height: var(--row-h); }
+
+/* Keep the active cell's explanation in the viewport, including virtual rows. */
+.grid > [role="status"] {
+  position: sticky;
+  grid-column: 1 / -1;
+  justify-self: end;
+  left: var(--space-2);
+  max-inline-size: calc(100cqi - 2 * var(--space-2));
+  overflow-wrap: anywhere;
+}

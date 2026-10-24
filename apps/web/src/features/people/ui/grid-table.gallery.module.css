@@ -1,0 +1,6 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.gallery { height: calc(var(--row-h) * 16); }
+.gallery[data-isolated="true"] { height: 100%; }
+.gallery[data-bounded="false"], .gallery[data-bounded="false"] .table { height: auto; }
+.gallery[data-bounded="false"] .scroller { flex: none; }
+.before { height: calc(var(--row-h) * 6); flex-shrink: 0; }
