@@ -417,3 +417,41 @@ contracts are regenerated with the repository OpenAPI and TypeScript generators.
 - `scripts/reach-baseline.json`
 - `scripts/standing-text-baseline.json`
 - `scripts/standing-text.d/eco-composer.json`
+
+## Round 6 support integration
+
+Rebased all fourteen existing lane commits, including the Workbench test feature
+declarations, onto public/dev `4a91b18dd` (G1 support, PR #42). The combined inbox
+registers nineteen sources. G1's SupportAccess adapter remains release-mounted,
+uses the expanded source query and carries an absent typed context. Its catalog
+permission also supplies the queue's capability and filter metadata, including
+for a support-only approver with no pending request. Home keeps the localized
+support source label and selected review link alongside G2's typed decision rows.
+
+The generated contract documents thirty-nine extensible item kinds and retains
+G2's typed unlock, insurance, lifecycle and request contexts. The latest settings
+function was regenerated from the combined ninety-eight-key roster. The reach
+generator produces fifty-two record gaps and 160 operation allowances, down from
+G2's 164 and G1's 161; every remaining allowance already belonged to one side.
+The file-size generator folds the existing G1 and access-log contributions into
+the main baseline and consumes their contribution files: 294 pins, no violations
+and no increases against public/dev. All thirteen backend release gates pass.
+
+Two support-row web regressions fail in the detached pre-fix worktree
+`lanes/eco-g2-inbox/fail-before-r6` at `476055454`, then pass on the merged tip.
+The existing support-approval DB journey also fails there on `has_work=false`
+when its new assertion is applied with only the source-query/context compilation
+compatibility changes; it passes with the metadata integration. The inherited
+API compatibility test rejects the closed kind enum before regeneration.
+
+Additional files outside the original owned paths this round:
+
+- `backend/app/src/action_inbox/sources/support_access.rs` — adapt G1 to the shared query/context and retain its authorization metadata.
+- `backend/app/tests/action_inbox/support_access.rs` — support-only capability regression.
+- `scripts/api-compat.test.ts` — retain all thirty-nine documented extensible kinds.
+- `backend/ci/gates/file-size/baseline.d/eco-g1-support.txt` — consumed by the baseline generator.
+- `backend/ci/gates/file-size/baseline.d/rv-SEC-K1-c-access-log-legal-hold.txt` — consumed by the baseline generator.
+
+The earlier change inventory also covers this round's generated contracts,
+settings migration/registry, and size/reach baselines. No excluded file changed.
+Logs are in `lanes/eco-g2-inbox/round6-logs/`.
