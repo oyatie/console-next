@@ -252,11 +252,15 @@ for (const tool of ["nextest", "actionlint"]) test(`${tool} refuses a well-forme
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("Rust runner refuses invalid mode and partition before invoking Cargo", () => {
+test("Rust runner refuses invalid mode and partition before invoking Cargo", (t) => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-invalid-rust-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  writeFileSync(path.join(dir, "cargo"), "#!/bin/sh\necho 'unexpected Cargo invocation' >&2\nexit 97\n", { mode: 0o700 });
   for (const args of [["db", "0"], ["db", "999"], ["db", "1.5"], ["unknown", "1"]]) {
-    const result = spawnSync("node", ["../scripts/ci/rust-tests.mjs", ...args], { cwd: new URL("../backend/", import.meta.url), encoding: "utf8" });
+    const result = spawnSync("node", ["../scripts/ci/rust-tests.mjs", ...args], { cwd: new URL("../backend/", import.meta.url), encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}` } });
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /invalid Rust test partition/);
+    assert.doesNotMatch(result.stderr, /unexpected Cargo invocation/);
   }
 });
 
