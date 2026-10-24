@@ -46,7 +46,7 @@ pub(crate) async fn views_at(
     personal: bool,
 ) -> Result<HashMap<Uuid, Vec<WorkplaceView>>, PgEntityError> {
     let rows = sqlx::query(
-        "SELECT w.id, w.legal_entity_id, w.registration_id, w.sub_serial, w.default_branch_id, w.kind_code, w.code, w.needs_confirmation, \
+        "SELECT entity_workplace_opens_on(w.id, $4) AS placement_opens_on, w.id, w.legal_entity_id, w.registration_id, w.sub_serial, w.default_branch_id, w.kind_code, w.code, w.needs_confirmation, \
                 w.closed_on, w.not_registered_reason_code, w.not_registered_reason_label, w.not_registered_reason_version, \
                 COALESCE(w.is_abstract, false) AS is_abstract, \
                 COALESCE(w.registration_id, (SELECT reg.id FROM business_registrations reg WHERE reg.legal_entity_id = w.legal_entity_id AND reg.voided_at IS NULL AND reg.closed_on IS NULL ORDER BY reg.holder_workplace_id = e.primary_workplace_id DESC NULLS LAST, reg.created_at LIMIT 1)) AS filing_registration_id, \
@@ -187,6 +187,7 @@ pub(crate) async fn views_at(
         });
         let headcount: i64 = r.try_get("headcount")?;
         out.entry(entity).or_default().push(WorkplaceView {
+            placement_opens_on: r.try_get("placement_opens_on")?,
             read: point.stamp(),
             id,
             legal_entity_id: entity,

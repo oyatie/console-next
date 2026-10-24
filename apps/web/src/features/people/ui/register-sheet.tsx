@@ -15,7 +15,7 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { Kbd } from "../../../ui/kbd/kbd";
 import { Composer } from "../../../ui/composer/composer";
 import { commitLabel } from "../../../ui/composer/actions";
-import { duplicateCandidates, numberHolder } from "../api";
+import { duplicateCandidates, numberHolder, problemOf } from "../api";
 import { EMPTY, gaps, nextPerson, NO_PICK, type Draft, type DupPick } from "../domain/register";
 import { placeOptions, resolvePlace, workplaceChoices } from "../domain/register-place";
 import { receipts } from "./use-register-receipts";
@@ -60,12 +60,17 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
   const [d, setD] = useState<Draft>(() => ({ ...EMPTY, unitId: preset ?? "" }));
   // The name takes focus once the sheet is open (React Aria first focuses the dialog itself).
   useEffect(() => void requestAnimationFrame(() => body.current?.querySelector<HTMLElement>("input")?.focus()), []);
-  const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
+  const set = <K extends keyof Draft>(k: K, v: Draft[K]) => {
+    if (openingRefused) reg.reset();
+    setD((x) => ({ ...x, [k]: v }));
+  };
   const [tried, setTried] = useState(false);
   const [pick, setPick] = useState<DupPick>(NO_PICK);
   const options = placeOptions(units, roots, entities, d.where);
   const place = resolvePlace(options.find((o) => o.unit.id === d.unitId), entities, d.workplaceId);
+  const beforeOpening = Boolean(d.hire && place?.opensOn && d.hire < place.opensOn);
   const g = gaps(d, phoneE164(d.phone) !== null, !place || place.branchId !== null);
+  if (beforeOpening && !g.includes("hire")) g.push("hire");
   // What a press found missing shows at once, even while the places are still read (a gap that appears only once they land
   // moved the form under the pointer); only the workplace gap waits for them, since the place's workplace is not known yet.
   const knownGaps = g.filter((x) => placesRead || x !== "workplace");
@@ -81,6 +86,10 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
     requestAnimationFrame(() => body.current?.querySelector<HTMLElement>("input")?.focus());
   });
   const cands = duplicateCandidates(reg.error);
+  const openingRefused = problemOf(reg.error)?.code === "workplace_not_open_on_date";
+  const hireRefusal = beforeOpening || openingRefused
+    ? place?.opensOn ? t("register.err.beforeOpening", { site: place.site, date: fmtDate(place.opensOn) }) : t("common.failed.code.workplace_not_open_on_date")
+    : null;
 
   // A press made while the places are still being read is kept and made once they land (it was a dead click: the
   // place's workplace looked missing for that moment, and was there by the time the gap would have shown).
@@ -89,7 +98,7 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
     if (reg.isChecking) return reg.check();
     setTried(true);
     // Refuse known gaps before waiting: an invalid press must not submit a later, completed draft.
-    if (knownGaps.length > 0 || reg.isPending) return focusFirst(body.current);
+    if (knownGaps.length > 0 || hireRefusal || reg.isPending) return focusFirst(body.current);
     if (d.unitId && !placesRead) return void (queued.current = next);
     // A possible duplicate is a question, not an error: its choices open unmarked.
     if (cands.length === 0) return reg.mutate({ next }, { onError: (e) => duplicateCandidates(e).length > 0 && setTried(false) });
@@ -128,8 +137,8 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
       onClose={onClose}
       pending={reg.isSending}
       locked={reg.isChecking}
-      notice={cands.length === 0 ? (reg.error ? <CommandError error={reg.error} live="assertive" fieldLabel={(field) => field === "name" ? t("register.name") : undefined} own={(code) => (code === "employee_number_taken" && d.numberMode === "manual" && d.number.trim() ? t(`people.new.numberTaken.${numberHolder(reg.error)}`, { number: d.number.trim() }) : peopleRefusal(code))} /> : <RegisterToast inline />) : undefined}
-      consequence={<RegisterFoot d={d} gaps={g} tried={tried} dup={cands.length > 0} place={place?.site && place.unit.kind !== "SITE" ? `${place.site} › ${place.unit.name}` : (place?.unit.name ?? "")} status={status} setup={setup} />}
+      notice={cands.length === 0 ? (reg.error && !openingRefused ? <CommandError error={reg.error} live="assertive" fieldLabel={(field) => field === "name" ? t("register.name") : undefined} own={(code) => (code === "employee_number_taken" && d.numberMode === "manual" && d.number.trim() ? t(`people.new.numberTaken.${numberHolder(reg.error)}`, { number: d.number.trim() }) : peopleRefusal(code))} /> : <RegisterToast inline />) : undefined}
+      consequence={hireRefusal ? <p role="alert">{hireRefusal}</p> : <RegisterFoot d={d} gaps={g} tried={tried} dup={cands.length > 0} place={place?.site && place.unit.kind !== "SITE" ? `${place.site} › ${place.unit.name}` : (place?.unit.name ?? "")} status={status} setup={setup} />}
       action={{ kind: "ONBOARD", mode: "apply", count: 1, continuation: "next" }}
       onSubmit={() => { submit(true); }}
       incomplete={(cands.length > 0 && (!pick.verdict || (pick.verdict === "other" && !pick.code))) || undefined}
@@ -153,8 +162,8 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
             tried={tried}
           />
         )}
-        <RegisterPlace d={d} set={set} units={units} options={options} workplaces={placesRead && place && !place.own ? workplaceChoices(entities) : []} shown={shown} hireLabel={d.hire ? fmtDate(d.hire) : null} />
-        <RegisterTerms d={d} set={set} shown={shown} today={today} tried={tried} />
+        <RegisterPlace d={d} set={set} units={units} options={options} workplaces={placesRead && place && !place.own ? workplaceChoices(entities) : []} shown={shown} hireLabel={d.hire && !hireRefusal ? fmtDate(d.hire) : null} />
+        <RegisterTerms d={d} set={set} shown={shown} today={today} tried={tried} hireRefusal={hireRefusal} />
       </div>
     </Composer>
   );

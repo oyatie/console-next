@@ -22,7 +22,7 @@ import { MaskedField } from "../../../ui/masked-field/masked-field";
 import { PathPicker } from "../../../ui/path-picker/path-picker";
 import { Composer } from "../../../ui/composer/composer";
 import { rehireEmployee } from "../api";
-import { addDays } from "../domain/lifecycle";
+import { retirementDate } from "../domain/employment";
 import { EMPLOYMENT_TYPES, type EmploymentType, type Where } from "../domain/register";
 import { PAY_UNITS, type PayUnit } from "../domain/facts";
 import { placeOptions } from "../domain/register-place";
@@ -49,7 +49,7 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
   const [f, setF] = useState({ hire: "", unit: "", type: null as EmploymentType | null, position: e.position ?? "", end: "", phone: "", pay: "", payUnit: null as PayUnit | null });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
   const [tried, setTried] = useState(false);
-  const minHire = e.exit_date ? addDays(e.exit_date, 1) : undefined;
+  const minHire = e.exit_date ? retirementDate(e.exit_date) : undefined;
   const dateRefusal = e.exit_date ? t("people.refusal.rehire_date_not_after_exit", { date: e.exit_date }) : undefined;
   const gaps: (typeof NEEDED[number] | "phone" | "pay" | "payUnit")[] = NEEDED.filter((k) => (k === "end" ? f.type === "CONTRACT" && !f.end : k === "type" ? !f.type : k === "hire" ? !f.hire || Boolean(minHire && f.hire < minHire) : !f[k]));
   if (!d.employment) {

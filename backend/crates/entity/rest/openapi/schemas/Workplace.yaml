@@ -12,6 +12,10 @@ required:
 - headcount
 - regular_workers
 properties:
+  placement_opens_on:
+    type: [string, 'null']
+    format: date
+    description: First date both the workplace and its legal entity exist; earliest permitted placement date.
   id:
     type: string
     format: uuid

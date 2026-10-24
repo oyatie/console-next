@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { atPhoneWidth, expectAccessible } from "./a11y";
-import { go, koDate, kstDate, registerEmployee } from "./flows";
+import { go, koDate, kstDate, registerEmployee, submitRegistration } from "./flows";
 import { openUnit, panel, sheet } from "./helpers/structure";
 import { openTenant } from "./helpers/tenant";
 import { SETUP_DEPARTMENT, setupCompany, startOperations } from "./setup-flows";
@@ -85,4 +85,23 @@ test("past and future views keep dated labels and readable inspectors; future ch
   await expect(proposal.getByRole("textbox", { name: /^시행일/ })).toHaveValue(koDate(future));
   await proposal.getByRole("button", { name: "닫기", exact: true }).last().click();
   await datedLabels(admin, future, "예정");
+});
+
+
+test("a hire before opening keeps the hire date and points to roster import at that field", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
+  const admin = await openTenant(browser, "opening-refusal", "개설일상사");
+  await setupCompany(admin, "개설일상사", "본사");
+  await startOperations(admin);
+  await submitRegistration(admin, { name: "이전입사자", unit: SETUP_DEPARTMENT, hired: "2019-01-02" });
+  const form = admin.getByRole("dialog", { name: "직원 등록", exact: true });
+  const hire = form.getByRole("textbox", { name: /^입사일/ });
+  await expect(hire).toHaveAttribute("aria-invalid", "true");
+  await expect(hire).toHaveValue(koDate("2019-01-02"));
+  const errorId = (await hire.getAttribute("aria-describedby"))!.split(" ").find((id) => id.endsWith("-error"))!;
+  const error = admin.locator(`[id="${errorId}"]`);
+  await expect(error).toContainText(`본사 개설일(${koDate("2020-03-02")}) 전 입사자는 입사일을 그대로 두고 명부 가져오기로 등록합니다`);
+  await expect(error.getByRole("link", { name: "직원 명부 가져오기" })).toHaveAttribute("href", "/people/import");
+  await expect(form).not.toContainText("배치일");
+  await expect(form).not.toContainText("명부에 들어갑니다");
+  await accessibleAtBothWidths(admin, "hire before workplace opening");
 });

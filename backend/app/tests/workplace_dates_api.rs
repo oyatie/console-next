@@ -125,12 +125,16 @@ async fn assignment(c: &Ctx, employee: &str) -> Value {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn hiring_before_open_is_422_and_opening_day_registers_the_person(pool: PgPool) {
     let w = world(&pool).await;
-    refused(
-        &w.c,
-        "/api/v1/employees",
-        employee(&w, &w.target, "OPEN-HIRE", BEFORE),
-    )
-    .await;
+    let (status, body) =
+        w.c.call(
+            "POST",
+            "/api/v1/employees",
+            Some(employee(&w, &w.target, "OPEN-HIRE", BEFORE)),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+    assert_eq!(body["error"]["code"], "workplace_not_open_on_date");
+    assert_eq!(body["error"]["errors"][0]["field"], "hire_date", "{body}");
     for table in [
         "employees",
         "employee_employment_profiles",
@@ -221,4 +225,19 @@ async fn explicit_placement_before_open_is_422_and_opening_day_binds_the_person(
     assert_eq!(placed["valid_from"], OPEN);
     assert_eq!(placed["workplace_id"], w.target.workplace);
     assert_eq!(count(&pool, "employment_assignments", w.c.org).await, 1);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn workplace_read_uses_the_placement_guards_opening_date(pool: PgPool) {
+    let w = world(&pool).await;
+    let (status, entities) = w.c.call("GET", "/api/v1/legal-entities", None).await;
+    assert_eq!(status, StatusCode::OK, "{entities}");
+    let workplace = entities["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|e| e["workplaces"].as_array().unwrap())
+        .find(|p| p["id"] == w.target.workplace)
+        .unwrap();
+    assert_eq!(workplace["placement_opens_on"], OPEN, "{workplace}");
 }

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
 import { ChoiceField } from "../../../ui/choice/choice-field";
@@ -17,7 +18,7 @@ const TYPE = { type: "employmentType", values: EMPLOYMENT_TYPES };
  * When and how: start date chips (no default, weekday echo, what the date makes the person), the nine employment type chips (no
  * default), and the fields the server still needs today (phone, title, base pay).
  */
-export function RegisterTerms({ d, set, shown, today, tried }: { d: Draft; set: Set; shown: ReadonlySet<Gap>; today: string; tried: boolean }) {
+export function RegisterTerms({ d, set, shown, today, tried, hireRefusal }: { d: Draft; set: Set; shown: ReadonlySet<Gap>; today: string; tried: boolean; hireRefusal?: string | null }) {
   return (
     <>
       <div className={s.termsRow}>
@@ -29,7 +30,8 @@ export function RegisterTerms({ d, set, shown, today, tried }: { d: Draft; set: 
           value={d.hire}
           onChange={(v) => set("hire", v)}
           echo={d.hire ? t(d.hire > today ? "register.hire.future" : "register.hire.past") : undefined}
-          error={shown.has("hire") ? t("register.err.hire") : undefined}
+          error={hireRefusal || (shown.has("hire") ? t("register.err.hire") : undefined)}
+          remedy={hireRefusal ? <Link to="/people/import">{t("import.title")}</Link> : undefined}
           showErrors={tried}
         />
         <ChoiceField

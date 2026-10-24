@@ -45,8 +45,8 @@ test("the reported last working day counts in live, compare, list and exports un
   await admin.getByRole("button", { name: "퇴직 보고" }).click();
   const report = admin.getByRole("dialog");
   await report.getByRole("textbox", { name: /^마지막 근무일/ }).fill(lastDay);
-  await expect(report).toContainText(`퇴직일 ${koDate(exitDay)}`);
-  await expect(report).toContainText(`상실일 ${koDate(exitDay)}`);
+  await expect(report).toContainText(`퇴직일(근로기준법·퇴직금) ${koDate(exitDay)}`);
+  await expect(report).toContainText(`4대보험 상실일 ${koDate(exitDay)}`);
   await shot(admin, "exit-last-working-day-report");
   await report.getByLabel("퇴직 경위").fill("개인 사정");
   await report.getByRole("button", { name: /퇴직 보고$/ }).click();
@@ -58,6 +58,10 @@ test("the reported last working day counts in live, compare, list and exports un
   await confirm.getByRole("button", { name: /인사 확인하고/ }).click();
   await expect(confirm).toBeHidden();
   await expect(exit).toContainText("효력 예정");
+  await expect(exit).toContainText(`${koDate(exitDay)}에 퇴직 처리가 반영됩니다`);
+  await exit.getByRole("link", { name: "퇴직 건 열기" }).click();
+  await expect(admin.getByRole("main")).toContainText(`퇴직을 ${koDate(exitDay)}자로 예약했습니다`);
+  await go(admin, record);
   await expectAccessible(admin, "exit on the last working day stays scheduled");
   await shot(admin, "exit-last-working-day-record");
 

@@ -169,6 +169,9 @@ pub struct BusinessTypeView {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct WorkplaceView {
+    /// First date both the workplace and its employer exist, shared with placement admission.
+    #[serde(with = "crate::iso_date::option")]
+    pub placement_opens_on: Option<time::Date>,
     #[serde(flatten)]
     pub read: crate::ReadStamp,
     pub id: Uuid,

@@ -114,8 +114,8 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await c.click(admin.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ hasText: "강퇴직" }).getByRole("link", { name: "퇴직 정산 결재 준비", exact: true }));
   const settle = admin.getByRole("region", { name: /지금/ });
   await settle.getByLabel("평균임금 산정 시작일").fill(kstDate(-91));
-  await settle.getByLabel("평균임금 산정 종료일").fill(kstDate(0));
-  await settle.getByLabel("산정 기간 총일수").fill("92");
+  await settle.getByLabel("평균임금 산정 종료일").fill(kstDate(-1));
+  await settle.getByLabel("산정 기간 총일수").fill("91");
   await settle.getByLabel("기간 임금 총액").fill("9600000");
   await settle.getByLabel("월 통상임금").fill("3200000");
   await expectAccessible(admin, "J5: settlement form at the current step");

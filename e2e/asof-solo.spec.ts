@@ -105,8 +105,8 @@ test("solo ops reads past and projected records, preserves known-at corrections 
   await control.getByLabel(/^기준일/).fill(yesterday);
   await control.getByLabel(/^기준일/).blur();
   await expect(admin.getByRole("heading", { name: "주식회사 시점상사", level: 1 })).toBeVisible();
-  await expect(control).toContainText("그날 등록증에 적힌 값");
-  await expect(control).toContainText("읽기 전용");
+  await expect(control).toContainText("그날 등록증 기준");
+  await expect(control).not.toContainText("읽기 전용");
   await expect(admin.getByRole("button", { name: /수정|정정$|법인 종료|법인 삭제/ })).toHaveCount(0);
   await expect(admin.getByRole("link", { name: "사업장 추가", exact: true })).toHaveCount(0);
   // A historical workplace row carries the coordinate into its panel, where write verbs remain absent.

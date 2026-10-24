@@ -28755,6 +28755,11 @@ export interface components {
             required_payment_line: boolean;
         };
         Workplace: {
+            /**
+             * Format: date
+             * @description First date both the workplace and its legal entity exist; earliest permitted placement date.
+             */
+            placement_opens_on?: string | null;
             /** Format: uuid */
             id: string;
             /** Format: uuid */

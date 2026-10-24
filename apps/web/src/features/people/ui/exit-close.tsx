@@ -1,3 +1,4 @@
+import { retirementDate } from "../domain/employment";
 import { useEffect, useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { commitLabel, verbLabel } from "../../../ui/composer/actions";
@@ -57,7 +58,7 @@ export function CloseForm({ c: opened, reject, onClose, onDone }: { c: Case; rej
       stale={unavailable ? { name: null } : null}
       employeeId={c.employee_id}
       draft={reason.trim()}
-      consequence={unavailable ? null : t(exited ? "exit.close.consequence.reverse" : scheduled ? "exit.close.consequence.scheduled" : "exit.close.consequence", { name, date: fmtDate(c.effective_exit_date) })}
+      consequence={unavailable ? null : t(exited ? "exit.close.consequence.reverse" : scheduled ? "exit.close.consequence.scheduled" : "exit.close.consequence", { name, date: fmtDate(retirementDate(c.effective_exit_date)) })}
       missing={tried ? missing : 0}
       action={{ kind: "exit", mode, count: 1 }}
       tone="danger"

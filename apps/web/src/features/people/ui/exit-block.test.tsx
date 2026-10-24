@@ -46,3 +46,12 @@ test("the HR sheet refines the list row with the authorized protected periods", 
   const detail = { id: "case-1", protected_periods: [{ lifecycle_event_id: "leave-1", article: "제23조제2항" }] } as unknown as Case;
   expect(sheet(detail)).toContain("제23조제2항");
 });
+
+
+test("a same-day last working day displays tomorrow as the scheduled retirement date", () => {
+  reads.cases = [{ id: "scheduled", status: "HR_CONFIRMED", effective_exit_date: "2026-10-24", exit_event_state: "SCHEDULED" }];
+  const html = renderToStaticMarkup(<ExitCases employee={{ id: "person", name: "경계직원", status: "ACTIVE" } as components["schemas"]["Employee"]} />);
+  expect(html).toContain("2026. 10. 25. 퇴직");
+  expect(html).toContain("2026. 10. 25.에 퇴직 처리가 반영됩니다");
+  expect(html).not.toContain("2026. 10. 24. 퇴직");
+});

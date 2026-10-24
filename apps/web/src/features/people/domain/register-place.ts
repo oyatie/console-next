@@ -25,7 +25,7 @@ export function placeOptions(units: Unit[], roots: OrgStructure["entities"], ent
 
 /** The workplaces a person can be registered at: each with the branch their leave routes to. */
 export const workplaceChoices = (entities: readonly Entity[]) =>
-  entities.flatMap((e) => e.workplaces.filter((w) => w.default_branch_id).map((w) => ({ entityId: e.id, entity: entityName(e), entityRecord: e, workplaceId: w.id, site: w.current?.name ?? "", branchId: w.default_branch_id! })));
+  entities.flatMap((e) => e.workplaces.filter((w) => w.default_branch_id).map((w) => ({ entityId: e.id, entity: entityName(e), entityRecord: e, workplaceId: w.id, site: w.current?.name ?? "", opensOn: w.placement_opens_on, branchId: w.default_branch_id! })));
 
 /**
  * The place a registration is sent with: the unit's own workplace when it sits under a registered one with a branch,
@@ -36,5 +36,5 @@ export function resolvePlace(place: PlaceOption | undefined, entities: readonly 
   const all = workplaceChoices(entities);
   const own = all.find((w) => w.workplaceId === place.workplaceId);
   const w = own ?? all.find((x) => x.workplaceId === picked);
-  return { ...place, own: own !== undefined, ...(w ? { entityId: w.entityId, entity: w.entity, entityRecord: w.entityRecord, workplaceId: w.workplaceId, branchId: w.branchId } : { branchId: null }) };
+  return { ...place, own: own !== undefined, opensOn: w?.opensOn, ...(w ? { entityId: w.entityId, entity: w.entity, entityRecord: w.entityRecord, workplaceId: w.workplaceId, branchId: w.branchId } : { branchId: null }) };
 }
