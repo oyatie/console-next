@@ -31,6 +31,7 @@ const BASELINE = {
   localPaths: {
     "scripts/check-hermetic.test.mjs": "Plants host dependencies to prove npm check rejects machine-local inputs.",
     "scripts/check-source.test.ts": "Plants machine paths to prove the public-tree gate refuses them.",
+    "scripts/client-data-scan.py": "Names the local-path prefixes it refuses in uploaded workbook links.",
   },
   // from -> to
   imports: [

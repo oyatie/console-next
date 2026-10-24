@@ -23,7 +23,7 @@ function fixture() {
   for (const dir of ["packages/api/src", "packages/i18n/src", "e2e"]) mkdirSync(path.join(root, dir), { recursive: true });
   for (const file of ["account/Account", "home/Home", "org/OrgChange", "people/Accounts", "people/ExitCase", "people/People", "platform/Tenants"])
     write(`apps/web/src/features/${file}.tsx`, "");
-  for (const file of ["check-hermetic.test.mjs", "check-source.test.ts"])
+  for (const file of ["check-hermetic.test.mjs", "check-source.test.ts", "client-data-scan.py"])
     write(`scripts/${file}`, readFileSync(path.join(import.meta.dirname, file), "utf8"));
   write("oxlint.json", '{"overrides":[]}');
   const run = () => spawnSync(process.execPath, [path.resolve(import.meta.dirname, "check-source.mjs")], { cwd: root, encoding: "utf8" });
