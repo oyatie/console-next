@@ -60,12 +60,15 @@ pub(crate) async fn registrations(
         .iter()
         .filter_map(|r| r.try_get("check_id").ok().flatten())
         .collect();
-    let mut checks = crate::registration_check::evidence_many(
-        tx,
-        &check_ids,
-        crate::CheckSchedulePolicy::default().reflection_lag_days,
-    )
-    .await?;
+    let org: Uuid =
+        sqlx::query_scalar("SELECT NULLIF(current_setting('app.current_org',true),'')::uuid")
+            .fetch_one(tx.as_mut())
+            .await?;
+    let policy =
+        crate::CheckSchedulePolicy::in_tx(tx, console_kernel_core::OrgId::from_uuid(org)).await?;
+    let mut checks =
+        crate::registration_check::evidence_many(tx, &check_ids, policy.reflection_lag_days)
+            .await?;
     let mut out: HashMap<Uuid, Vec<RegistrationView>> = HashMap::new();
     for r in &heads {
         let rev: Option<Uuid> = r.try_get("rev_id")?;
@@ -118,8 +121,7 @@ pub(crate) async fn registrations(
                 check.inbox_item_id = None;
                 check.reflection_pending = check.answer.not_registered
                     && current.as_ref().and_then(|c| c.opened_on).is_some_and(|d| {
-                        (point.as_of - d).whole_days()
-                            <= crate::CheckSchedulePolicy::default().reflection_lag_days
+                        (point.as_of - d).whole_days() <= policy.reflection_lag_days
                     });
             }
             check.recorded_status_mismatch = check
