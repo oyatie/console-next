@@ -91,6 +91,7 @@ export default defineConfig({
         : `node scripts/backend-dev.mjs${reuse ? "" : " --reset"}`,
       url: `http://127.0.0.1:${PORTS.backend}/readyz`,
       timeout: 300_000,
+      gracefulShutdown: { signal: "SIGTERM", timeout: 30_000 },
       reuseExistingServer: reuse,
       env: backendEnv,
       // E2E_BACKEND_LOG=1: the backend's log (RUST_LOG, default info) in this run's output, as [WebServer] lines.

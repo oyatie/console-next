@@ -154,9 +154,16 @@ const bucket = (name) =>
 
 if (!existsSync(BIN)) throw new Error(`no backend binary at ${BIN}; build with \`cargo build -p console-app\` (add --features full,e2e-test-support for the complete E2E suite) or set CONSOLE_APP_BIN`);
 
+let api = null;
 // --reset: start from an empty database (E2E runs the whole onboarding path, and the
 // cold-start code is single-use).
 if (process.argv.includes("--reset")) {
+  // Register before startup so a failed boot releases the stack too.
+  process.once("exit", () => {
+    api?.kill();
+    if (compose(["down", "-v", "--remove-orphans"]).status !== 0) process.exitCode = 1;
+  });
+  for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => process.exit(0));
   must(compose(["down", "-v"]), "reset");
   // The vendor's passkey (e2e/flows.ts) belongs to the database just dropped.
   rmSync(path.join(CACHE, "vendor-passkey.json"), { force: true });
@@ -186,7 +193,6 @@ process.stdout.write(`backend: http://127.0.0.1:${PORT.backend}  platform cold-s
 // e2e/chaos-restart.spec.ts). Without the signal nothing changes: the launcher exits with its API process.
 // Isolated E2E store: production always queries its configured VictoriaLogs service.
 const supportLogFixture = process.env.CONSOLE_EMAIL_STUB_MODE === "e2e" && !process.env.CONSOLE_SUPPORT_LOG_QUERY_URL ? await supportLogs() : null;
-let api = null;
 let up = true;
 const startApi = () => {
   const child = spawn(BIN, [], { cwd: CONSOLE, env: { ...appEnv("api"), ...(supportLogFixture ? { CONSOLE_SUPPORT_LOG_QUERY_URL: supportLogFixture.url } : {}) }, stdio: supportLogFixture ? ["inherit", "pipe", "inherit"] : "inherit" });
