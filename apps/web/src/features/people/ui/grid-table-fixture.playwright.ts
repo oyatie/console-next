@@ -1,7 +1,17 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test as base, type Page } from "@playwright/test";
 
-export { expect, test };
+export { expect };
+
+export const test = base.extend({
+  page: async ({ page }, use) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.addInitScript(() => localStorage.setItem("console.locale", "en"));
+    await use(page);
+    expect(errors).toEqual([]);
+  },
+});
 
 export async function mount(page: Page, bounded = false, variant = "table") {
   // Mount just this entry through the real dev route; unrelated galleries can open body portals.
@@ -12,16 +22,6 @@ export async function mount(page: Page, bounded = false, variant = "table") {
   await page.goto(`/_gallery?grid=${variant}&bounded=${bounded}`);
   await page.locator("#gallery-grid-table").getByRole("grid").waitFor();
 }
-
-let errors: string[] = [];
-test.beforeEach(async ({ page }) => {
-  errors = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  await page.addInitScript(() => localStorage.setItem("console.locale", "en"));
-});
-test.afterEach(() => {
-  expect(errors).toEqual([]);
-});
 
 export async function expectWindowAt(page: Page, row: number) {
   await expect.poll(() => page.getByRole("rowheader").allTextContents()).toContain(String(row));

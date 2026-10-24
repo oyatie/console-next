@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
 /* Virtual spacers for 2,000-row capacity (spec E6-grid, P-08, #28). Tokens only. */
+/* Virtual spacers own the scroll offset; browser anchoring must not adjust it. */
+.grid { overflow-anchor: none; }
+
 .spacer {
   grid-column: 1 / -1;
   pointer-events: none;
@@ -19,4 +22,7 @@
   position: sticky;
   grid-column: 1 / -1;
   justify-self: end;
+  left: var(--space-2);
+  max-inline-size: calc(100cqi - 2 * var(--space-2));
+  overflow-wrap: anywhere;
 }

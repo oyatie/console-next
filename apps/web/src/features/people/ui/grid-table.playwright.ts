@@ -11,7 +11,8 @@ export default defineConfig({
   testDir: ".",
   testMatch: ["grid-table.spec.ts", "grid-table-focus.spec.ts"],
   outputDir: path.join(repo, "node_modules/.cache/grid-playwright"),
-  workers: 2,
+  // Both specs must share a worker to cover per-test locale and error-guard setup.
+  workers: 1,
   retries: 0,
   reporter: "line",
   use: { baseURL: origin, browserName: "chromium", viewport: { width: 1280, height: 800 }, locale: "en-US", timezoneId: "Asia/Seoul" },
