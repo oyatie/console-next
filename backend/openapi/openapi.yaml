@@ -10,7 +10,7 @@ info:
     N-1 packages/api/src/client.ts and session.ts deserialize JSON without a schema validator.
     Consent request references are optional with typed terms_text_changed for unmappable legacy text;
     ChangeRequest response enums are extensible and the released translator renders unknown keys.
-    See docs/ops/release-api-compat-2.md for reproduction and the one-release contract follow-up.
+    See backend/openapi/release-api-compat-2.md for reproduction and the one-release contract follow-up.
 paths:
   /.well-known/apple-app-site-association:
     get:
