@@ -76,7 +76,7 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
   // What the reservation does, in the words of the field it changes (duty title: foreman), else the act's name.
   const next = p
     ? { date: p.event_type === "TERMINATE" || p.event_type === "OFFBOARD" ? retirementDate(p.effective_date) : p.effective_date, what: plannedWhat(p, c.title), by: p.created_by_name && t("empCard.next.by", { who: p.created_by_name, date: fmtDateTime(p.created_at) }) }
-    : e.next_event && { date: e.next_event.event_type === "TERMINATE" || e.next_event.event_type === "OFFBOARD" ? retirementDate(e.next_event.effective_date) : e.next_event.effective_date, what: label(LIFECYCLE_EVENT, e.next_event.event_type), by: null };
+    : e.next_event && { date: e.next_event.event_type === "TERMINATE" ? retirementDate(e.next_event.effective_date) : e.next_event.effective_date, what: label(LIFECYCLE_EVENT, e.next_event.event_type), by: null };
   return (
     <Band as="header" className={s.head}>
       <div className={s.top}>

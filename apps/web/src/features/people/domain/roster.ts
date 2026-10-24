@@ -115,7 +115,7 @@ export function nextItems(e: Employee, today: string, soonDays: number): NextIte
   const items: NextItem[] = [];
   if (e.failed_event) items.push({ kind: "failed", event: e.failed_event.event_type, date: e.failed_event.effective_date });
   if (e.next_event) {
-    const date = e.next_event.event_type === "TERMINATE" || e.next_event.event_type === "OFFBOARD" ? retirementDate(e.next_event.effective_date) : e.next_event.effective_date;
+    const date = e.next_event.event_type === "TERMINATE" ? retirementDate(e.next_event.effective_date) : e.next_event.effective_date;
     items.push({ kind: "event", event: e.next_event.event_type, date, days: daysBetween(today, date) });
   }
   const end = e.contract_end_date;

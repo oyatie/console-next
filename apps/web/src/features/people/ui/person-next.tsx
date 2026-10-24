@@ -55,7 +55,7 @@ function Line({ i, today, onShow }: { i: NextItem; today: string; onShow: (event
       );
     case "event": {
       const state = labeled(LIFECYCLE_STATE, "SCHEDULED");
-      const date = i.event.event_type === "TERMINATE" || i.event.event_type === "OFFBOARD" ? retirementDate(i.event.effective_date) : i.event.effective_date;
+      const date = i.event.event_type === "TERMINATE" ? retirementDate(i.event.effective_date) : i.event.effective_date;
       return (
         <Button variant="ghost" className={s.lineLink} onClick={() => onShow(i.event.id)}>
           <span>{t("person.next.event", { action: label(LIFECYCLE_EVENT, i.event.event_type), date: fmtDay(date), rel: fmtRel(date, today) })}</span>

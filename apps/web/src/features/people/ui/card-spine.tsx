@@ -10,6 +10,7 @@ import { Kbd, Tag } from "../../../ui/record/record-section";
 import { Spine, type SpineItem } from "../../../ui/record/spine";
 import type { LifecycleEvent } from "../api";
 import { cancellable, verbStates } from "../domain/lifecycle";
+import { retirementDate } from "../domain/employment";
 import { describeEvent, eventLine } from "../present";
 import { focusSoon } from "../../../lib/react/announce";
 import { NextBox } from "./person-next";
@@ -41,7 +42,7 @@ export function CardSpine({ c, onAct, onLedger, onHistory }: { c: Card; onAct: (
     return {
       key: x.id,
       tone: tone(x),
-      when: <>{fmtDate(x.effective_date)} {x.state === "SCHEDULED" && <Tag kind="plan">{t("empCard.spine.planned")}</Tag>} {x.batch_id && <Tag>{t("empCard.spine.batch")}</Tag>}</>,
+      when: <>{fmtDate(x.event_type === "TERMINATE" || x.event_type === "OFFBOARD" ? retirementDate(x.effective_date) : x.effective_date)} {x.state === "SCHEDULED" && <Tag kind="plan">{t("empCard.spine.planned")}</Tag>} {x.batch_id && <Tag>{t("empCard.spine.batch")}</Tag>}</>,
       what: <b>{eventLine(x, c.title) ?? title} <EnumCode e={LEAVE_TYPE} value={x.leave_type} /></b>,
       // The ribbon's verbs on the default view (trunk's person page had them there): withdraw a reservation, record a failed one
       // again, correct or rescind the latest change in force.

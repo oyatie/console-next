@@ -23,7 +23,7 @@ type NextEvent = NonNullable<components["schemas"]["Employee"]["next_event"]>;
 type Case = components["schemas"]["EmployeeExitCase"];
 
 /** The nearest scheduled action as "<action> · <date>". */
-export const nextEventText = (n: NextEvent) => t("people.nextEvent.value", { action: label(LIFECYCLE_EVENT, n.event_type), date: fmtDate(n.event_type === "TERMINATE" || n.event_type === "OFFBOARD" ? retirementDate(n.effective_date) : n.effective_date) });
+export const nextEventText = (n: NextEvent) => t("people.nextEvent.value", { action: label(LIFECYCLE_EVENT, n.event_type), date: fmtDate(n.event_type === "TERMINATE" ? retirementDate(n.effective_date) : n.effective_date) });
 
 /** A transfer's or promotion's reason code (or a rescission's) in words, before the note. */
 const coded = (x: LifecycleEvent, comment: string) => {

@@ -24,7 +24,7 @@ test("a pre-opening transfer offers a valid date or another workplace", () => {
 });
 
 test("a refused placement offers a valid date or another workplace", () => {
-  const held = { refused: [{ person: { id: "person", name: "경계직원" }, code: "workplace_not_open_on_date" }], rest: [], target: {} } as ComponentProps<typeof UnplacedRefused>["held"];
+  const held = { refused: [{ person: { id: "person", name: "경계직원" }, code: "workplace_not_open_on_date", message: "" }], rest: [], target: { unitId: "unit", entityId: null, workplaceId: null } } as unknown as ComponentProps<typeof UnplacedRefused>["held"];
   const html = renderToStaticMarkup(<UnplacedRefused held={held} place="본사" pending={false} onRest={() => {}} onCancel={() => {}} />);
   expect(html).toContain("개설일 이후 날짜를 선택하거나 다른 사업장을 선택하십시오");
   expect(html).not.toContain("명부 가져오기");

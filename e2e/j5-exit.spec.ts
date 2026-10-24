@@ -93,7 +93,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await expect(admin.getByRole("button", { name: "퇴직 건 보기" }).first()).toBeVisible();
 
   // 2. The executive confirms as HQ, straight from Home's exit queue.
-  await exec.goto("/");
+  await go(exec, "/");
   const queue = exec.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ hasText: "강퇴직" }).filter({ has: exec.getByRole("link", { name: "본사 퇴직 확인", exact: true }) });
   await expect(queue).toContainText("강퇴직");
   await expectAccessible(exec, "J5: Home exit queue");
@@ -113,7 +113,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   expect(c.done("J5 HQ confirm from Home")).toBeLessThanOrEqual(2);
 
   // 3. HR prepares the settlement from Home and submits it for approval.
-  await admin.goto("/");
+  await go(admin, "/");
   await c.click(admin.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ hasText: "강퇴직" }).getByRole("link", { name: "퇴직 정산 결재 준비", exact: true }));
   const settle = admin.getByRole("region", { name: /지금/ });
   await settle.getByLabel("평균임금 산정 시작일").fill(kstDate(-91));
@@ -171,7 +171,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   const employeePage = admin.url();
   await reportAndConfirm(admin, c, "무단 결근 지속");
   c.done("J5 second report + HR confirm");
-  await exec.goto("/");
+  await go(exec, "/");
   // The case page offers HQ confirmation and rejection side by side.
   await c.click(exec.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ hasText: "문반려" }).getByRole("link", { name: "본사 퇴직 확인", exact: true }));
   await c.click(exitPanel(exec).getByRole("button", { name: "퇴직 철회" }));
