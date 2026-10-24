@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { go, option } from "./flows";
+import { go, option, routeReady } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { REGISTRATION_FIXTURES, typeAddress } from "./setup-flows";
 
@@ -49,6 +49,7 @@ test("the quick 법인 sheet says what it needs, and that is what it asks for", 
   const a = await openTenant(browser, "efix-quick", "새온그룹");
   await go(a, "/org/entities");
   await a.getByRole("link", { name: "법인 추가" }).first().click();
+  await routeReady(a);
   const s = a.getByRole("dialog", { name: "법인 추가" });
   // Inputs and the save's refusal name what is needed, without a second explanation above them.
   await expect(s.getByText(/세 가지만|두 가지만/)).toHaveCount(0);

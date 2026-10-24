@@ -74,21 +74,33 @@ export async function firstSignIn(browser: Browser, code: string, keep?: string,
   return page;
 }
 
+/** Also used after link clicks or reloads when an absence assertion needs the destination's settled screen. */
+export async function routeReady(page: Page, path?: string) {
+  await page.waitForFunction(({ path }) => {
+    const ready = document.querySelector<HTMLElement>("[data-route-ready]");
+    return (!path || location.pathname === new URL(path, location.href).pathname)
+      && ready?.dataset.routeReady === location.pathname + location.search + location.hash
+      && ready.dataset.routeKey === history.state?.__TSR_key;
+  }, { path });
+}
+
 /**
  * In-app navigation, as the app's own links do it (no reload). A reload re-runs the session refresh,
  * which the server rate-limits per session (60 a minute).
  * The router patches history.pushState, so pushing a path navigates; a page not yet in the app loads it.
+ * RouteFrame marks the committed history entry ready after route loaders and the screen's active reads settle.
  */
 export async function go(page: Page, path: string, mayRedirect = false) {
-  if (!page.url().startsWith("http")) return void (await page.goto(path));
-  const from = new URL(page.url()).pathname;
-  const to = new URL(path, page.url());
-  await page.evaluate((href) => {
-    const key = Math.random().toString(36).slice(2);
-    history.pushState({ __TSR_index: ((history.state as { __TSR_index?: number } | null)?.__TSR_index ?? 0) + 1, key, __TSR_key: key }, "", href);
-  }, to.href);
-  // `mayRedirect`: the screen may send the user on (a <Navigate>), possibly before this looks; any new path will do.
-  await page.waitForURL((u) => u.pathname === to.pathname || (mayRedirect && u.pathname !== from));
+  if (!page.url().startsWith("http")) await page.goto(path);
+  else {
+    const to = new URL(path, page.url());
+    await page.evaluate((href) => {
+      const key = Math.random().toString(36).slice(2);
+      history.pushState({ __TSR_index: ((history.state as { __TSR_index?: number } | null)?.__TSR_index ?? 0) + 1, key, __TSR_key: key }, "", href);
+    }, to.href);
+  }
+  // `mayRedirect`: accept the rendered redirect destination, including a return to the starting pathname.
+  await routeReady(page, mayRedirect ? undefined : path);
 }
 
 /**

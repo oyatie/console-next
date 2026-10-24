@@ -1,10 +1,11 @@
 // The route frame: sign-in, passkey set-up, the signed-in app and its small screens. Each feature's
 // screens hang off `app` in their own file here (routes compose slices; slices never import routes).
-import { createRootRoute, createRoute, lazyRouteComponent, Outlet } from "@tanstack/react-router";
+import { createRootRoute, createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { catalogText, i18n, loadCatalog } from "@console/i18n";
 import { chunk } from "../lib/chunk-guard";
 import { glyphs } from "../lib/fonts";
 import { ensureEnrolling, ensureSession, leaveSignInWhenSignedIn } from "../lib/react/session";
+import { RouteFrame } from "../lib/react/route-ready";
 import type { TenantsSearch } from "../features/platform/ui/tenants-page";
 
 /** A non-empty string search param, else absent. */
@@ -21,7 +22,7 @@ export const screen = <M,>(load: () => Promise<M>) => () => {
   return chunk(Promise.all([load(), loadCatalog(l).then(() => glyphs(l, () => catalogText(l)))]).then(([m]) => m));
 };
 
-export const root = createRootRoute({ component: Outlet });
+export const root = createRootRoute({ component: RouteFrame });
 const login = createRoute({
   getParentRoute: () => root,
   path: "/login",

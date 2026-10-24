@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { tenantSlugField, firstSignIn, go, kstDate, option, registerEmployee, takeCode, unique, vendorPage } from "./flows";
+import { tenantSlugField, firstSignIn, go, kstDate, option, registerEmployee, routeReady, takeCode, unique, vendorPage } from "./flows";
 import { REGISTRATION_FIXTURES, acceptSetupTerms, setupCompany, setupRail, brnDisplay } from "./setup-flows";
 import { signOff } from "./sheet";
 
@@ -43,6 +43,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   await expect(start).not.toHaveAttribute("aria-disabled", "true");
   await start.click();
   await expect(admin).toHaveURL(/\/$/);
+  await routeReady(admin);
   await expect(setupRail(admin)).toBeHidden();
   await expect(admin.getByRole("heading", { name: "처리하거나 확인할 일이 없습니다" })).toBeVisible();
   await expect(admin.getByRole("main")).not.toContainText(/결재|기안/);

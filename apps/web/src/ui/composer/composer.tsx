@@ -45,7 +45,7 @@ export function Composer(p: {
   draftAction?: ActionDescription;
   draftTone?: "primary" | "secondary";
   onSaveDraft?: () => void;
-  onSubmit: () => boolean | void;
+  onSubmit?: () => boolean | void;
   children: ReactNode;
 }) {
   const generatedId = useId();
@@ -69,7 +69,15 @@ export function Composer(p: {
   );
   const Heading = p.layout === "page" ? "h1" : `h${p.headingLevel ?? 2}` as "h2" | "h3" | "h4";
   const PreviewHeading = `h${p.layout === "page" ? 2 : (p.headingLevel ?? 2) + 1}` as "h2" | "h3" | "h4" | "h5";
-  const body = (
+  const contents = <>
+    {p.children}
+    {PREVIEW_ORDER.map((section) => {
+      const content = section === "preflight" && signoffs ? <>{sections[section]}{signoffs}</> : sections[section];
+      if (content == null || content === false || content === "" || (Array.isArray(content) && content.length === 0)) return null;
+      return <section key={section} className={s.section} data-composer-section={section} aria-labelledby={`${id}-${section}`}><PreviewHeading id={`${id}-${section}`} className={s.heading}>{t(`composer.section.${section}`)}</PreviewHeading>{content}</section>;
+    })}
+  </>;
+  const body = p.onSubmit ? (
     <Form id={id} className="form" noValidate onKeyDown={(event) => {
       if (event.key !== "Escape") { if (escapeArmed) setEscapeArmed(false); return; }
       const target = event.target as HTMLElement;
@@ -78,18 +86,13 @@ export function Composer(p: {
       event.stopPropagation();
       setEscapeArmed(true);
     }} onSubmit={() => {
-      if (p.pending || p.loading || p.locked || p.blocked || p.recovery || p.onSubmit() !== false) return;
+      if (p.pending || p.loading || p.locked || p.blocked || p.recovery || p.onSubmit?.() !== false) return;
       requestAnimationFrame(() => document.getElementById(id)?.querySelector<HTMLElement>('[aria-invalid="true"], [data-invalid] input')?.focus());
     }}>
-      {p.children}
-      {PREVIEW_ORDER.map((section) => {
-        const content = section === "preflight" && signoffs ? <>{sections[section]}{signoffs}</> : sections[section];
-        if (content == null || content === false || content === "" || (Array.isArray(content) && content.length === 0)) return null;
-        return <section key={section} className={s.section} data-composer-section={section} aria-labelledby={`${id}-${section}`}><PreviewHeading id={`${id}-${section}`} className={s.heading}>{t(`composer.section.${section}`)}</PreviewHeading>{content}</section>;
-      })}
+      {contents}
     </Form>
-  );
-  const commit = <Button className={s.commit} ref={submitter} id={p.commitId} type="submit" form={id} variant={p.tone ?? "primary"} aria-disabled={p.incomplete || undefined} disabled={p.pending || p.loading || p.locked}>{commitLabel(p.action)}<Kbd keys="⌘↵" /></Button>;
+  ) : <div className="form">{contents}</div>;
+  const commit = p.onSubmit && <Button className={s.commit} ref={submitter} id={p.commitId} type="submit" form={id} variant={p.tone ?? "primary"} aria-disabled={p.incomplete || undefined} disabled={p.pending || p.loading || p.locked}>{commitLabel(p.action)}<Kbd keys="⌘↵" /></Button>;
   const actions = <div className={p.layout === "page" ? s.pageActions : s.actions}>{p.recovery ?? <>
     {p.blocked ? <DisabledReason control={(props) => <Button {...props} ref={submitter} className={`${props.className} ${s.commit}`} id={p.commitId} variant={p.tone ?? "primary"} onClick={(event) => { props.onClick(event); if (!p.pending && !p.loading && !p.locked) p.blocked?.press?.(); }}>{commitLabel(p.action)}</Button>} reason={p.blocked.reason} remedy={p.blocked.remedy} /> : commit}
     {p.missing ? <span role="status">{t("composer.missing", { count: p.missing })}</span> : null}

@@ -161,8 +161,8 @@ test("change-date ribbon waits for its current read after attendance setup", { t
   let release!: () => void;
   const held = new Promise<void>((resolve) => { release = resolve; });
   await admin.route(target, async (route) => { await held; await route.continue(); });
+  const navigating = go(admin, "/org");
   try {
-    await go(admin, "/org");
     await expect(ribbon).toHaveAttribute("aria-busy", "true");
     await expect(ribbon.locator("[data-change-date]")).toHaveCount(0);
     release();
@@ -170,6 +170,7 @@ test("change-date ribbon waits for its current read after attendance setup", { t
     await expect(ribbon).not.toHaveAttribute("aria-busy", "true");
   } finally {
     release();
+    await navigating;
     await admin.unrouteAll({ behavior: "wait" });
   }
 });

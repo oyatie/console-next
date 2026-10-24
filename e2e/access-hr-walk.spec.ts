@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expectAccessible } from "./a11y";
-import { chooseRadio, firstSignIn, go, kstDate, registerEmployee, stepUp, takeCode } from "./flows";
+import { chooseRadio, firstSignIn, go, kstDate, registerEmployee, routeReady, stepUp, takeCode } from "./flows";
 import { staffedTenant } from "./setup-flows";
 import { signOff } from "./sheet";
 import { bearerOf } from "./helpers/api";
@@ -77,6 +77,7 @@ test("an HR worker granted 인사 실무 over the 법인 and 권한 관리 over 
   // page learns of new access on its next load (a live push of /me/authz is the realtime lane's, #27).
   await go(hr, "/people");
   await hr.reload();
+  await routeReady(hr);
   await expect(hr.getByRole("heading", { name: "접근 권한이 없습니다" })).toHaveCount(0);
   await expect(hr.getByRole("rowheader", { name: "김인사", exact: true })).toBeVisible();
   await go(hr, "/org/entities");
@@ -110,12 +111,13 @@ test("an HR worker granted 인사 실무 over the 법인 and 권한 관리 over 
   // A fresh read (the list a tab already holds learns of it through the realtime lane, #27).
   await go(admin, "/people?view=accounts");
   await admin.reload();
+  await routeReady(admin);
   await expect(admin.getByRole("row", { name: /김인사/ })).toHaveCount(0);
   await admin.getByRole("button", { name: "비활성 계정 포함" }).click();
   await expect(admin.getByRole("row", { name: /김인사/ })).toContainText("비활성화됨");
 
   // The leaver's session is gone: the next load cannot refresh it and lands on sign-in, reaching no data.
-  await go(hr, "/people");
+  await go(hr, "/people", true);
   await hr.reload();
   await expect(hr.getByRole("heading", { name: "접근 권한이 없습니다" }).or(hr.getByRole("button", { name: "패스키로 로그인" }))).toBeVisible();
   await expect(hr.getByRole("rowheader", { name: "김인사", exact: true })).toHaveCount(0);

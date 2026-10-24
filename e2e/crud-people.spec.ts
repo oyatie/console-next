@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { soloTenant } from "./chaos";
-import { go, kstDate, option, registerEmployee } from "./flows";
+import { go, kstDate, option, registerEmployee, routeReady } from "./flows";
 import { openUnit } from "./helpers/structure";
 import { setupCompany, startOperations } from "./setup-flows";
 import { signOff } from "./sheet";
@@ -99,6 +99,7 @@ test("등록 취소 for a mistaken registration, refused for a used one, and 퇴
   await expectAccessible(admin, "CRUD: 등록 취소 sheet");
   await s.getByRole("button", { name: "직원 등록 1명 취소", exact: true }).click();
   await expect(admin).toHaveURL(/\/people$/);
+  await routeReady(admin);
   // Gone from the roster (an empty company shows its first-run ways in, not an empty grid).
   await expect(admin.getByRole("row", { name: /잘못등록/ })).toHaveCount(0);
 

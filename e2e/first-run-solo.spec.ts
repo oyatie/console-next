@@ -4,7 +4,7 @@ import { resolveFilingNotApplicable } from "./helpers/statutory";
 import { expectAccessible } from "./a11y";
 import { fillRegister, openRegistered, pressRegister, receiptOf, registerSheet } from "./helpers/register";
 import { clickCounter } from "./clicks";
-import { tenantSlugField, chooseRadio, firstSignIn, go, kstDate, takeCode, unique, vendorPage } from "./flows";
+import { tenantSlugField, chooseRadio, firstSignIn, go, kstDate, routeReady, takeCode, unique, vendorPage } from "./flows";
 import { cellOf, officeSchedule, openMonth } from "./helpers/attendance-records";
 import { homeRail, registerBranch, registerEntity, registerWorkplace, startOperations, REGISTRATION_FIXTURES, brnDisplay } from "./setup-flows";
 import { addDepartments, box, findBox, findPressable } from "./structure-flows";
@@ -30,6 +30,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   const code = await takeCode(v);
   expect(c.done("vendor: open the tenant and hand over the code")).toBeLessThanOrEqual(4);
   const admin = await firstSignIn(browser, code);
+  await routeReady(admin);
   await expect(admin.locator('a[href="/setup/company-names"]')).toHaveCount(0);
   await go(admin, "/setup/company-names", true);
   await expect(admin).toHaveURL(/\/org\/entities$/);
@@ -72,6 +73,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   await expect(rail.getByRole("button", { name: "부서 없이 진행" })).toHaveCount(0);
   await c.click(rail.getByRole("link", { name: "부서 추가" }).first());
   await expect(admin).toHaveURL(/\/org(\?|$)/);
+  await routeReady(admin);
   await expect(admin.getByRole("dialog")).toHaveCount(0);
   for (const [place, unit] of [["본사", "영업팀"], ["판교지점", "개발팀"]] as const) {
     await findPressable(admin, place);
