@@ -1,16 +1,44 @@
 import { expect, test, type Page } from "@playwright/test";
 import { go, kstDate, option } from "../flows";
 import { box } from "../structure-flows";
+import { setName } from "../helpers/entity";
 import { FACTS, type Fact, type Surface } from "./facts";
 import { NAMES, control, openCard, pageUrl, soloWorld } from "./world";
 
 
 type World = Awaited<ReturnType<typeof soloWorld>>;
-type Edit = { old: string; next: string; run: (w: World) => Promise<void> };
+type Edit = { old: (w: World) => string; next: string; run: (w: World) => Promise<void> };
 
 const EDITS: Record<string, Edit> = {
+  "legal_entity.name": {
+    old: (w) => `주식회사 ${w.company}`,
+    next: "주식회사 누리테크",
+    run: async (w) => {
+      await go(w.admin, pageUrl(w, "entity"));
+      await control(w.admin, { role: "button", name: "사업자등록증", prefix: true }).click();
+      await setName(w.admin, "법인명(단체명)", "주식회사 누리테크");
+    },
+  },
+  "legal_entity.short_name": {
+    old: () => "온새",
+    next: "다온",
+    run: async (w) => {
+      await go(w.admin, pageUrl(w, "entity"));
+      await control(w.admin, { role: "button", name: "개요", exact: true }).click();
+      await setName(w.admin, "약칭", "다온");
+    },
+  },
+  "legal_entity.english_name": {
+    old: () => "Gaon Corp.",
+    next: "Daon Tech Ltd.",
+    run: async (w) => {
+      await go(w.admin, pageUrl(w, "entity"));
+      await control(w.admin, { role: "button", name: "개요", exact: true }).click();
+      await setName(w.admin, "영문명", "Daon Tech Ltd.");
+    },
+  },
   "workplace.name": {
-    old: NAMES.workplace,
+    old: () => NAMES.workplace,
     next: "가람허브",
     run: async (w) => {
       await go(w.admin, "/org");
@@ -25,7 +53,7 @@ const EDITS: Record<string, Edit> = {
     },
   },
   "employee.emergency_contact": {
-    old: NAMES.contact,
+    old: () => NAMES.contact,
     next: "형제자매 홍••",
     run: async (w) => {
       await openCard(w);
@@ -37,7 +65,7 @@ const EDITS: Record<string, Edit> = {
     },
   },
   "employee.record_section": {
-    old: NAMES.school,
+    old: () => NAMES.school,
     next: "한빛여자고등학교",
     run: async (w) => {
       await openCard(w);
@@ -80,38 +108,52 @@ async function verify(w: World, fact: Fact, e: Edit, reload: boolean) {
     await regionOf(w.admin, s).waitFor({ timeout: 30_000 });
     const text = await expect.poll(() => shown(w.admin, s), { timeout: 10_000 }).toContain(e.next).then(() => shown(w.admin, s), () => null);
     if (text === null) failures.push(`${s.name}: 「${e.next}」 not shown${reload ? " after a reload" : ""}`);
-    else if (text.includes(e.old)) failures.push(`${s.name}: still shows 「${e.old}」${reload ? " after a reload" : ""}`);
+    else if (text.includes(e.old(w))) failures.push(`${s.name}: still shows 「${e.old(w)}」${reload ? " after a reload" : ""}`);
   }
   return failures;
 }
 
 for (const live of [false, true]) {
-  test(`every surface of an edited fact shows the new value and never the old: ${live ? "live tenant" : "setup phase"}`, { tag: "@record-actions" }, async ({ browser }) => {
-    test.setTimeout(300_000);
-    const w = await soloWorld(browser, live ? "ra-prop-live" : "ra-prop", live ? "한결상사" : "가온상사", live, { seed: true });
-    const failures: string[] = [];
-    for (const fact of FACTS) {
-      const e = EDITS[fact.id];
-      expect(e, `facts.ts ${fact.id} has no edit in this harness`).toBeDefined();
-      await e!.run(w);
-      failures.push(...(await verify(w, fact, e!, false)), ...(await verify(w, fact, e!, true)));
-    }
-    expect(failures).toEqual([]);
-  });
+  for (const fact of FACTS) {
+    test(`every surface of ${fact.id} shows the new value and never the old: ${live ? "live tenant" : "setup phase"}`, { tag: "@record-actions" }, async ({ browser }) => {
+      test.setTimeout(180_000 + fact.surfaces.length * 80_000);
+      const slug = `ra-prop-${fact.id.replace(/[._]/g, "-")}${live ? "-live" : ""}`;
+      const w = await soloWorld(browser, slug, live ? "한결상사" : "가온상사", live, { seed: fact.id.startsWith("employee.") });
+      try {
+        const e = EDITS[fact.id];
+        expect(e, `facts.ts ${fact.id} has no edit in this harness`).toBeDefined();
+        if (fact.id === "legal_entity.short_name" || fact.id === "legal_entity.english_name") {
+          await go(w.admin, pageUrl(w, "entity"));
+          await control(w.admin, { role: "button", name: "개요", exact: true }).click();
+          await setName(w.admin, fact.label, e!.old(w));
+        }
+        await e!.run(w);
+        expect([...(await verify(w, fact, e!, false)), ...(await verify(w, fact, e!, true))]).toEqual([]);
+      } finally {
+        await w.admin.context().close();
+      }
+    });
+  }
 }
 
-test("planted: a surface reading a cached copy of the 사업장 name fails the harness", { tag: "@record-actions" }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  const w = await soloWorld(browser, "ra-prop-plant", "다온상사", false);
-  const fact = FACTS.find((f) => f.id === "workplace.name")!;
-  const e = EDITS[fact.id]!;
-  // The plant, before the edit: every read answers from a copy that never takes the new name (a stale cache, a copied fact).
-  await w.admin.route("**/api/v1/**", async (route) => {
-    if (route.request().method() !== "GET") return route.fallback();
-    const res = await route.fetch();
-    await route.fulfill({ response: res, body: (await res.text()).replaceAll(e.next, e.old) });
+for (const id of ["workplace.name", "legal_entity.name"]) {
+  test(`planted: a surface reading a cached copy of ${id} fails the harness`, { tag: "@record-actions" }, async ({ browser }) => {
+    test.setTimeout(240_000);
+    const w = await soloWorld(browser, `ra-prop-plant-${id.replace(/[._]/g, "-")}`, "다온상사", false);
+    try {
+      const fact = FACTS.find((f) => f.id === id)!;
+      const e = EDITS[id]!;
+      // Every GET answers from a copy that never takes the new name (a stale cache, a copied fact).
+      await w.admin.route("**/api/v1/**", async (route) => {
+        if (route.request().method() !== "GET") return route.fallback();
+        const res = await route.fetch();
+        await route.fulfill({ response: res, body: (await res.text()).replaceAll(e.next, e.old(w)) });
+      });
+      await e.run(w);
+      const failures = await verify(w, { ...fact, surfaces: fact.surfaces.filter((s) => s.page === "entity" && s.via) }, e, false);
+      expect(failures.length, failures.join("\n")).toBeGreaterThan(0);
+    } finally {
+      await w.admin.context().close();
+    }
   });
-  await e.run(w);
-  const failures = await verify(w, { ...fact, surfaces: fact.surfaces.filter((s) => s.page === "entity" && s.via) }, e, false);
-  expect(failures.length, failures.join("\n")).toBeGreaterThan(0);
-});
+}
