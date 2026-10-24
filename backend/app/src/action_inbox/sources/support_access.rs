@@ -36,6 +36,8 @@ pub(crate) async fn page(
     .map_err(|_| KernelError::internal("failed to authorize support approvals"))?;
     let _ = permission.set(allowed);
     if !allowed {
+        // Finish refused reads before releasing the shared source permit.
+        tx.commit().await.map_err(failure)?;
         return Ok(super::super::empty_source_page());
     }
     let total: i64 = sqlx::query_scalar("SELECT count(*) FROM support_sessions WHERE org_id=$1 AND state='OPERATOR_APPROVED' AND tenant_approved_at IS NULL AND request_expires_at>$2 AND requested_at<=$3")

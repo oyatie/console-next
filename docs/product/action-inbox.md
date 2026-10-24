@@ -449,6 +449,7 @@ Additional files outside the original owned paths this round:
 - `backend/app/src/action_inbox/sources/support_access.rs` — adapt G1 to the shared query/context and retain its authorization metadata.
 - `backend/app/tests/action_inbox/support_access.rs` — support-only capability regression.
 - `scripts/api-compat.test.ts` — retain all thirty-nine documented extensible kinds.
+- `e2e/support-access.spec.ts` — scope the queue and safety-notice review links separately and prove both share the selected record.
 - `backend/ci/gates/file-size/baseline.d/eco-g1-support.txt` — consumed by the baseline generator.
 - `backend/ci/gates/file-size/baseline.d/rv-SEC-K1-c-access-log-legal-hold.txt` — consumed by the baseline generator.
 
