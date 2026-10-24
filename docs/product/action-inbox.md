@@ -28,6 +28,7 @@ register, and the renewal horizon uses `hr.contract_soon_days`.
 | Pending insurance filing | HrInsurance / insurance_filing | Statutory filing panel |
 | Unlock needing a second person | PeriodUnlock / period_unlock | Period lock, selected request (`period-unlock-approve.spec.ts`, live arrival / reject / approve) |
 | Unconfirmed own grant | GrantNotice / grant_notice | Inline notice confirmation (`period-unlock-approve.spec.ts`, disclosure / confirmation) |
+| Tenant support approvals | SupportAccess / support_access | Support access audit with the selected request (`support-access.spec.ts`) |
 | Setup work | Setup / setup_* | Existing authorized setup rail, once inside 업무함 (`import-reds-layout.spec.ts`, arrival hold) |
 | Operating account with one passkey | GrantNotice / account_security | Inline second-passkey registration and account link (`setup-truth.spec.ts`, button / account link / removal; `d26-solo-exit.spec.ts`, sole remaining row) |
 
@@ -466,3 +467,57 @@ Additional files outside the original owned paths this round:
 The earlier change inventory also covers this round's generated contracts,
 settings migration/registry, and size/reach baselines. No excluded file changed.
 Logs are in `lanes/eco-g2-inbox/round6-logs/`.
+
+### Final round-6 proof
+
+The final base is public/dev `dc2fb6ebe` (#44), after G1's `4a91b18dd` (#42).
+The later upstream change only adjusts `e2e/registration-void.browser.ts`'s
+browser-test budget; the backend tree is identical across that final rebase.
+
+The exact web CI pipeline passes in `lanes/eco-g2-inbox/ci-proof-r6`, with its
+`dev` branch at the public base: **291 Vitest files / 2,087 tests**, **3 Node
+tests**, typecheck, lint, production build/bundle, secrets, headers, fixture IDs
+and licences. The isolated clone avoids the shared checkout's unrelated private
+`dev` ref; no check script or timeout was changed.
+
+Rust fmt, workspace all-target clippy, workspace test clippy, workspace test
+compilation and full/test-postgres app clippy pass with warnings denied. All
+**13** CI-discovered backend gates pass. The focused Rust runs pass **267 test
+executions**, including both feature presets where the release boundary matters:
+
+| Suite | Passing cases |
+| --- | ---: |
+| Settings domain and inbox application | 71 |
+| Identity library and OpenAPI contract | 47 |
+| HR and entity REST libraries | 9 |
+| Support service/ledger DB suites | 26 |
+| Settings adapter DB suites | 15 |
+| HR request/statutory DB suites | 8 |
+| Platform person/period DB suites | 12 |
+| Full-feature app inbox/Workbench/support/unlock suites | 51 |
+| Full-feature app source/support-reference/unlock libraries | 15 |
+| MVP inbox journeys and route boundaries | 12 |
+| Small-pool admission regression | 1 |
+
+The full-feature API scale case creates **2,000 people through the product API**
+and measures twenty first pages: p95 **166.652833 ms**, peak single-request
+leases **5/8**, effective source cap **3**, **560** acquisitions. Its insert
+admission and cursor traversal assertions pass. Three rounds of six parallel
+inbox readers peak at **8/8**, while unrelated identity reads finish in
+**107.177167 / 107.071416 / 105.0395 ms**, within their one-second budget.
+The measurement assertion stays at 300 ms and the single-request reserve
+assertion remains strict; neither was relaxed.
+
+The new admission test fails in the detached `fail-before-budget-r6` worktree
+at pre-fix `dc208dd4a` (four admitted readers where three are required), and
+passes with the pool-derived budget. The earlier combined scale failure and
+the original-G2 control remain in `round6-logs/db-app.log` and
+`round6-logs/scale-original-g2-full.log`.
+
+Chromium's six requested specs were attempted with the slot harness. Startup
+stops before any assertion because this public checkout lacks `ops/compose.yml`.
+The verifier must run `support-access`, `home-truth`, `inbox-live`,
+`read-retry-bound`, `period-unlock-approve` and `first-run-solo`; the support
+spec now proves the queue and safety notice point to the same pending request.
+The full workspace DB, both-browser E2E and mutation sweeps remain release-batch
+checks. No excluded file was changed; the inventory above covers every lane path.
