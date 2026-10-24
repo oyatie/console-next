@@ -36,13 +36,17 @@ deterministic trunk reds are reported while they still fail. A deterministic pas
 blocks with “fixed: remove from baseline”; a deleted test blocks in the nextest
 or Playwright inventory. Unrelated partitions do not count as fixes. A new red,
 runner crash, missing report or expired/unowned entry blocks. No retry hides a red.
+Case-level Playwright test timeouts count as failed test IDs; suite-level errors,
+worker crashes and unaccounted error counters still block.
 
 Entries have `class: deterministic | flaky`. Flaky entries accept either result,
 but require at least two distinct `evidence` receipts with `runId`, ISO `date` and
 `result: passed | failed`, including both outcomes. Their expiry is at most seven
 days after the latest receipt, versus a maximum 14-day deterministic renewal.
-The flake budget is seven entries (10% of the 70 remaining IDs); hygiene enforces
-it and scanned job summaries show usage and D-7 expiry warnings.
+The flake budget lives in `config.json`; hygiene enforces it and scanned job
+summaries show usage and D-7 expiry warnings. Refreshed entries name the
+accountable lane in `ownerLane`, retain fresh failure receipts, and drop observed
+green identities.
 
 Hygiene compares the PR/queue base: no new IDs or ownership changes; strict IDs
 can only shrink. An existing deterministic ID may become flaky only with the
@@ -104,7 +108,8 @@ connections carry its explicit test marker, preserving the production refusal.
 
 ## Caches, artifacts and public data
 
-Only SHA-pinned `actions/*` and `step-security/harden-runner` actions are used.
+Actions use SHA pins and the GitHub-owned `actions/*` and `github/codeql-action/*`
+namespaces, plus `step-security/harden-runner`.
 Harden-runner blocks egress outside each job's explicit allow-list. Tools are
 checksum-verified release archives from `scripts/ci/versions.json`, including
 nextest, cargo-deny and sccache. The tool archives were downloaded and hashed
