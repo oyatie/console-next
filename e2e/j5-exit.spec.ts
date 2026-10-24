@@ -274,6 +274,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
       // Reload only a loaded page: a reload during its session refresh replays the rotated token, which signs out.
       await expect(head(admin, "날짜퇴직")).toBeVisible();
       await admin.reload();
+      await routeReady(admin);
       await expect(exitPanel(admin)).toBeVisible({ timeout: 1_000 });
       await expect(exitPanel(admin)).not.toContainText("효력 예정", { timeout: 1_000 });
     }).toPass({ intervals: [2_000, 3_000, 5_000], timeout: 30_000 });

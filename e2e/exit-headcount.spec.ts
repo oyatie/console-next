@@ -2,7 +2,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { withLifecycleDate } from "./clock";
-import { go, koDate, kstDate, registerEmployee } from "./flows";
+import { go, koDate, kstDate, registerEmployee, routeReady } from "./flows";
 import { startOperations, tenantInSetup } from "./setup-flows";
 import { signOff } from "./sheet";
 import { shot } from "./shots";
@@ -77,6 +77,7 @@ test("the reported last working day counts in live, compare, list and exports un
     await expect(async () => {
       await expect(admin.getByRole("heading", { name: /경계직원/, level: 1 })).toBeVisible();
       await admin.reload();
+      await routeReady(admin);
       await expect(exit).toBeVisible({ timeout: 1_000 });
       await expect(exit).not.toContainText("효력 예정", { timeout: 1_000 });
     }).toPass({ intervals: [2_000, 3_000, 5_000], timeout: 30_000 });

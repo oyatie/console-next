@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
-import { retirementDate } from "../../people/domain/employment";
+import { retirementDate } from "../../../lib/pure/employment";
 import type { StructureNode } from "@console/api/pending";
 import type { ClosePlanView } from "../../../reference/close/api";
 import { preview, settleBy, type Draft } from "../../../reference/close/domain/plan";

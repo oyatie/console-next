@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
-import { retirementDate } from "../../people/domain/employment";
+import { retirementDate } from "../../../lib/pure/employment";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { todayKst } from "../../../lib/pure/today";
