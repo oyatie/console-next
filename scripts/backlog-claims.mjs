@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { sourceFiles } from "./backlog-sources.mjs";
+import { resolveBase } from "./git-base.mjs";
 
 export const QUEUE_ENV = "BACKLOG_QUEUE_DIR";
 // Fall back to the local queue pointer when no environment override is set.
@@ -122,8 +123,7 @@ export function queueProblems(mvpText, dir, git = {}) {
 export function gitBranchState(root) {
   const git = (...a) => execFileSync("git", ["-C", root, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
   const ok = (ref) => { try { git("rev-parse", "--verify", "-q", `${ref}^{commit}`); return true; } catch { return false; } };
-  const dev = ["refs/heads/dev", "refs/remotes/origin/dev"].find(ok);
-  if (!dev) return undefined;
+  const dev = resolveBase(root);
   const state = (b) => {
     const ref = [`refs/heads/${b}`, `refs/remotes/origin/${b}`].find(ok);
     if (!ref) return "missing";
