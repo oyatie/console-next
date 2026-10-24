@@ -72,6 +72,7 @@ pub(crate) async fn page(
                     continue;
                 };
                 items.push(ActionInboxSourceItem {
+                    context: None,
                     id: format!("identifier_correction:{}", case.id),
                     kind: kind.into(),
                     ref_code: String::new(),

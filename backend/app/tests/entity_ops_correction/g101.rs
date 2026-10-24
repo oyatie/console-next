@@ -5,7 +5,6 @@ mod maturity_settings;
 #[path = "refusals.rs"]
 mod refusals;
 mod round2;
-#[cfg(feature = "workspace")]
 mod round3;
 #[path = "setup.rs"]
 mod setup;

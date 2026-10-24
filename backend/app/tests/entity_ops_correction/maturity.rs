@@ -275,7 +275,6 @@ async fn recorded_queue_has_review_deadline_and_independent_signoff(owner: PgPoo
     sqlx::query("UPDATE authz_grant_ledger SET occurred_at=now()-interval '400 days' WHERE user_id=$1 AND event='GRANTED'").bind(s.approver.id).execute(&owner).await.unwrap();
     sqlx::query("INSERT INTO authz_grant_ledger (org_id,user_id,grant_kind,grant_ref,event,source,channel) SELECT org_id,user_id,grant_kind,grant_ref,'NOTICE_DELIVERED','NOTIFIER','IN_APP' FROM authz_grant_ledger WHERE user_id=$1 AND event='GRANTED' AND grant_kind='SYSTEM_ROLE'").bind(s.approver.id).execute(&owner).await.unwrap();
     let (_, queue) = get(&s, &format!("{REGISTER}?awaiting=me"), &s.approver.token).await;
-    #[cfg(feature = "workspace")]
     {
         let work = super::round3::inbox(&s, &s.approver.token).await;
         assert_eq!(work.len(), 1);
@@ -297,7 +296,6 @@ async fn recorded_queue_has_review_deadline_and_independent_signoff(owner: PgPoo
         assert_eq!(status, StatusCode::OK, "{body}");
     }
     let id: Uuid = id.parse().unwrap();
-    #[cfg(feature = "workspace")]
     {
         super::round3::changes(&owner, id, "exception.review").await;
         assert!(super::round3::inbox(&s, &s.approver.token).await.is_empty());
