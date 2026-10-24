@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { fillDate } from "./sheet";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
-import { go, option } from "./flows";
+import { go, option, routeReady } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { REGISTRATION_FIXTURES, registerEntity, CRN_BAD_CHECK } from "./setup-flows";
 
@@ -127,6 +127,8 @@ test("the certificate wizard refuses a taken number and a future date, warns on 
   await c.click(admin.getByRole("button", { name: "다음: 등기·대표자" }));
   await c.click(admin.getByRole("button", { name: "다음", exact: true }));
   await c.click(admin.getByRole("button", { name: "법인만 등록" }));
+  await admin.waitForURL(/\/org\/entities\/[0-9a-f-]{36}$/);
+  await routeReady(admin);
   await expect(admin.getByRole("heading", { name: /\(주\)새온바이오/, level: 1 })).toBeVisible();
   expect(c.done("법인 with every 등록증 item (spec §4: 15)")).toBeLessThanOrEqual(15);
 });
@@ -153,5 +155,7 @@ test("an individual business never collects the owner's birth date; a 고유번�
   await admin.getByRole("textbox", { name: /^대표자/ }).fill("박새온");
   await admin.getByRole("button", { name: "다음", exact: true }).click();
   await admin.getByRole("button", { name: "법인만 등록" }).click();
+  await admin.waitForURL(/\/org\/entities\/[0-9a-f-]{36}$/);
+  await routeReady(admin);
   await expect(admin.getByRole("heading", { name: /새온장학회/, level: 1 })).toBeVisible();
 });
