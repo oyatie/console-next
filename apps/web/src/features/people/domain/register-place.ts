@@ -36,5 +36,5 @@ export function resolvePlace(place: PlaceOption | undefined, entities: readonly 
   const all = workplaceChoices(entities);
   const own = all.find((w) => w.workplaceId === place.workplaceId);
   const w = own ?? all.find((x) => x.workplaceId === picked);
-  return { ...place, own: own !== undefined, opensOn: w?.opensOn, ...(w ? { entityId: w.entityId, entity: w.entity, entityRecord: w.entityRecord, workplaceId: w.workplaceId, branchId: w.branchId } : { branchId: null }) };
+  return { ...place, own: own !== undefined, opensOn: w?.opensOn, ...(w ? { entityId: w.entityId, entity: w.entity, entityRecord: w.entityRecord, workplaceId: w.workplaceId, site: w.site, branchId: w.branchId } : { branchId: null }) };
 }

@@ -7,5 +7,7 @@ test("registration uses the server's first permitted placement date, including f
   const entity = { id: "entity", current: { name: "법인", effective_from: "2026-10-24" }, workplaces: [{ id: "workplace", default_branch_id: "branch", placement_opens_on: "2020-03-02", current: { name: "본사", effective_from: "2026-10-24" } }] } as unknown as components["schemas"]["LegalEntity"];
   const place = { unit: { id: "unit" }, workplaceId: "workplace" } as PlaceOption;
   expect(resolvePlace(place, [entity], "")?.opensOn).toBe("2020-03-02");
-  expect(resolvePlace({ ...place, workplaceId: null }, [entity], "workplace")?.opensOn).toBe("2020-03-02");
+  const picked = resolvePlace({ ...place, workplaceId: null }, [entity], "workplace");
+  expect(picked?.opensOn).toBe("2020-03-02");
+  expect(picked?.site).toBe("본사");
 });
