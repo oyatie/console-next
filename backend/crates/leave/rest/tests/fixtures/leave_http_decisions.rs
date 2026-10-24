@@ -10,6 +10,7 @@ async fn v1_wire_shape_is_frozen_and_v2_requires_modern_exact_cas(owner_pool: Pg
     let employee = Uuid::new_v4();
     seed_subject(&owner_pool, org, branch, requester, employee).await;
     seed_branch_admin(&owner_pool, org, branch, decider).await;
+    person_fixtures::bind_user_to_distinct_person(&owner_pool, decider).await;
     grant_console_rt(
         &owner_pool,
         &[
@@ -96,7 +97,6 @@ async fn v1_wire_shape_is_frozen_and_v2_requires_modern_exact_cas(owner_pool: Pg
     sqlx::query("GRANT EXECUTE ON FUNCTION public.console_decision_people(UUID,UUID,UUID) TO console_leave_cmd,console_leave_definer")
         .execute(&owner_pool).await.unwrap();
 
-    person_fixtures::bind_user_to_distinct_person(&owner_pool, decider).await;
     // A verified decider keeps the deployed v1 wire shape.
     let versionless = request_json(
         service.clone(),
