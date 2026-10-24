@@ -31,13 +31,13 @@ use console_platform_auth::{
     AccessTokenInput, JwtIssuer, JwtSettings, PasskeyRegistrationStart, PasskeyService,
     WebauthnSettings,
 };
+use console_platform_test_support::runtime_role_pool;
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
 use p256::elliptic_curve::rand_core::OsRng;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 use url::Url;
@@ -84,21 +84,6 @@ fn passkey_service() -> PasskeyService {
         ceremony_ttl: Duration::minutes(5),
     })
     .unwrap()
-}
-
-async fn runtime_role_pool(owner_pool: &PgPool) -> PgPool {
-    let options = owner_pool.connect_options().as_ref().clone();
-    PgPoolOptions::new()
-        .max_connections(6)
-        .after_connect(|conn, _meta| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_rt").execute(conn).await?;
-                Ok(())
-            })
-        })
-        .connect_with(options)
-        .await
-        .unwrap()
 }
 
 fn app_state(pool: PgPool, keys: &Keys) -> AppState {
