@@ -3,11 +3,13 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog } from "@console/i18n";
+import { readIdentity } from "../../../lib/query";
 import { EntityList } from "./entity-list";
 
 const state = vi.hoisted(() => ({ loaded: false, failed: false }));
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => queryKey[0] === "/api/v1/legal-entities"
+vi.mock("@tanstack/react-query", async (original) => ({
+  ...await original<typeof import("@tanstack/react-query")>(),
+  useQuery: (options: Parameters<typeof readIdentity>[0]) => JSON.parse(readIdentity(options))[0] === "/api/v1/legal-entities"
     ? { data: state.loaded ? { items: [] } : undefined, isPending: !state.loaded && !state.failed, error: state.failed ? new Error("unavailable") : null }
     : { data: { phase: "OPERATING" } },
 }));
