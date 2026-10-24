@@ -166,8 +166,8 @@ test("GridPage Paste focuses row one after it unmounts", async ({ page }) => {
   await mount(page, true, "page");
   await page.getByRole("grid").waitFor();
   await page.locator("#grid-0-0").click();
-  for (let i = 0; i < 70; i++) await page.keyboard.press("ArrowDown");
-  await expect.poll(() => page.evaluate(() => document.activeElement?.closest('[role="gridcell"]')?.id)).toBe("grid-70-0");
+  await page.keyboard.press("Control+End");
+  await expect(page.locator("#grid-1999-2 input")).toBeFocused();
   expect(await page.locator("#grid-0-0").count()).toBe(0);
   for (let i = 0; i < 2; i++) {
     await page.getByRole("button", { name: /^Paste/ }).click();

@@ -42,4 +42,3 @@ export async function expectWindowAt(page: Page, row: number) {
   });
   expect(coverage).toEqual({ coversTop: true, coversBottom: true, visible: true });
 }
-
