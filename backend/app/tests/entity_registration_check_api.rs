@@ -13,6 +13,8 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use std::{future::Future, pin::Pin, sync::Arc};
 use uuid::Uuid;
+#[path = "registration_check/delivery.rs"]
+mod delivery;
 #[path = "support/http.rs"]
 mod support;
 

@@ -1,13 +1,13 @@
 {
   "baseline": {
-    "apps/web/src/features/entity/ui/nts-check.tsx#NtsCheck": 41,
+    "apps/web/src/features/entity/ui/nts-check.tsx#NtsCheck": 40,
     "apps/web/src/features/entity/ui/nts-preview.tsx#NtsPreview": 42,
     "apps/web/src/features/platform/ui/key-notices.tsx#KeyNotices": 2
   },
   "newScreens": {
     "apps/web/src/features/entity/ui/nts-check.tsx#NtsCheck": {
       "FACT": 21,
-      "REFUSAL": 16,
+      "REFUSAL": 15,
       "EMPTY": 1,
       "LEGAL": 1,
       "RECEIPT": 2,

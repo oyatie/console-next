@@ -45,7 +45,7 @@ async fn scoped(s: &EntityRestState, principal: &Principal) -> Result<Actor> {
 }
 
 /// `legal_entity_manage` for a record whose own ids are `resource`.
-fn may_manage(principal: &Principal, scope: &EntityScope, resource: &[Uuid]) -> bool {
+pub(crate) fn may_manage(principal: &Principal, scope: &EntityScope, resource: &[Uuid]) -> bool {
     let feature = Feature::LegalEntityManage;
     let freshness = principal.authz_freshness;
     let Ok(bundle) = compile_action_bundle(principal.org_id, freshness.policy_version, feature)
@@ -79,7 +79,7 @@ pub(crate) async fn principal(s: &EntityRestState, headers: &HeaderMap) -> Resul
     )
 }
 
-fn actor_of(principal: &Principal) -> Actor {
+pub(crate) fn actor_of(principal: &Principal) -> Actor {
     Actor {
         org: principal.org_id,
         user: principal.user_id,

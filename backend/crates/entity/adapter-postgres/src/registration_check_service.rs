@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use crate::command::{Outcome, claim, finish};
-use crate::registration_check::{append, evidence, failure, reconcile, subject};
+use crate::registration_check::{append, evidence, reconcile};
 use crate::{PgEntityError, PgEntityStore, admit, audit};
 use console_entity_application::{
     Actor,
@@ -41,35 +41,67 @@ impl PgEntityStore {
         expected: Option<UserValidation>,
         port: Arc<dyn RegistrationCheck>,
     ) -> Result<CheckEvidence, PgEntityError> {
-        let actor = actor.clone();
         let refusal_actor = actor.clone();
-        let result = with_audits(&self.pool, actor.org, move |tx| Box::pin(async move {
-            if let Some(done) = claim(tx, &actor, "business_registration.check", json!({"id":id,"kind":kind,"expected":expected})).await? {
+        let result = self
+            .run_registration_check(actor, id, kind, expected, port)
+            .await;
+        crate::registration_check::audit_failure(self, &refusal_actor, id, kind, result).await
+    }
+
+    async fn run_registration_check(
+        &self,
+        actor: &Actor,
+        id: Uuid,
+        kind: CheckKind,
+        expected: Option<UserValidation>,
+        port: Arc<dyn RegistrationCheck>,
+    ) -> Result<CheckEvidence, PgEntityError> {
+        use crate::registration_check_request::{Prepared, call, completed, confirm, values};
+        let request = json!({"id":id,"kind":kind,"expected":expected});
+        let actor_read = actor.clone();
+        let request_read = request.clone();
+        let port_read = port.clone();
+        let prepared = with_org_conn(&self.pool, actor.org, move |tx| {
+            Box::pin(async move {
+                if let Some(done) =
+                    completed(tx, &actor_read, "business_registration.check", request_read).await?
+                {
+                    let check_id = serde_json::from_value::<Outcome>(done)?
+                        .target
+                        .ok_or_else(|| Refusal::not_found("registration_not_found"))?;
+                    return Ok::<_, PgEntityError>(Prepared::Replay(
+                        evidence(tx, check_id, port_read.reflection_lag_days()).await?,
+                    ));
+                }
+                let current = values(tx, &actor_read, id, port_read.pack(), kind, false).await?;
+                if let Some(expected) = &expected {
+                    confirm(expected, &current)?;
+                }
+                admit(tx, WriteClass::EntityStructure).await?;
+                Ok(Prepared::Current(current))
+            })
+        })
+        .await?;
+        let current = match prepared {
+            Prepared::Current(values) => values,
+            Prepared::Replay(done) => return Ok(done),
+        };
+        let checked_at = time::OffsetDateTime::now_utc();
+        let answer = call(port.as_ref(), kind, &current).await?;
+        let actor = actor.clone();
+        with_audits(&self.pool, actor.org, move |tx| Box::pin(async move {
+            if let Some(done) = claim(tx, &actor, "business_registration.check", request).await? {
                 return Ok((evidence(tx, done.target.ok_or_else(|| Refusal::not_found("registration_not_found"))?, port.reflection_lag_days()).await?, vec![]));
             }
-            let (entity, brn) = subject(tx, id, port.pack()).await?;
+            confirm(&current, &values(tx, &actor, id, port.pack(), kind, true).await?)?;
             let admitted = admit(tx, WriteClass::EntityStructure).await?;
-            let answer = match kind {
-                CheckKind::Status => port.status(std::slice::from_ref(&brn)).await.map_err(failure)?.into_iter().find(|a| a.brn_checked == brn).ok_or_else(|| failure(console_entity_application::registration_check::CheckFailure::Contract { code: "missing_answer" }))?,
-                CheckKind::Validate => {
-                    let e = crate::legal_entity::one(tx, entity, actor.scope.granted(), true).await?;
-                    let r = e.registrations.iter().find(|r| r.id == id).and_then(|r| r.current.as_ref()).ok_or_else(|| Refusal::field("opened_on", "required"))?;
-                    let opened_on = r.opened_on.ok_or_else(|| Refusal::field("opened_on", "required"))?.to_string();
-                    let representative = e.current.and_then(|c| c.representatives).and_then(|r| r.into_iter().next()).ok_or_else(|| Refusal::field("representatives", "required"))?;
-                    if expected.as_ref().is_some_and(|v| v.brn != brn || v.opened_on != opened_on || v.representative != representative) {
-                        return Err(Refusal::conflict("stale_revision","the confirmed registration values changed").with_remedy("reload_and_reapply").into());
-                    }
-                    port.validate(&UserValidation { brn, opened_on, representative }).await.map_err(failure)?
-                }
-            };
-            let check_id = append(tx, id, Some(*actor.user.as_uuid()), &answer, None).await?;
+            let check_id = append(tx, id, Some(*actor.user.as_uuid()), &answer, Some(checked_at)).await?;
             reconcile(tx, id, port.reflection_lag_days()).await?;
             finish(tx, &actor, &Outcome { target: Some(check_id), ..Outcome::default() }).await?;
             let event = audit(&actor, "business_registration.check", "business_registration", id, admitted,
                 json!({"check_id": check_id,"kind":kind,"fields_sent":answer.fields_sent,"purpose":"registration_evidence"}))?;
             Ok((evidence(tx, check_id, port.reflection_lag_days()).await?, vec![event]))
-        })).await;
-        crate::registration_check::audit_failure(self, &refusal_actor, id, kind, result).await
+        })).await
     }
 
     /// # Errors
@@ -110,9 +142,9 @@ impl PgEntityStore {
     ) -> Result<Vec<RegistrationCheckItem>, PgEntityError> {
         let actor = actor.clone();
         with_org_conn(&self.pool, actor.org, move |tx| Box::pin(async move {
-            let rows: Vec<(Uuid,Uuid,Uuid,time::OffsetDateTime)> = sqlx::query_as("SELECT i.id,i.registration_id,r.legal_entity_id,i.created_at FROM business_registration_check_items i JOIN business_registrations r ON r.id=i.registration_id JOIN business_registration_checks c ON c.id=i.check_id AND c.brn_checked=r.brn WHERE i.closed_at IS NULL AND r.voided_at IS NULL AND ($1::uuid[] IS NULL OR r.legal_entity_id=ANY($1)) ORDER BY i.created_at,i.id")
+            let rows: Vec<(Uuid,Uuid,Uuid,time::OffsetDateTime,String)> = sqlx::query_as("SELECT i.id,i.registration_id,r.legal_entity_id,i.created_at,COALESCE((SELECT name FROM legal_entity_revisions e WHERE e.legal_entity_id=r.legal_entity_id ORDER BY e.effective_from > (now() AT TIME ZONE 'Asia/Seoul')::date,abs(e.effective_from-(now() AT TIME ZONE 'Asia/Seoul')::date),e.version DESC LIMIT 1),'') FROM business_registration_check_items i JOIN business_registrations r ON r.id=i.registration_id JOIN business_registration_checks c ON c.id=i.check_id AND c.brn_checked=r.brn WHERE i.closed_at IS NULL AND r.voided_at IS NULL AND ($1::uuid[] IS NULL OR r.legal_entity_id=ANY($1)) ORDER BY i.created_at,i.id")
                 .bind(actor.scope.granted()).fetch_all(tx.as_mut()).await?;
-            Ok(rows.into_iter().map(|(id,registration_id,legal_entity_id,created_at)| RegistrationCheckItem {id,registration_id,legal_entity_id,created_at}).collect())
+            Ok(rows.into_iter().map(|(id,registration_id,legal_entity_id,created_at,entity_name)| RegistrationCheckItem {id,registration_id,legal_entity_id,created_at,entity_name}).collect())
         })).await
     }
 }

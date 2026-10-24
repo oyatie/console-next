@@ -110,7 +110,7 @@ test("the certificate wizard refuses a taken number and a future date, warns on 
   await c.click(option(admin, "과세유형", "일반과세자"));
   await admin.getByLabel("관할 세무서").fill("청주세무서장");
   // ⑩ left empty: a to-do, never a default; the foot says the certificate waits for it.
-  await expect(admin.getByText(/등록증은 비운 항목을 채우면 함께 저장되고/)).toBeVisible();
+  await expect(admin.getByText(/^등록증을 함께 기록하려면 입력하십시오 ·/)).toBeVisible();
   await expectAccessible(admin, "S4 wizard: certificate");
 
   await c.click(admin.getByRole("button", { name: "다음: 등기·대표자" }));

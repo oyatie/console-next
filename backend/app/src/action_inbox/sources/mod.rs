@@ -8,5 +8,6 @@ pub(super) mod hr_lifecycle;
 pub(super) mod hr_register;
 pub(super) mod hr_requests;
 pub(super) mod org_change;
+pub(super) mod registration_checks;
 pub(super) mod setup;
 pub(super) mod support_access;

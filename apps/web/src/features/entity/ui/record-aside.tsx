@@ -43,7 +43,7 @@ export function RecordAside({ e, phase, depts, docs, act, onTab }: { e: LegalEnt
   const left = todos(e);
   return (
     <aside className={s.aside}>
-      {primary && <NtsCheck historical={lock === "asof"} registration={primary} entity={e} canManage={e.can_manage && !locked} onAttach={() => act.reissue(primary.id)} />}
+      {primary && <NtsCheck historical={lock === "asof"} registration={primary} entity={e} canManage={e.can_manage && !locked} onAttach={() => act.attach(primary.id)} />}
       <section className="card" aria-labelledby="state-title">
         <div className={s.cardHead}><h2 id="state-title" className={s.cardTitle}>{t("entityRecord.state.title")}</h2><Chip tone={setup ? "ok" : "info"}>{t(setup ? "entityRecord.phase.setup" : "entityRecord.phase.operating")}</Chip></div>
         <div className={s.cardBody}>

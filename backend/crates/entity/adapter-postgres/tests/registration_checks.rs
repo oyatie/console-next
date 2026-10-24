@@ -169,7 +169,7 @@ async fn schedule_claims_skip_locked_respect_budget_and_use_configured_cadence(p
     let policy = CheckSchedulePolicy {
         cadence_hours: 7,
         batch_size: 1,
-        daily_budget: 1,
+        daily_budget: 2,
         ..CheckSchedulePolicy::default()
     };
     let mut tx = pool.begin().await.unwrap();
@@ -190,6 +190,8 @@ async fn schedule_claims_skip_locked_respect_budget_and_use_configured_cadence(p
             .await
             .is_err()
     );
+    // The provider attempt spends budget even when its answer violates the contract.
+    due(&pool, id).await;
     assert_eq!(tick(&store, &actor, "02", policy).await, 1);
     assert_eq!(tick(&store, &actor, "02", policy).await, 0);
     let row = store
@@ -207,7 +209,7 @@ async fn schedule_claims_skip_locked_respect_budget_and_use_configured_cadence(p
     due(&pool, id).await;
     assert_eq!(tick(&store, &actor, "01", policy).await, 0);
     let policy = CheckSchedulePolicy {
-        daily_budget: 2,
+        daily_budget: 3,
         cadence_hours: 3,
         ..policy
     };

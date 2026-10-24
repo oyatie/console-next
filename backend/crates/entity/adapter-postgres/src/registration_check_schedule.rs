@@ -3,7 +3,7 @@ use crate::registration_check::{append, reconcile};
 use crate::{PgEntityError, PgEntityStore};
 use console_entity_application::registration_check::RegistrationCheck;
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext};
-use console_platform_db::with_audits;
+use console_platform_db::{with_audits, with_org_conn};
 use console_settings_domain::{SettingKey, SettingValue};
 use serde_json::json;
 use std::sync::Arc;
@@ -47,31 +47,49 @@ impl PgEntityStore {
         if !port.availability().available {
             return Ok(0);
         }
-        with_audits(&self.pool, org, move |tx| Box::pin(async move {
+        let pack = port.pack();
+        let max_batch = i64::try_from(port.max_batch()).unwrap_or(i64::MAX);
+        let (rows, lease) = with_org_conn(&self.pool, org, move |tx| Box::pin(async move {
             let mut rows: Vec<(Uuid,String)> = sqlx::query_as("SELECT r.id,r.brn FROM business_registration_check_schedule s JOIN business_registrations r ON r.id=s.registration_id \
                 WHERE s.due_at<=now() AND r.brn IS NOT NULL AND r.voided_at IS NULL AND r.check_pack=$1 \
                 ORDER BY s.due_at,r.id LIMIT $2 FOR UPDATE OF s,r SKIP LOCKED")
-                .bind(port.pack()).bind(policy.batch_size.min(i64::try_from(port.max_batch()).unwrap_or(i64::MAX)).max(1)).fetch_all(tx.as_mut()).await?;
-            if rows.is_empty() { return Ok((0, vec![])); }
-            let allowed: i64 = sqlx::query_scalar("SELECT claim_registration_check_budget($1,$2)").bind(i64::try_from(rows.len()).unwrap_or(i64::MAX)).bind(policy.daily_budget).fetch_one(tx.as_mut()).await?;
-            if allowed == 0 { return Ok((0, vec![])); }
-            rows.truncate(usize::try_from(allowed).unwrap_or(0));
-            let numbers: Vec<String> = rows.iter().map(|(_,n)| n.clone()).collect();
-            let result = port.status(&numbers).await;
-            let ids: Vec<Uuid> = rows.iter().map(|(id,_)| *id).collect();
-            let delay = if result.is_ok() { policy.cadence_hours.saturating_mul(3600) } else { policy.backoff_seconds };
-            sqlx::query("UPDATE business_registration_check_schedule SET due_at=now()+$2::bigint*interval '1 second' WHERE registration_id=ANY($1)")
-                .bind(&ids).bind(delay).execute(tx.as_mut()).await?;
-            let answers = match result {
-                Ok(answers) => answers,
-                Err(_) => { tracing::warn!("scheduled registration check unavailable; retry deferred"); return Ok((0, vec![])); }
+                .bind(pack).bind(policy.batch_size.min(max_batch).max(1)).fetch_all(tx.as_mut()).await?;
+            let allowed: i64 = if rows.is_empty() { 0 } else {
+                sqlx::query_scalar("SELECT claim_registration_check_budget($1,$2)").bind(i64::try_from(rows.len()).unwrap_or(i64::MAX)).bind(policy.daily_budget).fetch_one(tx.as_mut()).await?
             };
+            rows.truncate(usize::try_from(allowed).unwrap_or(0));
+            let ids: Vec<Uuid> = rows.iter().map(|(id,_)| *id).collect();
+            let lease: time::OffsetDateTime = sqlx::query_scalar("SELECT now()+$1::bigint*interval '1 second'").bind(policy.backoff_seconds).fetch_one(tx.as_mut()).await?;
+            // Commit the retry time before I/O, releasing both tenant and platform-budget locks.
+            sqlx::query("UPDATE business_registration_check_schedule SET due_at=$2 WHERE registration_id=ANY($1)")
+                .bind(&ids).bind(lease).execute(tx.as_mut()).await?;
+            Ok::<_, PgEntityError>((rows, lease))
+        })).await?;
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let numbers: Vec<String> = rows.iter().map(|(_, n)| n.clone()).collect();
+        let checked_at = time::OffsetDateTime::now_utc();
+        let answers = match port.status(&numbers).await {
+            Ok(answers) => answers,
+            Err(_) => {
+                tracing::warn!("scheduled registration check unavailable; retry deferred");
+                return Ok(0);
+            }
+        };
+        with_audits(&self.pool, org, move |tx| Box::pin(async move {
             let mut events = Vec::new();
             let mut count = 0;
             for (id, number) in rows {
                 if let Some(answer) = answers.iter().find(|a| a.brn_checked == number) {
-                    let check_id = append(tx, id, None, answer, None).await?;
+                    // A manual check, correction, void or reissue during I/O invalidates this claim.
+                    let current: Option<Uuid> = sqlx::query_scalar("SELECT r.id FROM business_registrations r JOIN business_registration_check_schedule s ON s.registration_id=r.id WHERE r.id=$1 AND r.brn=$2 AND r.voided_at IS NULL AND s.due_at=$3 FOR UPDATE OF r,s")
+                        .bind(id).bind(&number).bind(lease).fetch_optional(tx.as_mut()).await?;
+                    if current.is_none() { continue; }
+                    let check_id = append(tx, id, None, answer, Some(checked_at)).await?;
                     reconcile(tx, id, policy.reflection_lag_days).await?;
+                    sqlx::query("UPDATE business_registration_check_schedule SET due_at=now()+$2::bigint*interval '1 hour' WHERE registration_id=$1")
+                        .bind(id).bind(policy.cadence_hours).execute(tx.as_mut()).await?;
                     events.push(AuditEvent::new(None, AuditAction::new("business_registration.check").map_err(console_entity_domain::Refusal::from)?, "business_registration", id.to_string(), TraceContext::generate(), time::OffsetDateTime::now_utc()).with_org(org).with_snapshots(None, Some(json!({"check_id":check_id,"trigger":"SCHEDULE","fields_sent":["b_no"]}))));
                     count += 1;
                 }

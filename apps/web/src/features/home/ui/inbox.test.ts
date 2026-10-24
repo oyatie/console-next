@@ -282,6 +282,13 @@ test("support approvals keep their source label and selected review destination"
   for (const fact of ["조직 조회 오류 확인", "HELP-123", "공급사 운영자"]) expect(markup).toContain(fact);
 });
 
+test("NTS mismatch opens the affected registration card", () => {
+  view.list.data = { pages: [page([item("registration_check:item", { kind: "registration_check", title: "조회 법인", links: [{ kind: "registration_check", id: "entity/registration" }] })])] };
+  const markup = html();
+  expect(markup).toContain(t("nts.title"));
+  expect(markup).toContain('href="/org/entities/entity?nts=registration"');
+});
+
 test("a failed support-approval source keeps its own retry label", () => {
   view.list.data = { pages: [page([], { unavailable: [{ source: "support_access", support_reference: "support-reference" }] })] };
   const markup = html();

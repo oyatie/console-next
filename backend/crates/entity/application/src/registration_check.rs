@@ -226,6 +226,7 @@ pub struct RegistrationCheckItem {
     pub id: uuid::Uuid,
     pub registration_id: uuid::Uuid,
     pub legal_entity_id: uuid::Uuid,
+    pub entity_name: String,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
 }

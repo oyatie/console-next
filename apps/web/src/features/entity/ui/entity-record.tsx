@@ -25,6 +25,7 @@ import { FoundingCard } from "./record-founding";
 import { DocumentsTab } from "./documents-tab";
 import { HistoryTab } from "./history-tab";
 import { VoidEntity } from "./void-entity";
+import { OriginalSheet } from "./record-original-sheet";
 import { WorkplacesTab } from "./workplaces-tab";
 import { CertCard } from "./record-cert-card";
 import { CloseSheet } from "./record-close-sheet";
@@ -144,6 +145,7 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
           field: <V,>(spec: FieldSpec<V>) => { if (!readOnly) setSheet(<ReviseSheet e={e} spec={spec} phase={phase} onClose={close} />); },
           identifier: (field, registrationId) => { if (!readOnly) setSheet(<IdentifierSheet e={e} field={field} registrationId={registrationId ?? primaryRegistration(e)?.id} operating={operating} onClose={close} />); },
           reissue: (registrationId) => void navigate({ search: (search) => ({ ...search, reissue: registrationId }) }),
+          attach: (registrationId) => { if (!readOnly) setSheet(<OriginalSheet entityId={e.id} registrationId={registrationId} onClose={close} />); },
           close: () => { if (!readOnly) setSheet(<CloseSheet e={e} depts={depts} onClose={close} />); },
           remove: () => { if (!readOnly) setSheet(<VoidEntity e={e} onClose={close} />); },
         };

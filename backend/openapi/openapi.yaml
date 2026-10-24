@@ -4980,6 +4980,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/business-registrations/{registrationId}/original:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+      - entity
+      operationId: attachBusinessRegistrationOriginal
+      summary: Attach the current certificate original without creating a revision
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: registrationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [document_id]
+              properties:
+                document_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Original attached; recorded facts and issue date are unchanged.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityDocument'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Registration or document not found in this tenant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: registration_voided or idempotency_key_reused.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: document_not_certificate or document_attached_elsewhere.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/business-registrations/{registrationId}/reissues:
     post:
       tags:
@@ -32128,6 +32191,7 @@ components:
           - setup_roles
           - setup_golive
           - support_access
+          - registration_check
         urg:
           type: string
           enum:

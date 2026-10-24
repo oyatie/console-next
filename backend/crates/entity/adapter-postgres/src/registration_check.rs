@@ -163,9 +163,18 @@ pub(crate) async fn subject(
     tx: &mut Tx<'_>,
     id: Uuid,
     pack: &str,
+    lock: bool,
 ) -> Result<(Uuid, String), PgEntityError> {
-    let row = sqlx::query("SELECT legal_entity_id,brn,voided_at,check_pack FROM business_registrations WHERE id=$1 FOR UPDATE")
-        .bind(id).fetch_optional(tx.as_mut()).await?.ok_or_else(|| Refusal::not_found("registration_not_found"))?;
+    let sql = if lock {
+        "SELECT legal_entity_id,brn,voided_at,check_pack FROM business_registrations WHERE id=$1 FOR UPDATE"
+    } else {
+        "SELECT legal_entity_id,brn,voided_at,check_pack FROM business_registrations WHERE id=$1"
+    };
+    let row = sqlx::query(sql)
+        .bind(id)
+        .fetch_optional(tx.as_mut())
+        .await?
+        .ok_or_else(|| Refusal::not_found("registration_not_found"))?;
     if row
         .try_get::<Option<time::OffsetDateTime>, _>("voided_at")?
         .is_some()

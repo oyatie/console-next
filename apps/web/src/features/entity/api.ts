@@ -198,3 +198,6 @@ export const checkRegistration = (registrationId: string, kind: "STATUS" | "VALI
 export const previewRegistrationCheck = (key: string, body: components["schemas"]["RegistrationCheckPreview"]) => unwrap(api.POST("/api/v1/registration-checks/preview", { params: { header: once(key) }, body }));
 
 export type CheckPreview = { answer: CheckAnswer; command_id: string; values: { brn: string; opened_on: string; representative: string }; acknowledged: boolean; status_since?: string };
+
+/** Keep the current certificate as evidence without recording a reissue. */
+export const attachRegistrationOriginal = (key: string, registrationId: string, documentId: string) => unwrap(api.POST("/api/v1/business-registrations/{registrationId}/original", { params: { path: { registrationId }, header: once(key) }, body: { document_id: documentId } }));

@@ -54,6 +54,7 @@ export type Act = {
   identifier: (field: "brn" | "crn", registrationId?: string) => void;
   /** certificate reissue: a newly issued certificate and the facts it changed. */
   reissue: (registrationId: string) => void;
+  attach: (registrationId: string) => void;
   close: () => void;
   remove: () => void;
 };

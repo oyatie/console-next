@@ -20,11 +20,14 @@ mod close_plan;
 mod corrections;
 mod docs;
 // --- lane: CRUD ---
+mod check_inbox;
 mod checks;
+pub use check_inbox::registration_check_inbox;
 mod ends;
 mod error;
 mod handlers;
 mod org_setup;
+mod original;
 mod reach;
 mod records;
 mod reference;
@@ -52,6 +55,8 @@ pub const LEGAL_ENTITY_VOID_PATH: &str = "/api/v1/legal-entities/{entityId}/void
 pub const LEGAL_ENTITY_REGISTRATIONS_PATH: &str = "/api/v1/legal-entities/{entityId}/registrations";
 pub const LEGAL_ENTITY_WORKPLACES_PATH: &str = "/api/v1/legal-entities/{entityId}/workplaces";
 pub const REGISTRATION_CHECKS_PATH: &str = "/api/v1/business-registrations/{registrationId}/checks";
+pub const REGISTRATION_ORIGINAL_PATH: &str =
+    "/api/v1/business-registrations/{registrationId}/original";
 pub const REGISTRATION_CHECK_PREVIEW_PATH: &str = "/api/v1/registration-checks/preview";
 pub const REGISTRATION_CHECK_AVAILABILITY_PATH: &str = "/api/v1/registration-checks/availability";
 pub const REGISTRATION_PATH: &str = "/api/v1/business-registrations/{registrationId}";
@@ -185,6 +190,7 @@ pub fn router(state: EntityRestState) -> Router {
     let verifier = state.jwt_verifier.clone();
     let pool = state.store.pool().clone();
     let router = Router::new()
+        .route(REGISTRATION_ORIGINAL_PATH, post(original::attach))
         .route(
             REGISTRATION_CHECKS_PATH,
             get(checks::history).post(checks::create),

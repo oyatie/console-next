@@ -2865,6 +2865,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/business-registrations/{registrationId}/original": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Attach the current certificate original without creating a revision */
+        post: operations["attachBusinessRegistrationOriginal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/business-registrations/{registrationId}/reissues": {
         parameters: {
             query?: never;
@@ -34036,6 +34053,66 @@ export interface operations {
             };
             /** @description After 운영 시작, the tenant ops account sent no step_up: passkey_step_up_required (remedy passkey_step_up). */
             428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    attachBusinessRegistrationOriginal: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                registrationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    document_id: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Original attached; recorded facts and issue date are unchanged. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityDocument"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Registration or document not found in this tenant. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description registration_voided or idempotency_key_reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description document_not_certificate or document_attached_elsewhere. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

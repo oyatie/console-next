@@ -76,6 +76,15 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/business-registrations/{registrationId}/original",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__business-registrations__registrationId__original.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/business-registrations/{registrationId}/reissues",
         operations: &[Operation {
             method: "post",

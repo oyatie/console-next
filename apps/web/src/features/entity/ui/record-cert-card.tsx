@@ -118,7 +118,7 @@ export function CertCard({ e, r, act, operating, onOriginal, showCheck = false }
         <FactRow no={11} label={t("entityRecord.field.email")} action={fix(f.email)}>{c?.e_invoice_email || "—"}</FactRow>
         <FactRow label={t("entityRecord.field.issued")} action={fix(f.issued)}><span className="num">{c?.cert_issued_on ? fmtDate(c.cert_issued_on) : "—"}</span> · {c?.tax_office_label || "—"}</FactRow>
       </div>
-      {showCheck && <NtsCheck historical={lock === "asof"} registration={r} entity={e} canManage={e.can_manage && !locked} onAttach={() => act.reissue(r.id)} />}
+      {showCheck && <NtsCheck historical={lock === "asof"} registration={r} entity={e} canManage={e.can_manage && !locked} onAttach={() => act.attach(r.id)} />}
       {statusing && <RegistrationStatusSheet e={e} r={r} onClose={() => setStatusing(false)} />}
       {voiding && <VoidRegistration r={r} entityId={e.id} onClose={() => { setVoiding(false); requestAnimationFrame(() => voidTrigger.current?.focus()); }} />}
     </section>

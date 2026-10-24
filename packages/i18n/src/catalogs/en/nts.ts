@@ -2,6 +2,11 @@
 import type { koNts } from "../ko/nts";
 
 export const enNts: Record<keyof typeof koNts, string> = {
+  "nts.original.title": "Current registration certificate original",
+  "nts.original.consequence": "The original is kept as evidence. The issue date and recorded facts stay unchanged.",
+  "nts.original.saved": "Registration certificate original attached",
+  "nts.inbox.review": "Review NTS check result",
+  "nts.inbox.reason": "Compare the certificate with the NTS result and record the current status.",
   "nts.preview.missing": "To record the certificate, enter · {fields}",
   "nts.preview.statusSince": "Suspension start date",
   "nts.preview.clear": "Save without this check",

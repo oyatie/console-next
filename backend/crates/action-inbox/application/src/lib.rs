@@ -904,6 +904,7 @@ mod tests {
             ActionInboxSource::Payroll => "payroll",
             ActionInboxSource::Governance => "governance",
             ActionInboxSource::EntityCorrections => "identifier_correction",
+            ActionInboxSource::RegistrationChecks => "registration_check",
             ActionInboxSource::OrgChange => "org_change",
             ActionInboxSource::HrExit => "hr_exit",
             ActionInboxSource::HrLifecycle => "hr_lifecycle",
