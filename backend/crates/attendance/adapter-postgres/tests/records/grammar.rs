@@ -10,6 +10,64 @@ use super::save::{cell, save, scheduled};
 use super::support::{assign, key, office, rows, world};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn reserved_words_preview_and_save_their_meaning_on_colliding_slots(owner: PgPool) {
+    let w = world(owner).await;
+    let date = date!(2026 - 10 - 06);
+    let mut pattern = office("입력 구분");
+    pattern.kind = "ROTATION".into();
+    pattern.days = None;
+    pattern.slots = Some(json!([
+        {"code": "X", "day": {"kind": "WORK", "shift": {"start": 540, "end": 1020, "breaks": [{"start": 720, "end": 780}]}}},
+        {"code": "결", "day": {"kind": "WORK", "shift": {"start": 540, "end": 1020, "breaks": [{"start": 720, "end": 780}]}}},
+        {"code": "외", "day": {"kind": "WORK", "shift": {"start": 540, "end": 1020, "breaks": [{"start": 720, "end": 780}]}}},
+        {"code": "O", "day": {"kind": "WEEKLY_HOLIDAY"}}
+    ]));
+    let (pattern, _) = w
+        .store
+        .create_pattern(&w.hr(), &key(), pattern)
+        .await
+        .unwrap();
+    let mut assignment = assign(Level::Workplace, w.workplaces[0], pattern.id, date);
+    assignment.targets[0].rotation_start = Some(date);
+    w.store
+        .assign_schedule(&w.hr(), &key(), assignment)
+        .await
+        .unwrap();
+    for (offset, raw, kind) in [
+        (0, "ｘ", "ABSENT"),
+        (1, "결", "ABSENT"),
+        (2, "외", "OUTSIDE_WORK"),
+        (3, "o", "OUTSIDE_WORK"),
+    ] {
+        let day = date + time::Duration::days(offset);
+        let cells = vec![cell(&w, 0, day, raw)];
+        let preview = w
+            .store
+            .preview_entries(
+                &w.hr(),
+                PreviewInput {
+                    cells: cells.clone(),
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!((preview.ok, preview.refused), (1, 0), "{raw}");
+        let after = preview.cells[0].after.as_ref().unwrap();
+        let entry = after.entry.as_ref().unwrap();
+        assert_eq!(entry.kind.as_str(), kind, "{raw}");
+        assert!(entry.segments.is_empty(), "{raw}");
+        w.store
+            .save_entries(&w.hr(), &key(), save(cells))
+            .await
+            .unwrap();
+        let stored: (String, i64) = sqlx::query_as(
+            "SELECT kind, jsonb_array_length(segments)::bigint FROM attendance_entries WHERE employee_id = $1 AND work_date = $2",
+        ).bind(w.people[0]).bind(day).fetch_one(&w.owner).await.unwrap();
+        assert_eq!(stored, (kind.into(), 0), "{raw}");
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn tenant_slot_codes_preview_and_save_the_planned_shift(owner: PgPool) {
     let w = world(owner).await;
     let date = date!(2026 - 10 - 06);

@@ -128,10 +128,13 @@ pub fn resolve_value(
         return Err(CellRefusal::Parse(ParseRefusal::Unreadable));
     }
     let value = grammar::normalise(raw);
-    if plan
-        .slot_code
-        .as_deref()
-        .is_some_and(|code| grammar::normalise(code).to_lowercase() == value.to_lowercase())
+    let parsed = grammar::parse_with_overnight(raw, long_span_minutes, confirmed, overnight);
+    // Attendance words keep their meaning even when a tenant uses one as a slot code.
+    if matches!(parsed, Ok(Entry::Shift(_)) | Err(ParseRefusal::Unreadable))
+        && plan
+            .slot_code
+            .as_deref()
+            .is_some_and(|code| grammar::normalise(code).to_lowercase() == value.to_lowercase())
     {
         return if shift.is_some() {
             as_scheduled()
@@ -139,18 +142,17 @@ pub fn resolve_value(
             Err(CellRefusal::AlreadyDayOff)
         };
     }
-    let entry = grammar::parse_with_overnight(raw, long_span_minutes, confirmed, overnight)
-        .map_err(|refusal| {
-            if refusal == ParseRefusal::Unreadable
-                && plan.slot_code.is_some()
-                && value.chars().all(char::is_alphanumeric)
-                && value.chars().any(char::is_alphabetic)
-            {
-                CellRefusal::ScheduleChangeNeeded
-            } else {
-                CellRefusal::Parse(refusal)
-            }
-        })?;
+    let entry = parsed.map_err(|refusal| {
+        if refusal == ParseRefusal::Unreadable
+            && plan.slot_code.is_some()
+            && value.chars().all(char::is_alphanumeric)
+            && value.chars().any(char::is_alphabetic)
+        {
+            CellRefusal::ScheduleChangeNeeded
+        } else {
+            CellRefusal::Parse(refusal)
+        }
+    })?;
     match entry {
         Entry::Times(spans) => record(EntryKind::Times, spans),
         Entry::ClockInOnly(start) => record(
@@ -329,6 +331,31 @@ mod value_tests {
         assert_eq!(refusal("A", &other, false), "schedule_change_needed");
         assert_eq!(refusal("A", &plan(), false), "entry_unreadable");
         assert_eq!(refusal("9-1x", &other, false), "entry_unreadable");
+    }
+
+    #[test]
+    fn reserved_attendance_words_win_over_colliding_tenant_slots() {
+        for (code, raw, expected) in [
+            ("X", "ｘ", "ABSENT"),
+            ("결", "결", "ABSENT"),
+            ("결근", "결근", "ABSENT"),
+            ("O", "o", "OUTSIDE_WORK"),
+            ("외", "외", "OUTSIDE_WORK"),
+            ("외근", "외근", "OUTSIDE_WORK"),
+            ("출장", "출장", "BUSINESS_TRIP"),
+            ("휴", "휴", "schedule_change_needed"),
+            ("연차", "연차", "leave_not_stored"),
+            ("재택", "재택", "activity_not_stored"),
+            ("지각", "지각", "status_is_derived"),
+            ("출", "출", "code_ambiguous"),
+        ] {
+            let work = slot(code, DayKind::Work, Some((540, 1080)));
+            assert_eq!(refusal(raw, &work, false), expected, "{code}: {raw}");
+        }
+        let off = slot("O", DayKind::RestDay, None);
+        assert_eq!(refusal("o", &off, false), "OUTSIDE_WORK");
+        let work = slot("X", DayKind::Work, Some((540, 1080)));
+        assert_eq!(refusal("x", &work, true), "future_date");
     }
 
     #[test]

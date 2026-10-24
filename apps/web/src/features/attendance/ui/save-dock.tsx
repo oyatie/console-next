@@ -11,7 +11,7 @@ import { DockSheet } from "../../../ui/dock-sheet/dock-sheet";
 import { ItemList } from "../../../ui/item-list/item-list";
 import { conflictsOf, previewEntries, refusedOf, saveEntries, type CellInput, type Conflict, type SaveReceipt } from "../api";
 import { confirmationKey } from "../domain/confirmation";
-import { parseEntry } from "../domain/grammar";
+import { parseDraft } from "../domain/grammar";
 import { draftState, splitKey, type Drafts } from "../domain/grid";
 import { dateText, entryText, monthText, refusalText } from "../present";
 import { EMPTY_EVIDENCE, evidenceOf } from "../domain/evidence";
@@ -55,7 +55,7 @@ export function SaveDock({ drafts, rows, month, onClose, onSaved, onFocusCell }:
   const longSpans = (p?.cells ?? []).flatMap((c) => {
     const cell = byKey.get(`${c.employee_id}|${c.work_date}`);
     if (!cell || c.long_span_minutes === undefined) return [];
-    const parsed = parseEntry(cell.value, c.long_span_minutes);
+    const parsed = parseDraft(cell.value, c.long_span_minutes);
     return !parsed.ok && parsed.code === "span_too_long" ? [{ cell, threshold: c.long_span_minutes }] : [];
   });
   const refused = (p?.cells ?? []).filter((c) => c.status === "REFUSED");

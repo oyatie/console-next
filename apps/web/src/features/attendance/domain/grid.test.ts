@@ -3,6 +3,15 @@ import { baseOf, draftState, fill, fillSchedule, ledgerParts, readPaste, type Ce
 
 const cell = (key: string, planKind: string, entryId: string | null = null, own = false): CellFacts => ({ key, planKind, entryId, own, closed: false });
 
+test.each([
+  ["\u{d734}", "schedule_change_needed"],
+  ["-18", "clock_out_only_not_stored"],
+  ["\u{c5f0}\u{cc28}", "leave_not_stored"],
+  ["D", "schedule_change_needed"],
+])("draft %s refuses with preview's %s", (value, code) => {
+  expect(draftState({ value, base: null })).toMatchObject({ ok: false, code });
+});
+
 test("fill as scheduled drafts only empty work days and counts every skip", () => {
   const cells = [cell("a|1", "WORK"), cell("a|2", "WEEKLY_HOLIDAY"), cell("b|1", "WORK", "e1"), cell("c|1", "WORK", null, true), cell("d|1", "WORK")];
   const r = fillSchedule(cells, {});

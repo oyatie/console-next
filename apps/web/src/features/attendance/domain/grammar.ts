@@ -22,7 +22,7 @@ type Entry =
   | { kind: "SHIFT"; code: string }
   | { kind: "LEAVE"; word: string };
 
-export type ParseCode =
+type ParseCode =
   | "overtime_typed"
   | "entry_unreadable"
   | "overnight_without_marker"
@@ -34,6 +34,7 @@ export type ParseCode =
   | "code_ambiguous"
   | "activity_not_stored";
 type Parsed = { ok: true; entry: Entry } | { ok: false; code: ParseCode; at?: number };
+export type DraftCode = ParseCode | "schedule_change_needed" | "clock_out_only_not_stored" | "leave_not_stored";
 /** What the day's plan adds: a shift that crosses midnight lets a single span end the next day without the +. */
 type Plan = { overnight: boolean };
 
@@ -180,6 +181,18 @@ export function parseEntry(raw: string, longSpanMinutes?: number, confirmed = fa
     return { ok: true, entry: { kind: "TIMES", spans: [{ start: one.start, end: mid }, { start: mid + away, end: one.end }] } };
   }
   return { ok: true, entry: { kind: "TIMES", spans } };
+}
+
+/** The shared reading with the storage refusals used by the grid, entry form and save preview. */
+export function parseDraft(...args: Parameters<typeof parseEntry>): Parsed | { ok: false; code: DraftCode; at?: number } {
+  const parsed = parseEntry(...args);
+  if (!parsed.ok) return parsed;
+  switch (parsed.entry.kind) {
+    case "DAY_OFF": case "SHIFT": return { ok: false, code: "schedule_change_needed" };
+    case "CLOCK_OUT_ONLY": return { ok: false, code: "clock_out_only_not_stored" };
+    case "LEAVE": return { ok: false, code: "leave_not_stored" };
+    default: return parsed;
+  }
 }
 
 /** Recorded minutes of a parsed entry (a draft's own number, before the server's recognition). */

@@ -1,6 +1,6 @@
 // The month grid's pure parts: cell keys, range selection, drafts over a selection, paste by employee number,
 // fill-as-scheduled, and the day ledger's partition. The grid component only draws what these return.
-import { parseEntry, type ParseCode } from "./grammar";
+import { parseDraft, type DraftCode } from "./grammar";
 
 type Pos = { r: number; c: number };
 
@@ -12,9 +12,9 @@ export const splitKey = (key: string) => {
 
 export type Draft = { value: string; base: string | null };
 export type Drafts = Readonly<Record<string, Draft>>;
-type DraftState = { ok: true } | { ok: false; code: ParseCode; at?: number };
+type DraftState = { ok: true } | { ok: false; code: DraftCode; at?: number };
 export const draftState = (d: Draft): DraftState => {
-  const p = parseEntry(d.value);
+  const p = parseDraft(d.value);
   return p.ok ? { ok: true } : { ok: false, code: p.code, at: p.at };
 };
 
