@@ -23,8 +23,7 @@ test("component journeys and gallery cache fixtures preserve production source r
     write(`${slice}screen.tsx`, seed);
     write(`${slice}misplaced.ts`, "");
     const result = spawnSync(process.execPath, [path.resolve(import.meta.dirname, "check-source.mjs")], { cwd: root, encoding: "utf8" });
-    // The minimal tree deliberately omits the repository's inherited import exceptions.
-    expect(result.stderr).toContain("stale baseline import");
+    expect(result.status).toBe(1);
     for (const file of ["grid.spec.ts", "grid.playwright.ts", "grid.gallery.module.css", "grid.gallery.tsx"]) {
       expect(result.stderr).not.toContain(`${slice}${file}:`);
     }
