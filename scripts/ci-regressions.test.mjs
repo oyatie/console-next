@@ -93,3 +93,13 @@ subprocess.run(['zstd','-q',str(p)],check=True)
     assert.ok(runner.indexOf('disk.status !== 0') < runner.indexOf('["nextest", "run"'));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test("archive-only jobs check their disk budget without deleting hosted SDKs", () => {
+  const workflow = load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
+  for (const name of ["backend-test", "backend-db"]) {
+    assert.ok(!workflow.jobs[name].steps.some((step) => /sudo rm -rf/.test(step.run ?? "")), name);
+    assert.ok(workflow.jobs[name].steps.some((step) => /scripts\/ci\/rust-tests\.mjs/.test(step.run ?? "")), name);
+  }
+  const runner = readFileSync(new URL("./ci/rust-tests.mjs", import.meta.url), "utf8");
+  assert.ok(runner.indexOf("disk-budget.py") < runner.indexOf('"nextest", "run"'));
+});

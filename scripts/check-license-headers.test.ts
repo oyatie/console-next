@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 import { HEADER, checked, headerProblems } from "./check-license-headers.mjs";
 
@@ -31,4 +35,24 @@ test("formats without comments and vendored third-party code are out of scope", 
 test("this check and its test carry the header themselves", () => {
   for (const f of ["scripts/check-license-headers.mjs", "scripts/check-license-headers.test.ts"])
     expect(headerProblems(f, readFileSync(f, "utf8"))).toEqual([]);
+});
+
+test("CLI uses the planned CI base, with an explicit argument taking precedence", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-licence-base-"));
+  try {
+    const capture = path.join(dir, "args");
+    writeFileSync(path.join(dir, "git"), '#!/bin/sh\nprintf "%s\\n" "$*" > "$LICENSE_ARGS"\n', { mode: 0o700 });
+    const script = fileURLToPath(new URL("./check-license-headers.mjs", import.meta.url));
+    for (const [planned, args, expected] of [
+      ["planned-base", [], "planned-base"],
+      ["planned-base", ["explicit-base"], "explicit-base"],
+      ["", [], "dev"],
+    ] as const) {
+      const result = spawnSync(process.execPath, [script, ...args], {
+        encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, LICENSE_ARGS: capture, CI_BASE_SHA: planned },
+      });
+      expect(result.status, result.stderr).toBe(0);
+      expect(readFileSync(capture, "utf8").trim()).toBe(`diff --merge-base ${expected} --name-only --diff-filter=A`);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

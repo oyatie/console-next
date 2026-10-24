@@ -6,7 +6,7 @@
 async fn void_registration_in_setup_succeeds_and_replays_idempotently(pool: PgPool) {
     let (org, owner) = tenant(&pool, ADMIN).await;
     let admin = ctx(&pool, org, owner, ADMIN, None).await;
-    let reg = create_unattached_registration(&admin, "000-81-00010").await;
+    let reg = create_unattached_registration(&admin, "000-81-00014").await;
     let reg_uuid = Uuid::parse_str(&reg).unwrap();
 
     let uri = format!("/api/v1/business-registrations/{reg}/void");
@@ -60,7 +60,7 @@ async fn void_registration_in_setup_succeeds_and_replays_idempotently(pool: PgPo
 async fn void_registration_rejects_reused_key_and_fresh_void_without_a_second_write(pool: PgPool) {
     let (org, owner) = tenant(&pool, ADMIN).await;
     let admin = ctx(&pool, org, owner, ADMIN, None).await;
-    let reg = create_unattached_registration(&admin, "000-81-00010").await;
+    let reg = create_unattached_registration(&admin, "000-81-00014").await;
     let uri = format!("/api/v1/business-registrations/{reg}/void");
     let (status, first) = admin
         .call("POST", &uri, Some(json!({"reason_code": "MISTAKE"})))
@@ -117,7 +117,7 @@ async fn void_registration_rejects_reused_key_and_fresh_void_without_a_second_wr
 async fn void_registration_rejects_invalid_reasons_and_missing_key(pool: PgPool) {
     let (org, owner) = tenant(&pool, ADMIN).await;
     let admin = ctx(&pool, org, owner, ADMIN, None).await;
-    let reg = create_unattached_registration(&admin, "000-81-00010").await;
+    let reg = create_unattached_registration(&admin, "000-81-00014").await;
     let uri = format!("/api/v1/business-registrations/{reg}/void");
     for (body, want) in [
         (json!({}), "required"),

@@ -20,7 +20,7 @@ use axum::extract::Request;
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::Next;
 use axum::response::Response;
-use serde_json::{Map, Value, json};
+use serde_json::{Map, Value};
 
 use crate::error_i18n::buffer_small_body;
 use crate::http::overload::RETRY_AFTER_SECS;
@@ -77,10 +77,16 @@ fn rewrite(
     bytes: &[u8],
     trace_id: impl FnOnce() -> String,
 ) -> Option<Rewritten> {
+    let mut envelope = Map::new();
     let mut error = if json {
         match serde_json::from_slice::<Value>(bytes) {
             Ok(Value::Object(mut body)) => match body.remove("error") {
-                Some(Value::Object(error)) => error,
+                Some(Value::Object(error)) => {
+                    if status.is_client_error() {
+                        envelope = body;
+                    }
+                    error
+                }
                 _ => return None,
             },
             _ => return None,
@@ -121,9 +127,10 @@ fn rewrite(
         original
     };
     error.insert("message".into(), message.into());
+    envelope.insert("error".into(), Value::Object(error));
     Some(Rewritten {
         status,
-        body: json!({ "error": error }),
+        body: Value::Object(envelope),
         retry,
     })
 }

@@ -1,6 +1,7 @@
 {
   "retentionDays": 7,
   "database": "console_test",
+  "apalisContractDatabase": "console_apalis_contract",
   "topologyProbeDatabase": "console_ci_topology_probe",
   "cacheBudgetBytes": 10737418240,
   "sccacheBytes": 1073741824,

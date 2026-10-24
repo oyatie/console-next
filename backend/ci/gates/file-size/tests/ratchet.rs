@@ -117,11 +117,15 @@ fn the_baseline_may_lower_and_move_pins_but_never_raise_one_or_the_total() {
 
 #[test]
 fn this_tree_matches_its_baseline() -> Result<(), String> {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_console-gate-file-size"))
-        .current_dir(&root)
-        .output()
-        .map_err(|error| error.to_string())?;
+    let root =
+        PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").ok_or("missing manifest directory")?)
+            .join("../../..");
+    let output = std::process::Command::new(
+        std::env::var_os("CARGO_BIN_EXE_console-gate-file-size").ok_or("missing gate binary")?,
+    )
+    .current_dir(&root)
+    .output()
+    .map_err(|error| error.to_string())?;
     assert!(
         output.status.success(),
         "file-size gate failed: {}{}",
