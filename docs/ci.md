@@ -116,11 +116,20 @@ actionlint, nextest, cargo-deny and sccache. The tool archives were downloaded a
 locally; no third-party installation action is involved.
 Both actionlint jobs use the [pinned release binary](https://github.com/rhysd/actionlint/releases/tag/v1.7.12),
 so workflow linting needs only GitHub release downloads, without Docker Hub.
-`scripts/ci-egress.test.mjs` checks every block-mode job against its steps' network
-contracts, including release redirects, package registries and browser downloads;
-it also checks that removing each required endpoint fails. Docker endpoints remain
-in the shared CI allow-list for PostgreSQL in E2E, including Docker's documented
-[CloudFront download host](https://docs.docker.com/desktop/enterprise/allow-list/).
+`scripts/ci/egress.mjs` is the per-tool endpoint map. Every block-mode job has
+its own explicit list; `scripts/ci-egress.test.mjs` resolves its actions, commands
+and indirect CI script tools against that map and rejects both missing and unused
+entries. The planner's `cargo metadata` and archived nextest jobs still need
+`static.rust-lang.org` for rustup on a fresh runner. Node setup includes its
+[direct-download fallback](https://github.com/actions/setup-node/blob/820762786026740c76f36085b0efc47a31fe5020/src/distributions/official_builds/official_builds.ts).
+Sccache uses the local `SCCACHE_DIR`; its remote transfers use `actions/cache`.
+Docker Hub endpoints belong only to E2E's Compose pulls, including Docker's
+[CloudFront download host](https://docs.docker.com/desktop/enterprise/allow-list/);
+GHCR belongs to CodeQL's pack downloads. Service images are pulled before job
+steps and before harden-runner starts. The run-40059693228 fixture independently
+checks checkout and the planner's implicit rustup download. Mutation controls
+remove every required endpoint and add unused ones, including broad wildcards.
+Keep allow-lists folded (`>-`): the pinned agent splits the input on spaces.
 
 `actions/cache/restore` reads Cargo registry/git data keyed on Cargo.lock, sccache
 keyed on toolchain/lock/test profile (falling back to the toolchain), npm keyed on
