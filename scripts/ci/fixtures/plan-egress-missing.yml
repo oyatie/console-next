@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+# Run 40059693228: checkout and the planner's implicit rustup download must both be covered.
+jobs:
+  plan:
+    steps:
+      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
+        with:
+          egress-policy: block
+          allowed-endpoints: >-
+            api.github.com:443 codeload.github.com:443
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: node scripts/ci/plan.mjs
