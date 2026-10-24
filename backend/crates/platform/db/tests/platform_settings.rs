@@ -46,7 +46,11 @@ async fn platform_values_are_effective_dated_registry_checked_and_runtime_read_o
     for org in [OrgId::new(), OrgId::new()] {
         with_org_conn::<_, _, DbError>(&runtime, org, move |tx| {
             Box::pin(async move {
-                let now = time::OffsetDateTime::now_utc();
+                // Rows are stamped by the database clock, so read "now" from it too.
+                let now: time::OffsetDateTime = sqlx::query_scalar("SELECT now()")
+                    .fetch_one(tx.as_mut())
+                    .await
+                    .unwrap();
                 let settings = resolve_in_tx(tx.as_mut(), org, &[key], None, now)
                     .await
                     .unwrap();
