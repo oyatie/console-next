@@ -112,8 +112,15 @@ Actions use SHA pins and the GitHub-owned `actions/*` and `github/codeql-action/
 namespaces, plus `step-security/harden-runner`.
 Harden-runner blocks egress outside each job's explicit allow-list. Tools are
 checksum-verified release archives from `scripts/ci/versions.json`, including
-nextest, cargo-deny and sccache. The tool archives were downloaded and hashed
+actionlint, nextest, cargo-deny and sccache. The tool archives were downloaded and hashed
 locally; no third-party installation action is involved.
+Both actionlint jobs use the [pinned release binary](https://github.com/rhysd/actionlint/releases/tag/v1.7.12),
+so workflow linting needs only GitHub release downloads, without Docker Hub.
+`scripts/ci-egress.test.mjs` checks every block-mode job against its steps' network
+contracts, including release redirects, package registries and browser downloads;
+it also checks that removing each required endpoint fails. Docker endpoints remain
+in the shared CI allow-list for PostgreSQL in E2E, including Docker's documented
+[CloudFront download host](https://docs.docker.com/desktop/enterprise/allow-list/).
 
 `actions/cache/restore` reads Cargo registry/git data keyed on Cargo.lock, sccache
 keyed on toolchain/lock/test profile (falling back to the toolchain), npm keyed on
