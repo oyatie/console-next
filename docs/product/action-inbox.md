@@ -428,6 +428,16 @@ permission also supplies the queue's capability and filter metadata, including
 for a support-only approver with no pending request. Home keeps the localized
 support source label and selected review link alongside G2's typed decision rows.
 
+The first combined full-feature scale run met the latency budget (194 ms p95)
+but occupied all eight pool leases; the starting G2 tip passed the same full
+case at 223 ms and seven leases. Source admission now budgets for both an active
+SQLx lease and its asynchronous return, plus one spare pool connection. It still
+obeys the settings-owned source ceiling: an eight-connection pool admits three
+sources, while larger pools retain the configured four. The observer uses the
+same effective bound. A small lazy-pool test covers constrained, ordinary and
+single-connection pools, and a lower configured ceiling. Refused support reads
+finish their read transaction before releasing their source slot.
+
 The generated contract documents thirty-nine extensible item kinds and retains
 G2's typed unlock, insurance, lifecycle and request contexts. The latest settings
 function was regenerated from the combined ninety-eight-key roster. The reach

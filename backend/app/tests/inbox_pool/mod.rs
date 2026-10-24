@@ -34,7 +34,8 @@ impl Probe {
         };
         usize::try_from(cap)
             .unwrap()
-            .min(self.pool.options().get_max_connections() as usize - 1)
+            .min((self.pool.options().get_max_connections() as usize - 1) / 2)
+            .max(1)
     }
     pub async fn measure<T>(&self, read: impl std::future::Future<Output = T>) -> (T, usize) {
         let mut peak = 0;

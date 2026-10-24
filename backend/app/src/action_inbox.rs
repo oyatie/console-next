@@ -49,10 +49,9 @@ pub struct ActionInboxState {
 impl ActionInboxState {
     #[must_use]
     pub fn new(pool: PgPool, jwt_verifier: Option<JwtVerifier>, source_concurrency: u32) -> Self {
-        // Leave headroom even when a test or deployment supplies a smaller pool.
-        let capacity = source_concurrency
-            .min(pool.options().get_max_connections().saturating_sub(1))
-            .max(1);
+        // Budget for each active read plus its asynchronously returning SQLx lease.
+        let pool_budget = pool.options().get_max_connections().saturating_sub(1) / 2;
+        let capacity = source_concurrency.min(pool_budget).max(1);
         Self {
             pool,
             jwt_verifier,
@@ -256,6 +255,18 @@ fn source_failure(source: &'static str, error: impl std::fmt::Display) -> Kernel
 #[cfg(not(feature = "test-postgres"))]
 mod tests {
     use console_action_inbox_application::canonical_action_link_kind;
+
+    #[tokio::test]
+    async fn source_read_budget_reserves_returning_leases() {
+        for (connections, configured, expected) in [(8, 4, 3), (64, 4, 4), (8, 1, 1), (1, 4, 1)] {
+            let pool = sqlx::postgres::PgPoolOptions::new()
+                .max_connections(connections)
+                .connect_lazy("postgres://unused:unused@127.0.0.1:1/unused")
+                .unwrap();
+            let state = super::ActionInboxState::new(pool, None, configured);
+            assert_eq!(state.read_permits.available_permits(), expected);
+        }
+    }
 
     #[test]
     fn normalizes_the_legacy_workflow_run_alias() {
