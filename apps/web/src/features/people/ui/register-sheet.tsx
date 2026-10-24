@@ -162,7 +162,7 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
             tried={tried}
           />
         )}
-        <RegisterPlace d={d} set={set} units={units} options={options} workplaces={placesRead && place && !place.own ? workplaceChoices(entities) : []} shown={shown} hireLabel={d.hire && !hireRefusal ? fmtDate(d.hire) : null} />
+        <RegisterPlace d={d} set={set} units={units} options={options} workplaces={placesRead && place && !place.own ? workplaceChoices(entities) : []} shown={shown} hireLabel={d.hire ? fmtDate(d.hire) : null} hidePreview={Boolean(hireRefusal)} />
         <RegisterTerms d={d} set={set} shown={shown} today={today} tried={tried} hireRefusal={hireRefusal} />
       </div>
     </Composer>

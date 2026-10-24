@@ -29,7 +29,7 @@ export function RegisterTerms({ d, set, shown, today, tried, hireRefusal }: { d:
           presets={datePresets(today, ["today", "nextMonday"])}
           value={d.hire}
           onChange={(v) => set("hire", v)}
-          echo={d.hire ? t(d.hire > today ? "register.hire.future" : "register.hire.past") : undefined}
+          echo={d.hire && !hireRefusal ? t(d.hire > today ? "register.hire.future" : "register.hire.past") : undefined}
           error={hireRefusal || (shown.has("hire") ? t("register.err.hire") : undefined)}
           remedy={hireRefusal ? <Link to="/people/import">{t("import.title")}</Link> : undefined}
           showErrors={tried}

@@ -103,5 +103,6 @@ test("a hire before opening keeps the hire date and points to roster import at t
   await expect(error.getByRole("link", { name: "직원 명부 가져오기" })).toHaveAttribute("href", "/people/import");
   await expect(form).not.toContainText("배치일");
   await expect(form).not.toContainText("명부에 들어갑니다");
+  await expect(form).not.toContainText("재직으로 등록합니다");
   await accessibleAtBothWidths(admin, "hire before workplace opening");
 });

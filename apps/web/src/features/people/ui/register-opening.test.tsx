@@ -20,7 +20,7 @@ vi.mock("../domain/register-place", () => ({
 }));
 vi.mock("./use-register", () => ({ useRegister: () => ({ mutate: state.mutate }) }));
 vi.mock("./register-person", () => ({ RegisterPerson: () => null }));
-vi.mock("./register-place", () => ({ RegisterPlace: ({ hireLabel }: { hireLabel: string | null }) => <span>{hireLabel && "등록할 인원 1명"}</span> }));
+vi.mock("./register-place", () => ({ RegisterPlace: ({ hidePreview }: { hidePreview?: boolean }) => <span>{!hidePreview && "등록할 인원 1명"}</span> }));
 vi.mock("./register-toast", () => ({ RegisterToast: () => null }));
 beforeAll(async () => { vi.stubGlobal("requestAnimationFrame", vi.fn()); await loadCatalog("ko"); });
 const render = () => renderToStaticMarkup(<RegisterSheet preset="unit" onClose={() => {}} onOpen={() => {}} onRehire={() => {}} />);
@@ -32,6 +32,7 @@ test("a pre-opening hire keeps the typed date and names the opening date and imp
   expect(html).toContain("본사 개설일(2020. 03. 02.) 전 입사자는 입사일을 그대로 두고 명부 가져오기로 등록합니다");
   expect(html).toMatch(/<p[^>]+id="[^"]+-error"[^>]*>.*개설일.*data-to="\/people\/import"/);
   expect(html).not.toContain("배치일");
+  expect(html).not.toContain("재직으로 등록합니다");
   expect(html).not.toContain("등록할 인원 1명");
   state.mutate.mockClear();
   state.submit();

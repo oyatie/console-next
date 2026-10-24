@@ -18,7 +18,7 @@ type Set = <K extends keyof Draft>(k: K, v: Draft[K]) => void;
  * "where does this person go": three chips of equal weight, nothing chosen (spec E3); unplaced can be completed later. Then the
  * place itself, and what placing does to that unit's headcount from the start date and to which workplace's employee register.
  */
-export function RegisterPlace({ d, set, units, options, workplaces, shown, hireLabel }: {
+export function RegisterPlace({ d, set, units, options, workplaces, shown, hireLabel, hidePreview }: {
   d: Draft;
   set: Set;
   units: Unit[];
@@ -28,6 +28,7 @@ export function RegisterPlace({ d, set, units, options, workplaces, shown, hireL
   shown: ReadonlySet<Gap>;
   /** The start date as `MM-DD`, once chosen. */
   hireLabel: string | null;
+  hidePreview?: boolean;
 }) {
   const chosen = options.find((o) => o.unit.id === d.unitId);
   const leaf = chosen?.unit.name ?? "";
@@ -70,7 +71,7 @@ export function RegisterPlace({ d, set, units, options, workplaces, shown, hireL
           invalid={shown.has("unit")}
         />
       )}
-      {d.where !== "none" && <span className={`${s.placeEcho} ${shown.has("unit") ? s.err : s.hint}`}>{shown.has("unit") ? t("register.err.unit") : echo}</span>}
+      {d.where !== "none" && !hidePreview && <span className={`${s.placeEcho} ${shown.has("unit") ? s.err : s.hint}`}>{shown.has("unit") ? t("register.err.unit") : echo}</span>}
       {d.unitId && workplaces.length > 0 && (
         <ChoiceField
           label={t("register.workplace")}
