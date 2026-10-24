@@ -1,16 +1,16 @@
 import type { InfoKey } from "./ui/workplace-edit-fields";
 // Copy lookups for the entity slice: problem codes, sections, history changes and the record's values to catalog ids.
-import type { LegalEntityState, Revision, WorkplaceKind } from "@console/api/pending";
+import type { LegalEntityState, Revision, WorkplaceKind, BusinessRegistration } from "@console/api/pending";
 import { isMessageId, t } from "@console/i18n";
 import type { WithholdingTarget } from "@console/api/pending";
 import { brnChecksumOff, brnWarnings, kindsOfBrn, type BrnClass, type BrnFacts } from "./domain/brn";
-import { BIZ_KIND, codeText, DIRECTOR_ROLE, INSURANCE_STATUS, INSURER, ISSUE_REASON, label, RECORD_STATUS, REPRESENTATION, TAX_TYPE } from "../../lib/labels";
+import { BIZ_KIND, labeled, VERIFICATION, codeText, DIRECTOR_ROLE, INSURANCE_STATUS, INSURER, ISSUE_REASON, label, RECORD_STATUS, REPRESENTATION, TAX_TYPE } from "../../lib/labels";
 import { fmtDate } from "@console/i18n/format";
 import { phoneDisplay } from "../../lib/pure/formats";
 import type { CreateProblem } from "./domain/create";
 import type { Problem, Section } from "./domain/draft";
 import { OWNER } from "./domain/draft";
-import { fieldIssues } from "./api";
+import { fieldIssues, type CheckAnswer } from "./api";
 import { repsAfter, repsMode, type Reps } from "./domain/record-values";
 import { kindLabel } from "../../reference/entity/present";
 
@@ -138,3 +138,16 @@ export const INFO_LABEL: Record<InfoKey, () => string> = {
   openedOn: () => t("workplace.field.openedOn"),
 };
 
+
+export function verificationState(registration: BusinessRegistration) {
+  if (registration.verification_tier !== "NONE") return labeled(VERIFICATION, registration.verification_tier);
+  if (registration.nts_check) return checkState(registration.nts_check);
+  return registration.verification_tier === "NONE" && registration.unverified_reason === "SERVICE_UNAVAILABLE"
+    ? { tone: "neutral" as const, label: t("nts.state.unavailable") }
+    : labeled(VERIFICATION, registration.verification_tier);
+}
+
+export function checkState(answer?: Partial<CheckAnswer> | null, available = true) {
+  if (!available || (answer && !answer.status_code && answer.valid !== "01")) return { tone: "neutral" as const, label: t("nts.state.unavailable") };
+  return labeled(VERIFICATION, answer?.valid === "01" ? "T2" : answer?.status_code && !answer.not_registered ? "T1" : "NONE");
+}

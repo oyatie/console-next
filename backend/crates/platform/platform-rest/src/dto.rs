@@ -249,4 +249,6 @@ pub(crate) struct PlatformOpsResponse {
     /// Operator notices (e.g. `{env, state, expires_on, days_left}` for a juso
     /// key from D-14); empty when none.
     pub(crate) notices: Vec<serde_json::Value>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub(crate) registration_check_notices: Vec<serde_json::Value>,
 }

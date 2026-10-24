@@ -9,6 +9,9 @@ import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { entityEndQuery, entityHistoryQuery } from "../api";
 import { refusalText } from "../../../reference/crud/present";
+import { useRecordLock } from "./use-record-lock";
+import { NtsCheck } from "./nts-check";
+import { primaryRegistration } from "../domain/view";
 import { headcount } from "../domain/view";
 import { recordedDay, revisionKind } from "../domain/history";
 import { changeLine } from "../present";
@@ -28,6 +31,9 @@ function todos(e: LegalEntity) {
 
 /** The side column (spec S3): where the record stands, its latest history, how it closes, and its kept originals. */
 export function RecordAside({ e, phase, depts, docs, act, onTab }: { e: LegalEntity; phase?: string; depts: number; docs: EntityDocument[] | null; act: Act; onTab: (tab: "history" | "documents") => void }) {
+  const primary = primaryRegistration(e);
+  const lock = useRecordLock();
+  const locked = lock !== null;
   const setup = phase === "SETUP";
   // CRUD: delete or closure is decided by use, in either phase (the server's end-options read; the phase until it answers).
   const end = useQuery(entityEndQuery(e.id)).data;
@@ -37,6 +43,7 @@ export function RecordAside({ e, phase, depts, docs, act, onTab }: { e: LegalEnt
   const left = todos(e);
   return (
     <aside className={s.aside}>
+      {primary && <NtsCheck historical={lock === "asof"} registration={primary} entity={e} canManage={e.can_manage && !locked} onAttach={() => act.attach(primary.id)} />}
       <section className="card" aria-labelledby="state-title">
         <div className={s.cardHead}><h2 id="state-title" className={s.cardTitle}>{t("entityRecord.state.title", { date: fmtDate(e.as_of ?? todayKst()) })}</h2><Chip tone={setup ? "ok" : "info"}>{t(setup ? "entityRecord.phase.setup" : "entityRecord.phase.operating")}</Chip></div>
         <div className={s.cardBody}>

@@ -65,7 +65,7 @@ if (typeof document !== "undefined") {
   const noopAct: Act = {
     field: () => undefined,
     identifier: () => undefined,
-    reissue: () => undefined,
+    reissue: () => undefined, attach: () => undefined,
     close: () => undefined,
     remove: () => undefined,
   };

@@ -232,6 +232,8 @@ pub(crate) async fn revise_registration_in_tx(
         payload: serde_json::to_value(&draft)?,
     };
     insert_revision(tx, id, &draft, (status, since, until), &meta, evidence).await?;
+    let check_policy = crate::CheckSchedulePolicy::in_tx(tx, actor.org).await?;
+    crate::registration_check::reconcile(tx, id, check_policy.reflection_lag_days).await?;
     let open_after = open_registrations(tx, entity, None).await?;
     if open_after > 0 {
         let (mode, basis) = resolve_vat_unit_mode(

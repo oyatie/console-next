@@ -31,7 +31,7 @@ function RecordFixes({ x }: { x: GoLiveItem }) {
   return (
     <>
       {(x.records as GoLiveRecord[]).map((r) => {
-        const target = recordFix(r);
+        const target = recordFix(r, x.remedy ?? undefined);
         return target ? <Link key={r.id} {...target} className={buttonClass()}>{t("setup.golive.fixOf", { fix, name: r.name })}</Link> : <KeyValue key={r.id} items={[{ key: r.id, label: t("setup.golive.details.place"), value: r.name }]} />;
       })}
     </>

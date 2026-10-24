@@ -10,6 +10,7 @@ pub enum ActionInboxSource {
     Payroll,
     Governance,
     EntityCorrections,
+    RegistrationChecks,
     // Pre-registered lane sources (PREREG-1); each composition arm starts as
     // an empty-page stub that its lane fills.
     OrgChange,
@@ -28,7 +29,7 @@ pub enum ActionInboxSource {
 }
 
 impl ActionInboxSource {
-    pub const ALL: [Self; 20] = [
+    pub const ALL: [Self; 21] = [
         Self::Workflow,
         Self::Dispatch,
         Self::Support,
@@ -36,6 +37,7 @@ impl ActionInboxSource {
         Self::Payroll,
         Self::Governance,
         Self::EntityCorrections,
+        Self::RegistrationChecks,
         Self::OrgChange,
         Self::HrExit,
         Self::HrLifecycle,

@@ -44,7 +44,7 @@ export const koStructure = {
   "structure.level.dept": "부서",
   "structure.chip.registration_missing": "등록증 정보 없음",
   "structure.chip.needs_confirmation": "확인 필요",
-  "structure.chip.unverified": "진위 확인 전",
+  "structure.chip.unverified": "미조회",
   "structure.chip.suspended": "휴업",
   "structure.chip.closed": "폐쇄됨",
   "structure.chip.closedEntity": "종료",

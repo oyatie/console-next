@@ -8,6 +8,7 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+tracing.workspace = true
 console-entity-application.workspace = true
 console-entity-domain.workspace = true
 console-orgchange-domain.workspace = true

@@ -19,6 +19,7 @@ import { CodeDialog } from "./code-dialog";
 import { OnboardDialog } from "./onboard-form";
 import { SupportLookup } from "../../../lib/react/support-lookup";
 import { TenantPanel } from "./tenant-panel";
+import { KeyNotices } from "./key-notices";
 import css from "./tenants.module.css";
 
 /** The URL holds what a support ticket links to: the tenant, the search and the view. */
@@ -113,6 +114,7 @@ export function TenantsPage() {
         {!empty && <Button variant="primary" onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>}
       </div>
       <SupportLookup />
+      <KeyNotices notices={[...(ops.data?.notices ?? []), ...(ops.data?.registration_check_notices ?? [])]} />
       {recorded && (
         <div id="tenants-receipt" tabIndex={-1}>
           <Receipt state="recorded" message={recorded.message} meta={recorded.meta} />

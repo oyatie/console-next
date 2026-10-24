@@ -79,6 +79,9 @@ impl AppState {
             config.juso.clone(),
         ));
 
+        let nts = Arc::new(console_entity_adapter_nts::NtsClient::new(
+            config.nts.clone(),
+        ));
         let (web_release, support_log_client) = super::support::dependencies(&config)?;
         Ok(Self {
             web_release,
@@ -111,6 +114,7 @@ impl AppState {
             mail_sync_handle: None,
             audit_attestation_signer,
             juso,
+            nts,
             draining: Arc::default(),
         })
     }

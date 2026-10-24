@@ -20,10 +20,14 @@ mod close_plan;
 mod corrections;
 mod docs;
 // --- lane: CRUD ---
+mod check_inbox;
+mod checks;
+pub use check_inbox::registration_check_inbox;
 mod ends;
 mod error;
 mod handlers;
 mod org_setup;
+mod original;
 mod reach;
 mod records;
 mod reference;
@@ -50,6 +54,11 @@ pub const LEGAL_ENTITY_NAME_REVIEW_PATH: &str =
 pub const LEGAL_ENTITY_VOID_PATH: &str = "/api/v1/legal-entities/{entityId}/void";
 pub const LEGAL_ENTITY_REGISTRATIONS_PATH: &str = "/api/v1/legal-entities/{entityId}/registrations";
 pub const LEGAL_ENTITY_WORKPLACES_PATH: &str = "/api/v1/legal-entities/{entityId}/workplaces";
+pub const REGISTRATION_CHECKS_PATH: &str = "/api/v1/business-registrations/{registrationId}/checks";
+pub const REGISTRATION_ORIGINAL_PATH: &str =
+    "/api/v1/business-registrations/{registrationId}/original";
+pub const REGISTRATION_CHECK_PREVIEW_PATH: &str = "/api/v1/registration-checks/preview";
+pub const REGISTRATION_CHECK_AVAILABILITY_PATH: &str = "/api/v1/registration-checks/availability";
 pub const REGISTRATION_PATH: &str = "/api/v1/business-registrations/{registrationId}";
 pub const REGISTRATION_END_OPTIONS_PATH: &str =
     "/api/v1/business-registrations/{registrationId}/end-options";
@@ -126,6 +135,7 @@ pub struct EntityRestState {
     org_units: Option<Arc<dyn OrgUnitSetupWritePort>>,
     /// The juso proxies. `None` answers `UNAVAILABLE` (manual entry).
     juso: Option<Arc<JusoClient>>,
+    checks: Option<Arc<dyn console_entity_application::registration_check::RegistrationCheck>>,
     /// The BW-06 consumer for post-go-live identifier corrections. `None`
     /// refuses them (`identifier_correction_unavailable`; fail closed).
     governed: Option<Arc<dyn GovernedCorrectionPort>>,
@@ -143,8 +153,18 @@ impl EntityRestState {
             jwt_verifier,
             org_units,
             juso: None,
+            checks: None,
             governed: None,
         }
+    }
+
+    #[must_use]
+    pub fn with_registration_check(
+        mut self,
+        port: Arc<dyn console_entity_application::registration_check::RegistrationCheck>,
+    ) -> Self {
+        self.checks = Some(port);
+        self
     }
 
     /// Serve 도로명주소 / 상세주소 search through `juso` (keys from the server
@@ -171,6 +191,16 @@ pub fn router(state: EntityRestState) -> Router {
     let verifier = state.jwt_verifier.clone();
     let pool = state.store.pool().clone();
     let router = Router::new()
+        .route(REGISTRATION_ORIGINAL_PATH, post(original::attach))
+        .route(
+            REGISTRATION_CHECKS_PATH,
+            get(checks::history).post(checks::create),
+        )
+        .route(REGISTRATION_CHECK_PREVIEW_PATH, post(checks::preview))
+        .route(
+            REGISTRATION_CHECK_AVAILABILITY_PATH,
+            get(checks::availability),
+        )
         .route(
             LEGAL_ENTITIES_PATH,
             get(h::list_entities).post(docs::create_entity),

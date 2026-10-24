@@ -51,6 +51,10 @@ impl Harness {
     }
 
     fn service(&self) -> Router {
+        self.service_with_notices(false)
+    }
+
+    fn service_with_notices(&self, configured: bool) -> Router {
         let verifier = JwtVerifier::from_es256_public_pem(
             JwtSettings {
                 issuer: TEST_ISSUER.to_owned(),
@@ -60,11 +64,22 @@ impl Harness {
             self.public_pem.as_bytes(),
         )
         .unwrap();
-        router(PlatformRestState::new(
+        let state = PlatformRestState::new(
             self.pool.clone(),
             Some(verifier),
             PlatformProvisioner::new(Duration::minutes(15)),
-        ))
+        );
+        router(if configured {
+            state
+                .with_ops_notices(std::sync::Arc::new(|| {
+                    vec![serde_json::json!({"env":"STREET_JUSO_API_KEY","state":"EXPIRING"})]
+                }))
+                .with_registration_check_notices(std::sync::Arc::new(|| {
+                    vec![serde_json::json!({"env":"NTS_BUSINESSMAN_API_KEY","state":"REJECTED"})]
+                }))
+        } else {
+            state
+        })
     }
 
     async fn token(&self, user_id: UserId, org_id: OrgId, platform: bool) -> String {
@@ -101,6 +116,35 @@ impl Harness {
         )
         .await
     }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn authority_notices_are_additive_and_only_visible_to_platform_operators(pool: PgPool) {
+    let harness = Harness::new(pool.clone());
+    let admin = seed_platform_admin(&pool).await;
+    let token = harness.token(admin, OrgId::platform(), true).await;
+    let service = harness.service_with_notices(true);
+    let (status, body) = get(&service, PLATFORM_OPS_PATH, &token).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body["notices"],
+        serde_json::json!([{"env":"STREET_JUSO_API_KEY","state":"EXPIRING"}])
+    );
+    assert_eq!(
+        body["registration_check_notices"],
+        serde_json::json!([{"env":"NTS_BUSINESSMAN_API_KEY","state":"REJECTED"}])
+    );
+    let tenant_user = console_platform_test_support::seed_org_and_super_admin(
+        &pool,
+        *OrgId::one().as_uuid(),
+        "notice-tier-denial",
+    )
+    .await;
+    let tenant_token = harness.token(tenant_user, OrgId::one(), false).await;
+    assert_eq!(
+        get(&service, PLATFORM_OPS_PATH, &tenant_token).await.0,
+        StatusCode::FORBIDDEN
+    );
 }
 
 async fn get(service: &Router, path: &str, token: &str) -> (StatusCode, Value) {

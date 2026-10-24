@@ -861,7 +861,9 @@ dependencies = [
  "console-docs-adapter-postgres",
  "console-docs-rest",
  "console-entity-adapter-juso",
+ "console-entity-adapter-nts",
  "console-entity-adapter-postgres",
+ "console-entity-application",
  "console-entity-domain",
  "console-entity-rest",
  "console-equipment-adapter-postgres",
@@ -1524,6 +1526,7 @@ name = "console-entity-adapter-juso"
 version = "0.1.0"
 dependencies = [
  "console-entity-domain",
+ "console-platform-key-notice",
  "reqwest",
  "serde",
  "serde_json",
@@ -1532,6 +1535,26 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "console-entity-adapter-nts"
+version = "0.1.0"
+dependencies = [
+ "console-entity-application",
+ "console-entity-domain",
+ "console-platform-key-notice",
+ "hex",
+ "metrics",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "time",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "url",
 ]
 
 [[package]]
@@ -1556,6 +1579,7 @@ dependencies = [
  "thiserror 2.0.18",
  "time",
  "tokio",
+ "tracing",
  "uuid",
 ]
 
@@ -3297,6 +3321,15 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "console-platform-key-notice"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "time",
 ]
 
 [[package]]
@@ -7230,6 +7263,8 @@ dependencies = [
  "rustls",
  "rustls-pki-types",
  "rustls-platform-verifier",
+ "serde",
+ "serde_json",
  "sync_wrapper",
  "tokio",
  "tokio-rustls",

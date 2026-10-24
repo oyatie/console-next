@@ -197,6 +197,9 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                 ActionInboxSource::EntityCorrections => {
                     sources::entity_corrections::page(&self.pool, &self.principal, query).await
                 }
+                ActionInboxSource::RegistrationChecks => {
+                    sources::registration_checks::page(&self.pool, &self.principal, query).await
+                }
                 ActionInboxSource::OrgChange => {
                     sources::org_change::page(&self.pool, &self.principal, query).await
                 }

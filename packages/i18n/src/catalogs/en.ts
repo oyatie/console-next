@@ -1,3 +1,4 @@
+import { enNts } from "./en/nts";
 import { enSupport } from "./en/support";
 import { enSupportAccess } from "./en/support-access";
 import { enCommon } from "./en/common";
@@ -227,6 +228,7 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enEmpDoc,
   ...enPeopleJump,
   ...enOpsRecovery,
+  ...enNts,
   ...enCommon,
   ...enSupport,
   ...enSupportAccess,

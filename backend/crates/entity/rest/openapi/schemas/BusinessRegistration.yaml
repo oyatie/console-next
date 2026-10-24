@@ -48,3 +48,8 @@ properties:
     anyOf:
     - $ref: '#/components/schemas/RegistrationState'
     - type: 'null'
+  nts_check:
+    $ref: '#/components/schemas/RegistrationCheckEvidence'
+  voided:
+    type: boolean
+    description: True only for a voided registration; recorded closure does not prevent authority rechecks.

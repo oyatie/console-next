@@ -196,6 +196,8 @@ pub(crate) async fn content(
 pub(crate) struct WithDocument<T> {
     #[serde(default)]
     document_id: Option<Uuid>,
+    #[serde(default)]
+    check_preview: Option<console_entity_application::registration_check::PreviewAcceptance>,
     #[serde(flatten)]
     body: T,
 }
@@ -225,7 +227,7 @@ pub(crate) async fn create_registration(
     let a = manager(&s, &h, Target::Entity(entity)).await?;
     let saved = s
         .store
-        .create_registration_evidenced(&a, entity, b.body, b.document_id)
+        .create_registration_checked(&a, entity, b.body, b.document_id, b.check_preview)
         .await?;
     Ok((StatusCode::CREATED, Json(saved)).into_response())
 }

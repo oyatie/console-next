@@ -46,7 +46,10 @@ pub(crate) async fn list_entities(
             crate::asof::validated(&s, &a, q.parse()).await?,
         )
         .await?;
-    items.iter_mut().for_each(|e| mark(&gate, e));
+    items.iter_mut().for_each(|e| {
+        mark(&gate, e);
+        crate::checks::mark_availability(&s, e);
+    });
     Ok(Json(json!({ "items": items })).into_response())
 }
 
@@ -86,6 +89,7 @@ pub(crate) async fn get_entity(
         )
         .await?;
     mark(&gate, &mut e);
+    crate::checks::mark_availability(&s, &mut e);
     Ok(Json(e).into_response())
 }
 

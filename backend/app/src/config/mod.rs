@@ -96,6 +96,7 @@ pub struct AppConfig {
     pub storage: Option<S3StorageConfig>,
     /// 도로명주소 / 상세주소 search keys and knobs (STREET_JUSO_API_KEY, …).
     pub juso: console_entity_adapter_juso::JusoConfig,
+    pub nts: console_entity_adapter_nts::NtsConfig,
     pub dispatch_timers: DispatchTimerConfig,
     pub dispatch_jobs_enabled: bool,
     /// Max concurrent evidence transcodes the worker runs at once

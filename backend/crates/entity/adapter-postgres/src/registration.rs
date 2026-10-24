@@ -82,12 +82,28 @@ impl PgEntityStore {
         input: RegistrationInput,
         evidence: Option<Uuid>,
     ) -> Result<Saved<RegistrationView>, PgEntityError> {
+        self.create_registration_checked(actor, entity, input, evidence, None)
+            .await
+    }
+
+    /// Create with the explicitly accepted preview result, atomically with its evidence.
+    /// # Errors
+    /// As create, including changed preview values or missing acknowledgment.
+    pub async fn create_registration_checked(
+        &self,
+        actor: &Actor,
+        entity: Uuid,
+        input: RegistrationInput,
+        evidence: Option<Uuid>,
+        preview: Option<console_entity_application::registration_check::PreviewAcceptance>,
+    ) -> Result<Saved<RegistrationView>, PgEntityError> {
         let actor = actor.clone();
         with_audits(&self.pool, actor.org, move |tx| {
             Box::pin(async move {
                 // The key only when given: a retry without one hashes as the N-1 binary's did.
                 let mut request = json!({ "entity": entity, "input": input });
                 if let Some(doc) = evidence { request["document_id"] = json!(doc); }
+                if let Some(p) = &preview { request["check_preview"] = json!(p); }
                 if let Some(done) = claim(tx, &actor, "business_registration.create", request).await? {
                     return Ok((replay(tx, entity, done).await?, vec![]));
                 }
@@ -132,7 +148,17 @@ impl PgEntityStore {
                 if let Some(doc) = evidence {
                     crate::registration_revision::new_certificate(tx, doc, entity, id).await?;
                 }
-                insert_revision(tx, id, &draft, (OperatingStatus::Continuing, None, None), &meta, evidence).await?;
+                let checked=crate::registration_check_preview::accepted_preview(tx,&actor,entity,preview.as_ref(),draft.brn.as_ref().map(|n|n.as_str()),draft.opened_on).await?;
+                let status=checked.as_ref().and_then(|a|a.reported_status).unwrap_or(OperatingStatus::Continuing);
+                let since=crate::registration_check_preview::initial_status_since(checked.as_ref(),preview.as_ref(),today)?;
+                insert_revision(tx, id, &draft, (status, since, None), &meta, evidence).await?;
+                if status == OperatingStatus::Closed {
+                    sqlx::query("UPDATE business_registrations SET closed_on=$2 WHERE id=$1").bind(id).bind(since).execute(tx.as_mut()).await?;
+                }
+                if let Some(answer)=checked {
+                    let checked_at: Option<time::OffsetDateTime>=sqlx::query_scalar("SELECT (outcome->>'checked_at')::timestamptz FROM entity_commands WHERE command_id=$1").bind(preview.as_ref().map(|p|p.command_id)).fetch_one(tx.as_mut()).await?;
+                    crate::registration_check::append(tx,id,Some(*actor.user.as_uuid()),&answer,checked_at).await?;
+                }
                 // After the revision: the certificate takes its 발급일 from it.
                 let attached = match evidence {
                     Some(doc) => crate::documents::attach_in_tx(tx, &actor, doc, entity, Some(id)).await?.1,
@@ -189,6 +215,7 @@ impl PgEntityStore {
                 // The key only when given: a retry without one hashes as the N-1 binary's did.
                 let mut request = json!({ "id": id, "revision": rev, "status": status.status, "status_since": status.status_since, "status_until": status.status_until });
                 if let Some(doc) = evidence { request["document_id"] = json!(doc); }
+
                 if let Some(done) = claim(tx, &actor, "business_registration.revise", request).await? {
                     let entity = registration_entity(tx, id).await?;
                     return Ok((replay(tx, entity, done).await?, vec![]));

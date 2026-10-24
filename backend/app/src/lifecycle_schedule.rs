@@ -43,7 +43,11 @@ impl LifecycleScheduleHandle {
 }
 
 #[must_use]
-pub fn spawn(pool: sqlx::PgPool, worker: bool) -> LifecycleScheduleHandle {
+pub fn spawn(
+    pool: sqlx::PgPool,
+    worker: bool,
+    nts: std::sync::Arc<console_entity_adapter_nts::NtsClient>,
+) -> LifecycleScheduleHandle {
     let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
     let today_file = dev_today_file();
     let period = if today_file.is_some() {
@@ -76,6 +80,7 @@ pub fn spawn(pool: sqlx::PgPool, worker: bool) -> LifecycleScheduleHandle {
                         tracing::error!(?error, "pending grant scheduler failed");
                     }
                     crate::workplace_close_schedule::tick(&pool, today).await;
+                    crate::registration_check_schedule::tick(&pool, nts.clone()).await;
                     crate::org_change_schedule::tick(&pool, today).await;
                     crate::requests::tick(&pool).await;
                     if let Err(error)=console_platform_rest::expire_support_sessions(&pool).await {

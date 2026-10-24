@@ -14,6 +14,7 @@ import { problem } from "../present";
 import { RefPick } from "./ref-pick";
 import { useCodeListsKnown } from "./use-ref";
 import type { CreateState } from "./use-create";
+import { createRequirements } from "../domain/create";
 import { FoundingFields } from "./create-founding";
 import s from "./entity-create.module.css";
 
@@ -40,7 +41,7 @@ export function RegistryForm({ c }: { c: CreateState }) {
         <div className={s.span}>
           <ChoiceField
             label={t("entityCreate.field.representationMode")}
-            required
+            required={createRequirements(d).entity.includes("representationMode")}
             options={REPRESENTATION.values.filter((v) => v !== "SINGLE").map((v) => ({ value: v, label: label(REPRESENTATION, v) }))}
             value={d.representationMode}
             onChange={(v) => put("representationMode", v as typeof d.representationMode)}

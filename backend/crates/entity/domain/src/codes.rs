@@ -103,11 +103,7 @@ code_enum! {
 }
 
 code_enum! {
-    /// Why a registration is saved unverified (the `business_registrations`
-    /// CHECK). The MVP never calls 국세청 (decisions #16): a typed number is
-    /// `NOT_CHECKED` (「진위 확인: 하지 않음」), a missing one
-    /// `NEW_REGISTRATION_PENDING`. `SERVICE_UNAVAILABLE` is kept for the
-    /// post-MVP verifier and is never written today.
+    /// Why the current number has no issuing-authority evidence. Derived on read.
     UnverifiedReason {
         NewRegistrationPending => "NEW_REGISTRATION_PENDING",
         ServiceUnavailable => "SERVICE_UNAVAILABLE",

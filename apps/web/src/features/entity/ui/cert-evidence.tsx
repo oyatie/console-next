@@ -15,11 +15,11 @@ import s from "./record.module.css";
  * The business registration certificate a registration is recorded from: one already attached to the entity, or a file attached now. Nothing is read
  * from the file (decisions #16): the facts are typed while looking at it, and the original is kept as evidence.
  */
-export function CertEvidence({ entityId, doc, onDoc }: { entityId: string; doc: EntityDocument | null; onDoc: (d: EntityDocument | null) => void }) {
+export function CertEvidence({ entityId, doc, onDoc, original = false }: { entityId: string; doc: EntityDocument | null; onDoc: (d: EntityDocument | null) => void; original?: boolean }) {
   const upload = useCommand({ run: (f: File) => uploadDocument(f, "BIZ_REG_CERT"), onSuccess: onDoc });
   return (
     <section className={s.editor} aria-labelledby="cert-evidence-title">
-      <h3 id="cert-evidence-title" className={s.subhead}>{t("entityReissue.evidence.title")}<Marker required /></h3>
+      <h3 id="cert-evidence-title" className={s.subhead}>{t(original ? "nts.original.title" : "entityReissue.evidence.title")}<Marker required /></h3>
       <KeptCertificates entityId={entityId} doc={doc} onDoc={onDoc} />
       <FileDrop
         label={t("entityReissue.evidence.drop")}
@@ -34,7 +34,7 @@ export function CertEvidence({ entityId, doc, onDoc }: { entityId: string; doc: 
           </div>
         )}
       </FileDrop>
-      <Muted>{t("entityReissue.evidence.typed")}</Muted>
+      {!original && <Muted>{t("entityReissue.evidence.typed")}</Muted>}
       <EntityError error={upload.error} />
     </section>
   );

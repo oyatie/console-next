@@ -9,8 +9,9 @@ use std::collections::HashSet;
 /// (decisions #15.2) + `retention.entity_registration_document` + 10 EMP-RECORD
 /// section switches + PEOPLE-A's two `people.void_*` + D26's six
 /// `approval.policy.*` + IMPORT-2's nine `import.*` + BE-MIG's
-/// `import.apply.max_rows` + PERF-BE's six `db.pool.*` and support-session ceilings.
-const EXPECTED_KEYS: usize = 34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 2 + 3;
+/// `import.apply.max_rows` + PERF-BE's six `db.pool.*`, support-session ceilings,
+/// inbox settings, and five NTS settings.
+const EXPECTED_KEYS: usize = 34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 2 + 3 + 5;
 
 #[test]
 fn roster_has_every_key_once_and_round_trips() {

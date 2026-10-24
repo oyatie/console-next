@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required:
+  - "items"
+  - "availability"
+properties:
+  items:
+    type: "array"
+    items:
+      $ref: "#/components/schemas/RegistrationCheckEvidence"
+  latest_status:
+    anyOf:
+      -
+        $ref: "#/components/schemas/RegistrationCheckEvidence"
+      -
+        type: "null"
+  latest_validate:
+    anyOf:
+      -
+        $ref: "#/components/schemas/RegistrationCheckEvidence"
+      -
+        type: "null"
+  availability:
+    $ref: "#/components/schemas/RegistrationCheckAvailability"
+  next_cursor:
+    type:
+      - "string"
+      - "null"
+    format: "uuid"

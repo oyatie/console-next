@@ -5,9 +5,10 @@ import type { BizKind } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { EntityError } from "./entity-error";
 import { Button } from "../../../ui/button/button";
-import { isFounding, stepsFor, type CreateField, type WizardStep } from "../domain/create";
+import { isFounding, registrationGaps, stepsFor, type CreateField, type WizardStep } from "../domain/create";
 import { FoundingChoice } from "./create-founding";
 import { CertChecklist, NotCollected, OriginalCard } from "./create-cert-aside";
+import { NtsPreview } from "./nts-preview";
 import { CertForm } from "./create-cert-form";
 import { IdOrgForm } from "./create-idorg-form";
 import { KindAndName } from "./create-kind-and-name";
@@ -104,6 +105,7 @@ function CertStep({ c, onKindChange }: { c: CreateState; onKindChange: () => voi
       <aside className={s.aside}>
         {kind !== "ID_NUMBER_ORG" && <OriginalCard c={c} />}
         {corp ? <CertChecklist c={c} /> : <NotCollected c={c} />}
+        {kind !== "ID_NUMBER_ORG" && <NtsPreview c={c} />}
       </aside>
     </>
   );
@@ -124,8 +126,8 @@ function Foot({ c, step, steps, go }: { c: CreateState; step: WizardStep; steps:
   const basicsOpen = !c.draft.bizKind || c.draft.name.trim() === "";
   // Why nothing can be saved yet: a refused value, or what the server still needs (spec wants kind + name only: CS-BE).
   const fieldName = (f: CreateField) => t(`entityCreate.items.${f === "certIssuedOn" ? "issued" : f}`);
-  const hold = bad.length ? t("entityCreate.foot.fix", { count: bad.length, fields: bad.map(fieldName).join(", ") })
-    : basicsOpen ? t("entityCreate.foot.basics")
+  const checkHold = c.registers && c.preview && ["SUSPENDED", "CLOSED"].includes(c.preview.answer.reported_status ?? "") && (!c.preview.acknowledged || (c.preview.answer.reported_status === "SUSPENDED" && !c.preview.status_since));
+  const hold = checkHold ? t("nts.preview.ack") : bad.length ? t("entityCreate.foot.fix", { count: bad.length, fields: bad.map(fieldName).join(", ") })
     : c.gaps.length ? t("entityCreate.foot.gaps", { fields: c.gaps.map((g) => t(`entityCreate.gap.${g}`)).join(", ") })
     : null;
   // company-04: a flagged field on a later step never holds the way to it; only one on this step or before does.
@@ -134,6 +136,8 @@ function Foot({ c, step, steps, go }: { c: CreateState; step: WizardStep; steps:
     if (stepOf(f) !== step) go(stepOf(f));
     focusFlagged();
   };
+  const missingRegistration = registrationGaps(c.draft);
+  const registrationNote = !isFounding(c.draft) && missingRegistration.length ? t("nts.preview.missing", { fields: missingRegistration.map((field) => field === "taxOfficePrinted" ? t("entityCreate.field.taxOffice") : t(`entityCreate.items.${field}`)).join(", ") }) : null;
   const name = c.draft.name.trim();
   const off = (held: unknown) => (held ? { "aria-disabled": true as const, "aria-describedby": why, onClick: undefined } : {});
   // worst-case-29: the first press latches until the save settles, so a double press never sends a second create.
@@ -147,7 +151,7 @@ function Foot({ c, step, steps, go }: { c: CreateState; step: WizardStep; steps:
     <div className={s.foot}>
       <EntityError error={c.save.error} />
       <span id={why} className={hold && bad.length ? s.footBad : s.footText}>
-        {hold ? <>{bad.length > 0 && <TriangleAlert size={14} aria-hidden />} {hold}</> : step === "review" ? t("entityCreate.foot.review", { name }) : t(c.registers ? "entityCreate.foot.saveFull" : "entityCreate.foot.save", { name })}
+        {hold ? <>{bad.length > 0 && <TriangleAlert size={14} aria-hidden />} {hold}</> : registrationNote ?? (step === "review" ? t("entityCreate.foot.review", { name }) : t(c.registers ? "entityCreate.foot.saveFull" : "entityCreate.foot.save", { name }))}
       </span>
       {/* company-04/32: each flagged field is one press away, on whichever step shows it. */}
       {bad.map((f) => (

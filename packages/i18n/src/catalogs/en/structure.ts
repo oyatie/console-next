@@ -44,7 +44,7 @@ export const enStructure: Record<keyof typeof koStructure, string> = {
   "structure.level.dept": "Department",
   "structure.chip.registration_missing": "No registration yet",
   "structure.chip.needs_confirmation": "To confirm",
-  "structure.chip.unverified": "Not verified",
+  "structure.chip.unverified": "Not checked",
   "structure.chip.suspended": "Suspended",
   "structure.chip.closed": "Closed",
   "structure.chip.closedEntity": "Ended",

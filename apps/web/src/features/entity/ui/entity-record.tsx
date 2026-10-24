@@ -1,10 +1,11 @@
-import { useState, type ReactNode } from "react";
+import { verificationState } from "../present";
+import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { Building2, ChevronRight, Network, PencilLine, Plus } from "lucide-react";
 import type { LegalEntity, OrgStructureNode } from "@console/api/pending";
 import { t } from "@console/i18n";
-import { BIZ_KIND, label, labeled, VERIFICATION } from "../../../lib/labels";
+import { BIZ_KIND, label } from "../../../lib/labels";
 import { useFreshOnArrival } from "../../../lib/react/arrival";
 import { QueryState } from "../../../lib/react/query-state";
 import { checklistRef, orgStructureAt } from "../../../reference/entity/api";
@@ -24,6 +25,7 @@ import { FoundingCard } from "./record-founding";
 import { DocumentsTab } from "./documents-tab";
 import { HistoryTab } from "./history-tab";
 import { VoidEntity } from "./void-entity";
+import { OriginalSheet } from "./record-original-sheet";
 import { WorkplacesTab } from "./workplaces-tab";
 import { CertCard } from "./record-cert-card";
 import { CloseSheet } from "./record-close-sheet";
@@ -57,7 +59,7 @@ const countDepts = (n: OrgStructureNode | undefined): number => (n ? n.children.
  * kept originals. Every fact carries one verb: edit (change (REV) or correction (COR)), correct-only, or an identifier's correction.
  */
 export function EntityRecord({ id, workplace, initialTab }: { id: string; workplace?: string; initialTab?: "history" }) {
-  const { as_of, known_at, reissue } = route.useSearch();
+  const { as_of, known_at, reissue, nts } = route.useSearch();
   const navigate = route.useNavigate();
   const point = { as_of, known_at };
   const today = todayKst();
@@ -74,7 +76,10 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
   const phase = phaseQ.data?.phase;
   const structure = useQuery(orgStructureAt(point));
   const node = structure.data?.entities.find((n) => n.id === id);
-  const [tab, setTab] = useState<Tab>(initialTab ?? (workplace ? "workplaces" : "overview"));
+  const [tab, setTab] = useState<Tab>(nts ? "certificates" : initialTab ?? (workplace ? "workplaces" : "overview"));
+  useEffect(() => {
+    if (nts && tab === "certificates" && q.isSuccess) requestAnimationFrame(() => document.getElementById(`nts-${nts}`)?.scrollIntoView({ block: "center" }));
+  }, [nts, tab, q.isSuccess]);
   const [selectedWorkplace, setSelectedWorkplace] = useState(workplace);
   if (selectedWorkplace !== workplace) {
     setSelectedWorkplace(workplace);
@@ -99,7 +104,7 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
   const head = (e: LegalEntity) => {
     const primary = primaryRegistration(e);
     const lock = temporal ? "asof" : lockOf(e);
-    const v = primary ? labeled(VERIFICATION, primary.verification_tier) : null;
+    const v = primary ? verificationState(primary) : null;
     return (
       <div className={s.head}>
         <nav className={s.crumb} aria-label={t("entityRecord.crumb")}><Network size={14} aria-hidden /><Link to="/org" search={point}>{t("entityRecord.crumbRoot")}</Link><ChevronRight size={14} aria-hidden /><span>{entityName(e)}</span></nav>
@@ -140,6 +145,7 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
           field: <V,>(spec: FieldSpec<V>) => { if (!readOnly) setSheet(<ReviseSheet e={e} spec={spec} phase={phase} onClose={close} />); },
           identifier: (field, registrationId) => { if (!readOnly) setSheet(<IdentifierSheet e={e} field={field} registrationId={registrationId ?? primaryRegistration(e)?.id} operating={operating} onClose={close} />); },
           reissue: (registrationId) => void navigate({ search: (search) => ({ ...search, reissue: registrationId }) }),
+          attach: (registrationId) => { if (!readOnly) setSheet(<OriginalSheet entityId={e.id} registrationId={registrationId} onClose={close} />); },
           close: () => { if (!readOnly) setSheet(<CloseSheet e={e} depts={depts} onClose={close} />); },
           remove: () => { if (!readOnly) setSheet(<VoidEntity e={e} onClose={close} />); },
         };
@@ -165,7 +171,7 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
               )}
               {tab === "certificates" && (
                 <div className={s.wide}>
-                  {e.registrations.map((r) => <CertCard key={r.id} e={e} r={r} act={act} operating={operating} onOriginal={docs?.length ? () => setTab("documents") : undefined} />)}
+                  {e.registrations.map((r) => <CertCard showCheck key={r.id} e={e} r={r} act={act} operating={operating} onOriginal={docs?.length ? () => setTab("documents") : undefined} />)}
                   {e.registrations.length === 0 && <NoCertificate e={e} />}
                 </div>
               )}

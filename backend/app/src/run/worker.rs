@@ -106,7 +106,8 @@ pub(crate) async fn run_dispatch_worker(
     let workflow_schedule_handle = workflow_schedules::spawn(pool.clone());
     #[cfg(feature = "facilities")]
     let facilities_schedule_handle = facilities_schedule::spawn(pool.clone());
-    let lifecycle_schedule_handle = lifecycle_schedule::spawn(pool.clone(), true);
+    let lifecycle_schedule_handle =
+        lifecycle_schedule::spawn(pool.clone(), true, state.nts.clone());
     #[cfg(feature = "dispatch")]
     let dispatch_worker = DispatchWorker::new(
         PgDispatchStore::new(pool),

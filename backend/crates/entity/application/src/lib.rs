@@ -5,6 +5,7 @@
 //! writes them in one audited transaction. Views are the wire shapes.
 
 mod asof;
+pub mod registration_check;
 pub use asof::*;
 mod entity_setup;
 mod evidence;

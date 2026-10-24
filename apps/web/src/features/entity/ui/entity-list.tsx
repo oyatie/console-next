@@ -1,8 +1,9 @@
+import { verificationState } from "../present";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { t } from "@console/i18n";
-import { BIZ_KIND, label, labeled, VERIFICATION } from "../../../lib/labels";
+import { BIZ_KIND, label } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
@@ -70,7 +71,7 @@ export function EntityList() {
                   fit: true,
                   cell: (e) => {
                     const r = primaryRegistration(e);
-                    const v = r ? labeled(VERIFICATION, r.verification_tier) : null;
+                    const v = r ? verificationState(r) : null;
                     const attention = e.registrations.filter((x) => x.needs_confirmation).length + e.workplaces.filter((w) => w.needs_confirmation).length;
                     return (
                       <span className="row">

@@ -81,6 +81,15 @@ pub(super) fn compose(router: Router, domain_router: Router, deps: &TenantDeps<'
                     .filter_map(|n| serde_json::to_value(n).ok())
                     .collect()
             })
+        })
+        .with_registration_check_notices({
+            let nts = state.nts.clone();
+            std::sync::Arc::new(move || {
+                nts.key_notices()
+                    .into_iter()
+                    .filter_map(|n| serde_json::to_value(n).ok())
+                    .collect()
+            })
         }),
     );
     // Everything EXCEPT the realtime WS upgrade: base health/openapi

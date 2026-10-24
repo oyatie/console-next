@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
 import { entitiesRef } from "../../../reference/entity/api";
-import { addRegistration, createEntity, ENTITY_READS, stepKey } from "../api";
+import { addRegistration, createEntity, ENTITY_READS, registrationCheckAvailabilityQuery, stepKey, type CheckPreview } from "../api";
 import { createProblems, crnWarns, entityBody, entityGaps, registrationBody, takenBrn } from "../domain/create";
 import type { Draft } from "../domain/draft";
 import { useEntityDraft } from "./use-entity-draft";
@@ -24,6 +24,9 @@ export const WIZARD_DRAFT = "console.entity-wizard.draft";
 export function useCreate(seed?: Partial<Draft>, persist?: { key: string; entry: unknown }) {
   const st = useEntityDraft({ scope: "entity", ...seed }, persist);
   const d = st.draft;
+  const [lastPreview, setPreview] = useState<CheckPreview | null>(null);
+  const preview = lastPreview && lastPreview.values.brn === d.brn && lastPreview.values.opened_on === d.openedOn && lastPreview.values.representative === (d.representatives[0] ?? "").trim() ? lastPreview : null;
+  const checkAvailability = useQuery(registrationCheckAvailabilityQuery).data;
   const entities = useQuery(entitiesRef).data?.items ?? [];
   const taken = takenBrn(d.brn, entities);
   const problems = createProblems(d, { today: st.today, taken });
@@ -43,7 +46,7 @@ export function useCreate(seed?: Partial<Draft>, persist?: { key: string; entry:
       }
       const { id, name } = first;
       const reg = registrationBody(d);
-      if (reg) await addRegistration(stepKey(key, 1), id, { ...reg, ...(st.doc ? { document_id: st.doc.id } : {}) });
+      if (reg) await addRegistration(stepKey(key, 1), id, { ...reg, ...(st.doc ? { document_id: st.doc.id } : {}), ...(preview ? { check_preview: { command_id: preview.command_id, acknowledged: preview.acknowledged, status_since: preview.status_since ?? null } } : {}) });
       return { id, name, registered: reg !== null };
     },
     invalidates: ENTITY_READS,
@@ -57,6 +60,9 @@ export function useCreate(seed?: Partial<Draft>, persist?: { key: string; entry:
   return {
     ...st,
     put,
+    preview,
+    checkAvailability,
+    setPreview,
     entities,
     /** This entity's place among the tenant's open ones ("4th entity"). */
     ordinal: entities.filter((e) => !e.closed_on).length + 1,

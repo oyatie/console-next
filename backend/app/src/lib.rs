@@ -58,6 +58,7 @@ pub mod workflow_schedules;
 #[cfg(feature = "workspace")]
 mod workflow_studio;
 // --- lane: UX-R2 ENDS ---
+mod registration_check_schedule;
 mod workplace_close_schedule;
 
 pub use crate::audit_api::AUDIT_ATTESTATION_ROUTE_PATH;

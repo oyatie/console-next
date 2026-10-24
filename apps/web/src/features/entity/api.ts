@@ -187,3 +187,17 @@ export const entityEndQuery = (id: string) => get("/api/v1/legal-entities/{entit
 export const workplaceEndQuery = (id: string) => get("/api/v1/workplaces/{workplaceId}/end-options", { params: { path: { workplaceId: id } } });
 
 export const registrationEndQuery = (id: string) => get("/api/v1/business-registrations/{registrationId}/end-options", { params: { path: { registrationId: id } } });
+
+export type CheckEvidence = components["schemas"]["RegistrationCheckEvidence"];
+export type CheckHistory = components["schemas"]["RegistrationCheckHistory"];
+export type CheckAvailability = components["schemas"]["RegistrationCheckAvailability"];
+export type CheckAnswer = components["schemas"]["RegistrationCheckAnswer"];
+export const registrationChecksQuery = (registrationId: string) => get("/api/v1/business-registrations/{registrationId}/checks", { params: { path: { registrationId } } });
+export const registrationCheckAvailabilityQuery = get("/api/v1/registration-checks/availability");
+export const checkRegistration = (registrationId: string, kind: "STATUS" | "VALIDATE", key: string, expected?: { brn: string; opened_on: string; representative: string }) => unwrap(api.POST("/api/v1/business-registrations/{registrationId}/checks", { params: { path: { registrationId }, header: once(key) }, body: { kind, ...(expected ? { expected } : {}) } }));
+export const previewRegistrationCheck = (key: string, body: components["schemas"]["RegistrationCheckPreview"]) => unwrap(api.POST("/api/v1/registration-checks/preview", { params: { header: once(key) }, body }));
+
+export type CheckPreview = { answer: CheckAnswer; command_id: string; values: { brn: string; opened_on: string; representative: string }; acknowledged: boolean; status_since?: string };
+
+/** Keep the current certificate as evidence without recording a reissue. */
+export const attachRegistrationOriginal = (key: string, registrationId: string, documentId: string) => unwrap(api.POST("/api/v1/business-registrations/{registrationId}/original", { params: { path: { registrationId }, header: once(key) }, body: { document_id: documentId } }));

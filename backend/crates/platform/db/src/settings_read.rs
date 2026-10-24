@@ -1,8 +1,10 @@
 //! ADR-006 shared settings reads on the caller's armed transaction.
 use std::collections::BTreeMap;
 
-use console_kernel_core::{KernelError, OrgId, Resolved, Timestamp};
-use console_settings_domain::{OverrideRow, SettingError, SettingKey, SettingValue, resolve};
+use console_kernel_core::{KernelError, OrgId, Resolved, SettingVersionId, Timestamp};
+use console_settings_domain::{
+    Governance, OverrideRow, SettingError, SettingKey, SettingValue, resolve,
+};
 use sqlx::{PgConnection, Row};
 use uuid::Uuid;
 
@@ -11,7 +13,7 @@ use uuid::Uuid;
 pub type ResolvedSettings = BTreeMap<SettingKey, Result<Resolved<SettingValue>, SettingError>>;
 
 /// Every override row of `keys` for the armed tenant, at the tenant scope
-/// and, when given, at `entity`. One SELECT; runs on the caller's armed
+/// and, when given, at `entity`, plus operator-owned platform rows. One SELECT; runs on the caller's armed
 /// transaction (`with_org_conn` / `with_audits`).
 ///
 /// # Errors
@@ -24,16 +26,25 @@ pub async fn load_rows_in_tx(
     entity: Option<Uuid>,
 ) -> Result<BTreeMap<SettingKey, Vec<OverrideRow>>, KernelError> {
     let wire: Vec<&str> = keys.iter().map(|k| k.as_str()).collect();
+    let platform_keys: Vec<&str> = keys
+        .iter()
+        .filter(|key| key.def().governance == Governance::PlatformOnly)
+        .map(|key| key.as_str())
+        .collect();
     let rows = sqlx::query(
         "SELECT id, key, scope_entity_id, value, effective_from
            FROM tenant_setting_overrides
-          WHERE org_id = $1 AND key = ANY($2)
+          WHERE org_id = $1 AND key = ANY($2) AND NOT key = ANY($4)
             AND (scope_entity_id IS NULL OR scope_entity_id = $3)
+          UNION ALL
+         SELECT id, key, NULL::uuid, value, effective_from
+           FROM platform_setting_overrides WHERE key = ANY($4)
           ORDER BY effective_from",
     )
     .bind(org.as_uuid())
     .bind(&wire)
     .bind(entity)
+    .bind(&platform_keys)
     .fetch_all(conn)
     .await
     .map_err(db_error)?;
@@ -44,10 +55,14 @@ pub async fn load_rows_in_tx(
             continue;
         };
         let raw: serde_json::Value = row.try_get("value").map_err(db_error)?;
-        let value = key.def().parse(&raw).ok_or_else(|| {
-            tracing::error!(key = key.as_str(), "stored setting value does not parse");
-            KernelError::internal("stored setting value does not match its definition")
-        })?;
+        let value = key
+            .def()
+            .parse(&raw)
+            .filter(|value| key.def().in_range(*value))
+            .ok_or_else(|| {
+                tracing::error!(key = key.as_str(), "stored setting value does not parse");
+                KernelError::internal("stored setting value does not match its definition")
+            })?;
         out.entry(key).or_default().push(OverrideRow {
             id: row.try_get("id").map_err(db_error)?,
             scope_entity_id: row.try_get("scope_entity_id").map_err(db_error)?,
@@ -74,9 +89,32 @@ pub async fn resolve_in_tx(
         .iter()
         .map(|key| {
             let rows = rows.get(key).map_or(&[][..], Vec::as_slice);
-            (*key, resolve(*key, rows, entity, as_of))
+            (*key, resolve_loaded(*key, rows, entity, as_of))
         })
         .collect())
+}
+
+/// Resolve rows loaded by `load_rows_in_tx`; platform keys contain only operator-owned rows.
+/// # Errors
+/// An undeclared tenant fact, as in the domain resolver.
+pub fn resolve_loaded(
+    key: SettingKey,
+    rows: &[OverrideRow],
+    entity: Option<Uuid>,
+    as_of: Timestamp,
+) -> Result<Resolved<SettingValue>, SettingError> {
+    if key.def().governance == Governance::PlatformOnly
+        && let Some(row) = rows
+            .iter()
+            .filter(|row| row.scope_entity_id.is_none() && row.effective_from <= as_of)
+            .max_by_key(|row| row.effective_from)
+    {
+        return Ok(Resolved {
+            value: row.value,
+            version: SettingVersionId::Override(row.id),
+        });
+    }
+    resolve(key, rows, entity, as_of)
 }
 
 /// Log a failed settings query and preserve the shared opaque error response.

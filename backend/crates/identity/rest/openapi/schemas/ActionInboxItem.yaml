@@ -64,6 +64,7 @@ properties:
     - setup_roles
     - setup_golive
     - support_access
+    - registration_check
   urg:
     type: string
     enum:

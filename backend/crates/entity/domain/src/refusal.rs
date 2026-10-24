@@ -24,6 +24,7 @@ pub struct Refusal {
     pub remedy: Option<&'static str>,
     /// On `stale_revision`: the version the record is at now (INTEG-2).
     pub current_version: Option<i32>,
+    pub retry_after_seconds: Option<std::num::NonZeroU64>,
 }
 
 impl Refusal {
@@ -36,6 +37,7 @@ impl Refusal {
             fields: Vec::new(),
             remedy: None,
             current_version: None,
+            retry_after_seconds: None,
         }
     }
 
@@ -72,6 +74,7 @@ impl Refusal {
             fields,
             remedy: None,
             current_version: None,
+            retry_after_seconds: None,
         }
     }
 

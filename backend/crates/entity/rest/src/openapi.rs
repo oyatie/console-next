@@ -42,6 +42,23 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/business-registrations/{registrationId}/checks",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../openapi/paths/api__v1__business-registrations__registrationId__checks.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../openapi/paths/api__v1__business-registrations__registrationId__checks.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
         path: "/api/v1/business-registrations/{registrationId}/end-options",
         operations: &[Operation {
             method: "get",
@@ -56,6 +73,15 @@ const PATHS: &[PathItem] = &[
             method: "post",
             body: include_str!(
                 "../openapi/paths/api__v1__business-registrations__registrationId__identifier-corrections.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/business-registrations/{registrationId}/original",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__business-registrations__registrationId__original.post.yaml"
             ),
         }],
     },
@@ -470,6 +496,22 @@ const PATHS: &[PathItem] = &[
         operations: &[Operation {
             method: "get",
             body: include_str!("../openapi/paths/api__v1__ref__lists__key__codes.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/registration-checks/availability",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../openapi/paths/api__v1__registration-checks__availability.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/registration-checks/preview",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__registration-checks__preview.post.yaml"),
         }],
     },
     PathItem {
@@ -957,6 +999,30 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "RefListSource",
         body: include_str!("../openapi/schemas/RefListSource.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationCheckAnswer",
+        body: include_str!("../openapi/schemas/RegistrationCheckAnswer.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationCheckAvailability",
+        body: include_str!("../openapi/schemas/RegistrationCheckAvailability.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationCheckEvidence",
+        body: include_str!("../openapi/schemas/RegistrationCheckEvidence.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationCheckHistory",
+        body: include_str!("../openapi/schemas/RegistrationCheckHistory.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationCheckPreview",
+        body: include_str!("../openapi/schemas/RegistrationCheckPreview.yaml"),
+    },
+    NamedYaml {
+        name: "RegistrationCheckRequest",
+        body: include_str!("../openapi/schemas/RegistrationCheckRequest.yaml"),
     },
     NamedYaml {
         name: "RegistrationEndOptions",

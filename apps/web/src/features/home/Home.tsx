@@ -25,6 +25,7 @@ type RowAction = (item: InboxItem) => ReactNode;
 const FILTERS = ["turn", "waiting", "scheduled", "deadlines", "failures"] as const;
 type Filter = (typeof FILTERS)[number];
 const KIND_TEXT: Record<string, MessageId> = {
+  registration_check: "nts.title",
   identifier_correction_waiting: "entityRecord.corrections.title", identifier_correction_decide: "entityRecord.corrections.title", identifier_correction_apply: "entityRecord.corrections.title", identifier_correction_review: "entityRecord.corrections.title",
   support_access: "home.part.support", approval: "home.part.decide", org_change: "home.part.changes", org_change_waiting: "home.part.changes", org_change_scheduled: "home.part.changes", org_change_approve: "home.part.decide",
   org_change_apply: "home.part.changes", org_change_draft: "home.part.changes", org_change_rejected: "home.part.changes", org_change_settle: "home.part.changes",
@@ -34,6 +35,7 @@ const KIND_TEXT: Record<string, MessageId> = {
   contract_renewal: "people.lifecycle.action.CONTRACT_RENEWAL", insurance_filing: "home.part.insurance", period_unlock: "home.part.unlocks", grant_notice: "access.grant.title", account_security: "account.second.title",
 };
 const VERB_TEXT: Record<string, MessageId> = {
+  registration_check: "nts.inbox.review",
   identifier_correction_waiting: "entityRecord.corrections.track", identifier_correction_decide: "home.inbox.correction.decide", identifier_correction_apply: "entityRecord.corrections.apply", identifier_correction_review: "entityRecord.corrections.review",
   org_change_approve: "home.decide.review", org_change_apply: "org.change.effectuate", org_change_draft: "home.mine.edit",
   org_change_rejected: "home.mine.rejection", org_change_settle: "home.mine.settle",
@@ -43,6 +45,7 @@ const VERB_TEXT: Record<string, MessageId> = {
   support_access: "supportAccess.review", period_unlock: "periodLocks.request.review", hr_request: "home.requests.review",
 };
 const WHY_TEXT: Record<string, MessageId> = {
+  registration_check: "nts.inbox.reason",
   org_change_approve: "home.inbox.reason.approve", org_change_draft: "home.inbox.reason.draft",
   org_change_rejected: "home.inbox.reason.rejected", org_change_settle: "home.inbox.reason.settle",
   org_change_apply: "home.inbox.reason.apply", org_change_waiting: "home.inbox.reason.waiting", org_change_scheduled: "home.inbox.reason.scheduled",
@@ -54,6 +57,7 @@ const WHY_TEXT: Record<string, MessageId> = {
 };
 
 const SOURCE_TEXT: Record<string, MessageId> = {
+  registration_checks: "nts.title",
   entity_corrections: "entityRecord.corrections.title",
   support_access: "home.part.support", workflow: "home.part.decide", dispatch: "home.inbox.source.dispatch", support: "home.inbox.source.support", work_order: "home.inbox.source.workOrder", payroll: "accessCodes.domain.pay", governance: "home.inbox.source.governance",
   org_change: "home.part.changes", hr_exit: "home.part.exits", hr_lifecycle: "home.part.failedActions", hr_requests: "home.part.requests", hr_register: "home.review.register", hr_insurance: "home.part.insurance", hr_identity: "home.review.identity", hr_branch: "home.review.branch", hr_contract: "people.lifecycle.action.CONTRACT_RENEWAL", period_unlock: "home.part.unlocks", setup: "setup.title", grant_notice: "access.grant.title",
@@ -114,7 +118,7 @@ function InboxRow({ item, action }: { item: InboxItem; action?: RowAction }) {
     : lifecycle ? [label(LIFECYCLE_EVENT, lifecycle.action_kind), fmtDate(lifecycle.effective_date)]
     : request ? [codeText(`requests.reason.${request.reason_code}`, /^[A-Z][A-Z0-9_]*$/.test(request.reason_code) ? t("enum.unknown") : request.reason_code)] : [];
   return (
-    <li className="form">
+    <li className="form" id={item.kind === "registration_check" ? `nts-${item.id.split(":")[1]}` : undefined}>
       <div className="row">
         <div className="grow"><strong>{kind}</strong> · {subject}</div>
         {item.days_remaining != null ? <DeadlineChip days={item.days_remaining} severity={item.dueTone === "danger" ? "over" : item.dueTone === "warn" ? "due" : "far"} /> : <span className="muted">{t("home.inbox.noDue")}</span>}
@@ -140,6 +144,11 @@ function RecordAction({ item, action }: { item: InboxItem; action?: RowAction })
   const className = buttonClass("primary");
   const inline = action?.(item);
   switch (link.kind) {
+    case "registration_check": {
+      const [id, registrationId] = link.id.split("/");
+      if (!id || !registrationId) return null;
+      return <Link to="/org/entities/$id" params={{ id }} search={{ nts: registrationId }} className={className}>{text}</Link>;
+    }
     case "identifier_correction": return <Link to="/org/entities" search={{ correction: link.id }} hash="identifier-corrections" className={className}>{text}</Link>;
     case "org_change": return <>{inline}<Link to="/org/changes/$id" params={{ id: link.id }} className={buttonClass(inline ? "ghost" : "primary")}>{text}</Link></>;
     case "employee": return <><Link to="/people/$id" params={{ id: link.id }} search={item.kind === "contract_renewal" ? { act: "CONTRACT_RENEWAL" } : {}} className={className}>{text}</Link>{item.kind === "identity_review" || item.kind === "home_branch_review" || item.kind === "register_review" || item.kind === "lifecycle_apply_failed" ? <Link to="/people" search={{ review: item.kind === "identity_review" ? "identity" : item.kind === "home_branch_review" ? "branch" : item.kind === "register_review" ? "register" : "failed", ...(item.kind === "lifecycle_apply_failed" ? { status: "all" } : {}) }}>{t("home.inbox.viewAll")}</Link> : null}</>;

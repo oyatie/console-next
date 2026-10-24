@@ -52,7 +52,7 @@ const RECORDS: &str = concat!(
        UNION ALL SELECT 'no_primary_workplace', 'legal_entity', id, label, id FROM ent \
          WHERE primary_workplace_id IS NULL OR NOT EXISTS (SELECT 1 FROM wp WHERE wp.id = ent.primary_workplace_id) \
        UNION ALL SELECT 'registration_needs_confirmation', 'registration', id, label, legal_entity_id FROM reg WHERE needs_confirmation \
-       UNION ALL SELECT 'registration_unverified', 'registration', id, label, legal_entity_id FROM reg WHERE verification_tier = 'NONE' \
+       UNION ALL SELECT 'registration_unverified', 'registration', id, label, legal_entity_id FROM reg WHERE registration_verification_tier(id,brn,NULL) = 'NONE' \
        UNION ALL SELECT 'workplace_incomplete', 'workplace', id, label, legal_entity_id FROM wp \
          WHERE needs_confirmation OR default_branch_id IS NULL \
        UNION ALL SELECT 'staffed_workplace_without_registration', 'workplace', id, label, legal_entity_id FROM wp \
