@@ -44,6 +44,9 @@ use url::Url;
 use webauthn_authenticator_rs::prelude::{RequestChallengeResponse, WebauthnAuthenticator};
 use webauthn_authenticator_rs::softpasskey::SoftPasskey;
 
+#[path = "../../test-support/person_fixtures.rs"]
+mod person_fixtures;
+
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
 const RP_ID: &str = "localhost";
@@ -122,6 +125,7 @@ async fn seed_super_admin(pool: &PgPool, user_id: UserId, label: &str) {
         .execute(pool)
         .await
         .unwrap();
+    person_fixtures::bind_user_to_distinct_person(pool, user_id).await;
 }
 
 async fn bearer(pool: &PgPool, keys: &Keys, user_id: UserId) -> String {
