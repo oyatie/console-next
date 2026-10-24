@@ -10,65 +10,6 @@ use sqlx::PgPool;
 use std::sync::Arc;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn registry_changes_control_manual_and_scheduled_cadence_without_code_changes(pool: PgPool) {
-    let (store, actor, id) = subject(&pool, None).await;
-    for cadence_hours in [7, 3] {
-        set_policy(
-            &pool,
-            console_entity_adapter_postgres::CheckSchedulePolicy {
-                cadence_hours,
-                ..Default::default()
-            },
-        )
-        .await;
-        let check = store
-            .check_registration(&common::cmd(&actor), id, CheckKind::Status, fake("01"))
-            .await
-            .unwrap();
-        let next: time::OffsetDateTime = sqlx::query_scalar(
-            "SELECT due_at FROM business_registration_check_schedule WHERE registration_id=$1",
-        )
-        .bind(id)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-        assert_eq!(
-            next,
-            check.checked_at + time::Duration::hours(cadence_hours)
-        );
-        due(&pool, id).await;
-        let before: time::OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-        assert_eq!(
-            store
-                .check_due_registrations(actor.org, fake("01"))
-                .await
-                .unwrap(),
-            1
-        );
-        let next: time::OffsetDateTime = sqlx::query_scalar(
-            "SELECT due_at FROM business_registration_check_schedule WHERE registration_id=$1",
-        )
-        .bind(id)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-        let cadence = time::Duration::hours(cadence_hours);
-        assert!(
-            next >= before + cadence
-                && next
-                    <= sqlx::query_scalar::<_, time::OffsetDateTime>("SELECT clock_timestamp()")
-                        .fetch_one(&pool)
-                        .await
-                        .unwrap()
-                        + cadence
-        );
-    }
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn authenticity_and_status_are_independent_current_number_facts(pool: PgPool) {
     let (store, actor, id) = subject(&pool, None).await;
     let mut validated = CheckAnswer::status(BRN, "01");

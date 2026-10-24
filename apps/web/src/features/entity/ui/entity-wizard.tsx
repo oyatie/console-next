@@ -99,12 +99,13 @@ function CertStep({ c, onKindChange }: { c: CreateState; onKindChange: () => voi
               <Button variant="ghost" onClick={onKindChange}>{t("entityCreate.cert.change")}</Button>
             </p>
           )}
-          {kind === "ID_NUMBER_ORG" ? <IdOrgForm c={c} /> : <><CertForm c={c} /><NtsPreview c={c} /></>}
+          {kind === "ID_NUMBER_ORG" ? <IdOrgForm c={c} /> : <CertForm c={c} />}
         </div>
       </section>
       <aside className={s.aside}>
         {kind !== "ID_NUMBER_ORG" && <OriginalCard c={c} />}
         {corp ? <CertChecklist c={c} /> : <NotCollected c={c} />}
+        {kind !== "ID_NUMBER_ORG" && <NtsPreview c={c} />}
       </aside>
     </>
   );
