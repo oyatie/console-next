@@ -5113,6 +5113,7 @@ E-001,홍길동,본사,2026-07-01,abc
             hire_date: Some("2024-01-02".to_owned()),
             exit_date: None,
             status: Some("ACTIVE".to_owned()),
+            status_since: None,
             leave_accrued: None,
             leave_used: None,
             leave_remaining: None,
@@ -5155,6 +5156,7 @@ E-001,홍길동,본사,2026-07-01,abc
         assert_eq!(body["identity_review_required"], json!(false));
         assert_eq!(body["identity_name_only_merge"], json!(false));
         assert_eq!(body["home_branch_review_required"], json!(true));
+        assert!(body.get("status_since").is_none());
         Ok(())
     }
 

@@ -4,7 +4,7 @@ export const koCapture = {
   "capture.headcount.value": "{count, number}명",
   "capture.headcount.held": "산정 보류",
   "capture.headcount.hold": "노무사 확인 전",
-  "capture.headcount.live": "지금 재직 {count, number}명 (상시근로자수는 근로기준법 시행령 제7조의2에 따라 따로 산정합니다)",
+  "capture.headcount.live": "{date} 재직 {count, number}명 (상시근로자수는 근로기준법 시행령 제7조의2에 따라 따로 산정합니다)",
   "capture.headcount.missing": "산정에 필요한 것:",
   "capture.headcount.missing.labor_attorney_review": "노무사 확인",
   "capture.headcount.missing.statutory_rule_rows": "법정 기준값",

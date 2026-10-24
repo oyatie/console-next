@@ -5,7 +5,7 @@ export const enCapture: Record<keyof typeof koCapture, string> = {
   "capture.headcount.value": "{count, number}",
   "capture.headcount.held": "Not computed yet",
   "capture.headcount.hold": "Before labor attorney review",
-  "capture.headcount.live": "Employed now: {count, number} (the regular headcount is computed separately under the Enforcement Decree of the Labor Standards Act art. 7-2)",
+  "capture.headcount.live": "Employed as of {date}: {count, number} (the regular headcount is computed separately under the Enforcement Decree of the Labor Standards Act art. 7-2)",
   "capture.headcount.missing": "Needed to compute it:",
   "capture.headcount.missing.labor_attorney_review": "labor attorney review",
   "capture.headcount.missing.statutory_rule_rows": "statutory thresholds",

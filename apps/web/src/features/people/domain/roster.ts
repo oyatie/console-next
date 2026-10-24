@@ -1,3 +1,4 @@
+import { retirementDate } from "./employment";
 // The roster's rules: which filters the URL holds and the server query they make, how the status chips
 // add up from server totals, the one "next" item a row shows, tenure, and the exact employee-number jump.
 import type { components } from "@console/api/schema";
@@ -15,7 +16,7 @@ export const daysBetween = (from: string, to: string) => Math.round((utc(to) - u
 
 /**
  * The status views, one at a time. `current` (the default, nothing in the URL) is everyone but exited people, starting soon
- * included as rows (counted apart from headcount = active + on leave, spec G2).
+ * included as rows, apart from the employed population counted by the chart.
  */
 export const STATUS_VIEWS = ["current", "ACTIVE", "ON_LEAVE", "PRE_HIRE", "UNKNOWN", "EXITED", "all"] as const;
 export type StatusView = (typeof STATUS_VIEWS)[number];
@@ -113,7 +114,10 @@ export type NextItem =
 export function nextItems(e: Employee, today: string, soonDays: number): NextItem[] {
   const items: NextItem[] = [];
   if (e.failed_event) items.push({ kind: "failed", event: e.failed_event.event_type, date: e.failed_event.effective_date });
-  if (e.next_event) items.push({ kind: "event", event: e.next_event.event_type, date: e.next_event.effective_date, days: daysBetween(today, e.next_event.effective_date) });
+  if (e.next_event) {
+    const date = e.next_event.event_type === "TERMINATE" ? retirementDate(e.next_event.effective_date) : e.next_event.effective_date;
+    items.push({ kind: "event", event: e.next_event.event_type, date, days: daysBetween(today, date) });
+  }
   const end = e.contract_end_date;
   if (end && e.status !== "EXITED" && daysBetween(today, end) <= soonDays) items.push({ kind: "contract", date: end, days: daysBetween(today, end) });
   const back = e.status === "ON_LEAVE" ? e.expected_return_date : undefined;
@@ -129,8 +133,8 @@ export function tenure(hire: string | null | undefined, today: string): { years:
   return { years: Math.floor(months / 12), months: months % 12 };
 }
 
-/** Headcount (spec G2): active + on leave; people starting soon are listed apart and never counted in it. */
-export const headcount = (t: Record<StatusView, number | undefined>) => (t.ACTIVE === undefined || t.ON_LEAVE === undefined ? undefined : t.ACTIVE + t.ON_LEAVE);
+/** The chart's employed population; people starting soon are listed apart. */
+export const headcount = (t: Record<StatusView, number | undefined>) => (t.ACTIVE === undefined || t.ON_LEAVE === undefined || t.UNKNOWN === undefined ? undefined : t.ACTIVE + t.ON_LEAVE + t.UNKNOWN);
 
 /**
  * The one person whose employee number is exactly the typed text (trimmed, any case), else null: Enter then
@@ -165,6 +169,6 @@ export const VIEWS: View[] = [
 /** Retention of an exited person's register (Labor Standards Act §42, Decree §22): 3 years from the exit date (the day after the last working day). */
 export const RETENTION_YEARS = 3;
 export function retentionEnd(lastDay: string): string {
-  const exit = addDays(lastDay, 1);
+  const exit = retirementDate(lastDay);
   return `${Number(exit.slice(0, 4)) + RETENTION_YEARS}${exit.slice(4)}`;
 }

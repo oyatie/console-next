@@ -1,6 +1,7 @@
 import type { koOrgStructure } from "../ko/org-structure";
 
 export const enOrgStructure: Record<keyof typeof koOrgStructure, string> = {
+  "orgStructure.asOf": "As of {date}",
   "orgStructure.title": "Org structure",
   "orgStructure.cancel": "Cancel",
   "orgStructure.fix": "Edit",

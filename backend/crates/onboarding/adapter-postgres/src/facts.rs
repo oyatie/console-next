@@ -80,7 +80,7 @@ const SCALARS: &str = concat!(
           ORDER BY org_unit_id, version DESC) units WHERE attributes->>'kind' IN ('department', 'team') \
           AND attributes->>'status' IS DISTINCT FROM 'dissolved') AS org_units, \
        EXISTS (SELECT 1 FROM tenant_phase_events WHERE kind = 'ORG_STEP_SKIPPED') AS org_step_skipped, \
-       (SELECT count(*) FROM employees WHERE employment_status IN ('ACTIVE', 'ON_LEAVE', 'UNKNOWN') AND merged_into_employee_id IS NULL) AS employees, \
+       (SELECT count(*) FROM employees WHERE entity_employed_on(entity_today(), hire_on, exit_on, employment_status) AND merged_into_employee_id IS NULL) AS employees, \
        (SELECT count(*) FROM employees WHERE employment_status = 'PRE_HIRE' AND merged_into_employee_id IS NULL) AS starting_later, \
        EXISTS (SELECT 1 FROM tenant_phase_events WHERE kind = 'EMPLOYEES_STEP_DEFERRED') AS employees_deferred, \
        (SELECT count(*) FROM access_roles WHERE status <> 'RETIRED') AS tenant_roles, \

@@ -51,7 +51,7 @@ const CSV_COLUMNS: [&str; 11] = [
     "leave_remaining",
 ];
 pub(crate) const EXPORT_SELECT: &str = "SELECT e.company, e.name, e.employee_number, e.org_unit, \
-    e.worksite_name, e.job, e.position, to_char(e.hire_on, 'YYYY-MM-DD') AS hire_date, to_char(e.exit_on, 'YYYY-MM-DD') AS exit_date, e.employment_status, \
+    e.worksite_name, e.job, e.position, to_char(e.hire_on, 'YYYY-MM-DD') AS hire_date, to_char(e.exit_on, 'YYYY-MM-DD') AS exit_date, entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AS employment_status, \
     e.leave_remaining::TEXT AS leave_remaining";
 /// Rows are sent in chunks of about this many bytes.
 const CHUNK_BYTES: usize = 64 * 1024;

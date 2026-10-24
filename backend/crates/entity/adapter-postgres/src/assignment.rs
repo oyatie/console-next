@@ -87,6 +87,7 @@ impl PgEntityStore {
                 let from = is.date("valid_from", cmd.valid_from.as_deref(), true, None);
                 let (entity, workplace, from) = is.finish_opt(|| Some((cmd.legal_entity_id?, cmd.workplace_id?, from?)))?;
                 check_pair(tx, entity, workplace).await?;
+                crate::employment_moves::open_workplace_entity(tx.as_mut(), *actor.org.as_uuid(), workplace, Some(from)).await?;
                 let status: Option<String> = sqlx::query_scalar("SELECT employment_status FROM employees WHERE id = $1 FOR UPDATE")
                     .bind(cmd.employee_id)
                     .fetch_optional(tx.as_mut())
@@ -247,6 +248,7 @@ impl PgEntityStore {
                 .await?;
                 for r in &rows {
                     let id: Uuid = r.try_get("id")?;
+                    crate::employment_moves::open_workplace_entity(tx.as_mut(), *actor.org.as_uuid(), workplace, Some(r.try_get("valid_from")?)).await?;
                     sqlx::query("UPDATE employment_assignments SET superseded_at = now() WHERE id = $1").bind(id).execute(tx.as_mut()).await?;
                     sqlx::query(
                         "INSERT INTO employment_assignments (org_id, employee_id, legal_entity_id, workplace_id, valid_from, valid_to, cause, actor_id, command_id) \

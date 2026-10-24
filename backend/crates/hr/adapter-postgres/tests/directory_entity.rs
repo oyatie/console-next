@@ -199,6 +199,6 @@ async fn directory_reads_filter_count_and_group_by_entity_and_workplace_id(pool:
         (group.company.as_str(), group.total)
     };
     assert_eq!(group(Some(ga)), ("가나 주식회사", 2));
-    assert_eq!(group(Some(da)), ("다라 주식회사", 2));
+    assert_eq!(group(Some(da)), ("다라 주식회사", 1));
     assert_eq!(group(None), ("Test", 1));
 }

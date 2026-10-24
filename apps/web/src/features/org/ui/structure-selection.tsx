@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { getRouteApi } from "@tanstack/react-router";
+import type { OrgStructure } from "@console/api/pending";
 import type { StructureAct } from "../../../reference/org/domain/structure";
 import { useStructure } from "../../../reference/org/ui/use-structure";
 import { useStructureSlots } from "../../../reference/org/ui/use-structure-slots";
@@ -12,13 +13,14 @@ const route = getRouteApi("/app/org");
  * comes from the page's slots) or a department. Anything the structure does not hold (the company root) keeps
  * `fallback`, and so does a dissolved unit (no `sel`): its record is read-only history.
  */
-export function StructurePanel({ sel, fallback }: { sel?: string; fallback?: ReactNode }) {
+export function StructurePanel({ sel, snapshot, readOnly = snapshot?.read_only ?? false, fallback }: { sel?: string; snapshot?: OrgStructure; readOnly?: boolean; fallback?: ReactNode }) {
   const navigate = route.useNavigate();
   const slots = useStructureSlots();
-  const s = useStructure(sel);
+  const s = useStructure(sel, snapshot);
+  const asOf = { as_of: snapshot?.as_of, known_at: snapshot?.known_at ?? undefined };
   const close = () => void navigate({ search: (x) => ({ ...x, sel: undefined, act: undefined }), replace: true });
   const onAct = (act: StructureAct) => void navigate({ search: (x) => ({ ...x, act }) });
-  if (s.at?.kind === "workplace" && slots) return <div key={s.at.node.id}>{slots.workplacePanel({ place: s.at, tenant: s.tenant, setup: s.setup, onClose: close, onAct })}</div>;
-  if (s.at?.kind === "dept") return <DeptPanel key={s.at.node.id} place={s.at} setup={s.setup} onClose={close} />;
-  return sel && s.q.isPending ? null : fallback;
+  if (s.at?.kind === "workplace" && slots) return <div key={s.at.node.id}>{slots.workplacePanel({ place: s.at, tenant: s.tenant, setup: s.setup, onClose: close, onAct, ...asOf, readOnly })}</div>;
+  if (s.at?.kind === "dept") return <DeptPanel key={s.at.node.id} place={s.at} setup={s.setup} onClose={close} {...asOf} readOnly={readOnly} />;
+  return !snapshot && sel && s.q.isPending ? null : fallback;
 }

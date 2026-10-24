@@ -63,6 +63,7 @@ pub const WORKPLACE_KINDS_PATH: &str = "/api/v1/workplace-kinds";
 pub const WORKPLACE_KINDS_ITEM_PATH: &str = "/api/v1/workplace-kinds/{code}";
 pub const ORG_STRUCTURE_DIFF_PATH: &str = "/api/v1/org-structure/diff";
 pub const ORG_STRUCTURE_DATES_PATH: &str = "/api/v1/org-structure/change-dates";
+pub const ORG_STRUCTURE_MEMBERS_PATH: &str = "/api/v1/org-structure/units/{orgUnitId}/members";
 pub const ORG_STRUCTURE_PATH: &str = "/api/v1/org-structure";
 pub const ORG_STRUCTURE_UNITS_PATH: &str = "/api/v1/org-structure/units";
 pub const ORG_STRUCTURE_UNIT_PATH: &str = "/api/v1/org-structure/units/{orgUnitId}";
@@ -214,6 +215,7 @@ pub fn router(state: EntityRestState) -> Router {
         .route(ORG_STRUCTURE_PATH, get(h::org_structure))
         .route(ORG_STRUCTURE_DIFF_PATH, get(asof::diff))
         .route(ORG_STRUCTURE_DATES_PATH, get(asof::dates))
+        .route(ORG_STRUCTURE_MEMBERS_PATH, get(asof::members))
         .route(ORG_STRUCTURE_UNITS_PATH, post(o::create_setup_unit))
         .route(
             ORG_STRUCTURE_UNIT_PATH,

@@ -16,6 +16,8 @@ use uuid::Uuid;
 
 #[path = "asof_membership/exits.rs"]
 mod exits;
+#[path = "asof_membership/future_rehire.rs"]
+mod future_rehire;
 
 struct World {
     store: PgEntityStore,
@@ -225,48 +227,6 @@ async fn newer_native_assignment_correction_wins_over_an_older_lifecycle_workpla
     );
     let future = w.d + Duration::days(30);
     assert_eq!(counts(&read(&w, &w.actor, future, None).await, &w), [0, 1]);
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn rehire_keeps_original_employment_in_past_and_known_counts(owner: PgPool) {
-    let w = world(&owner, "asof-rehire").await;
-    let p = source_person(&owner, &w, "rehired").await;
-    lifecycle(&owner, &w, p, "ONBOARD", w.d - Duration::days(100)).await;
-    lifecycle(&owner, &w, p, "TERMINATE", w.d - Duration::days(60)).await;
-    sqlx::query("UPDATE employees SET employment_status='EXITED',exit_date=$2 WHERE id=$1")
-        .bind(p)
-        .bind((w.d - Duration::days(60)).to_string())
-        .execute(&owner)
-        .await
-        .unwrap();
-    let cutoff = known(&owner).await;
-    let mut tx = owner.begin().await.unwrap();
-    let hire = (w.d - Duration::days(10)).to_string();
-    assert!(
-        start_rehire_period(
-            &mut tx,
-            *w.actor.org.as_uuid(),
-            p,
-            &RehirePeriod {
-                employment_status: "ACTIVE",
-                hire_date: &hire,
-                company: "Rehire Corp",
-                org_unit: "B",
-                org_unit_id: w.units[1],
-                position: "Staff",
-            }
-        )
-        .await
-        .unwrap()
-    );
-    tx.commit().await.unwrap();
-    lifecycle(&owner, &w, p, "REHIRE", w.d - Duration::days(10)).await;
-    let past = w.d - Duration::days(80);
-    assert_eq!(counts(&read(&w, &w.actor, past, None).await, &w), [1, 0]);
-    assert_eq!(
-        counts(&read(&w, &w.actor, past, Some(cutoff)).await, &w),
-        [1, 0]
-    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

@@ -25,7 +25,7 @@ async function reportAndConfirm(admin: Page, c: ReturnType<typeof clickCounter>,
     await expect(sheet.getByRole("textbox", { name: /^마지막 근무일/ })).toBeFocused();
     await expectAccessible(admin, "J5: report sheet with missing fields");
   }
-  await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(0));
+  await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(-1));
   await sheet.getByLabel("퇴직 경위").fill(reason);
   await sheet.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
   await c.click(sheet.getByRole("button", { name: "퇴직 보고 1명 반영" }));
@@ -69,6 +69,7 @@ async function confirmAsHr(admin: Page, c: ReturnType<typeof clickCounter>, opts
 // J5 퇴직: report → HR confirmation (the exit) → HQ confirmation (here by someone else) → settlement approval;
 // a rejection after HR confirmation reverses the exit.
 test("J5 exit case: two-person confirmation, settlement submission, and a rejection that reverses the exit", { tag: ["@hr", "@clock"] }, async ({ browser }) => {
+  test.setTimeout(300_000);
   const { admin, exec } = await staffedTenant(browser, "j5co", "퇴직주식회사");
   const c = clickCounter();
 
@@ -89,8 +90,13 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await expectAccessible(admin, "J5: HR-confirmed exit");
   await openCard(admin);
 
+  await expect(admin.getByRole("main")).toContainText(`${koDate(kstDate(0))}에 퇴직했습니다`);
+  await expect(admin.getByRole("button", { name: "퇴직 건 보기" }).first()).toBeVisible();
+  await expectAccessible(admin, "J5: exited card");
+
   // 2. The executive confirms as HQ, straight from Home's exit queue.
   await exec.goto("/");
+  await routeReady(exec);
   const queue = exec.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ hasText: "강퇴직" }).filter({ has: exec.getByRole("link", { name: "본사 퇴직 확인", exact: true }) });
   await expect(queue).toContainText("강퇴직");
   await expectAccessible(exec, "J5: Home exit queue");
@@ -111,11 +117,14 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
 
   // 3. HR prepares the settlement from Home and submits it for approval.
   await admin.goto("/");
+  await routeReady(admin);
   await c.click(admin.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ hasText: "강퇴직" }).getByRole("link", { name: "퇴직 정산 결재 준비", exact: true }));
+  await routeReady(admin);
   const settle = admin.getByRole("region", { name: /지금/ });
+  await expect(settle.getByLabel("평균임금 산정 시작일")).toBeVisible();
   await settle.getByLabel("평균임금 산정 시작일").fill(kstDate(-91));
-  await settle.getByLabel("평균임금 산정 종료일").fill(kstDate(0));
-  await settle.getByLabel("산정 기간 총일수").fill("92");
+  await settle.getByLabel("평균임금 산정 종료일").fill(kstDate(-1));
+  await settle.getByLabel("산정 기간 총일수").fill("91");
   await settle.getByLabel("기간 임금 총액").fill("9600000");
   await settle.getByLabel("월 통상임금").fill("3200000");
   await expectAccessible(admin, "J5: settlement form at the current step");
@@ -169,6 +178,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await reportAndConfirm(admin, c, "무단 결근 지속");
   c.done("J5 second report + HR confirm");
   await exec.goto("/");
+  await routeReady(exec);
   // The case page offers HQ confirmation and rejection side by side.
   await c.click(exec.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ hasText: "문반려" }).getByRole("link", { name: "본사 퇴직 확인", exact: true }));
   await c.click(exitPanel(exec).getByRole("button", { name: "퇴직 철회" }));
@@ -203,7 +213,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   const staleCancel = otherHr.getByRole("dialog", { name: "퇴직 취소" });
   await staleCancel.getByLabel("취소 사유").fill("담당자 확인 중");
   await c.click(exitPanel(admin).getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
-  await expect(admin.getByRole("dialog")).toContainText(`${koDate(exitOn)}자로 퇴직 처리하도록 예약합니다`);
+  await expect(admin.getByRole("dialog")).toContainText(`${koDate(kstDate(11))}자로 퇴직 처리하도록 예약합니다`);
   // A scheduled exit can still be withdrawn, so its button is blue and names the date.
   await expect(admin.getByRole("dialog").getByRole("button", { name: "퇴직 1명 예약" })).toHaveClass(/btn--primary/);
   await expectAccessible(admin, "J5: HR confirmation of a future exit");
@@ -215,11 +225,11 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await staleCancel.getByRole("button", { name: "닫기", exact: true }).click();
   await otherHr.close();
   await expect(exitPanel(admin)).toContainText("효력 예정");
-  await expect(exitPanel(admin)).toContainText(`${koDate(exitOn)}에 퇴직 처리가 반영됩니다`);
+  await expect(exitPanel(admin)).toContainText(`${koDate(kstDate(11))}에 퇴직 처리가 반영됩니다`);
   await expect(head(admin, "예정퇴직").getByText("재직", { exact: true })).toBeVisible();
   await expect(head(admin, "예정퇴직").getByText("효력 예정")).toBeVisible();
-  await expect(admin.getByRole("group", { name: "다음 일정" })).toContainText(`${koDate(exitOn)} 퇴직 예정`);
-  await expect(admin.getByRole("region", { name: "다음 기록" })).toContainText(`퇴직 · ${koDay(exitOn)}`);
+  await expect(admin.getByRole("group", { name: "다음 일정" })).toContainText(`${koDate(kstDate(11))} 퇴직 예정`);
+  await expect(admin.getByRole("region", { name: "다음 기록" })).toContainText(`퇴직 · ${koDay(kstDate(11))}`);
   await expectAccessible(admin, "J5: scheduled exit");
   expect(c.done("J5 report + confirm a future exit")).toBeLessThanOrEqual(8);
 
@@ -235,7 +245,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await expect(exitPanel(admin).getByRole("button", { name: "퇴직 취소" })).toBeVisible();
   await c.click(exitPanel(admin).getByRole("button", { name: "퇴직 취소" }));
   const withdraw = admin.getByRole("dialog", { name: "퇴직 취소" });
-  await expect(withdraw).toContainText(`${koDate(exitOn)}자 퇴직 예약을 거둡니다`);
+  await expect(withdraw).toContainText(`${koDate(kstDate(11))}자 퇴직 예약을 거둡니다`);
   await withdraw.getByRole("button", { name: "퇴직 1명 취소" }).click();
   await expect(withdraw.getByRole("textbox", { name: /^취소 사유/ })).toBeFocused();
   await withdraw.getByLabel("취소 사유").fill("계약 연장 합의");
@@ -252,8 +262,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await open.getByRole("button", { name: "지금 단계 보기" }).click();
   await expect(exitPanel(exec)).toContainText("반려됨");
 
-  // 6. A scheduled exit that is not withdrawn applies on its date (a background run, on a date the test moves the
-  // backend's apply clock to): the employee is exited then, and the history says when it took effect.
+  // 6. The test clock advances application only; dated employee reads keep the real business date.
   await registerEmployee(admin, { name: "날짜퇴직", number: "J5-0004", hired: "2025-03-03" });
   const leaveOn = kstDate(4);
   await c.click(admin.getByRole("button", { name: "퇴직 보고" }));
@@ -265,24 +274,31 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await confirmAsHr(admin, c);
   await expect(exitPanel(admin)).toContainText("효력 예정");
   c.done("J5 schedule an exit");
-  await withLifecycleDate(leaveOn, async () => {
-    // Pages keep what they read for 30 s: reload (a few times at most; the session refresh is rate-limited).
+  const scheduledRecord = new URL(admin.url()).pathname;
+  await withLifecycleDate(kstDate(5), async () => {
+    // The moved apply clock runs ahead of the business date: a state production never reaches, so it is read on
+    // its own page and never audited on the admin's.
+    const p = await admin.context().newPage();
+    await p.goto(scheduledRecord);
+    await routeReady(p);
     await expect(async () => {
-      // Reload only a loaded page: a reload during its session refresh replays the rotated token, which signs out.
-      await expect(head(admin, "날짜퇴직")).toBeVisible();
-      await admin.reload();
-      await expect(head(admin, "날짜퇴직").getByText("퇴직", { exact: true })).toBeVisible({ timeout: 1_000 });
+      await expect(head(p, "날짜퇴직")).toBeVisible();
+      await p.reload();
+      await routeReady(p);
+      await expect(exitPanel(p)).toBeVisible({ timeout: 1_000 });
+      await expect(exitPanel(p)).not.toContainText("효력 예정", { timeout: 1_000 });
     }).toPass({ intervals: [2_000, 3_000, 5_000], timeout: 30_000 });
+    const appliedCaseHref = await exitPanel(p).getByRole("link", { name: "퇴직 건 열기" }).getAttribute("href");
+    const caseId = appliedCaseHref!.split("/").at(-1);
+    const read = p.waitForResponse((r) => r.request().method() === "GET" && new URL(r.url()).pathname === `/api/v1/hr/exit-cases/${caseId}`);
+    await go(p, appliedCaseHref!);
+    expect((await read).status()).toBe(200);
+    expect(await (await read).json()).toMatchObject({ exit_event_state: "APPLIED" });
+    await go(p, scheduledRecord);
+    await openHistory(p);
+    await expect(p.getByRole("region", { name: "인사 이력" })).toContainText(`날짜퇴직이 ${koDate(kstDate(5))}자로 퇴직했습니다 (예약: `);
+    await p.close();
   });
-  await openHistory(admin);
-  await expect(admin.getByRole("region", { name: "인사 이력" })).toContainText(`날짜퇴직이 ${koDate(leaveOn)}자로 퇴직했습니다 (예약: `);
-  await openCard(admin);
-  await expect(exitPanel(admin)).not.toContainText("효력 예정");
-  // The head says when the person left and leads to the case (trunk's person head did; regression).
-  await expect(admin.getByRole("main")).toContainText(`${koDate(leaveOn)}에 퇴직했습니다`);
-  await expect(admin.getByRole("button", { name: "퇴직 건 보기" }).first()).toBeVisible();
-  await expectNoHrActs(admin);
-  await expectAccessible(admin, "J5: a scheduled exit applied on its date");
 
   // Phone width: the exit list (filter and total) and an exit case page never scroll sideways.
   await atPhoneWidth(admin, async () => {

@@ -69,7 +69,7 @@ impl HrService {
         // values and whether it passes each group's own filters; every count is
         // `count(*) FILTER` over the groups it keeps, per grouping set.
         let mut query = QueryBuilder::<Postgres>::new(concat!(
-            "WITH f AS (SELECT e.employment_status AS status, p.employment_type AS etype, \
+            "WITH f AS (SELECT entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AS status, p.employment_type AS etype, \
              ea.legal_entity_id, ea.workplace_id, ",
             crate::identity_review_sql!(),
             " AS identity, \

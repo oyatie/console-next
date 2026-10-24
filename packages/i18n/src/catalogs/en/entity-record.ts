@@ -106,7 +106,7 @@ export const enEntityRecord = {
   "entityRecord.vat.priorityBasis": "Employment Insurance Act Enforcement Decree, annex 1",
   "entityRecord.phase.setup": "Setup",
   "entityRecord.phase.operating": "Operating",
-  "entityRecord.state.title": "Where it stands",
+  "entityRecord.state.title": "Status as of {date}",
   "entityRecord.state.people": "People",
   "entityRecord.state.workplaces": "Workplaces",
   "entityRecord.state.depts": "Departments",

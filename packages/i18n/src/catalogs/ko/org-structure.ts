@@ -1,5 +1,6 @@
 // Korean source for `orgStructure.` ids: the 사업장 · 부서 panels and sheets of 회사 구조 (apps/web/src/features/org/structure).
 export const koOrgStructure = {
+  "orgStructure.asOf": "{date} 기준",
   "orgStructure.title": "조직 구조",
   "orgStructure.cancel": "취소",
   "orgStructure.fix": "수정",

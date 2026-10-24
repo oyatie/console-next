@@ -64,7 +64,7 @@ pub async fn entity_names(
         if names.contains_key(&workplace) {
             continue;
         }
-        let entity = open_workplace_entity(tx.as_mut(), org, workplace)
+        let entity = open_workplace_entity(tx.as_mut(), org, workplace, None)
             .await
             .map_err(coded)?;
         let name = entity_label(tx.as_mut(), org, entity, today_kst())

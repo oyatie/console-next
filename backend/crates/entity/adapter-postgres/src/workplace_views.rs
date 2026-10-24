@@ -46,7 +46,7 @@ pub(crate) async fn views_at(
     personal: bool,
 ) -> Result<HashMap<Uuid, Vec<WorkplaceView>>, PgEntityError> {
     let rows = sqlx::query(
-        "SELECT w.id, w.legal_entity_id, w.registration_id, w.sub_serial, w.default_branch_id, w.kind_code, w.code, w.needs_confirmation, \
+        "SELECT entity_workplace_opens_on(w.id, $4) AS placement_opens_on, w.id, w.legal_entity_id, w.registration_id, w.sub_serial, w.default_branch_id, w.kind_code, w.code, w.needs_confirmation, \
                 w.closed_on, w.not_registered_reason_code, w.not_registered_reason_label, w.not_registered_reason_version, \
                 COALESCE(w.is_abstract, false) AS is_abstract, \
                 COALESCE(w.registration_id, (SELECT reg.id FROM business_registrations reg WHERE reg.legal_entity_id = w.legal_entity_id AND reg.voided_at IS NULL AND reg.closed_on IS NULL ORDER BY reg.holder_workplace_id = e.primary_workplace_id DESC NULLS LAST, reg.created_at LIMIT 1)) AS filing_registration_id, \
@@ -56,10 +56,7 @@ pub(crate) async fn views_at(
                 r.withholding_mode, r.bulk_filed_on, r.independent_lsa_unit, r.independent_lsa_evidence, r.change_mode, r.effective_from > $2 AS before_first, \
                 r.not_registered_reason_code AS rev_reason_code, r.not_registered_reason_label AS rev_reason_label, r.not_registered_reason_version AS rev_reason_version, \
                 r.is_abstract AS rev_is_abstract, \
-                (SELECT count(*) FROM employment_assignments a WHERE a.workplace_id = w.id \
-                   AND (a.superseded_at IS NULL OR a.superseded_at > $4) \
-                   AND ($4::timestamptz IS NULL OR a.created_at <= $4) \
-                   AND a.valid_from <= $2 AND (a.valid_to IS NULL OR a.valid_to > $2 OR a.valid_to_recorded_at > $4)) AS headcount \
+                0::bigint AS headcount \
          FROM (SELECT (jsonb_populate_record(NULL::workplaces, entity_known_row(to_jsonb(b), $4))).* FROM workplaces b) w \
          JOIN (SELECT (jsonb_populate_record(NULL::legal_entities, entity_known_row(to_jsonb(b), $4))).* FROM legal_entities b) e ON e.id = w.legal_entity_id \
          LEFT JOIN LATERAL (SELECT * FROM workplace_revisions x WHERE x.workplace_id = w.id \
@@ -190,6 +187,7 @@ pub(crate) async fn views_at(
         });
         let headcount: i64 = r.try_get("headcount")?;
         out.entry(entity).or_default().push(WorkplaceView {
+            placement_opens_on: r.try_get("placement_opens_on")?,
             read: point.stamp(),
             id,
             legal_entity_id: entity,

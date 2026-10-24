@@ -9,7 +9,7 @@ use serde_json::json;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use super::fixture::{HIRE, Tenant, day, tenant};
+use super::fixture::{HIRE, Tenant, day, tenant, today};
 
 const EXITS: &str = "/api/v1/hr/exit-cases";
 
@@ -96,7 +96,7 @@ async fn regression_an_exited_person_leaves_every_count(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn regression_a_same_day_exit_leaves_every_count_at_once(pool: PgPool) {
+async fn regression_a_same_day_exit_keeps_every_count_through_the_last_working_day(pool: PgPool) {
     // regression: r3 records-04 — 마지막 근무일 today: the 부서 dropped them, the 사업장 and 법인 did not.
     let t = tenant(pool).await;
     let [_, pangyo] = t.workplaces;
@@ -109,13 +109,58 @@ async fn regression_a_same_day_exit_leaves_every_count_at_once(pool: PgPool) {
         Some(day(1)),
         "the row ends after the last working day"
     );
-    // 부서 1 = 사업장 1 = 법인 1: the numbers add up on the same day.
+    // Both people still count in the department, workplace and entity on the last working day.
     let (status, s) = t.ops.call("GET", "/api/v1/org-structure", None).await;
     assert_eq!(status, StatusCode::OK);
     let text = s.to_string();
-    assert!(text.contains("\"direct_headcount\":1,"), "{text}");
-    assert_eq!(chart(&t).await, (1, vec![0, 1]));
-    assert_eq!(record(&t).await, [0, 1]);
+    assert!(text.contains("\"direct_headcount\":2,"), "{text}");
+    assert_eq!(chart(&t).await, (2, vec![0, 2]));
+    assert_eq!(record(&t).await, [0, 2]);
+    let runner = console_platform_test_support::runtime_role_pool(&t.owner).await;
+    assert_eq!(
+        console_app::apply_due_lifecycle_events(&runner, today())
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        console_app::apply_due_lifecycle_events(&runner, today() + time::Duration::days(1))
+            .await
+            .unwrap(),
+        1
+    );
+    // Advancing the runner does not advance the read clock; today still includes the last day.
+    assert_eq!(chart(&t).await, (2, vec![0, 2]));
+    assert_eq!(record(&t).await, [0, 2]);
+    let tomorrow = day(1);
+    let (status, dated) = t
+        .ops
+        .call(
+            "GET",
+            &format!("/api/v1/org-structure?as_of={tomorrow}"),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{dated}");
+    assert_eq!(dated["entities"][0]["headcount"], 1);
+    let (status, dated) = t
+        .ops
+        .call(
+            "GET",
+            &format!("/api/v1/legal-entities/{}?as_of={tomorrow}", t.entity),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{dated}");
+    assert_eq!(
+        dated["workplaces"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|w| w["headcount"].as_i64().unwrap())
+            .sum::<i64>(),
+        1
+    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

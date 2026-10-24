@@ -32,7 +32,7 @@ export function WorkplacePanel({ e, w }: { e: LegalEntity; w: Workplace }) {
         <dt>{t("workplace.col.people")}</dt>
         <dd className="num">{t("entity.count.people", { count: w.headcount })}</dd>
       </dl>
-      <RegularHeadcount r={w.regular_workers} />
+      <RegularHeadcount r={w.regular_workers} asOf={e.as_of} />
       <section aria-labelledby={`ins-${w.id}`}>
         <h3 id={`ins-${w.id}`} className="field__label">{t("workplace.field.insurance")}</h3>
         <WorkplaceInsurance e={e} w={w} onHistory={toHistory} />

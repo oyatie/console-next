@@ -21,7 +21,7 @@ async fn scheduled_exit_rechecks_new_work_injury_and_fails_closed_without_a_case
     // Deliberately orphaned SCHEDULED TERMINATE, as a corrupt legacy row.
     let orphan = Uuid::new_v4();
     sqlx::query("INSERT INTO employee_lifecycle_events (id,org_id,employee_id,event_type,from_status,to_status,effective_date,comment,created_by,state,scheduled_request) SELECT $1,$2,$3,'TERMINATE','ACTIVE','EXITED',$4,'합성',$5,'SCHEDULED',scheduled_request FROM employee_lifecycle_events WHERE id=$6").bind(orphan).bind(w.org).bind(w.in_b).bind(on.to_string()).bind(w.hr_one).bind(c["exit_lifecycle_event_id"].as_str().unwrap().parse::<Uuid>().unwrap()).execute(&pool).await.unwrap();
-    w.hr.apply_due(on).await.unwrap();
+    w.hr.apply_due(on.next_day().unwrap()).await.unwrap();
     for (id, code) in [
         (
             c["exit_lifecycle_event_id"]
@@ -107,7 +107,7 @@ async fn scheduled_exit_ignores_a_rescinded_leave_but_rechecks_a_replacement(poo
         Some(&(on + Duration::days(10)).to_string()),
     )
     .await;
-    w.hr.apply_due(on).await.unwrap();
+    w.hr.apply_due(on.next_day().unwrap()).await.unwrap();
     for (id, state) in exits.iter().zip(["APPLIED", "APPLY_FAILED"]) {
         assert_eq!(
             sqlx::query_scalar::<_, String>(

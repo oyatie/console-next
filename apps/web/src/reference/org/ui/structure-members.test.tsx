@@ -39,8 +39,8 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
   return {
     ...actual,
     useQuery: (options: Record<string, unknown>) => {
-      if (options.path === "/api/v1/org-units/{id}") {
-        return { data: currentOrgUnit, isPending: orgPending };
+      if (options.path === "/api/v1/org-structure/units/{orgUnitId}/members") {
+        return { data: (currentOrgUnit as { members?: unknown } | undefined)?.members, isPending: orgPending };
       }
       if (options.path === "/api/v1/employees") {
         employeeReads.push(options);
@@ -277,7 +277,7 @@ describe("directory retry in a browser", () => {
       contentType: "text/html",
       body: `<div id="root"></div><script type="module" src="${browserFixtureUrl}"></script>`,
     }));
-    await page.route("**/api/v1/org-units/*", (route) => route.fulfill({ json: currentOrgUnit }));
+    await page.route("**/api/v1/org-structure/units/*/members*", (route) => route.fulfill({ json: (currentOrgUnit as { members: unknown }).members }));
     await page.route("**/api/v1/employees?*", (route) => {
       reads++;
       const query = new URL(route.request().url()).searchParams;

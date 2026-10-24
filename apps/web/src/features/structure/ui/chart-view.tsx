@@ -150,7 +150,7 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, quiet, pick
   ) : cmd.last && !quiet ? receipt : note ? (
     <ChangeReceipt />
   ) : (
-    <p className={`${css.hint} card`}>{c.L.lod === "far" ? t("structureChart.farHint", { wrap: WRAP_SITES }) : c.focus.kind === "tenant" ? t("structure.caption", { date: todayKst() }) : t("structure.hint")}</p>
+    <p className={`${css.hint} card`}>{c.L.lod === "far" ? t("structureChart.farHint", { wrap: WRAP_SITES }) : c.focus.kind === "tenant" ? t("structure.caption", { date: s.asOf ?? todayKst() }) : t("structure.hint")}</p>
   );
 
   return (

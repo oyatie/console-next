@@ -51,6 +51,9 @@ pub struct EmployeeResponse {
     pub exit_date: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
+    /// Effective date on which the current status began.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_since: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub leave_accrued: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

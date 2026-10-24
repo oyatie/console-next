@@ -6,6 +6,7 @@ import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { CONTRACT_SOON_DAYS, nextItems, type NextItem, type VerbState } from "../domain/lifecycle";
 import { fmtDay, fmtRel } from "../present";
+import { retirementDate } from "../domain/employment";
 import type { LifecycleEvent } from "../api";
 import s from "./person.module.css";
 import { Muted } from "../../../ui/muted/muted";
@@ -54,9 +55,10 @@ function Line({ i, today, onShow }: { i: NextItem; today: string; onShow: (event
       );
     case "event": {
       const state = labeled(LIFECYCLE_STATE, "SCHEDULED");
+      const date = i.event.event_type === "TERMINATE" ? retirementDate(i.event.effective_date) : i.event.effective_date;
       return (
         <Button variant="ghost" className={s.lineLink} onClick={() => onShow(i.event.id)}>
-          <span>{t("person.next.event", { action: label(LIFECYCLE_EVENT, i.event.event_type), date: fmtDay(i.event.effective_date), rel: fmtRel(i.event.effective_date, today) })}</span>
+          <span>{t("person.next.event", { action: label(LIFECYCLE_EVENT, i.event.event_type), date: fmtDay(date), rel: fmtRel(date, today) })}</span>
           <Chip tone={state.tone}>{state.label}</Chip>
         </Button>
       );

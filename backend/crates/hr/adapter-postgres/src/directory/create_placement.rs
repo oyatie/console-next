@@ -70,7 +70,14 @@ pub async fn place_registration(
     };
     let placed = hire_in_tx(tx.as_mut(), write, workplace, hire)
         .await
-        .map_err(coded)?;
+        .map_err(|error| {
+            let error = if error.code == Some("workplace_not_open_on_date") {
+                error.with_field("hire_date")
+            } else {
+                error
+            };
+            coded(error)
+        })?;
     if request
         .legal_entity_id
         .is_some_and(|entity| entity != placed.legal_entity_id)

@@ -124,7 +124,7 @@ export async function captureE5(page: Page) {
   await frame(page, "E3-rehire", async () => {
     // 김민준 leaves today (report, then HR's confirmation), and comes back: 재입사로 등록 from the record.
     await act(page, hero, "exit.report");
-    await sheet(page).getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(0));
+    await sheet(page).getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(-1));
     await sheet(page).getByRole("textbox", { name: /^퇴직 경위/ }).fill("개인 사정");
     await sheet(page).getByRole("button", { name: /퇴직 보고$/ }).click();
     await page.getByRole("button", { name: "인사 확인하고 퇴직 처리" }).click();

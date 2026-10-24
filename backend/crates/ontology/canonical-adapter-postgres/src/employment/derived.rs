@@ -54,7 +54,7 @@ pub async fn reassign_org_unit_via_transfers_in_tx(
         "SELECT id, company, position, employment_status FROM employees \
          WHERE org_id = $1 \
            AND (org_unit = $2 OR org_unit_id = $3) \
-           AND employment_status <> 'EXITED'",
+           AND entity_employed_on(entity_today(), hire_on, exit_on, employment_status)",
     )
     .bind(org.as_uuid())
     .bind(&from_text)

@@ -9,7 +9,7 @@ import { Chip } from "../../../ui/chip";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { DateField } from "../../../ui/date/date-field";
-import { addDays } from "../../../ui/date/days";
+import { retirementDate } from "../domain/employment";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
@@ -89,7 +89,7 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
           onChange={(nextDate) => draft.set({ ...draft.value, date: nextDate })}
           showErrors={tried}
           // Decision #9: the field is the last working day; the statutory exit date and the insurance loss date are the day after.
-          echo={date ? `${t("exit.field.date.statutory")} ${fmtDate(addDays(date, 1))} · ${t("exit.field.date.loss")} ${fmtDate(addDays(date, 1))}` : undefined}
+          echo={date ? `${t("exit.field.date.statutory")} ${fmtDate(retirementDate(date))} · ${t("exit.field.date.loss")} ${fmtDate(retirementDate(date))}` : undefined}
           error={tried && problems.date ? t("exit.error.date") : undefined}
         />
         {/* What to settle first sits under the date it depends on: drawn above it, it pushed the field being typed in down. */}

@@ -18,6 +18,8 @@ pub(crate) async fn load(
     point: ReadPoint,
 ) -> Result<Vec<Membership>, PgEntityError> {
     // A newly recorded backdated exit supersedes the canonical snapshot's stale status.
+    // One count rule for chart, list, compare and export: employed on D iff 입사일 <= D < 퇴직일,
+    // where 퇴직일 = stored 마지막 근무일 + 1 = 4대보험 상실일.
     let rows = sqlx::query(
         "WITH known_events AS MATERIALIZED ( \
            SELECT * FROM employee_lifecycle_events WHERE $2::timestamptz IS NULL UNION ALL \
@@ -30,49 +32,59 @@ pub(crate) async fn load(
          , first_events AS (SELECT DISTINCT ON (employee_id) * FROM events ORDER BY employee_id,effective_date,created_at,id), \
          latest_status AS (SELECT DISTINCT ON (employee_id) * FROM events WHERE entity_try_iso_date(effective_date) <= $1 ORDER BY employee_id,effective_date DESC,created_at DESC,id DESC), \
          latest_unit AS (SELECT DISTINCT ON (employee_id) * FROM events WHERE entity_try_iso_date(effective_date) <= $1 \
+             AND (event_type NOT IN ('TERMINATE','OFFBOARD') OR entity_try_iso_date(effective_date) < $1) \
              AND (to_org_unit_id IS NOT NULL OR to_org_unit IS DISTINCT FROM from_org_unit) ORDER BY employee_id,effective_date DESC,created_at DESC,id DESC), \
          latest_workplace AS (SELECT DISTINCT ON (employee_id) * FROM events WHERE entity_try_iso_date(effective_date) <= $1 \
              AND to_workplace_id IS NOT NULL ORDER BY employee_id,effective_date DESC,created_at DESC,id DESC), \
          latest_type AS (SELECT DISTINCT ON (employee_id) * FROM events WHERE entity_try_iso_date(effective_date) <= $1 \
              AND to_employment_type IS NOT NULL ORDER BY employee_id,effective_date DESC,created_at DESC,id DESC), \
          first_types AS (SELECT DISTINCT ON (employee_id) * FROM events WHERE to_employment_type IS NOT NULL ORDER BY employee_id,effective_date,created_at,id), \
-         revisions AS (SELECT DISTINCT ON (b.employee_id) b.employee_id,x.attributes,x.valid_from,x.created_at FROM employment_source_bindings b \
+         revisions AS (SELECT DISTINCT ON (b.employee_id) b.employee_id,x.attributes,x.valid_from,x.created_at, (x.valid_from AT TIME ZONE 'Asia/Seoul')::date AS business_date FROM employment_source_bindings b \
              JOIN employment_revisions x ON x.employment_id=b.employment_id \
              WHERE x.valid_from < (($1::date+1)::timestamp AT TIME ZONE 'Asia/Seoul') AND x.created_at <= COALESCE($2::timestamptz,now()) \
              ORDER BY b.employee_id,x.valid_from DESC,x.version DESC), \
+         first_assignments AS (SELECT DISTINCT ON (employee_id) employee_id,workplace_id FROM employment_assignments \
+             WHERE created_at <= COALESCE($2::timestamptz,now()) AND (superseded_at IS NULL OR superseded_at > $2) \
+             ORDER BY employee_id,valid_from,created_at), \
          assignments AS (SELECT DISTINCT ON (employee_id) employee_id,legal_entity_id,workplace_id,valid_from,created_at FROM employment_assignments \
              WHERE valid_from <= $1 AND created_at <= COALESCE($2::timestamptz,now()) \
              AND (superseded_at IS NULL OR superseded_at > $2) \
              AND (valid_to IS NULL OR valid_to > $1 OR valid_to_recorded_at > $2) ORDER BY employee_id,valid_from DESC,created_at DESC) \
          SELECT e.id, \
-           CASE WHEN u.id IS NOT NULL AND (r.valid_from IS NULL OR (entity_try_iso_date(u.effective_date),u.created_at) >= ((r.valid_from AT TIME ZONE 'Asia/Seoul')::date,r.created_at)) THEN u.to_org_unit_id \
+           CASE WHEN u.id IS NOT NULL AND (r.valid_from IS NULL OR (entity_try_iso_date(u.effective_date),u.created_at) >= (r.business_date,r.created_at)) THEN u.to_org_unit_id \
                 WHEN r.attributes ? 'org_unit_id' THEN (r.attributes->>'org_unit_id')::uuid \
                 WHEN first_event.id IS NOT NULL THEN first_event.from_org_unit_id ELSE e.org_unit_id END AS unit_id, \
            CASE WHEN w.id IS NOT NULL AND (a.employee_id IS NULL OR (entity_try_iso_date(w.effective_date),w.created_at) > (a.valid_from,a.created_at)) THEN wp.legal_entity_id ELSE a.legal_entity_id END AS legal_entity_id, \
            CASE WHEN w.id IS NOT NULL AND (a.employee_id IS NULL OR (entity_try_iso_date(w.effective_date),w.created_at) > (a.valid_from,a.created_at)) THEN w.to_workplace_id ELSE a.workplace_id END AS workplace_id, \
            COALESCE(t.to_employment_type,first_type.from_employment_type,CASE WHEN $2::timestamptz IS NULL THEN f.employment_type ELSE entity_known_row(to_jsonb(f),$2)->>'employment_type' END) \
                IN ('DISPATCHED_IN','OUTSOURCED_ON_SITE') AS dispatched \
-         FROM employees e LEFT JOIN employee_employment_profiles f ON f.employee_id=e.id \
+         FROM person_employees_current e LEFT JOIN employee_employment_profiles f ON f.employee_id=e.id \
          LEFT JOIN revisions r ON r.employee_id=e.id \
          LEFT JOIN first_events first_event ON first_event.employee_id=e.id \
          LEFT JOIN latest_status l ON l.employee_id=e.id AND (r.valid_from IS NULL \
              OR l.event_type IN ('TERMINATE','OFFBOARD') AND l.created_at >= r.created_at \
-             OR (entity_try_iso_date(l.effective_date),l.created_at) >= ((r.valid_from AT TIME ZONE 'Asia/Seoul')::date,r.created_at)) \
+             OR (entity_try_iso_date(l.effective_date),l.created_at) >= (r.business_date,r.created_at)) \
          LEFT JOIN latest_unit u ON u.employee_id=e.id \
          LEFT JOIN latest_workplace w ON w.employee_id=e.id \
          LEFT JOIN workplaces wp ON wp.id=w.to_workplace_id \
          LEFT JOIN latest_type t ON t.employee_id=e.id \
          LEFT JOIN first_types first_type ON first_type.employee_id=e.id \
+         LEFT JOIN first_assignments initial ON initial.employee_id=e.id \
          LEFT JOIN assignments a ON a.employee_id=e.id \
          WHERE e.created_at <= COALESCE($2::timestamptz,now()) \
-           AND (NOT $3 OR e.employment_status NOT IN ('PRE_HIRE','EXITED','VOIDED')) \
-           AND (r.valid_from IS NOT NULL OR l.id IS NOT NULL OR first_event.id IS NOT NULL OR entity_try_iso_date(e.hire_date) IS NULL OR entity_try_iso_date(e.hire_date) <= $1) \
-           AND CASE WHEN NOT $3 AND l.event_type IN ('TERMINATE','OFFBOARD') AND entity_try_iso_date(l.effective_date)=$1 THEN true \
-               WHEN l.id IS NOT NULL THEN l.to_status NOT IN ('EXITED','VOIDED') \
-               WHEN r.attributes ? 'employment_status' THEN r.attributes->>'employment_status' NOT IN ('EXITED','VOIDED') \
-               WHEN first_event.id IS NOT NULL THEN first_event.from_status NOT IN ('EXITED','VOIDED') \
-               ELSE e.employment_status NOT IN ('EXITED','VOIDED') OR NOT $3 AND entity_try_iso_date(e.exit_date) >= $1 END",
-    ).bind(point.as_of).bind(point.known_at).bind(point.live).fetch_all(tx.as_mut()).await?;
+           AND entity_employed_on($1, \
+             CASE WHEN COALESCE(l.to_status,r.attributes->>'employment_status',first_event.from_status,e.employment_status) = 'PRE_HIRE' \
+               THEN entity_try_iso_date(e.hire_date) \
+               WHEN first_event.event_type IN ('ONBOARD','REHIRE') THEN entity_try_iso_date(first_event.effective_date) \
+               ELSE COALESCE(r.business_date,entity_try_iso_date(e.hire_date)) END, \
+             CASE WHEN l.event_type IN ('TERMINATE','OFFBOARD') THEN entity_try_iso_date(l.effective_date) \
+               WHEN l.id IS NULL AND (r.attributes->>'employment_status' = 'EXITED' OR r.valid_from IS NULL AND first_event.id IS NULL) \
+                 THEN entity_try_iso_date(e.exit_date) END, \
+             COALESCE(l.to_status,r.attributes->>'employment_status',first_event.from_status,e.employment_status)) \
+           AND COALESCE(entity_workplace_opens_on(CASE WHEN w.id IS NOT NULL AND (a.employee_id IS NULL \
+             OR (entity_try_iso_date(w.effective_date),w.created_at) > (a.valid_from,a.created_at)) \
+             THEN w.to_workplace_id ELSE COALESCE(a.workplace_id,initial.workplace_id) END,$2),$1) <= $1",
+    ).bind(point.as_of).bind(point.known_at).fetch_all(tx.as_mut()).await?;
     rows.iter()
         .map(|r| {
             Ok(Membership {

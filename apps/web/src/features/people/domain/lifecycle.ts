@@ -1,6 +1,7 @@
 // Lifecycle rules: which scheduled actions apply later, can be withdrawn, how history sorts, and which
 // HR verbs the employee page offers (the server's lists decide; this only explains what they leave out).
 import type { components } from "@console/api/schema";
+import { retirementDate } from "./employment";
 
 type LifecycleEvent = components["schemas"]["EmployeeLifecycleEvent"];
 type Detail = components["schemas"]["EmployeeDetail"];
@@ -86,7 +87,7 @@ export function verbStates(d: Pick<Detail, "employee" | "employment" | "allowed_
     if (now.has(verb)) return after ? { verb, enabled: true, max: addDays(after, -1), before: after } : { verb, enabled: true };
     if (later.has(verb) && after) return { verb, enabled: true, min: addDays(after, 1), after };
     const why: VerbWhy =
-      exit ? { kind: "exitScheduled", date: exit.effective_date }
+      exit ? { kind: "exitScheduled", date: retirementDate(exit.effective_date) }
       : d.employee.status === "ON_LEAVE" && (verb === "TRANSFER" || verb === "GROUP_TRANSFER" || verb === "PROMOTE") ? { kind: "onLeave" }
       : verb === "CONTRACT_RENEWAL" && !d.employment ? { kind: "noEmployment" }
       : { kind: "generic" };

@@ -96,3 +96,14 @@ pub(crate) async fn validated<T>(
         }
     }
 }
+
+pub(crate) async fn members(
+    State(s): State<EntityRestState>,
+    h: HeaderMap,
+    Path(id): Path<Uuid>,
+    Query(q): Query<AsOfQuery>,
+) -> Result<Response, RestError> {
+    let (a, _) = actor(&s, &h, Need::Read, Target::Tenant).await?;
+    let options = validated(&s, &a, q.parse()).await?;
+    Ok(Json(s.store.structure_members_at(&a, id, options).await?).into_response())
+}

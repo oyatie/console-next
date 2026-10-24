@@ -1,6 +1,9 @@
 // Korean source for `importReview.` ids (features/import/ui/review-*.tsx, resolve-controls.tsx, remembered.tsx): the
 // counted 「확인 필요」 queue of a dry run and how each item is answered (IMPORT-2).
 export const koImportReview = {
+  "importReview.reason.workplace_not_open_on_date": "입사일이 사업장 또는 법인의 개설일보다 이릅니다",
+  "importReview.info.workplace_not_open_on_date": "사업장 배치는 {date}부터 반영합니다. 입사일은 원본대로 유지합니다.",
+
   "importReview.title": "확인 필요 {count, number}건",
   "importReview.none": "확인할 항목이 없습니다. 반영할 수 있습니다.",
   "importReview.caption": "{count, number}건 중 {shown, number}건",

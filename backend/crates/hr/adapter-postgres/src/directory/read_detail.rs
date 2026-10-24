@@ -24,7 +24,10 @@ use crate::directory::types::{
 use crate::lifecycle::rules::lifecycle_state_rule;
 use crate::metrics::record_hr_read;
 use crate::own_record::{OwnRecord, own_record_decision};
-use crate::{HrError, HrService, assignment_lateral, failed_event_lateral, leave_return_lateral};
+use crate::{
+    HrError, HrService, assignment_lateral, failed_event_lateral, leave_return_lateral,
+    status_since_lateral,
+};
 
 /// One lifecycle event the server would accept for this employee right now,
 /// with the acknowledgements it requires. Computed by the same rules the
@@ -70,7 +73,7 @@ pub async fn load_employee_detail(
     let row = sqlx::query(concat!(
         r#"SELECT e.id, e.company, COALESCE(console_employee_facts(e.org_id,e.id)->>'legal_name',e.name) AS name, console_employee_person(e.org_id,e.id) AS person_id, e.employee_number, e.org_unit, e.org_unit_id, e.job,
             e.position, e.worksite_name, e.worksite_address, to_char(e.hire_on, 'YYYY-MM-DD') AS hire_date, to_char(e.exit_on, 'YYYY-MM-DD') AS exit_date,
-            e.employment_status, e.leave_accrued::TEXT AS leave_accrued,
+            e.employment_status AS recorded_status, entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AS employment_status, ss.status_since, e.leave_accrued::TEXT AS leave_accrued,
             e.leave_used::TEXT AS leave_used, e.leave_remaining::TEXT AS leave_remaining,
             b.id AS home_branch_id, b.name AS home_branch_name,
             e.identity_resolution_strategy, e.identity_resolution_confidence,
@@ -100,6 +103,7 @@ pub async fn load_employee_detail(
             ORDER BY n.effective_date DESC, n.created_at DESC LIMIT 1) se ON TRUE"#,
         failed_event_lateral!(),
         leave_return_lateral!(),
+        status_since_lateral!(),
         assignment_lateral!(),
         " WHERE e.org_id = $1 AND e.id = $2"),
     ).bind(org_id).bind(employee_id).fetch_optional(tx.as_mut()).await?
@@ -125,7 +129,7 @@ pub async fn load_employee_detail(
         job_id: row.try_get("job_id")?,
         job_family_id: row.try_get("job_family_id")?,
     };
-    let status: Option<String> = row.try_get("employment_status")?;
+    let status: Option<String> = row.try_get("recorded_status")?;
     let employment_type: Option<String> = row.try_get("employment_type")?;
     // As the employee will stand after their last SCHEDULED event (its stored
     // status is the one validated against the projected timeline).

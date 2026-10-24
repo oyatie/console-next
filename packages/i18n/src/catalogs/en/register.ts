@@ -1,6 +1,8 @@
 import type { koRegister } from "../ko/register";
 
 export const enRegister: Record<keyof typeof koRegister, string> = {
+  "register.err.beforeOpening": "For hires before {site} opened ({date}), keep the original hire date and register through roster import.",
+  "register.err.beforeOpeningUnknown": "For hires before the workplace or employer opened, keep the original hire date and register through roster import.",
   "register.kicker": "People › one at a time · scope {scope}",
   "register.scopeAll": "all",
   "register.title": "Register employee",

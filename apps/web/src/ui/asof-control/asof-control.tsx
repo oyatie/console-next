@@ -82,7 +82,7 @@ export function AsOfControl({ today, value, knownAt, onChange, changeDates, load
       {ribbon && <div className={`row ${styles.ribbon}`} role="group" aria-label={t("asof.ribbon")} aria-busy={loadingDates || undefined}>
         {loadingDates ? <Skeleton bones={["line"]} label={t("asof.ribbon")} /> : dates.length ? markers.map((marker, i) => <ToggleButton key={marker} style={{ gridColumn: start + i - anchor + 5 }} data-change-date={marker} pressed={value === marker} onClick={() => chooseDate(marker)}>{fmtDate(marker)}</ToggleButton>) : <span className="muted">{t("asof.noChanges")}</span>}
       </div>}
-      {historic && <Banner tone={past ? "past" : "info"} placement="page" title={label} actions={<Button onClick={returnToday}>{t("asof.returnToday")}</Button>}>{t("asof.readOnly")}</Banner>}
+      {historic && <Banner tone={past ? "past" : "info"} placement="page" title={label} actions={<Button onClick={returnToday}>{t("asof.returnToday")}</Button>} />}
     </section>
   );
 }

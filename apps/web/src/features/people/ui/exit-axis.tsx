@@ -1,3 +1,4 @@
+import { retirementDate } from "../domain/employment";
 import { commitLabel } from "../../../ui/composer/actions";
 import { exitUndoVerb } from "../domain/exits";
 import { useState, type ReactNode } from "react";
@@ -68,7 +69,7 @@ export function CaseAxis({ c: live, onBack, onDone }: { c: Case; onBack: (k: Bac
     onDone(message, reference);
   };
   const name = c.employee_name;
-  const date = fmtDate(c.effective_exit_date);
+  const date = fmtDate(retirementDate(c.effective_exit_date));
   // Each done step: the step, then who did what under it (wraps at any width); when, short, on the right.
   const said: Partial<Record<Status, [text: string, when?: string]>> = {
     REPORTED: [t("exit.event.reported", { actor: actor(c.reported_by_name), date }), c.reported_at],

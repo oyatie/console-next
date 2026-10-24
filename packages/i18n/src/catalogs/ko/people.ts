@@ -151,7 +151,7 @@ export const koPeople = {
   "people.employment.missing.title": "고용 정보를 먼저 등록하십시오",
   "people.employment.missing.open": "명부 재이관으로 고용 정보 등록",
   "people.employment.missing.body": "사번 {number}과 같은 이름이 있는 명부에 고용형태 열을 추가하십시오. 명부 이관에서 사번으로 기존 직원과 연결하고, 고용형태 차이를 미리보기에서 확인한 뒤 반영하십시오. 새 직원으로 추가하지 마십시오. 반영 후 이 인사카드에서 휴대전화와 기본급을 기록할 수 있습니다.",
-  "people.refusal.rehire_date_not_after_exit": "재입사일은 마지막 퇴직일 {date} 다음 날부터 선택할 수 있습니다. 기존 고용기간을 정정하려면 퇴직 기록을 확인하십시오.",
+  "people.refusal.rehire_date_not_after_exit": "재입사일은 퇴직일 {date}부터 선택할 수 있습니다. 기존 고용기간을 정정하려면 퇴직 기록을 확인하십시오.",
   "people.lifecycle.action.GROUP_TRANSFER": "전적",
   "people.event.scheduled.GROUP_TRANSFER": "{actor}님이 {name|을를} {toCompany|으로로} 전적하도록 예약했습니다",
   "people.event.applied.GROUP_TRANSFER": "{name|이가} {date}자로 {fromCompany}에서 {toCompany|으로로} 전적되었습니다 (예약: {actor}님)",

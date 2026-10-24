@@ -63,6 +63,7 @@ pub fn address(road: &str) -> AddressInput {
 pub fn corporation(name: &str, crn: &str) -> LegalEntityInput {
     LegalEntityInput {
         biz_kind: Some("CORPORATION".into()),
+        incorporated_on: Some("2020-03-02".into()),
         name: Some(name.into()),
         representation_mode: Some("SINGLE".into()),
         representatives: vec!["홍길동".into()],

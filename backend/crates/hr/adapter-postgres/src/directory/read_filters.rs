@@ -205,7 +205,10 @@ impl EmployeeListFilters {
         match group {
             FacetGroup::Status => {
                 if !self.statuses.is_empty() {
-                    and(builder, "e.employment_status = ANY(");
+                    and(
+                        builder,
+                        "entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) = ANY(",
+                    );
                     builder.push_bind(self.statuses.clone());
                     builder.push(")");
                 }

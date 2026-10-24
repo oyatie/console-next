@@ -1,9 +1,19 @@
 import { beforeAll, expect, test } from "vitest";
 import { loadCatalog } from "@console/i18n";
 import type { LifecycleEvent } from "./api";
-import { employeeWarningText, describeEvent, fmtDay, hrConfirmedTitle, placeText } from "./present";
+import { employeeWarningText, describeEvent, fmtDay, hrConfirmedTitle, nextEventText, placeText } from "./present";
 
 beforeAll(() => loadCatalog("ko"));
+
+test("next-event text calls the first non-employed date retirement", () => {
+  expect(nextEventText({ id: "exit", event_type: "TERMINATE", effective_date: "2026-10-31" } as Parameters<typeof nextEventText>[0])).toContain("2026. 11. 01.");
+});
+
+test("applied exit history states the derived retirement date", () => {
+  const described = describeEvent(event({ event_type: "TERMINATE", effective_date: "2026-10-31", applied_at: "2026-11-01T00:00:05Z" }), "경계직원");
+  expect(described.title).toContain("2026. 11. 01.자로 퇴직했습니다");
+  expect(described.detail).toContain("2026. 11. 01.");
+});
 
 test.each(["APPLIED", "SCHEDULED", "CANCELLED", "APPLY_FAILED"] as const)("%s history keeps a future leave type readable", (state) => {
   const described = describeEvent(event({ event_type: "LEAVE_OF_ABSENCE", leave_type: "FUTURE_LEAVE", state }), "Synthetic employee");

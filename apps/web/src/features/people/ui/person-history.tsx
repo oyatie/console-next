@@ -14,6 +14,7 @@ import { Chip } from "../../../ui/chip";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { TimelineLanes, type LaneItem } from "../../../ui/timeline-lanes/timeline-lanes";
 import { lanes, type VerbState } from "../domain/lifecycle";
+import { retirementDate } from "../domain/employment";
 import { describeEvent, fmtDay, fmtGutter } from "../present";
 import type { LifecycleEvent } from "../api";
 import { rowVerbs } from "./history-verbs";
@@ -59,11 +60,12 @@ export function PersonHistory({ employee, events, verbs, manage, today, done, on
   const byId = (id: string) => all.find((y) => y.id === id);
   const row = (x: LifecycleEvent): LaneItem => {
     const v = describeEvent(x, employee.name, byId);
-    const due = x.state === "SCHEDULED" && x.effective_date <= today;
+    const date = x.event_type === "TERMINATE" || x.event_type === "OFFBOARD" ? retirementDate(x.effective_date) : x.effective_date;
+    const due = x.state === "SCHEDULED" && date <= today;
     return {
       key: x.id,
       id: `ev-${x.id}`,
-      date: fmtGutter(x.effective_date, today),
+      date: fmtGutter(date, today),
       tone: TONE[x.event_type],
       title: v.title,
       state: due ? <Chip tone="warn">{t("person.history.dueToday")}</Chip> : v.state && <Chip tone={v.state.tone}>{v.state.label}</Chip>,

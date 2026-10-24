@@ -1,3 +1,4 @@
+import { retirementDate } from "../domain/employment";
 import { commitLabel } from "../../../ui/composer/actions";
 import { exitUndoVerb } from "../domain/exits";
 import { ReceiptReference } from "../../../ui/composer/receipt-reference";
@@ -87,7 +88,7 @@ export function ExitCases({ employee, act }: { employee: Employee; act?: string 
                     const st = labeled(EXIT_CASE_STATUS, c.status);
                     return (
                       <li key={c.id} className="row">
-                        <Link to="/people/exits/$id" params={{ id: c.id }} search={{}} className="grow">{t("exit.case.summary", { date: fmtDate(c.effective_exit_date) })}</Link>
+                        <Link to="/people/exits/$id" params={{ id: c.id }} search={{}} className="grow">{t("exit.case.summary", { date: fmtDate(retirementDate(c.effective_exit_date)) })}</Link>
                         <Chip tone={st.tone}>{st.label}</Chip>
                         {c.closed_reason && <Muted>{c.closed_reason}</Muted>}
                       </li>
@@ -109,12 +110,12 @@ function OpenCase({ c, name, onAct }: { c: Case; name: string; onAct: (k: Key) =
   const { next, forward, back, sameActor } = useCaseActions(c);
   const st = labeled(EXIT_CASE_STATUS, c.status);
   const pending = c.exit_event_state === "SCHEDULED" || c.exit_event_state === "APPLY_FAILED" ? c.exit_event_state : null;
-  const date = fmtDate(c.effective_exit_date);
+  const date = fmtDate(retirementDate(c.effective_exit_date));
   const step = next && t(`exit.step.${next === "confirm_exit" ? "HR_CONFIRMED" : next === "confirm_exit_hq" ? "HQ_CONFIRMED" : "SETTLEMENT_READY"}`);
   return (
     <div className="form">
       <div className="row">
-        <span className="grow num">{t("exit.case.summary", { date })} · <RelDay date={c.effective_exit_date} /></span>
+        <span className="grow num">{t("exit.case.summary", { date })} · <RelDay date={retirementDate(c.effective_exit_date)} /></span>
         <Chip tone={st.tone}>{st.label}</Chip>
         {pending && <Chip tone={labeled(LIFECYCLE_STATE, pending).tone}>{labeled(LIFECYCLE_STATE, pending).label}</Chip>}
       </div>

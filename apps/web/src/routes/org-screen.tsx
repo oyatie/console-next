@@ -33,7 +33,7 @@ export function OrgScreen() {
       <StructurePage
         fixLink={(code) => <FixLink code={code} />}
         proposal={<Proposal />}
-        panel={(sel) => <StructurePanel sel={sel} />}
+        panel={(sel, snapshot, readOnly) => <StructurePanel sel={sel} snapshot={snapshot} readOnly={readOnly} />}
         sheets={<StructureSheets />}
       />
     </StructureSlots.Provider>

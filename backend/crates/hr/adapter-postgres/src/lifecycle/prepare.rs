@@ -47,8 +47,9 @@ pub struct PreparedLifecycleEvent {
 }
 
 /// Locks the employee and validates `transition` against the head it will
-/// meet: the live head for an immediate event (dated `today` or earlier,
-/// KST); for a scheduled one, the live head with every SCHEDULED event before
+/// meet: the live head for an immediate event (exit last working day before
+/// `today`, other events dated `today` or earlier, KST); for a scheduled one,
+/// the live head with every SCHEDULED event before
 /// it folded in (by date, then recording order; a same-kind same-date event
 /// that no exit case owns is the one it replaces). The employee's later
 /// SCHEDULED events are then re-validated against the head this event leaves,
@@ -66,7 +67,13 @@ pub async fn prepare_lifecycle_event(
     let live = load_employee_for_lifecycle(tx, org_uuid, employee_id).await?;
     fill_promote_title(tx, org_uuid, &mut transition).await?;
     fill_classification(tx, org_uuid, &mut transition).await?;
-    let scheduled = parse_yyyy_mm_dd(&transition.effective_date)? > today;
+    // Exit dates store 마지막 근무일: employment ends only after that day.
+    let effective_date = parse_yyyy_mm_dd(&transition.effective_date)?;
+    let scheduled = if matches!(transition.event_type.as_str(), "TERMINATE" | "OFFBOARD") {
+        console_entity_adapter_postgres::employment_end::retirement_date(effective_date) > today
+    } else {
+        effective_date > today
+    };
     if scheduled {
         if !SCHEDULABLE_LIFECYCLE_EVENT_TYPES.contains(&transition.event_type.as_str()) {
             return Err(HrError::validation(

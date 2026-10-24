@@ -1,3 +1,4 @@
+import { retirementDate } from "../domain/employment";
 import { useId, useState, type ReactNode } from "react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
@@ -79,7 +80,7 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
   const why =
     !computed ? t("exit.settlement.why.notComputed")
     : !same ? t("exit.settlement.why.changed")
-    : c.exit_event_state === "SCHEDULED" ? t("exit.settlement.why.scheduled", { date: fmtDate(c.effective_exit_date) })
+    : c.exit_event_state === "SCHEDULED" ? t("exit.settlement.why.scheduled", { date: fmtDate(retirementDate(c.effective_exit_date)) })
     : c.exit_event_state === "APPLY_FAILED" ? t("exit.settlement.why.failed")
     : null;
   const empty = KEYS.filter((k) => !f[k]);

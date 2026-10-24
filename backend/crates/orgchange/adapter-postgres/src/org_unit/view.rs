@@ -37,7 +37,7 @@ pub(crate) async fn company_root(
     let created_at: OffsetDateTime = row.try_get("created_at")?;
     let updated_at: OffsetDateTime = row.try_get("updated_at")?;
     let headcount: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM employees WHERE employment_status <> 'EXITED'")
+        sqlx::query_scalar("SELECT count(*) FROM employees WHERE entity_employed_on(entity_today(), hire_on, exit_on, employment_status)")
             .fetch_one(tx.as_mut())
             .await?;
     Ok(Some(OrgUnitHeadView {
@@ -57,7 +57,7 @@ pub(crate) async fn unit_headcounts(
 ) -> Result<BTreeMap<Uuid, i64>, PgOrgChangeError> {
     let rows: Vec<(Uuid, i64)> = sqlx::query_as(
         "SELECT org_unit_id, count(*) FROM employees \
-         WHERE employment_status <> 'EXITED' AND org_unit_id IS NOT NULL \
+         WHERE entity_employed_on(entity_today(), hire_on, exit_on, employment_status) AND org_unit_id IS NOT NULL \
          GROUP BY org_unit_id",
     )
     .fetch_all(tx.as_mut())

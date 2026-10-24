@@ -65,6 +65,7 @@ mod scope;
 mod site_unit;
 mod structure;
 mod structure_labels;
+mod structure_members;
 mod workplace;
 mod workplace_branch;
 mod workplace_kind;
@@ -166,11 +167,9 @@ pub(crate) async fn read_phase(tx: &mut Tx<'_>, lock: bool) -> Result<TenantPhas
 
 /// Today as a KST calendar date, from the transaction's clock.
 pub(crate) async fn today_kst(tx: &mut Tx<'_>) -> Result<time::Date, PgEntityError> {
-    Ok(
-        sqlx::query_scalar("SELECT (now() AT TIME ZONE 'Asia/Seoul')::date")
-            .fetch_one(tx.as_mut())
-            .await?,
-    )
+    Ok(sqlx::query_scalar("SELECT entity_today()")
+        .fetch_one(tx.as_mut())
+        .await?)
 }
 
 /// One audit event for a write admitted as `admitted`.

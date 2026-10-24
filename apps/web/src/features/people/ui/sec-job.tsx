@@ -49,8 +49,7 @@ export function SecJob({ c, onFix, onAct, onTab, onContract }: { c: Card; onFix:
       {c.manage && !d.employment && !d.pending_employment && <MissingEmployment number={e.employee_number} />}
       <FieldRow label={t("empCard.f.status")}  mark={<FieldMark kind="lock" field={t("empCard.f.status")} />}>
         {status.label}
-        {/* Since when this status holds: the exit date once the person has left, else the hire date. */}
-        {(e.status === "EXITED" ? e.exit_date : e.hire_date) && <Muted> · {t("empCard.status.since", { date: fmtDate((e.status === "EXITED" ? e.exit_date : e.hire_date)!) })}</Muted>}
+        {e.status_since && <Muted> · {t("empCard.status.since", { date: fmtDate(e.status_since) })}</Muted>}
       </FieldRow>
       <FieldRow label={t("empCard.f.entity")} mark={verb(t("empCard.f.entity"), t("empCard.verb.group"), "GROUP_TRANSFER")}>{c.place.entity}</FieldRow>
       <FieldRow label={t("empCard.f.workplace")}  mark={verb(t("empCard.f.workplace"), t("empCard.verb.site"), "TRANSFER")}>

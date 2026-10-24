@@ -21812,6 +21812,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/org-structure/units/{orgUnitId}/members:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [entity]
+      operationId: getStructureMembers
+      summary: Direct members from the same authorized snapshot as the chart.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: orgUnitId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: as_of
+        in: query
+        schema: {type: string, format: date}
+      - name: known_at
+        in: query
+        schema: {type: string}
+      responses:
+        '200':
+          description: Direct employed members, ordered by name; count is uncapped.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgUnitMembers'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not permitted.
+        '404':
+          description: Unit is not visible in the authorized snapshot.
+        '422':
+          description: Invalid temporal coordinates.
   /api/v1/org-units:
     get:
       tags:
@@ -38720,6 +38754,10 @@ components:
           type: string
           description: The employment profile's type (REGULAR, CONTRACT, PART_TIME, INTERN); absent for a roster-import row
             with no profile.
+        status_since:
+          type: string
+          format: date
+          description: Effective date on which the current status began; exits use the first non-employed day.
         expected_return_date:
           type: string
           format: date
@@ -60769,6 +60807,10 @@ components:
       - headcount
       - regular_workers
       properties:
+        placement_opens_on:
+          type: [string, 'null']
+          format: date
+          description: First date both the workplace and its legal entity exist; earliest permitted placement date.
         id:
           type: string
           format: uuid

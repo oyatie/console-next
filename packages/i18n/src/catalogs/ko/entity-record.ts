@@ -106,7 +106,7 @@ export const koEntityRecord = {
   "entityRecord.vat.priorityBasis": "고용보험법 시행령 별표 1",
   "entityRecord.phase.setup": "설정 단계",
   "entityRecord.phase.operating": "운영 중",
-  "entityRecord.state.title": "지금 상태",
+  "entityRecord.state.title": "{date} 기준 상태",
   "entityRecord.state.people": "인원",
   "entityRecord.state.workplaces": "사업장",
   "entityRecord.state.depts": "부서",

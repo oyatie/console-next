@@ -122,7 +122,7 @@ pub async fn hire_in_tx(
     workplace: Uuid,
     from: Date,
 ) -> Result<Placed, KernelError> {
-    let entity = open_workplace_entity(conn, w.org_id, workplace).await?;
+    let entity = open_workplace_entity(conn, w.org_id, workplace, Some(from)).await?;
     let placed: bool = sqlx::query_scalar(
         "SELECT EXISTS (SELECT 1 FROM employment_assignments \
          WHERE org_id = $1 AND employee_id = $2 AND superseded_at IS NULL)",

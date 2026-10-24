@@ -1,3 +1,4 @@
+import { retirementDate } from "../domain/employment";
 import { useId, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
@@ -27,8 +28,7 @@ const EMPTY: Draft = { note: "", acks: {}, reason: null, notice: EMPTY_NOTICE };
 const drafts = new Map<string, Draft>();
 
 /**
- * HR confirmation records the exit itself (applied now for a date of today or earlier, scheduled for a later
- * one) and carries the four statements the server requires, each ticked on its own. HQ confirmation is a
+ * HR confirmation records the exit itself (applied on the day after the last working day) and carries the four statements the server requires, each ticked on its own. HQ confirmation is a
  * second person's confirmation of the case facts. The memo is kept in the audit log only: the case does not
  * return it, so the screen says so instead of implying the next person reads it.
  */
@@ -58,9 +58,8 @@ export function ConfirmForm({ c, hq, aside, sheet, stale, follow, onDone }: {
   const [tried, setTried] = useState(false);
   const formId = useId();
   const name = c.employee_name;
-  const date = fmtDate(c.effective_exit_date);
-  // A date after today schedules the exit; today or earlier applies it now (undone only by rejecting the case).
-  const scheduled = c.effective_exit_date > todayKst();
+  const date = fmtDate(retirementDate(c.effective_exit_date));
+  const scheduled = retirementDate(c.effective_exit_date) > todayKst();
   const run = useExitCommand({
     caseId: c.id,
     check: hq ? "confirm_exit_hq" : "confirm_exit",
