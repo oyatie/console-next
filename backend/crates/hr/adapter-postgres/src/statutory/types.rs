@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct FilingQuery {
     pub workplace_id: Option<Uuid>,
     pub legal_entity_id: Option<Uuid>,
@@ -20,6 +20,8 @@ pub struct FilingQuery {
     pub inbox_as_of: Option<OffsetDateTime>,
     #[serde(skip)]
     pub inbox_after: Option<(OffsetDateTime, String)>,
+    #[serde(skip)]
+    pub inbox_scan_limit: Option<usize>,
 }
 #[derive(Debug, Serialize)]
 pub struct LossOption {

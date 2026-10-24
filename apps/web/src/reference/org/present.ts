@@ -130,7 +130,7 @@ const LOOKUP: Partial<Record<Summary["target"]["kind"], Lookup>> = { ORG_UNIT: "
  * target ref's name, else the first op's unit, region or branch name, else the change code. `name` returns
  * undefined for an unknown id.
  */
-export function changeSubject(c: Summary & { proposal?: Op[] }, name: (kind: Lookup, id: string) => string | undefined): string {
+function changeSubject(c: Summary & { proposal?: Op[] }, name: (kind: Lookup, id: string) => string | undefined): string {
   const by = LOOKUP[c.target.kind];
   const op = c.proposal?.map(ID_OF).find(Boolean);
   return (

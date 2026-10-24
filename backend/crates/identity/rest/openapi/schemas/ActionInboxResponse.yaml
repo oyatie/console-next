@@ -4,6 +4,13 @@ required:
 - total
 - total_is_exact
 - next_cursor
+- unavailable
+- counts
+- upcoming
+- has_work
+- available_filters
+- quick_starts
+- as_of
 properties:
   items:
     type: array
@@ -15,9 +22,55 @@ properties:
     description: Live visible item count across sources admitted by as_of; inspect total_is_exact before treating it as authoritative.
   total_is_exact:
     type: boolean
-    description: False only when a bounded authorization-filtered count reached its scan budget.
+    description: False when a source reports a bounded visible prefix or a filtered traversal has more pages; total is then a lower bound.
   next_cursor:
     type:
     - string
     - 'null'
     description: Opaque cursor for the next immutable-keyset page, or null when exhausted.
+  setup:
+    $ref: '#/components/schemas/SetupChecklist'
+    description: The authorized setup checklist, grouped once inside the queue on its first page.
+  unavailable:
+    type: array
+    description: Failed sources; healthy work remains usable, totals are lower bounds. References correlate with server logs.
+    items:
+      type: object
+      required: [source, support_reference]
+      properties:
+        source:
+          type: string
+        support_reference:
+          type: string
+  counts:
+    type: object
+    description: Counts from the same server traversal. Inexact values are lower bounds.
+    additionalProperties:
+      type: object
+      required: [total, total_is_exact]
+      properties:
+        total:
+          type: integer
+        total_is_exact:
+          type: boolean
+  upcoming:
+    type: array
+    description: Up to three scheduled changes from the admitted source pages, in deadline order.
+    items:
+      $ref: '#/components/schemas/ActionInboxItem'
+  has_work:
+    type: boolean
+    description: Whether this account holds any capability the console offers.
+  quick_starts:
+    type: array
+    items:
+      type: string
+      enum: [register, import, org, invite]
+  as_of:
+    $ref: '#/components/schemas/Timestamp'
+  available_filters:
+    type: array
+    description: Only filters whose sources the caller can use; no dead controls for absent work grants.
+    items:
+      type: string
+      enum: [turn, waiting, scheduled, deadlines, failures]

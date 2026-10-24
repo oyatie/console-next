@@ -29,8 +29,9 @@ pub(crate) async fn page(
         .items
         .into_iter()
         .map(|(id, name, created_at)| ActionInboxSourceItem {
+            context: None,
             id: format!("{NAMESPACE}:{id}"),
-            kind: "hr_request".to_owned(),
+            kind: "register_review".to_owned(),
             ref_code: String::new(),
             title: name,
             site: None,
@@ -74,6 +75,8 @@ mod tests {
             &pool,
             &principal,
             ActionInboxSourceQuery {
+                filter: Default::default(),
+                require_exact_total: false,
                 now: OffsetDateTime::now_utc(),
                 as_of: OffsetDateTime::now_utc(),
                 after: None,

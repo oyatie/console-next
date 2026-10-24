@@ -1,1123 +1,1118 @@
 {
  "records": [
- {
-  "record": "Entity.business_registration",
-  "op": "create",
-  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Entity.business_registration",
-  "op": "update",
-  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Entity.document",
-  "op": "create",
-  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Entity.identifier_correction",
-  "op": "create",
-  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Entity.setup_batch",
-  "op": "create",
-  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Entity.setup_batch",
-  "op": "end",
-  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Entity.workplace_close",
-  "op": "create",
-  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Entity.workplace_close",
-  "op": "end",
-  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Entity.workplace_kind",
-  "op": "create",
-  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Entity.workplace_kind",
-  "op": "update",
-  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Entity.workplace_kind",
-  "op": "end",
-  "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Org.legacy_branch",
-  "op": "update",
-  "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Org.org_change",
-  "op": "create",
-  "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Org.org_change",
-  "op": "update",
-  "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Org.org_change",
-  "op": "end",
-  "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Org.setup_batch",
-  "op": "create",
-  "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "Org.setup_batch",
-  "op": "end",
-  "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.absence_alert",
-  "op": "end",
-  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.appointment_notice",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.change_request",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.change_request",
-  "op": "end",
-  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.change_set",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.change_set",
-  "op": "update",
-  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.change_set",
-  "op": "end",
-  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
-  "why": "A change-set draft cannot be discarded from the UI"
- },
- {
-  "record": "HR.contract",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.contract",
-  "op": "update",
-  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.correction_ledger",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.data_import_run",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.data_import_run",
-  "op": "update",
-  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.employee_number",
-  "op": "end",
-  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
-  "why": "A single 사번 change has no undo; rule removal is a raw DELETE"
- },
- {
-  "record": "HR.employee_rrn",
-  "op": "create",
-  "lane": "unit: crud-g22 (orchestra; with crud-p0-rrn-correct for the governed path)",
-  "why": "No single-person RRN entry at registration or on the card"
- },
- {
-  "record": "HR.employment_assignment",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.exit_case",
-  "op": "end",
-  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.exit_settlement",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.exit_settlement",
-  "op": "update",
-  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.exit_settlement",
-  "op": "end",
-  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.identity_resolution",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.import_memory",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.import_memory",
-  "op": "update",
-  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.import_reconcile",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.import_reconcile",
-  "op": "update",
-  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.insurance_filing",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.insurance_filing",
-  "op": "update",
-  "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.job_title",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.job_title",
-  "op": "update",
-  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.job_title",
-  "op": "end",
-  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.lifecycle_bulk_job",
-  "op": "create",
-  "lane": "unit: crud-g41 (orchestra; the async bulk job from the web)",
-  "why": "Bulk 발령 create never records a job row from the web"
- },
- {
-  "record": "HR.lifecycle_bulk_job",
-  "op": "end",
-  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
-  "why": "Past bulk batches cannot be found to rescind"
- },
- {
-  "record": "HR.lifecycle_event",
-  "op": "update",
-  "lane": "unit: crud-appointment-correction (orchestra; governed 발령 correction)",
-  "why": "Correcting a 발령's date or pay is impossible (hard-coded deny)"
- },
- {
-  "record": "HR.lifecycle_event",
-  "op": "end",
-  "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.person",
-  "op": "create",
-  "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
-  "why": "backend operation served; no action on the record's own page found within two interactions"
- },
- {
-  "record": "HR.person_record_import_batch",
-  "op": "create",
-  "lane": "unit: crud-g42 (orchestra; section import)",
-  "why": "인사카드 section import has no UI"
- }
-],
+  {
+   "record": "Entity.business_registration",
+   "op": "create",
+   "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Entity.business_registration",
+   "op": "update",
+   "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Entity.document",
+   "op": "create",
+   "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Entity.identifier_correction",
+   "op": "create",
+   "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Entity.setup_batch",
+   "op": "create",
+   "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Entity.setup_batch",
+   "op": "end",
+   "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Entity.workplace_close",
+   "op": "create",
+   "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Entity.workplace_close",
+   "op": "end",
+   "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Entity.workplace_kind",
+   "op": "create",
+   "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Entity.workplace_kind",
+   "op": "update",
+   "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Entity.workplace_kind",
+   "op": "end",
+   "lane": "unit: ra-reach-entity (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Org.legacy_branch",
+   "op": "update",
+   "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Org.org_change",
+   "op": "create",
+   "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Org.org_change",
+   "op": "update",
+   "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Org.org_change",
+   "op": "end",
+   "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Org.setup_batch",
+   "op": "create",
+   "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "Org.setup_batch",
+   "op": "end",
+   "lane": "unit: ra-reach-org (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.absence_alert",
+   "op": "end",
+   "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.appointment_notice",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.change_request",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.change_request",
+   "op": "end",
+   "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.change_set",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.change_set",
+   "op": "update",
+   "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.change_set",
+   "op": "end",
+   "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+   "why": "A change-set draft cannot be discarded from the UI"
+  },
+  {
+   "record": "HR.contract",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.contract",
+   "op": "update",
+   "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.correction_ledger",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.data_import_run",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.data_import_run",
+   "op": "update",
+   "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.employee_number",
+   "op": "end",
+   "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+   "why": "A single 사번 change has no undo; rule removal is a raw DELETE"
+  },
+  {
+   "record": "HR.employee_rrn",
+   "op": "create",
+   "lane": "unit: crud-g22 (orchestra; with crud-p0-rrn-correct for the governed path)",
+   "why": "No single-person RRN entry at registration or on the card"
+  },
+  {
+   "record": "HR.employment_assignment",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.exit_case",
+   "op": "end",
+   "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.exit_settlement",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.exit_settlement",
+   "op": "update",
+   "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.exit_settlement",
+   "op": "end",
+   "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.identity_resolution",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.import_memory",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.import_memory",
+   "op": "update",
+   "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.import_reconcile",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.import_reconcile",
+   "op": "update",
+   "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.insurance_filing",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.insurance_filing",
+   "op": "update",
+   "lane": "unit: ra-reach-hr-exit-requests (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.job_title",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.job_title",
+   "op": "update",
+   "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.job_title",
+   "op": "end",
+   "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.lifecycle_bulk_job",
+   "op": "create",
+   "lane": "unit: crud-g41 (orchestra; the async bulk job from the web)",
+   "why": "Bulk 발령 create never records a job row from the web"
+  },
+  {
+   "record": "HR.lifecycle_bulk_job",
+   "op": "end",
+   "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+   "why": "Past bulk batches cannot be found to rescind"
+  },
+  {
+   "record": "HR.lifecycle_event",
+   "op": "update",
+   "lane": "unit: crud-appointment-correction (orchestra; governed 발령 correction)",
+   "why": "Correcting a 발령's date or pay is impossible (hard-coded deny)"
+  },
+  {
+   "record": "HR.lifecycle_event",
+   "op": "end",
+   "lane": "unit: ra-reach-hr-employment (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.person",
+   "op": "create",
+   "lane": "unit: ra-reach-hr-import (orchestra; reach from the record page)",
+   "why": "backend operation served; no action on the record's own page found within two interactions"
+  },
+  {
+   "record": "HR.person_record_import_batch",
+   "op": "create",
+   "lane": "unit: crud-g42 (orchestra; section import)",
+   "why": "인사카드 section import has no UI"
+  }
+ ],
  "operations": {
- "DELETE /api/platform/groups/{id}/accounts/{user_id}/roles/{group_role}": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "DELETE /api/platform/groups/{id}/organizations/{org_id}": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "DELETE /api/v1/change-sets/{id}": {
-  "lane": "MAT-PARITY",
-  "reason": "Org change-set management follows MVP bulk-command delivery; units/maturity/plan.md §3.",
-  "when": "post-mvp"
- },
- "DELETE /api/v1/me/notification-policies/{id}": {
-  "lane": "MAT-PARITY",
-  "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "DELETE /api/v1/me/todos/{todoId}": {
-  "lane": "MAT-PARITY",
-  "reason": "할 일 board is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "DELETE /api/v1/org-structure/units/{orgUnitId}": {
-  "lane": "O4b",
-  "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "DELETE /api/v1/org-units/{id}": {
-  "lane": "O4b",
-  "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /.well-known/apple-app-site-association": {
-  "lane": "MAT-PARITY",
-  "reason": "internal: native-app association document fetched by the OS, not a screen",
-  "when": "excluded"
- },
- "GET /.well-known/assetlinks.json": {
-  "lane": "MAT-PARITY",
-  "reason": "internal: native-app association document fetched by the OS, not a screen",
-  "when": "excluded"
- },
- "GET /api/audit": {
-  "lane": "K4",
-  "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/platform/groups": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/platform/groups/{id}/accounts": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/access/ops-usage": {
-  "lane": "K0",
-  "reason": "K0 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/access/roles/{roleId}/versions": {
-  "lane": "MAT-ACC",
-  "reason": "MAT-ACC owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/approval-inbox/bulk-tasks": {
-  "lane": "H1",
-  "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/attendance/closes": {
-  "lane": "A6",
-  "reason": "A6 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/attendance/exceptions": {
-  "lane": "A5",
-  "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/attendance/exceptions/{exception_id}": {
-  "lane": "A5",
-  "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/attendance/me/exceptions": {
-  "lane": "A5",
-  "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/attendance/me/schedule": {
-  "lane": "A1",
-  "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/attendance/me/week52": {
-  "lane": "MAT-PARITY",
-  "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-  "when": "post-mvp"
- },
- "GET /api/v1/attendance/substitution-candidates": {
-  "lane": "MAT-PARITY",
-  "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-  "when": "post-mvp"
- },
- "GET /api/v1/attendance/substitutions": {
-  "lane": "MAT-PARITY",
-  "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-  "when": "post-mvp"
- },
- "GET /api/v1/attendance/week52": {
-  "lane": "MAT-PARITY",
-  "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-  "when": "post-mvp"
- },
- "GET /api/v1/audit-streams/ceo-covert/access-events": {
-  "lane": "K4",
-  "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/audit-streams/ceo-covert/events": {
-  "lane": "K4",
-  "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/audit/attestation": {
-  "lane": "K4",
-  "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/branches/{id}": {
-  "lane": "O3",
-  "reason": "O3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/change-sets": {
-  "lane": "MAT-PARITY",
-  "reason": "Org change-set management follows MVP bulk-command delivery; units/maturity/plan.md §3.",
-  "when": "post-mvp"
- },
- "GET /api/v1/change-sets/{id}": {
-  "lane": "MAT-PARITY",
-  "reason": "Org change-set management follows MVP bulk-command delivery; units/maturity/plan.md §3.",
-  "when": "post-mvp"
- },
- "GET /api/v1/console/dispatch/queue": {
-  "lane": "MAT-PARITY",
-  "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-  "when": "excluded"
- },
- "GET /api/v1/console/rollout": {
-  "lane": "MAT-PARITY",
-  "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-  "when": "excluded"
- },
- "GET /api/v1/employee-records/{section}": {
-  "lane": "P1b",
-  "reason": "P1b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/employees/corrections/bulk/{id}": {
-  "lane": "P2",
-  "reason": "P2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/employees/lifecycle-events/bulk/jobs/{job_id}": {
-  "lane": "P5b",
-  "reason": "P5b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/evidence/objects": {
-  "lane": "S1",
-  "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/evidence/objects/{id}": {
-  "lane": "S1",
-  "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/evidence/{evidenceId}/status": {
-  "lane": "MAT-PARITY",
-  "reason": "Workorder evidence is outside Org + HR MVP; reviewed workorder promotion required.",
-  "when": "excluded"
- },
- "GET /api/v1/group-admin/groups": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/hr/absence-exit-dashboard": {
-  "lane": "H2",
-  "reason": "H2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/hr/attendance-import/summary": {
-  "lane": "A2",
-  "reason": "A2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/hr/attendance-records": {
-  "lane": "A1",
-  "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/hr/attendance-records/me": {
-  "lane": "A1",
-  "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/hr/attendance-summary": {
-  "lane": "A1",
-  "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/hr/leave-balances": {
-  "lane": "MAT-PARITY",
-  "reason": "Leave engine is outside the MVP attendance pilot; reviewed leave promotion required.",
-  "when": "post-mvp"
- },
- "GET /api/v1/hr/minimum-wage": {
-  "lane": "W1-A",
-  "reason": "W1-A owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/hr/org-chart": {
-  "lane": "O4b",
-  "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/hr/readiness-summary": {
-  "lane": "K5",
-  "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/integrity/findings": {
-  "lane": "K4",
-  "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/legal-entities/{entityId}/workplaces": {
-  "lane": "E3a",
-  "reason": "E3a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/lifecycles/{objectType}/{objectId}": {
-  "lane": "P5a",
-  "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/me/action-inbox": {
-  "lane": "H1",
-  "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/me/inbox-docs": {
-  "lane": "H1",
-  "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/me/inbox-docs/{id}": {
-  "lane": "H1",
-  "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/me/notification-policies": {
-  "lane": "MAT-PARITY",
-  "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "GET /api/v1/me/notifications": {
-  "lane": "MAT-PARITY",
-  "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "GET /api/v1/me/notifications/by-object": {
-  "lane": "MAT-PARITY",
-  "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "GET /api/v1/me/notifications/summary": {
-  "lane": "MAT-PARITY",
-  "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "GET /api/v1/me/notifications/unread-count": {
-  "lane": "MAT-PARITY",
-  "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "GET /api/v1/me/todos": {
-  "lane": "MAT-PARITY",
-  "reason": "할 일 board is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "GET /api/v1/me/workbench": {
-  "lane": "H2",
-  "reason": "H2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/me/workspace": {
-  "lane": "MAT-PARITY",
-  "reason": "Workspace crate is excluded from the release build; reviewed promotion required (built-is-not-ready).",
-  "when": "excluded"
- },
- "GET /api/v1/ops/summary": {
-  "lane": "MAT-PARITY",
-  "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-  "when": "excluded"
- },
- "GET /api/v1/org-entities": {
-  "lane": "O4b",
-  "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/policy/assignments": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/policy/audit-events": {
-  "lane": "K4",
-  "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/policy/catalog": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/policy/decisions": {
-  "lane": "MAT-ACC",
-  "reason": "MAT-ACC owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/policy/drafts": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/policy/drafts/{draft_id}": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/policy/features": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/policy/role-templates": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/policy/roles": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/reason-codes/stats": {
-  "lane": "K5",
-  "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/ref/address-detail": {
-  "lane": "MAT-CTRL",
-  "reason": "MAT-CTRL owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/requests": {
-  "lane": "H1",
-  "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/settings/{key}/history": {
-  "lane": "K5",
-  "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/status/events": {
-  "lane": "MAT-PARITY",
-  "reason": "internal: unauthenticated endpoint (security: []): public feed, not a signed-in screen; confirm it needs no in-app view",
-  "when": "excluded"
- },
- "GET /api/v1/status/evidence": {
-  "lane": "MAT-PARITY",
-  "reason": "internal: unauthenticated endpoint (security: []): public feed, not a signed-in screen; confirm it needs no in-app view",
-  "when": "excluded"
- },
- "GET /api/v1/statutory/insurance-loss-codes": {
-  "lane": "S1",
-  "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/workflow-tasks": {
-  "lane": "H1",
-  "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /api/v1/workplaces/{workplaceId}": {
-  "lane": "E3a",
-  "reason": "E3a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "GET /healthz": {
-  "lane": "MAT-PARITY",
-  "reason": "internal: process health probe for the orchestrator",
-  "when": "excluded"
- },
- "GET /readyz": {
-  "lane": "MAT-PARITY",
-  "reason": "internal: process health probe for the orchestrator",
-  "when": "excluded"
- },
- "PATCH /api/platform/groups/{id}": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "PATCH /api/v1/org-structure/units/{orgUnitId}": {
-  "lane": "O4b",
-  "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "PATCH /api/v1/org-units/{id}": {
-  "lane": "O4b",
-  "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "PATCH /api/v1/policy/roles/{id}": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "PATCH /api/v1/policy/roles/{id}/status": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "PATCH /api/v1/reason-codes/{domain}/{code}": {
-  "lane": "K5",
-  "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "PATCH /api/v1/users/me": {
-  "lane": "K3",
-  "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/platform/groups": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/platform/groups/{id}/accounts": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/attendance/closes": {
-  "lane": "A6",
-  "reason": "A6 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/attendance/closes/preflight": {
-  "lane": "A6",
-  "reason": "A6 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/attendance/closes/{close_id}/amendments": {
-  "lane": "A6",
-  "reason": "A6 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/attendance/exceptions": {
-  "lane": "A5",
-  "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/attendance/exceptions/{exception_id}/resolve": {
-  "lane": "A5",
-  "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/attendance/substitutions": {
-  "lane": "MAT-PARITY",
-  "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-  "when": "post-mvp"
- },
- "POST /api/v1/attendance/substitutions/{substitution_id}/cancel": {
-  "lane": "MAT-PARITY",
-  "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-  "when": "post-mvp"
- },
- "POST /api/v1/attendance/week52/acks": {
-  "lane": "MAT-PARITY",
-  "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-  "when": "post-mvp"
- },
- "POST /api/v1/auth/device-login/approve": {
-  "lane": "K3",
-  "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/auth/device-login/approve-session": {
-  "lane": "K3",
-  "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/auth/device-login/poll": {
-  "lane": "K3",
-  "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/auth/device-login/start": {
-  "lane": "K3",
-  "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/auth/passkey/enroll-handoff": {
-  "lane": "K3",
-  "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/auth/signup": {
-  "lane": "MAT-PARITY",
-  "reason": "Self-signup is outside MVP bootstrap and invitation flows; units/maturity/plan.md §3.",
-  "when": "post-mvp"
- },
- "POST /api/v1/console/kill-switch": {
-  "lane": "MAT-PARITY",
-  "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-  "when": "excluded"
- },
- "POST /api/v1/console/telemetry/route": {
-  "lane": "MAT-PARITY",
-  "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-  "when": "excluded"
- },
- "POST /api/v1/employee-records/{section}/import/apply": {
-  "lane": "P1b",
-  "reason": "P1b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/employee-records/{section}/import/preview": {
-  "lane": "P1b",
-  "reason": "P1b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/employees/import": {
-  "lane": "P3a",
-  "reason": "P3a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/employees/register-facts/bulk": {
-  "lane": "S2",
-  "reason": "S2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/evidence/objects/{id}/hold": {
-  "lane": "S1",
-  "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/evidence/objects/{id}/verify": {
-  "lane": "S1",
-  "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/evidence/presign": {
-  "lane": "MAT-PARITY",
-  "reason": "Workorder evidence is outside Org + HR MVP; reviewed workorder promotion required.",
-  "when": "excluded"
- },
- "POST /api/v1/evidence/staging-presign": {
-  "lane": "MAT-PARITY",
-  "reason": "Workorder evidence is outside Org + HR MVP; reviewed workorder promotion required.",
-  "when": "excluded"
- },
- "POST /api/v1/evidence/{evidenceId}/confirm": {
-  "lane": "MAT-PARITY",
-  "reason": "Workorder evidence is outside Org + HR MVP; reviewed workorder promotion required.",
-  "when": "excluded"
- },
- "POST /api/v1/governance/approvals": {
-  "lane": "H1",
-  "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/governance/approvals/decide": {
-  "lane": "H1",
-  "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/governance/lifecycle/preflight": {
-  "lane": "P5a",
-  "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/governance/lifecycle/transitions": {
-  "lane": "P5a",
-  "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/governance/overrides": {
-  "lane": "F8",
-  "reason": "F8 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/group-admin/tenant-context": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/group-admin/tenant-context/exit": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/hr/attendance-import/preview": {
-  "lane": "A2",
-  "reason": "A2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/hr/attendance-import/{run_id}/apply": {
-  "lane": "A2",
-  "reason": "A2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/hr/attendance-import/{run_id}/dry-run": {
-  "lane": "A2",
-  "reason": "A2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/hr/attendance-records/me": {
-  "lane": "A1",
-  "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/integrity/findings/{id}/triage": {
-  "lane": "K4",
-  "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/lifecycles/{objectType}/{objectId}/hold": {
-  "lane": "P5a",
-  "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/lifecycles/{objectType}/{objectId}/transition": {
-  "lane": "P5a",
-  "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/me/inbox-docs/{id}/confirm-receipt": {
-  "lane": "H1",
-  "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/me/notifications/read-all": {
-  "lane": "MAT-PARITY",
-  "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "POST /api/v1/me/notifications/{id}/read": {
-  "lane": "MAT-PARITY",
-  "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "POST /api/v1/me/notifications/{id}/unread": {
-  "lane": "MAT-PARITY",
-  "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "POST /api/v1/me/todos": {
-  "lane": "MAT-PARITY",
-  "reason": "할 일 board is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "POST /api/v1/me/todos/{todoId}/done": {
-  "lane": "MAT-PARITY",
-  "reason": "할 일 board is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "POST /api/v1/org-structure/units": {
-  "lane": "O4b",
-  "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/org-units": {
-  "lane": "O4b",
-  "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/policy/authorize": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/policy/authorize/bulk": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/policy/drafts": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/policy/drafts/{draft_id}/review": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/policy/drafts/{draft_id}/submit": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/policy/drafts/{draft_id}/validate": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/policy/roles": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/policy/roles/{id}/status-preview": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/policy/simulate": {
-  "lane": "MAT-ACC",
-  "reason": "MAT-ACC owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/reason-codes": {
-  "lane": "K5",
-  "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/settings/{key}": {
-  "lane": "K5",
-  "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/workflow-tasks/{task_id}/claim": {
-  "lane": "H1",
-  "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/workflow-tasks/{task_id}/decide": {
-  "lane": "H1",
-  "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "POST /api/v1/workflow-tasks/{task_id}/finalize": {
-  "lane": "H1",
-  "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "PUT /api/platform/groups/{id}/organizations/{org_id}": {
-  "lane": "T1",
-  "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "PUT /api/v1/console/rollout/opt-in": {
-  "lane": "MAT-PARITY",
-  "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-  "when": "excluded"
- },
- "PUT /api/v1/console/rollout/org-flag": {
-  "lane": "MAT-PARITY",
-  "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-  "when": "excluded"
- },
- "PUT /api/v1/me/notification-policies": {
-  "lane": "MAT-PARITY",
-  "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
-  "when": "ideal"
- },
- "PUT /api/v1/me/workspace": {
-  "lane": "MAT-PARITY",
-  "reason": "Workspace crate is excluded from the release build; reviewed promotion required (built-is-not-ready).",
-  "when": "excluded"
- },
- "PUT /api/v1/policy/drafts/{draft_id}": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
- },
- "PUT /api/v1/policy/users/{id}/assignments": {
-  "lane": "K2",
-  "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-  "when": "mvp"
+  "DELETE /api/platform/groups/{id}/accounts/{user_id}/roles/{group_role}": {
+   "lane": "T1",
+   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "DELETE /api/platform/groups/{id}/organizations/{org_id}": {
+   "lane": "T1",
+   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "DELETE /api/v1/change-sets/{id}": {
+   "lane": "MAT-PARITY",
+   "reason": "Org change-set management follows MVP bulk-command delivery; units/maturity/plan.md §3.",
+   "when": "post-mvp"
+  },
+  "DELETE /api/v1/me/notification-policies/{id}": {
+   "lane": "MAT-PARITY",
+   "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "DELETE /api/v1/me/todos/{todoId}": {
+   "lane": "MAT-PARITY",
+   "reason": "할 일 board is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "DELETE /api/v1/org-structure/units/{orgUnitId}": {
+   "lane": "O4b",
+   "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "DELETE /api/v1/org-units/{id}": {
+   "lane": "O4b",
+   "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /.well-known/apple-app-site-association": {
+   "lane": "MAT-PARITY",
+   "reason": "internal: native-app association document fetched by the OS, not a screen",
+   "when": "excluded"
+  },
+  "GET /.well-known/assetlinks.json": {
+   "lane": "MAT-PARITY",
+   "reason": "internal: native-app association document fetched by the OS, not a screen",
+   "when": "excluded"
+  },
+  "GET /api/audit": {
+   "lane": "K4",
+   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/platform/groups": {
+   "lane": "T1",
+   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/platform/groups/{id}/accounts": {
+   "lane": "T1",
+   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/access/ops-usage": {
+   "lane": "K0",
+   "reason": "K0 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/access/roles/{roleId}/versions": {
+   "lane": "MAT-ACC",
+   "reason": "MAT-ACC owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/approval-inbox/bulk-tasks": {
+   "lane": "H1",
+   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/attendance/closes": {
+   "lane": "A6",
+   "reason": "A6 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/attendance/exceptions": {
+   "lane": "A5",
+   "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/attendance/exceptions/{exception_id}": {
+   "lane": "A5",
+   "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/attendance/me/exceptions": {
+   "lane": "A5",
+   "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/attendance/me/schedule": {
+   "lane": "A1",
+   "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/attendance/me/week52": {
+   "lane": "MAT-PARITY",
+   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
+   "when": "post-mvp"
+  },
+  "GET /api/v1/attendance/substitution-candidates": {
+   "lane": "MAT-PARITY",
+   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
+   "when": "post-mvp"
+  },
+  "GET /api/v1/attendance/substitutions": {
+   "lane": "MAT-PARITY",
+   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
+   "when": "post-mvp"
+  },
+  "GET /api/v1/attendance/week52": {
+   "lane": "MAT-PARITY",
+   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
+   "when": "post-mvp"
+  },
+  "GET /api/v1/audit-streams/ceo-covert/access-events": {
+   "lane": "K4",
+   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/audit-streams/ceo-covert/events": {
+   "lane": "K4",
+   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/audit/attestation": {
+   "lane": "K4",
+   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/branches/{id}": {
+   "lane": "O3",
+   "reason": "O3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/change-sets": {
+   "lane": "MAT-PARITY",
+   "reason": "Org change-set management follows MVP bulk-command delivery; units/maturity/plan.md §3.",
+   "when": "post-mvp"
+  },
+  "GET /api/v1/change-sets/{id}": {
+   "lane": "MAT-PARITY",
+   "reason": "Org change-set management follows MVP bulk-command delivery; units/maturity/plan.md §3.",
+   "when": "post-mvp"
+  },
+  "GET /api/v1/console/dispatch/queue": {
+   "lane": "MAT-PARITY",
+   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
+   "when": "excluded"
+  },
+  "GET /api/v1/console/rollout": {
+   "lane": "MAT-PARITY",
+   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
+   "when": "excluded"
+  },
+  "GET /api/v1/employee-records/{section}": {
+   "lane": "P1b",
+   "reason": "P1b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/employees/corrections/bulk/{id}": {
+   "lane": "P2",
+   "reason": "P2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/employees/lifecycle-events/bulk/jobs/{job_id}": {
+   "lane": "P5b",
+   "reason": "P5b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/evidence/objects": {
+   "lane": "S1",
+   "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/evidence/objects/{id}": {
+   "lane": "S1",
+   "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/evidence/{evidenceId}/status": {
+   "lane": "MAT-PARITY",
+   "reason": "Workorder evidence is outside Org + HR MVP; reviewed workorder promotion required.",
+   "when": "excluded"
+  },
+  "GET /api/v1/group-admin/groups": {
+   "lane": "T1",
+   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/hr/absence-exit-dashboard": {
+   "lane": "H2",
+   "reason": "H2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/hr/attendance-import/summary": {
+   "lane": "A2",
+   "reason": "A2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/hr/attendance-records": {
+   "lane": "A1",
+   "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/hr/attendance-records/me": {
+   "lane": "A1",
+   "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/hr/attendance-summary": {
+   "lane": "A1",
+   "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/hr/leave-balances": {
+   "lane": "MAT-PARITY",
+   "reason": "Leave engine is outside the MVP attendance pilot; reviewed leave promotion required.",
+   "when": "post-mvp"
+  },
+  "GET /api/v1/hr/minimum-wage": {
+   "lane": "W1-A",
+   "reason": "W1-A owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/hr/org-chart": {
+   "lane": "O4b",
+   "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/hr/readiness-summary": {
+   "lane": "K5",
+   "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/integrity/findings": {
+   "lane": "K4",
+   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/legal-entities/{entityId}/workplaces": {
+   "lane": "E3a",
+   "reason": "E3a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/lifecycles/{objectType}/{objectId}": {
+   "lane": "P5a",
+   "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/me/inbox-docs": {
+   "lane": "H1",
+   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/me/inbox-docs/{id}": {
+   "lane": "H1",
+   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/me/notification-policies": {
+   "lane": "MAT-PARITY",
+   "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "GET /api/v1/me/notifications": {
+   "lane": "MAT-PARITY",
+   "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "GET /api/v1/me/notifications/by-object": {
+   "lane": "MAT-PARITY",
+   "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "GET /api/v1/me/notifications/summary": {
+   "lane": "MAT-PARITY",
+   "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "GET /api/v1/me/notifications/unread-count": {
+   "lane": "MAT-PARITY",
+   "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "GET /api/v1/me/todos": {
+   "lane": "MAT-PARITY",
+   "reason": "할 일 board is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "GET /api/v1/me/workbench": {
+   "lane": "H2",
+   "reason": "H2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/me/workspace": {
+   "lane": "MAT-PARITY",
+   "reason": "Workspace crate is excluded from the release build; reviewed promotion required (built-is-not-ready).",
+   "when": "excluded"
+  },
+  "GET /api/v1/ops/summary": {
+   "lane": "MAT-PARITY",
+   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
+   "when": "excluded"
+  },
+  "GET /api/v1/org-entities": {
+   "lane": "O4b",
+   "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/policy/assignments": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/policy/audit-events": {
+   "lane": "K4",
+   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/policy/catalog": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/policy/decisions": {
+   "lane": "MAT-ACC",
+   "reason": "MAT-ACC owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/policy/drafts": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/policy/drafts/{draft_id}": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/policy/features": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/policy/role-templates": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/policy/roles": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/reason-codes/stats": {
+   "lane": "K5",
+   "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/ref/address-detail": {
+   "lane": "MAT-CTRL",
+   "reason": "MAT-CTRL owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/requests": {
+   "lane": "H1",
+   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/settings/{key}/history": {
+   "lane": "K5",
+   "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/status/events": {
+   "lane": "MAT-PARITY",
+   "reason": "internal: unauthenticated endpoint (security: []): public feed, not a signed-in screen; confirm it needs no in-app view",
+   "when": "excluded"
+  },
+  "GET /api/v1/status/evidence": {
+   "lane": "MAT-PARITY",
+   "reason": "internal: unauthenticated endpoint (security: []): public feed, not a signed-in screen; confirm it needs no in-app view",
+   "when": "excluded"
+  },
+  "GET /api/v1/statutory/insurance-loss-codes": {
+   "lane": "S1",
+   "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/workflow-tasks": {
+   "lane": "H1",
+   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /api/v1/workplaces/{workplaceId}": {
+   "lane": "E3a",
+   "reason": "E3a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "GET /healthz": {
+   "lane": "MAT-PARITY",
+   "reason": "internal: process health probe for the orchestrator",
+   "when": "excluded"
+  },
+  "GET /readyz": {
+   "lane": "MAT-PARITY",
+   "reason": "internal: process health probe for the orchestrator",
+   "when": "excluded"
+  },
+  "PATCH /api/platform/groups/{id}": {
+   "lane": "T1",
+   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "PATCH /api/v1/org-structure/units/{orgUnitId}": {
+   "lane": "O4b",
+   "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "PATCH /api/v1/org-units/{id}": {
+   "lane": "O4b",
+   "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "PATCH /api/v1/policy/roles/{id}": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "PATCH /api/v1/policy/roles/{id}/status": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "PATCH /api/v1/reason-codes/{domain}/{code}": {
+   "lane": "K5",
+   "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "PATCH /api/v1/users/me": {
+   "lane": "K3",
+   "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/platform/groups": {
+   "lane": "T1",
+   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/platform/groups/{id}/accounts": {
+   "lane": "T1",
+   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/attendance/closes": {
+   "lane": "A6",
+   "reason": "A6 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/attendance/closes/preflight": {
+   "lane": "A6",
+   "reason": "A6 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/attendance/closes/{close_id}/amendments": {
+   "lane": "A6",
+   "reason": "A6 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/attendance/exceptions": {
+   "lane": "A5",
+   "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/attendance/exceptions/{exception_id}/resolve": {
+   "lane": "A5",
+   "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/attendance/substitutions": {
+   "lane": "MAT-PARITY",
+   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
+   "when": "post-mvp"
+  },
+  "POST /api/v1/attendance/substitutions/{substitution_id}/cancel": {
+   "lane": "MAT-PARITY",
+   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
+   "when": "post-mvp"
+  },
+  "POST /api/v1/attendance/week52/acks": {
+   "lane": "MAT-PARITY",
+   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
+   "when": "post-mvp"
+  },
+  "POST /api/v1/auth/device-login/approve": {
+   "lane": "K3",
+   "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/auth/device-login/approve-session": {
+   "lane": "K3",
+   "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/auth/device-login/poll": {
+   "lane": "K3",
+   "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/auth/device-login/start": {
+   "lane": "K3",
+   "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/auth/passkey/enroll-handoff": {
+   "lane": "K3",
+   "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/auth/signup": {
+   "lane": "MAT-PARITY",
+   "reason": "Self-signup is outside MVP bootstrap and invitation flows; units/maturity/plan.md §3.",
+   "when": "post-mvp"
+  },
+  "POST /api/v1/console/kill-switch": {
+   "lane": "MAT-PARITY",
+   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
+   "when": "excluded"
+  },
+  "POST /api/v1/console/telemetry/route": {
+   "lane": "MAT-PARITY",
+   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
+   "when": "excluded"
+  },
+  "POST /api/v1/employee-records/{section}/import/apply": {
+   "lane": "P1b",
+   "reason": "P1b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/employee-records/{section}/import/preview": {
+   "lane": "P1b",
+   "reason": "P1b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/employees/import": {
+   "lane": "P3a",
+   "reason": "P3a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/employees/register-facts/bulk": {
+   "lane": "S2",
+   "reason": "S2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/evidence/objects/{id}/hold": {
+   "lane": "S1",
+   "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/evidence/objects/{id}/verify": {
+   "lane": "S1",
+   "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/evidence/presign": {
+   "lane": "MAT-PARITY",
+   "reason": "Workorder evidence is outside Org + HR MVP; reviewed workorder promotion required.",
+   "when": "excluded"
+  },
+  "POST /api/v1/evidence/staging-presign": {
+   "lane": "MAT-PARITY",
+   "reason": "Workorder evidence is outside Org + HR MVP; reviewed workorder promotion required.",
+   "when": "excluded"
+  },
+  "POST /api/v1/evidence/{evidenceId}/confirm": {
+   "lane": "MAT-PARITY",
+   "reason": "Workorder evidence is outside Org + HR MVP; reviewed workorder promotion required.",
+   "when": "excluded"
+  },
+  "POST /api/v1/governance/approvals": {
+   "lane": "H1",
+   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/governance/approvals/decide": {
+   "lane": "H1",
+   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/governance/lifecycle/preflight": {
+   "lane": "P5a",
+   "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/governance/lifecycle/transitions": {
+   "lane": "P5a",
+   "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/governance/overrides": {
+   "lane": "F8",
+   "reason": "F8 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/group-admin/tenant-context": {
+   "lane": "T1",
+   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/group-admin/tenant-context/exit": {
+   "lane": "T1",
+   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/hr/attendance-import/preview": {
+   "lane": "A2",
+   "reason": "A2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/hr/attendance-import/{run_id}/apply": {
+   "lane": "A2",
+   "reason": "A2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/hr/attendance-import/{run_id}/dry-run": {
+   "lane": "A2",
+   "reason": "A2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/hr/attendance-records/me": {
+   "lane": "A1",
+   "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/integrity/findings/{id}/triage": {
+   "lane": "K4",
+   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/lifecycles/{objectType}/{objectId}/hold": {
+   "lane": "P5a",
+   "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/lifecycles/{objectType}/{objectId}/transition": {
+   "lane": "P5a",
+   "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/me/inbox-docs/{id}/confirm-receipt": {
+   "lane": "H1",
+   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/me/notifications/read-all": {
+   "lane": "MAT-PARITY",
+   "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "POST /api/v1/me/notifications/{id}/read": {
+   "lane": "MAT-PARITY",
+   "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "POST /api/v1/me/notifications/{id}/unread": {
+   "lane": "MAT-PARITY",
+   "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "POST /api/v1/me/todos": {
+   "lane": "MAT-PARITY",
+   "reason": "할 일 board is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "POST /api/v1/me/todos/{todoId}/done": {
+   "lane": "MAT-PARITY",
+   "reason": "할 일 board is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "POST /api/v1/org-structure/units": {
+   "lane": "O4b",
+   "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/org-units": {
+   "lane": "O4b",
+   "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/policy/authorize": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/policy/authorize/bulk": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/policy/drafts": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/policy/drafts/{draft_id}/review": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/policy/drafts/{draft_id}/submit": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/policy/drafts/{draft_id}/validate": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/policy/roles": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/policy/roles/{id}/status-preview": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/policy/simulate": {
+   "lane": "MAT-ACC",
+   "reason": "MAT-ACC owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/reason-codes": {
+   "lane": "K5",
+   "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/settings/{key}": {
+   "lane": "K5",
+   "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/workflow-tasks/{task_id}/claim": {
+   "lane": "H1",
+   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/workflow-tasks/{task_id}/decide": {
+   "lane": "H1",
+   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/workflow-tasks/{task_id}/finalize": {
+   "lane": "H1",
+   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "PUT /api/platform/groups/{id}/organizations/{org_id}": {
+   "lane": "T1",
+   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "PUT /api/v1/console/rollout/opt-in": {
+   "lane": "MAT-PARITY",
+   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
+   "when": "excluded"
+  },
+  "PUT /api/v1/console/rollout/org-flag": {
+   "lane": "MAT-PARITY",
+   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
+   "when": "excluded"
+  },
+  "PUT /api/v1/me/notification-policies": {
+   "lane": "MAT-PARITY",
+   "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
+   "when": "ideal"
+  },
+  "PUT /api/v1/me/workspace": {
+   "lane": "MAT-PARITY",
+   "reason": "Workspace crate is excluded from the release build; reviewed promotion required (built-is-not-ready).",
+   "when": "excluded"
+  },
+  "PUT /api/v1/policy/drafts/{draft_id}": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "PUT /api/v1/policy/users/{id}/assignments": {
+   "lane": "K2",
+   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  }
  }
-}
 }

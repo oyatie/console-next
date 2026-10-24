@@ -219,7 +219,6 @@ export const requestsQuery = (q: { lane: Lane; mine?: boolean; status?: RequestS
     params: { query: { assignee: q.lane === "all" ? undefined : q.lane, requester: q.mine ? "me" : undefined, status: q.status, limit: REQUEST_PAGE, offset: q.offset } },
   });
 /** The organization's open requests for Home's queue (HR only; the server lists a requester's own otherwise). */
-export const openRequestsQuery = get("/api/v1/change-requests", { params: { query: { status: "OPEN", limit: 5 } } });
 /** How many open requests wait in a lane (one row read; the server counts). */
 export const openCountQuery = (lane: Lane) => get("/api/v1/change-requests", { params: { query: { assignee: lane === "all" ? undefined : lane, status: "OPEN", limit: 1 } } });
 

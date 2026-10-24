@@ -25,7 +25,7 @@ pub(super) fn non_employee_types() -> Vec<&'static str> {
 }
 // Historical placement, including both employers of a 전적. No current-employer scope shortcut.
 const FROM: &str = " FROM sources l \
- JOIN employees x ON x.org_id = l.org_id AND x.id = l.employee_id \
+ JOIN person_employees_current x ON x.org_id = l.org_id AND x.id = l.employee_id \
  CROSS JOIN LATERAL (SELECT k FROM unnest(CASE \
    WHEN l.event_type = 'GROUP_TRANSFER' THEN ARRAY['LOSE','ACQUIRE','AGE60'] \
    WHEN l.event_type IN ('ONBOARD','REHIRE') THEN ARRAY['ACQUIRE','AGE60'] \
@@ -42,13 +42,13 @@ const FROM: &str = " FROM sources l \
      AND (l.source_type <> 'GROUP_TRANSFER' OR kind.k NOT IN ('LOSE','SEPARATION_CERTIFICATE') OR a.valid_from < l.placement_date::date) \
    ORDER BY a.valid_from DESC LIMIT 1) ea ON TRUE \
  LEFT JOIN LATERAL (SELECT r.* FROM insurance_filing_records r \
-   WHERE r.org_id = l.org_id AND COALESCE(r.event_id,r.request_id) = l.id AND r.insurer = agency.insurer AND r.filing_kind = kind.k \
+   WHERE r.org_id = l.org_id AND (r.event_id = l.id OR r.request_id = l.id) AND r.insurer = agency.insurer AND r.filing_kind = kind.k \
    ORDER BY r.version DESC LIMIT 1) receipt ON TRUE \
  LEFT JOIN LATERAL (SELECT min(r.anchor_on)::text AS requested_acquisition_on FROM insurance_filing_requests r WHERE r.org_id=l.org_id AND r.source_event_id=l.id AND r.filing_kind='ACQUIRE_REQUESTED') urgency ON TRUE \
  LEFT JOIN employee_employment_profiles profile ON profile.org_id=x.org_id AND profile.employee_id=x.id \
  LEFT JOIN employee_personal_facts personal ON personal.org_id=x.org_id AND personal.employee_id=x.id \
- LEFT JOIN LATERAL (SELECT r.applicability_facts FROM insurance_filing_records r WHERE r.org_id=l.org_id AND COALESCE(r.event_id,r.request_id)=l.id AND r.insurer=agency.insurer AND r.filing_kind=kind.k AND r.applicability_facts IS NOT NULL ORDER BY r.version DESC LIMIT 1) assessment ON TRUE \
- LEFT JOIN LATERAL (SELECT r.action,r.version FROM insurance_filing_records r WHERE r.org_id=l.org_id AND COALESCE(r.event_id,r.request_id)=l.id AND r.insurer='EI' AND r.filing_kind=kind.k ORDER BY r.version DESC LIMIT 1) ei ON TRUE \
+ LEFT JOIN LATERAL (SELECT r.applicability_facts FROM insurance_filing_records r WHERE r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer=agency.insurer AND r.filing_kind=kind.k AND r.applicability_facts IS NOT NULL ORDER BY r.version DESC LIMIT 1) assessment ON TRUE \
+ LEFT JOIN LATERAL (SELECT r.action,r.version FROM insurance_filing_records r WHERE r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer='EI' AND r.filing_kind=kind.k ORDER BY r.version DESC LIMIT 1) ei ON TRUE \
  WHERE l.state IN ('APPLIED','SCHEDULED') AND x.voided_at IS NULL \
    AND NOT EXISTS (SELECT 1 FROM employee_lifecycle_events v \
      WHERE v.org_id = l.org_id AND v.voids_event_id = COALESCE(l.source_event_id,l.id) AND v.state = 'APPLIED')";
@@ -83,6 +83,13 @@ pub(super) async fn rows(
     q.push(" (kind.k='AGE60' OR ");
     push_reach(&mut q, &reach);
     q.push(")");
+    // These candidates are absent under the shared assessment, including its stored-facts fallback.
+    q.push(" AND (kind.k <> 'AGE60' OR (agency.insurer = 'NPS' \
+      AND COALESCE(x.birth_date::text, assessment.applicability_facts->>'birth_date') IS NOT NULL))");
+    if query.inbox_scan_limit.is_some() {
+        // Birthday tasks use their projected birthday key in the companion read.
+        q.push(" AND kind.k <> 'AGE60'");
+    }
     if let Some(as_of) = query.inbox_as_of {
         q.push(" AND l.created_at <= ").push_bind(as_of);
     }
@@ -118,13 +125,63 @@ pub(super) async fn rows(
             q.push(" AND ").push(column).push(" = ").push_bind(value);
         }
     }
-    q.push(") SELECT * FROM filtered ORDER BY effective_date,id,kind,insurer");
+    q.push(") SELECT * FROM filtered");
+    push_page_order(&mut q, query);
     Ok(q.build().fetch_all(tx.as_mut()).await?)
+}
+
+fn push_page_order(q: &mut QueryBuilder<Postgres>, query: &FilingQuery) {
+    if let Some(limit) = query.inbox_scan_limit {
+        if let Some((created_at, id)) = &query.inbox_after {
+            q.push(" WHERE (created_at, inbox_id) > (")
+                .push_bind(*created_at)
+                .push(", ")
+                .push_bind(id.clone())
+                .push(")");
+        }
+        q.push(" ORDER BY created_at, inbox_id LIMIT ")
+            .push_bind(i64::try_from(limit).unwrap_or(i64::MAX));
+    } else {
+        q.push(" ORDER BY effective_date,id,kind,insurer");
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn only_internal_candidate_reads_bound_and_use_the_immutable_cursor() {
+        let after = Some((
+            time::OffsetDateTime::UNIX_EPOCH,
+            "insurance_filing_ACQUIRE_NPS:record".into(),
+        ));
+        let mut query = FilingQuery {
+            inbox_after: after,
+            limit: Some(1),
+            ..FilingQuery::default()
+        };
+        let mut ordinary = QueryBuilder::<Postgres>::new("SELECT * FROM filtered");
+        push_page_order(&mut ordinary, &query);
+        assert_eq!(
+            ordinary.sql(),
+            "SELECT * FROM filtered ORDER BY effective_date,id,kind,insurer"
+        );
+        query.inbox_scan_limit = Some(50);
+        let mut bounded = QueryBuilder::<Postgres>::new("SELECT * FROM filtered");
+        push_page_order(&mut bounded, &query);
+        assert_eq!(
+            bounded.sql(),
+            "SELECT * FROM filtered WHERE (created_at, inbox_id) > ($1, $2) ORDER BY created_at, inbox_id LIMIT $3"
+        );
+        let external: FilingQuery =
+            serde_json::from_value(serde_json::json!({"inbox_scan_limit": 50})).unwrap();
+        assert!(
+            external.inbox_scan_limit.is_none(),
+            "HTTP input cannot switch the read into a partial candidate scan"
+        );
+    }
 
     #[test]
     fn non_employee_types_derives_dispatched_outsourced_and_freelance_only() {

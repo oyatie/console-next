@@ -19,6 +19,15 @@ async fn action_inbox_governance_source_enforces_requester_sod(pool: PgPool) {
         .into_iter()
         .map(|id| format!("hr_register:{id}"))
         .collect();
+    let expected_branch: BTreeSet<String> = [requester_employee, approver_employee]
+        .into_iter()
+        .map(|id| format!("hr_branch:{id}"))
+        .collect();
+    let expected_identity: BTreeSet<String> = [requester_employee, approver_employee]
+        .into_iter()
+        .map(|id| format!("hr_identity:{id}"))
+        .collect();
+    let followups = expected_register.len() + expected_branch.len() + expected_identity.len();
 
     let created_at = OffsetDateTime::now_utc() - Duration::minutes(1);
     let company =
@@ -88,7 +97,19 @@ async fn action_inbox_governance_source_enforces_requester_sod(pool: PgPool) {
             .collect::<BTreeSet<_>>(),
         expected_register
     );
-    assert_eq!(requester_resp.json["total"], 2);
+    assert_eq!(
+        source_ids(&requester_resp.json, "hr_branch:")
+            .into_iter()
+            .collect::<BTreeSet<_>>(),
+        expected_branch
+    );
+    assert_eq!(
+        source_ids(&requester_resp.json, "hr_identity:")
+            .into_iter()
+            .collect::<BTreeSet<_>>(),
+        expected_identity
+    );
+    assert_eq!(requester_resp.json["total"], followups);
 
     // Workbench reuses PgActionInboxSources via list_complete_action_inbox.
     let requester_workbench = get(
@@ -120,7 +141,7 @@ async fn action_inbox_governance_source_enforces_requester_sod(pool: PgPool) {
             .collect::<BTreeSet<_>>(),
         expected_register
     );
-    assert_eq!(requester_workbench.json["action_inbox"]["total"], 2);
+    assert_eq!(requester_workbench.json["action_inbox"]["total"], followups);
 
     let approver_resp = get(
         service.clone(),
@@ -157,7 +178,10 @@ async fn action_inbox_governance_source_enforces_requester_sod(pool: PgPool) {
             .collect::<BTreeSet<_>>(),
         expected_register
     );
-    assert_eq!(approver_resp.json["total"], 5);
+    assert_eq!(
+        approver_resp.json["total"],
+        followups + expected_governance.len()
+    );
 
     let approver_workbench = get(
         service.clone(),
@@ -190,7 +214,10 @@ async fn action_inbox_governance_source_enforces_requester_sod(pool: PgPool) {
             .collect::<BTreeSet<_>>(),
         expected_register
     );
-    assert_eq!(approver_workbench.json["action_inbox"]["total"], 5);
+    assert_eq!(
+        approver_workbench.json["action_inbox"]["total"],
+        followups + expected_governance.len()
+    );
 
     let member_resp = get(
         service,

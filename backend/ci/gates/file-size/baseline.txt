@@ -1,6 +1,5 @@
 # Oversize Rust files, pinned at their code-line count (see ci/gates/file-size).
 # Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
-app/src/action_inbox.rs	532
 app/src/cedar_parity.rs	313
 app/src/collaboration.rs	1499
 app/src/hr.rs	3581
@@ -9,7 +8,7 @@ app/src/office.rs	891
 app/src/workbench.rs	660
 app/src/workflow_object_context.rs	460
 app/src/workflow_studio.rs	7166
-app/tests/action_inbox_api.rs	1125
+app/tests/action_inbox_api.rs	1120
 app/tests/attendance_persona_api.rs	415
 app/tests/audit_api.rs	827
 app/tests/auth_rest.rs	4487
@@ -22,7 +21,7 @@ app/tests/compliance_catalog_api.rs	310
 app/tests/console_kill_switch.rs	304
 app/tests/console_route_telemetry.rs	312
 app/tests/consulting_engagement_api.rs	1089
-app/tests/current_authority.rs	855
+app/tests/current_authority.rs	729
 app/tests/equipment_3r_api.rs	1344
 app/tests/evaluation_cycle_api.rs	1301
 app/tests/facilities_pilot_story.rs	652
@@ -63,7 +62,7 @@ ci/gates/audit-coverage/src/lib.rs	434
 ci/gates/audit-coverage/tests/gate_detects_violation.rs	450
 ci/gates/layer-boundary/src/lib.rs	431
 ci/gates/layer-boundary/tests/gate_detects_violation.rs	948
-ci/gates/migration-safety/src/lib.rs	452
+ci/gates/migration-safety/src/lib.rs	427
 ci/gates/migration-safety/tests/gate_detects_violation.rs	372
 ci/gates/personal-data-classification/src/lib.rs	1255
 ci/gates/personal-data-classification/tests/gate_detects_violation.rs	1364
@@ -72,7 +71,6 @@ ci/gates/tenant-isolation/src/lib.rs	779
 ci/gates/writer-ownership/src/lib.rs	748
 ci/gates/writer-ownership/tests/census_executes_against_postgres.rs	1804
 ci/gates/writer-ownership/tests/gate_detects_violation.rs	2266
-crates/action-inbox/application/src/lib.rs	304
 crates/attendance/adapter-postgres/src/lib.rs	1079
 crates/attendance/adapter-postgres/tests/cancel_substitution.rs	947
 crates/attendance/adapter-postgres/tests/concurrency.rs	511
@@ -87,7 +85,7 @@ crates/comms/adapter-postgres/tests/mail_account_rls_surfaces_as_runtime_role.rs
 crates/comms/adapter-postgres/tests/mail_sync_rls_surfaces_as_runtime_role.rs	738
 crates/comms/application/src/lib.rs	1593
 crates/comms/mailbox/src/lib.rs	493
-crates/comms/rest/src/lib.rs	876
+crates/comms/rest/src/lib.rs	873
 crates/comms/rest/tests/mox_webhook.rs	331
 crates/compliance/adapter-postgres/src/lib.rs	2117
 crates/compliance/adapter-postgres/tests/location_store.rs	883
@@ -126,7 +124,7 @@ crates/financial/rest/src/lib.rs	1534
 crates/governance/adapter-postgres/src/lib.rs	793
 crates/governance/adapter-postgres/tests/approvals_create_as_runtime_role.rs	595
 crates/governance/adapter-postgres/tests/governance_rls_as_runtime_role.rs	790
-crates/governance/rest/src/lib.rs	357
+crates/governance/rest/src/lib.rs	355
 crates/identity/adapter-postgres/tests/subject_authz_versions_freshness_rls.rs	430
 crates/identity/application/src/org.rs	377
 crates/identity/rest/tests/authentication_locking.rs	862
@@ -183,7 +181,7 @@ crates/ontology/canonical-adapter-postgres/tests/org_unit_kinds_as_runtime_role.
 crates/ontology/canonical-adapter-postgres/tests/org_unit_port_as_runtime_role.rs	992
 crates/ontology/canonical-adapter-postgres/tests/person_port_as_runtime_role.rs	894
 crates/ontology/canonical-domain/src/lib.rs	314
-crates/ontology/rest/src/lib.rs	2359
+crates/ontology/rest/src/lib.rs	2357
 crates/ontology/rest/src/projected_dispatch_derivation.rs	389
 crates/ontology/rest/tests/action_execute_as_runtime_role.rs	1437
 crates/ontology/rest/tests/canonical_dispatch_audit_as_runtime_role.rs	1705
@@ -211,14 +209,14 @@ crates/payroll/rest/tests/run_lifecycle_api.rs	901
 crates/platform/audit-chain/src/lib.rs	632
 crates/platform/audit-chain/tests/audit_chain_rls.rs	1153
 crates/platform/auth-rest/tests/dev_auth_session.rs	335
-crates/platform/auth/src/jwt.rs	504
+crates/platform/auth/src/jwt.rs	483
 crates/platform/auth/src/refresh.rs	635
 crates/platform/auth/src/webauthn.rs	607
 crates/platform/auth/tests/credential_identity.rs	425
 crates/platform/auth/tests/jwt_es256.rs	485
 crates/platform/auth/tests/session_locking.rs	411
 crates/platform/auth/tests/webauthn_contention.rs	953
-crates/platform/authz-rest/src/lib.rs	467
+crates/platform/authz-rest/src/lib.rs	465
 crates/platform/authz-rest/src/store.rs	741
 crates/platform/authz/tests/cedar_pbac_readiness_cases.rs	499
 crates/platform/authz/tests/policy.rs	1449
@@ -232,7 +230,7 @@ crates/platform/db/tests/group_of_one_invariant.rs	503
 crates/platform/db/tests/lifecycle_maker_checker.rs	345
 crates/platform/db/tests/m2_flag_on_runtime_drain.rs	648
 crates/platform/db/tests/period_locks_and_lifecycle.rs	425
-crates/platform/db/tests/personal_data_classification.rs	4429
+crates/platform/db/tests/personal_data_classification.rs	4428
 crates/platform/db/tests/rls_isolation.rs	441
 crates/platform/db/tests/rls_rollout_isolation.rs	351
 crates/platform/erasure-ledger/tests/erasure_ledger_as_runtime_role.rs	858
@@ -240,10 +238,8 @@ crates/platform/excel/src/lib.rs	497
 crates/platform/jobs/src/lib.rs	1468
 crates/platform/jobs/src/soak.rs	742
 crates/platform/jobs/tests/apalis_schema_contract.rs	957
-crates/platform/platform-rest/src/view_as.rs	453
 crates/platform/platform-rest/tests/platform_groups.rs	374
-crates/platform/platform-rest/tests/remove_tenant.rs	921
-crates/platform/platform-rest/tests/view_as.rs	700
+crates/platform/platform-rest/tests/remove_tenant.rs	899
 crates/platform/provisioning/tests/account_identity.rs	895
 crates/platform/provisioning/tests/account_locking.rs	676
 crates/platform/provisioning/tests/bootstrap_passkey.rs	730
@@ -253,7 +249,6 @@ crates/platform/provisioning/tests/rls_auth_chain_as_runtime_role.rs	596
 crates/platform/provisioning/tests/self_enroll_handoff_as_runtime_role.rs	313
 crates/platform/push/src/lib.rs	339
 crates/platform/realtime/tests/postgres_bridge.rs	715
-crates/platform/request-context/src/lib.rs	366
 crates/platform/storage/src/lib.rs	2330
 crates/platform/storage/tests/evidence_processing_rls_surfaces_as_runtime_role.rs	365
 crates/policy/adapter-postgres/src/lib.rs	323
@@ -279,12 +274,12 @@ crates/reporting/domain/src/lib.rs	1030
 crates/reporting/rest/src/lib.rs	460
 crates/sales/adapter-postgres/src/lib.rs	655
 crates/sales/adapter-postgres/tests/sales_store.rs	477
-crates/sales/rest/src/lib.rs	846
+crates/sales/rest/src/lib.rs	844
 crates/support/adapter-postgres/src/lib.rs	1770
 crates/support/adapter-postgres/tests/support_tickets.rs	729
 crates/support/application/src/lib.rs	748
 crates/support/domain/src/lib.rs	708
-crates/support/rest/src/lib.rs	738
+crates/support/rest/src/lib.rs	736
 crates/support/rest/tests/intake.rs	372
 crates/workflow/adapter-postgres/src/lib.rs	2284
 crates/workflow/domain/src/lib.rs	390

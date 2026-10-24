@@ -57,6 +57,7 @@ const EXTERNAL_SCHEMAS: &[&str] = &[
     "OrgProposalReassignScope",
     "OrgUnitKind",
     "PasskeyStepUpAssertion",
+    "SetupChecklist",
     "Timestamp",
     "Uuid",
 ];

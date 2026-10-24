@@ -51,9 +51,11 @@ test("BL-017: HR with no grant is refused; an employees setup grant gives a read
   await setupCompany(admin, "담당정밀", "본사");
   const hr = await firstSignIn(browser, await inviteAccount(admin, "김인사", "none"));
   await expect(setupRail(hr)).toHaveCount(0);
-  const denied = hr.waitForResponse((r) => new URL(r.url()).pathname === "/api/v1/onboarding/checklist");
+  const denied = hr.waitForResponse((r) => new URL(r.url()).pathname === "/api/v1/me/action-inbox");
   await hr.reload();
-  expect((await denied).status()).toBe(403);
+  const deniedInbox = await denied;
+  expect(deniedInbox.status()).toBe(200);
+  expect((await deniedInbox.json()).setup).toBeUndefined();
   await grantSetupRole(admin, "김인사", "직원 설정", false);
   await hr.reload();
   const rail = await homeRail(hr);

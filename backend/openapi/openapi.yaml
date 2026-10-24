@@ -17858,12 +17858,20 @@ paths:
         deliberately live rather than a repeatable full-state snapshot: resolved,
         reassigned, or expired rows can disappear between page requests. Totals are
         recalculated from live membership admitted by `as_of`; `total_is_exact` is
-        false when an authorization-filtered source reaches its bounded counting
-        budget. Source failures fail the whole request rather than returning a
-        deceptively partial queue.
+        false when a source returns a bounded visible prefix or the selected view
+        has more pages. Source failures are named in unavailable with a support reference; healthy
+        sources remain usable and their totals are explicitly inexact.
       security:
       - bearerAuth: []
       parameters:
+      - name: filter
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [all, turn, waiting, scheduled, deadlines, failures]
+          default: all
+        description: Server-owned view; ownership and deadlines are never merged or filtered in the browser.
       - name: limit
         in: query
         required: false
@@ -17895,7 +17903,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
         '500':
-          description: A source failed; no partial action-inbox response is returned.
+          description: The request clock or shared projection failed.
           content:
             application/json:
               schema:
@@ -31590,6 +31598,10 @@ components:
         include_descendants:
           type: boolean
           default: true
+        node_name:
+          type: [string, 'null']
+          readOnly: true
+          description: Current name of the holder's granted scope, when supplied by a personal projection.
     AccessScopeKind:
       type: string
       enum:
@@ -31671,6 +31683,8 @@ components:
       - dueTone
       - links
       - done
+      - lane
+      - days_remaining
       properties:
         id:
           type: string
@@ -31682,10 +31696,40 @@ components:
           - dispatch
           - work
           - support
+          - payroll
+          - governance
           - org_change
+          - org_change_approve
+          - org_change_draft
+          - org_change_apply
+          - org_change_waiting
+          - org_change_scheduled
+          - org_change_rejected
+          - org_change_settle
           - hr_exit
+          - hr_exit_confirm
+          - hr_exit_confirm_hq
+          - hr_exit_settle
           - hr_lifecycle
+          - lifecycle_apply_failed
           - hr_request
+          - register_review
+          - insurance_filing
+          - identity_review
+          - home_branch_review
+          - contract_renewal
+          - period_unlock
+          - grant_notice
+          - account_security
+          - setup_entity
+          - setup_workplace
+          - setup_org
+          - setup_approval
+          - setup_people
+          - setup_passkey
+          - setup_employees
+          - setup_roles
+          - setup_golive
           - support_access
         urg:
           type: string
@@ -31720,6 +31764,83 @@ components:
             $ref: '#/components/schemas/ActionInboxLink'
         done:
           type: boolean
+        lane:
+          type: string
+          enum: [turn, waiting, scheduled]
+          description: Server-owned lane based on the actor and current action state.
+        days_remaining:
+          type: [integer, 'null']
+          description: Calendar days remaining in the source deadline's timezone, computed from the database clock.
+        context:
+          type: object
+          description: Source-owned facts for the row's command and informed grant confirmation.
+          properties:
+            unlock:
+              type: object
+              required: [domain, periodStart, periodEnd, requester, reason_code]
+              properties:
+                domain:
+                  type: string
+                periodStart:
+                  type: string
+                periodEnd:
+                  type: string
+                requester:
+                  type: [string, 'null']
+                reason_code:
+                  type: string
+                reason_entry:
+                  type: [object, 'null']
+                  description: Tenant-defined reason labels, using the owning reason catalog's presentation contract.
+                  required: [system, label_ko, label_en]
+                  properties:
+                    system:
+                      type: boolean
+                    label_ko:
+                      type: [string, 'null']
+                    label_en:
+                      type: [string, 'null']
+            insurance:
+              type: object
+              required: [insurer, kind, effective_date]
+              properties:
+                insurer:
+                  type: string
+                kind:
+                  type: string
+                effective_date:
+                  type: string
+            lifecycle:
+              type: object
+              required: [action_kind, effective_date]
+              properties:
+                action_kind:
+                  type: string
+                effective_date:
+                  type: string
+            request:
+              type: object
+              required: [kind, reason_code]
+              properties:
+                kind:
+                  type: string
+                reason_code:
+                  type: string
+            command:
+              type: [string, 'null']
+              enum: [approve, effectuate, null]
+            drafter:
+              type: string
+            reason:
+              type: string
+            command_id:
+              type: [string, 'null']
+            grants:
+              type: array
+              items:
+                $ref: '#/components/schemas/AccessEffectiveEntry'
+            is_ops:
+              type: boolean
     ActionInboxLink:
       type: object
       description: >-
@@ -31754,6 +31875,13 @@ components:
       - total
       - total_is_exact
       - next_cursor
+      - unavailable
+      - counts
+      - upcoming
+      - has_work
+      - available_filters
+      - quick_starts
+      - as_of
       properties:
         items:
           type: array
@@ -31765,12 +31893,58 @@ components:
           description: Live visible item count across sources admitted by as_of; inspect total_is_exact before treating it as authoritative.
         total_is_exact:
           type: boolean
-          description: False only when a bounded authorization-filtered count reached its scan budget.
+          description: False when a source reports a bounded visible prefix or a filtered traversal has more pages; total is then a lower bound.
         next_cursor:
           type:
           - string
           - 'null'
           description: Opaque cursor for the next immutable-keyset page, or null when exhausted.
+        setup:
+          $ref: '#/components/schemas/SetupChecklist'
+          description: The authorized setup checklist, grouped once inside the queue on its first page.
+        unavailable:
+          type: array
+          description: Failed sources; healthy work remains usable, totals are lower bounds. References correlate with server logs.
+          items:
+            type: object
+            required: [source, support_reference]
+            properties:
+              source:
+                type: string
+              support_reference:
+                type: string
+        counts:
+          type: object
+          description: Counts from the same server traversal. Inexact values are lower bounds.
+          additionalProperties:
+            type: object
+            required: [total, total_is_exact]
+            properties:
+              total:
+                type: integer
+              total_is_exact:
+                type: boolean
+        upcoming:
+          type: array
+          description: Up to three scheduled changes from the admitted source pages, in deadline order.
+          items:
+            $ref: '#/components/schemas/ActionInboxItem'
+        has_work:
+          type: boolean
+          description: Whether this account holds any capability the console offers.
+        quick_starts:
+          type: array
+          items:
+            type: string
+            enum: [register, import, org, invite]
+        as_of:
+          $ref: '#/components/schemas/Timestamp'
+        available_filters:
+          type: array
+          description: Only filters whose sources the caller can use; no dead controls for absent work grants.
+          items:
+            type: string
+            enum: [turn, waiting, scheduled, deadlines, failures]
     ActiveSupportSessions:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object

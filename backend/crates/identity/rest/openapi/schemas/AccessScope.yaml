@@ -12,3 +12,7 @@ properties:
   include_descendants:
     type: boolean
     default: true
+  node_name:
+    type: [string, 'null']
+    readOnly: true
+    description: Current name of the holder's granted scope, when supplied by a personal projection.

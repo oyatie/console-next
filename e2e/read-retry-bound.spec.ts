@@ -25,13 +25,21 @@ for (const [index, path] of routes.entries()) {
     await page.waitForTimeout(15_000);
     expect(counts.size, "the failure fixture exercised data reads").toBeGreaterThan(0);
     for (const [key, count] of counts) expect(count, `${path}: ${key}`).toBeLessThanOrEqual(3);
-    const failed = page.getByRole("main").getByRole("alert").filter({ hasText: reference }).first();
+    const failed = (path === "/" ? page.getByRole("region", { name: "업무함", exact: true }) : page.getByRole("main")).getByRole("alert").filter({ hasText: reference }).first();
+    await expect(failed).toContainText(reference);
     await expect(failed).toContainText("불러오지 못했습니다");
     await expect(failed.getByRole("button", { name: "다시 불러오기", exact: true })).toBeVisible();
     // Recovery is a person's action, with the same failure reference available to support.
     counts.clear();
     await failed.getByRole("button", { name: "다시 불러오기", exact: true }).click();
-    await expect.poll(() => counts.get("/api/v1/onboarding/checklist") ?? 0).toBe(1);
+    await expect.poll(() => [...counts].filter(([key]) => key.startsWith(path === "/" ? "/api/v1/me/action-inbox" : "/api/v1/onboarding/checklist")).reduce((sum, [, count]) => sum + count, 0)).toBe(1);
+    if (path === "/") {
+      const phase = page.getByRole("main").getByRole("alert").filter({ hasText: reference }).first();
+      await expect(phase).toContainText(reference);
+      counts.clear();
+      await phase.getByRole("button", { name: "다시 불러오기", exact: true }).click();
+      await expect.poll(() => [...counts].filter(([key]) => key.startsWith("/api/v1/onboarding/checklist")).reduce((sum, [, count]) => sum + count, 0)).toBe(1);
+    }
     await page.context().close();
   });
 }

@@ -44,19 +44,16 @@ pub(crate) async fn page(
         });
     }
     let org = principal.org_id;
-    let after = query.after.as_ref().and_then(|position| {
-        let (namespace, id) = position.id.split_once(':')?;
-        (namespace == NAMESPACE).then(|| (position.created_at, id.to_owned()))
-    });
+    let after = query.after.map(|p| (p.created_at, p.id));
     let (as_of, limit) = (query.as_of, query.limit);
     let (rows, total) = with_org_conn::<_, _, DbError>(pool, org, move |tx| {
         Box::pin(async move {
             let rows: Vec<Row> = sqlx::query_as(concat!(
                 "SELECT l.id, l.employee_id, l.event_type, l.effective_date, e.name, l.created_at \
                  FROM employee_lifecycle_events l \
-                 JOIN employees e ON e.org_id = l.org_id AND e.id = l.employee_id WHERE ",
+                 JOIN person_employees_current e ON e.org_id = l.org_id AND e.id = l.employee_id WHERE ",
                 open!(),
-                " AND ($3::timestamptz IS NULL OR (l.created_at, l.id::text) > ($3, $4)) \
+                " AND ($3::timestamptz IS NULL OR (l.created_at, ('hr_lifecycle:' || l.id::text)) > ($3, $4)) \
                  ORDER BY l.created_at, l.id LIMIT $5"
             ))
             .bind(org.as_uuid())
@@ -88,9 +85,12 @@ pub(crate) async fn page(
         .take(limit)
         .map(
             |(id, employee, kind, on, name, created_at)| ActionInboxSourceItem {
+                context: Some(serde_json::json!({ "lifecycle": {
+                    "action_kind": kind, "effective_date": on
+                }})),
                 id: format!("{NAMESPACE}:{id}"),
                 kind: "lifecycle_apply_failed".to_owned(),
-                ref_code: format!("{kind} {on}"),
+                ref_code: String::new(),
                 title: name,
                 site: None,
                 who: None,
@@ -112,3 +112,7 @@ pub(crate) async fn page(
         has_more,
     })
 }
+
+#[cfg(test)]
+#[path = "hr_lifecycle_tests.rs"]
+mod tests;

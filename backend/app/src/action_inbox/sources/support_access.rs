@@ -23,6 +23,7 @@ pub(crate) async fn page(
     pool: &PgPool,
     principal: &Principal,
     query: ActionInboxSourceQuery,
+    permission: &tokio::sync::OnceCell<bool>,
 ) -> Result<ActionInboxSourcePage, KernelError> {
     let failure = |_| KernelError::internal("failed to load support approvals");
     let mut tx = pool.begin().await.map_err(failure)?;
@@ -33,7 +34,10 @@ pub(crate) async fn page(
     )
     .await
     .map_err(|_| KernelError::internal("failed to authorize support approvals"))?;
+    let _ = permission.set(allowed);
     if !allowed {
+        // Finish refused reads before releasing the shared source permit.
+        tx.commit().await.map_err(failure)?;
         return Ok(super::super::empty_source_page());
     }
     let total: i64 = sqlx::query_scalar("SELECT count(*) FROM support_sessions WHERE org_id=$1 AND state='OPERATOR_APPROVED' AND tenant_approved_at IS NULL AND request_expires_at>$2 AND requested_at<=$3")
@@ -54,6 +58,7 @@ pub(crate) async fn page(
         items: rows
             .into_iter()
             .map(|s| ActionInboxSourceItem {
+                context: None,
                 id: format!("support_access:{}", s.id),
                 kind: "support_access".into(),
                 ref_code: s.ticket_ref,
@@ -109,13 +114,18 @@ mod tests {
         }
         let pool = runtime_role_pool(&pool).await;
         let principal = Principal::new(user, org, Default::default(), BranchScope::All);
+        let permission = tokio::sync::OnceCell::new();
         let mut query = ActionInboxSourceQuery {
+            filter: console_action_inbox_application::InboxFilter::All,
+            require_exact_total: false,
             now: as_of + Duration::seconds(2),
             as_of,
             after: None,
             limit: 1,
         };
-        let first = page(&pool, &principal, query.clone()).await.unwrap();
+        let first = page(&pool, &principal, query.clone(), &permission)
+            .await
+            .unwrap();
         assert_eq!(first.total, 2);
         assert!(first.total_is_exact);
         assert!(first.has_more);
@@ -124,20 +134,24 @@ mod tests {
             created_at: first.items[0].created_at,
             id: first.items[0].id.clone(),
         });
-        let second = page(&pool, &principal, query.clone()).await.unwrap();
+        let second = page(&pool, &principal, query.clone(), &permission)
+            .await
+            .unwrap();
         assert_eq!(second.total, 2);
         assert!(!second.has_more);
         assert_eq!(second.items.len(), 1);
         assert_eq!(second.items[0].id, ids[1]);
         query.after = None;
         query.limit = 10;
-        let all = page(&pool, &principal, query.clone()).await.unwrap();
+        let all = page(&pool, &principal, query.clone(), &permission)
+            .await
+            .unwrap();
         assert_eq!(
             all.items.iter().map(|item| &item.id).collect::<Vec<_>>(),
             ids[..2].iter().collect::<Vec<_>>()
         );
         query.as_of -= Duration::seconds(2);
-        let empty = page(&pool, &principal, query).await.unwrap();
+        let empty = page(&pool, &principal, query, &permission).await.unwrap();
         assert_eq!(empty.total, 0);
         assert!(empty.items.is_empty());
         assert!(!empty.has_more);

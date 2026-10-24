@@ -7,9 +7,13 @@ use axum::Router;
 use super::TenantDeps;
 
 #[cfg(feature = "workspace")]
-pub(super) fn mount_workspace(router: Router, deps: &TenantDeps<'_>) -> Router {
+pub(super) fn mount_workspace(
+    router: Router,
+    deps: &TenantDeps<'_>,
+    read_permits: std::sync::Arc<tokio::sync::Semaphore>,
+) -> Router {
     use crate::{
-        action_inbox, collaboration, objects, workbench, workbench_native, workflow_object_context,
+        collaboration, objects, workbench, workbench_native, workflow_object_context,
         workflow_studio,
     };
     let (state, pool) = (deps.state, deps.pool);
@@ -28,12 +32,11 @@ pub(super) fn mount_workspace(router: Router, deps: &TenantDeps<'_>) -> Router {
             collaboration::CollaborationState::new(pool.clone(), state.jwt_verifier.clone())
                 .with_passkey_step_up(state.policy_step_up.clone()),
         ))
-        .merge(action_inbox::router(action_inbox::ActionInboxState::new(
-            pool.clone(),
-            state.jwt_verifier.clone(),
-        )))
         .merge(workbench::router(workbench::WorkbenchState::new(
-            std::sync::Arc::new(workbench_native::NativeWorkbenchReaders::new(pool.clone())),
+            std::sync::Arc::new(workbench_native::NativeWorkbenchReaders::new(
+                pool.clone(),
+                read_permits,
+            )),
             pool.clone(),
             state.jwt_verifier.clone(),
         )))

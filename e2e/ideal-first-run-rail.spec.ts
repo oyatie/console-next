@@ -11,6 +11,29 @@ import { many, plain, workbook } from "./helpers/import-layouts";
 import { grantSetupRole, probeActions } from "./helpers/first-run";
 import { rowsGrid } from "./helpers/import-queue";
 
+test("setup actions fit inside the inbox rail at 390px", { tag: ["@first-run", "@regression"] }, async ({ browser }) => {
+  const admin = await soloTenant(browser, "inbox-rail-narrow", "설정화면그룹");
+  await admin.setViewportSize({ width: 390, height: 844 });
+  await admin.goto("/");
+  const rail = setupRail(admin);
+  const step = rail.locator("[data-step]").first();
+  await expect(step).toBeVisible();
+  await expect(step.getByRole("link")).toHaveCount(3);
+  const bounds = await step.boundingBox();
+  const title = await step.locator(":scope > span").first().boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(title).not.toBeNull();
+  for (const link of await step.getByRole("link").all()) {
+    const action = await link.boundingBox();
+    expect(action).not.toBeNull();
+    expect(action!.y).toBeGreaterThanOrEqual(title!.y + title!.height);
+    expect(action!.x).toBeGreaterThanOrEqual(bounds!.x);
+    expect(action!.x + action!.width).toBeLessThanOrEqual(bounds!.x + bounds!.width);
+  }
+  await expectAccessible(admin, "setup rail inside the narrow inbox");
+  await admin.context().close();
+});
+
 test("BL-013: solo rail, equal paths, J/K, 2,000 applied people and a prepared role", { tag: ["@first-run", "@hr"] }, async ({ browser }, info) => {
   test.setTimeout(300_000);
   const admin = await soloTenant(browser, "ideal-rail", "첫운영그룹");
@@ -44,7 +67,7 @@ test("BL-013: solo rail, equal paths, J/K, 2,000 applied people and a prepared r
   await expect(rowsGrid(admin)).toBeVisible({ timeout: 60_000 });
   await admin.getByRole("button", { name: "명부 반영: 신규 2,000명 · 갱신 0명" }).click();
   await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible({ timeout: 120_000 });
-  const refreshed = admin.waitForResponse((r) => r.request().method() === "GET" && r.url().endsWith("/api/v1/onboarding/checklist"));
+  const refreshed = admin.waitForResponse((r) => r.request().method() === "GET" && new URL(r.url()).pathname === "/api/v1/me/action-inbox");
   await go(admin, "/");
   expect((await refreshed).status()).toBe(200);
   await expect(rail).toContainText("미배치 18");

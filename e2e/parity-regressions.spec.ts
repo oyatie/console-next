@@ -47,21 +47,20 @@ for (const explicit of [false, true]) {
     await expect(page.getByText("확인 필요", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("5개 빠짐", { exact: true })).toBeVisible();
     const inbox = await api<{ items: unknown[] }>("/api/v1/me/action-inbox");
-    expect(inbox.items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "hr_request", id: expect.stringMatching(/^hr_register:/), title: "최최소" })]));
+    expect(inbox.items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "register_review", id: expect.stringMatching(/^hr_register:/), title: "최최소" })]));
     const reviewRead = page.waitForResponse((r) => {
       const url = new URL(r.url());
-      return r.request().method() === "GET" && url.pathname === "/api/v1/employees" && url.searchParams.get("register_review_required") === "true";
+      return r.request().method() === "GET" && url.pathname === "/api/v1/me/action-inbox";
     });
     await go(page, "/");
     const reviewResponse = await reviewRead;
     expect(reviewResponse.status(), "Home's register-review read failed").toBe(200);
     const reviewPage = await reviewResponse.json() as { items: { id: string }[] };
-    expect(reviewPage.items.map(({ id }) => id)).toContain(detail.employee.id);
+    expect(reviewPage.items.map(({ id }) => id)).toContain(`hr_register:${detail.employee.id}`);
     await expect(page.getByRole("main").getByText("불러오는 중…", { exact: true })).toBeHidden({ timeout: 15_000 });
-    const review = page.getByRole("region", { name: "확인할 직원 기록" });
-    await expect(review.getByRole("link", { name: "최최소", exact: true })).toBeVisible();
-    await expect(review.getByText("확인 필요", { exact: true })).toBeVisible();
-    await review.getByRole("link", { name: /명부 항목 빠짐/ }).click();
+    const review = page.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ hasText: "최최소" }).filter({ has: page.locator('a[href="/people?review=register"]') });
+    await expect(review.getByRole("link", { name: "사유 확인", exact: true })).toBeVisible();
+    await review.getByRole("link", { name: "전체 보기", exact: true }).click();
     await expect(page.getByRole("grid", { name: "직원", exact: true }).getByText("최최소", { exact: true })).toBeVisible();
     await page.getByRole("link", { name: "미배치", exact: true }).click();
     await expect(page.getByText("최최소", { exact: true }).first()).toBeVisible();
@@ -74,33 +73,35 @@ for (const explicit of [false, true]) {
         await pressRegister(page);
         await expect(receiptOf(page, name)).toBeVisible();
       }
-      type Inbox = { items: { id: string; title: string }[]; total: number; next_cursor: string | null };
+      type Inbox = { items: { id: string; title: string }[]; total: number; total_is_exact: boolean; next_cursor: string | null };
+      const snapshot = await api<Inbox>("/api/v1/me/action-inbox?limit=200");
+      expect(snapshot.next_cursor).toBeNull();
       const first = await api<Inbox>("/api/v1/me/action-inbox?limit=1");
-      expect(first.items.map((item) => item.title)).toEqual(["최최소"]);
-      expect(first.total).toBe(15);
+      expect(first.items).toHaveLength(1);
       expect(first.next_cursor).not.toBeNull();
       const items = [...first.items];
       let cursor = first.next_cursor;
       let secondRegisterCursor: string | null = null;
-      for (let index = 1; index < first.total; index++) {
-        expect(cursor).not.toBeNull();
+      while (cursor) {
         const next = await api<Inbox>(`/api/v1/me/action-inbox?limit=1&cursor=${encodeURIComponent(cursor!)}`);
         expect(next.items).toHaveLength(1);
-        expect(next.total).toBe(first.total);
+        if (first.total_is_exact && next.total_is_exact) expect(next.total).toBe(first.total);
+        expect(items.map((item) => item.id)).not.toContain(next.items[0]!.id);
         items.push(...next.items);
         cursor = next.next_cursor;
         if (next.items.some(({ id, title }) => id.startsWith("hr_register:") && title === "최다음")) secondRegisterCursor = cursor;
       }
       expect(cursor).toBeNull();
-      expect(new Set(items.map((item) => item.id)).size).toBe(first.total);
+      expect(items.map((item) => item.id)).toEqual(snapshot.items.map((item) => item.id));
       expect(items.filter((item) => item.id.startsWith("hr_register:")).map((item) => item.title)).toEqual(["최최소", "최다음", "최마지막"]);
       for (const name of ["최최소", "최다음", "최마지막"])
         expect(items.filter((item) => item.title === name && item.id.startsWith("insurance_filing_ACQUIRE_"))).toHaveLength(4);
       expect(secondRegisterCursor).not.toBeNull();
       const otherSourceCursor = secondRegisterCursor!.replace("hr_register:", "support:");
       const third = await api<Inbox>(`/api/v1/me/action-inbox?limit=1&cursor=${encodeURIComponent(otherSourceCursor)}`);
-      expect(third.items.map((item) => item.title)).toEqual(["최마지막"]);
-      expect(third.total).toBe(first.total);
+      expect(third.items).toHaveLength(1);
+      expect(["최다음", "최마지막"]).toContain(third.items[0]!.title);
+      expect(third.items[0]!.id).not.toBe(items.find((item) => item.id.startsWith("hr_register:") && item.title === "최다음")!.id);
       expect(third.next_cursor).not.toBeNull();
     }
   });
