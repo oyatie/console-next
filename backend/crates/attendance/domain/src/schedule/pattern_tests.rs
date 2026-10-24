@@ -1,8 +1,8 @@
-use super::*;
+use time::macros::date;
 
-fn w(start: u16, end: u16) -> Window {
-    Window { start, end }
-}
+use super::*;
+use crate::schedule::break_floor_tests::{floor_on, korea_floors, w};
+
 fn work(start: u16, end: u16, breaks: &[(u16, u16)]) -> DaySpec {
     DaySpec::Work {
         shift: Shift {
@@ -27,7 +27,7 @@ fn a_five_day_office_week_is_40_hours_with_a_seven_day_cycle() {
     let d = PatternSpec::Weekly {
         days: week(office()),
     }
-    .validate()
+    .validate(floor_on(), &korea_floors())
     .unwrap();
     assert_eq!(
         (d.weekly_minutes, d.cycle_days, d.night_work),
@@ -40,13 +40,13 @@ fn breaks_follow_section_54() {
     // 8 hours of work with 30 minutes of rest.
     let short = work(540, 1050, &[(720, 750)]);
     assert_eq!(
-        PatternSpec::Weekly { days: week(short) }.validate(),
+        PatternSpec::Weekly { days: week(short) }.validate(floor_on(), &korea_floors()),
         Err(ScheduleRefusal::BreakBelowMinimum)
     );
     // 4h30 of work with no break at all.
     let none = work(540, 810, &[]);
     assert_eq!(
-        PatternSpec::Weekly { days: week(none) }.validate(),
+        PatternSpec::Weekly { days: week(none) }.validate(floor_on(), &korea_floors()),
         Err(ScheduleRefusal::BreakBelowMinimum)
     );
     // 3h59 needs none.
@@ -54,7 +54,7 @@ fn breaks_follow_section_54() {
         PatternSpec::Weekly {
             days: week(work(540, 779, &[]))
         }
-        .validate()
+        .validate(floor_on(), &korea_floors())
         .is_ok()
     );
 }
@@ -63,13 +63,13 @@ fn breaks_follow_section_54() {
 fn a_day_over_8_hours_and_a_week_over_40_are_refused() {
     let long = work(480, 1140, &[(720, 780)]); // 10h of work
     assert_eq!(
-        PatternSpec::Weekly { days: week(long) }.validate(),
+        PatternSpec::Weekly { days: week(long) }.validate(floor_on(), &korea_floors()),
         Err(ScheduleRefusal::DailyHoursOver8)
     );
     let mut six = vec![office(); 6];
     six.push(DaySpec::WeeklyHoliday);
     assert_eq!(
-        PatternSpec::Weekly { days: six }.validate(),
+        PatternSpec::Weekly { days: six }.validate(floor_on(), &korea_floors()),
         Err(ScheduleRefusal::WeeklyHoursOver40)
     );
 }
@@ -79,7 +79,7 @@ fn a_week_without_a_weekly_holiday_is_refused() {
     let mut days = vec![office(); 5];
     days.extend([DaySpec::RestDay, DaySpec::RestDay]);
     assert_eq!(
-        PatternSpec::Weekly { days }.validate(),
+        PatternSpec::Weekly { days }.validate(floor_on(), &korea_floors()),
         Err(ScheduleRefusal::WeeklyHolidayMissing)
     );
 }
@@ -95,7 +95,7 @@ fn breaks_must_sit_inside_the_shift_in_order() {
             PatternSpec::Weekly {
                 days: week(work(540, 1080, breaks))
             }
-            .validate(),
+            .validate(floor_on(), &korea_floors()),
             Err(ScheduleRefusal::ShiftWindowInvalid),
             "{breaks:?}"
         );
@@ -131,7 +131,7 @@ fn a_rotation_cycle_is_derived_from_its_slots_and_averaged_per_week() {
             slot("휴", DaySpec::WeeklyHoliday),
         ],
     };
-    let d = spec.validate().unwrap();
+    let d = spec.validate(floor_on(), &korea_floors()).unwrap();
     assert_eq!(
         (d.cycle_days, d.weekly_minutes, d.night_work),
         (6, 4 * 480 * 7 / 6, true)
@@ -144,18 +144,31 @@ fn staggered_starts_include_the_base_and_stay_distinct() {
         days: week(office()),
         start_choices: vec![480, 540, 600],
     };
-    assert!(ok.validate().is_ok());
+    assert!(ok.validate(floor_on(), &korea_floors()).is_ok());
     for choices in [vec![480, 600], vec![540, 540], vec![540]] {
         let spec = PatternSpec::Staggered {
             days: week(office()),
             start_choices: choices.clone(),
         };
         assert_eq!(
-            spec.validate(),
+            spec.validate(floor_on(), &korea_floors()),
             Err(ScheduleRefusal::StartChoiceInvalid),
             "{choices:?}"
         );
     }
+}
+
+#[test]
+fn break_floor_thresholds_are_not_literals_in_pattern_rs() {
+    let src = concat!(include_str!("pattern.rs"), include_str!("break_floor.rs"));
+    assert!(
+        !src.contains("work >= 240") && !src.contains("rest < 30"),
+        "4-hour floor is still a literal"
+    );
+    assert!(
+        !src.contains("work >= 480") && !src.contains("rest < 60"),
+        "8-hour floor is still a literal"
+    );
 }
 
 #[test]
@@ -170,4 +183,30 @@ fn a_moved_shift_keeps_its_length_and_breaks() {
         (m.start, m.end, m.breaks[0].start, m.minutes()),
         (600, 1140, 780, 480)
     );
+}
+
+#[test]
+fn pattern_validation_refuses_dates_without_a_break_floor() {
+    assert_eq!(
+        PatternSpec::Weekly {
+            days: week(office())
+        }
+        .validate(date!(2026 - 10 - 07), &korea_floors()),
+        Err(ScheduleRefusal::BreakFloorNotInForce)
+    );
+}
+
+#[test]
+fn saved_patterns_derive_without_rejudging_changed_break_floors() {
+    let spec = PatternSpec::Weekly {
+        days: week(office()),
+    };
+    let mut floors = korea_floors();
+    let saved = spec.validate(floor_on(), &floors).unwrap();
+    floors[1].rest_minutes += 15;
+    assert_eq!(
+        spec.validate(floor_on(), &floors),
+        Err(ScheduleRefusal::BreakBelowMinimum)
+    );
+    assert_eq!(spec.derive(), Ok(saved));
 }

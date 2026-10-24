@@ -2,10 +2,14 @@
 //! decide. Pure: no IO, no clock (callers pass `today`).
 
 mod assign;
+mod break_floor;
+#[cfg(test)]
+mod break_floor_tests;
 mod pattern;
 mod resolve;
 
 pub use assign::{AssignRules, LayerReason, check_assign, check_cancel, month_of};
+pub use break_floor::BreakFloorRow;
 pub use pattern::{DaySpec, Derived, HolidayRule, PatternSpec, Shift, Slot, Window};
 pub use resolve::{DayKind, DayPlan, HolidayFact, HolidayKind, LayerRef, Level, plan_day, winner};
 
@@ -21,6 +25,8 @@ pub enum ScheduleRefusal {
         "break is below the statutory minimum (30 minutes from 4 hours, 1 hour from 8 hours of work)"
     )]
     BreakBelowMinimum,
+    #[error("no statutory break floor is in force on this date")]
+    BreakFloorNotInForce,
     #[error("scheduled work exceeds 8 hours in a day")]
     DailyHoursOver8,
     #[error("scheduled work exceeds 40 hours in a week")]
@@ -55,6 +61,7 @@ impl ScheduleRefusal {
         match self {
             Self::ShiftWindowInvalid => "shift_window_invalid",
             Self::BreakBelowMinimum => "break_below_minimum",
+            Self::BreakFloorNotInForce => "break_floor_not_in_force",
             Self::DailyHoursOver8 => "daily_hours_over_8",
             Self::WeeklyHoursOver40 => "weekly_hours_over_40",
             Self::WeeklyHolidayMissing => "weekly_holiday_missing",

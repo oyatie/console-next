@@ -3,10 +3,13 @@
 //! from 00:00 of the work date; an end past 1440 is the next day.
 
 use serde::{Deserialize, Serialize};
+use time::Date;
 
 use super::ScheduleRefusal;
+use super::break_floor::{BreakFloorFinding, BreakFloorRow};
 
 const DAY: u16 = 1440;
+const DAILY_LIMIT: u16 = 480;
 const MAX_SPAN: u16 = 16 * 60;
 const NIGHT_FROM: u16 = 22 * 60;
 const NIGHT_TO: u16 = 6 * 60;
@@ -81,14 +84,8 @@ impl Shift {
             }
             at = b.end;
         }
-        let work = self.minutes();
-        let rest = self.end - self.start - work;
-        // §54①: 4시간이면 30분 이상, 8시간이면 1시간 이상, 근로시간 도중에.
-        if (work >= 480 && rest < 60) || (work >= 240 && rest < 30) {
-            return Err(ScheduleRefusal::BreakBelowMinimum);
-        }
         // §50②: 1일 소정근로는 8시간을 넘지 못합니다 (탄력적 근로시간제 제외).
-        if work > 480 {
+        if self.minutes() > DAILY_LIMIT {
             return Err(ScheduleRefusal::DailyHoursOver8);
         }
         Ok(())
@@ -176,7 +173,30 @@ impl PatternSpec {
 
     /// # Errors
     /// The first rule the spec breaks, as a refusal with a stable code.
-    pub fn validate(&self) -> Result<Derived, ScheduleRefusal> {
+    /// Break floors are the register rows in force on `on` (no waiver request).
+    pub fn validate(&self, on: Date, floors: &[BreakFloorRow]) -> Result<Derived, ScheduleRefusal> {
+        let derived = self.derive()?;
+        for day in self.cycle() {
+            if let DaySpec::Work { shift } = day {
+                match shift.judge_break(on, floors, false) {
+                    BreakFloorFinding::Below { .. } => {
+                        return Err(ScheduleRefusal::BreakBelowMinimum);
+                    }
+                    BreakFloorFinding::NotInForce => {
+                        return Err(ScheduleRefusal::BreakFloorNotInForce);
+                    }
+                    BreakFloorFinding::Within { .. } => {}
+                }
+            }
+        }
+        Ok(derived)
+    }
+
+    /// Derive saved facts without rejudging dated break floors.
+    ///
+    /// # Errors
+    /// Invalid shape, shift windows, start choices, daily/weekly hours or holidays.
+    pub fn derive(&self) -> Result<Derived, ScheduleRefusal> {
         match self {
             Self::Weekly { days } | Self::Staggered { days, .. } if days.len() != 7 => {
                 return Err(ScheduleRefusal::ShiftWindowInvalid);

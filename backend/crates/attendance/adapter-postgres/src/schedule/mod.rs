@@ -2,6 +2,7 @@
 //! writes run in one transaction with their audit event (#27 topic
 //! `attendance_schedule`).
 
+mod break_floor;
 pub(crate) mod codes;
 mod crews;
 mod holiday_writes;

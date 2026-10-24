@@ -67,6 +67,7 @@ export const koAttendance = {
   "attendance.refusal.pattern_name_taken": "같은 이름의 근무 유형이 있습니다. 다른 이름을 입력하십시오.",
   "attendance.refusal.regime_not_supported_yet": "탄력적 · 선택적 · 간주 · 재량 근로시간제는 서면합의를 등록한 뒤 지정할 수 있고, 등록은 파일럿 이후입니다.",
   "attendance.refusal.break_below_minimum": "휴게가 부족합니다. 4시간 근무에는 30분, 8시간 근무에는 1시간 이상 근로시간 도중에 휴게를 두어야 합니다(근로기준법 제54조).",
+  "attendance.refusal.break_floor_not_in_force": "이 날짜의 법정 휴게 기준이 없어 판단할 수 없습니다.",
   "attendance.refusal.daily_hours_over_8": "하루 소정 근로가 8시간을 넘습니다(근로기준법 제50조). 넘는 시간은 연장 승인으로 기록합니다.",
   "attendance.refusal.weekly_hours_over_40": "주 소정 근로가 40시간을 넘습니다(근로기준법 제50조). 근무일이나 시각을 줄이십시오.",
   "attendance.refusal.weekly_holiday_missing": "주휴일이 없습니다. 7일마다 주휴일을 하루 이상 지정하십시오(근로기준법 제55조).",

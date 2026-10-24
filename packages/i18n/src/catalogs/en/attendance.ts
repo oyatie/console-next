@@ -60,6 +60,7 @@ export const enAttendance: Partial<Record<keyof typeof koAttendance, string>> = 
   "attendance.refusal.pattern_name_taken": "A work pattern with this name exists. Enter another name.",
   "attendance.refusal.regime_not_supported_yet": "Flexible, selective, deemed and discretionary hours need a registered written agreement first, which comes after the pilot.",
   "attendance.refusal.break_below_minimum": "Not enough break. Four hours of work need 30 minutes and eight hours need an hour, taken during working time (Labor Standards Act §54).",
+  "attendance.refusal.break_floor_not_in_force": "No statutory break floor is in force on this date, so the shift cannot be judged.",
   "attendance.refusal.daily_hours_over_8": "Scheduled work exceeds 8 hours a day (§50). Record the extra time as approved overtime.",
   "attendance.refusal.weekly_hours_over_40": "Scheduled work exceeds 40 hours a week (§50). Reduce the days or hours.",
   "attendance.refusal.weekly_holiday_missing": "There is no weekly rest day. Set at least one in every 7 days (§55).",
