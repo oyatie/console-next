@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Check, FileText, Info } from "lucide-react";
 import type { EntityDocument, IdentifierCorrectionReason, LegalEntity } from "@console/api/pending";
@@ -40,16 +41,20 @@ export function IdentifierSheet({ e: opened, field, registrationId, operating, o
   const all = useQuery(entitiesRef).data?.items ?? [];
   const taken = field === "brn" && value !== old?.value ? takenBrn(value, all) : null;
   const complete = value.length === fmt.max && value !== old?.value && !taken;
-  const ready = complete && reason !== null && doc !== null;
+  const [pendingException, setPendingException] = useState<string | null>(null);
+  const ready = complete && reason !== null && doc !== null && pendingException === null;
   const upload = useCommand({ run: (f: File) => uploadDocument(f, field === "brn" ? "BIZ_REG_CERT" : "CORP_REGISTRY_EXTRACT"), onSuccess: setDoc });
   const save = useCommand({
-    run: async (_: undefined, key: string): Promise<unknown> => {
+    run: async (_: undefined, key: string) => {
       const body = { value, document_id: doc!.id, reason_code: reason! };
       return field === "brn" ? correctRegistrationNumber(key, reg!.id, body) : correctIdentifier(key, e.id, { field: "crn", ...body });
     },
     invalidates: ENTITY_READS,
-    announce: () => t("entityRecord.id.saved", { field: t(`entityRecord.id.field.${field}`) }),
-    onSuccess: onClose,
+    announce: (out) => "status" in out && out.status === "PENDING" ? t("entityRecord.id.pending", { field: t(`entityRecord.id.field.${field}`) }) : t("entityRecord.id.saved", { field: t(`entityRecord.id.field.${field}`) }),
+    onSuccess: (out) => {
+      if ("status" in out && out.status === "PENDING") setPendingException(out.exception_id);
+      else onClose();
+    },
   });
   const where = field === "brn" ? `${entityName(e)} › ${holder?.current?.name ?? t("entityRecord.id.certificate")}` : entityName(e);
   return (
@@ -60,7 +65,7 @@ export function IdentifierSheet({ e: opened, field, registrationId, operating, o
       wide
       title={t("entityRecord.id.title", { field: t(`entityRecord.id.field.${field}`) })}
       subtitle={<><span className={s.kicker}><FileText size={14} aria-hidden /> {where}</span>{t("entityRecord.id.now", { value: old?.display ?? "—" })}</>}
-      notice={<EntityError error={upload.error ?? save.error} historyHref={`/org/entities/${encodeURIComponent(e.id)}?tab=history#history`} own={(code) => (code === "identifier_correction_needs_exception" ? t("entityRecord.id.needsOps") : undefined)} />}
+      notice={<>{save.error && <Link to="/org/entities" hash="identifier-corrections" onClick={onClose}>{t("entityRecord.corrections.track")}</Link>}<EntityError error={upload.error ?? save.error} historyHref={`/org/entities/${encodeURIComponent(e.id)}?tab=history#history`} own={(code) => (code === "identifier_correction_needs_exception" ? t("entityRecord.id.needsOps") : undefined)} /></>}
       consequence={
         complete ? (
           <span><span className={s.old}>{old?.display}</span>{ARROW}<b>{fmt.display(value)}</b> {t(operating ? "entityRecord.id.consequenceOperating" : "entityRecord.id.consequenceSetup")}</span>
@@ -75,7 +80,7 @@ export function IdentifierSheet({ e: opened, field, registrationId, operating, o
         </>
       }
     >
-      <p className="notice"><Info size={14} aria-hidden /> {t(operating ? "entityRecord.id.noticeOperating" : "entityRecord.id.noticeSetup")}</p>
+      <p className="notice"><Info size={14} aria-hidden /> {pendingException ? <>{t("entityRecord.id.pending", { field: t(`entityRecord.id.field.${field}`) })} <Link to="/org/entities" hash="identifier-corrections" onClick={onClose}>{t("entityRecord.corrections.track")}</Link></> : t(operating ? "entityRecord.id.noticeOperating" : "entityRecord.id.noticeSetup")}</p>
       <MaskedField
         label={t("entityRecord.id.right")}
         required

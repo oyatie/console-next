@@ -194,6 +194,9 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                 ActionInboxSource::SupportAccess => {
                     sources::support_access::page(&self.pool, &self.principal, query, &self.support_can_approve).await
                 }
+                ActionInboxSource::EntityCorrections => {
+                    sources::entity_corrections::page(&self.pool, &self.principal, query).await
+                }
                 ActionInboxSource::OrgChange => {
                     sources::org_change::page(&self.pool, &self.principal, query).await
                 }

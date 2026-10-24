@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [entity]
+operationId: getEntityIdentifierCorrection
+summary: Read the identifier-correction register and its proposed evidence
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema: { type: string, format: uuid }
+responses:
+  '200':
+    description: Correction cases ordered by post-review due date, then newest creation and ID; status and permissions are projected at read time.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/IdentifierCorrectionCasePage'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Organization-wide entity or structure management access required.
+  '404':
+    description: No correction in this tenant matches the ID.

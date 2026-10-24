@@ -28,10 +28,10 @@ properties:
     format: uuid
     description: After 운영 시작, the approved or sole-holder recorded governed exception for exactly this correction.
   step_up:
-    type:
-    - object
-    - 'null'
+    oneOf:
+    - $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+    - type: 'null'
     description: 'After 운영 시작, the tenant ops account covering the correction itself (decisions #26 item d, break-glass):
       its passkey step-up envelope {binding, assertion}, kind EXCEPTION_DECIDE, object the 법인 (or 사업자등록) id, payload
-      the line "ENTITY_IDENTIFIER_CORRECTION\n{field}\n{canonical value}\n{document_id}". The server records a sole-holder
+      the line "ENTITY_IDENTIFIER_CORRECTION\n{field}\n{canonical value}\n{document_id}". With another eligible holder the server returns 202 PENDING and its exception_id; otherwise it records a sole-holder
       exception (사후 검토 due) and consumes it. Ignored for anyone else.'

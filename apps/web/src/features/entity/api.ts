@@ -1,12 +1,13 @@
 // Legal entities, business registrations, workplaces and the reference reads they use: query descriptors and
 // commands (pending contract, packages/api/src/pending/entity.ts).
-import { api, ApiError, assertBoundPasskey, type components } from "@console/api";
+import { api, ApiError, assertBoundPasskey, assertBoundPasskeyHash, type components } from "@console/api";
 export { ApiError };
 import type { CloseReason, CreateRegistrationRequest, CreateWorkplaceRequest, EntityDocument, IdentifierCorrectionReason, InsurerInput, LegalEntityInput, RefListKey, RegistrationInput, RegistrationReissue, WorkplaceInput } from "@console/api/pending";
 import type { AsOf } from "../../reference/entity/api";
 import { get, type PathPrefix } from "../../lib/query";
 import { opsCorrectionLine } from "./domain/ops-cover";
 
+export { correctionRegisterQuery, type IdentifierCorrectionCase } from "../../reference/entity/api";
 /** One field the server refused and why (the envelope's `errors`, codes from the entity domain). */
 export type FieldIssue = { field: string; code: string };
 
@@ -34,13 +35,15 @@ export const registrationHistoryQuery = (registrationId: string) => get("/api/v1
 export const workplaceHistoryQuery = (workplaceId: string) => get("/api/v1/workplaces/{workplaceId}/revisions", { params: { path: { workplaceId } } });
 export const entityDocumentsQuery = (entityId: string) => get("/api/v1/legal-entities/{entityId}/documents", { params: { path: { entityId } } });
 export const documentQuery = (id: string) => get("/api/v1/entity-documents/{id}", { params: { path: { id } } });
+/** One correction case with the actions this viewer can take. */
+export const correctionCaseQuery = (id: string) => get("/api/v1/entity-identifier-corrections/{id}", { params: { path: { id } } });
 /** One page of an official code list matching `q` (code or label). */
 export const codesQuery = (key: RefListKey, q: string) => get("/api/v1/ref/lists/{key}/codes", { params: { path: { key }, query: { q } } });
 export const addressQuery = (q: string) => get("/api/v1/ref/address-search", { params: { query: { q } } });
 
 /** Every read an entity or workplace command may change, onboarding's checklist and the org structure included. */
 // A workplace brings its default branch (the employee's home branch) and its place in the org tree.
-export const ENTITY_READS: PathPrefix[] = ["/api/v1/legal-entities", "/api/v1/business-registrations", "/api/v1/workplaces", "/api/v1/onboarding", "/api/v1/org-structure", "/api/v1/branches", "/api/v1/org-units"];
+export const ENTITY_READS: PathPrefix[] = ["/api/v1/legal-entities", "/api/v1/business-registrations", "/api/v1/workplaces", "/api/v1/onboarding", "/api/v1/org-structure", "/api/v1/branches", "/api/v1/org-units", "/api/v1/entity-identifier-corrections", "/api/v1/me/action-inbox"];
 
 /**
  * A dated revision: the full new state, when it takes effect (may be in the future) and why, against the newest
@@ -72,7 +75,7 @@ export const settleNameReview = (key: string, entityId: string, reviewId: string
 export const setRoles = (key: string, entityId: string, body: { primary_workplace_id?: string | null; head_office_workplace_id?: string | null; head_office_has_no_workplace?: boolean }) =>
   unwrap(api.POST("/api/v1/legal-entities/{entityId}/roles", { params: { path: { entityId }, header: once(key) }, body }));
 type OpsStepUp = components["schemas"]["IdentifierCorrectionRequest"]["step_up"];
-type CorrectionBody = { value: string; document_id: string; reason_code: IdentifierCorrectionReason };
+type CorrectionBody = { value: string; document_id: string; reason_code: IdentifierCorrectionReason; exception_id?: string };
 
 /**
  * After go-live the tenant ops account covers a correction itself (decisions #26 item d): the server answers 428
@@ -98,6 +101,13 @@ export const correctIdentifier = (key: string, entityId: string, body: Correctio
 export const correctRegistrationNumber = (key: string, registrationId: string, body: CorrectionBody) =>
   withOpsStepUp(key, registrationId, opsCorrectionLine("brn", body.value, body.document_id), (intent, step_up) =>
     unwrap(api.POST("/api/v1/business-registrations/{registrationId}/identifier-corrections", { params: { path: { registrationId }, header: once(intent) }, body: { field: "brn", ...body, step_up } })));
+/** A second person decides the exact fingerprint they reviewed; only approval needs their passkey. */
+export const decideCorrection = async (id: string, decision: "APPROVE" | "DECLINE", note: string, payloadHash: string) => {
+  const step_up = decision === "APPROVE" ? await assertBoundPasskeyHash("EXCEPTION_DECIDE", id, payloadHash) : undefined;
+  return unwrap(api.POST("/api/v1/governed-exceptions/{id}/decide", { params: { path: { id } }, body: { decision, reason_code: decision === "APPROVE" ? "SECOND_PERSON_VERIFIED" : "DOCUMENT_MISMATCH", note, step_up } }));
+};
+/** The controller's review of a correction already recorded through the sole-holder fallback. */
+export const reviewCorrection = (id: string, note: string) => unwrap(api.POST("/api/v1/entity-identifier-corrections/{id}/review", { params: { path: { id } }, body: { note } }));
 /** Closes the entity (dissolved or business closed) on a date no later than today; its open workplaces and certificates close with it. */
 export const closeEntity = (key: string, entityId: string, body: { closed_on: string; reason_code: CloseReason }) =>
   unwrap(api.POST("/api/v1/legal-entities/{entityId}/close", { params: { path: { entityId }, header: once(key) }, body }));

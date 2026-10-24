@@ -10,6 +10,7 @@ import { Table } from "../../../ui/table";
 import { checklistRef, entitiesAt } from "../../../reference/entity/api";
 import { todayKst } from "../../../lib/pure/today";
 import { headcount, primaryRegistration } from "../domain/view";
+import { CorrectionRegister } from "./correction-register";
 import { QuickAdd } from "./entity-quick-add";
 import { UnattachedWorkplaces } from "./unattached-workplaces";
 import { AsOfBand } from "./asof-band";
@@ -21,7 +22,7 @@ const route = getRouteApi("/app/org/entities");
 
 /** The tenant's legal entities (design §0 E1): each with its kind, main registration, workplaces and people. */
 export function EntityList() {
-  const { add, as_of, known_at } = route.useSearch();
+  const { add, correction, as_of, known_at } = route.useSearch();
   const list = useQuery(entitiesAt({ as_of, known_at }));
   const phase = useQuery(checklistRef).data?.phase;
   const nav = useNavigate();
@@ -85,7 +86,8 @@ export function EntityList() {
           )}
         </QueryState>
       </section>
-      {/* Below the list: arriving with the read, it never pushes the table down (layout shift budget). */}
+      {/* The list above must settle before these controls can be aimed at. */}
+      {!list.isPending && !readOnly && <CorrectionRegister correctionId={correction} onSelect={(id) => void navigate({ search: (s) => ({ ...s, correction: id ?? undefined }), hash: "identifier-corrections", replace: true })} />}
       {list.data && <UnattachedWorkplaces entities={list.data.items} />}
       {!readOnly && <QuickAdd open={add === true} onClose={() => void navigate({ search: (s) => ({ ...s, add: undefined }) })} />}
     </div>

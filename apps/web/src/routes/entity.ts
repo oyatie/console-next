@@ -8,7 +8,7 @@ type Kind = (typeof KINDS)[number];
 const entities = createRoute({
   getParentRoute: () => app,
   path: "/org/entities",
-  validateSearch: (s: Record<string, unknown>): { add?: boolean; as_of?: string; known_at?: string; bulk?: "paste" | "import" } => ({ add: flag(s.add), as_of: str(s.as_of), known_at: str(s.known_at), bulk: s.bulk === "paste" || s.bulk === "import" ? s.bulk : undefined }),
+  validateSearch: (s: Record<string, unknown>): { add?: boolean; correction?: string; as_of?: string; known_at?: string; bulk?: "paste" | "import" } => ({ add: flag(s.add), correction: str(s.correction), as_of: str(s.as_of), known_at: str(s.known_at), bulk: s.bulk === "paste" || s.bulk === "import" ? s.bulk : undefined }),
   component: lazyRouteComponent(screen(load), "EntitiesScreen"),
 });
 // `kind` and `name` carry what the quick sheet already chose into the full certificate wizard.

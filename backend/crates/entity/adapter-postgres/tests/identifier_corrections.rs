@@ -116,6 +116,9 @@ async fn setup_correction_needs_evidence_writes_the_ledger_and_revise_refuses(ow
         .correct_entity_identifier(&cmd(&actor), created.id, crn_fix(doc, None), None)
         .await
         .unwrap();
+    let console_entity_adapter_postgres::CorrectionOutcome::Applied(saved) = saved else {
+        panic!("expected applied correction")
+    };
     assert_eq!(
         (saved.change_mode.as_str(), saved.record.crn.unwrap().value),
         ("SETUP", FIXED_CRN.to_owned())
@@ -174,6 +177,9 @@ async fn setup_correction_needs_evidence_writes_the_ledger_and_revise_refuses(ow
         .correct_entity_identifier(&cmd(&actor), created.id, kind, None)
         .await
         .unwrap();
+    let console_entity_adapter_postgres::CorrectionOutcome::Applied(saved) = saved else {
+        panic!("expected applied correction")
+    };
     assert!(saved.record.crn.is_none());
     assert_eq!(ledger(&owner, created.id).await.len(), 3);
 }
@@ -214,8 +220,11 @@ async fn brn_correction_keeps_the_certificate_and_drops_the_old_check(owner: PgP
     let saved = store
         .correct_registration_number(&cmd(&actor), reg, fix, None)
         .await
-        .unwrap()
-        .record;
+        .unwrap();
+    let console_entity_adapter_postgres::CorrectionOutcome::Applied(saved) = saved else {
+        panic!("expected applied correction")
+    };
+    let saved = saved.record;
     assert_eq!(
         (
             saved.brn.unwrap().value.as_str(),

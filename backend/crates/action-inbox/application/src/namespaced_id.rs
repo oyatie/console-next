@@ -29,6 +29,7 @@ pub(super) fn valid_namespaced_id(value: &str) -> bool {
                 | "work"
                 | "payroll"
                 | "governance"
+                | "identifier_correction"
                 | "org_change"
                 | "hr_exit"
                 | "hr_lifecycle"

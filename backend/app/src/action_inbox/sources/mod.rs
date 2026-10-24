@@ -1,4 +1,5 @@
 pub(super) mod audit_personnel;
+pub(super) mod entity_corrections;
 pub(super) mod grants;
 pub(super) mod hr_exit;
 pub(super) mod hr_followups;

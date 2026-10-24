@@ -3,6 +3,7 @@ import { get } from "../../lib/query";
 
 type Capability = components["schemas"]["MeAuthzCapability"];
 export type Feature =
+  | "legal_entity_manage"
   | "org_change_read"
   | "org_change_draft"
   | "org_change_approve"

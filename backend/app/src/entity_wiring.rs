@@ -11,33 +11,29 @@ use std::sync::Arc;
 
 use axum::Router;
 use console_entity_adapter_juso::JusoClient;
-use console_entity_adapter_postgres::{
-    CorrectionCover, CorrectionSubject, GovernedCorrectionFuture, GovernedCorrectionPort, OpsCover,
-    OpsCoverFuture, OrgUnitSetupFuture, OrgUnitSetupWritePort, PgEntityStore,
-};
+use console_entity_adapter_postgres::{OrgUnitSetupFuture, OrgUnitSetupWritePort, PgEntityStore};
 use console_entity_rest::EntityRestState;
-use console_governance_adapter_postgres::PgGovernanceError;
-use console_governance_adapter_postgres::exception::{
-    ExceptionRequest, GovernedWrite, consume_exception_conn, get_exception_conn,
-    request_exception_conn,
-};
-use console_governance_domain::exception::{
-    ExceptionSettings, FallbackKind, RuleCode, SoleHolderMode, SubjectType,
-};
 use console_kernel_core::{KernelError, OrgId, UserId};
 use console_onboarding_adapter_postgres::PgOnboardingStore;
 use console_onboarding_rest::OnboardingRestState;
 use console_ontology_canonical_adapter_postgres::org_unit::{
     OrgUnitCommand, OrgUnitError, OrgUnitQuery, write_in_tx,
 };
-use console_platform_auth::{
-    JwtVerifier, MobilePasskeyStepUpBinding, MobilePasskeyStepUpEnvelope, MobileStepUpActionKind,
-    PasskeyService,
-};
-use console_settings_adapter_postgres::resolve_in_tx;
-use console_settings_domain::{SettingKey, SettingValue};
-use sha2::{Digest, Sha256};
+use console_platform_auth::{JwtVerifier, PasskeyService};
 use sqlx::PgPool;
+
+mod correction_register;
+mod corrections;
+mod exceptions;
+use corrections::GovernedIdentifierCorrections;
+pub(crate) use exceptions::read_correction_outcome;
+
+pub(crate) const IDENTIFIER_CORRECTION_ROUTE_PATHS: &[&str] = &[
+    correction_register::ROUTE_PATHS[0],
+    correction_register::ROUTE_PATHS[1],
+    correction_register::ROUTE_PATHS[2],
+    exceptions::DECIDE_PATH,
+];
 
 struct CanonicalOrgUnitSetupPort;
 
@@ -112,163 +108,6 @@ impl OrgUnitSetupWritePort for CanonicalOrgUnitSetupPort {
     }
 }
 
-/// ENT-REG (MR-17): a post-go-live identifier correction consumes the BW-06
-/// governed exception for exactly that correction, in the entity adapter's
-/// transaction (governance stays the only writer of `governed_exceptions`).
-/// Decisions #26 item d: the tenant ops account may record that exception
-/// itself, after a step-up (`passkeys`).
-struct GovernedIdentifierCorrections {
-    passkeys: Option<PasskeyService>,
-}
-
-fn subject_of(subject: CorrectionSubject) -> (SubjectType, uuid::Uuid) {
-    match subject {
-        CorrectionSubject::LegalEntity(id) => (SubjectType::LegalEntity, id),
-        CorrectionSubject::BusinessRegistration(id) => (SubjectType::BusinessRegistration, id),
-    }
-}
-
-fn step_up_failed() -> KernelError {
-    KernelError::forbidden("the passkey step-up did not verify").with_code("passkey_step_up_failed")
-}
-
-/// The registry values the break-glass exception is admitted under (D0.3);
-/// a sole-holder mode other than `step_up_notice_review` refuses (fail closed).
-async fn exception_settings(
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    org: OrgId,
-) -> Result<ExceptionSettings, KernelError> {
-    let keys = [
-        SettingKey::ExceptionsApprovalTtlDays,
-        SettingKey::AuthzSoleHolderMode,
-        SettingKey::ReviewSoleHolderExceptionDue,
-    ];
-    let resolved = resolve_in_tx(
-        tx.as_mut(),
-        org,
-        &keys,
-        None,
-        time::OffsetDateTime::now_utc(),
-    )
-    .await?;
-    let value = |key: SettingKey| match resolved.get(&key) {
-        Some(Ok(r)) => Ok(r.value),
-        _ => Err(KernelError::internal(format!(
-            "setting {} did not resolve",
-            key.as_str()
-        ))),
-    };
-    let days = |key: SettingKey| match value(key)? {
-        SettingValue::Int(days) => u64::try_from(days).map_err(|_| {
-            KernelError::internal(format!("setting {} is out of range", key.as_str()))
-        }),
-        _ => Err(KernelError::internal(format!(
-            "setting {} is not a number",
-            key.as_str()
-        ))),
-    };
-    Ok(ExceptionSettings {
-        approval_ttl_days: u16::try_from(days(SettingKey::ExceptionsApprovalTtlDays)?)
-            .map_err(|_| KernelError::internal("exceptions.approval_ttl_days is out of range"))?,
-        sole_holder_mode: match value(SettingKey::AuthzSoleHolderMode)? {
-            SettingValue::Code("step_up_notice_review") => SoleHolderMode::StepUpNoticeReview,
-            _ => SoleHolderMode::Refuse,
-        },
-        sole_holder_review_due: std::time::Duration::from_secs(
-            days(SettingKey::ReviewSoleHolderExceptionDue)? * 86_400,
-        ),
-    })
-}
-
-impl GovernedCorrectionPort for GovernedIdentifierCorrections {
-    fn cover_as_ops<'tx>(
-        &self,
-        tx: &'tx mut sqlx::Transaction<'_, sqlx::Postgres>,
-        cover: OpsCover<'tx>,
-    ) -> OpsCoverFuture<'tx> {
-        let passkeys = self.passkeys.clone();
-        Box::pin(async move {
-            let passkeys = passkeys.ok_or_else(|| {
-                KernelError::internal("passkey step-up is not configured").with_code("unavailable")
-            })?;
-            let (subject_type, subject_id) = subject_of(cover.subject);
-            let envelope: MobilePasskeyStepUpEnvelope =
-                serde_json::from_value(cover.step_up.clone()).map_err(|_| step_up_failed())?;
-            let binding = MobilePasskeyStepUpBinding::bound(
-                MobileStepUpActionKind::ExceptionDecide,
-                subject_id,
-                hex::encode(Sha256::digest(cover.step_up_line.as_bytes())),
-            );
-            let assertion = passkeys
-                .verify_and_record_step_up_in_tx(tx, envelope, cover.actor, &binding)
-                .await
-                .map_err(|_| step_up_failed())?;
-            let settings = exception_settings(tx, cover.org).await?;
-            // Break-glass covers the act alone: recorded as the sole-holder
-            // fallback, so it carries the 사후 검토 due date and notice.
-            let recorded = request_exception_conn(
-                tx.as_mut(),
-                &ExceptionRequest {
-                    rule: RuleCode::EntityIdentifierCorrection,
-                    subject_type,
-                    subject_id,
-                    reason_code: cover.reason_code,
-                    note: None,
-                    payload: cover.payload,
-                    affected_periods: &[],
-                    requested_by: UserId::from_uuid(cover.actor),
-                    step_up_assertion_id: Some(assertion),
-                    other_eligible_holders: 0,
-                },
-                &settings,
-            )
-            .await
-            .map_err(governance_kernel)?;
-            Ok(recorded.id)
-        })
-    }
-
-    fn consume<'a>(
-        &'a self,
-        conn: &'a mut sqlx::PgConnection,
-        exception_id: uuid::Uuid,
-        subject: CorrectionSubject,
-        payload: &'a serde_json::Value,
-    ) -> GovernedCorrectionFuture<'a> {
-        let kernel = governance_kernel;
-        Box::pin(async move {
-            let (subject_type, subject_id) = subject_of(subject);
-            let write = GovernedWrite {
-                rule: RuleCode::EntityIdentifierCorrection,
-                subject_type,
-                subject_id,
-                payload,
-                affected_periods: &[],
-            };
-            consume_exception_conn(conn, exception_id, &write)
-                .await
-                .map_err(kernel)?;
-            let stored = get_exception_conn(conn, exception_id)
-                .await
-                .map_err(kernel)?;
-            Ok(match stored.and_then(|s| s.fallback_kind) {
-                Some(FallbackKind::SoleHolder) => CorrectionCover::SoleHolder,
-                _ => CorrectionCover::SecondPerson,
-            })
-        })
-    }
-}
-
-fn governance_kernel(error: PgGovernanceError) -> KernelError {
-    match error {
-        PgGovernanceError::Domain(k) => k,
-        PgGovernanceError::Db(error) => {
-            tracing::error!(error = %error, "governed exception write failed at the entity seam");
-            KernelError::internal("governed exception write failed")
-        }
-    }
-}
-
 /// The canonical OrgUnit seam, for the lifecycle tick's 사업장 close step (UX-R2 ENDS).
 pub(crate) fn org_unit_port() -> Arc<dyn OrgUnitSetupWritePort> {
     Arc::new(CanonicalOrgUnitSetupPort)
@@ -281,6 +120,7 @@ pub(crate) fn router(
     passkey: Option<PasskeyService>,
     juso: Arc<JusoClient>,
 ) -> Router {
+    let exceptions = exceptions::router(pool.clone(), jwt.clone(), passkey.clone());
     let entity = console_entity_rest::router(
         EntityRestState::new(
             PgEntityStore::new(pool.clone()),
@@ -291,11 +131,18 @@ pub(crate) fn router(
         .with_governed_corrections(Arc::new(GovernedIdentifierCorrections {
             passkeys: passkey.clone(),
         })),
-    );
+    )
+    .layer(axum::Extension(
+        console_platform_request_context::record_access::outcome::Reader(
+            exceptions::read_correction_outcome,
+        ),
+    ));
     let onboarding = console_onboarding_rest::router(OnboardingRestState::new(
         PgOnboardingStore::new(pool),
         jwt,
         passkey,
     ));
-    entity.merge(onboarding)
+    entity.merge(onboarding).merge(exceptions)
 }
+
+pub(crate) use corrections::{governance_kernel, min_grant_age_days};

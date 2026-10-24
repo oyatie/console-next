@@ -25,6 +25,7 @@ export const TOPICS: Readonly<Record<string, Topic>> = {
   inbox: { paths: ["/api/v1/me/action-inbox"] },
   command_outcome: { paths: ["/api/v1/requests"] },
   tenant: { paths: ["/api/v1"] },
+  identifier_correction: { detail: "/api/v1/entity-identifier-corrections", paths: ["/api/v1/entity-identifier-corrections", "/api/v1/me/action-inbox"] },
   legal_entity: { detail: "/api/v1/legal-entities", paths: [...ENTITY_READS, "/api/v1/employment-assignments", ...ATTENDANCE_ORG_READS] },
   business_registration: { detail: "/api/v1/business-registrations", paths: ENTITY_READS },
   workplace: { detail: "/api/v1/workplaces", paths: [...ENTITY_READS, ...STRUCTURE_READS] },

@@ -1,0 +1,7 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* Measure translated content so loading and status changes keep the same space. */
+.consequence, .status, .actions { display: inline-grid; }
+.consequence > div, .status > div, .actions > div { grid-area: 1 / 1; }
+.measure { visibility: hidden; }
+
+.actions > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }

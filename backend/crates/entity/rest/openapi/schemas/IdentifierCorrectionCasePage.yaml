@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [items, next_offset]
+properties:
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/IdentifierCorrectionCase'
+  next_offset: { type: [integer, 'null'], format: int64 }

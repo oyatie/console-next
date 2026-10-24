@@ -260,7 +260,7 @@ fn project_item(item: ActionInboxSourceItem, now: OffsetDateTime) -> ActionInbox
     ActionInboxItem {
         context: item.context,
         lane: match item.kind.as_str() {
-            "org_change_waiting" => "waiting",
+            "org_change_waiting" | "identifier_correction_waiting" => "waiting",
             "org_change_scheduled" => "scheduled",
             _ => "turn",
         },
@@ -327,6 +327,21 @@ mod tests {
     use super::*;
 
     #[test]
+    fn corrections_project_requester_waiting_separately_from_actions() {
+        let now = OffsetDateTime::UNIX_EPOCH;
+        for (kind, lane) in [
+            ("identifier_correction_waiting", "waiting"),
+            ("identifier_correction_decide", "turn"),
+            ("identifier_correction_apply", "turn"),
+            ("identifier_correction_review", "turn"),
+        ] {
+            let mut source = item("identifier_correction", 1, now);
+            source.kind = kind.into();
+            assert_eq!(project_item(source, now).lane, lane);
+        }
+    }
+
+    #[test]
     fn all_sources_are_payroll_and_governance_inclusive() {
         assert_eq!(
             ActionInboxSource::ALL,
@@ -337,6 +352,7 @@ mod tests {
                 ActionInboxSource::WorkOrder,
                 ActionInboxSource::Payroll,
                 ActionInboxSource::Governance,
+                ActionInboxSource::EntityCorrections,
                 ActionInboxSource::OrgChange,
                 ActionInboxSource::HrExit,
                 ActionInboxSource::HrLifecycle,
@@ -887,6 +903,7 @@ mod tests {
             ActionInboxSource::WorkOrder => "work",
             ActionInboxSource::Payroll => "payroll",
             ActionInboxSource::Governance => "governance",
+            ActionInboxSource::EntityCorrections => "identifier_correction",
             ActionInboxSource::OrgChange => "org_change",
             ActionInboxSource::HrExit => "hr_exit",
             ActionInboxSource::HrLifecycle => "hr_lifecycle",

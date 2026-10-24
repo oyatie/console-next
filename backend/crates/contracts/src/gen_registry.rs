@@ -2810,6 +2810,7 @@ const ENTITY_FRAGMENT_EXTERNAL: &[&str] = &[
     "FieldError",
     "GroupTransferFacts",
     "KrAddress",
+    "MobilePasskeyStepUpEnvelope",
     "Uuid",
 ];
 
@@ -2931,6 +2932,33 @@ const ENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/entity-identifier-corrections",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../entity/rest/openapi/paths/api__v1__entity-identifier-corrections.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/entity-identifier-corrections/{id}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../entity/rest/openapi/paths/api__v1__entity-identifier-corrections__id.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/entity-identifier-corrections/{id}/review",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../entity/rest/openapi/paths/api__v1__entity-identifier-corrections__id__review.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/entity-setup/batches",
         operations: &[
             Operation {
@@ -2953,6 +2981,15 @@ const ENTITY_FRAGMENT_PATHS: &[PathItem] = &[
             method: "post",
             body: include_str!(
                 "../../entity/rest/openapi/paths/api__v1__entity-setup__batches__batchId__undo.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/governed-exceptions/{id}/decide",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../entity/rest/openapi/paths/api__v1__governed-exceptions__id__decide.post.yaml"
             ),
         }],
     },
@@ -3582,6 +3619,14 @@ const ENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "IaciBusinessForm",
         body: include_str!("../../entity/rest/openapi/schemas/IaciBusinessForm.yaml"),
+    },
+    NamedYaml {
+        name: "IdentifierCorrectionCase",
+        body: include_str!("../../entity/rest/openapi/schemas/IdentifierCorrectionCase.yaml"),
+    },
+    NamedYaml {
+        name: "IdentifierCorrectionCasePage",
+        body: include_str!("../../entity/rest/openapi/schemas/IdentifierCorrectionCasePage.yaml"),
     },
     NamedYaml {
         name: "IdentifierCorrectionReason",

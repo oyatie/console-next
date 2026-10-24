@@ -205,6 +205,10 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
     surface("orgchange", console_orgchange_rest::ORG_CHANGE_ROUTE_PATHS),
     surface("entity", console_entity_rest::ENTITY_ROUTE_PATHS),
     surface(
+        "entity-corrections",
+        crate::entity_wiring::IDENTIFIER_CORRECTION_ROUTE_PATHS,
+    ),
+    surface(
         "onboarding",
         console_onboarding_rest::ONBOARDING_ROUTE_PATHS,
     ),

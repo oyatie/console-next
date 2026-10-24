@@ -180,6 +180,9 @@ async fn after_go_live_only_a_consumed_exception_for_exactly_this_value_admits_i
         .correct_entity_identifier(&cmd(&actor), entity, crn_fix(doc, Some(ids[0])), gate())
         .await
         .unwrap();
+    let console_entity_adapter_postgres::CorrectionOutcome::Applied(saved) = saved else {
+        panic!("expected applied correction")
+    };
     assert_eq!(
         (saved.change_mode.as_str(), saved.record.crn.unwrap().value),
         ("SOLE_HOLDER", FIXED_CRN.to_owned())

@@ -13,10 +13,10 @@ mod terms;
 
 use axum::body::{Body, to_bytes};
 use console_kernel_core::OrgId;
-use console_platform_auth::MobileStepUpActionKind;
+use console_platform_auth::{MobilePasskeyStepUpBinding, MobileStepUpActionKind};
 use console_platform_test_support::soft_passkey::passkey_service;
 use http::{Request, StatusCode, header};
-use period_unlock_support::{Admin, admin_in, router, send, step_up_as};
+use period_unlock_support::{Admin, admin_in, router, send, step_up_as, step_up_with_binding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use tower::ServiceExt;
@@ -30,11 +30,15 @@ fn key() -> String {
 }
 
 async fn upload(service: &axum::Router, token: &str) -> Uuid {
+    upload_tag(service, token, "d26").await
+}
+
+async fn upload_tag(service: &axum::Router, token: &str, tag: &str) -> Uuid {
     let b = "d26boundary";
     let body = format!(
         "--{b}\r\nContent-Disposition: form-data; name=\"kind\"\r\n\r\nCORP_REGISTRY_EXTRACT\r\n\
          --{b}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"등기사항전부증명서.pdf\"\r\n\
-         Content-Type: application/pdf\r\n\r\n%PDF-1.7 d26\r\n--{b}--\r\n"
+         Content-Type: application/pdf\r\n\r\n%PDF-1.7 {tag}\r\n--{b}--\r\n"
     );
     let request = Request::builder()
         .method("POST")
@@ -174,6 +178,13 @@ async fn regression_d26_ops_covers_a_post_go_live_correction_only_with_its_bound
     assert_eq!(count(&owner, ledger, entity).await, 0);
     assert_eq!(count(&owner, exceptions, entity).await, 0);
 
+    // In a sole-holder situation, ops is the only eligible holder (demote hr).
+    sqlx::query("UPDATE users SET roles = ARRAY['MEMBER'] WHERE id = $1")
+        .bind(hr.id)
+        .execute(&owner)
+        .await
+        .unwrap();
+
     // Ops with its own step-up bound to exactly this correction.
     let mine = step_up_as(&owner, &svc, &mut ops, kind, entity, &line).await;
     let (status, saved) = send(&service, &uri, &ops.token, Some(&key()), with(mine)).await;
@@ -208,3 +219,6 @@ async fn regression_d26_ops_covers_a_post_go_live_correction_only_with_its_bound
     assert_eq!(audit["ops_break_glass"], true, "{audit}");
     assert_eq!(count(&owner, ledger, entity).await, 1);
 }
+
+#[path = "entity_ops_correction/g101.rs"]
+mod g101;

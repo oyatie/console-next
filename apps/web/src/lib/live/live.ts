@@ -127,7 +127,7 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
       return;
     }
     // Imports keep running and recovery has other actors: a recent write cannot suppress their next step.
-    if (d.type !== "import_run" && d.type !== "ops_recovery" && ownWrite(qc)) {
+    if (d.type !== "import_run" && d.type !== "ops_recovery" && d.type !== "identifier_correction" && ownWrite(qc)) {
       const changed = matchChange(d.type, str(d.id));
       queue((path, params) => path === "/api/v1/me/action-inbox" && changed(path, params));
       return;

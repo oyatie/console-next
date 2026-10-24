@@ -34,6 +34,8 @@ mod governed;
 mod history;
 mod history_diff;
 mod identifier_correction;
+pub mod identifier_correction_inbox;
+pub mod identifier_correction_register;
 mod insurance;
 mod legal_entity;
 mod legal_entity_revision;
@@ -77,8 +79,8 @@ pub use closure::close_workplace_in_tx;
 pub use documents::DocumentContent;
 pub use error::PgEntityError;
 pub use governed::{
-    CorrectionCover, CorrectionSubject, GovernedCorrectionFuture, GovernedCorrectionPort, OpsCover,
-    OpsCoverFuture,
+    CorrectionCover, CorrectionOutcome, CorrectionSubject, GovernedCorrectionFuture,
+    GovernedCorrectionPort, OpsCover, OpsCoverFuture, RequestedCorrection,
 };
 pub use org_end::{EndOffer, OrgUnitEndOptions, OrgUnitErased};
 pub use org_units::{OrgUnitSetupFuture, OrgUnitSetupWritePort, RoutedFuture};

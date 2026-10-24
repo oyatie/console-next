@@ -64,6 +64,12 @@ fn door(resource_type: &str) -> Option<Door> {
 }
 
 pub(crate) fn may_read(principal: &Principal, row: &ChangeRow) -> bool {
+    if row.resource_type == "identifier_correction" {
+        return principal.branch_scope == console_kernel_core::BranchScope::All
+            && [Feature::LegalEntityManage, Feature::OrgChangeApply]
+                .into_iter()
+                .any(|f| authorize_capability(principal, Action::new(f)).is_ok());
+    }
     if matches!(row.resource_type.as_str(), "command_outcome" | "inbox") {
         return row.resource_id.is_none()
             && console_platform_authz::cedar_pbac::actions::command_outcome::decide(
@@ -206,6 +212,21 @@ mod tests {
             &principal,
             &row(1, "inbox", Some("private-record"), None)
         ));
+    }
+
+    #[test]
+    fn correction_events_use_the_same_org_wide_read_door_as_the_register() {
+        let change = row(1, "identifier_correction", Some("case"), None);
+        for feature in [Feature::LegalEntityManage, Feature::OrgChangeApply] {
+            assert!(may_read(&reader(&[feature], BranchScope::All), &change));
+            let scoped = BranchScope::single(BranchId::from_uuid(uuid::Uuid::new_v4()));
+            assert!(!may_read(&reader(&[feature], scoped), &change));
+        }
+        assert!(!may_read(
+            &reader(&[Feature::OrgChangeRead], BranchScope::All),
+            &change
+        ));
+        assert!(!may_read(&reader(&[], BranchScope::All), &change));
     }
 
     #[test]
