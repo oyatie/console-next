@@ -273,7 +273,7 @@ The brief authorizes support implementation and its verification across shared c
 - `backend/openapi/openapi.yaml`
 - `backend/openapi/shared/schemas/MobilePasskeyStepUpBinding.yaml`
 - `backend/openapi/shared/schemas/MobileStepUpActionKind.yaml`
-- `docs/ops/support-access.md`
+- `docs/security/support-access.md`
 - `e2e/support-access.spec.ts`
 - `packages/api/src/index.ts`
 - `packages/api/src/schema.d.ts`
@@ -317,7 +317,7 @@ Rebased first onto public/dev `581367052` (#37 and #32 included), with pre-fix s
 - Live support status retains its layout slot before loading and through pending/active/idle states. This fixes the observed unsolicited notification shift (0.0362); the E2E also clears shifts from its own initial viewport resize, using the existing helper.
 - Support approvals are an existing action-inbox source, with no Home-local support queue. The new real-router DB regression covers a custom approval grant, revocation, non-holder refusal to see items, tenant isolation, expiry, already-approved requests and keyset pagination. It fails on `656979915` because both pending items are missing, then passes on the candidate. The component regression fails on clean public/dev and passes after the shared grid fix. Contract assertions fail with the former strict response enum.
 - The rebase’s person-read ratchet is satisfied by using `person_accounts_current` for operator/tenant labels. The full-feature finance refusal test now uses a roleless support token with its operator binding and approved session ledger, including the real operator in the platform realm so refusals can be audited. No standing tenant account is created.
-- Released contract: see [per-class N-1 decisions](release-api-compat-2.md). The pinned oasdiff run has **zero unaccepted errors**: 2,972 inherited support-reference format errors and exactly four accepted unused operator POST-path removals. All eleven new domain-enum errors are gone. Response domains and inbox kinds are extensible; access-role commands retain the strict catalog vocabulary. Composed OpenAPI, face registry and TypeScript types were regenerated.
+- Released contract: see [per-class N-1 decisions](../../backend/openapi/release-api-compat-2.md). The pinned oasdiff run has **zero unaccepted errors**: 2,972 inherited support-reference format errors and exactly four accepted unused operator POST-path removals. All eleven new domain-enum errors are gone. Response domains and inbox kinds are extensible; access-role commands retain the strict catalog vocabulary. Composed OpenAPI, face registry and TypeScript types were regenerated.
 - Support E2E: Chromium **2/2 on each of three consecutive runs** (99s, 96s, 101s); Firefox **2/2** (105s), with no browser skip. First-run-solo **1 passed, 1 pre-existing skip** (114s). The skipped governed-change journey remains explicitly disabled in the existing spec.
 - Exact web CI: **283 files / 1,930 tests**, typecheck, lint, build, 145.9 KB initial gzip against 151 KB, history/build secrets. The default license step has the same `no merge base found` failure on clean public/dev and the candidate because local `dev` belongs to the private history. Header validation against public/dev, fixture IDs, third-party licenses and the remaining three Node tests pass separately.
 - Rust: exact CI format/clippy, workspace test compilation, all 13 backend code gates including expand-only migration safety and the shrink-only file-size ratchet, plus full-feature application clippy. Focused crate proof: platform-rest 53 (including 25 support DB tests), identity-rest 99, contracts/action-inbox 55, application action-inbox 12 and finance 2. Both direct-dependent reads lead to console-app; its affected DB suites are covered.
@@ -361,8 +361,8 @@ This round also touches shared Home/setup-rail, the existing action-inbox compos
 - `backend/crates/platform/platform-rest/src/lib.rs`
 - `backend/crates/platform/platform-rest/src/support_store.rs`
 - `backend/openapi/openapi.yaml`
-- `docs/ops/release-api-compat-2.md`
-- `docs/ops/support-access.md`
+- `backend/openapi/release-api-compat-2.md`
+- `docs/security/support-access.md`
 - `e2e/support-access.spec.ts`
 - `packages/api/src/schema.d.ts`
 - `packages/i18n/src/catalogs/en/support-access.ts`
@@ -387,7 +387,7 @@ Round 4 files outside the brief's support/session/UI owns:
 - `backend/crates/platform/authz-rest/tests/bulk_limits.rs`: required integration repair for this lane's removed token field.
 - `backend/app/src/action_inbox/sources/support_access.rs`: the requested `as_of` source DB regression; production SQL is unchanged.
 - `backend/ci/gates/file-size/baseline.d/eco-g1-support.txt`: repository-generated size contribution after rebase.
-- `docs/ops/support-access.md`: this evidence and the excluded header mount hand-off.
+- `docs/security/support-access.md`: this evidence and the excluded header mount hand-off.
 
 No excluded file is edited. Slice 2 remains the existing OC0 hand-off; this round adds no new product scope.
 

@@ -25,7 +25,7 @@ async fn redirected_facts_keep_their_existing_database_validation(pool: PgPool) 
     .fetch_one(&pool)
     .await
     .unwrap();
-    sqlx::query("INSERT INTO employee_employment_profiles(org_id,employee_id,employment_type,phone_e164,idempotency_key,request_hash,created_by) VALUES($1,$2,'REGULAR','+821098761234','valid',repeat('a',64),$3)")
+    sqlx::query("INSERT INTO employee_employment_profiles(org_id,employee_id,employment_type,phone_e164,idempotency_key,request_hash,created_by) VALUES($1,$2,'REGULAR','+821012341234','valid',repeat('a',64),$3)")
         .bind(org).bind(employee).bind(account).execute(&pool).await.unwrap();
     for (sql, id, code) in [
         (
@@ -56,5 +56,5 @@ async fn redirected_facts_keep_their_existing_database_validation(pool: PgPool) 
             .fetch_one(&pool)
             .await
             .unwrap();
-    assert_eq!(current, ("Valid".into(), "+821098761234".into()));
+    assert_eq!(current, ("Valid".into(), "+821012341234".into()));
 }

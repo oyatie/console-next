@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+jobs:
+  web-check:
+    steps:
+      - uses: step-security/harden-runner@pin
+        with:
+          egress-policy: block
+      - run: npm run check

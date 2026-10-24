@@ -76,9 +76,12 @@ mod tests {
     #[test]
     fn exported_synthetic_registration_fixtures_follow_the_nts_classification() {
         use console_kernel_core::kr::{BizRegNo, CorpRegNo};
-        use std::{collections::HashSet, fs, path::Path};
+        use std::{collections::HashSet, fs, path::PathBuf};
 
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../../");
+        let root = PathBuf::from(
+            std::env::var_os("CARGO_MANIFEST_DIR").expect("fixture manifest directory"),
+        )
+        .join("../../../../");
         let path = root.join("e2e/registration-identifiers.json");
         let source = match fs::read_to_string(path) {
             Ok(source) => source,
@@ -393,7 +396,10 @@ mod tests {
             );
         }
 
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../../");
+        let root = PathBuf::from(
+            std::env::var_os("CARGO_MANIFEST_DIR").expect("fixture manifest directory"),
+        )
+        .join("../../../../");
         let backend = root.join("backend");
         let mut files = Vec::new();
         collect_fixture_files(&backend, false, &mut files);

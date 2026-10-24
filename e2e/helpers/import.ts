@@ -1,3 +1,4 @@
+import { syntheticPhone, syntheticRrn } from "../../scripts/check-fixture-ids.mjs";
 import ExcelJS from "exceljs";
 import { expect, type Page } from "@playwright/test";
 
@@ -29,8 +30,8 @@ export function people(prefix: string, count: number, units: readonly string[], 
     hired: `${2008 + (i % 18)}-${pad(((i * 5) % 12) + 1, 2)}-${pad(((i * 3) % 27) + 1, 2)}`,
     workplace: workplaces[i % workplaces.length]!,
     type: types[i % types.length]!,
-    phone: `010-${pad(2000 + i, 4)}-${pad(1000 + ((i * 37) % 9000), 4)}`,
-    rrn: `${String(1965 + (i % 35)).slice(2)}${pad((i % 12) + 1, 2)}${pad((i % 27) + 1, 2)}-${i % 2 ? 2 : 1}${pad((seed + i) % 1_000_000, 6)}`,
+    phone: syntheticPhone(1000 + ((i * 37) % 9000)),
+    rrn: syntheticRrn(`${String(1965 + (i % 35)).slice(2)}${pad((i % 12) + 1, 2)}${pad((i % 27) + 1, 2)}${i % 2 ? 2 : 1}${pad((seed + i) % 1_000_000, 6)}`.slice(0, 12)),
   }));
 }
 

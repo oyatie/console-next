@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+# Test dependencies curated from the former compose.yml/dev/dev-deps stack.
+# The host runs the prebuilt backend; no deployment services or external networks.
+services:
+  postgres:
+    image: ${CONSOLE_POSTGRES_IMAGE:?}
+    environment:
+      POSTGRES_DB: ${CONSOLE_POSTGRES_DB:?}
+      POSTGRES_USER: ${CONSOLE_POSTGRES_ADMIN_USER:?}
+      POSTGRES_PASSWORD: ${CONSOLE_POSTGRES_ADMIN_PASSWORD:?}
+    ports:
+      - "127.0.0.1:${CONSOLE_POSTGRES_PORT:?}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h 127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgres-topology:
+    image: ${CONSOLE_POSTGRES_IMAGE:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: [bash, /usr/local/bin/postgres-reconcile-topology]
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${CONSOLE_POSTGRES_DB:?}
+      POSTGRES_ADMIN_USER: ${CONSOLE_POSTGRES_ADMIN_USER:?}
+      POSTGRES_ADMIN_PASSWORD: ${CONSOLE_POSTGRES_ADMIN_PASSWORD:?}
+      CONSOLE_APP_POSTGRES_PASSWORD: ${CONSOLE_APP_POSTGRES_PASSWORD:?}
+      CONSOLE_RT_POSTGRES_PASSWORD: ${CONSOLE_RT_POSTGRES_PASSWORD:?}
+      CONSOLE_LEAVE_COMMAND_POSTGRES_PASSWORD: ${CONSOLE_LEAVE_COMMAND_POSTGRES_PASSWORD:?}
+      CONSOLE_ONTOLOGY_COMMAND_POSTGRES_PASSWORD: ${CONSOLE_ONTOLOGY_COMMAND_POSTGRES_PASSWORD:?}
+      CONSOLE_PLATFORM_FORCE_COMMAND_POSTGRES_PASSWORD: ${CONSOLE_PLATFORM_FORCE_COMMAND_POSTGRES_PASSWORD:?}
+    volumes:
+      - ../../scripts/ci/postgres-reconcile-topology.sh:/usr/local/bin/postgres-reconcile-topology:ro
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.32@sha256:bcfb7aac11928f314e0032d68275b7166222987f72b60dafeac71ede5d2a38a4
+    command: [server, -s3, -ip=seaweedfs, -ip.bind=0.0.0.0, -dir=/data, -s3.port=8333]
+    ports:
+      - "127.0.0.1:${CONSOLE_S3_PORT:?}:8333"
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: [CMD, curl, -fsS, "http://127.0.0.1:8333/"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.154.0@sha256:ea527f0f9a220c7b595863a658c262f31d08c07e034a16b502bfb2206aa987ff
+    command: [--config=/etc/otelcol/config.yaml]
+    ports:
+      - "127.0.0.1:${CONSOLE_OTEL_PORT:?}:4317"
+    volumes:
+      - ./otel-collector.yml:/etc/otelcol/config.yaml:ro
+    healthcheck:
+      test: [CMD, /otelcol, validate, --config=/etc/otelcol/config.yaml]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.27.5@sha256:5921fa3c3f0a34eb000a89ac8279d1f9d711e486a9a8fd094f7db5a1920256ab
+    ports:
+      - "127.0.0.1:${CONSOLE_MAILPIT_SMTP_PORT:?}:1025"
+      - "127.0.0.1:${CONSOLE_MAILPIT_UI_PORT:?}:8025"
+    volumes:
+      - mailpit-data:/data
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    healthcheck:
+      test: [CMD, /mailpit, readyz]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  postgres-data:
+  seaweedfs-data:
+  mailpit-data:

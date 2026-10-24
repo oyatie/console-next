@@ -135,8 +135,12 @@ async fn get_json(service: axum::Router, uri: &str, token: &str) -> (StatusCode,
             .headers()
             .get(header::CONTENT_TYPE)
             .and_then(|value| value.to_str().ok())
-            .is_some_and(|value| value.starts_with("application/json")),
-        "{uri} must return application/json"
+            .is_some_and(|value| {
+                value.starts_with("application/json")
+                    || value.starts_with("application/problem+json")
+            }),
+        "{uri} must return JSON: status={status}, headers={:?}",
+        response.headers()
     );
     let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     (status, serde_json::from_slice(&body).unwrap_or(Value::Null))

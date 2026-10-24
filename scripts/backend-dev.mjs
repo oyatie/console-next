@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Local backend for the client: mirrors <backend>/scripts/dev-up.mjs (same compose project,
 // ports, roles and dev secrets) but runs a Cargo-built `console-app` instead of Buck2.
 import { spawn, spawnSync } from "node:child_process";
@@ -9,6 +10,7 @@ import path from "node:path";
 import { supportLogs } from "./e2e-support-logs.mjs";
 import { PORTS } from "../e2e/slot.ts";
 import { DEV_SECRETS_FILE, ensureDevSecrets } from "./dev-secrets.ts";
+import { postgresImage } from "./ci/db-contract.mjs";
 
 // The backend tree: this repository when it carries backend/ (the public monorepo), else the sibling checkout.
 const CONSOLE = path.resolve(process.env.CONSOLE_REPO ?? (existsSync("backend/Cargo.toml") ? "." : "../frontend/backend-mvp"));
@@ -44,6 +46,7 @@ const composeEnv = {
   ...process.env,
   ...(dockerContext ? { DOCKER_CONTEXT: dockerContext } : {}),
   CONSOLE_POSTGRES_PORT: String(PORT.pg),
+  CONSOLE_POSTGRES_IMAGE: process.env.CONSOLE_POSTGRES_IMAGE ?? postgresImage(),
   CONSOLE_POSTGRES_DB: DB,
   CONSOLE_POSTGRES_ADMIN_USER: "console_cluster_admin",
   CONSOLE_POSTGRES_ADMIN_PASSWORD: PW.admin,
@@ -60,16 +63,16 @@ const composeEnv = {
 const compose = (args, opts = {}) =>
   spawnSync(
     "docker",
-    ["compose", "-p", PROJECT, "-f", "ops/compose.yml", "-f", "ops/compose.dev.yml", "-f", "ops/compose.dev-deps.yml", ...args],
+    ["compose", "-p", PROJECT, "-f", "e2e/stack/compose.yml", ...args],
     { cwd: CONSOLE, env: composeEnv, stdio: "inherit", ...opts },
   );
 const must = (r, what) => {
   if (r.status !== 0) throw new Error(`${what} failed (exit ${r.status})`);
-  console.log(`[boot] ${what} done at ${(performance.now() / 1000).toFixed(1)}s`);
+  process.stdout.write(`[boot] ${what} done at ${(performance.now() / 1000).toFixed(1)}s\n`);
 };
 
 function devKeys() {
-  const dir = path.join(CONSOLE, "ops/.dev-secrets");
+  const dir = path.dirname(DEV_SECRETS_FILE);
   const priv = path.join(dir, "jwt-private.pem");
   const pub = path.join(dir, "jwt-public.pem");
   if (!existsSync(priv)) {
@@ -90,7 +93,7 @@ function devKeys() {
  * the JWT pair (a restart must open what an earlier run sealed). Never printed; an env value wins.
  */
 function rrnKeys() {
-  const dir = path.join(CONSOLE, "ops/.dev-secrets");
+  const dir = path.dirname(DEV_SECRETS_FILE);
   const key = (name) => {
     const file = path.join(dir, name);
     if (!existsSync(file)) {
@@ -178,7 +181,7 @@ mkdirSync(CACHE, { recursive: true });
 // `pid`: this launcher, which a test signals to restart its own slot's backend (below).
 writeFileSync(path.join(CACHE, "backend.json"), JSON.stringify({ bin: BIN, binMtimeMs: statSync(BIN).mtimeMs, pid: process.pid }));
 // No fixtures and no personas: the database holds only what the API itself creates.
-console.log(`backend: http://127.0.0.1:${PORT.backend}  platform cold-start code: coldstartOtp in ${DEV_SECRETS_FILE}`);
+process.stdout.write(`backend: http://127.0.0.1:${PORT.backend}  platform cold-start code: coldstartOtp in ${DEV_SECRETS_FILE}\n`);
 // SIGUSR2 stops the API process and the next SIGUSR2 starts it again on the same database (a backend restart mid-flow,
 // e2e/chaos-restart.spec.ts). Without the signal nothing changes: the launcher exits with its API process.
 // Isolated E2E store: production always queries its configured VictoriaLogs service.
@@ -202,6 +205,9 @@ startApi();
 setInterval(() => {}, 2 ** 30); // a signal handler alone does not keep the launcher alive while its API is stopped
 process.on("SIGUSR2", () => {
   up = !up;
-  if (!up && api) (api.stopping = true), api.kill();
+  if (!up && api) {
+    api.stopping = true;
+    api.kill();
+  }
   else if (up && !api) startApi();
 });

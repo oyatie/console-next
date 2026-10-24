@@ -1,0 +1,1931 @@
+{
+  "_license": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "served:parallel › access-hr-walk.spec.ts › an HR worker granted 인사 실무 over the 법인 and 권한 관리 over 회사 전체 works, and loses it all on exit": {
+    "s": 23.3,
+    "at": 1792156149129
+  },
+  "served:parallel › access-parity.spec.ts › roles parity capture: M1–M6 from an empty database": {
+    "s": 74.9,
+    "at": 1791287015576
+  },
+  "served:parallel › access-roles.spec.ts › pilot roles: no presets, a role made in setup, granted for go-live, enforced after 운영 시작": {
+    "s": 15,
+    "at": 1792155594880
+  },
+  "served:parallel › access-scope.spec.ts › an HR worker granted 인사 실무 over one 법인 works inside it and is refused outside it, typed": {
+    "s": 21.4,
+    "at": 1792155617325
+  },
+  "served:parallel › account.spec.ts › my account: add a second passkey, sign in with it, remove the first": {
+    "s": 15.9,
+    "at": 1792157479625
+  },
+  "served:parallel › account.spec.ts › a failed account-facts read keeps the passkeys and never invents HR recovery advice for an ops account": {
+    "s": 6.2,
+    "at": 1792197746943
+  },
+  "served:parallel › account.spec.ts › my account for the platform vendor shows its tier, passkey and consent without an employee row": {
+    "s": 1.1,
+    "at": 1792197746943
+  },
+  "served:parallel › account.spec.ts › a refused sign-in right after enrollment lands on the login screen, and the new passkey signs in": {
+    "s": 16.1,
+    "at": 1792157479625
+  },
+  "served:parallel › accounts.spec.ts › accounts: invite with no role, continue into 권한 부여, find the existing account, ops is protected": {
+    "s": 16.5,
+    "at": 1792155617325
+  },
+  "served:parallel › asof-load.spec.ts › dated chart and comparison retain 2,000 imported people through a projected rename": {
+    "s": 35.3,
+    "at": 1792155594880
+  },
+  "served:parallel › asof-refusals.spec.ts › an invalid effective-date range refuses without writes and can be cleared": {
+    "s": 1.7,
+    "at": 1792197746943
+  },
+  "served:parallel › asof-solo.spec.ts › solo ops reads past and projected records, preserves known-at corrections and compares scheduled org changes": {
+    "s": 17.8,
+    "at": 1792156006421
+  },
+  "served:parallel › attendance-closed-month.spec.ts › 마감된 달: read-only with the unlock path, editable while unlocked, closed again on re-lock": {
+    "s": 51.1,
+    "at": 1792071718769
+  },
+  "served:parallel › attendance-grid-safety.spec.ts › regression: a re-read inserting a row inside the selection while typing never commits the half-typed value": {
+    "s": 51.1,
+    "at": 1792071426282
+  },
+  "served:parallel › attendance-grid-safety.spec.ts › regression: back-navigation while typing keeps the value as a draft of the month it was typed in": {
+    "s": 40.2,
+    "at": 1792071426282
+  },
+  "served:parallel › attendance-long-span.spec.ts › long records require per-cell confirmation, save evidence only, and confirm corrections": {
+    "s": 26.9,
+    "at": 1792071328714
+  },
+  "served:parallel › attendance-records-security.spec.ts › different-tenant: all five record commands show real refusals and preserve records and drafts": {
+    "s": 48,
+    "at": 1792071301330
+  },
+  "served:parallel › attendance-records-security.spec.ts › different-tenant: day, month and person reads show scope refusals without leaking records": {
+    "s": 48.7,
+    "at": 1792071301330
+  },
+  "served:parallel › attendance-records-security.spec.ts › lower-grant: all five record commands show real refusals and preserve records and drafts": {
+    "s": 36.5,
+    "at": 1792071301330
+  },
+  "served:parallel › attendance-records-security.spec.ts › lower-grant: day, month and person reads show scope refusals without leaking records": {
+    "s": 23.8,
+    "at": 1792071301330
+  },
+  "served:parallel › attendance-records.spec.ts › 월간 근무표: type, refuse, fix, paste, save with 근거, undo, correct, void, record again, conflict": {
+    "s": 30.9,
+    "at": 1792071426282
+  },
+  "served:parallel › attendance-records.spec.ts › change-date ribbon waits for its current read after attendance setup": {
+    "s": 13.7,
+    "at": 1792071426282
+  },
+  "served:parallel › attendance-rowid.spec.ts › regression: a re-read inserting a row above the cell being typed never moves the value to another person": {
+    "s": 24.4,
+    "at": 1792072155790
+  },
+  "served:parallel › attendance-schedule.spec.ts › 근무 일정: first run → pattern → assign with preview → cancel before effect; refusals change nothing": {
+    "s": 21.6,
+    "at": 1792157403200
+  },
+  "served:parallel › chaos-people.spec.ts › register on a bad connection: a lost answer still makes one employee, and a double press registers once": {
+    "s": 14.3,
+    "at": 1792157403200
+  },
+  "served:parallel › chaos-people.spec.ts › import on a bad connection: an apply whose answer is lost is not applied twice and says it is done": {
+    "s": 10.6,
+    "at": 1792157403200
+  },
+  "served:parallel › chaos-people.spec.ts › a second roster under the same file name adds its people and leaves the earlier ones as they are": {
+    "s": 7.4,
+    "at": 1792157403200
+  },
+  "served:parallel › chaos-setup.spec.ts › setup on a bad connection: 법인, 사업장 and 부서 are each recorded once and nothing typed is lost": {
+    "s": 15.6,
+    "at": 1792072155790
+  },
+  "served:parallel › chaos-setup.spec.ts › edits on a bad connection: a failed 법인 or 사업장 change keeps the dialog and its values, and lands once": {
+    "s": 17.6,
+    "at": 1792072155790
+  },
+  "served:parallel › chaos-stale.spec.ts › two administrators change one 법인 and one 사업장: the later save is refused as stale and recovers": {
+    "s": 20.2,
+    "at": 1791371938697
+  },
+  "served:parallel › chaos-stale.spec.ts › a session that ends mid-edit records nothing, re-auths in place and keeps the typed change": {
+    "s": 7,
+    "at": 1792156006421
+  },
+  "served:parallel › chunk-reload.spec.ts › a lazy screen chunk missing once reloads the page once, afresh, and the screen renders": {
+    "s": 3.6,
+    "at": 1792666615135
+  },
+  "served:parallel › chunk-reload.spec.ts › a lazy screen chunk that stays missing reloads once, then shows the error screen; its button reloads afresh": {
+    "s": 5.1,
+    "at": 1792666615135
+  },
+  "served:parallel › chunk-reload.spec.ts › a stale index.html whose entry chunk is gone reloads once, afresh, and signs in as usual": {
+    "s": 1.7,
+    "at": 1792666615135
+  },
+  "served:parallel › chunk-reload.spec.ts › an entry chunk that stays missing reloads once, then shows the static error screen, never a blank page": {
+    "s": 3.8,
+    "at": 1792666615135
+  },
+  "served:parallel › company-domain.spec.ts › company domain: deliberate opening, safe rename, old-domain sign-in notice and support request": {
+    "s": 6.7,
+    "at": 1792197746943
+  },
+  "served:parallel › context-lifetime.spec.ts › helper context lifetime › a test owns the contexts it opens": {
+    "s": 0.1,
+    "at": 1792197746943
+  },
+  "served:parallel › context-lifetime.spec.ts › helper context lifetime › the next test closes prior contexts and keeps its own contexts": {
+    "s": 0,
+    "at": 1792197746943
+  },
+  "served:parallel › crud-people.spec.ts › 퇴직 from the record, refused where it must be, closed alone, and the person leaves the roster": {
+    "s": 8.7,
+    "at": 1792081959797
+  },
+  "served:parallel › crud-people.spec.ts › 등록 취소 for a mistaken registration, refused for a used one, and 퇴직 for several from the roster": {
+    "s": 8.1,
+    "at": 1792156006291
+  },
+  "served:parallel › crud-people.spec.ts › an account without the permission sees 퇴직 and 등록 취소 refused with the reason, and nothing opens": {
+    "s": 5.1,
+    "at": 1792156006291
+  },
+  "served:parallel › crud-structure.spec.ts › a solo admin deletes a never-used 팀 and 부서 and dissolves a used one, in setup and after go-live": {
+    "s": 12.7,
+    "at": 1792156943162
+  },
+  "served:parallel › d26-solo-exit.spec.ts › a solo ops account registers a person and closes their exit alone, with no 결재 on the way": {
+    "s": 26.4,
+    "at": 1792644616307
+  },
+  "served:parallel › emp/record-head.spec.ts › the card head links the 법인 and 사업장, invites an account and keeps 퇴직 · 등록 취소": {
+    "s": 17.8,
+    "at": 1792155617325
+  },
+  "served:parallel › emp/record.spec.ts › roster: first run, counts that add up, 3-year retention, a void in setup and one refused": {
+    "s": 47.9,
+    "at": 1792644616307
+  },
+  "served:parallel › emp/record.spec.ts › record card: a hire date corrected within budget, a taken number refused, a stale sheet keeps what was typed": {
+    "s": 50.8,
+    "at": 1792644616307
+  },
+  "served:parallel › employment-record.spec.ts › employment record: checklist to facts, a contract and its correction, probation end": {
+    "s": 20.2,
+    "at": 1792156149129
+  },
+  "served:parallel › entity-attach.spec.ts › a 사업장 added without a 등록증 gets its own from where the go-live blocker lands": {
+    "s": 8.2,
+    "at": 1792156006291
+  },
+  "served:parallel › entity-capture.spec.ts › capture: the district comes from the bundled list, other lists say they are not loaded and never block": {
+    "s": 5.8,
+    "at": 1792155085673
+  },
+  "served:parallel › entity-capture.spec.ts › a certificate upload is typed beside, kept as the registration's evidence and opened from the documents tab": {
+    "s": 5.5,
+    "at": 1792155085673
+  },
+  "served:parallel › entity-close-exited.spec.ts › regression: after the only person's exit (-1) the 법인 counts nobody and its close opens 종료일 (company-01)": {
+    "s": 15.3,
+    "at": 1792156149129
+  },
+  "served:parallel › entity-close-exited.spec.ts › regression: after the only person's exit (0) the 법인 counts nobody and its close opens 종료일 (company-01)": {
+    "s": 15.2,
+    "at": 1792156149129
+  },
+  "served:parallel › entity-close-staffed.spec.ts › regression: a staffed 법인's close opens its people's exits in place and lists the open ones (company-18, company-52)": {
+    "s": 11.3,
+    "at": 1792155726653
+  },
+  "served:parallel › entity-close-withdraw.spec.ts › regression: a closed 법인's close is withdrawn, with what reopens previewed and a refusal that changes nothing (company-15)": {
+    "s": 6.1,
+    "at": 1792155284883
+  },
+  "served:parallel › entity-create.spec.ts › quick add: three inputs, the receipt's undo, and a corporation sent on to the certificate": {
+    "s": 4.2,
+    "at": 1792197746943
+  },
+  "served:parallel › entity-create.spec.ts › the certificate wizard refuses a taken number and a future date, warns on the CRN, and saves the rest as to-dos": {
+    "s": 7.2,
+    "at": 1792156149129
+  },
+  "served:parallel › entity-create.spec.ts › an individual business never collects the owner's birth date; a 고유번호 단체 takes the shared five": {
+    "s": 4.4,
+    "at": 1792197746943
+  },
+  "served:parallel › entity-live-notice.spec.ts › regression: an open 고치기 sheet says the record changed elsewhere, and the conflict shows values as typed (worst-case-33)": {
+    "s": 7.2,
+    "at": 1792157479625
+  },
+  "served:parallel › entity-name-en.spec.ts › the English UI names a 법인 by its English name on every surface, and Korean by its 법인명": {
+    "s": 11.1,
+    "at": 1792071943308
+  },
+  "served:parallel › entity-name-en.spec.ts › in English, adding a 법인 names it by its English name in the receipt and every announcement": {
+    "s": 4.1,
+    "at": 1792071943308
+  },
+  "served:parallel › entity-name-evidence.spec.ts › one 법인명: ① edits the name every surface shows, and the 약칭 and 영문명 stay secondary": {
+    "s": 9.6,
+    "at": 1792072155790
+  },
+  "served:parallel › entity-name-evidence.spec.ts › an individual's 상호 is the one name its record, list and header show": {
+    "s": 7.1,
+    "at": 1792197746943
+  },
+  "served:parallel › entity-name-evidence.spec.ts › a branch primary is refused until its explicit certificate reason is recorded": {
+    "s": 6.5,
+    "at": 1792197746943
+  },
+  "served:parallel › entity-name-evidence.spec.ts › the server refuses a 대표자 as 법인명 or 영문명 and the sheet says why, saving nothing": {
+    "s": 15.4,
+    "at": 1792072155790
+  },
+  "served:parallel › entity-no-ocr.spec.ts › an uploaded 사업자등록증 fills nothing, and the screens never promise it": {
+    "s": 3.3,
+    "at": 1792197746943
+  },
+  "served:parallel › entity-ops.spec.ts › a 사업장 records 휴업 with its expected end, then 재개, and moves on a date": {
+    "s": 12.7,
+    "at": 1792646146564
+  },
+  "served:parallel › entity-ops.spec.ts › a wrong check digit is held until confirmed, and a 법인 is recorded while being founded": {
+    "s": 4.8,
+    "at": 1792646146564
+  },
+  "served:parallel › entity-ops.spec.ts › a closed 법인 offers no edit verb, only 종료 정정, and a refused 정정 changes nothing": {
+    "s": 7.3,
+    "at": 1792646146564
+  },
+  "served:parallel › entity-record-fixes.spec.ts › sequential edits on a 법인 with a 등록증 and a 사업장 save one after another": {
+    "s": 11.7,
+    "at": 1792644616307
+  },
+  "served:parallel › entity-record-fixes.spec.ts › the record rail dates an entry recorded before 09:00 KST by the Korean day": {
+    "s": 3.6,
+    "at": 1792644616307
+  },
+  "served:parallel › entity-record-fixes.spec.ts › a real conflict shows what changed meanwhile and re-applies the value on top of it": {
+    "s": 5.6,
+    "at": 1792644616307
+  },
+  "served:parallel › entity-record.spec.ts › the record: 변경 from a date, 정정 of the period in force, 정정만, and the BRN corrected in setup": {
+    "s": 12,
+    "at": 1792644616307
+  },
+  "served:parallel › entity-record.spec.ts › 법인 종료 after 운영 시작: blockers first and the date locked; a never-used 법인 is deleted instead": {
+    "s": 28.6,
+    "at": 1792644616307
+  },
+  "served:parallel › entity-reissue.spec.ts › a new 등록증 changing 대표자 and 소재지 is one dated change every surface shows; the old one stays": {
+    "s": 10.7,
+    "at": 1792644616307
+  },
+  "served:parallel › entity-reissue.spec.ts › a reissue cannot hide a scheduled 본점 move": {
+    "s": 6.6,
+    "at": 1792644616307
+  },
+  "served:parallel › entity-reissue.spec.ts › the first 등록증 entry reuses the original already attached to the 법인, never a second upload": {
+    "s": 6.5,
+    "at": 1792644616307
+  },
+  "served:parallel › entity-wizard-honesty.spec.ts › regression: a flagged field is one press away from any step, and 설립등기 shows what it recorded (company-04, company-05)": {
+    "s": 3.4,
+    "at": 1792197746943
+  },
+  "served:parallel › entity-wizard-layout.spec.ts › the 법인 wizard scrolls inside the shell, never the document (W06)": {
+    "s": 2,
+    "at": 1792197746943
+  },
+  "served:parallel › entity-wizard-layout.spec.ts › the quick 법인 sheet says what it needs, and that is what it asks for": {
+    "s": 2.2,
+    "at": 1792197746943
+  },
+  "served:parallel › error-beacon.spec.ts › an uncaught error and an unhandled rejection are reported by kind and name, without their text": {
+    "s": 0.2,
+    "at": 1792666615135
+  },
+  "served:parallel › error-beacon.spec.ts › an entry chunk that is gone is reported as a resource failure": {
+    "s": 0.2,
+    "at": 1792666615135
+  },
+  "served:parallel › error-beacon.spec.ts › an app that never renders is reported by the boot watchdog after 15 s": {
+    "s": 0.2,
+    "at": 1792666615135
+  },
+  "served:parallel › error-beacon.spec.ts › an app that renders sends nothing": {
+    "s": 0.7,
+    "at": 1792666615135
+  },
+  "served:parallel › first-run-solo.spec.ts › a solo administrator goes from an empty tenant to operating": {
+    "s": 61.5,
+    "at": 1792666615135
+  },
+  "served:parallel › grade-fix.spec.ts › a solo administrator adds, changes, corrects, promotes and edits a grade from empty": {
+    "s": 14,
+    "at": 1792155726653
+  },
+  "served:parallel › grade-fix.spec.ts › wrong-kind, inactive and missing catalog IDs are refused visibly without changing the grade": {
+    "s": 12.5,
+    "at": 1792155726653
+  },
+  "served:parallel › group-transfer.spec.ts › 전적: nowhere to go says why, then one act records the exit and the hire with consent and continuity": {
+    "s": 45.8,
+    "at": 1792071699980
+  },
+  "served:parallel › group-transfer.spec.ts › 전적 by a holder scoped to the sending 법인: no receiving 법인 is offered, and the wire refuses it": {
+    "s": 34.7,
+    "at": 1792071699980
+  },
+  "served:parallel › guards.spec.ts › nobody acts on their own record, the ops account keeps its sign-in path, and the auto 사번 never collides": {
+    "s": 29.6,
+    "at": 1792156006291
+  },
+  "served:parallel › hcm.spec.ts › HCM journey: org structure → staffing → transfer → promotion → leave → contract renewal → roster import → exit": {
+    "s": 31.4,
+    "at": 1792156639533
+  },
+  "served:parallel › home-truth.spec.ts › the setup rail and go-live promise no security contact that cannot be recorded": {
+    "s": 8.3,
+    "at": 1792156639533
+  },
+  "served:parallel › home-truth.spec.ts › home names a refused and a failed part and asks a refusal once; the calendar locks a month": {
+    "s": 23,
+    "at": 1792156639533
+  },
+  "served:parallel › home-truth.spec.ts › an account with no work grant gets an honest home, and 기간 잠금 refuses it once": {
+    "s": 19.8,
+    "at": 1792156639533
+  },
+  "served:parallel › ideal-first-run-access.spec.ts › BL-015: lazy exact terms refuse a wrong hash and acceptance resolves in place": {
+    "s": 7.1,
+    "at": 1792157403200
+  },
+  "served:parallel › ideal-first-run-access.spec.ts › BL-017: HR with no grant is refused; an employees setup grant gives a read-only legal-entity step": {
+    "s": 13.7,
+    "at": 1792157403200
+  },
+  "served:parallel › ideal-first-run-preview.spec.ts › BL-014: unplaced is a warning, stale preview re-arms, and operating Home keeps placement": {
+    "s": 10.2,
+    "at": 1792155438906
+  },
+  "served:parallel › ideal-first-run-preview.spec.ts › BL-016: setup and seven-day operating bands persist across routes in a keyboard walk": {
+    "s": 8.4,
+    "at": 1792155438906
+  },
+  "served:parallel › ideal-first-run-rail.spec.ts › BL-013: solo rail, equal paths, J/K, 2,000 applied people and a prepared role": {
+    "s": 44.6,
+    "at": 1792156006291
+  },
+  "served:parallel › ideal-first-run-rail.spec.ts › BL-013 bulk paths keep legal facts and lock a pending employee paste read": {
+    "s": 3.3,
+    "at": 1792197746943
+  },
+  "served:parallel › ideal-first-run-terms-compat.spec.ts › N-1 terms_version from an open tab still accepts the current document": {
+    "s": 6.3,
+    "at": 1792157479625
+  },
+  "served:parallel › ideal-ledger-conflict.spec.ts › BL-009/011 two browsers expose the latest authorized change and its original audit outcome": {
+    "s": 11.8,
+    "at": 1792156006421
+  },
+  "served:parallel › ideal-ledger.spec.ts › BL-010 a lost go-live response checks the original APPLIED outcome without a second command": {
+    "s": 9,
+    "at": 1792156639533
+  },
+  "served:parallel › ideal-ledger.spec.ts › BL-010 grant apply loses its response, preserves the receipt and is recorded once": {
+    "s": 6.2,
+    "at": 1792197746943
+  },
+  "served:parallel › ideal-ledger.spec.ts › BL-010 invalid and missing lookup keys show their refusal and a correction remedy": {
+    "s": 3.1,
+    "at": 1792197746943
+  },
+  "served:parallel › idle.spec.ts › a session that ends in use signs back in over the same screen, the draft intact": {
+    "s": 11.3,
+    "at": 1792155438906
+  },
+  "served:parallel › idle.spec.ts › a refresh that fails for a server fault or a dropped connection never signs anyone out": {
+    "s": 3.4,
+    "at": 1792197746943
+  },
+  "served:parallel › idle.spec.ts › two minutes before the idle cut-off a warning shows, and staying signed in clears it": {
+    "s": 2.7,
+    "at": 1792197746943
+  },
+  "served:parallel › idle.spec.ts › the event stream is not activity: an idle minute sends no request, and sign-out closes it and refuses its bearer": {
+    "s": 67.8,
+    "at": 1792197746943
+  },
+  "served:parallel › idle.spec.ts › half an hour of typing with no save keeps reporting itself once a minute, and an idle half hour still warns first": {
+    "s": 5,
+    "at": 1792197746943
+  },
+  "served:parallel › idle.spec.ts › in use past the timeout the session slides: input moves the server's record, and refresh rotates": {
+    "s": 11.7,
+    "at": 1792197746943
+  },
+  "served:parallel › idle.spec.ts › idle past the timeout, a returning user signs in again at once, told why; nothing else gets through": {
+    "s": 11.9,
+    "at": 1792197746943
+  },
+  "served:parallel › idle.spec.ts › a tab reloaded past the timeout lands on sign-in with the reason, and never paints a raw id or a past cut-off": {
+    "s": 8.2,
+    "at": 1792197746943
+  },
+  "served:parallel › import/any-layout.spec.ts › any layout from an empty company: map the sheet no catalog reads, skip the notes, settle the 확인 필요 queue, apply; a second file is matched by memory, 주민등록번호 and a namesake pick": {
+    "s": 23.2,
+    "at": 1792156006291
+  },
+  "served:parallel › import/apply-lost.spec.ts › import apply: a lost answer re-reads the run and follows the job to the migration check, never offering apply again": {
+    "s": 9.9,
+    "at": 1792156943162
+  },
+  "served:parallel › import/apply-refusals.spec.ts › import apply refusals: row limit, a shed apply held for its wait, a job already running, an interrupted job": {
+    "s": 39.2,
+    "at": 1792052816648
+  },
+  "served:parallel › import/company-names.spec.ts › merged workbook company cells remain an explicit source queue and create no legal entities": {
+    "s": 15.5,
+    "at": 1792071954346
+  },
+  "served:parallel › import/conflict-answers.spec.ts › import conflict answers: 재직 with a future 입사일 comes in 입사 예정 by one answer for every row": {
+    "s": 9.9,
+    "at": 1792155594880
+  },
+  "served:parallel › import/correctness.spec.ts › import correctness: an unknown 고용형태 blocks until answered, a near 부서 binds only on click, no phone shown, no 합계 person": {
+    "s": 12.7,
+    "at": 1792156006421
+  },
+  "served:parallel › import/identifiers.spec.ts › identifiers: masked 주민등록번호 revealed with a reason, 사번 변경 with history, SETUP renumbering and its undo, closed after go-live": {
+    "s": 12.6,
+    "at": 1792156639533
+  },
+  "served:parallel › import/large.spec.ts › large files: 3,000 rows refused with the limit named; 2,000 rows virtualised, one question per shared value": {
+    "s": 16.1,
+    "at": 1792155594880
+  },
+  "served:parallel › import/queue-layout.spec.ts › import queue: the grid stays inside its card when the page scrolls to the open item": {
+    "s": 6.9,
+    "at": 1792157403200
+  },
+  "served:parallel › import/reconcile.spec.ts › migration check: funnels, rows marked, an honest sign-off; stale, unacknowledged and late writes refused": {
+    "s": 11.4,
+    "at": 1792156639533
+  },
+  "served:parallel › import/register-facts.spec.ts › import register facts: 성별 from its column or the 주민등록번호, 직급 apart from 직위, and the 명부 gaps at the end": {
+    "s": 10.1,
+    "at": 1792156149129
+  },
+  "served:parallel › import/two-entities.spec.ts › a protected workbook is told apart before upload, with how to get a readable copy": {
+    "s": 7.1,
+    "at": 1792157479625
+  },
+  "served:parallel › import/two-entities.spec.ts › an HR admin imports 300 people across two legal entities, answers each unplaced value once, then settles a second load item by item": {
+    "s": 35.5,
+    "at": 1792157479625
+  },
+  "served:parallel › import-reds-layout.spec.ts › Home waits for the checklist arrival read before offering cached actions": {
+    "s": 3.9,
+    "at": 1792155726653
+  },
+  "served:parallel › import-reds-layout.spec.ts › adding a department on a slow read keeps the next input and department actions in place": {
+    "s": 7.2,
+    "at": 1792155726653
+  },
+  "served:parallel › j1-register.spec.ts › J1 register: the sheet asks for nothing in advance, names every gap on commit, and registers in one call": {
+    "s": 18,
+    "at": 1792155594880
+  },
+  "served:parallel › j3-renewal.spec.ts › J3 contract renewal from Home's queue, then the next one": {
+    "s": 16,
+    "at": 1792155284883
+  },
+  "served:parallel › j4-leave.spec.ts › J4 leave of absence with a leave type, then return": {
+    "s": 13.8,
+    "at": 1792157479625
+  },
+  "served:parallel › j6-bulk.spec.ts › J6 bulk transfer: a refused person is named and nothing is recorded; retrying without them moves the rest": {
+    "s": 24.5,
+    "at": 1792156149129
+  },
+  "served:parallel › j6-bulk.spec.ts › J6 bulk transfer from a paste: lines keyed by employee number, errors first, one batch across units": {
+    "s": 21.4,
+    "at": 1792156149129
+  },
+  "served:parallel › j6-grid-typing.spec.ts › J6 grid typing: every typed character stays, an IME's first syllable included, and 성별 is picked from its options": {
+    "s": 16.4,
+    "at": 1792155726653
+  },
+  "served:parallel › j6-grid.spec.ts › J6 bulk edit: a pasted block shows old → new, an error blocks only itself, the check and the commit write the rest": {
+    "s": 17.8,
+    "at": 1792155438906
+  },
+  "served:parallel › j7-dissolve.spec.ts › J7 dissolve: one sheet sends each member somewhere, closes the unit on its date and counts who moved": {
+    "s": 17.3,
+    "at": 1792156006421
+  },
+  "served:parallel › life.spec.ts › lifecycle: correct and rescind the latest change, re-read a stale sheet, replace a reservation by name": {
+    "s": 18.4,
+    "at": 1792157403200
+  },
+  "served:parallel › life.spec.ts › lifecycle: a renewal past the two-year fixed-term limit is refused with its grounds; one inside it records": {
+    "s": 11.5,
+    "at": 1792157403200
+  },
+  "served:parallel › life.spec.ts › people: HR corrects a record": {
+    "s": 11.8,
+    "at": 1792157403200
+  },
+  "served:parallel › lifecycle-sheets.spec.ts › saving an incomplete lifecycle draft restores its fields without recording an action": {
+    "s": 10.7,
+    "at": 1792155726653
+  },
+  "served:parallel › lifecycle-sheets.spec.ts › lifecycle sheets: a schedule conflict names the reservation, its withdrawal returns to the draft": {
+    "s": 19.3,
+    "at": 1792155726653
+  },
+  "served:parallel › lifecycle-sheets.spec.ts › lifecycle sheets: a lost response freezes the sheet until it is checked, and nothing is recorded twice": {
+    "s": 18.9,
+    "at": 1792155726653
+  },
+  "served:parallel › link-style.spec.ts › no anchor on any route renders the browser's default link style": {
+    "s": 72.6,
+    "at": 1792156006421
+  },
+  "served:parallel › live.spec.ts › a change in one session reaches another without reload or polling, survives a cut stream, and stays in its tenant": {
+    "s": 59.4,
+    "at": 1792155085673
+  },
+  "served:parallel › live.spec.ts › an unattended Home holds a change made elsewhere behind its notice: nothing moves until the press": {
+    "s": 11.2,
+    "at": 1792155085673
+  },
+  "served:parallel › live.spec.ts › a sheet holds a change made elsewhere to the record under it, and closing it shows the change": {
+    "s": 15.5,
+    "at": 1792155085673
+  },
+  "served:parallel › multi-entity.spec.ts › a group of two legal entities: each with its workplace and people, placed by id": {
+    "s": 13.1,
+    "at": 1792157479625
+  },
+  "served:parallel › onboarding.spec.ts › onboarding creates every account through the product": {
+    "s": 27.3,
+    "at": 1792157403200
+  },
+  "served:parallel › org-after-go-live.spec.ts › a proposal typed right after go-live keeps what was typed": {
+    "s": 9.9,
+    "at": 1792156006291
+  },
+  "served:parallel › org-bulk-edit.spec.ts › edit two 사업장 together: the row already established stays, the other gets its 4대보험 state @org": {
+    "s": 10.2,
+    "at": 1792155284883
+  },
+  "served:parallel › org-bulk.spec.ts › paste a list under a 법인, undo it whole, and undo the rest from the history @org": {
+    "s": 17,
+    "at": 1792157403200
+  },
+  "served:parallel › org-ends-r3.spec.ts › regression: one dissolve flow, a held unit names its change, and 삭제 over several names all of them (org-05, org-15, org-16)": {
+    "s": 10.2,
+    "at": 1792157479625
+  },
+  "served:parallel › org-ends-r3.spec.ts › regression: after a change the chart keeps its boxes and draws the result (org-22)": {
+    "s": 5.8,
+    "at": 1792157479625
+  },
+  "served:parallel › org-import-parent.spec.ts › regression: a 상위부서 column keeps the hierarchy, the code is kept, and an unknown parent is refused by name (org-06)": {
+    "s": 11,
+    "at": 1792155617325
+  },
+  "served:parallel › org-import.spec.ts › import an org sheet: columns, exact-only values, preview with an error row, apply and undo @org": {
+    "s": 11.5,
+    "at": 1792154921643
+  },
+  "served:parallel › org-move-hired-today.spec.ts › regression: a move on a placement day names its fix and leaves one draft, never a generic conflict (org-01)": {
+    "s": 15.2,
+    "at": 1792157479625
+  },
+  "served:parallel › orgchange-r2.spec.ts › an org change moves its people with the unit, stays on the chart with a receipt and speaks no 결재": {
+    "s": 16.2,
+    "at": 1792155438906
+  },
+  "served:clock › orgchange-r2.spec.ts › a scheduled change can be moved or cancelled, frees its unit when cancelled, and applies on its date by itself": {
+    "s": 20.4,
+    "at": 1791700116031
+  },
+  "served:parallel › parity-regressions.spec.ts › name and hire date register implicitly unplaced with statutory follow-ups": {
+    "s": 14,
+    "at": 1792021608705
+  },
+  "served:parallel › parity-regressions.spec.ts › name and hire date register explicitly unplaced with statutory follow-ups": {
+    "s": 7,
+    "at": 1792021608705
+  },
+  "served:parallel › parity-regressions.spec.ts › zero-facet roster shows a failed read and retry before the first-use empty state": {
+    "s": 4.8,
+    "at": 1792197746943
+  },
+  "served:parallel › parity-regressions.spec.ts › zero-facet roster waits for its delayed list before claiming first-use empty": {
+    "s": 1.3,
+    "at": 1792197746943
+  },
+  "served:parallel › people-actions/act-after-act.spec.ts › an act right after another opens on the person as recorded: no 'record changed' notice for the user's own change": {
+    "s": 17.2,
+    "at": 1792155085673
+  },
+  "served:parallel › people-actions/appoint.spec.ts › appoint: the role list is filled from the sheet by the one who keeps it; the server refuses everyone else": {
+    "s": 15.2,
+    "at": 1792156149129
+  },
+  "served:parallel › people-actions/bulk-arrival.spec.ts › bulk kinds wait for the picked employees before opening their controls": {
+    "s": 12.8,
+    "at": 1792155085673
+  },
+  "served:parallel › people-actions/exit-blockers.spec.ts › exit report: a later reservation is named first and withdrawn in place; a second report is refused": {
+    "s": 12.9,
+    "at": 1792156006291
+  },
+  "served:parallel › people-actions/notice.spec.ts › notice: a bulk transfer's 발령 공고 takes the next number; the same acts on a second notice are refused": {
+    "s": 16.9,
+    "at": 1792155085673
+  },
+  "served:parallel › people-actions/promote.spec.ts › bulk promotion: a suggestion per person, never applied until accepted; the gap blocks; each person's own title is recorded": {
+    "s": 24.7,
+    "at": 1792156943162
+  },
+  "served:parallel › people-actions/register-new-unit.spec.ts › registering into 부서 made a moment earlier: every press registers": {
+    "s": 13.6,
+    "at": 1792155726653
+  },
+  "served:parallel › people-actions/register-run.spec.ts › 연속 등록: rows saved with ⌘↵, carried values, gaps named, a namesake stops the row, setup undo": {
+    "s": 17.3,
+    "at": 1792157479625
+  },
+  "served:parallel › people-actions/rehire.spec.ts › rehire: refused while employed at both levels; after the exit, a new period under the same 사번": {
+    "s": 21.4,
+    "at": 1792157479625
+  },
+  "served:parallel › people-actions/renew.spec.ts › bulk renewal: no default, the two-year rule refuses one before anything is sent, then renew + convert + exit report": {
+    "s": 17.5,
+    "at": 1792154921643
+  },
+  "served:parallel › people-fixes/choices.spec.ts › solo: bulk catalog promotions preserve IDs and demotion rules; inactive entries require reactivation": {
+    "s": 11.1,
+    "at": 1792155726653
+  },
+  "served:parallel › people-fixes/choices.spec.ts › solo: a conversion correction keeps its contract end and a fixed-term refusal offers available remedies": {
+    "s": 9.4,
+    "at": 1792155726653
+  },
+  "served:parallel › people-fixes/import.spec.ts › solo: a migrated worker without employment follows the guided re-import diff without creating another person": {
+    "s": 9.3,
+    "at": 1792156149129
+  },
+  "served:parallel › people-fixes/messages.spec.ts › solo: a contract overlap names its period and opens that contract's correction; a rehire refusal explains the prior exit": {
+    "s": 16.2,
+    "at": 1792157479625
+  },
+  "served:parallel › people-fixes/placement.spec.ts › solo: identically named workplaces keep their entity IDs; typed warnings survive receipts and reloads": {
+    "s": 19.1,
+    "at": 1792157479625
+  },
+  "served:parallel › people-reads.spec.ts › roster facets, employment type, purposeful download and exit search": {
+    "s": 21,
+    "at": 1792154921643
+  },
+  "served:parallel › people.spec.ts › an HR admin imports a roster: preview → dry run → apply bound to it": {
+    "s": 17.7,
+    "at": 1792157403200
+  },
+  "served:parallel › period-locks.spec.ts › period locks: month lock, overlap blocked with fixes, unlock with a reason": {
+    "s": 12.7,
+    "at": 1792156943162
+  },
+  "served:parallel › period-unlock-approve.spec.ts › period unlock: a second close authority refuses, then approves; the requester sees each outcome": {
+    "s": 51.9,
+    "at": 1792071699980
+  },
+  "served:parallel › person.spec.ts › employee page: effective-date history, change a reservation, home-branch conflict": {
+    "s": 32.2,
+    "at": 1792071445346
+  },
+  "served:parallel › placement.spec.ts › placement: 법인 · 사업장 follow the 부서, a 전근 moves them, a 전보 never crosses a 법인": {
+    "s": 24.4,
+    "at": 1792156006421
+  },
+  "served:parallel › raw-id-guard.spec.ts › dotted text that is no catalog id never trips the guard": {
+    "s": 0.1,
+    "at": 1792197746943
+  },
+  "served:parallel › record-actions/card.spec.ts › setup phase: contacts, photo, entries and careers are added, edited, traced and deleted from the card": {
+    "s": 13.7,
+    "at": 1792071954346
+  },
+  "served:parallel › record-actions/card.spec.ts › after 운영 시작: the same 수정 is recorded as a correction and no hard delete is offered": {
+    "s": 15.7,
+    "at": 1792071954346
+  },
+  "served:parallel › record-actions/goals.spec.ts › cold persona: each goal's action is found on its value in two interactions: setup phase": {
+    "s": 16.4,
+    "at": 1792071324822
+  },
+  "served:parallel › record-actions/goals.spec.ts › cold persona: each goal's action is found on its value in two interactions: live tenant": {
+    "s": 17.7,
+    "at": 1792071324822
+  },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of an edited fact shows the new value and never the old: setup phase": {
+    "s": 34.1,
+    "at": 1792071445346
+  },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of an edited fact shows the new value and never the old: live tenant": {
+    "s": 34.7,
+    "at": 1792071445346
+  },
+  "served:parallel › record-actions/propagation.spec.ts › planted: a surface reading a cached copy of the 사업장 name fails the harness": {
+    "s": 33.5,
+    "at": 1792071445346
+  },
+  "served:parallel › record-actions/reach.spec.ts › every registered action is reached in two interactions or fewer: setup phase": {
+    "s": 39.9,
+    "at": 1792071767909
+  },
+  "served:parallel › record-actions/reach.spec.ts › every registered action is reached in two interactions or fewer: live tenant": {
+    "s": 6.7,
+    "at": 1792071767909
+  },
+  "served:parallel › record-actions/reach.spec.ts › planted: an action the UI does not have fails the gate's own assertion, beside a real one that passes": {
+    "s": 6.7,
+    "at": 1792071767909
+  },
+  "served:parallel › record-actions/workplace.spec.ts › one 사업장 panel from the 법인 page and the org chart, each fact its own 수정: setup phase": {
+    "s": 10.8,
+    "at": 1792072273885
+  },
+  "served:parallel › record-actions/workplace.spec.ts › one 사업장 panel from the 법인 page and the org chart, each fact its own 수정: live tenant": {
+    "s": 10.1,
+    "at": 1792072273885
+  },
+  "served:parallel › recovery.spec.ts › vendor reissues a lost first-admin code; an admin resets a user's passkeys and they enroll again": {
+    "s": 26.8,
+    "at": 1792666615135
+  },
+  "served:parallel › register-validation.spec.ts › an invalid registration press is not queued behind placement reads at 1280px": {
+    "s": 5.8,
+    "at": 1792155438906
+  },
+  "served:parallel › register-validation.spec.ts › an invalid registration press is not queued behind placement reads at 390px": {
+    "s": 6.9,
+    "at": 1792155438906
+  },
+  "served:parallel › retry-after.spec.ts › a sign-in refused with 429 + Retry-After says when to try again and is not retried on its own": {
+    "s": 4.3,
+    "at": 1792197746943
+  },
+  "served:parallel › role-no-workplace.spec.ts › before any workplace, an invited colleague holds a 회사 전체 grant and no title": {
+    "s": 6.6,
+    "at": 1792197746943
+  },
+  "served:parallel › roster.spec.ts › the roster at 3,000 people: virtualized paging, server counts, jump, bounded select-all, region-only keys": {
+    "s": 73.5,
+    "at": 1792154921643
+  },
+  "served:parallel › scale-out.spec.ts › an isolated fresh stack serves the tenant setup through the cached web build": {
+    "s": 3.5,
+    "at": 1792197746943
+  },
+  "served:parallel › setup-edits.spec.ts › setup edits: a workplace changed twice, a department renamed, a duplicate 법인 removed": {
+    "s": 10,
+    "at": 1792155438906
+  },
+  "served:parallel › setup-edits.spec.ts › a 법인 changed twice ahead of its date keeps both changes": {
+    "s": 5.3,
+    "at": 1792155438906
+  },
+  "served:parallel › setup-truth.spec.ts › go-live counts what the panels show and fixes each record in place; the tenancy is never a 회사; a second passkey from the rail": {
+    "s": 11.5,
+    "at": 1792155594880
+  },
+  "served:parallel › setup-truth.spec.ts › after go-live the only ops holder is asked for a second passkey on Home and in My account's passkey card, until there are two": {
+    "s": 9.6,
+    "at": 1792155594880
+  },
+  "served:parallel › shell-keyboard.spec.ts › the shared shell names its content and supports Tab and skip-link navigation on every route": {
+    "s": 2,
+    "at": 1792197746943
+  },
+  "served:parallel › sign-in-id.spec.ts › sign-in ID: handed over with the code, identifier-first, the button, autofill, and unknown IDs read as no passkey": {
+    "s": 7.2,
+    "at": 1792197746943
+  },
+  "served:parallel › sign-in-id.spec.ts › sign-in ID: a rename keeps the old ID signing in, the history shows both, and an old ID is never reissued": {
+    "s": 6.2,
+    "at": 1792197746943
+  },
+  "served:parallel › sign-in-id.spec.ts › sign-in ID: a security key without a resident credential enrols, signs in by ID and confirms a step-up": {
+    "s": 2.2,
+    "at": 1792197746943
+  },
+  "served:parallel › slow-server-waits.spec.ts › Home's rail and the entity save wait for their reads, however slow": {
+    "s": 11.9,
+    "at": 1792071767909
+  },
+  "served:parallel › standing-text.spec.ts › empty screens offer one working entry and forms retain format hints and refusals": {
+    "s": 5,
+    "at": 1792197746943
+  },
+  "served:parallel › statutory-windows.spec.ts › hire today, prepare next month's exit, and resolve truthful not-applicable filings": {
+    "s": 18.4,
+    "at": 1792071324822
+  },
+  "served:parallel › statutory.spec.ts › statutory filings and a dated worker register from an empty tenant": {
+    "s": 25.4,
+    "at": 1792155085673
+  },
+  "served:parallel › structure-add-many.spec.ts › chart adds three siblings at every level by mouse at 1280×720": {
+    "s": 10.9,
+    "at": 1792157403200
+  },
+  "served:parallel › structure-add-many.spec.ts › outline adds three siblings at every level by mouse at 1280×720": {
+    "s": 10,
+    "at": 1792157403200
+  },
+  "served:parallel › structure-add-many.spec.ts › chart adds three siblings at every level by mouse at 1920×1080": {
+    "s": 9.7,
+    "at": 1792157403200
+  },
+  "served:parallel › structure-add-many.spec.ts › outline adds three siblings at every level by mouse at 1920×1080": {
+    "s": 9.3,
+    "at": 1792157403200
+  },
+  "served:parallel › structure-add-many.spec.ts › the chart keeps the dedicated keyboard add path": {
+    "s": 4.7,
+    "at": 1792157403200
+  },
+  "served:parallel › structure-canvas-clip.spec.ts › floating chart chrome never clips a bottom band at 1280×720": {
+    "s": 7.7,
+    "at": 1792155284883
+  },
+  "served:parallel › structure-canvas-clip.spec.ts › floating chart chrome never clips a bottom band at 1920×1080": {
+    "s": 7.7,
+    "at": 1792155284883
+  },
+  "served:parallel › structure-chart.spec.ts › an empty tenant builds its structure on the chart": {
+    "s": 14.3,
+    "at": 1792155617325
+  },
+  "served:parallel › structure-dept.spec.ts › 부서: panel, delete with the sub-units raised, merge into another workplace, people block a setup delete": {
+    "s": 17.8,
+    "at": 1792154921643
+  },
+  "served:parallel › structure-governed.spec.ts › operating: new department and dissolution proposals, a governed move, deleting a never-used workplace": {
+    "s": 24.7,
+    "at": 1792071954346
+  },
+  "served:parallel › structure-kind.spec.ts › 사업장 kind, code and order; 부서 head, code and order; a new 사업장 through its 법인": {
+    "s": 22.3,
+    "at": 1792155726653
+  },
+  "served:parallel › structure-move.spec.ts › bulk move: four 부서 to another 사업장, one carried, a name clash renamed, exact counts": {
+    "s": 14.3,
+    "at": 1792071954346
+  },
+  "served:parallel › structure-order.spec.ts › order on the chart and the list's conditions": {
+    "s": 14.4,
+    "at": 1792156149129
+  },
+  "served:parallel › structure-receipt.spec.ts › regression: an erase from the panel ends the chart's earlier receipt (org-13)": {
+    "s": 8.8,
+    "at": 1792155085673
+  },
+  "served:parallel › structure-views.spec.ts › jump, outline, paste, list and export work on one structure": {
+    "s": 12.6,
+    "at": 1792154921643
+  },
+  "served:parallel › structure-workplace.spec.ts › 사업장: add with no defaults, the panel, change the representative workplace, delete in setup": {
+    "s": 17.1,
+    "at": 1792156006291
+  },
+  "served:parallel › tenant-not-company.spec.ts › the account's name is never a company node: the 법인 are the top of the structure": {
+    "s": 10.1,
+    "at": 1792155438906
+  },
+  "served:parallel › tenant-onboard-refusal.spec.ts › a slug another tenant holds is the server's refusal on the slug field, never a tenant opened": {
+    "s": 1.5,
+    "at": 1792197746943
+  },
+  "served:parallel › tenant-onboard-refusal.spec.ts › a response lost before any status still finds the tenant it opened, by the exact slug sent": {
+    "s": 0.5,
+    "at": 1792197746943
+  },
+  "served:parallel › transfer-same-entity.spec.ts › regression M22: a transfer never reaches another 법인's 부서 (TR-33)": {
+    "s": 11.4,
+    "at": 1792157479625
+  },
+  "served:parallel › unplaced-place.spec.ts › unplaced: a whole group is placed at once, with its facts shown, and a finished queue says what to do next": {
+    "s": 9.7,
+    "at": 1792155085673
+  },
+  "served:parallel › unplaced-place.spec.ts › unplaced: people the server would refuse are named with the reason; nothing is written until the rest are placed alone": {
+    "s": 9.9,
+    "at": 1792155085673
+  },
+  "served:parallel › unplaced.spec.ts › unplaced people: grouped by the file's value, placed in a unit or directly under the workplace, each group closes when done": {
+    "s": 15.5,
+    "at": 1792157403200
+  },
+  "served:parallel › unplaced.spec.ts › unplaced people: a refused queue reads as no access, not as nobody left": {
+    "s": 11.3,
+    "at": 1792157403200
+  },
+  "served:parallel › workplace-close-api.spec.ts › the close job refuses a 전적 line and an incomplete plan on the wire, writing nothing": {
+    "s": 10.9,
+    "at": 1792155617325
+  },
+  "served:parallel › workplace-close-group.spec.ts › closing a 사업장 moves a person to another 법인 by 전적 with their consent; what cannot be a 전적 is refused": {
+    "s": 18.1,
+    "at": 1792071426282
+  },
+  "served:parallel › workplace-close.spec.ts › regression: a staffed workplace closes today in one act by its plan (company-01, worst-case-18)": {
+    "s": 23.4,
+    "at": 1792156943162
+  },
+  "served:parallel › workplace-close.spec.ts › a refused plan names who and why and changes nothing; a later close is scheduled, withdrawn and planned again with exits": {
+    "s": 35.7,
+    "at": 1792156943162
+  },
+  "served:parallel › worst-case/cx-upstream-ports.spec.ts › cookie logout revokes the session and unauthorized responses expose the JSON code": {
+    "s": 3.2,
+    "at": 1792197746943
+  },
+  "served:clock › chaos-restart.spec.ts › a backend restart mid-registration: the save fails in words, the session survives, the retry lands once": {
+    "s": 12.8,
+    "at": 1792072743708
+  },
+  "served:clock › ideal-first-run-terms-version.spec.ts › BL-015: a newer immutable document restores the blocker and asks for its exact text": {
+    "s": 9.8,
+    "at": 1792158416439
+  },
+  "served:clock › j2-transfer.spec.ts › J2 appointment: transfer and promotion from the server's allowed events; a no-op is refused": {
+    "s": 38.8,
+    "at": 1791700116031
+  },
+  "served:clock › j5-exit.spec.ts › J5 exit case: two-person confirmation, settlement submission, and a rejection that reverses the exit": {
+    "s": 62.5,
+    "at": 1791843506651
+  },
+  "served:firefox › access-hr-walk.spec.ts › an HR worker granted 인사 실무 over the 법인 and 권한 관리 over 회사 전체 works, and loses it all on exit": {
+    "s": 23.2,
+    "at": 1792160763463
+  },
+  "served:firefox › access-roles.spec.ts › pilot roles: no presets, a role made in setup, granted for go-live, enforced after 운영 시작": {
+    "s": 22.7,
+    "at": 1792161010790
+  },
+  "served:firefox › access-scope.spec.ts › an HR worker granted 인사 실무 over one 법인 works inside it and is refused outside it, typed": {
+    "s": 20.3,
+    "at": 1792163003471
+  },
+  "served:firefox › account.spec.ts › my account: add a second passkey, sign in with it, remove the first": {
+    "s": 18,
+    "at": 1792161010790
+  },
+  "served:firefox › account.spec.ts › a failed account-facts read keeps the passkeys and never invents HR recovery advice for an ops account": {
+    "s": 6.8,
+    "at": 1792161010790
+  },
+  "served:firefox › account.spec.ts › my account for the platform vendor shows its tier, passkey and consent without an employee row": {
+    "s": 1.5,
+    "at": 1792161010790
+  },
+  "served:firefox › account.spec.ts › a refused sign-in right after enrollment lands on the login screen, and the new passkey signs in": {
+    "s": 18.2,
+    "at": 1792161010790
+  },
+  "served:firefox › accounts.spec.ts › accounts: invite with no role, continue into 권한 부여, find the existing account, ops is protected": {
+    "s": 15.2,
+    "at": 1792163003471
+  },
+  "served:firefox › asof-load.spec.ts › dated chart and comparison retain 2,000 imported people through a projected rename": {
+    "s": 37.4,
+    "at": 1792163003471
+  },
+  "served:firefox › asof-refusals.spec.ts › an invalid effective-date range refuses without writes and can be cleared": {
+    "s": 3.3,
+    "at": 1792163003471
+  },
+  "served:firefox › asof-solo.spec.ts › solo ops reads past and projected records, preserves known-at corrections and compares scheduled org changes": {
+    "s": 20.6,
+    "at": 1792163003471
+  },
+  "served:firefox › attendance-closed-month.spec.ts › 마감된 달: read-only with the unlock path, editable while unlocked, closed again on re-lock": {
+    "s": 25.5,
+    "at": 1792074234070
+  },
+  "served:firefox › attendance-grid-safety.spec.ts › regression: a re-read inserting a row inside the selection while typing never commits the half-typed value": {
+    "s": 19.9,
+    "at": 1792075773810
+  },
+  "served:firefox › attendance-grid-safety.spec.ts › regression: back-navigation while typing keeps the value as a draft of the month it was typed in": {
+    "s": 16.3,
+    "at": 1792075773810
+  },
+  "served:firefox › attendance-long-span.spec.ts › long records require per-cell confirmation, save evidence only, and confirm corrections": {
+    "s": 28.8,
+    "at": 1792074704475
+  },
+  "served:firefox › attendance-records-security.spec.ts › different-tenant: all five record commands show real refusals and preserve records and drafts": {
+    "s": 29.5,
+    "at": 1792074954178
+  },
+  "served:firefox › attendance-records-security.spec.ts › different-tenant: day, month and person reads show scope refusals without leaking records": {
+    "s": 21.2,
+    "at": 1792074954178
+  },
+  "served:firefox › attendance-records-security.spec.ts › lower-grant: all five record commands show real refusals and preserve records and drafts": {
+    "s": 23,
+    "at": 1792074954178
+  },
+  "served:firefox › attendance-records-security.spec.ts › lower-grant: day, month and person reads show scope refusals without leaking records": {
+    "s": 20.3,
+    "at": 1792074954178
+  },
+  "served:firefox › attendance-records.spec.ts › 월간 근무표: type, refuse, fix, paste, save with 근거, undo, correct, void, record again, conflict": {
+    "s": 41.9,
+    "at": 1792074238308
+  },
+  "served:firefox › attendance-records.spec.ts › change-date ribbon waits for its current read after attendance setup": {
+    "s": 19.2,
+    "at": 1792074238308
+  },
+  "served:firefox › attendance-rowid.spec.ts › regression: a re-read inserting a row above the cell being typed never moves the value to another person": {
+    "s": 22.7,
+    "at": 1792074238308
+  },
+  "served:firefox › attendance-schedule.spec.ts › 근무 일정: first run → pattern → assign with preview → cancel before effect; refusals change nothing": {
+    "s": 22.2,
+    "at": 1792163003471
+  },
+  "served:firefox › chaos-people.spec.ts › register on a bad connection: a lost answer still makes one employee, and a double press registers once": {
+    "s": 14.7,
+    "at": 1792163003471
+  },
+  "served:firefox › chaos-people.spec.ts › import on a bad connection: an apply whose answer is lost is not applied twice and says it is done": {
+    "s": 17,
+    "at": 1792163003471
+  },
+  "served:firefox › chaos-people.spec.ts › a second roster under the same file name adds its people and leaves the earlier ones as they are": {
+    "s": 9.5,
+    "at": 1792163003471
+  },
+  "served:firefox › chaos-setup.spec.ts › setup on a bad connection: 법인, 사업장 and 부서 are each recorded once and nothing typed is lost": {
+    "s": 12.4,
+    "at": 1792075613073
+  },
+  "served:firefox › chaos-setup.spec.ts › edits on a bad connection: a failed 법인 or 사업장 change keeps the dialog and its values, and lands once": {
+    "s": 9.8,
+    "at": 1792075613073
+  },
+  "served:firefox › chaos-stale.spec.ts › a session that ends mid-edit records nothing, re-auths in place and keeps the typed change": {
+    "s": 7.9,
+    "at": 1792163003471
+  },
+  "served:firefox › chunk-reload.spec.ts › a stale index.html whose entry chunk is gone reloads once, afresh, and signs in as usual": {
+    "s": 2.3,
+    "at": 1792160763463
+  },
+  "served:firefox › chunk-reload.spec.ts › an entry chunk that stays missing reloads once, then shows the static error screen, never a blank page": {
+    "s": 3.6,
+    "at": 1792160763463
+  },
+  "served:firefox › company-domain.spec.ts › company domain: deliberate opening, safe rename, old-domain sign-in notice and support request": {
+    "s": 8.6,
+    "at": 1792074071408
+  },
+  "served:firefox › context-lifetime.spec.ts › helper context lifetime › a test owns the contexts it opens": {
+    "s": 0.3,
+    "at": 1792160763463
+  },
+  "served:firefox › context-lifetime.spec.ts › helper context lifetime › the next test closes prior contexts and keeps its own contexts": {
+    "s": 0.2,
+    "at": 1792160763463
+  },
+  "served:firefox › crud-people.spec.ts › 퇴직 from the record, refused where it must be, closed alone, and the person leaves the roster": {
+    "s": 11.9,
+    "at": 1792075616221
+  },
+  "served:firefox › crud-people.spec.ts › 등록 취소 for a mistaken registration, refused for a used one, and 퇴직 for several from the roster": {
+    "s": 7.9,
+    "at": 1792163003471
+  },
+  "served:firefox › crud-people.spec.ts › an account without the permission sees 퇴직 and 등록 취소 refused with the reason, and nothing opens": {
+    "s": 8.5,
+    "at": 1792163003471
+  },
+  "served:firefox › crud-structure.spec.ts › a solo admin deletes a never-used 팀 and 부서 and dissolves a used one, in setup and after go-live": {
+    "s": 10.5,
+    "at": 1792160785899
+  },
+  "served:firefox › d26-solo-exit.spec.ts › a solo ops account registers a person and closes their exit alone, with no 결재 on the way": {
+    "s": 19.1,
+    "at": 1792645025837
+  },
+  "served:firefox › emp/record-head.spec.ts › the card head links the 법인 and 사업장, invites an account and keeps 퇴직 · 등록 취소": {
+    "s": 16.1,
+    "at": 1792160763463
+  },
+  "served:firefox › emp/record.spec.ts › roster: first run, counts that add up, 3-year retention, a void in setup and one refused": {
+    "s": 51.1,
+    "at": 1792645025837
+  },
+  "served:firefox › emp/record.spec.ts › record card: a hire date corrected within budget, a taken number refused, a stale sheet keeps what was typed": {
+    "s": 59.6,
+    "at": 1792645025837
+  },
+  "served:firefox › employment-record.spec.ts › employment record: checklist to facts, a contract and its correction, probation end": {
+    "s": 22.2,
+    "at": 1792163003471
+  },
+  "served:firefox › entity-attach.spec.ts › a 사업장 added without a 등록증 gets its own from where the go-live blocker lands": {
+    "s": 7.9,
+    "at": 1792160521872
+  },
+  "served:firefox › entity-capture.spec.ts › capture: the district comes from the bundled list, other lists say they are not loaded and never block": {
+    "s": 5.7,
+    "at": 1792163003471
+  },
+  "served:firefox › entity-capture.spec.ts › a certificate upload is typed beside, kept as the registration's evidence and opened from the documents tab": {
+    "s": 6.2,
+    "at": 1792163003471
+  },
+  "served:firefox › entity-close-exited.spec.ts › regression: after the only person's exit (-1) the 법인 counts nobody and its close opens 종료일 (company-01)": {
+    "s": 17.2,
+    "at": 1792163003471
+  },
+  "served:firefox › entity-close-exited.spec.ts › regression: after the only person's exit (0) the 법인 counts nobody and its close opens 종료일 (company-01)": {
+    "s": 20.2,
+    "at": 1792163003471
+  },
+  "served:firefox › entity-close-staffed.spec.ts › regression: a staffed 법인's close opens its people's exits in place and lists the open ones (company-18, company-52)": {
+    "s": 17.1,
+    "at": 1792163003471
+  },
+  "served:firefox › entity-close-withdraw.spec.ts › regression: a closed 법인's close is withdrawn, with what reopens previewed and a refusal that changes nothing (company-15)": {
+    "s": 5.6,
+    "at": 1792163003471
+  },
+  "served:firefox › entity-create.spec.ts › quick add: three inputs, the receipt's undo, and a corporation sent on to the certificate": {
+    "s": 4.9,
+    "at": 1792160763463
+  },
+  "served:firefox › entity-create.spec.ts › the certificate wizard refuses a taken number and a future date, warns on the CRN, and saves the rest as to-dos": {
+    "s": 7.9,
+    "at": 1792160763463
+  },
+  "served:firefox › entity-create.spec.ts › an individual business never collects the owner's birth date; a 고유번호 단체 takes the shared five": {
+    "s": 4.9,
+    "at": 1792160763463
+  },
+  "served:firefox › entity-live-notice.spec.ts › regression: an open 고치기 sheet says the record changed elsewhere, and the conflict shows values as typed (worst-case-33)": {
+    "s": 9.8,
+    "at": 1792160521872
+  },
+  "served:firefox › entity-name-en.spec.ts › the English UI names a 법인 by its English name on every surface, and Korean by its 법인명": {
+    "s": 9.4,
+    "at": 1792074361058
+  },
+  "served:firefox › entity-name-en.spec.ts › in English, adding a 법인 names it by its English name in the receipt and every announcement": {
+    "s": 4.6,
+    "at": 1792074361058
+  },
+  "served:firefox › entity-name-evidence.spec.ts › one 법인명: ① edits the name every surface shows, and the 약칭 and 영문명 stay secondary": {
+    "s": 6.8,
+    "at": 1792074704475
+  },
+  "served:firefox › entity-name-evidence.spec.ts › an individual's 상호 is the one name its record, list and header show": {
+    "s": 2.9,
+    "at": 1792074704475
+  },
+  "served:firefox › entity-name-evidence.spec.ts › a branch primary is refused until its explicit certificate reason is recorded": {
+    "s": 2.7,
+    "at": 1792074704475
+  },
+  "served:firefox › entity-name-evidence.spec.ts › the server refuses a 대표자 as 법인명 or 영문명 and the sheet says why, saving nothing": {
+    "s": 4.3,
+    "at": 1792074704475
+  },
+  "served:firefox › entity-no-ocr.spec.ts › an uploaded 사업자등록증 fills nothing, and the screens never promise it": {
+    "s": 3.9,
+    "at": 1792163003471
+  },
+  "served:firefox › entity-ops.spec.ts › a 사업장 records 휴업 with its expected end, then 재개, and moves on a date": {
+    "s": 21.2,
+    "at": 1792646493565
+  },
+  "served:firefox › entity-ops.spec.ts › a wrong check digit is held until confirmed, and a 법인 is recorded while being founded": {
+    "s": 8.8,
+    "at": 1792646493565
+  },
+  "served:firefox › entity-ops.spec.ts › a closed 법인 offers no edit verb, only 종료 정정, and a refused 정정 changes nothing": {
+    "s": 12.4,
+    "at": 1792646493565
+  },
+  "served:firefox › entity-record-fixes.spec.ts › sequential edits on a 법인 with a 등록증 and a 사업장 save one after another": {
+    "s": 14.7,
+    "at": 1792645025837
+  },
+  "served:firefox › entity-record-fixes.spec.ts › the record rail dates an entry recorded before 09:00 KST by the Korean day": {
+    "s": 4.8,
+    "at": 1792645025837
+  },
+  "served:firefox › entity-record-fixes.spec.ts › a real conflict shows what changed meanwhile and re-applies the value on top of it": {
+    "s": 8.1,
+    "at": 1792645025837
+  },
+  "served:firefox › entity-record.spec.ts › the record: 변경 from a date, 정정 of the period in force, 정정만, and the BRN corrected in setup": {
+    "s": 24.2,
+    "at": 1792645025837
+  },
+  "served:firefox › entity-record.spec.ts › 법인 종료 after 운영 시작: blockers first and the date locked; a never-used 법인 is deleted instead": {
+    "s": 58.8,
+    "at": 1792645025837
+  },
+  "served:firefox › entity-reissue.spec.ts › a new 등록증 changing 대표자 and 소재지 is one dated change every surface shows; the old one stays": {
+    "s": 19.3,
+    "at": 1792645025837
+  },
+  "served:firefox › entity-reissue.spec.ts › a reissue cannot hide a scheduled 본점 move": {
+    "s": 14.3,
+    "at": 1792645025837
+  },
+  "served:firefox › entity-reissue.spec.ts › the first 등록증 entry reuses the original already attached to the 법인, never a second upload": {
+    "s": 13.9,
+    "at": 1792645025837
+  },
+  "served:firefox › entity-wizard-honesty.spec.ts › regression: a flagged field is one press away from any step, and 설립등기 shows what it recorded (company-04, company-05)": {
+    "s": 5.5,
+    "at": 1792159463685
+  },
+  "served:firefox › entity-wizard-layout.spec.ts › the 법인 wizard scrolls inside the shell, never the document (W06)": {
+    "s": 2.4,
+    "at": 1792163003471
+  },
+  "served:firefox › entity-wizard-layout.spec.ts › the quick 법인 sheet says what it needs, and that is what it asks for": {
+    "s": 2.9,
+    "at": 1792163003471
+  },
+  "served:firefox › error-beacon.spec.ts › an uncaught error and an unhandled rejection are reported by kind and name, without their text": {
+    "s": 0.5,
+    "at": 1792160521872
+  },
+  "served:firefox › error-beacon.spec.ts › an entry chunk that is gone is reported as a resource failure": {
+    "s": 0.2,
+    "at": 1792160521872
+  },
+  "served:firefox › error-beacon.spec.ts › an app that never renders is reported by the boot watchdog after 15 s": {
+    "s": 0.3,
+    "at": 1792160521872
+  },
+  "served:firefox › error-beacon.spec.ts › an app that renders sends nothing": {
+    "s": 0.7,
+    "at": 1792160521872
+  },
+  "served:firefox › first-run-solo.spec.ts › a solo administrator goes from an empty tenant to operating": {
+    "s": 58.9,
+    "at": 1792646871101
+  },
+  "served:firefox › grade-fix.spec.ts › a solo administrator adds, changes, corrects, promotes and edits a grade from empty": {
+    "s": 14.1,
+    "at": 1792163003471
+  },
+  "served:firefox › grade-fix.spec.ts › wrong-kind, inactive and missing catalog IDs are refused visibly without changing the grade": {
+    "s": 11.1,
+    "at": 1792163003471
+  },
+  "served:firefox › group-transfer.spec.ts › 전적: nowhere to go says why, then one act records the exit and the hire with consent and continuity": {
+    "s": 17.1,
+    "at": 1792074704475
+  },
+  "served:firefox › group-transfer.spec.ts › 전적 by a holder scoped to the sending 법인: no receiving 법인 is offered, and the wire refuses it": {
+    "s": 13.2,
+    "at": 1792074704475
+  },
+  "served:firefox › guards.spec.ts › nobody acts on their own record, the ops account keeps its sign-in path, and the auto 사번 never collides": {
+    "s": 31.9,
+    "at": 1792163003471
+  },
+  "served:firefox › hcm.spec.ts › HCM journey: org structure → staffing → transfer → promotion → leave → contract renewal → roster import → exit": {
+    "s": 38.3,
+    "at": 1792163003471
+  },
+  "served:firefox › home-truth.spec.ts › the setup rail and go-live promise no security contact that cannot be recorded": {
+    "s": 11,
+    "at": 1792163003471
+  },
+  "served:firefox › home-truth.spec.ts › home names a refused and a failed part and asks a refusal once; the calendar locks a month": {
+    "s": 24.4,
+    "at": 1792163003471
+  },
+  "served:firefox › home-truth.spec.ts › an account with no work grant gets an honest home, and 기간 잠금 refuses it once": {
+    "s": 18.5,
+    "at": 1792163003471
+  },
+  "served:firefox › ideal-first-run-access.spec.ts › BL-015: lazy exact terms refuse a wrong hash and acceptance resolves in place": {
+    "s": 7.1,
+    "at": 1792161010790
+  },
+  "served:firefox › ideal-first-run-access.spec.ts › BL-017: HR with no grant is refused; an employees setup grant gives a read-only legal-entity step": {
+    "s": 14.2,
+    "at": 1792161010790
+  },
+  "served:firefox › ideal-first-run-preview.spec.ts › BL-014: unplaced is a warning, stale preview re-arms, and operating Home keeps placement": {
+    "s": 14.8,
+    "at": 1792075253655
+  },
+  "served:firefox › ideal-first-run-preview.spec.ts › BL-016: setup and seven-day operating bands persist across routes in a keyboard walk": {
+    "s": 7,
+    "at": 1792161157130
+  },
+  "served:firefox › ideal-first-run-rail.spec.ts › BL-013: solo rail, equal paths, J/K, 2,000 applied people and a prepared role": {
+    "s": 38.8,
+    "at": 1792074704475
+  },
+  "served:firefox › ideal-first-run-rail.spec.ts › BL-013 bulk paths keep legal facts and lock a pending employee paste read": {
+    "s": 4.3,
+    "at": 1792163003471
+  },
+  "served:firefox › ideal-first-run-terms-compat.spec.ts › N-1 terms_version from an open tab still accepts the current document": {
+    "s": 12.1,
+    "at": 1792163003471
+  },
+  "served:firefox › ideal-ledger-conflict.spec.ts › BL-009/011 two browsers expose the latest authorized change and its original audit outcome": {
+    "s": 13.7,
+    "at": 1792159463685
+  },
+  "served:firefox › ideal-ledger.spec.ts › BL-010 a lost go-live response checks the original APPLIED outcome without a second command": {
+    "s": 8.3,
+    "at": 1792163003471
+  },
+  "served:firefox › ideal-ledger.spec.ts › BL-010 grant apply loses its response, preserves the receipt and is recorded once": {
+    "s": 7.5,
+    "at": 1792163003471
+  },
+  "served:firefox › ideal-ledger.spec.ts › BL-010 invalid and missing lookup keys show their refusal and a correction remedy": {
+    "s": 3.7,
+    "at": 1792163003471
+  },
+  "served:firefox › idle.spec.ts › a session that ends in use signs back in over the same screen, the draft intact": {
+    "s": 10.4,
+    "at": 1792163003471
+  },
+  "served:firefox › idle.spec.ts › a refresh that fails for a server fault or a dropped connection never signs anyone out": {
+    "s": 2.6,
+    "at": 1792163003471
+  },
+  "served:firefox › idle.spec.ts › two minutes before the idle cut-off a warning shows, and staying signed in clears it": {
+    "s": 3.4,
+    "at": 1792163003471
+  },
+  "served:firefox › idle.spec.ts › the event stream is not activity: an idle minute sends no request, and sign-out closes it and refuses its bearer": {
+    "s": 69.6,
+    "at": 1792163003471
+  },
+  "served:firefox › idle.spec.ts › half an hour of typing with no save keeps reporting itself once a minute, and an idle half hour still warns first": {
+    "s": 3.6,
+    "at": 1792075162126
+  },
+  "served:firefox › idle.spec.ts › in use past the timeout the session slides: input moves the server's record, and refresh rotates": {
+    "s": 8.8,
+    "at": 1792074126803
+  },
+  "served:firefox › idle.spec.ts › idle past the timeout, a returning user signs in again at once, told why; nothing else gets through": {
+    "s": 9.1,
+    "at": 1792074126803
+  },
+  "served:firefox › idle.spec.ts › a tab reloaded past the timeout lands on sign-in with the reason, and never paints a raw id or a past cut-off": {
+    "s": 10,
+    "at": 1792074126803
+  },
+  "served:firefox › import/any-layout.spec.ts › any layout from an empty company: map the sheet no catalog reads, skip the notes, settle the 확인 필요 queue, apply; a second file is matched by memory, 주민등록번호 and a namesake pick": {
+    "s": 24.2,
+    "at": 1792160171886
+  },
+  "served:firefox › import/apply-lost.spec.ts › import apply: a lost answer re-reads the run and follows the job to the migration check, never offering apply again": {
+    "s": 11.2,
+    "at": 1792160763463
+  },
+  "served:firefox › import/apply-refusals.spec.ts › import apply refusals: row limit, a shed apply held for its wait, a job already running, an interrupted job": {
+    "s": 26.2,
+    "at": 1792074704475
+  },
+  "served:firefox › import/company-names.spec.ts › merged workbook company cells remain an explicit source queue and create no legal entities": {
+    "s": 22.9,
+    "at": 1792075410463
+  },
+  "served:firefox › import/conflict-answers.spec.ts › import conflict answers: 재직 with a future 입사일 comes in 입사 예정 by one answer for every row": {
+    "s": 13.6,
+    "at": 1792160631883
+  },
+  "served:firefox › import/correctness.spec.ts › import correctness: an unknown 고용형태 blocks until answered, a near 부서 binds only on click, no phone shown, no 합계 person": {
+    "s": 17,
+    "at": 1792163147347
+  },
+  "served:firefox › import/identifiers.spec.ts › identifiers: masked 주민등록번호 revealed with a reason, 사번 변경 with history, SETUP renumbering and its undo, closed after go-live": {
+    "s": 11.2,
+    "at": 1792163147347
+  },
+  "served:firefox › import/large.spec.ts › large files: 3,000 rows refused with the limit named; 2,000 rows virtualised, one question per shared value": {
+    "s": 19.1,
+    "at": 1792160631883
+  },
+  "served:firefox › import/queue-layout.spec.ts › import queue: the grid stays inside its card when the page scrolls to the open item": {
+    "s": 11.6,
+    "at": 1792163147347
+  },
+  "served:firefox › import/reconcile.spec.ts › migration check: funnels, rows marked, an honest sign-off; stale, unacknowledged and late writes refused": {
+    "s": 11.5,
+    "at": 1792163147347
+  },
+  "served:firefox › import/register-facts.spec.ts › import register facts: 성별 from its column or the 주민등록번호, 직급 apart from 직위, and the 명부 gaps at the end": {
+    "s": 15.6,
+    "at": 1792163147347
+  },
+  "served:firefox › import/two-entities.spec.ts › a protected workbook is told apart before upload, with how to get a readable copy": {
+    "s": 10.9,
+    "at": 1792163147347
+  },
+  "served:firefox › import/two-entities.spec.ts › an HR admin imports 300 people across two legal entities, answers each unplaced value once, then settles a second load item by item": {
+    "s": 50.5,
+    "at": 1792163147347
+  },
+  "served:firefox › import-reds-layout.spec.ts › Home waits for the checklist arrival read before offering cached actions": {
+    "s": 4.8,
+    "at": 1792161157130
+  },
+  "served:firefox › import-reds-layout.spec.ts › adding a department on a slow read keeps the next input and department actions in place": {
+    "s": 8.8,
+    "at": 1792161157130
+  },
+  "served:firefox › j1-register.spec.ts › J1 register: the sheet asks for nothing in advance, names every gap on commit, and registers in one call": {
+    "s": 25.2,
+    "at": 1792160631883
+  },
+  "served:firefox › j3-renewal.spec.ts › J3 contract renewal from Home's queue, then the next one": {
+    "s": 17.8,
+    "at": 1792160785899
+  },
+  "served:firefox › j4-leave.spec.ts › J4 leave of absence with a leave type, then return": {
+    "s": 12,
+    "at": 1792159463685
+  },
+  "served:firefox › j6-bulk.spec.ts › J6 bulk transfer: a refused person is named and nothing is recorded; retrying without them moves the rest": {
+    "s": 28.1,
+    "at": 1792163147347
+  },
+  "served:firefox › j6-bulk.spec.ts › J6 bulk transfer from a paste: lines keyed by employee number, errors first, one batch across units": {
+    "s": 25.7,
+    "at": 1792163147347
+  },
+  "served:firefox › j6-grid-typing.spec.ts › J6 grid typing: every typed character stays, an IME's first syllable included, and 성별 is picked from its options": {
+    "s": 10.9,
+    "at": 1792163147347
+  },
+  "served:firefox › j6-grid.spec.ts › J6 bulk edit: a pasted block shows old → new, an error blocks only itself, the check and the commit write the rest": {
+    "s": 21.3,
+    "at": 1792160631883
+  },
+  "served:firefox › j7-dissolve.spec.ts › J7 dissolve: one sheet sends each member somewhere, closes the unit on its date and counts who moved": {
+    "s": 21.2,
+    "at": 1792163147347
+  },
+  "served:firefox › life.spec.ts › lifecycle: correct and rescind the latest change, re-read a stale sheet, replace a reservation by name": {
+    "s": 18.7,
+    "at": 1792163147347
+  },
+  "served:firefox › life.spec.ts › lifecycle: a renewal past the two-year fixed-term limit is refused with its grounds; one inside it records": {
+    "s": 19.1,
+    "at": 1792163147347
+  },
+  "served:firefox › life.spec.ts › people: HR corrects a record": {
+    "s": 12.9,
+    "at": 1792163147347
+  },
+  "served:firefox › lifecycle-sheets.spec.ts › saving an incomplete lifecycle draft restores its fields without recording an action": {
+    "s": 13.5,
+    "at": 1792160785899
+  },
+  "served:firefox › lifecycle-sheets.spec.ts › lifecycle sheets: a schedule conflict names the reservation, its withdrawal returns to the draft": {
+    "s": 16.3,
+    "at": 1792160785899
+  },
+  "served:firefox › lifecycle-sheets.spec.ts › lifecycle sheets: a lost response freezes the sheet until it is checked, and nothing is recorded twice": {
+    "s": 21.6,
+    "at": 1792075502871
+  },
+  "served:firefox › link-style.spec.ts › no anchor on any route renders the browser's default link style": {
+    "s": 114.3,
+    "at": 1792074627725
+  },
+  "served:firefox › live.spec.ts › a change in one session reaches another without reload or polling, survives a cut stream, and stays in its tenant": {
+    "s": 62.8,
+    "at": 1792161157130
+  },
+  "served:firefox › live.spec.ts › an unattended Home holds a change made elsewhere behind its notice: nothing moves until the press": {
+    "s": 13.6,
+    "at": 1792161157130
+  },
+  "served:firefox › live.spec.ts › a sheet holds a change made elsewhere to the record under it, and closing it shows the change": {
+    "s": 16.8,
+    "at": 1792161157130
+  },
+  "served:firefox › multi-entity.spec.ts › a group of two legal entities: each with its workplace and people, placed by id": {
+    "s": 15.3,
+    "at": 1792161010790
+  },
+  "served:firefox › onboarding.spec.ts › onboarding creates every account through the product": {
+    "s": 21.8,
+    "at": 1792160631883
+  },
+  "served:firefox › org-after-go-live.spec.ts › a proposal typed right after go-live keeps what was typed": {
+    "s": 11,
+    "at": 1792160171886
+  },
+  "served:firefox › org-bulk-edit.spec.ts › edit two 사업장 together: the row already established stays, the other gets its 4대보험 state @org": {
+    "s": 10.5,
+    "at": 1792163147347
+  },
+  "served:firefox › org-bulk.spec.ts › paste a list under a 법인, undo it whole, and undo the rest from the history @org": {
+    "s": 15.7,
+    "at": 1792160171886
+  },
+  "served:firefox › org-ends-r3.spec.ts › regression: one dissolve flow, a held unit names its change, and 삭제 over several names all of them (org-05, org-15, org-16)": {
+    "s": 11.6,
+    "at": 1792163147347
+  },
+  "served:firefox › org-ends-r3.spec.ts › regression: after a change the chart keeps its boxes and draws the result (org-22)": {
+    "s": 6.4,
+    "at": 1792163147347
+  },
+  "served:firefox › org-import-parent.spec.ts › regression: a 상위부서 column keeps the hierarchy, the code is kept, and an unknown parent is refused by name (org-06)": {
+    "s": 8.1,
+    "at": 1792159513079
+  },
+  "served:firefox › org-import.spec.ts › import an org sheet: columns, exact-only values, preview with an error row, apply and undo @org": {
+    "s": 12.4,
+    "at": 1792161010790
+  },
+  "served:firefox › org-move-hired-today.spec.ts › regression: a move on a placement day names its fix and leaves one draft, never a generic conflict (org-01)": {
+    "s": 16,
+    "at": 1792163147347
+  },
+  "served:firefox › orgchange-r2.spec.ts › an org change moves its people with the unit, stays on the chart with a receipt and speaks no 결재": {
+    "s": 20.5,
+    "at": 1792163147347
+  },
+  "served:firefox › parity-regressions.spec.ts › zero-facet roster shows a failed read and retry before the first-use empty state": {
+    "s": 5.9,
+    "at": 1792163147347
+  },
+  "served:firefox › parity-regressions.spec.ts › zero-facet roster waits for its delayed list before claiming first-use empty": {
+    "s": 5.2,
+    "at": 1792163147347
+  },
+  "served:firefox › people-actions/act-after-act.spec.ts › an act right after another opens on the person as recorded: no 'record changed' notice for the user's own change": {
+    "s": 16.1,
+    "at": 1792163147347
+  },
+  "served:firefox › people-actions/appoint.spec.ts › appoint: the role list is filled from the sheet by the one who keeps it; the server refuses everyone else": {
+    "s": 19.2,
+    "at": 1792160171886
+  },
+  "served:firefox › people-actions/bulk-arrival.spec.ts › bulk kinds wait for the picked employees before opening their controls": {
+    "s": 18.5,
+    "at": 1792160521872
+  },
+  "served:firefox › people-actions/exit-blockers.spec.ts › exit report: a later reservation is named first and withdrawn in place; a second report is refused": {
+    "s": 35.6,
+    "at": 1792161157130
+  },
+  "served:firefox › people-actions/notice.spec.ts › notice: a bulk transfer's 발령 공고 takes the next number; the same acts on a second notice are refused": {
+    "s": 20.4,
+    "at": 1792160521872
+  },
+  "served:firefox › people-actions/promote.spec.ts › bulk promotion: a suggestion per person, never applied until accepted; the gap blocks; each person's own title is recorded": {
+    "s": 22.1,
+    "at": 1792163147347
+  },
+  "served:firefox › people-actions/register-new-unit.spec.ts › registering into 부서 made a moment earlier: every press registers": {
+    "s": 15.7,
+    "at": 1792159463685
+  },
+  "served:firefox › people-actions/register-run.spec.ts › 연속 등록: rows saved with ⌘↵, carried values, gaps named, a namesake stops the row, setup undo": {
+    "s": 19.6,
+    "at": 1792163147347
+  },
+  "served:firefox › people-actions/rehire.spec.ts › rehire: refused while employed at both levels; after the exit, a new period under the same 사번": {
+    "s": 16.2,
+    "at": 1792159513079
+  },
+  "served:firefox › people-actions/renew.spec.ts › bulk renewal: no default, the two-year rule refuses one before anything is sent, then renew + convert + exit report": {
+    "s": 19.5,
+    "at": 1792163147347
+  },
+  "served:firefox › people-fixes/choices.spec.ts › solo: bulk catalog promotions preserve IDs and demotion rules; inactive entries require reactivation": {
+    "s": 11.7,
+    "at": 1792159463685
+  },
+  "served:firefox › people-fixes/choices.spec.ts › solo: a conversion correction keeps its contract end and a fixed-term refusal offers available remedies": {
+    "s": 12.7,
+    "at": 1792075502871
+  },
+  "served:firefox › people-fixes/import.spec.ts › solo: a migrated worker without employment follows the guided re-import diff without creating another person": {
+    "s": 9.2,
+    "at": 1792160763463
+  },
+  "served:firefox › people-fixes/messages.spec.ts › solo: a contract overlap names its period and opens that contract's correction; a rehire refusal explains the prior exit": {
+    "s": 14,
+    "at": 1792161157130
+  },
+  "served:firefox › people-fixes/placement.spec.ts › solo: identically named workplaces keep their entity IDs; typed warnings survive receipts and reloads": {
+    "s": 20.7,
+    "at": 1792159463685
+  },
+  "served:firefox › people-reads.spec.ts › roster facets, employment type, purposeful download and exit search": {
+    "s": 17.2,
+    "at": 1792160521872
+  },
+  "served:firefox › people.spec.ts › an HR admin imports a roster: preview → dry run → apply bound to it": {
+    "s": 21.3,
+    "at": 1792161157130
+  },
+  "served:firefox › period-locks.spec.ts › period locks: month lock, overlap blocked with fixes, unlock with a reason": {
+    "s": 11.5,
+    "at": 1792161010790
+  },
+  "served:firefox › period-unlock-approve.spec.ts › period unlock: a second close authority refuses, then approves; the requester sees each outcome": {
+    "s": 51.5,
+    "at": 1792074234070
+  },
+  "served:firefox › person.spec.ts › employee page: effective-date history, change a reservation, home-branch conflict": {
+    "s": 28.1,
+    "at": 1792074238308
+  },
+  "served:firefox › placement.spec.ts › placement: 법인 · 사업장 follow the 부서, a 전근 moves them, a 전보 never crosses a 법인": {
+    "s": 22.3,
+    "at": 1792160785899
+  },
+  "served:firefox › raw-id-guard.spec.ts › dotted text that is no catalog id never trips the guard": {
+    "s": 0.2,
+    "at": 1792074954178
+  },
+  "served:firefox › record-actions/card.spec.ts › setup phase: contacts, photo, entries and careers are added, edited, traced and deleted from the card": {
+    "s": 17.3,
+    "at": 1792075410463
+  },
+  "served:firefox › record-actions/card.spec.ts › after 운영 시작: the same 수정 is recorded as a correction and no hard delete is offered": {
+    "s": 20.3,
+    "at": 1792075410463
+  },
+  "served:firefox › record-actions/goals.spec.ts › cold persona: each goal's action is found on its value in two interactions: setup phase": {
+    "s": 9.1,
+    "at": 1792074395779
+  },
+  "served:firefox › record-actions/goals.spec.ts › cold persona: each goal's action is found on its value in two interactions: live tenant": {
+    "s": 10.7,
+    "at": 1792074395779
+  },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of an edited fact shows the new value and never the old: setup phase": {
+    "s": 14.1,
+    "at": 1792075497353
+  },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of an edited fact shows the new value and never the old: live tenant": {
+    "s": 13.2,
+    "at": 1792075497353
+  },
+  "served:firefox › record-actions/propagation.spec.ts › planted: a surface reading a cached copy of the 사업장 name fails the harness": {
+    "s": 24.9,
+    "at": 1792075497353
+  },
+  "served:firefox › record-actions/reach.spec.ts › every registered action is reached in two interactions or fewer: setup phase": {
+    "s": 9.7,
+    "at": 1792075398152
+  },
+  "served:firefox › record-actions/reach.spec.ts › every registered action is reached in two interactions or fewer: live tenant": {
+    "s": 21.3,
+    "at": 1792075398152
+  },
+  "served:firefox › record-actions/reach.spec.ts › planted: an action the UI does not have fails the gate's own assertion, beside a real one that passes": {
+    "s": 15.4,
+    "at": 1792075398152
+  },
+  "served:firefox › record-actions/workplace.spec.ts › one 사업장 panel from the 법인 page and the org chart, each fact its own 수정: setup phase": {
+    "s": 12.1,
+    "at": 1792074234070
+  },
+  "served:firefox › record-actions/workplace.spec.ts › one 사업장 panel from the 법인 page and the org chart, each fact its own 수정: live tenant": {
+    "s": 11.2,
+    "at": 1792074234070
+  },
+  "served:firefox › recovery.spec.ts › vendor reissues a lost first-admin code; an admin resets a user's passkeys and they enroll again": {
+    "s": 12.8,
+    "at": 1792163147347
+  },
+  "served:firefox › register-validation.spec.ts › an invalid registration press is not queued behind placement reads at 1280px": {
+    "s": 7.3,
+    "at": 1792163147347
+  },
+  "served:firefox › register-validation.spec.ts › an invalid registration press is not queued behind placement reads at 390px": {
+    "s": 8.5,
+    "at": 1792163147347
+  },
+  "served:firefox › retry-after.spec.ts › a sign-in refused with 429 + Retry-After says when to try again and is not retried on its own": {
+    "s": 5.1,
+    "at": 1792163147347
+  },
+  "served:firefox › role-no-workplace.spec.ts › before any workplace, an invited colleague holds a 회사 전체 grant and no title": {
+    "s": 8.4,
+    "at": 1792163147347
+  },
+  "served:firefox › roster.spec.ts › the roster at 3,000 people: virtualized paging, server counts, jump, bounded select-all, region-only keys": {
+    "s": 84.2,
+    "at": 1792159463685
+  },
+  "served:firefox › scale-out.spec.ts › an isolated fresh stack serves the tenant setup through the cached web build": {
+    "s": 2.8,
+    "at": 1792074071408
+  },
+  "served:firefox › setup-edits.spec.ts › setup edits: a workplace changed twice, a department renamed, a duplicate 법인 removed": {
+    "s": 8.9,
+    "at": 1792163147347
+  },
+  "served:firefox › setup-edits.spec.ts › a 법인 changed twice ahead of its date keeps both changes": {
+    "s": 5.8,
+    "at": 1792163147347
+  },
+  "served:firefox › setup-truth.spec.ts › go-live counts what the panels show and fixes each record in place; the tenancy is never a 회사; a second passkey from the rail": {
+    "s": 12.4,
+    "at": 1792160763463
+  },
+  "served:firefox › setup-truth.spec.ts › after go-live the only ops holder is asked for a second passkey on Home and in My account's passkey card, until there are two": {
+    "s": 8.2,
+    "at": 1792160763463
+  },
+  "served:firefox › shell-keyboard.spec.ts › the shared shell names its content and supports Tab and skip-link navigation on every route": {
+    "s": 3.3,
+    "at": 1792159513079
+  },
+  "served:firefox › sign-in-id.spec.ts › sign-in ID: handed over with the code, identifier-first, the button, autofill, and unknown IDs read as no passkey": {
+    "s": 7.2,
+    "at": 1792163147347
+  },
+  "served:firefox › sign-in-id.spec.ts › sign-in ID: a rename keeps the old ID signing in, the history shows both, and an old ID is never reissued": {
+    "s": 7.6,
+    "at": 1792163147347
+  },
+  "served:firefox › slow-server-waits.spec.ts › Home's rail and the entity save wait for their reads, however slow": {
+    "s": 13.1,
+    "at": 1792074954178
+  },
+  "served:firefox › standing-text.spec.ts › empty screens offer one working entry and forms retain format hints and refusals": {
+    "s": 6.3,
+    "at": 1792161157130
+  },
+  "served:firefox › statutory-windows.spec.ts › hire today, prepare next month's exit, and resolve truthful not-applicable filings": {
+    "s": 15,
+    "at": 1792075029999
+  },
+  "served:firefox › statutory.spec.ts › statutory filings and a dated worker register from an empty tenant": {
+    "s": 23.4,
+    "at": 1792160785899
+  },
+  "served:firefox › structure-add-many.spec.ts › chart adds three siblings at every level by mouse at 1280×720": {
+    "s": 15.3,
+    "at": 1792160763463
+  },
+  "served:firefox › structure-add-many.spec.ts › outline adds three siblings at every level by mouse at 1280×720": {
+    "s": 12.3,
+    "at": 1792160763463
+  },
+  "served:firefox › structure-add-many.spec.ts › chart adds three siblings at every level by mouse at 1920×1080": {
+    "s": 8.4,
+    "at": 1792160763463
+  },
+  "served:firefox › structure-add-many.spec.ts › outline adds three siblings at every level by mouse at 1920×1080": {
+    "s": 9.8,
+    "at": 1792160763463
+  },
+  "served:firefox › structure-add-many.spec.ts › the chart keeps the dedicated keyboard add path": {
+    "s": 5.1,
+    "at": 1792160763463
+  },
+  "served:firefox › structure-canvas-clip.spec.ts › floating chart chrome never clips a bottom band at 1280×720": {
+    "s": 7.4,
+    "at": 1792115353023
+  },
+  "served:firefox › structure-canvas-clip.spec.ts › floating chart chrome never clips a bottom band at 1920×1080": {
+    "s": 7,
+    "at": 1792163147347
+  },
+  "served:firefox › structure-chart.spec.ts › an empty tenant builds its structure on the chart": {
+    "s": 16.9,
+    "at": 1792163147347
+  },
+  "served:firefox › structure-dept.spec.ts › 부서: panel, delete with the sub-units raised, merge into another workplace, people block a setup delete": {
+    "s": 19.8,
+    "at": 1792163147347
+  },
+  "served:firefox › structure-governed.spec.ts › operating: new department and dissolution proposals, a governed move, deleting a never-used workplace": {
+    "s": 26.3,
+    "at": 1792074395779
+  },
+  "served:firefox › structure-kind.spec.ts › 사업장 kind, code and order; 부서 head, code and order; a new 사업장 through its 법인": {
+    "s": 17.7,
+    "at": 1792075398152
+  },
+  "served:firefox › structure-move.spec.ts › bulk move: four 부서 to another 사업장, one carried, a name clash renamed, exact counts": {
+    "s": 22.6,
+    "at": 1792075616221
+  },
+  "served:firefox › structure-order.spec.ts › order on the chart and the list's conditions": {
+    "s": 26.6,
+    "at": 1792161010790
+  },
+  "served:firefox › structure-receipt.spec.ts › regression: an erase from the panel ends the chart's earlier receipt (org-13)": {
+    "s": 9.6,
+    "at": 1792163147347
+  },
+  "served:firefox › structure-views.spec.ts › jump, outline, paste, list and export work on one structure": {
+    "s": 12.3,
+    "at": 1792163147347
+  },
+  "served:firefox › structure-workplace.spec.ts › 사업장: add with no defaults, the panel, change the representative workplace, delete in setup": {
+    "s": 16.4,
+    "at": 1792163147347
+  },
+  "served:firefox › tenant-not-company.spec.ts › the account's name is never a company node: the 법인 are the top of the structure": {
+    "s": 8.9,
+    "at": 1792160631883
+  },
+  "served:firefox › tenant-onboard-refusal.spec.ts › a slug another tenant holds is the server's refusal on the slug field, never a tenant opened": {
+    "s": 1.1,
+    "at": 1792161157130
+  },
+  "served:firefox › tenant-onboard-refusal.spec.ts › a response lost before any status still finds the tenant it opened, by the exact slug sent": {
+    "s": 0.8,
+    "at": 1792161157130
+  },
+  "served:firefox › transfer-same-entity.spec.ts › regression M22: a transfer never reaches another 법인's 부서 (TR-33)": {
+    "s": 14.3,
+    "at": 1792160785899
+  },
+  "served:firefox › unplaced-place.spec.ts › unplaced: a whole group is placed at once, with its facts shown, and a finished queue says what to do next": {
+    "s": 7.1,
+    "at": 1792160521872
+  },
+  "served:firefox › unplaced-place.spec.ts › unplaced: people the server would refuse are named with the reason; nothing is written until the rest are placed alone": {
+    "s": 7.7,
+    "at": 1792160521872
+  },
+  "served:firefox › unplaced.spec.ts › unplaced people: grouped by the file's value, placed in a unit or directly under the workplace, each group closes when done": {
+    "s": 24,
+    "at": 1792074627725
+  },
+  "served:firefox › unplaced.spec.ts › unplaced people: a refused queue reads as no access, not as nobody left": {
+    "s": 12.6,
+    "at": 1792160785899
+  },
+  "served:firefox › workplace-close-api.spec.ts › the close job refuses a 전적 line and an incomplete plan on the wire, writing nothing": {
+    "s": 12.7,
+    "at": 1792160631883
+  },
+  "served:firefox › workplace-close-group.spec.ts › closing a 사업장 moves a person to another 법인 by 전적 with their consent; what cannot be a 전적 is refused": {
+    "s": 15,
+    "at": 1792075773810
+  },
+  "served:firefox › workplace-close.spec.ts › regression: a staffed workplace closes today in one act by its plan (company-01, worst-case-18)": {
+    "s": 22.2,
+    "at": 1792160631883
+  },
+  "served:firefox › workplace-close.spec.ts › a refused plan names who and why and changes nothing; a later close is scheduled, withdrawn and planned again with exits": {
+    "s": 22.5,
+    "at": 1792160631883
+  },
+  "served:firefox › worst-case/cx-upstream-ports.spec.ts › cookie logout revokes the session and unauthorized responses expose the JSON code": {
+    "s": 7.8,
+    "at": 1792160171886
+  }
+}

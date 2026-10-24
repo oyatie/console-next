@@ -14,6 +14,7 @@ const served = process.env.E2E_SERVED === "1";
 const reuse = process.env.E2E_REUSE === "1" && !served;
 // E2E_XBROWSER=1 runs Firefox instead of Chromium (the INTEG gate's second leg; see projects).
 const xbrowser = process.env.E2E_XBROWSER === "1";
+const testIgnore = /live-renew\.server-expiry\.spec\.ts$/;
 const origin = served ? `http://localhost:${PORTS.backend}` : `http://localhost:${PORTS.web}`;
 const backendEnv = {
   // The public monorepo carries backend/ beside apps/; the private checkouts are siblings.
@@ -53,7 +54,7 @@ export default defineConfig({
   // Every test builds its own tenant through the product, so tests run side by side (one backend, one Vite).
   fullyParallel: true,
   // The short-TTL server-expiry journey runs in its own profile so other E2E sessions stay at 15 minutes.
-  testIgnore: /live-renew\.server-expiry\.spec\.ts$/,
+  testIgnore,
   workers: Number(process.env.E2E_WORKERS ?? (process.env.CI ? 2 : 4)),
   // Every run records its passing tests' durations, which scripts/e2e-slot.mjs plans shards from. A sharded
   // e2e:agent run passes the caller's --reporter as E2E_REPORTER and collects one blob per job to merge.
@@ -65,7 +66,7 @@ export default defineConfig({
   // E2E_XBROWSER=1 is the Firefox leg alone: every spec creates its tenants under fixed identifiers, so two
   // engines cannot share one database. The clock specs and the gallery baselines stay Chromium-only.
   projects: xbrowser
-    ? [{ name: "firefox", use: { browserName: "firefox" }, grepInvert: /@clock/, testIgnore: /visual\.spec\.ts/ }]
+    ? [{ name: "firefox", use: { browserName: "firefox" }, grepInvert: /@clock/, testIgnore: [testIgnore, /visual\.spec\.ts/] }]
     : [
         { name: "parallel", grepInvert: /@clock/ },
         // Date-moving tests (e2e/clock.ts) share the backend's one apply date: alone, one at a time, after the rest.
@@ -73,14 +74,14 @@ export default defineConfig({
       ],
   // Both projects share the visual baselines (no project name in the file name).
   snapshotPathTemplate: "{snapshotDir}/{testFileDir}/{testFileName}-snapshots/{arg}{-snapshotSuffix}{ext}",
-  // CI: one retry, but a test that passes only on retry still fails the run.
-  retries: process.env.CI ? 1 : 0,
+  // A flaky failure stays visible; quarantine requires an owner and expiry in CI config.
+  retries: 0,
   failOnFlakyTests: !!process.env.CI,
   use: {
     baseURL: origin,
     locale: "ko-KR",
     timezoneId: "Asia/Seoul",
-    trace: process.env.CI ? "on-first-retry" : { mode: "retain-on-failure", screenshots: false },
+    trace: { mode: "retain-on-failure", screenshots: false },
   },
   webServer: [
     {

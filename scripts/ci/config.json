@@ -1,0 +1,47 @@
+{
+  "retentionDays": 7,
+  "database": "console_test",
+  "apalisContractDatabase": "console_apalis_contract",
+  "topologyProbeDatabase": "console_ci_topology_probe",
+  "cacheBudgetBytes": 10737418240,
+  "sccacheBytes": 1073741824,
+  "nextestPartitions": {
+    "unit": 2,
+    "db": 8
+  },
+  "runnerDiskBudgetBytes": 61203283968,
+  "runnerDiskMarginBytes": 3221225472,
+  "e2eTargetSeconds": 300,
+  "e2eWorkers": 2,
+  "fastBrowsers": ["chromium"],
+  "releaseBrowsers": ["chromium", "firefox"],
+  "fastE2eFiles": ["first-run-solo.spec.ts"],
+  "quarantineFile": "scripts/ci/baseline.json",
+  "e2eMaxShards": 24,
+  "maxJobs": 60,
+  "maxTotalMinutes": 320,
+  "jobMinutes": {
+    "plan": 2,
+    "hygiene": 3,
+    "gate": 2,
+    "web": 8,
+    "desktop": 10,
+    "build": 50,
+    "unit": 3,
+    "db": 5,
+    "codeGates": 1,
+    "e2ePlan": 2,
+    "e2eSetup": 0.5
+  },
+  "runnerUnusedPaths": [
+    "/usr/local/lib/android",
+    "/usr/share/dotnet",
+    "/opt/ghc",
+    "/usr/share/swift",
+    "/opt/hostedtoolcache/CodeQL"
+  ],
+  "e2eTimingsSeed": "scripts/ci/e2e-timings.json",
+  "baselineMaxFlaky": 7,
+  "baselineFlakyDays": 7,
+  "baselineRenewalDays": 14
+}
