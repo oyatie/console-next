@@ -178,6 +178,12 @@ async fn publish_with_four_eyes(
         .await
         .unwrap();
     let request_ref = Uuid::new_v4();
+    let mut approval = owner_pool.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(approval.as_mut())
+        .await
+        .unwrap();
     sqlx::query(
         "INSERT INTO gov_approval_requests (org_id, request_ref, kind, requested_by, payload_summary, target_ref) VALUES ($1, $2, 'ontology.schema.publish', $3, jsonb_build_object('key_revision', $4::bigint), $5)",
     )
@@ -186,7 +192,7 @@ async fn publish_with_four_eyes(
     .bind(*actor.as_uuid())
     .bind(reviewed.key_write_revision)
     .bind(*summary.id.as_uuid())
-    .execute(owner_pool)
+    .execute(approval.as_mut())
     .await
     .unwrap();
     sqlx::query(
@@ -197,9 +203,11 @@ async fn publish_with_four_eyes(
     .bind(*actor.as_uuid())
     .bind(*approver.as_uuid())
     .bind(*summary.id.as_uuid())
-    .execute(owner_pool)
+    .execute(approval.as_mut())
     .await
     .unwrap();
+
+    approval.commit().await.unwrap();
 
     store
         .transition_lifecycle(
@@ -215,28 +223,9 @@ async fn publish_with_four_eyes(
         .unwrap()
 }
 
-async fn seed_org_and_user(owner_pool: &PgPool, org: Uuid, tag: &str) -> UserId {
-    // Slug must match the organizations slug CHECK (no dots/underscores), so
-    // derive a sanitized, per-org-unique slug rather than echoing the tag.
-    let slug = format!("org-{}", &org.simple().to_string()[..12]);
-    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING")
-        .bind(org)
-        .bind(slug)
-        .bind(format!("Org {tag}"))
-        .execute(owner_pool)
-        .await
-        .unwrap();
-    let user_id = UserId::new();
-    sqlx::query("INSERT INTO users (id, display_name, roles, org_id) VALUES ($1, $2, $3, $4)")
-        .bind(*user_id.as_uuid())
-        .bind(format!("Admin {tag}"))
-        .bind(["SUPER_ADMIN"].as_slice())
-        .bind(org)
-        .execute(owner_pool)
-        .await
-        .unwrap();
-    user_id
-}
+#[path = "fixtures/verified_user.rs"]
+mod people;
+use people::seed_org_and_user;
 
 fn work_order_draft(stable_key: &str) -> CreateObjectTypeDraft {
     CreateObjectTypeDraft {

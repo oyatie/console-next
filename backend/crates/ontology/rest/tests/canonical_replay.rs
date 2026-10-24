@@ -97,36 +97,9 @@ async fn seed_org(owner: &PgPool, org: Uuid) {
     .unwrap();
 }
 
-async fn seed_user(owner: &PgPool, org: Uuid) -> UserId {
-    let user_id = UserId::new();
-    let event = console_kernel_core::AuditEvent::new(
-        None,
-        console_kernel_core::AuditAction::new("test.seed_user").unwrap(),
-        "user",
-        user_id.as_uuid().to_string(),
-        TraceContext::generate(),
-        OffsetDateTime::now_utc(),
-    )
-    .with_org(OrgId::from_uuid(org));
-    with_audit(owner, event, |tx| {
-        Box::pin(async move {
-            sqlx::query(
-                "INSERT INTO users (id, display_name, roles, org_id) VALUES ($1, $2, $3, $4)",
-            )
-            .bind(*user_id.as_uuid())
-            .bind("Admin replay")
-            .bind(["SUPER_ADMIN"].as_slice())
-            .bind(org)
-            .execute(tx.as_mut())
-            .await
-            .map_err(DbError::Sqlx)?;
-            Ok::<(), DbError>(())
-        })
-    })
-    .await
-    .unwrap();
-    user_id
-}
+#[path = "fixtures/replay_people.rs"]
+mod people;
+use people::seed_user;
 
 fn super_admin(user_id: UserId, org: OrgId) -> Principal {
     Principal::new(

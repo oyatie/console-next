@@ -246,8 +246,8 @@ async fn seed_employee(
     sqlx::query(
         "INSERT INTO employees \
          (id, org_id, company, name, source_filename, source_sheet, source_row, source_key, \
-          leave_accrued, leave_used, leave_remaining) \
-         VALUES ($1, $2, 'SAE', $3, 'roster.xlsx', 'Sheet1', 1, $4, $5, $6, $7)",
+          leave_accrued, leave_used, leave_remaining, identity_review_required) \
+         VALUES ($1, $2, 'SAE', $3, 'roster.xlsx', 'Sheet1', 1, $4, $5, $6, $7, false)",
     )
     .bind(id)
     .bind(org)
