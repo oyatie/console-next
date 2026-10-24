@@ -179,8 +179,6 @@ jobs:
       - *npm-restore
       - *npm-ci
       - run: bash scripts/ci/install-tools.sh gitleaks
-      - name: Ratchet base
-        run: git rev-parse --verify -q refs/heads/dev >/dev/null || git branch dev origin/dev
       - name: Chromium headless shell for browser-backed unit tests
         run: npx playwright install --with-deps --only-shell chromium
       - run: npm run check

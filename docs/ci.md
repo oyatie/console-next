@@ -77,6 +77,16 @@ seeded from the unchanged cutover baseline. Existing reachability, stale-entry a
 shrink-only checks remain. Public proof validates this reviewed registry rather
 than the Mac's private queue, which is absent from a GitHub runner.
 
+Base comparisons share `scripts/git-base.mjs`: an explicit CLI base takes precedence,
+then `CI_BASE_SHA`, the PR/merge-group/push event base, the legacy `QUALITY_BASE`
+override, `origin/dev`, and `public/dev`. A missing requested commit refuses the check;
+it never silently substitutes another base. With no usable evidence the error names
+`CI_BASE_SHA` and the remote refs to fetch. Local `dev` is never a default: it can
+still refer to the private repository. Both CI and workflows-check fetch full history
+without creating a local branch. To reproduce checkout behavior, clone the public
+repository, detach at the tested commit, delete the local `dev` branch, and use a
+fresh home/cache with no orchestra queue or Rust on PATH for non-Rust jobs.
+
 ## Database and browser topology
 
 The repository has one PostgreSQL image pin. `scripts/ci/db-contract.mjs` reads it from
@@ -575,8 +585,8 @@ session and the real HTTP stack, then reads the unchanged draft. The verifier
 runs it with the full-feature backend in Chromium and Firefox.
 
 The licence-header CLI honors the planner's existing `CI_BASE_SHA`, with an
-explicit CLI argument taking precedence and the local `dev` fallback retained
-when the plan has no base. Its CLI regression fails before this change; the
+explicit CLI argument taking precedence. Round 16 replaces its local `dev`
+fallback with the shared resolver above. Its CLI regression fails before this change; the
 complete `npm run check` now passes even when a checkout retains an unrelated
 private `dev` ref. No baseline or lint is relaxed.
 

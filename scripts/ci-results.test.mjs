@@ -96,7 +96,7 @@ test("the strict baseline can shrink or expire sooner but cannot grow, change ow
   try {
     const config = JSON.parse(readFileSync(new URL("./ci/config.json", import.meta.url), "utf8"));
     const entries = JSON.parse(readFileSync(new URL("./ci/baseline.json", import.meta.url), "utf8"));
-    writeFileSync(path.join(dir, "git"), `#!${process.execPath}\nconst a=process.argv.slice(2);if(a[0]==='show'){process.stdout.write(a[1].endsWith('config.json')?process.env.BASE_CONFIG:process.env.BASE_ENTRIES);}\n`, { mode: 0o700 });
+    writeFileSync(path.join(dir, "git"), `#!${process.execPath}\nconst a=process.argv.slice(2);if(a[0]==='rev-parse')process.stdout.write('control');if(a[0]==='show'){process.stdout.write(a[1].endsWith('config.json')?process.env.BASE_CONFIG:process.env.BASE_ENTRIES);}\n`, { mode: 0o700 });
     const run = (old, oldConfig = config) => spawnSync("python3", ["scripts/ci/test-results.py", "--validate"], { encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, CI_BASE_SHA: "control", BASE_CONFIG: JSON.stringify(oldConfig), BASE_ENTRIES: JSON.stringify(old) } });
     assert.equal(run(entries).status, 0);
     assert.equal(run([...entries, { ...entries[0], test: "removed baseline red" }]).status, 0);
@@ -149,7 +149,7 @@ test("frontend-only plans build the E2E backend without scheduling Rust test job
     const packages = [{ name: "app", manifest_path: `${root}/backend/app/Cargo.toml`, dependencies: [], targets: [{ name: "app", kind: ["bin"], test: true }] }];
     writeFileSync(path.join(dir, "event.json"), JSON.stringify({ before: "base-sha" }));
     writeFileSync(path.join(dir, "cargo"), `#!${process.execPath}\nprocess.stdout.write(${JSON.stringify(JSON.stringify({ packages }))});\n`, { mode: 0o700 });
-    writeFileSync(path.join(dir, "git"), `#!${process.execPath}\nprocess.stdout.write('apps/web/src/App.tsx\\0');\n`, { mode: 0o700 });
+    writeFileSync(path.join(dir, "git"), `#!${process.execPath}\nprocess.stdout.write(process.argv[2]==='rev-parse'?'base-sha':'apps/web/src/App.tsx\\0');\n`, { mode: 0o700 });
     const output = path.join(dir, "outputs");
     const result = spawnSync("node", ["scripts/ci/plan.mjs"], { encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, GITHUB_EVENT_NAME: "push", GITHUB_EVENT_PATH: path.join(dir, "event.json"), GITHUB_OUTPUT: output } });
     assert.equal(result.status, 0, result.stderr);

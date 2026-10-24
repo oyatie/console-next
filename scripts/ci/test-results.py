@@ -149,7 +149,7 @@ if __name__ == "__main__":
         file = ROOT / config["quarantineFile"]
         if sys.argv[1:] == ["--validate"]:
             entries = baseline(file)
-            base = os.environ.get("CI_BASE_SHA")
+            base = subprocess.check_output(["node", str(ROOT / "scripts/git-base.mjs")], cwd=ROOT, text=True).strip()
             if base:
                 prior_config = subprocess.run(["git", "show", f"{base}:scripts/ci/config.json"], cwd=ROOT, capture_output=True)
                 old_path = json.loads(prior_config.stdout).get("quarantineFile") if prior_config.returncode == 0 else None
