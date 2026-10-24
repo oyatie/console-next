@@ -161,3 +161,10 @@ test("closed registrations remain eligible for an authority recheck", () => {
   html({ registration: { ...registration, closed_on: "2026-10-20", current: { ...registration.current!, status: "CLOSED" } } });
   expect(button("nts.action.status")).toBeDefined();
 });
+
+test("a voided registration cannot attach an original through the unavailable fallback", () => {
+  view.data = history(undefined, false);
+  const out = html({ registration: { ...registration, voided: true } });
+  expect(button("nts.attach")).toBeUndefined();
+  expect(out).not.toContain(t("nts.fallback"));
+});

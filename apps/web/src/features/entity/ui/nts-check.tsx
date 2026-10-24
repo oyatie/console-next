@@ -60,8 +60,8 @@ export function NtsCheck({ registration: r, entity, canManage = entity.can_manag
                 <NtsResult check={latest} />
               </>}
               {!available && <>
-                <p>{t(UNAVAILABLE[reason])}<br />{t("nts.fallback")}</p>
-                {canManage && <Button onClick={onAttach}>{t("nts.attach")}</Button>}
+                <p>{t(UNAVAILABLE[reason])}{!ended && <><br />{t("nts.fallback")}</>}</p>
+                {canManage && !ended && <Button onClick={onAttach}>{t("nts.attach")}</Button>}
               </>}
               {!number ? <p>{t("nts.action.noNumber")}</p> : ended ? <p>{t("nts.action.ended")}</p> : !canManage && !historical ? <p>{t("nts.action.noPermission")}</p> : null}
               {available && allowed && <div className="row wrap">
