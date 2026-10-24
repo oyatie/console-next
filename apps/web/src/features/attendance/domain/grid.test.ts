@@ -1,5 +1,17 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import { baseOf, draftState, fill, fillSchedule, ledgerParts, readPaste, type CellFacts } from "./grid";
+
+const { drafts: fixtureDrafts } = JSON.parse(readFileSync(new URL("../../../../../../scripts/fixtures/attendance-grammar-cases.json", import.meta.url), "utf8")) as {
+  drafts: { plan_kinds: string[]; cases: { raw: string[]; expect: string; by_plan?: Record<string, string> }[] };
+};
+
+test.each(fixtureDrafts.plan_kinds.flatMap((planKind) => fixtureDrafts.cases.flatMap((c) => c.raw.map((value) => ({
+  planKind, value, expected: c.by_plan?.[planKind] ?? c.expect,
+})))))("$planKind + $value agrees with the server: $expected", ({ planKind, value, expected }) => {
+  const state = draftState({ value, base: null, planKind });
+  expect(state.ok ? "ok" : state.code).toBe(expected);
+});
 
 const cell = (key: string, planKind: string, entryId: string | null = null, own = false): CellFacts => ({ key, planKind, entryId, own, closed: false });
 
@@ -17,19 +29,19 @@ test("fill as scheduled drafts only empty work days and counts every skip", () =
   const r = fillSchedule(cells, {});
   expect(r.filled).toBe(2);
   expect(r.skipped).toEqual({ rest: 1, recorded: 1, locked: 1, unscheduled: 0 });
-  expect(r.drafts["a|1"]).toEqual({ value: "=", base: null });
+  expect(r.drafts["a|1"]).toEqual({ value: "=", base: null, planKind: "WORK" });
 });
 
 test("fill as scheduled distinguishes unscheduled people from rest days and locked rows", () => {
   const r = fillSchedule([cell("scheduled|1", "WORK"), cell("unscheduled|1", "NO_SCHEDULE"), cell("rest|1", "REST_DAY")], {});
-  expect(r.drafts).toEqual({ "scheduled|1": { value: "=", base: null } });
+  expect(r.drafts).toEqual({ "scheduled|1": { value: "=", base: null, planKind: "WORK" } });
   expect(r.filled).toBe(1);
   expect(r.skipped).toEqual({ rest: 1, recorded: 0, locked: 0, unscheduled: 1 });
 });
 
 test("one value fills a selection with each cell's base, skipping the own row", () => {
   const r = fill([cell("a|1", "WORK", "e1"), cell("c|1", "WORK", null, true)], "9-18", {});
-  expect(r.drafts).toEqual({ "a|1": { value: "9-18", base: "e1" } });
+  expect(r.drafts).toEqual({ "a|1": { value: "9-18", base: "e1", planKind: "WORK" } });
   expect(r.skipped).toBe(1);
   expect(draftState({ value: "+2", base: null })).toEqual({ ok: false, code: "overtime_typed", at: undefined });
 });
@@ -63,6 +75,15 @@ test("a draft keeps the version seen when it began; only a new draft takes the v
   expect(baseOf(drafts, "b|1", "e9")).toBeNull();
   expect(baseOf(drafts, "c|1", "e3")).toBe("e3");
   const r = fill([cell("a|1", "WORK", "e2"), cell("c|1", "WORK", "e3")], "9-18", drafts);
-  expect(r.drafts["a|1"]).toEqual({ value: "9-18", base: "e1" });
-  expect(r.drafts["c|1"]).toEqual({ value: "9-18", base: "e3" });
+  expect(r.drafts["a|1"]).toEqual({ value: "9-18", base: "e1", planKind: "WORK" });
+  expect(r.drafts["c|1"]).toEqual({ value: "9-18", base: "e3", planKind: "WORK" });
+});
+
+test("fill reads each destination's plan when copying a day-off word", () => {
+  const result = fill([cell("a|1", "WORK"), cell("a|2", "WEEKLY_HOLIDAY"), cell("a|3", "NO_SCHEDULE")], "\u{d734}", {});
+  expect(Object.values(result.drafts).map((d) => draftState(d))).toEqual([
+    { ok: false, code: "schedule_change_needed", at: undefined },
+    { ok: false, code: "already_day_off", at: undefined },
+    { ok: false, code: "schedule_change_needed", at: undefined },
+  ]);
 });

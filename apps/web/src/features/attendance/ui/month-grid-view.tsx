@@ -18,7 +18,7 @@ const REST = new Set(["WEEKLY_HOLIDAY", "REST_DAY"]);
 
 /** The open editor: its person-day, the If-Match base seen when typing began, whether its month is closed, and the
  * drafts scope it was typed in. */
-type Editing = { value: string; key: string; base: string | null; own: boolean; closed: boolean; name: string; scope: string };
+type Editing = { value: string; key: string; base: string | null; planKind: string; own: boolean; closed: boolean; name: string; scope: string };
 
 export type GridAct =
   | { kind: "day"; row: GridRow; day: number }
@@ -64,7 +64,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
   const start = (value: string): Editing | null => {
     if (!f) return null;
     const x = facts(f.r, f.c);
-    return { value, key: x.key, base: baseOf(drafts, x.key, x.entryId), own: x.own, closed: x.closed, name: rows[f.r]!.name, scope: store.scope };
+    return { value, key: x.key, base: baseOf(drafts, x.key, x.entryId), planKind: x.planKind, own: x.own, closed: x.closed, name: rows[f.r]!.name, scope: store.scope };
   };
   const columns: DayColumn[] = useMemo(() => days.map((d, c) => {
     const kind = rows[0]?.cells[c]?.plan_kind ?? "";
@@ -78,7 +78,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
     const row = editing.scope === store.scope ? rows.find((x) => x.employee_id === splitKey(editing.key).employee_id) : undefined;
     const shut = row ? closed(row.month_state) : editing.closed;
     const refused = editing.own ? t("attendanceRecords.grid.ownRow") : shut ? t("attendanceRecords.grid.closedRow") : null;
-    if (!refused) store.put(editing.key, v ? { value: v, base: editing.base } : null);
+    if (!refused) store.put(editing.key, v ? { value: v, base: editing.base, planKind: editing.planKind } : null);
     setEditing(null);
     const { employee_id, work_date } = splitKey(editing.key);
     const r = axes.rows.indexOf(employee_id);
@@ -94,7 +94,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
     const v = e.value.trim();
     if (!v) return;
     if (e.own || e.closed) return act({ kind: "note", message: t(e.own ? "attendanceRecords.grid.editDiscarded" : "attendanceRecords.grid.editDiscardedClosed", { name: e.name }) });
-    const problem = store.keep(e.scope, e.key, { value: v, base: e.base });
+    const problem = store.keep(e.scope, e.key, { value: v, base: e.base, planKind: e.planKind });
     act({ kind: "note", message: t(problem ? "attendanceRecords.grid.editNotKept" : "attendanceRecords.grid.editKept", { name: e.name }) });
   };
   const open = useRef({ editing, leave });
@@ -131,7 +131,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
       const next = { ...drafts };
       for (let c = x.left; c <= x.right; c += 1) {
         const top = drafts[keyAt(x.top, c)];
-        if (top) for (let r = x.top + 1; r <= x.bottom; r += 1) if (!facts(r, c).own && !facts(r, c).closed) next[keyAt(r, c)] = { value: top.value, base: baseOf(drafts, keyAt(r, c), facts(r, c).entryId) };
+        if (top) for (let r = x.top + 1; r <= x.bottom; r += 1) if (!facts(r, c).own && !facts(r, c).closed) next[keyAt(r, c)] = { value: top.value, base: baseOf(drafts, keyAt(r, c), facts(r, c).entryId), planKind: facts(r, c).planKind };
       }
       store.set(next);
     });
@@ -175,7 +175,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
         const day = days[c.c];
         if (!row || !day) continue;
         if (row.own || closed(row.month_state)) locked += 1;
-        else next[cellKey(row.employee_id, day)] = { value: c.value, base: baseOf(ds, cellKey(row.employee_id, day), row.cells[c.c]?.entry_id ?? null) };
+        else next[cellKey(row.employee_id, day)] = { value: c.value, base: baseOf(ds, cellKey(row.employee_id, day), row.cells[c.c]?.entry_id ?? null), planKind: row.cells[c.c]?.plan_kind ?? "NO_SCHEDULE" };
       }
       store.set(next);
       act({ kind: "note", message: t("attendanceRecords.paste.matched", { rows: p.matched + p.missing.length, matched: p.matched, missing: p.missing.length, locked }) });

@@ -42,7 +42,7 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
         for (const c of p.cells.filter((x) => x.c === 0)) {
           const row = rows[c.r]!;
           if (row.own) locked += 1;
-          else next[cellKey(row.employee_id, date)] = { value: c.value, base: baseOf(store.drafts, cellKey(row.employee_id, date), row.day.entry?.id ?? null) };
+          else next[cellKey(row.employee_id, date)] = { value: c.value, base: baseOf(store.drafts, cellKey(row.employee_id, date), row.day.entry?.id ?? null), planKind: row.day.plan.kind };
         }
         store.set(next);
         setPasted(t("attendanceRecords.paste.matched", { rows: p.matched + p.missing.length, matched: p.matched, missing: p.missing.length, locked }));
@@ -66,7 +66,7 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
               if (r.own) return <span className="muted">{t("attendanceRecords.grid.ownRow")}</span>;
               return (
                 <Field label={t("attendanceRecords.detail.inputFor", { name: r.name })} required={false} error={s && !s.ok ? refusalText(s.code) : undefined}>
-                  {(p) => <TextInput {...p} value={d?.value ?? ""} placeholder={undefined} maxLength={40} onChange={(e) => store.put(k, e.target.value.trim() ? { value: e.target.value, base: baseOf(store.drafts, k, r.day.entry?.id ?? null) } : null)} />}
+                  {(p) => <TextInput {...p} value={d?.value ?? ""} placeholder={undefined} maxLength={40} onChange={(e) => store.put(k, e.target.value.trim() ? { value: e.target.value, base: baseOf(store.drafts, k, r.day.entry?.id ?? null), planKind: r.day.plan.kind } : null)} />}
                 </Field>
               );
             },

@@ -10,6 +10,54 @@ struct Fixture {
     as_is_tokens: usize,
     as_is_refused: usize,
     cases: Vec<Case>,
+    drafts: DraftFixture,
+}
+
+#[derive(serde::Deserialize)]
+struct DraftFixture {
+    plan_kinds: Vec<String>,
+    cases: Vec<DraftCase>,
+}
+
+#[derive(serde::Deserialize)]
+struct DraftCase {
+    raw: Vec<String>,
+    expect: String,
+    #[serde(default)]
+    by_plan: std::collections::HashMap<String, String>,
+}
+
+#[test]
+fn every_plan_and_typed_word_resolves_as_the_shared_draft_table_says() {
+    use crate::records::resolve_value;
+    use crate::schedule::{DayKind, DayPlan, Shift};
+
+    let table = fixture().drafts;
+    for kind in table.plan_kinds {
+        let day_kind: DayKind = serde_json::from_value(serde_json::json!(kind)).unwrap();
+        let plan = DayPlan {
+            kind: day_kind,
+            shift: (day_kind == DayKind::Work).then_some(Shift {
+                start: 540,
+                end: 1080,
+                breaks: vec![],
+            }),
+            slot_code: None,
+            holiday_name: None,
+            holiday_work: false,
+        };
+        for case in &table.cases {
+            let expected = case.by_plan.get(&kind).unwrap_or(&case.expect);
+            for raw in &case.raw {
+                let result = resolve_value(raw, &plan, false, 960, false);
+                assert_eq!(
+                    result.map_or_else(|r| r.code(), |_| "ok"),
+                    expected,
+                    "{kind}: {raw}"
+                );
+            }
+        }
+    }
 }
 
 #[derive(serde::Deserialize)]

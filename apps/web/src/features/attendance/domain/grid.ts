@@ -10,11 +10,11 @@ export const splitKey = (key: string) => {
   return { employee_id, work_date };
 };
 
-export type Draft = { value: string; base: string | null };
+export type Draft = { value: string; base: string | null; planKind?: string };
 export type Drafts = Readonly<Record<string, Draft>>;
 type DraftState = { ok: true } | { ok: false; code: DraftCode; at?: number };
 export const draftState = (d: Draft): DraftState => {
-  const p = parseDraft(d.value);
+  const p = parseDraft(d.value, undefined, false, { kind: d.planKind });
   return p.ok ? { ok: true } : { ok: false, code: p.code, at: p.at };
 };
 
@@ -33,7 +33,7 @@ export function fill(cells: readonly CellFacts[], value: string, drafts: Drafts)
   let skipped = 0;
   for (const c of cells) {
     if (c.own || c.closed) skipped += 1;
-    else next[c.key] = { value, base: baseOf(drafts, c.key, c.entryId) };
+    else next[c.key] = { value, base: baseOf(drafts, c.key, c.entryId), planKind: c.planKind };
   }
   return { drafts: next, skipped };
 }
@@ -49,7 +49,7 @@ export function fillSchedule(cells: readonly CellFacts[], drafts: Drafts) {
     else if (c.planKind !== "WORK") skipped.rest += 1;
     else if (c.entryId) skipped.recorded += 1;
     else {
-      next[c.key] = { value: "=", base: baseOf(drafts, c.key, null) };
+      next[c.key] = { value: "=", base: baseOf(drafts, c.key, null), planKind: c.planKind };
       filled += 1;
     }
   }

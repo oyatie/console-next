@@ -10,6 +10,47 @@ use super::save::{cell, save, scheduled};
 use super::support::{assign, key, office, rows, world};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn day_off_words_on_a_planned_rest_day_agree_in_preview_and_save(owner: PgPool) {
+    let w = scheduled(owner).await;
+    let table: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../../../scripts/fixtures/attendance-grammar-cases.json"
+    ))
+    .unwrap();
+    let words = table["drafts"]["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["expect"] == "already_day_off")
+        .unwrap();
+    for raw in words["raw"].as_array().unwrap() {
+        let cells = vec![cell(&w, 0, date!(2026 - 10 - 10), raw.as_str().unwrap())];
+        let preview = w
+            .store
+            .preview_entries(
+                &w.hr(),
+                PreviewInput {
+                    cells: cells.clone(),
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(preview.cells[0].code, Some("already_day_off"), "{raw}");
+        match w
+            .store
+            .save_entries(&w.hr(), &key(), save(cells))
+            .await
+            .unwrap_err()
+        {
+            ScheduleStoreError::CellsRefused(cells) => {
+                assert_eq!(cells[0].code, Some("already_day_off"))
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+    assert_eq!(rows(&w, "attendance_entries").await, 0);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn reserved_words_preview_and_save_their_meaning_on_colliding_slots(owner: PgPool) {
     let w = world(owner).await;
     let date = date!(2026 - 10 - 06);

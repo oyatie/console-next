@@ -2,6 +2,26 @@
   "about": "The attendance cell grammar's one table (input patterns §2.1, invariant I1). apps/web/src/features/attendance/domain/grammar.test.ts and backend/crates/attendance/domain/src/records/grammar_tests.rs both run every case and must print the same `expect`. Defaults: long 960 (minutes before a span needs confirmation), confirmed false, overnight false (the day's plan crosses midnight). `expect` is the reading (TIMES with HH:MM spans, hours past 24 for the next day) or `refused <code>`. Cases marked as_is are the 69 tokens of the 2026-10-20 as-is run (50 refused on dev); as_is_refused is the designed residue.",
   "as_is_tokens": 69,
   "as_is_refused": 19,
+  "drafts": {
+    "about": "Past-day grid/store parity: WORK has a 09:00-18:00 shift, other kinds have none. No slot code or holiday_work; those need the ATT-GRAMMAR.2 payload. expect is ok or a refusal code; by_plan overrides it.",
+    "plan_kinds": ["WORK", "WEEKLY_HOLIDAY", "REST_DAY", "PUBLIC_HOLIDAY", "SUBSTITUTE_HOLIDAY", "ELECTION_DAY", "LABOR_DAY", "CONTRACTUAL_HOLIDAY", "NO_SCHEDULE"],
+    "cases": [
+      {"raw": ["휴", "휴무", "OFF", "Off", "off", "ＯＦＦ", "휴무"], "expect": "already_day_off", "by_plan": {"WORK": "schedule_change_needed", "NO_SCHEDULE": "schedule_change_needed"}},
+      {"raw": ["=", "소정"], "expect": "no_shift_to_copy", "by_plan": {"WORK": "ok"}},
+      {"raw": ["x", "X", "ｘ", "결", "결근", "o", "O", "외", "외근", "출장", "9-18", "7:52-"], "expect": "ok"},
+      {"raw": ["D", "E", "N", "d", "S1", "s12", "주", "야", "비", "당"], "expect": "schedule_change_needed"},
+      {"raw": ["v", "V", "휴가", "연", "연차", "반", "오전반차", "오후반차", "반반", "병", "병가", "경조", "공가", "예비군", "민방위", "생리", "무급"], "expect": "leave_not_stored"},
+      {"raw": ["출"], "expect": "code_ambiguous"},
+      {"raw": ["지", "지각", "조", "조퇴"], "expect": "status_is_derived"},
+      {"raw": ["재", "재택", "교육", "재택 9-18", "교육 9-18"], "expect": "activity_not_stored"},
+      {"raw": ["-18"], "expect": "clock_out_only_not_stored"},
+      {"raw": ["+2", "연장", "연장 2"], "expect": "overtime_typed"},
+      {"raw": ["8", "8:00"], "expect": "hours_without_times"},
+      {"raw": ["0.375"], "expect": "excel_fraction"},
+      {"raw": ["999", "휴1", "9-1x"], "expect": "entry_unreadable"},
+      {"raw": ["22-07"], "expect": "overnight_without_marker"}
+    ]
+  },
   "cases": [
     { "raw": "22-24,0-0+", "confirmed": true, "expect": "refused overnight_without_marker" },
     { "raw": "9-18", "expect": "TIMES 09:00-18:00", "as_is": true },

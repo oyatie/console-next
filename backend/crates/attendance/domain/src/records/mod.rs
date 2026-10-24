@@ -226,6 +226,25 @@ mod value_tests {
     }
 
     #[test]
+    fn digits_only_unreadable_on_a_slotted_day_is_not_a_schedule_change() {
+        let work = slot("A", DayKind::Work, Some((540, 1080)));
+        assert_eq!(refusal("999", &work, false), "entry_unreadable");
+        assert_eq!(refusal("999A", &work, false), "schedule_change_needed");
+    }
+
+    #[test]
+    fn a_shift_ending_at_midnight_does_not_imply_a_next_day_end() {
+        let midnight = slot("M", DayKind::Work, Some((960, 1440)));
+        assert_eq!(
+            refusal("22-06", &midnight, false),
+            "overnight_without_marker"
+        );
+        assert_eq!(refusal("22-06+", &midnight, false), "TIMES");
+        let overnight = slot("M", DayKind::Work, Some((960, 1441)));
+        assert_eq!(refusal("22-06", &overnight, false), "TIMES");
+    }
+
+    #[test]
     fn confirmation_never_bypasses_future_date_or_missing_schedule_guards() {
         assert_eq!(
             resolve_value("5-23", &plan(), true, 960, true),

@@ -13,7 +13,8 @@ test("every parser and cell refusal has its own copy in both locales", async () 
     span_too_long: true, spans_overlap: true, status_is_derived: true,
     hours_without_times: true, excel_fraction: true, code_ambiguous: true,
     activity_not_stored: true,
-    schedule_change_needed: true, clock_out_only_not_stored: true, leave_not_stored: true,
+    schedule_change_needed: true, already_day_off: true, no_shift_to_copy: true,
+    clock_out_only_not_stored: true, leave_not_stored: true,
   } satisfies Record<DraftCode, true>;
   const codes = new Set(Object.keys(parseCodes));
   for (const file of ["grammar.rs", "mod.rs"]) {

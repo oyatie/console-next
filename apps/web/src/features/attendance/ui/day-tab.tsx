@@ -100,7 +100,7 @@ export function DayTab() {
                         tools={g.hidden > 0 && g.unit_id ? <Button size="sm" variant="ghost" onClick={() => go({ unit: g.unit_id })}>{t("attendanceRecords.board.expand", { count: g.hidden })}</Button> : undefined}
                       >
                         {g.rows.map((r) => (
-                          <DayRow key={r.employee_id} row={r} draft={store.drafts[cellKey(r.employee_id, date)]} onDraft={(v) => store.put(cellKey(r.employee_id, date), v ? { value: v, base: baseOf(store.drafts, cellKey(r.employee_id, date), r.day.entry?.id ?? null) } : null)} onOpen={() => setOpen({ id: r.employee_id, own: r.own })} onAssign={() => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
+                          <DayRow key={r.employee_id} row={r} draft={store.drafts[cellKey(r.employee_id, date)]} onDraft={(v) => store.put(cellKey(r.employee_id, date), v ? { value: v, base: baseOf(store.drafts, cellKey(r.employee_id, date), r.day.entry?.id ?? null), planKind: r.day.plan.kind } : null)} onOpen={() => setOpen({ id: r.employee_id, own: r.own })} onAssign={() => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                         ))}
                       </Card>
                     ))

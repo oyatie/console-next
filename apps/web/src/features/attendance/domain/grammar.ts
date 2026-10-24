@@ -34,9 +34,9 @@ type ParseCode =
   | "code_ambiguous"
   | "activity_not_stored";
 type Parsed = { ok: true; entry: Entry } | { ok: false; code: ParseCode; at?: number };
-export type DraftCode = ParseCode | "schedule_change_needed" | "clock_out_only_not_stored" | "leave_not_stored";
-/** What the day's plan adds: a shift that crosses midnight lets a single span end the next day without the +. */
-type Plan = { overnight: boolean };
+export type DraftCode = ParseCode | "schedule_change_needed" | "already_day_off" | "no_shift_to_copy" | "clock_out_only_not_stored" | "leave_not_stored";
+/** The day's kind resolves stored words; a shift across midnight lets a single span end next day without the +. */
+type Plan = { overnight?: boolean; kind?: string };
 
 // The Korean code words are input syntax, not copy: written as escapes so no Hangul sits outside the catalogs
 // (the same words the server accepts, in records/grammar.rs).
@@ -187,8 +187,12 @@ export function parseEntry(raw: string, longSpanMinutes?: number, confirmed = fa
 export function parseDraft(...args: Parameters<typeof parseEntry>): Parsed | { ok: false; code: DraftCode; at?: number } {
   const parsed = parseEntry(...args);
   if (!parsed.ok) return parsed;
+  const kind = args[3]?.kind;
   switch (parsed.entry.kind) {
-    case "DAY_OFF": case "SHIFT": return { ok: false, code: "schedule_change_needed" };
+    // shortcut: month cells omit holiday_work; include holiday shifts when that payload exposes them.
+    case "DAY_OFF": return { ok: false, code: kind && kind !== "WORK" && kind !== "NO_SCHEDULE" ? "already_day_off" : "schedule_change_needed" };
+    case "AS_SCHEDULED": return kind && kind !== "WORK" ? { ok: false, code: "no_shift_to_copy" } : parsed;
+    case "SHIFT": return { ok: false, code: "schedule_change_needed" };
     case "CLOCK_OUT_ONLY": return { ok: false, code: "clock_out_only_not_stored" };
     case "LEAVE": return { ok: false, code: "leave_not_stored" };
     default: return parsed;
