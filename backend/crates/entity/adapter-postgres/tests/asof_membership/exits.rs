@@ -17,12 +17,12 @@ async fn backdated_exit_overrides_the_earlier_recorded_canonical_snapshot(owner:
         .unwrap();
     tx.commit().await.unwrap();
     let cutoff = known(&owner).await;
-    let exit_date = w.d - Duration::days(1);
-    let last_working_day = exit_date - Duration::days(1);
-    lifecycle(&owner, &w, p, "TERMINATE", exit_date).await;
+    let last_working_day = w.d - Duration::days(1);
+    let exit_date = last_working_day + Duration::days(1);
+    lifecycle(&owner, &w, p, "TERMINATE", last_working_day).await;
     sqlx::query("UPDATE employees SET employment_status='EXITED',exit_date=$2 WHERE id=$1")
         .bind(p)
-        .bind(exit_date.to_string())
+        .bind(last_working_day.to_string())
         .execute(&owner)
         .await
         .unwrap();
@@ -59,10 +59,10 @@ async fn backdated_exit_overrides_the_earlier_recorded_canonical_snapshot(owner:
 async fn exit_scheduled_for_today_still_counts_on_its_last_working_day(owner: PgPool) {
     let w = world(&owner, "asof-last-working-day").await;
     let p = source_person(&owner, &w, "scheduled-exit").await;
-    // 퇴직일 = 마지막 근무일 + 1 = 4대보험 상실일: the exit's effective date is not counted.
-    let exit_date = w.d;
-    let last_working_day = exit_date - Duration::days(1);
-    lifecycle(&owner, &w, p, "TERMINATE", exit_date).await;
+    // The writer stores 마지막 근무일; 퇴직일/상실일 is the following day.
+    let last_working_day = w.d;
+    let exit_date = last_working_day + Duration::days(1);
+    lifecycle(&owner, &w, p, "TERMINATE", last_working_day).await;
     assert_eq!(
         counts(&read(&w, &w.actor, last_working_day, None).await, &w),
         [1, 0]
@@ -76,11 +76,11 @@ async fn exit_scheduled_for_today_still_counts_on_its_last_working_day(owner: Pg
 async fn compare_at_today_and_list_share_the_live_chart_exit_boundary(owner: PgPool) {
     let w = world(&owner, "asof-exit-count-rule").await;
     let p = source_person(&owner, &w, "exiting-person").await;
-    let exit_date = w.d;
-    let last_working_day = exit_date - Duration::days(1);
-    lifecycle(&owner, &w, p, "TERMINATE", exit_date).await;
+    let last_working_day = w.d;
+    let exit_date = last_working_day + Duration::days(1);
+    lifecycle(&owner, &w, p, "TERMINATE", last_working_day).await;
     let live = counts(&w.store.org_structure(&w.actor).await.unwrap(), &w);
-    assert_eq!(live, [0, 0]);
+    assert_eq!(live, [1, 0]);
     assert_eq!(counts(&read(&w, &w.actor, w.d, None).await, &w), live);
     let listed = |date: Date| {
         let store = &w.store;
@@ -109,17 +109,17 @@ async fn compare_at_today_and_list_share_the_live_chart_exit_boundary(owner: PgP
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn recorded_exit_date_without_events_is_the_first_uncounted_day(owner: PgPool) {
+async fn recorded_exit_date_without_events_is_the_last_counted_day(owner: PgPool) {
     let w = world(&owner, "asof-exit-date-only").await;
     let p = source_person(&owner, &w, "exit-date-only").await;
-    let exit_date = w.d - Duration::days(5);
+    let last_working_day = w.d - Duration::days(5);
+    let exit_date = last_working_day + Duration::days(1);
     sqlx::query("UPDATE employees SET employment_status='EXITED',exit_date=$2 WHERE id=$1")
         .bind(p)
-        .bind(exit_date.to_string())
+        .bind(last_working_day.to_string())
         .execute(&owner)
         .await
         .unwrap();
-    let last_working_day = exit_date - Duration::days(1);
     assert_eq!(
         counts(&read(&w, &w.actor, last_working_day, None).await, &w),
         [1, 0]
@@ -211,5 +211,57 @@ async fn lifecycle_events_do_not_bypass_the_hire_date(owner: PgPool) {
                 .sum::<i64>(),
             0
         );
+    }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn rehire_keeps_original_employment_in_past_and_known_counts(owner: PgPool) {
+    let w = world(&owner, "asof-rehire").await;
+    let p = source_person(&owner, &w, "rehired").await;
+    lifecycle(&owner, &w, p, "ONBOARD", w.d - Duration::days(100)).await;
+    lifecycle(&owner, &w, p, "TERMINATE", w.d - Duration::days(60)).await;
+    sqlx::query("UPDATE employees SET employment_status='EXITED',exit_date=$2 WHERE id=$1")
+        .bind(p)
+        .bind((w.d - Duration::days(60)).to_string())
+        .execute(&owner)
+        .await
+        .unwrap();
+    let cutoff = known(&owner).await;
+    let mut tx = owner.begin().await.unwrap();
+    let hire = (w.d - Duration::days(10)).to_string();
+    assert!(
+        start_rehire_period(
+            &mut tx,
+            *w.actor.org.as_uuid(),
+            p,
+            &RehirePeriod {
+                employment_status: "ACTIVE",
+                hire_date: &hire,
+                company: "Rehire Corp",
+                org_unit: "B",
+                org_unit_id: w.units[1],
+                position: "Staff",
+            }
+        )
+        .await
+        .unwrap()
+    );
+    tx.commit().await.unwrap();
+    lifecycle(&owner, &w, p, "REHIRE", w.d - Duration::days(10)).await;
+    let past = w.d - Duration::days(80);
+    assert_eq!(counts(&read(&w, &w.actor, past, None).await, &w), [1, 0]);
+    assert_eq!(
+        counts(&read(&w, &w.actor, past, Some(cutoff)).await, &w),
+        [1, 0]
+    );
+    for (date, expected) in [
+        (w.d - Duration::days(101), [0, 0]),
+        (w.d - Duration::days(100), [1, 0]),
+        (w.d - Duration::days(11), [0, 0]),
+        (w.d - Duration::days(10), [0, 1]),
+    ] {
+        let tree = read(&w, &w.actor, date, None).await;
+        assert_eq!(counts(&tree, &w), expected);
+        assert_eq!(tree.entity_unknown_headcount, Some(0));
     }
 }

@@ -19,7 +19,7 @@ pub(crate) async fn load(
 ) -> Result<Vec<Membership>, PgEntityError> {
     // A newly recorded backdated exit supersedes the canonical snapshot's stale status.
     // One count rule for chart, list, compare and export: employed on D iff 입사일 <= D < 퇴직일,
-    // where 퇴직일 (the exit's effective date) = 마지막 근무일 + 1 = 4대보험 상실일.
+    // where 퇴직일 = stored 마지막 근무일 + 1 = 4대보험 상실일.
     let rows = sqlx::query(
         "WITH known_events AS MATERIALIZED ( \
            SELECT * FROM employee_lifecycle_events WHERE $2::timestamptz IS NULL UNION ALL \
@@ -70,10 +70,11 @@ pub(crate) async fn load(
            AND (NOT $3 OR e.employment_status NOT IN ('PRE_HIRE','EXITED','VOIDED')) \
            AND (r.valid_from IS NOT NULL OR first_event.event_type IN ('ONBOARD','REHIRE') AND entity_try_iso_date(first_event.effective_date) <= $1 \
                OR entity_try_iso_date(e.hire_date) IS NULL OR entity_try_iso_date(e.hire_date) <= $1) \
-           AND CASE WHEN l.id IS NOT NULL THEN l.to_status NOT IN ('EXITED','VOIDED') \
+           AND CASE WHEN l.event_type IN ('TERMINATE','OFFBOARD') AND entity_try_iso_date(l.effective_date)=$1 THEN true \
+               WHEN l.id IS NOT NULL THEN l.to_status NOT IN ('EXITED','VOIDED') \
                WHEN r.attributes ? 'employment_status' THEN r.attributes->>'employment_status' NOT IN ('EXITED','VOIDED') \
                WHEN first_event.id IS NOT NULL THEN first_event.from_status NOT IN ('EXITED','VOIDED') \
-               ELSE e.employment_status NOT IN ('EXITED','VOIDED') OR NOT $3 AND entity_try_iso_date(e.exit_date) > $1 END",
+               ELSE e.employment_status NOT IN ('EXITED','VOIDED') OR NOT $3 AND entity_try_iso_date(e.exit_date) >= $1 END",
     ).bind(point.as_of).bind(point.known_at).bind(point.live).fetch_all(tx.as_mut()).await?;
     rows.iter()
         .map(|r| {

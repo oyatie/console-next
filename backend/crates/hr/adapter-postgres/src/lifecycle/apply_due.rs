@@ -24,8 +24,8 @@ use super::store::load_employee_for_lifecycle;
 use crate::{HrError, HrService};
 
 impl HrService {
-    /// Applies the SCHEDULED events whose date has come (`effective_date <=
-    /// today`, the org-local KST date the caller passes) in every tenant, oldest
+    /// Applies SCHEDULED exits after their last working day, other events on
+    /// their effective date (the org-local KST date the caller passes), oldest
     /// date first. Each event commits in its own audited transaction: re-validated
     /// against the live employee by the rules that admitted it, then APPLIED (the
     /// employee changes, `employee.lifecycle.apply`) or, when it is no longer
@@ -40,6 +40,7 @@ impl HrService {
             .fetch_all(pool)
             .await
             .map_err(|error| error.to_string())?;
+        let applied_on = today;
         let today = today.to_string();
         let mut settled = 0;
         // One tenant's fault never stalls the others: it is logged and retried on
@@ -47,12 +48,13 @@ impl HrService {
         for org_uuid in orgs {
             let org = OrgId::from_uuid(org_uuid);
             let today = today.clone();
-            let due: Vec<(Uuid, Uuid)> =
+            let due: Vec<(Uuid, Uuid, String, String)> =
                 match with_org_conn::<_, _, HrError>(pool, org, move |tx| {
                     Box::pin(async move {
                         Ok(sqlx::query_as(
-                            "SELECT id, employee_id FROM employee_lifecycle_events \
+                            "SELECT id, employee_id, event_type, effective_date FROM employee_lifecycle_events \
                      WHERE org_id = $1 AND state = 'SCHEDULED' AND effective_date <= $2 \
+                       AND (event_type NOT IN ('TERMINATE','OFFBOARD') OR effective_date < $2) \
                      ORDER BY effective_date, created_at LIMIT 500",
                         )
                         .bind(org_uuid)
@@ -76,7 +78,7 @@ impl HrService {
             // An employee whose event stayed SCHEDULED on a server fault keeps
             // their later events for the next run too, so they apply in date order.
             let mut held: BTreeSet<Uuid> = BTreeSet::new();
-            for (event_id, employee_id) in due {
+            for (event_id, employee_id, event_type, effective_date) in due {
                 if held.contains(&employee_id) {
                     continue;
                 }
@@ -90,7 +92,17 @@ impl HrService {
                 })
                 .await;
                 match applied {
-                    Ok(true) => settled += 1,
+                    Ok(true) => {
+                        settled += 1;
+                        tracing::info!(
+                            org = %org,
+                            lifecycle_event_id = %event_id,
+                            event_type = %event_type,
+                            effective_date = %effective_date,
+                            applied_on = %applied_on,
+                            "scheduled lifecycle event applied"
+                        );
+                    }
                     Ok(false) => {}
                     Err(error) if error.status.is_client_error() => {
                         let failed = with_audits::<_, _, HrError>(pool, org, |tx| {

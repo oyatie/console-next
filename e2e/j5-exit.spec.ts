@@ -25,7 +25,7 @@ async function reportAndConfirm(admin: Page, c: ReturnType<typeof clickCounter>,
     await expect(sheet.getByRole("textbox", { name: /^마지막 근무일/ })).toBeFocused();
     await expectAccessible(admin, "J5: report sheet with missing fields");
   }
-  await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(0));
+  await sheet.getByRole("textbox", { name: /^마지막 근무일/ }).fill(kstDate(-1));
   await sheet.getByLabel("퇴직 경위").fill(reason);
   await sheet.getByRole("radiogroup", { name: /^퇴직 사유/ }).getByText("개인 사정", { exact: true }).click();
   await c.click(sheet.getByRole("button", { name: "퇴직 보고 1명 반영" }));
@@ -203,7 +203,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   const staleCancel = otherHr.getByRole("dialog", { name: "퇴직 취소" });
   await staleCancel.getByLabel("취소 사유").fill("담당자 확인 중");
   await c.click(exitPanel(admin).getByRole("button", { name: "인사 확인하고 퇴직 처리" }));
-  await expect(admin.getByRole("dialog")).toContainText(`${koDate(exitOn)}자로 퇴직 처리하도록 예약합니다`);
+  await expect(admin.getByRole("dialog")).toContainText(`${koDate(kstDate(11))}자로 퇴직 처리하도록 예약합니다`);
   // A scheduled exit can still be withdrawn, so its button is blue and names the date.
   await expect(admin.getByRole("dialog").getByRole("button", { name: "퇴직 1명 예약" })).toHaveClass(/btn--primary/);
   await expectAccessible(admin, "J5: HR confirmation of a future exit");
@@ -215,7 +215,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await staleCancel.getByRole("button", { name: "닫기", exact: true }).click();
   await otherHr.close();
   await expect(exitPanel(admin)).toContainText("효력 예정");
-  await expect(exitPanel(admin)).toContainText(`${koDate(exitOn)}에 퇴직 처리가 반영됩니다`);
+  await expect(exitPanel(admin)).toContainText(`${koDate(kstDate(11))}에 퇴직 처리가 반영됩니다`);
   await expect(head(admin, "예정퇴직").getByText("재직", { exact: true })).toBeVisible();
   await expect(head(admin, "예정퇴직").getByText("효력 예정")).toBeVisible();
   await expect(admin.getByRole("group", { name: "다음 일정" })).toContainText(`${koDate(exitOn)} 퇴직 예정`);
@@ -235,7 +235,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await expect(exitPanel(admin).getByRole("button", { name: "퇴직 취소" })).toBeVisible();
   await c.click(exitPanel(admin).getByRole("button", { name: "퇴직 취소" }));
   const withdraw = admin.getByRole("dialog", { name: "퇴직 취소" });
-  await expect(withdraw).toContainText(`${koDate(exitOn)}자 퇴직 예약을 거둡니다`);
+  await expect(withdraw).toContainText(`${koDate(kstDate(11))}자 퇴직 예약을 거둡니다`);
   await withdraw.getByRole("button", { name: "퇴직 1명 취소" }).click();
   await expect(withdraw.getByRole("textbox", { name: /^취소 사유/ })).toBeFocused();
   await withdraw.getByLabel("취소 사유").fill("계약 연장 합의");
@@ -252,7 +252,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await open.getByRole("button", { name: "지금 단계 보기" }).click();
   await expect(exitPanel(exec)).toContainText("반려됨");
 
-  // 6. A scheduled exit that is not withdrawn applies on its date (a background run, on a date the test moves the
+  // 6. A scheduled exit that is not withdrawn applies after its last working day (a background run, on a date the test moves the
   // backend's apply clock to): the employee is exited then, and the history says when it took effect.
   await registerEmployee(admin, { name: "날짜퇴직", number: "J5-0004", hired: "2025-03-03" });
   const leaveOn = kstDate(4);
@@ -265,7 +265,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await confirmAsHr(admin, c);
   await expect(exitPanel(admin)).toContainText("효력 예정");
   c.done("J5 schedule an exit");
-  await withLifecycleDate(leaveOn, async () => {
+  await withLifecycleDate(kstDate(5), async () => {
     // Pages keep what they read for 30 s: reload (a few times at most; the session refresh is rate-limited).
     await expect(async () => {
       // Reload only a loaded page: a reload during its session refresh replays the rotated token, which signs out.
