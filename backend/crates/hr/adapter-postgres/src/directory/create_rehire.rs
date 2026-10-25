@@ -168,13 +168,14 @@ async fn record_rehire_event(
     period: &RehirePeriod<'_>,
     effective_date: &str,
 ) -> Result<(), HrError> {
+    let event_id = Uuid::new_v4();
     sqlx::query(
         "INSERT INTO employee_lifecycle_events (id, org_id, employee_id, event_type, from_status, \
              to_status, from_company, to_company, to_org_unit, to_position, effective_date, \
              comment, signoffs, created_by, to_org_unit_id) \
          VALUES ($1, $2, $3, 'REHIRE', 'EXITED', $4, $5, $6, $7, $8, $9, $10, '{}'::jsonb, $11, $12)",
     )
-    .bind(Uuid::new_v4())
+    .bind(event_id)
     .bind(org_uuid)
     .bind(employee_id)
     .bind(period.employment_status)
@@ -188,6 +189,7 @@ async fn record_rehire_event(
     .bind(period.org_unit_id)
     .execute(tx.as_mut())
     .await?;
+    crate::cases::open::event(tx, org_uuid, event_id).await?;
     Ok(())
 }
 

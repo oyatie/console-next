@@ -62,10 +62,6 @@ export const enFacts = {
   "facts.contract.corrected": "Recorded the correction to {name}'s contract",
   "facts.escConfirm": "You have unsaved input · press again to close",
   "facts.errors": "Check {count} fields",
-  "facts.checklist.title": "Onboarding",
-  "facts.checklist.done": "{done}/{total} done",
-  "facts.checklist.fix": "Record",
-  "facts.checklist.notTracked": "Not tracked here yet. Follow it up separately.",
   "facts.contract.overlap": "This period overlaps the {kind} contract ({start} to {end}). Correct that contract instead of recording another.",
   "facts.contract.overlap.correct": "Correct contract starting {start}",
 } as const;

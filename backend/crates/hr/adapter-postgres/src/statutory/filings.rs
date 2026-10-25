@@ -90,7 +90,7 @@ async fn visible_tasks(
         {
             continue;
         }
-        if let Some(task) = super::filing_read::task(row, register, query.inbox_as_of)? {
+        if let Some(task) = super::filing_read::task(row, register, tx.as_mut()).await? {
             items.push(task);
         }
     }

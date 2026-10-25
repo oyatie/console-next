@@ -1,4 +1,5 @@
 //! The MVP statutory panel: worker register and manual insurance filing records.
+mod filing_boundary;
 mod filing_placement;
 mod filing_query;
 mod filing_read;

@@ -99,7 +99,9 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   const sheet = registerSheet(admin);
   await expect(sheet.getByRole("combobox", { name: "둘 곳" })).toHaveValue("");
   await expect(sheet.getByRole("textbox", { name: /^이름/ })).toBeVisible();
-  await expect(sheet.locator("details")).toHaveCount(0);
+  const extra = sheet.getByRole("group", { name: "추가 정보", exact: true });
+  await expect(extra).toBeVisible();
+  await expect(extra.locator("details")).toHaveCount(0);
   await expect(sheet.getByText(/인사카드에서 채우도록 바뀔 예정/)).toHaveCount(0);
   await sheet.getByRole("textbox", { name: /^이름/ }).fill("김직원");
   // The commit is never dead (V4): the missing hire date is named and focused; placement can wait.
@@ -122,7 +124,10 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   await go(admin, "/statutory");
   const filing=admin.getByRole("row").filter({hasText:"김직원"}).filter({hasText:"국민연금"});
   await expect(filing).toContainText("가능일");
-  await expect(filing).toContainText("목표");
+  // The product deliberately shows the earliest start and legal deadline, without a duplicate target.
+  await expect(filing).toContainText("시작");
+  await expect(filing).toContainText("기한");
+  await expect(filing).not.toContainText("목표");
   await resolveFilingNotApplicable(admin,filing);
   await admin.getByRole("button",{name:"처리 내역",exact:true}).click();
   await expect(filing).toContainText("미해당");

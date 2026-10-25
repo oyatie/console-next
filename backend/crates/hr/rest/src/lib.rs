@@ -57,3 +57,5 @@ pub mod certificates;
 
 // --- lane: ECO-G5 ---
 pub mod person_binding;
+// --- lane: LC-B4 ---
+pub mod cases;

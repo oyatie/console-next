@@ -72,8 +72,8 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
         pay_unit: f.payUnit ?? undefined,
         idempotency_key: key,
       }),
-    invalidates: ["/api/v1/employees", "/api/v1/org-units", "/api/v1/legal-entities", "/api/v1/org-structure"],
-    settle: true,
+    invalidates: ["/api/v1/employees/{id}/lifecycle-events", "/api/v1/employees", "/api/v1/org-units", "/api/v1/legal-entities", "/api/v1/org-structure"],
+    awaitFirstRead: true,
     onSuccess: () => onDone(t("register.rehire.done", { name: e.name, date: f.hire })),
   });
   const submit = () => (setTried(true), gaps.length === 0 && run.mutate());

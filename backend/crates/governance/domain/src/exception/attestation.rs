@@ -88,6 +88,7 @@ pub fn validate_attestation(a: &Attestation) -> Result<AttestationCheck, KernelE
             need(d.amount_krw.is_some_and(|v| v >= 0), "amount")?;
             need(present(d.reference.as_ref()), "reference")?;
         }
+        RuleCode::LifecycleItemAttested => need(evidence, "evidence")?,
         RuleCode::SettlementItemAttested => need(method, "method")?,
         // Request date only: `fact_date` is the request date.
         _ => {}

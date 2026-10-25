@@ -6,7 +6,7 @@ import { loadCatalog } from "@console/i18n";
 import { GroupTransferSheet } from "./group-transfer-sheet";
 
 const frame = vi.hoisted(() => ({ locked: false as boolean | undefined }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { items: [], entities: [] } }) }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { items: [], entities: [] } }), useQueries: () => [] }));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-to={to}>{children}</span> }));
 vi.mock("../../../reference/authz/ui/use-can", () => ({ useCan: () => () => true }));
 vi.mock("../domain/group-transfer", () => ({ groupMissing: () => ({}), groupTargets: () => ({ kind: "none", scoped: false }) }));

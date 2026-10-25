@@ -99,7 +99,9 @@ rules! {
     EntityIdentifierCorrection => "ENTITY_IDENTIFIER_CORRECTION", High, SoftRule;
     // A sole holder unlocks a closed period with no other eligible holder (#7 case B, #8b).
     PeriodUnlockSoleHolder => "PERIOD_UNLOCK_SOLE_HOLDER", High, SoftRule;
+    LifecycleItemWaived => "LIFECYCLE_ITEM_WAIVED", High, SoftRule;
     // Attested offline facts (decisions.md #3). Step-up (MEDIUM) where the fact closes a legal clock.
+    LifecycleItemAttested => "LIFECYCLE_ITEM_ATTESTED", Medium, Fact;
     ResignationReceived => "RESIGNATION_RECEIVED", Low, Fact;
     DismissalNoticeDelivered => "DISMISSAL_NOTICE_DELIVERED", Low, Fact;
     PaymentDueExtensionAgreed => "PAYMENT_DUE_EXTENSION_AGREED", Medium, Fact;

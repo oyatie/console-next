@@ -542,6 +542,13 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/employees/{id}/lifecycle-cases",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__employees__id__lifecycle-cases.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employees/{id}/lifecycle-events",
         operations: &[
             Operation {
@@ -920,6 +927,36 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/lifecycle-case-templates/{key}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__lifecycle-case-templates__key.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/lifecycle-cases/{id}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__lifecycle-cases__id.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/lifecycle-cases/{id}/close",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__lifecycle-cases__id__close.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/lifecycle-cases/{id}/items/{item_id}/complete",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__lifecycle-cases__id__items__item_id__complete.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/org-changes",
         operations: &[
             Operation {
@@ -1220,6 +1257,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "CloseEmployeeExitCaseRequest",
         body: include_str!("../openapi/schemas/CloseEmployeeExitCaseRequest.yaml"),
+    },
+    NamedYaml {
+        name: "CompleteLifecycleItem",
+        body: include_str!("../openapi/schemas/CompleteLifecycleItem.yaml"),
     },
     NamedYaml {
         name: "CompleteOrgChangeSettlementItemRequest",
@@ -1602,12 +1643,28 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/LeaveBalanceSummary.yaml"),
     },
     NamedYaml {
+        name: "LifecycleCase",
+        body: include_str!("../openapi/schemas/LifecycleCase.yaml"),
+    },
+    NamedYaml {
+        name: "LifecycleCaseItem",
+        body: include_str!("../openapi/schemas/LifecycleCaseItem.yaml"),
+    },
+    NamedYaml {
+        name: "LifecycleProblem",
+        body: include_str!("../openapi/schemas/LifecycleProblem.yaml"),
+    },
+    NamedYaml {
         name: "LifecycleScheduleConflictBody",
         body: include_str!("../openapi/schemas/LifecycleScheduleConflictBody.yaml"),
     },
     NamedYaml {
         name: "LifecycleSignoffKey",
         body: include_str!("../openapi/schemas/LifecycleSignoffKey.yaml"),
+    },
+    NamedYaml {
+        name: "LifecycleTemplateItem",
+        body: include_str!("../openapi/schemas/LifecycleTemplateItem.yaml"),
     },
     NamedYaml {
         name: "OrgChangeDecisionRequest",

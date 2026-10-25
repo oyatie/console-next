@@ -164,6 +164,8 @@ impl HrService {
                     return Err(exit_case_open(tx, org_uuid, body.employee_id).await?);
                 };
 
+                crate::cases::open::exit(tx, org_uuid, case_id).await?;
+
                 if let Some(alert_id) = body.absence_alert_id {
                     let updated = sqlx::query(
                         r#"

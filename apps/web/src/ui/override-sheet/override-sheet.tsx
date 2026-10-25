@@ -1,7 +1,7 @@
 import { STEP_UP_ACTION, label as enumLabel } from "../../lib/labels";
 import { EnumCode } from "../enum-value";
 import type { ReactNode } from "react";
-import { Button } from "react-aria-components";
+import { Button } from "../button/button";
 import { Flag, KeyRound, ShieldCheck } from "lucide-react";
 import { t } from "@console/i18n";
 import { Dialog } from "../dialog";
@@ -79,9 +79,9 @@ export function OverrideSheet(p: {
         </div>
       )}
       <div className="form__actions">
-        <Button className="btn" isDisabled={p.pending} onPress={p.onClose}>{t("uiOverrideSheet.back")}</Button>
+        <Button disabled={p.pending} onClick={p.onClose}>{t("uiOverrideSheet.back")}</Button>
         {!p.reasonComplete && <span className={css.why}>{t("uiOverrideSheet.reasonMissing")}</span>}
-        <Button className="btn btn--primary" isDisabled={!p.reasonComplete} isPending={p.pending} onPress={p.onCommit}>
+        <Button variant="primary" disabled={!p.reasonComplete || p.pending} aria-busy={p.pending || undefined} onClick={p.onCommit}>
           {owesPasskey && <KeyRound aria-hidden="true" />}
           {label}
         </Button>

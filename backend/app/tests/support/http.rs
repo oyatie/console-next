@@ -164,6 +164,7 @@ pub fn entity_body() -> Value {
     json!({
         "biz_kind": "CORPORATION", "name": "주식회사 가나", "representation_mode": "SINGLE",
         "representatives": ["홍길동"], "crn": "000211-0006241", "head_office_address": address(),
+        "incorporated_on": "2020-03-02",
     })
 }
 
@@ -215,7 +216,7 @@ pub fn employee_body(number: &str, branch: &str, unit: &str) -> Value {
         "employee_number": number, "name": format!("직원{number}"), "company": "주식회사 가나",
         "employment_type": "REGULAR", "phone": "010-1234-0000", "position": "사원", "site": "본사",
         "home_branch_id": branch, "base_pay": "3000000", "idempotency_key": format!("tb-{number}"),
-        "hire_date": "2026-01-02", "org_unit_id": unit,
+        "hire_date": today_kst(), "org_unit_id": unit,
     })
 }
 

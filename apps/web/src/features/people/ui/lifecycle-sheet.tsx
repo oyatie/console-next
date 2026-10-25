@@ -13,7 +13,7 @@ import { inBounds } from "../../../ui/date/days";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { User } from "lucide-react";
 import { LifecycleChanges } from "./lifecycle-changes";
-import { unitPath } from "../../../reference/org/present";
+import { ancestor, unitPath } from "../../../reference/org/present";
 import { jobTitlesQuery, type LifecycleEvent } from "../api";
 import { unitByName, type SheetVerb } from "../domain/lifecycle";
 import { returnRequired } from "../domain/leave";
@@ -22,6 +22,7 @@ import { type JobTitle, activeTitles, currentTitle, DEMOTION_REASON, isDemotion 
 import { fmtDay, fmtDayShort, whoLine } from "../present";
 import { Consequence } from "./lifecycle-consequence";
 import { Composer } from "../../../ui/composer/composer";
+import { useTrailPreview } from "./lifecycle-trail-preview";
 import { Changed, LockedDate, Restored } from "./lifecycle-notes";
 import { LifecycleRefusal } from "./lifecycle-refusal";
 import { LifecycleWhat, LifecycleWhy } from "./lifecycle-what";
@@ -83,6 +84,10 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
     comment: locked ? from!.comment : "",
   });
   const v0 = f.draft;
+  const preview = useTrailPreview([kind], {
+    effective_date: v0.date || undefined,
+    variant: kind === "TRANSFER" && v0.unit && ancestor([...units], units.find((u) => u.id === v0.unit), "SITE")?.id !== ancestor([...units], units.find((u) => u.id === e.org_unit_id), "SITE")?.id ? "WORKPLACE_CHANGE" : undefined,
+  });
   const [tried, setTried] = useState(false);
   const [pin, setPin] = useState(head);
   const [reread, setReread] = useState(false);
@@ -217,6 +222,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
   );
   return (
     <Composer
+      sections={preview}
       localDraft
       onSaveDraft={onClose}
       kicker={<><User size={12} aria-hidden />{t("lifecycle.kicker", { name: e.name, number: e.employee_number ?? "—", where: [here?.split(" › ").slice(-2).join(" › ") ?? e.org_unit, e.position].filter(Boolean).join(" · ") })}</>}

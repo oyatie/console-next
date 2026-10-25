@@ -13,7 +13,8 @@ type FilingBasis = {code: string; citation: FilingCitation; applicability_citati
  exclusions: {type: string; weekly?: number | null; pension_exceptions?: boolean; days_exception?: number | null; hours_exception?: number | null}[]; covered_by: string | null; penalty: {citation: FilingCitation; delay_won: number[]; per_worker: boolean; cap_won: number | null} | null};
 // Served by CX-statutory's OpenAPI. INTEG replaces this overlay when regenerating schema.d.ts.
 export type FilingTask = {
-  event_id: string; employee_id: string; name: string; employee_number: string | null;
+  lifecycle_case_id?: string | null;
+  event_id: string; filing_obligation_id?: string | null; opens_in_days?: number | null; employee_id: string; name: string; employee_number: string | null;
   kind: string; insurer: string; effective_date: string; legal_entity_id: string | null;
   workplace_id: string | null; workplace_name: string | null; due_date: string | null;
   due_in_days: number | null; deadline_status: string; version: number; completed_on: string | null;
@@ -34,7 +35,7 @@ type Read<T, Q> = { parameters: { query?: Q }; responses: { 200: { content: { "a
 type RegisterQuery = { workplace_id: string; as_of: string; after?: string; limit?: number };
 export type StatutoryPaths = {
   "/api/v1/statutory/workplaces": { get: Read<{id: string; name: string; entity_name: string | null}[], {as_of?: string}> };
-  "/api/v1/statutory/insurance-filings": { get: Read<FilingPage, {workplace_id?: string; legal_entity_id?: string; search?: string; state?: string; after?: string; limit?: number; event_id?: string; kind?: string; insurer?: string}>; post: {parameters: {header: {"Idempotency-Key": string}}; requestBody: {content: {"application/json": {source_event_id: string; filing_kind: string; anchor_on: string}}}; responses: {200: {content: {"application/json": FilingPage}}}} };
+  "/api/v1/statutory/insurance-filings": { get: Read<FilingPage, {workplace_id?: string; legal_entity_id?: string; search?: string; state?: string; after?: string; limit?: number; event_id?: string; filing_id?: string; kind?: string; insurer?: string}>; post: {parameters: {header: {"Idempotency-Key": string}}; requestBody: {content: {"application/json": {source_event_id: string; filing_kind: string; anchor_on: string}}}; responses: {200: {content: {"application/json": FilingPage}}}} };
   "/api/v1/statutory/worker-register": { get: Read<RegisterPage, RegisterQuery> };
   "/api/v1/statutory/worker-register/export": { get: { parameters: {query: RegisterQuery & {format: "xlsx" | "pdf"; export_purpose: string} }; responses: {200: {content: {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string; "application/json": RegisterPage}}} } };
   "/api/v1/statutory/insurance-filings/{event_id}/{kind}/{insurer}": {

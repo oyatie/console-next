@@ -69,6 +69,10 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
     surface("registry", console_registry_rest::REGISTRY_ROUTE_PATHS),
     surface("hr", crate::hr::HR_ROUTE_PATHS),
     surface(
+        "hr-lifecycle-cases",
+        console_hr_rest::cases::LIFECYCLE_CASE_ROUTE_PATHS,
+    ),
+    surface(
         "hr-certificates",
         console_hr_rest::certificates::CERTIFICATE_ROUTE_PATHS,
     ),

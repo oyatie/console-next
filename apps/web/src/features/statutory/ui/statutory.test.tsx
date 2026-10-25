@@ -13,6 +13,7 @@ vi.mock("@tanstack/react-router", async original => ({
   ...await original<typeof import("@tanstack/react-router")>(),
   useSearch: () => ({}), useNavigate: () => () => {},
 }));
+import { FilingWindow } from "./filing-deadline";
 
 beforeAll(() => loadCatalog("ko"));
 test("a held workplace read reserves the statutory page layout", async () => {
@@ -46,4 +47,14 @@ test("an unverified clock never invents a deadline, and a held overdue date keep
   const overdue = renderToStaticMarkup(<FilingDeadline task={{ ...task, due_date: "2026-09-15", due_in_days: -3, deadline_status: "HOLD" }} />);
   expect(overdue).toContain("기한 지남");
   expect(overdue).toContain("노무사 검토 전");
+});
+
+test("a filing window shows one opening and the legal deadline without a duplicate target", () => {
+  const task = { opens_on: "2026-10-01", target_on: "2026-10-01", due_date: "2026-10-15", due_in_days: 2, deadline_status: "HOLD" } as FilingTask;
+  const html = renderToStaticMarkup(<FilingWindow task={task} />);
+  expect(html.match(/dateTime="2026-10-01"/g)).toHaveLength(1);
+  expect(html).toContain(t("statutory.opens"));
+  expect(html).toContain(t("statutory.deadline"));
+  expect(html).toContain("D-2");
+  expect(html).not.toContain(t("statutory.target"));
 });

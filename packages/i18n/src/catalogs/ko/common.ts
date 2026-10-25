@@ -18,6 +18,7 @@ export const koCommon = {
   "common.failed.code.workplace_not_open_on_date": "사업장 또는 법인의 개설일 전에는 배치할 수 없습니다. 개설일 이후 날짜를 선택하거나 다른 사업장을 선택하십시오.",
   "common.failed.code.rehire_date_not_after_exit": "재입사일은 퇴직일부터 선택하십시오.",
   "common.failed.code.filing_applicability_unverified": "신고 적용 사실을 확인하지 않아 저장하지 않았습니다. 근로시간·국적 등 필요한 사실을 확인하고, 생년월일이 다르면 직원 기록에서 정정하십시오.",
+  "common.failed.code.filing_rule_unverified": "법무 검토 전입니다. 신고 규칙이 확인된 뒤 처리 기록을 남길 수 있습니다.",
   "common.failed.code.support_reference_cross_tenant_denied": "다른 고객 계정의 지원 참조 번호는 조회할 수 없습니다.",
   "common.failed.code.support_reference_grant_required": "지원 참조 번호를 조회할 권한이 없습니다. 관리자에게 권한을 요청하십시오.",
   "common.failed.code.support_reference_not_found": "지원 참조 번호를 찾지 못했습니다. 번호를 확인하십시오.",

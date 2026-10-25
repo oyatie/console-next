@@ -139,3 +139,24 @@ pub async fn validate_reason_code(
     }
     validate_reason(domain, code, note, &tenant).map_err(|error| coded(error.into()))
 }
+
+/// The `lifecycle_cancel` reason of a correction or rescission.
+pub(super) async fn check_void_reason(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    org: OrgId,
+    reason_code: &str,
+    note: Option<&str>,
+) -> Result<(), HrError> {
+    if note.is_some_and(|n| n.chars().count() > 1000) {
+        return Err(HrError::validation("note must be at most 1000 characters"));
+    }
+    validate_reason_code(
+        tx,
+        org,
+        ReasonDomain::LifecycleCancel,
+        reason_code.trim(),
+        note,
+    )
+    .await
+    .map(|_| ())
+}

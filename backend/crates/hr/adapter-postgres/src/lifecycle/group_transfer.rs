@@ -160,11 +160,13 @@ pub async fn record_group_transfer_act(
     let ids = (*org.as_uuid(), event, employee, *actor.as_uuid());
     record_group_transfer(tx, ids, start, to, facts).await?;
     if !facts.continuity.opens_settlement_case() {
+        crate::cases::group_transfer::link(tx, *org.as_uuid(), event, None).await?;
         return Ok((None, Vec::new()));
     }
     let on = parse_yyyy_mm_dd(start)?;
     let (case, audit) =
         open_settlement_case(tx, (org, actor), (employee, event, branch), on, note).await?;
+    crate::cases::group_transfer::link(tx, *org.as_uuid(), event, Some(case)).await?;
     Ok((Some(case), vec![audit]))
 }
 

@@ -31,13 +31,13 @@ async fn position(tx: &mut PgConnection, employee: Uuid) -> String {
         .unwrap()
 }
 
-impl LifecycleApplyHooks<PgConnection> for Recording {
+impl LifecycleApplyHooks<sqlx::Transaction<'_, sqlx::Postgres>> for Recording {
     async fn before_apply(
         &self,
-        tx: &mut PgConnection,
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
         event: &LifecycleApplyEvent<'_>,
     ) -> Result<(), KernelError> {
-        let seen = position(tx, event.employee_id).await;
+        let seen = position(tx.as_mut(), event.employee_id).await;
         self.calls.lock().unwrap().push(format!(
             "before {} {} {seen}",
             event.event_type, event.effective_date
@@ -50,17 +50,17 @@ impl LifecycleApplyHooks<PgConnection> for Recording {
 
     async fn after_apply(
         &self,
-        tx: &mut PgConnection,
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
         event: &LifecycleApplyEvent<'_>,
     ) -> Result<(), KernelError> {
-        let seen = position(tx, event.employee_id).await;
+        let seen = position(tx.as_mut(), event.employee_id).await;
         self.calls.lock().unwrap().push(format!("after {seen}"));
         Ok(())
     }
 
     async fn on_rescind(
         &self,
-        _tx: &mut PgConnection,
+        _tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
         _event: &LifecycleApplyEvent<'_>,
     ) -> Result<(), KernelError> {
         self.calls.lock().unwrap().push("rescind".to_owned());

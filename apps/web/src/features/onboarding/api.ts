@@ -10,8 +10,8 @@ export const checklistQuery = get("/api/v1/onboarding/checklist");
 export const goLivePreviewQuery = { ...get("/api/v1/onboarding/go-live/preview"), refetchOnMount: "always" as const };
 /** Exact service terms, read only when the contracting administrator opens the text. */
 export const termsQuery = { ...get("/api/v1/onboarding/terms"), staleTime: 0, refetchOnMount: "always" as const };
-/** Everything setup may change: the checklist, the entity reads it counts, and the org reads. */
-export const SETUP_READS: PathPrefix[] = ["/api/v1/onboarding", "/api/v1/legal-entities", "/api/v1/org-structure", "/api/v1/org-units", "/api/v1/employment-assignments"];
+/** Setup changes the checklist and entities; go-live also changes lifecycle deadlines and inbox work. */
+export const SETUP_READS: PathPrefix[] = ["/api/v1/onboarding", "/api/v1/legal-entities", "/api/v1/org-structure", "/api/v1/org-units", "/api/v1/employment-assignments", "/api/v1/lifecycle-case-templates", "/api/v1/lifecycle-cases", "/api/v1/employees", "/api/v1/statutory", "/api/v1/me/action-inbox"];
 
 export const skipStep = (step: "org" | "employees" | "roles") => unwrap(api.POST("/api/v1/onboarding/steps/{step}/skip", { params: { path: { step } } }));
 /** The contracting admin accepts the service terms for the tenant (decision #3), bound to the exact document reviewed. */

@@ -1,5 +1,6 @@
 // What an account may do, in words every screen shares (governance-22): one line per grant — role · scope · until —
 // with its levels and the server's caveats. My access, the person-access view and the refused state all read it.
+import type { components } from "@console/api/schema";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { codeText } from "../../lib/labels";
@@ -56,3 +57,6 @@ export const grantRefusal = (code: string) => {
   const id = `accessCodes.refusal.${code}`;
   return isMessageId(id) ? t(id) : undefined;
 };
+
+export const domainText = (key: string) => codeText(`accessCodes.domain.${key}`, key);
+export const levelText = (level: components["schemas"]["AccessLevel"]) => t(`accessCodes.level.${level}`);

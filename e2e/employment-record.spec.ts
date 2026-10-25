@@ -1,26 +1,53 @@
 import { expect, test } from "@playwright/test";
+import type { components } from "@console/api/schema";
+import { loadCatalog } from "@console/i18n";
+import { trailItemLabel } from "../apps/web/src/features/people/present";
+import { filingLabel } from "../apps/web/src/features/statutory/present";
 import { expectAccessible } from "./a11y";
+import { apiAs } from "./chaos";
 import { kstDate, option, registerEmployee } from "./flows";
 import { staffedTenant } from "./setup-flows";
 import { fillDate } from "./sheet";
 
-// The employment record on the employee page (EMP-MODEL): the onboarding checklist leads to the form that records
-// each missing item, facts are written with a test of what was read, a contract's required terms follow its kind,
-// a correction is a new row, and the probation end is recorded once.
-test("employment record: checklist to facts, a contract and its correction, probation end", { tag: "@hr" }, async ({ browser }) => {
+test.beforeAll(() => loadCatalog("ko"));
+
+// The hire trail reads the event's case; facts and contract corrections keep their own recorded histories.
+test("employment record: hire trail, facts, a contract and its correction, probation end", { tag: "@hr" }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "facts", "기록상사");
+  const read = apiAs(admin);
   await registerEmployee(admin, { name: "한수습", number: "FA-0001", position: "사원", hired: kstDate(-120) });
 
-  const onboarding = admin.getByRole("region", { name: "입사 준비" });
+  const person = new URL(admin.url()).pathname.split("/").pop()!;
+  type Case = components["schemas"]["LifecycleCase"];
+  const hires = (await read<Case[]>(`/api/v1/employees/${person}/lifecycle-cases`)).filter((value) => value.kind === "HIRE");
+  expect(hires).toHaveLength(1);
+  const hire = hires[0]!;
+  const trail = admin.getByRole("region", { name: "서류 · 법정 기한 · 할 일", exact: true });
   const facts = admin.getByRole("region", { name: "고용 기록" });
   const contracts = admin.getByRole("region", { name: "근로계약" });
-  await expect(onboarding.getByRole("listitem").filter({ hasText: "생년월일 등록" })).toContainText("남음");
-  await expect(onboarding.getByRole("listitem").filter({ hasText: "4대보험 취득신고" })).toContainText("따로 확인");
+  await expect(trail.getByRole("listitem")).toHaveCount(hire.items.length);
+  for (const item of hire.items) {
+    const label = item.filing_kind && item.insurer ? `${filingLabel(item.insurer)} ${filingLabel(item.filing_kind)}` : trailItemLabel(item.label_key, item.label);
+    const row = trail.getByRole("listitem").filter({ hasText: label });
+    await expect(row).toHaveCount(1);
+    if (item.status_code === "PRE_CONSOLE") {
+      await expect(row).toContainText("운영 시작 전");
+      await expect(row).not.toContainText("기한 미확인");
+      await expect(row.locator("time")).toHaveCount(0);
+    } else if (item.due_rule_ref || item.opens_rule_ref) {
+      await expect(row).toContainText("시작");
+      await expect(row).toContainText("기한");
+    } else {
+      await expect(row).not.toContainText("시작 미확인");
+      await expect(row).not.toContainText("기한 미확인");
+    }
+    if (item.status === "DONE_OBSERVED") await expect(row).toContainText("시스템 확인 완료");
+  }
+  await expect(admin.getByRole("region", { name: "입사 준비", exact: true })).toHaveCount(0);
   await expect(facts).toContainText("미등록");
   await expectAccessible(admin, "employee page with the employment record");
 
-  // A missing item opens the form that records it.
-  await onboarding.getByRole("button", { name: "생년월일 등록 기록" }).click();
+  await trail.getByRole("button", { name: "생년월일 등록 기록", exact: true }).click();
   const form = facts.getByRole("form", { name: "고용 기록 수정" });
   await expect(form).toBeVisible();
   await form.getByRole("button", { name: "고용 기록 저장" }).click();
@@ -36,7 +63,8 @@ test("employment record: checklist to facts, a contract and its correction, prob
   await expect(facts).not.toContainText("1990");
   await expect(facts).toContainText("hansusup@employment.example");
   await expect(facts).toContainText("주민등록번호");
-  await expect(onboarding.getByRole("listitem").filter({ hasText: "생년월일 등록" })).toContainText("완료");
+  await expect(trail.getByRole("listitem").filter({ hasText: "생년월일 등록" })).toContainText("시스템 확인 완료");
+  await expect(trail.getByRole("listitem")).toHaveCount(hire.items.length);
 
   // The probation end is past: the clock asks for the end to be confirmed, once.
   await expect(facts).toContainText("종료 확인 필요");
@@ -45,10 +73,10 @@ test("employment record: checklist to facts, a contract and its correction, prob
   await expect(facts.getByRole("button", { name: "수습 종료 확인" })).toHaveCount(0);
 
   // A fixed-term contract needs its end and, as a labour contract, its weekly hours.
-  await contracts.getByRole("button", { name: "계약 기록" }).click();
+  await trail.getByRole("button", { name: "입사일부터의 근로계약 기록", exact: true }).click();
   const record = contracts.getByRole("form", { name: "계약 기록" });
   await record.getByLabel(/^계약 종류/).selectOption({ label: "기간제 근로계약" });
-  // A contract that starts on the hire date settles the checklist item.
+  // The contract begins on the recorded hire date.
   await fillDate(record, kstDate(-120), "계약 시작일");
   await record.getByRole("textbox", { name: /^임금/ }).fill("3000000");
   await option(admin, "임금 단위", "월급").click();
@@ -62,7 +90,8 @@ test("employment record: checklist to facts, a contract and its correction, prob
   await expect(contracts.getByRole("listitem")).toHaveCount(1);
   await expect(contracts.getByRole("listitem")).toContainText("현재 계약");
   await expect(contracts.getByRole("listitem")).toContainText("주 40시간");
-  await expect(onboarding.getByRole("listitem").filter({ hasText: "입사일부터의 근로계약 기록" })).toContainText("완료");
+  await expect(trail.getByRole("listitem").filter({ hasText: "입사일부터의 근로계약 기록" })).toContainText("시스템 확인 완료");
+  expect((await read<Case[]>(`/api/v1/employees/${person}/lifecycle-cases`)).filter((value) => value.kind === "HIRE").map((value) => value.id)).toEqual([hire.id]);
 
   // A correction is a new row; the corrected one leaves the live history and stays on request.
   await contracts.getByRole("button", { name: "정정", exact: true }).click();

@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required:
+  - "id"
+  - "employee_id"
+  - "kind"
+  - "state"
+  - "trigger_id"
+  - "effective_date"
+  - "linked_case_id"
+  - "cancellation_reason"
+  - "version"
+  - "items"
+properties:
+  id:
+    type: "string"
+    format: "uuid"
+  employee_id:
+    type: "string"
+    format: "uuid"
+  kind:
+    type: "string"
+  state:
+    type: "string"
+  trigger_id:
+    type: "string"
+    format: "uuid"
+    nullable: true
+  effective_date:
+    type: "string"
+  linked_case_id:
+    type: "string"
+    format: "uuid"
+    nullable: true
+  cancellation_reason:
+    type: "string"
+    nullable: true
+  version:
+    type: "integer"
+    format: "int64"
+  items:
+    type: "array"
+    items:
+      "$ref": "#/components/schemas/LifecycleCaseItem"

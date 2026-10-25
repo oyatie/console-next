@@ -1,9 +1,9 @@
 //! Statutory rule codes (BW-30).
 //!
-//! Each code names one legal number in `statutory_rules`. The number itself
+//! Each code names one legal number or unverified draft in `lifecycle_statutory_rules`. The number itself
 //! lives only in the register row (migration-only, HOLD until reviewed); this
-//! file names keys, never values. The `code` CHECK in the migration lists the
-//! same set as [`ALL`].
+//! file names keys, never values. The core and draft tables' `code` CHECKs
+//! together list the same set as [`ALL`].
 
 /// 근로기준법 §36: days from exit to pay every outstanding amount (금품청산).
 pub const FINAL_PAY_DUE_DAYS: &str = "FINAL_PAY_DUE_DAYS";
@@ -47,7 +47,7 @@ pub const DISMISSAL_PROTECTION_TAIL_DAYS: &str = "DISMISSAL_PROTECTION_TAIL_DAYS
 pub const CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS: &str = "CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS";
 
 /// Every statutory rule code, in migration order.
-pub const ALL: [&str; 38] = [
+pub const ALL: [&str; 42] = [
     DISMISSAL_PROTECTION_TAIL_DAYS,
     CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS,
     FINAL_PAY_DUE_DAYS,
@@ -86,6 +86,10 @@ pub const ALL: [&str; 38] = [
     "ins.deadline.resume.nhis",
     "ins.deadline.resume.ei",
     "ins.deadline.resume.iaci",
+    "ins.deadline.change.nps",
+    "ins.deadline.change.nhis",
+    "ins.deadline.change.ei",
+    "ins.deadline.change.iaci",
 ];
 
 /// The statutory-filings deadline family (SF §3.1, `ins.deadline.<event>.<insurer>`)

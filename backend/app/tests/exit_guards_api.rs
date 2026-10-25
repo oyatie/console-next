@@ -41,13 +41,10 @@ async fn fixture(pool: &PgPool) -> (Ctx, String) {
     let (org, user) = tenant(pool, &["SUPER_ADMIN"]).await;
     let c = ctx(pool, org, user, &["SUPER_ADMIN"], None).await;
     let (_, _, branch, unit) = structure(&c).await;
-    let (s, e) = c
-        .call(
-            "POST",
-            "/api/v1/employees",
-            Some(employee_body("EG-1", &branch, &unit)),
-        )
-        .await;
+    let mut body = employee_body("EG-1", &branch, &unit);
+    // The fixed October exits need their original service period for notice guards.
+    body["hire_date"] = json!("2026-01-02");
+    let (s, e) = c.call("POST", "/api/v1/employees", Some(body)).await;
     assert_eq!(s, StatusCode::CREATED, "{e}");
     go_live::go_live(pool, org).await;
     (c, e["employee"]["id"].as_str().unwrap().into())

@@ -2,6 +2,10 @@ operationId: listInsuranceFilings
 tags: [HR]
 parameters:
 - in: query
+  name: filing_id
+  required: false
+  schema: { type: string, format: uuid }
+- in: query
   name: workplace_id
   required: false
   schema: { type: string }

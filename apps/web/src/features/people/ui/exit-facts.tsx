@@ -73,7 +73,7 @@ export function CasePanel({ c }: { c: Case }) {
       </dl>
       <CaseFacts c={c} />
       {c.dismissal_notice && <NoticeRecord notice={c.dismissal_notice} />}
-      <ExitDeadlines deadlines={c.settlement_deadlines} />
+      <ExitDeadlines deadlines={c.settlement_deadlines} employeeId={c.employee_id} exitCaseId={c.id} />
       {/* While this user prepares the settlement, the step's form shows the figures beside its inputs: once is enough. */}
       {c.settlement_package && forward !== "prepare_settlement" && <SettlementFigures pkg={c.settlement_package} />}
       {/* Last: the history loads after the case, and above the figures it pushed them down. */}

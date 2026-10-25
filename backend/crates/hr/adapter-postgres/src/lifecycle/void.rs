@@ -12,7 +12,6 @@ use console_hr_domain::lifecycle::event::EmployeeForLifecycle;
 use console_hr_domain::lifecycle::schedule::ScheduleChange;
 use console_kernel_core::{KernelError, OrgId, UserId};
 use console_ontology_canonical_adapter_postgres::{employment, employment_job_title};
-use console_settings_domain::code_lists::ReasonDomain;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::Row;
@@ -25,7 +24,8 @@ use super::placement::undo_move;
 use super::record::load_lifecycle_event;
 use super::schedule_sql::{replay_lifecycle_schedule, scheduled_cascades};
 use super::store::load_employee_for_lifecycle;
-use super::title_reason::{coded, validate_reason_code};
+pub(super) use super::title_reason::check_void_reason;
+use super::title_reason::coded;
 use super::types::EmployeeLifecycleEventResponse;
 use crate::HrError;
 
@@ -248,7 +248,7 @@ pub(super) async fn restore_head(
         &original.event_type,
         &original.effective_date,
     )?;
-    rescinded(tx.as_mut(), &event).await?;
+    rescinded(tx, &event).await?;
     Ok(live)
 }
 
@@ -307,30 +307,21 @@ pub(super) async fn rescind_tx(
     .bind(batch_id)
     .execute(tx.as_mut())
     .await?;
+    crate::cases::open::cancel(
+        tx,
+        org_uuid,
+        original.id,
+        request
+            .note
+            .as_deref()
+            .map(str::trim)
+            .filter(|n| !n.is_empty())
+            .unwrap_or(request.reason_code.trim()),
+    )
+    .await?;
     let rescinded = load_lifecycle_event(tx, org_uuid, id).await?;
     Ok(RescindOutcome {
         cascades,
         rescinded: Some(rescinded),
     })
-}
-
-/// The `lifecycle_cancel` reason of a correction or rescission.
-pub(super) async fn check_void_reason(
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    org: OrgId,
-    reason_code: &str,
-    note: Option<&str>,
-) -> Result<(), HrError> {
-    if note.is_some_and(|n| n.chars().count() > 1000) {
-        return Err(HrError::validation("note must be at most 1000 characters"));
-    }
-    validate_reason_code(
-        tx,
-        org,
-        ReasonDomain::LifecycleCancel,
-        reason_code.trim(),
-        note,
-    )
-    .await
-    .map(|_| ())
 }

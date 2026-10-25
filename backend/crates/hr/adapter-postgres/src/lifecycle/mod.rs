@@ -3,6 +3,7 @@
 
 pub mod prepare;
 pub mod record;
+mod record_write;
 pub mod rows;
 pub mod rules;
 pub mod schedule_sql;

@@ -245,4 +245,10 @@ pub(super) const CONFIGURED_ROUTE_SOURCES: &[RouteSource] = &[
         source: include_str!("../../../crates/hr/rest/src/statutory.rs"),
         ignored_route_refs: &[],
     },
+    RouteSource {
+        name: "HR lifecycle trail REST router",
+        surface: "hr-lifecycle-cases",
+        source: include_str!("../../../crates/hr/rest/src/cases.rs"),
+        ignored_route_refs: &[],
+    },
 ];

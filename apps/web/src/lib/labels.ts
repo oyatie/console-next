@@ -90,8 +90,6 @@ export const PAY_UNIT = values("payUnit", ["MONTHLY", "HOURLY", "DAILY", "ANNUAL
 export const CONTRACT_KIND = values("contractKind", ["OPEN_ENDED", "FIXED_TERM", "PART_TIME", "DAILY", "DISPATCH_OUTSOURCING", "EXECUTIVE_MANDATE", "FREELANCE_SERVICE"]);
 export const ID_TYPE = values("idType", ["RRN", "ARC", "DOMESTIC_RESIDENCE", "NOT_ISSUED"]);
 export const PROBATION_STATE = toned("probationState", { NONE: "neutral", RUNNING: "info", DUE_SOON: "warn", OVERDUE: "danger", CONFIRMED: "ok" });
-export const CHECKLIST_ITEM = values("checklistItem", ["CONTRACT_RECORDED", "CONTRACT_DELIVERED", "ID_REGISTERED", "BIRTH_DATE_RECORDED", "PAY_RECORDED", "INSURANCE_ACQUISITION_REPORTED"]);
-export const CHECKLIST_STATE = toned("checklistState", { DONE: "ok", OPEN: "warn", FOLLOW_UP: "warn", NOT_TRACKED: "neutral" });
 
 const known = (e: Enum, v: string) => {
   const id = `enum.${e.type}.${v}`;

@@ -7,6 +7,11 @@ import { expect, test } from "vitest";
 // @ts-expect-error: a plain .mjs script, typed by its use here
 import { check, editableLabels, required, operationGaps, checkOperations, lowerOperations, releasePackages, operationsAtBase } from "./check-reach.mjs";
 
+test("a retired N-1 read stays served without requiring a product call", () => {
+  const spec = { paths: { "/api/v1/employees/{id}/onboarding-checklist": { get: { deprecated: true } }, "/api/v1/lifecycle-cases/{id}": { get: {} } } };
+  expect(operationGaps({ spec, files: [], crates: new Map() })).toEqual(["GET /api/v1/lifecycle-cases/{id}"]);
+});
+
 const cell = (be: string[], st = "ok") => ({ st, be });
 const lifecycle = {
   records: [

@@ -54,6 +54,9 @@ fn door(resource_type: &str) -> Option<Door> {
         | "org_change"
         | "entity_setup_batch" => Door::Capability(Feature::OrgChangeRead),
         "employee" | "exit_case" => Door::Scoped(Feature::EmployeeDirectoryRead),
+        "lifecycle_case" | "lifecycle_case_item" => {
+            Door::Capability(Feature::EmployeeDirectoryRead)
+        }
         "change_request" | "import_run" => Door::Scoped(Feature::EmployeeDirectoryManage),
         // Locks carry no branch: org-wide close authority only.
         "period_lock" => Door::Scoped(Feature::PeriodLockManage),
@@ -283,6 +286,38 @@ mod tests {
         ];
         let reader = no_roles.into();
         assert!(frames_for(&reader, &rows, 50, OffsetDateTime::now_utc()).is_empty());
+    }
+
+    #[test]
+    fn lifecycle_hints_reach_directory_readers_without_record_ids() {
+        let rows = [
+            row(1, "lifecycle_case", None, None),
+            row(2, "lifecycle_case_item", None, None),
+        ];
+        for scope in [
+            BranchScope::All,
+            BranchScope::single(BranchId::from_uuid(uuid::Uuid::new_v4())),
+        ] {
+            let holder = reader(&[Feature::EmployeeDirectoryRead], scope);
+            for hint in &rows {
+                assert!(may_read(&holder, hint), "{}", hint.resource_type);
+            }
+            let frames = frames_for(&holder.into(), &rows, 50, OffsetDateTime::now_utc());
+            assert_eq!(
+                ids(&frames),
+                vec![
+                    ("lifecycle_case".to_owned(), None),
+                    ("lifecycle_case_item".to_owned(), None),
+                ]
+            );
+        }
+        for features in [&[][..], &[Feature::OrgChangeRead][..]] {
+            let denied = reader(features, BranchScope::All);
+            for hint in &rows {
+                assert!(!may_read(&denied, hint), "{}", hint.resource_type);
+            }
+            assert!(frames_for(&denied.into(), &rows, 50, OffsetDateTime::now_utc()).is_empty());
+        }
     }
 
     #[test]

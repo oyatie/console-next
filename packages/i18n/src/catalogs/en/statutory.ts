@@ -1,4 +1,5 @@
 export const enStatutory = {
+  "statutory.CHANGE": "Workplace change filing",
   "statutory.codeHold": "Legal review pending",
   "statutory.latest": "Review current list",
   "statutory.title": "Statutory filings and records", "statutory.insurance": "Insurance filings", "statutory.register": "Worker register",

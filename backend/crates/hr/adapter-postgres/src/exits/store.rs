@@ -222,6 +222,7 @@ pub async fn reverse_exit_lifecycle_event(
 ) -> Result<Option<(Uuid, String)>, HrError> {
     // The employee first, then the event: the lock order every writer shares.
     let current = load_employee_for_lifecycle(tx, org_uuid, context.employee_id).await?;
+    crate::cases::open::cancel(tx, org_uuid, context.id, reason).await?;
     let linked: Option<(Uuid, String, Option<String>)> = sqlx::query_as(
         r#"
         SELECT l.id, l.state, l.from_status

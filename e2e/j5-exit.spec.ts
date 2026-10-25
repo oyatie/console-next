@@ -11,7 +11,7 @@ import { holdRead } from "./helpers/read";
 
 const head = (page: Page, name: string) => page.getByRole("heading", { name: new RegExp(name), level: 1 }).locator("..");
 // On the record the exit card sits inside the 휴직·퇴직 section (both named for 퇴직): the inner one is the exit card.
-const exitPanel = (page: Page) => page.getByRole("region", { name: "퇴직" }).last();
+const exitPanel = (page: Page) => new URL(page.url()).pathname.startsWith("/people/exits/") ? page.getByRole("main") : page.getByRole("region", { name: "퇴직" }).last();
 
 /** Report the exit (in a side sheet over the record) and confirm it as HR (the confirmation exits the employee). */
 async function reportAndConfirm(admin: Page, c: ReturnType<typeof clickCounter>, reason: string, opts: { probe?: boolean } = {}) {
@@ -51,16 +51,16 @@ async function confirmAsHr(admin: Page, c: ReturnType<typeof clickCounter>, opts
     await expect(acks.getByRole("checkbox").first()).toBeFocused();
   }
   await signOff(acks, c.click);
-  const ends = opts.probe ? await holdRead(admin, `**/api/v1/employees/${new URL(admin.url()).pathname.split("/").at(-1)}/end-options`) : null;
+  const record = opts.probe ? await holdRead(admin, "**/api/v1/hr/exit-cases?employee_id=*") : null;
   await c.click(commit);
-  if (ends) {
-    await ends.requested;
+  if (record) {
+    await record.requested;
     try {
       await expectAccessible(admin, "J5: confirmation waits for record reads");
       await expect(dialog).toBeVisible();
       await expect(commit).toBeDisabled();
     } finally {
-      await ends.release();
+      await record.release();
     }
   }
   await expect(dialog).toBeHidden();
@@ -100,7 +100,14 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   const queue = exec.getByRole("region", { name: "업무함", exact: true }).getByRole("listitem").filter({ hasText: "강퇴직" }).filter({ has: exec.getByRole("link", { name: "본사 퇴직 확인", exact: true }) });
   await expect(queue).toContainText("강퇴직");
   await expectAccessible(exec, "J5: Home exit queue");
-  await c.click(queue.getByRole("link", { name: "본사 퇴직 확인", exact: true }));
+  const trailRead = await holdRead(exec, /\/api\/v1\/(?:lifecycle-cases\/[^/?]+|employees\/[^/]+\/lifecycle-cases)(?:\?|$)/);
+  try {
+    await c.click(queue.getByRole("link", { name: "본사 퇴직 확인", exact: true }));
+    await trailRead.requested;
+    await expect(exec.getByRole("heading", { name: "지금 · 본사 확인", exact: true })).toBeHidden();
+  } finally {
+    await trailRead.release();
+  }
   // The case page puts the HQ step's form inline at the current step and focuses it.
   const hq = exec.getByRole("region", { name: /지금/ });
   await expect(hq.getByRole("heading", { name: "지금 · 본사 확인" })).toBeFocused();

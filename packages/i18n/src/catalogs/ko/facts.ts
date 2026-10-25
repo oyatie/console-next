@@ -63,10 +63,6 @@ export const koFacts = {
   "facts.contract.corrected": "{name}님의 계약 정정을 기록했습니다",
   "facts.escConfirm": "작성 중인 내용이 있습니다 · 한 번 더 누르면 닫습니다",
   "facts.errors": "{count}개 항목을 확인하십시오",
-  "facts.checklist.title": "입사 준비",
-  "facts.checklist.done": "{done}/{total} 완료",
-  "facts.checklist.fix": "기록",
-  "facts.checklist.notTracked": "이 항목은 아직 확인 기록을 받지 않습니다. 따로 챙기십시오.",
   "facts.contract.overlap": "{kind} 계약({start} ~ {end})과 기간이 겹칩니다. 새로 등록하는 대신 이 계약을 정정하십시오.",
   "facts.contract.overlap.correct": "{start} 계약 정정",
 } as const;

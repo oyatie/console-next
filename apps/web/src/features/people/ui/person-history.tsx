@@ -19,6 +19,7 @@ import { describeEvent, fmtDay, fmtGutter } from "../present";
 import type { LifecycleEvent } from "../api";
 import { rowVerbs } from "./history-verbs";
 import { LifecycleReceiptActions } from "./lifecycle-receipt";
+import { LifecycleTrail } from "./lifecycle-trail";
 import type { Done } from "./person-act";
 import s from "./person.module.css";
 
@@ -73,7 +74,7 @@ export function PersonHistory({ employee, events, verbs, manage, today, done, on
       meta: <>{t("person.history.recorded", { actor: actor(x.created_by_name), at: fmtDateTime(x.created_at) })}<ActorBadge kind={x.actor_kind} /><OutcomeLink id={x.command_id} /></>,
       struck: x.state === "CANCELLED" || Boolean(x.voided_by),
       highlight: done?.eventId === x.id,
-      verbs: manage ? rowVerbs(x, { employee, all, offered, onAct }) : undefined,
+      verbs: <>{manage && rowVerbs(x, { employee, all, offered, onAct })}<LifecycleTrail employeeId={employee.id} eventId={x.id} /></>,
     };
   };
   return (

@@ -7,7 +7,7 @@ import type { Composer } from "../../../ui/composer/composer";
 import { RegisterSheet } from "./register-sheet";
 
 const state = vi.hoisted(() => ({ opensOn: "2020-03-02" as string | undefined, error: undefined as unknown, submit: () => {}, mutate: vi.fn() }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ isSuccess: true, isPending: false, isFetching: false, data: { items: [], entities: [], phase: "OPERATING" } }) }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ isSuccess: true, isPending: false, isFetching: false, data: { items: [], entities: [], phase: "OPERATING" } }), useQueries: () => [] }));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ to, children }: { to: string; children: ReactNode }) => <span data-to={to}>{children}</span> }));
 vi.mock("../../../ui/composer/composer", () => ({ Composer: (p: ComponentProps<typeof Composer>) => { state.submit = p.onSubmit!; return <>{p.consequence}{p.children}</>; } }));
 vi.mock("../domain/register", async (original) => {

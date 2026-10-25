@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { browserTestOptimizeDeps } from "../browser-test";
 import { realpathSync } from "node:fs";
 import { dirname } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
@@ -15,7 +16,7 @@ let responseStatus = 200;
 beforeAll(async () => {
   server = await createServer({
     configFile: false, cacheDir: ".cache/vite-query-loss-test",
-    optimizeDeps: { entries: ["apps/web/src/lib/react/query-loss.browser-fixture.tsx"], include: ["react", "react/jsx-dev-runtime", "react-dom/client", "@tanstack/react-query", "@tanstack/react-router", "intl-messageformat", "lucide-react", "openapi-fetch", "react-aria-components"] },
+    optimizeDeps: { ...browserTestOptimizeDeps, entries: ["apps/web/src/lib/react/query-loss.browser-fixture.tsx"] },
     server: { host: "127.0.0.1", port: 0, fs: { allow: [process.cwd(), dirname(realpathSync("node_modules/pretendard"))] } },
   });
   await server.listen();

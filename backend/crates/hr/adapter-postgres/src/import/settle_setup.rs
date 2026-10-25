@@ -83,6 +83,7 @@ async fn setup_leave(
         effective_date: start,
     };
     apply_employment_change(tx, org, employee, change).await?;
+    crate::cases::open::event(tx, org, event).await?;
     crate::import::effects::record(tx, org, run, employee, "setup_leave", event).await?;
     Ok(true)
 }

@@ -125,7 +125,6 @@
 "apps/web/src/features/people/ui/contract-form.tsx": {"dsClass":1},
 "apps/web/src/features/people/ui/contracts-card.tsx": {"dsClass":2},
 "apps/web/src/features/people/ui/duplicate-candidates.tsx": {"dsClass":2},
-"apps/web/src/features/people/ui/employment-record.tsx": {"dsClass":2},
 "apps/web/src/features/people/ui/end-actions.tsx": {"dsClass":1},
 "apps/web/src/features/people/ui/exit-block.tsx": {"dsClass":2},
 "apps/web/src/features/people/ui/exit-facts.tsx": {"dsClass":4},

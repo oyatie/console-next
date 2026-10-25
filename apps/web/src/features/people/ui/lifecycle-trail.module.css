@@ -1,0 +1,4 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* Evidence replaces the item's action without moving the next record control. */
+.evidence { display: flex; align-items: center; contain: inline-size; min-height: calc(var(--row-h) - var(--space-1)); margin: 0; }
+.evidence > a { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

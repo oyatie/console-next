@@ -1,0 +1,110 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required:
+  - "id"
+  - "case_id"
+  - "item_key"
+  - "label"
+  - "label_key"
+  - "kind"
+  - "owner_line"
+  - "status"
+  - "status_code"
+  - "opens_on"
+  - "opens_in_days"
+  - "due_date"
+  - "due_in_days"
+  - "due_disposition"
+  - "due_rule_ref"
+  - "opens_rule_ref"
+  - "basis"
+  - "blocks_close"
+  - "observed_ref"
+  - "exception_id"
+  - "filing_obligation_id"
+  - "version"
+properties:
+  id:
+    type: "string"
+    format: "uuid"
+  case_id:
+    type: "string"
+    format: "uuid"
+  item_key:
+    type: "string"
+  label:
+    type: "string"
+  label_key:
+    type: "string"
+    nullable: true
+  kind:
+    type: "string"
+  owner_line:
+    type: "string"
+    nullable: true
+  status:
+    type: "string"
+  status_code:
+    type: "string"
+    nullable: true
+  opens_on:
+    type: "string"
+    nullable: true
+  opens_in_days:
+    type: "integer"
+    nullable: true
+  due_date:
+    type: "string"
+    nullable: true
+  due_in_days:
+    type: "integer"
+    nullable: true
+  due_disposition:
+    type: "string"
+  due_rule_ref:
+    type: "string"
+    nullable: true
+  opens_rule_ref:
+    type: "string"
+    nullable: true
+  basis:
+    type: "object"
+    additionalProperties: true
+  blocks_close:
+    type: "boolean"
+  observed_ref:
+    type: "object"
+    nullable: true
+    additionalProperties: true
+  exception_id:
+    type: "string"
+    format: "uuid"
+    nullable: true
+  filing_obligation_id:
+    type: "string"
+    format: "uuid"
+    nullable: true
+  version:
+    type: "integer"
+    format: "int64"
+  completion_rule_ref:
+    type: string
+    nullable: true
+  completion_risk:
+    type: string
+    nullable: true
+  record_target:
+    type: string
+    nullable: true
+  waiver_rule_ref:
+    type: string
+    nullable: true
+  completion_reason:
+    type: string
+    nullable: true
+  filing_kind:
+    type: string
+    nullable: true
+  insurer:
+    type: string
+    nullable: true

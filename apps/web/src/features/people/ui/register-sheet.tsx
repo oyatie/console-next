@@ -25,6 +25,7 @@ import { RegisterPerson } from "./register-person";
 import { RegisterPlace } from "./register-place";
 import { RegisterTerms } from "./register-terms";
 import { RegisterToast } from "./register-toast";
+import { useTrailPreview } from "./lifecycle-trail-preview";
 import { useRegister } from "./use-register";
 import s from "./register.module.css";
 import { entityName } from "../../../reference/entity/domain/names";
@@ -90,6 +91,7 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
   const hireRefusal = beforeOpening || openingRefused
     ? place?.opensOn ? t("register.err.beforeOpening", { site: place.site, date: fmtDate(place.opensOn) }) : t("register.err.beforeOpeningUnknown")
     : null;
+  const preview = useTrailPreview(["ONBOARD"], { effective_date: d.hire || undefined });
 
   // A press made while the places are still being read is kept and made once they land (it was a dead click: the
   // place's workplace looked missing for that moment, and was there by the time the gap would have shown).
@@ -138,7 +140,8 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
       pending={reg.isSending}
       locked={reg.isChecking}
       notice={cands.length === 0 ? (reg.error && !openingRefused ? <CommandError error={reg.error} live="assertive" fieldLabel={(field) => field === "name" ? t("register.name") : undefined} own={(code) => (code === "employee_number_taken" && d.numberMode === "manual" && d.number.trim() ? t(`people.new.numberTaken.${numberHolder(reg.error)}`, { number: d.number.trim() }) : peopleRefusal(code))} /> : <RegisterToast inline />) : undefined}
-      consequence={hireRefusal ?? <RegisterFoot d={d} gaps={g} tried={tried} dup={cands.length > 0} place={place?.site && place.unit.kind !== "SITE" ? `${place.site} › ${place.unit.name}` : (place?.unit.name ?? "")} status={status} setup={setup} />}
+      consequence={<div className={s.consequence}>{hireRefusal ?? <RegisterFoot d={d} gaps={g} tried={tried} dup={cands.length > 0} place={place?.site && place.unit.kind !== "SITE" ? `${place.site} › ${place.unit.name}` : (place?.unit.name ?? "")} status={status} setup={setup} />}</div>}
+      sections={preview}
       action={{ kind: "ONBOARD", mode: "apply", count: 1, continuation: "next" }}
       onSubmit={() => { submit(true); }}
       incomplete={(cands.length > 0 && (!pick.verdict || (pick.verdict === "other" && !pick.code))) || undefined}

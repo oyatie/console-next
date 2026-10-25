@@ -41,11 +41,11 @@ export function useExitCommand<I>(opts: {
     setPhase({ kind: "idle" });
     opts.onSuccess(out, input);
   };
-  const cmd = useCommand({ run: opts.run, invalidates: EXIT_INVALIDATES, settle: true, onSuccess: done });
+  const cmd = useCommand({ run: opts.run, invalidates: EXIT_INVALIDATES, awaitFirstRead: true, onSuccess: done });
   const lookup = useCommand({
     run: () => caseQuery(opts.caseId!).queryFn(),
     invalidates: EXIT_INVALIDATES,
-    settle: true,
+    awaitFirstRead: true,
     onSuccess: (now) => {
       if (opts.check === "resend") return;
       const e = effectOf(opts.check, now);

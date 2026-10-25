@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
@@ -17,7 +17,7 @@ import { ProtectedPeriods } from "./exit-protection";
 import s from "./exit.module.css";
 
 /** A step form shown in a side sheet over the person's record instead of inline on the case page. */
-export type SheetSpec = { kicker?: ReactNode; title: string; subtitle?: ReactNode; onClose: () => void };
+export type SheetSpec = { kicker?: ReactNode; title: string; subtitle?: ReactNode; onClose: () => void; loading?: boolean };
 
 /**
  * Every exit step form, inline at the case's current step or in a side sheet. The foot holds the consequence
@@ -48,6 +48,7 @@ export function StepFrame(p: {
   consequence: ReactNode;
   note?: ReactNode;
   signoffs?: ReactNode;
+  sections?: ComponentProps<typeof Composer>["sections"];
   /** Fields still missing after a commit attempt (0 hides the line). */
   missing: number;
   aside?: ReactNode;
@@ -93,10 +94,10 @@ export function StepFrame(p: {
     subtitle={sheet?.subtitle}
     onClose={sheet?.onClose}
     pending={run.pending || run.checking || p.busy}
-    loading={p.loading}
+    loading={p.loading || sheet?.loading}
     locked={run.locked || Boolean(elsewhere)}
     consequence={consequence}
-    sections={{ preflight: p.signoffs }}
+    sections={{ ...p.sections, preflight: p.signoffs }}
     notice={notice}
     recovery={recovery}
     secondary={<>{p.aside}{p.secondary}</>}

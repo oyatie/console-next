@@ -1,0 +1,73 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required:
+  - "item_key"
+  - "label"
+  - "kind"
+  - "blocks_close"
+properties:
+  item_key:
+    type: "string"
+  label:
+    type: "string"
+  label_key:
+    type: "string"
+    nullable: true
+  kind:
+    type: "string"
+  owner_line:
+    type: "string"
+    nullable: true
+  blocks_close:
+    type: "boolean"
+  rule_ref:
+    type: "string"
+    nullable: true
+  instrument:
+    type: "string"
+    nullable: true
+  article:
+    type: "string"
+    nullable: true
+  legal_review_required:
+    type: boolean
+  due_rule_kind:
+    type: string
+  due_anchor:
+    type: string
+    nullable: true
+  opens_rule_ref:
+    type: string
+    nullable: true
+  insurer:
+    type: string
+    nullable: true
+  filing_kind:
+    type: string
+    nullable: true
+  opens_anchor:
+    type: string
+    nullable: true
+  opens_offset_days:
+    type: integer
+    nullable: true
+  due_rule_value:
+    type: integer
+    nullable: true
+  opens_on:
+    type: string
+    format: date
+    nullable: true
+  due_on:
+    type: string
+    format: date
+    nullable: true
+  opens_in_days:
+    type: integer
+    nullable: true
+  due_in_days:
+    type: integer
+    nullable: true
+  due_disposition:
+    type: string
+    nullable: true

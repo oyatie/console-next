@@ -15,6 +15,14 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
                 .with_leave_command_store(deps.leave_store.clone())
                 .with_passkey_step_up(state.policy_step_up.clone())
         }))
+        .merge(console_platform_request_context::with_request_context(
+            console_hr_rest::cases::router_with_passkeys(
+                console_hr_adapter_postgres::HrService::new(pool.clone()),
+                state.policy_step_up.clone(),
+            ),
+            state.jwt_verifier.clone(),
+            pool.clone(),
+        ))
         .merge(
             console_platform_request_context::with_request_context(
                 console_hr_rest::statutory::router(

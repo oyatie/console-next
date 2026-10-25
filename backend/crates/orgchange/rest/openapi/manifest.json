@@ -166,6 +166,9 @@
     "/api/v1/employees/{id}/identity-resolution": [
       "post"
     ],
+    "/api/v1/employees/{id}/lifecycle-cases": [
+      "get"
+    ],
     "/api/v1/employees/{id}/lifecycle-events": [
       "get",
       "post"
@@ -304,6 +307,18 @@
     "/api/v1/job-titles/{id}": [
       "patch"
     ],
+    "/api/v1/lifecycle-case-templates/{key}": [
+      "get"
+    ],
+    "/api/v1/lifecycle-cases/{id}": [
+      "get"
+    ],
+    "/api/v1/lifecycle-cases/{id}/close": [
+      "post"
+    ],
+    "/api/v1/lifecycle-cases/{id}/items/{item_id}/complete": [
+      "post"
+    ],
     "/api/v1/org-changes": [
       "get",
       "post"
@@ -394,6 +409,7 @@
     "ChangeSetLine",
     "ChangeSetSummary",
     "CloseEmployeeExitCaseRequest",
+    "CompleteLifecycleItem",
     "CompleteOrgChangeSettlementItemRequest",
     "ConfirmEmployeeExitCaseRequest",
     "CorrectEmployeeRequest",
@@ -489,8 +505,12 @@
     "LeaveBalanceItem",
     "LeaveBalancePage",
     "LeaveBalanceSummary",
+    "LifecycleCase",
+    "LifecycleCaseItem",
+    "LifecycleProblem",
     "LifecycleScheduleConflictBody",
     "LifecycleSignoffKey",
+    "LifecycleTemplateItem",
     "OrgChangeDecisionRequest",
     "OrgChangePage",
     "OrgEntitySummary",

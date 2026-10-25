@@ -15,7 +15,7 @@ import { isDate } from "../../../ui/date/days";
 import { SelectField } from "../../../ui/select/select-field";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { Chip } from "../../../ui/chip";
-import { FILINGS, filingsQuery, recordFiling, type FilingTask, type FilingFacts, type FilingReason } from "../../../reference/statutory/api";
+import { FILING_READS, filingsQuery, recordFiling, type FilingTask, type FilingFacts, type FilingReason } from "../../../reference/statutory/api";
 import { FilingFactsFields } from "./filing-facts";
 import { FilingWindow } from "./filing-deadline";
 import { filingLabel } from "../present";
@@ -44,12 +44,12 @@ export function FilingComplete({ task, onClose, onDone }: { task: FilingTask; on
     run: (_: void, key) => recordFiling(task, { expected_version: task.version, action: action as "COMPLETE" | "NOT_APPLICABLE" | "ASSESS", applicability_facts: facts,
       ...(action === "COMPLETE" ? {completed_on: date, receipt_number: number.trim() || undefined, loss_code: code ?? undefined, detail: detail.trim() || undefined,
         total_remuneration_won: remuneration === "" ? undefined : Number(remuneration)} : action === "NOT_APPLICABLE" ? {not_applicable_reason: reason!, detail: detail.trim()} : {}) }, key),
-    invalidates: [FILINGS, "/api/v1/me/action-inbox"], settle: true, onSuccess: onDone,
+    invalidates: FILING_READS, settle: true, onSuccess: onDone,
   });
   const variables = { name: task.name, insurer: filingLabel(task.insurer), kind: filingLabel(task.kind), date: date ? fmtDate(date) : "" };
   const submit = () => { setTried(true); if (valid) setPreview(true); };
   return <Dialog open read title={t("statutory.completeTitle", variables)} onClose={onClose} dismissable={!run.isPending}>
-    <QueryState q={latest}>{() => <Form className="form" noValidate onSubmit={submit}>
+    <QueryState q={latest}>{() => task.state === "LEGAL_REVIEW" || current?.state === "LEGAL_REVIEW" ? <Chip>{t("lifecycle.trail.unverified")}</Chip> : <Form className="form" noValidate onSubmit={submit}>
       {preview ? <>
         <p>{t(action === "NOT_APPLICABLE" ? "statutory.notApplicableConsequence" : action === "ASSESS" ? "statutory.assessed" : "statutory.consequence", variables)}</p>
         <dl className="facts">{action === "COMPLETE" && <><dt>{t("statutory.completedOn")}</dt><dd>{fmtDate(date)}</dd></>}

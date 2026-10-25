@@ -4,14 +4,13 @@ import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { codeText } from "../../lib/labels";
 import { personLabel, type PersonIdentity } from "../../reference/person/present";
-import type { Level } from "./domain/grid";
+import { domainText, levelText } from "../../reference/authz/present";
+export { domainText, levelText };
 import { lastDay } from "./domain/grants";
 import { find, reach, type OrgNode, type Scope } from "./domain/scope";
 import type { AccessGrant, AccessRoleLine, AccessScope, Account, PreviewItem } from "./api";
 
-export const domainText = (key: string) => codeText(`accessCodes.domain.${key}`, key);
 export const domainHelp = (key: string) => codeText(`accessCodes.domain.${key}.help`, "");
-export const levelText = (l: Level) => t(`accessCodes.level.${l}`);
 export const enforcementText = (e: string) => codeText(`accessCodes.enforcement.${e}`, e);
 /** Only a server-scheduled preview carries an activation time. */
 export const scheduledText = (item: Pick<PreviewItem, "enforcement_after" | "activates_at">) =>

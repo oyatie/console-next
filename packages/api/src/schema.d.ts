@@ -4475,6 +4475,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/employees/{id}/lifecycle-cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the lifecycle dossiers of an employee */
+        get: operations["listEmployeeLifecycleCases"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/employees/{id}/lifecycle-events": {
         parameters: {
             query?: never;
@@ -4567,7 +4584,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Derived onboarding checklist (EMP-MODEL E10)
+         * Legacy derived onboarding checklist (EMP-MODEL E10)
+         * @deprecated
          * @description Items derived from recorded facts, never ticked. CONTRACT_DELIVERED (근기법 §17② 교부) and INSURANCE_ACQUISITION_REPORTED (취득신고) are NOT_TRACKED until their attestation and statutory clock exist. NOT_ISSUED identification is a FOLLOW_UP. Org-wide employee_directory_manage.
          */
         get: operations["getOnboardingChecklist"];
@@ -7987,6 +8005,74 @@ export interface paths {
         put?: never;
         /** Create a 사업장 (with its default branch and 4대보험 rows) */
         post: operations["createWorkplace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle-case-templates/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview the register-backed checklist */
+        get: operations["previewLifecycleCaseTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle-cases/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one lifecycle dossier */
+        get: operations["getLifecycleCase"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle-cases/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close a dossier after its blocking items are terminal */
+        post: operations["closeLifecycleCase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle-cases/{id}/items/{item_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete, attest or waive an owned item with evidence */
+        post: operations["completeLifecycleCaseItem"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16662,6 +16748,31 @@ export interface components {
             findings: string;
             note?: string | null;
         };
+        CompleteLifecycleItem: {
+            attestation?: {
+                /** Format: date */
+                fact_date: string;
+                reason_code: string;
+                note: string;
+                document: {
+                    name: string;
+                    /** Format: uri */
+                    url: string;
+                };
+            };
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+            /** Format: int64 */
+            expected_version: number;
+            observed_ref?: {
+                [key: string]: unknown;
+            } | null;
+            /** Format: uuid */
+            exception_id?: string | null;
+            /** @default false */
+            waive: boolean;
+            reason?: string | null;
+            due_date?: string | null;
+        };
         CompleteOrgChangeSettlementItemRequest: {
             memo?: string;
         };
@@ -21522,6 +21633,10 @@ export interface components {
         InsuranceFilingReason: "AGE_LIMIT" | "MINOR_OPT_OUT" | "SHORT_HOURS" | "DAILY_UNDER_MONTH" | "DAILY_WORK_CONFIRMATION" | "TREATY_EXCLUDED" | "VISA_EXCLUDED" | "EXECUTIVE_NOT_WORKER" | "OTHER_LEGAL_GROUND" | null;
         InsuranceFilingTask: {
             event_id: string;
+            /** Format: uuid */
+            filing_obligation_id?: string | null;
+            /** Format: uuid */
+            lifecycle_case_id?: string | null;
             employee_id: string;
             name: string;
             employee_number: string | null;
@@ -21544,6 +21659,8 @@ export interface components {
             birth_date_known: boolean;
             /** Format: date */
             opens_on: string | null;
+            /** Format: int64 */
+            opens_in_days?: number | null;
             /** Format: date */
             target_on: string | null;
             /** Format: date */
@@ -22433,10 +22550,78 @@ export interface components {
         LegalHoldState: "CLEAR" | "ACTIVE";
         /** @enum {string} */
         LegalHoldStatus: "ACTIVE" | "RELEASED";
+        LifecycleCase: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            employee_id: string;
+            kind: string;
+            state: string;
+            /** Format: uuid */
+            trigger_id: string | null;
+            effective_date: string;
+            /** Format: uuid */
+            linked_case_id: string | null;
+            cancellation_reason: string | null;
+            /** Format: int64 */
+            version: number;
+            items: components["schemas"]["LifecycleCaseItem"][];
+        };
+        LifecycleCaseItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            case_id: string;
+            item_key: string;
+            label: string;
+            label_key: string | null;
+            kind: string;
+            owner_line: string | null;
+            status: string;
+            status_code: string | null;
+            opens_on: string | null;
+            opens_in_days: number | null;
+            due_date: string | null;
+            due_in_days: number | null;
+            due_disposition: string;
+            due_rule_ref: string | null;
+            opens_rule_ref: string | null;
+            basis: {
+                [key: string]: unknown;
+            };
+            blocks_close: boolean;
+            observed_ref: {
+                [key: string]: unknown;
+            } | null;
+            /** Format: uuid */
+            exception_id: string | null;
+            /** Format: uuid */
+            filing_obligation_id: string | null;
+            /** Format: int64 */
+            version: number;
+            completion_rule_ref?: string | null;
+            completion_risk?: string | null;
+            record_target?: string | null;
+            waiver_rule_ref?: string | null;
+            completion_reason?: string | null;
+            filing_kind?: string | null;
+            insurer?: string | null;
+        };
         LifecycleOutcome: {
             instance: components["schemas"]["InstanceHead"];
             config: components["schemas"]["GateChainConfig"];
             gates: components["schemas"]["GateChainOutcome"];
+        };
+        LifecycleProblem: {
+            type: string;
+            title: string;
+            status: number;
+            detail?: string;
+            code?: string;
+            error: {
+                code: string;
+                message: string;
+            };
         };
         LifecycleRequest: {
             to_state: components["schemas"]["InstanceLifecycleState"];
@@ -22470,6 +22655,33 @@ export interface components {
          * @enum {string}
          */
         LifecycleState: "DRAFT" | "ACTIVE" | "LOCKED" | "ARCHIVED" | "DISPOSED";
+        LifecycleTemplateItem: {
+            item_key: string;
+            label: string;
+            label_key?: string | null;
+            kind: string;
+            owner_line?: string | null;
+            blocks_close: boolean;
+            rule_ref?: string | null;
+            instrument?: string | null;
+            article?: string | null;
+            legal_review_required?: boolean;
+            due_rule_kind?: string;
+            due_anchor?: string | null;
+            opens_rule_ref?: string | null;
+            insurer?: string | null;
+            filing_kind?: string | null;
+            opens_anchor?: string | null;
+            opens_offset_days?: number | null;
+            due_rule_value?: number | null;
+            /** Format: date */
+            opens_on?: string | null;
+            /** Format: date */
+            due_on?: string | null;
+            opens_in_days?: number | null;
+            due_in_days?: number | null;
+            due_disposition?: string | null;
+        };
         LinkControlObligationRequest: {
             control_id: components["schemas"]["Uuid"];
             obligation_id: components["schemas"]["Uuid"];
@@ -37997,6 +38209,64 @@ export interface operations {
             422: components["responses"]["ValidationError"];
         };
     };
+    listEmployeeLifecycleCases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lifecycle trail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecycleCase"][];
+                };
+            };
+            /** @description Refusal with a stable code */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+        };
+    };
     listEmployeeLifecycleEvents: {
         parameters: {
             query?: {
@@ -45933,6 +46203,247 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    previewLifecycleCaseTemplate: {
+        parameters: {
+            query?: {
+                variant?: string;
+                exit_reason?: string;
+                effective_date?: string;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lifecycle trail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecycleTemplateItem"][];
+                };
+            };
+            /** @description Refusal with a stable code */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+        };
+    };
+    getLifecycleCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lifecycle trail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecycleCase"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+        };
+    };
+    closeLifecycleCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lifecycle trail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecycleCase"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+        };
+    };
+    completeLifecycleCaseItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteLifecycleItem"];
+            };
+        };
+        responses: {
+            /** @description Lifecycle trail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecycleCase"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
+                };
+            };
+            /** @description Refusal with a stable code */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["LifecycleProblem"];
                 };
             };
         };
@@ -54492,6 +55003,7 @@ export interface operations {
     listInsuranceFilings: {
         parameters: {
             query?: {
+                filing_id?: string;
                 workplace_id?: string;
                 legal_entity_id?: string;
                 search?: string;

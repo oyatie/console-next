@@ -2,7 +2,6 @@ use super::filings::load;
 use super::{FilingPage, FilingQuery, FilingTask, refusal};
 use crate::{
     HrError, HrService,
-    clock::today_kst,
     digest::sha256_hex,
     idempotency::{idempotency_key_reused, normalize_idempotency_key},
 };
@@ -72,7 +71,9 @@ impl HrService {
                     return load(tx,&p,FilingQuery{event_id:Some(if body.filing_kind==RequestKind::AcquireRequested {body.source_event_id}else{r.try_get("id")?}),..FilingQuery::default()},&register).await;
                 }
                 let on=parse_yyyy_mm_dd(&body.anchor_on).map_err(|_|refusal(StatusCode::UNPROCESSABLE_ENTITY,"filing_request_invalid","Choose a valid request date or work-month end."))?;
-                console_hr_application::statutory::validate_request(body.filing_kind.as_str(),&source.kind,on,parse_yyyy_mm_dd(source.opens_on.as_deref().ok_or_else(||refusal(StatusCode::UNPROCESSABLE_ENTITY,"filing_request_invalid","The filing opening is unverified; confirm the statutory rule."))?)?,today_kst()).map_err(|e|refusal(StatusCode::UNPROCESSABLE_ENTITY,"filing_request_invalid",&e.message))?;
+                let today:time::Date=sqlx::query_scalar("SELECT (now() AT TIME ZONE lifecycle_time_zone($1,$2,$3,$4))::date")
+                    .bind(p.org_id.as_uuid()).bind(source.employee_id).bind(on).bind(source.workplace_id).fetch_one(tx.as_mut()).await?;
+                console_hr_application::statutory::validate_request(body.filing_kind.as_str(),&source.kind,on,parse_yyyy_mm_dd(source.opens_on.as_deref().ok_or_else(||refusal(StatusCode::UNPROCESSABLE_ENTITY,"filing_request_invalid","The filing opening is unverified; confirm the statutory rule."))?)?,today).map_err(|e|refusal(StatusCode::UNPROCESSABLE_ENTITY,"filing_request_invalid",&e.message))?;
                 if body.filing_kind==RequestKind::AcquireRequested && (source.completed_on.is_some() || source.due_on.as_deref().map(parse_yyyy_mm_dd).transpose()?.is_some_and(|due|on>due)) {
                     return Err(refusal(StatusCode::UNPROCESSABLE_ENTITY,"filing_request_invalid","A worker request must precede the acquisition deadline and an actual filing."));
                 }
@@ -85,6 +86,7 @@ impl HrService {
                     sqlx::query_scalar("INSERT INTO insurance_filing_requests(org_id,employee_id,source_event_id,filing_kind,anchor_on,actor,idempotency_key,request_hash) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id")
                         .bind(p.org_id.as_uuid()).bind(source.employee_id).bind(body.source_event_id).bind(body.filing_kind.as_str()).bind(on).bind(p.user_id.as_uuid()).bind(&key).bind(hash).fetch_one(tx.as_mut()).await?
                 };
+                crate::cases::observe::request(tx,*p.org_id.as_uuid(),body.source_event_id,id,body.filing_kind.as_str(),on).await?;
                 load(tx,&p,FilingQuery{event_id:Some(if body.filing_kind==RequestKind::AcquireRequested {body.source_event_id}else{id}),..FilingQuery::default()},&register).await
             }.await;
             let (action,snapshot)=match &result {Ok(page)=>("insurance_filing.requested",json!({"kind":body.filing_kind,"count":page.total})),Err(e) if e.status!=StatusCode::INTERNAL_SERVER_ERROR=>("insurance_filing.refused",json!({"code":e.code,"kind":body.filing_kind})),Err(_)=>return result.map(|t|(Ok(t),Vec::new()))};

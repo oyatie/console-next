@@ -240,7 +240,6 @@
   "unused-export:apps/web/src/reference/entity/api.ts:addressSearchRef": 1,
   "unused-export:apps/web/src/reference/org/domain/structure.ts:closeGroups": 1,
   "unused-export:apps/web/src/reference/org/domain/structure.ts:Group": 1,
-  "unused-export:apps/web/src/reference/org/present.ts:ancestor": 1,
   "unused-export:apps/web/src/reference/org/present.ts:opUnits": 1,
   "unused-export:apps/web/src/reference/org/ui/use-change-note.ts:ChangeNote": 1,
   "unused-export:apps/web/src/reference/statutory/api.ts:REGISTER": 1,
