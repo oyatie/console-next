@@ -36,6 +36,14 @@
     "s": 16.5,
     "at": 1792155617325
   },
+  "served:parallel › asof-integrity.spec.ts › past and future views keep dated labels and readable inspectors; future changes inherit the date": {
+    "s": 20.9,
+    "at": 1792867673295
+  },
+  "served:parallel › asof-integrity.spec.ts › a hire before opening keeps the hire date and points to roster import at that field": {
+    "s": 10.9,
+    "at": 1792867673295
+  },
   "served:parallel › asof-load.spec.ts › dated chart and comparison retain 2,000 imported people through a projected rename": {
     "s": 35.3,
     "at": 1792155594880
@@ -45,8 +53,8 @@
     "at": 1792197746943
   },
   "served:parallel › asof-solo.spec.ts › solo ops reads past and projected records, preserves known-at corrections and compares scheduled org changes": {
-    "s": 17.8,
-    "at": 1792156006421
+    "s": 18.3,
+    "at": 1792866157640
   },
   "served:parallel › attendance-closed-month.spec.ts › 마감된 달: read-only with the unlock path, editable while unlocked, closed again on re-lock": {
     "s": 51.1,
@@ -169,8 +177,8 @@
     "at": 1792156943162
   },
   "served:parallel › d26-solo-exit.spec.ts › a solo ops account registers a person and closes their exit alone, with no 결재 on the way": {
-    "s": 26.4,
-    "at": 1792644616307
+    "s": 17.1,
+    "at": 1792866157640
   },
   "served:parallel › emp/record-head.spec.ts › the card head links the 법인 and 사업장, invites an account and keeps 퇴직 · 등록 취소": {
     "s": 17.8,
@@ -192,13 +200,17 @@
     "s": 8.2,
     "at": 1792156006291
   },
+  "served:parallel › entity-capture.spec.ts › capture: unchecked field labels containing regex characters match literally": {
+    "s": 0.1,
+    "at": 1792866157640
+  },
   "served:parallel › entity-capture.spec.ts › capture: the district comes from the bundled list, other lists say they are not loaded and never block": {
-    "s": 5.8,
-    "at": 1792155085673
+    "s": 5.9,
+    "at": 1792866157640
   },
   "served:parallel › entity-capture.spec.ts › a certificate upload is typed beside, kept as the registration's evidence and opened from the documents tab": {
-    "s": 5.5,
-    "at": 1792155085673
+    "s": 5.3,
+    "at": 1792866157640
   },
   "served:parallel › entity-close-exited.spec.ts › regression: after the only person's exit (-1) the 법인 counts nobody and its close opens 종료일 (company-01)": {
     "s": 15.3,
@@ -228,29 +240,33 @@
     "s": 4.4,
     "at": 1792197746943
   },
+  "served:parallel › entity-identifier-review.spec.ts › identifier correction: a second person approves, requester applies, and a decline preserves the live evidence": {
+    "s": 79.4,
+    "at": 1792829385200
+  },
   "served:parallel › entity-live-notice.spec.ts › regression: an open 고치기 sheet says the record changed elsewhere, and the conflict shows values as typed (worst-case-33)": {
     "s": 7.2,
     "at": 1792157479625
   },
   "served:parallel › entity-name-en.spec.ts › the English UI names a 법인 by its English name on every surface, and Korean by its 법인명": {
-    "s": 11.1,
-    "at": 1792071943308
+    "s": 10.4,
+    "at": 1792847083733
   },
   "served:parallel › entity-name-en.spec.ts › in English, adding a 법인 names it by its English name in the receipt and every announcement": {
-    "s": 4.1,
-    "at": 1792071943308
+    "s": 5.1,
+    "at": 1792847083733
   },
   "served:parallel › entity-name-evidence.spec.ts › one 법인명: ① edits the name every surface shows, and the 약칭 and 영문명 stay secondary": {
     "s": 9.6,
     "at": 1792072155790
   },
   "served:parallel › entity-name-evidence.spec.ts › an individual's 상호 is the one name its record, list and header show": {
-    "s": 7.1,
-    "at": 1792197746943
+    "s": 5.7,
+    "at": 1792847083733
   },
   "served:parallel › entity-name-evidence.spec.ts › a branch primary is refused until its explicit certificate reason is recorded": {
-    "s": 6.5,
-    "at": 1792197746943
+    "s": 4.6,
+    "at": 1792847083733
   },
   "served:parallel › entity-name-evidence.spec.ts › the server refuses a 대표자 as 법인명 or 영문명 and the sheet says why, saving nothing": {
     "s": 15.4,
@@ -332,9 +348,17 @@
     "s": 0.7,
     "at": 1792666615135
   },
-  "served:parallel › first-run-solo.spec.ts › a solo administrator goes from an empty tenant to operating": {
-    "s": 61.5,
+  "served:parallel › error-beacon.spec.ts › a mutation 500 displays the same server reference that ops resolves to the trace": {
+    "s": 2,
     "at": 1792666615135
+  },
+  "served:parallel › exit-guards.spec.ts › solo HR: work-injury protection refuses dismissal, voluntary reporting survives, written notice gates effect": {
+    "s": 32,
+    "at": 1792833728719
+  },
+  "served:parallel › first-run-solo.spec.ts › a solo administrator goes from an empty tenant to operating": {
+    "s": 45.1,
+    "at": 1792903375468
   },
   "served:parallel › grade-fix.spec.ts › a solo administrator adds, changes, corrects, promotes and edits a grade from empty": {
     "s": 14,
@@ -357,8 +381,8 @@
     "at": 1792156006291
   },
   "served:parallel › hcm.spec.ts › HCM journey: org structure → staffing → transfer → promotion → leave → contract renewal → roster import → exit": {
-    "s": 31.4,
-    "at": 1792156639533
+    "s": 39,
+    "at": 1792867673295
   },
   "served:parallel › home-truth.spec.ts › the setup rail and go-live promise no security contact that cannot be recorded": {
     "s": 8.3,
@@ -576,6 +600,14 @@
     "s": 27.3,
     "at": 1792157403200
   },
+  "served:parallel › ops-recovery.spec.ts › governed ops recovery: two operators, tenant veto, hold and once-only reenrollment": {
+    "s": 18.6,
+    "at": 1792666615135
+  },
+  "served:parallel › ops-recovery.spec.ts › regression: a tenant's late ops-recovery read does not move the panel's 상태 and 삭제 controls": {
+    "s": 4.1,
+    "at": 1792666615135
+  },
   "served:parallel › org-after-go-live.spec.ts › a proposal typed right after go-live keeps what was typed": {
     "s": 9.9,
     "at": 1792156006291
@@ -661,8 +693,8 @@
     "at": 1792155726653
   },
   "served:parallel › people-actions/register-run.spec.ts › 연속 등록: rows saved with ⌘↵, carried values, gaps named, a namesake stops the row, setup undo": {
-    "s": 17.3,
-    "at": 1792157479625
+    "s": 37.9,
+    "at": 1792801203361
   },
   "served:parallel › people-actions/rehire.spec.ts › rehire: refused while employed at both levels; after the exit, a new period under the same 사번": {
     "s": 21.4,
@@ -720,6 +752,530 @@
     "s": 0.1,
     "at": 1792197746943
   },
+  "served:parallel › read-retry-bound.spec.ts › failed reads stay bounded for 15 s on /": {
+    "s": 20.1,
+    "at": 1792721752843
+  },
+  "served:parallel › read-retry-bound.spec.ts › failed reads stay bounded for 15 s on /people/bulk": {
+    "s": 21.6,
+    "at": 1792721752843
+  },
+  "served:parallel › read-retry-bound.spec.ts › failed reads stay bounded for 15 s on /people/renew": {
+    "s": 21.1,
+    "at": 1792721752843
+  },
+  "served:parallel › read-retry-bound.spec.ts › failed reads stay bounded for 15 s on /org/changes": {
+    "s": 20.3,
+    "at": 1792721752843
+  },
+  "served:parallel › read-retry-bound.spec.ts › failed reads stay bounded for 15 s on /org/history": {
+    "s": 16.7,
+    "at": 1792721752843
+  },
+  "served:parallel › read-retry-bound.spec.ts › failed reads stay bounded for 15 s on /org/move": {
+    "s": 16.7,
+    "at": 1792721752843
+  },
+  "served:parallel › read-retry-bound.spec.ts › failed reads stay bounded for 15 s on /org/import": {
+    "s": 16.6,
+    "at": 1792721752843
+  },
+  "served:parallel › read-retry-bound.spec.ts › failed reads stay bounded for 15 s on /org/paste": {
+    "s": 16.7,
+    "at": 1792721752843
+  },
+  "served:parallel › read-retry-bound.spec.ts › failed reads stay bounded for 15 s on /org/workplaces/edit": {
+    "s": 17,
+    "at": 1792721752843
+  },
+  "served:parallel › read-retry-bound.spec.ts › failed reads stay bounded for 15 s on /org/changes/01900000-0000-7000-8000-000000000001": {
+    "s": 16.7,
+    "at": 1792721752843
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 1.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /: a failed cold refresh stays inside the shell and recovers": {
+    "s": 1.2,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/entities: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.7,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/entities: a failed cold refresh stays inside the shell and recovers": {
+    "s": 1,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/entities/new: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.9,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/entities/new: a failed cold refresh stays inside the shell and recovers": {
+    "s": 0.6,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/entities/$id: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 5.8,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/entities/$id: a failed cold refresh stays inside the shell and recovers": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org?act=wp-create: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 5.6,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org?act=wp-create: a failed cold refresh stays inside the shell and recovers": {
+    "s": 0.9,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org?act=wp-edit: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.9,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org?act=wp-edit: a failed cold refresh stays inside the shell and recovers": {
+    "s": 1.2,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org?act=wp-close: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org?act=wp-close: a failed cold refresh stays inside the shell and recovers": {
+    "s": 7.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org?act=wp-move: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 8.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org?act=wp-move: a failed cold refresh stays inside the shell and recovers": {
+    "s": 8.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 7.7,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people: a failed cold refresh stays inside the shell and recovers": {
+    "s": 4.1,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people?view=accounts: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 8.1,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people?view=accounts: a failed cold refresh stays inside the shell and recovers": {
+    "s": 7.2,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/import: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 7.6,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/import: a failed cold refresh stays inside the shell and recovers": {
+    "s": 8.8,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/job-titles: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 8.6,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/job-titles: a failed cold refresh stays inside the shell and recovers": {
+    "s": 3.1,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/unplaced: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 9.1,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/unplaced: a failed cold refresh stays inside the shell and recovers": {
+    "s": 7.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/paste: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 8.9,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/paste: a failed cold refresh stays inside the shell and recovers": {
+    "s": 4.1,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/import: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 7.1,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/import: a failed cold refresh stays inside the shell and recovers": {
+    "s": 5.2,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/$id?act=menu: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 7.1,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/$id?act=menu: a failed cold refresh stays inside the shell and recovers": {
+    "s": 1.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/exits/$id: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 5.8,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/exits/$id: a failed cold refresh stays inside the shell and recovers": {
+    "s": 2,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/changes/$id: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.8,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/changes/$id: a failed cold refresh stays inside the shell and recovers": {
+    "s": 3.1,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/notices/$id: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.2,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/notices/$id: a failed cold refresh stays inside the shell and recovers": {
+    "s": 0.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/roles/$id: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/roles/$id: a failed cold refresh stays inside the shell and recovers": {
+    "s": 0.6,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/people/$id: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/people/$id: a failed cold refresh stays inside the shell and recovers": {
+    "s": 1.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/$id/identifiers: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/$id/identifiers: a failed cold refresh stays inside the shell and recovers": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /attendance: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /attendance: a failed cold refresh stays inside the shell and recovers": {
+    "s": 0.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /statutory: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.6,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /statutory: a failed cold refresh stays inside the shell and recovers": {
+    "s": 0.6,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/grid: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 5.9,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/grid: a failed cold refresh stays inside the shell and recovers": {
+    "s": 1.2,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/bulk: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.7,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/bulk: a failed cold refresh stays inside the shell and recovers": {
+    "s": 1.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/renew: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/renew: a failed cold refresh stays inside the shell and recovers": {
+    "s": 0.6,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/numbering: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 5.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/numbering: a failed cold refresh stays inside the shell and recovers": {
+    "s": 0.6,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/roles/new: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 5.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/roles/new: a failed cold refresh stays inside the shell and recovers": {
+    "s": 0.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/grants/bulk: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 6.6,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/grants/bulk: a failed cold refresh stays inside the shell and recovers": {
+    "s": 0.9,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /platform: held reads and 503 keep the shell, with a retry and reference": {
+    "s": 5.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /platform: a failed cold refresh stays inside the shell and recovers": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/entities/$id: an unknown id is not a load failure": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/$id?act=menu: an unknown id is not a load failure": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/exits/$id: an unknown id is not a load failure": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/changes/$id: an unknown id is not a load failure": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/notices/$id: an unknown id is not a load failure": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/roles/$id: an unknown id is not a load failure": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/people/$id: an unknown id is not a load failure": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/$id/identifiers: an unknown id is not a load failure": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/entities: a refusal names who can grant access": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/entities/new: a refusal names who can grant access": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/entities/$id: a refusal names who can grant access": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org?act=wp-create: a refusal names who can grant access": {
+    "s": 0.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org?act=wp-edit: a refusal names who can grant access": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org?act=wp-close: a refusal names who can grant access": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org?act=wp-move: a refusal names who can grant access": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people: a refusal names who can grant access": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people?view=accounts: a refusal names who can grant access": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/import: a refusal names who can grant access": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/job-titles: a refusal names who can grant access": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/unplaced: a refusal names who can grant access": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/paste: a refusal names who can grant access": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/import: a refusal names who can grant access": {
+    "s": 0.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/$id?act=menu: a refusal names who can grant access": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/exits/$id: a refusal names who can grant access": {
+    "s": 0.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/changes/$id: a refusal names who can grant access": {
+    "s": 0.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/notices/$id: a refusal names who can grant access": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/roles/$id: a refusal names who can grant access": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/people/$id: a refusal names who can grant access": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/$id/identifiers: a refusal names who can grant access": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /attendance: a refusal names who can grant access": {
+    "s": 0.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /statutory: a refusal names who can grant access": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/grid: a refusal names who can grant access": {
+    "s": 0.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/bulk: a refusal names who can grant access": {
+    "s": 0.6,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/renew: a refusal names who can grant access": {
+    "s": 0.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/numbering: a refusal names who can grant access": {
+    "s": 0.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/roles/new: a refusal names who can grant access": {
+    "s": 0.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/grants/bulk: a refusal names who can grant access": {
+    "s": 0.5,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /platform: a refusal names who can grant access": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /: a real account with no grant sees its honest state": {
+    "s": 0,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people: a real account with no grant sees its honest state": {
+    "s": 0.1,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /attendance: a real account with no grant sees its honest state": {
+    "s": 0,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/import: a real account with no grant sees its honest state": {
+    "s": 0,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/entities/new: a real account with no grant sees its honest state": {
+    "s": 0,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/roles/new: a real account with no grant sees its honest state": {
+    "s": 0,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /access/grants/bulk: a real account with no grant sees its honest state": {
+    "s": 0,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/grid: a real account with no grant sees its honest state": {
+    "s": 0,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/bulk: a real account with no grant sees its honest state": {
+    "s": 0,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/renew: a real account with no grant sees its honest state": {
+    "s": 0,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /people/numbering: a real account with no grant sees its honest state": {
+    "s": 0,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/paste: a real account with no grant sees its honest state": {
+    "s": 0,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /org/import: a real account with no grant sees its honest state": {
+    "s": 0,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › /platform: a real account with no grant sees its honest state": {
+    "s": 0,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › offline keeps a loaded region visibly marked": {
+    "s": 0.4,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › an unrelated held checklist leaves people usable": {
+    "s": 1.1,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › unpublished consent sends the account to actionable setup": {
+    "s": 0.3,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › Home keeps setup when /me/authz answers 500": {
+    "s": 1.6,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › Home keeps setup when /me/authz answers 503": {
+    "s": 1.6,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › Home keeps a setup skeleton while /me/authz is pending, then shows setup": {
+    "s": 2.2,
+    "at": 1792794806473
+  },
+  "served:parallel › read-states.spec.ts › one state contract across console routes › Home keeps the no-work card for a grantless account in setup and live phases": {
+    "s": 7.1,
+    "at": 1792794806473
+  },
   "served:parallel › record-actions/card.spec.ts › setup phase: contacts, photo, entries and careers are added, edited, traced and deleted from the card": {
     "s": 13.7,
     "at": 1792071954346
@@ -736,17 +1292,73 @@
     "s": 17.7,
     "at": 1792071324822
   },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of legal_entity.name shows the new value and never the old: setup phase": {
+    "s": 18.6,
+    "at": 1792848176627
+  },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of legal_entity.short_name shows the new value and never the old: setup phase": {
+    "s": 14.5,
+    "at": 1792848176627
+  },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of legal_entity.english_name shows the new value and never the old: setup phase": {
+    "s": 14.8,
+    "at": 1792848176627
+  },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of workplace.name shows the new value and never the old: setup phase": {
+    "s": 17.3,
+    "at": 1792848176627
+  },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of employee.emergency_contact shows the new value and never the old: setup phase": {
+    "s": 10.2,
+    "at": 1792848176627
+  },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of employee.record_section shows the new value and never the old: setup phase": {
+    "s": 9.9,
+    "at": 1792848176627
+  },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of legal_entity.name shows the new value and never the old: live tenant": {
+    "s": 17.3,
+    "at": 1792848176627
+  },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of legal_entity.short_name shows the new value and never the old: live tenant": {
+    "s": 14.4,
+    "at": 1792848176627
+  },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of legal_entity.english_name shows the new value and never the old: live tenant": {
+    "s": 13.6,
+    "at": 1792848176627
+  },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of workplace.name shows the new value and never the old: live tenant": {
+    "s": 18.5,
+    "at": 1792848176627
+  },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of employee.emergency_contact shows the new value and never the old: live tenant": {
+    "s": 10.9,
+    "at": 1792848176627
+  },
+  "served:parallel › record-actions/propagation.spec.ts › every surface of employee.record_section shows the new value and never the old: live tenant": {
+    "s": 12.9,
+    "at": 1792848176627
+  },
+  "served:parallel › record-actions/propagation.spec.ts › planted: a surface reading a cached copy of workplace.name fails the harness": {
+    "s": 29.7,
+    "at": 1792848176627
+  },
+  "served:parallel › record-actions/propagation.spec.ts › planted: a surface reading a cached copy of legal_entity.name fails the harness": {
+    "s": 17.9,
+    "at": 1792848483945
+  },
   "served:parallel › record-actions/reach.spec.ts › every registered action is reached in two interactions or fewer: setup phase": {
-    "s": 39.9,
-    "at": 1792071767909
+    "s": 14.1,
+    "at": 1792847083733
   },
   "served:parallel › record-actions/reach.spec.ts › every registered action is reached in two interactions or fewer: live tenant": {
-    "s": 6.7,
-    "at": 1792071767909
+    "s": 9.5,
+    "at": 1792847083733
   },
   "served:parallel › record-actions/reach.spec.ts › planted: an action the UI does not have fails the gate's own assertion, beside a real one that passes": {
-    "s": 6.7,
-    "at": 1792071767909
+    "s": 10.4,
+    "at": 1792847211996
   },
   "served:parallel › record-actions/workplace.spec.ts › one 사업장 panel from the 법인 page and the org chart, each fact its own 수정: setup phase": {
     "s": 10.8,
@@ -767,6 +1379,18 @@
   "served:parallel › register-validation.spec.ts › an invalid registration press is not queued behind placement reads at 390px": {
     "s": 6.9,
     "at": 1792155438906
+  },
+  "served:parallel › registration-void.spec.ts › certificate void fails closed during preview loading/failure and rechecks permission before submitting": {
+    "s": 5.7,
+    "at": 1792755690333
+  },
+  "served:parallel › registration-void.spec.ts › a linked workplace refuses registration void after reason selection and at the server without changing the record": {
+    "s": 9.8,
+    "at": 1792755690333
+  },
+  "served:parallel › registration-void.spec.ts › a reader with no legal-entity management grant cannot open or submit registration void": {
+    "s": 13.7,
+    "at": 1792755690333
   },
   "served:parallel › retry-after.spec.ts › a sign-in refused with 429 + Retry-After says when to try again and is not retried on its own": {
     "s": 4.3,
@@ -825,12 +1449,12 @@
     "at": 1792197746943
   },
   "served:parallel › statutory-windows.spec.ts › hire today, prepare next month's exit, and resolve truthful not-applicable filings": {
-    "s": 18.4,
-    "at": 1792071324822
+    "s": 17.7,
+    "at": 1792897278180
   },
   "served:parallel › statutory.spec.ts › statutory filings and a dated worker register from an empty tenant": {
-    "s": 25.4,
-    "at": 1792155085673
+    "s": 39.9,
+    "at": 1792897278180
   },
   "served:parallel › structure-add-many.spec.ts › chart adds three siblings at every level by mouse at 1280×720": {
     "s": 10.9,
@@ -952,6 +1576,10 @@
     "s": 12.8,
     "at": 1792072743708
   },
+  "served:clock › exit-headcount.spec.ts › the reported last working day counts in live, compare, list and exports until the following day": {
+    "s": 38.7,
+    "at": 1792867415827
+  },
   "served:clock › ideal-first-run-terms-version.spec.ts › BL-015: a newer immutable document restores the blocker and asks for its exact text": {
     "s": 9.8,
     "at": 1792158416439
@@ -961,12 +1589,12 @@
     "at": 1791700116031
   },
   "served:clock › j5-exit.spec.ts › J5 exit case: two-person confirmation, settlement submission, and a rejection that reverses the exit": {
-    "s": 62.5,
-    "at": 1791843506651
+    "s": 73,
+    "at": 1792897505635
   },
   "served:firefox › access-hr-walk.spec.ts › an HR worker granted 인사 실무 over the 법인 and 권한 관리 over 회사 전체 works, and loses it all on exit": {
-    "s": 23.2,
-    "at": 1792160763463
+    "s": 37.6,
+    "at": 1792717008333
   },
   "served:firefox › access-roles.spec.ts › pilot roles: no presets, a role made in setup, granted for go-live, enforced after 운영 시작": {
     "s": 22.7,
@@ -996,6 +1624,14 @@
     "s": 15.2,
     "at": 1792163003471
   },
+  "served:firefox › asof-integrity.spec.ts › past and future views keep dated labels and readable inspectors; future changes inherit the date": {
+    "s": 44.5,
+    "at": 1792866396399
+  },
+  "served:firefox › asof-integrity.spec.ts › a hire before opening keeps the hire date and points to roster import at that field": {
+    "s": 31.1,
+    "at": 1792866396399
+  },
   "served:firefox › asof-load.spec.ts › dated chart and comparison retain 2,000 imported people through a projected rename": {
     "s": 37.4,
     "at": 1792163003471
@@ -1005,8 +1641,8 @@
     "at": 1792163003471
   },
   "served:firefox › asof-solo.spec.ts › solo ops reads past and projected records, preserves known-at corrections and compares scheduled org changes": {
-    "s": 20.6,
-    "at": 1792163003471
+    "s": 39.4,
+    "at": 1792866396399
   },
   "served:firefox › attendance-closed-month.spec.ts › 마감된 달: read-only with the unlock path, editable while unlocked, closed again on re-lock": {
     "s": 25.5,
@@ -1117,8 +1753,8 @@
     "at": 1792160785899
   },
   "served:firefox › d26-solo-exit.spec.ts › a solo ops account registers a person and closes their exit alone, with no 결재 on the way": {
-    "s": 19.1,
-    "at": 1792645025837
+    "s": 27.6,
+    "at": 1792866396399
   },
   "served:firefox › emp/record-head.spec.ts › the card head links the 법인 and 사업장, invites an account and keeps 퇴직 · 등록 취소": {
     "s": 16.1,
@@ -1140,13 +1776,17 @@
     "s": 7.9,
     "at": 1792160521872
   },
+  "served:firefox › entity-capture.spec.ts › capture: unchecked field labels containing regex characters match literally": {
+    "s": 0.2,
+    "at": 1792866396399
+  },
   "served:firefox › entity-capture.spec.ts › capture: the district comes from the bundled list, other lists say they are not loaded and never block": {
-    "s": 5.7,
-    "at": 1792163003471
+    "s": 7.4,
+    "at": 1792866396399
   },
   "served:firefox › entity-capture.spec.ts › a certificate upload is typed beside, kept as the registration's evidence and opened from the documents tab": {
-    "s": 6.2,
-    "at": 1792163003471
+    "s": 7.5,
+    "at": 1792866396399
   },
   "served:firefox › entity-close-exited.spec.ts › regression: after the only person's exit (-1) the 법인 counts nobody and its close opens 종료일 (company-01)": {
     "s": 17.2,
@@ -1176,29 +1816,33 @@
     "s": 4.9,
     "at": 1792160763463
   },
+  "served:firefox › entity-identifier-review.spec.ts › identifier correction: a second person approves, requester applies, and a decline preserves the live evidence": {
+    "s": 82,
+    "at": 1792830470068
+  },
   "served:firefox › entity-live-notice.spec.ts › regression: an open 고치기 sheet says the record changed elsewhere, and the conflict shows values as typed (worst-case-33)": {
     "s": 9.8,
     "at": 1792160521872
   },
   "served:firefox › entity-name-en.spec.ts › the English UI names a 법인 by its English name on every surface, and Korean by its 법인명": {
-    "s": 9.4,
-    "at": 1792074361058
+    "s": 14.2,
+    "at": 1792847865502
   },
   "served:firefox › entity-name-en.spec.ts › in English, adding a 법인 names it by its English name in the receipt and every announcement": {
-    "s": 4.6,
-    "at": 1792074361058
+    "s": 6.7,
+    "at": 1792847865502
   },
   "served:firefox › entity-name-evidence.spec.ts › one 법인명: ① edits the name every surface shows, and the 약칭 and 영문명 stay secondary": {
     "s": 6.8,
     "at": 1792074704475
   },
   "served:firefox › entity-name-evidence.spec.ts › an individual's 상호 is the one name its record, list and header show": {
-    "s": 2.9,
-    "at": 1792074704475
+    "s": 7.6,
+    "at": 1792847865502
   },
   "served:firefox › entity-name-evidence.spec.ts › a branch primary is refused until its explicit certificate reason is recorded": {
-    "s": 2.7,
-    "at": 1792074704475
+    "s": 5,
+    "at": 1792847865502
   },
   "served:firefox › entity-name-evidence.spec.ts › the server refuses a 대표자 as 법인명 or 영문명 and the sheet says why, saving nothing": {
     "s": 4.3,
@@ -1280,9 +1924,13 @@
     "s": 0.7,
     "at": 1792160521872
   },
+  "served:firefox › exit-guards.spec.ts › solo HR: work-injury protection refuses dismissal, voluntary reporting survives, written notice gates effect": {
+    "s": 53,
+    "at": 1792833922231
+  },
   "served:firefox › first-run-solo.spec.ts › a solo administrator goes from an empty tenant to operating": {
-    "s": 58.9,
-    "at": 1792646871101
+    "s": 68.1,
+    "at": 1792903600061
   },
   "served:firefox › grade-fix.spec.ts › a solo administrator adds, changes, corrects, promotes and edits a grade from empty": {
     "s": 14.1,
@@ -1291,6 +1939,10 @@
   "served:firefox › grade-fix.spec.ts › wrong-kind, inactive and missing catalog IDs are refused visibly without changing the grade": {
     "s": 11.1,
     "at": 1792163003471
+  },
+  "served:firefox › grant-delay.spec.ts › setup grants apply immediately before operations start": {
+    "s": 18.9,
+    "at": 1792717008333
   },
   "served:firefox › group-transfer.spec.ts › 전적: nowhere to go says why, then one act records the exit and the hire with consent and continuity": {
     "s": 17.1,
@@ -1305,8 +1957,8 @@
     "at": 1792163003471
   },
   "served:firefox › hcm.spec.ts › HCM journey: org structure → staffing → transfer → promotion → leave → contract renewal → roster import → exit": {
-    "s": 38.3,
-    "at": 1792163003471
+    "s": 60,
+    "at": 1792866396399
   },
   "served:firefox › home-truth.spec.ts › the setup rail and go-live promise no security contact that cannot be recorded": {
     "s": 11,
@@ -1560,6 +2212,10 @@
     "s": 20.5,
     "at": 1792163147347
   },
+  "served:firefox › parity/employee-b.capture.spec.ts › parity capture: employee action screens (E3, E5, E6, E8)": {
+    "s": 14,
+    "at": 1792851270711
+  },
   "served:firefox › parity-regressions.spec.ts › zero-facet roster shows a failed read and retry before the first-use empty state": {
     "s": 5.9,
     "at": 1792163147347
@@ -1597,8 +2253,8 @@
     "at": 1792159463685
   },
   "served:firefox › people-actions/register-run.spec.ts › 연속 등록: rows saved with ⌘↵, carried values, gaps named, a namesake stops the row, setup undo": {
-    "s": 19.6,
-    "at": 1792163147347
+    "s": 27.3,
+    "at": 1792801288274
   },
   "served:firefox › people-actions/rehire.spec.ts › rehire: refused while employed at both levels; after the exit, a new period under the same 사번": {
     "s": 16.2,
@@ -1672,17 +2328,73 @@
     "s": 10.7,
     "at": 1792074395779
   },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of legal_entity.name shows the new value and never the old: setup phase": {
+    "s": 18.9,
+    "at": 1792848014754
+  },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of legal_entity.short_name shows the new value and never the old: setup phase": {
+    "s": 16.1,
+    "at": 1792848014754
+  },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of legal_entity.english_name shows the new value and never the old: setup phase": {
+    "s": 16.5,
+    "at": 1792848014754
+  },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of workplace.name shows the new value and never the old: setup phase": {
+    "s": 19.8,
+    "at": 1792848014754
+  },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of employee.emergency_contact shows the new value and never the old: setup phase": {
+    "s": 12.1,
+    "at": 1792848014754
+  },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of employee.record_section shows the new value and never the old: setup phase": {
+    "s": 11.7,
+    "at": 1792848014754
+  },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of legal_entity.name shows the new value and never the old: live tenant": {
+    "s": 21.3,
+    "at": 1792848014754
+  },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of legal_entity.short_name shows the new value and never the old: live tenant": {
+    "s": 19,
+    "at": 1792848014754
+  },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of legal_entity.english_name shows the new value and never the old: live tenant": {
+    "s": 19,
+    "at": 1792848014754
+  },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of workplace.name shows the new value and never the old: live tenant": {
+    "s": 24.2,
+    "at": 1792848014754
+  },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of employee.emergency_contact shows the new value and never the old: live tenant": {
+    "s": 16.8,
+    "at": 1792848014754
+  },
+  "served:firefox › record-actions/propagation.spec.ts › every surface of employee.record_section shows the new value and never the old: live tenant": {
+    "s": 15.9,
+    "at": 1792848014754
+  },
+  "served:firefox › record-actions/propagation.spec.ts › planted: a surface reading a cached copy of workplace.name fails the harness": {
+    "s": 30.2,
+    "at": 1792848014754
+  },
+  "served:firefox › record-actions/propagation.spec.ts › planted: a surface reading a cached copy of legal_entity.name fails the harness": {
+    "s": 17.1,
+    "at": 1792848014754
+  },
   "served:firefox › record-actions/reach.spec.ts › every registered action is reached in two interactions or fewer: setup phase": {
-    "s": 9.7,
-    "at": 1792075398152
+    "s": 13.6,
+    "at": 1792848014754
   },
   "served:firefox › record-actions/reach.spec.ts › every registered action is reached in two interactions or fewer: live tenant": {
-    "s": 21.3,
-    "at": 1792075398152
+    "s": 25,
+    "at": 1792848014754
   },
   "served:firefox › record-actions/reach.spec.ts › planted: an action the UI does not have fails the gate's own assertion, beside a real one that passes": {
-    "s": 15.4,
-    "at": 1792075398152
+    "s": 23.2,
+    "at": 1792848014754
   },
   "served:firefox › record-actions/workplace.spec.ts › one 사업장 panel from the 법인 page and the org chart, each fact its own 수정: setup phase": {
     "s": 12.1,
@@ -1703,6 +2415,18 @@
   "served:firefox › register-validation.spec.ts › an invalid registration press is not queued behind placement reads at 390px": {
     "s": 8.5,
     "at": 1792163147347
+  },
+  "served:firefox › registration-void.spec.ts › certificate void fails closed during preview loading/failure and rechecks permission before submitting": {
+    "s": 9.4,
+    "at": 1792755791514
+  },
+  "served:firefox › registration-void.spec.ts › a linked workplace refuses registration void after reason selection and at the server without changing the record": {
+    "s": 9.2,
+    "at": 1792755791514
+  },
+  "served:firefox › registration-void.spec.ts › a reader with no legal-entity management grant cannot open or submit registration void": {
+    "s": 13.7,
+    "at": 1792755791514
   },
   "served:firefox › retry-after.spec.ts › a sign-in refused with 429 + Retry-After says when to try again and is not retried on its own": {
     "s": 5.1,
