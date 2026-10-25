@@ -1,0 +1,16 @@
+{
+  "_license": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "repository": "oyatie/console-next",
+  "repository_id": 1428471724,
+  "ref": "refs/heads/dev",
+  "ruleset_id": 25624651,
+  "identity": "https://github.com/oyatie/console-next/.github/workflows/release-admission.yml@refs/heads/dev",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "predicate_type": "https://cosskorea.com/attestations/pr-admission/v1",
+  "push_ci": {"workflow": "ci.yml", "name": "ci"},
+  "check_app_id": 15368,
+  "required_checks": [
+    {"context": "backend", "integration_id": 15368},
+    {"context": "web", "integration_id": 15368}
+  ]
+}
