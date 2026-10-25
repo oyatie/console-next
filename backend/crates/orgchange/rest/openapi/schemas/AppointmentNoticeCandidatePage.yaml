@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [items, next_cursor]
+properties:
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/AppointmentNoticeCandidate'
+  next_cursor:
+    type: [string, 'null']

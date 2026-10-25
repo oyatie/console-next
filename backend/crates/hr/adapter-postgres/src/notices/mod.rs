@@ -8,6 +8,8 @@
 //! writers' gate); reads need `employee_directory_read` org-wide, and a
 //! reader without manage sees each event as the lifecycle history redacts it.
 
+mod candidates;
+pub use candidates::{AppointmentNoticeCandidate, AppointmentNoticeCandidatePage};
 mod issue;
 mod read;
 

@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [label]
+additionalProperties: false
+properties:
+  label:
+    type: [string, 'null']
+    minLength: 1
+    description: Trimmed display name without control characters; null restores the numbered default.

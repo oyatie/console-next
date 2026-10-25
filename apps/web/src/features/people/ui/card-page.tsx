@@ -1,5 +1,6 @@
 import { t } from "@console/i18n";
 import { queryView } from "../../../lib/react/query-view";
+import { useDocumentsServed } from "../../../reference/authz/ui/use-documents-served";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
@@ -74,7 +75,9 @@ export function EmployeeCard() {
 function Card({ d }: { d: Detail }) {
   const c = useCard(d);
   const quick = useQuick(c);
-  const { act, back, tab = "card" } = route.useSearch();
+  const { act, back, tab: requestedTab = "card" } = route.useSearch();
+  const documents = useDocumentsServed();
+  const tab = requestedTab === "docs" && !documents ? "card" : requestedTab;
   const navigate = route.useNavigate();
   // The identifiers page is its own route; an exit step opens on the personnel card tab, where the exit card lives.
   const open = (next: string, from?: string) =>

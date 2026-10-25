@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Screen-only refusal copy loads with the locale catalog, after sign-in.
 export const enCommon = {
+  "common.failed.code.passkey_label_invalid": "Check the passkey name length and remove control characters.",
   "common.failed.code.site_needs_workplace": "A workplace is not added by an org change. Add it from its legal entity.",
   "common.failed.code.region_branch_retired": "Regions and branches are no longer added or changed on their own. Adding a workplace brings its branch.",
   "common.failed.code.branch_backs_workplace": "This branch belongs to a workplace and closes only with it. Close the workplace instead.",

@@ -80,8 +80,11 @@ pub(super) async fn preserve_upgrade(owner: PgPool, baseline: bool) {
     // Serde ordinarily ignores this extra field; storage admission must not.
     value["cred"]["future_codec"] = json!(6);
     unknown.replace(value).await.unwrap();
-    let old_valid = valid.state().await;
-    let old_unknown = unknown.state().await;
+    let mut old_valid = valid.state().await;
+    let mut old_unknown = unknown.state().await;
+    // The new display metadata starts unset; every existing credential field is preserved.
+    old_valid["label"] = Value::Null;
+    old_unknown["label"] = Value::Null;
     let migrator = sqlx::migrate::Migrator {
         migrations: Cow::Owned(if baseline {
             baseline_migrator

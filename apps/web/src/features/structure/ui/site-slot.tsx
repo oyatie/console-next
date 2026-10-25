@@ -1,13 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { ClipboardPaste, MapPin, Plus } from "lucide-react";
+import { MapPin, Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { OrgNode } from "../../../ui/org-canvas/org-node";
 import type { Box } from "../domain/layout";
 import css from "./chart.module.css";
 
 /**
- * A legal entity with no workplace yet (spec S10-first-entity): the next step drawn where the workplace will appear, one by
- * one (its add sheet) or several at once (the paste page).
+ * A legal entity with no workplace yet (spec S10-first-entity): its add sheet drawn where the workplace will appear.
  */
 export function SiteSlot({ box }: { box: Box }) {
   return (
@@ -19,10 +18,6 @@ export function SiteSlot({ box }: { box: Box }) {
         <Link to="/org/entities/$id/workplaces/new" params={{ id: box.node.id }} className="btn btn--primary">
           <Plus size={14} aria-hidden />
           {t("structure.slot.addSite")}
-        </Link>
-        <Link to="/org/paste" className="btn">
-          <ClipboardPaste size={14} aria-hidden />
-          {t("structure.slot.paste")}
         </Link>
       </span>
     </OrgNode>

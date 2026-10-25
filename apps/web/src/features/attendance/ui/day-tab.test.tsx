@@ -1,31 +1,67 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeAll, expect, test, vi } from "vitest";
+import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
-import { fillSchedule } from "../domain/grid";
+import { fillSchedule, type Drafts } from "../domain/grid";
 import { DayTab } from "./day-tab";
 
-const state = vi.hoisted(() => ({ marks: ["NO_SCHEDULE"] }));
+const state = vi.hoisted(() => ({ marks: ["NO_SCHEDULE"], people: 1, drafts: {} as Drafts, load: "ready" as "ready" | "loading" | "error" }));
 vi.mock("@tanstack/react-router", () => ({
   getRouteApi: () => ({ useSearch: () => ({ date: "2026-10-06" }), useNavigate: () => vi.fn() }),
-  Link: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+  Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-href={to}>{children}</span>,
 }));
 vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof import("@tanstack/react-query")>(), useQuery: () => ({
-  isPending: false, error: null,
-  data: {
+  isPending: state.load === "loading", isSuccess: state.load === "ready", error: state.load === "error" ? new Error("unavailable") : null,
+  data: state.load === "ready" ? {
     judged: true, marks: { blocking: 1, decision: 0 },
-    ledger: { people: 1, no_schedule: 1, rest: 0, no_record: 0, missing_out: 0, absent: 0, outside: 0, trip: 0, late_or_early: 0, normal: 0, pending: 0 },
-    groups: [{ workplace_id: "site", unit_id: "team", name: "Team", people: 1, normal: 0, no_schedule: 1, hidden: 0, marks: { blocking: 1, decision: 0 },
+    ledger: { people: state.people, no_schedule: state.people, rest: 0, no_record: 0, missing_out: 0, absent: 0, outside: 0, trip: 0, late_or_early: 0, normal: 0, pending: 0 },
+    groups: state.people ? [{ workplace_id: "site", unit_id: "team", name: "Team", people: 1, normal: 0, no_schedule: 1, hidden: 0, marks: { blocking: 1, decision: 0 },
       rows: [{ employee_id: "person", name: "Person", month_state: { state: "OPEN" }, day: { marks: state.marks, plan: { kind: "NO_SCHEDULE" } } }],
-    }],
-  },
+    }] : [],
+  } : undefined,
 }) }));
-vi.mock("./use-drafts", () => ({ useDrafts: () => ({ drafts: {} }) }));
+vi.mock("./use-drafts", () => ({ useDrafts: () => ({ drafts: state.drafts }) }));
 vi.mock("./scope-picker", () => ({ ScopePicker: () => null }));
 vi.mock("./day-row", () => ({ DayRow: () => null }));
 
 beforeAll(() => loadCatalog("ko"));
+beforeEach(() => {
+  state.marks = ["NO_SCHEDULE"];
+  state.people = 1;
+  state.drafts = {};
+  state.load = "ready";
+});
+
+test("a successful empty board hides its toolbar and names schedule assignment", () => {
+  state.people = 0;
+  const html = renderToStaticMarkup(<DayTab />);
+  expect(html).not.toContain('role="toolbar"');
+  expect(html).toContain(t("attendanceRecords.empty.toSchedule"));
+  expect(html).toContain('data-href="/attendance"');
+});
+
+test("populated boards keep navigation and filters without save controls until a draft exists", () => {
+  const html = renderToStaticMarkup(<DayTab />);
+  expect(html).toContain('role="toolbar"');
+  expect(html).toContain(t("attendanceRecords.toolbar.prevDay"));
+  expect(html).toContain(t("attendanceRecords.board.issuesOnly"));
+  expect(html).not.toContain(t("attendanceRecords.toolbar.unsaved", { count: 0, refused: 0 }));
+  expect(html).not.toContain(t("attendanceRecords.save.nothing"));
+  expect(html).not.toContain(`>${t("attendanceRecords.toolbar.save")}<`);
+});
+
+test("the first draft exposes the save status and save command", () => {
+  state.drafts = { "person|2026-10-06": { value: "=", base: null } };
+  const html = renderToStaticMarkup(<DayTab />);
+  expect(html).toContain(t("attendanceRecords.toolbar.unsaved", { count: 1, refused: 0 }));
+  expect(html).toContain(`>${t("attendanceRecords.toolbar.save")}<`);
+});
+
+test.each(["loading", "error"] as const)("%s keeps its existing toolbar behavior", (load) => {
+  state.load = load;
+  expect(renderToStaticMarkup(<DayTab />)).toContain('role="toolbar"');
+});
 
 test("the rail offers schedule assignment instead of recording when every row lacks a schedule", () => {
   state.marks = ["NO_SCHEDULE"];

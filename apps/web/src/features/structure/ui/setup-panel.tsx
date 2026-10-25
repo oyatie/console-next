@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, Check, Eye, Upload } from "lucide-react";
+import { AlertTriangle, Check, Eye } from "lucide-react";
 import type { ChecklistStep } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
@@ -13,8 +13,8 @@ import css from "./setup-panel.module.css";
 
 /**
  * The setup panel beside the chart (spec S1 setup progress, S10 getting started): the server's steps in order (numbered,
- * done, or with something to look at), the counts the structure serves, the go-live preview, and the bulk entries at
- * the same weight as one-by-one (D8). It decides nothing: each step's state and remedy are the server's.
+ * done, or with something to look at), the counts the structure serves, and the go-live preview.
+ * Each step's state and remedy are the server's.
  */
 export function SetupPanel({ s, first, fixLink }: { s: Structure; first?: boolean; fixLink: (code: string) => ReactNode }) {
   const q = useQuery(checklistRef);
@@ -58,10 +58,6 @@ export function SetupPanel({ s, first, fixLink }: { s: Structure; first?: boolea
       ) : (
         <Link to="/setup/go-live" className={`btn btn--primary ${css.golive}`}><Eye size={16} aria-hidden />{t("structure.setup.golive")}</Link>
       )}
-      <h3 className={css.bulkTitle}>{t("structure.setup.bulk")}</h3>
-      <div className={css.bulk}>
-        <Link to="/org" search={true} hash="structure-import" className="btn"><Upload size={16} aria-hidden />{t("structure.import.label")}</Link>
-      </div>
     </aside>
   );
 }

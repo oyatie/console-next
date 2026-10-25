@@ -14,6 +14,7 @@ export const NO_ACKS = { korean_labor_law_ack: false, payroll_cutoff_ack: false,
 export type Context = {
   employeeId: string;
   kind: Verb;
+  appointMode?: "role" | "job" | "all";
   unitName?: string;
   /** The employee's lifecycle version when the sheet read it; a change since is refused (409 stale_record). */
   pin: number;
@@ -43,10 +44,10 @@ export function lifecycleBody(v: Draft, c: Context): LifecycleRequest {
     reason_code: (kind === "TRANSFER" || kind === "PROMOTE") && v.reasonCode ? v.reasonCode : undefined,
     expected_return_date: kind === "LEAVE_OF_ABSENCE" && v.returnDate ? v.returnDate : undefined,
     contract_end_date: kind === "CONTRACT_RENEWAL" || (kind === "EMPLOYMENT_TYPE_CHANGE" && v.toType === "CONTRACT") ? v.endDate : undefined,
-    to_position_kind_id: kind === "APPOINT" && v.roleId && v.roleId !== VACATE ? v.roleId : undefined,
-    vacate_position_kind: kind === "APPOINT" && v.roleId === VACATE ? true : undefined,
-    to_job_id: kind === "APPOINT" && v.jobId ? v.jobId : undefined,
-    to_job_family_id: kind === "APPOINT" && v.familyId ? v.familyId : undefined,
+    to_position_kind_id: kind === "APPOINT" && c.appointMode !== "job" && v.roleId && v.roleId !== VACATE ? v.roleId : undefined,
+    vacate_position_kind: kind === "APPOINT" && c.appointMode !== "job" && v.roleId === VACATE ? true : undefined,
+    to_job_id: kind === "APPOINT" && c.appointMode !== "role" && v.jobId ? v.jobId : undefined,
+    to_job_family_id: kind === "APPOINT" && c.appointMode !== "role" && v.familyId ? v.familyId : undefined,
     to_employment_type: kind === "EMPLOYMENT_TYPE_CHANGE" ? (v.toType as LifecycleRequest["to_employment_type"]) : undefined,
     leave_type: kind === "LEAVE_OF_ABSENCE" && v.leaveType ? LEAVE_TYPE.values.find((type) => type === v.leaveType) : undefined,
   };
@@ -77,7 +78,7 @@ export function useLifecycleCommand(c: Context, v: Draft, onSuccess: (out: Lifec
       return event;
     },
     // A transfer into another workplace's department moves the workplace (UX-R1 PLACEMENT): the placement and every count move with it.
-    invalidates: ["/api/v1/employees/{id}/lifecycle-events", "/api/v1/employees", "/api/v1/org-units", "/api/v1/employment-assignments", "/api/v1/org-structure", "/api/v1/legal-entities"],
+    invalidates: ["/api/v1/employees/{id}/lifecycle-events", "/api/v1/appointment-notices/candidates", "/api/v1/employees", "/api/v1/org-units", "/api/v1/employment-assignments", "/api/v1/org-structure", "/api/v1/legal-entities"],
     awaitFirstRead: true,
     onSuccess,
   });

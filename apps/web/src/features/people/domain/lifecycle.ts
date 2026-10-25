@@ -12,6 +12,13 @@ export type Verb = "TRANSFER" | "GROUP_TRANSFER" | "PROMOTE" | "APPOINT" | "EMPL
 /** The verbs the shared lifecycle sheet records; a group transfer has its own sheet (two legal entities, consent, continuity). */
 export type SheetVerb = Exclude<Verb, "GROUP_TRANSFER">;
 
+/** History reopens the fields that were recorded, including older mixed appointments. */
+export function appointmentMode(act: string, from?: { to_job_id?: string | null; to_job_family_id?: string | null; to_position_kind_id?: string | null }): "role" | "job" | "all" {
+  if (act === "APPOINT:job") return "job";
+  if (from?.to_job_id || from?.to_job_family_id) return from.to_position_kind_id ? "all" : "job";
+  return "role";
+}
+
 const DAY = 86_400_000;
 const utc = (d: string) => Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)));
 export const addDays = (d: string, n: number) => new Date(utc(d) + n * DAY).toISOString().slice(0, 10);

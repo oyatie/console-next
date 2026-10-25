@@ -53,3 +53,6 @@ pub(crate) const RATE_LIMIT_PER_IDENTIFIER: i64 = 20;
 /// Per-refresh-family cap per window. Refresh tokens are 256-bit secrets, so the
 /// limit bounds one session's churn (a runaway client), never an office's IP.
 pub(crate) const RATE_LIMIT_PER_REFRESH_FAMILY: i64 = 60;
+
+/// Display metadata limit shared by registration, rename and the client policy read.
+pub(crate) const PASSKEY_LABEL_MAX_LENGTH: usize = 80;

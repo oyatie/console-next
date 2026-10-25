@@ -43,4 +43,5 @@ export const enStructureChart = {
   "structureChart.export.next": "Next page",
   "structureChart.export.consequencePages": "{pages, number} {format} pages hold {sites, number} workplaces · {depts, number} departments · {people, number} people",
   "structureChart.farHint": "Workplaces at a glance · a legal entity with more than {wrap, number} workplaces folds them into two columns · hover a box or press Space to preview its departments",
+  "structureChart.export.visible": "Visible list rows ({count, number})",
 } as const;

@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [auth]
+summary: Rename one of the authenticated account's own passkeys
+operationId: renameSelfPasskey
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/PasskeyLabelRequest'
+responses:
+  '200':
+    description: The label was updated and audited.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PasskeySummary'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '422':
+    description: passkey_label_invalid — the name violates the passkey label policy.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

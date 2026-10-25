@@ -33,7 +33,7 @@ pub(crate) struct MeAuthzResponse {
     pub(crate) capabilities: Vec<MeAuthzCapability>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub(crate) struct MeAuthzCapability {
     /// `Feature::as_str` snake_case key (matches `/api/v1/policy/features`).
     pub(crate) feature: String,
@@ -153,6 +153,24 @@ pub(crate) fn me_authz_projection(principal: &Principal) -> MeAuthzResponse {
     }
 }
 
+/// Served module capabilities inherit their owning Cedar permission.
+pub(crate) fn served_authz_projection(principal: &Principal, documents: bool) -> MeAuthzResponse {
+    let mut response = me_authz_projection(principal);
+    if documents
+        && let Some(cap) = response
+            .capabilities
+            .iter()
+            .find(|cap| cap.feature == Feature::EvidenceAttach.as_str())
+            .cloned()
+    {
+        response.capabilities.push(MeAuthzCapability {
+            feature: "documents".to_owned(),
+            ..cap
+        });
+    }
+    response
+}
+
 #[cfg(test)]
 mod me_authz_org_wide_tests {
     use super::*;
@@ -166,6 +184,31 @@ mod me_authz_org_wide_tests {
     use console_platform_authz::Principal;
     use console_platform_authz::Role;
     use std::collections::BTreeSet;
+
+    #[test]
+    fn documents_require_both_a_served_binary_and_the_owning_permission() {
+        let admin = Principal::new(
+            UserId::new(),
+            OrgId::one(),
+            BTreeSet::from([Role::SuperAdmin]),
+            BranchScope::All,
+        );
+        let contains = |p: &Principal, served| {
+            served_authz_projection(p, served)
+                .capabilities
+                .iter()
+                .any(|cap| cap.feature == "documents")
+        };
+        assert!(!contains(&admin, false));
+        assert!(contains(&admin, true));
+        let no_roles = Principal::new(
+            UserId::new(),
+            OrgId::one(),
+            BTreeSet::new(),
+            BranchScope::All,
+        );
+        assert!(!contains(&no_roles, true));
+    }
 
     fn period_lock(principal: &Principal) -> Option<bool> {
         me_authz_projection(principal)

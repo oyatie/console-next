@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct RegisterStartRequest {
+    pub(crate) label: Option<String>,
     pub(crate) username: Option<String>,
     pub(crate) display_name: Option<String>,
     /// Fresh step-up assertion of an EXISTING passkey, REQUIRED when the
@@ -36,6 +37,7 @@ pub(crate) struct RegisterStartResponse {
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct RegisterFinishRequest {
+    pub(crate) label: Option<String>,
     pub(crate) ceremony_id: Uuid,
     pub(crate) credential: PasskeyRegistrationCredential,
 }
@@ -92,9 +94,15 @@ pub(crate) struct LoginFinishRequest {
 /// or serialized passkey blob.
 #[derive(Debug, Serialize)]
 pub(crate) struct PasskeySummary {
+    pub(crate) label: Option<String>,
     pub(crate) id: Uuid,
     #[serde(with = "time::serde::rfc3339")]
     pub(crate) created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339::option")]
     pub(crate) last_used_at: Option<OffsetDateTime>,
+}
+
+#[derive(Debug, Serialize)]
+pub(crate) struct PasskeyLabelPolicy {
+    pub(crate) label_max_length: usize,
 }

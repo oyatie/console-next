@@ -191,7 +191,6 @@
   "unused-export:apps/web/src/features/people/domain/scope.ts:ScopeRow": 1,
   "unused-export:apps/web/src/features/people/domain/unplaced.ts:sourceValue": 1,
   "unused-export:apps/web/src/features/people/present.ts:hiredText": 1,
-  "unused-export:apps/web/src/features/people/ui/register-run-page.tsx:RegisterRun": 1,
   "unused-export:apps/web/src/features/people/ui/unplaced-groups.tsx:DoneGroup": 1,
   "unused-export:apps/web/src/features/people/ui/use-exit-command.ts:Phase": 1,
   "unused-export:apps/web/src/features/people/ui/use-lifecycle-command.ts:Context": 1,

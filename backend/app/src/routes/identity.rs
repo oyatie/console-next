@@ -15,7 +15,8 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
     router
         .merge(console_identity_rest::router(
             IdentityRestState::new(PgOrgStore::new(pool.clone()), state.jwt_verifier.clone())
-                .with_passkey_step_up(state.policy_step_up.clone()),
+                .with_passkey_step_up(state.policy_step_up.clone())
+                .with_documents_served(cfg!(feature = "docs")),
         ))
         .merge(console_platform_authz_rest::router(
             CedarPolicyRestState::new(

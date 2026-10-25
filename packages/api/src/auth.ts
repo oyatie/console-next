@@ -66,16 +66,16 @@ export const PASSKEY_ENROLLED = "passkey_enrolled_signin_failed";
  * Initial enrollment omits step_up; adding a further passkey requires a fresh assertion. Resolves to the account's
  * sign-in ID (`login@domain`), so the web app can remember the domain for the next sign-in.
  */
-export async function registerPasskey(opts: { stepUp?: boolean } = {}): Promise<string | null> {
+export async function registerPasskey(opts: { stepUp?: boolean; label?: string } = {}): Promise<string | null> {
   const step_up = opts.stepUp ? await assertPasskey() : undefined;
-  const start = await authPost<Ceremony>("/api/v1/auth/passkey/register/start", { step_up }, true);
+  const start = await authPost<Ceremony>("/api/v1/auth/passkey/register/start", { step_up, label: opts.label }, true);
   const { publicKey } = start.challenge as WebauthnJson<"publicKey", PublicKeyCredentialCreationOptionsJSON>;
   // residentKey "preferred" (decisions #33): a security key with no free slot keeps a server-side credential.
   const credential = await platform().passkeys.create(publicKey);
   if (!credential) throw new Error("passkey_cancelled");
   const done = await authPost<components["schemas"]["PasskeyRegisterFinishResponse"]>(
     "/api/v1/auth/passkey/register/finish",
-    { ceremony_id: start.ceremony_id, credential },
+    { ceremony_id: start.ceremony_id, credential, label: opts.label },
     true,
   );
   if (opts.stepUp) return done.sign_in_id ?? null; // already a passkey session

@@ -1,15 +1,19 @@
-import { useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { getRouteApi } from "@tanstack/react-router";
 import { Check as Tick, ChevronLeft, ChevronRight, Download, Printer } from "lucide-react";
 import { t } from "@console/i18n";
+import { saveFile } from "../../../lib/download";
 import { Button, Check, ToggleButton } from "../../../ui/button/button";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Field, TextInput } from "../../../ui/field/field";
 import { Sheet } from "../../../ui/sheet/sheet";
+import { Table } from "../../../ui/table";
 import type { Depth } from "../domain/layout";
 import { deptCount, type Structure } from "../domain/model";
+import { registryCells, registryCsv } from "../domain/registry";
 import { whoAmI } from "../api";
-import { nodeName } from "../present";
+import { levelText, nodeName } from "../present";
+import { RegistryExportContext } from "./export-scope";
 import { BOX_FIELDS, chartSvg, downloadPng, exportPages, paperPt, printedPt, printSvg, type BoxField, type Paper } from "./use-export";
 import css from "./chart.module.css";
 
@@ -27,11 +31,13 @@ const DEFAULT_FIELDS: readonly BoxField[] = ["head", "people", "unplaced"];
  * (no export endpoint is needed, §3).
  */
 export function ExportDialog({ s, onClose }: { s: Structure; onClose: () => void }) {
-  const entities = s.root.children.length <= MAX_ENTITY_CHOICES ? s.root.children : [];
+  const listRows = useContext(RegistryExportContext);
+  const entities = s.root.children.length <= MAX_ENTITY_CHOICES - (listRows !== null ? 1 : 0) ? s.root.children : [];
   // The unit chosen on the chart is offered as a start of its own (S2-chart-export, the chosen unit).
   const chosen = s.byId.get(route.useSearch().sel ?? "");
   const picked = chosen && chosen.kind !== "tenant" && !entities.includes(chosen) ? chosen : undefined;
-  const [start, setStart] = useState<string>(picked?.id ?? s.root.id);
+  const [start, setStart] = useState<string>(listRows !== null ? "visible" : picked?.id ?? s.root.id);
+  const visible = start === "visible" && listRows !== null;
   const [fields, setFields] = useState<ReadonlySet<BoxField>>(new Set(DEFAULT_FIELDS));
   const [perSite, setPerSite] = useState(false);
   const [page, setPage] = useState(0);
@@ -44,7 +50,7 @@ export function ExportDialog({ s, onClose }: { s: Structure; onClose: () => void
   const sitePages = focus.kind === "site" ? 1 : focus.kind === "entity" ? focus.children.length : s.counts.sites;
   // A PNG is one picture: one page fitted.
   const paged = perSite && format === "pdf";
-  const pages = useMemo(() => exportPages(s, focus, depth, paged), [s, focus, depth, paged]);
+  const pages = useMemo(() => visible ? [] : exportPages(s, focus, depth, paged), [s, focus, depth, paged, visible]);
   const at = Math.min(page, pages.length - 1);
   const phase = t(`structure.phase.${s.phase === "OPERATING" ? "operatingChip" : "setupChip"}`);
   const stamp = (s.knownAt ? t("asof.known", { date: s.asOf, known: s.knownAt }) + " · " : "") + t("structure.export.stamp", { date: s.asOf, phase, who: whoAmI() });
@@ -56,41 +62,47 @@ export function ExportDialog({ s, onClose }: { s: Structure; onClose: () => void
   const pt = Math.min(...pages.map((p) => printedPt(p, paper)));
   const area = paperPt(paper);
   const sites = focus.kind === "tenant" ? s.counts.sites : focus.kind === "entity" ? focus.children.length : 1;
-  const go = () => (format === "pdf" ? printSvg(svgs, paper, title) : void downloadPng(svg, title));
+  const headers = [...(["level", "entity", "site", "dept", "code", "head", "people"] as const).map((key) => t(`structureChart.sheet.${key}`)), t("asof.label"), t("asof.knownAt")];
+  const sheetRows = (listRows ?? []).map((n) => ({ id: n.id, cells: registryCells(s, n, levelText) }));
+  const go = () => visible
+    ? saveFile(new Blob([registryCsv(s, listRows, headers, levelText)], { type: "text/csv;charset=utf-8" }), t("structureChart.sheet.file", { date: s.asOf }))
+    : format === "pdf" ? printSvg(svgs, paper, title) : void downloadPng(svg, title);
   const flip = (f: BoxField) => setFields((x) => (x.has(f) ? new Set([...x].filter((y) => y !== f)) : new Set([...x, f])));
   return (
     <Sheet
       open
       wide
-      title={t("structure.export.title")}
-      subtitle={t("structure.export.subtitle")}
+      title={t(visible ? "structureChart.list.download" : "structure.export.title")}
+      subtitle={visible ? undefined : t("structure.export.subtitle")}
       onClose={onClose}
-      consequence={pages.length > 1
+      consequence={visible ? t("structureChart.export.visible", { count: listRows.length }) : pages.length > 1
         ? t("structureChart.export.consequencePages", { format: format.toUpperCase(), pages: pages.length, sites, depts: deptCount(focus), people: focus.headcount })
         : t("structure.export.consequence", { format: format.toUpperCase(), sites, depts: deptCount(focus), people: focus.headcount })}
       actions={
         <>
           <Button variant="ghost" onClick={onClose}>{t("structure.cancel")}</Button>
           <Button variant="primary" onClick={go}>
-            {format === "pdf" ? <Printer size={16} aria-hidden /> : <Download size={16} aria-hidden />}
-            {t(format === "pdf" ? "structure.export.print" : "structure.export.png")}
+            {!visible && format === "pdf" ? <Printer size={16} aria-hidden /> : <Download size={16} aria-hidden />}
+            {t(visible ? "structureChart.list.download" : format === "pdf" ? "structure.export.print" : "structure.export.png")}
           </Button>
         </>
       }
     >
-      <div className={css.exportBody}>
+      <div className={css.exportBody} data-sheet={visible || undefined}>
         <div className={css.exportForm}>
           <ChoiceField
             label={t("structure.export.start")}
             required
-            value={start}
+            value={visible ? "visible" : focus.id}
             onChange={(v) => (setStart(v), setPage(0))}
             options={[
+              ...(listRows !== null ? [{ value: "visible", label: t("structureChart.export.visible", { count: listRows.length }) }] : []),
               { value: s.root.id, label: nodeName(s.root) },
               ...entities.map((e) => ({ value: e.id, label: e.name })),
               ...(picked ? [{ value: picked.id, label: t("structureChart.export.selected", { name: picked.name }) }] : []),
             ]}
           />
+          {!visible && <>
           <ChoiceField label={t("structure.export.depth")} required value={depth} onChange={(v) => setDepth(v as Depth)} options={(["sites", "one", "two", "all"] as const).map((d) => ({ value: d, label: t(`structure.depth.${d}`) }))} />
           <div className={css.exportWhat} role="group" aria-label={t("structureChart.export.fields")}>
             <span className={css.exportWhatLabel}>{t("structureChart.export.fields")}</span>
@@ -117,8 +129,11 @@ export function ExportDialog({ s, onClose }: { s: Structure; onClose: () => void
             {(p) => <TextInput {...p} value={title} onChange={(e) => setTitle(e.target.value)} />}
           </Field>
           <Check checked={redact} onChange={setRedact}>{t("structure.export.redact")}</Check>
+          </>}
         </div>
-        <figure className={css.exportPreview}>
+        {visible ? <div className={css.exportPreview}>
+          <Table<(typeof sheetRows)[number]> label={t("structureChart.list.download")} rows={sheetRows} rowId={(r) => r.id} columns={headers.map((header, i) => ({ header, cell: (r) => r.cells[i] }))} />
+        </div> : <figure className={css.exportPreview}>
           <figcaption className={`${css.exportPager} muted`}>
             {pages.length > 1 && (
               <>
@@ -131,7 +146,7 @@ export function ExportDialog({ s, onClose }: { s: Structure; onClose: () => void
             {t("structure.export.paper", { size: paper.size, orient: t(`structure.export.${paper.orient}`), w: area.mmW, h: area.mmH })}
           </figcaption>
           <img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`} alt={t("structure.export.previewAlt", { title })} />
-        </figure>
+        </figure>}
       </div>
     </Sheet>
   );

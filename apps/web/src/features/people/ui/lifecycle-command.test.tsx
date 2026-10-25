@@ -30,6 +30,7 @@ test.each(["exit", "exit lookup", "lifecycle"])("%s confirmation waits for its r
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const own = heldRead(client, kind === "lifecycle" ? "/api/v1/employees/{id}/lifecycle-events" : "/api/v1/hr/exit-cases");
   const trail = heldRead(client, "/api/v1/employees/{id}/lifecycle-cases");
+  const candidates = heldRead(client, "/api/v1/appointment-notices/candidates");
   const done = vi.fn();
   let send!: () => void;
   function Probe({ collect }: { collect: (send: () => void) => void }) {
@@ -46,11 +47,12 @@ test.each(["exit", "exit lookup", "lifecycle"])("%s confirmation waits for its r
   try {
     send();
     await vi.waitFor(() => { expect(own.read).toHaveBeenCalledOnce(); expect(trail.read).toHaveBeenCalled(); });
+    if (kind === "lifecycle") expect(candidates.read).toHaveBeenCalledOnce();
     expect(done).not.toHaveBeenCalled();
     own.release();
     await vi.waitFor(() => expect(done).toHaveBeenCalledTimes(1));
     expect(client.isFetching(trail.descriptor)).toBe(1);
   } finally {
-    own.release(); trail.release(); own.unsubscribe(); trail.unsubscribe(); client.clear();
+    own.release(); trail.release(); candidates.release(); own.unsubscribe(); trail.unsubscribe(); candidates.unsubscribe(); client.clear();
   }
 });

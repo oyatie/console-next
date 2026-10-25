@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [label_max_length]
+properties:
+  label_max_length:
+    type: integer
+    minimum: 1
+    description: Maximum number of Unicode characters in a trimmed passkey display name. Control characters are refused.

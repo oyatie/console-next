@@ -5,6 +5,9 @@
       "get",
       "post"
     ],
+    "/api/v1/appointment-notices/candidates": [
+      "get"
+    ],
     "/api/v1/appointment-notices/{id}": [
       "get"
     ],
@@ -367,6 +370,8 @@
   "schemas": [
     "AllowedLifecycleEvent",
     "AppointmentNotice",
+    "AppointmentNoticeCandidate",
+    "AppointmentNoticeCandidatePage",
     "AppointmentNoticeLine",
     "AppointmentNoticePage",
     "AppointmentNoticeSummary",

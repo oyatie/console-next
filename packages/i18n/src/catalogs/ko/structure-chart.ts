@@ -43,4 +43,5 @@ export const koStructureChart = {
   "structureChart.export.next": "다음 쪽",
   "structureChart.export.consequencePages": "{format} {pages, number}쪽에 사업장 {sites, number}곳 · 부서 {depts, number}개 · 인원 {people, number}명이 들어갑니다",
   "structureChart.farHint": "사업장까지 · 한눈 보기 · 사업장이 {wrap, number}곳을 넘는 법인은 두 줄로 접어 보여 줍니다 · 상자에 올리거나 Space를 누르면 부서를 미리 봅니다",
+  "structureChart.export.visible": "목록에 보이는 {count, number}개 행",
 } as const;

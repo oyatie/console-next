@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { chooseRadio, go, kstDate, registerEmployee } from "./flows";
-import { fillDay, openSchedule } from "./helpers/attendance";
+import { fillWeeklyPattern, openSchedule } from "./helpers/attendance";
 import { apiOf, bearerOf } from "./helpers/api";
 import { cellOf, pastWorkDay } from "./helpers/attendance-records";
 import { staffedTenant } from "./setup-flows";
@@ -27,10 +27,7 @@ test("일정 없음: warning → filtered people → assign one person; month sa
   await admin.getByRole("button", { name: "일정 지정", exact: true }).first().click();
   // With no work patterns yet, the same remedy creates one before assigning this person.
   const pattern = sheet(admin, "근무 유형 추가");
-  await pattern.getByRole("textbox", { name: /^이름/ }).fill("사무 일정");
-  await pattern.getByRole("combobox", { name: /^유형/ }).selectOption({ label: "통상" });
-  await chooseRadio(pattern, /공휴일에 쉼/);
-  for (const day of ["월", "화", "수", "목", "금"]) await fillDay(pattern, day, "09:00", "18:00", "12:00", "13:00");
+  await fillWeeklyPattern(pattern, "사무 일정", ["09:00", "18:00", "12:00", "13:00"]);
   await pattern.getByRole("button", { name: "사무 일정 추가" }).click();
   const assign = sheet(admin, "근무 일정 지정");
   await assign.getByRole("combobox", { name: /^근무 유형/ }).selectOption({ label: "사무 일정" });

@@ -46,7 +46,7 @@ type Resolved =
   | { kind: "unavailable"; why?: string };
 
 /** The lifecycle acts this page opens; any other `act` (an exit step) belongs to the exit card. */
-const LIFECYCLE_ACT = /^(?:[A-Z_]+|rehire|menu|(?:cancel|edit|again|correct|rescind):.+)$/;
+const LIFECYCLE_ACT = /^(?:[A-Z_]+(?::(?:job|relocate))?|rehire|menu|(?:cancel|edit|again|correct|rescind):.+)$/;
 /**
  * The statements a correction re-signs when its kind is not on offer now (a leave corrected while on leave): the
  * server's standing rule for every event, plus payroll for a leave.
@@ -64,7 +64,7 @@ function resolve(d: Detail, act: string, events: LifecycleEvent[] | undefined): 
   const [verb, id] = act.includes(":") ? act.split(":") : [null, null];
   if (!events) return null;
   const x = id ? events.find((e) => e.id === id) : undefined;
-  const type = (x?.event_type ?? act) as Verb;
+  const type = (x?.event_type ?? (act === "APPOINT:job" ? "APPOINT" : act === "TRANSFER:relocate" ? "TRANSFER" : act)) as Verb;
   const states = verbStates(d, events);
   const state = states.find((v) => v.verb === type);
   const listed = d.allowed_events.find((a) => a.event_type === type) ?? d.allowed_scheduled_events.find((a) => a.event_type === type);
@@ -79,7 +79,7 @@ function resolve(d: Detail, act: string, events: LifecycleEvent[] | undefined): 
   }
   if (!listed || !state?.enabled) return { kind: "unavailable", why };
   const offer = { ...listed, event_type: type, min: state.min, max: state.max, after: state.after, before: state.before } as Offer;
-  if (verb === null) return { kind: "form", offer };
+  if (verb === null || act === "APPOINT:job" || act === "TRANSFER:relocate") return { kind: "form", offer };
   if (verb === "edit") return x && cancellable(x) ? { kind: "form", offer: { ...listed, event_type: type } as Offer, seed: { from: x, mode: "edit" } } : { kind: "unavailable" };
   return x && x.state !== "APPLIED" ? { kind: "form", offer, seed: { from: x, mode: "again" } } : { kind: "unavailable" };
 }

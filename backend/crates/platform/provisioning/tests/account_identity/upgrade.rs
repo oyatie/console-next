@@ -35,6 +35,9 @@ async fn actual_0227_upgrade_preserves_every_account_key_and_family(owner: PgPoo
     // 0230 expands families with provenance columns; a pre-existing family keeps
     // every 0227 value and takes the legacy version-0 shape (all source fields NULL).
     let mut expected = before.clone();
+    for key in expected["keys"].as_array_mut().unwrap() {
+        key["label"] = Value::Null;
+    }
     for family in expected["families"].as_array_mut().unwrap() {
         let family = family.as_object_mut().unwrap();
         family.insert("provenance_version".into(), Value::from(0));

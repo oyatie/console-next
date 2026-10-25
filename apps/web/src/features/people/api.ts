@@ -417,3 +417,15 @@ export async function reportExits(people: { id: string; name: string }[], date: 
 
 /** System binding evidence for the existing HR identity review. */
 export const personBindingReviewsQuery = (subject_id: string) => get("/api/v1/person-binding-reviews", { params: { query: { subject_id } } });
+
+/** Unannounced personnel acts, keyset-paged by the existing lifecycle history order. */
+export const noticeCandidatesPages = {
+  ...get("/api/v1/appointment-notices/candidates"),
+  staleTime: 0,
+  refetchOnMount: "always" as const,
+  initialPageParam: undefined as string | undefined,
+  queryFn: ({ pageParam }: { pageParam: string | undefined }) => unwrap(api.GET("/api/v1/appointment-notices/candidates", { params: { query: { cursor: pageParam } } })),
+  getNextPageParam: (page: components["schemas"]["AppointmentNoticeCandidatePage"]) => page.next_cursor ?? undefined,
+};
+
+export type NoticeCandidate = components["schemas"]["AppointmentNoticeCandidate"];

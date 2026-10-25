@@ -43,6 +43,7 @@ pub(crate) async fn start_registration(
     if is_enrollment {
         crate::consent::ensure_privacy_consent_accepted(&state.pool, org_id, user_id).await?;
     }
+    super::self_service::normalize_label(body.label)?;
     let user = load_user_auth_context_in_org(&state.pool, org_id, user_id).await?;
 
     // Step-up gate: an already-enrolled user MUST assert an existing passkey (UV)
@@ -204,6 +205,7 @@ pub(crate) async fn finish_registration(
     }
     let family_id = session_family_from_headers(services, &headers)?;
     ensure_registration_ceremony_owner(&state.pool, body.ceremony_id, user_id).await?;
+    let label = super::self_service::normalize_label(body.label)?;
     let now = OffsetDateTime::now_utc();
 
     // The signed credential, exact bound source and its consume commit together.
@@ -221,6 +223,23 @@ pub(crate) async fn finish_registration(
             AuthError::Kernel(kernel) => RestError::from_kernel(kernel),
             other => RestError::internal(other.to_string()),
         })?;
+    if let Some(label) = label {
+        sqlx::query("UPDATE auth_webauthn_credentials SET label = $1 WHERE id = $2 AND user_id = $3 AND org_id = $4")
+            .bind(&label).bind(passkey.id).bind(user_id).bind(*org_id.as_uuid())
+            .execute(tx.as_mut()).await.map_err(DbError::Sqlx)?;
+        let audit = console_kernel_core::AuditEvent::new(
+            Some(console_kernel_core::UserId::from_uuid(user_id)),
+            console_kernel_core::AuditAction::new("auth.passkey.rename")
+                .map_err(RestError::from_kernel)?,
+            "auth_webauthn_credential",
+            passkey.id.to_string(),
+            console_kernel_core::TraceContext::generate(),
+            now,
+        )
+        .with_org(org_id)
+        .with_snapshots(None, Some(serde_json::json!({"label": label})));
+        console_platform_db::insert_audit_event(&mut tx, &audit).await?;
+    }
     let binding: Option<(Uuid, Option<Uuid>, String)> = sqlx::query_as(
         "SELECT family_id,source_id,purpose FROM auth_legacy_registration_bindings \
          WHERE ceremony_id=$1 AND user_id=$2 AND org_id=$3",

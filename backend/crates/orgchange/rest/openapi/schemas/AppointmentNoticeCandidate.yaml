@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [employee_id, employee_number, name, event]
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  employee_number:
+    type: [string, 'null']
+  name:
+    type: string
+  event:
+    $ref: '#/components/schemas/EmployeeLifecycleEvent'

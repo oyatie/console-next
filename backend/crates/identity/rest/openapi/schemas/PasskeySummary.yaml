@@ -1,6 +1,6 @@
 type: object
 description: A passkey credential summary for the self-service management surface. It deliberately carries no secret
-  material (no passkey blob, public key, or raw credential id) — only the opaque row id and the registration / last-use
+  material (no passkey blob, public key, or raw credential id) — only the opaque row id, optional display name and registration / last-use
   timestamps.
 required:
 - id
@@ -16,3 +16,8 @@ properties:
     - string
     - 'null'
     format: date-time
+  label:
+    type: [string, 'null']
+    minLength: 1
+    maxLength: 80
+    description: Optional account-selected display name; null uses the numbered default.

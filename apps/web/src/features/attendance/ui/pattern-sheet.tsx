@@ -18,9 +18,7 @@ import { SlotEditor } from "./slot-editor";
 
 type Form = { name: string; kind: PatternKind | null; holidayRule: "OFF" | "WORK" | null; days: DayForm[]; slots: SlotForm[]; starts: string };
 const fresh = (): Form => ({ name: "", kind: null, holidayRule: null, days: emptyWeek().map((d) => blankDay(d.kind)), slots: [blankSlot(), blankSlot()], starts: "" });
-// flexible · selective · deemed · discretionary are listed, not chosen: each waits for its written agreement on record (after the pilot).
-const KINDS = ["WEEKLY", "STAGGERED", "ROTATION", "FLEXIBLE", "SELECTIVE", "DEEMED", "DISCRETIONARY"] as const;
-const BUILT = new Set<string>(["WEEKLY", "STAGGERED", "ROTATION"]);
+const KINDS = ["WEEKLY", "STAGGERED", "ROTATION"] as const;
 
 /**
  * Add a work pattern (A2-types): a week (fixed · staggered hours) or a rotation (shift rotation) with break inside each working day. The rules
@@ -90,7 +88,7 @@ function PatternSheetOpen({ open, onClose, onAdded }: { open: boolean; onClose: 
           required
           value={f.kind}
           onChange={(k) => set({ kind: k as PatternKind })}
-          options={KINDS.map((k) => ({ value: k, label: t(`attendancePatterns.kind.${k}`), description: t(`attendancePatterns.kind.${k}.hint`), disabled: BUILT.has(k) ? undefined : t("attendancePatterns.regime.disabled", { condition: t(`attendancePatterns.regime.${k}`) }) }))}
+          options={KINDS.map((k) => ({ value: k, label: t(`attendancePatterns.kind.${k}`), description: t(`attendancePatterns.kind.${k}.hint`) }))}
         />
         <ChoiceField
           label={t("attendancePatterns.pattern.holidayRule")}

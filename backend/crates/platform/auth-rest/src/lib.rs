@@ -53,6 +53,7 @@ use crate::passkey::register::finish_registration;
 use crate::passkey::register::start_registration;
 use crate::passkey::self_service::delete_self_passkey;
 use crate::passkey::self_service::list_self_passkeys;
+use crate::passkey::self_service::rename_self_passkey;
 use crate::passkey::step_up::start_mobile_step_up;
 use crate::signup::signup;
 use crate::token::logout::logout;
@@ -71,6 +72,7 @@ pub const PASSKEY_STEP_UP_START_PATH: &str = "/api/v1/auth/passkey/step-up/start
 pub const OTP_REDEEM_PATH: &str = "/api/v1/auth/otp/redeem";
 pub const ADMIN_OTP_ISSUE_PATH: &str = "/api/v1/auth/admin/otp/issue";
 pub const ADMIN_CREDENTIAL_RESET_PATH: &str = "/api/v1/auth/admin/credential-reset";
+pub const AUTH_PASSKEY_LABEL_POLICY_PATH: &str = "/api/v1/auth/passkeys/policy";
 pub const AUTH_PASSKEYS_PATH: &str = "/api/v1/auth/passkeys";
 pub const AUTH_PASSKEY_PATH_TEMPLATE: &str = "/api/v1/auth/passkeys/{id}";
 pub const PASSKEY_ENROLL_HANDOFF_PATH: &str = "/api/v1/auth/passkey/enroll-handoff";
@@ -100,6 +102,7 @@ pub const AUTH_ROUTE_PATHS: &[&str] = &[
     ADMIN_OTP_ISSUE_PATH,
     ADMIN_CREDENTIAL_RESET_PATH,
     AUTH_PASSKEYS_PATH,
+    AUTH_PASSKEY_LABEL_POLICY_PATH,
     AUTH_PASSKEY_PATH_TEMPLATE,
     PASSKEY_ENROLL_HANDOFF_PATH,
     DEVICE_LOGIN_START_PATH,
@@ -143,7 +146,14 @@ pub fn router(state: AuthRestState) -> Router {
         .route(ADMIN_OTP_ISSUE_PATH, post(issue_admin_otp))
         .route(ADMIN_CREDENTIAL_RESET_PATH, post(admin_credential_reset))
         .route(AUTH_PASSKEYS_PATH, get(list_self_passkeys))
-        .route(AUTH_PASSKEY_PATH_TEMPLATE, delete(delete_self_passkey))
+        .route(
+            AUTH_PASSKEY_LABEL_POLICY_PATH,
+            get(passkey::self_service::passkey_label_policy),
+        )
+        .route(
+            AUTH_PASSKEY_PATH_TEMPLATE,
+            delete(delete_self_passkey).patch(rename_self_passkey),
+        )
         .route(PASSKEY_ENROLL_HANDOFF_PATH, post(enroll_handoff))
         .route(DEVICE_LOGIN_START_PATH, post(start_device_login))
         .route(DEVICE_LOGIN_POLL_PATH, post(poll_device_login))

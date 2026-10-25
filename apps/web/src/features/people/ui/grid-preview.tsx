@@ -87,7 +87,6 @@ export function GridPreview({ preview, columns, label, show, who, reason, onReas
         {preview.step_up_required && <p className={s.note}>{t("bulkGrid.stepUp")}</p>}
         <ChoiceField label={t("bulkGrid.side.reason")} required look="chips" options={REASONS.map((r) => ({ value: r, label: t(`bulkGrid.reason.${r}`) }))} value={reason} onChange={onReason} error={tried && !reason ? t("reason.field.missing") : undefined} />
         <Field label={t("bulkGrid.side.memo")} required={false}>{(p) => <TextInput {...p} value={memo} maxLength={1000} onChange={(e) => onMemo(e.target.value)} />}</Field>
-        <p className={s.box}>{t("bulkGrid.side.undo")}</p>
       </Card>
     </div>
   );

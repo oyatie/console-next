@@ -42,8 +42,9 @@ test("근무 일정: first run → pattern → assign with preview → cancel be
     expect([response.status(), await codeOf(response)]).toEqual([422, "break_below_minimum"]);
   }
   expect(await (await api("/attendance/patterns")).json()).toEqual(before);
-  // 탄력적 근로시간제 is listed, not offered: it needs a written agreement first.
-  await expect(s.getByRole("combobox", { name: /^유형/ }).locator("option", { hasText: "탄력적" })).toBeDisabled();
+  // Schemes that need an unserved written-agreement flow are absent.
+  await expect(s.getByRole("radio", { name: /탄력적/ })).toHaveCount(0);
+  await expect(s.getByRole("option", { name: /탄력적/ })).toHaveCount(0);
   for (const day of ["월", "화", "수", "목", "금"]) await s.getByRole("group", { name: day, exact: true }).getByRole("textbox", { name: /^휴게 끝/ }).fill("13:00");
   await expect(s.getByText(/주 평균 40:00/)).toBeVisible();
   await expectAccessible(admin, "pattern sheet filled");

@@ -5495,6 +5495,7 @@ const IDENTITY_FRAGMENT_EXTERNAL: &[&str] = &[
     "OrgProposalReassignScope",
     "OrgUnitKind",
     "PasskeyStepUpAssertion",
+    "SetupChecklist",
     "Timestamp",
     "Uuid",
 ];
@@ -6047,13 +6048,30 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
-        path: "/api/v1/auth/passkeys/{id}",
+        path: "/api/v1/auth/passkeys/policy",
         operations: &[Operation {
-            method: "delete",
+            method: "get",
             body: include_str!(
-                "../../identity/rest/openapi/paths/api__v1__auth__passkeys__id.delete.yaml"
+                "../../identity/rest/openapi/paths/api__v1__auth__passkeys__policy.get.yaml"
             ),
         }],
+    },
+    PathItem {
+        path: "/api/v1/auth/passkeys/{id}",
+        operations: &[
+            Operation {
+                method: "delete",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__auth__passkeys__id.delete.yaml"
+                ),
+            },
+            Operation {
+                method: "patch",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__v1__auth__passkeys__id.patch.yaml"
+                ),
+            },
+        ],
     },
     PathItem {
         path: "/api/v1/auth/privacy-consent/accept",
@@ -7053,6 +7071,14 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "OtpRedeemResponse",
         body: include_str!("../../identity/rest/openapi/schemas/OtpRedeemResponse.yaml"),
+    },
+    NamedYaml {
+        name: "PasskeyLabelPolicy",
+        body: include_str!("../../identity/rest/openapi/schemas/PasskeyLabelPolicy.yaml"),
+    },
+    NamedYaml {
+        name: "PasskeyLabelRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/PasskeyLabelRequest.yaml"),
     },
     NamedYaml {
         name: "PasskeyLoginFinishRequest",
@@ -9395,6 +9421,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/appointment-notices/candidates",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__appointment-notices__candidates.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/appointment-notices/{id}",
         operations: &[Operation {
             method: "get",
@@ -10580,6 +10615,16 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "AppointmentNotice",
         body: include_str!("../../orgchange/rest/openapi/schemas/AppointmentNotice.yaml"),
+    },
+    NamedYaml {
+        name: "AppointmentNoticeCandidate",
+        body: include_str!("../../orgchange/rest/openapi/schemas/AppointmentNoticeCandidate.yaml"),
+    },
+    NamedYaml {
+        name: "AppointmentNoticeCandidatePage",
+        body: include_str!(
+            "../../orgchange/rest/openapi/schemas/AppointmentNoticeCandidatePage.yaml"
+        ),
     },
     NamedYaml {
         name: "AppointmentNoticeLine",

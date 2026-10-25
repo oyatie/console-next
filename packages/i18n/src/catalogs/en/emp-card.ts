@@ -146,8 +146,6 @@ export const enEmpCard: Partial<Record<keyof typeof koEmpCard, string>> = {
   "empCard.type.missing": "Not entered",
   "empCard.group.empty": "Empty · counted from the hire date",
   "empCard.probation.until": "until {date}",
-  "empCard.workForm.unserved": "No field yet",
-  "empCard.concurrent.lock": "Concurrent posts are not open yet",
   "empCard.job.events": "{count} actions",
   "empCard.contract.renew": "Renew or change contract",
   "empCard.leave.kind": "Kind",

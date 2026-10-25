@@ -8,3 +8,7 @@ properties:
   credential:
     type: object
     additionalProperties: true
+  label:
+    type: [string, 'null']
+    minLength: 1
+    description: Optional account-selected display name; null uses the numbered default.

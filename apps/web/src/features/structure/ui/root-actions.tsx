@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Plus, Upload } from "lucide-react";
+import { Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { place } from "../../../ui/org-canvas/place";
 import { unzoomOf, type Rect } from "../../../ui/org-canvas/use-view";
@@ -8,7 +8,7 @@ import css from "./chart.module.css";
 
 
 /**
- * The root entries sit at the box's foot. Import links to the page header's shared menu in either phase.
+ * The root header adds one legal entity; bulk entry belongs to the page toolbar.
  */
 export function RootActions({ box, zoom, visible }: { box: Box; setup: boolean; zoom: number; visible: Rect }) {
   const top = box.y + box.h - 40;
@@ -18,7 +18,7 @@ export function RootActions({ box, zoom, visible }: { box: Box; setup: boolean; 
   return (
     <div ref={place({ left: box.x, top })} className={css.rootActions} role="group" aria-label={t("structure.root.label")}>
       <Link to="/org/entities/new" className="btn"><Plus size={14} aria-hidden />{t("structure.tools.addEntity")}</Link>
-      <Link to="/org" search={true} hash="structure-import" className="btn"><Upload size={14} aria-hidden />{t("structure.import.label")}</Link>
+
     </div>
   );
 }

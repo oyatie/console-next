@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { MapPin, Network, Plus, Upload } from "lucide-react";
+import { MapPin, Network, Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import css from "./first-run.module.css";
 
@@ -19,17 +19,10 @@ export function FirstRun() {
           </ol>
         </div>
         <p className="muted">{t("structure.first.intro")}</p>
-        <div className={css.cards}>
-          <div className={css.card}>
-            <h3>{t("structure.first.oneTitle")}</h3>
-            <p className="muted">{t("structure.first.oneBody")}</p>
-            <Link to="/org/entities/new" className="btn btn--primary"><Plus size={16} aria-hidden />{t("structure.first.addEntity")}</Link>
-          </div>
-          <div className={css.card}>
-            <h3>{t("structure.first.bulkTitle")}</h3>
-            <p className="muted">{t("structure.first.bulkBody")}</p>
-            <Link to="/org" search={true} hash="structure-import" className="btn"><Upload size={16} aria-hidden />{t("structure.import.label")}</Link>
-          </div>
+        <div className={css.card}>
+          <h3>{t("structure.first.oneTitle")}</h3>
+          <p className="muted">{t("structure.first.oneBody")}</p>
+          <Link to="/org/entities/new" className="btn btn--primary"><Plus size={16} aria-hidden />{t("structure.first.addEntity")}</Link>
         </div>
       </div>
       <div className={css.ghosts} aria-hidden>

@@ -164,8 +164,6 @@ function GridWorkspace() {
             <b>{t("bulkGrid.verbs")}</b>
             {fields.filter((f) => f.cls !== "now").length > 0 && <span className={s.note}>{t("bulkGrid.verb.secondHint")}</span>}
             <span className={s.verbChip}>{t("bulkGrid.verb.correct")}</span>
-            <span className={s.verbOff} title={t("bulkGrid.verb.changeClosed")}>{t("bulkGrid.verb.change")}</span>
-            <span className={s.note}>{t("bulkGrid.verb.changeClosed")}</span>
           </div>
           <div className={s.gridWrap} tabIndex={-1}>
             <GridTable rows={shown} columns={fields} activeCell={activeCell} onActiveChange={setActiveCell} label={t("bulkGrid.title", { scope: t("bulkGrid.scopeAll") })} onCell={(id, ci, text) => (setTyped((x) => ({ ...x, [id]: { ...x[id], [fields[ci]!.key]: text } })), setMarks((m) => (m[id] ? { ...m, [id]: {} } : m)))} statusOf={(r) => {

@@ -29,8 +29,6 @@
 .fix :global(.btn) { min-height: 28px; font-size: var(--text-xs); }
 .tip { margin: 0; padding: var(--space-3); border: 1px solid var(--info-bd); border-radius: var(--radius); background: var(--info-bg); color: var(--info-tx); font-size: var(--text-sm); }
 .golive { justify-content: center; min-height: var(--row-h); }
-.bulkTitle { margin: 0; font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--steel); }
-.bulk { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
 @media (max-width: 960px) {
   .panel { width: auto; border-left: 0; }
 }
