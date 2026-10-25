@@ -19,7 +19,7 @@ const ICON = { entity: Building2, site: MapPin, dept: Network } as const;
 /**
  * list (spec S2-registry): every level in one table, "all levels" as an indented tree or one level flat, a find and
  * quick filters that keep each hit's path, the same selection as the chart with its acts, each level's head and a
- * department's code (CS-BE), a legal entity's unplaced people, and the rows as an org sheet. A workplace's manager is not served;
+ * department's code (CS-BE), direct/total people, and the rows as an org sheet. A workplace's manager is not served;
  * the table says nothing it cannot show.
  */
 export function RegistryView({ s, cmd, sel, onSelect }: { s: Structure; cmd: Commands; sel: ReadonlySet<string>; onSelect: (ids: ReadonlySet<string>) => void }) {

@@ -8,9 +8,7 @@ import css from "./chart.module.css";
 
 
 /**
- * The root header's own entries (spec S1, S2-chart-scale, D8): one by one and in bulk at the same weight, drawn along
- * the box's foot in the canvas layer. A list pasted during setup goes to the outline beside the chart; once operating,
- * to the paste page (a workplace or a department there is a recorded change).
+ * The root entries sit at the box's foot. Import links to the page header's shared menu in either phase.
  */
 export function RootActions({ box, zoom, visible }: { box: Box; setup: boolean; zoom: number; visible: Rect }) {
   const top = box.y + box.h - 40;
