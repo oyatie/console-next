@@ -25,5 +25,7 @@ mod held;
 mod hired_today;
 #[path = "org_change_people/impact_concurrency.rs"]
 mod impact_concurrency;
+#[path = "org_change_people/refusals.rs"]
+mod refusals;
 #[path = "org_change_people/schedule.rs"]
 mod schedule;
