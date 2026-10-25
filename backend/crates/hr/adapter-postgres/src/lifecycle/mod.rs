@@ -24,6 +24,7 @@ pub mod classification;
 pub mod correct;
 mod correction_authorization;
 pub mod fixed_term;
+pub mod fixed_term_options;
 pub mod group_transfer;
 pub mod guards;
 pub mod hooks;

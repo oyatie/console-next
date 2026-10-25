@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
@@ -17,9 +18,11 @@ import { Banner } from "../../../ui/banner/banner";
 import { ReasonCodeField } from "../../../reference/reason/ui/reason-code-field";
 import { reasonCodesQuery, reasonLabel, useExitClass } from "../../../lib/reason-codes";
 import { useDraft } from "../../../lib/react/use-draft";
-import { eventsQuery, reportExit } from "../api";
+import { QueryState } from "../../../lib/react/query-state";
+import { eventsQuery, exitGuardsQuery, reportExit } from "../api";
 import { OpsExitNote } from "./account-link-card";
 import { StepFrame } from "./exit-foot";
+import { ExitPreflight } from "./legal-preflight";
 import { useTrailPreview } from "./lifecycle-trail-preview";
 import { focusFirstInvalid, useExitCommand } from "./use-exit-command";
 import s from "./exit.module.css";
@@ -34,18 +37,19 @@ const NOTE_MAX = 1000;
  * is typed. What must be settled first is named above it: a reservation dated after that day would apply to someone
  * who has left. The exit reason is recorded once the exit is in effect (backend-followups EMP-UI 14).
  */
-export function ReportForm({ employee, onClose, onDone }: { employee: Employee; onClose: () => void; onDone: (message: string, reference?: string) => void }) {
+export function ReportForm({ employee, contractEnd = false, onClose, onDone }: { employee: Employee; contractEnd?: boolean; onClose: () => void; onDone: (message: string, reference?: string) => void }) {
   const today = todayKst();
   const reasons = useQuery(reasonCodesQuery("exit_reason"));
   const draft = useDraft({
-    route: "/people/$id", record: employee.id, form: "exit.report",
-    initial: { date: "", note: "", reason: null as string | null },
+    route: "/people/$id", record: employee.id, form: contractEnd ? "exit.contract_end" : "exit.report",
+    initial: { date: contractEnd ? employee.contract_end_date ?? "" : "", note: "", reason: contractEnd ? "CONTRACT_END" : null as string | null },
     text: (v) => `${t("exit.report")} · ${employee.name}\n${t("exit.field.date")}: ${v.date}\n${t("exit.field.reason")}: ${v.reason ? reasonLabel("exit_reason", v.reason, reasons.data?.items.find((r) => r.code === v.reason)) : ""}\n${t("exit.field.circumstances")}: ${v.note}`,
   });
   const { date, note, reason } = draft.value;
   const preview = useTrailPreview(["EXIT"], { exit_reason: reason ?? undefined, effective_date: date || undefined });
   const reasonsRead = !reasons.isPending;
   const exitClass = useExitClass(reason);
+  const guards = useQuery({ ...exitGuardsQuery(employee.id, date, reason), enabled: Boolean(date) });
   const [tried, setTried] = useState(false);
   const formId = useId();
   const navigate = route.useNavigate();
@@ -113,8 +117,7 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
         {/* The one exit reason list (BW-07 exit_reason; the case's code is the register's reason). Optional: unknown now, it is
             recorded on the card after the exit. */}
         {/* Drawn once the list has landed, with the field under it: twenty chips arriving late pushed it down. */}
-        {reasonsRead && <ReasonCodeField domain="exit_reason" look="chips" required={false} label={t("exit.field.reason")} value={reason} onChange={(nextReason) => draft.set({ ...draft.value, reason: nextReason })} hint={t("exit.field.reason.hint")} />}
-        {exitClass?.involuntary && <Chip tone="warn">{t("exit.class.involuntary")}</Chip>}
+        {reasonsRead && <ReasonCodeField domain="exit_reason" look="chips" groupExit required={false} label={t("exit.field.reason")} value={reason} onChange={(nextReason) => draft.set({ ...draft.value, reason: nextReason })} hint={t("exit.field.reason.hint")} />}
         {reasonsRead && <Field
           label={t("exit.field.circumstances")}
           hint={t("exit.field.count", { count: note.length, max: NOTE_MAX })}
@@ -123,6 +126,8 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
         >
           {(p) => <TextArea {...p} maxLength={NOTE_MAX} value={note} onChange={(e) => draft.set({ ...draft.value, note: e.target.value })} />}
         </Field>}
+        {exitClass?.involuntary && <Chip tone="warn">{t("exit.class.involuntary")}</Chip>}
+        {date && <QueryState q={guards}>{(facts) => <ExitPreflight facts={facts} involuntary={Boolean(exitClass?.involuntary)} />}</QueryState>}
       </fieldset>
     </StepFrame>
   );

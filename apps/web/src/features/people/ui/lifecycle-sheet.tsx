@@ -14,7 +14,7 @@ import { Receipt } from "../../../ui/receipt/receipt";
 import { User } from "lucide-react";
 import { LifecycleChanges } from "./lifecycle-changes";
 import { ancestor, unitPath } from "../../../reference/org/present";
-import { jobTitlesQuery, type LifecycleEvent } from "../api";
+import { exitGuardsQuery, jobTitlesQuery, type LifecycleEvent } from "../api";
 import { appointmentMode, unitByName, type SheetVerb } from "../domain/lifecycle";
 import { returnRequired } from "../domain/leave";
 import { applies, effectivePresets } from "../domain/presets";
@@ -65,6 +65,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
   const kind = offer.event_type;
   const appointMode = appointmentMode(act, seed?.from);
   const today = todayKst();
+  const leaveRules = useQuery({ ...exitGuardsQuery(e.id, today, null), enabled: kind === "LEAVE_OF_ABSENCE" });
   const from = seed?.from;
   const correcting = seed?.mode === "correct" ? from : undefined;
   const locked = seed?.mode === "edit" || Boolean(correcting);
@@ -238,7 +239,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
       subtitle={here ? t("lifecycle.nowSince", { where: here, date: since }) : t("lifecycle.now", { where: whoLine(e) })}
       onClose={onClose}
       pending={run.isSending}
-      loading={titles.isPending || (coded && reasons.isPending)}
+      loading={titles.isPending || (coded && reasons.isPending) || (kind === "LEAVE_OF_ABSENCE" && leaveRules.isPending)}
       locked={checking || noCatalog}
       notice={
         <>
@@ -275,6 +276,8 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
       {f.restored && <Restored onClear={f.clear} />}
       {correcting && <p className={s.fact}>{t("lifecycle.correct.fact", { date: fmtDay(correcting.effective_date), action })}</p>}
       <LifecycleWhat
+        onOpen={onOpen}
+        onClose={onClose}
         detail={detail}
         kind={kind}
         appointMode={appointMode}

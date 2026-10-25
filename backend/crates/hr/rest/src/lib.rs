@@ -17,6 +17,7 @@ pub mod profile;
 pub mod bulk_corrections;
 pub mod change_sets;
 pub mod corrections;
+pub mod exit_guards;
 pub mod fixed_term;
 pub mod job_title;
 pub mod lifecycle_void;

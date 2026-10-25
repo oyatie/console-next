@@ -39,13 +39,13 @@ export function SecJob({ c, onFix, onAct, onTab, onContract }: { c: Card; onFix:
   const end = d.employment?.contract_end_date;
   const left = end ? daysBetween(todayKst(), end) : 0;
   // A reader without the grant does not read the job facts: say so rather than show them as empty.
-  const none = <Muted>{t(c.manage ? "empCard.none" : "people.field.restricted")}</Muted>;
-  const rc = (field: string, key: string) => c.manage && <FieldMark kind="rc" field={field} onPress={() => onFix(key)} />;
-  const verb = (field: string, text: string, act: string) => c.manage && <FieldMark kind="verb" field={field} text={text} onPress={() => onAct(act)} />;
+  const none = <Muted>{t(c.readable ? "empCard.none" : "people.field.restricted")}</Muted>;
+  const rc = (field: string, key: string) => c.editable && <FieldMark kind="rc" field={field} onPress={() => onFix(key)} />;
+  const verb = (field: string, text: string, act: string) => c.editable && <FieldMark kind="verb" field={field} text={text} onPress={() => onAct(act)} />;
   const count = items.filter((x) => x.state !== "CANCELLED").length;
   return (
     <RecordSection id="s2" no={2} title={t("empCard.sec.job")} two tools={<Button variant="ghost" onClick={onTab}><History size={14} aria-hidden /> {t("empCard.job.events", { count })}</Button>}>
-      {c.manage && !d.employment && !d.pending_employment && <MissingEmployment number={e.employee_number} />}
+      {c.editable && !d.employment && !d.pending_employment && <MissingEmployment number={e.employee_number} />}
       <FieldRow label={t("empCard.f.status")}  mark={<FieldMark kind="lock" field={t("empCard.f.status")} />}>
         {status.label}
         {e.status_since && <Muted> · {t("empCard.status.since", { date: fmtDate(e.status_since) })}</Muted>}
@@ -62,7 +62,7 @@ export function SecJob({ c, onFix, onAct, onTab, onContract }: { c: Card; onFix:
       <FieldRow wide label={t("empCard.f.placements")}>
         <EmploymentPlacement employeeId={e.id} className={s.placements} />
       </FieldRow>
-      <FieldRow id="f-grade" label={t("empCard.f.grade")} sub={!c.manage || promoted ? t(c.manage ? "empCard.grade.since" : "empFix.catalog.scope", { date: promoted ? fmtDate(promoted.effective_date) : "" }) : undefined} mark={rc(t("empCard.f.grade"), "grade")}>
+      <FieldRow id="f-grade" label={t("empCard.f.grade")} sub={!c.readable || promoted ? t(c.readable ? "empCard.grade.since" : "empFix.catalog.scope", { date: promoted ? fmtDate(promoted.effective_date) : "" }) : undefined} mark={rc(t("empCard.f.grade"), "grade")}>
         {title(k.grade_id) ?? none}
         {p?.event_type === "PROMOTE" && plan(title(p.to_grade_id))}
       </FieldRow>
@@ -79,21 +79,21 @@ export function SecJob({ c, onFix, onAct, onTab, onContract }: { c: Card; onFix:
           <span className={s.num}>{fmtDate(end)}</span> <span className={left < 0 ? s.warn : s.steel}>{left < 0 ? t("empCard.contractEnd.past") : t("empCard.contractEnd.left", { days: left })}</span>
         </FieldRow>
       )}
-      <FieldRow id="f-hire_date" no="7" label={t("empCard.f.hire")}  mark={c.manage && <FieldMark kind="corTwo" field={t("empCard.f.hire")} onPress={() => onFix("hire_date")} />}>
+      <FieldRow id="f-hire_date" no="7" label={t("empCard.f.hire")}  mark={c.editable && <FieldMark kind="corTwo" field={t("empCard.f.hire")} onPress={() => onFix("hire_date")} />}>
         <span className={s.num}>{e.hire_date ? fmtDate(e.hire_date) : t("empCard.missing")}</span>
       </FieldRow>
       <FieldRow
         label={t("empCard.f.group")}
 
-        mark={c.manage && <FieldMark kind={group ? "corTwo" : "first"} field={t("empCard.f.group")} onPress={() => onFix("group_service_start_date")} />}
+        mark={c.editable && <FieldMark kind={group ? "corTwo" : "first"} field={t("empCard.f.group")} onPress={() => onFix("group_service_start_date")} />}
       >
         {group ? <span className={s.num}>{fmtDate(group)}</span> : <Muted>{t("empCard.group.empty")}</Muted>}
       </FieldRow>
-      <FieldRow id="f-probation_end_date" label={t("empCard.f.probation")} mark={c.manage && <FieldMark kind="cor" field={t("empCard.f.probation")} onPress={() => onFix("probation_end_date")} />}>
+      <FieldRow id="f-probation_end_date" label={t("empCard.f.probation")} mark={c.editable && <FieldMark kind="cor" field={t("empCard.f.probation")} onPress={() => onFix("probation_end_date")} />}>
         {probation?.probation_end_date ? <>{t("empCard.probation.until", { date: fmtDate(probation.probation_end_date) })} · {label(PROBATION_STATE, probation.probation_state)}</> : none}
       </FieldRow>
       <div className={s.rail}>
-        {c.manage && <EmploymentRecord e={e} onContract={onContract} />}
+        {c.readable && <EmploymentRecord e={e} editable={c.editable} onContract={onContract} />}
       </div>
     </RecordSection>
   );

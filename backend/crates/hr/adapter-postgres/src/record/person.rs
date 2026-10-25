@@ -47,6 +47,7 @@ pub(crate) async fn writable_person(
         console_platform_authz::Feature::EmployeeDirectoryManage,
     )
     .await?;
+    crate::employee_state::require_editable(tx.as_mut(), *org.as_uuid(), employee).await?;
     let org_uuid = *org.as_uuid();
     let person = bound_person(tx, org_uuid, employee).await?.ok_or_else(|| {
         crate::corrections::refusal(

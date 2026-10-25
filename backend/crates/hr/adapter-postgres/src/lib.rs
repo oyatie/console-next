@@ -46,6 +46,8 @@ pub mod rrn;
 pub mod notices;
 
 // --- lane: UX-R2 GUARDS ---
+mod employee_state;
+mod legal_rules;
 pub mod own_record;
 // --- lane: LC-B3 ---
 pub mod cases;

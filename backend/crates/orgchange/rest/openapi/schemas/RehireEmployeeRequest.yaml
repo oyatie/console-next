@@ -2,6 +2,10 @@ type: object
 additionalProperties: false
 required: [hire_date, employment_type, org_unit_id, position, idempotency_key]
 properties:
+  acknowledge_open_exit_case:
+    type: boolean
+    default: false
+    description: Acknowledge remaining settlement after a final exit decision. Never admits HR_CONFIRMED.
   hire_date:
     type: string
     format: date

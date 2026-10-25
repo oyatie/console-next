@@ -42,7 +42,7 @@ impl VoidBasis {
     }
 }
 
-const WORKED: &str = "근무 기록이 있는 직원은 퇴직으로 처리합니다. 중복이면 병합하십시오";
+const WORKED: &str = "근무 기록을 보존해야 하므로 등록을 취소할 수 없습니다. 기록 오류는 정정 또는 병합으로 검토하십시오";
 
 /// The facts a void decision reads, all from the locked record.
 #[derive(Debug, Clone, Copy)]

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! PATCH the EMP-MODEL facts (concurrent-editing ME-6): JSON Patch with a
 //! `test` per touched path, checked by the shared evaluator under the row
 //! lock. It records facts that hold no value yet; every write goes through
@@ -161,6 +162,7 @@ impl HrService {
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 authorize_hr_person(tx, &principal, Feature::EmployeeDirectoryManage, employee_id).await?;
+                crate::employee_state::require_editable(tx.as_mut(), org_uuid, employee_id).await?;
                 let current = load_facts(tx, org_uuid, employee_id, true).await?;
                 crate::own_record::own_record_guard(tx, org, actor, employee_id, Feature::EmployeeDirectoryManage).await?;
                 if current.employment.is_none() && ops.iter().any(touches_employment) {

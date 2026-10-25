@@ -60,6 +60,7 @@ async fn renumber(
     moves: &[(Uuid, Option<String>)],
 ) -> Result<(), HrError> {
     for (id, _) in moves {
+        crate::employee_state::require_editable(tx.as_mut(), org, *id).await?;
         let placeholder = format!("~{}", id.simple());
         correct_employee_head_in_tx(
             tx,

@@ -113,8 +113,7 @@ properties:
     description: CONTRACT_RENEWAL (required), or an EMPLOYMENT_TYPE_CHANGE to CONTRACT (required, the new
       contract's end; MR-24). YYYY-MM-DD, on or after effective_date. A renewal that takes
       fixed-term service past the statutory limit (기간제법 §4①, the register's FIXED_TERM_MAX_YEARS; 육아휴직 not
-      counted) is 409 fixed_term_limit unless exception_id admits it. Over the limit on the hire-date fallback
-      (no contract history) is allowed and flagged by GET /api/v1/employees/{id}/fixed-term.
+      counted) is 409 fixed_term_limit unless exception_id admits it. Over the limit on the hire-date fallback (no contract history) is 409 fixed_term_basis_unconfirmed. Record history or an exception; read the basis with GET /api/v1/employees/{id}/fixed-term.
   to_workplace_id:
     description: TRANSFER or GROUP_TRANSFER (E-S3b). TRANSFER - a 사업장 of the employee's own 법인 to move them to (전근); the
       employment_assignments row splits on effective_date. Without it, a to_org_unit_id placed at another

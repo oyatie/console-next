@@ -5,7 +5,7 @@
 //! (`employee_contracts`, EMP-MODEL G1); else the profile's contract window
 //! (0245, which CONTRACT_RENEWAL extends) plus the windows earlier 고용형태
 //! 전환 away from CONTRACT closed (MR-24); else `hire_date` (imported people,
-//! flagged and never blocked). 육아휴직 is taken out (남녀고용평등법 §19⑤). The
+//! flagged and refused past the register limit). 육아휴직 is taken out (남녀고용평등법 §19⑤). The
 //! limit is the statutory register's FIXED_TERM_MAX_YEARS on the renewal date.
 
 use console_compliance_domain::statutory::codes;
@@ -23,8 +23,6 @@ use console_hr_domain::lifecycle::fixed_term::{
 use console_hr_domain::lifecycle::fixed_term_exemption::FixedTermExemption;
 use console_hr_domain::text::parse_yyyy_mm_dd;
 use console_kernel_core::KernelError;
-use console_platform_authz::{Feature, Principal};
-use console_platform_db::with_org_conn;
 use serde::Serialize;
 use serde_json::json;
 use time::{Date, Duration};
@@ -32,9 +30,7 @@ use uuid::Uuid;
 
 use super::classification::closed_contract_windows;
 use super::title_reason::coded;
-use crate::authz::authorize_hr_org_wide;
-use crate::clock::today_kst;
-use crate::{HrError, HrService};
+use crate::HrError;
 
 /// hire_date, employment_type, contract_start_date, contract_end_date.
 type Head = (Option<String>, Option<String>, Option<Date>, Option<Date>);
@@ -42,6 +38,8 @@ type Head = (Option<String>, Option<String>, Option<Date>, Option<Date>);
 /// `GET /api/v1/employees/{id}/fixed-term`.
 #[derive(Debug, Serialize)]
 pub struct FixedTermView {
+    pub available_exceptions: Vec<super::fixed_term_options::FixedTermExceptionOption>,
+    pub rule: Option<crate::legal_rules::LegalRule>,
     /// False for an employee who is neither CONTRACT nor has a fixed-term row.
     pub applies: bool,
     pub cumulative_days: Option<u32>,
@@ -179,6 +177,8 @@ pub async fn fixed_term_view(
         .or_else(|| loaded.contracts.first().map(|p| p.start));
     let (true, Some(hire_date)) = (loaded.applies, hire) else {
         return Ok(FixedTermView {
+            available_exceptions: Vec::new(),
+            rule: None,
             applies: loaded.applies,
             cumulative_days: None,
             two_year_date: None,
@@ -192,6 +192,10 @@ pub async fn fixed_term_view(
     };
     let service = fixed_term_service(history, as_of, limit_months(tx, as_of).await?);
     Ok(FixedTermView {
+        available_exceptions: Vec::new(),
+        rule: Some(
+            crate::legal_rules::rule(tx.as_mut(), codes::FIXED_TERM_MAX_YEARS, as_of).await?,
+        ),
         applies: true,
         cumulative_days: Some(service.cumulative_days),
         two_year_date: Some(service.two_year_date.to_string()),
@@ -225,9 +229,20 @@ pub async fn check_fixed_term_renewal(
     let hire = loaded
         .hire_date
         .or_else(|| loaded.contracts.first().map(|p| p.start));
-    let (true, Some(hire_date), true) = (loaded.applies, hire, start <= new_end) else {
+    if !loaded.applies || start > new_end {
         return Ok(());
-    };
+    }
+    let statutory_rule =
+        crate::legal_rules::rule(tx.as_mut(), codes::FIXED_TERM_MAX_YEARS, effective).await?;
+    let hire_date = hire.ok_or_else(|| HrError {
+        status: http::StatusCode::CONFLICT,
+        code: "fixed_term_basis_unconfirmed",
+        message: "fixed-term contract history requires confirmation".into(),
+        errors: None,
+        refusals: Some(Box::new(
+            json!([{ "basis":"UNKNOWN", "rule":&statutory_rule }]),
+        )),
+    })?;
     let history = FixedTermHistory {
         contracts: &loaded.contracts,
         childcare_leave: &loaded.childcare,
@@ -242,19 +257,29 @@ pub async fn check_fixed_term_renewal(
         },
         limit,
     );
-    if verdict != RenewalVerdict::ExceedsLimit {
+    if verdict == RenewalVerdict::Within {
         return Ok(());
     }
     let Some(exception_id) = exception_id else {
         return Err(HrError {
             errors: None,
             status: http::StatusCode::CONFLICT,
-            code: "fixed_term_limit",
-            message: format!(
-                "the renewal passes the fixed-term limit on {}; an exception citing a statutory ground is required",
-                service.two_year_date
-            ),
-            refusals: None,
+            code: if verdict == RenewalVerdict::ExceedsUnverified {
+                "fixed_term_basis_unconfirmed"
+            } else {
+                "fixed_term_limit"
+            },
+            message: if verdict == RenewalVerdict::ExceedsUnverified {
+                "fixed-term contract history requires confirmation".into()
+            } else {
+                format!(
+                    "the renewal passes the fixed-term limit on {}; an exception citing a statutory ground is required",
+                    service.two_year_date
+                )
+            },
+            refusals: Some(Box::new(
+                json!([{ "two_year_date":service.two_year_date.to_string(), "basis":if verdict == RenewalVerdict::ExceedsUnverified { "HIRE_DATE_FALLBACK" } else { "CONTRACT_HISTORY" }, "rule":&statutory_rule }]),
+            )),
         });
     };
     let stored = get_exception_conn(tx.as_mut(), exception_id)
@@ -290,22 +315,5 @@ fn governance(error: PgGovernanceError) -> HrError {
     match error {
         PgGovernanceError::Domain(error) => coded(error),
         PgGovernanceError::Db(error) => HrError::from(error),
-    }
-}
-
-impl HrService {
-    /// `GET /api/v1/employees/{id}/fixed-term`: service as of today (KST).
-    pub async fn employee_fixed_term(
-        &self,
-        principal: Principal,
-        employee_id: Uuid,
-    ) -> Result<FixedTermView, HrError> {
-        authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryRead)?;
-        let org = principal.org_id;
-        let today = today_kst();
-        with_org_conn::<_, _, HrError>(&self.pool, org, move |tx| {
-            Box::pin(async move { fixed_term_view(tx, *org.as_uuid(), employee_id, today).await })
-        })
-        .await
     }
 }

@@ -14,6 +14,13 @@ parameters:
   required: true
   schema:
     $ref: '#/components/schemas/Uuid'
+- name: contract_end_date
+  in: query
+  required: false
+  description: Proposed renewal end; only unexpired, unconsumed recorded or approved exceptions for this exact payload are offered.
+  schema:
+    type: string
+    format: date
 responses:
   '200':
     description: The fixed-term service.
@@ -23,6 +30,27 @@ responses:
           type: object
           required: [applies, cumulative_days, two_year_date, basis]
           properties:
+            available_exceptions:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [id, ground_code, basis, note]
+                properties:
+                  id:
+                    $ref: '#/components/schemas/Uuid'
+                  ground_code:
+                    type: string
+                    enum: [PROJECT_COMPLETION, ABSENCE_COVER, STUDY_OR_TRAINING, OLDER_WORKER, PROFESSIONAL, GOVERNMENT_JOB_PROGRAM, DECREE_LISTED]
+                  basis:
+                    type: string
+                    description: Provision from the registered FixedTermExemption ground.
+                  note:
+                    type: [string, 'null']
+            rule:
+              oneOf:
+              - $ref: '#/components/schemas/LegalRule'
+              - type: 'null'
             applies:
               type: boolean
             cumulative_days:

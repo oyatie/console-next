@@ -1,3 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
+import { exitGuardsQuery } from "../api";
+import { LeaveProtection } from "./legal-preflight";
 import { EnumValue } from "../../../ui/enum-value";
 import { t } from "@console/i18n";
 import { LEAVE_TYPE, label, labeled } from "../../../lib/labels";
@@ -14,7 +17,8 @@ import s from "./lifecycle.module.css";
  * A leave's type (required, nothing chosen until the user picks) and expected return: required for childcare leave
  * (Equal Employment Act Art. 19) and maternity leave (Labor Standards Act Art. 74), optional otherwise (BW-13; the server refuses the same).
  */
-export function LeaveFields({ start, today, type, onType, returnDate, onReturn, typeError, returnError, locked, startSlot, tried }: {
+export function LeaveFields({ start, today, type, onType, returnDate, onReturn, typeError, returnError, locked, startSlot, tried, employeeId }: {
+  employeeId?: string;
   start: string;
   today: string;
   type: string | null;
@@ -29,6 +33,8 @@ export function LeaveFields({ start, today, type, onType, returnDate, onReturn, 
   startSlot?: ReactNode;
   tried: boolean;
 }) {
+  const guards = useQuery({ ...exitGuardsQuery(employeeId ?? "", today, null), enabled: Boolean(employeeId) });
+  const protection = guards.data?.protection_rules?.find((r) => r.leave_type === type)?.rule;
   const presets = returnPresets(start).map((p) => ({ label: p.months % 12 ? t("lifecycle.preset.plusMonths", { months: p.months }) : t("lifecycle.preset.plusYears", { years: p.months / 12 }), date: p.date }));
   return (
     <>
@@ -40,7 +46,10 @@ export function LeaveFields({ start, today, type, onType, returnDate, onReturn, 
         value={type}
         onChange={onType}
         error={typeError}
-        footer={type && labeled(LEAVE_TYPE, type).code && <EnumValue e={LEAVE_TYPE} value={type} />}
+        footer={<>
+          {type && labeled(LEAVE_TYPE, type).code && <EnumValue e={LEAVE_TYPE} value={type} />}
+          <LeaveProtection rule={protection} unavailable={Boolean(employeeId && guards.isError)} />
+        </>}
       />
       <div className={s.pair}>
         {startSlot}

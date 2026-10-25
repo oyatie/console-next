@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Korean source for `enum.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koEnum = {
   // Enums
@@ -117,7 +118,7 @@ export const koEnum = {
   "enum.stepUpAction.OPERATOR_RECOVERY": "운영 계정 복구",
   "enum.unknown": "확인되지 않은 항목",
   "enum.leaveType.CHILDCARE": "육아휴직",
-  "enum.leaveType.MATERNITY": "출산휴가",
+  "enum.leaveType.MATERNITY": "출산전후휴가",
   "enum.leaveType.WORK_INJURY": "산재 요양",
   "enum.leaveType.ILLNESS": "질병휴직",
   "enum.leaveType.PERSONAL": "개인 사유",

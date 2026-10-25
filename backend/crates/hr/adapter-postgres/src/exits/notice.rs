@@ -71,11 +71,13 @@ pub(super) async fn save_facts(
     case: Uuid,
     code: &str,
     notice: Option<&DismissalNotice>,
+    disposition: Option<&super::notice_pay::NoticeDisposition>,
 ) -> Result<(), HrError> {
-    sqlx::query("UPDATE employee_exit_cases SET exit_reason_code=$3, dismissal_notice_reason=$4, dismissal_notice_served_on=$5::text::date, dismissal_notice_method=$6, dismissal_notice_evidence_ref=$7 WHERE org_id=$1 AND id=$2")
+    sqlx::query("UPDATE employee_exit_cases SET exit_reason_code=$3, dismissal_notice_reason=$4, dismissal_notice_served_on=$5::text::date, dismissal_notice_method=$6, dismissal_notice_evidence_ref=$7, notice_disposition=$8, notice_service_start=COALESCE(notice_service_start,(SELECT e.hire_on FROM employees e WHERE e.org_id=$1 AND e.id=employee_exit_cases.employee_id)) WHERE org_id=$1 AND id=$2")
         .bind(org).bind(case).bind(code)
         .bind(notice.map(|n| &n.reason_text)).bind(notice.map(|n| &n.served_on))
         .bind(notice.map(|n| &n.method)).bind(notice.map(|n| &n.evidence_ref))
+        .bind(disposition.map(serde_json::to_value).transpose().map_err(|e| HrError::validation(e.to_string()))?)
         .execute(conn.as_mut()).await?;
     sqlx::query("SELECT set_config('app.confirming_exit_case',$1,true)")
         .bind(case.to_string())
@@ -98,5 +100,7 @@ pub(super) fn mask_for_reader(
     if !may_read {
         case.protected_periods.clear();
         case.dismissal_notice = None;
+        case.notice_disposition = None;
+        case.notice_pay = None;
     }
 }

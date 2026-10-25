@@ -38,6 +38,7 @@ pub(super) fn merge(router: Router, state: &HrState) -> Router {
         .merge(contract::router(hr.clone()))
         .merge(checklist::router(hr.clone()))
         .merge(fixed_term::router(hr.clone()))
+        .merge(console_hr_rest::exit_guards::router(hr.clone()))
         .merge(job_title::router(hr.clone()))
         .merge(lifecycle_void::router(
             hr.clone(),

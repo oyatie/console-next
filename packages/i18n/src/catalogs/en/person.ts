@@ -3,7 +3,6 @@ export const enPerson = {
   "person.exit.open": "View the exit case",
   "person.record.actions": "Record corrections",
   "person.readOnly": "HR staff record personnel actions.",
-  "person.exited": "Left on {date}.",
   "person.verb.why.onLeave": "{verbs}: not while on leave.",
   "person.verb.why.exitScheduled": "{verbs}: an exit is scheduled for {date}.",
   "person.verb.why.noEmployment": "{verbs}: there is no employment record.",

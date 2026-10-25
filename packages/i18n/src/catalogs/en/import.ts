@@ -1,3 +1,4 @@
+import { enEnum } from "./enum";
 import type { koImport } from "../ko/import";
 
 export const enImport: Partial<Record<keyof typeof koImport, string>> = {
@@ -167,7 +168,7 @@ export const enImport: Partial<Record<keyof typeof koImport, string>> = {
   "import.numberSource.rule": "By rule",
   "import.numberSource.manual": "Typed",
   "import.leaveType.CHILDCARE": "childcare leave",
-  "import.leaveType.MATERNITY": "maternity leave",
+  "import.leaveType.MATERNITY": enEnum["enum.leaveType.MATERNITY"],
   "import.leaveType.ILLNESS": "sick leave",
   "import.leaveType.PERSONAL": "personal leave",
   "import.leaveType.OTHER": "other leave",

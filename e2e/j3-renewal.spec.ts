@@ -32,7 +32,10 @@ test("J3 contract renewal from Home's queue, then the next one", { tag: "@hr" },
   // It starts after today: a reservation, blue.
   const commit = renewal.getByRole("button", { name: "계약 갱신 1명 예약", exact: true });
   await expect(commit).toHaveClass(/btn--primary/);
+  const recorded = admin.waitForResponse((response) => response.url().endsWith("/lifecycle-events") && response.request().method() === "POST");
   await c.click(commit);
+  expect((await recorded).ok()).toBe(true);
+  await expect(renewal).toBeHidden();
   const history = admin.getByRole("region", { name: "인사 이력" });
   await expect(history.getByRole("listitem").filter({ hasText: /갑계약의 계약을 .+까지 갱신하도록 예약했습니다/ })).toBeVisible();
   await expect(history.getByRole("status")).toContainText("갑계약님의 계약 갱신을");

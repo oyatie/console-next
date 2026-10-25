@@ -4,6 +4,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { UserX } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
+import { todayKst } from "../../../lib/pure/today";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
@@ -76,7 +78,7 @@ function CancelSheet({ e, onClose, onAct }: { e: Employee; onClose: () => void; 
                   options={CANCEL_REASONS.map((r) => ({ value: r, label: t(`crud.person.reason.${r}`) }))}
                 />
               </div>
-              {read.attestation_required && <div id="cancel-attest"><Check checked={attest} onChange={setAttest}>{t("crud.person.attest")}</Check></div>}
+              {read.attestation_required && <div id="cancel-attest"><Check checked={attest} onChange={setAttest}>{read.void_basis === "ATTESTED_WITHIN_WINDOW" && read.recorded_hire_date && read.recorded_hire_date < todayKst() ? t("crud.person.attestRecorded", { date: fmtDate(read.recorded_hire_date) }) : t("crud.person.attest")}</Check></div>}
               {read.register_confirmation_required && <div id="cancel-kept"><Check checked={kept} onChange={setKept}>{t("crud.person.registerKept")}</Check></div>}
             </>
           )

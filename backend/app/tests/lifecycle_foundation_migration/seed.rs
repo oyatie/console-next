@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! The API-only seed of the LC migration test: two 법인 and five people, an
 //! exit and a rehire, a 전적, a live exit and a withdrawn one.
 
@@ -182,9 +183,21 @@ pub async fn seed(pool: &PgPool) -> Seeded {
         "payroll_cutoff_ack": true, "retirement_settlement_ack": true } }),
     )
     .await;
+    let hq_id = user(pool, org, "SUPER_ADMIN").await;
+    let hq = Caller {
+        service: ops.service.clone(),
+        token: Some(token(pool, &keys, org, hq_id, "SUPER_ADMIN").await),
+    };
+    ok(
+        &hq,
+        "POST",
+        &format!("/api/v1/hr/exit-cases/{exit}/confirm"),
+        json!({ "hq_confirmation": true }),
+    )
+    .await;
     ok(&ops, "POST", &format!("/api/v1/employees/{rehired}/rehire"), json!({
         "hire_date": day(-3), "employment_type": "REGULAR", "org_unit_id": ua, "position": "사원",
-        "idempotency_key": "lc-rehire",
+        "idempotency_key": "lc-rehire", "acknowledge_open_exit_case": true,
     }))
     .await;
     // 전적 A → B, settled.

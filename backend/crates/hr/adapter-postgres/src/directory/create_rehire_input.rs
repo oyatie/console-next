@@ -34,6 +34,8 @@ pub struct RehireEmployeeRequest {
     pub base_pay_won: Option<i64>,
     #[serde(default)]
     pub pay_unit: Option<String>,
+    #[serde(default)]
+    pub acknowledge_open_exit_case: bool,
     pub idempotency_key: String,
 }
 
@@ -54,6 +56,11 @@ impl RehireEmployeeRequest {
         let payload = match &self.pay_unit {
             Some(unit) => format!("{payload}:pay_unit:{unit}"),
             None => payload,
+        };
+        let payload = if self.acknowledge_open_exit_case {
+            format!("{payload}:acknowledge_open_exit_case:true")
+        } else {
+            payload
         };
         sha256_hex(payload.as_bytes())
     }
@@ -157,6 +164,7 @@ mod tests {
             phone: None,
             base_pay_won: None,
             pay_unit: None,
+            acknowledge_open_exit_case: false,
             idempotency_key: "rehire-replay".into(),
         };
         let released = sha256_hex(

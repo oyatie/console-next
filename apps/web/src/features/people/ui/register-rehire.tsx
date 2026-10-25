@@ -13,6 +13,7 @@ import { FORMATS, phoneE164 } from "../../../lib/pure/formats";
 import { todayKst } from "../../../lib/pure/today";
 import { unitsQuery } from "../../../reference/org/api";
 import { entitiesRef, orgStructureRef } from "../../../reference/entity/api";
+import { Checks } from "../../../ui/choice/checks";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Chip } from "../../../ui/chip";
 import { DateField } from "../../../ui/date/date-field";
@@ -27,6 +28,7 @@ import { EMPLOYMENT_TYPES, type EmploymentType, type Where } from "../domain/reg
 import { PAY_UNITS, type PayUnit } from "../domain/facts";
 import { placeOptions } from "../domain/register-place";
 import { placeText } from "../present";
+import { useTrailPreview } from "./lifecycle-trail-preview";
 import s from "./register.module.css";
 
 type Detail = components["schemas"]["EmployeeDetail"];
@@ -47,7 +49,9 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
   const [where, setWhere] = useState<Where | null>(null);
   const options = placeOptions(units, roots, entities, where);
   const [f, setF] = useState({ hire: "", unit: "", type: null as EmploymentType | null, position: e.position ?? "", end: "", phone: "", pay: "", payUnit: null as PayUnit | null });
+  const preview = useTrailPreview(["REHIRE"], { effective_date: f.hire || undefined });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
+  const [acknowledged, setAcknowledged] = useState(false);
   const [tried, setTried] = useState(false);
   const minHire = e.exit_date ? retirementDate(e.exit_date) : undefined;
   const dateRefusal = e.exit_date ? t("people.refusal.rehire_date_not_after_exit", { date: fmtDate(retirementDate(e.exit_date)) }) : undefined;
@@ -70,13 +74,14 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
         phone: f.phone ? (phoneE164(f.phone) ?? FORMATS.phone.display(f.phone)) : undefined,
         base_pay_won: f.pay ? Number(f.pay) : undefined,
         pay_unit: f.payUnit ?? undefined,
+        acknowledge_open_exit_case: acknowledged,
         idempotency_key: key,
       }),
     invalidates: ["/api/v1/employees/{id}/lifecycle-events", "/api/v1/employees", "/api/v1/org-units", "/api/v1/legal-entities", "/api/v1/org-structure"],
     awaitFirstRead: true,
     onSuccess: () => onDone(t("register.rehire.done", { name: e.name, date: f.hire })),
   });
-  const submit = () => (setTried(true), gaps.length === 0 && run.mutate());
+  const submit = () => (setTried(true), gaps.length === 0 && (!d.rehire_exit_case?.acknowledgement_required || acknowledged) && run.mutate());
   const status = f.hire > today ? t("register.foot.statusFuture") : t("register.foot.statusNow");
   return (
     <Composer
@@ -93,11 +98,17 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
           <b>{t("register.rehire.foot", { name: e.name, place: place ? placeText(units, place).split(" › ").slice(1).join(" › ") : "", type: label(TYPE, f.type!), status, date: fmtDate(f.hire), number: e.employee_number ?? "—" })}</b>
         )
       }
+      sections={preview}
       action={{ kind: "rehire", mode: f.hire > today || !f.hire ? "schedule" : "apply", count: 1 }}
       onSubmit={() => { submit(); }}
 
     >
       <div className={s.form}>
+        {d.rehire_exit_case?.acknowledgement_required && <>
+          <ul>{d.rehire_exit_case.open_legs.map((leg) => <li key={leg}>{t(`exit.rehire.leg.${leg}` as "exit.rehire.leg.settlement")}</li>)}</ul>
+          <Checks label={t("exit.rehire.acknowledge")} items={[{id:"open",label:t("exit.rehire.acknowledge")}]} value={acknowledged ? ["open"] : []} onChange={(v) => setAcknowledged(v.includes("open"))} error={tried && !acknowledged ? t("exit.error.rehire_exit_case_open") : undefined} />
+        </>}
+
         <div className={s.before}>
           <span>{t("register.rehire.before", { name: e.name, number: e.employee_number ?? "—", place: [e.company, e.org_unit].filter(Boolean).join(" › "), from: fmtDate(e.hire_date), to: fmtDate(e.exit_date) })}</span>
           <Chip>{t("register.rehire.kept")}</Chip>

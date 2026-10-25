@@ -32,6 +32,7 @@ export function lifecycleBody(v: Draft, c: Context): LifecycleRequest {
   const body: LifecycleRequest = {
     event_type: kind,
     effective_date: v.date,
+    exception_id: kind === "CONTRACT_RENEWAL" ? v.exceptionId || undefined : undefined,
     comment: v.comment.trim(),
     signoffs: { ...NO_ACKS, ...v.acks },
     to_org_unit_id: kind === "TRANSFER" || kind === "GROUP_TRANSFER" ? v.unit : undefined,

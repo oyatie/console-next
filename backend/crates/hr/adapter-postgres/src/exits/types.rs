@@ -37,6 +37,8 @@ pub struct ConfirmEmployeeExitCaseRequest {
     #[serde(default)]
     pub dismissal_notice: Option<super::notice::DismissalNotice>,
     #[serde(default)]
+    pub notice_disposition: Option<super::notice_pay::NoticeDisposition>,
+    #[serde(default)]
     pub note: Option<String>,
     #[serde(default)]
     pub settlement_input: Option<ExitSettlementInput>,
@@ -108,6 +110,8 @@ pub struct EmployeeExitCaseResponse {
     pub notice_required: bool,
     pub dismissal_notice: Option<super::notice::DismissalNotice>,
     pub protected_periods: Vec<super::guards::ProtectedPeriodView>,
+    pub notice_disposition: Option<super::notice_pay::NoticeDisposition>,
+    pub notice_pay: Option<super::notice_pay::NoticePay>,
     pub reported_by: Uuid,
     /// Display names for the actor ids, resolved within the tenant; null when
     /// the actor is unset or unknown.
@@ -263,6 +267,10 @@ impl EmployeeExitCaseResponse {
         let pay_reader =
             authorize_hr_scoped_write(principal, Feature::ExitSettlementManage, self.branch_id)
                 .is_ok();
+        if !pay_reader && let Some(pay) = self.notice_pay.as_mut() {
+            pay.amount_won = None;
+            pay.unavailable_reason = Some("figures_withheld");
+        }
         if !pay_reader && let Some(package) = self.settlement_package.as_mut() {
             package.withhold_figures();
         }

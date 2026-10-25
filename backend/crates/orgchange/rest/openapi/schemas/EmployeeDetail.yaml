@@ -52,3 +52,29 @@ properties:
     description: Registration and detail reads, absent when empty. Current non-blocking worker notices; wage notices are returned only to managers.
     items:
       $ref: '#/components/schemas/EmployeeCreateWarning'
+  retention:
+    description: Former employee retention from the statutory register; unknown coverage carries no date.
+    type: object
+    required: [kept_until, rule]
+    properties:
+      kept_until:
+        type: [string, 'null']
+        format: date
+      rule:
+        $ref: '#/components/schemas/LegalRule'
+  rehire_exit_case:
+    type: object
+    required: [case_id, status, decision_final, acknowledgement_required, open_legs]
+    properties:
+      case_id:
+        $ref: '#/components/schemas/Uuid'
+      status:
+        type: string
+      decision_final:
+        type: boolean
+      acknowledgement_required:
+        type: boolean
+      open_legs:
+        type: array
+        items:
+          type: string

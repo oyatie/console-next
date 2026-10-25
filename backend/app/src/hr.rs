@@ -7221,6 +7221,7 @@ E-001,홍길동,본사,2026-07-01,abc
             Json(ConfirmEmployeeExitCaseRequest {
                 exit_reason_code: None,
                 dismissal_notice: None,
+                notice_disposition: None,
                 hq_confirmation: false,
                 note: None,
                 settlement_input: None,
@@ -7244,6 +7245,7 @@ E-001,홍길동,본사,2026-07-01,abc
             Json(ConfirmEmployeeExitCaseRequest {
                 exit_reason_code: None,
                 dismissal_notice: None,
+                notice_disposition: None,
                 hq_confirmation: true,
                 note: None,
                 settlement_input: None,

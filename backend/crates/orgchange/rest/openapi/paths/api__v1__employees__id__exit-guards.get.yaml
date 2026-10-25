@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [employees]
+operationId: getEmployeeExitGuards
+summary: Read transactional exit rules before submitting
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: effective_exit_date
+  in: query
+  required: true
+  schema:
+    type: string
+    format: date
+- name: exit_reason_code
+  in: query
+  schema:
+    type: string
+- name: dismissal_notice_served_on
+  in: query
+  schema:
+    type: string
+    format: date
+responses:
+  '200':
+    description: Same rule inputs and protected-period refusal as confirmation; written notice announced only.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ExitGuards'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

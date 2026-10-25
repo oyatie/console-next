@@ -177,11 +177,11 @@ async fn seeded_855_statutory_urls_pass_and_register_loads(pool: PgPool) -> sqlx
         urls.len()
     );
     // 4605 seeded rows' URLs plus P0-EXIT-GUARDS' five dismissal-protection rows
-    // (20261021084358333_exit_guards.sql: 근로기준법 ×3, 남녀고용평등법 ×2).
+    // and LMG-LEGAL's two minimum-service rule slices retain their source URLs.
     assert_eq!(
         urls.len(),
-        4610,
-        "expected 4610 materialized statutory URLs across all seeded rows"
+        4612,
+        "expected 4612 materialized statutory URLs across all seeded rows"
     );
     assert!(
         urls.iter()

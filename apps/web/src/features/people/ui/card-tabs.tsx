@@ -26,7 +26,7 @@ type Row = { id: string; at: string; from?: string; kind: Kind; what: string; ch
 export function CardTabs({ c, tab, verbs, today, done, onAct, onDismiss }: { c: Card; tab: Exclude<CardTab, "card">; verbs: VerbState[]; today: string; done: Done | null; onAct: (act: string) => void; onDismiss: () => void }) {
   return (
     <div className={s.pad}>
-      {tab === "events" && <PersonHistory employee={c.e} events={c.events} verbs={verbs} manage={c.manage} today={today} done={done} onAct={onAct} onDismiss={onDismiss} />}
+      {tab === "events" && <PersonHistory employee={c.e} events={c.events} verbs={verbs} manage={c.editable} today={today} done={done} onAct={onAct} onDismiss={onDismiss} />}
       {tab === "docs" && <Banner>{t("empCard.docs.unserved")}</Banner>}
       {tab === "ledger" && <Ledger c={c} onAct={onAct} />}
       {tab === "access" && (

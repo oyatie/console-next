@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { checklistRef, entitiesRef } from "../../../reference/entity/api";
@@ -18,6 +19,7 @@ export function useCard(d: Detail) {
   const e = d.employee;
   const can = useCan();
   const manage = can("employee_directory_manage", "all");
+  const editable = manage && e.status !== "EXITED";
   // The route waits for this read on arrival; mounting the card uses that answer.
   const events = useQuery({ ...eventsQuery(e.id), refetchOnMount: false });
   const personal = useQuery({ ...personalFactsQuery(e.id), enabled: manage, retry: false });
@@ -38,6 +40,8 @@ export function useCard(d: Detail) {
   return {
     d,
     e,
+    editable,
+    readable: manage,
     manage,
     /** A reader who cannot change the record asks HR instead (BW-17). */
     request: !manage && can("employee_directory_read"),

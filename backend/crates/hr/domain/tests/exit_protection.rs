@@ -12,25 +12,16 @@ struct Register {
     tail: Option<i64>,
 }
 impl ProtectionRegister for Register {
-    fn rule(&self, code: &str) -> Option<ProtectionRule> {
-        self.tail.map(|tail| ProtectionRule {
-            tail_days: Some(if code == "CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS" {
-                0
-            } else {
-                tail
-            }),
-            instrument: if code == "CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS" {
-                "남녀고용평등법"
-            } else {
-                "근로기준법"
-            }
-            .into(),
-            article: if code == "CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS" {
-                "제19조제3항"
-            } else {
-                "제23조제2항"
-            }
-            .into(),
+    fn rule(&self, leave_type: &str) -> Option<ProtectionRule> {
+        let (tail_days, instrument, article) = match leave_type {
+            "WORK_INJURY" | "MATERNITY" => (self.tail, "근로기준법", "제23조제2항"),
+            "CHILDCARE" => (self.tail.map(|_| 0), "남녀고용평등법", "제19조제3항"),
+            _ => return None,
+        };
+        Some(ProtectionRule {
+            tail_days,
+            instrument: instrument.into(),
+            article: article.into(),
         })
     }
 }
@@ -56,6 +47,32 @@ fn spans(
         ],
         &Register { tail: Some(30) },
     )
+}
+#[test]
+fn protection_mapping_covers_the_existing_three_leave_types() {
+    for kind in ["WORK_INJURY", "MATERNITY", "CHILDCARE"] {
+        let p = spans(kind, date!(2026 - 04 - 01));
+        assert_eq!(p.len(), 1, "{kind} remains protected");
+        assert_eq!(p[0].leave_type, kind);
+    }
+    assert!(spans("ILLNESS", date!(2026 - 04 - 01)).is_empty());
+}
+#[test]
+fn the_register_owns_which_leave_type_is_protected() {
+    struct Remapped;
+    impl ProtectionRegister for Remapped {
+        fn rule(&self, leave_type: &str) -> Option<ProtectionRule> {
+            (leave_type == "PERSONAL").then(|| ProtectionRule {
+                tail_days: None,
+                instrument: "fixture".into(),
+                article: "fixture".into(),
+            })
+        }
+    }
+    let protected = ev("LEAVE_OF_ABSENCE", Some("PERSONAL"), date!(2026 - 01 - 01));
+    let unprotected = ev("LEAVE_OF_ABSENCE", Some("MATERNITY"), date!(2026 - 01 - 01));
+    assert_eq!(protected_periods(&[protected], &Remapped).len(), 1);
+    assert!(protected_periods(&[unprotected], &Remapped).is_empty());
 }
 #[test]
 fn d1_maternity_includes_the_last_tail_day_and_reads_the_register() {

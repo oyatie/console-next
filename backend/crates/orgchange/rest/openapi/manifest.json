@@ -160,6 +160,9 @@
     "/api/v1/employees/{id}/end-options": [
       "get"
     ],
+    "/api/v1/employees/{id}/exit-guards": [
+      "get"
+    ],
     "/api/v1/employees/{id}/fixed-term": [
       "get"
     ],
@@ -495,6 +498,7 @@
     "EmployeeVoidOutcome",
     "EmploymentType",
     "ExitCaseNextAction",
+    "ExitGuards",
     "ExitSettlementDeadline",
     "ExitSettlementInput",
     "HrOrgChartCompany",
@@ -510,12 +514,14 @@
     "LeaveBalanceItem",
     "LeaveBalancePage",
     "LeaveBalanceSummary",
+    "LegalRule",
     "LifecycleCase",
     "LifecycleCaseItem",
     "LifecycleProblem",
     "LifecycleScheduleConflictBody",
     "LifecycleSignoffKey",
     "LifecycleTemplateItem",
+    "NoticePay",
     "OrgChangeDecisionRequest",
     "OrgChangePage",
     "OrgEntitySummary",
@@ -546,6 +552,7 @@
     "PersonRecordSheet",
     "PersonRecordTraining",
     "PersonRecordVeteran",
+    "ProtectedExitPeriod",
     "RehireEmployeeRequest",
     "ReportEmployeeExitCaseRequest",
     "ResolveEmployeeIdentityRequest",

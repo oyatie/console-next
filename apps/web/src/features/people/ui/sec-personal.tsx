@@ -28,7 +28,7 @@ const SEX = { MALE: "empCard.sex.MALE", FEMALE: "empCard.sex.FEMALE" } as const;
  * Each field carries its class's mark: edit (change or correction), correction only, correction only, two people, quick edit.
  */
 export function SecPersonal({ c, quick, onFix }: { c: Card; quick: Quick; onFix: (field: string) => void }) {
-  const rrnRead = useQuery({ ...rrnStatusQuery(c.e.id), enabled: c.manage, retry: false });
+  const rrnRead = useQuery({ ...rrnStatusQuery(c.e.id), enabled: c.readable, retry: false });
   const rrn = rrnRead.data;
   const { e, d } = c;
   const p = c.personal.data;
@@ -46,11 +46,11 @@ export function SecPersonal({ c, quick, onFix }: { c: Card; quick: Quick; onFix:
       title={t("empCard.sec.personal")}
       meta={t("empCard.personal.basis")}
       two
-      tools={c.manage && <Button variant="ghost" onClick={() => onFix("multi")}><Pencil size={14} aria-hidden /> {t("empCard.multi")}</Button>}
+      tools={c.editable && <Button variant="ghost" onClick={() => onFix("multi")}><Pencil size={14} aria-hidden /> {t("empCard.multi")}</Button>}
     >
-      <FieldRow id="f-name" no="1" label={t("empCard.f.name")} mark={c.manage && <FieldMark kind="rc" field={t("empCard.f.name")} onPress={() => onFix("name")} />}>{e.name}</FieldRow>
+      <FieldRow id="f-name" no="1" label={t("empCard.f.name")} mark={c.editable && <FieldMark kind="rc" field={t("empCard.f.name")} onPress={() => onFix("name")} />}>{e.name}</FieldRow>
       <InlineField
-        manage={c.manage}
+        manage={c.editable}
         conflict={quick.conflictFor(t("empCard.f.nameEn"))}
         label={t("empCard.f.nameAlt")}
         raw={nameEn ?? ""}
@@ -60,34 +60,34 @@ export function SecPersonal({ c, quick, onFix }: { c: Card; quick: Quick; onFix:
       >
         {[p?.name_hanja, nameEn].filter(Boolean).join(" · ") || none}
       </InlineField>
-      <FieldRow id="f-sex" no="2" label={t("empCard.f.sex")} mark={c.manage && <FieldMark kind="cor" field={t("empCard.f.sex")} onPress={() => onFix("sex")} />}>
+      <FieldRow id="f-sex" no="2" label={t("empCard.f.sex")} mark={c.editable && <FieldMark kind="cor" field={t("empCard.f.sex")} onPress={() => onFix("sex")} />}>
         {r?.sex ? t(SEX[r.sex]) : <span className={s.warn}>{t("empCard.missing")}</span>}
       </FieldRow>
-      <FieldRow id="f-birth_date" no="3" label={t("empCard.f.birth")}  mark={c.manage && <FieldMark kind="corTwo" field={t("empCard.f.birth")} onPress={() => onFix("birth_date")} />}>
+      <FieldRow id="f-birth_date" no="3" label={t("empCard.f.birth")}  mark={c.editable && <FieldMark kind="corTwo" field={t("empCard.f.birth")} onPress={() => onFix("birth_date")} />}>
         {f?.birth_date ? <MaskedValue masked={maskedBirth()} value={fmtDate(f.birth_date)} field={t("empCard.f.birth")} who={who} onAlternative={() => onFix("birth_date")} /> : <span className={s.warn}>{t("empCard.missing")}</span>}
       </FieldRow>
       <FieldRow wide label={t("empCard.f.rrn")} >
-        {c.manage ? <QueryState q={rrnRead}>{() => rrn?.recorded ? <><RrnValue c={c} masked={rrn.masked ?? ""} /> <Tag kind="rev">{t("empCard.rrn.legal")}</Tag></> : <Muted>{t("empCard.rrn.none")}</Muted>}</QueryState> : <Muted>{t("people.field.restricted")}</Muted>}{" "}
-        {c.manage && <Muted>{t("empCard.rrn.entryComing")}</Muted>}{" "}
-        {c.manage && <Link className={s.link} to="/people/$id/identifiers" params={{ id: e.id }}>{t("empCard.rrn.open")}</Link>}
+        {c.readable ? <QueryState q={rrnRead}>{() => rrn?.recorded ? <><RrnValue c={c} masked={rrn.masked ?? ""} /> <Tag kind="rev">{t("empCard.rrn.legal")}</Tag></> : <Muted>{t("empCard.rrn.none")}</Muted>}</QueryState> : <Muted>{t("people.field.restricted")}</Muted>}{" "}
+        {c.editable && <Muted>{t("empCard.rrn.entryComing")}</Muted>}{" "}
+        {c.editable && <Link className={s.link} to="/people/$id/identifiers" params={{ id: e.id }}>{t("empCard.rrn.open")}</Link>}
       </FieldRow>
-      <FieldRow id="f-address" no="4" label={t("empCard.f.address")} mark={c.manage && <FieldMark kind="rc" field={t("empCard.f.address")} onPress={() => onFix("address")} />}>
+      <FieldRow id="f-address" no="4" label={t("empCard.f.address")} mark={c.editable && <FieldMark kind="rc" field={t("empCard.f.address")} onPress={() => onFix("address")} />}>
         {r?.address ? <MaskedValue masked={maskedAddress(r.address)} value={fullAddress(r.address)} field={t("empCard.f.address")} who={who} onAlternative={() => onFix("address")} /> : <span className={s.warn}>{t("empCard.missing")}</span>}
       </FieldRow>
-      <InlineField manage={c.manage} conflict={quick.conflictFor(t("empCard.f.phone"))} label={t("empCard.f.phone")} raw={phone ?? ""} sending={sending("phone")} onSave={(v) => quick.save(t("empCard.f.phone"), { phone: v }, { phone: phone ?? "" })}>
+      <InlineField manage={c.editable} conflict={quick.conflictFor(t("empCard.f.phone"))} label={t("empCard.f.phone")} raw={phone ?? ""} sending={sending("phone")} onSave={(v) => quick.save(t("empCard.f.phone"), { phone: v }, { phone: phone ?? "" })}>
         {phone ? <MaskedValue masked={maskedPhone(phone)} value={phoneDisplay(phone)} field={t("empCard.f.phone")} who={who} /> : none}
       </InlineField>
-      <InlineField manage={c.manage} conflict={quick.conflictFor(t("empCard.f.workEmail"))} label={t("empCard.f.workEmail")} raw={e.work_email ?? ""} sending={sending("work_email")} onSave={(v) => quick.save(t("empCard.f.workEmail"), { work_email: v || null }, { work_email: e.work_email ?? null })}>
+      <InlineField manage={c.editable} conflict={quick.conflictFor(t("empCard.f.workEmail"))} label={t("empCard.f.workEmail")} raw={e.work_email ?? ""} sending={sending("work_email")} onSave={(v) => quick.save(t("empCard.f.workEmail"), { work_email: v || null }, { work_email: e.work_email ?? null })}>
         {e.work_email ?? none}
       </InlineField>
-      <InlineField manage={c.manage} conflict={quick.conflictFor(t("empCard.f.personalEmail"))} label={t("empCard.f.personalEmail")} raw={p?.personal_email ?? ""} sending={sending("personal_email")} onSave={(v) => quick.save(t("empCard.f.personalEmail"), { personal_email: v || null }, { personal_email: p?.personal_email ?? null })}>
+      <InlineField manage={c.editable} conflict={quick.conflictFor(t("empCard.f.personalEmail"))} label={t("empCard.f.personalEmail")} raw={p?.personal_email ?? ""} sending={sending("personal_email")} onSave={(v) => quick.save(t("empCard.f.personalEmail"), { personal_email: v || null }, { personal_email: p?.personal_email ?? null })}>
         {p?.personal_email ? <MaskedValue masked={maskedEmail(p.personal_email)} value={p.personal_email} field={t("empCard.f.personalEmail")} who={who} /> : none}
       </InlineField>
       <EmergencyContacts c={c} quick={quick} />
-      <InlineField manage={c.manage} conflict={quick.conflictFor(t("empCard.f.registerNote"))} label={t("empCard.f.registerNote")} raw={r?.register_note ?? ""} sending={sending("register_note")} placeholder={t("empCard.f.registerNote.hint")} onSave={(v) => quick.save(t("empCard.f.registerNote"), { register_note: v || null }, { register_note: r?.register_note ?? null })}>
+      <InlineField manage={c.editable} conflict={quick.conflictFor(t("empCard.f.registerNote"))} label={t("empCard.f.registerNote")} raw={r?.register_note ?? ""} sending={sending("register_note")} placeholder={t("empCard.f.registerNote.hint")} onSave={(v) => quick.save(t("empCard.f.registerNote"), { register_note: v || null }, { register_note: r?.register_note ?? null })}>
         {r?.register_note ?? none}
       </InlineField>
-      <InlineField manage={c.manage} conflict={quick.conflictFor(t("empCard.f.nationality"))} label={t("empCard.f.nationality")} raw={p?.nationality ?? ""} sending={sending("nationality")} placeholder={t("empCard.f.nationality.hint")} onSave={(v) => quick.save(t("empCard.f.nationality"), { nationality: v.toUpperCase() || null }, { nationality: p?.nationality ?? null })}>
+      <InlineField manage={c.editable} conflict={quick.conflictFor(t("empCard.f.nationality"))} label={t("empCard.f.nationality")} raw={p?.nationality ?? ""} sending={sending("nationality")} placeholder={t("empCard.f.nationality.hint")} onSave={(v) => quick.save(t("empCard.f.nationality"), { nationality: v.toUpperCase() || null }, { nationality: p?.nationality ?? null })}>
         {[p?.nationality && t("empCard.nationality", { code: p.nationality }), f?.id_type && label(ID_TYPE, f.id_type)].filter(Boolean).join(" · ") || none}
       </InlineField>
       <FieldRow label={t("empCard.f.notCollected")} >

@@ -30,7 +30,7 @@ pub(super) const MESSAGES: &[(&str, &str)] = &[
     // Exit guard refusals
     (
         "dismissal is blocked during a protected leave period",
-        "휴직 보호기간에는 퇴직 처리할 수 없습니다.",
+        "해고 보호기간에는 해고할 수 없습니다.",
     ),
     (
         "written dismissal notice evidence is required",
@@ -51,6 +51,22 @@ pub(super) const MESSAGES: &[(&str, &str)] = &[
     (
         "exit reason and dismissal notice belong to HR confirmation",
         "퇴직 사유와 서면 통지는 인사 확인에서만 기록할 수 있습니다.",
+    ),
+    (
+        "dismissal notice requires pay in lieu or an evidenced statutory ground",
+        "해고예고가 대장 기준보다 짧습니다. 해고예고수당 지급 또는 증빙이 있는 대장 단서를 선택하십시오.",
+    ),
+    (
+        "a former employee's record can only be changed through a governed correction",
+        "퇴직한 직원의 인사기록은 읽기 전용입니다. 변경은 정정으로 요청하십시오.",
+    ),
+    (
+        "fixed-term contract history requires confirmation",
+        "계약 이력을 기록하거나 증빙이 있는 예외를 선택하십시오.",
+    ),
+    (
+        "the prior exit decision or its remaining settlement must be resolved or acknowledged",
+        "이전 퇴직 결정이 끝나지 않았거나 남은 정산 절차를 확인하지 않았습니다.",
     ),
     // Exit cases
     ("exit case not found", "퇴사 건을 찾을 수 없습니다."),

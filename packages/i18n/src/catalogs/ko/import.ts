@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Korean source for `import.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
+import { koEnum } from "./enum";
+
 export const koImport = {
   // People: roster import
   "import.title": "직원 명부 가져오기",
@@ -174,7 +177,7 @@ export const koImport = {
   "import.numberSource.rule": "규칙으로 부여",
   "import.numberSource.manual": "직접 입력",
   "import.leaveType.CHILDCARE": "육아휴직",
-  "import.leaveType.MATERNITY": "출산전후휴가",
+  "import.leaveType.MATERNITY": koEnum["enum.leaveType.MATERNITY"],
   "import.leaveType.ILLNESS": "질병휴직",
   "import.leaveType.PERSONAL": "개인 사유 휴직",
   "import.leaveType.OTHER": "기타 휴직",

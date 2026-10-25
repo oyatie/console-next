@@ -9,7 +9,7 @@ import { UnplacedRefused } from "./unplaced-refused";
 
 const state = vi.hoisted(() => ({ code: "workplace_not_open_on_date" }));
 
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { items: [], entities: [] } }) }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { items: [], entities: [] } }), useQueries: () => [] }));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: ReactNode }) => <span>{children}</span> }));
 vi.mock("../../../lib/react/command", async (original) => ({ ...await original<typeof import("../../../lib/react/command")>(), useCommand: () => ({ error: new ApiError(422, state.code, "") }) }));
 vi.mock("../../../ui/composer/composer", () => ({ Composer: ({ notice, children }: { notice: ReactNode; children: ReactNode }) => <>{notice}{children}</> }));

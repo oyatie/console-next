@@ -61,7 +61,7 @@ test.each([
   ["leave periods", () => <SecLeave c={c} />],
   ["protected periods", () => <ProtectedPeriods periods={[{ lifecycle_event_id: event.id, leave_type: event.leave_type!, leave_from: event.effective_date, leave_until: null, protected_until: null, instrument: null, article: null }]} />],
   ["leave correction", () => <LeaveFields start="2026-10-01" today="2026-10-23" type={event.leave_type!} onType={noop} returnDate="" onReturn={noop} tried={false} />],
-  ["return from leave", () => <LifecycleWhat detail={c.d} kind="RETURN_FROM_LEAVE" v={{} as never} set={noop} today="2026-10-23" bounds={{}} lastLeave={event} contractEnd={null} show={() => false} correcting={false} what={{ current: null }} tried={false} />],
+  ["return from leave", () => <LifecycleWhat onOpen={() => {}} onClose={() => {}} detail={c.d} kind="RETURN_FROM_LEAVE" v={{} as never} set={noop} today="2026-10-23" bounds={{}} lastLeave={event} contractEnd={null} show={() => false} correcting={false} what={{ current: null }} tried={false} />],
 ] as const)("%s renders a future leave type as a neutral label and muted code", (_, screen) => {
   const html = renderToStaticMarkup(screen());
   expect(html).toContain("확인되지 않은 항목");

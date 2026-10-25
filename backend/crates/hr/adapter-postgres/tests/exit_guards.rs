@@ -28,7 +28,7 @@ async fn live(pool: &PgPool) -> World {
         .execute(tx.as_mut())
         .await
         .unwrap();
-    sqlx::query("UPDATE employees SET employment_status = 'ACTIVE' WHERE org_id = $1")
+    sqlx::query("UPDATE employees SET employment_status = 'ACTIVE', hire_date='2025-01-01', hire_on='2025-01-01' WHERE org_id = $1")
         .bind(w.org)
         .execute(tx.as_mut())
         .await
@@ -94,6 +94,10 @@ mod cancel_tests;
 mod confirm_tests;
 #[path = "exit_guards/hooks.rs"]
 mod hook_tests;
+#[path = "exit_guards/notice_pay.rs"]
+mod notice_pay;
+#[path = "exit_guards/register.rs"]
+mod register_tests;
 #[path = "exit_guards/report.rs"]
 mod report_tests;
 #[path = "exit_guards/scheduled.rs"]

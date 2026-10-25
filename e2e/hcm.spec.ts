@@ -114,12 +114,12 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   const leave = sheet(admin, "정하늘 휴직 처리");
   await c.click(leave.getByText("육아휴직", { exact: true }));
   await c.click(todayPreset(leave));
-  await fillDate(leave, "2027-03-31", "복귀 예정일");
+  await fillDate(leave, "2027-03-31", "복직 예정일");
   await reasonBox(leave).fill("육아 휴직");
   await expect(leave.getByRole("checkbox")).toHaveCount(0); // BW-11 A13: no statement to tick
   await expectAccessible(admin, "leave sheet");
   await c.click(leave.getByRole("button", { name: "휴직 1명 반영", exact: true }));
-  await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /정하늘을 휴직 처리했습니다\. 복귀 예정일은/ })).toBeVisible();
+  await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /정하늘을 휴직 처리했습니다\. 복직 예정일은/ })).toBeVisible();
   await expect(head.getByText("휴직", { exact: true })).toBeVisible();
   expect(c.done("place on leave")).toBeLessThanOrEqual(5);
   const onLeave = await hrMenu(admin);
@@ -140,7 +140,10 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   await c.click(todayPreset(ret));
   await reasonBox(ret).fill("육아 휴직 종료");
   await expect(ret.getByRole("checkbox")).toHaveCount(0); // BW-11 A13: no statement to tick
+  const returned = admin.waitForResponse((response) => response.url().endsWith("/lifecycle-events") && response.request().method() === "POST");
   await c.click(ret.getByRole("button", { name: "복직 1명 반영", exact: true }));
+  expect((await returned).ok()).toBe(true);
+  await expect(ret).toBeHidden();
   await expect(admin.getByRole("region", { name: "인사 이력" }).getByRole("listitem").filter({ hasText: /정하늘을 복직 처리했습니다/ })).toBeVisible();
   await expect(head.getByText("재직", { exact: true })).toBeVisible();
   expect(c.done("return from leave")).toBeLessThanOrEqual(4);

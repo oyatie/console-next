@@ -153,7 +153,7 @@ export const koEmpCard = {
   "empCard.leave.back": "복직",
   "empCard.leave.returned": "{date} 복직",
   "empCard.leave.out": "휴직 중",
-  "empCard.leave.exited": "{date} 퇴직 · 근로자 명부는 퇴직일부터 3년 보관합니다",
+  "empCard.leave.exited": "{date} 퇴직 · 보존 기한 {until}",
   "empCard.family.meta": "수집 근거: 가족은 동의 · 포상은 근로계약 이행",
   "empCard.family.awards": "포상 {count}",
   "empCard.family.discipline": "징계",
@@ -274,4 +274,5 @@ export const koEmpCard = {
   "empCard.rrn.entryComing": "번호 입력·정정은 승인 절차(패스키·두 사람 확인)와 함께 열립니다 · 지금은 직원 일괄 반입으로만 기록됩니다",
   "empCard.f.registerNote": "근로자 명부 비고",
   "empCard.f.registerNote.hint": "명부 9호 기타 · 비워 두면 기록하지 않습니다",
+  "empCard.leave.expectedBack": "복직 예정 {date}",
 } as const;

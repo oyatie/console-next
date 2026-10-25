@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! UX-R1 PLACEMENT (regression: org-01, move-21, hire-26): a person's 사업장
 //! follows their 부서, the counts agree at every level, and the one-time
@@ -207,5 +208,59 @@ async fn regression_counts_agree_and_leave_out_who_is_not_on_the_roll(owner: PgP
     assert_eq!(
         at_plant.headcount, 2,
         "the 사업장 record agrees with the chart"
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn former_employee_assignment_is_read_only_but_an_existing_command_replays(owner: PgPool) {
+    let (store, actor) = tenant(&owner, ORG, "former-assignment").await;
+    let (entity, [(hq, _), _]) = two_workplaces(&store, &actor).await;
+    let employee: Uuid = sqlx::query_scalar(
+        "INSERT INTO employees (org_id, company, name, source_filename, source_sheet, source_row, source_key) \
+         VALUES ($1,'주식회사 가나','김퇴직','x','x',1,'former-assignment') RETURNING id",
+    )
+    .bind(ORG)
+    .fetch_one(&owner)
+    .await
+    .unwrap();
+    let command = cmd(&actor);
+    let active = store
+        .bind_assignment(&command, bind(employee, entity, hq, "2026-01-02"))
+        .await
+        .unwrap();
+    sqlx::query(
+        "UPDATE employees SET employment_status='EXITED',exit_date='2026-01-31' WHERE id=$1",
+    )
+    .bind(employee)
+    .execute(&owner)
+    .await
+    .unwrap();
+    let replay = store
+        .bind_assignment(&command, bind(employee, entity, hq, "2026-01-02"))
+        .await
+        .unwrap();
+    assert_eq!(replay.id, active.id);
+    let rows = "SELECT count(*) FROM employment_assignments WHERE employee_id=$1";
+    let before = (
+        live(&owner, employee).await,
+        scalar(&owner, rows, employee).await,
+    );
+    let error = store
+        .bind_assignment(&cmd(&actor), bind(employee, entity, hq, "2026-02-01"))
+        .await
+        .unwrap_err();
+    let console_entity_adapter_postgres::PgEntityError::Refused(refusal) = error else {
+        panic!("expected the typed read-only refusal");
+    };
+    assert_eq!(
+        (refusal.kind.status_code(), refusal.code),
+        (409, "employee_exited_read_only")
+    );
+    assert_eq!(
+        (
+            live(&owner, employee).await,
+            scalar(&owner, rows, employee).await
+        ),
+        before
     );
 }

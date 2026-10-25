@@ -28,6 +28,13 @@ properties:
     - VOID
   attestation_required:
     type: boolean
+  void_basis:
+    type: string
+    description: The server's allowed registration_void basis; omitted when cancellation is refused.
+  recorded_hire_date:
+    type: string
+    format: date
+    description: Recorded first day, shown when the operator attests a mistaken historical registration.
   register_confirmation_required:
     type: boolean
   exit:

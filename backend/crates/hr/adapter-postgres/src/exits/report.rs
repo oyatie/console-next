@@ -83,6 +83,7 @@ impl HrService {
                         class,
                         None,
                         "report",
+                        None,
                     )
                     .await?;
                 }

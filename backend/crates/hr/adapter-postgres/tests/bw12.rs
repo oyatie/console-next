@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! BW-12 through the `HrService` entry points, on a `console_rt` pool: the
 //! fixed-term limit on CONTRACT_RENEWAL (from the statutory register), 육아휴직
-//! taken out, the hire-date fallback flagged not blocked, and the governed
+//! taken out, the hire-date fallback requiring review, and the governed
 //! FIXED_TERM_OVER_TWO_YEARS exception consumed once.
 
 #[path = "support/go_live.rs"]
@@ -131,13 +132,17 @@ impl Fixture {
 
     /// A RECORDED high-risk exception (sole-holder fallback) for this renewal.
     async fn exception(&self, ground: &str, end: &str) -> Uuid {
+        self.exception_status(ground, end, "RECORDED", false).await
+    }
+
+    async fn exception_status(&self, ground: &str, end: &str, status: &str, expired: bool) -> Uuid {
         sqlx::query_scalar(
             "INSERT INTO governed_exceptions (org_id, rule_code, risk, subject_type, subject_id, \
              reason_code, fingerprint, settings_snapshot, requested_by, step_up_assertion_id, status, \
-             fallback_kind, review_due_at, expires_at) \
+             fallback_kind, review_due_at, expires_at, created_at) \
              VALUES ($1, 'FIXED_TERM_OVER_TWO_YEARS', 'HIGH', 'EMPLOYEE', $2, $3, \
-             governed_exception_fingerprint($4, '{}'::daterange[]), '{}', $5, $6, 'RECORDED', \
-             'SOLE_HOLDER', now() + interval '7 days', now() + interval '1 day') RETURNING id",
+             governed_exception_fingerprint($4, '{}'::daterange[]), '{}', $5, $6, $7, \
+             CASE WHEN $7='RECORDED' THEN 'SOLE_HOLDER' ELSE 'SECOND_PERSON' END, CASE WHEN $7='RECORDED' THEN now() + interval '7 days' END, now() + CASE WHEN $8 THEN -interval '1 day' ELSE interval '1 day' END, now() - CASE WHEN $8 THEN interval '2 days' ELSE interval '0 days' END) RETURNING id",
         )
         .bind(self.org)
         .bind(self.employee)
@@ -145,6 +150,8 @@ impl Fixture {
         .bind(json!({"employee_id": self.employee, "contract_end_date": end}))
         .bind(self.user)
         .bind(Uuid::new_v4())
+        .bind(status)
+        .bind(expired)
         .fetch_one(&self.owner)
         .await
         .unwrap()
@@ -178,8 +185,52 @@ async fn a_renewal_past_two_years_needs_an_exception_with_a_statutory_ground(poo
         409
     );
 
+    f.exception_status("OLDER_WORKER", "2026-12-31", "RECORDED", true)
+        .await;
+    f.exception_status("OLDER_WORKER", "2026-12-31", "PENDING", false)
+        .await;
     let older = f.exception("OLDER_WORKER", "2026-12-31").await;
+    let choices = f
+        .hr
+        .employee_fixed_term_for_renewal(f.principal.clone(), f.employee, Some("2026-12-31".into()))
+        .await
+        .unwrap()
+        .available_exceptions;
+    assert_eq!(
+        choices.len(),
+        1,
+        "invalid grounds and mismatched contract ends are excluded"
+    );
+    assert_eq!(choices[0].id, older);
+    assert_eq!(choices[0].ground_code, "OLDER_WORKER");
+    assert!(choices[0].basis.contains("제4조제1항제4호"));
+    let mut reader = f.principal.clone();
+    reader.roles = BTreeSet::from([Role::Executive]);
+    assert!(
+        f.hr.employee_fixed_term(reader.clone(), f.employee)
+            .await
+            .is_ok()
+    );
+    assert_eq!(
+        f.hr.employee_fixed_term_for_renewal(reader, f.employee, Some("2026-12-31".into()))
+            .await
+            .unwrap_err()
+            .status
+            .as_u16(),
+        403
+    );
     f.renew("2026-12-31", Some(older)).await.unwrap();
+    assert!(
+        f.hr.employee_fixed_term_for_renewal(
+            f.principal.clone(),
+            f.employee,
+            Some("2026-12-31".into())
+        )
+        .await
+        .unwrap()
+        .available_exceptions
+        .is_empty()
+    );
     let consumed: bool =
         sqlx::query_scalar("SELECT consumed_at IS NOT NULL FROM governed_exceptions WHERE id = $1")
             .bind(older)
@@ -229,5 +280,41 @@ async fn childcare_leave_does_not_count_and_the_fallback_is_flagged_not_blocked(
             .await
             .unwrap();
     assert_eq!(view.basis, Some("HIRE_DATE_FALLBACK"));
-    g.renew("2027-06-30", None).await.unwrap();
+    assert_eq!(
+        g.renew("2027-06-30", None).await.unwrap_err(),
+        (409, "fixed_term_basis_unconfirmed".to_owned())
+    );
+    let exception = g.exception("OLDER_WORKER", "2027-06-30").await;
+    g.renew("2027-06-30", Some(exception)).await.unwrap();
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn changing_the_registered_limit_changes_the_renewal_outcome(pool: PgPool) {
+    let f = fixture(pool, Some(("2024-11-01", "2026-09-30"))).await;
+    assert_eq!(
+        f.renew("2026-12-31", None).await.unwrap_err(),
+        (409, "fixed_term_limit".to_owned())
+    );
+    sqlx::query("UPDATE statutory_rules SET value_num=value_num+1 WHERE code='FIXED_TERM_MAX_YEARS' AND effective_from <= DATE '2026-09-30' AND (effective_to_exclusive IS NULL OR DATE '2026-09-30' < effective_to_exclusive)")
+        .execute(&f.owner).await.unwrap();
+    let view =
+        f.hr.employee_fixed_term(f.principal.clone(), f.employee)
+            .await
+            .unwrap();
+    assert_eq!(view.two_year_date.as_deref(), Some("2027-10-31"));
+    f.renew("2026-12-31", None).await.unwrap();
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn missing_hire_and_history_never_admit_an_unbounded_renewal(pool: PgPool) {
+    let f = fixture(pool, None).await;
+    sqlx::query("UPDATE employees SET hire_date=NULL WHERE id=$1")
+        .bind(f.employee)
+        .execute(&f.owner)
+        .await
+        .unwrap();
+    assert_eq!(
+        f.renew("2030-12-31", None).await.unwrap_err(),
+        (409, "fixed_term_basis_unconfirmed".into())
+    );
 }

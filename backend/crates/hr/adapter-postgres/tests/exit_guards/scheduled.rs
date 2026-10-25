@@ -12,7 +12,7 @@ async fn scheduled_exit_rechecks_new_work_injury_and_fails_closed_without_a_case
     let c = confirm(
         &w,
         &c,
-        json!({"dismissal_notice":notice(&today.to_string())}),
+        json!({"notice_disposition":{"kind":"PAY_IN_LIEU"},"dismissal_notice":notice(&today.to_string())}),
     )
     .await
     .unwrap();
@@ -70,7 +70,7 @@ async fn scheduled_exit_ignores_a_rescinded_leave_but_rechecks_a_replacement(poo
         let c = confirm(
             &w,
             &c,
-            json!({"dismissal_notice":notice(&today.to_string())}),
+            json!({"notice_disposition":{"kind":"PAY_IN_LIEU"},"dismissal_notice":notice(&today.to_string())}),
         )
         .await
         .unwrap();

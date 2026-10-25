@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { EnumValue } from "../../../ui/enum-value";
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
@@ -6,6 +7,7 @@ import { retirementDate } from "../domain/employment";
 import { fmtDate } from "@console/i18n/format";
 import { LEAVE_TYPE } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
+import { addDays } from "../../../ui/date/days";
 import { RecordSection, SectionLine } from "../../../ui/record/record-section";
 import { RecordRows } from "../../../ui/record/rows";
 import { ExitCases } from "../ExitCase";
@@ -19,12 +21,12 @@ import s from "./card.module.css";
  * corrected one stays on request), then the renewal, which is a dated action. The onboarding checklist opens its form.
  */
 export function SecContract({ c, onAct, open, onOpen }: { c: Card; onAct: (act: string) => void; open: ContractEdit; onOpen: (edit: ContractEdit) => void }) {
-  const live = useQuery({ ...contractsQuery(c.e.id), enabled: c.manage, retry: false }).data?.items.filter((x) => !x.superseded_by).length ?? 0;
+  const live = useQuery({ ...contractsQuery(c.e.id), enabled: c.readable, retry: false }).data?.items.filter((x) => !x.superseded_by).length ?? 0;
   return (
     <RecordSection id="s3" no={3} title={t("empCard.sec.contract")}>
-      <div data-embed><ContractsCard e={c.e} open={open} onOpen={onOpen} /></div>
+      <div data-embed><ContractsCard e={c.e} editable={c.editable} open={open} onOpen={onOpen} /></div>
       <SectionLine>
-        {c.manage && live > 0 && <Button variant="ghost" onClick={() => onAct("CONTRACT_RENEWAL")}><Plus size={14} aria-hidden /> {t("empCard.contract.renew")}</Button>}
+        {c.editable && live > 0 && <Button variant="ghost" onClick={() => onAct("CONTRACT_RENEWAL")}><Plus size={14} aria-hidden /> {t("empCard.contract.renew")}</Button>}
       </SectionLine>
     </RecordSection>
   );
@@ -44,7 +46,7 @@ export function SecLeave({ c, act }: { c: Card; act?: string }) {
           rowId={(x) => x.id}
           columns={[
             { header: t("empCard.leave.kind"), cell: () => <b>{t("empCard.leave.leave")}</b> },
-            { header: t("empCard.leave.from"), cell: (x) => <span className={s.num}>{fmtDate(x.effective_date)}{x.expected_return_date && ` ~ ${fmtDate(x.expected_return_date)}`}</span> },
+            { header: t("empCard.leave.from"), cell: (x) => <span className={s.leavePeriod}>{x.expected_return_date ? `${fmtDate(x.effective_date)} ~ ${fmtDate(addDays(x.expected_return_date, -1))}` : fmtDate(x.effective_date)}{x.expected_return_date && <><br />{t("empCard.leave.expectedBack", { date: fmtDate(x.expected_return_date) })}</>}</span> },
             { header: t("empCard.leave.reason"), cell: (x) => (x.leave_type ? <EnumValue e={LEAVE_TYPE} value={x.leave_type} /> : "—") },
             { header: t("empCard.leave.back"), cell: (x) => { const r = back(x); return r ? t("empCard.leave.returned", { date: fmtDate(r.effective_date) }) : t("empCard.leave.out"); } },
           ]}
@@ -52,7 +54,7 @@ export function SecLeave({ c, act }: { c: Card; act?: string }) {
       )}
       {/* Trunk's personal card showed the leave balance once the server sends one: kept here. */}
       {c.e.leave_remaining != null && <SectionLine><span>{t("people.field.leave")} · {t("people.field.leaveLeft", { days: c.e.leave_remaining })}</span></SectionLine>}
-      {c.e.status === "EXITED" && <SectionLine>{t("empCard.leave.exited", { date: fmtDate(c.e.exit_date ? retirementDate(c.e.exit_date) : c.e.exit_date) })}</SectionLine>}
+      {c.e.status === "EXITED" && <SectionLine>{t("empCard.leave.exited", { date: fmtDate(c.e.exit_date ? retirementDate(c.e.exit_date) : c.e.exit_date), until: c.d.retention?.kept_until ? fmtDate(c.d.retention.kept_until) : t("exit.legal.review") })}</SectionLine>}
       <ExitCases employee={c.e} act={act} />
     </RecordSection>
   );

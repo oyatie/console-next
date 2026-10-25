@@ -44,7 +44,7 @@ export function SecFamily({ c }: { c: Card }) {
       <FieldRow
         label={t("empCard.family.discipline")}
         mark={
-          c.manage && (
+          c.editable && (
             <PopoverButton link label={t("empCard.family.pickPurpose")} trigger={t("empCard.family.pickPurpose")} title={<><Lock size={14} aria-hidden />{t("empCard.family.discipline")}</>}>
               {(close) => <ChipChoice label={t("empCard.purpose.label")} options={PURPOSES.map((p) => ({ value: p, label: t(`empCard.purpose.${p}`) }))} value={purpose} onChange={(p) => (setPurpose(p), close())} />}
             </PopoverButton>

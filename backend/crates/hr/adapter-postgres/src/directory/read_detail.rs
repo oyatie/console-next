@@ -148,7 +148,35 @@ pub async fn load_employee_detail(
     };
     let employee = employee_from_row(row)?;
     let warnings = super::read_warnings::current_warnings(tx, org_id, &employee).await?;
+    let retention = if employee.status.as_deref() == Some("EXITED") {
+        let exit = employee
+            .exit_date
+            .as_deref()
+            .map(console_hr_domain::text::parse_yyyy_mm_dd)
+            .transpose()?;
+        let rule = crate::legal_rules::rule(
+            tx.as_mut(),
+            console_compliance_domain::statutory::codes::EMPLOYMENT_RECORD_RETENTION_YEARS,
+            exit.unwrap_or_else(crate::clock::today_kst),
+        )
+        .await?;
+        let kept_until = exit
+            .zip(rule.whole("YEARS").and_then(|v| i32::try_from(v).ok()))
+            .map(|(exit, years)| {
+                console_hr_domain::registration_void::register_kept_until(exit, years).to_string()
+            });
+        Some(crate::directory::types::EmployeeRetention { kept_until, rule })
+    } else {
+        None
+    };
+    let rehire_exit_case = if employee.status.as_deref() == Some("EXITED") {
+        super::rehire_guard::latest(tx.as_mut(), org_id, employee_id).await?
+    } else {
+        None
+    };
     Ok(EmployeeDetailResponse {
+        rehire_exit_case,
+        retention,
         employee,
         pending_employment: employment
             .as_ref()

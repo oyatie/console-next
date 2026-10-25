@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! F5 수습 종료: HR records that the probation ended (본채용 확정). A command
 //! (ME-7): the body asserts the end date it was shown; a changed date is a
 //! 409 `stale_facts`. A repeat on a confirmed probation replays the record.
@@ -44,6 +45,7 @@ impl HrService {
                     employee_id,
                 )
                 .await?;
+                crate::employee_state::require_editable(tx.as_mut(), org_uuid, employee_id).await?;
                 let current = load_facts(tx, org_uuid, employee_id, true).await?;
                 let doc =
                     serde_json::to_value(&current).map_err(|e| HrError::internal(e.to_string()))?;

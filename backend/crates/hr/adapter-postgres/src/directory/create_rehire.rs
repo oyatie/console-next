@@ -228,10 +228,19 @@ impl HrService {
                     return Ok(((true, detail), Vec::new()));
                 }
                 let head = lock_exited_head(tx, org_uuid, employee_id).await?;
+                super::rehire_guard::check(
+                    tx.as_mut(),
+                    org_uuid,
+                    employee_id,
+                    request.acknowledge_open_exit_case,
+                )
+                .await?;
                 super::create_rehire_input::validate_period(
                     head.exit_date.as_deref(),
                     &request.hire_date,
                 )?;
+                sqlx::query("UPDATE employee_exit_cases c SET notice_service_start=e.hire_on FROM employees e WHERE c.org_id=$1 AND c.employee_id=$2 AND e.org_id=c.org_id AND e.id=c.employee_id AND c.notice_service_start IS NULL AND e.hire_on <= c.effective_exit_date")
+                    .bind(org_uuid).bind(employee_id).execute(tx.as_mut()).await?;
                 let org_unit =
                     require_assignable_org_unit(tx, org_uuid, request.org_unit_id).await?;
                 let today = today_kst().to_string();
@@ -305,6 +314,7 @@ impl HrService {
                         "employment_type": &request.employment_type,
                         "org_unit_id": request.org_unit_id,
                         "pre_hire": pre_hire,
+                        "acknowledge_open_exit_case": request.acknowledge_open_exit_case,
                     })),
                 );
                 let detail = load_employee_detail(tx, org_uuid, employee_id).await?;

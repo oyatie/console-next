@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [owed, notice_days, required_days, gap_days, rule, minimum_service_rule, amount_won, unavailable_reason]
+properties:
+  owed:
+    type: [boolean, 'null']
+    description: Whether pay in lieu is owed; null when its statutory basis cannot be determined.
+  notice_days:
+    type: [integer, 'null']
+    format: int64
+  required_days:
+    type: [integer, 'null']
+    format: int64
+  gap_days:
+    type: [integer, 'null']
+    format: int64
+  rule:
+    $ref: '#/components/schemas/LegalRule'
+  minimum_service_rule:
+    $ref: '#/components/schemas/LegalRule'
+  amount_won:
+    type: [integer, 'null']
+    format: int64
+  unavailable_reason:
+    type: [string, 'null']

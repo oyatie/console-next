@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! Stage D, as `console_rt`: lifecycle event types + state/signoff rules,
 //! Idempotency-Key on lifecycle events / exit cases / users, exit-case reads,
@@ -5,6 +6,8 @@
 
 #[path = "support/go_live.rs"]
 mod go_live;
+#[path = "hr_lifecycle_stage_d/seed_profile.rs"]
+mod profile_seed;
 use axum::body::{Body, to_bytes};
 use console_app::{AppConfig, AppRole, AppState, DatabaseDependency, build_router};
 use console_kernel_core::{OrgId, UserId};
@@ -13,6 +16,7 @@ use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
 use p256::elliptic_curve::rand_core::OsRng;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
+use profile_seed::seed_profile;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -300,12 +304,13 @@ async fn lifecycle_events_enforce_state_and_signoff_rules(pool: PgPool) {
     assert_eq!(status_of(emp).await, "ACTIVE");
 
     // CONTRACT_RENEWAL: contract_end_date required; CONTRACT employment only.
+    let renewal_end = (OffsetDateTime::now_utc().date() + Duration::days(180)).to_string();
     let (status, body) = ctx.event(emp, ev("CONTRACT_RENEWAL", base())).await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
     let renewal = with(
         ev("CONTRACT_RENEWAL", base()),
         "contract_end_date",
-        json!("2099-12-31"),
+        json!(renewal_end),
     );
     let (status, body) = ctx.event(emp, renewal.clone()).await;
     assert_eq!(
@@ -318,7 +323,7 @@ async fn lifecycle_events_enforce_state_and_signoff_rules(pool: PgPool) {
     let (status, body) = ctx.event(contractor, renewal).await;
     assert_eq!(status, StatusCode::OK, "{body}");
     assert_eq!(body["to_status"], "ACTIVE");
-    assert_eq!(body["contract_end_date"], "2099-12-31");
+    assert_eq!(body["contract_end_date"], renewal_end);
     let audited: String = sqlx::query_scalar(
         "SELECT after_snap->>'to_status' FROM audit_events \
          WHERE action = 'employee.lifecycle.record' AND target_id = $1",
@@ -580,6 +585,7 @@ async fn lifecycle_noop_future_leave_type_allowed_events_and_filters(pool: PgPoo
     assert_eq!(detail["allowed_events"][4]["required_signoffs"], json!([]));
 
     // CONTRACT_RENEWAL moves the profile's current contract end.
+    let renewal_end = (OffsetDateTime::now_utc().date() + Duration::days(180)).to_string();
     let contractor = seed_employee(&pool, org, "계약 직원").await;
     seed_profile(&pool, org, contractor, admin, "CONTRACT").await;
     let (status, body) = ctx
@@ -588,7 +594,7 @@ async fn lifecycle_noop_future_leave_type_allowed_events_and_filters(pool: PgPoo
             with(
                 ev("CONTRACT_RENEWAL", base()),
                 "contract_end_date",
-                json!("2099-12-31"),
+                json!(renewal_end),
             ),
         )
         .await;
@@ -604,10 +610,10 @@ async fn lifecycle_noop_future_leave_type_allowed_events_and_filters(pool: PgPoo
         )
         .await;
     assert_eq!(
-        detail["employment"]["contract_end_date"], "2099-12-31",
+        detail["employment"]["contract_end_date"], renewal_end,
         "{detail}"
     );
-    assert_eq!(detail["employee"]["contract_end_date"], "2099-12-31");
+    assert_eq!(detail["employee"]["contract_end_date"], renewal_end);
 
     // Roster filters: status list, identity review, contract end, bad status.
     let list = |query: &str| {
@@ -628,7 +634,7 @@ async fn lifecycle_noop_future_leave_type_allowed_events_and_filters(pool: PgPoo
     assert_eq!(page["total"], 0);
     let (_, page) = list("contract_ending_before=2100-01-01").await;
     assert_eq!(page["total"], 1);
-    assert_eq!(page["items"][0]["contract_end_date"], "2099-12-31");
+    assert_eq!(page["items"][0]["contract_end_date"], renewal_end);
     let (status, _) = list("status=RETIRED").await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
 }
@@ -1957,28 +1963,6 @@ async fn seed_org_unit(pool: &PgPool, org: Uuid, actor: UserId, name: &str) -> U
     .await
     .unwrap();
     id
-}
-
-async fn seed_profile(
-    pool: &PgPool,
-    org: Uuid,
-    employee: Uuid,
-    actor: UserId,
-    employment_type: &str,
-) {
-    sqlx::query(
-        "INSERT INTO employee_employment_profiles \
-         (employee_id, org_id, employment_type, phone_e164, base_pay, idempotency_key, request_hash, created_by) \
-         VALUES ($1, $2, $3, '+821012345678', 3000000, $4, repeat('a', 64), $5)",
-    )
-    .bind(employee)
-    .bind(org)
-    .bind(employment_type)
-    .bind(format!("profile-{employee}"))
-    .bind(*actor.as_uuid())
-    .execute(pool)
-    .await
-    .unwrap();
 }
 
 fn keys() -> (String, String) {

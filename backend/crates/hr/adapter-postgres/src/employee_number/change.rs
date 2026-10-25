@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! A 사번 변경 of one employee, its history and the lookup that still finds
 //! a person by an old 사번 (alias).
 
@@ -84,6 +85,7 @@ impl HrService {
             Box::pin(async move {
                 authorize_hr_person(tx, &principal, Feature::EmployeeDirectoryManage, employee_id).await?;
                 lock_numbers(tx, org_uuid).await?;
+                crate::employee_state::require_editable(tx.as_mut(), org_uuid, employee_id).await?;
                 let head: Option<(Option<String>, OffsetDateTime)> = sqlx::query_as(
                     "SELECT employee_number, updated_at FROM employees WHERE org_id = $1 AND id = $2 FOR UPDATE",
                 )

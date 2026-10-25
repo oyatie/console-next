@@ -10,6 +10,14 @@ export const Marker = ({ required }: { required: boolean }) => (
   <span className={s.marker}>{t(required ? "uiField.required" : "uiField.optional")}</span>
 );
 
+/** Related fields share one accessible legend and requiredness marker. */
+export function FieldSet({ label, required, children }: { label: ReactNode; required: boolean; children: ReactNode }) {
+  return <fieldset className={s.field}>
+    <legend className={s.label}>{label}<Marker required={required} /></legend>
+    {children}
+  </fieldset>;
+}
+
 /**
  * A labelled form field (components.html §1): the label is always visible and carries the required or optional marker,
  * the unit sits after the control, the hint and example sit under it, and the error appears right

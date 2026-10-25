@@ -22,13 +22,13 @@ type Employee = components["schemas"]["Employee"];
  * its number), employment type with its worker classification, base pay with its unit, and probation with the
  * server's clock. Shown to employee_directory_manage only (the server refuses everyone else).
  */
-export function FactsCard({ e, editing, onEdit }: { e: Employee; editing: boolean; onEdit: (open: boolean) => void }) {
+export function FactsCard({ e, editing, onEdit, readOnly = false }: { e: Employee; editing: boolean; readOnly?: boolean; onEdit: (open: boolean) => void }) {
   const facts = useQuery(factsQuery(e.id));
   return (
     <section className="card panel" aria-labelledby="facts">
       <h2 id="facts" className="panel__title" tabIndex={-1}>{t("facts.title")}</h2>
       <QueryState q={facts}>
-        {(f) => (editing ? <FactsForm f={f} name={e.name} refetch={facts.refetch} onClose={() => onEdit(false)} /> : <FactsView f={f} name={e.name} onEdit={() => onEdit(true)} />)}
+        {(f) => (editing && !readOnly ? <FactsForm f={f} name={e.name} refetch={facts.refetch} onClose={() => onEdit(false)} /> : <FactsView f={f} name={e.name} onEdit={readOnly ? undefined : () => onEdit(true)} />)}
       </QueryState>
     </section>
   );
@@ -36,7 +36,7 @@ export function FactsCard({ e, editing, onEdit }: { e: Employee; editing: boolea
 
 const notSet = <Muted>{t("facts.notSet")}</Muted>;
 
-function FactsView({ f, name, onEdit }: { f: Facts; name: string; onEdit: () => void }) {
+function FactsView({ f, name, onEdit }: { f: Facts; name: string; onEdit?: () => void }) {
   const m = f.employment ?? f.pending_employment;
   return (
     <>
@@ -54,16 +54,16 @@ function FactsView({ f, name, onEdit }: { f: Facts; name: string; onEdit: () => 
         )}
       </dl>
       {!m && <p className="muted">{t("facts.noProfile")}</p>}
-      {m && m.probation_state !== "NONE" && <Probation f={f} name={name} />}
-      <div className="row">
+      {m && m.probation_state !== "NONE" && <Probation f={f} name={name} readOnly={!onEdit} />}
+      {onEdit && <div className="row">
         <Button onClick={onEdit}>{t("facts.edit")}</Button>
-      </div>
+      </div>}
     </>
   );
 }
 
 /** The probation clock and, while it runs, the probation-end record (asserting the end date it shows). */
-function Probation({ f, name }: { f: Facts; name: string }) {
+function Probation({ f, name, readOnly }: { f: Facts; name: string; readOnly: boolean }) {
   const m = (f.employment ?? f.pending_employment)!;
   const end = m.probation_end_date;
   const state = labeled(PROBATION_STATE, m.probation_state);
@@ -80,7 +80,7 @@ function Probation({ f, name }: { f: Facts; name: string }) {
         : end
           ? t("facts.probation.running", { date: fmtDate(end), days: m.probation_days_left ?? 0 })
           : null;
-  const open = m.probation_state !== "CONFIRMED" && end;
+  const open = !readOnly && m.probation_state !== "CONFIRMED" && end;
   return (
     <div className="form">
       <div className="row">

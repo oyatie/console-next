@@ -9785,6 +9785,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/employees/{id}/exit-guards:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [employees]
+      operationId: getEmployeeExitGuards
+      summary: Read transactional exit rules before submitting
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - name: effective_exit_date
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: exit_reason_code
+        in: query
+        schema:
+          type: string
+      - name: dismissal_notice_served_on
+        in: query
+        schema:
+          type: string
+          format: date
+      responses:
+        '200':
+          description: Same rule inputs and protected-period refusal as confirmation; written notice announced only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExitGuards'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/employees/{id}/fixed-term:
     get:
       tags:
@@ -9803,6 +9845,13 @@ paths:
         required: true
         schema:
           $ref: '#/components/schemas/Uuid'
+      - name: contract_end_date
+        in: query
+        required: false
+        description: Proposed renewal end; only unexpired, unconsumed recorded or approved exceptions for this exact payload are offered.
+        schema:
+          type: string
+          format: date
       responses:
         '200':
           description: The fixed-term service.
@@ -9812,6 +9861,27 @@ paths:
                 type: object
                 required: [applies, cumulative_days, two_year_date, basis]
                 properties:
+                  available_exceptions:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [id, ground_code, basis, note]
+                      properties:
+                        id:
+                          $ref: '#/components/schemas/Uuid'
+                        ground_code:
+                          type: string
+                          enum: [PROJECT_COMPLETION, ABSENCE_COVER, STUDY_OR_TRAINING, OLDER_WORKER, PROFESSIONAL, GOVERNMENT_JOB_PROGRAM, DECREE_LISTED]
+                        basis:
+                          type: string
+                          description: Provision from the registered FixedTermExemption ground.
+                        note:
+                          type: [string, 'null']
+                  rule:
+                    oneOf:
+                    - $ref: '#/components/schemas/LegalRule'
+                    - type: 'null'
                   applies:
                     type: boolean
                   cumulative_days:
@@ -36670,6 +36740,7 @@ components:
           - 'null'
           description: Write-only. Present = (re)seal; absent/null = keep the stored secret.
     ConfirmEmployeeExitCaseRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       properties:
@@ -36716,6 +36787,22 @@ components:
                 pattern: '^\s*$'
             evidence_ref:
               type: string
+        notice_disposition:
+          type: object
+          additionalProperties: false
+          required: [kind]
+          description: HR tier only. A short dismissal notice requires pay in lieu or a register exception.
+            REGISTER_EXCEPTION requires a registered ground_code and a nonblank evidence_ref, checked by the server.
+          properties:
+            kind:
+              type: string
+              enum: [PAY_IN_LIEU, REGISTER_EXCEPTION]
+            ground_code:
+              type: string
+              maxLength: 1000
+            evidence_ref:
+              type: string
+              maxLength: 1000
         signoffs:
           $ref: '#/components/schemas/EmployeeLifecycleSignoffs'
           description: HR tier only (ignored by the HQ tier). TERMINATE requires all four acknowledgements —
@@ -37452,8 +37539,7 @@ components:
           description: CONTRACT_RENEWAL (required), or an EMPLOYMENT_TYPE_CHANGE to CONTRACT (required, the new
             contract's end; MR-24). YYYY-MM-DD, on or after effective_date. A renewal that takes
             fixed-term service past the statutory limit (기간제법 §4①, the register's FIXED_TERM_MAX_YEARS; 육아휴직 not
-            counted) is 409 fixed_term_limit unless exception_id admits it. Over the limit on the hire-date fallback
-            (no contract history) is allowed and flagged by GET /api/v1/employees/{id}/fixed-term.
+            counted) is 409 fixed_term_limit unless exception_id admits it. Over the limit on the hire-date fallback (no contract history) is 409 fixed_term_basis_unconfirmed. Record history or an exception; read the basis with GET /api/v1/employees/{id}/fixed-term.
         to_workplace_id:
           description: TRANSFER or GROUP_TRANSFER (E-S3b). TRANSFER - a 사업장 of the employee's own 법인 to move them to (전근); the
             employment_assignments row splits on effective_date. Without it, a to_org_unit_id placed at another
@@ -39980,6 +40066,32 @@ components:
           description: Registration and detail reads, absent when empty. Current non-blocking worker notices; wage notices are returned only to managers.
           items:
             $ref: '#/components/schemas/EmployeeCreateWarning'
+        retention:
+          description: Former employee retention from the statutory register; unknown coverage carries no date.
+          type: object
+          required: [kept_until, rule]
+          properties:
+            kept_until:
+              type: [string, 'null']
+              format: date
+            rule:
+              $ref: '#/components/schemas/LegalRule'
+        rehire_exit_case:
+          type: object
+          required: [case_id, status, decision_final, acknowledgement_required, open_legs]
+          properties:
+            case_id:
+              $ref: '#/components/schemas/Uuid'
+            status:
+              type: string
+            decision_final:
+              type: boolean
+            acknowledgement_required:
+              type: boolean
+            open_legs:
+              type: array
+              items:
+                type: string
     EmployeeEmploymentDetail:
       type: object
       required: [employment_type, currency]
@@ -40042,6 +40154,13 @@ components:
           - VOID
         attestation_required:
           type: boolean
+        void_basis:
+          type: string
+          description: The server's allowed registration_void basis; omitted when cancellation is refused.
+        recorded_hire_date:
+          type: string
+          format: date
+          description: Recorded first day, shown when the operator attests a mistaken historical registration.
         register_confirmation_required:
           type: boolean
         exit:
@@ -40057,6 +40176,7 @@ components:
         can_report_exit:
           type: boolean
     EmployeeExitCase:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       description: Optional fields are omitted (not null) when absent. Required nullable fields are always present;
         `*_name` actor display names are null when the actor is unset or unknown. exit_reason_code (BE-EMP-UI) is the
@@ -40137,32 +40257,32 @@ components:
               enum: [IN_PERSON_SIGNED, CERTIFIED_MAIL, ELECTRONIC]
             evidence_ref:
               type: string
+        notice_disposition:
+          type: [object, 'null']
+          additionalProperties: false
+          readOnly: true
+          required: [kind]
+          description: The recorded pay-in-lieu or statutory exception disposition. REGISTER_EXCEPTION requires a
+            registered ground_code and a nonblank evidence_ref, checked by the server.
+          properties:
+            kind:
+              type: string
+              enum: [PAY_IN_LIEU, REGISTER_EXCEPTION]
+            ground_code:
+              type: string
+              maxLength: 1000
+            evidence_ref:
+              type: string
+              maxLength: 1000
+        notice_pay:
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/NoticePay'
+          - type: 'null'
         protected_periods:
           type: array
-          readOnly: true
-          description: Protected leave periods computed from lifecycle events and the statutory register.
           items:
-            type: object
-            required: [lifecycle_event_id, leave_type, leave_from, leave_until, protected_until, instrument, article]
-            properties:
-              lifecycle_event_id:
-                type: string
-                format: uuid
-              leave_type:
-                type: string
-              leave_from:
-                type: string
-                format: date
-              leave_until:
-                type: [string, 'null']
-                format: date
-              protected_until:
-                type: [string, 'null']
-                format: date
-              instrument:
-                type: [string, 'null']
-              article:
-                type: [string, 'null']
+            $ref: '#/components/schemas/ProtectedExitPeriod'
         reported_by:
           $ref: '#/components/schemas/Uuid'
         reported_by_name:
@@ -44232,6 +44352,33 @@ components:
           - prepare_settlement
           - cancel_exit
           - reject_exit
+    ExitGuards:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [protected_periods, notice_required, refusal_code, notice_pay]
+      properties:
+        protected_periods:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProtectedExitPeriod'
+        notice_required:
+          type: boolean
+        refusal_code:
+          type: [string, 'null']
+        notice_pay:
+          oneOf:
+          - $ref: '#/components/schemas/NoticePay'
+          - type: 'null'
+        protection_rules:
+          type: array
+          items:
+            type: object
+            required: [leave_type, rule]
+            properties:
+              leave_type:
+                type: string
+              rule:
+                $ref: '#/components/schemas/LegalRule'
     ExitSettlementDeadline:
       type: object
       additionalProperties: false
@@ -47496,6 +47643,43 @@ components:
       { type: string, enum: [CLEAR, ACTIVE] }
     LegalHoldStatus:
       { type: string, enum: [ACTIVE, RELEASED] }
+    LegalRule:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [code, value, unit, instrument, article, source_url, retrieved_on, provenance, release_disposition, exception_grounds]
+      properties:
+        code:
+          type: string
+        value:
+          type: [integer, 'null']
+          format: int64
+        unit:
+          type: string
+        instrument:
+          type: [string, 'null']
+        article:
+          type: [string, 'null']
+        source_url:
+          type: [string, 'null']
+        retrieved_on:
+          type: [string, 'null']
+        provenance:
+          type: [string, 'null']
+        release_disposition:
+          type: string
+          description: The register's legal review state; HOLD remains subject to qualified review.
+        exception_grounds:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [code, label_ko]
+            properties:
+              code:
+                type: string
+              label_ko:
+                type: string
     LifecycleCase:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -49278,6 +49462,33 @@ components:
           - 'null'
           format: date-time
           description: 수령확인 timestamp; null until the caller acknowledges.
+    NoticePay:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [owed, notice_days, required_days, gap_days, rule, minimum_service_rule, amount_won, unavailable_reason]
+      properties:
+        owed:
+          type: [boolean, 'null']
+          description: Whether pay in lieu is owed; null when its statutory basis cannot be determined.
+        notice_days:
+          type: [integer, 'null']
+          format: int64
+        required_days:
+          type: [integer, 'null']
+          format: int64
+        gap_days:
+          type: [integer, 'null']
+          format: int64
+        rule:
+          $ref: '#/components/schemas/LegalRule'
+        minimum_service_rule:
+          $ref: '#/components/schemas/LegalRule'
+        amount_won:
+          type: [integer, 'null']
+          format: int64
+        unavailable_reason:
+          type: [string, 'null']
     NoticeProgress:
       type: object
       required:
@@ -54826,6 +55037,33 @@ components:
           description: EVT-refined expected shortfall of the worst 5% of outcomes.
         assumptions:
           $ref: '#/components/schemas/ProjectionAssumptions'
+    ProtectedExitPeriod:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [lifecycle_event_id, leave_type, leave_from, leave_until, protected_until, instrument, article]
+      properties:
+        lifecycle_event_id:
+          type: string
+          format: uuid
+        leave_type:
+          type: string
+        leave_from:
+          type: string
+          format: date
+        leave_until:
+          type: [string, 'null']
+          format: date
+        protected_until:
+          type: [string, 'null']
+          format: date
+        instrument:
+          type: [string, 'null']
+        article:
+          type: [string, 'null']
+        rule:
+          oneOf:
+          - $ref: '#/components/schemas/LegalRule'
+          - type: 'null'
     PublishRecruitPostingRequest:
       type: object
       required:
@@ -56744,6 +56982,10 @@ components:
       additionalProperties: false
       required: [hire_date, employment_type, org_unit_id, position, idempotency_key]
       properties:
+        acknowledge_open_exit_case:
+          type: boolean
+          default: false
+          description: Acknowledge remaining settlement after a final exit decision. Never admits HR_CONFIRMED.
         hire_date:
           type: string
           format: date

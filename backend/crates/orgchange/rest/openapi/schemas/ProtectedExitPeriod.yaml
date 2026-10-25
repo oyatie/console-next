@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [lifecycle_event_id, leave_type, leave_from, leave_until, protected_until, instrument, article]
+properties:
+  lifecycle_event_id:
+    type: string
+    format: uuid
+  leave_type:
+    type: string
+  leave_from:
+    type: string
+    format: date
+  leave_until:
+    type: [string, 'null']
+    format: date
+  protected_until:
+    type: [string, 'null']
+    format: date
+  instrument:
+    type: [string, 'null']
+  article:
+    type: [string, 'null']
+  rule:
+    oneOf:
+    - $ref: '#/components/schemas/LegalRule'
+    - type: 'null'

@@ -10016,6 +10016,15 @@ const ORGCHANGE_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/employees/{id}/exit-guards",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../orgchange/rest/openapi/paths/api__v1__employees__id__exit-guards.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employees/{id}/fixed-term",
         operations: &[Operation {
             method: "get",
@@ -11252,6 +11261,10 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../orgchange/rest/openapi/schemas/ExitCaseNextAction.yaml"),
     },
     NamedYaml {
+        name: "ExitGuards",
+        body: include_str!("../../orgchange/rest/openapi/schemas/ExitGuards.yaml"),
+    },
+    NamedYaml {
         name: "ExitSettlementDeadline",
         body: include_str!("../../orgchange/rest/openapi/schemas/ExitSettlementDeadline.yaml"),
     },
@@ -11314,6 +11327,10 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../orgchange/rest/openapi/schemas/LeaveBalanceSummary.yaml"),
     },
     NamedYaml {
+        name: "LegalRule",
+        body: include_str!("../../orgchange/rest/openapi/schemas/LegalRule.yaml"),
+    },
+    NamedYaml {
         name: "LifecycleCase",
         body: include_str!("../../orgchange/rest/openapi/schemas/LifecycleCase.yaml"),
     },
@@ -11338,6 +11355,10 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "LifecycleTemplateItem",
         body: include_str!("../../orgchange/rest/openapi/schemas/LifecycleTemplateItem.yaml"),
+    },
+    NamedYaml {
+        name: "NoticePay",
+        body: include_str!("../../orgchange/rest/openapi/schemas/NoticePay.yaml"),
     },
     NamedYaml {
         name: "OrgChangeDecisionRequest",
@@ -11458,6 +11479,10 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "PersonRecordVeteran",
         body: include_str!("../../orgchange/rest/openapi/schemas/PersonRecordVeteran.yaml"),
+    },
+    NamedYaml {
+        name: "ProtectedExitPeriod",
+        body: include_str!("../../orgchange/rest/openapi/schemas/ProtectedExitPeriod.yaml"),
     },
     NamedYaml {
         name: "RehireEmployeeRequest",

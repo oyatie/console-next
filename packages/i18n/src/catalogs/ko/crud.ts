@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 export const koCrud = {
   "crud.menu.endSite": "삭제 · 폐쇄",
   "crud.loading": "확인 중…",
@@ -40,9 +41,9 @@ export const koCrud = {
   "crud.refused.record_has_units": "아래에 부서가 있습니다 · 쓰인 적 없는 부서를 먼저 삭제하십시오",
   "crud.refused.record_in_use": "아직 배치된 사람이나 부서가 있습니다 · 먼저 발령하거나 이동하십시오",
   "crud.refused.record_never_used": "쓰인 적 없는 기록은 폐쇄하지 않고 삭제합니다",
-  "crud.refused.employee_void_has_work_records": "근무 기록(퇴직 건, 발령, 근태, 급여)이 있어 등록 취소하지 않습니다 · 퇴직으로 처리하십시오",
-  "crud.refused.employee_void_attestation_required": "근무한 적 없음을 확인해야 등록 취소합니다",
-  "crud.refused.employee_void_not_eligible": "등록한 지 오래되어 등록 취소하지 않습니다 · 퇴직으로 처리하십시오",
+  "crud.refused.employee_void_has_work_records": "근무 이력을 보존해야 하므로 등록 취소할 수 없습니다",
+  "crud.refused.employee_void_attestation_required": "근무 사실이 없는 잘못된 등록인지 확인해야 등록 취소할 수 있습니다",
+  "crud.refused.employee_void_not_eligible": "등록 취소 요건을 충족하지 않아 기록을 보존합니다",
   "crud.refused.employee_already_voided": "이미 등록 취소한 기록입니다",
   "crud.refused.exited_register_confirmation_required": "명부 보존 기간 안의 퇴직자입니다 · 원본 명부를 보관 중인지 확인하십시오",
   "crud.refused.employee_void_sole_holder_refused": "혼자서 하는 등록 취소는 막혀 있습니다 · 다른 담당자가 결정합니다",
@@ -68,7 +69,8 @@ export const koCrud = {
   "crud.person.reason.NEVER_JOINED": "입사하지 않음",
   "crud.person.reason.NOT_OURS": "소속 직원이 아님",
   "crud.person.reason.OTHER": "그 밖의 잘못 등록",
-  "crud.person.attest": "이 사람은 근무한 적이 없습니다",
+  "crud.person.attest": "근무 사실이 없는 잘못된 등록임을 확인했습니다",
+  "crud.person.attestRecorded": "기록된 입사일({date})은 실제 근무를 나타내지 않는 잘못된 등록임을 확인했습니다",
   "crud.person.registerKept": "원본 근로자 명부를 따로 보관하고 있습니다",
   "crud.bulkExit.open": "선택한 {count, number}명 퇴직",
   "crud.bulkExit.kicker": "퇴직 · {count, number}명",

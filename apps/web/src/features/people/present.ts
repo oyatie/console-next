@@ -236,7 +236,7 @@ export function eventField(x: LifecycleEvent): string | null {
   return key && t(`empCard.f.${key}`);
 }
 /** UX-R1 PLACEMENT: the people catalog's words for a refusal code (each names the way forward), if it has them. */
-export const peopleRefusal = (code: string) => (isMessageId(`people.refusal.${code}`) ? t(`people.refusal.${code}` as never) : undefined);
+export const peopleRefusal = (code: string) => (isMessageId(`exit.error.${code}`) ? t(`exit.error.${code}` as never) : isMessageId(`people.refusal.${code}`) ? t(`people.refusal.${code}` as never) : undefined);
 
 export function employeeWarningText(w: components["schemas"]["EmployeeCreateWarning"]) {
   return w.code === "pay_below_minimum_wage"

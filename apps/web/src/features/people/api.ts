@@ -17,6 +17,8 @@ export const mapCompany = (key: string, body: { company_text: string; legal_enti
   unwrap(api.POST("/api/v1/employment-assignments/map-company", { params: { header: { "Idempotency-Key": key } }, body }));
 
 export const employeeQuery = (id: string) => get("/api/v1/employees/{id}", { params: { path: { id } } });
+export const exitGuardsQuery = (id: string, effective_exit_date: string, exit_reason_code: string | null, dismissal_notice_served_on?: string) =>
+  get("/api/v1/employees/{id}/exit-guards", { params: { path: { id }, query: { effective_exit_date, exit_reason_code: exit_reason_code ?? undefined, dismissal_notice_served_on: dismissal_notice_served_on || undefined } } });
 export const eventsQuery = (id: string) => get("/api/v1/employees/{id}/lifecycle-events", { params: { path: { id } } });
 
 /** Cases still under way (a later step is open to someone). */
@@ -158,7 +160,7 @@ export const addJobTitle = (body: { kind: JobTitleKind; label: string; grade_ran
 /** Renames, re-ranks or (de)activates a title; a title is never deleted. */
 export const updateJobTitle = (id: string, body: { label?: string; grade_rank?: number; active?: boolean }) => unwrap(api.PATCH("/api/v1/job-titles/{id}", { params: { path: { id } }, body }));
 /** BW-12: cumulative fixed-term service and the last day inside the statutory limit (Fixed-term Act Art. 4(1)). */
-export const fixedTermQuery = (id: string) => get("/api/v1/employees/{id}/fixed-term", { params: { path: { id } } });
+export const fixedTermQuery = (id: string, contract_end_date?: string) => get("/api/v1/employees/{id}/fixed-term", { params: { path: { id }, query: { contract_end_date: contract_end_date || undefined } } });
 
 /** Current employees of one unit (direct members), for the positions it already uses. */
 export const unitMembersQuery = (unitId: string) => get("/api/v1/employees", { params: { query: { org_unit_id: unitId, limit: 200 } } });

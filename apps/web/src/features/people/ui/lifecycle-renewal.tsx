@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { useState } from "react";
+import { Field } from "../../../ui/field/field";
+import { SelectInput } from "../../../ui/field/select-input";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { fixedTermQuery } from "../api";
@@ -5,6 +9,8 @@ import { Button } from "../../../ui/button/button";
 import { DateField } from "../../../ui/date/date-field";
 import { endPresets, periodPresets } from "../domain/presets";
 import { fmtDayShort } from "../present";
+import { QueryState } from "../../../lib/react/query-state";
+import { FixedTermRule } from "./legal-preflight";
 import s from "./lifecycle.module.css";
 
 /**
@@ -12,7 +18,11 @@ import s from "./lifecycle.module.css";
  * in one press (shown resolved); single-date suggestions stay for a custom period. Nothing is chosen
  * until pressed.
  */
-export function RenewalFields({ employeeId, contractEnd, start, today, bounds, end, onEnd, onPeriod, error, locked }: {
+export function RenewalFields({ employeeId, contractEnd, start, today, bounds, end, onEnd, onPeriod, error, locked, onConvert, onNoRenewal, exceptionId, onException }: {
+  onConvert?: () => void;
+  onNoRenewal?: () => void;
+  exceptionId?: string;
+  onException?: (id: string) => void;
   employeeId: string;
   contractEnd: string | null | undefined;
   start: string;
@@ -25,12 +35,21 @@ export function RenewalFields({ employeeId, contractEnd, start, today, bounds, e
   /** A correction keeps the contract end (changing it needs a second person). */
   locked?: boolean;
 }) {
-  const periods = periodPresets(contractEnd, bounds);
-  const presets = endPresets(start).map((p) => ({ label: p.months % 12 ? t("lifecycle.preset.plusMonths", { months: p.months }) : t("lifecycle.preset.plusYears", { years: p.months / 12 }), date: p.date }));
+  const query = useQuery(fixedTermQuery(employeeId));
+  const f = query.data;
+  const limit = f?.two_year_date ?? undefined;
+  const disabledReason = limit ? t("lifecycle.fixedTerm.over", { date: fmtDayShort(limit), years: f?.rule?.value ?? "—" }) : undefined;
+  const over = Boolean(limit && end && end > limit);
+  const [exception, setException] = useState(Boolean(exceptionId));
+  const options = useQuery({ ...fixedTermQuery(employeeId, end), enabled: over && !locked });
+  const choices = options.data?.available_exceptions ?? [];
+  const periods = periodPresets(contractEnd, bounds, limit);
+  const presets = endPresets(start, limit).map((p) => ({ label: p.months % 12 ? t("lifecycle.preset.plusMonths", { months: p.months }) : t("lifecycle.preset.plusYears", { years: p.months / 12 }), date: p.date, disabledReason: p.disabledReason ? disabledReason : undefined }));
   return (
     <>
       {contractEnd && <p className={s.fact}>{t("lifecycle.renewal.current", { date: fmtDayShort(contractEnd) })}</p>}
-      <FixedTerm employeeId={employeeId} end={end} />
+      <QueryState q={query}>{(facts) => <FixedTermRule f={facts} end={end} />}</QueryState>
+      {(query.isPending || query.isError) && <FixedTermRule unavailable />}
       {locked ? (
         <p className={s.fact}>{t("lifecycle.renewal.endLocked", { date: end ? fmtDayShort(end) : "—" })}</p>
       ) : (
@@ -38,8 +57,9 @@ export function RenewalFields({ employeeId, contractEnd, start, today, bounds, e
       {periods.length > 0 && (
         <div className={s.periods} role="group" aria-label={t("lifecycle.renewal.periods")}>
           {periods.map((p) => (
-            <Button key={p.months} aria-pressed={start === p.start && end === p.end} onClick={() => onPeriod(p.start, p.end)}>
+            <Button key={p.months} aria-pressed={start === p.start && end === p.end} aria-disabled={Boolean(p.disabledReason) || undefined} title={p.disabledReason ? disabledReason : undefined} onClick={() => !p.disabledReason && onPeriod(p.start, p.end)}>
               {t("lifecycle.renewal.period", { years: p.months / 12, start: fmtDayShort(p.start), end: fmtDayShort(p.end) })}
+              {p.disabledReason && <span className={s.note}>{disabledReason}</span>}
             </Button>
           ))}
         </div>
@@ -47,27 +67,25 @@ export function RenewalFields({ employeeId, contractEnd, start, today, bounds, e
       <DateField label={t("lifecycle.renewal.end")} required today={today} presets={presets} value={end} onChange={onEnd} min={start || undefined} error={error} showErrors={error != null} />
         </>
       )}
+      {!locked && over && <div className={s.block}>
+        <div className={s.periods}>
+          {onConvert && <Button onClick={onConvert}>{t("lifecycle.fixedTerm.convert")}</Button>}
+          {onNoRenewal && <Button onClick={onNoRenewal}>{t("lifecycle.fixedTerm.noRenewal")}</Button>}
+          {choices.length > 0 && <Button aria-expanded={exception} onClick={() => { setException(!exception); onException?.(""); }}>{t("lifecycle.fixedTerm.exception")}</Button>}
+        </div>
+        {exception && choices.length > 0 && <QueryState q={options}>{(data) => {
+          const choices = data.available_exceptions ?? [];
+          const selected = choices.find((x) => x.id === exceptionId);
+          return choices.length ? <>
+            <Field label={t("lifecycle.fixedTerm.exceptionId")} required>
+              {(props) => <SelectInput {...props} value={selected?.id ?? ""} onChange={(e) => onException?.(e.target.value)}>
+                <option value="" disabled>{t("uiChoice.placeholder", { label: t("lifecycle.fixedTerm.exceptionId") })}</option>
+                {choices.map((x) => <option key={x.id} value={x.id}>{t(`lifecycle.fixedTerm.ground.${x.ground_code}`)} · {x.basis}{x.note && ` · ${x.note}`}</option>)}
+              </SelectInput>}
+            </Field>
+          </> : <p role="status">{t("lifecycle.fixedTerm.noExceptions")}</p>;
+        }}</QueryState>}
+      </div>}
     </>
-  );
-}
-
-/**
- * BW-12 (Fixed-term Act Art. 4(1)): the cumulative fixed-term service and the last day inside the two-year limit, from the
- * server; a new end past it is said before commit (the server refuses it unless an exception admits it).
- */
-function FixedTerm({ employeeId, end }: { employeeId: string; end: string }) {
-  const q = useQuery(fixedTermQuery(employeeId));
-  const f = q.data;
-  if (!f?.applies || f.cumulative_days == null) return null;
-  const over = Boolean(f.two_year_date && end && end > f.two_year_date);
-  return (
-    <div className={s.block} role="group" aria-label={t("lifecycle.fixedTerm.title")}>
-      <p className={s.fact}>
-        {t("lifecycle.fixedTerm.service", { days: f.cumulative_days })}
-        {f.two_year_date && <> · {t("lifecycle.fixedTerm.limit", { date: fmtDayShort(f.two_year_date) })}</>}
-      </p>
-      {f.basis === "HIRE_DATE_FALLBACK" && <p className={s.note}>{t("lifecycle.fixedTerm.fallback")}</p>}
-      {over && <p className={s.warn} role="status">{t("lifecycle.fixedTerm.over", { date: fmtDayShort(f.two_year_date!) })}</p>}
-    </div>
   );
 }

@@ -253,6 +253,7 @@ impl HrService {
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 authorize_hr_person(tx, &principal, MANAGE, employee_id).await?;
+                crate::employee_state::require_editable(tx.as_mut(), org_uuid, employee_id).await?;
                 require_employee(tx, org_uuid, employee_id, true).await?;
                 let manage = Feature::EmployeeDirectoryManage;
                 own_record_guard(tx, org, actor, employee_id, manage).await?;

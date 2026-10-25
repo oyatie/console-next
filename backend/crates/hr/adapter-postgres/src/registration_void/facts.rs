@@ -41,6 +41,7 @@ pub(super) struct Locked {
     /// The legacy TEXT 퇴직일 as stored; [`Locked::exit_on`] parses it.
     exit_date: Option<String>,
     pub has_work_records: bool,
+    pub recorded_hire_date: Option<String>,
 }
 
 impl Locked {
@@ -63,7 +64,7 @@ pub(super) async fn lock(
     sqlx::query_as(
         "SELECT e.employment_status AS status, \
                (e.created_at AT TIME ZONE 'Asia/Seoul')::date AS registered_on, \
-               e.updated_at, e.employee_number, e.exit_date, \
+               e.updated_at, e.employee_number, e.exit_date, e.hire_on::text AS recorded_hire_date, \
                EXISTS (SELECT 1 FROM employee_exit_cases c \
                         WHERE c.org_id = e.org_id AND c.employee_id = e.id) \
                OR EXISTS (SELECT 1 FROM employee_lifecycle_events l \

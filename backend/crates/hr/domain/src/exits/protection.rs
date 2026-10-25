@@ -12,7 +12,8 @@ pub struct ProtectionRule {
     pub article: String,
 }
 pub trait ProtectionRegister {
-    fn rule(&self, code: &str) -> Option<ProtectionRule>;
+    /// None means unprotected; an unknown tail on a mapped type stays open.
+    fn rule(&self, leave_type: &str) -> Option<ProtectionRule>;
 }
 #[derive(Debug, Clone, Copy)]
 pub struct AppliedExitEvent<'a> {
@@ -39,13 +40,6 @@ impl ProtectedPeriod {
                 .is_none_or(|end| termination_date <= end)
     }
 }
-fn code(leave: Option<&str>) -> Option<&'static str> {
-    match leave {
-        Some("WORK_INJURY" | "MATERNITY") => Some("DISMISSAL_PROTECTION_TAIL_DAYS"),
-        Some("CHILDCARE") => Some("CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS"),
-        _ => None,
-    }
-}
 /// Events are in effective-date order. A return closes the leave the day before;
 /// absent a return, its expected return closes it. A missing rule stays open.
 #[must_use]
@@ -61,7 +55,12 @@ pub fn protected_periods(
                 if let Some(start) = open.take() {
                     periods.push(period(start, None, register));
                 }
-                if code(event.event.leave_type).is_some() {
+                if event
+                    .event
+                    .leave_type
+                    .and_then(|leave_type| register.rule(leave_type))
+                    .is_some()
+                {
                     open = Some(event);
                 }
             }
@@ -86,7 +85,10 @@ fn period(
     let leave_until = returned
         .or(start.event.expected_return_date)
         .and_then(Date::previous_day);
-    let rule = code(start.event.leave_type).and_then(|code| register.rule(code));
+    let rule = start
+        .event
+        .leave_type
+        .and_then(|leave_type| register.rule(leave_type));
     let protected_until = rule.as_ref().and_then(|r| {
         let tail = i32::try_from(r.tail_days?).ok().filter(|tail| *tail >= 0)?;
         leave_until?.checked_add(Duration::days(i64::from(tail)))
