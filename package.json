@@ -42,5 +42,13 @@
     "typescript": "~5.9",
     "vitest": "^5.0.5"
   },
+  "overrides": {
+    "typed-rest-client": {
+      "qs": "6.16.0"
+    },
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
+  },
   "license": "UNLICENSED"
 }

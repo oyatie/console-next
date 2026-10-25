@@ -20,6 +20,34 @@
     "checked": "2026-10-26",
     "note": "docs/quality/dependencies/zod.md"
   },
+  "package.json:overrides:typed-rest-client:qs": {
+    "requirement": "6.16.0",
+    "version": "6.16.0",
+    "registry": "https://registry.npmjs.org/qs/6.16.0",
+    "checked": "2026-10-26",
+    "note": "docs/quality/dependencies/typed-rest-client-qs.md",
+    "reason": "typed-rest-client pins qs exactly; Dependabot cannot move its child to a patched release. The originally proposed 6.15.2 still has two moderate advisories; 6.16.0 fixes all three current qs advisories.",
+    "removalCondition": "Remove when the typed-rest-client version selected by Stryker declares a qs range admitting a patched release, and a regenerated lockfile and compatibility tests remain clean without the override."
+  },
+  "package.json:overrides:exceljs:uuid": {
+    "requirement": "^11.1.1",
+    "version": "11.1.1",
+    "registry": "https://registry.npmjs.org/uuid/11.1.1",
+    "checked": "2026-10-26",
+    "note": "docs/quality/dependencies/exceljs-uuid.md",
+    "reason": "ExcelJS requires the vulnerable uuid 8 range; Dependabot proposes downgrading ExcelJS instead of fixing its child. uuid 11 retains the CommonJS v4 API used by ExcelJS extended conditional formatting.",
+    "removalCondition": "Remove when ExcelJS declares a compatible patched uuid range, or ExcelJS is replaced, and the regenerated lockfile and conditional-formatting round trip pass without the override."
+  },
+  "apps/desktop/src-tauri/Cargo.lock:dismissals:glib": {
+    "version": "0.18.5",
+    "checked": "2026-10-26",
+    "note": "docs/quality/dependencies/desktop-glib.md",
+    "alert": 14,
+    "owner": "Jason Lee",
+    "status": "proposed",
+    "reason": "The desktop shell ships Windows x64 only (ADR-014, recorded in apps/desktop/README.md). glib belongs to Tauri's Linux GTK dependency chain and is not built into the shipped target.",
+    "removalCondition": "Reopen alert #14 and resolve the vulnerable GTK chain before planning, building or shipping a Linux desktop shell. The orchestrator dismisses the alert only after review."
+  },
   "apps/web/package.json:devDependencies:vite": {
     "requirement": "^8.3.5",
     "version": "8.3.5",
