@@ -26,6 +26,7 @@ pub struct FacetCount {
 pub struct EmployeeReviewCounts {
     pub identity_review_required: i64,
     pub register_review_required: i64,
+    /// Deprecated compatibility name: the count of people without a current workplace placement.
     pub home_branch_review_required: i64,
     pub lifecycle_apply_failed: i64,
     /// Current contract ended before today (KST).
@@ -73,7 +74,7 @@ impl HrService {
              ea.legal_entity_id, ea.workplace_id, ",
             crate::identity_review_sql!(),
             " AS identity, \
-             b.id IS NULL AS no_branch, fe.id IS NOT NULL AS failed, \
+             cp.employee_id IS NULL AS no_branch, fe.id IS NOT NULL AS failed, \
              p.contract_end_date AS contract_end, ",
         ));
         query.push(crate::register_review_sql!());
@@ -161,6 +162,8 @@ impl HrService {
                 });
             }
         }
+        metrics::counter!("hr_unplaced_flags_emitted_total", "surface" => "facets")
+            .increment(u64::try_from(facets.review.home_branch_review_required).unwrap_or(0));
         Ok(facets)
     }
 }

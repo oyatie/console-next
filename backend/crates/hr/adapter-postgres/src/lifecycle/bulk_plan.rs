@@ -14,6 +14,7 @@ use serde_json::{Value, json};
 use time::Date;
 use uuid::Uuid;
 
+use super::bulk_placement::{InitialPlacement, initial_placement};
 use super::bulk_selection::{
     BulkSelection, BulkTransferLine, resolve_selection, validate_bulk_targets,
 };
@@ -50,8 +51,13 @@ pub(super) struct BulkInput {
 /// the commit may record `loaded` for `employee_ids`.
 pub(super) struct BulkPlan {
     pub employee_ids: Vec<Uuid>,
-    pub loaded: BTreeMap<Uuid, PreparedLifecycleEvent>,
+    pub loaded: BTreeMap<Uuid, PreparedBulkEvent>,
     pub refusals: Vec<Value>,
+}
+
+pub(super) struct PreparedBulkEvent {
+    pub event: PreparedLifecycleEvent,
+    pub initial: Option<InitialPlacement>,
 }
 
 /// The request's own rules (no database).
@@ -194,7 +200,7 @@ async fn prepare_one(
     employee_id: Uuid,
     transition: NormalizedEmployeeLifecycleTransition,
     today: Date,
-) -> Result<PreparedLifecycleEvent, HrError> {
+) -> Result<PreparedBulkEvent, HrError> {
     let org_uuid = *org.as_uuid();
     let mut prepared =
         prepare_lifecycle_event(tx, org_uuid, employee_id, transition, today).await?;
@@ -210,7 +216,11 @@ async fn prepare_one(
     if prepared.transition.event_type == "CONTRACT_RENEWAL" {
         check_fixed_term_renewal(tx, org_uuid, employee_id, &prepared.transition, None).await?;
     }
-    Ok(prepared)
+    let initial = initial_placement(tx, org_uuid, employee_id, &prepared).await?;
+    Ok(PreparedBulkEvent {
+        event: prepared,
+        initial,
+    })
 }
 
 /// The employee's own transition: the batch's, with its line's unit when the

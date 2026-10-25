@@ -7,6 +7,8 @@ mod http;
 mod inbox_pool;
 #[path = "period_unlock_support/mod.rs"]
 mod period_support;
+#[path = "inbox_journey/place_followups.rs"]
+mod place_followups;
 
 use ::http::StatusCode;
 use serde_json::{Value, json};
@@ -121,15 +123,15 @@ async fn identity_followups_match_home_and_denied_readers_see_none(pool: PgPool)
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn branch_followups_match_home_and_denied_readers_see_none(pool: PgPool) {
+async fn unplaced_followups_match_home_and_denied_readers_see_none(pool: PgPool) {
     let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
     let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
-    let employee = followup_person(&pool, org, "branch").await;
+    let employee = followup_person(&pool, org, "unplaced").await;
     let page = inbox(&ctx).await;
-    let rows = items_of(&page, "home_branch_review");
+    let rows = items_of(&page, "unplaced");
     assert_eq!(rows.len(), 1, "{page}");
-    assert_eq!(rows[0]["id"], format!("hr_branch:{employee}"));
-    assert_denied_source(&pool, org, "home_branch_review").await;
+    assert_eq!(rows[0]["id"], format!("hr_unplaced:{employee}"));
+    assert_denied_source(&pool, org, "unplaced").await;
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

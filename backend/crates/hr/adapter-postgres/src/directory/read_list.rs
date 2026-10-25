@@ -46,7 +46,7 @@ pub fn employee_from_row(row: sqlx::postgres::PgRow) -> Result<EmployeeResponse,
         leave_remaining: row.try_get("leave_remaining")?,
         home_branch_id: row.try_get("home_branch_id")?,
         home_branch_name: row.try_get("home_branch_name")?,
-        home_branch_review_required: row.try_get::<Option<Uuid>, _>("home_branch_id")?.is_none(),
+        home_branch_review_required: row.try_get("home_branch_review_required")?,
         register_review_required: row.try_get("register_review_required")?,
         identity_resolution_strategy: row.try_get("identity_resolution_strategy")?,
         identity_resolution_confidence: row.try_get("identity_resolution_confidence")?,
@@ -85,7 +85,7 @@ pub const EMPLOYEE_ROW_SELECT: &str = concat!(
     " AS identity_review_required, e.identity_name_only_merge, e.work_email, e.created_at, e.updated_at, ea.legal_entity_id, ea.workplace_id, p.contract_end_date::TEXT AS contract_end_date, p.employment_type, lr.expected_return_date, ss.status_since, ne.id AS next_event_id, ne.event_type AS next_event_type, ne.effective_date AS next_event_date, fe.id AS failed_event_id, fe.event_type AS failed_event_type, fe.effective_date AS failed_event_date, fe.failure_code AS failed_event_code",
     ", ",
     crate::register_review_sql!(),
-    " AS register_review_required"
+    " AS register_review_required, cp.employee_id IS NULL AS home_branch_review_required"
 );
 
 impl HrService {

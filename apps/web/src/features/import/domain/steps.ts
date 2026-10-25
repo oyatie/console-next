@@ -1,6 +1,6 @@
 // Import rules the screen follows. The server decides every outcome; these only say what is still open before the
 // next step, so a disabled button always names why.
-import type { Decision, ImportDecisions, ImportDryRun, ImportOutcome, ImportPreview, ImportRow } from "./contract";
+import type { Decision, ImportDecisions, ImportDryRun, ImportOutcome, ImportRow } from "./contract";
 
 /** What the user answered between the preview and apply, sent whole with every dry run so the digest covers it. */
 export type Picks = Required<ImportDecisions>;
@@ -12,10 +12,6 @@ export const initialPicks = (): Picks => ({
   company_map: {}, unit_map: {}, workplace_map: {}, employment_type_map: {}, identity: {}, exclusions: {}, status_map: {}, leave_type_map: {}, employee_numbers: {}, group_exclusions: {},
   group_answers: {},
 });
-
-/** Columns the server read as the work site although headed workplace (G9): said on the preview, never asked. */
-export const siteNoticeColumns = (p: ImportPreview) =>
-  p.columns.filter((c) => (c as { notice?: string | null }).notice === "customer_site_not_workplace").map((c) => c.source_header);
 
 /** One JSON form for comparing answers: keys sorted at every level, an empty note dropped. */
 const canon = (v: unknown): string =>

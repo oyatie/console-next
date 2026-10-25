@@ -10,7 +10,6 @@ import type { LifecycleEvent } from "../api";
 import { daysBetween } from "../domain/roster";
 import { EmploymentPlacement } from "./employment-placement";
 import { EmploymentRecord } from "./employment-record";
-import { HomeBranchCard } from "./home-branch-card";
 import type { Card } from "./use-card";
 import { MissingEmployment } from "./missing-employment";
 import s from "./card.module.css";
@@ -53,11 +52,12 @@ export function SecJob({ c, onFix, onAct, onTab, onContract }: { c: Card; onFix:
       </FieldRow>
       <FieldRow label={t("empCard.f.entity")} mark={verb(t("empCard.f.entity"), t("empCard.verb.group"), "GROUP_TRANSFER")}>{c.place.entity}</FieldRow>
       <FieldRow label={t("empCard.f.workplace")}  mark={verb(t("empCard.f.workplace"), t("empCard.verb.site"), "TRANSFER")}>
-        {c.place.workplace ?? none}
+        {e.workplace_id ? c.place.workplace ?? none : t("empCard.unplaced")}
       </FieldRow>
       <FieldRow label={t("empCard.f.unit")} sub={moved && t("empCard.unit.since", { date: fmtDate(moved.effective_date), from: moved.from_org_unit ?? "—" })} mark={verb(t("empCard.f.unit"), t("empCard.verb.unit"), "TRANSFER")}>
-        {c.place.path.join(" › ") || e.org_unit || t("empCard.unplaced")}
+        {c.place.path.join(" › ") || e.org_unit || "—"}
       </FieldRow>
+      {e.worksite_name && <FieldRow label={t("import.target.worksite_name")}>{e.worksite_name}</FieldRow>}
       {/* The employer and workplace by date (the assignments split on each change's effective date, so a unit's move carries the person). */}
       <FieldRow wide label={t("empCard.f.placements")}>
         <EmploymentPlacement employeeId={e.id} className={s.placements} />
@@ -93,7 +93,6 @@ export function SecJob({ c, onFix, onAct, onTab, onContract }: { c: Card; onFix:
         {probation?.probation_end_date ? <>{t("empCard.probation.until", { date: fmtDate(probation.probation_end_date) })} · {label(PROBATION_STATE, probation.probation_state)}</> : none}
       </FieldRow>
       <div className={s.rail}>
-        <HomeBranchCard e={e} manage={c.manage} />
         {c.manage && <EmploymentRecord e={e} onContract={onContract} />}
       </div>
     </RecordSection>

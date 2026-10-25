@@ -54,9 +54,9 @@ export function EmployeeCard() {
   const manage = can("employee_directory_manage", "all");
   const users = can("user_manage");
   // Contracts and end-options change the height of sections and the action row: read them before exposing controls.
+  const rrn = freshOnOpen(useQuery({ ...rrnStatusQuery(id), enabled: manage, retry: false, refetchOnMount: "always" }));
   const contracts = freshOnOpen(useQuery({ ...contractsQuery(id), enabled: manage, refetchOnMount: "always" }));
   const ends = freshOnOpen(useQuery({ ...endOptionsQuery(id), enabled: manage, refetchOnMount: "always" }));
-  const rrn = useQuery({ ...rrnStatusQuery(id), enabled: manage, retry: false });
   // The key becomes known after the employee read; a cached key must fetch even when this observer was already mounted.
   const account = freshOnOpen(useQuery({ ...directorySearch(detail.data?.employee.employee_number || detail.data?.employee.name || "", true), enabled: users && !!detail.data, staleTime: 0, refetchOnMount: "always" }));
   // The exit block's first answer changes section 4's height, so it settles before the controls appear too.

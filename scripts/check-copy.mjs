@@ -98,6 +98,8 @@ const MATURITY_RULES = [
   { rule: "prose.운영시제", re: /운영을 시작하면/, when: ({ id }) => /phase\.started\./.test(id), use: "the current operating phase" },
 ];
 export const TERM_RULES = [
+  // Routing scope and the LEGAL-owned N-1 exit label are outside person placement.
+  { rule: "term.personPlace", re: /지점/, when: ({ id }) => /^(?:person|people|roster|home)\.(?!field\.homeBranch$|scope\.)/.test(id), use: "사업장 · 근무지 · 미배치 (placement owns a person's place)" },
   { rule: "verb.수정", re: /(?<!새로 ?)고[치쳐칠친칩]/, use: "수정 (the recorded act of a dated fact says 변경 or 정정)" },
   { rule: "verb.변경", re: /바[꾸꿔꾼꿨꿉꿀]/, use: "변경 (바뀌다 for a state that changes by itself is fine)" },
   { rule: "verb.이동", re: /옮[기겨긴길깁김]/, use: "이동 (a person is not moved: 발령 · 전보 · 전근 · 전적)" },
@@ -281,7 +283,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (Object.keys(candidate).length || allow.length) {
       const ceiling = debtCeiling();
       problems.push(...baselineGrowth(candidate, ceiling.counts));
-      for (const a of allow) if (!ceiling.allow.some((old) => old.id === a.id && old.rule === a.rule)) problems.push(`${TERMS_ALLOW}: ${a.id} (${a.rule}): allow-list must only shrink`);
+      // A renamed key keeps its exception (same rule and reason, the old key gone from every catalog, one for one);
+      // any other entry not at the merge base is growth.
+      const ids = new Set(entries.map((e) => e.id));
+      const renamable = ceiling.allow.filter((old) => !ids.has(old.id) && !allow.some((a) => a.id === old.id && a.rule === old.rule));
+      for (const a of allow) {
+        if (ceiling.allow.some((old) => old.id === a.id && old.rule === a.rule)) continue;
+        const i = renamable.findIndex((old) => old.rule === a.rule && old.reason === a.reason);
+        if (i >= 0) renamable.splice(i, 1);
+        else problems.push(`${TERMS_ALLOW}: ${a.id} (${a.rule}): allow-list must only shrink`);
+      }
     }
     if (!writing) problems.push(...ratchet(debt.counts, baseline).map((p) => `${debt.messages[p.split(": now ")[0]] ?? p}; run --write-baseline after clearing debt`));
   } catch (error) { problems.push(`${MATURITY_BASELINE}: ${error.message}`); }

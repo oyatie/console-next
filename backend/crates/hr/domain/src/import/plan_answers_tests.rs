@@ -26,7 +26,7 @@ fn regression_a_unit_workplace_mismatch_is_answered_once_for_every_row() {
     world.workplaces.insert("본사".into(), vec![hq]);
     let rows: Vec<ImportRow> = (0..3)
         .map(|n| ImportRow {
-            worksite_name: Some("본사".into()),
+            workplace: Some("본사".into()),
             ..row(&format!("k{n}"), Some(&format!("E-{n}")), &format!("김{n}"))
         })
         .collect();

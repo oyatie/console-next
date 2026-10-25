@@ -22,6 +22,7 @@ pub const MAX_EMPLOYEE_NUMBERS: usize = 500;
 pub struct EmployeeListQuery {
     pub company: Option<String>,
     pub search: Option<String>,
+    /// Deprecated compatibility name: true means no current workplace placement.
     pub home_branch_review_required: Option<bool>,
     pub identity_review_required: Option<bool>,
     pub register_review_required: Option<bool>,
@@ -58,6 +59,7 @@ pub struct EmployeeListQuery {
 pub struct EmployeeListFilters {
     pub company: Option<String>,
     pub search: Option<String>,
+    /// Deprecated compatibility name: true means no current workplace placement.
     pub home_branch_review_required: Option<bool>,
     pub identity_review_required: Option<bool>,
     pub register_review_required: Option<bool>,
@@ -232,7 +234,7 @@ impl EmployeeListFilters {
                     builder.push_bind(required);
                 }
                 if let Some(required) = self.home_branch_review_required {
-                    and(builder, "(b.id IS NULL) = ");
+                    and(builder, "(cp.employee_id IS NULL) = ");
                     builder.push_bind(required);
                 }
                 if let Some(required) = self.identity_review_required {

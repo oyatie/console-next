@@ -52,7 +52,7 @@ export function useCard(d: Detail) {
     /** A grade, position, duty title, job or job family id as the tenant's list names it. */
     title: (id: string | null | undefined) => titles.find((x) => x.id === id)?.label,
     setup: phase === "SETUP",
-    place: { entity: entityName(entity) || e.company, workplace: workplace?.current?.name ?? e.worksite_name ?? null, path },
+    place: { entity: entityName(entity) || e.company, workplace: workplace?.current?.name ?? null, path },
   };
 }
 export type Card = ReturnType<typeof useCard>;

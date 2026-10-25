@@ -35,7 +35,7 @@ pub(super) const WORKPLACE: ValueMap = ValueMap {
     reason: "workplace_unmapped",
     blocking: false,
     decision: "workplace_map",
-    field: "worksite_name",
+    field: "workplace",
     choices: &[],
 };
 /// W02: blocking. An unanswered label kept apply open and 300 people came

@@ -61,17 +61,17 @@ macro_rules! status_since_lateral {
 #[macro_export]
 macro_rules! assignment_lateral {
     () => {
-        " LEFT JOIN LATERAL (SELECT a.legal_entity_id, a.workplace_id \
-           FROM employment_assignments a \
-           WHERE a.org_id = e.org_id AND a.employee_id = e.id AND a.superseded_at IS NULL \
-           ORDER BY a.valid_from <= (now() AT TIME ZONE 'Asia/Seoul')::date DESC, \
-             CASE WHEN a.valid_from <= (now() AT TIME ZONE 'Asia/Seoul')::date \
-               THEN a.valid_from END DESC, a.valid_from LIMIT 1) ea ON TRUE "
+        " LEFT JOIN employment_resolved_assignments ea ON ea.org_id=e.org_id AND ea.employee_id=e.id "
     };
 }
 
-const BRANCH_JOIN: &str = " LEFT JOIN branches b ON b.id = e.home_branch_id \
-     AND b.org_id = e.org_id AND b.deactivated_at IS NULL";
+/// The one current or first pre-hire placement set, shared with facets, inbox and the unplaced queue.
+#[macro_export]
+macro_rules! current_placement_join {
+    () => {
+        " LEFT JOIN employment_current_placements cp ON cp.org_id=e.org_id AND cp.employee_id=e.id "
+    };
+}
 const PROFILE_JOIN: &str = " LEFT JOIN employee_employment_profiles p \
      ON p.employee_id = e.id AND p.org_id = e.org_id";
 
@@ -101,6 +101,7 @@ const FILTERED_FROM: &str = concat!(
     leave_return_lateral!(),
     status_since_lateral!(),
     assignment_lateral!(),
+    current_placement_join!(),
     " WHERE TRUE"
 );
 
@@ -128,7 +129,7 @@ pub fn counted_employees(select: &str, filters: &EmployeeListFilters) -> QueryBu
     let mut builder = QueryBuilder::<Postgres>::new(select);
     builder.push(" FROM person_employees_current e");
     if filters.home_branch_review_required.is_some() {
-        builder.push(BRANCH_JOIN);
+        builder.push(current_placement_join!());
     }
     if filters.contract_ending_before.is_some() || filters.register_review_required.is_some() {
         builder.push(PROFILE_JOIN);
@@ -151,7 +152,7 @@ pub fn counted_employees(select: &str, filters: &EmployeeListFilters) -> QueryBu
 /// (`b`, `p`, the `fe` set, `ea`) and only the filters no group lifts.
 pub fn push_facets_from(builder: &mut QueryBuilder<Postgres>, filters: &EmployeeListFilters) {
     builder.push(" FROM person_employees_current e");
-    builder.push(BRANCH_JOIN);
+    builder.push(current_placement_join!());
     builder.push(PROFILE_JOIN);
     builder.push(FAILED_SET_JOIN);
     builder.push(assignment_lateral!());

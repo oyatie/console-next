@@ -28,8 +28,8 @@ pub(crate) async fn page(
     let items = page
         .items
         .into_iter()
-        .map(|(id, name, created_at)| ActionInboxSourceItem {
-            context: None,
+        .map(|(id, name, created_at, missing_fields)| ActionInboxSourceItem {
+            context: Some(serde_json::json!({ "review_count": page.total, "register": { "missing_fields": missing_fields } })),
             id: format!("{NAMESPACE}:{id}"),
             kind: "register_review".to_owned(),
             ref_code: String::new(),

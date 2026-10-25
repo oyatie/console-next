@@ -137,7 +137,6 @@
 "apps/web/src/features/people/ui/grid-columns.module.css": {"restyle":23},
 "apps/web/src/features/people/ui/grid-page.module.css": {"restyle":38},
 "apps/web/src/features/people/ui/grid.module.css": {"restyle":34},
-"apps/web/src/features/people/ui/home-branch-card.tsx": {"dsClass":3},
 "apps/web/src/features/people/ui/job-titles-page.tsx": {"dsClass":8},
 "apps/web/src/features/people/ui/lifecycle-receipt.tsx": {"dsClass":1},
 "apps/web/src/features/people/ui/lifecycle.module.css": {"restyle":33},

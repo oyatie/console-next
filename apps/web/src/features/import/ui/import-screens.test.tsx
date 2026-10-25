@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -75,10 +76,10 @@ const renderPreview = (p: ImportPreview) => (
   <PreviewStep preview={p} picks={initialPicks()} mapping={{}} rereading={false} onRemap={noop} onDryRun={noop} onExpired={noop} onRestart={noop} />
 );
 
-test("preview: restricted columns read as not stored; a 사업장 column is read as the customer site; a sheet without a header opens for mapping and keeps the dry run closed", () => {
+test("preview keeps restricted columns sealed and undecided sheets block dry run without a global customer-site reading", () => {
   const out = html(renderPreview(preview));
   expect(out).toContain("저장하지 않음");
-  expect(out).toContain("고객 현장으로 읽음");
+  expect(out).not.toContain("고객 현장으로 읽음");
   expect(out).not.toContain("사업장 열은 고객 현장(근무지)으로 읽었습니다");
   expect(out).toContain("기억해 둔 머리글");
   expect(out).toContain("연결 필요");

@@ -73,11 +73,6 @@ export const problemOf = (e: unknown) =>
 /** No answer, or a server fault: the command may have been recorded, so it is looked up before anything is resent. */
 export const unanswered = (e: unknown) => !(e instanceof ApiError) || (e.status === 0 || e.status >= 500);
 
-/** Assigns the home branch; refused if someone changed the employee since `expectedUpdatedAt` (optimistic concurrency). */
-export const assignHomeBranch = (id: string, branchId: string, expectedUpdatedAt: string) =>
-  pinned(employeeRecord(id), expectedUpdatedAt, ["home_branch"], (at) =>
-    unwrap(api.PUT("/api/v1/employees/{id}/home-branch", { params: { path: { id } }, body: { branch_id: branchId, expected_updated_at: at } })), (out) => out.updated_at);
-
 /** The impact of replacing an account's system role (and, for a branch role on an account with none, its branches). */
 export const previewAccountRole = (id: string, role: string, branchIds?: string[]) =>
   unwrap(api.POST("/api/v1/policy/users/{id}/assignment-preview", { params: { path: { id } }, body: { system_roles: [role], branch_ids: branchIds } }));

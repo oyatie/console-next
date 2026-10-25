@@ -180,16 +180,15 @@ pub fn checklist(f: &SetupFacts) -> Checklist {
     if f.workplaces == 0 {
         employees.state = Blocked;
         employees.remedy = Some("create_workplace");
-    } else if f.employees > 0 || f.employees_step_deferred {
-        employees.state =
-            if f.unmapped_assignments > 0 || f.unplaced_people > 0 || f.entity_unknown_people > 0 {
-                Attention
-            } else {
-                Done
-            };
+    } else if f.employees > 0 || f.employees_starting_later > 0 || f.employees_step_deferred {
+        employees.state = Done;
         employees.count = Some(f.employees);
         if f.unmapped_assignments > 0 || f.unplaced_people > 0 || f.entity_unknown_people > 0 {
+            employees.state = Attention;
             employees.remedy = Some("place_people");
+        } else if f.unresolved_departments > 0 {
+            employees.state = Attention;
+            employees.remedy = Some("assign_departments");
         }
     }
     steps.push(employees);
@@ -225,7 +224,7 @@ pub fn checklist(f: &SetupFacts) -> Checklist {
         entities: f.entities,
         workplaces: f.workplaces,
         units: f.org_units,
-        people: f.employees,
+        people: f.employees + f.employees_starting_later,
         unplaced: f.unplaced_people,
         entity_unknown: f.entity_unknown_people,
     };
@@ -239,8 +238,8 @@ pub fn checklist(f: &SetupFacts) -> Checklist {
         done,
         total,
         summary: Summary {
-            people: f.employees,
-            placed: (f.employees - f.unplaced_people).max(0),
+            people: f.employees + f.employees_starting_later,
+            placed: (f.employees + f.employees_starting_later - f.unplaced_people).max(0),
             unplaced: f.unplaced_people,
             entity_unknown: f.entity_unknown_people,
             progress: done * 100 / total,

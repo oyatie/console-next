@@ -20,7 +20,9 @@ pub enum ActionInboxSource {
     HrRegister,
     HrInsurance,
     HrIdentity,
+    /// N-1 source identifier; current composition emits HrUnplaced.
     HrBranch,
+    HrUnplaced,
     HrContract,
     PeriodUnlock,
     Setup,
@@ -45,7 +47,7 @@ impl ActionInboxSource {
         Self::HrRegister,
         Self::HrInsurance,
         Self::HrIdentity,
-        Self::HrBranch,
+        Self::HrUnplaced,
         Self::HrContract,
         Self::PeriodUnlock,
         Self::Setup,

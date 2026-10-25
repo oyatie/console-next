@@ -16,3 +16,14 @@ test.each([null, "place_people"])("unknown record kinds stay named without a gue
   expect(html).not.toContain("/org/entities/entity");
   expect(html).not.toContain("/people/record");
 });
+
+test("a missing department names the gap and opens the bulk remedy", () => {
+  const html = renderToStaticMarkup(<RouterContextProvider router={router}><Warnings items={[{
+    code: "unresolved_departments", count: 1, remedy: "assign_departments",
+    records: [{ kind: "employee", id: "person", name: "김직원", legal_entity_id: "entity" }],
+  }]} /></RouterContextProvider>);
+  expect(html).toContain("부서 없음");
+  expect(html).toContain("지정");
+  expect(html).toContain('href="/people/unplaced"');
+  expect(html).not.toContain('href="/people/person?act=TRANSFER"');
+});

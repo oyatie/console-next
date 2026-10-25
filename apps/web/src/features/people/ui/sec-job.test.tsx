@@ -8,7 +8,7 @@ import type { Card } from "./use-card";
 
 vi.mock("./employment-placement", () => ({ EmploymentPlacement: () => null }));
 vi.mock("./employment-record", () => ({ EmploymentRecord: () => null }));
-vi.mock("./home-branch-card", () => ({ HomeBranchCard: () => null }));
+vi.mock("./home-branch-card", () => ({ HomeBranchCard: () => <span data-legacy-branch>{t("people.field.homeBranch")}</span> }));
 
 beforeAll(() => loadCatalog("ko"));
 
@@ -16,16 +16,27 @@ type Employee = Card["e"] & { status_since?: string | null };
 const hireDate = "2020-03-02";
 const lastWorkday = "2026-10-22";
 
-function statusRow(status: Employee["status"], status_since?: string) {
-  const c = {
-    e: { id: "employee", status, status_since, hire_date: hireDate, exit_date: lastWorkday } as Employee,
+function card(employee: Partial<Employee> = {}, manage = false): Card {
+  return {
+    e: { id: "employee", status: "ACTIVE", hire_date: hireDate, exit_date: lastWorkday, workplace_id: "workplace", ...employee } as Employee,
     d: { classification: {}, employment: { employment_type: "REGULAR" } },
     events: { data: { items: [] } },
-    facts: {}, personal: {}, manage: false,
+    facts: {}, personal: {}, manage,
     title: () => undefined,
-    place: { entity: "법인", workplace: "사업장", path: [] },
+    place: { entity: "한빛법인", workplace: "본사", path: ["개발본부", "개발팀"] },
   } as unknown as Card;
-  const html = renderToStaticMarkup(<SecJob c={c} onFix={() => undefined} onAct={() => undefined} onTab={() => undefined} />);
+}
+
+const render = (c: Card) => renderToStaticMarkup(<SecJob c={c} onFix={() => undefined} onAct={() => undefined} onTab={() => undefined} />);
+
+function field(html: string, label: string) {
+  const start = html.indexOf(`>${label}</span>`);
+  expect(start, `field ${label} exists`).toBeGreaterThanOrEqual(0);
+  return html.slice(start, html.indexOf("</div>", start));
+}
+
+function statusRow(status: Employee["status"], status_since?: string) {
+  const html = render(card({ status, status_since }));
   expect(html).not.toContain(t("empCard.f.workForm"));
   expect(html).not.toContain(t("empCard.f.concurrent"));
   return html.slice(html.indexOf(t("empCard.f.status")), html.indexOf(t("empCard.f.entity")));
@@ -61,4 +72,42 @@ test("an older response without status_since shows no guessed status date", () =
   expect(html).not.toContain(fmtDate(hireDate));
   expect(html).not.toContain(fmtDate(lastWorkday));
   expect(html).not.toContain("부터");
+});
+
+test("the assignment's legal entity, workplace and department stay separate from its physical site", () => {
+  const html = render(card({ worksite_name: "고객현장" }, true));
+  expect(field(html, t("empCard.f.entity"))).toContain("한빛법인");
+  expect(field(html, t("empCard.f.workplace"))).toContain("본사");
+  expect(field(html, t("empCard.f.unit"))).toContain("개발본부 › 개발팀");
+  expect(field(html, t("import.target.worksite_name"))).toContain("고객현장");
+  expect(field(html, t("empCard.f.workplace"))).not.toContain("고객현장");
+});
+
+test("a physical-site fallback from the shared hook never makes an unplaced person look placed", () => {
+  const c = card({ workplace_id: null, worksite_name: "고객현장" });
+  c.place.workplace = "고객현장";
+  const html = render(c);
+  expect(field(html, t("empCard.f.workplace"))).toContain(t("empCard.unplaced"));
+  expect(field(html, t("empCard.f.workplace"))).not.toContain("고객현장");
+  expect(field(html, t("import.target.worksite_name"))).toContain("고객현장");
+});
+
+test.each([true, false])("the personnel card has no legacy branch assignment control (manage: %s)", (manage) => {
+  const html = render(card({ home_branch_id: "legacy", home_branch_name: "소속 지점" }, manage));
+  expect(html).not.toContain("data-legacy-branch");
+  expect(html).not.toContain("지점");
+});
+
+test("an absent optional physical site has no empty field row", () => {
+  const html = render(card({ worksite_name: null }));
+  expect(html).not.toContain(`>${t("import.target.worksite_name")}</span>`);
+});
+
+test("a workplace placement without a department never reads as unplaced", () => {
+  const c = card({ org_unit: null, org_unit_id: null });
+  c.place.path = [];
+  const html = render(c);
+  expect(field(html, t("empCard.f.workplace"))).toContain("본사");
+  expect(field(html, t("empCard.f.unit"))).toContain("—");
+  expect(html).not.toContain(t("empCard.unplaced"));
 });

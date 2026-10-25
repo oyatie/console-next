@@ -89,7 +89,7 @@ pub async fn load_employee_detail(
             se.to_status AS scheduled_status, se.effective_date AS scheduled_until,
             e.grade_id, e.job_title_id, e.position_kind_id, e.job_id, e.job_family_id, "#,
         crate::register_review_sql!(),
-        r#" AS register_review_required
+        r#" AS register_review_required, cp.employee_id IS NULL AS home_branch_review_required
         FROM person_employees_current e
         LEFT JOIN employee_employment_profiles p ON p.employee_id = e.id AND p.org_id = e.org_id
         LEFT JOIN branches b ON b.id = e.home_branch_id AND b.org_id = e.org_id AND b.deactivated_at IS NULL
@@ -105,6 +105,7 @@ pub async fn load_employee_detail(
         leave_return_lateral!(),
         status_since_lateral!(),
         assignment_lateral!(),
+        crate::current_placement_join!(),
         " WHERE e.org_id = $1 AND e.id = $2"),
     ).bind(org_id).bind(employee_id).fetch_optional(tx.as_mut()).await?
         .ok_or_else(|| HrError::from_kernel(KernelError::not_found("employee was not found in this organization")))?;

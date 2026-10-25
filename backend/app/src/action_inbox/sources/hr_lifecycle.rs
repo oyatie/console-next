@@ -85,7 +85,7 @@ pub(crate) async fn page(
         .take(limit)
         .map(
             |(id, employee, kind, on, name, created_at)| ActionInboxSourceItem {
-                context: Some(serde_json::json!({ "lifecycle": {
+                context: Some(serde_json::json!({ "review_count": total, "lifecycle": {
                     "action_kind": kind, "effective_date": on
                 }})),
                 id: format!("{NAMESPACE}:{id}"),

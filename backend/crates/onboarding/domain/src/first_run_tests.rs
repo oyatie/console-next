@@ -143,3 +143,26 @@ fn the_exact_terms_version_is_part_of_the_preview_digest() {
         ["terms_version"]
     );
 }
+
+#[test]
+fn an_unresolved_department_has_its_own_remedy_without_counting_as_unplaced() {
+    let f = SetupFacts {
+        workplaces: 1,
+        employees: 1,
+        unresolved_departments: 1,
+        ..Default::default()
+    };
+    let c = checklist(&f);
+    let employees = c.steps.iter().find(|s| s.key == "employees").unwrap();
+    assert_eq!(employees.remedy, Some("assign_departments"));
+    assert_eq!(employees.state, crate::StepState::Attention);
+    assert_eq!(c.summary.unplaced, 0);
+    let preview = preview(&f, &crate::Records::new());
+    let warning = preview
+        .warnings
+        .iter()
+        .find(|w| w.code == "unresolved_departments")
+        .unwrap();
+    assert_eq!(warning.remedy, Some("assign_departments"));
+    assert!(!preview.warnings.iter().any(|w| w.code == "unplaced_people"));
+}

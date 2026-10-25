@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/people/ui/unplaced-when.tsx#UnplacedWhen": 11
+  },
+  "newScreens": {
+    "apps/web/src/features/people/ui/unplaced-when.tsx#UnplacedWhen": {
+      "FACT": 4,
+      "REFUSAL": 7,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

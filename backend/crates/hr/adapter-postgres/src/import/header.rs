@@ -5,7 +5,6 @@ use console_hr_domain::import::classification::{
     employee_import_column_classification, employee_import_target_for_header,
 };
 use console_hr_domain::import::rrn::is_rrn_value;
-use console_hr_domain::import::workbook::header_notice;
 
 use crate::HrError;
 use crate::import::types::EmployeeImportColumn;
@@ -33,7 +32,8 @@ pub fn employee_import_column(
         target,
         preview_allowed: classification == "canonical" || classification == "retained",
         classification: classification.to_owned(),
-        notice: header_notice(normalized_header),
+        notice: None,
+        place_reading_required: None,
     }
 }
 

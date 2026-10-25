@@ -38,6 +38,7 @@ pub(super) fn valid_namespaced_id(value: &str) -> bool {
                 | "hr_register"
                 | "hr_identity"
                 | "hr_branch"
+                | "hr_unplaced"
                 | "hr_contract"
                 | "period_unlock"
                 | "grant_notice"

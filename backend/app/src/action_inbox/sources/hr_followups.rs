@@ -37,7 +37,7 @@ pub(crate) async fn page(
     let scope = principal.branch_scope.clone();
     let (namespace, kind) = match source {
         ActionInboxSource::HrIdentity => ("hr_identity", "identity_review"),
-        ActionInboxSource::HrBranch => ("hr_branch", "home_branch_review"),
+        ActionInboxSource::HrUnplaced => ("hr_unplaced", "unplaced"),
         _ => ("hr_contract", "contract_renewal"),
     };
     with_org_conn::<_, _, console_hr_adapter_postgres::HrError>(pool, org, move |tx| {
@@ -46,6 +46,8 @@ pub(crate) async fn page(
                 status: Some(
                     if contract {
                         "ACTIVE,ON_LEAVE"
+                    } else if source == ActionInboxSource::HrUnplaced {
+                        "ACTIVE,ON_LEAVE,UNKNOWN,PRE_HIRE"
                     } else {
                         "ACTIVE,ON_LEAVE,UNKNOWN"
                     }
@@ -55,7 +57,7 @@ pub(crate) async fn page(
             };
             match source {
                 ActionInboxSource::HrIdentity => input.identity_review_required = Some(true),
-                ActionInboxSource::HrBranch => input.home_branch_review_required = Some(true),
+                ActionInboxSource::HrUnplaced => input.home_branch_review_required = Some(true),
                 _ => {
                     let settings = resolve_in_tx(
                         tx.as_mut(),
@@ -109,11 +111,15 @@ pub(crate) async fn page(
                 .push_bind(i64::try_from(query.limit.saturating_add(1)).unwrap_or(201));
             let rows: Vec<Row> = sql.build_query_as().fetch_all(tx.as_mut()).await?;
             let has_more = rows.len() > query.limit;
+            if source == ActionInboxSource::HrUnplaced {
+                metrics::counter!("hr_unplaced_flags_emitted_total", "surface" => "inbox")
+                    .increment(u64::try_from(total).unwrap_or(0));
+            }
             let items = rows
                 .into_iter()
                 .take(query.limit)
                 .map(|(id, name, created_at, due)| ActionInboxSourceItem {
-                    context: None,
+                    context: Some(serde_json::json!({ "review_count": total })),
                     id: format!("{namespace}:{id}"),
                     kind: kind.into(),
                     ref_code: String::new(),

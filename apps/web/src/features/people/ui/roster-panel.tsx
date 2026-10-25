@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Building2, X } from "lucide-react";
@@ -44,6 +45,7 @@ function Peek({ d, today, onClose }: { d: Detail; today: string; onClose: () => 
   const c = useCard(d);
   const navigate = useNavigate();
   const e = d.employee;
+  const place = [c.place.entity, ...(e.workplace_id ? [c.place.workplace, ...c.place.path] : [t("empCard.unplaced")])].filter(Boolean).join(" › ");
   const r = c.register.data;
   const { items, gaps, value } = useCardRegister(c);
   const verbs = offeredVerbs(d);
@@ -57,7 +59,7 @@ function Peek({ d, today, onClose }: { d: Detail; today: string; onClose: () => 
   const acts: MenuEntry[] = verbs.map((v) => ({ id: v, text: t(`people.lifecycle.action.${v}`), label: t(`people.lifecycle.action.${v}`) }));
   return (
     <>
-      <div className={s.peekCrumb}><Building2 size={13} aria-hidden /> {[c.place.entity, c.place.workplace, ...c.place.path].filter(Boolean).join(" › ")}</div>
+      <div className={s.peekCrumb}><Building2 size={13} aria-hidden /> {place}</div>
       <div className={s.peekHead}>
         <Avatar name={e.name} />
         <div className="grow">
@@ -83,10 +85,10 @@ function Peek({ d, today, onClose }: { d: Detail; today: string; onClose: () => 
       {next && (
         <Banner tone="warn" title={t("roster.peek.next", { days: daysBetween(today, next.date) })}>{t("empCard.next.what", { date: fmtDate(next.date), what: next.what })}</Banner>
       )}
-      {/* Trunk's panel rows the peek keeps (job, home branch, contract end, base pay, leave): read with the person, so they land with it. */}
+      {/* Job, worksite, contract end, base pay and leave arrive with the person. */}
       <dl className={s.peekItems}>
         <div><dt className={s.peekTerm}>{t("people.field.jobPosition")}</dt><dd>{[e.job, e.position].filter(Boolean).join(" · ") || "—"}</dd></div>
-        <div><dt className={s.peekTerm}>{t("people.field.homeBranch")}</dt><dd>{e.home_branch_name ?? (e.home_branch_review_required ? <Chip tone="warn">{t("roster.panel.noBranch")}</Chip> : "—")}</dd></div>
+        {e.worksite_name && <div><dt className={s.peekTerm}>{t("enum.importTarget.worksite_name")}</dt><dd>{e.worksite_name}</dd></div>}
         {end && <div><dt className={s.peekTerm}>{t("people.field.contractEnd")}</dt><dd className="num">{fmtDate(end)}{e.status !== "EXITED" && <> · {relDays(daysBetween(today, end))}</>}</dd></div>}
         <div><dt className={s.peekTerm}>{t("people.field.basePay")}</dt><dd className="num">{!m ? t("format.notComputable") : m.base_pay === undefined ? t("people.field.restricted") : fmtKrw(m.base_pay)}</dd></div>
         {e.leave_remaining != null && <div><dt className={s.peekTerm}>{t("people.field.leave")}</dt><dd className="num">{t("people.field.leaveLeft", { days: e.leave_remaining })}</dd></div>}

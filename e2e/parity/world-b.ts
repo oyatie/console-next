@@ -31,11 +31,11 @@ const PLACED = [["생산1팀", SITE], ["생산2팀", SITE], ["생산3팀", SITE]
 const UNPLACED = ["평택 1공장", "평택 1공장", "아산", "평택 1공장", "아산", "생산", "평택 1공장", "아산", "본사", "평택 1공장", "아산", "생산", "본사", "평택 1공장", "아산", "생산", ""];
 
 /** Numbers 10001… like the mockups' (주)새온정밀 range: `placed` people in units, then the unplaced ones. */
-export function roster(placed: number): Person[] {
+export function roster(placed: number, hired?: string): Person[] {
   const rows = people("X", placed + UNPLACED.length, ["-"], [SITE], ["정규직", "정규직", "계약직"]);
   return rows.map((p, i) => {
     const [unit, workplace] = i < placed ? PLACED[i % PLACED.length]! : ["미정", UNPLACED[i - placed]!];
-    return { ...p, number: String(10001 + i), unit, workplace };
+    return { ...p, hired: hired ?? p.hired, number: String(10001 + i), unit, workplace };
   });
 }
 
@@ -52,6 +52,8 @@ async function importRoster(admin: Page, rows: Person[]) {
   await payPeriod(admin);
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
   await expect(admin.locator('[aria-current="step"]')).toHaveText("열 확인", { timeout: 60_000 });
+  const workplaceReading = admin.getByRole("button", { name: "법인 사업장으로 읽기" });
+  if (await workplaceReading.isVisible()) await workplaceReading.click();
   await admin.getByRole("button", { name: "모의 반영 실행" }).click({ timeout: 30_000 });
   await expect(admin.locator('[aria-current="step"]')).toHaveText("모의 반영", { timeout: 60_000 });
   const unmatched = admin.getByRole("region", { name: /^찾지 못한 값/ });
@@ -68,11 +70,11 @@ async function importRoster(admin: Page, rows: Person[]) {
 }
 
 /** 새온그룹 in its setup phase: 법인, two 사업장, nine units, `count` imported people in units and 17 unplaced. */
-export async function world(browser: Browser, count = 30, slug = "parityb") {
+export async function world(browser: Browser, count = 30, slug = "parityb", hired?: string) {
   const admin = await openTenant(browser, slug, "새온그룹");
   await setupCompany(admin, ENTITY, SITE);
   await registerBranch(admin, ENTITY, SITE2, "0008512347");
   await addUnits(admin);
-  await importRoster(admin, roster(count));
+  await importRoster(admin, roster(count, hired));
   return admin;
 }

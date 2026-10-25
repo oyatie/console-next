@@ -1,5 +1,5 @@
 //! UX-R1 PLACEMENT (org-19, worst-case-32): the legacy 소속 지점 is the
-//! 사업장's own branch. A registration or a one-click 「소속 지점 지정」 that
+//! 사업장's own branch. A registration or an N-1 routing command that
 //! names another branch is refused (422 `home_branch_not_workplace`) and
 //! writes nothing.
 
@@ -107,6 +107,13 @@ async fn regression_the_home_branch_never_contradicts_the_workplace(pool: PgPool
         (branch, at)
     };
     let (branch, at) = stamp().await;
+    let audits = || async {
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM audit_events WHERE target_id=$1::text AND action='employee.home_branch_set'",
+        ).bind(id).fetch_one(&pool).await.unwrap()
+    };
+    let routed_audits = audits().await;
+    assert_eq!(routed_audits, 1, "registration routes and audits once");
     let ask = |branch_id: Uuid| SetEmployeeHomeBranchRequest {
         branch_id,
         expected_updated_at: at.format(&Rfc3339).unwrap(),
@@ -119,14 +126,10 @@ async fn regression_the_home_branch_never_contradicts_the_workplace(pool: PgPool
         (refused.status.as_u16(), refused.code),
         (422, "home_branch_not_workplace")
     );
-    let audits: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM audit_events WHERE target_id = $1::text AND action = 'employee.home_branch_set'",
-    )
-    .bind(id)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
-    assert_eq!((stamp().await, audits), ((branch, at), 0));
+    assert_eq!(
+        (stamp().await, audits().await),
+        ((branch, at), routed_audits)
+    );
     // Bypassing the service preflight still rechecks under the command's employee lock.
     let refused = console_platform_request_context::scope_org(f.principal.org_id, async {
         i.store

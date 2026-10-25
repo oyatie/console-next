@@ -36,6 +36,7 @@ pub mod bulk_selection;
 pub mod events_page;
 // --- lane: BE-EMP-UI ---
 mod batch_undo;
+mod bulk_placement;
 mod bulk_plan;
 pub mod bulk_preview;
 // --- lane: UX-R2 ENDS ---

@@ -1,0 +1,99 @@
+{
+  "_generated_by": "console-hr-domain example import_aliases; edit import/fields.rs or fields_org.rs",
+  "_license": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "aliases": {
+    "code": [
+      "부서코드",
+      "조직코드",
+      "코드",
+      "department code",
+      "org code",
+      "code"
+    ],
+    "company": [
+      "회사",
+      "법인",
+      "회사명",
+      "법인명",
+      "company name",
+      "entity",
+      "소속회사",
+      "계열사",
+      "조직회사",
+      "company",
+      "corporation",
+      "legal_entity",
+      "legalentity"
+    ],
+    "company_brn": [
+      "사업자등록번호",
+      "등록번호",
+      "company_brn",
+      "registration_number",
+      "registration number",
+      "business registration number"
+    ],
+    "head": [
+      "팀장사번",
+      "부서장사번",
+      "부서장",
+      "팀장",
+      "사번",
+      "head employee number",
+      "team lead number",
+      "head",
+      "team lead",
+      "employee number"
+    ],
+    "org_unit": [
+      "본부",
+      "부문",
+      "부",
+      "실",
+      "파트",
+      "과",
+      "그룹",
+      "division",
+      "sector",
+      "part",
+      "section",
+      "group",
+      "unit",
+      "부서명",
+      "부서",
+      "소속",
+      "소속부서",
+      "조직",
+      "팀",
+      "org_unit",
+      "orgunit",
+      "department",
+      "dept",
+      "team"
+    ],
+    "parent": [
+      "상위부서",
+      "상위조직",
+      "상위부서명",
+      "parent",
+      "parent department",
+      "parent unit"
+    ],
+    "shift": [
+      "교대",
+      "교대조",
+      "근무조",
+      "shift",
+      "shift team",
+      "work shift"
+    ],
+    "workplace": [
+      "사업장",
+      "사업장명",
+      "사업소",
+      "근무사업장",
+      "workplace",
+      "workplace_name"
+    ]
+  }
+}

@@ -101,9 +101,7 @@ test("placement: 법인 · 사업장 follow the 부서, a 전근 moves them, a �
     await expect(receiptOf(admin, "윤생산")).toBeVisible();
     await openRegistered(admin, "윤생산");
     await expect(admin.getByRole("region", { name: "재직·배치" })).toContainText("평택공장");
-    const branchCard = admin.getByRole("region", { name: "소속 지점" });
-    await expect(branchCard).toContainText("현재 평택공장");
-    await expect(branchCard.getByRole("radiogroup")).toHaveCount(0);
+    await expect(admin.getByRole("group", { name: "소속", exact: true })).toContainText("평택공장");
     await shot(admin, "org-01-record-after");
     const id = new URL(admin.url()).pathname.split("/").pop()!;
     // Binding them at 본사 afterwards is refused too (the hole the old two-call form used).
@@ -132,8 +130,7 @@ test("placement: 법인 · 사업장 follow the 부서, a 전근 moves them, a �
     await openCard(admin);
     await expect(admin.getByRole("region", { name: "재직·배치" })).toContainText("평택공장");
     await shot(admin, "move-02-record-after");
-    await expect(admin.getByRole("region", { name: "소속 지점" })).toContainText("현재 평택공장");
-    await expect(admin.getByRole("region", { name: "소속 지점" }).getByRole("radiogroup")).toHaveCount(0);
+    await expect(admin.getByRole("group", { name: "소속", exact: true })).toContainText("평택공장");
   });
 
   await test.step("move-01: another 법인's 부서 is not offered, and a 전보 there is refused as a 전적", async () => {
@@ -143,7 +140,8 @@ test("placement: 법인 · 사업장 follow the 부서, a 전근 moves them, a �
     await expect(profile).toContainText("본사 ·");
     // Settled first: "nothing changes" compares two loaded states, not a read still in flight.
     await expect(profile).not.toContainText("불러오는 중");
-    const was = await profile.innerText();
+    const place = admin.getByRole("group", { name: "소속", exact: true });
+    const was = await place.innerText();
     await hrAct(admin, "전보");
     const s = sheet(admin, "강전적 전보");
     const where = s.getByRole("combobox", { name: "어디로" });
@@ -165,7 +163,7 @@ test("placement: 법인 · 사업장 follow the 부서, a 전근 moves them, a �
     await expectAccessible(admin, "transfer refused: another 법인's 부서");
     await shot(admin, "move-01-transfer-refused");
     await s.getByRole("button", { name: "닫기", exact: true }).last().click();
-    expect(await profile.innerText()).toBe(was);
+    await expect(place).toHaveText(was, { useInnerText: true });
     // The server, directly: TR-33's 422 transfer_cross_entity (one code for a 전보 across 법인), and the record and its history are as they were.
     const events = async () => {
       const body = (await (await api(`/employees/${id}/lifecycle-events`)).json()) as unknown[] | { items?: unknown[]; data?: unknown[] };

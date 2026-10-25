@@ -146,6 +146,7 @@ impl ActionInboxSourcePort for ViewPort<'_> {
             InboxFilter::Deadlines => !matches!(
                 source,
                 S::HrIdentity
+                    | S::HrUnplaced
                     | S::HrBranch
                     | S::HrRegister
                     | S::HrRequests

@@ -12,7 +12,7 @@ export async function openPerson(page: Page, number: string) {
   const find = page.getByRole("searchbox", { name: "이름 또는 사번" });
   await find.fill(number);
   await find.press("Enter");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(number);
+  await expect(page.getByText(`사번 ${number}`, { exact: true })).toBeVisible();
   return new URL(page.url()).pathname;
 }
 

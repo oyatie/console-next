@@ -12,6 +12,9 @@ use crate::import::types::EmployeeImportColumn;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EmployeeCanonicalFields {
+    /// Absent in N-1 stored runs whose worksite column also carried statutory placement.
+    #[serde(default)]
+    pub place_targets_split: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub company_brn: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -22,6 +25,8 @@ pub struct EmployeeCanonicalFields {
     pub job: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workplace: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub worksite_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -61,6 +66,17 @@ pub struct EmployeeCanonicalFields {
     pub leave_type: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub leave_return_date: Option<String>,
+}
+
+impl EmployeeCanonicalFields {
+    /// Decode old staged runs once at the boundary; fresh physical sites never bind a workplace.
+    pub fn workplace_text(&self) -> Option<&String> {
+        self.workplace.as_ref().or_else(|| {
+            (!self.place_targets_split)
+                .then_some(self.worksite_name.as_ref())
+                .flatten()
+        })
+    }
 }
 
 pub fn default_active_status() -> String {

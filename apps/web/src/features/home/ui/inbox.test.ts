@@ -228,9 +228,30 @@ test("waiting work retains its durable outcome link", () => {
 });
 
 
-test.each([["identity_review","identity"],["home_branch_review","branch"],["register_review","register"],["lifecycle_apply_failed","failed"]] as const)("%s keeps its filtered-directory entry verb", (kind, review) => {
-  view.list.data = { pages: [page([item("work", {kind})])] };
-  expect(html()).toContain(`/people?review=${review}`);
+test.each(["unplaced", "home_branch_review"])("%s opens placement with no legacy branch wording", (kind) => {
+  view.list.data = { pages: [page([item("person", { kind })])] };
+  const markup = html();
+  expect(markup).toContain('href="/people/person?act=TRANSFER"');
+  expect(markup).toContain('href="/people/unplaced"');
+  expect(markup).toContain(t("home.inbox.place"));
+  expect(markup).not.toContain("지점");
+});
+
+test.each([undefined, 7])("review kinds group across cursor pages with server count %s or loaded count", (review_count) => {
+  const rows = ["unplaced", "register_review", "identity_review", "lifecycle_apply_failed"].flatMap((kind) => [item(`${kind}-1`, { kind, context: { review_count } }), item(`${kind}-2`, { kind, context: { review_count } })]);
+  view.list.data = { pages: [page(rows.slice(0, 3)), page(rows.slice(3))] };
+  const markup = html();
+  expect(markup.match(/<h3\b/g)).toHaveLength(4);
+  expect(markup.split(`>${t("home.inbox.viewAll")}</a>`)).toHaveLength(5);
+  expect(markup).toContain(t("home.inbox.reviewCount", { kind: t("home.review.unplaced"), count: review_count ?? 2 }));
+  for (const review of ["identity", "register", "failed"]) expect(markup).toContain(`/people?review=${review}`);
+});
+
+test.each([["birth", "birth", "s1"], ["job", "job", "s2"], ["hire", "contract", "s3"], ["contractEnd", "contract", "s3"], ["sex", "sex", "s1"], ["address", "address", "s1"], ["career", "history", "s5"]] as const)("register gap %s names the fact and opens its card block", (field, label, block) => {
+  view.list.data = { pages: [page([item("register", { context: { register: { missing_fields: [field] } } })])] };
+  const markup = html();
+  expect(markup).toContain(`href="/people/register#${block}"`);
+  expect(markup).toContain(`${t("home.inbox.reason.register")} · ${t(`empCard.reg.item.${label}`)} · ${t("home.inbox.enter")}`);
 });
 
 test("account security retains inline second-passkey registration and account navigation", () => {

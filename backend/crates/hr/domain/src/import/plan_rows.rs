@@ -188,7 +188,7 @@ fn new_person(
     let mut left = false;
     let (org_unit, org_unit_id, unresolved, workplace, workplace_name) = if status == "EXITED" {
         let (unit, _) = plan_place::unit(row.org_unit.as_ref(), facts, decisions);
-        let at_exit = plan_place::workplace(unit, row.worksite_name.as_ref(), facts, decisions)
+        let at_exit = plan_place::workplace(unit, row.workplace.as_ref(), facts, decisions)
             .ok()
             .and_then(|(workplace, _)| workplace)
             .filter(|w| {
@@ -201,7 +201,7 @@ fn new_person(
         (row.org_unit.clone(), None, None, at_exit, None)
     } else {
         let Ok(at) = plan_place::current_place(row, facts, decisions) else {
-            return refused(base, "workplace_conflict", "worksite_name");
+            return refused(base, "workplace_conflict", "workplace");
         };
         left = at.left;
         (

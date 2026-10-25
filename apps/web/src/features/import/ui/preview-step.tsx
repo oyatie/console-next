@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
@@ -9,7 +10,7 @@ import { Table } from "../../../ui/table";
 import { Card } from "../../../ui/card/card";
 import { dryRun, rowLimitOf, runExpired } from "../api";
 import type { ImportColumn, ImportDryRun, ImportPreview } from "../domain/contract";
-import { sheetsToMap, type Mapping } from "../domain/mapping";
+import { draftOf, draftProblem, sheetMapping, sheetsToMap, withTarget, type Mapping } from "../domain/mapping";
 import { type Picks } from "../domain/steps";
 import { CLASS_TONE, classLabel, fieldLabel, importError, sourceLabel } from "../present";
 import { SheetsPanel } from "./sheets-panel";
@@ -39,6 +40,9 @@ export function PreviewStep({ preview, picks, mapping, rereading, onRemap, onDry
     onSuccess: onDryRun,
   });
   const shown = preview.columns.filter((c) => c.preview_allowed);
+  const placeReadings = preview.sheets.flatMap((sheet) => sheet.status === "needs_mapping" && sheet.header_row != null
+    ? (sheet.columns ?? []).filter((column) => column.target == null && preview.columns.some((c) => c.source_header === column.label.trim() && c.place_reading_required)).map((column) => ({ sheet, column }))
+    : []);
   const toMap = sheetsToMap(preview.sheets).length;
   const reason =
     toMap > 0 ? t("import.block.sheets", { count: toMap })
@@ -82,6 +86,22 @@ export function PreviewStep({ preview, picks, mapping, rereading, onRemap, onDry
             </ol>
           </Card>
           <SheetsPanel key={preview.run_id} preview={preview} mapping={mapping} busy={rereading} onRemap={onRemap} />
+          {placeReadings.map(({ sheet, column }, index) => (
+            <Card level={3} titleId={`import-place-${index}`} title={`${sheet.name} · ${column.column} · ${column.label}`} key={`${sheet.name}:${column.column}`}>
+              <div className="row">
+                {(["workplace", "worksite_name"] as const).map((target) => {
+                  const draft = withTarget(draftOf(sheet), column.column, target);
+                  const problem = draftProblem(draft);
+                  const label = t(target === "workplace" ? "import.place.workplace" : "import.place.worksite");
+                  return problem ? (
+                    <DisabledReason key={target} control={(p) => <Button disabled={rereading} {...p}>{label}</Button>} reason={t(`importSheet.map.problem.${problem}`)} />
+                  ) : (
+                    <Button key={target} disabled={rereading} onClick={() => onRemap({ ...mapping, [sheet.name]: sheetMapping(draft) })}>{label}</Button>
+                  );
+                })}
+              </div>
+            </Card>
+          ))}
         </div>
         <Card titleId="import-cols" title={t("import.columnsCount", { count: preview.columns.length })}>
           <Table
@@ -91,7 +111,7 @@ export function PreviewStep({ preview, picks, mapping, rereading, onRemap, onDry
             columns={[
               { header: t("import.col.letter"), cell: (c) => <span className="code">{read(c)?.column ?? ""}</span>, fit: true },
               { header: t("import.col.source"), cell: (c) => c.source_header },
-              { header: t("import.col.target"), cell: (c) => <>{c.target ? <b>{fieldLabel(c.target)}</b> : t("import.col.notImported")}{(c as ImportColumn).notice && <> <Chip tone="warn">{t("import.site.chip")}</Chip></>}</> },
+              { header: t("import.col.target"), cell: (c) => c.target ? <b>{fieldLabel(c.target)}</b> : t("import.col.notImported") },
               { header: t("import.col.how"), cell: (c) => (read(c)?.source ? <Chip tone="neutral">{sourceLabel(read(c)!.source)}</Chip> : null), fit: true },
               { header: t("import.col.classification"), cell: (c) => <Chip tone={CLASS_TONE[c.classification]}>{c.classification === "restricted" && c.target ? t("import.class.restrictedKept") : classLabel(c.classification)}</Chip>, fit: true },
             ]}

@@ -1,5 +1,5 @@
 //! W03 / E8: the 미배치 queue — current people an import (or anything else)
-//! left without a 사업장, or without the 부서 their file named, with the
+//! left without a current 사업장 or the department their file named, with the
 //! file's own 부서 text and why. Counted for the roster chip, keyset-paged by
 //! (`created_at`, id).
 
@@ -41,6 +41,8 @@ pub struct UnplacedPerson {
     pub org_unit_id: Option<Uuid>,
     /// The 부서 text the file named that bound nothing (원본 부서).
     pub source_org_unit: Option<String>,
+    /// The statutory workplace text that did not bind, separate from the physical site.
+    pub source_workplace: Option<String>,
     /// `no_place`, `workplace_unknown`, `unit_unknown`.
     pub reason: &'static str,
     /// r3:hire-21: the facts the queue decides placement with, read with the
@@ -59,18 +61,19 @@ pub struct UnplacedPage {
     pub next_cursor: Option<String>,
 }
 
-/// Current people with no 사업장, or without the 부서 their file named.
+/// Workplace gaps use the shared placement predicate; unresolved departments share its bulk remedy.
 macro_rules! unplaced {
     () => {
         concat!(
-            " FROM person_employees_current e",
+            " FROM person_employees_current e LEFT JOIN employment_unplaced_people up ON up.org_id=e.org_id AND up.employee_id=e.id",
             assignment_lateral!(),
+            crate::current_placement_join!(),
             " LEFT JOIN employee_employment_profiles p \
                ON p.org_id = e.org_id AND p.employee_id = e.id",
-            " WHERE e.org_id = $1 AND e.employment_status <> 'EXITED' \
+            " WHERE e.org_id = $1 \
+               AND entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) NOT IN ('EXITED','VOIDED') \
                AND e.merged_into_employee_id IS NULL \
-               AND (ea.workplace_id IS NULL \
-                    OR (e.org_unit_id IS NULL AND e.source_metadata ? 'unresolved_org_unit')) \
+               AND (up.employee_id IS NOT NULL OR (e.org_unit_id IS NULL AND e.source_metadata ? 'unresolved_org_unit')) \
                AND ($2::UUID IS NULL OR EXISTS (SELECT 1 FROM import_run_row_snapshots s \
                     WHERE s.org_id = e.org_id AND s.run_id = $2 AND s.employee_id = e.id \
                       AND s.outcome = 'INSERTED'))"
@@ -118,8 +121,9 @@ impl HrService {
                         .await?;
                     let rows = sqlx::query(concat!(
                         "SELECT e.id, e.name, e.employee_number, e.company, ea.legal_entity_id, \
-                       ea.workplace_id, e.org_unit_id, \
+                       cp.workplace_id, e.org_unit_id, \
                        e.source_metadata->>'unresolved_org_unit' AS source_org_unit, e.created_at, \
+                       e.source_metadata->>'unresolved_workplace' AS source_workplace, \
                        e.position, p.employment_type, e.hire_date::TEXT AS hire_date, \
                        e.worksite_name, e.org_unit",
                         unplaced!(),
@@ -163,6 +167,7 @@ impl HrService {
                 workplace_id,
                 org_unit_id,
                 source_org_unit: row.try_get("source_org_unit")?,
+                source_workplace: row.try_get("source_workplace")?,
                 reason: reason(workplace_id, org_unit_id),
                 position: row.try_get("position")?,
                 employment_type: row.try_get("employment_type")?,

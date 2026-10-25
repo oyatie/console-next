@@ -99,7 +99,9 @@ pub fn unplaced(plans: &[PlannedRow]) -> Unplaced {
     for reason in plans
         .iter()
         .filter(|p| p.outcome == "insert")
-        .filter_map(|p| p.new_person.as_ref()?.unplaced_reason)
+        .filter_map(|p| p.new_person.as_ref())
+        .filter(|person| person.workplace_id.is_none())
+        .filter_map(|person| person.unplaced_reason)
     {
         out.rows += 1;
         *out.by_reason.entry(reason.to_owned()).or_default() += 1;

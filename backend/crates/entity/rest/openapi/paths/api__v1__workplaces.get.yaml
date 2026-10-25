@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 tags: [entity]
+deprecated: true
 operationId: listWorkplaces
 security:
 - bearerAuth: []

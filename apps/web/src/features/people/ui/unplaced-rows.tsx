@@ -7,7 +7,7 @@ import { Kbd } from "../../../ui/kbd/kbd";
 import { LongTable } from "../../../ui/long-table/long-table";
 import { label } from "../../../lib/labels";
 import { EMPLOYMENT_TYPES } from "../domain/register";
-import type { Group } from "../domain/unplaced";
+import type { Group, Person } from "../domain/unplaced";
 import { sourceText } from "../present";
 import s from "./unplaced.module.css";
 
@@ -33,7 +33,7 @@ export function UnplacedRows({ group, sel, onSel, done }: {
         <span className={s.grow} />
         {people.length > 0 && <Button variant="ghost" onClick={() => onSel(new Set(people.map((e) => e.id)))}>{t("unplaced.selectAll", { n: people.length })}</Button>}
       </div>
-      <LongTable<Employee>
+      <LongTable<Person>
         label={t("unplaced.title")}
         rows={people}
         rowId={(e) => e.id}
@@ -47,6 +47,7 @@ export function UnplacedRows({ group, sel, onSel, done }: {
         columns={[
           { id: "number", header: t("unplaced.col.number"), cell: (e) => <span className="num">{e.employee_number ?? "—"}</span>, width: 72 },
           { id: "name", header: t("unplaced.col.name"), cell: (e) => <b>{e.name}</b>, rowHeader: true, width: 72 },
+          { id: "reason", header: t("unplaced.col.reason"), cell: (e) => t(e.reason === "unit_unknown" ? "setup.fix.assign_departments" : "home.inbox.reason.unplaced"), width: 120 },
           { id: "position", header: t("unplaced.col.position"), cell: (e) => e.position ?? "—", width: 52 },
           { id: "type", header: t("unplaced.col.type"), cell: (e) => (e.employment_type ? label(TYPE, e.employment_type) : "—"), width: 72 },
           { id: "hire", header: t("unplaced.col.hire"), cell: (e) => <span className="num">{e.hire_date ? fmtDate(e.hire_date) : "—"}</span>, width: 100 },

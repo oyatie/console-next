@@ -65,10 +65,11 @@ pub struct EmployeeImportColumn {
     pub target: Option<String>,
     pub classification: String,
     pub preview_allowed: bool,
-    /// G9: a note the preview shows beside the column
-    /// (`customer_site_not_workplace` for a 사업장 column).
+    /// N-1 column notes; new placement questions use their own optional field.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notice: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub place_reading_required: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]

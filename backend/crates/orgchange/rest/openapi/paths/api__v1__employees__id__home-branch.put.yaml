@@ -1,8 +1,10 @@
 tags:
   - employees
+deprecated: true
 operationId: setEmployeeHomeBranch
 summary: Assign an employee's authoritative home branch
 description: >-
+  N-1 compatibility only; current consoles derive routing from the effective placement.
   Audited explicit assignment; the server never infers a branch from user
   memberships. The target branch must be active and in the same tenant.
   Reassignment requires EmployeeDirectoryManage for both the prior and new

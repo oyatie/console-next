@@ -91,7 +91,12 @@ async fn directory_reads_filter_count_and_group_by_entity_and_workplace_id(pool:
     let lee = employee(&pool, t.org, "Lee", "A-2", "EXITED").await;
     let park = employee(&pool, t.org, "Park", "A-3", "ACTIVE").await;
     let choi = employee(&pool, t.org, "Choi", "A-4", "ACTIVE").await;
-    let jung = employee(&pool, t.org, "Jung", "A-5", "ACTIVE").await;
+    let jung = employee(&pool, t.org, "Jung", "A-5", "PRE_HIRE").await;
+    sqlx::query("UPDATE employees SET hire_date='2999-01-01' WHERE id=$1")
+        .bind(jung)
+        .execute(&pool)
+        .await
+        .unwrap();
     assign(
         &pool,
         t.org,
@@ -198,7 +203,7 @@ async fn directory_reads_filter_count_and_group_by_entity_and_workplace_id(pool:
             .unwrap();
         (group.company.as_str(), group.total)
     };
-    assert_eq!(group(Some(ga)), ("가나 주식회사", 2));
+    assert_eq!(group(Some(ga)), ("가나 주식회사", 1));
     assert_eq!(group(Some(da)), ("다라 주식회사", 1));
     assert_eq!(group(None), ("Test", 1));
 }

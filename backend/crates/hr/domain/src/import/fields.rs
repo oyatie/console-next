@@ -1,7 +1,7 @@
 //! The employee import target catalog: canonical targets, their header
 //! aliases and classification (moved from `app/src/hr.rs`, R2-import).
 
-use super::fields_register;
+use super::{fields_place, fields_register};
 
 #[derive(Debug)]
 pub struct EmployeeImportFieldDefinition {
@@ -49,24 +49,7 @@ pub const EMPLOYEE_IMPORT_FIELD_DEFINITIONS: &[EmployeeImportFieldDefinition] = 
         classification: "canonical",
         required: false,
     },
-    EmployeeImportFieldDefinition {
-        target: "org_unit",
-        aliases: &[
-            "부서명",
-            "부서",
-            "소속",
-            "소속부서",
-            "조직",
-            "팀",
-            "org_unit",
-            "orgunit",
-            "department",
-            "dept",
-            "team",
-        ],
-        classification: "canonical",
-        required: false,
-    },
+    fields_place::ORG_UNIT,
     EmployeeImportFieldDefinition {
         target: "job",
         aliases: &[
@@ -92,40 +75,9 @@ pub const EMPLOYEE_IMPORT_FIELD_DEFINITIONS: &[EmployeeImportFieldDefinition] = 
         classification: "canonical",
         required: false,
     },
-    EmployeeImportFieldDefinition {
-        target: "worksite_name",
-        aliases: &[
-            "근무지",
-            "현장",
-            "현장명",
-            "사업장",
-            "근무사업장",
-            "worksite",
-            "workplace_name",
-            "workplacename",
-            "site",
-        ],
-        classification: "canonical",
-        required: false,
-    },
-    EmployeeImportFieldDefinition {
-        target: "worksite_address",
-        aliases: &[
-            "근무지(주소)",
-            "근무지주소",
-            "근무지주소지",
-            "현장주소",
-            "사업장주소",
-            "worksite_address",
-            "worksiteaddress",
-            "workplace_address",
-            "workplaceaddress",
-            "site_address",
-            "siteaddress",
-        ],
-        classification: "location",
-        required: false,
-    },
+    fields_place::WORKPLACE,
+    fields_place::WORKSITE_NAME,
+    fields_place::WORKSITE_ADDRESS,
     EmployeeImportFieldDefinition {
         target: "hire_date",
         aliases: &[
@@ -239,6 +191,8 @@ pub const EMPLOYEE_IMPORT_FIELD_DEFINITIONS: &[EmployeeImportFieldDefinition] = 
             "등록번호",
             "company_brn",
             "registration_number",
+            "registration number",
+            "business registration number",
         ],
         classification: "canonical",
         required: false,
@@ -248,6 +202,10 @@ pub const EMPLOYEE_IMPORT_FIELD_DEFINITIONS: &[EmployeeImportFieldDefinition] = 
         aliases: &[
             "회사",
             "법인",
+            "회사명",
+            "법인명",
+            "company name",
+            "entity",
             "소속회사",
             "계열사",
             "조직회사",
@@ -312,3 +270,7 @@ pub const EMPLOYEE_IMPORT_FIELD_DEFINITIONS: &[EmployeeImportFieldDefinition] = 
         required: false,
     },
 ];
+
+#[cfg(test)]
+#[path = "fields_tests.rs"]
+mod tests;

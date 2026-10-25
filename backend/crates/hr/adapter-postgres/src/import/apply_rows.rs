@@ -14,13 +14,19 @@ use crate::import::types::StoredEmployeeImportRow;
 
 /// The 이관 mark of a former employee and the unit name that bound no unit
 /// (「미배치 · 원본 부서」, kept on the person: MR-7).
-fn metadata(person: &NewPerson) -> Value {
+fn metadata(person: &NewPerson, source: &StoredEmployeeImportRow) -> Value {
     let mut metadata = Map::new();
     if person.migrated_former {
         metadata.insert("migrated_former_employee".into(), json!(true));
     }
     if let Some(name) = &person.unresolved_org_unit {
         metadata.insert("unresolved_org_unit".into(), json!(name));
+    }
+    if person.workplace_id.is_none()
+        && person.status != "EXITED"
+        && let Some(name) = &source.canonical.workplace
+    {
+        metadata.insert("unresolved_workplace".into(), json!(name));
     }
     Value::Object(metadata)
 }
@@ -56,7 +62,7 @@ pub fn batch_rows(
                     "position": source.canonical.position,
                     "worksite_name": source.canonical.worksite_name,
                     "worksite_address": source.canonical.worksite_address,
-                    "metadata": metadata(person),
+                    "metadata": metadata(person, source),
                 }));
             }
             ("update", _, Some(employee_id)) => {

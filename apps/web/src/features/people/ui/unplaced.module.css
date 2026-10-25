@@ -2,8 +2,10 @@
 .page { display: flex; flex-direction: column; min-height: 100%; }
 .crumb { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-sm); color: var(--steel); }
 .titleRow { display: flex; align-items: center; gap: var(--space-3); }
-.sum { font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.sum { inline-size: calc(var(--space-6) * 14); max-inline-size: 100%; min-block-size: 2lh; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 .grow { flex: 1; }
+/* Keep the mapping read's line skeleton space when its answer is empty. */
+.mappings { min-block-size: var(--space-4); }
 .tabs { display: flex; gap: var(--space-1); padding: 0 var(--space-5); border-bottom: 1px solid var(--border); }
 .count { margin-left: var(--space-1); color: var(--steel); font-variant-numeric: tabular-nums; }
 .banner { display: flex; align-items: center; gap: var(--space-2); margin: 0; padding: var(--space-2) var(--space-5); border-bottom: 1px solid var(--info-bd); background: var(--info-bg); color: var(--info-tx); font-size: var(--text-sm); }

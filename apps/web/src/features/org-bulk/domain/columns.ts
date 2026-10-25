@@ -2,6 +2,8 @@
 // levels, the parent department, the department code and the head's employee number (org-06: the server keeps all three). Pure.
 // Headers are matched by known words only; anything else is not imported until the user says so. A shift column is
 // named and left out (it is not an org unit).
+import importAliases from "../../../reference/import/aliases.json";
+const IMPORT_ALIASES = importAliases.aliases;
 import { nameKey } from "./outline";
 
 export type Role = "entity" | "brn" | "workplace" | "path" | "parent" | "code" | "head" | "skip";
@@ -9,8 +11,13 @@ export type Role = "entity" | "brn" | "workplace" | "path" | "parent" | "code" |
 export type Unsupported = "shift";
 export type ColumnMap = { header: string; role: Role; unsupported?: Unsupported };
 
-/** The header words per role, from the catalog (orgBulk.header.*, comma-separated) so they follow the locale. */
+/** Header words shared with the people import; callers may provide an explicit vocabulary. */
 export type HeaderWords = Record<Exclude<Role, "skip" | "brn"> | Unsupported, readonly string[]> & { brn?: readonly string[] };
+const HEADER_WORDS: HeaderWords = {
+  entity: IMPORT_ALIASES.company, brn: IMPORT_ALIASES.company_brn, workplace: IMPORT_ALIASES.workplace,
+  path: IMPORT_ALIASES.org_unit, parent: IMPORT_ALIASES.parent, code: IMPORT_ALIASES.code,
+  head: IMPORT_ALIASES.head, shift: IMPORT_ALIASES.shift,
+};
 /** The roles a column can take, in the order the choice lists them. */
 export const ROLES: readonly Role[] = ["entity", "brn", "workplace", "path", "parent", "code", "head", "skip"];
 
@@ -21,7 +28,7 @@ const headerKey = (h: string) => nameKey(h).toLocaleLowerCase().replace(/\s+/g, 
 export const headerRow = (rows: string[][]) => Math.max(0, rows.findIndex((r) => r.filter((c) => c.trim()).length >= 2));
 
 /** One role per column from its header; the first entity and workplace columns win, every path word is a level. */
-export function guessColumns(headers: string[], words: HeaderWords): ColumnMap[] {
+export function guessColumns(headers: string[], words: HeaderWords = HEADER_WORDS): ColumnMap[] {
   const is = (role: keyof HeaderWords, k: string) => words[role]?.some((w) => headerKey(w) === k);
   const seen = new Set<Role>();
   return headers.map((header) => {

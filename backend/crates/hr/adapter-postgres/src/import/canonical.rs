@@ -52,11 +52,13 @@ pub fn canonical_employee_fields_for_import(
 ) -> EmployeeCanonicalFields {
     let exit_date = raw_text_for_import_target(raw_row, columns, "exit_date");
     EmployeeCanonicalFields {
+        place_targets_split: true,
         company_brn: raw_text_for_import_target(raw_row, columns, "company_brn"),
         employee_number: raw_text_for_import_target(raw_row, columns, "employee_number"),
         org_unit: raw_text_for_import_target(raw_row, columns, "org_unit"),
         job: raw_text_for_import_target(raw_row, columns, "job"),
         position: raw_text_for_import_target(raw_row, columns, "position"),
+        workplace: raw_text_for_import_target(raw_row, columns, "workplace"),
         worksite_name: raw_text_for_import_target(raw_row, columns, "worksite_name"),
         worksite_address: raw_text_for_import_target(raw_row, columns, "worksite_address"),
         hire_date: raw_text_for_import_target(raw_row, columns, "hire_date"),
@@ -105,7 +107,14 @@ pub fn raw_text_for_import_target(
             let value = object.get(&column.normalized_header)?;
             json_value_text(value)
         })
-        .or_else(|| raw_text(raw_row, target_header_aliases(target)))
+        .or_else(|| {
+            let aliases: Vec<_> = target_header_aliases(target)
+                .iter()
+                .copied()
+                .filter(|alias| !columns.iter().any(|c| c.normalized_header == *alias))
+                .collect();
+            raw_text(raw_row, &aliases)
+        })
 }
 
 pub fn raw_text(raw_row: &Value, headers: &[&str]) -> Option<String> {
@@ -124,4 +133,26 @@ pub fn json_value_text(value: &Value) -> Option<String> {
         Value::Null | Value::Array(_) | Value::Object(_) => String::new(),
     };
     (!text.is_empty()).then_some(text)
+}
+
+#[cfg(test)]
+mod place_compat {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+    #[test]
+    fn only_old_staged_runs_decode_worksite_as_workplace() {
+        let legacy: EmployeeCanonicalFields =
+            serde_json::from_value(json!({"worksite_name":"본사"})).unwrap();
+        assert_eq!(legacy.workplace_text().map(String::as_str), Some("본사"));
+        let fresh = EmployeeCanonicalFields {
+            place_targets_split: true,
+            ..legacy
+        };
+        assert_eq!(fresh.workplace_text(), None);
+        let distinct = EmployeeCanonicalFields {
+            workplace: Some("판교".into()),
+            ..fresh
+        };
+        assert_eq!(distinct.workplace_text().map(String::as_str), Some("판교"));
+    }
 }

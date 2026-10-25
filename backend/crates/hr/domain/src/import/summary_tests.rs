@@ -122,3 +122,19 @@ fn regression_a_phone_not_stored_is_counted_never_silent() {
     assert_eq!(plan[0].outcome, "unchanged");
     assert_eq!(phone_unstored_rows(&rows, &plan), 1);
 }
+
+#[test]
+fn a_missing_department_does_not_count_a_workplace_placement_as_unplaced() {
+    let world = World::new(vec![]);
+    let mut plans = world.plan(
+        &[row("placed", Some("PLACE-1"), "배치직원")],
+        &Decisions::default(),
+    );
+    // N-1 plans retain the department-review reason beside the actual workplace.
+    let person = plans[0].new_person.as_mut().unwrap();
+    person.org_unit_id = None;
+    person.workplace_id = Some(Uuid::new_v4());
+    person.unplaced_reason = Some("unit_left_unplaced");
+    assert_eq!(unplaced(&plans).rows, 0);
+    assert!(unplaced(&plans).by_reason.is_empty());
+}

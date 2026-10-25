@@ -1,14 +1,15 @@
-//! Placement counts share the roster's current-assignment and unresolved-unit predicates.
+//! Placement counts and the unplaced queue use the same as-of assignment view.
 use crate::PgOnboardingError;
 use console_onboarding_domain::{Breakdown, Record, Records};
 use sqlx::{Postgres, Row, Transaction};
 
-macro_rules! current { () => { "WITH RECURSIVE today AS (SELECT (now() AT TIME ZONE 'Asia/Seoul')::date AS d), \
- people AS (SELECT e.id, e.name, e.org_unit_id, e.source_metadata, a.legal_entity_id, a.workplace_id \
- FROM person_employees_current e LEFT JOIN employment_assignments a ON a.employee_id = e.id AND a.org_id = e.org_id \
- AND a.superseded_at IS NULL AND a.valid_from <= (SELECT d FROM today) \
- AND (a.valid_to IS NULL OR a.valid_to > (SELECT d FROM today)) \
- WHERE entity_employed_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AND e.merged_into_employee_id IS NULL) " }; }
+macro_rules! current { () => { "WITH RECURSIVE today AS (SELECT entity_today() AS d), \
+ people AS (SELECT e.id, e.name, e.org_unit_id, e.source_metadata, up.employee_id IS NOT NULL AS unplaced, a.legal_entity_id, cp.workplace_id \
+ FROM person_employees_current e LEFT JOIN employment_resolved_assignments a ON a.employee_id=e.id AND a.org_id=e.org_id \
+ LEFT JOIN employment_unplaced_people up ON up.org_id=e.org_id AND up.employee_id=e.id \
+ LEFT JOIN employment_current_placements cp ON cp.employee_id=e.id AND cp.org_id=e.org_id \
+ WHERE entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) NOT IN ('EXITED','VOIDED') \
+ AND e.merged_into_employee_id IS NULL) " }; }
 
 pub(crate) async fn records(
     tx: &mut Transaction<'_, Postgres>,
@@ -16,8 +17,9 @@ pub(crate) async fn records(
     let sql = concat!(
         current!(),
         " SELECT id::text, name, legal_entity_id::text AS entity, \
-        workplace_id IS NULL OR (org_unit_id IS NULL AND source_metadata ? 'unresolved_org_unit') AS unplaced \
-        FROM people WHERE legal_entity_id IS NULL OR workplace_id IS NULL \
+        unplaced, \
+        (org_unit_id IS NULL AND source_metadata ? 'unresolved_org_unit') AS department_missing \
+        FROM people WHERE legal_entity_id IS NULL OR unplaced \
         OR (org_unit_id IS NULL AND source_metadata ? 'unresolved_org_unit') ORDER BY name, id"
     );
     let rows = sqlx::query(sql).fetch_all(tx.as_mut()).await?;
@@ -33,6 +35,11 @@ pub(crate) async fn records(
         };
         if r.try_get::<bool, _>("unplaced")? {
             out.entry("unplaced_people".into())
+                .or_default()
+                .push(record.clone());
+        }
+        if r.try_get::<bool, _>("department_missing")? {
+            out.entry("unresolved_departments".into())
                 .or_default()
                 .push(record.clone());
         }

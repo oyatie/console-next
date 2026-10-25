@@ -57,7 +57,7 @@ pub async fn oracle(pool: &PgPool, org: Uuid, filters: EmployeeListFilters) -> V
             let window = filters.contract_ending_before;
             let mut review = sqlx::QueryBuilder::<Postgres>::new(
                 "SELECT count(*) FILTER (WHERE e.identity_review_required) AS identity, \
-                 count(*) FILTER (WHERE b.id IS NULL) AS branch, \
+                 count(*) FILTER (WHERE cp.employee_id IS NULL) AS branch, \
                  count(*) FILTER (WHERE fe.id IS NOT NULL) AS failed, \
                  count(*) FILTER (WHERE p.contract_end_date < (now() AT TIME ZONE 'Asia/Seoul')::date) AS ended, \
                  count(*) FILTER (WHERE p.contract_end_date < ",

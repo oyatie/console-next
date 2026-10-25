@@ -46,6 +46,7 @@ pub fn import_row(
         org_unit: text(&fields.org_unit),
         job: text(&fields.job),
         position: text(&fields.position),
+        workplace: fields.workplace_text().cloned(),
         worksite_name: text(&fields.worksite_name),
         worksite_address: text(&fields.worksite_address),
         employment_type: text(&fields.employment_type),

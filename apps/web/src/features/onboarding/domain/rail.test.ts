@@ -56,3 +56,8 @@ test("the old entity remedy remains accepted alongside registration and placemen
 test("an unknown record kind has no guessed entity link", () => {
   expect(recordFix({ kind: "future_kind", id: "p1", name: "A", legal_entity_id: "e1" })).toBeUndefined();
 });
+
+test("an unresolved department opens the shared bulk placement queue", () => {
+  expect(fixFor("assign_departments")).toEqual({ to: "/people/unplaced" });
+  expect(recordFix({ kind: "employee", id: "p1", name: "A", legal_entity_id: "e1" }, "assign_departments")).toEqual({ to: "/people/unplaced", params: {}, search: {} });
+});

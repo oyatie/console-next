@@ -33,6 +33,9 @@ properties:
         source_org_unit:
           type: [string, 'null']
           description: The 부서 text the import file named that bound nothing (원본 부서).
+        source_workplace:
+          type: [string, 'null']
+          description: The statutory 사업장 text the import file named that bound nothing, separate from the physical site.
         reason:
           type: string
           enum: [no_place, workplace_unknown, unit_unknown]
