@@ -41,10 +41,7 @@ pub(super) fn workplace(
     let at_unit = unit.and_then(|unit| facts.unit_workplaces.get(&unit).copied());
     let named = text.and_then(|value| match decisions.workplace_map.get(value) {
         Some(answer) => *answer,
-        None => facts
-            .workplaces
-            .get(value)
-            .and_then(|ids| (ids.len() == 1).then(|| ids[0])),
+        None => super::names::bound_name(value, facts.workplaces),
     });
     if let (Some(a), Some(b)) = (at_unit, named)
         && a != b
@@ -58,8 +55,8 @@ pub(super) fn workplace(
 }
 
 /// A current person's place: the 부서 (if it binds), the 사업장 and the
-/// 근무지 text that bound none; `Err` when the 부서's 사업장 is not the
-/// 근무지's and no group answer says which one wins (r3:hire-19).
+/// 사업장 text that bound none; `Err` when the 부서's 사업장 is not the
+/// named 사업장 and no group answer says which one wins (r3:hire-19).
 pub(super) fn current_place(
     row: &ImportRow,
     facts: &PlanFacts<'_>,
@@ -72,12 +69,12 @@ pub(super) fn current_place(
             unit: None,
             unresolved: row.org_unit.clone(),
             workplace: None,
-            named: row.worksite_name.clone(),
+            named: row.workplace.clone(),
             left: false,
         });
     }
     let (unit, unresolved) = unit(row.org_unit.as_ref(), facts, decisions);
-    let text = row.worksite_name.as_ref();
+    let text = row.workplace.as_ref();
     let company_places = facts.company_workplaces.get(&key);
     let place = match workplace(unit, text, facts, decisions) {
         Ok((at, named)) => Place {

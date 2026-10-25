@@ -124,6 +124,9 @@ properties:
     type: integer
     format: int64
     description: The caller's own passkeys; with one, a lost device ends the account.
+  unresolved_departments:
+    type: integer
+    format: int64
   unplaced_people:
     type: integer
     format: int64

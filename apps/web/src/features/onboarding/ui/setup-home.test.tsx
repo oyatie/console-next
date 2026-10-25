@@ -92,3 +92,8 @@ test("the rail keeps its counts and legal citations without standing explanation
   expect(html).not.toContain("고용 주체를 구분해 기록합니다");
   expect(html).not.toContain("운영을 시작하기 전까지는");
 });
+
+test("the placement remedy has one control in the setup step", () => {
+  const html = render(checklist([step("employees", true, "hr_basic::edit", { state: "attention", remedy: "place_people" })]));
+  expect(html.match(/href="\/people\/unplaced"/g)).toHaveLength(1);
+});

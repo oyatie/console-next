@@ -25,14 +25,14 @@ beforeAll(() => loadCatalog("ko"));
 function filters(identity: number) {
   return renderToStaticMarkup(<RosterFilters status="current" review={[]} sort="name" counts={{
     status: { totals: { current: 4, ACTIVE: 2, ON_LEAVE: 1, PRE_HIRE: 1, UNKNOWN: 0, EXITED: 0, all: 4 }, failed: [] },
-    review: { totals: { contractPast: 0, contractSoon: 3, identity, branch: 4, register: 2, failed: 0 }, failed: [] },
+    review: { totals: { contractPast: 0, contractSoon: 3, identity, unplaced: 4, register: 2, failed: 0 }, failed: [] },
   }} onChange={() => {}} findSlot={() => {}} density="regular" onDensity={() => {}} />);
 }
 
 test("review chips omit zero counts and concepts already represented by views", () => {
   const html = filters(2);
   expect(html).toContain(t("roster.review.identity"));
-  for (const key of ["contractPast", "contractSoon", "branch", "register", "failed"] as const) {
+  for (const key of ["contractPast", "contractSoon", "unplaced", "register", "failed"] as const) {
     expect(html).not.toContain(`title="${t(`roster.review.${key}.title`, { days: 60 })}`);
   }
   expect(filters(0)).not.toContain('id="roster-review"');

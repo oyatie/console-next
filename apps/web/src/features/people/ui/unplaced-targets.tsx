@@ -1,4 +1,5 @@
 import { Building2, Network } from "lucide-react";
+import type { ReactNode } from "react";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
 import { Kbd } from "../../../ui/kbd/kbd";
@@ -11,7 +12,7 @@ import s from "./unplaced.module.css";
  * used last), a search limited to the company, directly under the workplace, or leave them unplaced. Nothing is placed until a place is
  * pressed; with nobody picked every place says so.
  */
-export function UnplacedTargets({ where, count, suggestions, options, sitePath, chosen, onChoose, onPlace, onSite, onSkip, pending, entity }: {
+export function UnplacedTargets({ where, count, suggestions, options, sitePath, chosen, onChoose, onPlace, onSite, onSkip, pending, entity, when }: {
   where: string;
   count: number;
   suggestions: readonly Suggestion[];
@@ -27,6 +28,7 @@ export function UnplacedTargets({ where, count, suggestions, options, sitePath, 
   pending: boolean;
   entity: string | null;
   value: string;
+  when?: ReactNode;
 }) {
   const none = count === 0;
   const place = (id: string) => !none && !pending && onPlace(id);
@@ -40,6 +42,7 @@ export function UnplacedTargets({ where, count, suggestions, options, sitePath, 
         {none && <span className={s.sub}>{t("unplaced.target.pickFirst")}</span>}
       </div>
       <div className={s.targetsBody}>
+        {when}
         <div className={s.findRow}>
           <PathPicker options={options} value={chosen} onChange={onChoose} placeholder={entity ? t("unplaced.target.find", { entity }) : t("unplaced.target.findAll")} label={t("unplaced.target.findLabel")} openLabel={t("unplaced.target.open")} />
           {chosen && <Button variant="primary" aria-disabled={none || pending || undefined} onClick={() => place(chosen)}>{t("unplaced.target.place")}</Button>}
@@ -56,7 +59,7 @@ export function UnplacedTargets({ where, count, suggestions, options, sitePath, 
           ))}
         </div>
         <div className={s.row}>
-          {onSite ? <Button aria-disabled={none || pending || undefined} onClick={() => !none && onSite()}>{t("unplaced.target.toSite")}</Button> : null}
+          {onSite ? <Button aria-disabled={none || pending || undefined} onClick={() => !none && !pending && onSite()}>{t("unplaced.target.toSite")}</Button> : null}
           <Button variant="ghost" onClick={onSkip}>{t("unplaced.target.keep")}</Button>
         </div>
 

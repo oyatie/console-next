@@ -35,3 +35,9 @@ test("suggestions: alike names first, then recent places, at most five", () => {
   // The company name is not compared (every place shares it); the workplace and department are.
   expect(suggest("아산", places, ["c", "a"]).map((s) => [s.unit.id, s.why])).toEqual([["a", "alike"], ["c", "recent"]]);
 });
+
+test("an unknown statutory workplace groups by its source value without becoming a physical site", () => {
+  const person = fromQueue({ employee_id: "person", name: "직원", company: "", reason: "no_place", source_workplace: "평택 1공장" });
+  expect(groupBySource([person])[0]?.value).toBe("평택 1공장");
+  expect(person.worksite_name).toBeUndefined();
+});

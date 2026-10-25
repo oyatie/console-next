@@ -1,12 +1,10 @@
-// The import contract as the backend publishes it (BW-10, BW-19, MR-7, IMPORT-2; generated schema). Only `notice` is
-// added by hand: the server sends it (G9) but the published column schema lacks it (backend-followups #21).
+// The import contract published by the backend.
 import type { components } from "@console/api/schema";
 
 type S = components["schemas"];
 
 export type ImportPreview = S["EmployeeImportPreviewResponse"];
-/** `customer_site_not_workplace`: a column headed workplace is read as the work site (a customer site), never the legal entity's workplace. */
-export type ImportColumn = ImportPreview["columns"][number] & { notice?: string | null };
+export type ImportColumn = ImportPreview["columns"][number];
 export type Classification = ImportColumn["classification"];
 export type ImportSheet = S["EmployeeImportSheetReport"];
 export type SheetStatus = ImportSheet["status"];

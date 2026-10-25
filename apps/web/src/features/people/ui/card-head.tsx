@@ -86,7 +86,7 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
           <Users size={14} aria-hidden />
           <Link to="/people" search={{}}>{t("empCard.crumb")}</Link>
           <Sep size={14} aria-hidden />
-          {e.org_unit ?? t("empCard.unplaced")}
+          {e.workplace_id ? [c.place.workplace, ...c.place.path].filter(Boolean).join(" › ") || "—" : t("empCard.unplaced")}
         </span>
         <span className="grow" />
         {pos && (

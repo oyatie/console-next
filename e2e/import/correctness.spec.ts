@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { go } from "../flows";
@@ -74,4 +75,10 @@ test("import correctness: an unknown 고용형태 blocks until answered, a near 
   await apply.click();
   await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible({ timeout: 60_000 });
   expect(await headcount(api)).toBe(3);
+  const facets = await (await api("/employees/facets")).json() as { review: { home_branch_review_required: number } };
+  expect(facets.review.home_branch_review_required).toBe(1);
+  const unplaced = await (await api("/employees/import/unplaced")).json() as { count: number };
+  expect(unplaced.count).toBe(1);
+  await go(admin, "/people");
+  await expect(admin.getByText(/지점 미지정|소속 지점/)).toHaveCount(0);
 });

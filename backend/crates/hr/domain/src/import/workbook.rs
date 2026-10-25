@@ -20,13 +20,10 @@ pub fn check_workbook_signature(bytes: &[u8]) -> Result<(), &'static str> {
     }
 }
 
-/// NEW-06: in this business 「사업장」 names a customer site (근무지), not the
-/// legal 사업장 (workplace) of the 법인. A column headed so is read as the
-/// 근무지 and the preview says so, so nobody maps it to the workplace.
+/// Column meaning comes from its mapping and values, never a global notice.
 #[must_use]
-pub fn header_notice(normalized_header: &str) -> Option<&'static str> {
-    (normalized_header.contains("사업장") && !normalized_header.contains("주소"))
-        .then_some("customer_site_not_workplace")
+pub fn header_notice(_normalized_header: &str) -> Option<&'static str> {
+    None
 }
 
 #[cfg(test)]
@@ -46,12 +43,9 @@ mod tests {
     }
 
     #[test]
-    fn a_saeopjang_column_is_flagged_as_a_customer_site() {
-        assert_eq!(header_notice("사업장"), Some("customer_site_not_workplace"));
-        assert_eq!(
-            header_notice("근무사업장"),
-            Some("customer_site_not_workplace")
-        );
+    fn place_model_never_decides_a_column_meaning_by_its_header() {
+        assert_eq!(header_notice("사업장"), None);
+        assert_eq!(header_notice("근무사업장"), None);
         assert_eq!(header_notice("사업장주소"), None);
         assert_eq!(header_notice("근무지"), None);
     }

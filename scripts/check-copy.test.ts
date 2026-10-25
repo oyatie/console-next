@@ -419,6 +419,22 @@ test("new violations cannot hide behind allow-list growth", () => {
   expect(cli("--write-baseline").stderr).toContain("allow-list must only shrink");
 });
 
+test("a renamed key keeps its exception; a new entry or a changed reason is still growth", () => {
+  const { cli, dir, git } = debtFixture();
+  const allowFile = path.join(dir, "scripts/copy-terms-allow.json");
+  const commit = (m: string) => { git("add", "."); git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", m); };
+  writeFileSync(allowFile, JSON.stringify({ allow: [{ id: "org.footnote", rule: "prose.각주", reason: "kept use" }] }));
+  commit("allow the footnote");
+  writeFileSync(path.join(dir, "packages/i18n/src/catalogs/ko/debt.ts"), 'export const ko = {\n "people.footnote": "변경 사항은 이력에 남습니다.",\n};');
+  writeFileSync(path.join(dir, "apps/web/src/debt.ts"), 't("people.footnote")');
+  writeFileSync(allowFile, JSON.stringify({ allow: [{ id: "people.footnote", rule: "prose.각주", reason: "kept use" }] }));
+  expect(cli().stderr).not.toContain("allow-list must only shrink");
+  writeFileSync(allowFile, JSON.stringify({ allow: [{ id: "people.footnote", rule: "prose.각주", reason: "a different exception" }] }));
+  expect(cli().stderr).toContain("allow-list must only shrink");
+  writeFileSync(allowFile, JSON.stringify({ allow: [{ id: "people.footnote", rule: "prose.각주", reason: "kept use" }, { id: "org.other", rule: "prose.각주", reason: "kept use" }] }));
+  expect(cli().stderr).toContain("org.other (prose.각주): allow-list must only shrink");
+});
+
 test("shell and common have no glossary or standing-prose debt", async () => {
   const root = fileURLToPath(new URL("..", import.meta.url));
   const { readdirSync } = await import("node:fs");

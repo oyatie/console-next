@@ -38,6 +38,8 @@ properties:
         format: int64
       home_branch_review_required:
         type: integer
+        deprecated: true
+        description: Compatibility count of people without a current workplace placement.
         format: int64
       lifecycle_apply_failed:
         type: integer

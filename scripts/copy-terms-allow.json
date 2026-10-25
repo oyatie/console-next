@@ -7,7 +7,7 @@
       "reason": "dynamic-ux shared draft hook explicitly specifies the restore action 「버리기」"
     },
     {
-      "id": "import.site.chip",
+      "id": "import.place.worksite",
       "rule": "term.사업장",
       "reason": "고객 현장 is the client's site in outsourcing, deliberately not a 사업장 (copy-conventions §8)"
     },
@@ -78,16 +78,6 @@
     },
     {
       "id": "enum.importTarget.company",
-      "rule": "term.회사",
-      "reason": "source sheet's 회사 column (copy-conventions §8 kept uses, #29)"
-    },
-    {
-      "id": "orgBulk.header.entity",
-      "rule": "term.회사",
-      "reason": "header aliases matched against source sheet columns (copy-conventions §8 kept uses, #29)"
-    },
-    {
-      "id": "orgBulk.import.dropHint",
       "rule": "term.회사",
       "reason": "source sheet's 회사 column (copy-conventions §8 kept uses, #29)"
     },

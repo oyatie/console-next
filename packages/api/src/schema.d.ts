@@ -4501,7 +4501,8 @@ export interface paths {
         get?: never;
         /**
          * Assign an employee's authoritative home branch
-         * @description Audited explicit assignment; the server never infers a branch from user memberships. The target branch must be active and in the same tenant. Reassignment requires EmployeeDirectoryManage for both the prior and new branch. An employee with no prior branch requires org-wide manage authority. `expected_updated_at` prevents silent concurrent overwrite.
+         * @deprecated
+         * @description N-1 compatibility only; current consoles derive routing from the effective placement. Audited explicit assignment; the server never infers a branch from user memberships. The target branch must be active and in the same tenant. Reassignment requires EmployeeDirectoryManage for both the prior and new branch. An employee with no prior branch requires org-wide manage authority. `expected_updated_at` prevents silent concurrent overwrite.
          */
         put: operations["setEmployeeHomeBranch"];
         post?: never;
@@ -13802,6 +13803,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @deprecated */
         get: operations["listWorkplaces"];
         put?: never;
         post?: never;
@@ -14627,6 +14629,13 @@ export interface components {
             days_remaining: number | null;
             /** @description Source-owned facts for the row's command and informed grant confirmation. */
             context?: {
+                /** @description Optional physical work site, separate from the statutory placement path. */
+                worksite_name?: string;
+                /** @description Total visible records for this review kind, under the same reach and snapshot. */
+                review_count?: number;
+                register?: {
+                    missing_fields: string[];
+                };
                 correction?: {
                     /** @enum {string} */
                     status: "PENDING" | "APPROVED" | "RECORDED";
@@ -18598,7 +18607,10 @@ export interface components {
             home_branch_name?: string | null;
             /** @description Missing statutory register facts; complete them from the personnel card. */
             register_review_required?: boolean;
-            /** @description True when no active authoritative home branch is configured. */
+            /**
+             * @deprecated
+             * @description Deprecated compatibility name for a missing current primary workplace placement.
+             */
             home_branch_review_required: boolean;
             /**
              * @description Non-PII strategy used to keep same-name employees from being merged by name alone.
@@ -18943,7 +18955,11 @@ export interface components {
                 identity_review_required: number;
                 /** Format: int64 */
                 register_review_required: number;
-                /** Format: int64 */
+                /**
+                 * Format: int64
+                 * @deprecated
+                 * @description Compatibility count of people without a current workplace placement.
+                 */
                 home_branch_review_required: number;
                 /** Format: int64 */
                 lifecycle_apply_failed: number;
@@ -19001,6 +19017,13 @@ export interface components {
              */
             classification: "canonical" | "retained" | "restricted" | "location";
             preview_allowed: boolean;
+            /**
+             * @deprecated
+             * @description Legacy column notes. New placement questions do not use this field.
+             */
+            notice?: string | null;
+            /** @description The column needs an operator choice between a statutory workplace and a physical work site. */
+            place_reading_required?: boolean;
         };
         EmployeeImportCompanyConfirmation: {
             value: string;
@@ -19557,6 +19580,8 @@ export interface components {
                 org_unit_id?: components["schemas"]["Uuid"] | null;
                 /** @description The 부서 text the import file named that bound nothing (원본 부서). */
                 source_org_unit?: string | null;
+                /** @description The statutory 사업장 text the import file named that bound nothing, separate from the physical site. */
+                source_workplace?: string | null;
                 /** @enum {string} */
                 reason: "no_place" | "workplace_unknown" | "unit_unknown";
                 /** @description UX-R3 IMPORT (r3:hire-21): the facts placement is decided with, read with the person (직위, 고용형태 code, 입사일 YYYY-MM-DD, the 근무지 and 부서 texts on the record). */
@@ -27437,6 +27462,8 @@ export interface components {
              * @description The caller's own passkeys; with one, a lost device ends the account.
              */
             own_passkeys: number;
+            /** Format: int64 */
+            unresolved_departments?: number;
             /** Format: int64 */
             unplaced_people: number;
             /** Format: int64 */

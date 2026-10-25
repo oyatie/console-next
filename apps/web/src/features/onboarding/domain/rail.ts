@@ -44,6 +44,7 @@ const LINKS: Record<string, Fix> = {
   invite_executive: { to: "/people", search: { view: "accounts" } },
   register_employee: { to: "/people/new" },
   map_company_names: { to: "/people/unplaced" },
+  assign_departments: { to: "/people/unplaced" },
   place_people: { to: "/people/unplaced" },
   add_role: { to: "/access/roles/new" },
   grant_access_admin: { to: "/access/grants" },

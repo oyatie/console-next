@@ -8,7 +8,7 @@ import type { Held } from "./use-place-people";
 import u from "./unplaced-extra.module.css";
 
 /** Why one person cannot be placed, with what to do: the screen's own words for the placement refusals, else the shared ones. */
-const why = (code: string) => (isMessageId(`unplaced.why.${code}`) ? t(`unplaced.why.${code}` as "unplaced.why.stale_record") : refusedText(code));
+const why = (code: string, setup: boolean) => (setup && code === "effective_date_before_hire" ? t("unplaced.why.setup.effective_date_before_hire") : isMessageId(`unplaced.why.${code}`) ? t(`unplaced.why.${code}` as "unplaced.why.stale_record") : refusedText(code));
 
 /**
  * A placement the server would refuse in part (r3:hire-03): nothing was written; each refused person is named with
@@ -36,7 +36,7 @@ export function UnplacedRefused({ held, place, pending, onRest, onCancel }: { he
             <li key={r.person.id}>
               <b>{r.person.name}</b>
               {r.person.employee_number && <span className="num"> {r.person.employee_number}</span>}
-              <span> · {why(r.code)}</span>
+              <span> · {why(r.code, held.setup)}</span>
               <Link to="/people/$id" params={{ id: r.person.id }} search={{}} className={buttonClass("ghost")}>{t("unplaced.refused.fix")}</Link>
             </li>
           ))}

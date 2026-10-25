@@ -18,6 +18,7 @@ properties:
     - org_unit
     - job
     - position
+    - workplace
     - worksite_name
     - worksite_address
     - hire_date
@@ -40,3 +41,10 @@ properties:
     - location
   preview_allowed:
     type: boolean
+  notice:
+    type: [string, 'null']
+    deprecated: true
+    description: Legacy column notes. New placement questions do not use this field.
+  place_reading_required:
+    type: boolean
+    description: The column needs an operator choice between a statutory workplace and a physical work site.

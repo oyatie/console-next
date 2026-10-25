@@ -27,14 +27,37 @@ describe("filters in the URL", () => {
   });
 });
 
+describe("unplaced review", () => {
+  test("uses its own URL key while retiring branch and preserving independent review chips", () => {
+    expect(parseReview("branch,unplaced,identity")).toEqual(["identity", "unplaced"]);
+    expect(joinReview(["unplaced", "identity"])).toBe("identity,unplaced");
+    expect(toggleReview(["identity"], "unplaced")).toEqual(["identity", "unplaced"]);
+    expect(toggleReview(["identity", "unplaced"], "unplaced")).toEqual(["identity"]);
+  });
+  test("filters the list and its facets through the server's kept placement-gap field", () => {
+    const filter = { status: "current", review: ["unplaced", "identity"] } as const;
+    expect(listQuery(filter, TODAY, 60)).toMatchObject({ home_branch_review_required: true, identity_review_required: true });
+    const facets = facetQueries(filter, TODAY, 60);
+    expect(facets.list).toMatchObject({ home_branch_review_required: true });
+    expect(facets.review).not.toHaveProperty("home_branch_review_required");
+    expect(listQuery({ status: "current", review: [] }, TODAY, 60).home_branch_review_required).toBeUndefined();
+  });
+  test("counts only the server's placement gaps, including zero and an unknown read", () => {
+    for (const count of [0, 1, 2000]) {
+      const review = { contract_ended: 0, contract_ending_before: 0, identity_review_required: 9, home_branch_review_required: count, register_review_required: 8, lifecycle_apply_failed: 7 };
+      expect(reviewTotals(reviewCounts(review)).unplaced).toBe(count);
+    }
+    expect(reviewTotals(reviewCounts(undefined)).unplaced).toBeUndefined();
+  });
+});
+
 describe("server queries", () => {
   test("the list asks exactly the chosen filters; the contract window matches Home's (strictly before)", () => {
-    expect(listQuery({ status: "current", review: ["contractSoon", "branch"], unit: "u1", q: "kim" }, TODAY, 60)).toEqual({
+    expect(listQuery({ status: "current", review: ["contractSoon"], unit: "u1", q: "kim" }, TODAY, 60)).toEqual({
       search: "kim",
       org_unit_id: "u1",
       status: ["ACTIVE", "ON_LEAVE", "UNKNOWN", "PRE_HIRE"],
       identity_review_required: undefined,
-      home_branch_review_required: true,
       lifecycle_apply_failed: undefined,
       contract_ending_before: "2026-12-02",
     });
@@ -49,7 +72,7 @@ describe("server queries", () => {
     expect(statusCounts([{ value: "ON_LEAVE", count: 2 }, { value: "ACTIVE", count: 10 }, { value: "PRE_HIRE", count: 3 }])).toEqual([10, 2, 0, 0, 3]);
     expect(statusCounts(undefined)).toEqual([undefined, undefined, undefined, undefined, undefined]);
     const review = { contract_ended: 2, contract_ending_before: 17, identity_review_required: 3, home_branch_review_required: 21, register_review_required: 7, lifecycle_apply_failed: 1 };
-    expect(reviewTotals(reviewCounts(review))).toEqual({ contractPast: 2, contractSoon: 15, identity: 3, branch: 21, register: 7, failed: 1 });
+    expect(reviewTotals(reviewCounts(review))).toEqual({ contractPast: 2, contractSoon: 15, identity: 3, unplaced: 21, register: 7, failed: 1 });
   });
 });
 
@@ -64,7 +87,7 @@ describe("chip totals are server totals, added up", () => {
     expect(headcount(statusTotals([10, 2, undefined, 5, 3]))).toBeUndefined();
   });
   test("contracts ending within the window exclude those already over", () => {
-    expect(reviewTotals([2, 17, 3, 21, 7, 1])).toEqual({ contractPast: 2, contractSoon: 15, identity: 3, branch: 21, register: 7, failed: 1 });
+    expect(reviewTotals([2, 17, 3, 21, 7, 1])).toEqual({ contractPast: 2, contractSoon: 15, identity: 3, unplaced: 21, register: 7, failed: 1 });
   });
 });
 
@@ -120,9 +143,9 @@ test("only the actions the server lists are offered, in the record's order, neve
 test("chip edges: no URL value, adding a chip, each review flag alone, a missing contract total, the window's last day", () => {
   expect(parseReview(undefined)).toEqual([]);
   expect(toggleReview(["identity"], "failed")).toEqual(["identity", "failed"]);
-  expect(listQuery({ status: "current", review: ["identity"] }, TODAY, 60)).toMatchObject({ identity_review_required: true, home_branch_review_required: undefined, lifecycle_apply_failed: undefined, contract_ending_before: undefined });
-  expect(reviewTotals([undefined, 17, 3, 21, 1]).contractSoon).toBeUndefined();
-  expect(reviewTotals([2, undefined, 3, 21, 1]).contractSoon).toBeUndefined();
+  expect(listQuery({ status: "current", review: ["identity"] }, TODAY, 60)).toMatchObject({ identity_review_required: true, lifecycle_apply_failed: undefined, contract_ending_before: undefined });
+  expect(reviewTotals([undefined, 17, 3, 21, 7, 1]).contractSoon).toBeUndefined();
+  expect(reviewTotals([2, undefined, 3, 21, 7, 1]).contractSoon).toBeUndefined();
   expect(nextItems(person({ contract_end_date: "2026-12-01" }), TODAY, 60)).toEqual([{ kind: "contract", date: "2026-12-01", days: 60 }]);
   expect(exactNumber([person({ id: "x", employee_number: null })], "0042")).toBeNull();
 });

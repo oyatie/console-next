@@ -9,8 +9,24 @@ use uuid::Uuid;
 use crate::authz::{hr_reach, push_reach};
 use crate::{HrError, HrService};
 
-/// Aliases `e` (employee) and `p` (profile). Optional notes and an explicit
-/// no-career answer are complete; retired records use the exit-case reason.
+/// Missing facts of the same statutory register the card completes; optional notes stay optional.
+#[macro_export]
+macro_rules! register_missing_fields_sql {
+    () => {
+        "(SELECT array_remove(ARRAY[ \
+         CASE WHEN e.birth_date IS NULL THEN 'birth' END, \
+         CASE WHEN NULLIF(btrim(e.job), '') IS NULL THEN 'job' END, \
+         CASE WHEN e.hire_on IS NULL THEN 'hire' END, \
+         CASE WHEN p.employment_type='CONTRACT' AND p.contract_end_date IS NULL THEN 'contractEnd' END, \
+         CASE WHEN rf.sex IS NULL THEN 'sex' END, \
+         CASE WHEN rf.address_id IS NULL THEN 'address' END, \
+         CASE WHEN rf.career_none IS NULL THEN 'career' END], NULL) \
+         FROM (VALUES (1)) seed(n) LEFT JOIN employee_register_facts rf \
+           ON rf.org_id=e.org_id AND rf.employee_id=e.id)"
+    };
+}
+
+/// The one register predicate used by the roster and inbox, derived from its named gaps.
 #[macro_export]
 macro_rules! register_review_sql {
     () => {
@@ -25,7 +41,7 @@ macro_rules! register_review_sql {
 }
 
 pub struct RegisterReviewInboxPage {
-    pub items: Vec<(Uuid, String, OffsetDateTime)>,
+    pub items: Vec<(Uuid, String, OffsetDateTime, Vec<String>)>,
     pub total: i64,
     pub has_more: bool,
 }
@@ -66,7 +82,10 @@ impl HrService {
                 let mut count = QueryBuilder::<Postgres>::new("SELECT count(*)");
                 push_where(&mut count);
                 let total = count.build_query_scalar().fetch_one(tx.as_mut()).await?;
-                let mut q = QueryBuilder::<Postgres>::new("SELECT e.id, e.name, e.created_at");
+                let mut q = QueryBuilder::<Postgres>::new(concat!(
+                    "SELECT e.id, e.name, e.created_at, ",
+                    crate::register_missing_fields_sql!()
+                ));
                 push_where(&mut q);
                 if let Some((created_at, id)) = after {
                     q.push(" AND (e.created_at, ('hr_register:' || e.id::text)) > (");

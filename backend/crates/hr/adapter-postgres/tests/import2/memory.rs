@@ -6,6 +6,9 @@ use sqlx::PgPool;
 
 use crate::harness::{decisions, importer, map, table};
 
+#[path = "place_model.rs"]
+mod place_model;
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn mapped_labels_and_values_are_remembered_per_tenant(pool: PgPool) {
     let i = importer(pool).await;

@@ -69,7 +69,7 @@ fn company_evidence_contains_placement_and_unknown_aliases_stay_unplaced() {
         assert_eq!(plan[0].refusal_code, Some("workplace_conflict"));
     }
     input.org_unit = None;
-    input.worksite_name = Some("다른법인".into());
+    input.workplace = Some("다른법인".into());
     assert_eq!(
         world.plan(std::slice::from_ref(&input), &decisions)[0].refusal_code,
         Some("workplace_conflict")
@@ -81,7 +81,7 @@ fn company_evidence_contains_placement_and_unknown_aliases_stay_unplaced() {
         world.plan(std::slice::from_ref(&input), &decisions)[0].refusal_code,
         Some("workplace_conflict")
     );
-    input.worksite_name = Some("본사".into());
+    input.workplace = Some("본사".into());
     let person = world.plan(std::slice::from_ref(&input), &decisions)[0]
         .new_person
         .clone()
@@ -122,15 +122,15 @@ fn a_new_person_is_placed_at_the_workplace_of_their_unit_or_their_workplace_text
     let by_unit = row("a", Some("E-1"), "김일");
     let mut by_text = row("b", Some("E-2"), "김이");
     by_text.org_unit = None;
-    by_text.worksite_name = Some("공장".into());
+    by_text.workplace = Some("공장".into());
     let mut both = row("c", Some("E-3"), "김삼");
-    both.worksite_name = Some("공장".into());
+    both.workplace = Some("공장".into());
     let mut site = row("d", Some("E-4"), "김사");
     site.org_unit = None;
-    site.worksite_name = Some("강남현장".into());
+    site.workplace = Some("강남현장".into());
     let mut twice = row("e", Some("E-5"), "김오");
     twice.org_unit = None;
-    twice.worksite_name = Some("지점".into());
+    twice.workplace = Some("지점".into());
     let plan = world.plan(
         &[by_unit, by_text, both, site, twice],
         &Decisions::default(),
@@ -140,7 +140,7 @@ fn a_new_person_is_placed_at_the_workplace_of_their_unit_or_their_workplace_text
     // The unit and the 사업장 text disagree: a question, not a guess.
     assert_eq!(
         (plan[2].refusal_code, plan[2].refusal_field),
-        (Some("workplace_conflict"), Some("worksite_name"))
+        (Some("workplace_conflict"), Some("workplace"))
     );
     // A 현장 name or an ambiguous name places nobody, and says so.
     assert_eq!(
@@ -158,10 +158,10 @@ fn a_new_person_is_placed_at_the_workplace_of_their_unit_or_their_workplace_text
         ..Decisions::default()
     };
     let mut both = row("c", Some("E-3"), "김삼");
-    both.worksite_name = Some("공장".into());
+    both.workplace = Some("공장".into());
     let mut twice = row("e", Some("E-5"), "김오");
     twice.org_unit = None;
-    twice.worksite_name = Some("지점".into());
+    twice.workplace = Some("지점".into());
     let plan = world.plan(&[both, twice], &decisions);
     let placed = |i: usize| plan[i].new_person.as_ref().unwrap().workplace_id;
     assert_eq!((placed(0), placed(1)), (Some(at_unit), Some(named)));
@@ -242,4 +242,18 @@ fn an_existing_person_gets_a_missing_type_and_a_different_one_is_a_correction() 
         (plan[1].deferred[0].field, plan[1].deferred[0].route),
         ("employment_type", "correction")
     );
+}
+
+#[test]
+fn physical_worksite_never_binds_a_statutory_workplace() {
+    let mut world = World::new(vec![]);
+    world.workplaces.insert("본사".into(), vec![Uuid::new_v4()]);
+    let mut input = row("site-only", Some("PLACE-1"), "김근무");
+    input.company.clear();
+    input.org_unit = None;
+    input.worksite_name = Some("본사".into());
+    let plans = world.plan(&[input], &Decisions::default());
+    let person = plans[0].new_person.as_ref().unwrap();
+    assert_eq!(person.workplace_id, None);
+    assert_eq!(person.unplaced_reason, Some("no_place"));
 }

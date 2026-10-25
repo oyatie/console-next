@@ -14,7 +14,7 @@ import { GateRail } from "../../../ui/gate-rail";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { entitiesRef as entitiesQuery } from "../../../reference/entity/api";
 import { BATCH_READS, commitBatches, headsQuery, structureQuery, type Committed } from "../api";
-import { columnsReady, guessColumns, headerRow, readRows, type ColumnMap, type HeaderWords } from "../domain/columns";
+import { columnsReady, guessColumns, headerRow, readRows, type ColumnMap } from "../domain/columns";
 import { entityPrefix, importPlan } from "../domain/import-plan";
 import { entityOps, openQuestions, orgOps, ready, emptyAnswers, wpRef, type SiteAnswers } from "../domain/ops";
 import { planCounts } from "../domain/plan";
@@ -68,7 +68,6 @@ function ImportWizard({ ents: allEntities, operating }: { ents: Node[]; operatin
   const records = useQuery(entitiesQuery);
   const ents = allEntities.filter((n) => records.data?.items.some((e) => e.id === n.id && !e.needs_confirmation && identityProblems(e).length === 0));
   const corp = (id: string) => records.data?.items.find((e) => e.id === id)?.biz_kind === "CORPORATION";
-  const words = useMemo(() => Object.fromEntries((["entity", "brn", "workplace", "path", "parent", "code", "head", "shift"] as const).map((k) => [k, t(`orgBulk.header.${k}`).split(",")])) as unknown as HeaderWords, []);
 
   const grid = useMemo(() => file?.sheets[sheet]?.rows ?? [], [file, sheet]);
   const rows = useMemo(() => readRows(grid, header, cols), [grid, header, cols]);
@@ -91,7 +90,7 @@ function ImportWizard({ ents: allEntities, operating }: { ents: Node[]; operatin
     const h = headerRow(g);
     setSheet(i);
     setHeader(h);
-    setCols(guessColumns(g[h] ?? [], words));
+    setCols(guessColumns(g[h] ?? []));
     setPicks({});
   };
   const load = async (f: File) => {
@@ -155,7 +154,7 @@ function ImportWizard({ ents: allEntities, operating }: { ents: Node[]; operatin
       {step === "columns" && file && (
         <ImportColumns sheets={file.sheets} sheet={sheet} onSheet={(i) => pickSheet(file.sheets, i)} header={header} onHeader={(h) => {
             setHeader(h);
-            setCols(guessColumns(grid[h] ?? [], words));
+            setCols(guessColumns(grid[h] ?? []));
           }} cols={cols} onCols={setCols} />
       )}
       {step === "values" && <ImportValues items={items} picks={picks} onPick={(k, p) => setPicks((x) => ({ ...x, [k]: p }))} ents={ents} rowCount={rows.length} />}

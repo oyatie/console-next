@@ -47,8 +47,12 @@ function useColumns(today: string, exited: boolean, shown: readonly ColumnId[]):
   const entities = useQuery(entitiesRef).data?.items ?? [];
   const entity = (e: Employee) => entities.find((x) => x.id === e.legal_entity_id);
   const place = (e: Employee) => {
+    if (!e.workplace_id) return t("roster.unplaced");
     const u = units.find((x) => x.id === e.org_unit_id);
-    if (!u) return e.org_unit ?? t("roster.unplaced");
+    if (!u) {
+      const site = entity(e)?.workplaces.find((w) => w.id === e.workplace_id)?.current?.name ?? "—";
+      return e.org_unit ? `${site} › ${e.org_unit}` : t("roster.siteDirect", { site });
+    }
     const path = unitPath(units, u);
     return u.kind === "SITE" ? t("roster.siteDirect", { site: path }) : path;
   };

@@ -9,6 +9,7 @@
 mod cross_entity;
 mod filing_review;
 mod group;
+mod initial_placement;
 mod placement_tree;
 mod previous_writer;
 mod settlement;

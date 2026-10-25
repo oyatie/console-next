@@ -38,11 +38,14 @@ export const personOf = (q: Item): Person =>
     employee_number: q.employee_number ?? undefined,
     company: q.company,
     legal_entity_id: q.legal_entity_id ?? null,
+    workplace_id: q.workplace_id ?? null,
+    org_unit_id: q.org_unit_id ?? null,
+    reason: q.reason,
     position: q.position ?? null,
     employment_type: q.employment_type ?? null,
     hire_date: q.hire_date ?? null,
     worksite_name: q.worksite_name ?? null,
     org_unit: q.org_unit ?? null,
     // Placed at a workplace but not in the department the file named: grouped by that department text.
-    source: q.reason === "unit_unknown" ? q.source_org_unit : null,
+    source: q.reason === "unit_unknown" ? q.source_org_unit : q.source_workplace,
   }) as Person;

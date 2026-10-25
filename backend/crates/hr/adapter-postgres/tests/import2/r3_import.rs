@@ -97,7 +97,7 @@ async fn regression_an_import_before_workplace_opening_needs_review_and_keeps_th
                 "명부",
                 0,
                 &[
-                    &["사번", "성명", "입사일", "고용형태", "근무지"],
+                    &["사번", "성명", "입사일", "고용형태", "사업장"],
                     &["EARLY-1", "김승계", "2016-03-02", "정규직", "본사"],
                     &["OPEN-1", "이개설", "2020-01-01", "정규직", "본사"],
                 ],

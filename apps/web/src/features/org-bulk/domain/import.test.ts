@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import ExcelJS from "exceljs";
 import type { OrgStructureNodeServed as Node } from "@console/api/pending";
 import { columnsReady, guessColumns, headerRow, readRows, type HeaderWords } from "./columns";
@@ -142,4 +142,13 @@ describe("bulk edit", async () => {
     expect(lines[1]!.insurers.every((i) => i.status === "ESTABLISHED_NUMBER_PENDING")).toBe(true);
     expect(editLines(rows, "NONE").map((l) => l.change)).toEqual([false, false, true]);
   });
+});
+
+
+test("default import words distinguish statutory workplaces from physical sites in either language", () => {
+  expect(guessColumns(["법인", "사업장", "부서", "근무지", "지점"], undefined as unknown as HeaderWords).map((c) => c.role))
+    .toEqual(["entity", "workplace", "path", "skip", "skip"]);
+  expect(guessColumns(["company", "workplace", "department", "site", "branch"], undefined as unknown as HeaderWords).map((c) => c.role))
+    .toEqual(["entity", "workplace", "path", "skip", "skip"]);
+  expect(guessColumns(["사업소", "부서"]).map((c) => c.role)).toEqual(["workplace", "path"]);
 });

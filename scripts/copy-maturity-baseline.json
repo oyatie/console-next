@@ -79,7 +79,6 @@
   "packages/i18n/src/catalogs/ko/exit.ts exit.next.mine term.대기 aaefbb8fe1762463daec": 1,
   "packages/i18n/src/catalogs/ko/home.ts home.inbox.filter.turn term.대기 aaefbb8fe1762463daec": 1,
   "packages/i18n/src/catalogs/ko/home.ts home.noWork.reason prose.위치 2cf781f79cc078d0b3d5": 1,
-  "packages/i18n/src/catalogs/ko/home.ts home.review.branch term.미배치 c7343255ee5dcb8eed43": 1,
   "packages/i18n/src/catalogs/ko/import-job.ts importJob.state.applying verb.입력 abf91ea81e2dbb088501": 1,
   "packages/i18n/src/catalogs/ko/import-values.ts importValues.why.chosen verb.선택 1aaf9b99322587519f09": 1,
   "packages/i18n/src/catalogs/ko/import.ts import.matched.pick verb.선택 0c97333f3aa4ff20fc8b": 1,

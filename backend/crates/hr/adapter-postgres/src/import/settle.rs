@@ -88,6 +88,10 @@ pub async fn settle_chunk(
                 .bind(run_id)
                 .execute(tx.as_mut())
                 .await?;
+            sqlx::query("SELECT set_config('app.employee_import_run', $1, true)")
+                .bind(run_id.to_string())
+                .execute(tx.as_mut())
+                .await?;
             let people: Vec<Inserted> = sqlx::query_as(
                 "SELECT e.id, e.employment_status, e.company, e.org_unit, e.org_unit_id, \
                         e.position, e.hire_date::TEXT, \

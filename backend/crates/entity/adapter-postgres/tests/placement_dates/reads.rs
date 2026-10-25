@@ -1,6 +1,64 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_bound_initial_placement_and_a_scheduled_move_keep_their_as_of_dates(owner: PgPool) {
+    let w = world(&owner, "2000-03-02", "2001-05-01").await;
+    let person = employee(&owner, &w.actor).await;
+    let hired = Date::from_calendar_date(2016, Month::March, 2).unwrap();
+    let effective = Date::from_calendar_date(2099, Month::November, 1).unwrap();
+    w.store
+        .bind_assignment(&cmd(&w.actor), bind(person, &w, hired))
+        .await
+        .unwrap();
+    let mut tx = owner.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(w.actor.org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    move_in_tx(
+        tx.as_mut(),
+        write(&w.actor, person),
+        MoveTarget {
+            legal_entity_id: w.entity,
+            workplace_id: w.source,
+            group_transfer_id: None,
+        },
+        effective,
+    )
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+    for (on, target, source) in [
+        (hired.previous_day().unwrap(), 0, 0),
+        (hired, 1, 0),
+        (effective.previous_day().unwrap(), 1, 0),
+        (effective, 0, 1),
+    ] {
+        let records = w
+            .store
+            .list_entities_at(
+                &w.actor,
+                false,
+                ReadOptions {
+                    as_of: Some(on),
+                    known_at: None,
+                },
+            )
+            .await
+            .unwrap();
+        for (workplace, expected) in [(w.target, target), (w.source, source)] {
+            let actual = records
+                .iter()
+                .flat_map(|e| &e.workplaces)
+                .find(|p| p.id == workplace)
+                .unwrap();
+            assert_eq!(actual.headcount, expected, "workplace {workplace} at {on}");
+        }
+    }
+}
+
 async fn old_assignment(owner: &PgPool, w: &World) {
     let p = employee(owner, &w.actor).await;
     let mut tx = owner.begin().await.unwrap();

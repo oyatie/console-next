@@ -8,15 +8,16 @@ type Unit = components["schemas"]["OrgUnitHead"];
 type QueueItem = components["schemas"]["EmployeeImportUnplacedPage"]["items"][number];
 /** A queued person: the record the roster read gave (position, type, start date), with the queue's company and the
  * department text the file named. */
-export type Person = Employee & { source?: string | null };
+export type Person = Employee & { source?: string | null; reason?: QueueItem["reason"] };
 
 /** The server's queue line as the screen reads it (the record the roster read gave, else the line alone). */
 export const fromQueue = (q: QueueItem, e?: Employee): Person => ({
   ...(e ?? ({ id: q.employee_id, name: q.name, employee_number: q.employee_number ?? undefined } as Employee)),
   legal_entity_id: q.legal_entity_id ?? e?.legal_entity_id ?? null,
+  reason: q.reason,
   // Placed at a workplace but not in the department the file named: grouped by that department text. Without a
   // workplace at all, by the workplace value the file carried (the record's own).
-  source: q.reason === "unit_unknown" ? q.source_org_unit : null,
+  source: q.reason === "unit_unknown" ? q.source_org_unit : q.source_workplace,
 });
 
 /** The value the file carried for where the person works ("" when it carried none): the department text for someone

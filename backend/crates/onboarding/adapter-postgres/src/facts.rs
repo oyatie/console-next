@@ -188,6 +188,7 @@ pub(crate) async fn setup_facts(
         employees_starting_later: r.try_get("starting_later")?,
         employees_step_deferred: r.try_get("employees_deferred")?,
         unplaced_people: count(&listed, "unplaced_people"),
+        unresolved_departments: count(&listed, "unresolved_departments"),
         entity_unknown_people: count(&listed, "entity_unknown_people"),
         tenant_roles: r.try_get("tenant_roles")?,
         roles_step_skipped: r.try_get("roles_skipped")?,

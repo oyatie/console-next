@@ -4,6 +4,8 @@
 //! (shared with the preview) and adds CONTRACT_RENEWAL. The handler keeps
 //! the manage gate and the Idempotency-Key header ahead of the call.
 
+use console_entity_adapter_postgres::employment_hire::hire_in_tx;
+use console_entity_adapter_postgres::employment_moves::MoveWrite;
 use console_kernel_core::{AuditAction, AuditEvent, TraceContext};
 use console_platform_authz::Principal;
 use console_platform_db::idempotency::{
@@ -20,6 +22,7 @@ use super::hooks::LifecycleTrailHooks;
 use super::record_write::record_in_tx;
 use super::requests::{BulkEmployeeLifecycleEventRequest, BulkEmployeeLifecycleEventResponse};
 use super::rows::employee_lifecycle_event_from_row;
+use super::title_reason::coded;
 use crate::clock::today_kst;
 use crate::idempotency::idempotency_key_reused;
 use crate::lifecycle_event_select;
@@ -35,7 +38,8 @@ impl HrService {
     /// batch back as one 422 naming every refused employee. Otherwise each event
     /// is recorded exactly as the single-event endpoint records it (one
     /// `employee.lifecycle.record` audit each) plus one `employee.lifecycle.bulk`
-    /// audit carrying the batch id.
+    /// audit carrying the batch id. A TRANSFER to a placed unit also gives an
+    /// unassigned person their initial legal placement in this transaction.
     pub async fn bulk_lifecycle_events(
         &self,
         principal: Principal,
@@ -104,11 +108,26 @@ impl HrService {
                         org,
                         actor,
                         *employee_id,
-                        prepared,
+                        &prepared.event,
                         Some(batch_id),
                         &hooks,
                     )
                     .await?;
+                    if let Some(initial) = &prepared.initial {
+                        hire_in_tx(
+                            tx.as_mut(),
+                            MoveWrite {
+                                org_id: *org.as_uuid(),
+                                employee_id: *employee_id,
+                                actor_id: *actor.as_uuid(),
+                                command_id: id,
+                            },
+                            initial.workplace,
+                            initial.from,
+                        )
+                        .await
+                        .map_err(coded)?;
+                    }
                     event_ids.push(id);
                     audits.push(event);
                 }

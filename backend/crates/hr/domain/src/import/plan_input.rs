@@ -19,6 +19,7 @@ pub struct ImportRow {
     pub org_unit: Option<String>,
     pub job: Option<String>,
     pub position: Option<String>,
+    pub workplace: Option<String>,
     pub worksite_name: Option<String>,
     pub worksite_address: Option<String>,
     /// 고용형태 as the file wrote it (a code or a label the operator maps).

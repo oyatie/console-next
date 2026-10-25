@@ -140,3 +140,49 @@ async fn a_reader_without_directory_management_is_refused(pool: PgPool) {
             .unwrap_err();
     assert_eq!((refused.status.as_u16(), refused.code), (403, "forbidden"));
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn an_unknown_statutory_workplace_keeps_its_group_value_without_a_physical_site(
+    pool: PgPool,
+) {
+    let i = importer(pool).await;
+    let mapping = serde_json::from_value(serde_json::json!({
+        "sheets": { "명부": { "header_row": 1, "columns": { "E": "workplace" } } }
+    }))
+    .unwrap();
+    let run = i
+        .preview(
+            "사업장.xlsx",
+            &[table(
+                "명부",
+                0,
+                &[
+                    &["사번", "성명", "입사일", "고용형태", "사업장"],
+                    &[
+                        "UNKNOWN-1",
+                        "사업장미정",
+                        "2024-03-04",
+                        "정규직",
+                        "평택 1공장",
+                    ],
+                ],
+            )],
+            &mapping,
+        )
+        .await
+        .unwrap()
+        .run_id;
+    let plan = i.dry_run(run, decisions()).await;
+    i.apply(run, &plan.dry_run_digest).await.unwrap();
+    let queue =
+        i.f.hr
+            .import_unplaced(i.f.principal.clone(), query(Some(run), None, 100))
+            .await
+            .unwrap();
+    assert_eq!(queue.count, 1);
+    let person = serde_json::to_value(&queue.items[0]).unwrap();
+    assert_eq!(person["source_workplace"], "평택 1공장");
+    assert_eq!(person["reason"], "no_place");
+    assert!(person["workplace_id"].is_null());
+    assert!(person["worksite_name"].is_null());
+}

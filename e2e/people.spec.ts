@@ -34,7 +34,7 @@ test("an HR admin imports a roster: preview → dry run → apply bound to it", 
   const peek = admin.getByRole("complementary", { name: "직원 상세" });
   await expect(peek).toContainText("E-001");
   // Trunk's panel rows stay in the peek (regression: the peek dropped them once).
-  for (const row of ["직무 · 직위", "소속 지점", "기본급"]) await expect(peek.getByRole("term").filter({ hasText: row })).toBeVisible();
+  for (const row of ["직무 · 직위", "기본급"]) await expect(peek.getByRole("term").filter({ hasText: row })).toBeVisible();
   await expectAccessible(admin, "people list + detail panel");
 
   // Phone width: the menu button discloses the navigation, and no screen scrolls sideways.

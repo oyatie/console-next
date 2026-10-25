@@ -47,6 +47,32 @@ impl HrService {
         // the next run.
         for org_uuid in orgs {
             let org = OrgId::from_uuid(org_uuid);
+            let routing = with_org_conn::<_, _, HrError>(pool, org, move |tx| {
+                Box::pin(async move {
+                    Ok(sqlx::query_scalar::<_, i64>(
+                        "SELECT count(hr_api.route_placement_home_branch($1, a.employee_id)) \
+                         FROM employment_current_placements a \
+                         JOIN workplaces w ON w.org_id=a.org_id AND w.id=a.workplace_id \
+                         JOIN employees e ON e.org_id=a.org_id AND e.id=a.employee_id \
+                         WHERE a.org_id=$1 AND w.default_branch_id IS NOT NULL \
+                           AND e.home_branch_id IS DISTINCT FROM w.default_branch_id \
+                           AND e.employment_status NOT IN ('EXITED','VOIDED')",
+                    )
+                    .bind(org_uuid)
+                    .fetch_one(tx.as_mut())
+                    .await?)
+                })
+            })
+            .await;
+            match routing {
+                Ok(repaired) if repaired > 0 => {
+                    tracing::info!(org = %org, repaired, "placement routing repaired")
+                }
+                Ok(_) => {}
+                Err(error) => {
+                    tracing::warn!(org = %org, error = %error.message, "placement routing repair failed; retrying next run")
+                }
+            }
             let today = today.clone();
             let due: Vec<(Uuid, Uuid, String, String)> =
                 match with_org_conn::<_, _, HrError>(pool, org, move |tx| {

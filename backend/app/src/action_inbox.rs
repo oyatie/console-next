@@ -155,7 +155,7 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                 .acquire()
                 .await
                 .map_err(|_| KernelError::internal("inbox reader closed"))?;
-            let page = match source {
+            let mut page = match source {
                 #[cfg(feature = "workspace")]
                 ActionInboxSource::Workflow => self.workflow_page(query).await,
                 #[cfg(feature = "dispatch")]
@@ -169,7 +169,7 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                 #[cfg(feature = "governance")]
                 ActionInboxSource::Governance => self.governance_page(query).await,
                 ActionInboxSource::HrIdentity
-                | ActionInboxSource::HrBranch
+                | ActionInboxSource::HrUnplaced
                 | ActionInboxSource::HrContract => {
                     sources::hr_followups::page(&self.pool, &self.principal, source, query).await
                 }
@@ -227,14 +227,14 @@ impl ActionInboxSourcePort for PgActionInboxSources {
             if matches!(
                 source,
                 ActionInboxSource::HrIdentity
-                    | ActionInboxSource::HrBranch
+                    | ActionInboxSource::HrUnplaced
                     | ActionInboxSource::HrContract
                     | ActionInboxSource::HrRegister
                     | ActionInboxSource::HrLifecycle
                     | ActionInboxSource::HrExit
                     | ActionInboxSource::HrRequests
             ) {
-                sources::audit_personnel::record(&self.pool, &self.principal, &page).await.map_err(|error| {
+                sources::audit_personnel::record(&self.pool, &self.principal, &mut page).await.map_err(|error| {
                     tracing::error!(source = ?source, support_reference = %self.support_reference, error = %error, "inbox source audit unavailable"); error
                 })?;
             }

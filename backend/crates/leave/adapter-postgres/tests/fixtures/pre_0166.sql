@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-Proprietary
 -- Remove later Person compatibility hooks before rehearsing only shipped 0166.
+DROP VIEW employment_unplaced_people;
 DROP VIEW person_employees_current;
 DROP TRIGGER person_bind_account ON users;
 DROP TRIGGER person_account_initial_facts ON users;

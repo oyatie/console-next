@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { clickCounter } from "./clicks";
 import { go, koDate, kstDate, registerEmployee } from "./flows";
@@ -8,31 +8,18 @@ import { koDay } from "./dates";
 import { chooseWorkbook } from "./helpers/import";
 import { workbook } from "./helpers/import-layouts";
 import { reasonChip } from "./helpers/lifecycle";
-import { koMonthDay, reasonBox, said, sheet, todayPreset, fillDate } from "./sheet";
-
-/** The bearer the page itself sends (kept in memory by the app), to change the record behind the page's back. */
-function bearerOf(page: Page) {
-  let bearer = "";
-  page.on("request", (r) => {
-    if (!r.url().includes("/api/v1/")) return;
-    // A request still in flight when the test ends cannot read its headers any more; it carries nothing we need.
-    r.allHeaders().then((h) => { if (h.authorization) bearer = h.authorization; }, () => {});
-  });
-  return () => bearer;
-}
+import { reasonBox, said, sheet, todayPreset, fillDate } from "./sheet";
 
 // The employee page (design §3): the history reads by effective date, a reservation can be changed or withdrawn,
-// verbs say why they are unavailable, an act the server does not offer opens nothing, and a home-branch write
-// that lost a race shows mine against current.
-test("employee page: effective-date history, change a reservation, home-branch conflict", { tag: "@hr" }, async ({ browser }) => {
+// verbs say why they are unavailable, an act the server does not offer opens nothing, and placement comes from the assignment.
+test("employee page: effective-date history, change a reservation, statutory placement", { tag: "@hr" }, async ({ browser }) => {
   test.setTimeout(240_000);
   const { admin, exec } = await staffedTenant(browser, "pgco", "기록주식회사");
-  const bearer = bearerOf(admin);
   const c = clickCounter();
-  // Registered while the tenant has one branch (it becomes the home branch); a second opens for the conflict in 4.
+  // Register in the tenant's first workplace, then add a second statutory workplace.
   await registerEmployee(admin, { name: "정기록", number: "PG-0001", hired: "2025-03-03", position: "사원" });
   const personPath = new URL(admin.url()).pathname;
-  // A 사업장 brings its own branch (regions retired, decisions #18): a second one, from the 법인's record.
+  // A second workplace is added from the legal entity record.
   await registerBranch(admin, "기록주식회사", "부산 지점", "0008512347");
   await go(admin, personPath);
   const head = admin.getByRole("heading", { name: /정기록/, level: 1 }).locator("..");
@@ -46,7 +33,7 @@ test("employee page: effective-date history, change a reservation, home-branch c
   // The mobile number reads in the domestic form for a manager (masked by default), never as the raw E.164 value; a
   // reader without manage is told the personal details are closed to them.
   const personal = admin.getByRole("region", { name: "인적사항" });
-  await expect(personal).toContainText("010-••••-6789");
+  await expect(personal).toContainText("010-••••-0001");
   await expect(personal).not.toContainText("+82");
   await openHistory(admin);
   const history = admin.getByRole("region", { name: "인사 이력" });
@@ -70,12 +57,12 @@ test("employee page: effective-date history, change a reservation, home-branch c
   await promote.getByRole("textbox", { name: /^새 직위/ }).fill("대리");
   const back = kstDate(-21);
   await fillDate(promote, back);
-  // A past date applies now, back-dated: red, and the sentence says so (challenge C2).
+  // A past date applies now, back-dated, and the effect sentence says so (challenge C2).
   await expect(promote).toContainText(said("정기록님을 {day}자로 소급해 사원에서 대리로 승진 처리합니다. 바로 반영됩니다. 잘못 기록했다면 인사 이력에서 정정하거나 철회합니다", back));
   await reasonChip(promote, "정기 승진").click();
   await reasonBox(promote).fill("소급 승진");
-  const backdated = promote.getByRole("button", { name: `${koMonthDay(back)}자 승진 처리 (지난 날짜)`, exact: true });
-  await expect(backdated).toHaveClass(/btn--danger/);
+  const backdated = promote.getByRole("button", { name: "승진 1명 반영", exact: true });
+  await expect(backdated).toBeEnabled();
   await backdated.click();
   const promoted = history.getByRole("listitem").filter({ hasText: "소급 승진" });
   await expect(promoted).toBeFocused();
@@ -107,7 +94,7 @@ test("employee page: effective-date history, change a reservation, home-branch c
   // BW-11: the change names the reservation it replaces, with the reason the history keeps.
   await c.click(reasonChip(change, "일정 변경", "변경 사유"));
   await expectAccessible(admin, "employee page: change a reservation");
-  const keep = change.getByRole("button", { name: `${koMonthDay(on)} 전보 예약 변경` });
+  const keep = change.getByRole("button", { name: "전보 1명 변경", exact: true });
   await expect(keep).toHaveClass(/btn--primary/);
   await c.click(keep);
   await expect(history.getByRole("listitem").filter({ hasText: "인사부 복귀 확정" })).toContainText("효력 예정");
@@ -125,8 +112,8 @@ test("employee page: effective-date history, change a reservation, home-branch c
   await notice.getByRole("button", { name: "알림 닫기" }).click();
   await expect(notice).toHaveCount(0);
 
-  // A placed person's branch follows their workplace; the free branch picker is only for unplaced records.
-  await expect(admin.getByRole("region", { name: "소속 지점" }).getByText("부산 지점", { exact: true })).toHaveCount(0);
+  await expect(place).toContainText("본사");
+  await expect(admin.getByRole("region", { name: "재직·배치" })).toContainText("본사");
   await go(admin, "/people/import");
   await chooseWorkbook(admin, "미배치.xlsx", await workbook([{ name: "주식회사 기록주식회사", lines: [
     ["사번", "성명", "부서", "직위", "입사일", "고용형태"],
@@ -139,33 +126,11 @@ test("employee page: effective-date history, change a reservation, home-branch c
   await go(admin, "/people");
   await admin.getByRole("rowheader", { name: "정미배치", exact: true }).click();
   await admin.getByRole("complementary", { name: "직원 상세" }).getByRole("link", { name: "인사카드 열기", exact: true }).click();
-  const unplacedPath = new URL(admin.url()).pathname;
-
-  // 4. Home branch: someone else changes the record between the read and the write (twice, ending where it was).
-  // The write is refused, the record is re-read, and the user keeps their pick against the current value.
-  const branchCard = admin.getByRole("region", { name: "소속 지점" });
-  if (!(await branchCard.innerText()).includes("현재 본사")) {
-    await branchCard.getByText("본사", { exact: true }).click();
-    await branchCard.getByRole("button", { name: "본사로 소속 지점 지정" }).click();
-  }
-  await expect(branchCard).toContainText("현재 본사");
-  await branchCard.getByText("부산 지점", { exact: true }).click(); // the segmented option's label (its input is visually hidden)
-  const id = unplacedPath.split("/").pop()!;
-  const api = (path: string, method = "GET", data?: object) => admin.request.fetch(`/api/v1${path}`, { method, headers: { authorization: bearer() }, data });
-  const branches = (await (await api("/branches")).json()) as { id: string; name: string }[];
-  for (const name of ["부산 지점", "본사"]) {
-    const { employee } = (await (await api(`/employees/${id}`)).json()) as { employee: { updated_at: string } };
-    const put = await api(`/employees/${id}/home-branch`, "PUT", { branch_id: branches.find((b) => b.name === name)!.id, expected_updated_at: employee.updated_at });
-    expect(put.ok(), await put.text()).toBe(true);
-  }
-  await branchCard.getByRole("button", { name: "부산 지점으로 소속 지점 지정" }).click();
-  await expect(branchCard.getByRole("alert")).toContainText("확인한 뒤 1개 항목이 바뀌어 아무것도 반영하지 않았습니다");
-  await expect(branchCard).toContainText("내 값");
-  await expect(branchCard).toContainText("본사");
-  await expectAccessible(admin, "employee page: home-branch conflict");
-  await branchCard.getByText("내 값 유지", { exact: true }).click();
-  await branchCard.getByRole("button", { name: "부산 지점으로 소속 지점 지정" }).click();
-  await expect(branchCard).toContainText("현재 부산 지점");
+  const job = admin.getByRole("region", { name: "재직·배치" });
+  await expect(job).toContainText("미배치");
+  await expect(admin.getByRole("region", { name: "소속 지점" })).toHaveCount(0);
+  await expect(admin.getByRole("button", { name: /소속 지점 지정/ })).toHaveCount(0);
+  await expectAccessible(admin, "employee page: unplaced assignment");
 
   await go(admin, personPath);
 

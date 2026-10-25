@@ -8,6 +8,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
+import { todayKst } from "../../../lib/pure/today";
+import { isDate } from "../../../ui/date/days";
 import { CommandError } from "../../../lib/react/command-error";
 import { inOrder } from "../../../lib/pure/in-order";
 import { QueryState } from "../../../lib/react/query-state";
@@ -30,6 +33,7 @@ import { usePlacePeople, type Held, type Placed } from "./use-place-people";
 import { personOf, useUnplacedQueue } from "./use-unplaced-queue";
 import { UnplacedDone } from "./unplaced-done";
 import { UnplacedRefused } from "./unplaced-refused";
+import { UnplacedWhen } from "./unplaced-when";
 import s from "./unplaced.module.css";
 
 type Employee = components["schemas"]["Employee"];
@@ -50,7 +54,11 @@ export function UnplacedPage() {
   const entities = entitiesQ.data?.items ?? [];
   const structureQ = useQuery({ ...orgStructureRef, retry: false });
   const roots = structureQ.data?.entities ?? [];
-  const setup = useQuery({ ...checklistRef, retry: false }).data?.phase === "SETUP";
+  const checklistQ = useQuery({ ...checklistRef, retry: false });
+  const setup = checklistQ.data?.phase === "SETUP";
+  const [date, setDate] = useState("");
+  const [invalidDate, setInvalidDate] = useState(false);
+  const today = todayKst();
   const all = (queue.data?.items ?? []).map(personOf);
   // The stored legal-entity order (as on the chart); people with no legal entity last.
   const ids = [...new Set(all.map((e) => e.legal_entity_id ?? NONE))];
@@ -84,12 +92,13 @@ export function UnplacedPage() {
   const top = options.find((o) => o.unit.id === suggestions[0]?.unit.id);
   const site = sites.find((o) => top?.workplaceId && o.workplaceId === top.workplaceId) ?? (sites.length === 1 ? sites[0] : undefined);
 
-  const placer = usePlacePeople(({ people, target }: Placed) => {
+  const placer = usePlacePeople(({ people, target, effectiveDate }: Placed) => {
     const unit = units.find((u) => u.id === target.unitId);
     const before = unit?.headcount ?? 0;
-    if (group) setPlacements((d) => [...d, { tab, value: group.value, people, place: pathOf(target.unitId) }]);
+    const scheduled = effectiveDate > today;
+    if (group && !scheduled) setPlacements((d) => [...d, { tab, value: group.value, people, place: pathOf(target.unitId) }]);
     setRecent((r) => [target.unitId, ...r.filter((x) => x !== target.unitId)].slice(0, 5));
-    setReceipt(t("unplaced.done", { value: sourceText(group?.value ?? ""), n: people.length, place: pathOf(target.unitId), before, after: before + people.length }));
+    setReceipt(scheduled ? t("unplaced.scheduled", { n: people.length, place: pathOf(target.unitId), date: fmtDate(effectiveDate) }) : t("unplaced.done", { value: sourceText(group?.value ?? ""), n: people.length, place: pathOf(target.unitId), before, after: before + people.length }));
     // Only the people just placed leave the pick: someone picked while it was being written stays picked.
     setSel((x) => new Set([...x].filter((id) => !people.some((p) => p.id === id))));
     setChosen("");
@@ -97,7 +106,7 @@ export function UnplacedPage() {
   }, setHeld);
   const place = (unitId: string) => {
     const o = options.find((x) => x.unit.id === unitId);
-    if (picked.length && o) placer.mutate({ people: picked, target: { unitId, entityId: o.entityId, workplaceId: o.workplaceId } });
+    if (picked.length && o && checklistQ.isSuccess && (setup || (isDate(date) && !invalidDate))) placer.mutate({ people: picked, target: { unitId, entityId: o.entityId, workplaceId: o.workplaceId }, setup, effectiveDate: setup ? today : date });
   };
   const move = (step: number) => (setG(Math.max(0, Math.min(groups.length - 1, g + step))), setSel(new Set()));
 
@@ -134,12 +143,12 @@ export function UnplacedPage() {
         tools={
           <>
             {/* Counted only from an answered queue: a refused read never reads as nobody left. */}
-            {queue.isSuccess && <span className={s.sum}>{t("unplaced.sum", { left: queue.data.count, parts, done: placedCount })}</span>}
+            <span className={s.sum} aria-busy={queue.isPending}>{queue.isSuccess ? <>{t("unplaced.sum", { left: queue.data.count, parts, done: placedCount })}<br />{t("unplaced.reasons", { workplaces: all.filter((p) => p.reason !== "unit_unknown").length, departments: all.filter((p) => p.reason === "unit_unknown").length })}</> : "—"}</span>
             <Link to="/people" search={{}} className={buttonClass("ghost")}>{t("unplaced.back")}</Link>
           </>
         }
       />
-<QueryState q={readGroup([queue, unitsQ, entitiesQ, structureQ])} layout="list">{() => <>      <CompanyMappings />
+<QueryState q={readGroup([queue, unitsQ, entitiesQ, structureQ, checklistQ])} layout="list">{() => <>      <div className={s.mappings}><CompanyMappings /></div>
       <div role="group" aria-label={t("unplaced.tabs")} className={s.tabs}>
         {tabs.map((x) => (
           <ToggleButton key={x} pressed={x === tab} onClick={() => (setTab(x), setG(0), setSel(new Set()))}>
@@ -156,6 +165,7 @@ export function UnplacedPage() {
               <UnplacedGroups groups={groups} done={tabDone} current={g} onPick={(i) => (setG(i), setSel(new Set()))} hint={(x) => { const a = suggest(x.value, options.map((o) => ({ unit: o.unit, text: placeText(units, o) })), []); const at = options.find((o) => o.unit.id === a[0]?.unit.id); return at ? t("unplaced.groupAlike", { name: at.site }) : t("unplaced.groupNone"); }} />
               <UnplacedRows group={group} sel={sel} onSel={setSel} done={tabDone} />
               <UnplacedTargets
+                when={!setup ? <UnplacedWhen today={today} value={date} onChange={setDate} onInvalid={setInvalidDate} /> : undefined}
                 where={t("unplaced.target.where", { entity: entity ? entityNameText(entity) : t("unplaced.noEntity"), value: sourceText(group?.value ?? "") })}
                 count={picked.length}
                 suggestions={suggestions}
@@ -166,7 +176,7 @@ export function UnplacedPage() {
                 onPlace={place}
                 onSite={site ? () => place(site.unit.id) : null}
                 onSkip={() => move(1)}
-                pending={placer.isPending}
+                pending={placer.isPending || (!setup && (!isDate(date) || invalidDate))}
                 entity={entity ? entityNameText(entity) : null}
                 value={sourceText(group?.value ?? "")}
               />
@@ -175,7 +185,7 @@ export function UnplacedPage() {
         }
 
       <CommandError error={placer.error} />
-      {held && <UnplacedRefused held={held} place={pathOf(held.target.unitId)} pending={placer.isPending} onRest={() => placer.mutate({ people: held.rest, target: held.target })} onCancel={() => setHeld(null)} />}
+      {held && <UnplacedRefused held={held} place={pathOf(held.target.unitId)} pending={placer.isPending} onRest={() => placer.mutate({ people: held.rest, target: held.target, setup: held.setup, effectiveDate: held.effectiveDate })} onCancel={() => setHeld(null)} />}
       {receipt && <div className={s.dock}><Receipt state="applied" message={receipt} onDismiss={() => setReceipt(null)} /></div>}
     </>}</QueryState>
     </div>

@@ -92,7 +92,8 @@ properties:
     description: Missing statutory register facts; complete them from the personnel card.
   home_branch_review_required:
     type: boolean
-    description: True when no active authoritative home branch is configured.
+    deprecated: true
+    description: Deprecated compatibility name for a missing current primary workplace placement.
   identity_resolution_strategy:
     type: string
     enum:

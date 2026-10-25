@@ -22,6 +22,15 @@ const card = (status: Card["e"]["status"], planned = false): Card => ({
 }) as unknown as Card;
 const head = (c: Card) => renderToStaticMarkup(<CardHead c={c} onTab={() => {}} onAct={() => {}} onGo={() => {}} onKeys={() => {}} />);
 
+test("a workplace placement without a department names the workplace in the breadcrumb", () => {
+  const c = card("ACTIVE");
+  c.e.workplace_id = "workplace";
+  c.place.workplace = "본사";
+  const html = head(c);
+  expect(html.slice(0, html.indexOf("</header>"))).not.toContain("미배치");
+  expect(html.slice(0, html.indexOf("</span><span class=\"grow\""))).toContain("본사");
+});
+
 test("the exited card head shows the first non-employed date", () => {
   expect(head(card("EXITED"))).toContain("2026. 11. 01.에 퇴직했습니다");
 });

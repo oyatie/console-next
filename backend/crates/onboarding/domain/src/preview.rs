@@ -206,6 +206,13 @@ pub fn preview(f: &SetupFacts, records: &Records) -> Preview {
         "place_people",
     );
 
+    warn(
+        f.unresolved_departments > 0,
+        "unresolved_departments",
+        f.unresolved_departments,
+        "assign_departments",
+    );
+
     let mut becomes_governed = vec![
         "org_structure_changes_need_approval",
         "entity_identifier_corrections_locked",

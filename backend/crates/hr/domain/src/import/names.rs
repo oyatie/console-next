@@ -48,6 +48,21 @@ pub fn org_name_key(text: &str) -> String {
         .collect()
 }
 
+/// A unique exact or normalized association; suffix/path similarities need an operator.
+#[must_use]
+pub fn bound_name(text: &str, index: &BTreeMap<String, Vec<Uuid>>) -> Option<Uuid> {
+    if let Some(ids) = index.get(text) {
+        return (ids.len() == 1).then(|| ids[0]);
+    }
+    let key = org_name_key(text);
+    let ids: std::collections::BTreeSet<_> = index
+        .iter()
+        .filter(|(name, _)| org_name_key(name) == key)
+        .flat_map(|(_, ids)| ids.iter().copied())
+        .collect();
+    (ids.len() == 1).then(|| ids.into_iter().next()).flatten()
+}
+
 /// The key without one trailing suffix (`평택공장` → `평택`); never empty.
 fn base(key: &str) -> &str {
     SUFFIXES

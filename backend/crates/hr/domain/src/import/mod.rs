@@ -4,6 +4,8 @@
 pub mod classification;
 pub mod company_review;
 pub mod fields;
+pub mod fields_org;
+mod fields_place;
 pub mod pii;
 pub mod rollback;
 pub mod rrn;

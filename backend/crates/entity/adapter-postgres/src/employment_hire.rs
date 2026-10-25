@@ -110,6 +110,23 @@ pub async fn open_workplaces(
     .map_err(internal)
 }
 
+/// Initial placement starts at hire or the foundation objects' opening, whichever is later.
+///
+/// # Errors
+/// Internal on a database fault.
+pub async fn initial_placement_start(
+    conn: &mut PgConnection,
+    workplace: Uuid,
+    hire: Date,
+) -> Result<Date, KernelError> {
+    let opened: Option<Date> = sqlx::query_scalar("SELECT entity_workplace_opens_on($1)")
+        .bind(workplace)
+        .fetch_one(conn)
+        .await
+        .map_err(internal)?;
+    Ok(opened.map_or(hire, |opened| hire.max(opened)))
+}
+
 /// Place the person at the open 사업장 `workplace` from `from`, open-ended.
 /// The cause is `SETUP_BIND` while the tenant is in SETUP, `HIRE` after.
 ///

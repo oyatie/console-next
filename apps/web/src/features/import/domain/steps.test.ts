@@ -1,24 +1,8 @@
 import { describe, expect, it, test } from "vitest";
-import type { ImportDryRun, ImportPreview, ImportRow } from "./contract";
-import { answerOf, applyBlockers, filterRows, initialPicks, isAnsweredPattern, NEW_PERSON, NONE, picksPending, reasonsMissing, siteNoticeColumns, tally, withChoice, withGroupAnswer, withNumber, withRowAnswer, withValue } from "./steps";
+import type { ImportDryRun, ImportRow } from "./contract";
+import { answerOf, applyBlockers, filterRows, initialPicks, isAnsweredPattern, NEW_PERSON, NONE, picksPending, reasonsMissing, tally, withChoice, withGroupAnswer, withNumber, withRowAnswer, withValue } from "./steps";
 import { workbookKind } from "./workbook";
 
-const preview = (columns: ImportPreview["columns"]): ImportPreview => ({
-  run_id: "r1",
-  entity_type: "employee_hr",
-  source_filename: "roster.xlsx",
-  source_sha256: "a".repeat(64),
-  input_rows: 3,
-  candidate_rows: 3,
-  preserved_rows: 0,
-  columns,
-  sample_rows: [],
-  mapping_profile: {},
-  sheets: [],
-  sheets_needing_mapping: 0,
-  available_targets: [],
-  sealed_identities: 0,
-});
 const row = (over: Partial<ImportRow>): ImportRow => ({ source_key: `k${over.row ?? 2}`, sheet: "A", row: 2, name: "n", outcome: "insert", ...over });
 const dry = (over: Partial<ImportDryRun> = {}): ImportDryRun => ({
   run_id: "r1",
@@ -44,16 +28,6 @@ const dry = (over: Partial<ImportDryRun> = {}): ImportDryRun => ({
   unplaced: { rows: 0, by_reason: {} },
   phone_unstored_rows: 0,
   ...over,
-});
-
-describe("preview", () => {
-  it("names the columns the server read as a customer site", () => {
-    const cols = [
-      { source_header: "사업장", normalized_header: "사업장", target: "worksite_name", classification: "canonical", preview_allowed: true, notice: "customer_site_not_workplace" },
-      { source_header: "성명", normalized_header: "성명", target: "name", classification: "canonical", preview_allowed: true },
-    ] as ImportPreview["columns"];
-    expect(siteNoticeColumns(preview(cols))).toEqual(["사업장"]);
-  });
 });
 
 describe("dry run answers", () => {

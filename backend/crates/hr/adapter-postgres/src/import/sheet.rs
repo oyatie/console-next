@@ -19,7 +19,6 @@ use console_hr_domain::import::roster_cells::{import_phone, is_summary_row};
 use console_hr_domain::import::rrn::is_rrn_value;
 use console_hr_domain::import::rrn_value::{Rrn, RrnVault, SealedRrn};
 use console_hr_domain::import::sex::{sex_of_rrn, sex_of_text};
-use console_hr_domain::import::workbook::header_notice;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
@@ -91,7 +90,8 @@ fn column(plan: &ColumnPlan, key: &str) -> EmployeeImportColumn {
         target: plan.target.map(ToOwned::to_owned),
         preview_allowed: classification == "canonical" || classification == "retained",
         classification: classification.to_owned(),
-        notice: header_notice(key),
+        notice: None,
+        place_reading_required: None,
     }
 }
 
@@ -116,11 +116,13 @@ fn canonical(row: &GridRow, t: &Targets<'_>, rrn_sex: Option<&str>) -> EmployeeC
     let decimal = |target: &str| text(target).and_then(|v| normalized_decimal_text(&v));
     let exit_date = text("exit_date");
     EmployeeCanonicalFields {
+        place_targets_split: true,
         company_brn: text("company_brn"),
         employee_number: text("employee_number").and_then(|v| employee_number(&v)),
         org_unit: text("org_unit"),
         job: text("job"),
         position: text("position"),
+        workplace: text("workplace"),
         worksite_name: text("worksite_name"),
         worksite_address: text("worksite_address"),
         hire_date: text("hire_date"),

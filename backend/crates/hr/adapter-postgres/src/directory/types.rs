@@ -64,6 +64,7 @@ pub struct EmployeeResponse {
     pub home_branch_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub home_branch_name: Option<String>,
+    /// Deprecated compatibility name: no current primary assignment to a workplace.
     pub home_branch_review_required: bool,
     pub register_review_required: bool,
     pub identity_resolution_strategy: String,

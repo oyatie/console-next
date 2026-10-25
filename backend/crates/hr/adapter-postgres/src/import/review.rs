@@ -75,7 +75,7 @@ pub async fn remembered_for_run(
         stored.iter().filter_map(pick).cloned().collect()
     };
     let units = texts(|r| r.canonical.org_unit.as_ref());
-    let places = texts(|r| r.canonical.worksite_name.as_ref());
+    let places = texts(|r| r.canonical.workplace_text());
     let kinds = texts(|r| r.canonical.employment_type.as_ref());
     let statuses = texts(|r| r.canonical.status.as_ref());
     let mut leaves = texts(|r| r.canonical.leave_type.as_ref());

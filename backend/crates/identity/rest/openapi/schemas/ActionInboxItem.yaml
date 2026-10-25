@@ -50,6 +50,7 @@ properties:
     - insurance_filing
     - identity_review
     - home_branch_review
+    - unplaced
     - contract_renewal
     - period_unlock
     - grant_notice
@@ -109,6 +110,22 @@ properties:
     type: object
     description: Source-owned facts for the row's command and informed grant confirmation.
     properties:
+      worksite_name:
+        type: string
+        description: Optional physical work site, separate from the statutory placement path.
+      review_count:
+        type: integer
+        minimum: 0
+        description: Total visible records for this review kind, under the same reach and snapshot.
+      register:
+        type: object
+        required: [missing_fields]
+        properties:
+          missing_fields:
+            type: array
+            items:
+              type: string
+              x-extensible-enum: [birth, job, hire, contractEnd, sex, address, career]
       correction:
         type: object
         required: [status]

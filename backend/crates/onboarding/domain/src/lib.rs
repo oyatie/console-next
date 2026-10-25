@@ -56,6 +56,7 @@ pub struct SetupFacts {
     pub employees_starting_later: i64,
     pub employees_step_deferred: bool,
     pub unplaced_people: i64,
+    pub unresolved_departments: i64,
     pub entity_unknown_people: i64,
     pub tenant_roles: i64,
     pub grants_effective_in_setup: i64,

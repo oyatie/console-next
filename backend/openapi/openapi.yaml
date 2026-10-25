@@ -9596,9 +9596,11 @@ paths:
     put:
       tags:
         - employees
+      deprecated: true
       operationId: setEmployeeHomeBranch
       summary: Assign an employee's authoritative home branch
       description: >-
+        N-1 compatibility only; current consoles derive routing from the effective placement.
         Audited explicit assignment; the server never infers a branch from user
         memberships. The target branch must be active and in the same tenant.
         Reassignment requires EmployeeDirectoryManage for both the prior and new
@@ -30195,6 +30197,7 @@ paths:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       tags: [entity]
+      deprecated: true
       operationId: listWorkplaces
       security:
       - bearerAuth: []
@@ -32595,6 +32598,7 @@ components:
           - insurance_filing
           - identity_review
           - home_branch_review
+          - unplaced
           - contract_renewal
           - period_unlock
           - grant_notice
@@ -32654,6 +32658,22 @@ components:
           type: object
           description: Source-owned facts for the row's command and informed grant confirmation.
           properties:
+            worksite_name:
+              type: string
+              description: Optional physical work site, separate from the statutory placement path.
+            review_count:
+              type: integer
+              minimum: 0
+              description: Total visible records for this review kind, under the same reach and snapshot.
+            register:
+              type: object
+              required: [missing_fields]
+              properties:
+                missing_fields:
+                  type: array
+                  items:
+                    type: string
+                    x-extensible-enum: [birth, job, hire, contractEnd, sex, address, career]
             correction:
               type: object
               required: [status]
@@ -39454,7 +39474,8 @@ components:
           description: Missing statutory register facts; complete them from the personnel card.
         home_branch_review_required:
           type: boolean
-          description: True when no active authoritative home branch is configured.
+          deprecated: true
+          description: Deprecated compatibility name for a missing current primary workplace placement.
         identity_resolution_strategy:
           type: string
           enum:
@@ -40143,6 +40164,8 @@ components:
               format: int64
             home_branch_review_required:
               type: integer
+              deprecated: true
+              description: Compatibility count of people without a current workplace placement.
               format: int64
             lifecycle_apply_failed:
               type: integer
@@ -40255,6 +40278,7 @@ components:
           - org_unit
           - job
           - position
+          - workplace
           - worksite_name
           - worksite_address
           - hire_date
@@ -40277,6 +40301,13 @@ components:
           - location
         preview_allowed:
           type: boolean
+        notice:
+          type: [string, 'null']
+          deprecated: true
+          description: Legacy column notes. New placement questions do not use this field.
+        place_reading_required:
+          type: boolean
+          description: The column needs an operator choice between a statutory workplace and a physical work site.
     EmployeeImportCompanyConfirmation:
       type: object
       required: [value, source_column, cell, registration_number, candidates, confirmed_employer]
@@ -41513,6 +41544,9 @@ components:
               source_org_unit:
                 type: [string, 'null']
                 description: The 부서 text the import file named that bound nothing (원본 부서).
+              source_workplace:
+                type: [string, 'null']
+                description: The statutory 사업장 text the import file named that bound nothing, separate from the physical site.
               reason:
                 type: string
                 enum: [no_place, workplace_unknown, unit_unknown]
@@ -57808,6 +57842,9 @@ components:
           type: integer
           format: int64
           description: The caller's own passkeys; with one, a lost device ends the account.
+        unresolved_departments:
+          type: integer
+          format: int64
         unplaced_people:
           type: integer
           format: int64

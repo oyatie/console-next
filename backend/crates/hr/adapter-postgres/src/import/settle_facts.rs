@@ -12,7 +12,7 @@
 //! Each write is skipped when already there, so a replayed settle (a second
 //! apply, or one after a failure here) completes the run without doubling.
 
-use console_entity_adapter_postgres::employment_hire::hire_in_tx;
+use console_entity_adapter_postgres::employment_hire::{hire_in_tx, initial_placement_start};
 use console_entity_adapter_postgres::employment_moves::MoveWrite;
 use console_hr_domain::text::parse_yyyy_mm_dd;
 use serde_json::{Value, json};
@@ -178,11 +178,9 @@ async fn place(
         actor_id: actor,
         command_id,
     };
-    let opened: Option<time::Date> = sqlx::query_scalar("SELECT entity_workplace_opens_on($1)")
-        .bind(workplace)
-        .fetch_one(tx.as_mut())
-        .await?;
-    let from = opened.map_or(hire, |opened| hire.max(opened));
+    let from = initial_placement_start(tx.as_mut(), workplace, hire)
+        .await
+        .map_err(coded)?;
     match hire_in_tx(tx.as_mut(), write, workplace, from).await {
         Ok(_) => Ok(Some(
             sqlx::query_scalar(

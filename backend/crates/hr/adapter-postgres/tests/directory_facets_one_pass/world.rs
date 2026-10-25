@@ -4,7 +4,7 @@ use console_kernel_core::UserId;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-async fn seed(pool: &PgPool, sql: String) {
+pub async fn seed(pool: &PgPool, sql: String) {
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("SET LOCAL session_replication_role = replica")
         .execute(tx.as_mut())
@@ -24,10 +24,16 @@ pub struct World {
     pub branch: Uuid,
     pub entities: [Uuid; 2],
     pub workplaces: [Uuid; 2],
+    pub people: Vec<Uuid>,
 }
 
 /// Fourteen people spread over every value each facet group reads.
 pub async fn world(pool: &PgPool, org: Uuid, actor: UserId) -> World {
+    world_count(pool, org, actor, 14).await
+}
+
+/// The same facet fixture at a caller-selected capacity.
+pub async fn world_count(pool: &PgPool, org: Uuid, actor: UserId, count: usize) -> World {
     let (region, branch, other_branch) = (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
     let entities = [Uuid::new_v4(), Uuid::new_v4()];
     let workplaces = [Uuid::new_v4(), Uuid::new_v4()];
@@ -53,8 +59,10 @@ pub async fn world(pool: &PgPool, org: Uuid, actor: UserId) -> World {
         "ACTIVE", "ACTIVE", "ON_LEAVE", "EXITED", "PRE_HIRE", "ACTIVE", "EXITED",
     ];
     let types = [Some("REGULAR"), Some("CONTRACT"), Some("PART_TIME"), None];
-    for n in 0..14_usize {
+    let mut people = Vec::with_capacity(count);
+    for n in 0..count {
         let id = Uuid::new_v4();
+        people.push(id);
         let status = statuses[n % statuses.len()];
         let home = match n % 3 {
             0 => format!("'{branch}'"),
@@ -133,5 +141,24 @@ pub async fn world(pool: &PgPool, org: Uuid, actor: UserId) -> World {
         branch,
         entities,
         workplaces,
+        people,
     }
+}
+
+/// Pre-import-routing shape: every current placement has a NULL routing copy.
+pub async fn place_except_last(pool: &PgPool, w: &World) {
+    let org = w.org;
+    let entity = w.entities[0];
+    let workplace = w.workplaces[0];
+    let missing = w.people.last().unwrap();
+    seed(pool, format!(
+        "UPDATE employees SET employment_status='ACTIVE', home_branch_id=NULL, org_unit_id=NULL, \
+           source_metadata='{{}}' WHERE org_id='{org}'; \
+         DELETE FROM employee_lifecycle_events WHERE org_id='{org}'; \
+         DELETE FROM employment_assignments WHERE org_id='{org}'; \
+         INSERT INTO employment_assignments (org_id,employee_id,legal_entity_id,workplace_id, \
+           valid_from,cause,command_id) \
+         SELECT '{org}',id,'{entity}','{workplace}',entity_today()-1,'MIGRATION',gen_random_uuid() \
+         FROM employees WHERE org_id='{org}' AND id<>'{missing}';"
+    )).await;
 }
