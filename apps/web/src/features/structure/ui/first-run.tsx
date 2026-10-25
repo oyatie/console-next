@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ClipboardPaste, MapPin, Network, Plus, Upload } from "lucide-react";
+import { MapPin, Network, Plus, Upload } from "lucide-react";
 import { t } from "@console/i18n";
 import css from "./first-run.module.css";
 
@@ -28,9 +28,7 @@ export function FirstRun() {
           <div className={css.card}>
             <h3>{t("structure.first.bulkTitle")}</h3>
             <p className="muted">{t("structure.first.bulkBody")}</p>
-            <Link to="/org/import" className="btn btn--primary"><Upload size={16} aria-hidden />{t("structure.first.importSheet")}</Link>
-            <Link to="/org/paste" className="btn"><ClipboardPaste size={16} aria-hidden />{t("orgBulk.links.paste")}</Link>
-            <Link to="/people/import" className="btn"><ClipboardPaste size={16} aria-hidden />{t("structure.first.roster")}</Link>
+            <Link to="/org" search={true} hash="structure-import" className="btn"><Upload size={16} aria-hidden />{t("structure.import.label")}</Link>
           </div>
         </div>
       </div>

@@ -127,5 +127,7 @@ mod support;
 
 #[macro_use]
 mod nts;
+#[macro_use]
+mod orgchange;
 
-roster!([] found, pa_ent, ent_capture, emp_record, people_a, d26, import2, mig, perf, attendance, ops_recovery, display, support, nts);
+roster!([] found, pa_ent, ent_capture, emp_record, people_a, d26, import2, mig, perf, attendance, ops_recovery, display, support, nts, orgchange);

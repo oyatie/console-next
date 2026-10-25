@@ -4,6 +4,9 @@ import { getRouteApi } from "@tanstack/react-router";
 import { Network } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { readGroup } from "../../../lib/react/query-view";
+import { QueryState } from "../../../lib/react/query-state";
+import { scheduledUnitChangesQuery } from "../api";
 import { get } from "../../../lib/query";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
@@ -15,10 +18,8 @@ import { DeptActions } from "./dept-actions";
 import { DeptDetails } from "./dept-details";
 import { OrderButtons } from "../../../reference/org/ui/order-buttons";
 import { Members } from "../../../reference/org/ui/structure-members";
-import { CorOnly, Facts, PanelShell, Sec, Stats } from "../../../reference/org/ui/panel-shell";
-import { DeptNameInline } from "../../../reference/org/ui/dept-name-inline";
-import { RowActions } from "../../../ui/record-actions/record-actions";
-import { focusSoon } from "../../../lib/react/announce";
+import { Facts, PanelShell, Sec, Stats } from "../../../reference/org/ui/panel-shell";
+import { unitCounts } from "../../../reference/org/present";
 import css from "../../../reference/org/ui/structure.module.css";
 import { Muted } from "../../../ui/muted/muted";
 
@@ -33,17 +34,14 @@ export function DeptPanel({ place, setup, onClose, as_of, known_at, readOnly = f
   const n = place.node;
   const detail = useQuery(get("/api/v1/org-units/{id}", { params: { path: { id: n.id } } }));
   const units = useQuery(unitsQuery);
+  const scheduled = useQuery({ ...scheduledUnitChangesQuery(n.id), enabled: !known_at });
+  const timeline = readGroup(known_at ? [detail, units] : [detail, units, scheduled]);
   const revisions = (detail.data?.revisions ?? []).filter((r) => (!as_of || r.effectiveFrom <= as_of) && (!known_at || Date.parse(r.createdAt) <= Date.parse(known_at)));
   const since = revisions.map((r) => r.effectiveFrom).sort()[0];
   const parent = place.parent!;
   const sub = depts(n);
   const select = (id: string) => navigate({ search: (s) => ({ ...s, sel: id, act: undefined }) });
   const [details, setDetails] = useState(false);
-  const [renaming, setRenaming] = useState(false);
-  // CRUD: head and code are set at once in either phase (PUT …/details; after go-live a governed change).
-  const fix = (field: "head" | "code") => !readOnly && (
-    <Button variant="ghost" className="btn--sm" id={`act-dept-${field}`} onClick={() => setDetails(true)} aria-label={t("orgStructure.fixOf", { field: t(`orgUnit.fact.${field}`) })}>{t("orgStructure.fix")}</Button>
-  );
   const h = n.head;
   return (
     <PanelShell
@@ -56,15 +54,14 @@ export function DeptPanel({ place, setup, onClose, as_of, known_at, readOnly = f
         ...(!readOnly ? [{ id: "dept-actions", label: t("orgStructure.tab.actions") }] : []),
         { id: "dept-members", label: t("orgUnit.tab.members", { count: n.headcount }) },
         // org-17: the tab counts the lines its list shows (one per change), never raw revisions.
-        { id: "dept-history", label: t("orgStructure.tab.history", { count: historyLines(revisions).length }) },
+        { id: "dept-history", label: t("orgStructure.tab.history", { count: historyLines(revisions).length + (known_at ? 0 : scheduled.data?.length ?? 0) }) },
       ]}
       onClose={onClose}
     >
       <Sec id="dept-basic" title={t("orgStructure.tab.basic")}>
         <Stats
           items={[
-            { label: t("orgUnit.stat.total"), value: n.headcount },
-            { label: t("orgUnit.stat.direct"), value: direct(n) },
+            { label: t("structure.list.people"), value: unitCounts(n) },
             { label: t("orgUnit.stat.sub"), value: sub.length },
             { label: t("orgUnit.fact.head"), value: h?.name ?? t("orgUnit.head.vacant"), name: true },
           ]}
@@ -72,30 +69,26 @@ export function DeptPanel({ place, setup, onClose, as_of, known_at, readOnly = f
         <Facts
           rows={[
             {
-              // The name on its own row with its edit (record-actions §3): in setup typed in place, after go-live a proposal.
               label: t("orgUnit.fact.name"),
-              value: !readOnly && renaming ? <DeptNameInline parent={parent} unit={n} onDone={() => setRenaming(false)} /> : n.name,
-              act: !readOnly && !renaming && <RowActions field={t("orgUnit.fact.name")} onEdit={() => (setup ? setRenaming(true) : navigate({ search: (x) => ({ ...x, act: "dept-rename" }) }))} path={setup ? "setup" : "approval"} history={() => (document.getElementById("dept-history")?.scrollIntoView({ block: "start" }), focusSoon("dept-history-h"))} />,
+              value: n.name,
             },
             {
               label: t("orgUnit.fact.parent"),
               value: <>{parent.name} <Muted>· {t(parent.kind === "WORKPLACE" ? "orgUnit.fact.underSite" : "orgUnit.fact.underDept")}</Muted></>,
-              act: !readOnly && <Button variant="ghost" className="btn--sm" id="act-dept-move" onClick={() => navigate({ to: "/org/move", search: { ids: n.id } })}>{t("orgUnit.act.move")}</Button>,
             },
             { label: t("orgUnit.fact.place"), value: <>{place.entity.name} · {place.workplace?.name} <Muted>{t("orgUnit.fact.derived")}</Muted></> },
             {
               label: t("orgUnit.fact.head"),
               value: h ? <>{h.name}{h.concurrent && ` ${t("orgUnit.head.concurrent")}`}{h.since && <Muted> · {t("orgUnit.head.since", { date: fmtDate(h.since) })}</Muted>}</> : <Muted>{t("orgUnit.head.vacant")}</Muted>,
-              act: fix("head"),
             },
-            { label: t("orgUnit.fact.code"), value: n.code ? <span className="num">{n.code}</span> : <Muted>{t("orgUnit.code.none")}</Muted>, act: fix("code") },
-            { label: t("orgUnit.fact.since"), value: <span className="num">{since ? fmtDate(since) : "—"}</span>, act: !readOnly && <CorOnly /> },
+            { label: t("orgUnit.fact.code"), value: n.code ? <span className="num">{n.code}</span> : <Muted>{t("orgUnit.code.none")}</Muted> },
+            { label: t("orgUnit.fact.since"), value: <><span className="num">{since ? fmtDate(since) : "—"}</span>{!readOnly && <> <Muted>{t("orgStructure.corOnly")}</Muted></>}</> },
           ]}
         />
-        {!readOnly && details && <DeptDetails node={n} onDone={() => setDetails(false)} />}
       </Sec>
       {!readOnly && <Sec id="dept-actions" title={t("orgStructure.tab.actions")}>
         <DeptActions place={place} setup={setup} />
+        {details ? <DeptDetails node={n} onDone={() => setDetails(false)} /> : <Button variant="ghost" className={css.actBtn} id="act-dept-details" onClick={() => setDetails(true)}>{t("orgUnit.details.title")}</Button>}
       </Sec>}
       {sub.length > 0 && (
         <Sec id="dept-sub" title={t("orgUnit.sub", { count: sub.length })}>
@@ -115,7 +108,7 @@ export function DeptPanel({ place, setup, onClose, as_of, known_at, readOnly = f
         <Members unitId={n.id} total={n.headcount} expected={direct(n)} as_of={as_of} known_at={known_at} />
       </Sec>
       <Sec id="dept-history" title={t("entity.history.title")}>
-        {detail.data && <UnitHistory revisions={revisions} units={units.data?.items ?? []} open />}
+        <QueryState q={timeline} layout="list">{() => <UnitHistory revisions={revisions} units={units.data?.items ?? []} scheduled={known_at ? [] : scheduled.data} open />}</QueryState>
       </Sec>
     </PanelShell>
   );

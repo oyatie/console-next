@@ -211,8 +211,6 @@
   "unused-export:apps/web/src/features/structure/domain/layout.ts:Lod": 1,
   "unused-export:apps/web/src/features/structure/domain/model.ts:childKind": 1,
   "unused-export:apps/web/src/features/structure/domain/model.ts:Phase": 1,
-  "unused-export:apps/web/src/features/structure/domain/paste.ts:PastedLine": 1,
-  "unused-export:apps/web/src/features/structure/domain/paste.ts:PasteProblem": 1,
   "unused-export:apps/web/src/features/structure/domain/rules.ts:canDrop": 1,
   "unused-export:apps/web/src/features/structure/domain/search.ts:Hits": 1,
   "unused-export:apps/web/src/features/structure/ui/use-structure-commands.ts:Applied": 1,

@@ -1,48 +1,63 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { CalendarClock, ChevronRight, Network } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
-import { ORG_CHANGE_STATUS, labeled } from "../../../lib/labels";
+import { ORG_CHANGE_STATUS, actor, labeled } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
-import { Check, ToggleButton } from "../../../ui/button/button";
+import { Button, Check, ToggleButton } from "../../../ui/button/button";
+import { SectionHead } from "../../../ui/card/section-head";
 import { Chip } from "../../../ui/chip";
+import { DateInput } from "../../../ui/date/date-input";
+import { Field } from "../../../ui/field/field";
+import { SelectInput } from "../../../ui/field/select-input";
 import { Table, type Column } from "../../../ui/table";
 import { QueryState } from "../../../lib/react/query-state";
+import { readGroup } from "../../../lib/react/query-view";
 import { changesQuery, entityBatchesQuery, me, orgBatchesQuery, structureQuery } from "../api";
-import { feedRows, scheduled, unitNames, type FeedRow } from "../domain/feed";
+import { feedRows, filterRows, scheduled, unitNames, type FeedRow } from "../domain/feed";
+import { historyActions, historyKind, historyMode } from "../present";
 import { UndoCell } from "./undo-cell";
+import bulk from "./bulk.module.css";
 import s from "./history.module.css";
 
 const SOURCES = ["all", "org", "entity", "change"] as const;
 type Source = (typeof SOURCES)[number];
 
-/** S9 org chart change history: every setup batch and governed change, newest first, each with its undo or why not. */
+/** S9 org chart history: recorded actions and actors, with undo only where the server permits it. */
 export function HistoryPage() {
+  const dateId = useId();
   const org = useQuery(orgBatchesQuery);
   const entity = useQuery(entityBatchesQuery);
   const changes = useQuery(changesQuery);
   const tree = useQuery(structureQuery);
   const [source, setSource] = useState<Source>("all");
   const [undoable, setUndoable] = useState(false);
-  const all = { isPending: org.isPending || entity.isPending || changes.isPending, error: org.error ?? entity.error ?? changes.error, data: org.data && entity.data && changes.data ? true : undefined, refetch: () => Promise.all([org.refetch(), entity.refetch(), changes.refetch()]) };
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [actorId, setActorId] = useState("");
+  const reset = () => { setSource("all"); setUndoable(false); setFrom(""); setTo(""); setActorId(""); };
+  const filtered = source !== "all" || undoable || from || to || actorId;
+  const all = readGroup([org, entity, changes, tree]);
   const names = useMemo(() => unitNames(tree.data?.entities ?? []), [tree.data]);
   const today = todayKst();
   return (
     <div className="page">
       <header className={s.head}>
-        <span className={s.crumb}>
+        <nav className={s.crumb} aria-label={t("orgHistory.crumbHere")}>
           <Network size={14} aria-hidden />
           <Link to="/org" search={{}}>{t("orgHistory.crumb")}</Link>
           <ChevronRight size={14} aria-hidden /> {t("orgHistory.crumbHere")}
-        </span>
+        </nav>
         <h1 className="page__title">{t("orgHistory.title")}</h1>
       </header>
       <QueryState q={all}>
         {() => {
           const rows = feedRows({ org: org.data!.items, entity: entity.data!.items, changes: changes.data!.items, nameOf: (id) => names.get(id), me: me() });
-          const shown = rows.filter((r) => (source === "all" || r.source === source) && (!undoable || "batchId" in r.undo));
+          const shown = filterRows(rows, { source, undoable, from, to, actorId });
+          const actors = [...new Map(rows.flatMap(r => r.actor?.id ? [[r.actor.id, actor(r.actor.name)] as const] : [])).entries()];
+          const filters = [source !== "all" && t(`orgHistory.filter.source.${source}`), undoable && t("orgHistory.filter.undoable"), from && fmtDate(from), to && fmtDate(to), actorId && actors.find(([id]) => id === actorId)?.[1]].filter(Boolean).join(" · ");
           const next = scheduled(changes.data!.items, today);
           return (
             <>
@@ -53,16 +68,34 @@ export function HistoryPage() {
                   <Link to="/org/changes" search={{ view: "ready" }} className="btn">{t("orgHistory.scheduledOpen")}</Link>
                 </div>
               )}
+              <SectionHead level={2}>{t("orgHistory.filter.scope")}</SectionHead>
               <div className={s.filters}>
                 <div role="group" aria-label={t("orgHistory.filter.source")} className="tabs">
                   {SOURCES.map((k) => <ToggleButton key={k} pressed={source === k} onClick={() => setSource(k)}>{t(`orgHistory.filter.source.${k}`)}</ToggleButton>)}
                 </div>
                 <Check checked={undoable} onChange={setUndoable}>{t("orgHistory.filter.undoable")}</Check>
+                <div className={s.who}>
+                  <label htmlFor={`${dateId}-from`}>{t("orgHistory.filter.from")}</label>
+                  <DateInput id={`${dateId}-from`} required={false} value={from} onChange={setFrom} today={today} max={to || today} />
+                </div>
+                <div className={s.who}>
+                  <label htmlFor={`${dateId}-to`}>{t("orgHistory.filter.to")}</label>
+                  <DateInput id={`${dateId}-to`} required={false} value={to} onChange={setTo} today={today} min={from || undefined} max={today} />
+                </div>
+                <Field label={t("orgHistory.filter.actor")} required={null}>
+                  {p => <SelectInput {...p} value={actorId} onChange={e => setActorId(e.target.value)}>
+                    <option value="">{t("orgHistory.filter.actorAll")}</option>
+                    {actors.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                  </SelectInput>}
+                </Field>
+                {filtered && <Button variant="ghost" onClick={reset}>{t("orgHistory.filter.reset")}</Button>}
               </div>
               {shown.length ? (
-                <Table label={t("orgHistory.title")} rows={shown} rowId={(r) => r.id} columns={columns()} />
+                <div className={bulk.scrollX} role="region" aria-label={t("orgHistory.title")}>
+                  <Table label={t("orgHistory.title")} rows={shown} rowId={(r) => r.id} columns={columns()} />
+                </div>
               ) : (
-                <p className="muted" role="status">{rows.length ? t("orgHistory.emptyFiltered") : t("orgHistory.empty")}</p>
+                <p className="muted" role="status">{rows.length ? t("orgHistory.emptyFiltered", { filters }) : t("orgHistory.empty")}</p>
               )}
               <p className="muted">{t("orgHistory.foot", { count: rows.length })}</p>
             </>
@@ -75,30 +108,30 @@ export function HistoryPage() {
 
 /** What a row is about, in words: the units still standing, or how many there were. */
 function targetText(r: FeedRow) {
-  if (r.source === "entity") return t("orgHistory.target.records", { count: r.count });
+  if (r.source === "entity") return r.units.length ? t("orgHistory.target.units", { names: r.units.slice(0, 2).join(", "), more: r.count - Math.min(2, r.units.length) }) : t("orgHistory.target.records", { count: r.count });
   if (r.source === "change") return r.change!.label;
   return r.units.length ? t("orgHistory.target.units", { names: r.units.slice(0, 2).join(", "), more: r.count - Math.min(2, r.units.length) }) : t("orgHistory.target.unitsGone", { count: r.count });
 }
 
 const columns = (): Column<FeedRow>[] => [
-  { header: t("orgHistory.col.at"), fit: true, cell: (r) => <span className="num">{fmtDateTime(r.at)}</span> },
+  { header: t("orgHistory.col.at"), fit: true, cell: (r) => <time className="num" dateTime={r.at}>{fmtDateTime(r.at)}</time> },
   { header: t("orgHistory.col.target"), cell: (r) => <strong>{targetText(r)}</strong> },
   {
     header: t("orgHistory.col.kind"),
     fit: true,
     cell: (r) => {
-      if (r.source !== "change") return <Chip tone={r.kind === "UNDO" ? "neutral" : "info"}>{t(`orgHistory.kind.${r.kind as "APPLY" | "UNDO"}`)}</Chip>;
+      if (r.source !== "change") return <Chip tone={r.kind === "UNDO" ? "neutral" : "info"}>{historyKind(r)}</Chip>;
       const l = labeled(ORG_CHANGE_STATUS, r.kind);
-      return <Chip tone={l.tone}>{l.label}</Chip>;
+      return <Chip tone={l.tone}>{historyKind(r)}</Chip>;
     },
   },
   {
     header: t("orgHistory.col.who"),
     cell: (r) => (
-      <span className={s.who}>
-        <span>{r.actor ? (r.actor.mine ? t("orgHistory.who.me") : (r.actor.name ?? t("orgHistory.who.other"))) : t("orgHistory.who.unknown")}</span>
-        <span className="muted">{r.source === "change" ? t("orgHistory.how.change", { code: r.change!.code, date: fmtDate(r.change!.effectiveDate) }) : t(`orgHistory.how.${r.source}`)}</span>
-      </span>
+      <div className={s.who}>
+        <b>{actor(r.actor?.name)}</b>
+        <span className="muted">{r.source === "change" ? t("orgHistory.how.change", { code: r.change!.code, date: fmtDate(r.change!.effectiveDate) }) : t("orgHistory.how.record", { mode: historyMode(r), actions: historyActions(r) })}</span>
+      </div>
     ),
   },
   { header: t("orgHistory.col.undo"), cell: (r) => <UndoCell row={r} target={targetText(r)} /> },

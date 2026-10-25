@@ -108,6 +108,8 @@ pub(crate) struct CancelOrgChangeRequest {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ListQuery {
+    #[serde(default, rename = "target_ref")]
+    pub(crate) target_ref: Option<String>,
     /// One status or a comma-separated list (`status=DRAFT,IN_APPROVAL`).
     #[serde(default)]
     pub(crate) status: Option<String>,

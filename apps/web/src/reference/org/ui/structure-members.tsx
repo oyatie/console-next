@@ -92,7 +92,7 @@ export function Members({
                 <span className={css.av} aria-hidden>{m.name.slice(0, 1)}</span>
                 {directory ? <Link to="/people/$id" params={{ id: m.employeeId }}>{m.name}</Link> : <b>{m.name}</b>}
                 {isPreHire && <Chip tone="info">{t("enum.employeeStatus.PRE_HIRE")}</Chip>}
-                <Muted>{m.position ?? ""}</Muted>
+                <Muted>{[m.title, m.position].filter(Boolean).join(" · ")}</Muted>
                 <span className={css.right}>{m.employeeNumber ?? ""}</span>
               </li>
             );

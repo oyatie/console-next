@@ -104,9 +104,6 @@ export function Facts({ rows }: { rows: readonly (Fact | false | undefined)[] })
   );
 }
 
-/** Only corrected, never changed with a date (business start date, opening date, creation date): a dashed mark, no verb (D10). */
-export const CorOnly = () => <span className={css.corOnly}>{t("orgStructure.corOnly")}</span>;
-
 /** One row of actions: the action, and what it does to whom (its consequence) beside it. */
 export function ActionRow({ control, why }: { control: (describedBy: string) => ReactNode; why: ReactNode }) {
   const id = useId();

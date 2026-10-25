@@ -29,6 +29,7 @@ pub(crate) const SELECT_REQUEST_PAGE: &str = "SELECT r.id, r.code, r.kind, r.sta
      AND ($3::uuid IS NULL OR r.drafted_by = $3) \
      AND ($6::date IS NULL OR r.effective_date >= $6) \
      AND ($7::date IS NULL OR r.effective_date <= $7) \
+     AND ($8::text IS NULL OR r.target_ref = $8) \
      ORDER BY r.created_at DESC, r.id LIMIT $4 OFFSET $5";
 
 pub(crate) struct RequestRow {
@@ -65,19 +66,68 @@ pub(crate) fn request_row(row: &PgRow) -> Result<RequestRow, PgOrgChangeError> {
     })
 }
 
-pub(crate) fn summary_from_row(row: &PgRow) -> Result<OrgChangeSummary, PgOrgChangeError> {
+pub(crate) async fn summary_from_row(
+    tx: Tx<'_, '_>,
+    row: &PgRow,
+    at: time::Time,
+    now: OffsetDateTime,
+) -> Result<OrgChangeSummary, PgOrgChangeError> {
+    let id = row.try_get("id")?;
+    let status = OrgChangeStatus::from_db(row.try_get::<String, _>("status")?.as_str())?;
+    let effective_date = row.try_get("effective_date")?;
+    let applies_at = ((status == OrgChangeStatus::Approved
+        || effective_date
+            > now
+                .to_offset(console_orgchange_domain::PLATFORM_UTC_OFFSET)
+                .date())
+        && matches!(
+            status,
+            OrgChangeStatus::Draft
+                | OrgChangeStatus::Prechecked
+                | OrgChangeStatus::InApproval
+                | OrgChangeStatus::Approved
+        ))
+    .then(|| scheduled_at(effective_date, at));
+    let proposal = parse_proposal(&row.try_get("proposal")?)?;
+    let commands: Vec<Uuid> = proposal
+        .iter()
+        .enumerate()
+        .filter(|(_, op)| matches!(op, OrgProposalOp::CreateOrgUnit { .. }))
+        .map(|(index, _)| console_orgchange_domain::projection::projected_unit_id(id, index))
+        .collect();
+    let created_unit_ids = if status == OrgChangeStatus::Applied && !commands.is_empty() {
+        let receipts: Vec<(Uuid, Value)> = sqlx::query_as("SELECT command_id, receipt FROM ont_action_command_receipts WHERE command_id = ANY($1)")
+            .bind(&commands).fetch_all(tx.as_mut()).await?;
+        let receipts: BTreeMap<_, _> = receipts.into_iter().collect();
+        let ids: Vec<Uuid> = commands
+            .iter()
+            .filter_map(|command| {
+                receipts
+                    .get(command)?
+                    .get("org_unit_id")?
+                    .as_str()?
+                    .parse()
+                    .ok()
+            })
+            .collect();
+        (!ids.is_empty()).then_some(ids)
+    } else {
+        None
+    };
     Ok(OrgChangeSummary {
-        id: row.try_get("id")?,
+        id,
         command_id: row.try_get("command_id")?,
         code: row.try_get("code")?,
         kind: OrgChangeKind::from_db(row.try_get::<String, _>("kind")?.as_str())?,
-        status: OrgChangeStatus::from_db(row.try_get::<String, _>("status")?.as_str())?,
+        status,
         target: OrgChangeTarget {
             kind: TargetKind::from_db(row.try_get::<String, _>("target_kind")?.as_str())?,
             target_ref: row.try_get("target_ref")?,
             label: row.try_get("target_label")?,
         },
-        effective_date: row.try_get("effective_date")?,
+        effective_date,
+        applies_at,
+        created_unit_ids,
         reason: row.try_get("reason")?,
         headcount: row.try_get("headcount")?,
         site_count: row.try_get("site_count")?,

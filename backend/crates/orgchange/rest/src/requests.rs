@@ -76,6 +76,7 @@ pub(crate) async fn list(
     let page = s
         .store
         .list(ListFilter {
+            target_ref: q.target_ref,
             statuses,
             kind,
             drafted_by: q.drafted_by,

@@ -24,7 +24,7 @@ use time::{Duration, OffsetDateTime, Time, macros::offset};
 use uuid::Uuid;
 
 pub const ME_WORKBENCH_PATH: &str = "/api/v1/me/workbench";
-pub const WORKBENCH_TIMEZONE: &str = "Asia/Seoul";
+pub const WORKBENCH_TIMEZONE: &str = console_orgchange_domain::PLATFORM_TIMEZONE;
 const DEFAULT_LIMIT: usize = 50;
 const MAX_LIMIT: usize = 100;
 const MAX_RANGE: Duration = Duration::days(31);

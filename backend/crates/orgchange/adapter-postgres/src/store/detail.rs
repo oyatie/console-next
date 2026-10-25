@@ -11,7 +11,10 @@ pub(crate) async fn load_detail(
     else {
         return Ok(None);
     };
-    let summary = summary_from_row(&row)?;
+    let now = OffsetDateTime::now_utc();
+    let org = current_org().map_err(KernelError::from)?;
+    let at = apply_time_in_tx(tx, org, now).await?;
+    let summary = summary_from_row(tx, &row, at, now).await?;
     let proposal_json: Value = row.try_get("proposal")?;
     let proposal = parse_proposal(&proposal_json)?;
     let preflight = preflight_from_row(&row, summary.status)?;

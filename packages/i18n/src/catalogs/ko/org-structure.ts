@@ -3,8 +3,6 @@ export const koOrgStructure = {
   "orgStructure.asOf": "{date} 기준",
   "orgStructure.title": "조직 구조",
   "orgStructure.cancel": "취소",
-  "orgStructure.fix": "수정",
-  "orgStructure.fixOf": "{field} 수정",
   "orgStructure.open": "열기",
   "orgStructure.openFull": "{name} 전체 기록 열기",
   "orgStructure.corOnly": "정정만",

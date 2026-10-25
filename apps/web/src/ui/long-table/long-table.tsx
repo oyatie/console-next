@@ -10,7 +10,7 @@ import css from "./long-table.module.css";
 const NONE = new Set<string>();
 
 /** `width` is a React Aria column size: "1fr" (default), "2fr", a percentage, or px for codes and dates. */
-export type LongColumn<R> = { id: string; header: ReactNode; cell: (r: R) => ReactNode; rowHeader?: boolean; width?: ColumnProps["width"] };
+export type LongColumn<R> = { id: string; header: ReactNode; cell: (r: R) => ReactNode; rowHeader?: boolean; width?: ColumnProps["width"]; minWidth?: ColumnProps["minWidth"] };
 
 const SELECT = "__select";
 // aria-rowcount counts loaded rows, not the server total (React Aria has no override); the caption
@@ -155,7 +155,7 @@ export function LongTable<R>(p: {
         >
           <TableHeader className={css.head} columns={cols}>
             {(c) => (
-              <Column id={c.id} isRowHeader={c.rowHeader} width={c.width ?? "1fr"} className={css.th}>
+              <Column id={c.id} isRowHeader={c.rowHeader} width={c.width ?? "1fr"} minWidth={c.minWidth} className={css.th}>
                 {c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.header}
               </Column>
             )}

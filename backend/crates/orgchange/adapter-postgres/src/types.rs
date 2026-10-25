@@ -22,6 +22,7 @@ pub struct DraftPatch {
 
 #[derive(Debug, Clone, Default)]
 pub struct ListFilter {
+    pub target_ref: Option<String>,
     pub effective_from: Option<Date>,
     pub effective_to: Option<Date>,
     /// Any of these statuses; empty means no status filter.

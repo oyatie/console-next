@@ -1,8 +1,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { fillDate } from "./sheet";
-import { expectAccessible } from "./a11y";
+import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { clickCounter } from "./clicks";
-import { go } from "./flows";
+import { go, kstDate } from "./flows";
 import { SETUP_DEPARTMENT, tenantInSetup } from "./setup-flows";
 
 // S7 목록 붙여넣기 and S9 변경 내역 from an empty tenant, through the UI only: a list under a 법인 makes a new 사업장
@@ -32,6 +32,10 @@ test("paste a list under a 법인, undo it whole, and undo the rest from the his
   // Where to paste: nothing preselected; the 법인 makes the first level 사업장.
   await go(page, "/org/paste");
   await c.click(radio(page.getByRole("main"), "어디 아래에", `주식회사 ${ENTITY}`));
+  await paste(page).fill("오송 본사\n\t품질팀\t잘못된칸");
+  await expect(page.getByRole("alert")).toContainText("2행 · 부서에는 사업장 종류를 지정할 수 없습니다. 둘째 칸을 비우십시오.");
+  await expect(page.getByText(/둘째 칸은 사업장 종류/)).toHaveCount(0);
+  await expect(submit(page)).toBeDisabled();
   await paste(page).fill("오송 본사\n\t경영지원팀\n\t연구개발본부\n\t\t원료연구팀\n오송공장\t공장\n\t생산부\n\t\t원료생산1팀\n\t품질팀\n\t품질팀");
   await expect(page.getByText("알아낸 모양: 탭 들여쓰기 · 3단계 · 둘째 칸은 사업장 종류")).toBeVisible();
   const plan = page.getByRole("list", { name: "추가될 모습" });
@@ -77,28 +81,44 @@ test("paste a list under a 법인, undo it whole, and undo the rest from the his
   await submit(page).click();
   await expect(receipt(page)).toContainText("부서 1개를 추가했습니다");
 
-  // The history: newest first, each row with its undo or the reason it has none.
+  // The history includes registrations and names the recorded action and actor.
+  const historyRead = page.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/org-structure/batches" && r.request().method() === "GET");
   await page.getByRole("link", { name: "변경 내역" }).click();
   await expect(page.getByRole("heading", { name: "조직도 변경 내역", level: 1 })).toBeVisible();
   const table = page.getByRole("table", { name: "조직도 변경 내역" });
-  const kind = (k: string) => table.getByRole("row").filter({ has: page.getByRole("cell", { name: k, exact: true }) });
-  await expect(kind("되돌림")).toHaveCount(1);
-  await expect(kind("되돌림")).toContainText("되돌린 기록");
-  await expect(kind("적용").filter({ hasText: "부서 15개" })).toContainText("이미 되돌림");
+  const kind = (k: string | RegExp) => table.getByRole("row").filter({ has: page.getByRole("cell", { name: k, exact: true }) });
+  const undone = kind(/일괄 · 되돌림$/);
+  await expect(undone).toHaveCount(1);
+  await expect(undone.getByRole("button")).toHaveCount(0);
+  await expect(kind("부서 일괄 · 신설").filter({ hasText: "본사팀1" }).getByRole("button")).toHaveCount(0);
+  await expect(kind("법인 등록")).toContainText(ENTITY);
+  await expect(kind("사업장 등록")).toContainText("오송 본사");
+  const history = await (await historyRead).json() as { items: { actor_name?: string | null }[] };
+  const actorName = history.items.find(r => r.actor_name)?.actor_name;
+  expect(actorName).toBeTruthy();
+  await expect(kind("부서 일괄 · 신설").first()).toContainText(actorName!);
+  await fillDate(page, kstDate(-1), "기록 시작일");
+  await fillDate(page, kstDate(), "기록 종료일");
+  await page.getByRole("combobox", { name: "누가", exact: true }).selectOption({ label: actorName! });
+  await expect(kind("법인 등록")).toBeVisible();
+  await page.getByRole("button", { name: "조건 초기화" }).click();
   await expectAccessible(page, "org history");
+  await atPhoneWidth(page, async () => { await fits(page, "org history"); await expectAccessible(page, "org history phone"); });
   // Out of order the server refuses, and the row says why; in order every undo lands.
   const first = table.getByRole("button", { name: "경영지원팀, 연구개발본부 외 5개 되돌리기" });
   await first.click();
   await expect(table.getByRole("alert")).toContainText("추가한 부서에 하위 부서나 사람이 있습니다");
   await table.getByRole("button", { name: "총무파트 되돌리기" }).click();
-  await expect(kind("되돌림")).toHaveCount(2);
+  await expect(undone).toHaveCount(2);
   await first.click();
-  await expect(kind("되돌림")).toHaveCount(3);
-  await table.getByRole("button", { name: "법인·사업장 1건 되돌리기", disabled: false }).click();
-  await expect(kind("되돌림")).toHaveCount(4);
+  await expect(undone).toHaveCount(3);
+  await table.getByRole("button", { name: "오송공장 되돌리기", disabled: false }).click();
+  await expect(undone).toHaveCount(4);
   // The setup helper's own 부서 is a change of this tenant too: undone, nothing undoable is left.
   await table.getByRole("button", { name: `${SETUP_DEPARTMENT} 되돌리기` }).click();
-  await expect(kind("되돌림")).toHaveCount(5);
+  await expect(undone).toHaveCount(5);
   await page.getByRole("checkbox", { name: "되돌릴 수 있는 것만" }).check();
-  await expect(page.getByRole("status").filter({ hasText: "조건에 맞는 변경이 없습니다." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "되돌릴 수 있는 것만 조건에 맞는 변경이 없습니다." })).toBeVisible();
+  await page.getByRole("button", { name: "조건 초기화" }).click();
+  await expect(kind("법인 등록")).toBeVisible();
 });

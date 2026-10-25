@@ -2,6 +2,8 @@
 // 목록 붙여넣기, 조직 시트 가져오기 and 사업장 일괄 수정. Names are matched only when they are the same;
 // nothing is guessed from a similar name.
 export const koOrgBulk = {
+  "orgBulk.paste.error.kind_not_allowed": "{line}행 · 부서에는 사업장 종류를 지정할 수 없습니다. 둘째 칸을 비우십시오.",
+  "orgBulk.plan.status.kind_not_allowed": "둘째 칸 삭제 필요",
   "orgBulk.crumb": "조직 구조",
   "orgBulk.close": "닫고 조직 구조로",
   "orgBulk.paste.title": "목록 붙여넣기",

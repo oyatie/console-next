@@ -5,6 +5,8 @@
 //! and a scheduled change can be cancelled, rescheduled, or applies on its
 //! 시행일 by itself (regression: org-01, org-04, org-05, org-07, org-02).
 
+#[path = "org_change_people/depth.rs"]
+mod depth;
 #[path = "org_change_people/dissolve.rs"]
 mod dissolve;
 #[path = "org_change_people/ends.rs"]
@@ -21,5 +23,9 @@ mod harness;
 mod held;
 #[path = "org_change_people/hired_today.rs"]
 mod hired_today;
+#[path = "org_change_people/impact_concurrency.rs"]
+mod impact_concurrency;
+#[path = "org_change_people/refusals.rs"]
+mod refusals;
 #[path = "org_change_people/schedule.rs"]
 mod schedule;

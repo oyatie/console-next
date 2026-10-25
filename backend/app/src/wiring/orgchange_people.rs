@@ -82,8 +82,9 @@ pub(crate) async fn move_people(
             )
             .await?;
         }
-        moved.people += 1;
+        moved.employee_ids.push(member.id);
     }
+    moved.people = i64::try_from(moved.employee_ids.len()).unwrap_or(i64::MAX);
     Ok(moved)
 }
 

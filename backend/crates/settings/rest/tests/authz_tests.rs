@@ -98,6 +98,32 @@ fn loosening_without_step_up_returns_step_up_required() {
 }
 
 #[test]
+fn moving_the_org_apply_clock_later_is_authorized_without_step_up() {
+    let org = OrgId::one();
+    let admin = Principal::new(
+        UserId::new(),
+        org,
+        BTreeSet::from([Role::SuperAdmin]),
+        BranchScope::All,
+    )
+    .with_scope_grants(vec![ScopeGrant {
+        feature: Feature::SettingsManage,
+        kind: NodeKind::Tenant,
+        id: *org.as_uuid(),
+    }]);
+    let key: SettingKey = "orgchange.apply_time".parse().unwrap();
+    let value = console_settings_domain::SettingValue::Int;
+    let change = ChangeFacts {
+        key,
+        direction: console_settings_domain::direction(key, Some(value(5)), value(60)),
+        scope_entity_id: None,
+        step_up: false,
+        step_up_assertion_id: None,
+    };
+    assert!(authorize_change(&admin, &change).is_ok());
+}
+
+#[test]
 fn unverified_step_up_returns_step_up_required() {
     let admin = Principal::new(
         UserId::new(),

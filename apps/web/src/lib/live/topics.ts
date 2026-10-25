@@ -14,7 +14,7 @@ const ATTENDANCE_ORG_READS = ["/api/v1/attendance/schedule/tree", "/api/v1/atten
 const STRUCTURE_READS = ["/api/v1/org-units", "/api/v1/org-structure", "/api/v1/branches", "/api/v1/workplaces", "/api/v1/onboarding", ...ATTENDANCE_ORG_READS];
 // A person-day's reads: the grid, the day board and the person cards.
 const ATTENDANCE_DAY_READS = ["/api/v1/attendance/month", "/api/v1/attendance/days", "/api/v1/attendance/people"];
-const ENTITY_READS = ["/api/v1/org-structure", "/api/v1/legal-entities", "/api/v1/business-registrations", "/api/v1/entity-documents", "/api/v1/workplaces", "/api/v1/onboarding", "/api/v1/me/action-inbox"];
+const ENTITY_READS = ["/api/v1/entity-setup/batches", "/api/v1/org-structure", "/api/v1/legal-entities", "/api/v1/business-registrations", "/api/v1/entity-documents", "/api/v1/workplaces", "/api/v1/onboarding", "/api/v1/me/action-inbox"];
 
 // Keys are the `change` types the hub emits (the BE-RT event contract, "Topics"): a subscriber gets a type only when it
 // passes that resource's REST read check, and never an unknown one.
@@ -29,7 +29,7 @@ export const TOPICS: Readonly<Record<string, Topic>> = {
   legal_entity: { detail: "/api/v1/legal-entities", paths: [...ENTITY_READS, "/api/v1/employment-assignments", ...ATTENDANCE_ORG_READS] },
   business_registration: { detail: "/api/v1/business-registrations", paths: ENTITY_READS },
   workplace: { detail: "/api/v1/workplaces", paths: [...ENTITY_READS, ...STRUCTURE_READS] },
-  org_unit: { detail: "/api/v1/org-units", paths: [...STRUCTURE_READS, ...EMPLOYEE_READS] },
+  org_unit: { detail: "/api/v1/org-units", paths: ["/api/v1/org-changes", ...STRUCTURE_READS, ...EMPLOYEE_READS] },
   org_change: { detail: "/api/v1/org-changes", paths: ["/api/v1/org-changes", "/api/v1/legal-entities", "/api/v1/me/action-inbox", ...STRUCTURE_READS] },
   entity_setup_batch: { paths: [...ENTITY_READS, ...STRUCTURE_READS] },
   employee: { detail: "/api/v1/employees", paths: ["/api/v1/org-structure", "/api/v1/legal-entities", ...EMPLOYEE_READS, "/api/v1/org-units", "/api/v1/onboarding", "/api/v1/workplaces", "/api/v1/employee-import-runs"] },

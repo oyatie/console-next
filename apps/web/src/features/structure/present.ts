@@ -7,6 +7,8 @@ import { transfers } from "./domain/rules";
 
 const headcount = (count: number) => t("common.headcount", { count });
 
+export { unitCounts } from "../../reference/org/present";
+
 /**
  * What a unit is called on screen. The root is the account's legal entities taken together, never a company: it is named by its
  * legal-entity count, and the account's own name stays in the shell (decision #29).

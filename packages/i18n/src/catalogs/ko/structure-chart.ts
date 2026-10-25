@@ -15,7 +15,6 @@ export const koStructureChart = {
   "structureChart.list.filter.todo": "할 일 있는 곳만",
   "structureChart.list.download": "조직 시트 내려받기",
   "structureChart.list.editTogether": "일괄 수정",
-  "structureChart.list.unplaced": "미배치",
   "structureChart.list.none": "조건에 맞는 조직이 없습니다",
   "structureChart.sheet.level": "단계",
   "structureChart.sheet.entity": "법인",

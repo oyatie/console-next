@@ -39,7 +39,7 @@ export function JumpPalette({ onClose }: { onClose: () => void }) {
     ...(first?.unitId ? [{ id: "task:register", icon: <UserPlus size={16} aria-hidden />, label: t("structure.tools.registerLabel", { name: first.name }), onAction: () => void navigate({ to: "/people/new", search: { unit: first.unitId } }) }] : []),
     ...(first?.kind === "site" && first.entityId ? [{ id: "task:open", icon: <FileText size={16} aria-hidden />, label: t("structure.jump.open", { name: first.name }), onAction: () => void navigate({ to: "/org/entities/$id", params: { id: first.entityId! }, search: { wp: first.id } }) }] : []),
     { id: "task:entity", icon: <Plus size={16} aria-hidden />, label: t("structure.tools.addEntity"), onAction: () => void navigate({ to: "/org/entities/new" }) },
-    { id: "task:paste", icon: <ClipboardPaste size={16} aria-hidden />, label: t("structure.setup.paste"), onAction: () => void navigate({ to: "/org", search: { view: "outline" } }) },
+    { id: "task:paste", icon: <ClipboardPaste size={16} aria-hidden />, label: t("structure.import.label"), onAction: () => void navigate({ to: "/org", hash: "structure-import" }) },
   ].filter((x) => !query || x.id !== "task:entity" || t("structure.tools.addEntity").includes(query));
   const sections: PaletteSection[] = [
     { id: "entity", title: t("structure.level.entity"), items: hits.filter((n) => n.kind === "entity").slice(0, MAX).map(place) },

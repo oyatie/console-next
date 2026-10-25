@@ -31,6 +31,14 @@
           $ref: '#/components/schemas/OrgChangeTarget'
         effectiveDate:
           $ref: '#/components/schemas/Date'
+        applies_at:
+          $ref: '#/components/schemas/Timestamp'
+          description: Configured scheduled application instant in UTC; omitted for immediate and terminal changes.
+        created_unit_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/Uuid'
+          description: Actual canonical unit identifiers returned by the applied creation commands, in proposal order.
         reason:
           type: string
         headcount:

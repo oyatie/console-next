@@ -4,8 +4,6 @@ export const enOrgStructure: Record<keyof typeof koOrgStructure, string> = {
   "orgStructure.asOf": "As of {date}",
   "orgStructure.title": "Org structure",
   "orgStructure.cancel": "Cancel",
-  "orgStructure.fix": "Edit",
-  "orgStructure.fixOf": "Edit {field}",
   "orgStructure.open": "Open",
   "orgStructure.openFull": "Open the full record of {name}",
   "orgStructure.corOnly": "Correct only",

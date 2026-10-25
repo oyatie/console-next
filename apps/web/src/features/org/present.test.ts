@@ -68,7 +68,7 @@ test("the rail has no precheck step and counts approvals (D6), and fails where t
 
 test("without approval (decisions #26) the rail never says 결재 or 승인, and a 폐지 has no tick list (regression: org-03, org-05)", () => {
   const scheduled = changeRail(change({ status: "APPROVED" }));
-  expect(scheduled.steps.map((s) => s.label)).toEqual(["작성", "예약 · 2026. 11. 02.", "2026. 11. 02. 00:05 반영"]);
+  expect(scheduled.steps.map((s) => s.label)).toEqual(["작성", "예약 · 2026. 11. 02.", "2026. 11. 02. 반영"]);
   expect(scheduled.current).toBe("approved");
   const applied = changeRail(change({ status: "APPLIED" }));
   expect(applied.steps.map((s) => s.label).join(" ")).not.toMatch(/결재|승인|기안|상신|정리/);
@@ -129,4 +129,15 @@ test("awaitingRedraft: my rejected changes no other change of mine supersedes", 
   expect(awaitingRedraft(mine).map((c) => c.id)).toEqual(["a"]);
   // A redraft on screen settles its original even when `mine` was read before the redraft existed.
   expect(awaitingRedraft(mine, [change({ id: "a2", status: "IN_APPROVAL", supersedesId: "a" })]).map((c) => c.id)).toEqual([]);
+});
+
+test("an immediate applied change has no reservation step", () => {
+  const d = change({ status: "APPLIED", effectiveDate: "2026-11-02", createdAt: "2026-11-01T15:00:00Z" });
+  expect(changeRail(d).steps.map(s => s.label).join(" ")).not.toContain("예약");
+});
+test("the shown apply time comes from the server instant and includes its zone", () => {
+  const d = { ...change({ status: "APPROVED" }), applies_at: "2026-11-01T17:30:00Z" };
+  const label = changeRail(d).steps.at(-1)?.label;
+  expect(label).toContain("02:30 KST");
+  expect(label).not.toContain("00:05");
 });

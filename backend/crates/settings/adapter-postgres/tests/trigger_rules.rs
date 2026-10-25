@@ -154,6 +154,42 @@ async fn the_trigger_refuses_what_the_domain_refuses(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn org_change_time_bounds_are_enforced_by_the_database(pool: PgPool) {
+    let (actor, store) = tenant(&pool).await;
+    for value in [-1, 1440] {
+        assert_eq!(
+            raw_insert(&store, actor, "orgchange.apply_time", json!(value), "0").await,
+            Err("setting_out_of_range".to_owned())
+        );
+    }
+    assert_eq!(
+        raw_insert(&store, actor, "orgchange.apply_time", json!("00:05"), "0").await,
+        Err("setting_value_invalid".to_owned())
+    );
+    assert_eq!(
+        raw_insert(&store, actor, "orgchange.apply_time", json!(0), "0").await,
+        Ok("neutral".to_owned())
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn changing_the_apply_clock_later_needs_no_loosening_delay_or_step_up(pool: PgPool) {
+    let (actor, store) = tenant(&pool).await;
+    hire_someone(&pool, actor.org).await;
+    let mut command = change(json!(60), None);
+    command.key = "orgchange.apply_time".to_owned();
+    let changed = store
+        .change_setting(actor, command, audit(), |facts| {
+            assert_eq!(facts.direction, Direction::Neutral);
+            assert!(!facts.step_up);
+            Ok(())
+        })
+        .await
+        .unwrap();
+    assert_eq!(changed.direction, Direction::Neutral);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn rows_are_append_only_and_tenant_isolated(pool: PgPool) {
     let (actor, store) = tenant(&pool).await;
     store

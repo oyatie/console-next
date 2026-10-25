@@ -1,6 +1,8 @@
 import type { koOrgChange } from "../ko/org-change";
 
 export const enOrgChange: Partial<Record<keyof typeof koOrgChange, string>> = {
+  "orgChange.list.range": "{from} ~ {to}",
+  "orgChange.timeline.scheduled": "Scheduled",
   "orgChange.title.NEW": "Create {name}",
   "orgChange.title.REORG": "Reorganize {name}",
   "orgChange.title.DISSOLVE": "Dissolve {name}",
@@ -17,7 +19,7 @@ export const enOrgChange: Partial<Record<keyof typeof koOrgChange, string>> = {
   "orgChange.rail.approval": "Approval {n}/{total}",
   "orgChange.rail.rejected": "Approval {n}/{total} · rejected",
   "orgChange.rail.approved": "Approved",
-  "orgChange.rail.ready": "Applies {date} 00:05",
+  "orgChange.rail.ready": "Applies {date}",
   "orgChange.rail.applied": "Applied {date}",
   "orgChange.rail.settling": "Settling {n}/{total}",
   "orgChange.rail.archived": "Archived",
@@ -88,7 +90,7 @@ export const enOrgChange: Partial<Record<keyof typeof koOrgChange, string>> = {
   "orgChange.proposal": "Changes",
   "orgChange.preview": "What changes",
   "orgChange.headcount": "People affected",
-  "orgChange.headcount.value": "{count, plural, one {# person} other {# people}} · everyone but leavers (incl. on leave)",
+  "orgChange.headcount.value": "{count, plural, one {# person} other {# people}} · people whose department or workplace changes",
   "orgChange.preflight": "Preflight",
   "orgChange.preflight.blocked": "{count} blocking",
   "orgChange.preflight.warn": "{count} to check",
@@ -178,7 +180,7 @@ export const enOrgChange: Partial<Record<keyof typeof koOrgChange, string>> = {
   "orgChange.rail.scheduled": "Scheduled · {date}",
   "orgChange.scheduled.title": "Applies on {date} · D-{days, number}",
   "orgChange.scheduled.due": "Due today ({date})",
-  "orgChange.scheduled.note": "Automatically applies at 00:05 on the effective date",
+  "orgChange.scheduled.note": "Automatically applies at {at}",
   "orgChange.scheduled.readOnly": "An admin with org change permission can edit or cancel this schedule",
   "orgChange.scheduled.refused": "It could not apply on its date: {reason} · resolve what blocks it, edit it or cancel it",
   "orgChange.scheduled.edit": "Edit schedule",

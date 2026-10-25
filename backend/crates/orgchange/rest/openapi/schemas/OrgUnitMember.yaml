@@ -9,3 +9,6 @@ properties:
     type: string
   position:
     type: string
+  title:
+    type: string
+    description: Current 직책 from the employee card's position-kind catalog fact.

@@ -1,8 +1,7 @@
 use crate::*;
 
 /// UX-R3 STRUCT org-01: the preflight runs what submit runs. A change that
-/// submit would apply at once (no approval route, 시행일 today or earlier) is
-/// applied here inside a savepoint and rolled back, and a refusal becomes a
+/// would apply is replayed inside a savepoint and rolled back, and a refusal becomes a
 /// named blocker with its fix, so 「사전 점검 통과」 is never followed by a 409.
 /// A freeze stays the compute's warning (the hard stop is effectuate's).
 pub(crate) async fn dry_run_apply(
@@ -16,16 +15,16 @@ pub(crate) async fn dry_run_apply(
     ),
     report: &mut PreflightReport,
 ) -> Result<(), PgOrgChangeError> {
-    if !report.blockers.is_empty() || today_kst() < request.effective_date {
+    if !report.blockers.is_empty() {
         return Ok(());
     }
-    if approval_routes_in_tx(tx.as_mut(), org, SettingKey::ApprovalPolicyOrgStructure).await? {
-        return Ok(());
-    }
+    let immediate = today_kst() >= request.effective_date
+        && !approval_routes_in_tx(tx.as_mut(), org, SettingKey::ApprovalPolicyOrgStructure).await?;
     sqlx::query("SAVEPOINT org_change_dry_run")
         .execute(tx.as_mut())
         .await?;
-    let outcome = apply_ops(tx, (org, actor, now), id, request, ports.0, ports.1).await;
+    // The freeze gate remains a warning here; the live apply still enforces it.
+    let outcome = replay_ops(tx, (org, actor, now), id, request, ports.0, ports.1).await;
     sqlx::query("ROLLBACK TO SAVEPOINT org_change_dry_run")
         .execute(tx.as_mut())
         .await?;
@@ -33,8 +32,16 @@ pub(crate) async fn dry_run_apply(
         .execute(tx.as_mut())
         .await?;
     match outcome {
-        Ok(_) | Err(PgOrgChangeError::Frozen(_)) => Ok(()),
+        Ok(applied) => {
+            report.headcount = applied.people;
+            Ok(())
+        }
+        Err(PgOrgChangeError::Frozen(_)) => Ok(()),
         Err(PgOrgChangeError::Domain(refusal)) if refusal.kind != ErrorKind::Internal => {
+            // Future/routed changes retain their existing settlement warnings.
+            if !immediate {
+                return Ok(());
+            }
             let code = refusal.code.unwrap_or("org_change_apply_refused");
             report.blockers.push(PreflightBlocker {
                 code: code.to_owned(),

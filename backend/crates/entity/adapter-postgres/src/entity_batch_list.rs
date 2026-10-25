@@ -22,14 +22,22 @@ impl PgEntityStore {
     ) -> Result<Vec<EntitySetupBatchView>, PgEntityError> {
         with_org_conn(&self.pool, actor.org, move |tx| {
             Box::pin(async move {
-                let ids: Vec<Uuid> = sqlx::query_scalar(
-                    "SELECT id FROM entity_setup_batches ORDER BY created_at DESC LIMIT 200",
+                let rows = sqlx::query(
+                    "SELECT id, false AS registration, created_at FROM entity_setup_batches \
+                     UNION ALL SELECT command_id, true, created_at FROM entity_commands \
+                       WHERE action IN ('legal_entity.create', 'workplace.create') AND outcome->>'target' IS NOT NULL \
+                     ORDER BY created_at DESC, id LIMIT 200",
                 )
                 .fetch_all(tx.as_mut())
                 .await?;
-                let mut out = Vec::with_capacity(ids.len());
-                for id in ids {
-                    out.push(view(tx, id).await?);
+                let mut out = Vec::with_capacity(rows.len());
+                for row in rows {
+                    let id = row.try_get("id")?;
+                    out.push(if row.try_get("registration")? {
+                        registration_view(tx, id).await?
+                    } else {
+                        view(tx, id).await?
+                    });
                 }
                 Ok(out)
             })
@@ -76,8 +84,16 @@ pub(crate) fn uuid(v: &Value) -> Option<Uuid> {
 
 pub(crate) async fn view(tx: &mut Tx<'_>, id: Uuid) -> Result<EntitySetupBatchView, PgEntityError> {
     let r = sqlx::query(
-        "SELECT kind, undoes, undone_by, change_mode, jsonb_array_length(steps)::int8 AS n, \
-                to_json(created_at) #>> '{}' AS created_at FROM entity_setup_batches WHERE id = $1",
+        "SELECT b.kind, b.undoes, b.undone_by, b.change_mode, jsonb_array_length(b.steps)::int8 AS n, \
+                to_json(b.created_at) #>> '{}' AS created_at, b.actor_id, u.display_name AS actor_name, \
+                ARRAY(SELECT DISTINCT s->>'op' FROM jsonb_array_elements(b.steps) s WHERE s->>'op' IS NOT NULL ORDER BY 1) AS actions, \
+                ARRAY(SELECT DISTINCT COALESCE(e.name, w.name) FROM jsonb_array_elements(b.steps) s \
+                  LEFT JOIN legal_entity_revisions e ON s->>'target_type' = 'legal_entity' \
+                    AND e.legal_entity_id = (s->>'target_id')::uuid AND e.version = (s->>'after_version')::int \
+                  LEFT JOIN workplace_revisions w ON s->>'target_type' = 'workplace' \
+                    AND w.workplace_id = (s->>'target_id')::uuid AND w.version = (s->>'after_version')::int \
+                  WHERE COALESCE(e.name, w.name) IS NOT NULL ORDER BY 1) AS target_names \
+         FROM entity_setup_batches b LEFT JOIN person_accounts_current u ON u.id = b.actor_id WHERE b.id = $1",
     )
     .bind(id)
     .fetch_one(tx.as_mut())
@@ -97,5 +113,54 @@ pub(crate) async fn view(tx: &mut Tx<'_>, id: Uuid) -> Result<EntitySetupBatchVi
         change_mode: mode,
         records: usize::try_from(r.try_get::<i64, _>("n")?).unwrap_or(0),
         created_at: r.try_get("created_at")?,
+        actor_id: r.try_get("actor_id")?,
+        actor_name: r.try_get("actor_name")?,
+        actions: Some(r.try_get("actions")?),
+        target_names: Some(r.try_get("target_names")?),
+        registration_action: None,
+    })
+}
+
+async fn registration_view(
+    tx: &mut Tx<'_>,
+    id: Uuid,
+) -> Result<EntitySetupBatchView, PgEntityError> {
+    let r = sqlx::query(
+        "SELECT c.action, c.actor_id, u.display_name AS actor_name, c.outcome->>'change_mode' AS change_mode, \
+           to_json(c.created_at) #>> '{}' AS created_at, COALESCE(e.name, w.name) AS name \
+         FROM entity_commands c LEFT JOIN person_accounts_current u ON u.id = c.actor_id \
+         LEFT JOIN legal_entity_revisions e ON c.action = 'legal_entity.create' \
+           AND e.legal_entity_id = (c.outcome->>'target')::uuid AND e.version = 1 \
+         LEFT JOIN workplace_revisions w ON c.action = 'workplace.create' \
+           AND w.workplace_id = (c.outcome->>'target')::uuid AND w.version = 1 \
+         WHERE c.command_id = $1",
+    )
+    .bind(id)
+    .fetch_one(tx.as_mut())
+    .await?;
+    let action: String = r.try_get("action")?;
+    let op = if action == "legal_entity.create" {
+        "CREATE_ENTITY"
+    } else {
+        "CREATE_WORKPLACE"
+    };
+    Ok(EntitySetupBatchView {
+        id,
+        kind: "APPLY".into(),
+        undoes: None,
+        undone_by: None,
+        change_mode: r.try_get("change_mode")?,
+        records: 1,
+        created_at: r.try_get("created_at")?,
+        undoable: false,
+        actor_id: r.try_get("actor_id")?,
+        actor_name: r.try_get("actor_name")?,
+        actions: Some(vec![op.into()]),
+        target_names: Some(
+            r.try_get::<Option<String>, _>("name")?
+                .into_iter()
+                .collect(),
+        ),
+        registration_action: Some(action),
     })
 }

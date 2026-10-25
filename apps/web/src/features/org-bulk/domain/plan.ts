@@ -8,7 +8,7 @@ import type { OrgStructureNodeServed as Node } from "@console/api/pending";
 import { nameKey, type OutlineRow } from "./outline";
 
 export type PlanRoot = { kind: "entity"; node: Node } | { kind: "workplace"; node: Node };
-export type PlanStatus = "link" | "create" | "clash" | "tooDeep";
+export type PlanStatus = "link" | "create" | "clash" | "tooDeep" | "kind_not_allowed";
 export type PlanRow = OutlineRow & {
   level: "workplace" | "dept";
   status: PlanStatus;
@@ -43,7 +43,7 @@ export function planOutline(root: PlanRoot, rows: OutlineRow[], names: Record<nu
     const existing = siblings.find((n) => nameKey(n.name) === name);
     const key = parent ? String(parent.at) : "root";
     const used = taken.get(key) ?? taken.set(key, new Set()).get(key)!;
-    const status: PlanStatus = used.has(name) ? "clash" : existing ? "link" : "create";
+    const status: PlanStatus = r.kind && level === "dept" ? "kind_not_allowed" : used.has(name) ? "clash" : existing ? "link" : "create";
     used.add(name);
     const row: PlanRow = { ...r, at, name, level, status, ...(status === "link" ? { existing } : {}), ...(parent ? { parent: parent.at } : {}) };
     out.push(row);
@@ -59,6 +59,6 @@ export function planCounts(rows: PlanRow[]) {
     workplaces: n((r) => r.status === "create" && r.level === "workplace"),
     depts: n((r) => r.status === "create" && r.level === "dept"),
     links: n((r) => r.status === "link"),
-    fix: n((r) => r.status === "clash" || r.status === "tooDeep"),
+    fix: n((r) => r.status !== "link" && r.status !== "create"),
   };
 }

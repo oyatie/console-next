@@ -26,3 +26,11 @@ test("a 법인 whose 대표 사업장 is closed is drawn ended at every size; a 
   const live = node("entity", "새온정밀", [], [node("site", "본사", [], [], true), node("site", "지점", ["closed"])]);
   expect(html(live)).not.toContain("종료");
 });
+
+test("a workplace and department use the same direct and total count presenter", () => {
+  const child = { ...node("dept", "품질팀"), headcount: 3 };
+  for (const kind of ["site", "dept"] as const) {
+    const n = { ...node(kind, "본사", [], [child]), headcount: 5 };
+    expect(html(n)).toContain("직속 2 · 전체 5");
+  }
+});

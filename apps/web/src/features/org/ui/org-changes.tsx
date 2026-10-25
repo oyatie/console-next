@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
+import { X } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { ORG_CHANGE_STATUS, actor, labeled } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
 import { todayKst } from "../../../lib/pure/today";
-import { Button, ToggleButton } from "../../../ui/button/button";
+import { ToggleButton } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { daysBetween } from "../../../ui/date/days";
 import { EmptyState } from "../../../ui/empty-state";
@@ -53,10 +54,10 @@ export function OrgChanges() {
       <div className="page__head">
         <Link to="/org" search={{}} className="btn btn--ghost">{t("org.title")}</Link>
         <h1 className="page__title">{t("orgChange.list.title")}</h1>
-        {(effective_from || effective_to) && <Button variant="ghost" onClick={() => {
+        {(effective_from || effective_to) && <ToggleButton pressed look="chip" aria-label={`${t("orgChange.list.range", { from: fmtDate(effective_from), to: fmtDate(effective_to) })} · ${t("asof.clearRange")}`} title={t("asof.clearRange")} onClick={() => {
           setOffset(0);
           void navigate({ search: (q) => ({ ...q, effective_from: undefined, effective_to: undefined }), replace: true });
-        }}>{t("asof.clearRange")}</Button>}
+        }}>{t("orgChange.list.range", { from: fmtDate(effective_from), to: fmtDate(effective_to) })}<X size={14} aria-hidden /></ToggleButton>}
       </div>
       <div role="group" aria-label={t("orgChange.list.views")} className="tabs">
         {VIEWS.map((v, i) => (

@@ -174,7 +174,9 @@ export const orgPolicyQuery = { ...get("/api/v1/settings"), staleTime: 5 * 60_00
  */
 export async function governed(key: string, body: S["CreateOrgChangeRequest"], submit: boolean) {
   const draft = await draftChange(key, body);
-  return { id: draft.id, code: draft.code, sent: submit ? await submitDraft(draft.id) : ("saved" as const) };
+  const sent = submit ? await submitDraft(draft.id) : ("saved" as const);
+  const result = sent === "sent" ? await unwrap(readChange(draft.id)) : draft;
+  return { id: draft.id, code: draft.code, sent, select: result.created_unit_ids?.[0] };
 }
 
 // --- lane: UX-R2 ORGCHANGE (org-06) ---
@@ -215,3 +217,20 @@ export const dissolveUnit = (key: string, id: string, version: number) =>
 /** A department's head and code, as their full new values (null clears), in either phase. */
 export const setUnitDetails = (key: string, id: string, body: { expected_version: number; code: string | null; head_employee_id: string | null }) =>
   unwrap(api.PUT("/api/v1/org-structure/units/{orgUnitId}/details", { params: unitAt(key, id), body }));
+
+
+/** Every scheduled action for one unit, read atomically before the timeline is shown. */
+export const scheduledUnitChangesQuery = (unitId: string) => {
+  const query = { status: ["APPROVED" as const], target_ref: unitId, limit: CHANGES_PAGE };
+  return read("/api/v1/org-changes", async () => {
+    const items: S["OrgChangeSummary"][] = [];
+    let total = 0;
+    do {
+      const page = await unwrap(api.GET("/api/v1/org-changes", { params: { query: { ...query, offset: items.length } } }));
+      items.push(...page.items);
+      total = page.total;
+      if (!page.items.length && items.length < total) throw new Error("org-change timeline is incomplete");
+    } while (items.length < total);
+    return items;
+  }, { query });
+};

@@ -1,5 +1,7 @@
 // Korean source for `orgChange.` ids: the org change record and list. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koOrgChange = {
+  "orgChange.list.range": "{from} ~ {to}",
+  "orgChange.timeline.scheduled": "예정",
   // Title (one phrase in the list, the record and its receipts)
   "orgChange.title.NEW": "{name} 신설",
   "orgChange.title.REORG": "{name} 개편",
@@ -19,7 +21,7 @@ export const koOrgChange = {
   "orgChange.rail.approval": "결재 {n}/{total}",
   "orgChange.rail.rejected": "결재 {n}/{total} · 반려됨",
   "orgChange.rail.approved": "승인",
-  "orgChange.rail.ready": "{date} 00:05 반영",
+  "orgChange.rail.ready": "{date} 반영",
   "orgChange.rail.applied": "반영 {date}",
   "orgChange.rail.settling": "정리 {n}/{total}",
   "orgChange.rail.archived": "종결",
@@ -96,7 +98,7 @@ export const koOrgChange = {
   "orgChange.proposal": "변경 내용",
   "orgChange.preview": "바뀌는 모습",
   "orgChange.headcount": "영향 인원",
-  "orgChange.headcount.value": "{count, plural, other {#명}} · 퇴직자를 제외한 인원(휴직 포함)",
+  "orgChange.headcount.value": "{count, plural, other {#명}} · 이 변경으로 소속이나 사업장이 바뀌는 사람",
   "orgChange.preflight": "사전 점검",
   "orgChange.preflight.blocked": "차단 {count}",
   "orgChange.preflight.warn": "확인 필요 {count}",
@@ -104,7 +106,7 @@ export const koOrgChange = {
   "orgChange.preflight.at": "{at} 점검",
   "orgChange.preflight.rerun": "다시 점검",
   "orgChange.preflight.rerunning": "다시 점검 중",
-  "orgChange.preflight.footer": "영향 인원 {count, plural, other {#명}} · 퇴직자를 제외한 인원(휴직 포함) · 연결된 항목 {deps, plural, other {#건}} · 반영할 때 서버가 다시 점검합니다",
+  "orgChange.preflight.footer": "영향 인원 {count, plural, other {#명}} · 이 변경으로 소속이나 사업장이 바뀌는 사람 · 연결된 항목 {deps, plural, other {#건}} · 반영할 때 서버가 다시 점검합니다",
   "orgChange.preflight.fix.members": "구성원 {count, plural, other {#명}} 먼저 전보",
   "orgChange.preflight.fix.membersNote": "부서의 폐지 시트에서 구성원이 갈 곳을 지정하면 같은 변경으로 함께 전보하고 폐지합니다",
   "orgChange.preflight.fix.split": "나눠서 발령하려면 직원별 전보",
@@ -189,7 +191,7 @@ export const koOrgChange = {
   "orgChange.rail.scheduled": "예약 · {date}",
   "orgChange.scheduled.title": "{date}에 반영됩니다 · D-{days, number}",
   "orgChange.scheduled.due": "오늘({date}) 반영할 변경입니다",
-  "orgChange.scheduled.note": "시행일 00:05 자동 반영",
+  "orgChange.scheduled.note": "{at} 자동 반영",
   "orgChange.scheduled.readOnly": "조직 변경 권한이 있는 관리자가 예약을 변경하거나 취소할 수 있습니다",
   "orgChange.scheduled.refused": "시행일에 반영하지 못했습니다: {reason} · 막는 원인을 해소하거나 예약을 변경하거나 취소하십시오",
   "orgChange.scheduled.edit": "예약 수정",

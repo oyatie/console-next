@@ -5026,7 +5026,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Bulk 법인 · 사업장 receipts, newest first (latest 200), with whether each can still be undone (MR-29) */
+        /** 법인 · 사업장 batch and direct registration receipts, newest first (latest 200), with whether each can still be undone */
         get: operations["listEntitySetupBatches"];
         put?: never;
         /**
@@ -19896,7 +19896,10 @@ export interface components {
             ops: components["schemas"]["EntitySetupOp"][];
         };
         EntitySetupBatchView: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Batch id, or the accepted command id when registration_action is present.
+             */
             id: string;
             /** @enum {string} */
             kind: "APPLY" | "UNDO";
@@ -19909,6 +19912,15 @@ export interface components {
             /** Format: date-time */
             created_at: string;
             undoable: boolean;
+            /** Format: uuid */
+            actor_id?: string | null;
+            actor_name?: string | null;
+            /** @description Operations recorded in the batch receipt. */
+            actions?: string[];
+            /** @description Names at the revisions recorded by the receipt. */
+            target_names?: string[];
+            /** @description Direct registration command action; such receipts cannot be undone as batches. */
+            registration_action?: string | null;
         };
         EntitySetupItem: {
             index: number;
@@ -23647,6 +23659,10 @@ export interface components {
             status: components["schemas"]["OrgChangeStatus"];
             target: components["schemas"]["OrgChangeTarget"];
             effectiveDate: components["schemas"]["Date"];
+            /** @description Configured scheduled application instant in UTC; omitted for immediate and terminal changes. */
+            applies_at?: components["schemas"]["Timestamp"];
+            /** @description Actual canonical unit identifiers returned by the applied creation commands, in proposal order. */
+            created_unit_ids?: components["schemas"]["Uuid"][];
             reason: string;
             /** Format: int64 */
             headcount: number;
@@ -23823,6 +23839,12 @@ export interface components {
             units: components["schemas"]["OrgSetupUnit"][];
             /** Format: uuid */
             actor_id: string;
+            actor_name?: string | null;
+            /** @description Canonical audit actions recorded by this batch. */
+            actions?: string[];
+            /** @description Unit names at the revisions written by this batch. */
+            unit_names?: string[];
+            change_mode?: string | null;
             /** Format: date-time */
             created_at: string;
         };
@@ -24015,6 +24037,8 @@ export interface components {
             name: string;
             employeeNumber?: string;
             position?: string;
+            /** @description Current 직책 from the employee card's position-kind catalog fact. */
+            title?: string;
         };
         OrgUnitMembers: {
             /**
@@ -49267,6 +49291,8 @@ export interface operations {
     listOrgChanges: {
         parameters: {
             query?: {
+                /** @description Only requests targeting this unit or other target reference; applied before pagination. */
+                target_ref?: string;
                 /** @description One status or a comma-separated list (`status=DRAFT,IN_APPROVAL`); a request matches any of them. An unknown value is 422. */
                 status?: components["schemas"]["OrgChangeStatus"][];
                 kind?: components["schemas"]["OrgChangeKind"];

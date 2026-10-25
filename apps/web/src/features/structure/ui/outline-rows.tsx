@@ -95,7 +95,7 @@ export function OutlineRows(p: {
 
   return (
     <div className={css.rows} role="tree" aria-label={t("structure.outline.label")} tabIndex={-1}>
-      <div className={css.colhead} aria-hidden><span>{t("structure.list.name")}</span><span>{t("structure.outline.levelCol")}</span><span>{t("structure.list.people")}</span></div>
+      <div className={css.colhead} aria-hidden><span>{t("structure.list.name")}</span><span title={t("structure.outline.levelHint")}>{t("structure.outline.levelCol")}</span><span>{t("orgUnit.stat.total")}</span></div>
       {rows.map((n) => {
         const renaming = edit?.kind === "rename" && edit.id === n.id;
         const newHere = newParent && after === n.id;

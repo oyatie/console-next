@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { expectAccessible } from "./a11y";
+import { atPhoneWidth, expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
-import { chooseRadio, registerEmployee } from "./flows";
+import { chooseRadio, kstDate, registerEmployee } from "./flows";
 import { addDepts, openUnit, quickWorkplace, sheet } from "./helpers/structure";
 import { startOperations, tenantInSetup } from "./setup-flows";
 import { box, leaveScreen } from "./structure-flows";
@@ -11,6 +11,7 @@ import { expectComposer } from "./helpers/composer";
 // change — 시행일 with no default, 사유; with no 결재 (decisions #26) a change dated today applies at submit — and an empty 사업장 closes on a date.
 
 test("operating: new department and dissolution proposals, a governed move, deleting a never-used workplace", { tag: "@org" }, async ({ browser }) => {
+  test.setTimeout(180_000); // existing tenant journey plus card/list/panel parity, phone accessibility and one scheduled rename
   const { admin } = await tenantInSetup(browser, "govstruct", "기안구조");
   await addDepts(admin, "본점", ["인사부", "영업팀"]);
   await registerEmployee(admin, { name: "인사직원", unit: "인사부" });
@@ -19,6 +20,23 @@ test("operating: new department and dissolution proposals, a governed move, dele
   await startOperations(admin);
   await leaveScreen(admin); // the 법인 and people screens passed through are audited by their own specs
   const c = clickCounter();
+
+  // One meaning for direct and total people, on the card, the list and the panel.
+  const count = "직속 1 · 전체 1";
+  await expect(await openUnit(admin, "인사부")).toContainText(count);
+  await admin.keyboard.press("f"); // fitting the chart closes the panel
+  await expect(box(admin, "인사부")).toContainText(count);
+  const staffed = await openUnit(admin, "인사부");
+  await expectAccessible(admin, "department panel at 1440px");
+  await atPhoneWidth(admin, async () => {
+    await expect(staffed).toBeVisible();
+    await expectAccessible(admin, "department panel at 390px");
+  });
+  const views = admin.getByRole("group", { name: "보기", exact: true });
+  await views.getByRole("button", { name: "목록", exact: true }).click();
+  await expect(admin.getByRole("grid", { name: "조직 구조 목록" }).getByRole("row", { name: /인사부/ })).toContainText(count);
+  await views.getByRole("button", { name: "조직도", exact: true }).click();
+  await admin.getByRole("button", { name: "전체 보기", exact: true }).click();
 
   // 1. 부서 신설: the same 「부서 추가」 opens an org change; nothing is dated for you.
   const main = await openUnit(admin, "본점");
@@ -39,6 +57,8 @@ test("operating: new department and dissolution proposals, a governed move, dele
   // org-19: the user stays on the chart; the receipt names the change and links its record.
   await expect(admin).toHaveURL(/\/org(\?|$)/);
   await expect(admin.getByRole("status").filter({ hasText: "마케팅팀 신설을 반영했습니다" })).toBeVisible();
+  await expect(admin.getByRole("status").filter({ hasText: /반영했습니다/ })).toHaveCount(1);
+  await expect(admin.getByRole("complementary", { name: "마케팅팀", exact: true })).toBeVisible();
   expect(c.done("propose a new department")).toBeLessThanOrEqual(4);
 
   // 2. 부서 폐지: one sheet (org-06), what must be decided first — where its member goes (the parent, here the 사업장
@@ -84,4 +104,15 @@ test("operating: new department and dissolution proposals, a governed move, dele
   await del.getByRole("button", { name: "닫을지점 삭제" }).click();
   await expect(del).toBeHidden();
   await expect(box(admin, "닫을지점")).toHaveCount(0);
+
+  // A future change reaches the selected unit's timeline through the existing live reads.
+  const marketing = await openUnit(admin, "마케팅팀");
+  await marketing.getByRole("button", { name: "이름 변경", exact: true }).click();
+  const rename = sheet(admin, "마케팅팀 이름 변경");
+  await rename.getByRole("textbox", { name: /^새 이름/ }).fill("브랜드마케팅팀");
+  await rename.getByRole("textbox", { name: /^시행일/ }).fill(kstDate(3));
+  await rename.getByRole("textbox", { name: /^사유/ }).fill("브랜드 기능 통합");
+  await rename.getByRole("button", { name: "부서 이름 변경 1개 예약", exact: true }).click();
+  await expect(rename).toBeHidden();
+  await expect(marketing.locator("#dept-history").getByRole("link", { name: /마케팅팀 → 브랜드마케팅팀/ })).toBeVisible();
 });

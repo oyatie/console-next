@@ -37,9 +37,9 @@ export function parseOutline(text: string): { rows: OutlineRow[]; shape: Outline
       const parts = path.split(PATH_SEP).map(nameKey).filter(Boolean);
       parts.forEach((name, depth) => {
         const key = parts.slice(0, depth + 1).join("\u0000");
-        if (seen.has(key)) return;
+        if (seen.has(key) && !(depth === parts.length - 1 && kind?.trim())) return;
         seen.add(key);
-        rows.push({ line, depth, name, ...(depth === 0 && kind?.trim() ? { kind: nameKey(kind) } : {}) });
+        rows.push({ line, depth, name, ...(depth === parts.length - 1 && kind?.trim() ? { kind: nameKey(kind) } : {}) });
       });
     }
   } else {
