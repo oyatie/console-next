@@ -37,6 +37,9 @@ test("history names the actual action and actor, offers period/actor filters and
   expect(html).toContain("법인 등록");
   expect(html).toContain("기록 시작일");
   expect(html).toContain("기록 종료일");
+  expect(html).toMatch(/<label for="([^"]+-from)">기록 시작일<\/label>/);
+  expect(html).toMatch(/<label for="([^"]+-to)">기록 종료일<\/label>/);
+  expect(html).not.toContain(t("uiField.optional"));
   expect(html).toContain("누가");
   expect(html).toContain("불러온 최근 기록에서 찾기");
   expect(html).not.toContain('aria-label="품질관리팀 되돌리기"');

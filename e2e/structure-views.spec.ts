@@ -3,7 +3,7 @@ import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
 import { tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { setupCompany } from "./setup-flows";
-import { box, leaveScreen, receipt } from "./structure-flows";
+import { box, leaveScreen } from "./structure-flows";
 
 // The other ways into the same structure (mockups S1-jump, S2b, S2-registry, S2-chart-export): ⌘K, the outline with
 // keyboard entry and list paste, the list with levels, find and selection, and export. From an empty tenant, UI only.
@@ -53,18 +53,22 @@ test("jump, outline, paste, list and export work on one structure", { tag: "@org
   await expectAccessible(admin, "outline beside the chart");
   expect(c.done("two 부서 by outline keyboard")).toBeLessThanOrEqual(2);
 
-  // List paste: a tab-indented list becomes nested 부서 in one batch with one undo (2 clicks).
-  await outline.getByRole("treeitem", { name: /^평택공장/ }).click();
-  await c.click(admin.getByRole("button", { name: "목록 붙여넣기" }));
-  const paste = admin.getByRole("dialog", { name: "목록 붙여넣기" });
-  await paste.getByLabel("부서 목록").fill("생산부\n\t생산1팀\n\t생산2팀\n품질부\n영업부");
-  await expect(paste).toContainText("같은 곳에 같은 이름이 있습니다");
-  await paste.getByLabel("부서 목록").fill("생산부\n\t생산1팀\n\t생산2팀\n품질부");
-  await expect(paste).toContainText("평택공장 아래에 부서 4개를 2단계로 추가합니다");
+  // The sole import menu opens the shared paste page; existing departments link instead of being duplicated.
+  await c.click(admin.getByRole("button", { name: "가져오기", exact: true }));
+  await c.click(admin.getByRole("menuitem", { name: "목록 붙여넣기", exact: true }));
+  await c.click(admin.getByRole("radiogroup", { name: /^어디 아래에/ }).getByText("주식회사 한울 › 평택공장", { exact: true }));
+  const paste = admin.getByLabel("붙여넣은 내용");
+  await paste.fill("생산부\n\t생산1팀\n\t생산2팀\n품질부\n영업부");
+  await expect(admin.getByRole("list", { name: "추가될 모습" }).getByRole("listitem").filter({ hasText: "영업부" })).toContainText("이미 있음 — 연결");
+  await paste.fill("생산부\n\t생산1팀\n\t생산2팀\n품질부");
+  await expect(admin.getByText("알아낸 모양: 탭 들여쓰기 · 2단계", { exact: true })).toBeVisible();
+  await expect(admin.getByText("부서 4개를 추가합니다.")).toBeVisible();
   await expectAccessible(admin, "list paste");
-  await c.click(paste.getByRole("button", { name: "부서 4개 추가" }));
-  await expect(receipt(admin).first()).toContainText("평택공장 아래에 부서 4개를 추가했습니다");
-  expect(c.done("4 부서 by paste")).toBeLessThanOrEqual(2);
+  await c.click(admin.getByRole("button", { name: "부서 4개 추가", exact: true }));
+  await expect(admin.getByRole("status").filter({ hasText: "기록됨" })).toContainText("부서 4개를 추가했습니다");
+  expect(c.done("4 부서 by paste")).toBeLessThanOrEqual(4);
+  await admin.getByRole("link", { name: "조직도에서 보기", exact: true }).click();
+  await admin.getByRole("button", { name: "아웃라인", exact: true }).click();
   await expect(outline.getByRole("treeitem", { name: /^생산2팀/ })).toBeVisible();
 
   // The list: every level as an indented tree, one level flat, find keeps the path.
@@ -74,8 +78,8 @@ test("jump, outline, paste, list and export work on one structure", { tag: "@org
   await admin.getByRole("button", { name: /^부서 \d/ }).click();
   await expect(list.getByRole("row", { name: /평택공장/ })).toHaveCount(0);
   await expect(list.getByRole("row", { name: /품질부/ })).toBeVisible();
-  for (const column of ["순서", "이름", "단계", "장", "코드", "인원", "직속", "미배치", "하위", "표시"])
-    await expect(list.getByRole("columnheader", { name: column, exact: true })).toBeAttached();
+  const headers = await list.getByRole("columnheader").allTextContents();
+  expect(headers.map(h => h.trim()).filter(Boolean)).toEqual(["이름", "코드", "부서장", "직속 / 전체", "법인 · 사업장", "표시", "순서", "작업"]);
   await expectAccessible(admin, "structure list");
 
   // Export: PDF/PNG, paper and orientation, the point-size guard, personal data off by default.

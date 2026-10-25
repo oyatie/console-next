@@ -54,10 +54,10 @@ export function OrgChanges() {
       <div className="page__head">
         <Link to="/org" search={{}} className="btn btn--ghost">{t("org.title")}</Link>
         <h1 className="page__title">{t("orgChange.list.title")}</h1>
-        {(effective_from || effective_to) && <ToggleButton pressed look="chip" title={t("asof.clearRange")} onClick={() => {
+        {(effective_from || effective_to) && <ToggleButton pressed look="chip" aria-label={`${t("orgChange.list.range", { from: fmtDate(effective_from), to: fmtDate(effective_to) })} · ${t("asof.clearRange")}`} title={t("asof.clearRange")} onClick={() => {
           setOffset(0);
           void navigate({ search: (q) => ({ ...q, effective_from: undefined, effective_to: undefined }), replace: true });
-        }}>{t("orgChange.list.range", { from: fmtDate(effective_from), to: fmtDate(effective_to) })}<X size={14} aria-hidden /><span className="sr-only">{t("asof.clearRange")}</span></ToggleButton>}
+        }}>{t("orgChange.list.range", { from: fmtDate(effective_from), to: fmtDate(effective_to) })}<X size={14} aria-hidden /></ToggleButton>}
       </div>
       <div role="group" aria-label={t("orgChange.list.views")} className="tabs">
         {VIEWS.map((v, i) => (

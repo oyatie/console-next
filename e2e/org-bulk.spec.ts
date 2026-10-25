@@ -99,8 +99,7 @@ test("paste a list under a 법인, undo it whole, and undo the rest from the his
   await expect(kind("부서 일괄 · 신설").first()).toContainText(actorName!);
   await fillDate(page, kstDate(-1), "기록 시작일");
   await fillDate(page, kstDate(), "기록 종료일");
-  await page.getByRole("button", { name: /누가/ }).click();
-  await page.getByRole("option", { name: actorName!, exact: true }).click();
+  await page.getByRole("combobox", { name: "누가", exact: true }).selectOption({ label: actorName! });
   await expect(kind("법인 등록")).toBeVisible();
   await page.getByRole("button", { name: "조건 초기화" }).click();
   await expectAccessible(page, "org history");

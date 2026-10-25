@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { CalendarClock, ChevronRight, Network } from "lucide-react";
@@ -9,8 +9,9 @@ import { todayKst } from "../../../lib/pure/today";
 import { Button, Check, ToggleButton } from "../../../ui/button/button";
 import { SectionHead } from "../../../ui/card/section-head";
 import { Chip } from "../../../ui/chip";
-import { DateField } from "../../../ui/date/date-field";
-import { SelectField } from "../../../ui/select/select-field";
+import { DateInput } from "../../../ui/date/date-input";
+import { Field } from "../../../ui/field/field";
+import { SelectInput } from "../../../ui/field/select-input";
 import { Table, type Column } from "../../../ui/table";
 import { QueryState } from "../../../lib/react/query-state";
 import { readGroup } from "../../../lib/react/query-view";
@@ -26,6 +27,7 @@ type Source = (typeof SOURCES)[number];
 
 /** S9 org chart history: recorded actions and actors, with undo only where the server permits it. */
 export function HistoryPage() {
+  const dateId = useId();
   const org = useQuery(orgBatchesQuery);
   const entity = useQuery(entityBatchesQuery);
   const changes = useQuery(changesQuery);
@@ -43,11 +45,11 @@ export function HistoryPage() {
   return (
     <div className="page">
       <header className={s.head}>
-        <span className={s.crumb}>
+        <nav className={s.crumb} aria-label={t("orgHistory.crumbHere")}>
           <Network size={14} aria-hidden />
           <Link to="/org" search={{}}>{t("orgHistory.crumb")}</Link>
           <ChevronRight size={14} aria-hidden /> {t("orgHistory.crumbHere")}
-        </span>
+        </nav>
         <h1 className="page__title">{t("orgHistory.title")}</h1>
       </header>
       <QueryState q={all}>
@@ -72,9 +74,20 @@ export function HistoryPage() {
                   {SOURCES.map((k) => <ToggleButton key={k} pressed={source === k} onClick={() => setSource(k)}>{t(`orgHistory.filter.source.${k}`)}</ToggleButton>)}
                 </div>
                 <Check checked={undoable} onChange={setUndoable}>{t("orgHistory.filter.undoable")}</Check>
-                <DateField label={t("orgHistory.filter.from")} required={false} value={from} onChange={setFrom} today={today} max={to || today} />
-                <DateField label={t("orgHistory.filter.to")} required={false} value={to} onChange={setTo} today={today} min={from || undefined} max={today} />
-                <SelectField label={t("orgHistory.filter.actor")} required={false} value={actorId || "all"} onChange={id => setActorId(id === "all" ? "" : id)} placeholder={t("orgHistory.filter.actorAll")} options={[{ id: "all", label: t("orgHistory.filter.actorAll") }, ...actors.map(([id, label]) => ({ id, label }))]} />
+                <div className={s.who}>
+                  <label htmlFor={`${dateId}-from`}>{t("orgHistory.filter.from")}</label>
+                  <DateInput id={`${dateId}-from`} required={false} value={from} onChange={setFrom} today={today} max={to || today} />
+                </div>
+                <div className={s.who}>
+                  <label htmlFor={`${dateId}-to`}>{t("orgHistory.filter.to")}</label>
+                  <DateInput id={`${dateId}-to`} required={false} value={to} onChange={setTo} today={today} min={from || undefined} max={today} />
+                </div>
+                <Field label={t("orgHistory.filter.actor")} required={null}>
+                  {p => <SelectInput {...p} value={actorId} onChange={e => setActorId(e.target.value)}>
+                    <option value="">{t("orgHistory.filter.actorAll")}</option>
+                    {actors.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                  </SelectInput>}
+                </Field>
                 {filtered && <Button variant="ghost" onClick={reset}>{t("orgHistory.filter.reset")}</Button>}
               </div>
               {shown.length ? (
@@ -101,7 +114,7 @@ function targetText(r: FeedRow) {
 }
 
 const columns = (): Column<FeedRow>[] => [
-  { header: t("orgHistory.col.at"), fit: true, cell: (r) => <span className="num">{fmtDateTime(r.at)}</span> },
+  { header: t("orgHistory.col.at"), fit: true, cell: (r) => <time className="num" dateTime={r.at}>{fmtDateTime(r.at)}</time> },
   { header: t("orgHistory.col.target"), cell: (r) => <strong>{targetText(r)}</strong> },
   {
     header: t("orgHistory.col.kind"),
@@ -115,10 +128,10 @@ const columns = (): Column<FeedRow>[] => [
   {
     header: t("orgHistory.col.who"),
     cell: (r) => (
-      <span className={s.who}>
-        <span>{actor(r.actor?.name)}</span>
+      <div className={s.who}>
+        <b>{actor(r.actor?.name)}</b>
         <span className="muted">{r.source === "change" ? t("orgHistory.how.change", { code: r.change!.code, date: fmtDate(r.change!.effectiveDate) }) : t("orgHistory.how.record", { mode: historyMode(r), actions: historyActions(r) })}</span>
-      </span>
+      </div>
     ),
   },
   { header: t("orgHistory.col.undo"), cell: (r) => <UndoCell row={r} target={targetText(r)} /> },

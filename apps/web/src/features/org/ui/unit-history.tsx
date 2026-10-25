@@ -26,7 +26,7 @@ export function UnitHistory({ revisions, units, open, scheduled = [] }: { revisi
       <summary className={css.summary}>{t("orgTree.history.title", { count: lines.length + future.length })}</summary>
       <ol className="list-plain">
         {future.map((c) => <li key={c.id} className={css.historyLine}>
-          <span><Chip tone="info">{t("orgChange.timeline.scheduled")}</Chip> {c.applies_at ? fmtDateTime(c.applies_at) : fmtDate(c.effectiveDate)} · <Link to="/org/changes/$id" params={{ id: c.id }}>{c.code} · {changeTitle(c, lookup)}</Link></span>
+          <Link to="/org/changes/$id" params={{ id: c.id }}><Chip tone="info">{t("orgChange.timeline.scheduled")}</Chip> {c.applies_at ? fmtDateTime(c.applies_at) : fmtDate(c.effectiveDate)} · {c.code} · {changeTitle(c, lookup)}</Link>
           <span className={css.meta}>{actor(c.draftedByName)}</span>
         </li>)}
         {lines.map((l, i) => {
