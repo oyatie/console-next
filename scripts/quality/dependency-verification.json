@@ -5,5 +5,26 @@
     "registry": "https://registry.npmjs.org/%40internationalized%2Fdate/3.12.4",
     "checked": "2026-10-20",
     "note": "docs/quality/dependencies/internationalized-date.md"
+  },
+  "package.json:devDependencies:vitest": {
+    "requirement": "^5.0.5",
+    "version": "5.0.5",
+    "registry": "https://registry.npmjs.org/vitest/5.0.5",
+    "checked": "2026-10-26",
+    "note": "docs/quality/dependencies/vitest.md"
+  },
+  "apps/web/package.json:dependencies:zod": {
+    "requirement": "^4.6.7",
+    "version": "4.6.7",
+    "registry": "https://registry.npmjs.org/zod/4.6.7",
+    "checked": "2026-10-26",
+    "note": "docs/quality/dependencies/zod.md"
+  },
+  "apps/web/package.json:devDependencies:vite": {
+    "requirement": "^8.3.5",
+    "version": "8.3.5",
+    "registry": "https://registry.npmjs.org/vite/8.3.5",
+    "checked": "2026-10-26",
+    "note": "docs/quality/dependencies/vite.md"
   }
 }
