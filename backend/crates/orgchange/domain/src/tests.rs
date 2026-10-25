@@ -102,6 +102,8 @@ fn summary_serializes_effective_date_as_iso_calendar_date() {
             label: "수도권".into(),
         },
         effective_date: Date::from_calendar_date(2026, time::Month::July, 24).unwrap(),
+        applies_at: None,
+        created_unit_ids: None,
         reason: "개편".into(),
         headcount: 0,
         site_count: 0,

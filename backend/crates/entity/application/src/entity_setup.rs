@@ -122,4 +122,15 @@ pub struct EntitySetupBatchView {
     pub created_at: String,
     /// SETUP, an APPLY, not undone yet.
     pub undoable: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub actor_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub actor_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub actions: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_names: Option<Vec<String>>,
+    /// Direct registration receipt from the command ledger; never a batch undo target.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub registration_action: Option<String>,
 }

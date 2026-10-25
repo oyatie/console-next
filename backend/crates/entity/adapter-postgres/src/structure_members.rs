@@ -38,12 +38,14 @@ impl PgEntityStore {
                 let ids: Vec<_> = members.iter().filter(|m| m.unit == Some(unit)).map(|m| m.employee).collect();
                 let headcount = i64::try_from(ids.len()).unwrap_or(i64::MAX);
                 let rows = sqlx::query(
-                    "SELECT e.id, e.name, e.employee_number, e.position FROM person_employees_current e \
+                    "SELECT e.id, e.name, e.employee_number, e.position, title.label AS title FROM person_employees_current e \
+                     LEFT JOIN job_titles title ON title.org_id=e.org_id AND title.id=e.position_kind_id \
                      WHERE e.id = ANY($1) ORDER BY e.name, e.id LIMIT 200",
                 ).bind(ids).fetch_all(tx.as_mut()).await?;
                 let items = rows.iter().map(|row| Ok(OrgUnitMemberView {
                     employee_id: row.try_get("id")?, name: row.try_get("name")?,
                     employee_number: row.try_get("employee_number")?, position: row.try_get("position")?,
+                    title: row.try_get("title")?,
                 })).collect::<Result<_, sqlx::Error>>()?;
                 Ok(OrgUnitMembersView { headcount, items })
             })

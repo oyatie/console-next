@@ -25,13 +25,30 @@ pub(crate) async fn apply_ops(
     employment_transfer: Option<&dyn EmploymentTransferPort>,
     org_unit_write: Option<&dyn OrgUnitWritePort>,
 ) -> Result<Applied, PgOrgChangeError> {
-    let (ops, effective_date) = (&request.proposal, request.effective_date);
-    // Both live-apply entry points (effectuate for NEW/REORG, archive for the
-    // deferred DISSOLVE ops) route through here, so the freeze gate sits here
-    // rather than in each caller.
+    assert_change_window_open(tx, request.effective_date).await?;
+    replay_ops(
+        tx,
+        (org, actor, now),
+        id,
+        request,
+        employment_transfer,
+        org_unit_write,
+    )
+    .await
+}
+
+/// The same proposal replay for apply and its rolled-back preflight.
+pub(crate) async fn replay_ops(
+    tx: Tx<'_, '_>,
+    (org, actor, now): (OrgId, UserId, OffsetDateTime),
+    id: Uuid,
+    request: &RequestRow,
+    employment_transfer: Option<&dyn EmploymentTransferPort>,
+    org_unit_write: Option<&dyn OrgUnitWritePort>,
+) -> Result<Applied, PgOrgChangeError> {
+    let ops = &request.proposal;
     // A draft stored before decisions #18 may still hold a retired op.
     refuse_retired(ops)?;
-    assert_change_window_open(tx, effective_date).await?;
     // Fail closed on the wiring defect BEFORE the per-op conflict mapping: a
     // missing port is a composition error (→ 500), not a proposal conflict
     // (→ 409). A move may now carry its people, so it needs the port too.
@@ -56,6 +73,7 @@ pub(crate) async fn apply_ops(
         audits: Vec::with_capacity(ops.len()),
         people: 0,
     };
+    let mut people = std::collections::BTreeSet::new();
     for (index, op) in ops.iter().enumerate() {
         // The operation receipt connects projected creations to their canonical IDs.
         let command_id = console_orgchange_domain::projection::projected_unit_id(id, index);
@@ -70,8 +88,9 @@ pub(crate) async fn apply_ops(
         .await
         .map_err(|e| wrap_op_error(index, e))?;
         applied.audits.extend(moved.audits);
-        applied.people += moved.people;
+        people.extend(moved.employee_ids);
     }
+    applied.people = i64::try_from(people.len()).unwrap_or(i64::MAX);
     Ok(applied)
 }
 
@@ -156,6 +175,7 @@ async fn apply_one(
         }
         op => Ok(PeopleMoved {
             people: 0,
+            employee_ids: Vec::new(),
             audits: vec![apply_op(tx, org, actor, command_id, op, now).await?],
         }),
     }

@@ -154,18 +154,18 @@ pub(crate) async fn compute_preflight(
     dependents_total +=
         org_unit_preflight(tx, org, proposal, &mut blockers, &mut restrict_dependents).await?;
 
-    let headcount = scope_headcount(tx, target).await?;
+    let scoped_people = scope_headcount(tx, target).await?;
     // A unit's members are the org-unit preflight's (a blocker unless an op
     // of the change moves them); a legacy branch/region dissolve still warns.
-    if kind == OrgChangeKind::Dissolve && headcount > 0 && target.kind != TargetKind::OrgUnit {
+    if kind == OrgChangeKind::Dissolve && scoped_people > 0 && target.kind != TargetKind::OrgUnit {
         // The apply re-verifies in-transaction and refuses while they remain.
         warnings.push(PreflightWarning {
             code: "EMPLOYEES_SETTLEMENT".to_owned(),
             label: "소속 직원 전보·전적 정산 필요".to_owned(),
             dependent_kind: Some("employee".to_owned()),
-            count: Some(headcount),
+            count: Some(scoped_people),
         });
-        dependents_total += headcount;
+        dependents_total += scoped_people;
     }
 
     // No uncomputed reminder chips (UX-R2 org-05): 공고, positions, cost
@@ -209,7 +209,8 @@ pub(crate) async fn compute_preflight(
         stale: false,
         blockers,
         warnings,
-        headcount,
+        // The rolled-back proposal replay computes the people it actually changes.
+        headcount: 0,
         dependents_total,
     })
 }

@@ -94,6 +94,16 @@ impl PgOrgChangeStore {
     /// is retried next run. Idempotent across replicas: the row lock and the
     /// re-read status admit each change once. Returns how many applied.
     pub async fn effectuate_due(&self, through: Date) -> Result<usize, String> {
+        self.effectuate_due_at(through, OffsetDateTime::now_utc())
+            .await
+    }
+
+    /// The worker's UTC clock is explicit so the configured boundary is reproducible.
+    pub async fn effectuate_due_at(
+        &self,
+        today: Date,
+        now: OffsetDateTime,
+    ) -> Result<usize, String> {
         let orgs: Vec<Uuid> = sqlx::query_scalar("SELECT id FROM platform_list_organizations()")
             // rls-arming: ok platform_list_organizations() is the SECURITY DEFINER id-only tenant discovery; every per-org statement below runs under with_org_conn / with_audits
             .fetch_all(&self.pool)
@@ -104,6 +114,9 @@ impl PgOrgChangeStore {
             let org = OrgId::from_uuid(org_uuid);
             let due = with_org_conn(&self.pool, org, move |tx| {
                 Box::pin(async move {
+                    let at = apply_time_in_tx(tx, org, now).await?;
+                    let through = due_through(today, now, at);
+                    tracing::info!(org = %org, key = SettingKey::OrgChangeApplyTime.as_str(), value = %at, %through, "scheduled org change apply time resolved");
                     let due: Vec<Uuid> = sqlx::query_scalar(
                         "SELECT id FROM org_change_requests WHERE status = 'APPROVED' \
                          AND effective_date <= $1 ORDER BY effective_date, created_at LIMIT 200",
@@ -111,11 +124,11 @@ impl PgOrgChangeStore {
                     .bind(through)
                     .fetch_all(tx.as_mut())
                     .await?;
-                    Ok::<_, PgOrgChangeError>(due)
+                    Ok::<_, PgOrgChangeError>((through, due))
                 })
             })
             .await;
-            let due = match due {
+            let (through, due) = match due {
                 Ok(due) => due,
                 Err(error) => {
                     tracing::warn!(org = %org, error = %error.message(), "due org changes could not be listed; retrying next run");

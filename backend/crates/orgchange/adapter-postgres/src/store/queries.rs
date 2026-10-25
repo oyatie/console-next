@@ -99,10 +99,11 @@ impl PgOrgChangeStore {
                     (head_view(head, org, headcount), revisions)
                 };
                 let member_rows = sqlx::query(
-                    "SELECT id, name, employee_number, position FROM person_employees_current \
+                    "SELECT e.id, e.name, e.employee_number, e.position, title.label AS title FROM person_employees_current e \
+                     LEFT JOIN job_titles title ON title.org_id=e.org_id AND title.id=e.position_kind_id \
                      WHERE entity_employed_on(entity_today(), hire_on, exit_on, employment_status) \
                        AND ($2 OR org_unit_id = $1 OR org_unit = $1::text) \
-                     ORDER BY name, id LIMIT 200",
+                     ORDER BY e.name, e.id LIMIT 200",
                 )
                 .bind(id)
                 .bind(is_root)
@@ -115,6 +116,7 @@ impl PgOrgChangeStore {
                         name: row.try_get("name")?,
                         employee_number: row.try_get("employee_number")?,
                         position: row.try_get("position")?,
+                        title: row.try_get("title")?,
                     });
                 }
                 let headcount = head.headcount;
@@ -152,6 +154,7 @@ impl PgOrgChangeStore {
                     .bind(offset)
                     .bind(filter.effective_from)
                     .bind(filter.effective_to)
+                    .bind(&filter.target_ref)
                     .fetch_all(tx.as_mut())
                     .await?;
                 let total: i64 = sqlx::query_scalar(
@@ -160,18 +163,22 @@ impl PgOrgChangeStore {
                        AND ($2::text IS NULL OR kind = $2) \
                        AND ($3::uuid IS NULL OR drafted_by = $3) \
                        AND ($4::date IS NULL OR effective_date >= $4) \
-                       AND ($5::date IS NULL OR effective_date <= $5)",
+                       AND ($5::date IS NULL OR effective_date <= $5) \
+                       AND ($6::text IS NULL OR target_ref = $6)",
                 )
                 .bind(&statuses)
                 .bind(kind)
                 .bind(drafted_by)
                 .bind(filter.effective_from)
                 .bind(filter.effective_to)
+                .bind(&filter.target_ref)
                 .fetch_one(tx.as_mut())
                 .await?;
                 let mut items = Vec::with_capacity(rows.len());
+                let now = OffsetDateTime::now_utc();
+                let at = apply_time_in_tx(tx, org, now).await?;
                 for row in &rows {
-                    items.push(summary_from_row(row)?);
+                    items.push(summary_from_row(tx, row, at, now).await?);
                 }
                 Ok(OrgChangePage { items, total })
             })

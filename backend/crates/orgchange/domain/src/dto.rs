@@ -62,6 +62,15 @@ pub struct OrgChangeSummary {
     pub target: OrgChangeTarget,
     #[serde(with = "iso_date")]
     pub effective_date: Date,
+    #[serde(
+        rename = "applies_at",
+        with = "time::serde::rfc3339::option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub applies_at: Option<OffsetDateTime>,
+    /// Canonical create command results, available after the proposal applies.
+    #[serde(rename = "created_unit_ids", skip_serializing_if = "Option::is_none")]
+    pub created_unit_ids: Option<Vec<Uuid>>,
     pub reason: String,
     pub headcount: i64,
     pub site_count: i64,
@@ -281,6 +290,8 @@ pub struct OrgUnitMemberView {
     pub employee_number: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub position: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

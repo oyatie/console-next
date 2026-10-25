@@ -32,6 +32,8 @@ pub enum PeopleMove {
 #[derive(Debug, Default)]
 pub struct PeopleMoved {
     pub people: i64,
+    /// Actual changed employees, returned by the port that owns their writes.
+    pub employee_ids: Vec<Uuid>,
     pub audits: Vec<AuditEvent>,
 }
 

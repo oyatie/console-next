@@ -211,8 +211,18 @@ impl PgEntityStore {
             Box::pin(async move {
                 let setup = read_phase(tx, false).await? == TenantPhase::Setup;
                 let rows = sqlx::query(
-                    "SELECT id, kind, undoes, undone_by, steps, actor_id, created_at FROM org_setup_batches \
-                     ORDER BY created_at DESC, id LIMIT 200",
+                    "SELECT b.id, b.kind, b.undoes, b.undone_by, b.steps, b.actor_id, b.created_at, u.display_name AS actor_name, \
+                       c.outcome->>'change_mode' AS change_mode, \
+                       ARRAY(SELECT DISTINCT a.action FROM audit_events a WHERE a.org_id = b.org_id AND a.target_type = 'org_unit' \
+                         AND a.target_id IN (SELECT s->>'org_unit_id' FROM jsonb_array_elements(b.steps) s) \
+                         AND a.after_snap->>'batch_id' = b.id::text ORDER BY 1) AS actions, \
+                       ARRAY(SELECT name FROM (SELECT DISTINCT ON (r.org_unit_id) r.attributes->>'name' AS name, s.position \
+                         FROM jsonb_array_elements(b.steps) WITH ORDINALITY s(value, position) JOIN org_unit_revisions r \
+                           ON r.org_unit_id = (s.value->>'org_unit_id')::uuid AND r.version = (s.value->>'after_version')::bigint \
+                         ORDER BY r.org_unit_id, s.position DESC) names ORDER BY names.position) AS unit_names \
+                     FROM org_setup_batches b LEFT JOIN person_accounts_current u ON u.id = b.actor_id \
+                     LEFT JOIN entity_commands c ON c.command_id = b.command_id \
+                     ORDER BY b.created_at DESC, b.id LIMIT 200",
                 )
                 .fetch_all(tx.as_mut())
                 .await?;
@@ -229,6 +239,10 @@ impl PgEntityStore {
                         undone_by,
                         units: steps.iter().map(Step::unit).collect(),
                         actor_id: r.try_get("actor_id")?,
+                        actor_name: r.try_get("actor_name")?,
+                        actions: Some(r.try_get("actions")?),
+                        unit_names: Some(r.try_get("unit_names")?),
+                        change_mode: r.try_get("change_mode")?,
                         created_at: r.try_get("created_at")?,
                     });
                 }

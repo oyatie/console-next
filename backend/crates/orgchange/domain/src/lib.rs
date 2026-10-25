@@ -17,11 +17,13 @@ time::serde::format_description!(iso_date, Date, "[year]-[month]-[day]");
 mod dto;
 pub mod projection;
 mod proposal;
+mod schedule;
 mod status;
 mod tree_order;
 
 pub use dto::*;
 pub use proposal::*;
+pub use schedule::*;
 pub use status::*;
 pub use tree_order::*;
 
