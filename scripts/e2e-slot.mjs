@@ -14,7 +14,11 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
-import { admitted, listedTests, maxLoadPerCore, plan, readTimings } from "./e2e-timings.mjs";
+import { listedTests, plan } from "./e2e-plan.mjs";
+import { admitted, maxLoadPerCore, readTimings } from "./e2e-timings.mjs";
+
+// Share local history across worktrees, including every child reporter; CI supplies its own repository-local path.
+process.env.E2E_TIMINGS_FILE ??= path.join(os.homedir(), ".cache/console-e2e/timings.json");
 
 // A slot is a backend, a Vite and E2E_WORKERS browsers on the host (~3 cores, ~2 GiB) plus a compose stack in the
 // colima-console-test VM (16 GiB, ~0.3 GiB per idle stack; six fit). The VM, not the host, is the real ceiling.
@@ -98,7 +102,7 @@ async function onFreeSlot(job) {
 function autoShards() {
   const listed = spawnSync("npx", ["playwright", "test", "--list", "--reporter=json", ...args], { encoding: "utf8", maxBuffer: 1 << 28 });
   try {
-    return plan(listedTests(JSON.parse(listed.stdout)), readTimings(), { target: TARGET_S, workers: WORKERS });
+    return plan(listedTests(JSON.parse(listed.stdout), process.env.E2E_SERVED === "1"), readTimings(process.env.E2E_TIMINGS_FILE), { target: TARGET_S, workers: WORKERS });
   } catch {
     console.error("e2e:agent: could not list the tests; running unsharded");
     return [];

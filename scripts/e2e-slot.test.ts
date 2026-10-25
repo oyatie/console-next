@@ -1,6 +1,25 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { expect, test } from "vitest";
+
+test("the local runner passes its shared timing cache or explicit override to every child", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "slot-timings-"));
+  try {
+    const receipt = path.join(dir, "receipt");
+    const lock = path.join(dir, process.platform === "darwin" ? "lockf" : "flock");
+    writeFileSync(lock, `#!${process.execPath}\nrequire('node:fs').writeFileSync(process.env.TIMINGS_RECEIPT,process.env.E2E_TIMINGS_FILE??'missing');\n`, { mode: 0o700 });
+    for (const override of [undefined, path.join(dir, "custom.json")]) {
+      const env: NodeJS.ProcessEnv = { ...process.env, HOME: dir, PATH: `${dir}:${process.env.PATH}`, E2E_SLOTS: "1", E2E_MAX_LOAD_PER_CORE: "0", TIMINGS_RECEIPT: receipt };
+      delete env.E2E_TIMINGS_FILE;
+      if (override !== undefined) env.E2E_TIMINGS_FILE = override;
+      const result = spawnSync(process.execPath, ["scripts/e2e-slot.mjs", "--list"], { env, encoding: "utf8" });
+      expect(result.status, result.stderr).toBe(0);
+      expect(readFileSync(receipt, "utf8")).toBe(override ?? path.join(dir, ".cache/console-e2e/timings.json"));
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
 
 // The colima VM (Linux, 32768–60999) and macOS (49152–65535) hand out ephemeral ports from here up (e2e/slot.ts).
 const EPHEMERAL = 32768;

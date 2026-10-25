@@ -700,7 +700,8 @@ jobs:
           overwrite: true
   ci-ok:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # Cover the entire dependency path, including the shared build and test partitions.
+    timeout-minutes: 210
     permissions:
       contents: read
       actions: read
@@ -811,7 +812,7 @@ jobs:
   # Keep the live required contexts until the owner switches the ruleset to ci-ok.
   backend:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: &propagate-timeout 225
     permissions:
       contents: read
     if: always()
@@ -828,7 +829,7 @@ jobs:
         run: test "$CI_RESULT" = success
   web:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: *propagate-timeout
     permissions:
       contents: read
     if: always()
