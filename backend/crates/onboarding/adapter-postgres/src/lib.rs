@@ -15,6 +15,7 @@ mod facts;
 mod go_live;
 mod people_facts;
 mod refusal_audit;
+mod tenant_facts;
 mod terms;
 pub use terms::TermsDocument;
 mod viewer;

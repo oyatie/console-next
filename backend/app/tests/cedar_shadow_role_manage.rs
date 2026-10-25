@@ -23,6 +23,7 @@ use console_identity_rest::{
     authorize_org_manage_observed,
 };
 use console_kernel_core::{BranchScope, OrgId, UserId};
+use console_onboarding_adapter_postgres::PgOnboardingStore;
 use console_platform_authz::cedar_pbac::engine;
 use console_platform_authz::{
     Action, AuthorizationRequest, AuthorizationResource, CedarEvaluation, CoexistenceMapEntry,
@@ -31,8 +32,8 @@ use console_platform_authz::{
     evaluate_cedar_pbac_boundary,
 };
 use console_platform_request_context::CURRENT_ORG;
+use console_platform_test_support::runtime_role_pool;
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
 
 const RESOURCE_TYPE: &str = "identity.policy_role";
@@ -50,22 +51,12 @@ fn shadow_entry(bundle_key: CompiledBundleCacheKey) -> CoexistenceMapEntry {
     )
 }
 
-/// A pool whose every connection runs `SET ROLE console_rt`, so statements execute
-/// as the production runtime role (NOSUPERUSER, NOBYPASSRLS) under FORCE RLS —
-/// never the BYPASSRLS superuser the default `#[sqlx::test]` pool connects as.
-async fn runtime_role_pool(owner_pool: &PgPool) -> PgPool {
-    let options = owner_pool.connect_options().as_ref().clone();
-    PgPoolOptions::new()
-        .max_connections(4)
-        .after_connect(|conn, _meta| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_rt").execute(conn).await?;
-                Ok(())
-            })
-        })
-        .connect_with(options)
-        .await
-        .unwrap()
+fn identity_state(pool: &PgPool) -> IdentityRestState {
+    IdentityRestState::new(
+        PgOrgStore::new(pool.clone()),
+        None,
+        PgOnboardingStore::new(pool.clone()),
+    )
 }
 
 async fn seed_org(owner_pool: &PgPool, org: Uuid, tag: &str) {
@@ -174,7 +165,7 @@ async fn shadow_lane_is_dark_when_flag_absent(pool: PgPool) {
     // `#[sqlx::test]` pool connects as, which would mask a broken read path.
     // Seeding + audit assertions stay on the owner `pool` (row_security off).
     let rt_pool = runtime_role_pool(&pool).await;
-    let state = IdentityRestState::new(PgOrgStore::new(rt_pool.clone()), None);
+    let state = identity_state(&rt_pool);
     let principal = Principal::new(
         user,
         OrgId::one(),
@@ -213,7 +204,7 @@ async fn shadow_deny_does_not_flip_legacy_allow_with_flag_on(pool: PgPool) {
     // Real console_rt: exercises the flag/version READS and the audit WRITE
     // (persist_cedar_shadow_audit via with_audit) under FORCE RLS, not superuser.
     let rt_pool = runtime_role_pool(&pool).await;
-    let state = IdentityRestState::new(PgOrgStore::new(rt_pool.clone()), None);
+    let state = identity_state(&rt_pool);
     let principal = Principal::new(
         user,
         OrgId::one(),
@@ -255,7 +246,7 @@ async fn shadow_does_not_grant_when_legacy_denies_with_flag_on(pool: PgPool) {
     // Real console_rt: exercises the flag/version READS and the audit WRITE
     // (persist_cedar_shadow_audit via with_audit) under FORCE RLS, not superuser.
     let rt_pool = runtime_role_pool(&pool).await;
-    let state = IdentityRestState::new(PgOrgStore::new(rt_pool.clone()), None);
+    let state = identity_state(&rt_pool);
     let principal = Principal::new(
         user,
         OrgId::one(),
@@ -294,7 +285,7 @@ async fn shadow_reads_and_audits_as_runtime_role_and_stay_org_scoped(owner_pool:
     enable_shadow_flag(&owner_pool, org_a).await;
     enable_shadow_flag(&owner_pool, ORG_B).await;
 
-    let state = IdentityRestState::new(PgOrgStore::new(rt_pool.clone()), None);
+    let state = identity_state(&rt_pool);
     let principal = Principal::new(
         user_a,
         OrgId::one(),

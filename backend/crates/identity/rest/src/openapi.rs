@@ -1379,6 +1379,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/CreateUserRequest.yaml"),
     },
     NamedYaml {
+        name: "CurrentUser",
+        body: include_str!("../openapi/schemas/CurrentUser.yaml"),
+    },
+    NamedYaml {
         name: "DecisionLogRow",
         body: include_str!("../openapi/schemas/DecisionLogRow.yaml"),
     },
@@ -1825,6 +1829,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "UserSummary",
         body: include_str!("../openapi/schemas/UserSummary.yaml"),
+    },
+    NamedYaml {
+        name: "UserTenant",
+        body: include_str!("../openapi/schemas/UserTenant.yaml"),
     },
     NamedYaml {
         name: "WorkbenchActionInboxItem",

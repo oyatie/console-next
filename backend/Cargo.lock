@@ -2197,6 +2197,7 @@ dependencies = [
  "console-identity-application",
  "console-identity-domain",
  "console-kernel-core",
+ "console-onboarding-adapter-postgres",
  "console-platform-auth",
  "console-platform-auth-rest",
  "console-platform-authz",

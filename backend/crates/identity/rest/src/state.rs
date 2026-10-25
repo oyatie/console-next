@@ -2,24 +2,32 @@ use crate::directory::dto::VisibleDirectoryPerson;
 use crate::directory::routes::list_visible_directory_people;
 use axum::http::HeaderMap;
 use console_identity_adapter_postgres::PgOrgStore;
+use console_identity_application::TenantFactsRead;
 use console_platform_auth::JwtVerifier;
 use console_platform_auth::PasskeyService;
 use sqlx::PgPool;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct IdentityRestState {
     pub(crate) documents_served: bool,
     pub(crate) store: PgOrgStore,
+    pub(crate) tenant_facts: Arc<dyn TenantFactsRead>,
     pub(crate) jwt_verifier: Option<JwtVerifier>,
     pub(crate) passkey_step_up: Option<PasskeyService>,
 }
 
 impl IdentityRestState {
     #[must_use]
-    pub fn new(store: PgOrgStore, jwt_verifier: Option<JwtVerifier>) -> Self {
+    pub fn new(
+        store: PgOrgStore,
+        jwt_verifier: Option<JwtVerifier>,
+        tenant_facts: impl TenantFactsRead + 'static,
+    ) -> Self {
         Self {
             documents_served: false,
             store,
+            tenant_facts: Arc::new(tenant_facts),
             jwt_verifier,
             passkey_step_up: None,
         }

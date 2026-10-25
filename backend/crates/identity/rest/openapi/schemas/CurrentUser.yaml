@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+allOf:
+- $ref: '#/components/schemas/UserSummary'
+- type: object
+  properties:
+    tenant:
+      $ref: '#/components/schemas/UserTenant'

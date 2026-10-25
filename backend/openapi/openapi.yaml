@@ -28494,7 +28494,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserSummary'
+                $ref: '#/components/schemas/CurrentUser'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -38985,6 +38985,14 @@ components:
           type:
           - string
           - 'null'
+    CurrentUser:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      allOf:
+      - $ref: '#/components/schemas/UserSummary'
+      - type: object
+        properties:
+          tenant:
+            $ref: '#/components/schemas/UserTenant'
     CustodyEventView:
       type: object
       required: [id, evidence_object_id, stage, actor_user_id, reason, event_digest_sha256, occurred_at, created_at]
@@ -61149,6 +61157,22 @@ components:
           $ref: '#/components/schemas/AccountStatus'
         created_at:
           $ref: '#/components/schemas/Timestamp'
+    UserTenant:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - name
+      - phase
+      - go_live_at
+      properties:
+        name:
+          type: string
+        phase:
+          type: string
+          x-extensible-enum: [SETUP, OPERATING]
+        go_live_at:
+          type: [string, 'null']
+          format: date-time
     Uuid:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string

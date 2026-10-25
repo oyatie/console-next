@@ -48,6 +48,8 @@ mod account_link_guard;
 use account_link_guard::seed_employee_link;
 #[path = "org_setup/account_contact.rs"]
 mod account_contact;
+#[path = "org_setup/me_tenant.rs"]
+mod me_tenant;
 
 struct Harness {
     private_pem: String,
@@ -74,22 +76,6 @@ impl Harness {
             public_pem,
             pool: runtime_role_pool(&pool).await,
         }
-    }
-
-    fn service(&self) -> Router {
-        let verifier = JwtVerifier::from_es256_public_pem(
-            JwtSettings {
-                issuer: TEST_ISSUER.to_owned(),
-                audience: TEST_AUDIENCE.to_owned(),
-                access_token_ttl: Duration::minutes(15),
-            },
-            self.public_pem.as_bytes(),
-        )
-        .unwrap();
-        router(
-            IdentityRestState::new(PgOrgStore::new(self.pool.clone()), Some(verifier))
-                .with_passkey_step_up(Some(passkey_service())),
-        )
     }
 
     async fn token(&self, user_id: UserId, roles: &[&str], branches: Vec<BranchId>) -> String {

@@ -15,7 +15,7 @@ app/tests/auth_rest.rs	4487
 app/tests/benefit_catalog_api.rs	317
 app/tests/board_ack_api.rs	358
 app/tests/cedar_freshness_mint.rs	375
-app/tests/cedar_shadow_role_manage.rs	310
+app/tests/cedar_shadow_role_manage.rs	304
 app/tests/compliance_api.rs	561
 app/tests/compliance_catalog_api.rs	310
 app/tests/console_kill_switch.rs	304
@@ -128,7 +128,7 @@ crates/governance/rest/src/lib.rs	355
 crates/identity/adapter-postgres/tests/subject_authz_versions_freshness_rls.rs	430
 crates/identity/application/src/org.rs	377
 crates/identity/rest/tests/authentication_locking.rs	862
-crates/identity/rest/tests/org_setup.rs	4054
+crates/identity/rest/tests/org_setup.rs	4041
 crates/inbox/adapter-postgres/src/lib.rs	346
 crates/inbox/adapter-postgres/tests/inbox_docs_rls_surfaces_as_runtime_role.rs	345
 crates/inbox/rest/tests/api.rs	693

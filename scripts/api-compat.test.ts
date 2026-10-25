@@ -10,6 +10,17 @@ const spec = yaml.load(readFileSync("backend/openapi/openapi.yaml", "utf8"));
 const schemas = spec.components.schemas;
 const responseBinding = schemas.MobilePasskeyStepUpStartResponse!.properties!.binding!.properties ?? schemas.MobilePasskeyStepUpBinding!.properties!;
 
+test("current user adds optional tenant facts without changing directory or platform rows", () => {
+  const current = schemas.CurrentUser as Schema & { allOf: Schema[] };
+  expect(current.allOf[0]).toEqual({ $ref: "#/components/schemas/UserSummary" });
+  expect(current.allOf[1]!.required ?? []).not.toContain("tenant");
+  expect(current.allOf[1]!.properties!.tenant).toEqual({ $ref: "#/components/schemas/UserTenant" });
+  expect(schemas.UserSummary!.properties!.tenant).toBeUndefined();
+  expect(schemas.UserPage!.properties!.items).toEqual({ type: "array", items: { $ref: "#/components/schemas/UserSummary" } });
+  expect(schemas.UserTenant!.required).toEqual(["name", "phase", "go_live_at"]);
+  expect(schemas.UserTenant!.properties!.phase!["x-extensible-enum"]).toEqual(["SETUP", "OPERATING"]);
+});
+
 test("filing identity and opening countdown are additive response fields for N-1 readers", () => {
   const filing = schemas.InsuranceFilingTask!;
   expect(filing.properties!.filing_obligation_id).toEqual({ type: "string", format: "uuid", nullable: true });
