@@ -1,5 +1,6 @@
 import { useQueries } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
+import { readGroup } from "../../../lib/react/query-view";
 import { factsQuery } from "../api";
 import { registerFactsQuery } from "../api/record";
 import type { GridKey } from "../domain/grid";
@@ -27,6 +28,6 @@ export function useGridData(picked: ReadonlyMap<string, string>, columns: readon
     if (key === "birth_date") return facts[i]?.data?.birth_date;
     return (e as unknown as Record<string, unknown>)[key];
   };
-  const ready = resolved.ready && (!needRegister || reg.every((q) => q.isSuccess)) && (!needFacts || facts.every((q) => q.isSuccess));
-  return { people, value, ready, updatedAt: (i: number) => people[i]!.updated_at };
+  const ready = resolved.ready && (!needRegister || reg.every((q) => q.data !== undefined)) && (!needFacts || facts.every((q) => q.data !== undefined));
+  return { q: readGroup([resolved.q, ...(needRegister ? reg : []), ...(needFacts ? facts : [])]), people, value, ready, updatedAt: (i: number) => people[i]!.updated_at };
 }

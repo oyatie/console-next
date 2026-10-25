@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { useSyncExternalStore } from "react";
 
 const subscribe = (on: () => void) => {
@@ -9,5 +10,5 @@ const subscribe = (on: () => void) => {
   };
 };
 
-/** False while the browser is offline: saves wait (drafts stay in this tab), nothing is queued (spec §12.1). */
+/** Browser connectivity: keep loaded data and drafts visible while disconnected. */
 export const useOnline = () => useSyncExternalStore(subscribe, () => navigator.onLine, () => true);

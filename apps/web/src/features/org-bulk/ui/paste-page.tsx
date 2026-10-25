@@ -1,3 +1,4 @@
+import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
@@ -25,10 +26,14 @@ const route = getRouteApi("/app/org/paste");
 
 /** S7 paste a list: a full page under one legal entity (`?entity=`) or one workplace (`?workplace=`); without one it asks where. */
 export function PastePage() {
+  return <AccessGate domain="org" level="edit"><PasteWorkspace /></AccessGate>;
+}
+
+function PasteWorkspace() {
   const { entity, workplace } = route.useSearch();
   const tree = useQuery(structureQuery);
   return (
-    <QueryState q={tree}>
+    <QueryState q={tree} layout="grid">
       {(d) => {
         const ents = d.entities.filter((e) => e.kind === "LEGAL_ENTITY");
         const at = findRoot(ents, entity, workplace);

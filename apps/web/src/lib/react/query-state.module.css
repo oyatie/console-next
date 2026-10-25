@@ -1,0 +1,3 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* Announce retained answers without introducing a layout box around existing grids and panels. */
+.region { display: contents; }

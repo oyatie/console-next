@@ -1,9 +1,10 @@
 import { SectionHead } from "../../../ui/card/section-head";
 import { buttonClass } from "../../../ui/button/button-class";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { readGroup, type ReadState } from "../../../lib/react/query-view";
 import { QueryState } from "../../../lib/react/query-state";
 import { CommandError } from "../../../lib/react/command-error";
 import { useCommand } from "../../../lib/react/command";
@@ -26,12 +27,16 @@ const FIELD: Record<string, { label: "name" | "sex" | "birth" | "address" | "job
   history: { label: "history", hash: "s5" }, exit: { label: "exit", hash: "s1" },
 };
 
-export function WorkerRegister({ site, date }: { site: string; date: string }) {
+export function WorkerRegister({ site, date, workplaces }: { site: string; date: string; workplaces: ReadState }) {
   const [after, setAfter] = useState<string>();
   const [purpose, setPurpose] = useState<string | null>(null);
   const [tried, setTried] = useState(false);
   const [exported, setExported] = useState(false);
-  const page = useQuery(registerQuery(site, date, after));
+  const [scope, setScope] = useState({ site, date });
+  if (scope.site !== site || scope.date !== date) {
+    setScope({ site, date }); setAfter(undefined); setPurpose(null); setTried(false); setExported(false);
+  }
+  const page = useQuery({ ...registerQuery(site, date, after), placeholderData: keepPreviousData });
   const run = useCommand({
     run: (format: "xlsx" | "pdf") => exportRegister(site, date, format, purpose!),
     onSuccess: async (file) => {
@@ -41,8 +46,8 @@ export function WorkerRegister({ site, date }: { site: string; date: string }) {
     },
   });
   const download = (format: "xlsx" | "pdf") => { setTried(true); if (purpose) run.mutate(format); };
-  return <QueryState q={page}>{(data) => <>
-    <div className="row"><SectionHead level={2}>{data.workplace_name}</SectionHead><Chip>{t("statutory.people", { count: data.total })}</Chip></div>
+  return <>
+    <div className="row"><SectionHead level={2}>{page.data?.workplace_name}</SectionHead>{page.data && <Chip>{t("statutory.people", { count: page.data.total })}</Chip>}</div>
     <div className="row">
       <SelectField label={t("statutory.purpose")} placeholder={t("statutory.pickPurpose")} value={purpose} onChange={setPurpose}
         options={EXPORT_PURPOSES.map((p) => ({ id: p, label: t(`roster.export.purpose.${p}`) }))}
@@ -51,6 +56,9 @@ export function WorkerRegister({ site, date }: { site: string; date: string }) {
       <Button onClick={() => download("pdf")} disabled={run.isPending}>{t("statutory.pdf")}</Button>
     </div>
     <CommandError error={run.error} />
+    <QueryState q={readGroup([workplaces, page])} layout="list">{() => {
+      const data = page.data!;
+      return <>
     {data.items.length ? (
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users need to scroll this wide table.
         <div className={s.scroll} tabIndex={0} role="region" aria-label={t("statutory.register")}><RecordRows label={t("statutory.register")} rows={data.items} rowId={(r) => r.employee_id}
@@ -62,7 +70,8 @@ export function WorkerRegister({ site, date }: { site: string; date: string }) {
       ]} /></div>) : <EmptyState title={t("statutory.noWorkers")} reason={t("statutory.noWorkersReason")} actions={<Link to="/people" className={buttonClass()}>{t("statutory.openPeople")}</Link>} />}
     <div className="row">{after && <Button onClick={() => setAfter(undefined)}>{t("common.back")}</Button>}{data.next && <Button onClick={() => setAfter(data.next!)}>{t("statutory.more")}</Button>}</div>
     {exported && <Receipt placement="docked" state="applied" message={t("statutory.exported", { count: data.total })} onDismiss={() => setExported(false)} />}
-  </>}</QueryState>;
+  </>; }}</QueryState>
+  </>;
 }
 
 function printRegister(page: RegisterPage) {

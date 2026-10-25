@@ -67,7 +67,8 @@ export function recordShifts() {
   const fetch0 = window.fetch;
   window.fetch = (...args) => {
     const method = args[1]?.method ?? (args[0] instanceof Request ? args[0].method : "GET");
-    const command = !/^(GET|HEAD)$/i.test(method);
+    // Background POSTs (session restore, consent status) are reads, not a result the user asked to move.
+    const command = !/^(GET|HEAD)$/i.test(method) && performance.now() - lastInput < 500;
     if (command) lastCommand = performance.now();
     return fetch0(...args).finally(() => {
       landed = [...landed.slice(-20), performance.now()];

@@ -32,8 +32,7 @@ import css from "../../../reference/org/ui/structure.module.css";
  */
 export function WorkplaceCloseSheet({ place, onClose, onAct }: { place: Place; onClose: () => void; onAct: (act: StructureAct) => void }) {
   const q = freshOnOpen(useQuery({ ...closePlanQuery(place.node.id), refetchOnMount: "always" }));
-  if (q.isPending) return null;
-  return <QueryState q={q}>{(view) => <FreshEntity id={place.entity.id}>{(e) => <Body e={e} view={view} place={place} onClose={onClose} onAct={onAct} />}</FreshEntity>}</QueryState>;
+  return <QueryState q={q} layout="form">{(view) => <FreshEntity id={place.entity.id}>{(e) => <Body e={e} view={view} place={place} onClose={onClose} onAct={onAct} />}</FreshEntity>}</QueryState>;
 }
 
 const blockerText = (m: Missing) =>

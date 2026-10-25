@@ -1,3 +1,4 @@
+import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
@@ -88,8 +89,9 @@ export function TenantsPage() {
 
   return (
     <div className="page">
+      <h1 id="tenants-title" className="page__title" tabIndex={-1}>{t("tenants.title")}</h1>
+      <PageReadGate q={list}>
       <div className="page__head">
-        <h1 id="tenants-title" className="page__title" tabIndex={-1}>{t("tenants.title")}</h1>
         {!empty && (
           <div role="group" aria-label={t("tenants.views")} className="tabs">
             {VIEWS.map((v) => (
@@ -111,8 +113,9 @@ export function TenantsPage() {
             />
           </Form>
         )}
-        {!empty && <Button variant="primary" onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>}
+        {list.data && !empty && <Button variant="primary" onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>}
       </div>
+      <QueryState q={list} layout="list">{() => <>
       <SupportLookup />
       <KeyNotices notices={[...(ops.data?.notices ?? []), ...(ops.data?.registration_check_notices ?? [])]} />
       {recorded && (
@@ -122,23 +125,15 @@ export function TenantsPage() {
       )}
       <div className="split" data-open={!empty}>
         <section id="tenants-list" className={`card ${css.list}`} aria-label={t("tenants.table")}>
-          <QueryState
-            // Held until the health read lands too (or fails): its users and activity columns would otherwise
-            // fill in late and re-flow every column under the pointer.
-            q={ops.isPending ? { ...list, isPending: true } : list}
-            empty={() =>
-              empty ? (
+          {empty ? (
                 <EmptyState title={t("tenants.empty.title")} reason={t("tenants.empty.reason")} actions={<Button variant="primary" onClick={() => setOnboarding(true)}><Plus size={16} aria-hidden /> {t("tenants.create")}</Button>} />
               ) : found.length === 0 ? (
                 <EmptyState title={t("tenants.search.none", { q: q.trim() })} reason={t("tenants.search.noneReason")} />
               ) : rows.length === 0 ? (
                 <EmptyState title={t("tenants.view.empty")} reason={t("tenants.view.emptyReason")} actions={<Button onClick={() => set({ view: "all" })}>{t("tenants.view.showAll")}</Button>} />
-              ) : null
-            }
-          >
-            {() => (
+              ) : (
               <>
-                {ops.isError && <p className="toolbar muted">{t("tenants.opsFailed")}</p>}
+                {ops.isError && <QueryState q={ops} own={() => t("tenants.opsFailed")}>{() => null}</QueryState>}
                 <Table
                   label={t("tenants.table")}
                   rows={rows}
@@ -157,7 +152,6 @@ export function TenantsPage() {
                 />
               </>
             )}
-          </QueryState>
         </section>
         {!selected && !empty && (
           <aside className="card panel" aria-busy={reserved || undefined}>
@@ -197,6 +191,8 @@ export function TenantsPage() {
         }}
       />
       <CodeDialog issued={issued} onClose={closeCode} />
+    </>}</QueryState>
+      </PageReadGate>
     </div>
   );
 }

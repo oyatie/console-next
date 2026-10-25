@@ -1,3 +1,4 @@
+import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { getRouteApi } from "@tanstack/react-router";
 import { BulkPage } from "./bulk-page";
 import { GrantsPage } from "./grants-page";
@@ -8,12 +9,13 @@ import { RolesPage } from "./roles-page";
 
 // The slice's screens as route components (routes/access.ts loads this module lazily).
 export const RolesScreen = RolesPage;
-export const BulkScreen = BulkPage;
+export function BulkScreen() { return <AccessGate domain="access" level="edit"><BulkPage /></AccessGate>; }
 export const ReadyScreen = ReadinessPage;
 
 const newRoute = getRouteApi("/app/access/roles/new");
 export function RoleNewScreen() {
-  return <RoleEditorPage copy={newRoute.useSearch().copy} />;
+  const { copy } = newRoute.useSearch();
+  return <AccessGate domain="access" level="edit" tenant><RoleEditorPage copy={copy} /></AccessGate>;
 }
 
 const roleRoute = getRouteApi("/app/access/roles/$roleId");

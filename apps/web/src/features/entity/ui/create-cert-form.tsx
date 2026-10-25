@@ -13,8 +13,8 @@ import { DateField } from "../../../ui/date/date-field";
 import { Chip } from "../../../ui/chip";
 import { Field, Marker, TextInput } from "../../../ui/field/field";
 import { MaskedField } from "../../../ui/masked-field/masked-field";
-import { Skeleton } from "../../../ui/skeleton/skeleton";
-import { useAddressSearch, useCodeListsKnown } from "./use-ref";
+import { QueryState } from "../../../lib/react/query-state";
+import { useAddressSearch, useCodeLists } from "./use-ref";
 import { BusinessRows } from "./create-business-rows";
 import { DistrictPick } from "./district-pick";
 import { Item } from "./create-item";
@@ -44,10 +44,9 @@ export function CertForm({ c, onOpenTaken }: { c: CreateState; onOpenTaken?: () 
   const head = useAddressSearch();
   const reps = d.representatives;
   // The industry code (item 7), the districts (items 5 and 6) and the tax office: their shape waits for their lists.
-  const listsKnown = useCodeListsKnown(CERT_LISTS);
-  if (!listsKnown) return <Skeleton bones={["row", "row", "row"]} label={t("common.loading")} />;
+  const lists = useCodeLists(CERT_LISTS);
   return (
-    <div className={s.grid}>
+    <QueryState q={lists}>{() => <div className={s.grid}>
       <div className={s.span}>
         <ChoiceField
           label={t("entityCreate.field.taxType")}
@@ -179,7 +178,7 @@ export function CertForm({ c, onOpenTaken }: { c: CreateState; onOpenTaken?: () 
       )}
       <DateField label={t("entityCreate.field.certIssuedOn")} required={false} value={d.certIssuedOn} onChange={(v) => put("certIssuedOn", v)} today={c.today} error={problem(p.certIssuedOn)} />
       <TaxOffice c={c} />
-    </div>
+    </div>}</QueryState>
   );
 }
 

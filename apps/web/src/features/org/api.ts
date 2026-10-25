@@ -147,8 +147,6 @@ export function refusalOf(e: unknown, effectiveDate?: string): Refusal {
 export const blockerCount = (e: unknown) => (e instanceof ApiError ? e.reasons.length : 0);
 /** The server's own words for a refusal (shown inside a blocked panel). */
 export const refusalMessage = (e: unknown) => (e instanceof ApiError && e.fromServer ? e.message : undefined);
-/** A refetch refused for a record already on screen: it was removed (404) or is out of reach now (403). */
-export const lostRecord = (e: unknown) => (e instanceof ApiError ? ({ 403: "no_access", 404: "gone" } as const)[e.status as 403 | 404] : undefined);
 
 /** Who already did what a command asked, when it was not this viewer: a 409 retry that someone else beat (3.7). */
 export type Elsewhere = { name: string | null; at?: string };

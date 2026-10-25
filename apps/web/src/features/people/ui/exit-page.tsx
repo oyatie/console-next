@@ -11,6 +11,7 @@ import { Receipt } from "../../../ui/receipt/receipt";
 import { focusSoon } from "../../../lib/react/announce";
 import { usePageActive } from "../../../lib/react/page-active";
 import { QueryState } from "../../../lib/react/query-state";
+import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { EXIT_CASE_STATUS, LIFECYCLE_STATE, labeled } from "../../../lib/labels";
 import { EXIT_FEATURES, authzApplies, authzQuery } from "../../../reference/authz/api";
 import { useCan } from "../../../reference/authz/ui/use-can";
@@ -33,36 +34,37 @@ const route = getRouteApi("/app/people/exits/$id");
 export function ExitCasePage() {
   const { id } = route.useParams();
   const q = useQuery(caseQuery(id));
-  const authz = useQuery({ ...authzQuery, enabled: authzApplies() });
   const can = useCan();
   // Back to the exit list for anyone it serves (Home and the list both lead here), else Home.
   const toList = EXIT_FEATURES.some((f) => can(f));
   return (
-    <div className="page">
-      <QueryState q={{ ...q, isPending: q.isPending || (authzApplies() && authz.isPending) }}>
-        {(c) => (
-          <section className={s.stack} aria-labelledby="exit">
+    <div className="page"><PageReadGate q={q} title={t("exit.list.title")} back={{ to: "/people/exits", label: t("exit.list.title") }}>
+      {q.data && <>
             <div className="page__head">
               {toList ? <Link to="/people/exits" className="btn btn--ghost">{t("exit.list.title")}</Link> : <Link to="/" className="btn btn--ghost">{t("home.title")}</Link>}
               <h1 id="exit" className="page__title grow" tabIndex={-1}>
-                {t("exit.page.title", { name: c.employee_name })} <span className="code">{c.employee_number ?? ""}</span>
+                {t("exit.page.title", { name: q.data.employee_name })} <span className="code">{q.data.employee_number ?? ""}</span>
               </h1>
-              <StatusChips c={c} />
+              <StatusChips c={q.data} />
               {/* A settlement a group transfer opened goes back only with it: withdrawn or rescinded from the person's history. */}
-              {c.exit_reason_code === "GROUP_TRANSFER" && c.exit_event_state !== "APPLY_FAILED" && (
-                <Link to="/people/$id" params={{ id: c.employee_id }} search={{ tab: "events" }} className={buttonClass()}>
-                  {t(c.exit_event_state === "SCHEDULED" ? "exit.group.cancel" : "exit.group.rescind")}
+              {q.data.exit_reason_code === "GROUP_TRANSFER" && q.data.exit_event_state !== "APPLY_FAILED" && (
+                <Link to="/people/$id" params={{ id: q.data.employee_id }} search={{ tab: "events" }} className={buttonClass()}>
+                  {t(q.data.exit_event_state === "SCHEDULED" ? "exit.group.cancel" : "exit.group.rescind")}
                 </Link>
               )}
               {can("employee_directory_read", "all") && (
-                <Link to="/people/$id" params={{ id: c.employee_id }} search={{}} className="btn">{t("exit.page.employee", { name: c.employee_name })}</Link>
+                <Link to="/people/$id" params={{ id: q.data.employee_id }} search={{}} className="btn">{t("exit.page.employee", { name: q.data.employee_name })}</Link>
               )}
             </div>
+      </>}
+      <QueryState q={q} back={{ to: "/people/exits", label: t("exit.list.title") }} layout="record">
+        {(c) => (
+          <section className={s.stack} aria-labelledby="exit">
             <CaseBody key={c.id} c={c} />
           </section>
         )}
       </QueryState>
-    </div>
+    </PageReadGate></div>
   );
 }
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "@console/i18n";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
@@ -11,6 +11,7 @@ import { entryText, refusalText, shiftText } from "../present";
 import { MarkChip } from "./mark-chip";
 import type { useDrafts } from "./use-drafts";
 import { usePreview } from "./use-preview";
+import { usePlanKinds } from "./use-plan-kinds";
 
 /**
  * Day · detailed (A3-entry): one row per person with the input in place. A paste of several rows matches them by
@@ -18,10 +19,11 @@ import { usePreview } from "./use-preview";
  * drafts, "computing recognition" while it is on its way, never a guessed number.
  */
 export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: ReturnType<typeof useDrafts>; onAssign: (row: BoardRow) => void }) {
-  const rows = board.groups.flatMap((g) => g.rows);
+  const rows = useMemo(() => board.groups.flatMap((g) => g.rows), [board.groups]);
   const date = board.date;
   const [pasted, setPasted] = useState<string | null>(null);
-  const cells = Object.entries(store.drafts).filter(([, d]) => draftState(d).ok).map(([k, d]) => ({ ...splitKey(k), value: d.value, base_entry_id: d.base ?? undefined }));
+  const kindOf = usePlanKinds(rows, date);
+  const cells = Object.entries(store.drafts).filter(([k, d]) => draftState(d, kindOf(k)).ok).map(([k, d]) => ({ ...splitKey(k), value: d.value, base_entry_id: d.base ?? undefined }));
   const preview = usePreview(cells.length ? cells : null, previewEntries);
   const after = (r: BoardRow) => preview.data?.cells.find((c) => c.employee_id === r.employee_id);
   const recognised = (r: BoardRow) => {
@@ -62,7 +64,7 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
             cell: (r) => {
               const k = cellKey(r.employee_id, date);
               const d = store.drafts[k];
-              const s = d ? draftState(d) : null;
+              const s = d ? draftState(d, r.day.plan.kind) : null;
               if (r.own) return <span className="muted">{t("attendanceRecords.grid.ownRow")}</span>;
               return (
                 <Field label={t("attendanceRecords.detail.inputFor", { name: r.name })} required={false} error={s && !s.ok ? refusalText(s.code) : undefined}>

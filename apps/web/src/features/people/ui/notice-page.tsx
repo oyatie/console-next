@@ -31,7 +31,8 @@ export function NoticePage() {
       <div className={s.noPrint}>
         <PageHead crumbs={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>, <Link key="notices" to="/people/notices">{t("notice.crumb")}</Link>]} />} title={t("notice.title")} />
       </div>
-      <QueryState q={q}>{(n) => <Doc n={n} />}</QueryState>
+<QueryState q={q} back={{ to: "/people/notices", label: t("notice.crumb") }} layout="record">{n => <>      <Doc n={n} />
+    </>}</QueryState>
     </div>
   );
 }

@@ -11,7 +11,10 @@ import type { Button } from "../../../ui/button/button";
 import type { Sheet } from "../../../ui/sheet/sheet";
 
 const view = vi.hoisted(() => ({ data: undefined as CheckHistory | undefined, queryError: null as unknown, error: null as unknown, reviewing: false, pending: false, buttons: [] as Parameters<typeof Button>[0][], mutate: vi.fn(), setReviewing: vi.fn(), run: undefined as undefined | ((kind: string, key: string) => unknown) }));
-vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useState: () => [view.reviewing, view.setReviewing] }));
+vi.mock("react", async original => {
+  const react = await original<typeof import("react")>();
+  return { ...react, useState: (initial: unknown) => initial === false ? [view.reviewing, view.setReviewing] : react.useState(initial) };
+});
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: view.data, error: view.queryError, isPending: false, refetch: vi.fn() }) }));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ to, hash, children }: { to: string; hash?: string; children: ReactNode }) => <span data-href={`${to}${hash ? `#${hash}` : ""}`}>{children}</span> }));
 vi.mock("../../../lib/react/command", async (original) => ({ ...await original<typeof import("../../../lib/react/command")>(), useCommand: (opts: { run: typeof view.run }) => { view.run = opts.run; return { error: view.error, isPending: view.pending, mutate: view.mutate }; } }));
@@ -196,4 +199,12 @@ test("a voided registration cannot attach an original through the unavailable fa
   const out = html({ registration: { ...registration, voided: true } });
   expect(button("nts.attach")).toBeUndefined();
   expect(out).not.toContain(t("nts.fallback"));
+});
+
+test("a held authority read reserves a card-sized placeholder without check actions", () => {
+  view.data = undefined;
+  const out = html();
+  expect(out).toContain('aria-busy="true"');
+  expect(out).toContain('data-bone="block"');
+  expect(button("nts.action.status")).toBeUndefined();
 });

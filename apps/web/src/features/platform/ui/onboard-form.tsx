@@ -1,3 +1,4 @@
+import { QueryState } from "../../../lib/react/query-state";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isMessageId, t } from "@console/i18n";
@@ -106,7 +107,7 @@ function OnboardForm({ existing, onDirty, onCancel, onIssued, onLost }: {
         {(p) => <><TextInput {...p} className="code" value={slug} onChange={(e) => { edit("slug", e.target.value); setTouched((x) => ({ ...x, slug: true })); }} onBlur={() => setTouched((x) => ({ ...x, slug: true }))} /><output htmlFor={p.id} className="code">{t("tenants.form.preview", { slug: slug.trim() || "acme" })}</output></>}
       </Field>
       <output className={styles.availability}>{available.isFetching ? t("common.loading") : available.data?.available && !errors.slug ? t("tenants.form.available") : ""}</output>
-      <CommandError error={available.error}>{available.error && <Button onClick={() => void available.refetch()}>{t("common.retry")}</Button>}</CommandError>
+      {available.error && <QueryState q={available}>{() => null}</QueryState>}
       <Field label={t("tenants.form.website")} required={false}>
         {(p) => <TextInput {...p} value={website} onChange={(e) => { setWebsite(e.target.value); onDirty(true); }} />}
       </Field>

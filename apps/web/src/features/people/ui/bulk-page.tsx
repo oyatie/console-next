@@ -1,11 +1,14 @@
-import { ReceiptReference } from "../../../ui/composer/receipt-reference";
 import { useState } from "react";
+import { AccessGate } from "../../../reference/authz/ui/access-gate";
+import { ReceiptReference } from "../../../ui/composer/receipt-reference";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { CommandError } from "../../../lib/react/command-error";
+import { QueryState } from "../../../lib/react/query-state";
+import { readGroup } from "../../../lib/react/query-view";
 import { todayKst } from "../../../lib/pure/today";
 import { reasonCodesQuery, useReasonCodesReady } from "../../../lib/reason-codes";
 import { unitsQuery } from "../../../reference/org/api";
@@ -41,11 +44,17 @@ import { entityName } from "../../../reference/entity/domain/names";
  * set: all or nothing, one batch to cancel). Steps across the head say how far it is.
  */
 export function BulkPage() {
+  return <AccessGate domain="appointment" level="edit" tenant><BulkWorkspace /></AccessGate>;
+}
+
+function BulkWorkspace() {
   const nav = useNavigate();
   const picked = useBulkSelection();
   const today = todayKst();
-  const units = useQuery(unitsQuery).data?.items ?? [];
-  const entities = useQuery(entitiesRef).data?.items ?? [];
+  const unitsQ = useQuery(unitsQuery);
+  const entitiesQ = useQuery(entitiesRef);
+  const units = unitsQ.data?.items ?? [];
+  const entities = entitiesQ.data?.items ?? [];
   const structure = useQuery(orgStructureRef);
   const roots = structure.data?.entities ?? [];
   const setup = useQuery({ ...checklistRef, retry: false }).data?.phase === "SETUP";
@@ -61,7 +70,8 @@ export function BulkPage() {
   // Every reason list this page can show is read up front, so a field opens complete on the click that shows it
   // (a list landing later would push the memo under the pointer): both kinds' reasons, and the rescind sheet's.
   const titlesQ = useQuery(jobTitlesQuery);
-  const listsReady = [useQuery(reasonCodesQuery("lifecycle_transfer")), useQuery(reasonCodesQuery("lifecycle_promote")), titlesQ].every((q) => !q.isPending);
+  const lists = [useQuery(reasonCodesQuery("lifecycle_transfer")), useQuery(reasonCodesQuery("lifecycle_promote")), titlesQ];
+  const listsReady = lists.every((q) => !q.isPending);
   useQuery({ ...reasonCodesQuery("lifecycle_cancel"), enabled: batch != null });
   const [rescinding, setRescinding] = useState(false);
   // A promotion's per-person title (spec E6-promote): picked or a suggestion accepted; else the one for everyone.
@@ -84,8 +94,10 @@ export function BulkPage() {
   const invalidTitle = kind === "PROMOTE" && promotionGroups.some((g) => !bulkPromotion(g.target, titles));
   const when = whenOf(date, today);
   const codes = useReasonCodesReady(kind === "TRANSFER" ? "lifecycle_transfer" : kind === "PROMOTE" ? "lifecycle_promote" : null);
+  const state = readGroup([unitsQ, entitiesQ, structure, ...lists, resolvedRows.q]);
+  if (state.data === undefined) return <div className="page"><QueryState q={state} layout="form">{() => null}</QueryState></div>;
   if (picked.size === 0 && !done)
-    return <div className="page"><EmptyState title={t("bulk.page.empty.title")} reason={t("bulk.page.empty.reason")} actions={<Link className={buttonClass("primary")} to="/people" search={{}}>{t("bulk.page.empty.action")}</Link>} /></div>;
+    return <QueryState q={state} layout="form">{() => <div className="page"><EmptyState title={t("bulk.page.empty.title")} reason={t("bulk.page.empty.reason")} actions={<Link className={buttonClass("primary")} to="/people" search={{}}>{t("bulk.page.empty.action")}</Link>} /></div>}</QueryState>;
 
   const from = new Map<string, number>();
   for (const r of ok) if (r.employee?.org_unit_id) from.set(r.employee.org_unit_id, (from.get(r.employee.org_unit_id) ?? 0) + 1);
@@ -141,7 +153,7 @@ export function BulkPage() {
   const close = () => void nav({ to: "/people", search: {} });
   const action = { kind: kind === "PROMOTE" && demotion ? "demotion" as const : kind ?? "appointment" as const, mode: when === "future" || when === "none" ? "schedule" as const : "apply" as const, count: ok.length };
   return (
-    <div className={s.page}>
+    <QueryState q={state} layout="form">{() => <div className={s.page}>
     <Composer layout="page"
       commitId="bulk-commit"
       kicker={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} current={t("bulk.page.crumb")} />}
@@ -171,6 +183,6 @@ export function BulkPage() {
       </div>
     </Composer>
       {rescinding && batch && <BulkRescind batchId={batch.id} count={batch.count} onClose={() => setRescinding(false)} onDone={(n) => (setRescinding(false), setBatch(null), setDone(t("bulk.rescind.done", { count: n })))} />}
-    </div>
+    </div>}</QueryState>
   );
 }

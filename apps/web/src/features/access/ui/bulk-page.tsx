@@ -1,3 +1,4 @@
+import { readGroup } from "../../../lib/react/query-view";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -88,7 +89,7 @@ export function BulkPage() {
       <div className={s.titleRow}>
         <h2 className="page__title">{t(preview ? "access.bulk.title.preview" : "access.bulk.title")}</h2>
       </div>
-      {done && <Banner live="polite">{done}{apply.data?.operation_id && <Link to="/requests/$id" params={{id:apply.data.operation_id}}>{t("requestOutcome.open")}</Link>}</Banner>}
+<QueryState q={readGroup([ctx.q, tree])} layout="form">{() => <>      {done && <Banner live="polite">{done}{apply.data?.operation_id && <Link to="/requests/$id" params={{id:apply.data.operation_id}}>{t("requestOutcome.open")}</Link>}</Banner>}
       {preview ? (
         <BulkPreview
           preview={preview.p}
@@ -153,6 +154,7 @@ export function BulkPage() {
           onCancel={() => setPicking(false)}
         />
       )}
+    </>}</QueryState>
     </div>
   );
 }

@@ -1,0 +1,3 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* A first visit has no known band height: keep its late answer below the route without moving the head. */
+.floating { position: sticky; bottom: 0; z-index: 1; }

@@ -12,6 +12,7 @@ export function ScopePicker({ value, onChange }: { value?: string; onChange: (id
     <Field label={t("attendanceRecords.scope.label")} required={false}>
       {(p) => (
         <SelectInput {...p} value={value ?? ""} onChange={(e) => onChange(e.target.value || undefined)}>
+          {value && !places.some(n => n.id === value) && <option value={value} disabled>{t(tree.isPending ? "common.loading" : "attendanceRecords.scope.unavailable")}</option>}
           <option value="">{t("attendanceRecords.scope.all", { count: places.length })}</option>
           {places.map((n) => <option key={n.id} value={n.id}>{t("attendanceRecords.scope.place", { name: n.name, count: n.people })}</option>)}
         </SelectInput>

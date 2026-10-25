@@ -60,6 +60,16 @@ pub enum CellRefusal {
     NoShiftToCopy,
     /// 기록 for a day that has not come yet (외근 · 출장 plans excepted).
     FutureDate,
+    /// `휴` on a planned workday, or a shift code other than the planned
+    /// slot: only the 근무 일정 changes the plan (input patterns I6).
+    ScheduleChangeNeeded,
+    /// `휴` (or the day's own off slot) on a day the plan already has off.
+    AlreadyDayOff,
+    /// `-18`: read, but the store has no 퇴근-only kind yet.
+    ClockOutOnlyNotStored,
+    /// `연차` · `반` …: read, but 휴가 is not an attendance 기록 and the leave
+    /// domain is not in this build.
+    LeaveNotStored,
 }
 
 impl CellRefusal {
@@ -69,14 +79,21 @@ impl CellRefusal {
             Self::Parse(p) => p.code(),
             Self::NoShiftToCopy => "no_shift_to_copy",
             Self::FutureDate => "future_date",
+            Self::ScheduleChangeNeeded => "schedule_change_needed",
+            Self::AlreadyDayOff => "already_day_off",
+            Self::ClockOutOnlyNotStored => "clock_out_only_not_stored",
+            Self::LeaveNotStored => "leave_not_stored",
         }
     }
 }
 
-/// The entry a typed value stores: its kind and segments (minutes).
+/// The entry a typed value stores: its kind and segments (minutes). The plan
+/// decides what the grammar cannot: `22-07` on a shift that crosses midnight,
+/// a shift code against the planned slot, `휴` against a planned workday.
 ///
 /// # Errors
-/// The grammar's refusal, `=` with nothing to copy, or a future 기록.
+/// The grammar's refusal, `=` with nothing to copy, a future 기록, a value
+/// that needs a 근무 일정 change, or a reading the store cannot hold yet.
 pub fn resolve_value(
     raw: &str,
     plan: &DayPlan,
@@ -84,34 +101,79 @@ pub fn resolve_value(
     long_span_minutes: u32,
     confirmed: bool,
 ) -> Result<(EntryKind, Vec<Window>), CellRefusal> {
-    let entry = parse(raw, long_span_minutes, confirmed).map_err(CellRefusal::Parse)?;
-    let planned = matches!(entry, Entry::OutsideWork | Entry::BusinessTrip);
-    if future && !planned {
-        return Err(CellRefusal::FutureDate);
+    let shift = plan
+        .shift
+        .as_ref()
+        .filter(|_| plan.kind == DayKind::Work || plan.holiday_work);
+    let overnight = shift.is_some_and(|s| s.end > 1440);
+    let record = |kind, segments| {
+        if future {
+            Err(CellRefusal::FutureDate)
+        } else {
+            Ok((kind, segments))
+        }
+    };
+    let as_scheduled = || match shift {
+        _ if future => Err(CellRefusal::FutureDate),
+        Some(s) => Ok((
+            EntryKind::Times,
+            vec![Window {
+                start: s.start,
+                end: s.end,
+            }],
+        )),
+        None => Err(CellRefusal::NoShiftToCopy),
+    };
+    if raw.chars().take(41).count() > 40 {
+        return Err(CellRefusal::Parse(ParseRefusal::Unreadable));
     }
-    Ok(match entry {
-        Entry::Times(spans) => (EntryKind::Times, spans),
-        Entry::ClockInOnly(start) => (
+    let value = grammar::normalise(raw);
+    let parsed = grammar::parse_with_overnight(raw, long_span_minutes, confirmed, overnight);
+    // Attendance words keep their meaning even when a tenant uses one as a slot code.
+    if matches!(parsed, Ok(Entry::Shift(_)) | Err(ParseRefusal::Unreadable))
+        && plan
+            .slot_code
+            .as_deref()
+            .is_some_and(|code| grammar::normalise(code).to_lowercase() == value.to_lowercase())
+    {
+        return if shift.is_some() {
+            as_scheduled()
+        } else {
+            Err(CellRefusal::AlreadyDayOff)
+        };
+    }
+    let entry = parsed.map_err(|refusal| {
+        if refusal == ParseRefusal::Unreadable
+            && plan.slot_code.is_some()
+            && value.chars().all(char::is_alphanumeric)
+            && value.chars().any(char::is_alphabetic)
+        {
+            CellRefusal::ScheduleChangeNeeded
+        } else {
+            CellRefusal::Parse(refusal)
+        }
+    })?;
+    match entry {
+        Entry::Times(spans) => record(EntryKind::Times, spans),
+        Entry::ClockInOnly(start) => record(
             EntryKind::ClockInOnly,
             vec![Window {
                 start,
                 end: start + 1,
             }],
         ),
-        Entry::AsScheduled => match &plan.shift {
-            Some(s) if plan.kind == DayKind::Work || plan.holiday_work => (
-                EntryKind::Times,
-                vec![Window {
-                    start: s.start,
-                    end: s.end,
-                }],
-            ),
-            _ => return Err(CellRefusal::NoShiftToCopy),
-        },
-        Entry::Absent => (EntryKind::Absent, vec![]),
-        Entry::OutsideWork => (EntryKind::OutsideWork, vec![]),
-        Entry::BusinessTrip => (EntryKind::BusinessTrip, vec![]),
-    })
+        Entry::AsScheduled => as_scheduled(),
+        Entry::Shift(_) => Err(CellRefusal::ScheduleChangeNeeded),
+        Entry::DayOff if shift.is_some() || plan.kind == DayKind::NoSchedule => {
+            Err(CellRefusal::ScheduleChangeNeeded)
+        }
+        Entry::DayOff => Err(CellRefusal::AlreadyDayOff),
+        Entry::ClockOutOnly(_) => Err(CellRefusal::ClockOutOnlyNotStored),
+        Entry::Leave(_) => Err(CellRefusal::LeaveNotStored),
+        Entry::Absent => record(EntryKind::Absent, vec![]),
+        Entry::OutsideWork => Ok((EntryKind::OutsideWork, vec![])),
+        Entry::BusinessTrip => Ok((EntryKind::BusinessTrip, vec![])),
+    }
 }
 
 /// Recognition of a stored entry on its planned day. 외근 · 출장 count as the
@@ -161,6 +223,25 @@ mod value_tests {
             holiday_name: None,
             holiday_work: false,
         }
+    }
+
+    #[test]
+    fn digits_only_unreadable_on_a_slotted_day_is_not_a_schedule_change() {
+        let work = slot("A", DayKind::Work, Some((540, 1080)));
+        assert_eq!(refusal("999", &work, false), "entry_unreadable");
+        assert_eq!(refusal("999A", &work, false), "schedule_change_needed");
+    }
+
+    #[test]
+    fn a_shift_ending_at_midnight_does_not_imply_a_next_day_end() {
+        let midnight = slot("M", DayKind::Work, Some((960, 1440)));
+        assert_eq!(
+            refusal("22-06", &midnight, false),
+            "overnight_without_marker"
+        );
+        assert_eq!(refusal("22-06+", &midnight, false), "TIMES");
+        let overnight = slot("M", DayKind::Work, Some((960, 1441)));
+        assert_eq!(refusal("22-06", &overnight, false), "TIMES");
     }
 
     #[test]
@@ -226,6 +307,120 @@ mod value_tests {
             resolve_value("=", &rest, false, 960, true),
             Err(CellRefusal::NoShiftToCopy)
         );
+    }
+
+    fn slot(code: &str, kind: DayKind, shift: Option<(u16, u16)>) -> DayPlan {
+        DayPlan {
+            kind,
+            shift: shift.map(|(start, end)| Shift {
+                start,
+                end,
+                breaks: vec![],
+            }),
+            slot_code: Some(code.to_owned()),
+            holiday_name: None,
+            holiday_work: false,
+        }
+    }
+
+    fn refusal(raw: &str, plan: &DayPlan, future: bool) -> &'static str {
+        resolve_value(raw, plan, future, 960, false)
+            .map_or_else(|r| r.code(), |(kind, _)| kind.as_str())
+    }
+
+    #[test]
+    fn tenant_slot_codes_are_normalised_before_the_fallback_grammar() {
+        for (code, raw) in [("A", " a "), ("G1", "Ｇ１"), ("오전", "오전"), ("Ä", "ä")] {
+            let work = slot(code, DayKind::Work, Some((540, 1080)));
+            assert_eq!(
+                resolve_value(raw, &work, false, 960, false),
+                Ok((
+                    EntryKind::Times,
+                    vec![Window {
+                        start: 540,
+                        end: 1080
+                    }]
+                ))
+            );
+            assert_eq!(refusal(raw, &work, true), "future_date");
+            let off = slot(code, DayKind::RestDay, None);
+            assert_eq!(refusal(raw, &off, false), "already_day_off");
+        }
+        let other = slot("G1", DayKind::Work, Some((540, 1080)));
+        assert_eq!(refusal("A", &other, false), "schedule_change_needed");
+        assert_eq!(refusal("A", &plan(), false), "entry_unreadable");
+        assert_eq!(refusal("9-1x", &other, false), "entry_unreadable");
+    }
+
+    #[test]
+    fn reserved_attendance_words_win_over_colliding_tenant_slots() {
+        for (code, raw, expected) in [
+            ("X", "ｘ", "ABSENT"),
+            ("결", "결", "ABSENT"),
+            ("결근", "결근", "ABSENT"),
+            ("O", "o", "OUTSIDE_WORK"),
+            ("외", "외", "OUTSIDE_WORK"),
+            ("외근", "외근", "OUTSIDE_WORK"),
+            ("출장", "출장", "BUSINESS_TRIP"),
+            ("휴", "휴", "schedule_change_needed"),
+            ("연차", "연차", "leave_not_stored"),
+            ("재택", "재택", "activity_not_stored"),
+            ("지각", "지각", "status_is_derived"),
+            ("출", "출", "code_ambiguous"),
+        ] {
+            let work = slot(code, DayKind::Work, Some((540, 1080)));
+            assert_eq!(refusal(raw, &work, false), expected, "{code}: {raw}");
+        }
+        let off = slot("O", DayKind::RestDay, None);
+        assert_eq!(refusal("o", &off, false), "OUTSIDE_WORK");
+        let work = slot("X", DayKind::Work, Some((540, 1080)));
+        assert_eq!(refusal("x", &work, true), "future_date");
+    }
+
+    #[test]
+    fn activity_words_never_store_an_untagged_entry() {
+        for raw in ["재", "재택", "교육", "재택 9-18", "교육 9-18", "재택 7:52-"] {
+            assert_eq!(refusal(raw, &plan(), false), "activity_not_stored", "{raw}");
+        }
+    }
+
+    #[test]
+    fn the_plan_reads_night_ends_shift_codes_and_days_off() {
+        let night = slot("N", DayKind::Work, Some((1320, 1860)));
+        let day = plan();
+        let off = slot("비", DayKind::RestDay, None);
+        let window = |start, end| vec![Window { start, end }];
+        assert_eq!(
+            resolve_value("22-07", &night, false, 960, false),
+            Ok((EntryKind::Times, window(1320, 1860)))
+        );
+        assert_eq!(refusal("22-07", &day, false), "overnight_without_marker");
+        assert_eq!(
+            resolve_value("n", &night, false, 960, false),
+            Ok((EntryKind::Times, window(1320, 1860)))
+        );
+        assert_eq!(refusal("N", &night, true), "future_date");
+        assert_eq!(refusal("D", &night, false), "schedule_change_needed");
+        assert_eq!(refusal("D", &day, false), "schedule_change_needed");
+        assert_eq!(refusal("비", &off, false), "already_day_off");
+        assert_eq!(refusal("휴", &night, false), "schedule_change_needed");
+        assert_eq!(refusal("OFF", &off, false), "already_day_off");
+        let unscheduled = DayPlan::unscheduled(None);
+        assert_eq!(
+            refusal("휴무", &unscheduled, false),
+            "schedule_change_needed"
+        );
+        assert_eq!(refusal("D", &unscheduled, false), "schedule_change_needed");
+        for raw in ["연차", "반", "v", "병가"] {
+            assert_eq!(refusal(raw, &day, false), "leave_not_stored", "{raw}");
+            assert_eq!(refusal(raw, &day, true), "leave_not_stored", "{raw}");
+        }
+        assert_eq!(refusal("-18", &day, false), "clock_out_only_not_stored");
+        assert_eq!(refusal("9–18", &day, false), "TIMES");
+        assert_eq!(refusal("결", &day, true), "future_date");
+        assert_eq!(refusal("외", &day, true), "OUTSIDE_WORK");
+        assert_eq!(refusal("재택", &day, false), "activity_not_stored");
+        assert_eq!(refusal("지각", &day, false), "status_is_derived");
     }
 }
 

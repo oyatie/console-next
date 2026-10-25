@@ -1,3 +1,4 @@
+export { ApiError } from "@console/api";
 import { api, session, unwrap, type components } from "@console/api";
 import { get } from "../../lib/query";
 

@@ -1,7 +1,7 @@
 {
   "baseline": {
-    "apps/web/src/features/entity/ui/nts-check.tsx#NtsCheck": 40,
-    "apps/web/src/features/entity/ui/nts-preview.tsx#NtsPreview": 42,
+    "apps/web/src/features/entity/ui/nts-check.tsx#NtsCheck": 24,
+    "apps/web/src/features/entity/ui/nts-preview.tsx#NtsPreview": 33,
     "apps/web/src/features/platform/ui/key-notices.tsx#KeyNotices": 2
   },
   "newScreens": {

@@ -68,8 +68,6 @@ export const numberMatchQuery = (number: string) => get("/api/v1/employees/by-nu
 export const changeEmployeeNumber = (id: string, body: components["schemas"]["EmployeeNumberChangeRequest"]) =>
   pinned(employeeRecord(id), body.expected_updated_at, ["employee_number"], (at) =>
     unwrap(api.POST("/api/v1/employees/{id}/employee-number", { params: { path: { id } }, body: { ...body, expected_updated_at: at } })));
-/** The server operation a failure came from, quoted for support. */
-export const errorOperation = (e: unknown) => (e instanceof ApiError ? e.operationId : undefined);
 /** One workplace's people by status (the register's counts). */
 export const workplaceCountsQuery = (workplaceId?: string, status?: ("ACTIVE" | "ON_LEAVE" | "EXITED")[]) =>
   get("/api/v1/employees/facets", { params: { query: { ...(workplaceId && { workplace_id: workplaceId }), ...(status && { status }) } } });

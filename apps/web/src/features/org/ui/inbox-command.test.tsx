@@ -18,7 +18,10 @@ const state = vi.hoisted(() => ({
   buttons: [] as Parameters<typeof Button>[0][], command: undefined as Command | undefined,
   decide: vi.fn(), effectuate: vi.fn(), focus: vi.fn(), mutate: vi.fn(), reads: [] as string[],
 }));
-vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useState: () => [state.open, (open: boolean) => { state.open = open; }] }));
+vi.mock("react", async original => {
+  const actual = await original<typeof import("react")>();
+  return { ...actual, useState: (initial: unknown) => initial === false ? [state.open, (open: boolean) => { state.open = open; }] : actual.useState(initial) };
+});
 vi.mock("@tanstack/react-query", async (original) => ({ ...await original<typeof import("@tanstack/react-query")>(), useQuery: (query: Parameters<typeof readIdentity>[0]) => {
   const path = String(JSON.parse(readIdentity(query))[0]);
   state.reads.push(path);

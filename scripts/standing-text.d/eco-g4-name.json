@@ -1,8 +1,5 @@
 {
-  "baseline": {
-    "apps/web/src/features/onboarding/ui/company-names.tsx#CompanyNames": 0,
-    "apps/web/src/features/people/ui/company-mappings.tsx#CompanyMappings": 49
-  },
+  "baseline": {},
   "newScreens": {
     "apps/web/src/features/people/ui/company-mappings.tsx#CompanyMappings": {
       "FACT": 23,

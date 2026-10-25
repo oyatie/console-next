@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
 import type { RefListKey } from "@console/api/pending";
+import { readGroup } from "../../../lib/react/query-view";
 import { t } from "@console/i18n";
 import type { AddressHit, AddressProblem, AddressValue } from "../../../ui/address-field/address-field";
 import type { CodeList, CodeOption } from "../../../ui/code-picker/code-picker";
@@ -35,8 +36,8 @@ export function useCodeSearch(key: RefListKey, title?: string) {
  * Whether each list has answered whether it is loaded. A code field's shape (a search over the list, or the code typed as
  * printed) follows that answer, so a form holds its code fields until then instead of drawing one shape and swapping it.
  */
-export function useCodeListsKnown(keys: readonly RefListKey[]) {
-  return useQueries({ queries: keys.map((key) => ({ ...codesQuery(key, ""), retry: false })) }).every((q) => !q.isPending);
+export function useCodeLists(keys: readonly RefListKey[]) {
+  return readGroup(useQueries({ queries: keys.map((key) => ({ ...codesQuery(key, ""), retry: false })) }));
 }
 
 /**

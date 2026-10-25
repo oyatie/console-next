@@ -176,8 +176,6 @@ export const enEntity: Record<keyof typeof koEntity, string> = {
   "entity.problem.future": "The date is after today",
   "entity.won": "KRW {amount}",
   "entity.field.restricted": "Not visible to you",
-  "entity.history.state": "{subject} as of {from}",
-  "entity.history.logPending": "Above are the states by effective date. Who changed which field isn’t shown with them yet.",
   "entity.edit.notReady": "Enter the change, its effective date and the reason to save",
   "entity.void.reasonNeeded": "Choose a reason to delete it",
   "entity.list.tax_office": "Tax office",

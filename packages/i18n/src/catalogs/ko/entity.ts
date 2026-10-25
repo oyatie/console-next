@@ -175,8 +175,6 @@ export const koEntity = {
   "entity.problem.future": "오늘 이후 날짜입니다",
   "entity.won": "{amount}원",
   "entity.field.restricted": "볼 권한 없음",
-  "entity.history.state": "{from}부터 적용되는 {subject} 내용",
-  "entity.history.logPending": "위는 적용일별 내용입니다. 누가 어떤 항목을 변경했는지는 아직 함께 보여 드리지 못합니다.",
   "entity.edit.notReady": "변경할 내용과 적용일, 변경 사유를 입력하면 저장할 수 있습니다",
   "entity.void.reasonNeeded": "사유를 선택하면 삭제할 수 있습니다",
   "entity.list.tax_office": "세무서",

@@ -1,3 +1,4 @@
+import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { identityProblems } from "../../../reference/entity/domain/names";
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -45,8 +46,12 @@ async function readFile(f: File): Promise<Sheet[]> {
 
 /** S7 org sheet import: file → columns → values (exact names only) → preview → apply, one undo for the whole import. */
 export function ImportPage() {
+  return <AccessGate domain="org" level="edit"><ImportWorkspace /></AccessGate>;
+}
+
+function ImportWorkspace() {
   const tree = useQuery(structureQuery);
-  return <QueryState q={tree}>{(d) => <ImportWizard ents={d.entities.filter((e) => e.kind === "LEGAL_ENTITY")} operating={d.phase === "OPERATING"} />}</QueryState>;
+  return <QueryState q={tree} layout="form">{(d) => <ImportWizard ents={d.entities.filter((e) => e.kind === "LEGAL_ENTITY")} operating={d.phase === "OPERATING"} />}</QueryState>;
 }
 
 function ImportWizard({ ents: allEntities, operating }: { ents: Node[]; operating: boolean }) {

@@ -1,0 +1,72 @@
+{
+  "baseline": {
+    "apps/web/src/features/access/ui/access-routes.tsx#BulkScreen": 72,
+    "apps/web/src/features/access/ui/access-routes.tsx#GrantsScreen": 109,
+    "apps/web/src/features/access/ui/access-routes.tsx#PersonScreen": 101,
+    "apps/web/src/features/access/ui/access-routes.tsx#ReadyScreen": 15,
+    "apps/web/src/features/access/ui/access-routes.tsx#RoleNewScreen": 35,
+    "apps/web/src/features/access/ui/access-routes.tsx#RoleScreen": 35,
+    "apps/web/src/features/access/ui/access-routes.tsx#RolesScreen": 53,
+    "apps/web/src/features/account/Account.tsx#Account": 46,
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#AttendancePage": 129,
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#DayPage": 87,
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#MonthPage": 93,
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#PersonPage": 29,
+    "apps/web/src/features/company-domain/ui/domain-page.tsx#default": 23,
+    "apps/web/src/features/entity/ui/entity-routes.tsx#EntitiesScreen": 119,
+    "apps/web/src/features/entity/ui/entity-routes.tsx#EntityScreen": 264,
+    "apps/web/src/features/entity/ui/entity-routes.tsx#NewEntityScreen": 100,
+    "apps/web/src/features/identifiers/ui/identifiers-page.tsx#IdentifiersPage": 53,
+    "apps/web/src/features/import/ui/import-page.tsx#ImportPage": 132,
+    "apps/web/src/features/onboarding/ui/company-names.tsx#CompanyNames": 0,
+    "apps/web/src/features/onboarding/ui/go-live.tsx#GoLive": 23,
+    "apps/web/src/features/org-bulk/ui/bulk-edit-page.tsx#BulkEditPage": 42,
+    "apps/web/src/features/org-bulk/ui/history-page.tsx#HistoryPage": 24,
+    "apps/web/src/features/org-bulk/ui/import-page.tsx#ImportPage": 93,
+    "apps/web/src/features/org-bulk/ui/paste-page.tsx#PastePage": 89,
+    "apps/web/src/features/org/OrgChange.tsx#OrgChanges": 8,
+    "apps/web/src/features/org/ui/bulk-move-page.tsx#BulkMovePage": 46,
+    "apps/web/src/features/people/ui/certificate-page.tsx#CertificatePage": 29,
+    "apps/web/src/features/people/ui/certificates-page.tsx#CertificatesPage": 47,
+    "apps/web/src/features/people/ui/exit-list.tsx#ExitCaseList": 28,
+    "apps/web/src/features/people/ui/job-titles-page.tsx#JobTitlesPage": 27,
+    "apps/web/src/features/people/ui/notice-list-page.tsx#NoticeListPage": 6,
+    "apps/web/src/features/people/ui/notice-page.tsx#NoticePage": 10,
+    "apps/web/src/features/people/ui/requests-page.tsx#RequestsPage": 40,
+    "apps/web/src/features/people/ui/unplaced-page.tsx#UnplacedPage": 59,
+    "apps/web/src/features/periods/ui/period-lock-page.tsx#PeriodLockPage": 82,
+    "apps/web/src/features/platform/Tenants.tsx#Tenants": 50,
+    "apps/web/src/features/requests/ui/request-page.tsx#RequestPage": 9,
+    "apps/web/src/features/statutory/ui/statutory-page.tsx#StatutoryPage": 38,
+    "apps/web/src/lib/react/query-state.tsx#QueryState": 29,
+    "apps/web/src/features/people/ui/register-run-page.tsx#RegisterRunPage": 81,
+    "apps/web/src/features/people/ui/company-mappings.tsx#CompanyMappings": 40,
+    "apps/web/src/features/attendance/ui/person-schedule-sheet.tsx#PersonScheduleSheet": 54
+  },
+  "newScreens": {
+    "apps/web/src/lib/react/query-state.tsx#QueryState": {
+      "FACT": 2,
+      "REFUSAL": 27,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/people/ui/certificate-page.tsx#CertificatePage": {
+      "FACT": 18,
+      "REFUSAL": 6,
+      "EMPTY": 0,
+      "LEGAL": 1,
+      "RECEIPT": 4,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/people/ui/certificates-page.tsx#CertificatesPage": {
+      "FACT": 31,
+      "REFUSAL": 11,
+      "EMPTY": 3,
+      "LEGAL": 0,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    }
+  }
+}

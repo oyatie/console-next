@@ -1,3 +1,5 @@
+import { t } from "@console/i18n";
+import { queryView } from "../../../lib/react/query-view";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
@@ -9,7 +11,7 @@ import { usePageActive } from "../../../lib/react/page-active";
 import { freshOnOpen } from "../../../lib/query";
 import { todayKst } from "../../../lib/pure/today";
 import { editable } from "../../../ui/long-table/row-keys";
-import { contractsQuery, employeeQuery, endOptionsQuery, eventsQuery, exitCasesQuery, problemOf } from "../api";
+import { contractsQuery, employeeQuery, endOptionsQuery, eventsQuery, exitCasesQuery } from "../api";
 import { assignmentsRef, entitiesRef } from "../../../reference/entity/api";
 import { authzApplies, authzQuery, granted } from "../../../reference/authz/api";
 import { verbStates } from "../domain/lifecycle";
@@ -19,7 +21,7 @@ import { CancelHost } from "./cancel-sheet";
 import { CardBar, CardBody } from "./card-body";
 import { CardHead, type CardTab } from "./card-head";
 import { CardPrint } from "./card-print";
-import { CardDenied, CardSkeleton } from "./card-states";
+import { CardSkeleton } from "./card-states";
 import { CardTabs } from "./card-tabs";
 import { FixHost } from "./fix-host";
 import { useCard } from "./use-card";
@@ -57,12 +59,13 @@ export function EmployeeCard() {
   const exits = freshOnOpen(useQuery({ ...exitCasesQuery({ employeeId: id }), refetchOnMount: "always" }));
   // Only until each first answers: a read the reader may not make (403) retries behind the card, never behind the skeleton.
   const first = (q: { isPending: boolean; failureCount: number }) => q.isPending && q.failureCount === 0;
-  if (problemOf(detail.error)?.status === 404) return <CardDenied />;
+  const view = queryView(detail);
+  if (view === "denied" || view === "not-found" || (detail.error && !detail.data)) return <div className={s.page}><QueryState q={detail} layout="record" back={{ to: "/people", label: t("peopleJump.keys.group.roster") }}>{() => null}</QueryState></div>;
   const loading = (authzApplies() && authz.isPending) || first(events) || first(placed) || first(entities) || (manage && (first(contracts) || first(ends) || first(exits))) || (users && !!detail.data && first(account));
   if (detail.isPending || (opened !== id && loading)) return <CardSkeleton />;
   // Later reads keep the mounted card and anything typed into it, including a changed account-search key.
   if (detail.isSuccess && opened !== id) setOpened(id);
-  return <div className={s.page}><QueryState q={detail}>{(d) => <Card key={d.employee.id} d={d} />}</QueryState></div>;
+  return <div className={s.page}><QueryState q={detail} layout="record" back={{ to: "/people", label: t("peopleJump.keys.group.roster") }}>{(d) => <Card key={d.employee.id} d={d} />}</QueryState></div>;
 }
 
 function Card({ d }: { d: Detail }) {

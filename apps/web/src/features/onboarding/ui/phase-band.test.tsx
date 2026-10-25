@@ -5,10 +5,10 @@ import { PhaseBand } from "../../../shell/phase-band";
 
 // Model the timestamp captured by the mounted setup shell, before its go-live response arrives.
 const times = vi.hoisted(() => ({ mounted: Date.parse("2026-10-09T00:00:00Z"), updatedAfter: 2000 }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({
+vi.mock("./use-setup", () => ({ useSetupChecklist: () => ({ phaseQ: {
   data: { phase: "OPERATING", go_live_at: "2026-10-09T00:00:01Z" },
   dataUpdatedAt: times.mounted + times.updatedAfter, isPending: false,
-}) }));
+} }) }));
 vi.mock("react", async (original) => {
   const react = await original<typeof import("react")>();
   return { ...react, useState: (initial: unknown) => initial === Date.now ? [times.mounted, () => undefined] : react.useState(initial) };

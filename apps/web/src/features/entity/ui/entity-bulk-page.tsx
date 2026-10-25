@@ -8,7 +8,6 @@ import { BIZ_KIND, REPRESENTATION, label } from "../../../lib/labels";
 import { readDelimited, readXlsx, type Sheet } from "../../../lib/sheet-file";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
-import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { Field } from "../../../ui/field/field";
 import { SelectInput } from "../../../ui/field/select-input";
@@ -17,7 +16,6 @@ import { FileDrop } from "../../../ui/file-drop/file-drop";
 import { StatRow } from "../../../ui/key-value/key-value";
 import { buttonClass } from "../../../ui/button/button-class";
 import { PageHead } from "../../../ui/page-head/page-head";
-import { checklistRef as checklistQuery } from "../../../reference/entity/api";
 import { BATCH_READS, entityBatch, type Committed } from "../../../reference/org/api/setup-batch";
 import { CommittedReceipt } from "../../../reference/org/ui/batch-receipt";
 import { BULK_FIELDS, BULK_OPERATIONS, bulkGaps, entityRowOp, entityRows, guessEntityColumns, type BulkColumns, type BulkOp, type EntityRow } from "../domain/bulk";
@@ -32,8 +30,7 @@ const FILES = [{ mime: "application/vnd.openxmlformats-officedocument.spreadshee
 /** Routes compose the entity editor with onboarding permissions and the shared batch receipt.
  * Legal entities use the same dry-run, digest-bound batch and undo as workplace import. */
 export function EntityBulkPage({ paste }: { paste: boolean }) {
-  const checklist = useQuery(checklistQuery);
-  return <QueryState q={checklist}>{(c) => <EntityBulkEditor paste={paste} canAct={c.steps.some((s) => s.key === "entity" && s.can_act)} />}</QueryState>;
+  return <EntityBulkEditor paste={paste} canAct />;
 }
 
 function EntityBulkEditor({ paste, canAct }: { paste: boolean; canAct: boolean }) {

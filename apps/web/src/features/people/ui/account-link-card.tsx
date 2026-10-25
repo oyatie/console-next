@@ -5,7 +5,6 @@ import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { linkAccount, mySub } from "../api";
 import { useCommand } from "../../../lib/react/command";
-import { CommandError } from "../../../lib/react/command-error";
 import { PasskeyError } from "../../../lib/react/passkey-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { ROLE, label } from "../../../lib/labels";
@@ -96,7 +95,7 @@ export function AccountLinkCard({ employee, manage }: { employee: Employee; mana
         </Button>}
       />}
       <PasskeyError error={link.error} />
-      <CommandError error={found.error} />
+      {found.error != null && <QueryState q={found}>{() => null}</QueryState>}
     </Card>
   );
 }

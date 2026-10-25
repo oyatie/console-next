@@ -48,7 +48,7 @@ export function FilingComplete({ task, onClose, onDone }: { task: FilingTask; on
   });
   const variables = { name: task.name, insurer: filingLabel(task.insurer), kind: filingLabel(task.kind), date: date ? fmtDate(date) : "" };
   const submit = () => { setTried(true); if (valid) setPreview(true); };
-  return <Dialog open title={t("statutory.completeTitle", variables)} onClose={onClose} dismissable={!run.isPending}>
+  return <Dialog open read title={t("statutory.completeTitle", variables)} onClose={onClose} dismissable={!run.isPending}>
     <QueryState q={latest}>{() => <Form className="form" noValidate onSubmit={submit}>
       {preview ? <>
         <p>{t(action === "NOT_APPLICABLE" ? "statutory.notApplicableConsequence" : action === "ASSESS" ? "statutory.assessed" : "statutory.consequence", variables)}</p>

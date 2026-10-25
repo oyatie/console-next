@@ -1,10 +1,12 @@
 import { verificationState } from "../present";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { BIZ_KIND, label } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
+import { PageReadGate } from "../../../reference/authz/ui/access-gate";
+import { PageHead } from "../../../ui/page-head/page-head";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { Table } from "../../../ui/table";
@@ -24,7 +26,7 @@ const route = getRouteApi("/app/org/entities");
 /** The tenant's legal entities (design §0 E1): each with its kind, main registration, workplaces and people. */
 export function EntityList() {
   const { add, correction, as_of, known_at } = route.useSearch();
-  const list = useQuery(entitiesAt({ as_of, known_at }));
+  const list = useQuery({ ...entitiesAt({ as_of, known_at }), placeholderData: keepPreviousData });
   const phase = useQuery(checklistRef).data?.phase;
   const nav = useNavigate();
   const navigate = route.useNavigate();
@@ -33,28 +35,18 @@ export function EntityList() {
   const changeDate = (date: string, knownAt?: string) => void navigate({ search: (s) => ({ ...s, add: undefined, as_of: date === today ? undefined : date, known_at: knownAt }) });
   return (
     <div className="page">
+      <PageHead titleId="entities-title" title={t("entity.list.title")} />
+      <PageReadGate q={list}>
       <section className="card">
         <div className="toolbar">
-          <h1 id="entities-title" className="toolbar__title" tabIndex={-1}>{t("entity.list.title")}</h1>
           {phase === "SETUP" && <Chip tone="info">{t("entity.phase.setup")}</Chip>}
-          {!readOnly && <Link to="/org/entities" search={(s) => ({ ...s, add: true })} className="btn btn--primary">
+          {list.data && !readOnly && <Link to="/org/entities" search={(s) => ({ ...s, add: true })} className="btn btn--primary">
             <Plus size={16} aria-hidden /> {t("entityQuick.title")}
           </Link>}
         </div>
         <AsOfBand asOf={as_of} knownAt={known_at} onChange={changeDate} />
-        <QueryState
-          q={list}
-          empty={(d) =>
-            d.items.length ? null : (
-              <EmptyState
-                title={t("entity.empty.title")}
-                reason={t("entity.empty.reason")}
-                actions={!readOnly && <Link to="/org/entities/new" className="btn btn--primary">{t("entity.empty.action")}</Link>}
-              />
-            )
-          }
-        >
-          {(d) => (
+        <QueryState q={list} layout="list">{d => d.items.length ? (
+
             <Table
               label={t("entity.list.table")}
               rows={d.items}
@@ -84,13 +76,13 @@ export function EntityList() {
                 },
               ]}
             />
-          )}
-        </QueryState>
+          ) : <EmptyState title={t("entity.empty.title")} reason={t("entity.empty.reason")} actions={!readOnly && <Link to="/org/entities/new" className="btn btn--primary">{t("entity.empty.action")}</Link>} />}</QueryState>
       </section>
       {/* The list above must settle before these controls can be aimed at. */}
-      {!list.isPending && !readOnly && <CorrectionRegister correctionId={correction} onSelect={(id) => void navigate({ search: (s) => ({ ...s, correction: id ?? undefined }), hash: "identifier-corrections", replace: true })} />}
+      {list.data && !readOnly && <CorrectionRegister correctionId={correction} onSelect={(id) => void navigate({ search: (s) => ({ ...s, correction: id ?? undefined }), hash: "identifier-corrections", replace: true })} />}
       {list.data && <UnattachedWorkplaces entities={list.data.items} />}
-      {!readOnly && <QuickAdd open={add === true} onClose={() => void navigate({ search: (s) => ({ ...s, add: undefined }) })} />}
+      {list.data && !readOnly && <QuickAdd open={add === true} onClose={() => void navigate({ search: (s) => ({ ...s, add: undefined }) })} />}
+      </PageReadGate>
     </div>
   );
 }

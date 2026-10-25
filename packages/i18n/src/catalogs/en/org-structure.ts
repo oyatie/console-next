@@ -22,7 +22,6 @@ export const enOrgStructure: Record<keyof typeof koOrgStructure, string> = {
   "orgStructure.members.none": "Nobody is placed directly here",
   "orgStructure.members.all": "All {count, number} in the people list",
   "orgStructure.members.joinersRestricted": "People list access is required to see the upcoming joiner count",
-  "orgStructure.members.joinersFailed": "Could not load the upcoming joiner count",
   "orgStructure.wp.roles": "Head office · representative",
   "orgStructure.wp.notRoles": "Neither · representative workplace is {primary}, head office is {head}",
   "orgStructure.wp.ownCert": "This workplace's certificate",
@@ -73,4 +72,5 @@ export const enOrgStructure: Record<keyof typeof koOrgStructure, string> = {
   "orgStructure.order.down": "Move {name} down",
   "orgStructure.order.upDone": "Moved {name} up",
   "orgStructure.order.downDone": "Moved {name} down",
+  "orgStructure.members.joinersFailed": "Could not load the upcoming joiner count",
 };

@@ -54,7 +54,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
   const facts = (r: number, c: number): CellFacts => {
     const row = rows[r]!;
     const cell = row.cells[c];
-    return { key: keyAt(r, c), planKind: cell?.plan_kind ?? "NO_SCHEDULE", entryId: cell?.entry_id ?? null, own: row.own, closed: closed(row.month_state) };
+    return { key: keyAt(r, c), planKind: cell?.plan_kind, entryId: cell?.entry_id ?? null, own: row.own, closed: closed(row.month_state) };
   };
   const selected = () => {
     const out: CellFacts[] = [];
@@ -228,7 +228,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
       }}
       look={(r, c) => {
         const d = drafts[cellKey(r.employee_id, days[c]!)];
-        return d ? (draftState(d).ok ? "draft" : "refused") : r.own || closed(r.month_state) ? "locked" : undefined;
+        return d ? (draftState(d, r.cells[c]?.plan_kind).ok ? "draft" : "refused") : r.own || closed(r.month_state) ? "locked" : undefined;
       }}
       describe={(r, c) => {
         const d = drafts[cellKey(r.employee_id, days[c]!)];

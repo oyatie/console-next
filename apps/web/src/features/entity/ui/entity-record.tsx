@@ -1,6 +1,6 @@
 import { verificationState } from "../present";
 import { useEffect, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { Building2, ChevronRight, Network, PencilLine, Plus } from "lucide-react";
 import type { LegalEntity, OrgStructureNode } from "@console/api/pending";
@@ -8,13 +8,12 @@ import { t } from "@console/i18n";
 import { BIZ_KIND, label } from "../../../lib/labels";
 import { useFreshOnArrival } from "../../../lib/react/arrival";
 import { QueryState } from "../../../lib/react/query-state";
+import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { checklistRef, orgStructureAt } from "../../../reference/entity/api";
 import { todayKst } from "../../../lib/pure/today";
-import { entityGone } from "../domain/gone";
-import { EntityGone } from "./entity-error";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
-import { entityDocumentsQuery, entityEndQuery, entityHistoryQuery, entityQuery } from "../api";
+import { entityDocumentsQuery, entityHistoryQuery, entityQuery } from "../api";
 import { primaryRegistration } from "../domain/view";
 import { entityName } from "../../../reference/entity/domain/names";
 import { unattached } from "../domain/attach";
@@ -67,11 +66,10 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
   const read = entityQuery(id, point);
   // A legal entity a command changed since it was cached (a workplace sheet's save) is drawn only once re-read: drawn stale, its
   // facts moved under the next click when the re-read landed.
-  const q = useFreshOnArrival(useQuery(read), read);
+  const q = useFreshOnArrival(useQuery({ ...read, placeholderData: keepPreviousData }), read);
   const docsQ = useQuery({ ...entityDocumentsQuery(id), retry: false });
   const historyRead = entityHistoryQuery(id);
   const hist = useFreshOnArrival(useQuery({ ...historyRead, retry: false }), historyRead);
-  const end = useQuery({ ...entityEndQuery(id), retry: false });
   const phaseQ = useQuery(checklistRef);
   const phase = phaseQ.data?.phase;
   const structure = useQuery(orgStructureAt(point));
@@ -103,7 +101,7 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
   const title = (e: LegalEntity) => <h1 className="page__title" tabIndex={-1}><EntityName entity={e} /></h1>;
   const head = (e: LegalEntity) => {
     const primary = primaryRegistration(e);
-    const lock = temporal ? "asof" : lockOf(e);
+    const lock = temporal ? "asof" : lockOf(e, phase !== undefined);
     const v = primary ? verificationState(primary) : null;
     return (
       <div className={s.head}>
@@ -118,29 +116,29 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
           {v && <Chip tone="neutral">{v.label}</Chip>}
           <div className="grow" />
           <Link to="/org" search={point} className="btn"><Network size={16} aria-hidden /> {t("entityRecord.action.chart")}</Link>
-          {!lock && <Link to="/org/entities/$id/workplaces/new" params={{ id: e.id }} className="btn"><Plus size={16} aria-hidden /> {t("entityRecord.action.addWorkplace")}</Link>}
-          {!lock && <Button variant="primary" onClick={() => setTab("certificates")}><PencilLine size={16} aria-hidden /> {t("entityRecord.action.editByCert")}</Button>}
+          {(!lock || lock === "loading") && <Link to="/org/entities/$id/workplaces/new" params={{ id: e.id }} className="btn" disabled={lock === "loading"}><Plus size={16} aria-hidden /> {t("entityRecord.action.addWorkplace")}</Link>}
+          {(!lock || lock === "loading") && <Button variant="primary" disabled={lock === "loading"} onClick={() => setTab("certificates")}><PencilLine size={16} aria-hidden /> {t("entityRecord.action.editByCert")}</Button>}
         </div>
         <div className={s.nameProblems}><NameProblems e={e} onCertificate={() => setTab("certificates")} review={(r) => <NameReview key={r.id} e={e} review={r} editable={e.can_manage && !lock} />} /></div>
-        <LockNotice e={e} lock={lock} />
+        <LockNotice e={e} lock={lock === "loading" ? null : lock} />
+        {e.can_manage && <QueryState q={phaseQ} inline loading={<></>}>{() => null}</QueryState>}
         <div role="group" aria-label={t("entityRecord.tabs")} className={s.tabs}>
-          {TABS.filter((x) => x !== "documents" || !docsQ.isError).map((x) => (
+          {TABS.map((x) => (
             <ToggleButton key={x} pressed={tab === x} onClick={() => setTab(x)}>
               {t(`entityRecord.tab.${x}`)}{" "}
-              {x !== "overview" && <span className={s.count}>{x === "certificates" ? e.registrations.length : x === "workplaces" ? e.workplaces.length : x === "officers" ? (e.current?.representatives?.length ?? 0) + (e.current?.directors?.length ?? 0) : x === "documents" ? (docsQ.data?.items.length ?? 0) : (hist.data?.items.length ?? "")}</span>}
+              {x !== "overview" && <span className={s.count}>{x === "certificates" ? e.registrations.length : x === "workplaces" ? e.workplaces.length : x === "officers" ? (e.current?.representatives?.length ?? 0) + (e.current?.directors?.length ?? 0) : x === "documents" ? (docsQ.data?.items.length ?? "") : (hist.data?.items.length ?? "")}</span>}
             </ToggleButton>
           ))}
         </div>
       </div>
     );
   };
-  // The phase decides each identifier's verb and how the record closes: the page waits for it, so nothing moves.
-  if (q.error && entityGone(q.error)) return <>{band}<EntityGone error={q.error} wasShown={q.data !== undefined} /></>;
-  if (phaseQ.isPending || hist.isPending || end.isPending || docsQ.isPending || structure.isPending) return <>{band}{q.data && <div className={s.head}>{title(q.data)}</div>}<p className="muted" role="status">{t("common.loading")}</p></>;
   return (
-    <>{band}<QueryState q={sheet && displayed ? { ...q, data: displayed } : q}>
+    <div className={s.page}><PageReadGate q={q} title={t("entity.list.title")} back={{ to: "/org/entities", label: t("denied.entity.back") }} removed={t("denied.entity.deleted.reason")}>{band}
+    {q.data && head(q.data)}
+    <QueryState q={sheet && displayed ? { ...q, data: displayed } : q} back={{ to: "/org/entities", label: t("denied.entity.back") }} removed={t("denied.entity.deleted.reason")} layout="record">
       {(e) => {
-        const readOnly = temporal || Boolean(e.read_only);
+        const readOnly = temporal || Boolean(e.read_only) || phase === undefined;
         const act: Act = {
           field: <V,>(spec: FieldSpec<V>) => { if (!readOnly) setSheet(<ReviseSheet e={e} spec={spec} phase={phase} onClose={close} />); },
           identifier: (field, registrationId) => { if (!readOnly) setSheet(<IdentifierSheet e={e} field={field} registrationId={registrationId ?? primaryRegistration(e)?.id} operating={operating} onClose={close} />); },
@@ -153,9 +151,8 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
         const docs = docsQ.isSuccess ? docsQ.data.items : null;
         const reissuing = reissue ? e.registrations.find((r) => r.id === reissue && !r.closed_on) : undefined;
         return (
-          <RecordLockProvider key={`${id}:${as_of ?? ""}:${known_at ?? ""}`} value={readOnly ? "asof" : lockOf(e)}>
-          <div className={s.page}>
-            {head(e)}
+          <RecordLockProvider key={id} value={temporal ? "asof" : lockOf(e, phase !== undefined)}>
+          <>
             <div className={s.body}>
               {tab === "overview" && (
                 <>
@@ -177,17 +174,18 @@ export function EntityRecord({ id, workplace, initialTab }: { id: string; workpl
               )}
               {tab === "workplaces" && <div className={s.wide}><WorkplacesTab e={e} selected={workplace} /></div>}
               {tab === "officers" && <div className={s.wide}><OfficersTab e={e} act={act} /></div>}
-              {tab === "documents" && <div className={s.wide}><DocumentsTab docs={docs ?? []} /></div>}
+              {tab === "documents" && <div className={s.wide}><QueryState q={docsQ}>{data => <DocumentsTab docs={data.items} />}</QueryState></div>}
               {tab === "history" && <div className={s.wide}><HistoryTab e={e} /></div>}
             </div>
             {!readOnly && <CorrectionRegister entityId={e.id} />}
             {!readOnly && sheet}
             {!readOnly && reissuing && <ReissueSheet e={e} r={reissuing} phase={phase} onClose={() => void navigate({ search: (search) => ({ ...search, reissue: undefined }), replace: true })} />}
-          </div>
+          </>
           </RecordLockProvider>
         );
       }}
-    </QueryState></>
+    </QueryState>
+    </PageReadGate></div>
   );
 }
 

@@ -1,5 +1,6 @@
+import { readGroup } from "../../../lib/react/query-view";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Users } from "lucide-react";
 import { t } from "@console/i18n";
@@ -45,16 +46,18 @@ export const GrantState = ({ g, fresh }: { g: AccessGrant; fresh: boolean }) =>
 export function GrantsPage({ role }: { role?: string }) {
   const ctx = useAccessContext();
   const roots = useOrgRoots();
-  const grants = useQuery(grantsQuery(role ? { role_id: role } : undefined));
+  const [roleFilter, setRoleFilter] = useState<string | null>(null);
+  const selectedRole = role ?? roleFilter;
+  const grants = useQuery({ ...grantsQuery(selectedRole ? { role_id: selectedRole } : undefined), placeholderData: keepPreviousData });
   const [granting, setGranting] = useState<Account | null>(null);
   const [changing, setChanging] = useState<{ g: AccessGrant; mode: ChangeMode } | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [saved, setSaved] = useState<{ message: string; grants: AccessGrant[]; operationId: string } | null>(null);
   const [q, setQ] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
   const today = todayKst();
   const fresh = new Set(saved?.grants.map((g) => g.id));
+  const rows = filterGrants(grants.data?.items ?? [], { q, role: roleFilter, ending }, today);
   const roleOptions = [{ id: "", label: t("accessGrants.role.all") }, ...ctx.roles.map((r) => ({ id: r.id, label: r.name_ko }))];
   return (
     <div className="page">
@@ -74,13 +77,11 @@ export function GrantsPage({ role }: { role?: string }) {
           {!role && <SelectField label={t("accessGrants.role")} hideLabel required={false} options={roleOptions} value={roleFilter ?? ""} onChange={(id) => setRoleFilter(id || null)} placeholder={t("accessGrants.role.all")} />}
           <ToggleButton size="sm" pressed={ending} onClick={() => setEnding(!ending)}>{t("accessGrants.ending", { days: ENDING_DAYS })}</ToggleButton>
         </div>
-        <QueryState q={grants} empty={(d) => (d.items.length ? null : <EmptyState title={t("access.grants.none")} reason={t("access.grants.none.reason")} />)}>
-          {(d) => {
-            const rows = filterGrants(d.items, { q, role: roleFilter, ending }, today);
-            if (!rows.length) return <EmptyState title={t("accessGrants.none.filtered")} reason={t("accessGrants.none.filtered.reason")} />;
-            return (
+      <QueryState q={readGroup([ctx.q, grants])} layout="list">{() => <>
+        {!grants.data!.items.length ? <EmptyState title={t("access.grants.none")} reason={t("access.grants.none.reason")} />
+          : !rows.length ? <EmptyState title={t("accessGrants.none.filtered")} reason={t("accessGrants.none.filtered.reason")} /> : (
               <Table
-                label={t("accessGrants.shown", { shown: rows.length, total: d.items.length })}
+                label={t("accessGrants.shown", { shown: rows.length, total: grants.data!.items.length })}
                 rows={rows}
                 rowId={(g) => g.id}
                 tone={(g) => (g.account_active ? undefined : "warn")}
@@ -103,9 +104,8 @@ export function GrantsPage({ role }: { role?: string }) {
                   },
                 ]}
               />
-            );
-          }}
-        </QueryState>
+            )}
+        </>}</QueryState>
       </Card>
       {/* Last on the page: it appears once its read lands, so it moves nothing above it. */}
       <AccessRequests accounts={ctx.accounts} onGrant={setGranting} />

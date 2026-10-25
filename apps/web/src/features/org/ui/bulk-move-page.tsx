@@ -33,7 +33,7 @@ export function BulkMovePage() {
   const { ids } = route.useSearch();
   const chosen = (ids ?? "").split(",").filter(Boolean);
   const st = useStructure();
-  return <QueryState q={st.q}>{() => <Body chosen={chosen} places={st.places} setup={st.setup} company={st.tenant} />}</QueryState>;
+  return <QueryState q={st.q} layout="form">{() => <Body chosen={chosen} places={st.places} setup={st.setup} company={st.tenant} />}</QueryState>;
 }
 
 function Body({ chosen, places, setup, company }: { chosen: string[]; places: Map<string, Place>; setup: boolean; company: string }) {

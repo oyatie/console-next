@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { readIdentity } from "../../../lib/query";
 import { EntityList } from "./entity-list";
 
@@ -25,7 +25,7 @@ vi.mock("./asof-band", () => ({ AsOfBand: () => null }));
 
 beforeAll(() => loadCatalog("ko"));
 
-test("correction controls wait for the entity list above them to finish its first read", () => {
+test("correction controls wait for a successful entity list read", () => {
   state.loaded = false;
   state.failed = false;
   expect(renderToStaticMarkup(<EntityList />)).not.toContain('data-testid="correction-register"');
@@ -33,5 +33,7 @@ test("correction controls wait for the entity list above them to finish its firs
   expect(renderToStaticMarkup(<EntityList />)).toContain('data-testid="correction-register"');
   state.loaded = false;
   state.failed = true;
-  expect(renderToStaticMarkup(<EntityList />)).toContain('data-testid="correction-register"');
+  const failed = renderToStaticMarkup(<EntityList />);
+  expect(failed).not.toContain('data-testid="correction-register"');
+  expect(failed).toContain(t("common.retry"));
 });

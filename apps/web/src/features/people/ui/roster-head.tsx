@@ -38,7 +38,7 @@ export function RosterHead({ headcount, manage, status, review, onView, actions,
     <Band as="header" className={s.band}>
       <div className={s.titleRow}>
         <h1 id="people-title" className={s.title} tabIndex={-1}>{t("roster.head.title")}</h1>
-        <span className={s.headcount}>{headcount !== undefined && t("roster.head.count", { count: headcount })}</span>
+        <span className={s.headcount}>{headcount === undefined ? "—" : t("roster.head.count", { count: headcount })}</span>
         <PhaseLine phase={setup ? "setup" : "operating"}>{t(setup ? "roster.head.setup" : "roster.head.op")}</PhaseLine>
         <span className="grow" />
         <AsOf label={t("roster.head.asof")} date={fmtDate(todayKst())} today={t("roster.head.today")} locked={t("roster.head.asofLocked")} />

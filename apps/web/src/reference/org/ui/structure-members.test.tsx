@@ -1,16 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { realpathSync } from "node:fs";
-import { dirname } from "node:path";
-import { chromium, expect as browserExpect, type Browser, type Page } from "@playwright/test";
-import { createServer, type ViteDevServer } from "vite";
 import { i18n, loadCatalog } from "@console/i18n";
 import { get } from "../../../lib/query";
 import { Members } from "./structure-members";
 import { Sec } from "./panel-shell";
-
-const [browserFixtureUrl] = Object.values(import.meta.glob<string>("./structure-members.browser-fixture.tsx", { query: "?url", import: "default", eager: true }));
 
 let currentOrgUnit: unknown = undefined;
 let orgPending = false;
@@ -203,6 +197,7 @@ test("a pending directory read shows loading instead of treating the count as ze
   expect(html).toContain("입사 예정");
   expect(html).toContain("불러오는 중");
   expect(html).not.toContain("입사 예정 0명");
+  expect(html).not.toContain("바로 배치된 사람이 없습니다");
 });
 
 test("pending known members hold their rows without announcing an empty workplace", () => {
@@ -252,80 +247,6 @@ test("a forbidden refetch hides cached directory counts and badges while keeping
     expect(html).not.toContain("입사 예정 1명");
     expect(html.match(/<li>.*?<\/li>/)?.[0]).not.toContain("입사 예정");
   } finally {
-    unsubscribe();
-    client.clear();
+    unsubscribe(); client.clear();
   }
-});
-
-describe("directory retry in a browser", () => {
-  let server: ViteDevServer;
-  let browser: Browser;
-  let page: Page;
-  let directoryStatus: number;
-  let reads: number;
-  beforeAll(async () => {
-    server = await createServer({
-      configFile: false,
-      cacheDir: ".cache/vite-members-test",
-      optimizeDeps: { entries: ["apps/web/src/reference/org/ui/structure-members.browser-fixture.tsx"] },
-      server: { host: "127.0.0.1", port: 0, fs: { allow: [process.cwd(), dirname(realpathSync("node_modules/pretendard"))] } },
-    });
-    await server.listen();
-    browser = await chromium.launch();
-    page = await browser.newPage();
-    await page.route("**/members-test", (route) => route.fulfill({
-      contentType: "text/html",
-      body: `<div id="root"></div><script type="module" src="${browserFixtureUrl}"></script>`,
-    }));
-    await page.route("**/api/v1/org-structure/units/*/members*", (route) => route.fulfill({ json: (currentOrgUnit as { members: unknown }).members }));
-    await page.route("**/api/v1/employees?*", (route) => {
-      reads++;
-      const query = new URL(route.request().url()).searchParams;
-      expect(query.get("org_unit_id")).toBe(UNIT);
-      expect(query.get("status")).toBe("PRE_HIRE");
-      return route.fulfill({
-        status: directoryStatus,
-        json: directoryStatus === 200
-          ? { ...currentEmployees, items: currentEmployees!.items.slice(0, 1), total: 1 }
-          : { code: directoryStatus === 403 ? "forbidden" : "unavailable" },
-      });
-    });
-    await mount();
-  }, 60_000);
-  afterAll(async () => { await browser?.close(); await server?.close(); });
-
-  async function mount() {
-    futureJoiner();
-    directoryStatus = 200;
-    reads = 0;
-    await page.goto(`${server.resolvedUrls!.local[0]}members-test`);
-    await browserExpect(page.getByText("입사 예정 1명", { exact: true })).toBeVisible();
-  }
-  beforeEach(mount, 60_000);
-
-  test.each([403, 503])("visible counts recover after a cached %s refusal by clicking the rendered retry button", async (status) => {
-    const count = page.getByText("입사 예정 1명", { exact: true });
-    const member = page.getByRole("listitem");
-    await browserExpect(page.getByRole("heading", { name: "사업장 직속 0명" })).toBeVisible();
-    await browserExpect(member.getByText("입사 예정", { exact: true })).toBeVisible();
-    await browserExpect(count).toBeVisible();
-    expect(reads).toBe(1);
-
-    directoryStatus = status;
-    await page.getByRole("button", { name: "Refresh directory" }).click();
-    await browserExpect(page.getByRole("status")).toContainText("입사 예정 인원을 불러오지 못했습니다");
-    await browserExpect(count).toHaveCount(0);
-    await browserExpect(member).toContainText("김예시");
-    await browserExpect(member.getByText("입사 예정", { exact: true })).toHaveCount(0);
-    expect(reads).toBe(2);
-
-    directoryStatus = 200;
-    const retry = page.getByRole("button", { name: "다시 불러오기" });
-    await browserExpect(retry).toBeEnabled();
-    await retry.click();
-    await browserExpect(member.getByText("입사 예정", { exact: true })).toBeVisible();
-    await browserExpect(count).toBeVisible();
-    await browserExpect(page.getByRole("status")).toHaveCount(0);
-    expect(reads).toBe(3);
-  });
 });

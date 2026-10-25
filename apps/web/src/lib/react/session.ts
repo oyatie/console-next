@@ -17,8 +17,8 @@ export const consentDestination = () => interrupted?.principal === session.princ
 export async function ensureSession({ location }: { location: { pathname: string; href?: string } }) {
   // A session that ended in use stays on its screen under the re-auth dialog (auth/IdleGuard.tsx).
   if (session.lost) return;
-  // A refresh that fails for a fault (network, 429, 5xx) rejects: the route's error screen offers a reload.
-  if (!session.token && !(await refresh())) throw redirect({ to: "/login" });
+  // Cold restoration runs inside the shell, including held or failed refreshes.
+  if (!session.token) return;
   if (session.stage === "enroll") throw redirect({ to: "/setup-passkey" });
   if (session.stage === "stale") return signInAgain();
   if (session.stage === "app" && !session.consentAccepted) {

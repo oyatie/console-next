@@ -1,3 +1,4 @@
+import { QueryState } from "../../../lib/react/query-state";
 import type { ReactNode } from "react";
 import { getRouteApi } from "@tanstack/react-router";
 import type { OrgStructure } from "@console/api/pending";
@@ -22,5 +23,5 @@ export function StructurePanel({ sel, snapshot, readOnly = snapshot?.read_only ?
   const onAct = (act: StructureAct) => void navigate({ search: (x) => ({ ...x, act }) });
   if (s.at?.kind === "workplace" && slots) return <div key={s.at.node.id}>{slots.workplacePanel({ place: s.at, tenant: s.tenant, setup: s.setup, onClose: close, onAct, ...asOf, readOnly })}</div>;
   if (s.at?.kind === "dept") return <DeptPanel key={s.at.node.id} place={s.at} setup={s.setup} onClose={close} {...asOf} readOnly={readOnly} />;
-  return !snapshot && sel && s.q.isPending ? null : fallback;
+  return !snapshot && sel ? <QueryState q={s.q} layout="record">{() => fallback}</QueryState> : fallback;
 }

@@ -11,12 +11,12 @@ import { DockSheet } from "../../../ui/dock-sheet/dock-sheet";
 import { ItemList } from "../../../ui/item-list/item-list";
 import { conflictsOf, previewEntries, refusedOf, saveEntries, type CellInput, type Conflict, type SaveReceipt } from "../api";
 import { confirmationKey } from "../domain/confirmation";
-import { parseEntry } from "../domain/grammar";
+import { parseDraft } from "../domain/grammar";
 import { draftState, splitKey, type Drafts } from "../domain/grid";
 import { dateText, entryText, monthText, refusalText } from "../present";
 import { EMPTY_EVIDENCE, evidenceOf } from "../domain/evidence";
 import { EvidenceField } from "./evidence-field";
-import { useOnline } from "./use-online";
+import { useOnline } from "../../../lib/react/use-online";
 import { usePreview } from "./use-preview";
 
 /**
@@ -25,10 +25,11 @@ import { usePreview } from "./use-preview";
  * count. One transaction: if one cell is refused or was changed by someone else meanwhile, nothing is saved, and a
  * 409 shows each conflicting cell with its three values and no choice made (A12-conflict).
  */
-export function SaveDock({ drafts, rows, month, onClose, onSaved, onFocusCell }: {
+export function SaveDock({ drafts, rows, kindOf, month, onClose, onSaved, onFocusCell }: {
   drafts: Drafts;
   /** Who each cell belongs to (names for the lines). */
   rows: readonly { employee_id: string; name: string }[];
+  kindOf: (key: string) => string | undefined;
   month: string;
   onClose: () => void;
   onSaved: (receipt: SaveReceipt, keys: string[]) => void;
@@ -41,8 +42,8 @@ export function SaveDock({ drafts, rows, month, onClose, onSaved, onFocusCell }:
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const names = useMemo(() => new Map(rows.map((r) => [r.employee_id, r.name])), [rows]);
   const entries = Object.entries(drafts);
-  const local = entries.filter(([, d]) => !draftState(d).ok);
-  const sendable = entries.filter(([, d]) => draftState(d).ok);
+  const local = entries.filter(([k, d]) => !draftState(d, kindOf(k)).ok);
+  const sendable = entries.filter(([k, d]) => draftState(d, kindOf(k)).ok);
   const cells: CellInput[] = sendable.map(([k, d]) => {
     const c = conflicts.find((x) => `${x.employee_id}|${x.work_date}` === k);
     const base = c && choices[k] === "mine" ? (c.current?.id ?? null) : d.base;
@@ -55,7 +56,7 @@ export function SaveDock({ drafts, rows, month, onClose, onSaved, onFocusCell }:
   const longSpans = (p?.cells ?? []).flatMap((c) => {
     const cell = byKey.get(`${c.employee_id}|${c.work_date}`);
     if (!cell || c.long_span_minutes === undefined) return [];
-    const parsed = parseEntry(cell.value, c.long_span_minutes);
+    const parsed = parseDraft(cell.value, c.long_span_minutes);
     return !parsed.ok && parsed.code === "span_too_long" ? [{ cell, threshold: c.long_span_minutes }] : [];
   });
   const refused = (p?.cells ?? []).filter((c) => c.status === "REFUSED");
@@ -150,7 +151,7 @@ export function SaveDock({ drafts, rows, month, onClose, onSaved, onFocusCell }:
           label={t("attendanceRecords.save.left", { count: left + serverRefused.length })}
           items={[
             ...local.map(([k, d]) => {
-              const s = draftState(d);
+              const s = draftState(d, kindOf(k));
               return { key: k, text: <>{who(k)} · {d.value} · {!s.ok && refusalText(s.code)}</>, end: <Button size="sm" onClick={() => onFocusCell(k)}>{t("attendanceRecords.save.goTo")}</Button> };
             }),
             ...refused.concat(serverRefused).map((c) => {
