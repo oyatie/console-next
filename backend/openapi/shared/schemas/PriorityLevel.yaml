@@ -1,7 +1,8 @@
-      type: string
-      enum:
-      - P1
-      - P2
-      - P3
-      - OUTSOURCE
-      - UNSET
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: string
+enum:
+- P1
+- P2
+- P3
+- OUTSOURCE
+- UNSET

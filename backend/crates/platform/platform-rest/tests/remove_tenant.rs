@@ -951,14 +951,12 @@ async fn force_removes_archived_tenant_with_data_and_isolates_other_tenant(owner
     let sentinel_audit_before =
         count_in_org(&owner_pool, "audit_events", *OrgId::platform().as_uuid()).await;
 
-    let (status, body) = force_delete_org(
-        &service,
-        &platform_token,
-        org_a,
-        Some((&owner_pool, &mut key)),
-    )
-    .await;
-    assert_eq!(status, StatusCode::NO_CONTENT, "force remove: {body:?}");
+    erase::due(&owner_pool, org_a, *admin.as_uuid()).await;
+    let erased = sqlx::query_scalar::<_, i64>("SELECT platform_run_due_tenant_erases()")
+        .fetch_one(&harness.force_pool)
+        .await
+        .unwrap();
+    assert_eq!(erased, 1);
 
     // Org A is GONE: the org row and every touched table.
     assert!(
@@ -1071,3 +1069,6 @@ async fn tenant_token_cannot_force_remove_a_tenant(owner_pool: PgPool) {
 
 #[path = "remove_tenant/legal_holds.rs"]
 mod legal_holds;
+
+#[path = "remove_tenant/erase.rs"]
+mod erase;

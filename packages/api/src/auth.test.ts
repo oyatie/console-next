@@ -102,6 +102,13 @@ test.each(["cookie", "body"] as const)("%s initial enrollment logs out without a
   if (kind === "body") expect(stored).toBe("passkey-refresh");
 });
 
+test("a recovery redemption never retains a reusable-code expiry receipt", async () => {
+  const { bootstrapCodeExpiresAt } = await import("./auth");
+  configure({ baseUrl: "https://console.example", passkeys: { get: async () => null, create: async () => null }, refresh: { kind: "cookie" } });
+  vi.stubGlobal("fetch", async () => new Response(JSON.stringify({ access_token: "otp-token", token_type: "Bearer", requires_passkey_setup: true, otp_expires_at: "2026-10-26T00:00:00Z", otp_reusable: false })));
+  await redeemOtp("recovery-code");
+  expect(bootstrapCodeExpiresAt()).toBeUndefined();
+});
 
 test("a refused registration name never creates an authenticator credential", async () => {
   const create = vi.fn(async () => ({}));

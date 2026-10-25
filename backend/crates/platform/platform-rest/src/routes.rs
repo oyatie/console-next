@@ -4,6 +4,10 @@ use crate::{
     PLATFORM_SUPPORT_START_PATH, TENANT_DOMAIN_REQUEST_PATH,
 };
 
+pub const PLATFORM_TENANT_ERASE_PATH: &str = "/api/platform/orgs/{id}/erase";
+pub const PLATFORM_TENANT_ERASE_APPROVE_PATH: &str = "/api/platform/orgs/{id}/erase/{rid}/approve";
+pub const PLATFORM_TENANT_ERASE_CANCEL_PATH: &str = "/api/platform/orgs/{id}/erase/{rid}/cancel";
+
 pub const PLATFORM_OPS_RECOVERY_PATH: &str = "/api/platform/orgs/{id}/ops-recovery";
 pub const PLATFORM_OPS_RECOVERY_APPROVE_PATH: &str =
     "/api/platform/orgs/{id}/ops-recovery/{rid}/approve";
@@ -34,6 +38,9 @@ pub struct PlatformRouteOperation {
 }
 
 pub const PLATFORM_ROUTE_PATHS: &[&str] = &[
+    PLATFORM_TENANT_ERASE_PATH,
+    PLATFORM_TENANT_ERASE_APPROVE_PATH,
+    PLATFORM_TENANT_ERASE_CANCEL_PATH,
     PLATFORM_OPS_RECOVERY_PATH,
     PLATFORM_OPS_RECOVERY_APPROVE_PATH,
     PLATFORM_OPS_RECOVERY_ISSUE_PATH,
@@ -64,6 +71,22 @@ pub const PLATFORM_ROUTE_PATHS: &[&str] = &[
 /// lockstep with `router` and `support::routes`; `backend/app/tests/openapi_drift.rs`
 /// fails CI when any `/api/platform/*` operation here is missing from OpenAPI.
 pub const PLATFORM_ROUTE_OPERATIONS: &[PlatformRouteOperation] = &[
+    PlatformRouteOperation {
+        method: "GET",
+        path: PLATFORM_TENANT_ERASE_PATH,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: PLATFORM_TENANT_ERASE_PATH,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: PLATFORM_TENANT_ERASE_APPROVE_PATH,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: PLATFORM_TENANT_ERASE_CANCEL_PATH,
+    },
     PlatformRouteOperation {
         method: "GET",
         path: PLATFORM_SUPPORT_SESSIONS_PATH,

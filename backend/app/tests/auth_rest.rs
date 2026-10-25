@@ -22,7 +22,7 @@ use console_financial_domain::DepreciationMethod;
 use console_kernel_core::{BranchId, OrgId, UserId};
 #[cfg(feature = "financial")]
 use console_kernel_core::{EquipmentId, EvidenceId, PurchaseRequestId, TraceContext, WorkOrderId};
-use console_platform_provisioning::BootstrapCredentialStore;
+use console_platform_provisioning::{BootstrapCredentialStore, OTP_LEN};
 use console_platform_test_support::MIGRATOR;
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
@@ -159,7 +159,7 @@ async fn otp_first_signin_then_passkey_enrollment_then_usernameless_login(pool: 
     )
     .await;
     assert_eq!(&issued.user_id, new_user_id.as_uuid());
-    assert_eq!(issued.otp.chars().count(), 8, "issued OTP must be 8 chars");
+    assert_eq!(issued.otp.replace('-', "").len(), OTP_LEN);
 
     // FIRST SIGN-IN: the new user redeems the OTP -> session + setup flag.
     let redeem: OtpRedeemResponse = post_json(
@@ -3310,7 +3310,7 @@ async fn admin_issue_otp_allows_in_branch_subordinate(pool: PgPool) {
     )
     .await;
     assert_eq!(&issued.user_id, subordinate.as_uuid());
-    assert_eq!(issued.otp.chars().count(), 8);
+    assert_eq!(issued.otp.replace('-', "").len(), OTP_LEN);
     // The issuing admin, not the system, is the audit actor.
     let actor: Option<uuid::Uuid> = sqlx::query_scalar(
         "SELECT actor FROM audit_events WHERE action = 'auth.bootstrap.issue' AND target_id = $1",
@@ -3467,7 +3467,7 @@ async fn admin_credential_reset_recovers_in_branch_subordinate(pool: PgPool) {
     )
     .await;
     assert_eq!(&reset.user_id, subordinate.as_uuid());
-    assert_eq!(reset.otp.chars().count(), 8);
+    assert_eq!(reset.otp.replace('-', "").len(), OTP_LEN);
 
     // The audit names the admin who reset, not the target.
     let actors: Vec<(String, Option<Uuid>)> = sqlx::query_as(

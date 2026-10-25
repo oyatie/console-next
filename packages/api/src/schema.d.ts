@@ -649,6 +649,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform/orgs/{id}/erase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Governed tenant erasure read */
+        get: operations["readPlatformTenantErase"];
+        put?: never;
+        /** Governed tenant erasure open */
+        post: operations["openPlatformTenantErase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/orgs/{id}/erase/{rid}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Governed tenant erasure approve */
+        post: operations["approvePlatformTenantErase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/orgs/{id}/erase/{rid}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Governed tenant erasure cancel */
+        post: operations["cancelPlatformTenantErase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/platform/orgs/{id}/ops-recovery": {
         parameters: {
             query?: never;
@@ -24378,7 +24430,7 @@ export interface components {
         /** @enum {string} */
         OrgUnitStatus: "ACTIVE" | "DISSOLVED";
         OtpRedeemRequest: {
-            /** @description The one-time sign-in code (8 characters for admin-issued codes). */
+            /** @description Canonical newly issued code (case insensitive). Legacy codes are also accepted by exact stored hash until expiry. */
             otp: string;
         };
         OtpRedeemResponse: {
@@ -24391,6 +24443,9 @@ export interface components {
             refresh_expires_at: components["schemas"]["Timestamp"];
             /** @description True when the signed-in user has no passkey yet and should enroll one in initial settings. */
             requires_passkey_setup: boolean;
+            otp_expires_at?: components["schemas"]["Timestamp"];
+            /** @description True for first-sign-in codes valid until passkey registration or expiry; false for single-use recovery codes. */
+            otp_reusable?: boolean;
         };
         OutsourceWorkSummary: {
             id?: components["schemas"]["Uuid"];
@@ -25416,11 +25471,26 @@ export interface components {
             group_name: string | null;
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
+            /** @description The guarded removal predicate, identical to the command. */
+            removable?: boolean;
+            /** @enum {string|null} */
+            removal_refusal?: "tenant_has_data" | "blocked_legal_hold" | null;
+            /**
+             * @description Derived from live credentials, enrollment and go-live facts.
+             * @enum {string}
+             */
+            lifecycle?: "OPENED" | "CODE_ISSUED" | "ENROLLED" | "SETUP" | "OPERATING";
+            /** Format: int64 */
+            code_issued_count?: number;
+            /** Format: int64 */
+            passkey_registered_count?: number;
         };
         PlatformOrgAdminOtpReissueRequest: {
             step_up: components["schemas"]["PasskeyStepUpAssertion"];
         };
         PlatformOrgAdminOtpReissueResponse: {
+            /** @description Current first administrator sign-in ID from the account registry. */
+            admin_sign_in_id?: string | null;
             admin_user_id: components["schemas"]["Uuid"];
             /** @description One-time sign-in code returned exactly once; deliver out-of-band and never log it. */
             otp: string;
@@ -25428,6 +25498,8 @@ export interface components {
         };
         PlatformOrgOnboardingResponse: {
             org: components["schemas"]["PlatformOrg"];
+            /** @description Current first administrator sign-in ID from the account registry. */
+            admin_sign_in_id?: string | null;
             admin_user_id: components["schemas"]["Uuid"];
             /** @description One-time bootstrap OTP returned exactly once; deliver out-of-band and never log it. */
             otp: string;
@@ -28069,6 +28141,32 @@ export interface components {
         };
         /** @enum {string} */
         Team: "MAINTENANCE" | "PREVENTION" | "MANAGEMENT" | "RECEPTION";
+        TenantEraseRead: {
+            request: components["schemas"]["TenantEraseRequest"] | null;
+            second_operator_available: boolean;
+            archived: boolean;
+            legal_hold: boolean;
+            /** Format: int64 */
+            cooling_hours: number;
+        };
+        TenantEraseRequest: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            target_org_id: string;
+            /** Format: uuid */
+            requested_by: string;
+            /** Format: uuid */
+            approved_by: string | null;
+            /** Format: date-time */
+            opened_at: string;
+            /** Format: date-time */
+            cooling_until: string | null;
+            /** Format: date-time */
+            cancelled_at: string | null;
+            /** Format: date-time */
+            erased_at: string | null;
+        };
         TenantReasonCode: {
             domain: string;
             code: string;
@@ -30813,6 +30911,164 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    readPlatformTenantErase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current erasure state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantEraseRead"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description tenant_active, blocked_legal_hold, erase_requires_second_operator, erase_cooling, or erase_same_operator. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    openPlatformTenantErase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+                    /** Format: uuid */
+                    id: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Current erasure request receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantEraseRequest"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description tenant_active, blocked_legal_hold, erase_requires_second_operator, erase_cooling, or erase_same_operator. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    approvePlatformTenantErase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+                };
+            };
+        };
+        responses: {
+            /** @description Current erasure request receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantEraseRequest"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description tenant_active, blocked_legal_hold, erase_requires_second_operator, erase_cooling, or erase_same_operator. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    cancelPlatformTenantErase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+                };
+            };
+        };
+        responses: {
+            /** @description Current erasure request receipt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantEraseRequest"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description tenant_active, blocked_legal_hold, erase_requires_second_operator, erase_cooling, or erase_same_operator. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     readPlatformOpsRecovery: {

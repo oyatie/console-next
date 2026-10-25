@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Dialog, Input, ListBox, ListBoxItem, ListBoxSection, Header, Modal, ModalOverlay, TextField, Label } from "react-aria-components";
+import { ModalOverlay, Dialog, Input, ListBox, ListBoxItem, ListBoxSection, Header, Modal, TextField, Label } from "react-aria-components";
 import { Search } from "lucide-react";
 import { Kbd } from "../record/record-section";
 import s from "./palette.module.css";

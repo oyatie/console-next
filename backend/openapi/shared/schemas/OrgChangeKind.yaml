@@ -1,2 +1,3 @@
-      type: string
-      enum: [NEW, REORG, DISSOLVE]
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: string
+enum: [NEW, REORG, DISSOLVE]

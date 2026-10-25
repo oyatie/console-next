@@ -22,3 +22,8 @@ properties:
   requires_passkey_setup:
     type: boolean
     description: True when the signed-in user has no passkey yet and should enroll one in initial settings.
+  otp_expires_at:
+    $ref: '#/components/schemas/Timestamp'
+  otp_reusable:
+    type: boolean
+    description: True for first-sign-in codes valid until passkey registration or expiry; false for single-use recovery codes.

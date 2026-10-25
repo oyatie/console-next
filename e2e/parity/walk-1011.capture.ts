@@ -35,12 +35,12 @@ test("parity 1011: minimum unplaced registration and named passkey sign-in", asy
   await capture(a, "home-first-run", ["P4-login"], "AUTH-ID: actual identifier-first sign-in, usernameless fallback and one-time-code route; sole admin is signed out.");
   await inspect(a, "access", "identifier-login");
   await a.getByRole("textbox", { name: "아이디", exact: true }).fill("unknown@parity-minimum");
-  await a.getByRole("button", { name: "계속", exact: true }).click();
+  await a.getByRole("button", { name: "아이디로 계속", exact: true }).click();
   await expect(a.getByRole("status").filter({ hasText: "이 기기에서 쓸 수 있는 패스키가 없습니다" })).toBeVisible();
   await capture(a, "home-first-run", ["P4-login--wrong"], "Real backend challenge for unknown identifier; generic no-passkey recovery, no forged auth response.");
   await a.getByRole("textbox", { name: "아이디", exact: true }).fill(id);
   const named = a.waitForRequest((r) => r.url().endsWith("/auth/passkey/login/start") && (r.postData() ?? "").includes(`"identifier":"${id}"`));
-  await a.getByRole("button", { name: "계속", exact: true }).click();
+  await a.getByRole("button", { name: "아이디로 계속", exact: true }).click();
   await named;
   await expect(a.getByRole("button", { name: "로그아웃", exact: true })).toBeVisible();
 });

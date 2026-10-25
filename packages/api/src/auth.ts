@@ -9,10 +9,15 @@ type Assertion = components["schemas"]["PasskeyStepUpAssertion"];
 type WebauthnJson<K extends string, T> = { [P in K]: T };
 const START = "/api/v1/auth/passkey/login/start";
 
+let otpExpiry: string | undefined;
+/** Expiry served with the last first-sign-in proof; kept through a cancelled enrollment. */
+export const bootstrapCodeExpiresAt = () => otpExpiry;
+
 export async function redeemOtp(otp: string) {
-  const tokens = await authPost<TokenPair>("/api/v1/auth/otp/redeem", { otp });
+  const tokens = await authPost<TokenPair & { otp_expires_at?: string; otp_reusable?: boolean }>("/api/v1/auth/otp/redeem", { otp });
   signedInAs = undefined;
   signInProfile = undefined;
+  otpExpiry = tokens.otp_reusable === true ? tokens.otp_expires_at : undefined;
   session.set(tokens);
 }
 

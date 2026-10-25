@@ -11,6 +11,7 @@ test("a sign-in refused with 429 + Retry-After says when to try again and is not
     return r.fulfill({ status: 429, headers: { "retry-after": "30", "content-type": "application/json" }, body: JSON.stringify({ error: { code: "rate_limited", message: "요청이 너무 많습니다." } }) });
   });
   await page.goto("/login");
+  await page.locator("summary").filter({ hasText: "처음이면 일회용 코드" }).click();
   await page.getByLabel("일회용 코드").fill("ABCDEFGH");
   await page.getByRole("button", { name: "코드로 로그인" }).click();
   await expect(page.getByRole("alert")).toContainText("30초 뒤에 다시 시도하십시오");

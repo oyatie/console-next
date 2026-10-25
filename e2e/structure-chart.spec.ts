@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { components } from "@console/api/schema";
 import { atPhoneWidth, expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
-import { tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { registerEntity, registerWorkplace } from "./setup-flows";
 import { addDepartments, box, findPressable, leaveScreen, receipt, revealUnit } from "./structure-flows";
 import { holdRead } from "./helpers/read";
@@ -22,7 +22,7 @@ test("an empty tenant builds its structure on the chart", { tag: "@org" }, async
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
   await v.getByLabel("고객 이름").fill("새온그룹");
   await tenantSlugField(v).fill(unique("saeon-chart"));
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));
 
   // S10: the empty chart is the sequence, with the setup steps beside it.

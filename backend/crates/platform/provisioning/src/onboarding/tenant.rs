@@ -48,8 +48,6 @@ impl PlatformProvisioner {
             .await
             .map_err(crate::error::map_org_write_error)?;
 
-        let organization = fetch_org_tx(&mut tx, org_id).await?;
-
         // (2) Bind the bootstrap administrator to a Person while retaining operations recovery.
         let admin_user_id: Uuid = sqlx::query_scalar(
             r#"
@@ -64,6 +62,11 @@ impl PlatformProvisioner {
         .fetch_one(tx.as_mut())
         .await?;
 
+        // Materialize the canonical deferred default before the handover response reads it.
+        sqlx::query("SET CONSTRAINTS trg_users_sign_in_id_default IMMEDIATE")
+            .execute(tx.as_mut())
+            .await?;
+
         // (3) Issue the per-org cold-start OTP for that admin. Fresh per-org —
         // never the removed fixed `coss0000` seed.
         let issue = issue_bootstrap_if_needed_tx(
@@ -76,6 +79,8 @@ impl PlatformProvisioner {
         )
         .await?
         .ok_or(ProvisioningError::ActiveBootstrapCredentialExists)?;
+
+        let organization = fetch_org_tx(&mut tx, org_id).await?;
 
         // (4) Audit the onboarding to the TARGET org (so it lands in the tenant's
         // trail too). The OTP value is NEVER recorded.
@@ -99,11 +104,13 @@ impl PlatformProvisioner {
         );
         insert_audit_event(&mut tx, &event).await?;
 
+        let admin_sign_in_id = admin_sign_in_id_tx(&mut tx, org_id, admin_user_id).await?;
         tx.commit().await?;
 
         Ok(TenantOnboarding {
             organization,
             admin_user_id,
+            admin_sign_in_id,
             admin_otp: issue.token,
             admin_otp_expires_at: issue.expires_at,
         })
@@ -196,11 +203,22 @@ impl PlatformProvisioner {
             })),
         );
         insert_audit_event(&mut tx, &event).await?;
+        let admin_sign_in_id = admin_sign_in_id_tx(&mut tx, org_id, admin_user_id).await?;
         tx.commit().await?;
         Ok(TenantAdminOtpReissue {
             admin_user_id,
+            admin_sign_in_id,
             admin_otp: issue.token,
             admin_otp_expires_at: issue.expires_at,
         })
     }
+}
+
+async fn admin_sign_in_id_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    org: Uuid,
+    user: Uuid,
+) -> Result<Option<String>, ProvisioningError> {
+    Ok(sqlx::query_scalar("SELECT s.login || '@' || o.slug FROM user_sign_in_ids s JOIN organizations o ON o.id=s.org_id WHERE s.org_id=$1 AND s.user_id=$2 AND s.retired_at IS NULL")
+        .bind(org).bind(user).fetch_optional(tx.as_mut()).await?)
 }

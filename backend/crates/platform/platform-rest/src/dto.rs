@@ -12,6 +12,11 @@ pub(crate) struct OrgResponse {
     slug: String,
     domain_aliases: Vec<String>,
     pending_domain: Option<String>,
+    removable: bool,
+    removal_refusal: Option<String>,
+    lifecycle: String,
+    code_issued_count: i64,
+    passkey_registered_count: i64,
     name: String,
     status: String,
     group_id: Option<Uuid>,
@@ -33,6 +38,11 @@ impl From<OrganizationSummary> for OrgResponse {
             slug: o.slug,
             domain_aliases: o.domain_aliases,
             pending_domain: o.pending_domain,
+            removable: o.removable,
+            removal_refusal: o.removal_refusal,
+            lifecycle: o.lifecycle,
+            code_issued_count: o.code_issued_count,
+            passkey_registered_count: o.passkey_registered_count,
             name: o.name,
             status: o.status,
             group_id: o.group_id,
@@ -157,6 +167,7 @@ pub(crate) struct OnboardingResponse {
     // field names so the one-time OTP and the new org actually surface in the UI.
     org: OrgResponse,
     admin_user_id: Uuid,
+    admin_sign_in_id: Option<String>,
     /// The ONE-TIME OTP for the new tenant's first SUPER_ADMIN. Returned exactly
     /// once, to be delivered out-of-band; never logged or stored in cleartext.
     otp: String,
@@ -169,6 +180,7 @@ impl From<TenantOnboarding> for OnboardingResponse {
         Self {
             org: o.organization.into(),
             admin_user_id: o.admin_user_id,
+            admin_sign_in_id: o.admin_sign_in_id,
             otp: o.admin_otp.as_str().to_owned(),
             admin_otp_expires_at: o.admin_otp_expires_at,
         }

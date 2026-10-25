@@ -1,8 +1,10 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { josa } from "@console/i18n";
-import { expectAccessible } from "./a11y";
+import { atPhoneWidth, expectAccessible } from "./a11y";
+import { OTP_LENGTH } from "@console/api";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
-import { acceptConsent, tenantSlugField, firstSignIn, go, newContext, option, stepUp, takeCode, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, acceptConsent, tenantSlugField, firstSignIn, go, newContext, option, stepUp, takeCode, unique, vendorPage } from "./flows";
+import { forgetResize } from "./stability";
 
 // AUTH-ID (decisions #33; docs/design/sign-in-identifier.md): the sign-in ID 아이디@도메인. It is handed over with the
 // one-time code; identifier-first sign-in names the account's passkeys (a security key without a resident credential
@@ -22,7 +24,7 @@ async function tenant(browser: Browser, slug: string) {
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
   await v.getByLabel("고객 이름").fill(`${slug} 고객`);
   await tenantSlugField(v).fill(domain);
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   return { admin: await firstSignIn(browser, await takeCode(v)), domain };
 }
 
@@ -48,7 +50,7 @@ async function invite(admin: Page, name: string, login: string, audit = false) {
 async function signInById(page: Page, id: string) {
   const named = page.waitForRequest((r) => r.url().endsWith("/api/v1/auth/passkey/login/start") && (r.postData() ?? "").includes(`"identifier":"${id}"`));
   await idField(page).fill(id);
-  await page.getByRole("button", { name: "계속" }).click();
+  await page.getByRole("button", { name: "아이디로 계속" }).click();
   await named;
 }
 
@@ -75,7 +77,7 @@ test("sign-in ID: handed over with the code, identifier-first, the button, autof
   // A bare 아이디 is completed from the domain this browser signed into; an unknown one reads as no passkey here.
   await signOut(kim);
   await idField(kim).fill("kim.id");
-  await kim.getByRole("button", { name: "계속" }).click();
+  await kim.getByRole("button", { name: "아이디로 계속" }).click();
   await signedIn(kim);
   await signOut(kim);
   for (const other of [`nobody.here@${domain}`, `nobody.here@no-such-${domain}`, `park.waiting@${domain}`]) {
@@ -84,7 +86,7 @@ test("sign-in ID: handed over with the code, identifier-first, the button, autof
     await expect(kim.getByRole("alert")).toHaveCount(0);
   }
   await idField(kim).fill("ho..ng@acme");
-  await kim.getByRole("button", { name: "계속" }).click();
+  await kim.getByRole("button", { name: "아이디로 계속" }).click();
   await expect(kim.getByText("기호로 시작하거나 끝나거나 연달아 쓸 수 없습니다")).toBeVisible();
 
   // Autofill: a new page, the same passkey, nobody pressing anything. Chromium's virtual authenticator answers a
@@ -164,11 +166,12 @@ test("sign-in ID: a security key without a resident credential enrols, signs in 
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
   await v.getByLabel("고객 이름").fill("seckeyid 고객");
   await tenantSlugField(v).fill(domain);
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const code = await takeCode(v);
   const page = await (await newContext(browser)).newPage();
   await securityKey(page);
   await page.goto("/login");
+  await page.getByText("처음이면 일회용 코드", { exact: true }).click();
   await page.getByLabel("일회용 코드").fill(code);
   await page.getByRole("button", { name: "코드로 로그인" }).click();
   await acceptConsent(page);
@@ -189,4 +192,56 @@ test("sign-in ID: a security key without a resident credential enrols, signs in 
 
   // A step-up names the caller's own passkeys: the invite confirms with this key and issues the code.
   await invite(page, "정초대", "jung.invited");
+});
+
+test("sign-in ID leads, first-time codes open on demand, and cancelled enrollment keeps the code usable", async ({ browser }) => {
+  const vendor = await vendorPage(browser);
+  await go(vendor, "/platform");
+  await vendor.getByRole("button", { name: "고객 계정 개설", exact: true }).click();
+  const form = vendor.getByRole("dialog", { name: "고객 계정 개설" });
+  await form.getByLabel("고객 이름").fill(unique("등록 취소 고객"));
+  await tenantSlugField(form).fill(unique("cancel-enrollment"));
+  await tenantOnboardSubmit(vendor).click();
+  const code = await takeCode(vendor);
+
+  const page = await (await newContext(browser)).newPage();
+  await virtualAuthenticator(page);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await forgetResize(page);
+  await page.goto("/login");
+  const continuation = page.getByRole("button", { name: "아이디로 계속", exact: true });
+  const passkey = page.getByRole("button", { name: "패스키로 로그인", exact: true });
+  const disclosure = page.getByText("처음이면 일회용 코드", { exact: true });
+  await expect(idField(page)).toHaveAttribute("autocomplete", "username webauthn");
+  await expect(page.getByLabel("일회용 코드")).toBeHidden();
+  expect((await idField(page).boundingBox())!.y).toBeLessThan((await continuation.boundingBox())!.y);
+  expect((await continuation.boundingBox())!.y).toBeLessThan((await passkey.boundingBox())!.y);
+  expect((await passkey.boundingBox())!.y).toBeLessThan((await disclosure.boundingBox())!.y);
+  await expectAccessible(page, "identifier-first login at 1440px");
+  await atPhoneWidth(page, async () => {
+    await expectAccessible(page, "identifier-first login at 390px");
+    await disclosure.click();
+    await expect(page.getByLabel("일회용 코드")).toHaveAccessibleDescription(new RegExp(`${OTP_LENGTH}자`));
+    await expectAccessible(page, "first-sign-in code form at 390px");
+  });
+  await page.getByLabel("일회용 코드").fill(code.toLowerCase());
+  await page.getByRole("button", { name: "코드로 로그인", exact: true }).click();
+  await expect(page).toHaveURL(/\/setup-passkey$/);
+  await page.getByRole("button", { name: "로그인 취소", exact: true }).click();
+  await expect(page).toHaveURL(/\/login\?cancelled=1$/);
+  await expect(page.getByRole("status").filter({ hasText: "등록을 취소했습니다" })).toHaveText(/등록을 취소했습니다 · 코드는 .+까지 다시 쓸 수 있습니다/);
+  await disclosure.click();
+  await page.getByLabel("일회용 코드").fill(code);
+  await page.getByRole("button", { name: "코드로 로그인", exact: true }).click();
+  await acceptConsent(page);
+  await page.getByRole("button", { name: /동의하고 패스키 등록|패스키 등록/, disabled: false }).click();
+  await signedIn(page);
+  await signOut(page);
+  await disclosure.click();
+  const refused = page.waitForResponse(r => r.url().endsWith("/api/v1/auth/otp/redeem"));
+  await page.getByLabel("일회용 코드").fill(code);
+  await page.getByRole("button", { name: "코드로 로그인", exact: true }).click();
+  expect((await refused).status()).toBe(401);
+  await expect(page.getByRole("alert")).toBeVisible();
+  await page.context().close();
 });

@@ -10,7 +10,7 @@ export const enEnum: Partial<Record<keyof typeof koEnum, string>> = {
   "enum.accountStatus.ACTIVE": "Active",
   "enum.accountStatus.PENDING_SETUP": "Awaiting first sign-in",
   "enum.accountStatus.ARCHIVED": "Archived",
-  "enum.tenantStatus.ACTIVE": "Operating",
+  "enum.tenantStatus.ACTIVE": "Available",
   "enum.tenantStatus.SUSPENDED": "Suspended",
   "enum.tenantStatus.ARCHIVED": "Archived",
   "enum.employmentType.REGULAR": "Regular",
@@ -235,4 +235,9 @@ export const enEnum: Partial<Record<keyof typeof koEnum, string>> = {
   "enum.orgHistoryAction.REVISE_ENTITY": "Entity details changed",
   "enum.orgHistoryAction.CREATE_WORKPLACE": "Workplace registered",
   "enum.orgHistoryAction.REVISE_WORKPLACE": "Workplace details changed",
+  "enum.tenantLifecycle.OPENED": "Opened",
+  "enum.tenantLifecycle.CODE_ISSUED": "Code issued",
+  "enum.tenantLifecycle.ENROLLED": "Passkey registered",
+  "enum.tenantLifecycle.SETUP": "Setup",
+  "enum.tenantLifecycle.OPERATING": "Operating",
 };

@@ -16,12 +16,13 @@ export function CodeDialog({ issued, onClose }: { issued: Issued | null; onClose
       {issued && (
         <>
           <p>{t("tenants.code.for", { org: issued.org, at: fmtDateTime(issued.expiresAt) })} {issued.recoveryMinutes ? <>{t("opsRecovery.issued", { minutes: issued.recoveryMinutes })} {t("opsRecovery.codeLost")}</> : t("tenants.next.lost")} {t("tenants.code.closeNote")}</p>
-          <div className="secret" aria-label={t("common.oneTimeCode")}>{issued.otp}</div>
+          {issued.signInId && <div role="group" aria-label={t("tenants.code.signInId")}><code>{issued.signInId}</code><Button onClick={() => copy(issued.signInId!)}>{t("tenants.code.copyId")}</Button></div>}
+          <div className="secret" role="group" aria-label={t("common.oneTimeCode")}>{issued.otp}</div>
           {/* What happens after the hand-over, so the vendor can tell the admin what to expect. */}
           <section aria-labelledby="tenant-next" className="form">
             <h3 id="tenant-next" className="field__label">{t("tenants.next.title")}</h3>
             <ol className="steps-plain">
-              <li>{t("tenants.next.deliver", { at: fmtDateTime(issued.expiresAt) })}</li>
+              <li>{issued.recoveryMinutes ? t("tenants.next.recovery", { at: fmtDateTime(issued.expiresAt) }) : t("tenants.next.deliver", { at: fmtDateTime(issued.expiresAt) })}</li>
               <li>{t("tenants.next.signIn")}</li>
               <li>{t("tenants.next.setup")}</li>
             </ol>

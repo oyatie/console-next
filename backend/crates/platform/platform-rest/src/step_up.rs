@@ -110,6 +110,27 @@ pub(crate) async fn require_bound_platform_step_up(
     command: &console_platform_provisioning::OpsRecoveryCommand,
     envelope: Option<console_platform_auth::MobilePasskeyStepUpEnvelope>,
 ) -> Result<(sqlx::Transaction<'static, sqlx::Postgres>, Uuid), PlatformError> {
+    require_bound_operator_step_up(
+        state,
+        user,
+        actor_org,
+        id,
+        command
+            .payload_hash(org, id)
+            .map_err(PlatformError::from_provisioning)?,
+        envelope,
+    )
+    .await
+}
+
+pub(crate) async fn require_bound_operator_step_up(
+    state: &PlatformRestState,
+    user: console_kernel_core::UserId,
+    actor_org: OrgId,
+    id: Uuid,
+    payload_hash: String,
+    envelope: Option<console_platform_auth::MobilePasskeyStepUpEnvelope>,
+) -> Result<(sqlx::Transaction<'static, sqlx::Postgres>, Uuid), PlatformError> {
     if actor_org == OrgId::platform() {
         require_platform_passkey(
             state,
@@ -152,11 +173,7 @@ pub(crate) async fn require_bound_platform_step_up(
         object_id: id,
         reason_key: "passkey_step_up_operator_recovery".into(),
         replay_attempt: None,
-        payload_hash: Some(
-            command
-                .payload_hash(org, id)
-                .map_err(PlatformError::from_provisioning)?,
-        ),
+        payload_hash: Some(payload_hash),
     };
     let mut tx = state.pool.begin().await.map_err(|_| {
         PlatformError::new(

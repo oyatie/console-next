@@ -64,7 +64,7 @@ function OnboardForm({ existing, onDirty, onCancel, onIssued, onLost }: {
       let lost: Org | undefined;
       const r = await landed(() => onboard(n, s), rereadTenants, (all) => (lost = openedBy(all, s, known.current)) !== undefined, []);
       if (r === LANDED) return { lost: lost!, issued: null };
-      return { lost: null, issued: { org: r.org.name, otp: r.otp, expiresAt: r.admin_otp_expires_at, onboarded: { id: r.org.id, slug: r.org.slug } } };
+      return { lost: null, issued: { org: r.org.name, otp: r.otp, expiresAt: r.admin_otp_expires_at, signInId: r.admin_sign_in_id, onboarded: { id: r.org.id, slug: r.org.slug } } };
     },
     invalidates: ["/api/platform"],
     onSuccess: (r) => (r.issued ? onIssued(r.issued) : onLost(r.lost!)),
@@ -103,8 +103,8 @@ function OnboardForm({ existing, onDirty, onCancel, onIssued, onLost }: {
       <Field label={t("tenants.form.name")} required error={touched.name ? errors.name : undefined}>
         {(p) => <TextInput {...p} value={name} onChange={(e) => edit("name", e.target.value)} onBlur={() => setTouched((x) => ({ ...x, name: true }))} />}
       </Field>
-      <Field label={t("tenants.form.slug")} required error={touched.slug ? errors.slug : undefined}>
-        {(p) => <><TextInput {...p} className="code" value={slug} onChange={(e) => { edit("slug", e.target.value); setTouched((x) => ({ ...x, slug: true })); }} onBlur={() => setTouched((x) => ({ ...x, slug: true }))} /><output htmlFor={p.id} className="code">{t("tenants.form.preview", { slug: slug.trim() || "acme" })}</output></>}
+      <Field label={t("tenants.form.slug")} required error={touched.slug ? errors.slug : undefined} hint={slug.trim() ? t("tenants.form.preview", { slug: slug.trim() }) : t("tenants.form.slugHint")}>
+        {(p) => <TextInput {...p} className="code" value={slug} onChange={(e) => { edit("slug", e.target.value); setTouched((x) => ({ ...x, slug: true })); }} onBlur={() => setTouched((x) => ({ ...x, slug: true }))} />}
       </Field>
       <output className={styles.availability}>{available.isFetching ? t("common.loading") : available.data?.available && !errors.slug ? t("tenants.form.available") : ""}</output>
       {available.error && <QueryState q={available}>{() => null}</QueryState>}
@@ -114,7 +114,7 @@ function OnboardForm({ existing, onDirty, onCancel, onIssued, onLost }: {
       {suggestion && suggested.data?.available && <Button onClick={() => edit("slug", suggestion)}>{t("tenants.form.suggest", { slug: suggestion })}</Button>}
       <CommandError error={refused ? null : create.error} />
       <div className="form__actions">
-        <Button onClick={onCancel}>{t("common.back")}</Button>
+        <Button onClick={onCancel}>{t("common.cancel")}</Button>
         <Button type="submit" variant="primary" disabled={create.isPending || available.isFetching || available.data?.available !== true}>{t("tenants.form.submit")}</Button>
       </div>
     </Form>

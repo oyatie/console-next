@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Dialog, Heading, Input, Modal, ModalOverlay, SearchField } from "react-aria-components";
+import { ModalOverlay, Dialog, Heading, Input, Modal, SearchField } from "react-aria-components";
 import { Info, Search } from "lucide-react";
 import { Kbd } from "../record/record-section";
 import s from "./palette.module.css";

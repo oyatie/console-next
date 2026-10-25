@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { pickKind, registerEntity, registerWorkplace, typeAddress } from "./setup-flows";
 import { box, leaveScreen, revealUnit } from "./structure-flows";
 
@@ -10,7 +10,7 @@ async function emptyEntity(browser: Browser, slug: string, width = 1280, height 
   await vendor.getByRole("button", { name: "고객 계정 개설" }).click();
   await vendor.getByLabel("고객 이름").fill("자녀추가");
   await tenantSlugField(vendor).fill(unique(slug));
-  await vendor.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(vendor).click();
   const page = await firstSignIn(browser, await takeCode(vendor));
   await page.setViewportSize({ width, height });
   await page.locator("html").evaluate((el) => { el.dataset.theme = "light"; });

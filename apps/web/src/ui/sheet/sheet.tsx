@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Button, Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
+import { ModalOverlay, Button, Dialog, Heading, Modal } from "react-aria-components";
 import { X } from "lucide-react";
 import { t } from "@console/i18n";
 import { Skeleton } from "../skeleton/skeleton";

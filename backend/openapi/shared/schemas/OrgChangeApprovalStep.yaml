@@ -1,26 +1,27 @@
-      type: object
-      required:
-      - id
-      - stepOrder
-      - roleKey
-      - decision
-      - decidedByName
-      properties:
-        id:
-          $ref: '#/components/schemas/Uuid'
-        stepOrder:
-          type: integer
-          format: int32
-        roleKey:
-          $ref: '#/components/schemas/OrgChangeApprovalRoleKey'
-        decision:
-          $ref: '#/components/schemas/OrgChangeStepDecision'
-        decidedBy:
-          $ref: '#/components/schemas/Uuid'
-        decidedByName:
-          type: [string, 'null']
-          description: The decider's display name, resolved server-side within the tenant; null while undecided or when unknown.
-        decidedAt:
-          $ref: '#/components/schemas/Timestamp'
-        memo:
-          type: string
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- id
+- stepOrder
+- roleKey
+- decision
+- decidedByName
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  stepOrder:
+    type: integer
+    format: int32
+  roleKey:
+    $ref: '#/components/schemas/OrgChangeApprovalRoleKey'
+  decision:
+    $ref: '#/components/schemas/OrgChangeStepDecision'
+  decidedBy:
+    $ref: '#/components/schemas/Uuid'
+  decidedByName:
+    type: [string, 'null']
+    description: The decider's display name, resolved server-side within the tenant; null while undecided or when unknown.
+  decidedAt:
+    $ref: '#/components/schemas/Timestamp'
+  memo:
+    type: string

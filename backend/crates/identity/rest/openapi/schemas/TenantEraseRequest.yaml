@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [id, target_org_id, requested_by, opened_at, approved_by, cooling_until, cancelled_at, erased_at]
+properties:
+  id:
+    type: string
+    format: uuid
+  target_org_id:
+    type: string
+    format: uuid
+  requested_by:
+    type: string
+    format: uuid
+  approved_by:
+    type: [string, 'null']
+    format: uuid
+  opened_at:
+    type: string
+    format: date-time
+  cooling_until:
+    type: [string, 'null']
+    format: date-time
+  cancelled_at:
+    type: [string, 'null']
+    format: date-time
+  erased_at:
+    type: [string, 'null']
+    format: date-time

@@ -53,18 +53,12 @@ pub(crate) async fn admin_enrolled_tx(
     tx: &mut Transaction<'_, Postgres>,
     org_id: uuid::Uuid,
 ) -> Result<bool, ProvisioningError> {
-    Ok(sqlx::query_scalar(
-        "SELECT EXISTS (\
-                 SELECT 1 FROM person_accounts_current u \
-                 WHERE u.org_id = $1 AND 'SUPER_ADMIN' = ANY(u.roles) AND (\
-                     EXISTS (SELECT 1 FROM auth_webauthn_credentials c WHERE c.user_id = u.id) \
-                     OR EXISTS (SELECT 1 FROM audit_events a \
-                                WHERE a.org_id = $1 AND a.action = 'auth.passkey.register' \
-                                  AND a.actor = u.id)))",
+    Ok(
+        sqlx::query_scalar("SELECT platform_tenant_admin_enrolled($1)")
+            .bind(org_id)
+            .fetch_one(tx.as_mut())
+            .await?,
     )
-    .bind(org_id)
-    .fetch_one(tx.as_mut())
-    .await?)
 }
 impl PlatformProvisioner {
     pub async fn read_ops_recovery(

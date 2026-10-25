@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { idleOnServer, psql, settled, sinceServerInput } from "./idle-fixture";
 import { tenantInSetup } from "./setup-flows";
 import { box, revealUnit } from "./structure-flows";
@@ -22,7 +22,7 @@ async function tenantAdmin(browser: Browser, slug: string, name: string) {
   await v.getByLabel("고객 이름").fill(name);
   const id = unique(slug);
   await tenantSlugField(v).fill(id);
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   return { page: await firstSignIn(browser, await takeCode(v)), slug: id };
 }
 const admin = async (browser: Browser, slug: string, name: string) => (await tenantAdmin(browser, slug, name)).page;

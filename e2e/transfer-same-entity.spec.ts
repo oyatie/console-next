@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { firstWorkplace, registerAt } from "./helpers/entity";
 import { reasonChip } from "./helpers/lifecycle";
 import { registerEntity, SECOND, setupRail, startOperations } from "./setup-flows";
@@ -21,7 +21,7 @@ test("regression M22: a transfer never reaches another 법인's 부서 (TR-33)",
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
   await v.getByLabel("고객 이름").fill("가나그룹");
   await tenantSlugField(v).fill(unique("tr33"));
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));
 
   await setupRail(admin).getByRole("link", { name: "법인 등록" }).first().click();

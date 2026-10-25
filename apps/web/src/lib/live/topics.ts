@@ -23,6 +23,7 @@ export const TOPICS: Readonly<Record<string, Topic>> = {
   lifecycle_case_item: { paths: ["/api/v1/lifecycle-cases", "/api/v1/employees/{id}/lifecycle-cases", "/api/v1/statutory", "/api/v1/hr/exit-cases", "/api/v1/me/action-inbox"] },
   // Go-live, setup steps, terms and renames change what every screen offers.
   support_session: { paths: ["/api/v1/support-sessions", "/api/v1/me/action-inbox"] },
+  tenant_erase: { paths: ["/api/platform/orgs"] },
   ops_recovery: { paths: ["/api/platform/orgs", "/api/v1/tenant/ops-recovery"] },
   inbox: { paths: ["/api/v1/me/action-inbox"] },
   command_outcome: { paths: ["/api/v1/requests"] },

@@ -43,3 +43,19 @@ properties:
     $ref: '#/components/schemas/Timestamp'
   updated_at:
     $ref: '#/components/schemas/Timestamp'
+  removable:
+    type: boolean
+    description: The guarded removal predicate, identical to the command.
+  removal_refusal:
+    type: [string, 'null']
+    enum: [tenant_has_data, blocked_legal_hold, null]
+  lifecycle:
+    type: string
+    enum: [OPENED, CODE_ISSUED, ENROLLED, SETUP, OPERATING]
+    description: Derived from live credentials, enrollment and go-live facts.
+  code_issued_count:
+    type: integer
+    format: int64
+  passkey_registered_count:
+    type: integer
+    format: int64

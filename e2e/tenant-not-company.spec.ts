@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { registerEntity, registerWorkplace, SECOND } from "./setup-flows";
 import { box, leaveScreen } from "./structure-flows";
 
@@ -44,7 +44,7 @@ test("the account's name is never a company node: the 법인 are the top of the 
   await expect(v.getByText("회사 이름이 아닙니다", { exact: false })).toHaveCount(0);
   await v.getByLabel("고객 이름").fill(TENANT);
   await tenantSlugField(v).fill(unique("group"));
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));
 
   // The empty structure opens on the first 법인's slot: no box stands above it.

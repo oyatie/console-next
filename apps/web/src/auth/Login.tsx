@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { KeyRound } from "lucide-react";
-import { ApiError, lastSignInId, lastSignInProfile, loginWithPasskey, logout, passkeyAutofill, redeemOtp, session } from "@console/api";
+import { ApiError, bootstrapCodeExpiresAt, lastSignInId, lastSignInProfile, loginWithPasskey, logout, passkeyAutofill, redeemOtp, session } from "@console/api";
 import { t } from "@console/i18n";
+import { fmtDateTime } from "@console/i18n/format";
+import { OTP_LENGTH, OTP_GROUP_LENGTH } from "@console/api";
+export { OTP_LENGTH } from "@console/api";
 import { signInError } from "../lib/refusal";
 import { Banner } from "../ui/banner/banner";
 import { Button, Form } from "../ui/button/button";
@@ -15,10 +18,14 @@ export { SetupPasskey } from "./SetupPasskey";
 
 const loginRoute = getRouteApi("/login");
 
-/** The server's one-time code: 8 case-sensitive characters (provisioning `OTP_LEN`), never whitespace. */
-export const OTP_LENGTH = 8;
-/** Typed or pasted text as a code: whitespace a messenger copy adds is dropped, then capped at the code length. */
-export const normalizeOtp = (text: string) => text.replace(/\s/g, "").slice(0, OTP_LENGTH);
+/** Canonicalize new codes; legacy mixed-case/symbol codes retain their exact stored hash. */
+export const normalizeOtp = (text: string) => {
+  const raw = text.replace(/\s/g, "");
+  const symbols = raw.replaceAll("-", "");
+  if (symbols.length < OTP_LENGTH) return raw;
+  const folded = symbols.toUpperCase().slice(0, OTP_LENGTH);
+  return `${folded.slice(0, OTP_GROUP_LENGTH)}-${folded.slice(OTP_GROUP_LENGTH)}`;
+};
 
 /** Where to turn after a failed sign-in: a rejected code, or no passkey on this device. */
 type Recovery = "code" | "passkey" | null;
@@ -71,7 +78,7 @@ function useAutofill(signedIn: () => Promise<void>) {
 
 export function Login() {
   const nav = useNavigate();
-  const { enrolled } = loginRoute.useSearch();
+  const { enrolled, cancelled } = loginRoute.useSearch();
   const [otp, setOtp] = useState("");
   const [id, setId] = useState("");
   const [idError, setIdError] = useState<string | null>(null);
@@ -115,8 +122,7 @@ export function Login() {
     }
   };
   const submitOtp = () => {
-    // A short code is refused before it spends one of the client's rate-limited attempts.
-    if (otp.length === OTP_LENGTH) void run(() => redeemOtp(otp), codeRecovery);
+    if (otp.trim()) void run(() => redeemOtp(otp), codeRecovery);
   };
   // Identifier first: the challenge names this account's passkeys, so a security key with no resident slot works.
   const signInAs = (identifier: string) => run(() => loginWithPasskey({ identifier }), passkeyRecovery);
@@ -144,7 +150,7 @@ export function Login() {
         {!error && recovery === "passkey" && <Banner live="polite">{t("auth.login.noPasskey")}</Banner>}
         {/* A next step, not an error: the passkey is registered and only the automatic sign-in after enrollment
             failed, or the server ended the last session for inactivity. */}
-        {!error && (enrolled || idle) && <Banner live="polite">{t(enrolled ? "auth.login.enrolled" : "auth.login.idle")}</Banner>}
+        {!error && (enrolled || idle || cancelled) && <Banner live="polite">{cancelled ? bootstrapCodeExpiresAt() ? t("auth.login.cancelled", { at: fmtDateTime(bootstrapCodeExpiresAt()) }) : t("auth.login.cancelledUnknown") : t(enrolled ? "auth.login.enrolled" : "auth.login.idle")}</Banner>}
         <Form className="form" onSubmit={submitId}>
           <Field label={t("auth.login.id")} required={null} hint={t("auth.login.idHint")} error={idError ?? undefined}>
             {/* `username webauthn`: the browser offers the passkey from this field's autofill. */}
@@ -177,11 +183,11 @@ export function Login() {
         <Button disabled={busy} onClick={() => run(() => loginWithPasskey(), passkeyRecovery)}>
           <KeyRound size={16} aria-hidden /> {t("auth.login.passkey")}
         </Button>
-        <div className="auth__or">{t("auth.login.or")}</div>
+        <details>
+        <summary>{t("auth.login.or")}</summary>
         <Form className="form" onSubmit={submitOtp}>
-          <Field label={t("auth.login.code")} required={null} hint={t("auth.login.codeHint", { count: otp.length, length: OTP_LENGTH })}>
-            {/* No autocapitalize or autocorrect: the code is case-sensitive, and a capitalized first letter always fails.
-                Enter submits: the code is this form's one field (a free-text box elsewhere never does). */}
+          <Field label={t("auth.login.code")} required={null} hint={t("auth.login.codeHint", { count: otp.replaceAll("-", "").length, length: OTP_LENGTH })}>
+            {/* Enter submits only this code form; the server also accepts outstanding legacy codes. */}
             {(p) => (
               <TextInput
                 {...p}
@@ -196,8 +202,9 @@ export function Login() {
               />
             )}
           </Field>
-          <Button type="submit" disabled={busy || otp.length !== OTP_LENGTH}>{t("auth.login.submitCode")}</Button>
+          <Button type="submit" disabled={busy || !otp.trim()}>{t("auth.login.submitCode")}</Button>
         </Form>
+        </details>
       </div>
     </main>
   );

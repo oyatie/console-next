@@ -411,6 +411,14 @@ const SHARED_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../../openapi/shared/schemas/OrgUnitKind.yaml"),
     },
     NamedYaml {
+        name: "OrgUnitMember",
+        body: include_str!("../../../openapi/shared/schemas/OrgUnitMember.yaml"),
+    },
+    NamedYaml {
+        name: "OrgUnitMembers",
+        body: include_str!("../../../openapi/shared/schemas/OrgUnitMembers.yaml"),
+    },
+    NamedYaml {
         name: "PasskeyStepUpAssertion",
         body: include_str!("../../../openapi/shared/schemas/PasskeyStepUpAssertion.yaml"),
     },
@@ -433,6 +441,18 @@ const SHARED_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "SendMailResult",
         body: include_str!("../../../openapi/shared/schemas/SendMailResult.yaml"),
+    },
+    NamedYaml {
+        name: "SetupChecklist",
+        body: include_str!("../../../openapi/shared/schemas/SetupChecklist.yaml"),
+    },
+    NamedYaml {
+        name: "SetupStep",
+        body: include_str!("../../../openapi/shared/schemas/SetupStep.yaml"),
+    },
+    NamedYaml {
+        name: "SetupStepState",
+        body: include_str!("../../../openapi/shared/schemas/SetupStepState.yaml"),
     },
     NamedYaml {
         name: "Timestamp",
@@ -2810,8 +2830,12 @@ const ENTITY_FRAGMENT_EXTERNAL: &[&str] = &[
     "FieldError",
     "GroupTransferFacts",
     "KrAddress",
+    "MobilePasskeyStepUpBinding",
     "MobilePasskeyStepUpEnvelope",
+    "MobileStepUpActionKind",
+    "OrgUnitMember",
     "OrgUnitMembers",
+    "PasskeyStepUpAssertion",
     "Uuid",
 ];
 
@@ -5496,6 +5520,8 @@ const IDENTITY_FRAGMENT_EXTERNAL: &[&str] = &[
     "OrgUnitKind",
     "PasskeyStepUpAssertion",
     "SetupChecklist",
+    "SetupStep",
+    "SetupStepState",
     "Timestamp",
     "Uuid",
 ];
@@ -5644,6 +5670,41 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
             method: "post",
             body: include_str!(
                 "../../identity/rest/openapi/paths/api__platform__orgs__id__admin-otp.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/platform/orgs/{id}/erase",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__platform__orgs__id__erase.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../identity/rest/openapi/paths/api__platform__orgs__id__erase.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/platform/orgs/{id}/erase/{rid}/approve",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__platform__orgs__id__erase__rid__approve.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/platform/orgs/{id}/erase/{rid}/cancel",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__platform__orgs__id__erase__rid__cancel.post.yaml"
             ),
         }],
     },
@@ -7387,6 +7448,14 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../identity/rest/openapi/schemas/Team.yaml"),
     },
     NamedYaml {
+        name: "TenantEraseRead",
+        body: include_str!("../../identity/rest/openapi/schemas/TenantEraseRead.yaml"),
+    },
+    NamedYaml {
+        name: "TenantEraseRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/TenantEraseRequest.yaml"),
+    },
+    NamedYaml {
         name: "TokenPairResponse",
         body: include_str!("../../identity/rest/openapi/schemas/TokenPairResponse.yaml"),
     },
@@ -8847,6 +8916,9 @@ const ONBOARDING_FRAGMENT_EXTERNAL: &[&str] = &[
     "AuditLastChange",
     "ErrorBody",
     "FieldError",
+    "SetupChecklist",
+    "SetupStep",
+    "SetupStepState",
     "Uuid",
 ];
 
@@ -8924,20 +8996,8 @@ const ONBOARDING_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../onboarding/rest/openapi/schemas/GoLiveResult.yaml"),
     },
     NamedYaml {
-        name: "SetupChecklist",
-        body: include_str!("../../onboarding/rest/openapi/schemas/SetupChecklist.yaml"),
-    },
-    NamedYaml {
         name: "SetupFacts",
         body: include_str!("../../onboarding/rest/openapi/schemas/SetupFacts.yaml"),
-    },
-    NamedYaml {
-        name: "SetupStep",
-        body: include_str!("../../onboarding/rest/openapi/schemas/SetupStep.yaml"),
-    },
-    NamedYaml {
-        name: "SetupStepState",
-        body: include_str!("../../onboarding/rest/openapi/schemas/SetupStepState.yaml"),
     },
     NamedYaml {
         name: "TermsAcceptanceRequest",
@@ -9397,6 +9457,8 @@ const ORGCHANGE_FRAGMENT_EXTERNAL: &[&str] = &[
     "OrgProposalOpUpdateSite",
     "OrgProposalReassignScope",
     "OrgUnitKind",
+    "OrgUnitMember",
+    "OrgUnitMembers",
     "PasskeyStepUpAssertion",
     "Timestamp",
     "Uuid",
@@ -11287,14 +11349,6 @@ const ORGCHANGE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "OrgUnitList",
         body: include_str!("../../orgchange/rest/openapi/schemas/OrgUnitList.yaml"),
-    },
-    NamedYaml {
-        name: "OrgUnitMember",
-        body: include_str!("../../orgchange/rest/openapi/schemas/OrgUnitMember.yaml"),
-    },
-    NamedYaml {
-        name: "OrgUnitMembers",
-        body: include_str!("../../orgchange/rest/openapi/schemas/OrgUnitMembers.yaml"),
     },
     NamedYaml {
         name: "OrgUnitRevision",

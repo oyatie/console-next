@@ -33,7 +33,7 @@ export function StatusDialog({ org, move, onClose, onDone }: { org: Org; move: M
           <span>{t(`tenants.status.${move}.consequence`, { org: org.name })}</span>
           <CommandError error={change.error} />
           <div className="form__actions">
-            <Button onClick={close}>{t("common.back")}</Button>
+            <Button onClick={close}>{t("common.cancel")}</Button>
             <Button variant="primary" disabled={change.isPending} onClick={() => change.mutate(move)}>{t(`tenants.status.${move}`, { org: org.name })}</Button>
           </div>
         </>

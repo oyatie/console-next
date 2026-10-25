@@ -10,8 +10,8 @@ use std::collections::HashSet;
 /// section switches + PEOPLE-A's two `people.void_*` + D26's six
 /// `approval.policy.*` + IMPORT-2's nine `import.*` + BE-MIG's
 /// `import.apply.max_rows` + PERF-BE's six `db.pool.*`, support-session ceilings,
-/// inbox settings, and five NTS settings.
-const EXPECTED_KEYS: usize = 34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 2 + 3 + 5 + 1;
+/// inbox settings, five NTS settings, the organization apply time and tenant erasure cooling period.
+const EXPECTED_KEYS: usize = 34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 2 + 3 + 5 + 2;
 
 #[test]
 fn roster_has_every_key_once_and_round_trips() {
@@ -113,10 +113,11 @@ fn legal_floors_sit_on_the_code_default() {
 }
 
 #[test]
-fn ops_recovery_settings_are_platform_only_and_keep_the_voice_code_cap() {
+fn recovery_and_erasure_settings_are_platform_only_with_bounded_windows() {
     for (wire, min, max, default) in [
         ("ops_recovery.hold_hours", 24, 168, 72),
         ("ops_recovery.code_ttl_minutes", 5, 10, 10),
+        ("platform.tenant_erase_cooling", 24, 168, 72),
     ] {
         let key: SettingKey = wire.parse().unwrap();
         assert!(SettingKey::ALL.contains(&key));

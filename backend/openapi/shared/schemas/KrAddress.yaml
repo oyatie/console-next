@@ -1,99 +1,100 @@
-      type: object
-      description: Structured Korean address (도로명주소).
-      required:
-      - source
-      - road_addr_part1
-      - si_nm
-      properties:
-        source:
-          $ref: '#/components/schemas/AddressSource'
-        road_addr_part1:
-          type: string
-          maxLength: 200
-        road_addr_part2:
-          type:
-          - string
-          - 'null'
-        jibun_addr:
-          type:
-          - string
-          - 'null'
-        eng_addr:
-          type:
-          - string
-          - 'null'
-        zip_no:
-          type:
-          - string
-          - 'null'
-          pattern: ^[0-9]{5}$
-        adm_cd:
-          type:
-          - string
-          - 'null'
-          pattern: ^[0-9]{10}$
-        rn_mgt_sn:
-          type:
-          - string
-          - 'null'
-          pattern: ^[0-9]{12}$
-        bd_mgt_sn:
-          type:
-          - string
-          - 'null'
-          pattern: ^[0-9]{25}$
-        si_nm:
-          type: string
-          maxLength: 40
-        sgg_nm:
-          type:
-          - string
-          - 'null'
-        emd_nm:
-          type:
-          - string
-          - 'null'
-        li_nm:
-          type:
-          - string
-          - 'null'
-        bd_nm:
-          type:
-          - string
-          - 'null'
-        udrt_yn:
-          type:
-          - boolean
-          - 'null'
-        buld_mnnm:
-          type:
-          - integer
-          - 'null'
-        buld_slno:
-          type:
-          - integer
-          - 'null'
-        mt_yn:
-          type:
-          - boolean
-          - 'null'
-        lnbr_mnnm:
-          type:
-          - integer
-          - 'null'
-        lnbr_slno:
-          type:
-          - integer
-          - 'null'
-        detail:
-          type:
-          - string
-          - 'null'
-          maxLength: 100
-          description: 상세주소 (동·층·호)
-        as_printed:
-          type:
-          - string
-          - 'null'
-          maxLength: 300
-          description: Address exactly as printed on the certificate.
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+description: Structured Korean address (도로명주소).
+required:
+- source
+- road_addr_part1
+- si_nm
+properties:
+  source:
+    $ref: '#/components/schemas/AddressSource'
+  road_addr_part1:
+    type: string
+    maxLength: 200
+  road_addr_part2:
+    type:
+    - string
+    - 'null'
+  jibun_addr:
+    type:
+    - string
+    - 'null'
+  eng_addr:
+    type:
+    - string
+    - 'null'
+  zip_no:
+    type:
+    - string
+    - 'null'
+    pattern: ^[0-9]{5}$
+  adm_cd:
+    type:
+    - string
+    - 'null'
+    pattern: ^[0-9]{10}$
+  rn_mgt_sn:
+    type:
+    - string
+    - 'null'
+    pattern: ^[0-9]{12}$
+  bd_mgt_sn:
+    type:
+    - string
+    - 'null'
+    pattern: ^[0-9]{25}$
+  si_nm:
+    type: string
+    maxLength: 40
+  sgg_nm:
+    type:
+    - string
+    - 'null'
+  emd_nm:
+    type:
+    - string
+    - 'null'
+  li_nm:
+    type:
+    - string
+    - 'null'
+  bd_nm:
+    type:
+    - string
+    - 'null'
+  udrt_yn:
+    type:
+    - boolean
+    - 'null'
+  buld_mnnm:
+    type:
+    - integer
+    - 'null'
+  buld_slno:
+    type:
+    - integer
+    - 'null'
+  mt_yn:
+    type:
+    - boolean
+    - 'null'
+  lnbr_mnnm:
+    type:
+    - integer
+    - 'null'
+  lnbr_slno:
+    type:
+    - integer
+    - 'null'
+  detail:
+    type:
+    - string
+    - 'null'
+    maxLength: 100
+    description: 상세주소 (동·층·호)
+  as_printed:
+    type:
+    - string
+    - 'null'
+    maxLength: 300
+    description: Address exactly as printed on the certificate.

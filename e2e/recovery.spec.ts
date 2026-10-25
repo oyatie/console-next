@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
-import { tenantSlugField, firstSignIn, go, newContext, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
+import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, newContext, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
 import { inviteAccount } from "./access-flows";
 
 // Lost codes and lost passkeys: the vendor reissues a first-admin code; an admin resets a user's passkeys.
@@ -14,7 +14,7 @@ test("vendor reissues a lost first-admin code; an admin resets a user's passkeys
   const slug = unique("recoverco");
   await v.getByLabel("고객 이름").fill(company);
   await tenantSlugField(v).fill(slug);
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const lost = (await v.getByLabel("일회용 코드").textContent())!.trim();
   // The code dialog ignores Escape and outside clicks: only its own button closes it, and it claims no delivery.
   await v.keyboard.press("Escape");
@@ -25,8 +25,8 @@ test("vendor reissues a lost first-admin code; an admin resets a user's passkeys
   // The new tenant's panel is open: reissue states its consequence and its precondition before the first press.
   const tenant = v.getByRole("complementary", { name: company });
   await expect(v.locator("#tenants-list tbody tr").filter({ hasText: slug })).toBeVisible();
-  await expect(tenant).toContainText("이전에 발급한 코드는 바로 쓸 수 없게 됩니다");
-  await expect(tenant).toContainText("패스키로 본인임을 한 번 더 확인"); // the reissue asks for a step-up first
+  await expect(tenant).toContainText("새 코드를 발급하면 이전 코드는 만료되며, 패스키 등록 전까지만 재발급할 수 있습니다.");
+  await expect(tenant.getByRole("button", { name: "패스키로 확인하고 관리자 코드 재발급", exact: true })).toBeVisible();
   await expect(tenant).toContainText("관리자가 패스키를 등록하기 전까지만 재발급할 수 있습니다");
   await expectAccessible(v, "tenant panel");
   // The vendor's own passkey is asserted first; the server mints nothing without that step-up.
@@ -42,6 +42,7 @@ test("vendor reissues a lost first-admin code; an admin resets a user's passkeys
   // The replaced code no longer signs in.
   const stale = await (await newContext(browser)).newPage();
   await stale.goto("/login");
+  await stale.locator("summary").filter({ hasText: "처음이면 일회용 코드" }).click();
   await stale.getByLabel("일회용 코드").fill(lost);
   await stale.getByRole("button", { name: "코드로 로그인" }).click();
   await expect(stale.getByRole("alert")).toBeVisible();

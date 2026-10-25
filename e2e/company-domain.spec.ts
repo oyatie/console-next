@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { tenantSlugField, firstSignIn, go, passkeyLogin, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
+import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, passkeyLogin, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
 
 test("company domain: deliberate opening, safe rename, old-domain sign-in notice and support request", { tag: "@auth" }, async ({ browser }) => {
   const old = unique("domain-before");
@@ -23,7 +23,7 @@ test("company domain: deliberate opening, safe rename, old-domain sign-in notice
   await expect(opening).toContainText(`hong@${old}`);
   await expect(opening).toContainText("사용 가능한 회사 도메인입니다");
   await expectAccessible(v, "opening company-domain preview");
-  await opening.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));
   await go(admin, "/account");
   const oldId = (await admin.locator(".code").filter({ hasText: `@${old}` }).first().innerText()).trim();
@@ -61,7 +61,7 @@ test("company domain: deliberate opening, safe rename, old-domain sign-in notice
 
   await admin.getByRole("button", { name: "로그아웃", exact: true }).click();
   await admin.getByRole("textbox", { name: "아이디", exact: true }).fill(oldId);
-  await admin.getByRole("button", { name: "계속", exact: true }).click();
+  await admin.getByRole("button", { name: "아이디로 계속", exact: true }).click();
   await passkeyLogin(admin);
   await expect(admin.getByRole("status").filter({ hasText: "회사 도메인이" })).toContainText(`${oldId.split("@")[0]}@${next}`);
   await expect.poll(() => admin.evaluate(() => JSON.parse(localStorage.getItem("console.signIn.domains") ?? "[]"))).toEqual([next]);

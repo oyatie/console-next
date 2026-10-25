@@ -11,36 +11,14 @@ use uuid::Uuid;
 use crate::step_up::{PlatformStepUpRequest, require_platform_step_up};
 use crate::{PlatformError, PlatformRestState};
 
-/// Query params for `DELETE /api/platform/orgs/{id}`.
+/// Legacy force callers retain the query shape but must create a governed request.
 #[derive(Debug, Deserialize)]
 pub(crate) struct DeleteOrgQuery {
-    /// Opt-in FORCE removal: when true, take the DESTRUCTIVE path that erases the
-    /// tenant AND all of its data (requires the tenant to be ARCHIVED first).
-    /// Defaults to false — the GUARDED path that removes only an empty shell.
     #[serde(default)]
     delete_data: bool,
 }
 
-/// DELETE /api/platform/orgs/{id}[?delete_data=true] — remove a tenant.
-///
-/// Platform-super-admin (vendor tier) ONLY â identical gate to `update_org`; a
-/// tenant's own admin can never reach this (the platform extractor rejects a
-/// tenant token with 403 before this runs).
-///
-/// Two paths, selected by the opt-in `delete_data` query param (default false):
-///   * `delete_data=false` (default) â GUARDED removal (`platform.tenant.remove`).
-///     Removes only an empty/test tenant's onboarding shell; REFUSES with 409
-///     (code `tenant_has_data`) when the tenant owns real operational data,
-///     telling the operator to archive instead. Unchanged behaviour.
-///   * `delete_data=true` â FORCE removal (`platform.tenant.force_remove`). The
-///     DESTRUCTIVE path: erases the org AND all of its data. Fail-closed by a
-///     status rail â REFUSES with 409 (code `tenant_active`) unless the tenant is
-///     ARCHIVED, telling the operator to archive (reversible) before force-
-///     removing. Erasing real data is the whole point, so there is no has_data
-///     guard on this path.
-///
-/// Both paths delete in ONE transaction and preserve the tenant's immutable audit
-/// trail (re-homed to the platform sentinel). A missing tenant is 404.
+/// Guarded empty-shell removal; data erasure uses the two-operator request API.
 pub(crate) async fn delete_org(
     State(state): State<PlatformRestState>,
     Extension(principal): Extension<PlatformPrincipal>,
@@ -68,17 +46,37 @@ pub(crate) async fn delete_org(
     let actor = Some(principal.user_id);
     let now = OffsetDateTime::now_utc();
     let outcome = if query.delete_data {
-        let force_pool = state.force_remove_command_pool.as_ref().ok_or_else(|| {
+        state.force_remove_command_pool.as_ref().ok_or_else(|| {
             PlatformError::new(
                 StatusCode::SERVICE_UNAVAILABLE,
                 "platform_force_command_unavailable",
                 "platform force-remove command capability is unavailable",
             )
         })?;
-        state
+        let facts = state
             .provisioner
-            .force_remove_tenant(force_pool, actor, id, now)
+            .read_tenant_erase(&state.pool, id, now)
             .await
+            .map_err(PlatformError::from_provisioning)?;
+        if facts.legal_hold {
+            return Err(PlatformError::new(
+                StatusCode::CONFLICT,
+                "blocked_legal_hold",
+                "tenant is under legal hold",
+            ));
+        }
+        if !facts.archived {
+            return Err(PlatformError::new(
+                StatusCode::CONFLICT,
+                "tenant_active",
+                "archive the tenant before requesting erasure",
+            ));
+        }
+        return Err(PlatformError::new(
+            StatusCode::CONFLICT,
+            "erase_requires_second_operator",
+            "create a governed tenant erasure request",
+        ));
     } else {
         state
             .provisioner

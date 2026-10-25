@@ -89,31 +89,9 @@ impl PlatformProvisioner {
         Ok(outcome)
     }
 
-    /// FORCE hard-removal of a tenant: delete the org AND ALL of its data —
-    /// registry, work orders, financials, messenger, audit, the lot — in ONE
-    /// transaction, AUDITED. The DESTRUCTIVE counterpart to [`Self::remove_tenant`].
-    ///
-    /// Runs the SECURITY DEFINER `platform_force_remove_organization` (migration
-    /// 0059). Unlike the guarded path there is NO has_data guard — erasing real
-    /// data is the point — so the function is fail-closed by a different rail: it
-    /// REFUSES (returns `blocked_active`) unless the tenant is ARCHIVED. Archiving
-    /// (`platform_set_organization_status`) is reversible and is the mandatory
-    /// first step, so an ACTIVE or merely SUSPENDED tenant (e.g. tenant #1) can never be
-    /// force-wiped by one call; the caller surfaces a 409 telling the operator to
-    /// archive first. The platform sentinel is refused (`not_found`), as in the
-    /// guarded path.
-    ///
-    /// The function deletes every tenant row children-first (a topological sort of
-    /// the ~63 ON DELETE RESTRICT FKs) and re-homes the tenant's immutable
-    /// `audit_events` to the platform sentinel, exactly like the guarded path, so
-    /// the audit trail — including the record of THIS force-wipe — survives the
-    /// tenant.
-    ///
-    /// Before deleting anything we snapshot a small summary (org slug + per-table
-    /// row counts of the operational tables we are about to erase) into the
-    /// DISTINCT `platform.tenant.force_remove` audit event (`org_id = NULL`,
-    /// platform-tier), so the immutable trail records WHAT was wiped even though
-    /// the rows themselves are gone. The removal + audit commit atomically.
+    /// Execute an approved, cooled erasure through the isolated command role.
+    /// The database rechecks both operators, their bound proofs, archive status
+    /// and legal holds before erasing data and preserving the immutable receipt.
     pub async fn force_remove_tenant(
         &self,
         pool: &PgPool,
@@ -144,6 +122,11 @@ impl PlatformProvisioner {
             "blocked_legal_hold" => Ok(TenantRemovalOutcome::BlockedLegalHold),
             "blocked_active" => Ok(TenantRemovalOutcome::BlockedActive),
             "not_found" => Ok(TenantRemovalOutcome::NotFound),
+            "erase_requires_second_operator" => Err(ProvisioningError::TenantErase(
+                "erase_requires_second_operator",
+            )),
+            "erase_same_operator" => Err(ProvisioningError::TenantErase("erase_same_operator")),
+            "erase_cooling" => Err(ProvisioningError::TenantErase("erase_cooling")),
             other => Err(ProvisioningError::InvalidRoster(format!(
                 "unexpected tenant force-removal outcome {other:?}"
             ))),

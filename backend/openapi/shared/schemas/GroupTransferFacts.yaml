@@ -1,51 +1,52 @@
-      type: object
-      additionalProperties: false
-      required: [continuity, group_service_start_date, consent_date, consent_evidence_ref]
-      description: E-S3b 전적 facts. The consent is an attested offline fact with its evidence (민법 §657①;
-        decisions 3). Continuity is chosen per dimension (퇴직금, 연차, 근속; design/inter-entity-transfer T2), none
-        defaulted; whether 계속근로 legally carries over is listed for the 노무사. A 전적 whose 퇴직금 is SETTLED opens
-        the sending 법인's settlement case (an exit case with exit_reason_code GROUP_TRANSFER, its exit event the 전적)
-        in the same transaction; 409 exit_case_open when the person already has an open exit case.
-      properties:
-        continuity:
-          type: string
-          enum: [SETTLED, CARRIED]
-          description: 퇴직금. SETTLED - paid by the sending 법인. CARRIED - 승계 (needs succession_evidence_ref). When
-            neither annual_leave_continuity nor seniority_continuity is sent, this one choice names all three (SETTLED
-            settles 연차 and restarts 근속; CARRIED carries both), as before T2; naming either requires both.
-        annual_leave_continuity:
-          type: string
-          enum: [SETTLED, CARRIED]
-          description: 연차. SETTLED - 남은 연차 수당 paid by the sending 법인. CARRIED - the balance and 연차 year
-            carried (needs succession_evidence_ref).
-        seniority_continuity:
-          type: string
-          enum: [RESTART, CARRIED]
-          description: 근속. RESTART - counted from effective_date. CARRIED - counted from the 그룹 입사일 (needs
-            succession_evidence_ref).
-        settlement_case_id:
-          $ref: '#/components/schemas/Uuid'
-          readOnly: true
-          description: The sending 법인's settlement case the 전적 opened (퇴직금 SETTLED only).
-        group_service_start_date:
-          $ref: '#/components/schemas/Date'
-          description: 그룹 입사일, carried in either case; on or before effective_date.
-        consent_date:
-          $ref: '#/components/schemas/Date'
-          description: The day the employee consented; on or before effective_date.
-        consent_evidence_ref:
-          type: string
-          minLength: 1
-          maxLength: 500
-          description: Attachment or document reference for the consent.
-        succession_evidence_ref:
-          type: string
-          minLength: 1
-          maxLength: 500
-          description: Required when any dimension is CARRIED. The succession agreement's reference.
-        from_legal_entity_id:
-          $ref: '#/components/schemas/Uuid'
-          readOnly: true
-        to_legal_entity_id:
-          $ref: '#/components/schemas/Uuid'
-          readOnly: true
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [continuity, group_service_start_date, consent_date, consent_evidence_ref]
+description: E-S3b 전적 facts. The consent is an attested offline fact with its evidence (민법 §657①;
+  decisions 3). Continuity is chosen per dimension (퇴직금, 연차, 근속; design/inter-entity-transfer T2), none
+  defaulted; whether 계속근로 legally carries over is listed for the 노무사. A 전적 whose 퇴직금 is SETTLED opens
+  the sending 법인's settlement case (an exit case with exit_reason_code GROUP_TRANSFER, its exit event the 전적)
+  in the same transaction; 409 exit_case_open when the person already has an open exit case.
+properties:
+  continuity:
+    type: string
+    enum: [SETTLED, CARRIED]
+    description: 퇴직금. SETTLED - paid by the sending 법인. CARRIED - 승계 (needs succession_evidence_ref). When
+      neither annual_leave_continuity nor seniority_continuity is sent, this one choice names all three (SETTLED
+      settles 연차 and restarts 근속; CARRIED carries both), as before T2; naming either requires both.
+  annual_leave_continuity:
+    type: string
+    enum: [SETTLED, CARRIED]
+    description: 연차. SETTLED - 남은 연차 수당 paid by the sending 법인. CARRIED - the balance and 연차 year
+      carried (needs succession_evidence_ref).
+  seniority_continuity:
+    type: string
+    enum: [RESTART, CARRIED]
+    description: 근속. RESTART - counted from effective_date. CARRIED - counted from the 그룹 입사일 (needs
+      succession_evidence_ref).
+  settlement_case_id:
+    $ref: '#/components/schemas/Uuid'
+    readOnly: true
+    description: The sending 법인's settlement case the 전적 opened (퇴직금 SETTLED only).
+  group_service_start_date:
+    $ref: '#/components/schemas/Date'
+    description: 그룹 입사일, carried in either case; on or before effective_date.
+  consent_date:
+    $ref: '#/components/schemas/Date'
+    description: The day the employee consented; on or before effective_date.
+  consent_evidence_ref:
+    type: string
+    minLength: 1
+    maxLength: 500
+    description: Attachment or document reference for the consent.
+  succession_evidence_ref:
+    type: string
+    minLength: 1
+    maxLength: 500
+    description: Required when any dimension is CARRIED. The succession agreement's reference.
+  from_legal_entity_id:
+    $ref: '#/components/schemas/Uuid'
+    readOnly: true
+  to_legal_entity_id:
+    $ref: '#/components/schemas/Uuid'
+    readOnly: true

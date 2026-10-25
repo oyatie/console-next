@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [platform]
+operationId: readPlatformTenantErase
+summary: Governed tenant erasure read
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+responses:
+  '200':
+    description: Current erasure state.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/TenantEraseRead'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: tenant_active, blocked_legal_hold, erase_requires_second_operator, erase_cooling, or erase_same_operator.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

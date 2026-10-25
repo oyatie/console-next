@@ -10,9 +10,10 @@ use std::time::Duration;
 
 use common::*;
 use console_kernel_core::{AuditEvent, BranchScope, OrgId};
+use console_platform_authz::{PlatformFeature, PlatformPrincipal};
 use console_platform_realtime::{
-    PgRealtimeHub, RESOURCE_CHANGED_CHANNEL, RealtimeConnection, RealtimeEvent, RealtimeHubConfig,
-    ResetReason, StreamFrom,
+    ChangeReader, PgRealtimeHub, RESOURCE_CHANGED_CHANNEL, RealtimeConnection, RealtimeEvent,
+    RealtimeHubConfig, ResetReason, StreamFrom,
 };
 use console_platform_test_support::{runtime_role_pool, seed_branch, seed_org_and_super_admin};
 use sqlx::PgPool;
@@ -57,6 +58,63 @@ async fn quiet(connection: &mut RealtimeConnection) {
             .is_err(),
         "no frame expected"
     );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn erasure_audits_reach_only_platform_removal_readers(pool: PgPool) {
+    let org = OrgId::platform();
+    let hub = Arc::new(PgRealtimeHub::new(
+        runtime_role_pool(&pool).await,
+        RealtimeHubConfig::default(),
+    ));
+    let _bridge = Arc::clone(&hub).start_postgres_listener().await.unwrap();
+    let operator = |feature| {
+        ChangeReader::Platform(
+            serde_json::from_value::<PlatformPrincipal>(serde_json::json!({
+                "user_id": console_kernel_core::UserId::new(), "features": [feature],
+            }))
+            .unwrap(),
+        )
+    };
+    let mut allowed = hub
+        .connect_stream(
+            operator(PlatformFeature::TenantRemove),
+            StreamFrom::default(),
+        )
+        .await;
+    let mut other_operator = hub
+        .connect_stream(
+            operator(PlatformFeature::TenantCreate),
+            StreamFrom::default(),
+        )
+        .await;
+    let mut tenant = hub
+        .connect_stream(reader(org, HR, BranchScope::All), StreamFrom::default())
+        .await;
+    hello(&mut allowed).await;
+    hello(&mut other_operator).await;
+    hello(&mut tenant).await;
+    for action in ["open", "approve", "cancel", "run"] {
+        let id = uuid::Uuid::new_v4().to_string();
+        commit(
+            &pool,
+            org,
+            vec![event(
+                org,
+                ("tenant_erase_request", &id),
+                &format!("platform.tenant.erase.{action}"),
+                None,
+            )],
+        )
+        .await;
+        let (_, kind, target) = change(&next(&mut allowed).await);
+        assert_eq!(
+            (kind.as_str(), target.as_deref()),
+            ("tenant_erase", Some(id.as_str()))
+        );
+    }
+    quiet(&mut other_operator).await;
+    quiet(&mut tenant).await;
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

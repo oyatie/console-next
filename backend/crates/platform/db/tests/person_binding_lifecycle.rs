@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+#[path = "../../../../test_support/governed_erase.rs"]
+mod governed_erase;
+use console_kernel_core::OrgId;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -45,6 +48,7 @@ async fn account_conflicts_never_create_duplicate_or_orphan_people(pool: PgPool)
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn tenant_removal_clears_people_only_after_eligibility_passes(pool: PgPool) {
     let kept = tenant(&pool).await;
+    let approver:Uuid=sqlx::query_scalar("INSERT INTO users(org_id,display_name,roles) VALUES($1,'Binding erasure approver',ARRAY['SUPER_ADMIN']) RETURNING id").bind(OrgId::platform().as_uuid()).fetch_one(&pool).await.unwrap();
     for force in [false, true] {
         let org = tenant(&pool).await;
         let account: Uuid = sqlx::query_scalar(
@@ -70,29 +74,41 @@ async fn tenant_removal_clears_people_only_after_eligibility_passes(pool: PgPool
                     .await
                     .unwrap();
             assert_eq!(refused, "blocked_active");
-            let still_bound: Option<Uuid> =
-                sqlx::query_scalar("SELECT person_id FROM users WHERE id=$1")
-                    .bind(account)
-                    .fetch_one(&pool)
-                    .await
-                    .unwrap();
-            assert!(still_bound.is_some());
-            sqlx::query("UPDATE organizations SET status='ARCHIVED' WHERE id=$1")
+        } else {
+            let refused: String = sqlx::query_scalar("SELECT platform_remove_organization($1)")
                 .bind(org)
-                .execute(&pool)
+                .fetch_one(&pool)
                 .await
                 .unwrap();
+            assert_eq!(refused, "blocked_has_data");
         }
-        let sql = if force {
-            "SELECT platform_force_remove_organization($1)"
-        } else {
-            "SELECT platform_remove_organization($1)"
-        };
-        let removed: String = sqlx::query_scalar(sql)
+        let still_bound: Option<Uuid> =
+            sqlx::query_scalar("SELECT person_id FROM users WHERE id=$1")
+                .bind(account)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert!(still_bound.is_some());
+        let retained: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM person_revisions WHERE org_id=$1")
+                .bind(org)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert!(retained > 0);
+        sqlx::query("UPDATE organizations SET status='ARCHIVED' WHERE id=$1")
             .bind(org)
-            .fetch_one(&pool)
+            .execute(&pool)
             .await
             .unwrap();
+        governed_erase::due(&pool, org, approver).await;
+        let mut command = pool.begin().await.unwrap();
+        sqlx::query("SET LOCAL ROLE console_platform_force_cmd")
+            .execute(command.as_mut())
+            .await
+            .unwrap();
+        let removed:String=sqlx::query_scalar("SELECT platform_force_remove_organization_command($1,$2,repeat('a',32)::char(32),repeat('b',16)::char(16),clock_timestamp())").bind(org).bind(approver).fetch_one(command.as_mut()).await.unwrap();
+        command.commit().await.unwrap();
         assert_eq!(removed, "removed");
         let remaining: i64 = sqlx::query_scalar("SELECT (SELECT count(*) FROM persons WHERE org_id=$1)+(SELECT count(*) FROM person_revisions WHERE org_id=$1)+(SELECT count(*) FROM employee_person_bindings WHERE org_id=$1)")
             .bind(org).fetch_one(&pool).await.unwrap();

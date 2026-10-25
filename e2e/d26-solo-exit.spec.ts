@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { tenantSlugField, firstSignIn, go, kstDate, option, registerEmployee, routeReady, takeCode, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, kstDate, option, registerEmployee, routeReady, takeCode, unique, vendorPage } from "./flows";
 import { REGISTRATION_FIXTURES, acceptSetupTerms, setupCompany, setupRail, brnDisplay } from "./setup-flows";
 import { signOff } from "./sheet";
 
@@ -16,7 +16,7 @@ test("a solo ops account registers a person and closes their exit alone, with no
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
   await v.getByLabel("고객 이름").fill("혼자상사");
   await tenantSlugField(v).fill(unique("solo26"));
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));
 
   // The setup rail names no 결재선 and promises no 결재 after go-live.

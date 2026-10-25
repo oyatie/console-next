@@ -31,7 +31,8 @@ async fn held_tenant_refuses_both_http_removals_with_typed_conflict(owner_pool: 
     assert_eq!(body["error"]["code"], "tenant_has_data");
     let (status, body) =
         force_delete_org(&service, &token, target, Some((&owner_pool, &mut key))).await;
-    assert_eq!(status, StatusCode::NO_CONTENT, "{body:?}");
+    assert_eq!(status, StatusCode::CONFLICT, "{body:?}");
+    assert_eq!(body["error"]["code"], "erase_requires_second_operator");
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

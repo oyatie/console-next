@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Autocomplete, Dialog, Header, Input, Keyboard, Menu, MenuItem, MenuSection, Modal, ModalOverlay, SearchField, Text } from "react-aria-components";
+import { ModalOverlay, Autocomplete, Dialog, Header, Input, Keyboard, Menu, MenuItem, MenuSection, Modal, SearchField, Text } from "react-aria-components";
 import { Search } from "lucide-react";
 import { t } from "@console/i18n";
 import s from "./command-palette.module.css";

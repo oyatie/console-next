@@ -123,6 +123,8 @@ pub(crate) async fn redeem_otp(
             token_type: "Bearer",
             refresh_expires_at: tokens.refresh_expires_at,
             requires_passkey_setup: redemption.requires_passkey_setup,
+            otp_expires_at: redemption.expires_at,
+            otp_reusable: redemption.reusable,
             privacy_consent_accepted: tokens.privacy_consent_accepted,
         })
         .into_response();
@@ -134,6 +136,8 @@ pub(crate) async fn redeem_otp(
             token_type: "Bearer",
             refresh_expires_at: tokens.refresh_expires_at,
             requires_passkey_setup: redemption.requires_passkey_setup,
+            otp_expires_at: redemption.expires_at,
+            otp_reusable: redemption.reusable,
             privacy_consent_accepted: tokens.privacy_consent_accepted,
         })
         .into_response())

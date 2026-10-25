@@ -178,7 +178,7 @@ impl AppState {
             config.database_url.as_ref(),
             config.platform_force_command_database_url.as_deref(),
         ) {
-            (AppRole::Api, Some(_), Some(url)) => DatabaseDependency::Postgres(
+            (AppRole::Api | AppRole::Worker, Some(_), Some(url)) => DatabaseDependency::Postgres(
                 connect_command_pool(
                     url,
                     "console_platform_force_cmd",

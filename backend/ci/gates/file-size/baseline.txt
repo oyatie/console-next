@@ -45,7 +45,7 @@ app/tests/org_change_api.rs	1735
 app/tests/org_units_api.rs	716
 app/tests/platform_onboarding_e2e.rs	544
 app/tests/purchase_request_collection_api.rs	645
-app/tests/realtime_authority.rs	660
+app/tests/realtime_authority.rs	649
 app/tests/recruiting_pipeline_api.rs	782
 app/tests/registry_api.rs	577
 app/tests/search_api.rs	505
@@ -94,7 +94,7 @@ crates/compliance/domain/src/lib.rs	930
 crates/compliance/rest/src/lib.rs	1293
 crates/consulting/rest/src/lib.rs	966
 crates/consulting/rest/tests/audit_atomicity.rs	501
-crates/contracts/src/lib.rs	654
+crates/contracts/src/lib.rs	651
 crates/contracts/tests/compose.rs	1178
 crates/dispatch/adapter-postgres/src/lib.rs	2112
 crates/dispatch/adapter-postgres/tests/p1_dispatch.rs	1226
@@ -222,7 +222,7 @@ crates/platform/authz/tests/cedar_pbac_readiness_cases.rs	499
 crates/platform/authz/tests/policy.rs	1449
 crates/platform/db/src/durability.rs	579
 crates/platform/db/src/lifecycle.rs	301
-crates/platform/db/tests/attendance_console_migration_contract.rs	1301
+crates/platform/db/tests/attendance_console_migration_contract.rs	1251
 crates/platform/db/tests/auth_command_role.rs	492
 crates/platform/db/tests/auth_security_state.rs	479
 crates/platform/db/tests/durability_physical.rs	718
@@ -240,10 +240,10 @@ crates/platform/jobs/src/soak.rs	742
 crates/platform/jobs/tests/apalis_schema_contract.rs	957
 crates/platform/platform-rest/tests/platform_groups.rs	374
 crates/platform/platform-rest/tests/remove_tenant.rs	899
-crates/platform/provisioning/tests/account_identity.rs	895
+crates/platform/provisioning/tests/account_identity.rs	698
 crates/platform/provisioning/tests/account_locking.rs	676
-crates/platform/provisioning/tests/bootstrap_passkey.rs	730
-crates/platform/provisioning/tests/company_locking.rs	480
+crates/platform/provisioning/tests/bootstrap_passkey.rs	699
+crates/platform/provisioning/tests/company_locking.rs	362
 crates/platform/provisioning/tests/first_enrollment_command.rs	629
 crates/platform/provisioning/tests/rls_auth_chain_as_runtime_role.rs	596
 crates/platform/provisioning/tests/self_enroll_handoff_as_runtime_role.rs	313

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { go, takeCode, tenantSlugField, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, go, takeCode, tenantSlugField, unique, vendorPage } from "./flows";
 
 test("a legal hold refusal keeps the tenant and explains who can resolve it", { tag: "@regression" }, async ({ browser }) => {
   const page = await vendorPage(browser);
@@ -10,7 +10,7 @@ test("a legal hold refusal keeps the tenant and explains who can resolve it", { 
   await page.getByRole("button", { name: "고객 계정 개설" }).click();
   await page.getByRole("dialog").getByLabel("고객 이름").fill(name);
   await tenantSlugField(page.getByRole("dialog")).fill(unique("held"));
-  await page.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(page).click();
   await takeCode(page);
   const panel = page.getByRole("complementary", { name });
   const remove = `${name} 삭제`;

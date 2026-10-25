@@ -1,26 +1,27 @@
-      type: object
-      required:
-      - id
-      - itemKey
-      - label
-      - done
-      - doneByName
-      properties:
-        id:
-          $ref: '#/components/schemas/Uuid'
-        itemKey:
-          $ref: '#/components/schemas/OrgChangeSettlementKey'
-        label:
-          type: string
-          description: Server-issued display label.
-        done:
-          type: boolean
-        doneBy:
-          $ref: '#/components/schemas/Uuid'
-        doneByName:
-          type: [string, 'null']
-          description: The completer's display name, resolved server-side within the tenant; null while open or when unknown.
-        doneAt:
-          $ref: '#/components/schemas/Timestamp'
-        memo:
-          type: string
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- id
+- itemKey
+- label
+- done
+- doneByName
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  itemKey:
+    $ref: '#/components/schemas/OrgChangeSettlementKey'
+  label:
+    type: string
+    description: Server-issued display label.
+  done:
+    type: boolean
+  doneBy:
+    $ref: '#/components/schemas/Uuid'
+  doneByName:
+    type: [string, 'null']
+    description: The completer's display name, resolved server-side within the tenant; null while open or when unknown.
+  doneAt:
+    $ref: '#/components/schemas/Timestamp'
+  memo:
+    type: string

@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [request, second_operator_available, archived, legal_hold, cooling_hours]
+properties:
+  request:
+    nullable: true
+    allOf:
+    - $ref: '#/components/schemas/TenantEraseRequest'
+  second_operator_available:
+    type: boolean
+  archived:
+    type: boolean
+  legal_hold:
+    type: boolean
+  cooling_hours:
+    type: integer
+    format: int64

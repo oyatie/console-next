@@ -1370,6 +1370,187 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/platform/orgs/{id}/erase:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [platform]
+      operationId: readPlatformTenantErase
+      summary: Governed tenant erasure read
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Current erasure state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantEraseRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: tenant_active, blocked_legal_hold, erase_requires_second_operator, erase_cooling, or erase_same_operator.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [platform]
+      operationId: openPlatformTenantErase
+      summary: Governed tenant erasure open
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                step_up:
+                  $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+                id:
+                  type: string
+                  format: uuid
+              required: [id]
+      responses:
+        '200':
+          description: Current erasure request receipt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantEraseRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: tenant_active, blocked_legal_hold, erase_requires_second_operator, erase_cooling, or erase_same_operator.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/platform/orgs/{id}/erase/{rid}/approve:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [platform]
+      operationId: approvePlatformTenantErase
+      summary: Governed tenant erasure approve
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: rid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                step_up:
+                  $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+      responses:
+        '200':
+          description: Current erasure request receipt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantEraseRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: tenant_active, blocked_legal_hold, erase_requires_second_operator, erase_cooling, or erase_same_operator.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/platform/orgs/{id}/erase/{rid}/cancel:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [platform]
+      operationId: cancelPlatformTenantErase
+      summary: Governed tenant erasure cancel
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: rid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                step_up:
+                  $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+      responses:
+        '200':
+          description: Current erasure request receipt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantEraseRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: tenant_active, blocked_legal_hold, erase_requires_second_operator, erase_cooling, or erase_same_operator.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/platform/orgs/{id}/ops-recovery:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -32896,6 +33077,7 @@ components:
         - pending_count
         - pending_approvals
     ActorKind:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum: [TENANT_USER, OPS_ACCOUNT, GROUP_ADMIN, SUPPORT_OPERATOR, SYSTEM]
     AddCommentRequest:
@@ -32967,6 +33149,7 @@ components:
           type: integer
           format: int64
     AddressSource:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum:
       - JUSO
@@ -34514,6 +34697,7 @@ components:
           description: Freshness signal — committed rows older than the seal watermark exist beyond the head seal's
             cursor (the worker fell behind or is stopped). Never forces ok=false on a healthy live chain.
     AuditLastChange:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [actor_name, actor_kind, recorded_at, fields, audit_id, redacted]
       properties:
@@ -36604,6 +36788,7 @@ components:
       required: [source, quantityConsumedMilli, idempotencyKey]
       properties: { source: { $ref: '#/components/schemas/InventoryConsumptionSource' }, quantityConsumedMilli: { type: integer, format: int64, minimum: 1 }, occurredAt: { type: string, format: date-time, nullable: true }, memo: { type: string, nullable: true }, idempotencyKey: { type: string, minLength: 16, maxLength: 200 } }
     ControlCadence:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum: [CONTINUOUS, DAILY, WEEKLY, MONTHLY, QUARTERLY, ANNUAL, EVENT_DRIVEN]
     ControlObligationCoverage:
@@ -37593,6 +37778,7 @@ components:
           type: string
           minLength: 1
     CreateLeavePromotion:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [round_no, reference_year]
       properties:
@@ -37601,6 +37787,7 @@ components:
         min_remaining_days: { type: number, nullable: true }
         note: { type: string, nullable: true }
     CreateLeaveRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [leave_type, reason, start_date, end_date]
       properties:
@@ -38847,6 +39034,7 @@ components:
           items:
             $ref: '#/components/schemas/DailyPlanItemSummary'
     Date:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       format: date
     DebitCredit:
@@ -38858,6 +39046,7 @@ components:
       required: [expectedVersion, decision]
       properties: { expectedVersion: { type: integer, minimum: 1 }, decision: { type: string, enum: [APPROVE, REJECT] }, memo: { type: string, nullable: true }, idempotencyKey: { type: string, nullable: true, minLength: 16, maxLength: 200 } }
     DecideLeaveRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [decision]
       properties:
@@ -42221,6 +42410,7 @@ components:
       enum: [REGULAR, CONTRACT, PART_TIME, INTERN, DAILY, EXECUTIVE, DISPATCHED_IN, OUTSOURCED_ON_SITE, FREELANCE]
       description: 고용형태 (E13, employee_employment_profiles.employment_type).
     EndOffer:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - allowed
@@ -43110,6 +43300,7 @@ components:
           type: integer
           format: int64
     EquipmentLookupResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - id
@@ -43192,6 +43383,7 @@ components:
       - customer
       - updated_at
     EquipmentStatus:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum:
       - rented
@@ -43327,6 +43519,7 @@ components:
           items:
             $ref: '#/components/schemas/EquipmentVersion'
     ErrorBody:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - error
@@ -44121,6 +44314,7 @@ components:
         occurred_at:
           $ref: '#/components/schemas/Timestamp'
     FieldError:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       description: >-
         One field-level validation failure. `field` names the request-body
@@ -44939,6 +45133,7 @@ components:
           type: object
           additionalProperties: true
     GovernedExceptionRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       description: >-
         Explicit request to proceed past a soft rule. The server records it as
@@ -44957,6 +45152,7 @@ components:
           type: string
           description: Free-text detail; required when the reason code requires a note.
     GroupTransferFacts:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required: [continuity, group_service_start_date, consent_date, consent_evidence_ref]
@@ -45542,6 +45738,7 @@ components:
       type: string
       enum: [draft, active, locked, archived, disposed]
     InstanceState:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [instance, revision]
       properties:
@@ -46138,6 +46335,7 @@ components:
           $ref: '#/components/schemas/Uuid'
       description: '`id` is present for region, branch, and technician scopes and absent for company.'
     KrAddress:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       description: Structured Korean address (도로명주소).
       required:
@@ -46471,6 +46669,7 @@ components:
           type: string
           description: Mandatory for time_change; optional for approve.
     LeavePromotion:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [id, round_no, reference_year, threshold_days, status, created_by, target_count, confirmed_count]
       properties:
@@ -46546,6 +46745,7 @@ components:
           type: number
           format: double
     LeaveRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [id, employee_id, leave_type, reason, start_date, end_date, status, requested_by, requested_at]
       properties:
@@ -48481,6 +48681,7 @@ components:
         created_at:
           $ref: '#/components/schemas/Timestamp'
     MessengerPresence:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - user_id
@@ -48502,6 +48703,7 @@ components:
         status:
           $ref: '#/components/schemas/MessengerPresenceStatus'
     MessengerPresenceListResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - items
@@ -48684,6 +48886,7 @@ components:
           pattern: ^[a-f0-9]{64}$
           description: Required for BW-29 actions including OPERATOR_RECOVERY; SHA-256 of the command payload.
     MobilePasskeyStepUpEnvelope:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - binding
@@ -48838,6 +49041,7 @@ components:
           items:
             $ref: '#/components/schemas/MyDispatchOffer'
     MyLeaveBalance:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [employee_id]
       properties:
@@ -48846,6 +49050,7 @@ components:
         leave_used: { type: string, nullable: true }
         leave_remaining: { type: string, nullable: true }
     MyLeaveOverview:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [balance, requests]
       properties:
@@ -48969,6 +49174,7 @@ components:
         calendar:
           $ref: '#/components/schemas/WorkbenchCalendarSourceEnvelope'
     NamedEntity:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - id
@@ -50008,9 +50214,11 @@ components:
           - $ref: '#/components/schemas/Uuid'
           - type: 'null'
     OrgChangeApprovalRoleKey:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum: [hr, finance, legal, executive]
     OrgChangeApprovalStep:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - id
@@ -50051,6 +50259,7 @@ components:
           minLength: 1
           maxLength: 2000
     OrgChangeDetail:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       allOf:
       - $ref: '#/components/schemas/OrgChangeSummary'
       - type: object
@@ -50079,6 +50288,7 @@ components:
             items:
               $ref: '#/components/schemas/OrgChangeEvent'
     OrgChangeEvent:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - at
@@ -50104,6 +50314,7 @@ components:
         reason:
           type: string
     OrgChangeKind:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum: [NEW, REORG, DISSOLVE]
     OrgChangePage:
@@ -50120,6 +50331,7 @@ components:
           type: integer
           format: int64
     OrgChangePreflightBlocker:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - code
@@ -50137,6 +50349,7 @@ components:
           type: integer
           format: int64
     OrgChangePreflightReport:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - computedAt
@@ -50168,6 +50381,7 @@ components:
           type: integer
           format: int64
     OrgChangePreflightWarning:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - code
@@ -50183,6 +50397,7 @@ components:
           type: integer
           format: int64
     OrgChangeSettlementItem:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - id
@@ -50210,18 +50425,22 @@ components:
         memo:
           type: string
     OrgChangeSettlementKey:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum: [TRANSFER_EMPLOYEES, POSITIONS, COST_CENTERS, CLOSE_OPEN_DOCS, ASSETS, PAYROLL_SOCIAL_FINAL]
     OrgChangeStatus:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       description: PRECHECKED is legacy and is never entered by a request created today — preflight is read-only, so
         the lifecycle is DRAFT → IN_APPROVAL at submit. It stays in the enum because rows written before that change
         still carry it on disk and are still accepted by PATCH, preflight, submit and cancel. Do not poll for it.
       enum: [DRAFT, PRECHECKED, IN_APPROVAL, APPROVED, APPLIED, SETTLING, ARCHIVED, REJECTED, CANCELLED]
     OrgChangeStepDecision:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum: [PENDING, APPROVED, REJECTED]
     OrgChangeSummary:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - id
@@ -50286,6 +50505,7 @@ components:
         supersedesId:
           $ref: '#/components/schemas/Uuid'
     OrgChangeTarget:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required:
@@ -50305,6 +50525,7 @@ components:
           minLength: 1
           maxLength: 200
     OrgChangeTargetKind:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum: [ENTITY, REGION, BRANCH, SITE, ORG_UNIT]
     OrgEntitySummary:
@@ -50325,6 +50546,7 @@ components:
           type: string
           description: Tenant status; ACTIVE, SUSPENDED, or ARCHIVED.
     OrgProposalOp:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       description: One typed sandbox-diff operation, replayed in order at apply time. Internally tagged by `op`; unknown
         properties are rejected.
       oneOf:
@@ -50358,6 +50580,7 @@ components:
           MOVE_ORG_UNIT: '#/components/schemas/OrgProposalOpMoveOrgUnit'
           DISSOLVE_ORG_UNIT: '#/components/schemas/OrgProposalOpDissolveOrgUnit'
     OrgProposalOpCreateBranch:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required:
@@ -50375,6 +50598,7 @@ components:
           minLength: 1
           maxLength: 120
     OrgProposalOpCreateOrgUnit:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       description: Create a canonical OrgUnit (`organization.create_org_unit`) at apply. parentId must name an existing
@@ -50395,6 +50619,7 @@ components:
           minLength: 1
           maxLength: 120
     OrgProposalOpCreateRegion:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required:
@@ -50409,6 +50634,7 @@ components:
           minLength: 1
           maxLength: 120
     OrgProposalOpCreateSite:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required:
@@ -50426,6 +50652,7 @@ components:
           minLength: 1
           maxLength: 120
     OrgProposalOpDeactivateBranch:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required:
@@ -50438,6 +50665,7 @@ components:
         branchId:
           $ref: '#/components/schemas/Uuid'
     OrgProposalOpDeactivateRegion:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required:
@@ -50450,6 +50678,7 @@ components:
         regionId:
           $ref: '#/components/schemas/Uuid'
     OrgProposalOpDissolveOrgUnit:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       description: >-
@@ -50468,6 +50697,7 @@ components:
         mergedInto:
           $ref: '#/components/schemas/Uuid'
     OrgProposalOpMoveOrgUnit:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       description: Re-parent an OrgUnit. Kind nesting and cycles are re-checked at preflight and apply; a SITE cannot move.
@@ -50481,6 +50711,7 @@ components:
         parentId:
           $ref: '#/components/schemas/Uuid'
     OrgProposalOpReassignOrgUnit:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       description: >-
@@ -50514,6 +50745,7 @@ components:
           items:
             $ref: '#/components/schemas/Uuid'
     OrgProposalOpRenameBranch:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       description: Rename and/or move a branch across regions; at least one of `name` and `regionId` must be present.
@@ -50533,6 +50765,7 @@ components:
         regionId:
           $ref: '#/components/schemas/Uuid'
     OrgProposalOpRenameOrgUnit:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required: [op, orgUnitId, name]
@@ -50547,6 +50780,7 @@ components:
           minLength: 1
           maxLength: 120
     OrgProposalOpRenameRegion:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required:
@@ -50564,6 +50798,7 @@ components:
           minLength: 1
           maxLength: 120
     OrgProposalOpUpdateSite:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required:
@@ -50581,6 +50816,7 @@ components:
           minLength: 1
           maxLength: 120
     OrgProposalReassignScope:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required:
@@ -51032,6 +51268,7 @@ components:
           type: boolean
           description: 「(겸)」 — the head belongs to another unit, or heads another unit too.
     OrgUnitKind:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       description: Canonical OrgUnit kinds. Nesting (enforced at preflight and apply) — SITE under the Company root;
         DEPARTMENT under a SITE; TEAM under a DEPARTMENT or TEAM.
@@ -51047,6 +51284,7 @@ components:
           items:
             $ref: '#/components/schemas/OrgUnitHead'
     OrgUnitMember:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [employeeId, name]
       properties:
@@ -51062,6 +51300,7 @@ components:
           type: string
           description: Current 직책 from the employee card's position-kind catalog fact.
     OrgUnitMembers:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [headcount, items]
       properties:
@@ -51128,7 +51367,8 @@ components:
       properties:
         otp:
           type: string
-          description: The one-time sign-in code (8 characters for admin-issued codes).
+          pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{5}-[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{5}$
+          description: Canonical newly issued code (case insensitive). Legacy codes are also accepted by exact stored hash until expiry.
     OtpRedeemResponse:
       type: object
       required:
@@ -51154,6 +51394,11 @@ components:
         requires_passkey_setup:
           type: boolean
           description: True when the signed-in user has no passkey yet and should enroll one in initial settings.
+        otp_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        otp_reusable:
+          type: boolean
+          description: True for first-sign-in codes valid until passkey registration or expiry; false for single-use recovery codes.
     OutsourceWorkSummary:
       type: object
       properties:
@@ -51498,6 +51743,7 @@ components:
         expires_at:
           $ref: '#/components/schemas/Timestamp'
     PasskeyStepUpAssertion:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       description: A fresh assertion of an EXISTING passkey, proving the caller currently possesses an authenticator (not
         just a bearer token). The `ceremony_id` comes from a preceding `POST /api/v1/auth/passkey/login/start`; the `credential`
@@ -53188,6 +53434,22 @@ components:
           $ref: '#/components/schemas/Timestamp'
         updated_at:
           $ref: '#/components/schemas/Timestamp'
+        removable:
+          type: boolean
+          description: The guarded removal predicate, identical to the command.
+        removal_refusal:
+          type: [string, 'null']
+          enum: [tenant_has_data, blocked_legal_hold, null]
+        lifecycle:
+          type: string
+          enum: [OPENED, CODE_ISSUED, ENROLLED, SETUP, OPERATING]
+          description: Derived from live credentials, enrollment and go-live facts.
+        code_issued_count:
+          type: integer
+          format: int64
+        passkey_registered_count:
+          type: integer
+          format: int64
     PlatformOrgAdminOtpReissueRequest:
       type: object
       required:
@@ -53202,6 +53464,9 @@ components:
       - otp
       - admin_otp_expires_at
       properties:
+        admin_sign_in_id:
+          type: [string, 'null']
+          description: Current first administrator sign-in ID from the account registry.
         admin_user_id:
           $ref: '#/components/schemas/Uuid'
         otp:
@@ -53220,6 +53485,9 @@ components:
       properties:
         org:
           $ref: '#/components/schemas/PlatformOrg'
+        admin_sign_in_id:
+          type: [string, 'null']
+          description: Current first administrator sign-in ID from the account registry.
         admin_user_id:
           $ref: '#/components/schemas/Uuid'
         otp:
@@ -54156,6 +54424,7 @@ components:
         step_up:
           $ref: '#/components/schemas/PasskeyStepUpAssertion'
     PresignedUpload:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - method
@@ -54207,6 +54476,7 @@ components:
             type: string
             format: date-time
     PriorityLevel:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum:
       - P1
@@ -56763,6 +57033,7 @@ components:
         memo:
           type: string
     ReviewCadence:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum: [MONTHLY, QUARTERLY, SEMI_ANNUAL, ANNUAL, EVENT_DRIVEN]
     ReviewDailyPlanRequest:
@@ -56795,6 +57066,7 @@ components:
         memo:
           type: string
     RevisionSummary:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [id, instance_id, version, attributes, valid_from, prev_hash, row_hash]
       properties:
@@ -57164,6 +57436,7 @@ components:
           items:
             type: string
     SendMailResult:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - message_id
@@ -57647,6 +57920,7 @@ components:
         updated_at:
           $ref: '#/components/schemas/Timestamp'
     SetupChecklist:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - phase
@@ -57898,6 +58172,7 @@ components:
         change_mode:
           type: string
     SetupStep:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - key
@@ -57984,6 +58259,7 @@ components:
         needs:
           type: string
     SetupStepState:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum:
       - todo
@@ -59359,6 +59635,53 @@ components:
       - PREVENTION
       - MANAGEMENT
       - RECEPTION
+    TenantEraseRead:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [request, second_operator_available, archived, legal_hold, cooling_hours]
+      properties:
+        request:
+          nullable: true
+          allOf:
+          - $ref: '#/components/schemas/TenantEraseRequest'
+        second_operator_available:
+          type: boolean
+        archived:
+          type: boolean
+        legal_hold:
+          type: boolean
+        cooling_hours:
+          type: integer
+          format: int64
+    TenantEraseRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [id, target_org_id, requested_by, opened_at, approved_by, cooling_until, cancelled_at, erased_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        target_org_id:
+          type: string
+          format: uuid
+        requested_by:
+          type: string
+          format: uuid
+        approved_by:
+          type: [string, 'null']
+          format: uuid
+        opened_at:
+          type: string
+          format: date-time
+        cooling_until:
+          type: [string, 'null']
+          format: date-time
+        cancelled_at:
+          type: [string, 'null']
+          format: date-time
+        erased_at:
+          type: [string, 'null']
+          format: date-time
     TenantReasonCode:
       type: object
       additionalProperties: false
@@ -59473,6 +59796,7 @@ components:
         Closed set of system-judged §60⑤ grounds. Free-text manager narrative is
         never a grounds code.
     Timestamp:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       format: date-time
     TimestampAuthorityProofView:
@@ -59623,6 +59947,7 @@ components:
         to_status:
           $ref: '#/components/schemas/SupportTicketStatus'
     TraversalEdge:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [id, link_type_id, from_instance_id, to_instance_id]
       properties:
@@ -59631,6 +59956,7 @@ components:
         from_instance_id: { type: string, format: uuid }
         to_instance_id: { type: string, format: uuid }
     TraversalGraph:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [root, nodes, edges]
       properties:
@@ -59638,6 +59964,7 @@ components:
         nodes: { type: array, items: { $ref: '#/components/schemas/TraversalNode' } }
         edges: { type: array, items: { $ref: '#/components/schemas/TraversalEdge' } }
     TraversalNode:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required: [instance_id, object_type_id, title, lifecycle_state, depth]
       properties:
@@ -60504,6 +60831,7 @@ components:
         created_at:
           $ref: '#/components/schemas/Timestamp'
     Uuid:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       format: uuid
     VatUnitBasis:
@@ -61155,6 +61483,7 @@ components:
         listograms:
           $ref: '#/components/schemas/WorkOrderLensListograms'
     WorkOrderStatus:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum:
       - RECEIVED
