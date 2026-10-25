@@ -2,6 +2,7 @@
 // Words live in the catalog as `enum.<type>.<VALUE>`; tones (presentation) stay here.
 import type { components } from "@console/api/schema";
 import type * as P from "@console/api/pending";
+import { personName } from "../reference/person/present";
 import { isMessageId, t } from "@console/i18n";
 
 type S = components["schemas"];
@@ -117,8 +118,8 @@ export const labeled = (e: Enum, v: string): Labeled => {
   return text === null ? { label: v, tone: "warn" } : { label: text, tone: (e.tone as Record<string, Tone> | undefined)?.[v] };
 };
 
-/** A server-resolved actor name; null (unknown or unset) renders as a dash, never blank. */
-export const actor = (name?: string | null) => name ?? "—";
+/** A server-resolved actor name; unknown renders as a dash; an unset name uses the shared person label. */
+export const actor = (name?: string | null) => name == null ? "—" : personName(name);
 
 /** A server code in words when the catalog has `id` (written as a template so the copy gate sees it), else the code itself. */
 export const codeText = (id: string, code: string, vars?: Record<string, string | number>) => (isMessageId(id) ? t(id, vars as never) : code);

@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - users
+operationId: updateCurrentPlatformUser
+summary: Update the authenticated operator's own display name and phone
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/UpdateSelfProfileRequest'
+responses:
+  '200':
+    description: Updated profile.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/UserSummary'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    description: JWT verification is not configured.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

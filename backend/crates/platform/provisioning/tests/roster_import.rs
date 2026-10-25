@@ -85,13 +85,12 @@ async fn bulk_roster_import_is_idempotent_and_reports_reconciliation_counts(pool
     assert!(second.bootstrap_credentials_issued.is_empty());
     assert_eq!(second.changed_count(), 0);
 
-    // Exclude the cold-start admin seeded by migration 0021 so the count reflects
-    // only the roster import under test.
-    let user_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE display_name <> 'Cold Start Admin'")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    // Count the tenant under test; a platform administrator’s editable name is not a filter.
+    let user_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE org_id = $1")
+        .bind(OrgId::one().as_uuid())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     assert_eq!(user_count, 2);
 
     let bootstrap_count: i64 = sqlx::query_scalar(
@@ -99,9 +98,10 @@ async fn bulk_roster_import_is_idempotent_and_reports_reconciliation_counts(pool
         SELECT COUNT(*)
         FROM auth_bootstrap_credentials c
         JOIN users u ON u.id = c.user_id
-        WHERE u.display_name <> 'Cold Start Admin'
+        WHERE u.org_id = $1
         "#,
     )
+    .bind(OrgId::one().as_uuid())
     .fetch_one(&pool)
     .await
     .unwrap();
@@ -166,13 +166,12 @@ async fn roster_with_unknown_branch_rolls_back_without_partial_writes(pool: PgPo
         .unwrap_err();
     assert!(err.to_string().contains("unknown branch"));
 
-    // Exclude the cold-start admin seeded by migration 0021: the rollback under
-    // test must leave no roster rows, but the seed is independent infrastructure.
-    let user_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE display_name <> 'Cold Start Admin'")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    // A refused import leaves no rows in its tenant.
+    let user_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE org_id = $1")
+        .bind(OrgId::one().as_uuid())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     let membership_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM user_branches")
         .fetch_one(&pool)
         .await
@@ -182,9 +181,10 @@ async fn roster_with_unknown_branch_rolls_back_without_partial_writes(pool: PgPo
         SELECT COUNT(*)
         FROM auth_bootstrap_credentials c
         JOIN users u ON u.id = c.user_id
-        WHERE u.display_name <> 'Cold Start Admin'
+        WHERE u.org_id = $1
         "#,
     )
+    .bind(OrgId::one().as_uuid())
     .fetch_one(&pool)
     .await
     .unwrap();

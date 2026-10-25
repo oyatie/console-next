@@ -1,3 +1,4 @@
+import { supportReferenceFromError } from "../../../lib/support-reference";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -121,7 +122,7 @@ function Archive({ d, s, title, n, refetch, onNote }: { d: Detail; s: Extract<Ap
 function Frozen({ d, error }: { d: Detail; error: unknown }) {
   const can = useCan();
   return (
-    <BlockedPanel
+    <BlockedPanel domain="org" supportRef={supportReferenceFromError(error)}
       kind="lock"
       title={t("orgChange.frozen.title")}
       code="conflict"

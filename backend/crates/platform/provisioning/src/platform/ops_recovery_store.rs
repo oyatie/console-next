@@ -79,26 +79,30 @@ impl PlatformProvisioner {
                 .await?;
         if let Some(r) = request.as_mut() {
             arm(&mut tx, OrgId::platform()).await?;
-            r.requested_by_name =
-                sqlx::query_scalar("SELECT display_name FROM person_accounts_current WHERE id=$1")
-                    .bind(r.requested_by)
-                    .fetch_optional(tx.as_mut())
-                    .await?;
+            r.requested_by_name = sqlx::query_scalar::<_, Option<String>>(
+                "SELECT display_name FROM person_accounts_current WHERE id=$1",
+            )
+            .bind(r.requested_by)
+            .fetch_optional(tx.as_mut())
+            .await?
+            .flatten();
             if let Some(user) = r.cancelled_by {
-                r.cancelled_by_name = sqlx::query_scalar(
+                r.cancelled_by_name = sqlx::query_scalar::<_, Option<String>>(
                     "SELECT display_name FROM person_accounts_current WHERE id=$1",
                 )
                 .bind(user)
                 .fetch_optional(tx.as_mut())
-                .await?;
+                .await?
+                .flatten();
                 if r.cancelled_by_name.is_none() {
                     arm(&mut tx, org).await?;
-                    r.cancelled_by_name = sqlx::query_scalar(
+                    r.cancelled_by_name = sqlx::query_scalar::<_, Option<String>>(
                         "SELECT display_name FROM person_accounts_current WHERE id=$1",
                     )
                     .bind(user)
                     .fetch_optional(tx.as_mut())
-                    .await?;
+                    .await?
+                    .flatten();
                 }
             }
             arm(&mut tx, org).await?;

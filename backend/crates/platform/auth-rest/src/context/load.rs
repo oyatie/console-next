@@ -77,9 +77,10 @@ pub(crate) async fn load_user_auth_context_tx(
     .map_err(|err| RestError::internal(err.to_string()))?
     .ok_or_else(|| RestError::unauthorized("user not found"))?;
 
-    let display_name: String = row
-        .try_get("display_name")
-        .map_err(|err| RestError::internal(err.to_string()))?;
+    let display_name = row
+        .try_get::<Option<String>, _>("display_name")
+        .map_err(|err| RestError::internal(err.to_string()))?
+        .unwrap_or_default();
     // The user's tenant. `users.org_id` is NOT NULL post-migration 0029, so a
     // successful login always carries a real org into the access token.
     let org_uuid: Uuid = row

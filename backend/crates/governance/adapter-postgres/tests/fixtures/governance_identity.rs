@@ -53,8 +53,9 @@ async fn governance_refuses_unlinked_reviewed_and_bootstrap_people(pool: PgPool)
         );
     }
     let (decisions, audits): (i64, i64) = sqlx::query_as(
-        "SELECT (SELECT count(*) FROM gov_approvals), (SELECT count(*) FROM audit_events)",
+        "SELECT (SELECT count(*) FROM gov_approvals WHERE org_id=$1), (SELECT count(*) FROM audit_events WHERE org_id=$1)",
     )
+    .bind(ORG_A)
     .fetch_one(&pool)
     .await
     .unwrap();

@@ -10,7 +10,7 @@ import { EmptyState } from "../../../ui/empty-state";
 import { Table } from "../../../ui/table";
 import { blocking, readiness, type Check as Item } from "../domain/readiness";
 import { grantsQuery, type Account } from "../api";
-import { personLabel } from "../../../reference/person/present";
+import { personLabel, personName } from "../../../reference/person/present";
 import { PersonLabel, PersonRecordLink } from "../../../reference/person/ui/person-label";
 import { grantPerson, periodText, storedScope } from "../present";
 import { AccessHead } from "./access-head";
@@ -51,7 +51,7 @@ export function ReadinessPage() {
   const roots = useOrgRoots();
   const grants = useQuery(grantsQuery());
   const manages = new Set(ctx.roles.filter((r) => r.lines.some((l) => l.domain === "access" && l.levels.includes("edit"))).map((r) => r.id));
-  const opsName = ctx.accounts.find((a) => a.id === ctx.ops)?.display_name ?? "";
+  const opsName = personName(ctx.accounts.find((a) => a.id === ctx.ops)?.display_name);
   return (
       <div className="page">
       <AccessHead

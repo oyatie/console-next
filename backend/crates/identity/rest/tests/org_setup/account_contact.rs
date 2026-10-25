@@ -71,3 +71,90 @@ async fn linked_account_get_after_patch_returns_its_own_contact(pool: PgPool) {
     .unwrap();
     assert_eq!(person_phone, "+82212345678");
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn renaming_platform_root_through_me_never_creates_another_admin(pool: PgPool) {
+    use console_kernel_core::{OrgId, UserId};
+    let harness = Harness::new(pool.clone()).await;
+    let root: uuid::Uuid = sqlx::query_scalar("SELECT platform_ensure_cold_start_admin()")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let mut input = harness.access_token_input_for_org(
+        OrgId::platform(),
+        UserId::from_uuid(root),
+        &["SUPER_ADMIN"],
+        vec![],
+    );
+    input.platform = true;
+    let token = console_platform_test_support::issue_session_token(
+        &harness.pool,
+        &harness.issuer(),
+        input,
+        None,
+        vec![],
+    )
+    .await;
+    let (status, before) = send(&harness, "GET", "/api/platform/users/me", &token, None).await;
+    assert_eq!(status, StatusCode::OK, "{before:?}");
+    let existing_name: String = sqlx::query_scalar("SELECT display_name FROM users WHERE id=$1")
+        .bind(root)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(before["display_name"], existing_name);
+    assert!(before.get("name_unset").is_none());
+    let (status, after) = send(
+        &harness,
+        "PATCH",
+        "/api/platform/users/me",
+        &token,
+        Some(json!({"display_name": "박관리자"})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{after:?}");
+    assert_eq!(after["display_name"], "박관리자");
+    assert!(after.get("name_unset").is_none());
+    let (invalid, _) = send(
+        &harness,
+        "PATCH",
+        "/api/platform/users/me",
+        &token,
+        Some(json!({"display_name":"   "})),
+    )
+    .await;
+    assert_eq!(invalid, StatusCode::UNPROCESSABLE_ENTITY);
+    let reseeded: uuid::Uuid = sqlx::query_scalar("SELECT platform_ensure_cold_start_admin()")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(reseeded, root);
+    let (status, _) = send(&harness, "GET", "/api/v1/users/me", &token, None).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    let count: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM users WHERE org_id=$1 AND roles @> ARRAY['SUPER_ADMIN']::text[]",
+    )
+    .bind(OrgId::platform().as_uuid())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(count, 1);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn tenant_token_cannot_read_or_patch_the_platform_profile(pool: PgPool) {
+    let harness = Harness::new(pool.clone()).await;
+    let me = seed_user(&pool, "김관리자", &["SUPER_ADMIN"], None).await;
+    let token = harness.token(me, &["SUPER_ADMIN"], vec![]).await;
+    for method in ["GET", "PATCH"] {
+        let (status, _) = send(
+            &harness,
+            method,
+            "/api/platform/users/me",
+            &token,
+            (method == "PATCH").then(|| json!({"display_name":"탈취"})),
+        )
+        .await;
+        assert_eq!(status, StatusCode::FORBIDDEN);
+    }
+}

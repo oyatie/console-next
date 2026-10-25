@@ -14,6 +14,9 @@ export type PersonIdentity = {
   sign_in_id?: string | null;
 };
 
+/** A person name stays visible even for an account whose name has not been set. */
+export const personName = (name?: string | null, fallback = t("account.name.unset")) => name?.trim().normalize("NFC") || fallback;
+
 const nameOf = (p: PersonIdentity) => (p.display_name?.trim() || p.name?.trim() || "").normalize("NFC");
 const personId = (p: PersonIdentity) => p.employee_id || p.id;
 const facts = (p: PersonIdentity) => [p.employee_number, p.employee_company || p.company, p.employee_org_unit || p.org_unit].map((v) => v?.trim()).filter(Boolean).join(" · ");
@@ -32,7 +35,7 @@ function detailOf(p: PersonIdentity) {
 /** One label across account and employee surfaces; a collision retains the stable id, never a private identifier. */
 export function personLabel(person: PersonIdentity, peers: readonly PersonIdentity[] = []) {
   const rawName = nameOf(person);
-  const name = rawName || t("people.label.unnamed");
+  const name = personName(rawName, t("people.label.unnamed"));
   const others = peers.filter((p) => personId(p) !== personId(person) && nameOf(p) === rawName);
   const detail = detailOf(person);
   const distinct = others.some((p) => detailOf(p) === detail) ? `${detail} · ${person.id}` : detail;

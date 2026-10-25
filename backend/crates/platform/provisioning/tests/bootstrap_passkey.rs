@@ -498,12 +498,7 @@ async fn cold_start_otp_seeded_at_boot_signs_in_then_dies_on_passkey_registratio
     let now = OffsetDateTime::now_utc();
 
     // The migration keeps the Cold Start Admin (SUPER_ADMIN) user row...
-    let admin_id: uuid::Uuid = sqlx::query_scalar(
-        "SELECT id FROM users WHERE display_name = 'Cold Start Admin' AND roles @> ARRAY['SUPER_ADMIN']::text[]",
-    )
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let admin_id = platform_admin(&pool).await;
     // ...but the fixed seed is revoked: coss0000 must NOT redeem until re-seeded.
     assert!(
         store.redeem_otp(&pool, "coss0000", now).await.is_err(),
@@ -552,12 +547,7 @@ async fn seed_cold_start_credential_is_gated_and_idempotent(pool: PgPool) {
     let store = BootstrapCredentialStore;
     let now = OffsetDateTime::now_utc();
 
-    let admin_id: uuid::Uuid = sqlx::query_scalar(
-        "SELECT id FROM users WHERE display_name = 'Cold Start Admin' AND roles @> ARRAY['SUPER_ADMIN']::text[]",
-    )
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let admin_id = platform_admin(&pool).await;
 
     // First seed succeeds (no passkey, no open credential after 0023's revoke).
     let first = store
@@ -632,12 +622,7 @@ async fn seed_cold_start_credential_is_gated_and_idempotent(pool: PgPool) {
 /// after that wait. A stale request time cannot create an already-expired code.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn cold_start_seed_uses_post_lock_database_time(pool: PgPool) {
-    let admin_id: uuid::Uuid = sqlx::query_scalar(
-        "SELECT id FROM users WHERE display_name='Cold Start Admin' AND roles @> ARRAY['SUPER_ADMIN']::text[]",
-    )
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let admin_id = platform_admin(&pool).await;
     let ttl = Duration::hours(1);
     let db_before: OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
         .fetch_one(&pool)
@@ -696,12 +681,7 @@ async fn seed_cold_start_credential_reseeds_after_expiry(pool: PgPool) {
         .await
         .unwrap();
     assert!(first, "first seed must insert");
-    let admin_id: uuid::Uuid = sqlx::query_scalar(
-        "SELECT id FROM users WHERE display_name = 'Cold Start Admin' AND roles @> ARRAY['SUPER_ADMIN']::text[]",
-    )
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let admin_id = platform_admin(&pool).await;
     let source_id: uuid::Uuid = sqlx::query_scalar(
         "SELECT id FROM auth_bootstrap_credentials WHERE user_id=$1 AND token_hash=digest('expiring-otp','sha256')",
     )
@@ -780,7 +760,7 @@ async fn seed_cold_start_creates_the_platform_admin_on_an_empty_database(pool: P
     sqlx::raw_sql(
         "SET row_security = off;
          DELETE FROM auth_bootstrap_credentials;
-         DELETE FROM users WHERE display_name = 'Cold Start Admin';",
+         DELETE FROM users WHERE org_id = '00000000-0000-0000-0000-00000000face' AND roles @> ARRAY['SUPER_ADMIN']::text[];",
     )
     .execute(&pool)
     .await
@@ -796,7 +776,7 @@ async fn seed_cold_start_creates_the_platform_admin_on_an_empty_database(pool: P
     );
 
     let (admin_id, org_id): (Uuid, Uuid) = sqlx::query_as(
-        "SELECT id, org_id FROM users WHERE display_name = 'Cold Start Admin' AND roles @> ARRAY['SUPER_ADMIN']::text[]",
+        "SELECT id, org_id FROM users WHERE org_id = '00000000-0000-0000-0000-00000000face' AND roles @> ARRAY['SUPER_ADMIN']::text[]",
     )
     .fetch_one(&pool)
     .await
@@ -819,11 +799,24 @@ async fn seed_cold_start_creates_the_platform_admin_on_an_empty_database(pool: P
         .unwrap();
     assert!(!again);
     let admins: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE display_name = 'Cold Start Admin'")
+        sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE org_id='00000000-0000-0000-0000-00000000face' AND roles @> ARRAY['SUPER_ADMIN']::text[]")
             .fetch_one(&pool)
             .await
             .unwrap();
     assert_eq!(admins, 1);
+}
+
+#[path = "bootstrap_passkey/raw.rs"]
+mod raw;
+
+async fn platform_admin(pool: &PgPool) -> Uuid {
+    sqlx::query_scalar(
+        "SELECT id FROM users WHERE org_id=$1 AND roles @> ARRAY['SUPER_ADMIN']::text[]",
+    )
+    .bind(OrgId::platform().as_uuid())
+    .fetch_one(pool)
+    .await
+    .unwrap()
 }
 
 #[path = "fixtures/bootstrap_code_format.rs"]

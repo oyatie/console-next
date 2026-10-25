@@ -1,3 +1,4 @@
+import { personName } from "../../../reference/person/present";
 import type { ReactNode } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -7,6 +8,7 @@ import { Button } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { KeyValue } from "../../../ui/key-value/key-value";
+import { ProfileName } from "./profile-name";
 import { claims, signOutHere, type Me } from "../api";
 
 /**
@@ -31,7 +33,7 @@ export function ProfileCard({ locale, me }: { locale: ReactNode; me: UseQueryRes
         items={[
           // The ops account is named in the name row, not a row of its own: /users/me lands after the passkeys, and a row
           // appearing then would push the cards below under a pointer already on them (account.spec layout shift).
-          { key: "name", label: t("account.field.name"), value: <span className="row">{u?.display_name ?? c?.name ?? "—"}{u?.is_tenant_ops && <Chip tone="info">{t("account.field.ops")}</Chip>}</span> },
+          { key: "name", label: t("account.field.name"), value: <div className="row">{personName(u?.display_name ?? c?.name, t(vendor ? "account.name.unset.operator" : "account.name.unset"))}{u && <ProfileName current={u.display_name} />}{u?.is_tenant_ops && <Chip tone="info">{t("account.field.ops")}</Chip>}</div> },
           // My sign-in ID (decisions #33): HR changes it, with a reason; the row is there from the first paint.
           ...(vendor ? [] : [{ key: "signInId", label: t("account.field.signInId"), value: <span className="code">{u?.sign_in_id ?? "—"}</span> }]),
           ...(vendor ? [] : [{ key: "domain", label: t("account.domain.title"), value: <Link to="/settings/company-domain">{u?.sign_in_id?.split("@")[1] ?? "—"}</Link> }]),

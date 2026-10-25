@@ -199,13 +199,15 @@ async fn registration_prefers_a_resident_key(owner: PgPool) {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn the_platform_tier_signs_in_by_id(owner: PgPool) {
     let platform = OrgId::from_uuid(Uuid::from_u128(0xface));
-    let id: Uuid = sqlx::query_scalar(
-        "INSERT INTO users (display_name, roles, org_id, is_active) VALUES ('Vendor', '{}', $1, true) RETURNING id",
-    )
-    .bind(*platform.as_uuid())
-    .fetch_one(&owner)
-    .await
-    .unwrap();
+    sqlx::query("DELETE FROM users WHERE org_id=$1 AND roles @> ARRAY['SUPER_ADMIN']::text[]")
+        .bind(platform.as_uuid())
+        .execute(&owner)
+        .await
+        .unwrap();
+    let id: Uuid = sqlx::query_scalar("SELECT platform_ensure_cold_start_admin()")
+        .fetch_one(&owner)
+        .await
+        .unwrap();
     let mut key = SoftKey::enroll(&owner, platform, UserId::from_uuid(id)).await;
     let login: String = sqlx::query_scalar("SELECT login FROM user_sign_in_ids WHERE user_id = $1")
         .bind(id)
@@ -216,8 +218,16 @@ async fn the_platform_tier_signs_in_by_id(owner: PgPool) {
     let (status, started) = start(&app, Some(&format!("{login}@platform"))).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(allowed(&started), vec![key.credential_id().to_owned()]);
-    let (status, _) = finish(&app, &started, key.assert(&started["challenge"]).unwrap()).await;
-    assert_eq!(status, StatusCode::OK);
+    let (status, tokens) = finish(&app, &started, key.assert(&started["challenge"]).unwrap()).await;
+    assert_eq!(status, StatusCode::OK, "{tokens}");
+    assert_eq!(
+        tokens["passkey_profile"]["name"],
+        format!("{login}@platform")
+    );
+    assert_eq!(
+        tokens["passkey_profile"]["display_name"],
+        tokens["passkey_profile"]["name"]
+    );
 }
 
 /// A SUSPENDED or ARCHIVED customer tenant gets no session (security review of

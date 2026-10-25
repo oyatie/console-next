@@ -211,3 +211,30 @@ async fn legacy_acceptance_uses_current_hash_and_preserves_prior_versions(owner:
     )
     .await;
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn consent_document_edition_is_derived_from_the_published_document(pool: PgPool) {
+    let (store, _) = tenant(&pool).await;
+    publish(
+        &pool,
+        "raw-edition",
+        "# Stored service title\nExact stored text",
+        2,
+    )
+    .await;
+    sqlx::query("INSERT INTO terms_documents (version,kind,body,published_at,policy_url) VALUES ('raw-privacy','privacy_notice','저장된 고지 제목\n저장된 전문',now() - interval '1 day','https://example.invalid/privacy')")
+        .execute(&pool).await.unwrap();
+    let documents =
+        serde_json::to_value(store.published_documents().await.unwrap().unwrap()).unwrap();
+    let (body, date): (String, String) = sqlx::query_as("SELECT body,(published_at AT TIME ZONE 'UTC')::date::text FROM terms_documents WHERE kind='privacy_notice' ORDER BY published_at DESC,version DESC LIMIT 1")
+        .fetch_one(&pool).await.unwrap();
+    let title = body
+        .lines()
+        .find(|line| !line.trim().is_empty())
+        .unwrap()
+        .trim();
+    assert_eq!(documents["privacy"]["title"], title);
+    assert_eq!(documents["privacy"]["published_on"], date);
+    assert_eq!(documents["title"], "Stored service title");
+    assert_eq!(documents["privacy"]["body"], body);
+}

@@ -90,6 +90,7 @@ pub const USERS_PATH: &str = "/api/v1/users";
 /// Tenant people directory. Its router registration is intentionally private to
 /// the identity service until app-router and OpenAPI consolidation lands.
 pub const DIRECTORY_PEOPLE_PATH: &str = "/api/v1/directory/people";
+pub const PLATFORM_ME_PATH: &str = "/api/platform/users/me";
 pub const USERS_ME_PATH: &str = "/api/v1/users/me";
 pub const CONSOLE_ROLLOUT_PATH: &str = "/api/v1/console/rollout";
 pub const CONSOLE_ROLLOUT_OPT_IN_PATH: &str = "/api/v1/console/rollout/opt-in";
@@ -131,6 +132,7 @@ pub const IDENTITY_ROUTE_PATHS: &[&str] = &[
     USERS_PATH,
     DIRECTORY_PEOPLE_PATH,
     USERS_ME_PATH,
+    PLATFORM_ME_PATH,
     CONSOLE_ROLLOUT_PATH,
     CONSOLE_ROLLOUT_OPT_IN_PATH,
     CONSOLE_ROLLOUT_ORG_FLAG_PATH,
@@ -159,6 +161,7 @@ pub const IDENTITY_ROUTE_PATHS: &[&str] = &[
 ];
 
 pub fn router(state: IdentityRestState) -> Router {
+    let platform_profile = me::platform::router(state.clone());
     let verifier = state.jwt_verifier.clone();
     let pool = state.pool().clone();
     let router = Router::new()
@@ -220,4 +223,5 @@ pub fn router(state: IdentityRestState) -> Router {
     // for every authenticated route on this router, so adapter reads/writes run
     // scoped to the request's tenant.
     console_platform_request_context::with_request_context(router, verifier, pool)
+        .merge(platform_profile)
 }

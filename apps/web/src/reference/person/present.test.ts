@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, expect, test } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
-import { personLabel } from "./present";
+import { personLabel, personName } from "./present";
 
 beforeAll(() => loadCatalog("ko"));
+
+test("person names share a blank-aware catalog fallback", () => {
+  for (const name of [null, undefined, "", "   "]) expect(personName(name)).toBe("이름 미등록");
+  expect(personName(" 박관리자 ")).toBe("박관리자");
+  expect(personName("", "Name not set")).toBe("Name not set");
+});
 const a = { id: "account-a", employee_id: "person-a", display_name: "Namesake", employee_number: "E-1", employee_org_unit: "HR" };
 
 test("same names are marked only for distinct people, retaining number and primary placement", () => {

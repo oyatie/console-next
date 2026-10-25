@@ -643,6 +643,7 @@ mod tests {
             principal_kind: "TENANT_PERSON".into(),
             id: UserId::new(),
             display_name: "홍길동".to_owned(),
+            name_unset: None,
             sign_in_id: None,
             employee_id: None,
             employee_name: None,
@@ -663,10 +664,8 @@ mod tests {
             account_status: AccountStatus::Active,
             created_at: Timestamp::now_utc(),
         };
-        assert_eq!(
-            serde_json::to_value(&user).unwrap()["phone"],
-            "010-1234-5678"
-        );
+        let user_json = serde_json::to_value(&user).unwrap();
+        assert_eq!(user_json["phone"], "010-1234-5678");
         let person_json = serde_json::to_value(DirectoryPerson::from(user.clone())).unwrap();
         assert_directory_person_closed_json_keys(&person_json);
         let page_json = serde_json::to_value(DirectoryPage::from(UserPage {

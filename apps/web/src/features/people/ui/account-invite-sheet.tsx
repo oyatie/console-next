@@ -1,3 +1,4 @@
+import { personName } from "../../../reference/person/present";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { KeyRound } from "lucide-react";
@@ -78,7 +79,7 @@ export function InviteSheet({ employeeId, onClose, onIssued, onOpenAccount }: {
       createAccount({ display_name: displayName, employee_id: who?.id, roles: [], branch_ids: [], ...(loginValue.trim() ? { sign_in_id: normalizeLogin(loginValue) } : {}) }, key),
     invalidates: ["/api/v1/directory", "/api/v1/users"],
     onSuccess: (user) => {
-      const target = { id: user.id, name: user.display_name, signInId: user.sign_in_id };
+      const target = { id: user.id, name: personName(user.display_name), signInId: user.sign_in_id };
       setCreated(target);
       issue.mutate(target);
     },

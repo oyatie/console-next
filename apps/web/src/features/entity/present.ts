@@ -4,7 +4,7 @@ import type { LegalEntityState, Revision, WorkplaceKind, BusinessRegistration } 
 import { isMessageId, t } from "@console/i18n";
 import type { WithholdingTarget } from "@console/api/pending";
 import { brnChecksumOff, brnWarnings, kindsOfBrn, type BrnClass, type BrnFacts } from "./domain/brn";
-import { BIZ_KIND, labeled, VERIFICATION, codeText, DIRECTOR_ROLE, INSURANCE_STATUS, INSURER, ISSUE_REASON, label, RECORD_STATUS, REPRESENTATION, TAX_TYPE } from "../../lib/labels";
+import { BIZ_KIND, CORRECTION, INSURANCE_STATUS, ISSUE_REASON, RECORD_STATUS, TAX_TYPE, type Enum, labeled, VERIFICATION, codeText, DIRECTOR_ROLE, INSURER, label, REPRESENTATION } from "../../lib/labels";
 import { fmtDate } from "@console/i18n/format";
 import { phoneDisplay } from "../../lib/pure/formats";
 import type { CreateProblem } from "./domain/create";
@@ -13,6 +13,95 @@ import { OWNER } from "./domain/draft";
 import { fieldIssues, type CheckAnswer } from "./api";
 import { repsAfter, repsMode, type Reps } from "./domain/record-values";
 import { kindLabel } from "../../reference/entity/present";
+
+type HistoryField = { kind: "bool" | "date" | "phone" | "text" | "reference" | "directors" | "enum"; enum?: Enum; prefix?: string };
+/** Checked against the served revised-state schemas by history-schema.test.ts. */
+export const HISTORY_FIELDS: Readonly<Record<string, HistoryField>> = {
+  "english_name": { kind: "text" },
+  "name": { kind: "text" },
+  "display_name": { kind: "text" },
+  "representation_mode": { kind: "enum", enum: REPRESENTATION },
+  "representatives": { kind: "text" },
+  "additional_representatives": { kind: "text" },
+  "head_office_address": { kind: "text" },
+  "incorporated_on": { kind: "date" },
+  "fiscal_year_end_month": { kind: "text" },
+  "capital_won": { kind: "text" },
+  "directors": { kind: "directors" },
+  "vat_unit_mode": { kind: "enum", prefix: "entity.vat" },
+  "vat_unit_mode_basis": { kind: "enum", prefix: "entity.basis" },
+  "main_ksic_code": { kind: "text" },
+  "main_ksic_label": { kind: "text" },
+  "main_ksic_version": { kind: "text" },
+  "main_phone": { kind: "phone" },
+  "priority_support": { kind: "enum", prefix: "entityHistoryField.prioritySupport" },
+  "priority_support_basis": { kind: "enum", prefix: "entityHistoryField.prioritySupportBasis" },
+  "large_group_member": { kind: "bool" },
+  "classification_reason": { kind: "text" },
+  "trade_name": { kind: "text" },
+  "opened_on": { kind: "date" },
+  "business_address": { kind: "text" },
+  "business_types": { kind: "text" },
+  "unit_taxation": { kind: "bool" },
+  "tax_type": { kind: "enum", enum: TAX_TYPE },
+  "tax_office_code": { kind: "text" },
+  "tax_office_label": { kind: "text" },
+  "issue_reason_kind": { kind: "enum", enum: ISSUE_REASON },
+  "issue_reason_sub": { kind: "enum", enum: CORRECTION },
+  "issue_reason_as_printed": { kind: "text" },
+  "cert_issued_on": { kind: "date" },
+  "e_invoice_email": { kind: "text" },
+  "liquor_license_no": { kind: "text" },
+  "production_factor": { kind: "text" },
+  "co_owners": { kind: "text" },
+  "status": { kind: "enum", enum: RECORD_STATUS },
+  "status_since": { kind: "date" },
+  "status_until": { kind: "date" },
+  "address": { kind: "text" },
+  "mail_address": { kind: "text" },
+  "representative_name": { kind: "text" },
+  "main_product": { kind: "text" },
+  "phone": { kind: "phone" },
+  "fax": { kind: "phone" },
+  "mobile": { kind: "phone" },
+  "email": { kind: "text" },
+  "is_construction_site": { kind: "bool" },
+  "is_abstract": { kind: "bool" },
+  "not_registered_reason": { kind: "text" },
+  "withholding_mode": { kind: "enum", prefix: "entityHistoryField.withholding" },
+  "bulk_filed_on": { kind: "date" },
+  "independent_lsa_unit": { kind: "bool" },
+  "independent_lsa_evidence": { kind: "text" },
+  "insurance.status": { kind: "enum", enum: INSURANCE_STATUS },
+  "insurance.mgmt_no": { kind: "text" },
+  "insurance.established_on": { kind: "date" },
+  "insurance.unit_mode": { kind: "enum", prefix: "entityHistoryField.unitMode" },
+  "insurance.main_workplace_id": { kind: "reference" },
+  "insurance.nps_separate_application": { kind: "bool" },
+  "insurance.nhis_unit_workplace_code": { kind: "text" },
+  "insurance.nhis_branch_office_code": { kind: "text" },
+  "insurance.nhis_workplace_class": { kind: "enum", prefix: "entityHistoryField.nhisWorkplaceClass" },
+  "insurance.iaci_business_type_code": { kind: "text" },
+  "insurance.iaci_business_type_label": { kind: "text" },
+  "insurance.iaci_insurance_year": { kind: "text" },
+  "insurance.iaci_business_form": { kind: "enum", prefix: "entityHistoryField.iaciBusinessForm" },
+  "insurance.iaci_term_from": { kind: "date" },
+  "insurance.iaci_term_to": { kind: "date" },
+  "insurance.prime_contractor_mgmt_no": { kind: "text" },
+  "biz_kind": { kind: "enum", enum: BIZ_KIND },
+  "crn": { kind: "text" },
+  "brn": { kind: "text" },
+  "sub_serial": { kind: "text" },
+  "registration_id": { kind: "text" },
+  "same_address_as_registration": { kind: "bool" },
+  "reg_mode": { kind: "enum", prefix: "entityHistoryField.regMode" },
+  "effective_from": { kind: "text" },
+  "reason_code": { kind: "text" },
+  "not_registered_reason_code": { kind: "reference" },
+  "not_registered_reason_label": { kind: "text" },
+  "not_registered_reason_list_key": { kind: "reference" },
+  "not_registered_reason_version": { kind: "reference" },
+};
 
 /** A field problem in words, or undefined when there is none. */
 export const problemText = (p: Problem | undefined) => (p ? t(`entity.problem.${p}`) : undefined);
@@ -25,30 +114,32 @@ const INSURANCE_FIELD = /^insurance\.(NPS|NHIS|EI|IACI)\.(.+)$/;
 
 /** One changed field as read: its name, and enum values (an insurance status) by their labels. */
 export function changeLine(c: Revision["changes"][number]) {
+  if (c.field === "registration_id") return t("entityHistoryField.registration.changed");
   const m = INSURANCE_FIELD.exec(c.field);
   const value = (v: string | null | undefined) => (v == null ? "—" : historyValue(m?.[2] ? `insurance.${m[2]}` : c.field, v));
   const field = m
-    ? t("entity.history.insuranceField", { insurer: label(INSURER, m[1]!), field: codeText(`entity.history.field.insurance.${m[2]}`, m[2]!) })
-    : (fieldLabel(c.field) ?? c.field);
+    ? t("entity.history.insuranceField", { insurer: label(INSURER, m[1]!), field: fieldLabel(`insurance.${m[2]}`) ?? t("entity.refusal.field") })
+    : (fieldLabel(c.field) ?? t("entity.refusal.field"));
   return t("entity.history.change", { field, before: value(c.before), after: value(c.after) });
 }
-const PHONES = new Set(["main_phone", "phone", "fax", "mobile"]);
-/**
- * A recorded value as the user typed or chose it (company-24, worst-case-33): enums by their labels, phone numbers in the
- * domestic form (never E.164), dates in Korean; anything else as stored.
- */
+/** The same boolean value words apply to every boolean field definition. */
+const booleanText = (v: string) => v === "true" || v === "false" ? t(`entityHistoryField.bool.${v}`) : v;
+
+/** Typed history values use the field definition; free text stays as recorded. */
 export function historyValue(field: string, v: string) {
-  const f = field.split(/[[.]/)[0] === "insurance" ? field : field.split(/[[.]/)[0]!;
-  if (f === "insurance.status") return label(INSURANCE_STATUS, v);
-  if (f === "insurance.unit_mode") return codeText(`entity.history.unitMode.${v}`, v);
-  if (f === "representation_mode") return label(REPRESENTATION, v);
-  if (f === "status") return label(RECORD_STATUS, v);
-  if (f === "issue_reason_kind") return label(ISSUE_REASON, v);
-  if (f === "tax_type") return label(TAX_TYPE, v);
-  if (f === "vat_unit_mode") return codeText(`entity.vat.${v}`, v);
-  if (f === "vat_unit_mode_basis") return codeText(`entity.basis.${v}`, v);
-  if (PHONES.has(f)) return phoneDisplay(v);
-  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? fmtDate(v) : v;
+  const f = field.replace(/^insurance\.(?:NPS|NHIS|EI|IACI)\./, "insurance.").split("[")[0]!;
+  const definition = Object.hasOwn(HISTORY_FIELDS, f) ? HISTORY_FIELDS[f] : undefined;
+  switch (definition?.kind) {
+    case "bool": return booleanText(v);
+    case "date": return Number.isNaN(Date.parse(v)) ? v : fmtDate(v);
+    case "phone": return phoneDisplay(v);
+    case "reference": return t("entityHistoryField.reference.changed");
+    case "enum": return definition.enum ? label(definition.enum, v) : codeText(`${definition.prefix}.${v}`, v);
+    // shortcut: flattened names are ambiguous; use structured directors when history provides them.
+    case "directors": return v.replace(/(^|, )([A-Z_]+)(?= )/g, (_, prefix: string, role: string) => prefix + label(DIRECTOR_ROLE, role))
+      .replace(/ (\d{4}-\d{2}-\d{2})(?=, |$)/g, (_, d: string) => ` ${Number.isNaN(Date.parse(d)) ? d : fmtDate(d)}`);
+    default: return v;
+  }
 }
 /** A create refusal in words, or nothing. */
 export const problem = (p: CreateProblem | undefined) => (p ? t(`entityCreate.problem.${p}`) : undefined);
@@ -74,10 +165,21 @@ export const kindTaken = (kinds: readonly WorkplaceKind[], name: string, except?
 
 /** A recorded field's name in words (`business_types[0].sector` names business_types), or null when the catalogs have none. */
 export function fieldLabel(field: string) {
-  const f = field.split(/[[.]/)[0]!;
+  const f = field.startsWith("insurance.") ? field.replace(/^insurance\.(?:NPS|NHIS|EI|IACI)\./, "insurance.") : field.split(/[[.]/)[0]!;
+  const history = `entityHistoryField.${f}`;
+  if (isMessageId(history)) return t(history);
+  const aliases = {
+    priority_support: "entityRecord.vat.priority",
+    biz_kind: "entity.field.bizKind",
+    main_ksic_label: "entityRecord.vat.mainKsic",
+    co_owners: "entity.field.coOwners",
+    sub_serial: "workplace.field.subSerial",
+  } as const;
+  if (Object.hasOwn(aliases, f)) return t(aliases[f as keyof typeof aliases]);
   const own = `entityRecord.hf.${f}`;
   const shared = `entity.history.field.${f}`;
-  return isMessageId(own) ? t(own) : isMessageId(shared) ? t(shared) : null;
+  const extra = `entityHistoryField.${f}`;
+  return isMessageId(own) ? t(own) : isMessageId(shared) ? t(shared) : isMessageId(extra) ? t(extra) : null;
 }
 
 /**

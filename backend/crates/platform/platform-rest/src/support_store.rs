@@ -95,16 +95,18 @@ pub(super) async fn label(
     vendor: bool,
 ) -> Result<String, SupportError> {
     support::arm(tx, org).await?;
-    let sql = if vendor {
-        "SELECT u.display_name||' · '||o.name FROM person_accounts_current u JOIN organizations o ON o.id=u.org_id WHERE u.id=$1 AND u.org_id=$2"
-    } else {
-        "SELECT display_name FROM person_accounts_current WHERE id=$1 AND org_id=$2"
-    };
-    Ok(sqlx::query_scalar(sql)
-        .bind(user)
-        .bind(org.as_uuid())
-        .fetch_one(tx.as_mut())
-        .await?)
+    Ok(sqlx::query_scalar(
+        "SELECT COALESCE(NULLIF(btrim(u.display_name),''),s.login||'@'||o.slug) \
+         || CASE WHEN $3 THEN ' · '||o.name ELSE '' END \
+         FROM person_accounts_current u JOIN organizations o ON o.id=u.org_id \
+         JOIN user_sign_in_ids s ON s.user_id=u.id AND s.org_id=u.org_id AND s.retired_at IS NULL \
+         WHERE u.id=$1 AND u.org_id=$2",
+    )
+    .bind(user)
+    .bind(org.as_uuid())
+    .bind(vendor)
+    .fetch_one(tx.as_mut())
+    .await?)
 }
 
 pub(super) async fn step_up(

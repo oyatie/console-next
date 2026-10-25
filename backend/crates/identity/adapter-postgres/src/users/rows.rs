@@ -190,11 +190,15 @@ fn user_from_row_with_phone(
     let is_active: bool = row.try_get("is_active")?;
     let has_passkey: bool = row.try_get("has_passkey")?;
     let employee_id: Option<uuid::Uuid> = row.try_get("employee_id")?;
+    let display_name = row
+        .try_get::<Option<String>, _>("display_name")?
+        .unwrap_or_default();
     Ok(UserSummary {
         id: UserId::from_uuid(row.try_get("id")?),
         person_id: row.try_get("person_id")?,
         principal_kind: row.try_get("principal_kind")?,
-        display_name: row.try_get("display_name")?,
+        name_unset: display_name.trim().is_empty().then_some(true),
+        display_name,
         sign_in_id: row.try_get("sign_in_id")?,
         employee_id,
         employee_name: row.try_get("employee_name")?,

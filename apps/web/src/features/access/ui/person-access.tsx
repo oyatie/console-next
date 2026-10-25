@@ -5,7 +5,7 @@ import { ChevronLeft, Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { codeText } from "../../../lib/labels";
-import { personLabel } from "../../../reference/person/present";
+import { personLabel, personName } from "../../../reference/person/present";
 import { QueryState } from "../../../lib/react/query-state";
 import { readGroup } from "../../../lib/react/query-view";
 import { Banner } from "../../../ui/banner/banner";
@@ -41,7 +41,7 @@ function CanDo({ entries, order, grants, roots }: { entries: AccessEffectiveEntr
     if (seen.has(r.grant_id)) return t("access.person.source.same", { role: r.role_name_ko });
     seen.add(r.grant_id);
     const g = grants.find((x) => x.id === r.grant_id);
-    const by = ctx.accounts.find((a) => a.id === g?.granted_by)?.display_name ?? "";
+    const by = personName(ctx.accounts.find((a) => a.id === g?.granted_by)?.display_name);
     const reason = reasons.codes.find((c) => c.code === g?.reason_code)?.label ?? g?.reason_code ?? "";
     return t("access.person.source", { role: r.role_name_ko, by, on: g ? fmtDateTime(g.granted_at) : "", until: untilText(r.valid_to), reason });
   };
@@ -131,8 +131,8 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
                       <span className={s.src}>{scopeText(roots, g.scope)} · {periodText(g)}</span>
                     </span>
                     <span className={s.actions}>
-                      <Button variant="ghost" aria-label={t("access.change.end.label", { name: g.account_display_name ?? "", role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "end" })}>{t("access.change.mode.end")}</Button>
-                      <Button variant="ghost-danger" aria-label={t("access.change.revoke.label", { name: g.account_display_name ?? "", role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "revoke" })}>{t("access.change.mode.revoke")}</Button>
+                      <Button variant="ghost" aria-label={t("access.change.end.label", { name: personName(g.account_display_name), role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "end" })}>{t("access.change.mode.end")}</Button>
+                      <Button variant="ghost-danger" aria-label={t("access.change.revoke.label", { name: personName(g.account_display_name), role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "revoke" })}>{t("access.change.mode.revoke")}</Button>
                     </span>
                   </li>
                 ))}

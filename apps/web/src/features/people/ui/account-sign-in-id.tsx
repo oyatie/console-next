@@ -1,3 +1,4 @@
+import { personName } from "../../../reference/person/present";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isMessageId, t } from "@console/i18n";
@@ -78,8 +79,8 @@ function ChangeForm({ u, current, onDone }: { u: { id: string; display_name: str
     run: () =>
       changeSignInId(u.id, { login: normalizeLogin(next), effective_date: date, reason_code: reason!, ...(note.trim() ? { note: note.trim() } : {}) }),
     invalidates: ["/api/v1/directory", "/api/v1/users"],
-    announce: (r) => t("accounts.signInId.done", { name: u.display_name, id: r.sign_in_id }),
-    onSuccess: (r) => onDone(t("accounts.signInId.done", { name: u.display_name, id: r.sign_in_id })),
+    announce: (r) => t("accounts.signInId.done", { name: personName(u.display_name), id: r.sign_in_id }),
+    onSuccess: (r) => onDone(t("accounts.signInId.done", { name: personName(u.display_name), id: r.sign_in_id })),
   });
   const go = t("accounts.signInId.save");
   return (

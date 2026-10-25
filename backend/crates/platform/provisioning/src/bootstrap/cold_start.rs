@@ -93,13 +93,14 @@ async fn seed_cold_start_if_needed_tx(
         r#"
         SELECT id
         FROM users
-        WHERE display_name = 'Cold Start Admin'
+        WHERE org_id = $1
           AND roles @> ARRAY['SUPER_ADMIN']::TEXT[]
         ORDER BY id
         LIMIT 1
         FOR UPDATE
         "#,
     )
+    .bind(OrgId::platform().as_uuid())
     .fetch_optional(tx.as_mut())
     .await?;
     // An empty database (squashed baseline, no 0021/0036 rows) has no admin yet. This path

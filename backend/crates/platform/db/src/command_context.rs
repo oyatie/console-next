@@ -100,13 +100,13 @@ pub async fn prepare(
     if context.actor_display.is_none()
         && let Some(actor) = event.actor
     {
-        context.actor_display = sqlx::query_scalar(
+        context.actor_display = sqlx::query_scalar::<_, Option<String>>(
             "SELECT display_name FROM person_accounts_current WHERE id = $1 AND ($2::uuid IS NULL OR org_id=$2)",
         )
         .bind(actor.as_uuid())
         .bind(event.org_id.map(|id| *id.as_uuid()))
         .fetch_optional(tx.as_mut())
-        .await?;
+        .await?.flatten();
     }
     if event.action.as_str().ends_with(".refused")
         || event.action.as_str().ends_with(".denied")

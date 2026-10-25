@@ -13,6 +13,13 @@ properties:
   body:
     type: string
     description: Exact published UTF-8 text whose SHA-256 is returned.
+  title:
+    type: [string, 'null']
+    description: Title from the stored document heading.
+  published_on:
+    type: [string, 'null']
+    format: date
+    description: Edition date from the stored publication instant (UTC).
   privacy:
     type: object
     description: Required privacy notice from the same immutable store, including its legal review state.
@@ -25,6 +32,13 @@ properties:
         pattern: ^[a-f0-9]{64}$
       body:
         type: string
+      title:
+        type: [string, 'null']
+        description: Title from the stored document heading.
+      published_on:
+        type: [string, 'null']
+        format: date
+        description: Edition date from the stored publication instant (UTC).
       policy_url:
         type: string
       review_pending:

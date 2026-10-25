@@ -87,6 +87,7 @@ import { koWorkplace } from "./ko/workplace";
 import { koWorkplaceRegChange } from "./ko/workplace-reg-change";
 import { koCapture } from "./ko/capture";
 import { koEntityCreate } from "./ko/entity-create";
+import { koEntityHistoryField } from "./ko/entity-history-field";
 import { koEntityQuick } from "./ko/entity-quick";
 import { koEntityRecord } from "./ko/entity-record";
 import { koEntityRecordClose } from "./ko/entity-record-close";
@@ -197,6 +198,7 @@ export const ko = {
   ...koWorkplaceRegChange,
   ...koCapture,
   ...koEntityCreate,
+  ...koEntityHistoryField,
   ...koEntityQuick,
   ...koEntityRecord,
   ...koEntityRecordClose,
