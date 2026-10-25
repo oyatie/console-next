@@ -201,6 +201,7 @@ console-onboarding-adapter-postgres = { workspace = true }
 console-onboarding-rest = { workspace = true }
 console-orgchange-adapter-postgres = { workspace = true }
 console-orgchange-rest = { workspace = true }
+console-orgchange-domain = { workspace = true }
 console-docs-adapter-postgres = { workspace = true, optional = true }
 console-docs-rest = { workspace = true, optional = true }
 console-platform-request-context = { workspace = true }
@@ -254,7 +255,6 @@ uuid = { workspace = true }
 
 [dev-dependencies]
 console-entity-domain = { workspace = true }
-console-orgchange-domain = { workspace = true }
 console-platform-test-support = { path = "../crates/platform/test-support" }
 # auth_rest's financial step-up case compiles in every build (it runs with `financial`).
 console-financial-adapter-postgres = { workspace = true }
