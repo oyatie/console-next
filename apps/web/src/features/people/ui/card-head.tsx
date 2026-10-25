@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { useDocumentsServed } from "../../../reference/authz/ui/use-documents-served";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -56,7 +57,7 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
   const photo = c.personal.data?.photo?.url;
   const hanja = c.personal.data?.name_hanja;
   const items = c.events.data?.items ?? [];
-  const verbs = c.manage && e.status !== "EXITED" ? verbStates(d, items) : [];
+  const verbs = c.editable && e.status !== "EXITED" ? verbStates(d, items) : [];
   // people-self-33: on one's own record each personnel action stays listed, refused with the platform rule (the server offers none).
   const own = useOwnRecord(e.id);
   const acts: MenuEntry[] = verbs.map((v) => ({
@@ -106,7 +107,7 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
             <h1 id="person" className={s.name} tabIndex={-1}>{e.name}</h1>
             {hanja && <span className={s.hanja}>{hanja}</span>}
             <span className={s.empno}>{t("empCard.empno", { no: e.employee_number ?? t("empCard.empno.none") })}</span>
-            {c.manage && <FieldMark kind="inline" field={t("empCard.empno.field")} text={t("empCard.empno.change")} name={t("empCard.empno.change")} onPress={() => onAct("empno")} />}
+            {c.editable && <FieldMark kind="inline" field={t("empCard.empno.field")} text={t("empCard.empno.change")} name={t("empCard.empno.change")} onPress={() => onAct("empno")} />}
             {c.manage && <FieldMark kind="corTwo" field={t("empCard.empno.field")} onPress={() => onAct("fix:employee_number")} />}
             <Chip tone={status.tone}>{status.label}</Chip>
             {e.register_review_required && <Chip tone="warn">{t("roster.review.register")}</Chip>}
@@ -132,20 +133,13 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
             <span>· {t(c.setup ? "empCard.phase.setup" : "empCard.phase.op")}</span>
           </div>
         </div>
-        {e.status === "EXITED" && (
-          // Trunk's head said when the person left and led to the exit case: the card keeps both.
-          <p className={s.readOnly}>
-            {t("person.exited", { date: fmtDate(e.exit_date ? retirementDate(e.exit_date) : e.exit_date) })}
-            <Button variant="ghost" onClick={() => (onTab("card"), focusSoon("exit"))}>{t("person.exit.open")}</Button>
-          </p>
-        )}
         {!c.manage && e.status !== "EXITED" && (
           <p className={s.readOnly}>
             {t(c.request ? "person.readOnly.request" : "person.readOnly")}
             {c.request && <Button onClick={() => onAct("request")}>{t("person.request")}</Button>}
           </p>
         )}
-        {c.manage && (
+        {c.editable && (
           <div className={s.verbs} role="group" aria-label={t("empCard.verbs")}>
             {acts.length > 0 && <MenuButton primary label={t("empCard.verb.act")} icon={<MoveRight size={16} aria-hidden />} items={acts} onAction={onAct} />}
             <Button onClick={() => onAct("multi")}><Pencil size={16} aria-hidden /> {t("empCard.verb.correct")}</Button>
@@ -154,15 +148,29 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
             <MenuButton label={t("empCard.verb.more")} icon={<MoreHorizontal size={16} aria-hidden />} caret={false} items={more} onAction={onAct} />
           </div>
         )}
-        {(c.manage || c.users) && (
+        {c.readable && !c.editable && (
+          <div className={`${s.verbs} ${s.formerVerbs}`} role="group" aria-label={t("empCard.verbs")}>
+            <Button onClick={() => onAct("rehire")}>{t("register.rehire.title")}</Button>
+            <Button onClick={() => onAct("multi")}><Pencil size={16} aria-hidden /> {t("empCard.verb.correct")}</Button>
+            <Button onClick={() => onAct("print")}><Printer size={16} aria-hidden /> {t("empCard.verb.print")}</Button>
+            <Button onClick={() => onAct("cert")}><FileText size={16} aria-hidden /> {t("empCard.verb.cert")}</Button>
+          </div>
+        )}
+        {e.status !== "EXITED" && (c.readable || c.users) && (
           // CRUD: exit and registration cancel where the person is (the server says which applies and why not the other); an account invite
           // for someone with none yet.
           <div className={`${s.verbs} ${s.ends}`} role="group" aria-label={t("person.record.actions")}>
-            {c.manage && <EndActions id={e.id} onAct={onAct} onOpenCase={() => (onTab("card"), focusSoon("exit"))} />}
+            {c.readable && <EndActions id={e.id} onAct={onAct} onOpenCase={() => (onTab("card"), focusSoon("exit"))} />}
             {c.users && <span className={s.invite}><InviteEntry c={c} /></span>}
           </div>
         )}
       </div>
+      {e.status === "EXITED" && <div className={s.retention} role="note">
+        <span>{t("empCard.leave.exited", { date: fmtDate(e.exit_date ? retirementDate(e.exit_date) : e.exit_date), until: d.retention?.kept_until ? fmtDate(d.retention.kept_until) : t("exit.legal.review") })}</span>
+        {d.retention && <details><summary>{t("exit.legal.reason")}</summary><p>{[d.retention.rule.instrument, d.retention.rule.article].filter(Boolean).join(" ")}</p></details>}
+        {d.retention?.rule.release_disposition !== "RELEASED" && <Chip tone="warn">{t("exit.legal.review")}</Chip>}
+        <Button variant="ghost" onClick={() => (onTab("card"), focusSoon("exit"))}>{t("person.exit.open")}</Button>
+      </div>}
       <EmployeeWarnings warnings={d.warnings} />
       {/* The record's tabs are URLs (?tab=): route tabs, so Back returns to the tab and each one can be linked. */}
       <TabNav label={t("empCard.tabs")}>

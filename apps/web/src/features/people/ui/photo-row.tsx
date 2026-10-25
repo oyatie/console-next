@@ -37,7 +37,7 @@ export function PhotoRow({ c, quick }: { c: Card; quick: Quick }) {
       id="f-photo"
       label={label}
       mark={
-        c.manage && (
+        c.editable && (
           <RowActions
             field={label}
             edit={photo ? "edit" : "add"}

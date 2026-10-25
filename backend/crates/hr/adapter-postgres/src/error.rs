@@ -148,6 +148,12 @@ impl HrError {
             PgLeaveError::CommandUnavailable => Self::unavailable(
                 "leave command database is not configured; protected employee leave changes are unavailable",
             ),
+            PgLeaveError::Domain(error) if error.code == Some("employee_exited_read_only") => {
+                Self {
+                    code: "employee_exited_read_only",
+                    ..Self::from_kernel(error)
+                }
+            }
             PgLeaveError::Domain(error) => Self::from_kernel(error),
             PgLeaveError::ConcurrentModification => Self::from_kernel(KernelError::conflict(
                 "employee changed since it was read; reload before retrying the protected leave change",

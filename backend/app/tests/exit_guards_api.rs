@@ -109,7 +109,7 @@ async fn reason_and_written_notice_are_required_on_confirmation(pool: PgPool) {
         v["error"]["refusals"][0]["missing"],
         json!(["reason_text", "served_on", "method", "evidence_ref"])
     );
-    let (s,v)=ko(&c,"POST",&path,json!({"exit_reason_code":"DISCIPLINARY_DISMISSAL","signoffs":acks(),"dismissal_notice":{"reason_text":"합성 사유","served_on":" ","method":" ","evidence_ref":"synthetic"}})).await;
+    let (s,v)=ko(&c,"POST",&path,json!({"notice_disposition":{"kind":"PAY_IN_LIEU"},"exit_reason_code":"DISCIPLINARY_DISMISSAL","signoffs":acks(),"dismissal_notice":{"reason_text":"합성 사유","served_on":" ","method":" ","evidence_ref":"synthetic"}})).await;
     refusal(s, &v, 422, "notice_evidence_missing", "서면 통지");
     assert_eq!(
         v["error"]["refusals"][0]["missing"],

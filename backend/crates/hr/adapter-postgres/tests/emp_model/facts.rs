@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! E3/E4/E5 facts PATCH and the F5 probation confirmation.
 
 use console_hr_adapter_postgres::contract::RecordContractRequest;
@@ -199,4 +200,102 @@ async fn probation_is_dated_then_confirmed_once(pool: PgPool) {
             .status,
         409
     );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn former_employee_cannot_record_first_employment_facts(pool: PgPool) {
+    let f = fixture(pool, true).await;
+    exit_employee(&f).await;
+    let patch = ops(json!([
+        { "op": "test", "path": "/birth_date", "value": null },
+        { "op": "replace", "path": "/birth_date", "value": "1994-03-02" }
+    ]));
+    let error =
+        f.hr.patch_employment_facts(f.principal.clone(), f.employee, patch)
+            .await
+            .unwrap_err();
+    assert_eq!(
+        (error.status.as_u16(), error.code),
+        (409, "employee_exited_read_only")
+    );
+    assert_eq!(
+        f.hr.employment_facts(f.principal.clone(), f.employee)
+            .await
+            .unwrap()
+            .birth_date,
+        None
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn former_employee_cannot_confirm_probation(pool: PgPool) {
+    let f = fixture(pool, true).await;
+    f.hr.patch_employment_facts(
+        f.principal.clone(),
+        f.employee,
+        ops(json!([
+            { "op": "test", "path": "/employment/probation_end_date", "value": null },
+            { "op": "replace", "path": "/employment/probation_end_date", "value": "2026-11-30" }
+        ])),
+    )
+    .await
+    .unwrap();
+    exit_employee(&f).await;
+    let request = serde_json::from_value(json!({
+        "expected": [{ "path": "/employment/probation_end_date", "value": "2026-11-30" }]
+    }))
+    .unwrap();
+    let error =
+        f.hr.confirm_probation(f.principal.clone(), f.employee, request)
+            .await
+            .unwrap_err();
+    assert_eq!(
+        (error.status.as_u16(), error.code),
+        (409, "employee_exited_read_only")
+    );
+    assert_eq!(
+        f.hr.employment_facts(f.principal.clone(), f.employee)
+            .await
+            .unwrap()
+            .employment
+            .unwrap()
+            .probation_confirmed_at,
+        None
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn former_employee_cannot_record_contract(pool: PgPool) {
+    let f = fixture(pool, true).await;
+    exit_employee(&f).await;
+    let error =
+        f.hr.record_contract(
+            f.principal.clone(),
+            f.employee,
+            Uuid::new_v4(),
+            contract(ContractKind::OpenEnded, "2026-09-01", None),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        (error.status.as_u16(), error.code),
+        (409, "employee_exited_read_only")
+    );
+    assert!(
+        f.hr.employee_contracts(f.principal.clone(), f.employee)
+            .await
+            .unwrap()
+            .items
+            .is_empty()
+    );
+}
+
+async fn exit_employee(f: &crate::fixture::Fixture) {
+    sqlx::query(
+        "UPDATE employees SET employment_status='EXITED', exit_date='2026-12-01' WHERE id=$1",
+    )
+    .bind(f.employee)
+    .execute(&f.owner)
+    .await
+    .unwrap();
 }

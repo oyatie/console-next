@@ -4541,6 +4541,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/employees/{id}/exit-guards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read transactional exit rules before submitting */
+        get: operations["getEmployeeExitGuards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/employees/{id}/fixed-term": {
         parameters: {
             query?: never;
@@ -17086,6 +17103,13 @@ export interface components {
                 method?: ("IN_PERSON_SIGNED" | "CERTIFIED_MAIL" | "ELECTRONIC") | string;
                 evidence_ref?: string;
             };
+            /** @description HR tier only. A short dismissal notice requires pay in lieu or a register exception. REGISTER_EXCEPTION requires a registered ground_code and a nonblank evidence_ref, checked by the server. */
+            notice_disposition?: {
+                /** @enum {string} */
+                kind: "PAY_IN_LIEU" | "REGISTER_EXCEPTION";
+                ground_code?: string;
+                evidence_ref?: string;
+            };
             /** @description HR tier only (ignored by the HQ tier). TERMINATE requires all four acknowledgements — privacy_notice_ack, korean_labor_law_ack, payroll_cutoff_ack, retirement_settlement_ack; a missing one is 422 lifecycle_signoff_required naming it. */
             signoffs?: components["schemas"]["EmployeeLifecycleSignoffs"];
             settlement_input?: components["schemas"]["ExitSettlementInput"] | null;
@@ -17571,7 +17595,7 @@ export interface components {
             reason_code?: string | null;
             /** @description LEAVE_OF_ABSENCE only. YYYY-MM-DD, on or after effective_date. Required for CHILDCARE and MATERNITY (422 leave_return_date_required); optional for WORK_INJURY (산재 요양). */
             expected_return_date?: string | null;
-            /** @description CONTRACT_RENEWAL (required), or an EMPLOYMENT_TYPE_CHANGE to CONTRACT (required, the new contract's end; MR-24). YYYY-MM-DD, on or after effective_date. A renewal that takes fixed-term service past the statutory limit (기간제법 §4①, the register's FIXED_TERM_MAX_YEARS; 육아휴직 not counted) is 409 fixed_term_limit unless exception_id admits it. Over the limit on the hire-date fallback (no contract history) is allowed and flagged by GET /api/v1/employees/{id}/fixed-term. */
+            /** @description CONTRACT_RENEWAL (required), or an EMPLOYMENT_TYPE_CHANGE to CONTRACT (required, the new contract's end; MR-24). YYYY-MM-DD, on or after effective_date. A renewal that takes fixed-term service past the statutory limit (기간제법 §4①, the register's FIXED_TERM_MAX_YEARS; 육아휴직 not counted) is 409 fixed_term_limit unless exception_id admits it. Over the limit on the hire-date fallback (no contract history) is 409 fixed_term_basis_unconfirmed. Record history or an exception; read the basis with GET /api/v1/employees/{id}/fixed-term. */
             contract_end_date?: string | null;
             /** @description TRANSFER or GROUP_TRANSFER (E-S3b). TRANSFER - a 사업장 of the employee's own 법인 to move them to (전근); the employment_assignments row splits on effective_date. Without it, a to_org_unit_id placed at another 사업장 moves them there. A 사업장 of another 법인 is 422 transfer_cross_entity (field to_workplace_id; a 전적); no 법인 recorded is 409 employee_unassigned; a closed or voided 사업장 is 422 workplace_not_open; one that is not the unit's is 422 org_unit_at_other_workplace; the 사업장 they already work at with no unit change is 422 lifecycle_noop. GROUP_TRANSFER (required then) - a 사업장 of another 법인 (전적); one of the employee's own 법인 is 422 group_transfer_same_entity, a 사업장 outside the caller's grant set is 403 out_of_scope, and the rest refuse as for TRANSFER. */
             to_workplace_id?: components["schemas"]["Uuid"] | null;
@@ -18811,6 +18835,19 @@ export interface components {
             };
             /** @description Registration and detail reads, absent when empty. Current non-blocking worker notices; wage notices are returned only to managers. */
             warnings?: components["schemas"]["EmployeeCreateWarning"][];
+            /** @description Former employee retention from the statutory register; unknown coverage carries no date. */
+            retention?: {
+                /** Format: date */
+                kept_until: string | null;
+                rule: components["schemas"]["LegalRule"];
+            };
+            rehire_exit_case?: {
+                case_id: components["schemas"]["Uuid"];
+                status: string;
+                decision_final: boolean;
+                acknowledgement_required: boolean;
+                open_legs: string[];
+            };
         };
         EmployeeEmploymentDetail: {
             /** @enum {string} */
@@ -18841,6 +18878,13 @@ export interface components {
             /** @enum {string} */
             cancel_route: "DELETE" | "VOID";
             attestation_required: boolean;
+            /** @description The server's allowed registration_void basis; omitted when cancellation is refused. */
+            void_basis?: string;
+            /**
+             * Format: date
+             * @description Recorded first day, shown when the operator attests a mistaken historical registration.
+             */
+            recorded_hire_date?: string;
             register_confirmation_required: boolean;
             exit: components["schemas"]["EndOffer"];
             /** Format: uuid */
@@ -18880,20 +18924,15 @@ export interface components {
                 method: "IN_PERSON_SIGNED" | "CERTIFIED_MAIL" | "ELECTRONIC";
                 evidence_ref: string;
             } | null;
-            /** @description Protected leave periods computed from lifecycle events and the statutory register. */
-            readonly protected_periods: {
-                /** Format: uuid */
-                lifecycle_event_id: string;
-                leave_type: string;
-                /** Format: date */
-                leave_from: string;
-                /** Format: date */
-                leave_until: string | null;
-                /** Format: date */
-                protected_until: string | null;
-                instrument: string | null;
-                article: string | null;
-            }[];
+            /** @description The recorded pay-in-lieu or statutory exception disposition. REGISTER_EXCEPTION requires a registered ground_code and a nonblank evidence_ref, checked by the server. */
+            readonly notice_disposition?: {
+                /** @enum {string} */
+                kind: "PAY_IN_LIEU" | "REGISTER_EXCEPTION";
+                ground_code?: string;
+                evidence_ref?: string;
+            } | null;
+            readonly notice_pay?: components["schemas"]["NoticePay"] | null;
+            protected_periods: components["schemas"]["ProtectedExitPeriod"][];
             reported_by: components["schemas"]["Uuid"];
             /** @description Display name of `reported_by`, resolved server-side within the tenant; null when unset or unknown. */
             reported_by_name: string | null;
@@ -20985,6 +21024,16 @@ export interface components {
             /** @enum {string} */
             key: "confirm_exit" | "confirm_exit_hq" | "prepare_settlement" | "cancel_exit" | "reject_exit";
         };
+        ExitGuards: {
+            protected_periods: components["schemas"]["ProtectedExitPeriod"][];
+            notice_required: boolean;
+            refusal_code: string | null;
+            notice_pay: components["schemas"]["NoticePay"] | null;
+            protection_rules?: {
+                leave_type: string;
+                rule: components["schemas"]["LegalRule"];
+            }[];
+        };
         ExitSettlementDeadline: {
             /**
              * @description FINAL_PAY - 금품청산 (final wages, 남은 연차 수당, every 금품). SEVERANCE_PAY - 퇴직금.
@@ -22713,6 +22762,23 @@ export interface components {
         LegalHoldState: "CLEAR" | "ACTIVE";
         /** @enum {string} */
         LegalHoldStatus: "ACTIVE" | "RELEASED";
+        LegalRule: {
+            code: string;
+            /** Format: int64 */
+            value: number | null;
+            unit: string;
+            instrument: string | null;
+            article: string | null;
+            source_url: string | null;
+            retrieved_on: string | null;
+            provenance: string | null;
+            /** @description The register's legal review state; HOLD remains subject to qualified review. */
+            release_disposition: string;
+            exception_grounds: {
+                code: string;
+                label_ko: string;
+            }[];
+        };
         LifecycleCase: {
             /** Format: uuid */
             id: string;
@@ -23471,6 +23537,21 @@ export interface components {
              * @description 수령확인 timestamp; null until the caller acknowledges.
              */
             acknowledged_at: string | null;
+        };
+        NoticePay: {
+            /** @description Whether pay in lieu is owed; null when its statutory basis cannot be determined. */
+            owed: boolean | null;
+            /** Format: int64 */
+            notice_days: number | null;
+            /** Format: int64 */
+            required_days: number | null;
+            /** Format: int64 */
+            gap_days: number | null;
+            rule: components["schemas"]["LegalRule"];
+            minimum_service_rule: components["schemas"]["LegalRule"];
+            /** Format: int64 */
+            amount_won: number | null;
+            unavailable_reason: string | null;
         };
         NoticeProgress: {
             /** Format: int64 */
@@ -26108,6 +26189,20 @@ export interface components {
             cvar95: number;
             assumptions: components["schemas"]["ProjectionAssumptions"];
         };
+        ProtectedExitPeriod: {
+            /** Format: uuid */
+            lifecycle_event_id: string;
+            leave_type: string;
+            /** Format: date */
+            leave_from: string;
+            /** Format: date */
+            leave_until: string | null;
+            /** Format: date */
+            protected_until: string | null;
+            instrument: string | null;
+            article: string | null;
+            rule?: components["schemas"]["LegalRule"] | null;
+        };
         PublishRecruitPostingRequest: {
             /** @description The publisher's exposure-scope attestation; false fails the preflight gate. */
             attest_exposure_scope: boolean;
@@ -26897,6 +26992,11 @@ export interface components {
             rationale?: string | null;
         };
         RehireEmployeeRequest: {
+            /**
+             * @description Acknowledge remaining settlement after a final exit decision. Never admits HR_CONFIRMED.
+             * @default false
+             */
+            acknowledge_open_exit_case: boolean;
             /**
              * Format: date
              * @description The new period's first day, after the last exit date. After today (KST) the person is PRE_HIRE until a SCHEDULED ONBOARD applies on it.
@@ -38618,9 +38718,41 @@ export interface operations {
             };
         };
     };
+    getEmployeeExitGuards: {
+        parameters: {
+            query: {
+                effective_exit_date: string;
+                exit_reason_code?: string;
+                dismissal_notice_served_on?: string;
+            };
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Same rule inputs and protected-period refusal as confirmation; written notice announced only. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExitGuards"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     getEmployeeFixedTerm: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Proposed renewal end; only unexpired, unconsumed recorded or approved exceptions for this exact payload are offered. */
+                contract_end_date?: string;
+            };
             header?: never;
             path: {
                 id: components["schemas"]["Uuid"];
@@ -38636,6 +38768,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        available_exceptions?: {
+                            id: components["schemas"]["Uuid"];
+                            /** @enum {string} */
+                            ground_code: "PROJECT_COMPLETION" | "ABSENCE_COVER" | "STUDY_OR_TRAINING" | "OLDER_WORKER" | "PROFESSIONAL" | "GOVERNMENT_JOB_PROGRAM" | "DECREE_LISTED";
+                            /** @description Provision from the registered FixedTermExemption ground. */
+                            basis: string;
+                            note: string | null;
+                        }[];
+                        rule?: components["schemas"]["LegalRule"] | null;
                         applies: boolean;
                         cumulative_days: number | null;
                         /**

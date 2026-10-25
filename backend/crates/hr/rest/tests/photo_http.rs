@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! MR-34 사진 over HTTP with a stand-in object store: no store is 503, the
 //! issue answers a presigned PUT without the key, the confirm HEADs the
@@ -5,6 +6,8 @@
 //! GET once the photo is set through the correction path. The adapter gate:
 //! a 사진 only from a confirmed upload of the same employee.
 
+#[path = "photo_http/former.rs"]
+mod former;
 #[path = "../../adapter-postgres/tests/support/mod.rs"]
 mod support;
 

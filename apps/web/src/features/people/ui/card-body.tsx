@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { useDocumentsServed } from "../../../reference/authz/ui/use-documents-served";
 import { useEffect, useState } from "react";
 import { focusSoon } from "../../../lib/react/announce";
@@ -67,7 +68,7 @@ export function CardBody({ c, quick, act, onAct, onTab, onJump }: { c: Card; qui
   }, [hl]);
   const jump = onJump;
   const fix = (field: string) => onAct(field === "multi" ? "multi" : `fix:${field}`);
-  if (!c.manage)
+  if (!c.readable)
     // A reader (BW-17): placement and its history, the rest said to be closed to them, never shown as empty.
     return (
       <div className={s.rec}>

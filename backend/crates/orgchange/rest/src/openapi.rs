@@ -530,6 +530,13 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/employees/{id}/exit-guards",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__employees__id__exit-guards.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employees/{id}/fixed-term",
         operations: &[Operation {
             method: "get",
@@ -1602,6 +1609,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/ExitCaseNextAction.yaml"),
     },
     NamedYaml {
+        name: "ExitGuards",
+        body: include_str!("../openapi/schemas/ExitGuards.yaml"),
+    },
+    NamedYaml {
         name: "ExitSettlementDeadline",
         body: include_str!("../openapi/schemas/ExitSettlementDeadline.yaml"),
     },
@@ -1662,6 +1673,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/LeaveBalanceSummary.yaml"),
     },
     NamedYaml {
+        name: "LegalRule",
+        body: include_str!("../openapi/schemas/LegalRule.yaml"),
+    },
+    NamedYaml {
         name: "LifecycleCase",
         body: include_str!("../openapi/schemas/LifecycleCase.yaml"),
     },
@@ -1684,6 +1699,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "LifecycleTemplateItem",
         body: include_str!("../openapi/schemas/LifecycleTemplateItem.yaml"),
+    },
+    NamedYaml {
+        name: "NoticePay",
+        body: include_str!("../openapi/schemas/NoticePay.yaml"),
     },
     NamedYaml {
         name: "OrgChangeDecisionRequest",
@@ -1804,6 +1823,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "PersonRecordVeteran",
         body: include_str!("../openapi/schemas/PersonRecordVeteran.yaml"),
+    },
+    NamedYaml {
+        name: "ProtectedExitPeriod",
+        body: include_str!("../openapi/schemas/ProtectedExitPeriod.yaml"),
     },
     NamedYaml {
         name: "RehireEmployeeRequest",

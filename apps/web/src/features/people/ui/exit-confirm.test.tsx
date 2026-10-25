@@ -8,6 +8,7 @@ import { commitLabel } from "../../../ui/composer/actions";
 import type { StepFrame } from "./exit-foot";
 import { ConfirmForm } from "./exit-confirm";
 
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { protected_periods: [] } }), keepPreviousData: (data: unknown) => data }));
 vi.mock("../../../lib/pure/today", () => ({ todayKst: () => "2026-10-24" }));
 vi.mock("./use-exit-command", () => ({ useExitCommand: () => ({ locked: false }) }));
 vi.mock("./exit-foot", () => ({ StepFrame: (p: ComponentProps<typeof StepFrame>) => <>{p.consequence}<Button>{commitLabel(p.action)}</Button></> }));

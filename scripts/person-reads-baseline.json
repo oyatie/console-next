@@ -28,7 +28,6 @@
   "backend/crates/hr/adapter-postgres/src/directory/create_checks.rs:employees.name:18f3e4ea37b4bbb12789": 1,
   "backend/crates/hr/adapter-postgres/src/directory/read_warnings.rs:employees.name:22848c9469460663af2e": 1,
   "backend/crates/hr/adapter-postgres/src/exits/queries.rs:employees.name:3d8fc1375490890600c6": 1,
-  "backend/crates/hr/adapter-postgres/src/exits/queries.rs:users.display_name:ab57f826cc67fffc7f57": 1,
   "backend/crates/hr/adapter-postgres/src/exits/store.rs:employees.name:399eef37690c7c5f6389": 1,
   "backend/crates/hr/adapter-postgres/src/import/rollback_plan.rs:employees.birth_date,employees.name:838728d5c6afbe6a3769": 1,
   "backend/crates/hr/adapter-postgres/src/import/run_record.rs:users.display_name:eaf90540ec21d6bf24c9": 1,

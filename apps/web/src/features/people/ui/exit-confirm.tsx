@@ -1,6 +1,6 @@
 import { retirementDate } from "../domain/employment";
 import { useId, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
@@ -10,7 +10,7 @@ import { TextArea } from "../../../ui/field/text-area";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { useCan } from "../../../reference/authz/ui/use-can";
-import { confirmExit, eventsQuery } from "../api";
+import { confirmExit, eventsQuery, exitGuardsQuery } from "../api";
 import { blockingSchedules, EMPTY_NOTICE, noticeMissing, protectedLines, EXIT_ACKS, type NoticeDraft, type Effect } from "../domain/exits";
 import { OpsExitNote } from "./account-link-card";
 import { CaseFacts } from "./exit-facts";
@@ -21,7 +21,7 @@ import { ExitGuardFields } from "./exit-notice";
 import s from "./exit.module.css";
 
 type Case = components["schemas"]["EmployeeExitCase"];
-type Draft = { note: string; acks: Record<string, boolean>; reason: string | null; notice: NoticeDraft };
+type Draft = { note: string; acks: Record<string, boolean>; reason: string | null; notice: NoticeDraft; disposition?: components["schemas"]["ConfirmEmployeeExitCaseRequest"]["notice_disposition"] };
 const MEMO_MAX = 1000;
 const EMPTY: Draft = { note: "", acks: {}, reason: null, notice: EMPTY_NOTICE };
 /** Keep unsaved case edits when the user leaves to withdraw a blocking reservation and returns. */
@@ -51,10 +51,15 @@ export function ConfirmForm({ c, hq, aside, sheet, stale, follow, onDone }: {
   const selectedClass = useExitClass(reason);
   const involuntary = selectedClass?.involuntary ?? c.involuntary;
   const noticeRequired = selectedClass?.notice_required ?? c.notice_required;
-  const periods = protectedLines(c);
+  const guards = useQuery({ ...exitGuardsQuery(c.employee_id, c.effective_exit_date, reason, notice.served_on), enabled: !hq, placeholderData: keepPreviousData });
+  const periods = guards.data?.protected_periods ?? protectedLines(c);
+  const pay = guards.data?.notice_pay;
+  const needsDisposition = !hq && noticeRequired && pay?.owed !== false;
+  const dispositionMissing = needsDisposition && (!draft.disposition || (draft.disposition.kind === "REGISTER_EXCEPTION" && (!draft.disposition.ground_code || !draft.disposition.evidence_ref?.trim())));
+
   const protectedBlock = !hq && involuntary && periods.length > 0;
   const missingNotice = !hq && noticeRequired ? noticeMissing(notice, c.effective_exit_date) : [];
-  const blockReason = protectedBlock ? t("exit.error.exit_protected_period") : !hq && !reason ? t("exit.error.exit_reason_required") : missingNotice.length ? t("exit.notice.required") : null;
+  const blockReason = protectedBlock ? t("exit.error.exit_protected_period") : !hq && !reason ? t("exit.error.exit_reason_required") : missingNotice.length ? t("exit.notice.required") : dispositionMissing ? t("exit.error.dismissal_notice_short") : !hq && (guards.isPending || guards.isError || pay?.owed === null) ? t("exit.legal.review") : null;
   const [tried, setTried] = useState(false);
   const formId = useId();
   const name = c.employee_name;
@@ -63,13 +68,13 @@ export function ConfirmForm({ c, hq, aside, sheet, stale, follow, onDone }: {
   const run = useExitCommand({
     caseId: c.id,
     check: hq ? "confirm_exit_hq" : "confirm_exit",
-    run: () => confirmExit(c.id, { hq_confirmation: hq, exit_reason_code: hq ? undefined : reason ?? undefined, dismissal_notice: !hq && noticeRequired ? { ...notice, method: notice.method as "IN_PERSON_SIGNED" | "CERTIFIED_MAIL" | "ELECTRONIC" } : undefined, note: note.trim() || undefined, signoffs: hq ? undefined : (Object.fromEntries(EXIT_ACKS.map((k) => [k, Boolean(acks[k])])) as Record<(typeof EXIT_ACKS)[number], boolean>) }),
+    run: () => confirmExit(c.id, { hq_confirmation: hq, exit_reason_code: hq ? undefined : reason ?? undefined, dismissal_notice: !hq && noticeRequired ? { ...notice, method: notice.method as "IN_PERSON_SIGNED" | "CERTIFIED_MAIL" | "ELECTRONIC" } : undefined, notice_disposition: !hq && noticeRequired ? draft.disposition : undefined, note: note.trim() || undefined, signoffs: hq ? undefined : (Object.fromEntries(EXIT_ACKS.map((k) => [k, Boolean(acks[k])])) as Record<(typeof EXIT_ACKS)[number], boolean>) }),
     onSuccess: (out) => {
       drafts.delete(slot);
       onDone(t(hq ? "exit.hqConfirmed" : out.exit_event_state === "SCHEDULED" ? "exit.hrConfirmed.scheduled" : "exit.hrConfirmed", { name, date }), c.id);
     },
   });
-  const missing = hq ? 0 : EXIT_ACKS.filter((k) => !acks[k]).length + Number(!reason) + missingNotice.length;
+  const missing = hq ? 0 : EXIT_ACKS.filter((k) => !acks[k]).length + Number(!reason) + missingNotice.length + Number(dispositionMissing);
   const consequence = t(hq ? "exit.hq.consequence" : scheduled ? "exit.hr.consequence.scheduled" : "exit.hr.consequence", { name, date });
   const locked = run.locked || Boolean(stale);
   return (
@@ -77,10 +82,11 @@ export function ConfirmForm({ c, hq, aside, sheet, stale, follow, onDone }: {
       formId={formId}
       onSubmit={() => {
         setTried(true);
-        if (missing === 0 && !protectedBlock) run.submit(undefined);
+        if (missing === 0 && !blockReason) run.submit(undefined);
         else focusFirstInvalid(formId);
       }}
       sheet={sheet}
+      loading={!hq && guards.isPending}
       run={run}
       stale={stale}
       follow={follow}
@@ -109,7 +115,7 @@ export function ConfirmForm({ c, hq, aside, sheet, stale, follow, onDone }: {
       <fieldset className={s.group} disabled={locked}>
         <CaseFacts c={c} full={!hq} />
         {!hq && <Blocking c={c} />}
-        {!hq && <ExitGuardFields c={c} reason={reason} onReason={(nextReason) => setDraft({ ...draft, reason: nextReason })} involuntary={involuntary} noticeRequired={noticeRequired} value={notice} onChange={(nextNotice) => setDraft({ ...draft, notice: nextNotice })} tried={tried} />}
+        {!hq && <ExitGuardFields c={{ ...c, protected_periods: [...periods] }} reason={reason} onReason={(nextReason) => setDraft({ ...draft, reason: nextReason })} involuntary={involuntary} noticeRequired={noticeRequired} pay={pay} disposition={draft.disposition} onDisposition={(disposition) => setDraft({ ...draft, disposition })} value={notice} onChange={(nextNotice) => setDraft({ ...draft, notice: nextNotice })} tried={tried} />}
         <Field label={t("exit.field.confirmMemo")} required={false} hint={t("exit.field.count", { count: note.length, max: MEMO_MAX })}>
           {(p) => <TextArea {...p} maxLength={MEMO_MAX} value={note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />}
         </Field>

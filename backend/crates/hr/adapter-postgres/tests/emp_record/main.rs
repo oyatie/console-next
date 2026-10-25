@@ -12,6 +12,7 @@ mod access;
 mod company;
 mod entries;
 mod fixture;
+mod former;
 mod import;
 mod restricted;
 mod restricted_holder;

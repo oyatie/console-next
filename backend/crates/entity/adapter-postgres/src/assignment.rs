@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! Employment ↔ 법인/사업장 by id, the 「회사 이름 정리」 cleanup, and 사업장 void.
 
 use console_entity_application::{
@@ -94,6 +95,10 @@ impl PgEntityStore {
                     .await?;
                 if status.is_none() {
                     return Err(Refusal::field("employee_id", "employee_not_found").into());
+                }
+                if status.as_deref() == Some("EXITED") {
+                    return Err(Refusal::conflict("employee_exited_read_only",
+                        "a former employee's record can only be changed through a governed correction").into());
                 }
                 let open = sqlx::query(
                     "SELECT id, valid_from, legal_entity_id, workplace_id FROM employment_assignments \

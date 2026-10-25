@@ -130,7 +130,9 @@ export function ActHost({ d, act, back, events, onClose, onOpen, onRecorded }: {
   if (mine === "menu") return <LifecycleMenu d={d} verbs={verbStates(d, events.data?.items ?? [])} setup={setup} onOpen={(next) => onOpen(next)} onClose={onClose} />;
   // A rehire (spec E3-rehire) opens from a retained exit; anyone else is told why.
   if (mine === "rehire")
-    return e.status === "EXITED" ? (
+    return e.status === "EXITED" && d.rehire_exit_case?.decision_final === false ? (
+      <div className={s.notice} role="status"><strong>{t("exit.error.rehire_exit_case_open")}</strong><Button onClick={onClose}>{t("person.act.close")}</Button></div>
+    ) : e.status === "EXITED" ? (
       <RehireSheet d={d} onClose={onClose} onDone={(message) => onRecorded({ message, eventId: "" })} />
     ) : (
       <div className={s.notice} role="status"><strong>{t("register.rehire.notExited")}</strong><Button variant="ghost" onClick={onClose}>{t("person.act.close")}</Button></div>

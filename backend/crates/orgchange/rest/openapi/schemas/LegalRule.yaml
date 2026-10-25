@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [code, value, unit, instrument, article, source_url, retrieved_on, provenance, release_disposition, exception_grounds]
+properties:
+  code:
+    type: string
+  value:
+    type: [integer, 'null']
+    format: int64
+  unit:
+    type: string
+  instrument:
+    type: [string, 'null']
+  article:
+    type: [string, 'null']
+  source_url:
+    type: [string, 'null']
+  retrieved_on:
+    type: [string, 'null']
+  provenance:
+    type: [string, 'null']
+  release_disposition:
+    type: string
+    description: The register's legal review state; HOLD remains subject to qualified review.
+  exception_grounds:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [code, label_ko]
+      properties:
+        code:
+          type: string
+        label_ko:
+          type: string

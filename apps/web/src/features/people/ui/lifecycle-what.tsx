@@ -28,7 +28,9 @@ type Detail = components["schemas"]["EmployeeDetail"];
  * The sheet's "what" section: the target of each kind of act (unit, title or position, leave facts, return, new
  * contract end). A correction keeps the dates a second person must approve (the return date, the contract end).
  */
-export function LifecycleWhat({ detail, kind, appointMode, v, set, today, bounds, lastLeave, currentTitle, contractEnd, show, note, correcting, what, dateSlot, tried }: {
+export function LifecycleWhat({ detail, kind, appointMode, v, set, today, bounds, lastLeave, currentTitle, contractEnd, show, note, correcting, what, dateSlot, tried, onOpen }: {
+  onOpen: (act: string) => void;
+  onClose: () => void;
   detail: Detail;
   kind: Verb;
   appointMode?: "role" | "job" | "all";
@@ -80,7 +82,7 @@ export function LifecycleWhat({ detail, kind, appointMode, v, set, today, bounds
           />
         )}
         {kind === "LEAVE_OF_ABSENCE" && (
-          <LeaveFields
+          <LeaveFields employeeId={e.id}
             start={v.date}
             today={today}
             startSlot={dateSlot}
@@ -103,14 +105,18 @@ export function LifecycleWhat({ detail, kind, appointMode, v, set, today, bounds
         )}
         {kind === "CONTRACT_RENEWAL" && (
           <RenewalFields
+            onConvert={() => onOpen("EMPLOYMENT_TYPE_CHANGE")}
+            onNoRenewal={() => onOpen("exit.contract_end")}
+            exceptionId={v.exceptionId ?? ""}
+            onException={(exceptionId) => set({ exceptionId })}
             employeeId={e.id}
             contractEnd={contractEnd}
             start={v.date}
             today={today}
             bounds={bounds}
             end={v.endDate}
-            onEnd={(endDate) => set({ endDate })}
-            onPeriod={(date, endDate) => set({ date, endDate })}
+            onEnd={(endDate) => set({ endDate, exceptionId: "" })}
+            onPeriod={(date, endDate) => set({ date, endDate, exceptionId: "" })}
             error={show("endDate") ? t("lifecycle.renewal.endMissing") : undefined}
             locked={correcting}
           />

@@ -9,6 +9,7 @@ export type Draft = {
   leaveType: string | null;
   returnDate: string;
   endDate: string;
+  exceptionId?: string;
   comment: string;
   acks: Record<string, boolean>;
   /** BW-07 reason code of a transfer or promotion (the comment is its note). */

@@ -294,8 +294,11 @@ export type NewEmployee = { name: string; number?: string; unit?: string; positi
  * opens their record from the roster by the 사번 the receipt names.
  */
 export async function registerEmployee(admin: Page, e: NewEmployee, c: Pick<Clicks, "click" | "select"> = plain) {
+  const registered = admin.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/employees" && response.request().method() === "POST");
   await submitRegistration(admin, e, c);
+  expect((await registered).ok()).toBe(true);
   await expect(receiptOf(admin, e.name)).toBeVisible();
+  await routeReady(admin, "/people");
   await openRegistered(admin, e.name, e.number);
   await expect(admin.getByRole("heading", { name: new RegExp(e.name), level: 1 })).toBeVisible();
 }

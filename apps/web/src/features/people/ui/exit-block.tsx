@@ -38,7 +38,7 @@ const route = getRouteApi("/app/people/$id");
 const parse = (act?: string): { key: "report" } | { key: Key; caseId: string } | null => {
   const m = act?.match(/^exit\.([a-z_]+)(?::(.+))?$/);
   if (!m) return null;
-  return m[1] === "report" ? { key: "report" } : m[2] ? { key: m[1] as Key, caseId: m[2] } : null;
+  return (m[1] === "report" || m[1] === "contract_end") ? { key: "report" } : m[2] ? { key: m[1] as Key, caseId: m[2] } : null;
 };
 
 /**
@@ -175,7 +175,7 @@ function ActSheet({ act, want, target, employee, canReport, loaded, onClose, onD
         {null}
       </Composer>
     );
-  if (report) return <ReportForm employee={employee} onClose={onClose} onDone={onDone} />;
+  if (report) return <ReportForm contractEnd={act === "exit.contract_end"} employee={employee} onClose={onClose} onDone={onDone} />;
   const sheet = { title: t(`exit.action.${key!}`), subtitle: whoLine(employee), onClose };
   if (key && isForward(key)) return <CaseStep k={key} c={target!} sheet={sheet} onDone={onDone} />;
   return <CloseForm c={target!} reject={key === "reject_exit"} onClose={onClose} onDone={onDone} />;

@@ -41,6 +41,10 @@ pub struct EmployeeEndOptions {
     pub cancel_route: &'static str,
     /// The void needs 「근무한 적 없음」 (anyone but PRE_HIRE).
     pub attestation_required: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub void_basis: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recorded_hire_date: Option<String>,
     /// The SETUP delete of an EXITED person inside the 명부 period needs
     /// 「원본 명부 보관」 confirmed.
     pub register_confirmation_required: bool,
@@ -82,12 +86,13 @@ impl HrService {
                 let setup = phase.as_deref() == Some("SETUP");
                 let locked = lock(tx, org, employee_id).await?;
                 let today = today_kst(tx).await?;
-                let (cancel, register) = if setup {
+                let (cancel, register, basis) = if setup {
                     let years =
                         int_setting(tx, org, SettingKey::RetentionLaborEmployeeRegister).await?;
-                    let years = i32::try_from(years).unwrap_or(3);
+                    let years = i32::try_from(years)
+                        .map_err(|_| HrError::internal("retention setting is out of range"))?;
                     let needs = check_setup_delete(locked.exit_on(), today, years, false).is_err();
-                    (None, needs)
+                    (None, needs, None)
                 } else {
                     let window = int_setting(tx, org, SettingKey::PeopleVoidWindow).await?;
                     let facts = VoidFacts {
@@ -95,11 +100,11 @@ impl HrService {
                         registered_on: locked.registered_on,
                         has_work_records: locked.has_work_records,
                     };
+                    let basis = void_basis(facts, today, window, true);
                     (
-                        void_basis(facts, today, window, true)
-                            .err()
-                            .and_then(|e| e.code),
+                        basis.as_ref().err().and_then(|e| e.code),
                         false,
+                        basis.ok().map(|b| b.as_str()),
                     )
                 };
                 let open_case: Option<Uuid> = sqlx::query_scalar(
@@ -148,7 +153,9 @@ impl HrService {
                     phase: if setup { "SETUP" } else { "OPERATING" },
                     cancel: EndOffer::of(cancel),
                     cancel_route: if setup { ROUTE_SETUP } else { ROUTE_VOID },
-                    attestation_required: !setup && locked.status != "PRE_HIRE",
+                    attestation_required: !setup && locked.status != "PRE_HIRE" && cancel.is_none(),
+                    void_basis: basis.filter(|_| cancel.is_none()),
+                    recorded_hire_date: locked.recorded_hire_date,
                     register_confirmation_required: register,
                     exit: EndOffer::of(exit),
                     open_exit_case_id: open_case,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // CRUD: how a department, workplace, entity or employee record ends, and why the other way is not offered.
 export const enCrud = {
   "crud.menu.endSite": "Delete · close",
@@ -41,9 +42,9 @@ export const enCrud = {
   "crud.refused.record_has_units": "Departments are under it · delete the unused ones first",
   "crud.refused.record_in_use": "People or departments are still placed here · transfer or move them first",
   "crud.refused.record_never_used": "A record never used is deleted, not closed",
-  "crud.refused.employee_void_has_work_records": "There are work records (an exit case, 발령, attendance, payroll) · process an exit instead",
-  "crud.refused.employee_void_attestation_required": "Confirm the person never worked to cancel",
-  "crud.refused.employee_void_not_eligible": "Registered too long ago to cancel · process an exit instead",
+  "crud.refused.employee_void_has_work_records": "The work history must be retained, so this registration cannot be cancelled",
+  "crud.refused.employee_void_attestation_required": "Confirm this is a mistaken registration with no work performed before cancelling it",
+  "crud.refused.employee_void_not_eligible": "This registration does not meet the cancellation requirements · its record is retained",
   "crud.refused.employee_already_voided": "This registration is already cancelled",
   "crud.refused.exited_register_confirmation_required": "Inside the register retention period · confirm the original register is kept",
   "crud.refused.employee_void_sole_holder_refused": "A sole holder's cancel is refused here · another holder decides",
@@ -69,7 +70,8 @@ export const enCrud = {
   "crud.person.reason.NEVER_JOINED": "Never joined",
   "crud.person.reason.NOT_OURS": "Not our employee",
   "crud.person.reason.OTHER": "Other mistake",
-  "crud.person.attest": "This person never worked",
+  "crud.person.attest": "I confirmed this is a mistaken registration with no work performed",
+  "crud.person.attestRecorded": "I verified the recorded start date ({date}) belongs to a mistaken registration, rather than actual employment",
   "crud.person.registerKept": "The original employee register is kept separately",
   "crud.bulkExit.open": "Exit {count, number} selected",
   "crud.bulkExit.kicker": "Exit · {count, number}",

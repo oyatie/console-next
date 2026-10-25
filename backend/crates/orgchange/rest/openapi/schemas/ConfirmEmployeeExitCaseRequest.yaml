@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
 type: object
 additionalProperties: false
 properties:
@@ -44,6 +45,22 @@ properties:
           pattern: '^\s*$'
       evidence_ref:
         type: string
+  notice_disposition:
+    type: object
+    additionalProperties: false
+    required: [kind]
+    description: HR tier only. A short dismissal notice requires pay in lieu or a register exception.
+      REGISTER_EXCEPTION requires a registered ground_code and a nonblank evidence_ref, checked by the server.
+    properties:
+      kind:
+        type: string
+        enum: [PAY_IN_LIEU, REGISTER_EXCEPTION]
+      ground_code:
+        type: string
+        maxLength: 1000
+      evidence_ref:
+        type: string
+        maxLength: 1000
   signoffs:
     $ref: '#/components/schemas/EmployeeLifecycleSignoffs'
     description: HR tier only (ignored by the HQ tier). TERMINATE requires all four acknowledgements —

@@ -19,7 +19,7 @@ export type ContractEdit = { kind: "new" } | { kind: "correct"; id: string } | n
  * The contract history (EMP-MODEL G1), newest start first, the row in force marked. Rows are never edited: a
  * correction is a new row, and the corrected one leaves the live history (shown on request, marked corrected).
  */
-export function ContractsCard({ e, open, onOpen }: { e: Employee; open: ContractEdit; onOpen: (edit: ContractEdit) => void }) {
+export function ContractsCard({ e, open, onOpen, editable = true }: { e: Employee; editable?: boolean; open: ContractEdit; onOpen: (edit: ContractEdit) => void }) {
   const list = useQuery(contractsQuery(e.id));
   const [old, setOld] = useState(false);
   return (
@@ -30,15 +30,15 @@ export function ContractsCard({ e, open, onOpen }: { e: Employee; open: Contract
           const live = items.filter((c) => !c.superseded_by);
           const corrected = items.length - live.length;
           const fixing = open?.kind === "correct" ? items.find((c) => c.id === open.id) : undefined;
-          if (open) return <ContractForm key={fixing?.id ?? "new"} employeeId={e.id} name={e.name} of={fixing} onClose={() => onOpen(null)} onCorrect={(id) => onOpen({ kind: "correct", id })} />;
+          if (open && editable) return <ContractForm key={fixing?.id ?? "new"} employeeId={e.id} name={e.name} of={fixing} onClose={() => onOpen(null)} onCorrect={(id) => onOpen({ kind: "correct", id })} />;
           return (
             <>
               {live.length === 0 && <p className="muted">{t("facts.contracts.empty")}</p>}
               <ul className="form" aria-label={t("facts.contracts.title")}>
-                {(old ? items : live).map((c) => <Row key={c.id} c={c} onCorrect={c.superseded_by ? undefined : () => onOpen({ kind: "correct", id: c.id })} />)}
+                {(old ? items : live).map((c) => <Row key={c.id} c={c} onCorrect={!editable || c.superseded_by ? undefined : () => onOpen({ kind: "correct", id: c.id })} />)}
               </ul>
               <div className="row">
-                <Button variant={live.length ? "secondary" : "primary"} onClick={() => onOpen({ kind: "new" })}>{t("facts.contracts.record")}</Button>
+                {editable && <Button variant={live.length ? "secondary" : "primary"} onClick={() => onOpen({ kind: "new" })}>{t("facts.contracts.record")}</Button>}
                 {corrected > 0 && (
                   <Button variant="ghost" aria-expanded={old} onClick={() => setOld(!old)}>
                     {old ? t("facts.contracts.hideSuperseded") : t("facts.contracts.showSuperseded", { count: corrected })}

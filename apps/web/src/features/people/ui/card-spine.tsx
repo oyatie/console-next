@@ -34,7 +34,7 @@ export function CardSpine({ c, onAct, onLedger, onHistory }: { c: Card; onAct: (
   const all = (c.events.data?.items ?? []).filter((x) => x.state !== "CANCELLED");
   const byId = (id: string) => all.find((x) => x.id === id);
   const events = c.events.data?.items ?? [];
-  const verbs = c.manage && e.status !== "EXITED" ? verbStates(d, events) : [];
+  const verbs = c.editable && e.status !== "EXITED" ? verbStates(d, events) : [];
   const offered = (type: string) => verbs.some((v) => v.verb === type && v.enabled);
   const sorted = [...all].sort((a, b) => b.effective_date.localeCompare(a.effective_date));
   const items: SpineItem[] = view === "fixes" ? [] : sorted.map((x) => {
@@ -50,9 +50,9 @@ export function CardSpine({ c, onAct, onLedger, onHistory }: { c: Card; onAct: (
       meta: x.state === "SCHEDULED" && cancellable(x) ? (
         <>
           {by ?? detail} · <Button variant="link" onClick={() => onAct(`cancel:${x.id}`)}>{t("empCard.spine.cancel")}</Button>
-          {c.manage && offered(x.event_type) && <Button variant="link" onClick={() => onAct(`edit:${x.id}`)}>{t("person.history.edit", { action: label(LIFECYCLE_EVENT, x.event_type) })}</Button>}
+          {c.editable && offered(x.event_type) && <Button variant="link" onClick={() => onAct(`edit:${x.id}`)}>{t("person.history.edit", { action: label(LIFECYCLE_EVENT, x.event_type) })}</Button>}
         </>
-      ) : <>{x.state === "SCHEDULED" ? by ?? detail : detail}{c.manage && rowVerbs(x, { employee: e, all: events, offered, onAct })}</>,
+      ) : <>{x.state === "SCHEDULED" ? by ?? detail : detail}{c.editable && rowVerbs(x, { employee: e, all: events, offered, onAct })}</>,
     };
   });
   const now = [c.place.workplace, c.place.path.at(-1) ?? e.org_unit, c.title(d.classification.grade_id) ?? e.position, c.title(d.classification.position_kind_id), d.employment?.employment_type && label(EMPLOYMENT_TYPE, d.employment.employment_type)].filter(Boolean).join(" · ");

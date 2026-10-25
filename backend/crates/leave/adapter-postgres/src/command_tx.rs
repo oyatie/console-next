@@ -109,6 +109,10 @@ pub(super) fn map_leave_command_sqlx(error: sqlx::Error) -> PgLeaveError {
         .map(sqlx::error::DatabaseError::message)
         .unwrap_or_default();
     match message {
+        "leave_home_branch.employee_exited_read_only" => PgLeaveError::Domain(
+            KernelError::conflict("a former employee's record can only be changed through a governed correction")
+                .with_code("employee_exited_read_only"),
+        ),
         "leave_home_branch.not_workplace" => PgLeaveError::Domain(
             KernelError::validation("the home branch is the 사업장's own branch; move the person with a 전보 to change it")
                 .with_code("home_branch_not_workplace"),

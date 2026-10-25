@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "vitest";
 import { addMonths, applies, effectivePresets, endPresets, periodPresets, returnPresets } from "./presets";
 
@@ -53,4 +54,12 @@ test("whole-period renewals set both dates from the day after the contract ends"
   ]);
   expect(periodPresets(null, {})).toEqual([]);
   expect(periodPresets("2027-01-31", { max: "2027-01-15" })).toEqual([]);
+});
+
+test("crossing renewal presets stay visible with their server limit", () => {
+  const line = "2027-12-26";
+  expect(periodPresets("2026-10-28", {}, line).map((p) => p.disabledReason)).toEqual([undefined, line]);
+  expect(endPresets("2026-10-29", line).map((p) => p.disabledReason)).toEqual([undefined, undefined, line]);
+  expect(endPresets("2026-12-27", line).find((p) => p.date === line)).toStrictEqual({ months: 12, date: line });
+  expect(periodPresets("2026-12-26", {}, line)[0]).toStrictEqual({ months: 12, start: "2026-12-27", end: line });
 });

@@ -11,6 +11,8 @@ pub const FINAL_PAY_DUE_DAYS: &str = "FINAL_PAY_DUE_DAYS";
 pub const LATE_WAGE_INTEREST_ANNUAL_RATE: &str = "LATE_WAGE_INTEREST_ANNUAL_RATE";
 /// 근로기준법 §26: minimum dismissal-notice period.
 pub const DISMISSAL_NOTICE_DAYS: &str = "DISMISSAL_NOTICE_DAYS";
+/// 근로기준법 §26 단서: minimum continuous-service months for notice.
+pub const DISMISSAL_NOTICE_MIN_SERVICE_MONTHS: &str = "DISMISSAL_NOTICE_MIN_SERVICE_MONTHS";
 /// 근로기준법 §2①6: months before the event that form the average-wage window.
 pub const AVERAGE_WAGE_WINDOW_MONTHS: &str = "AVERAGE_WAGE_WINDOW_MONTHS";
 /// 근로기준법 §42: retention of the worker register and key contract records.
@@ -47,12 +49,13 @@ pub const DISMISSAL_PROTECTION_TAIL_DAYS: &str = "DISMISSAL_PROTECTION_TAIL_DAYS
 pub const CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS: &str = "CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS";
 
 /// Every statutory rule code, in migration order.
-pub const ALL: [&str; 42] = [
+pub const ALL: [&str; 43] = [
     DISMISSAL_PROTECTION_TAIL_DAYS,
     CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS,
     FINAL_PAY_DUE_DAYS,
     LATE_WAGE_INTEREST_ANNUAL_RATE,
     DISMISSAL_NOTICE_DAYS,
+    DISMISSAL_NOTICE_MIN_SERVICE_MONTHS,
     AVERAGE_WAGE_WINDOW_MONTHS,
     EMPLOYMENT_RECORD_RETENTION_YEARS,
     EMPLOYMENT_CERTIFICATE_REQUEST_YEARS,

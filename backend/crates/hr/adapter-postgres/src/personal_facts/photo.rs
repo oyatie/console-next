@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! 사진 uploads. The REST layer holds the object store: it asks here for an
 //! upload record ([`HrService::issue_photo_upload`]) and presigns a PUT for
 //! its key; after the browser's PUT it HEADs the key and calls
@@ -92,6 +93,7 @@ impl HrService {
                     employee_id,
                 )
                 .await?;
+                crate::employee_state::require_editable(tx.as_mut(), org_uuid, employee_id).await?;
                 let exists: bool = sqlx::query_scalar(
                     "SELECT EXISTS (SELECT 1 FROM employees WHERE org_id = $1 AND id = $2)",
                 )
@@ -187,6 +189,8 @@ impl HrService {
                     upload.employee_id,
                 )
                 .await?;
+                crate::employee_state::require_editable(tx.as_mut(), org_uuid, upload.employee_id)
+                    .await?;
                 let done = sqlx::query(
                     "UPDATE employee_photo_uploads SET confirmed_at = now() \
                      WHERE org_id = $1 AND id = $2 AND employee_id = $3 AND confirmed_at IS NULL",

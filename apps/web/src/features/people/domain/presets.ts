@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 // Lifecycle sheet dates: when a date applies and the preset suggestions per action (the bounds come
 // from verbStates in ./lifecycle). Nothing here picks a date: presets are buttons the user presses (no default).
 import { addDays, isDate, nextMonday } from "../../../ui/date/days";
@@ -48,15 +49,21 @@ export const returnPresets = (start: string) => (isDate(start) ? [3, 6, 12].map(
 export const contractEndAfter = (start: string, months: number) => addDays(addMonths(start, months), -1);
 
 /** New contract end suggestions from the renewal's start. */
-export const endPresets = (start: string) => (isDate(start) ? [6, 12, 24].map((months) => ({ months, date: contractEndAfter(start, months) })) : []);
+export const endPresets = (start: string, twoYearDate?: string) => (isDate(start) ? [6, 12, 24].map((months) => {
+  const date = contractEndAfter(start, months);
+  return { months, date, ...(twoYearDate && date > twoYearDate ? { disabledReason: twoYearDate } : {}) };
+}) : []);
 
 /**
  * Whole-period renewals that set both dates in one press: from the day after the current contract ends,
  * for one or two years. None without a current end date, or when that start falls outside the bounds.
  */
-export function periodPresets(contractEnd: string | null | undefined, b: { min?: string; max?: string }) {
+export function periodPresets(contractEnd: string | null | undefined, b: { min?: string; max?: string }, twoYearDate?: string) {
   if (!contractEnd || !isDate(contractEnd)) return [];
   const start = addDays(contractEnd, 1);
   if ((b.min && start < b.min) || (b.max && start > b.max)) return [];
-  return [12, 24].map((months) => ({ months, start, end: contractEndAfter(start, months) }));
+  return [12, 24].map((months) => {
+    const end = contractEndAfter(start, months);
+    return { months, start, end, ...(twoYearDate && end > twoYearDate ? { disabledReason: twoYearDate } : {}) };
+  });
 }

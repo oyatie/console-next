@@ -155,6 +155,10 @@ pub struct EmployeeClassification {
 
 #[derive(Debug, Serialize)]
 pub struct EmployeeDetailResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub retention: Option<EmployeeRetention>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rehire_exit_case: Option<super::rehire_guard::RehireExitCase>,
     pub employee: EmployeeResponse,
     /// Null when the employee has no employment profile yet (roster import
     /// rows are created without one).
@@ -181,6 +185,12 @@ pub struct EmployeeDetailResponse {
     /// Non-blocking notices on registration and current detail reads.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<EmployeeCreateWarning>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EmployeeRetention {
+    pub kept_until: Option<String>,
+    pub rule: crate::legal_rules::LegalRule,
 }
 
 impl EmployeeDetailResponse {

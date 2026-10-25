@@ -36,3 +36,12 @@ test("a missing birth date stays unregistered without a mask or reveal", () => {
   expect(html).not.toContain("••••-••-••");
   expect(html).not.toContain(t("empCard.reveal.open", { field: t("facts.birthDate") }));
 });
+
+test("a read-only record retains probation facts and offers no profile or probation writes", () => {
+  card(null);
+  read.data.employment = { employment_type: "REGULAR", probation_state: "OVERDUE", probation_end_date: "2026-10-23" } as Facts["employment"];
+  const html = renderToStaticMarkup(<FactsCard e={{ id: "person", name: "한기록" } as Parameters<typeof FactsCard>[0]["e"]} readOnly editing={false} onEdit={() => {}} />);
+  expect(html).toContain(t("facts.probation"));
+  expect(html).not.toContain(t("facts.edit"));
+  expect(html).not.toContain(t("facts.probation.confirm"));
+});

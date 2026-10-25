@@ -147,6 +147,12 @@ pub fn exit_case_from_row(row: sqlx::postgres::PgRow) -> Result<EmployeeExitCase
         notice_required,
         dismissal_notice,
         protected_periods: Vec::new(),
+        notice_disposition: row
+            .try_get::<Option<serde_json::Value>, _>("notice_disposition")?
+            .map(serde_json::from_value)
+            .transpose()
+            .map_err(|e| HrError::internal(e.to_string()))?,
+        notice_pay: None,
         reported_by: row.try_get("reported_by")?,
         reported_by_name: row.try_get("reported_by_name")?,
         hr_confirmed_by_name: row.try_get("hr_confirmed_by_name")?,

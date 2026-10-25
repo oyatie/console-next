@@ -22,7 +22,7 @@ impl LifecycleApplyHooks<PgConnection> for ExitLifecycleHooks {
             return Ok(());
         }
         // The fallback is bound to this confirmation transaction, never another open case.
-        let row = sqlx::query("SELECT effective_exit_date::text,exit_reason_code,site_manager_note,dismissal_notice_reason,dismissal_notice_served_on::text,dismissal_notice_method,dismissal_notice_evidence_ref FROM employee_exit_cases WHERE org_id=$1 AND employee_id=$2 AND (exit_lifecycle_event_id=$3 OR (status='REPORTED' AND id::text=current_setting('app.confirming_exit_case',true))) ORDER BY (exit_lifecycle_event_id=$3) DESC NULLS LAST LIMIT 1")
+        let row = sqlx::query("SELECT notice_disposition,effective_exit_date::text,exit_reason_code,site_manager_note,dismissal_notice_reason,dismissal_notice_served_on::text,dismissal_notice_method,dismissal_notice_evidence_ref FROM employee_exit_cases WHERE org_id=$1 AND employee_id=$2 AND (exit_lifecycle_event_id=$3 OR (status='REPORTED' AND id::text=current_setting('app.confirming_exit_case',true))) ORDER BY (exit_lifecycle_event_id=$3) DESC NULLS LAST LIMIT 1")
             .bind(event.org_id.as_uuid()).bind(event.employee_id).bind(event.event_id).fetch_optional(&mut *tx).await.map_err(|e| KernelError::internal(e.to_string()))?;
         let Some(row) = row else {
             record_refusal(
@@ -68,6 +68,11 @@ impl LifecycleApplyHooks<PgConnection> for ExitLifecycleHooks {
                     .get::<Option<String>, _>("dismissal_notice_evidence_ref")
                     .unwrap_or_default(),
             });
+        let disposition = row
+            .get::<Option<serde_json::Value>, _>("notice_disposition")
+            .map(serde_json::from_value)
+            .transpose()
+            .map_err(|e| KernelError::validation(e.to_string()))?;
         check_exit_guards(
             tx,
             event.org_id,
@@ -76,6 +81,7 @@ impl LifecycleApplyHooks<PgConnection> for ExitLifecycleHooks {
             &class,
             notice.as_ref(),
             "apply",
+            disposition.as_ref(),
         )
         .await
         .map_err(kernel)

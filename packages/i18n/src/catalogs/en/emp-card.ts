@@ -155,7 +155,7 @@ export const enEmpCard: Partial<Record<keyof typeof koEmpCard, string>> = {
   "empCard.leave.back": "Return",
   "empCard.leave.returned": "returned {date}",
   "empCard.leave.out": "on leave",
-  "empCard.leave.exited": "Left on {date} · the register is kept for 3 years from the exit date",
+  "empCard.leave.exited": "Exited {date} · retain until {until}",
   "empCard.family.meta": "Basis: family with consent · awards under the contract",
   "empCard.family.awards": "Awards {count}",
   "empCard.family.discipline": "Discipline",
@@ -276,4 +276,5 @@ export const enEmpCard: Partial<Record<keyof typeof koEmpCard, string>> = {
   "empCard.rrn.entryComing": "Entering or correcting the number opens with its approval steps (passkey, second person) · today only the employee import records it",
   "empCard.f.registerNote": "Register note",
   "empCard.f.registerNote.hint": "Register item 9 · clear it to remove",
+  "empCard.leave.expectedBack": "Expected first day back {date}",
 };

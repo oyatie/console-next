@@ -30,3 +30,5 @@ pub mod read_sort;
 mod read_warnings;
 pub mod register_review;
 pub mod types;
+
+mod rehire_guard;

@@ -5,7 +5,8 @@ use super::*;
 async fn maternity_boundary_and_case_read_share_the_same_register(pool: PgPool) {
     let w = live(&pool).await;
     // Synthetic January slice ends before sourced shipping coverage begins.
-    sqlx::query("INSERT INTO statutory_rules (code,effective_from,effective_to_exclusive,unit,value_num,value_den,instrument_ko,article_ko,promulgation_ko,enforced_on,source_url,retrieved_on,provenance_ko) SELECT code,'2026-01-01','2026-08-20',unit,value_num,value_den,instrument_ko,article_ko,promulgation_ko,'2026-01-01',source_url,retrieved_on,'synthetic test slice' FROM statutory_rules WHERE code='DISMISSAL_PROTECTION_TAIL_DAYS' AND effective_from='2026-10-08'").execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO statutory_rules (code,protection_leave_types,effective_from,effective_to_exclusive,unit,value_num,value_den,instrument_ko,article_ko,promulgation_ko,enforced_on,source_url,retrieved_on,provenance_ko) SELECT code,protection_leave_types,'2026-01-01','2026-08-20',unit,value_num,value_den,instrument_ko,article_ko,promulgation_ko,'2026-01-01',source_url,retrieved_on,'synthetic test slice' FROM statutory_rules WHERE code='DISMISSAL_PROTECTION_TAIL_DAYS' AND effective_from='2026-10-08'").execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO statutory_rules (code,effective_from,effective_to_exclusive,unit,value_num,value_den,instrument_ko,article_ko,promulgation_ko,enforced_on,source_url,retrieved_on,provenance_ko,filing_rule,notice_exception_grounds) SELECT code,'2026-01-01',effective_from,unit,value_num,value_den,instrument_ko,article_ko,promulgation_ko,'2026-01-01',source_url,retrieved_on,'synthetic notice-clock coverage',filing_rule,notice_exception_grounds FROM (SELECT DISTINCT ON (code) * FROM statutory_rules WHERE code IN ('DISMISSAL_NOTICE_DAYS','DISMISSAL_NOTICE_MIN_SERVICE_MONTHS','FINAL_PAY_DUE_DAYS','SEVERANCE_PAY_DUE_DAYS','EI_LOSS_REPORT_DUE_DAY_OF_NEXT_MONTH','NHIS_LOSS_REPORT_DUE_DAYS','ins.deadline.lose.iaci') ORDER BY code,effective_from) first_row WHERE effective_from > DATE '2026-01-01'").execute(&pool).await.unwrap();
     let l = leave(&w, w.in_a, "MATERNITY", "2026-01-01", Some("2026-04-01")).await;
     w.hr.record_lifecycle_event(w.hr(w.hr_one),w.in_a,Uuid::new_v4().to_string(),serde_json::from_value(json!({"event_type":"RETURN_FROM_LEAVE","effective_date":"2026-04-01","comment":"합성 복귀","signoffs":acks()})).unwrap()).await.unwrap();
     for last in ["2026-04-28", "2026-04-29"] {
@@ -67,7 +68,7 @@ async fn maternity_boundary_and_case_read_share_the_same_register(pool: PgPool) 
         .await
         .unwrap();
     assert_eq!(
-        confirm(&w, &c, json!({"dismissal_notice":notice("2026-04-30")}))
+        confirm(&w, &c, json!({"notice_disposition":{"kind":"PAY_IN_LIEU"},"dismissal_notice":notice("2026-04-30")}))
             .await
             .unwrap()["status"],
         "HR_CONFIRMED"
@@ -126,7 +127,7 @@ async fn ended_childcare_does_not_block_dismissal_in_the_august_law_slice(pool: 
         .unwrap();
     }
     let c = report(&w, w.in_a, None, "2026-09-10").await.unwrap();
-    assert_eq!(confirm(&w, &c, json!({"exit_reason_code":"DISCIPLINARY_DISMISSAL","dismissal_notice":notice("2026-09-10")})).await.unwrap()["status"], "HR_CONFIRMED");
+    assert_eq!(confirm(&w, &c, json!({"exit_reason_code":"DISCIPLINARY_DISMISSAL","notice_disposition":{"kind":"PAY_IN_LIEU"},"dismissal_notice":notice("2026-09-10")})).await.unwrap()["status"], "HR_CONFIRMED");
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

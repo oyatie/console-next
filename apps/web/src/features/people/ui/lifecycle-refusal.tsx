@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { supportReferenceFromError } from "../../../lib/support-reference";
 import { t } from "@console/i18n";
 import { LIFECYCLE_EVENT, actor, label } from "../../../lib/labels";
@@ -6,14 +7,13 @@ import { CommandError } from "../../../lib/react/command-error";
 import { BlockedPanel } from "../../../ui/blocker/blocked-panel";
 import { Button } from "../../../ui/button/button";
 import { refusalOf } from "../api";
+import { FIXED_TERM_GROUNDS } from "../domain/fixed-term";
 import { fmtDay, peopleRefusal } from "../present";
 import { TransferCrossEntity, type CrossEntity } from "./transfer-refusal";
 import s from "./lifecycle.module.css";
 
 /** The record a BW-11 refusal names: the last change (stale_record) or the reservation in the way (scheduled_conflict). */
 type Named = { event_id?: string; lifecycle_event_id?: string; event_type: string; effective_date: string; recorded_by?: string | null };
-/** Fixed-term Act Art. 4(1) proviso: the grounds an exception for service past two years may rest on (BW-12). */
-const FIXED_TERM_GROUNDS = ["PROJECT_COMPLETION", "ABSENCE_COVER", "STUDY_OR_TRAINING", "OLDER_WORKER", "PROFESSIONAL", "GOVERNMENT_JOB_PROGRAM", "DECREE_LISTED"] as const;
 /** Refusals with their own title whose server message says the rest (BW-11 corrections, BW-12/13 facts). */
 const SPECIFIC = new Set(["effective_date_before_hire", "second_person_required", "lifecycle_void_not_latest", "lifecycle_event_voided", "lifecycle_void_not_applied", "lifecycle_void_exit_owned", "lifecycle_void_unsupported", "demotion_reason_required", "job_title_unknown", "period_locked"] as const);
 type Specific = typeof SPECIFIC extends Set<infer T> ? T : never;
@@ -95,14 +95,15 @@ export function LifecycleRefusal({ error, kind, onLeave, target, onCancelEvent, 
         {t("lifecycle.blocker.replace.body", { date: fmtDay(named.effective_date), action: label(LIFECYCLE_EVENT, named.event_type), actor: actor(named.recorded_by) })}
       </BlockedPanel>
     );
-  if (r?.code === "fixed_term_limit")
+  if (r?.code === "fixed_term_limit" || r?.code === "fixed_term_basis_unconfirmed")
     return (
       <BlockedPanel domain="hr" supportRef={supportReferenceFromError(error)} title={t("lifecycle.blocker.fixedTerm.title")} code={r.code} unblockers={you} actions={<Button onClick={onFocusTarget}>{t("lifecycle.blocker.fixedTerm.fix")}</Button>}>
-        <p className={s.blockerText}>{t("lifecycle.blocker.fixedTerm.body")}</p>
+        <p className={s.blockerText}>{t(r.code === "fixed_term_basis_unconfirmed" ? "lifecycle.fixedTerm.basisUnconfirmed" : "lifecycle.blocker.fixedTerm.body")}</p>
         <ul className={s.grounds}>
           {FIXED_TERM_GROUNDS.map((g) => <li key={g}>{t(`lifecycle.fixedTerm.ground.${g}`)}</li>)}
         </ul>
         <p className={s.blockerText}>{t("lifecycle.blocker.fixedTerm.exception")}</p>
+        <CommandError error={error} own={peopleRefusal} />
       </BlockedPanel>
     );
   if (r && (SPECIFIC as Set<string>).has(r.code))

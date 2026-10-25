@@ -93,7 +93,7 @@ impl HrService {
                         ))
                     })?;
                 own_record_guard(tx, org, actor, context.employee_id, Feature::ExitCaseHqConfirm).await?;
-                if body.exit_reason_code.is_some() || body.dismissal_notice.is_some() {
+                if body.exit_reason_code.is_some() || body.dismissal_notice.is_some() || body.notice_disposition.is_some() {
                     return Err(HrError::validation("exit reason and dismissal notice belong to HR confirmation"));
                 }
                 let routed = approval_routes_in_tx(tx.as_mut(), org, SettingKey::ApprovalPolicyExit)
@@ -148,9 +148,9 @@ impl HrService {
                     )));
                 }
                 let class = super::reason::confirmation_reason(tx, org, &context, body.exit_reason_code.as_deref()).await?;
-                super::guards::check_exit_guards(tx.as_mut(), org, context.employee_id, &context.effective_exit_date, &class, body.dismissal_notice.as_ref(), "confirm").await?;
+                super::guards::check_exit_guards(tx.as_mut(), org, context.employee_id, &context.effective_exit_date, &class, body.dismissal_notice.as_ref(), "confirm", body.notice_disposition.as_ref()).await?;
                 let notice = super::notice::checked_notice(class.notice_required, body.dismissal_notice, super::guards::termination_date(&context.effective_exit_date)?)?;
-                super::notice::save_facts(tx, org_uuid, case_id, &class.code, notice.as_ref()).await?;
+                super::notice::save_facts(tx, org_uuid, case_id, &class.code, notice.as_ref(), body.notice_disposition.as_ref()).await?;
                 involuntary = class.involuntary;
                 // HR confirmation is the exit: it records the TERMINATE event
                 // (the only route to EXITED) that a later reject/cancel reverses.
@@ -221,6 +221,7 @@ impl HrService {
                     "involuntary": exit_case.involuntary,
                     "notice_required": exit_case.notice_required,
                     "dismissal_notice": &exit_case.dismissal_notice,
+                    "notice_disposition": &exit_case.notice_disposition,
                     "exit_lifecycle_event_id": exit_lifecycle_event_id,
                     // decisions #26 item d: who stood as the HQ second person.
                     "hq_second_person": hq_second_person.map(|p| match p {

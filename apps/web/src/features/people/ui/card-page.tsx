@@ -139,7 +139,7 @@ function Card({ d }: { d: Detail }) {
     return () => document.removeEventListener("keydown", key);
   }, []);
   if (act === "print") return <CardPrint c={c} onClose={close} />;
-  const verbs = c.manage && d.employee.status !== "EXITED" ? verbStates(d, c.events.data?.items ?? []) : [];
+  const verbs = c.editable && d.employee.status !== "EXITED" ? verbStates(d, c.events.data?.items ?? []) : [];
   return (
     <>
       <div ref={held} className={s.held}>

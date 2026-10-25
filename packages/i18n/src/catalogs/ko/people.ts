@@ -61,7 +61,7 @@ export const koPeople = {
   "people.event.TRANSFER": "{actor}님이 {name|을를} {from}에서 {to|으로로} 전보했습니다",
   "people.event.PROMOTE": "{actor}님이 {name|을를} {fromPosition}에서 {toPosition|으로로} 승진 처리했습니다",
   "people.event.LEAVE_OF_ABSENCE": "{actor}님이 {name|을를} 휴직 처리했습니다",
-  "people.event.LEAVE_OF_ABSENCE.return": "{actor}님이 {name|을를} 휴직 처리했습니다. 복귀 예정일은 {returnDate}입니다",
+  "people.event.LEAVE_OF_ABSENCE.return": "{actor}님이 {name|을를} 휴직 처리했습니다. 복직 예정일은 {returnDate}입니다",
   "people.event.RETURN_FROM_LEAVE": "{actor}님이 {name|을를} 복직 처리했습니다",
   "people.event.CONTRACT_RENEWAL": "{actor}님이 {name}의 계약을 {endDate}까지 갱신했습니다",
   "people.event.ONBOARD": "{actor}님이 {name|을를} 등록했습니다",

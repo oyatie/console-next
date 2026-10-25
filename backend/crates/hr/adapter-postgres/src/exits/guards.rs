@@ -25,6 +25,7 @@ pub struct ProtectedPeriodView {
     pub protected_until: Option<String>,
     pub instrument: Option<String>,
     pub article: Option<String>,
+    pub rule: Option<crate::legal_rules::LegalRule>,
 }
 impl From<&ProtectedPeriod> for ProtectedPeriodView {
     fn from(p: &ProtectedPeriod) -> Self {
@@ -36,6 +37,7 @@ impl From<&ProtectedPeriod> for ProtectedPeriodView {
             protected_until: p.protected_until.map(|d| d.to_string()),
             instrument: p.instrument.clone(),
             article: p.article.clone(),
+            rule: None,
         }
     }
 }
@@ -45,10 +47,12 @@ struct Rules {
     on: Date,
 }
 impl ProtectionRegister for Rules {
-    fn rule(&self, code: &str) -> Option<ProtectionRule> {
+    fn rule(&self, leave_type: &str) -> Option<ProtectionRule> {
         let on = self.on;
         let mut rows = self.rows.iter().filter(|r| {
-            r.get::<String, _>("code") == code
+            r.get::<Vec<String>, _>("protection_leave_types")
+                .iter()
+                .any(|t| t == leave_type)
                 && r.get::<Date, _>("effective_from") <= on
                 && r.get::<Option<Date>, _>("effective_to_exclusive")
                     .is_none_or(|end| on < end)
@@ -58,7 +62,11 @@ impl ProtectionRegister for Rules {
         let r = active.or_else(|| {
             self.rows
                 .iter()
-                .filter(|r| r.get::<String, _>("code") == code)
+                .filter(|r| {
+                    r.get::<Vec<String>, _>("protection_leave_types")
+                        .iter()
+                        .any(|t| t == leave_type)
+                })
                 .min_by_key(|r| r.get::<Date, _>("effective_from"))
         })?;
         let valid = active.is_some()
@@ -96,7 +104,7 @@ pub(super) async fn load_protected_periods(
             })
         })
         .collect::<Result<Vec<_>, KernelError>>()?;
-    let rules = Rules { on, rows: sqlx::query("SELECT code,effective_from,effective_to_exclusive,unit,value_num,value_den,instrument_ko,article_ko FROM statutory_rules WHERE code IN ('DISMISSAL_PROTECTION_TAIL_DAYS','CHILDCARE_LEAVE_DISMISSAL_TAIL_DAYS')")
+    let rules = Rules { on, rows: sqlx::query("SELECT code,protection_leave_types,effective_from,effective_to_exclusive,unit,value_num,value_den,instrument_ko,article_ko FROM statutory_rules WHERE cardinality(protection_leave_types) > 0")
         .fetch_all(conn).await? };
     Ok(protected_periods(&events, &rules))
 }
@@ -115,6 +123,7 @@ pub(super) async fn check_exit_guards(
     class: &ValidReason,
     notice: Option<&DismissalNotice>,
     stage: &'static str,
+    disposition: Option<&super::notice_pay::NoticeDisposition>,
 ) -> Result<(), HrError> {
     if !class.involuntary {
         return Ok(());
@@ -135,16 +144,28 @@ pub(super) async fn check_exit_guards(
         termination_date: date,
     };
     let Err(error) = terminate_may_apply(Some(&facts)) else {
+        if class.notice_required && stage != "report" {
+            let pay = super::notice_pay::notice_pay(
+                conn,
+                *org.as_uuid(),
+                employee,
+                exit_date,
+                notice.map(|n| n.served_on.as_str()),
+                None,
+                None,
+            )
+            .await?;
+            if !pay.accepts(disposition) {
+                record_refusal(org, employee, stage, "dismissal_notice_short");
+                return Err(pay.refusal());
+            }
+        }
         return Ok(());
     };
     let error = if error.code == Some("exit_protected_period") {
         HrError {
             refusals: Some(Box::new(json!(
-                periods
-                    .iter()
-                    .filter(|p| p.blocks(date))
-                    .map(ProtectedPeriodView::from)
-                    .collect::<Vec<_>>()
+                protection_views(conn, &periods, date).await?
             ))),
             ..coded(error)
         }
@@ -168,11 +189,28 @@ pub(super) async fn case_protection(
     case: &mut super::types::EmployeeExitCaseResponse,
 ) -> Result<(), HrError> {
     let date = termination_date(&case.effective_exit_date)?;
-    case.protected_periods = load_protected_periods(conn, org, case.employee_id, date)
-        .await?
-        .iter()
-        .filter(|p| p.blocks(date))
-        .map(ProtectedPeriodView::from)
-        .collect();
+    let periods = load_protected_periods(conn, org, case.employee_id, date).await?;
+    case.protected_periods = protection_views(conn, &periods, date).await?;
+    super::notice_pay::case_notice_pay(conn, org, case).await?;
     Ok(())
+}
+
+pub(super) async fn protection_views(
+    conn: &mut PgConnection,
+    periods: &[ProtectedPeriod],
+    on: Date,
+) -> Result<Vec<ProtectedPeriodView>, HrError> {
+    let rules = crate::legal_rules::leave_rules(conn, on).await?;
+    Ok(periods
+        .iter()
+        .filter(|p| p.blocks(on))
+        .map(|p| {
+            let mut view = ProtectedPeriodView::from(p);
+            view.rule = rules
+                .iter()
+                .find(|r| r.leave_type == p.leave_type)
+                .map(|r| r.rule.clone());
+            view
+        })
+        .collect())
 }

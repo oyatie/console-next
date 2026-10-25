@@ -91,6 +91,10 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
         console_hr_rest::checklist::CHECKLIST_ROUTE_PATHS,
     ),
     surface(
+        "hr-exit-guards",
+        console_hr_rest::exit_guards::EXIT_GUARDS_ROUTE_PATHS,
+    ),
+    surface(
         "hr-fixed-term",
         console_hr_rest::fixed_term::FIXED_TERM_ROUTE_PATHS,
     ),

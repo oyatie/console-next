@@ -17,6 +17,7 @@ fn rehire(f: &Fixture, key: &str, hire_date: String) -> RehireEmployeeRequest {
         phone: None,
         base_pay_won: None,
         pay_unit: None,
+        acknowledge_open_exit_case: false,
         idempotency_key: key.into(),
     }
 }
@@ -155,6 +156,35 @@ async fn an_imported_former_employee_reuses_their_person(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn rehire_waits_for_the_prior_exit_decision(pool: PgPool) {
+    let f = fixture(pool.clone()).await;
+    let id = exited(&f, &pool, "pending-exit").await;
+    let case: uuid::Uuid = sqlx::query_scalar("INSERT INTO employee_exit_cases (org_id,employee_id,status,effective_exit_date,site_manager_note,reported_by) VALUES ($1,$2,'HR_CONFIRMED',$3::date,'합성 퇴직',$4) RETURNING id")
+        .bind(f.principal.org_id.as_uuid()).bind(id).bind(kst_day(-10)).bind(f.principal.user_id.as_uuid()).fetch_one(&pool).await.unwrap();
+    let error =
+        f.hr.rehire_employee(
+            f.principal.clone(),
+            id,
+            rehire(&f, "pending-rehire", kst_day(0)),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        (error.status.as_u16(), error.code),
+        (409, "rehire_exit_case_open")
+    );
+    sqlx::query("UPDATE employee_exit_cases SET status='CANCELLED',closed_by=$2,closed_at=now(),closed_reason='합성 종료' WHERE id=$1")
+        .bind(case).bind(f.principal.user_id.as_uuid()).execute(&pool).await.unwrap();
+    f.hr.rehire_employee(
+        f.principal.clone(),
+        id,
+        rehire(&f, "closed-rehire", kst_day(0)),
+    )
+    .await
+    .unwrap();
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_future_rehire_is_pre_hire_with_a_scheduled_onboard(pool: PgPool) {
     let f = fixture(pool.clone()).await;
     let id = exited(&f, &pool, "fr-1").await;
@@ -264,3 +294,6 @@ async fn released_rehire_without_pay_unit_uses_recorded_terms_or_keeps_unknown(p
         }
     }
 }
+
+#[path = "rehire_stages.rs"]
+mod stages;

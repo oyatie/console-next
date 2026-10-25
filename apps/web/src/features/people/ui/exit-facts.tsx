@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
@@ -15,6 +16,7 @@ import { byEffective, tenure } from "../domain/lifecycle";
 import { describeEvent } from "../present";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { ExitDeadlines } from "./exit-deadlines";
+import { NoticePayFact } from "./exit-notice-pay";
 import { useCaseActions } from "./use-case-actions";
 import s from "./exit.module.css";
 import { Muted } from "../../../ui/muted/muted";
@@ -34,15 +36,18 @@ export function RelDay({ date }: { date: string }) {
  */
 export function CaseFacts({ c, full = false }: { c: Case; full?: boolean }) {
   return (
-    <dl className="kv">
-      <dt>{t("exit.field.reporter")}</dt><dd>{actor(c.reported_by_name)}</dd>
-      {full && <><dt>{t("exit.field.reportedAt")}</dt><dd className="num">{fmtDateTime(c.reported_at)}</dd></>}
-      {full && <><dt>{t("exit.field.date")}</dt><dd className="num">{fmtDate(c.effective_exit_date)} <RelDay date={c.effective_exit_date} /></dd></>}
-      {/* A report with its exit reason code (BE-EMP-UI) names it; the note is then the circumstances. */}
-      {c.exit_reason_code && <><dt>{t("exit.field.reason")}</dt><dd>{reasonLabel("exit_reason", c.exit_reason_code)}</dd></>}
-      <dt>{t(c.exit_reason_code ? "exit.field.circumstances" : "exit.field.note")}</dt><dd><p className={s.quote}>{c.site_manager_note}</p></dd>
-      {c.hr_confirmed_at && <><dt>{t("exit.field.hrConfirmer")}</dt><dd>{actor(c.hr_confirmed_by_name)}</dd></>}
-    </dl>
+    <>
+      <dl className="kv">
+        <dt>{t("exit.field.reporter")}</dt><dd>{actor(c.reported_by_name)}</dd>
+        {full && <><dt>{t("exit.field.reportedAt")}</dt><dd className="num">{fmtDateTime(c.reported_at)}</dd></>}
+        {full && <><dt>{t("exit.field.date")}</dt><dd className="num">{fmtDate(c.effective_exit_date)} <RelDay date={c.effective_exit_date} /></dd></>}
+        {/* A report with its exit reason code (BE-EMP-UI) names it; the note is then the circumstances. */}
+        {c.exit_reason_code && <><dt>{t("exit.field.reason")}</dt><dd>{reasonLabel("exit_reason", c.exit_reason_code)}</dd></>}
+        <dt>{t(c.exit_reason_code ? "exit.field.circumstances" : "exit.field.note")}</dt><dd><p className={s.quote}>{c.site_manager_note}</p></dd>
+        {c.hr_confirmed_at && <><dt>{t("exit.field.hrConfirmer")}</dt><dd>{actor(c.hr_confirmed_by_name)}</dd></>}
+      </dl>
+      {!full && c.notice_pay && <NoticePayFact disposition={c.notice_disposition} pay={c.notice_pay} />}
+    </>
   );
 }
 

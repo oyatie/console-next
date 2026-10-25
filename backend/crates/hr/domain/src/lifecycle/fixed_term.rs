@@ -4,7 +4,7 @@
 //! (남녀고용평등법 §19⑤). Gaps between contracts do not count. The limit is a
 //! statutory register value (`limit_months`, a parameter), never a constant.
 //! An employee with no contract history (imported) falls back to `hire_date`
-//! and is flagged, not blocked.
+//! and needs confirmation before a renewal over the limit.
 
 use time::{Date, Duration};
 
@@ -52,7 +52,7 @@ pub enum RenewalVerdict {
     /// 409 `fixed_term_limit` unless a governed `FIXED_TERM_OVER_TWO_YEARS`
     /// exception names a [`super::fixed_term_exemption::FixedTermExemption`].
     ExceedsLimit,
-    /// Over the limit on the `hire_date` fallback: flag for review, never block.
+    /// Over the limit on the `hire_date` fallback: the adapter requires history confirmation or an exception.
     ExceedsUnverified,
 }
 

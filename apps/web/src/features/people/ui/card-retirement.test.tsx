@@ -32,7 +32,7 @@ test("a workplace placement without a department names the workplace in the brea
 });
 
 test("the exited card head shows the first non-employed date", () => {
-  expect(head(card("EXITED"))).toContain("2026. 11. 01.에 퇴직했습니다");
+  expect(head(card("EXITED"))).toContain("2026. 11. 01. 퇴직 · 보존 기한");
 });
 
 test("the leave section shows the same first non-employed date", () => {

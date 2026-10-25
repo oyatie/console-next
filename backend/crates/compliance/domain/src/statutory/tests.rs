@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 use time::macros::date;
 
@@ -275,7 +276,9 @@ fn ins_deadline_keys_answer_from_the_bw30_rows_and_nothing_else() {
 #[test]
 fn register_codes_and_migration_checks_stay_in_sync() {
     let sql = include_str!("../../../../platform/db/migrations/20261021084358333_exit_guards.sql");
-    let check = sql
+    let latest =
+        include_str!("../../../../platform/db/migrations/20261025125900000_lmg_legal_notice.sql");
+    let check = latest
         .split("statutory_rules_code_check CHECK (code IN (")
         .nth(1)
         .unwrap()

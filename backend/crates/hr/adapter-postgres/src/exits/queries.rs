@@ -99,7 +99,9 @@ pub async fn load_exit_case_by_id(
         .fetch_optional(tx.as_mut())
         .await?
         .ok_or_else(|| HrError::from_kernel(KernelError::not_found("exit case not found")))?;
-    exit_case_from_row(row)
+    let mut case = exit_case_from_row(row)?;
+    super::notice_pay::case_notice_pay(tx.as_mut(), org_uuid, &mut case).await?;
+    Ok(case)
 }
 
 pub fn exit_case_select_sql() -> &'static str {
@@ -121,6 +123,7 @@ pub fn exit_case_select_sql() -> &'static str {
         c.exit_reason_code,
         COALESCE(rc.involuntary, false) AS involuntary,
         COALESCE(rc.notice_required, false) AS notice_required,
+        c.notice_disposition,
         c.dismissal_notice_reason,
         c.dismissal_notice_served_on::text AS dismissal_notice_served_on,
         c.dismissal_notice_method,
@@ -139,13 +142,13 @@ pub fn exit_case_select_sql() -> &'static str {
         c.exit_lifecycle_event_id,
         (SELECT x.state FROM employee_lifecycle_events x
           WHERE x.id = c.exit_lifecycle_event_id AND x.org_id = c.org_id) AS exit_event_state,
-        -- Actor display names, resolved within the tenant (users is RLS-scoped);
+        -- Actor display names from the tenant-scoped canonical projection;
         -- null when the actor is unset or unknown.
-        (SELECT u.display_name FROM users u WHERE u.id = c.reported_by) AS reported_by_name,
-        (SELECT u.display_name FROM users u WHERE u.id = c.hr_confirmed_by) AS hr_confirmed_by_name,
-        (SELECT u.display_name FROM users u WHERE u.id = c.hq_confirmed_by) AS hq_confirmed_by_name,
-        (SELECT u.display_name FROM users u WHERE u.id = c.approval_submitted_by) AS approval_submitted_by_name,
-        (SELECT u.display_name FROM users u WHERE u.id = c.closed_by) AS closed_by_name,
+        (SELECT u.display_name FROM person_accounts_current u WHERE u.id = c.reported_by) AS reported_by_name,
+        (SELECT u.display_name FROM person_accounts_current u WHERE u.id = c.hr_confirmed_by) AS hr_confirmed_by_name,
+        (SELECT u.display_name FROM person_accounts_current u WHERE u.id = c.hq_confirmed_by) AS hq_confirmed_by_name,
+        (SELECT u.display_name FROM person_accounts_current u WHERE u.id = c.approval_submitted_by) AS approval_submitted_by_name,
+        (SELECT u.display_name FROM person_accounts_current u WHERE u.id = c.closed_by) AS closed_by_name,
         p.id AS package_id,
         p.status AS package_status,
         p.service_days,

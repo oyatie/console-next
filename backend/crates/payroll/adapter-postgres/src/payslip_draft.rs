@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! Reads behind `GET /api/v1/payroll/employees/{id}/payslip-draft`.
 //!
 //! Three inputs, all real production data:
@@ -155,6 +156,22 @@ pub async fn insert_contract_wage_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     wage: &NewContractWage,
 ) -> Result<Uuid, PgPayrollError> {
+    let status: Option<String> = sqlx::query_scalar(
+        "SELECT employment_status FROM employees WHERE org_id=$1 AND id=$2 FOR UPDATE",
+    )
+    .bind(wage.org_id)
+    .bind(wage.employee_id)
+    .fetch_optional(tx.as_mut())
+    .await?;
+    let status =
+        status.ok_or_else(|| console_kernel_core::KernelError::not_found("employee not found"))?;
+    if status == "EXITED" {
+        return Err(console_kernel_core::KernelError::conflict(
+            "a former employee's record can only be changed through a governed correction",
+        )
+        .with_code("employee_exited_read_only")
+        .into());
+    }
     let id: Uuid = sqlx::query_scalar(
         "INSERT INTO employee_contract_wages \
          (org_id, employee_id, effective_from, wage_kind, amount_won, monthly_standard_hours, \

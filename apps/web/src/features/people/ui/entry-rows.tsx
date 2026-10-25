@@ -24,9 +24,9 @@ export function useEntryRows(c: Card) {
   const entries = c.records.data?.items ?? [];
   const of = (sec: Segment) => entries.filter((x) => x.section === sec.toUpperCase());
   const path = c.setup ? "setup" : "correction";
-  const add = (sec: Segment) => c.manage && <ListAdd object={tx(`empRec.${sec}`)} onAdd={() => (setEditing(null), setAdding(sec))} />;
+  const add = (sec: Segment) => c.editable && <ListAdd object={tx(`empRec.${sec}`)} onAdd={() => (setEditing(null), setAdding(sec))} />;
   const actions = (x: RecordEntry, name: string) =>
-    c.manage && (
+    c.editable && (
       <RowActions
         field={name}
         onEdit={x.voided ? undefined : () => (setAdding(null), setEditing(x))}

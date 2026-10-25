@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { Fragment, type ReactNode, type Ref } from "react";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
@@ -7,7 +8,7 @@ import { DateInput } from "./date-input";
 import s from "./date.module.css";
 
 export { DateInput } from "./date-input";
-export type DatePreset = { label: string; date: string };
+export type DatePreset = { label: string; date: string; disabledReason?: string };
 
 /** A business date (components.html §5): keyboard entry and an accessible calendar, with one shared set of bounds and presets. */
 export function DateField({ label, required, value, onChange, onInvalid, today, min: floor, minFrom, minReason, max, maxReason, disabledDates, basis, note, echo, presets, suggestWeekday = false, error, remedy, inputRef, showErrors = true }: {
@@ -61,7 +62,7 @@ export function DateField({ label, required, value, onChange, onInvalid, today, 
             {presets && presets.length > 0 && (
               <div role="group" aria-label={t("uiDate.presets", { label })} className={s.presets}>
                 {presets.map((pr) => {
-                  const off = !inBounds(pr.date, min, max) || disabled.has(pr.date);
+                  const off = Boolean(pr.disabledReason) || !inBounds(pr.date, min, max) || disabled.has(pr.date);
                   return (
                     <button
                       key={pr.date}
@@ -70,10 +71,11 @@ export function DateField({ label, required, value, onChange, onInvalid, today, 
                       aria-pressed={value === pr.date}
                       aria-disabled={off || undefined}
                       aria-describedby={off ? p["aria-describedby"] : undefined}
+                      title={pr.disabledReason}
                       onClick={() => !off && onChange(pr.date)}
                     >
                       {pr.label}
-                      <span className={s.resolved}>{fmtDate(pr.date, { weekday: "short" })}</span>
+                      <span className={s.resolved}>{fmtDate(pr.date, { weekday: "short" })}{pr.disabledReason && <> · {pr.disabledReason}</>}</span>
                     </button>
                   );
                 })}

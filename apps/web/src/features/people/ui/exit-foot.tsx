@@ -138,13 +138,13 @@ function Elsewhere({ effect, draft }: { effect: Effect; draft?: string }) {
 function Refusal({ error, employeeId }: { error: unknown; employeeId: string }) {
   const p = problemOf(error);
   const own = (code: string) => (isMessageId(`exit.error.${code}`) ? t(`exit.error.${code}` as never) : ownRefusal(code));
-  if (p && ["exit_protected_period", "notice_evidence_missing", "exit_reason_required", "exit_case_required", "reason_class_invalid"].includes(p.code)) {
+  if (p && ["exit_protected_period", "dismissal_notice_short", "notice_evidence_missing", "exit_reason_required", "exit_case_required", "reason_class_invalid"].includes(p.code)) {
     return (
       <CommandError error={error} own={own}>
         <code>{p.code}</code>
         <details>
           <summary>{t("exit.refusal.details")}</summary>
-          {p.code === "exit_protected_period" ? <ProtectedPeriods periods={(p.refusals ?? []) as unknown as ProtectedPeriod[]} /> : (
+          {p.code === "exit_protected_period" ? <ProtectedPeriods periods={(p.refusals ?? []) as unknown as ProtectedPeriod[]} disclose={false} /> : (
             <ul className={s.lines}>
               {((p.refusals ?? []) as unknown as { missing?: string[]; field?: string }[]).flatMap((r) => r.missing ?? (r.field ? [r.field] : [])).map((field) => (
                 <li key={field}>{isMessageId(`exit.notice.${field}`) ? t(`exit.notice.${field}` as never) : t("exit.field.reason")}</li>

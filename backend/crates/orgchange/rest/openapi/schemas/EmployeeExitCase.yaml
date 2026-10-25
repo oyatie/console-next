@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
 type: object
 description: Optional fields are omitted (not null) when absent. Required nullable fields are always present;
   `*_name` actor display names are null when the actor is unset or unknown. exit_reason_code (BE-EMP-UI) is the
@@ -78,32 +79,32 @@ properties:
         enum: [IN_PERSON_SIGNED, CERTIFIED_MAIL, ELECTRONIC]
       evidence_ref:
         type: string
+  notice_disposition:
+    type: [object, 'null']
+    additionalProperties: false
+    readOnly: true
+    required: [kind]
+    description: The recorded pay-in-lieu or statutory exception disposition. REGISTER_EXCEPTION requires a
+      registered ground_code and a nonblank evidence_ref, checked by the server.
+    properties:
+      kind:
+        type: string
+        enum: [PAY_IN_LIEU, REGISTER_EXCEPTION]
+      ground_code:
+        type: string
+        maxLength: 1000
+      evidence_ref:
+        type: string
+        maxLength: 1000
+  notice_pay:
+    readOnly: true
+    oneOf:
+    - $ref: '#/components/schemas/NoticePay'
+    - type: 'null'
   protected_periods:
     type: array
-    readOnly: true
-    description: Protected leave periods computed from lifecycle events and the statutory register.
     items:
-      type: object
-      required: [lifecycle_event_id, leave_type, leave_from, leave_until, protected_until, instrument, article]
-      properties:
-        lifecycle_event_id:
-          type: string
-          format: uuid
-        leave_type:
-          type: string
-        leave_from:
-          type: string
-          format: date
-        leave_until:
-          type: [string, 'null']
-          format: date
-        protected_until:
-          type: [string, 'null']
-          format: date
-        instrument:
-          type: [string, 'null']
-        article:
-          type: [string, 'null']
+      $ref: '#/components/schemas/ProtectedExitPeriod'
   reported_by:
     $ref: '#/components/schemas/Uuid'
   reported_by_name:

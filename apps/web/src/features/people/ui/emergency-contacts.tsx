@@ -51,14 +51,14 @@ export function EmergencyContacts({ c, quick }: { c: Card; quick: Quick }) {
         id="f-emergency"
         label={label}
         sub={t("empCard.emergency.count", { count: list.length })}
-        mark={c.manage && <ListAdd object={label} onAdd={() => setOpen({ at: null })} why={full} />}
+        mark={c.editable && <ListAdd object={label} onAdd={() => setOpen({ at: null })} why={full} />}
       >
         {list.length ? (
           <ul className={s.contacts} aria-label={label}>
             {list.map((x, i) => (
               <li key={`${x.relation}-${x.phone}-${i}`} className={s.contact}>
                 <span>{who(x)} · {maskedPhone(x.phone)}</span>
-                {c.manage && (
+                {c.editable && (
                   <RowActions
                     field={t("empContact.of", { who: who(x) })}
                     onEdit={() => setOpen({ at: i })}

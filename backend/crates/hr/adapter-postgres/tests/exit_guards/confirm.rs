@@ -54,16 +54,20 @@ async fn written_notice_gates_effect_and_is_stored_and_audited(pool: PgPool) {
     );
     let mut n = notice("2026-10-11");
     n["evidence_ref"] = json!(" ");
-    let e = confirm(&w, &c, json!({"dismissal_notice":n}))
-        .await
-        .unwrap_err();
+    let e = confirm(
+        &w,
+        &c,
+        json!({"notice_disposition":{"kind":"PAY_IN_LIEU"},"dismissal_notice":n}),
+    )
+    .await
+    .unwrap_err();
     assert_eq!(e.refusals.unwrap()[0]["missing"], json!(["evidence_ref"]));
-    let e = confirm(&w, &c, json!({"dismissal_notice":notice("2026-10-12")}))
+    let e = confirm(&w, &c, json!({"notice_disposition":{"kind":"PAY_IN_LIEU"},"dismissal_notice":notice("2026-10-12")}))
         .await
         .unwrap_err();
     assert_eq!(e.refusals.unwrap()[0]["missing"], json!(["served_on"]));
     assert_eq!(count(&pool, "employee_lifecycle_events", &w).await, 0);
-    let out = confirm(&w, &c, json!({"dismissal_notice":notice("2026-10-11")}))
+    let out = confirm(&w, &c, json!({"notice_disposition":{"kind":"PAY_IN_LIEU"},"dismissal_notice":notice("2026-10-11")}))
         .await
         .unwrap();
     assert_eq!(out["dismissal_notice"], notice("2026-10-11"));

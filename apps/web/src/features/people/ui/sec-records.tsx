@@ -59,7 +59,7 @@ export function SecRecords({ c, quick }: { c: Card; quick: Quick }) {
   return (
     <RecordSection id="s5" no={5} title={t("empCard.sec.records")} meta={t("empRec.meta")}>
       {e.overlays}
-      <SubHead tools={c.manage && <ListAdd object={careerLabel} onAdd={() => setCareer({ at: null })} />}>{tx("empRec.career.head", { count: careers?.length ?? 0 })}</SubHead>
+      <SubHead tools={c.editable && <ListAdd object={careerLabel} onAdd={() => setCareer({ at: null })} />}>{tx("empRec.career.head", { count: careers?.length ?? 0 })}</SubHead>
       {careers?.length ? (
         <RecordRows
           label={careerLabel}
@@ -74,7 +74,7 @@ export function SecRecords({ c, quick }: { c: Card; quick: Quick }) {
             {
               end: true,
               cell: (x) =>
-                c.manage && (
+                c.editable && (
                   <RowActions
                     field={careerName(x)}
                     onEdit={() => setCareer({ at: careers.indexOf(x) })}

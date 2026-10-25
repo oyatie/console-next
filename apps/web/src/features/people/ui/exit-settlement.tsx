@@ -11,6 +11,7 @@ import { todayKst } from "../../../lib/pure/today";
 import { draftExitApproval } from "../api";
 import type { Effect } from "../domain/exits";
 import { SettlementFigures } from "./exit-facts";
+import { NoticePayFact } from "./exit-notice-pay";
 import { StepFrame, type SheetSpec } from "./exit-foot";
 import { EXIT_INVALIDATES, focusFirstInvalid, useExitCommand } from "./use-exit-command";
 import s from "./exit.module.css";
@@ -138,6 +139,7 @@ export function SettlementForm({ c, aside, sheet, stale, follow, onSaved, onDone
         </div>
       </fieldset>
       {p && same && <SettlementFigures pkg={p} />}
+      {c.notice_pay && <NoticePayFact pay={c.notice_pay} disposition={c.notice_disposition} />}
       <CommandError error={save.error} />
     </StepFrame>
   );
