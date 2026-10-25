@@ -9,7 +9,6 @@ import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { entityEndQuery, entityHistoryQuery } from "../api";
 import { refusalText } from "../../../reference/crud/present";
-import { useRecordLock } from "./use-record-lock";
 import { NtsCheck } from "./nts-check";
 import { primaryRegistration } from "../domain/view";
 import { headcount } from "../domain/view";
@@ -19,6 +18,8 @@ import { reasonText } from "../present";
 import type { Act } from "./record-revise-sheet";
 import s from "./record.module.css";
 import { Muted } from "../../../ui/muted/muted";
+import { QueryState } from "../../../lib/react/query-state";
+import { useRecordLock } from "./use-record-lock";
 
 /** What still needs doing on this entity (to-dos, never errors): a certificate to enter, a number to compare, a confirmation. */
 function todos(e: LegalEntity) {
@@ -61,7 +62,7 @@ export function RecordAside({ e, phase, depts, docs, act, onTab }: { e: LegalEnt
           <span className="grow" />
           {history.isSuccess && <Button variant="ghost" onClick={() => onTab("history")}>{t("entityRecord.history.all", { count: items.length })}</Button>}
         </div>
-        <ol className={s.timeline}>
+        <QueryState q={history}>{() => <ol className={s.timeline}>
           {[...e.scheduled].reverse().filter((x) => !items.slice(0, 4).some((r) => r.version === x.version)).map((x) => (
             <li key={`s${x.version}`} data-t="plan"><span className={s.when}>{t("entityRecord.history.scheduled", { date: fmtDate(x.effective_from) })}</span><b>{t("entityRecord.history.scheduledWhat")}</b></li>
           ))}
@@ -81,8 +82,7 @@ export function RecordAside({ e, phase, depts, docs, act, onTab }: { e: LegalEnt
               </li>
             );
           })}
-          {history.isError && <li className="muted">{t("entity.history.logPending")}</li>}
-        </ol>
+        </ol>}</QueryState>
       </section>
       {/* worst-case-08: a reader who may not manage this entity is offered no way to end it. */}
       {(e.can_manage || e.closed_on) && <section className="card" aria-labelledby="close-title">
@@ -93,13 +93,13 @@ export function RecordAside({ e, phase, depts, docs, act, onTab }: { e: LegalEnt
           ) : erase ? (
             <>
               <p><b>{t("entityRecord.close.delete")}</b> <Muted>{t("entityRecord.close.deleteWhat", { workplaces: e.workplaces.length, depts, people: fmtNumber(headcount(e)) })}</Muted></p>
-              {!e.read_only && <Button variant="ghost-danger" id="act-entity-delete" onClick={() => { if (!e.read_only) act.remove(); }}><Trash2 size={16} aria-hidden /> {t("entityRecord.close.deletePreview")}</Button>}
+              {!e.read_only && !locked && <Button variant="ghost-danger" id="act-entity-delete" onClick={() => { if (!e.read_only) act.remove(); }}><Trash2 size={16} aria-hidden /> {t("entityRecord.close.deletePreview")}</Button>}
             </>
           ) : (
             <>
               <p className="row"><Ban size={14} aria-hidden /><b>{t("entityRecord.close.end")}</b> <Muted>{t("entityRecord.close.endWhat")}</Muted></p>
               {end?.delete.refusal && <p className="muted">{refusalText(end.delete.refusal)}</p>}
-              {!e.read_only && <Button id="act-entity-close" onClick={() => { if (!e.read_only) act.close(); }}>{t("entityRecord.close.endPlan")}</Button>}
+              {!e.read_only && !locked && <Button id="act-entity-close" onClick={() => { if (!e.read_only) act.close(); }}>{t("entityRecord.close.endPlan")}</Button>}
             </>
           )}
         </div>

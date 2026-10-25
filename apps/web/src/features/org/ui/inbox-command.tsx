@@ -42,7 +42,7 @@ export function InboxCommand({ id, command }: { id: string; command: "approve" |
   return <div className="form">
     <QueryState q={detail}>{(d) => <EffectuateConsequence d={d} headcount={headcount} />}</QueryState>
     <Button variant="primary" disabled={disabled} onClick={() => setOpen(true)}>{t("org.change.effectuate")}</Button>
-    <Dialog open={open} title={t("org.change.effectuate")} onClose={() => setOpen(false)}>
+    <Dialog open={open} read title={t("org.change.effectuate")} onClose={() => setOpen(false)}>
       <QueryState q={detail}>{(d) => <EffectuateConsequence d={d} headcount={headcount} />}</QueryState>
       <CommandError error={action.error} />
       <div className="form__actions">

@@ -35,7 +35,7 @@ export function ProfileCard({ locale, me }: { locale: ReactNode; me: UseQueryRes
           // My sign-in ID (decisions #33): HR changes it, with a reason; the row is there from the first paint.
           ...(vendor ? [] : [{ key: "signInId", label: t("account.field.signInId"), value: <span className="code">{u?.sign_in_id ?? "—"}</span> }]),
           ...(vendor ? [] : [{ key: "domain", label: t("account.domain.title"), value: <Link to="/settings/company-domain">{u?.sign_in_id?.split("@")[1] ?? "—"}</Link> }]),
-          ...(vendor ? [] : [{ key: "unit", label: t("account.field.unit"), value: u ? <Unit u={u} /> : <span className="muted">{t(me.error ? "common.loadFailed.title" : "common.loading")}</span> }]),
+          ...(vendor ? [] : [{ key: "unit", label: t("account.field.unit"), value: u ? <Unit u={u} /> : null }]),
           // No preset roles (governance-01, company-17): no title row; ops is named as such, access is its own card.
           ...(vendor ? [{ key: "roles", label: t("account.field.roles"), value: <Chip>{t("account.field.platform")}</Chip> }] : []),
           { key: "locale", label: <label htmlFor="acct-locale">{t("shell.locale")}</label>, value: locale },

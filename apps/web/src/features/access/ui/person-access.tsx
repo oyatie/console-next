@@ -7,6 +7,7 @@ import { fmtDateTime } from "@console/i18n/format";
 import { codeText } from "../../../lib/labels";
 import { personLabel } from "../../../reference/person/present";
 import { QueryState } from "../../../lib/react/query-state";
+import { readGroup } from "../../../lib/react/query-view";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
@@ -98,6 +99,7 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
   return (
     <div className="page">
       <AccessHead />
+<QueryState q={readGroup([eff, grants])} back={{ to: "/access/grants", label: t("access.grant.title") }} layout="record">{() => <>      <>
       <div className={s.titleRow}>
         <Link to="/access/grants" className={buttonClass("ghost")}><ChevronLeft size={16} aria-hidden />{t("access.nav.grants")}</Link>
         {account ? <PersonHead a={account} ops={account.id === ctx.ops} title={<h2 className={s.personTitle}>{name}</h2>} /> : <h2 className="page__title">{t("access.person.title")}</h2>}
@@ -105,8 +107,6 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
         {account && <Button variant="primary" onClick={() => setGranting(true)}><Plus size={16} aria-hidden />{t("access.grant.title")}</Button>}
       </div>
       {done && <Banner live="polite">{done}{operationId && <p><Link to="/requests/$id" params={{ id: operationId }}>{t("requestOutcome.open")}</Link></p>}</Banner>}
-      {/* One loading card until both reads land, so the grants card is never pushed down under a pointer. */}
-      {eff.isPending || grants.isPending ? <Card><QueryState q={eff.isPending ? eff : grants}>{() => null}</QueryState></Card> : (
         <div className={s.editor}>
           <Card
             title={name ? t("access.person.can", { name }) : t("access.person.title")}
@@ -142,11 +142,12 @@ export function PersonAccess({ accountId, grant: openGrant = false }: { accountI
             )}
           </Card>
         </div>
-      )}
       {granting && account && ctx.cat.data && ctx.rolesLoaded && (
         <GrantSheet account={account} me={ctx.me} ops={ctx.ops} cat={ctx.cat.data} roles={ctx.roles} setup={ctx.setup} onClose={() => setGranting(false)} onGranted={(m, _made, id) => (setGranting(false), setDone(m), setOperationId(id))} />
       )}
       <GrantChange key={changing ? `${changing.g.id}:${changing.mode}` : "none"} grant={changing?.g ?? null} mode={changing?.mode} onClose={() => setChanging(null)} onDone={(m) => (setChanging(null), setDone(m), setOperationId(undefined))} />
+      </>
+    </>}</QueryState>
     </div>
   );
 }

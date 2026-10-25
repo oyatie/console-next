@@ -106,6 +106,10 @@ export class ApiError extends Error {
   }
 }
 
+/** Shared read/renewal backoff, honoring the server's Retry-After before the capped exponential delay. */
+const retryDelayMs = (attempt: number, error: unknown) =>
+  error instanceof ApiError && error.retryAfterMs !== undefined ? error.retryAfterMs : Math.min(1000 * 2 ** attempt, 30_000);
+
 // Access token lives in memory only; the refresh token is the HttpOnly `console_refresh`
 // cookie (Path=/api/v1/auth), so a reload recovers the session via refresh().
 let accessToken: string | null = null;
@@ -192,7 +196,15 @@ let renewal: ReturnType<typeof setTimeout> | undefined;
 function scheduleRenewal() {
   clearTimeout(renewal);
   const delay = accessToken ? renewDelay(claims?.exp, Date.now(), skew) : null;
-  renewal = delay === null ? undefined : setTimeout(() => void refresh().catch(() => undefined), delay);
+  const token = accessToken;
+  const renew = (attempt = 0) => {
+    if (accessToken !== token || lost) return;
+    void refresh().catch((error: unknown) => {
+      if (accessToken !== token || lost) return;
+      renewal = setTimeout(() => renew(attempt + 1), retryDelayMs(attempt, error));
+    });
+  };
+  renewal = delay === null ? undefined : setTimeout(renew, delay);
 }
 
 export const session = {
@@ -301,6 +313,7 @@ export async function authPost<T>(path: string, body?: unknown, bearer = false):
       method: "POST",
       headers,
       credentials: p.refresh.kind === "cookie" ? "same-origin" : "omit",
+      signal: path === "/api/v1/auth/token/refresh" ? AbortSignal.timeout(30_000) : undefined,
       body: JSON.stringify(body ?? {}),
     });
   };

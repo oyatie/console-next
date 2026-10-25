@@ -1,3 +1,4 @@
+import { QueryState } from "../../../lib/react/query-state";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fmtDate } from "@console/i18n/format";
@@ -25,20 +26,18 @@ export function DomainDialog({ org, onClose, onDone }: { org: Org; onClose: () =
     onSuccess: (o) => onDone({ message: t("tenants.domain.done", { slug: o.slug }) }),
   });
   const checking = outcomeUnknown(change.error);
-  if (policy.isPending) return null;
-  return <Dialog open title={t("tenants.domain.change")} onClose={onClose} dismissable={!slug && !change.isPending}>
-    <Form className="form" onSubmit={() => { if (valid && available.data?.available) change.mutate(slug); }}>
+  return <Dialog open read title={t("tenants.domain.change")} onClose={onClose} dismissable={!slug && !change.isPending}>
+    <QueryState q={policy} layout="form">{() => <Form className="form" onSubmit={() => { if (valid && available.data?.available) change.mutate(slug); }}>
       <Field label={t("tenants.form.slug")} required error={slug && !valid ? t("tenants.form.slugPattern") : available.data?.available === false ? t("tenants.refusal.slug_taken") : undefined}
         hint={<>{t("tenants.form.slugHint")} {t("tenants.form.preview", { slug: slug || org.slug })} {policy.data && t("tenants.domain.until", { from: org.slug, until: fmtDate(new Date(openedAt + policy.data.alias_days * 24 * 60 * 60 * 1000).toISOString()) })}</>}>
         {(p) => <TextInput {...p} value={slug} onChange={(e) => setSlug(asSlug(e.target.value))} />}
       </Field>
-      <CommandError error={policy.error}>{policy.error && <Button onClick={() => void policy.refetch()}>{t("common.retry")}</Button>}</CommandError>
-      <CommandError error={available.error}>{available.error && <Button onClick={() => void available.refetch()}>{t("common.retry")}</Button>}</CommandError>
+      {available.error && <QueryState q={available}>{() => null}</QueryState>}
       <CommandError error={change.error}>{checking && <Button onClick={() => change.check()}>{t("requestOutcome.find")}</Button>}</CommandError>
       <div className="form__actions">
         <Button onClick={onClose} disabled={change.isPending && !checking}>{t("common.back")}</Button>
         <Button type="submit" variant="primary" disabled={change.isPending || available.isFetching || !valid || available.data?.available !== true}>{t("tenants.domain.change")}</Button>
       </div>
-    </Form>
+    </Form>}</QueryState>
   </Dialog>;
 }

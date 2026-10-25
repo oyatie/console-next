@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { todayKst } from "../../../lib/pure/today";
 import { QueryState } from "../../../lib/react/query-state";
@@ -16,10 +16,10 @@ import { YearStepper } from "./year-stepper";
  */
 export function PublicHolidaysView() {
   const [year, setYear] = useState(Number(todayKst().slice(0, 4)));
-  const q = useQuery(holidaysQuery(year));
+  const q = useQuery({ ...holidaysQuery(year), placeholderData: keepPreviousData });
   return (
     <Card title={t("attendanceHolidays.public.title")} meta={t("attendanceHolidays.public.meta")} flush tools={<YearStepper year={year} onYear={setYear} />}>
-      <QueryState q={q} empty={(d) => (d.loaded ? null : <EmptyState title={t("attendanceHolidays.public.notLoaded", { year })} reason={t("attendanceHolidays.public.notLoaded.reason")} />)}>
+      <QueryState q={q} layout="list" empty={(d) => (d.loaded ? null : <EmptyState title={t("attendanceHolidays.public.notLoaded", { year })} reason={t("attendanceHolidays.public.notLoaded.reason")} />)}>
         {(d) => (
           <>
             <Table

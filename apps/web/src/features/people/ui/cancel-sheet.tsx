@@ -41,7 +41,6 @@ function CancelSheet({ e, onClose, onAct }: { e: Employee; onClose: () => void; 
   });
   const o = q.data;
   // The sheet opens once the server has answered, so its actions land with it (no shift under the pointer).
-  if (q.isPending) return null;
   const missing = !o ? null : !why ? "cancel-why" : o.attestation_required && !attest ? "cancel-attest" : o.register_confirmation_required && !kept ? "cancel-kept" : null;
   const ready = o?.cancel.allowed && o.can_cancel;
   return (

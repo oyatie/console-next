@@ -1,9 +1,10 @@
 import { buttonClass } from "../../../ui/button/button-class";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { readGroup, type ReadState } from "../../../lib/react/query-view";
 import { QueryState } from "../../../lib/react/query-state";
 import { CommandError } from "../../../lib/react/command-error";
 import { useCommand } from "../../../lib/react/command";
@@ -20,14 +21,19 @@ import { FilingComplete } from "./filing-complete";
 import { filingLabel } from "../present";
 import s from "./statutory.module.css";
 
-export function FilingList({ site, event }: { site?: string; event?: string }) {
+export function FilingList({ site, event, workplaces }: { site?: string; event?: string; workplaces: ReadState }) {
   const [state, setState] = useState("PENDING");
   const [search, setSearch] = useState("");
   const [after, setAfter] = useState<string>();
   const [selected, setSelected] = useState<FilingTask>();
   const [request, setRequest] = useState<FilingTask>();
   const [receipt, setReceipt] = useState<FilingTask>();
-  const tasks = useQuery(filingsQuery({ workplace_id: site, event_id: event, state, search, after }));
+  const [scope, setScope] = useState(site);
+  if (scope !== site) {
+    setScope(site); setAfter(undefined); setState("PENDING"); setSearch("");
+    setSelected(undefined); setRequest(undefined); setReceipt(undefined);
+  }
+  const tasks = useQuery({ ...filingsQuery({ workplace_id: site, event_id: event, state, search, after }), placeholderData: keepPreviousData });
   const undo = useCommand({
     run: (task: FilingTask, key) => recordFiling(task, { expected_version: task.version, action: "UNDO" }, key),
     invalidates: [FILINGS, "/api/v1/me/action-inbox"], settle: true,
@@ -41,7 +47,9 @@ export function FilingList({ site, event }: { site?: string; event?: string }) {
       <ToggleButton pressed={state === "DONE"} onClick={() => { setState("DONE"); setAfter(undefined); }}>{t("statutory.done")}</ToggleButton>
       <Field label={t("statutory.search")} required={null}>{(p) => <TextInput {...p} value={search} onChange={(e) => { setSearch(e.target.value); setAfter(undefined); }} />}</Field>
     </div>
-    <QueryState q={tasks}>{(page) => <>
+    <QueryState q={readGroup([workplaces, tasks])} layout="list">{() => {
+      const page = tasks.data!;
+      return <>
       <Chip>{t("statutory.count", { count: page.total })}</Chip>
       {page.items.length ? (
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users need to scroll this wide table.
@@ -63,7 +71,7 @@ export function FilingList({ site, event }: { site?: string; event?: string }) {
             {!r.is_request && ["ACQUIRE", "LOSE"].includes(r.kind) && r.insurer === "EI" && <Button onClick={() => setRequest(r)}>{t("statutory.futureRequest")}</Button>}</div> },
         ]} /></div>) : <EmptyState title={t("statutory.empty")} reason={t("statutory.emptyReason")} actions={<Link to="/people" className={buttonClass()}>{t("statutory.openPeople")}</Link>} />}
       <div className="row">{after && <Button onClick={() => setAfter(undefined)}>{t("common.back")}</Button>}{page.next && <Button onClick={() => setAfter(page.next!)}>{t("statutory.more")}</Button>}</div>
-    </>}</QueryState>
+    </>; }}</QueryState>
     <CommandError error={undo.error} recover={false}>{undo.isChecking && <Button onClick={() => undo.check()}>{t("common.retry")}</Button>}</CommandError>
     {receipt && <Receipt placement="docked" state="applied" message={receipt.record_action === "UNDO" ? t("statutory.undone") : receipt.record_action === "ASSESS" ? t("statutory.assessed") : receipt.state === "NOT_APPLICABLE" ? t("statutory.notApplicableSaved", { name: receipt.name, insurer: filingLabel(receipt.insurer), kind: filingLabel(receipt.kind) }) : receipt.completed_on ? t("statutory.saved", { name: receipt.name, insurer: filingLabel(receipt.insurer), kind: filingLabel(receipt.kind) }) : t("statutory.undone")}
       onDismiss={() => setReceipt(undefined)} onUndo={receipt.record_action === "COMPLETE" || receipt.record_action === "NOT_APPLICABLE" ? () => undo.mutate(receipt) : undefined} undoing={undo.isPending} />}

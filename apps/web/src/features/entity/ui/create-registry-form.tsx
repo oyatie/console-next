@@ -8,11 +8,11 @@ import { ChoiceField } from "../../../ui/choice/choice-field";
 import { DateField } from "../../../ui/date/date-field";
 import { Field, TextInput } from "../../../ui/field/field";
 import { MaskedField } from "../../../ui/masked-field/masked-field";
-import { Skeleton } from "../../../ui/skeleton/skeleton";
+import { QueryState } from "../../../lib/react/query-state";
 import type { DirectorDraft } from "../domain/draft";
 import { problem } from "../present";
 import { RefPick } from "./ref-pick";
-import { useCodeListsKnown } from "./use-ref";
+import { useCodeLists } from "./use-ref";
 import type { CreateState } from "./use-create";
 import { createRequirements } from "../domain/create";
 import { FoundingFields } from "./create-founding";
@@ -31,10 +31,9 @@ export function RegistryForm({ c }: { c: CreateState }) {
   const dirs = d.directors;
   const setDir = (i: number, patch: Partial<DirectorDraft>) => put("directors", dirs.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   // The main industry code: its shape waits for the list's answer.
-  const listsKnown = useCodeListsKnown(REGISTRY_LISTS);
-  if (!listsKnown) return <Skeleton bones={["row", "row", "row"]} label={t("common.loading")} />;
+  const lists = useCodeLists(REGISTRY_LISTS);
   return (
-    <div className={s.grid}>
+    <QueryState q={lists}>{() => <div className={s.grid}>
       <div className={s.span}><FoundingFields c={c} /></div>
       <Field label={t("entity.name.english")} required={false}>{(f) => <TextInput {...f} maxLength={200} value={d.englishName} onChange={(e) => put("englishName", e.target.value)} />}</Field>
       {named > 1 && (
@@ -81,6 +80,6 @@ export function RegistryForm({ c }: { c: CreateState }) {
         ))}
         <Button onClick={() => put("directors", [...dirs, { role: null, name: "", appointedOn: "" }])}><Plus size={16} aria-hidden /> {t("entityCreate.director.add")}</Button>
       </fieldset>
-    </div>
+    </div>}</QueryState>
   );
 }

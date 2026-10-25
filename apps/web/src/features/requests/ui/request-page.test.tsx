@@ -165,7 +165,7 @@ test("a refetch failure keeps the last-good receipt and its record link with an 
   view.query!.data = outcome({ result: { private_result: "private result" }, touched: [{ type: "employee", id: "person-1", audit_id: "audit-1", branch_id: null }] });
   view.query!.error = new TypeError("private network details");
   const markup = await html();
-  expect(markup).toContain(t("common.loadFailed.title"));
+  expect(markup).toContain(t("common.read.stale"));
   expect(markup).toContain(t("common.networkError"));
   expect(markup).toContain(t("requestOutcome.APPLIED"));
   expect(markup).toContain('href="/people/person-1"');

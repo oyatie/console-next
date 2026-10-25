@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
 import { PasskeyError } from "../../../lib/react/passkey-error";
+import { readGroup } from "../../../lib/react/query-view";
 import { QueryState } from "../../../lib/react/query-state";
 import { ActionBar } from "../../../ui/action-bar/action-bar";
 import { Button } from "../../../ui/button/button";
@@ -121,15 +122,16 @@ export function RoleEditorPage({ roleId, copy }: { roleId?: string; copy?: strin
   return (
     <div className="page">
       <AccessHead />
+<QueryState q={readGroup(source ? [cat, role] : [cat])} back={{ to: "/access/roles", label: t("access.role.back") }} layout="form">{() => <>      <>
       <div className={s.titleRow}>
         <Link to="/access/roles" className={buttonClass("ghost")}><ChevronLeft size={16} aria-hidden />{t("access.role.back")}</Link>
         <h2 className="page__title">{held ? t("access.role.title.named", { title, name: held.name_ko }) : title}</h2>
         {held && (held.holder_count ? <Chip tone="ok">{t("access.roles.state.used")}</Chip> : <Chip>{t("access.roles.state.unused")}</Chip>)}
         {held && held.holder_count > 0 && <span className="muted">{t(who.waiting ? "access.role.meta.golive" : "access.role.meta", { count: held.holder_count })}</span>}
       </div>
-      <QueryState q={cat}>
-        {(c) => (source ? <QueryState q={role}>{(r) => <Editor key={`${r.id}:${r.version}`} cat={c} role={r} copy={!roleId} setup={setup} />}</QueryState> : <Editor cat={c} copy={false} setup={setup} />)}
-      </QueryState>
+      <Editor key={role.data ? `${role.data.id}:${role.data.version}` : "new"} cat={cat.data!} role={role.data} copy={!roleId && Boolean(source)} setup={setup} />
+      </>
+    </>}</QueryState>
     </div>
   );
 }

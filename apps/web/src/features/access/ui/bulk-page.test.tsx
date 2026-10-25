@@ -12,6 +12,7 @@ vi.mock("../../../lib/react/command", () => ({ useCommand: () => ({ isPending: f
 vi.mock("./use-access-context", () => ({ useAccessContext: () => ({
   accounts: [], accountsQ: { data: state.pending ? undefined : { items: [] }, isPending: state.pending, error: null },
   cat: { data: {} }, roles: [], setup: true,
+  q: { isPending: state.pending, data: state.pending ? undefined : true, error: null },
 }) }));
 vi.mock("./access-head", () => ({ AccessHead: () => null }));
 vi.mock("./use-reasons", () => ({ useReasons: () => ({ codes: [] }) }));

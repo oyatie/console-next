@@ -14,6 +14,18 @@ export function failureText(error: unknown, own?: (code: string) => string | und
   return wait === undefined ? text : `${text} ${t("common.failed.retryAfter", { seconds: String(Math.max(1, Math.ceil(wait / 1000))) })}`;
 }
 
+/** Reads use catalog reasons; unknown upstream prose is not product copy. */
+export function readFailureText(error: unknown, own?: (code: string) => string | undefined): string {
+  return failureText(error, code => {
+    const text = own?.(code);
+    if (text) return text;
+    const id = `common.failed.code.${code}`;
+    if (isMessageId(id)) return t(id);
+    const outcome = `requestOutcome.code.${code}`;
+    return isMessageId(outcome) ? t(outcome) : t("common.read.failedReason");
+  });
+}
+
 function reason(error: unknown, own?: (code: string) => string | undefined): string {
   const mine = own && error instanceof ApiError ? own(error.code) : undefined;
   if (mine) return mine;

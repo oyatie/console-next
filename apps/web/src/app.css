@@ -63,7 +63,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .rail__link:hover { background: var(--muted); color: var(--ink); }
 .rail__link[data-status="active"] { background: var(--primary-soft); color: var(--primary); }
 .top { grid-area: top; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-4); min-width: 0; }
-.top__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top__name { flex: 0 0 calc(var(--space-6) * 4); min-width: 0; }
+.top__name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .top__menu { display: none; }
 .top__spacer { flex: 1; }
 /* The scroll container is also the containing block: an absolutely placed node inside (a visually hidden input) scrolls and clips with it instead of lengthening the document, which a focus would then scroll (E2-reveal). */
@@ -74,6 +75,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* Phone widths keep ⌘K (keyboard) and drop the field: the top bar has no room for it there. */
 @media (max-width: 640px) {
   .top .top__jump { display: none; }
+  .top__name { flex-shrink: 1; }
 }
 .top__kbd { padding: 0 var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-family: var(--font-mono); font-size: var(--text-xs); }
 .page { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); min-height: 100%; }
@@ -182,6 +184,7 @@ aside.panel { position: sticky; top: 0; }
 .overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--ink) 40%, transparent); }
 .dialog { width: min(100%, calc(var(--panel-w) + var(--space-6))); max-height: calc(100dvh - var(--space-6)); overflow: auto; padding: var(--space-5); color: var(--ink); }
 .dialog__body { display: flex; flex-direction: column; gap: var(--space-4); outline: none; }
+.dialog__body--read { min-block-size: min(var(--panel-w), calc(100dvh - var(--space-6) - var(--space-5) * 2)); }
 .popover { z-index: 30; }
 .form { display: flex; flex-direction: column; gap: var(--space-3); }
 .form__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }

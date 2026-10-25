@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type ColumnProps } from "react-aria-components";
 import { t } from "@console/i18n";
@@ -109,8 +109,10 @@ export function LongTable<R>(p: {
   const sel = p.selection;
   const cols: LongColumn<R>[] = sel ? [{ id: SELECT, header: null, cell: () => null, width: SELECT_WIDTH }, ...p.columns] : p.columns;
   const slotted = p.findSlot !== undefined;
+  const [find, setFind] = useState({ source: p.find?.defaultValue, value: p.find?.defaultValue ?? "" });
+  if (find.source !== p.find?.defaultValue) setFind({ source: p.find?.defaultValue, value: p.find?.defaultValue ?? "" });
   const finder = p.find && (
-    <SearchField className={css.find} defaultValue={p.find.defaultValue} onSubmit={p.find.onFind} onClear={() => p.find?.onFind("")}>
+    <SearchField className={css.find} value={find.value} onChange={value => setFind({ source: p.find?.defaultValue, value })} onSubmit={p.find.onFind} onClear={() => p.find?.onFind("")}>
       <Label className="sr-only">{p.find.label}</Label>
       <Input ref={search} className="field__input" placeholder={p.find.label} />
       <kbd className={css.kbd} aria-hidden="true">/</kbd>

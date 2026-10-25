@@ -13,9 +13,10 @@
 .asof { display: inline-flex; align-items: center; gap: var(--space-2); height: 36px; margin: 0; padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); font-size: var(--text-sm); white-space: nowrap; }
 .body { display: flex; flex: 1; min-height: 0; gap: var(--space-3); }
 .side { width: var(--panel-w); flex: none; overflow: auto; }
+.skeleton, .chartWrap { min-height: calc(var(--row-h) * 12); }
 .skeleton { flex: 1; display: grid; place-items: center; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--canvas); }
 
-.chartWrap { position: relative; display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: calc(var(--row-h) * 12); gap: var(--space-2); }
+.chartWrap { position: relative; display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-2); }
 /* The crumbs take what the find and depth leave and never wrap the row (they follow a find's result as it is typed);
  * cut short, the earlier crumbs give way first, so the last one (where the eye is) stays whole. */
 .crumbs { display: flex; align-items: center; flex: 999 1 0; min-width: 120px; max-width: max-content; overflow: hidden; gap: calc(2 * 1px); height: 36px; padding: 0 var(--space-2); font-size: var(--text-sm); white-space: nowrap; }

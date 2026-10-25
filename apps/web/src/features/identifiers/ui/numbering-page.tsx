@@ -1,3 +1,7 @@
+import { QueryState } from "../../../lib/react/query-state";
+import { readGroup } from "../../../lib/react/query-view";
+import { rulesQuery } from "../api";
+import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { entityNameText } from "../../../reference/entity/present";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -16,7 +20,12 @@ import { RulesCard } from "./rules-card";
  * a scope's people in one job that can be undone. After go-live a number changes one person at a time.
  */
 export function NumberingPage() {
+  return <AccessGate domain="hr_basic" level="edit" tenant><NumberingWorkspace /></AccessGate>;
+}
+
+function NumberingWorkspace() {
   const entities = useQuery(entitiesRef);
+  const rules = useQuery(rulesQuery);
   const phase = useQuery({ ...checklistRef, retry: false }).data?.phase;
   // Read with the page so the renumber form opens whole.
   useQuery(reasonCodesQuery("employee_number_change"));
@@ -35,8 +44,9 @@ export function NumberingPage() {
         title={t("identifiers.numbering.title")}
         crumbs={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} />}
       />
-      <RulesCard scopes={list} />
+<QueryState q={readGroup([entities, rules])} layout="form">{() => <>      <RulesCard scopes={list} />
       <RenumberCard scopes={list} setup={phase === "SETUP"} />
+    </>}</QueryState>
     </div>
   );
 }

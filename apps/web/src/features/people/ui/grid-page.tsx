@@ -1,3 +1,4 @@
+import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { useCallback, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Columns3, ClipboardPaste, X } from "lucide-react";
@@ -5,6 +6,7 @@ import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { label } from "../../../lib/labels";
 import { CommandError } from "../../../lib/react/command-error";
+import { QueryState } from "../../../lib/react/query-state";
 import { useCommand } from "../../../lib/react/command";
 import { Button, IconButton, ToggleButton } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
@@ -34,6 +36,10 @@ const TYPE = { type: "employmentType", values: TYPES };
  * commit bound to that check writes it. Dated changes for many people are not served: those columns are corrections.
  */
 export function GridPage() {
+  return <AccessGate domain="hr_basic" level="edit" tenant><GridWorkspace /></AccessGate>;
+}
+
+function GridWorkspace() {
   const nav = useNavigate();
   const picked = useBulkSelection();
   const [cols, setCols] = useState<GridKey[]>([...DEFAULT_COLUMNS]);
@@ -123,8 +129,9 @@ export function GridPage() {
   // The scope reads as the one unit everyone is in, else "the picked people".
   const units = new Set(data.people.map((e) => e.org_unit ?? ""));
   const scope = units.size === 1 && [...units][0] ? [...units][0]! : t("bulkGrid.scopeAll");
+  if (data.q.data === undefined) return <div className="page"><QueryState q={data.q} layout="grid">{() => null}</QueryState></div>;
   if (picked.size === 0)
-    return <div className="page"><EmptyState title={t("bulk.page.empty.title")} reason={t("bulk.page.empty.reason")} actions={<Link className={buttonClass("primary")} to="/people" search={{}}>{t("bulk.page.empty.action")}</Link>} /></div>;
+    return <QueryState q={data.q} layout="grid">{() => <div className="page"><EmptyState title={t("bulk.page.empty.title")} reason={t("bulk.page.empty.reason")} actions={<Link className={buttonClass("primary")} to="/people" search={{}}>{t("bulk.page.empty.action")}</Link>} /></div>}</QueryState>;
   const c = preview ? previewCounts(preview) : null;
   const steps = [
     { key: "people", label: t("bulkGrid.step.people"), state: "done" as const },
@@ -140,7 +147,7 @@ export function GridPage() {
         title={t("bulkGrid.title", { scope })}
         tools={<><StepLine steps={steps} label={t("bulk.page.steps")} /><IconButton label={t("bulk.page.close")} onClick={() => void nav({ to: "/people", search: {} })}><X size={16} aria-hidden /></IconButton></>}
       />
-      {step === "edit" && (
+<QueryState q={data.q} layout="grid">{() => <>      {step === "edit" && (
         <>
           <div className={s.toolbar}>
             {pick && <GridColumns value={cols} onChange={setCols} onClose={closePick} />}
@@ -181,6 +188,7 @@ export function GridPage() {
         {step === "check" && <Button variant="ghost" onClick={() => (preview && setMarks(refusedCells(preview)), setStep("edit"))}>{t("bulkGrid.back")}</Button>}
         {step === "check" && c && <Button variant="primary" aria-disabled={commit.isPending || undefined} onClick={() => (setTried(true), reason && commit.mutate())}>{t("bulkGrid.commit", { n: c.people, cells: c.cells })}<Kbd keys="⌘↵" /></Button>}
       </footer>}
+    </>}</QueryState>
     </div>
   );
 }

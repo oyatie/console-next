@@ -1,3 +1,5 @@
+import { getRouteApi } from "@tanstack/react-router";
+import { AccessGate } from "../reference/authz/ui/access-gate";
 import { useQuery } from "@tanstack/react-query";
 import { WorkplaceSheet } from "../features/entity/ui/workplace-sheets";
 import { WorkplaceSidePanel } from "../features/entity/ui/workplace-side-panel";
@@ -27,8 +29,10 @@ function Proposal() {
  * sheets (org slice, the entity slice's workplace panel and sheets through the slots), the setup checklist's fix links
  * (onboarding) and the proposal card a link may name. Routes compose slices; slices never import each other.
  */
+const route = getRouteApi("/app/org");
 export function OrgScreen() {
-  return (
+  const { act } = route.useSearch();
+  const content = (
     <StructureSlots.Provider value={slots}>
       <StructurePage
         fixLink={(code) => <FixLink code={code} />}
@@ -38,4 +42,5 @@ export function OrgScreen() {
       />
     </StructureSlots.Provider>
   );
+  return act?.startsWith("wp-") ? <AccessGate domain="org" level="edit" layout="grid">{content}</AccessGate> : content;
 }

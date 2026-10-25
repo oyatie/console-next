@@ -1,3 +1,4 @@
+import { QueryState } from "../../../lib/react/query-state";
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -47,7 +48,7 @@ export function OpsRecoveryOpenSheet({ org, data, onClose }: { org: Org; data: O
       <Field label={t("opsRecovery.evidenceRef")} required error={required(evidence)}>
         {(p) => <TextInput {...p} value={evidence} maxLength={200} onChange={(e) => setEvidence(e.target.value)} disabled={open.isPending} />}
       </Field>
-      <CommandError error={latest.error}>{latest.error && <Button onClick={() => void latest.refetch()}>{t("common.retry")}</Button>}</CommandError>
+      {latest.error && <QueryState q={latest}>{() => null}</QueryState>}
       <CommandError error={open.error} />
       <div className="form__actions">
         <Button onClick={onClose} disabled={open.isPending}>{t("common.back")}</Button>

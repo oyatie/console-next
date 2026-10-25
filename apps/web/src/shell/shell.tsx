@@ -1,7 +1,7 @@
 import { activeSupportQuery } from "../reference/support-access/api";
 import { ActiveSupportBanner } from "../features/support-access/ui/support-access";
 import { DomainNotice } from "../auth/domain-notice";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { LogOut, Menu, Moon, Search, Sun, UserRound } from "lucide-react";
@@ -18,6 +18,7 @@ import { setLocale } from "./locale";
 import { useTheme } from "./theme";
 import { PLATFORM_NAV, activeLink, tenantNav } from "./nav";
 import { PhaseBand } from "./phase-band";
+import { SessionRecovery } from "./session-recovery";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
 const JumpPalette = lazy(() => chunk(import("../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
@@ -26,11 +27,13 @@ export function Shell() {
   const nav = useNavigate();
   const { pathname } = useLocation();
   const [theme, toggle] = useTheme();
-  const platform = !!session.claims?.platform;
+  const claims = useSyncExternalStore(session.subscribe, () => session.claims);
+  const platform = !!claims?.platform;
   // Platform tokens are refused by /me/authz; the vendor menu is fixed.
-  const authz = useQuery({ ...authzQuery, enabled: !platform });
-  const support = useQuery({ ...activeSupportQuery, enabled: !!session.token && !platform });
-  const menu = platform ? PLATFORM_NAV : tenantNav(authz.data?.capabilities, authz.isError, support.data?.can_approve);
+  const authz = useQuery({ ...authzQuery, enabled: !platform && Boolean(session.token) });
+  const support = useQuery({ ...activeSupportQuery, enabled: !platform && Boolean(session.token) });
+  const navReady = !authz.isPending && !support.isPending;
+  const menu = platform ? PLATFORM_NAV : tenantNav(navReady ? authz.data?.capabilities : undefined, navReady && authz.isError, navReady && support.data?.can_approve);
   // Phone widths hide the rail; the top bar's menu button discloses it.
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -100,7 +103,7 @@ export function Shell() {
           {theme === "dark" ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden />}
         </button>
         <Link to="/account" className="btn btn--ghost top__name">
-          <UserRound size={16} aria-hidden /> {session.claims?.name ?? t("shell.account")}
+          <UserRound size={16} aria-hidden /> <span>{session.claims?.name ?? t("shell.account")}</span>
         </Link>
         <button className="btn btn--ghost" onClick={async () => (await logout(), nav({ to: "/login" }))}>
           <LogOut size={16} aria-hidden /> {t("shell.logout")}
@@ -108,10 +111,12 @@ export function Shell() {
       </header>
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG 2.1.1 requires keyboard access to this named scroll container. */}
       <main className="main" id="main" tabIndex={0} aria-label={t("shell.main")}>
+        <SessionRecovery>
         <ChangeNotice key={pathname} />
         <HeldNotice />
         {!platform && <DomainNotice />}{!platform && <ActiveSupportBanner />}
-        {platform ? <Outlet /> : <PhaseBand><Outlet /></PhaseBand>}
+        {platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand><Outlet /></PhaseBand>}
+        </SessionRecovery>
       </main>
       {jump && (
         <Suspense fallback={null}>

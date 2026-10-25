@@ -18,7 +18,7 @@ export function NoticeListPage() {
     <div className="page">
       <PageHead crumbs={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} current={t("notice.crumb")} />} title={t("notice.list")} />
       <Card label={t("notice.list")} flush>
-        <QueryState q={q} empty={(d) => (d.items.length ? null : <EmptyState title={t("notice.list.empty")} reason={t("notice.missing.what")} />)}>
+        <QueryState q={q} layout="list" empty={(d) => (d.items.length ? null : <EmptyState title={t("notice.list.empty")} reason={t("notice.missing.what")} />)}>
           {(d) => (
             <Table
               label={t("notice.list")}

@@ -12,5 +12,5 @@ import { entityQuery } from "../api";
  */
 export function FreshEntity({ id, children }: { id: string; children: (e: LegalEntity) => ReactNode }) {
   const q = freshOnOpen(useQuery({ ...entityQuery(id), refetchOnMount: "always" }));
-  return q.isPending ? null : <QueryState q={q}>{children}</QueryState>;
+  return <QueryState q={q} layout="form">{children}</QueryState>;
 }

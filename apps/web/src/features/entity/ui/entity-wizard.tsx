@@ -3,6 +3,7 @@ import { Check, ChevronRight, Network, TriangleAlert, X } from "lucide-react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type { BizKind } from "@console/api/pending";
 import { t } from "@console/i18n";
+import { QueryState } from "../../../lib/react/query-state";
 import { EntityError } from "./entity-error";
 import { Button } from "../../../ui/button/button";
 import { isFounding, registrationGaps, stepsFor, type CreateField, type WizardStep } from "../domain/create";
@@ -57,7 +58,7 @@ export function EntityWizard({ kind, name }: { kind?: BizKind; name?: string }) 
         <Muted>{t("entityCreate.context", { n: c.ordinal })}</Muted>
         <Link to="/org/entities" className="btn btn--ghost" aria-label={t("entityCreate.close")} onClick={c.forget}><X size={16} aria-hidden /></Link>
       </div>
-      <div className={s.body}>
+<QueryState q={c.q} layout="form">{() => <>      <div className={s.body}>
         {step === "basics" && (
           <section className={`card ${s.main}`} aria-labelledby="basics-title">
             <div className={s.cardHead}><h2 id="basics-title" className={s.cardTitle}>{t("entityCreate.step.basics")}</h2></div>
@@ -77,6 +78,7 @@ export function EntityWizard({ kind, name }: { kind?: BizKind; name?: string }) 
         {step === "review" && <ReviewStep c={c} goTo={go} />}
       </div>
       <Foot c={c} step={step} steps={steps} go={go} />
+    </>}</QueryState>
     </div>
   );
 }

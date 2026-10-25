@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useInfiniteQuery, useQueries } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQueries } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
@@ -37,6 +37,7 @@ export function ExitCaseList() {
   const { status } = route.useSearch();
   const navigate = route.useNavigate();
   const [q, setQ] = useState("");
+  const [findSlot, setFindSlot] = useState<HTMLElement | null>(null);
   const counts = useQueries({ queries: CHIPS.map((f) => exitCountQuery(f, q)) });
   const pick = (f?: ExitFilter) => void navigate({ search: f ? { status: f } : {}, replace: true });
   return (
@@ -55,19 +56,19 @@ export function ExitCaseList() {
             );
           })}
         </div>
-        {/* Keyed by the filter: a new filter starts again from the first page. */}
-        <Cases key={`${status ?? ""}\u0000${q}`} status={status} q={q} onFind={setQ} onReset={() => (setQ(""), pick())} />
+        <div ref={setFindSlot} />
+        <Cases status={status} q={q} findSlot={findSlot} onFind={setQ} onReset={() => (setQ(""), pick())} />
       </section>
     </div>
   );
 }
 
-function Cases({ status, q, onFind, onReset }: { status?: ExitFilter; q: string; onFind: (q: string) => void; onReset: () => void }) {
+function Cases({ status, q, findSlot, onFind, onReset }: { status?: ExitFilter; q: string; findSlot: HTMLElement | null; onFind: (q: string) => void; onReset: () => void }) {
   const can = useCan();
   const navigate = route.useNavigate();
   const prefetch = usePrefetch();
   // Polling would re-read every loaded page; the counts above poll, and focus refreshes the rows.
-  const list = useInfiniteQuery({ ...exitCasesPagesQuery(status, PAGE, q), refetchInterval: false });
+  const list = useInfiniteQuery({ ...exitCasesPagesQuery(status, PAGE, q), placeholderData: keepPreviousData, refetchInterval: false });
   const seen = new Set<string>();
   const rows = (list.data?.pages ?? []).flatMap((p) => p.items).filter((c) => !seen.has(c.id) && seen.add(c.id));
   const total = list.data?.pages[0]?.total ?? 0;
@@ -120,7 +121,7 @@ function Cases({ status, q, onFind, onReset }: { status?: ExitFilter; q: string;
     },
   ];
   return (
-    <QueryState q={list}>
+    <QueryState q={list} layout="list">
       {() => (
         <LongTable
           label={t("exit.list.title")}
@@ -132,8 +133,9 @@ function Cases({ status, q, onFind, onReset }: { status?: ExitFilter; q: string;
           hasMore={list.hasNextPage}
           loadingMore={list.isFetchingNextPage}
           onLoadMore={() => void list.fetchNextPage()}
+          find={{ label: t("exit.list.find"), defaultValue: q, onFind: value => onFind(value.trim()) }}
+          findSlot={findSlot}
           onRowAction={(id) => void navigate({ to: "/people/exits/$id", params: { id }, search: {} })}
-          find={{ label: t("exit.list.find"), onFind: (v) => onFind(v.trim()), defaultValue: q }}
           empty={
             status || q ? (
               <EmptyState title={t("exit.list.noMatch.title")} reason={t("exit.list.noMatch.reason")} actions={<Button onClick={onReset}>{t("exit.list.filter.reset")}</Button>} />

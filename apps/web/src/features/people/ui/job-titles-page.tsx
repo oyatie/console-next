@@ -41,18 +41,18 @@ export function JobTitlesPage() {
         <Link to="/people" search={{}} className="btn btn--ghost">{t("people.title")}</Link>
         <h1 className="page__title grow">{t("titles.title")}</h1>
       </div>
+      <QueryState q={titles} layout="list">{() => <>
       {/* Nothing below the head until the read says who may change the lists: the add form would push the list down. */}
-      {titles.isPending ? <QueryState q={titles}>{() => null}</QueryState> : (
+      {
         <>
           <AddTitle manage={manage} />
           <section className="card" aria-labelledby="titles-list">
             <h2 id="titles-list" className="panel__title">{t("titles.list")}</h2>
-            <QueryState q={titles} empty={(d) => (d.items.length ? null : <EmptyState title={t("titles.none.title")} reason={t(manage ? "titles.none.manage" : "titles.none.read")} />)}>
-              {(d) => <Table label={t("titles.list")} rows={d.items} rowId={(x) => x.id} columns={columns} />}
-            </QueryState>
+            {titles.data!.items.length ? <Table label={t("titles.list")} rows={titles.data!.items} rowId={(x) => x.id} columns={columns} /> : <EmptyState title={t("titles.none.title")} reason={t(manage ? "titles.none.manage" : "titles.none.read")} />}
           </section>
         </>
-      )}
+      }
+    </>}</QueryState>
     </div>
   );
 }

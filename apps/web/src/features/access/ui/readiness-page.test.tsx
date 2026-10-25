@@ -9,7 +9,7 @@ import { GrantsPage } from "./grants-page";
 import { ReadinessPage } from "./readiness-page";
 
 const state = vi.hoisted(() => ({ grants: [] as AccessGrant[], linked: false }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { items: state.grants }, isPending: false, isError: false }) }));
+vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof import("@tanstack/react-query")>(), useQuery: () => ({ data: { items: state.grants }, isPending: false, isError: false }) }));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children, to, params, search: _search, ...props }: { children: ReactNode; to: string; params?: Record<string, string>; search?: unknown }) => <a {...props} href={to.replace(/\$([A-Za-z]+)/g, (_, key: string) => params?.[key] ?? "")}>{children}</a> }));
 vi.mock("./use-access-context", () => ({ useAccessContext: () => ({
   accounts: [
@@ -18,6 +18,7 @@ vi.mock("./use-access-context", () => ({ useAccessContext: () => ({
   ].map((a, i) => ({ ...a, ...(state.linked && { employee_id: `person-${i}`, employee_number: `E-${i}` }) })),
   cat: {}, accountsQ: { isFetching: false },
   ops: "ops", roles: [], setup: true,
+  q: { data: true, isPending: false, error: null },
 }) }));
 vi.mock("./use-org-roots", () => ({ useOrgRoots: () => [] }));
 vi.mock("./access-head", () => ({ AccessHead: () => null }));

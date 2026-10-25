@@ -1,12 +1,13 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { authPost, configure, renewDelay, RENEW_LEAD_MS, session, type Platform, type TokenPair } from "./index";
+import { noteServerDate } from "./session";
 
 // The access token is renewed before it expires (so the event stream, closed by the server at expiry, reopens with a
 // fresh one and never meets a 401), on the server's clock, and only when renewing gains anything.
 const MIN = 60_000;
 const passkeys: Platform["passkeys"] = { get: async () => null, create: async () => null };
-const token = (exp: number) =>
-  `h.${btoa(JSON.stringify({ sub: "u1", org: "o1", roles: ["HR_ADMIN"], platform: false, read_only: false, exp })).replace(/=+$/, "")}.s`;
+const token = (exp: number, sub = "u1") =>
+  `h.${btoa(JSON.stringify({ sub, org: "o1", roles: ["HR_ADMIN"], platform: false, read_only: false, exp })).replace(/=+$/, "")}.s`;
 const pair = (exp: number) => ({ access_token: token(exp), token_type: "Bearer" as const, refresh_expires_at: "2027-01-01T00:00:00Z", requires_passkey_setup: false });
 afterEach(() => {
   session.set(null);
@@ -72,4 +73,81 @@ test("login response time is learned before the renewal timer is scheduled", asy
     "/api/v1/auth/passkey/login/finish",
     "/api/v1/auth/token/refresh",
   ]);
+});
+
+test.each([503, "timeout", "network"] as const)("renewal recovers from %s with backoff and keeps the principal", async (failure) => {
+  vi.useFakeTimers({ now: 1_800_000_000_000 });
+  noteServerDate(new Response(null, { headers: { date: new Date(Date.now()).toUTCString() } }));
+  configure({ baseUrl: "https://console.example", passkeys, refresh: { kind: "cookie" } });
+  let calls = 0;
+  vi.stubGlobal("fetch", async () => {
+    if (++calls <= 2) {
+      if (failure === "timeout") throw new DOMException("timed out", "TimeoutError");
+      if (failure === "network") throw new TypeError("Failed to fetch");
+      return new Response("{}", { status: failure });
+    }
+    return new Response(JSON.stringify(pair(Date.now() / 1000 + 15 * 60)), { headers: { "content-type": "application/json" } });
+  });
+  session.set(pair(Date.now() / 1000 + 15 * 60));
+  await vi.advanceTimersByTimeAsync(13 * MIN);
+  expect(calls).toBe(1);
+  expect(session.claims?.sub).toBe("u1");
+  expect(session.lost).toBe(false);
+  await vi.advanceTimersByTimeAsync(999);
+  expect(calls).toBe(1);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(calls).toBe(2);
+  await vi.advanceTimersByTimeAsync(1999);
+  expect(calls).toBe(2);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(calls).toBe(3);
+  expect(session.lost).toBe(false);
+});
+
+test("renewal waits for the server's Retry-After before rotating again", async () => {
+  vi.useFakeTimers({ now: 1_800_000_000_000 });
+  noteServerDate(new Response(null, { headers: { date: new Date(Date.now()).toUTCString() } }));
+  configure({ baseUrl: "https://console.example", passkeys, refresh: { kind: "cookie" } });
+  const fetch = vi.fn(async () => new Response("{}", { status: 503, headers: { "retry-after": "5" } }));
+  vi.stubGlobal("fetch", fetch);
+  session.set(pair(Date.now() / 1000 + 15 * 60));
+  await vi.advanceTimersByTimeAsync(13 * MIN);
+  await vi.advanceTimersByTimeAsync(4999);
+  expect(fetch).toHaveBeenCalledTimes(1);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+test.each(["sign-out", "switch"])("a late renewal failure after %s leaves no old retry timer", async change => {
+  vi.useFakeTimers({ now: 1_800_000_000_000 });
+  noteServerDate(new Response(null, { headers: { date: new Date(Date.now()).toUTCString() } }));
+  configure({ baseUrl: "https://console.example", passkeys, refresh: { kind: "cookie" } });
+  let finish!: (response: Response) => void;
+  const fetch = vi.fn(() => new Promise<Response>(resolve => { finish = resolve; }));
+  vi.stubGlobal("fetch", fetch);
+  session.set(pair(Date.now() / 1000 + 15 * 60));
+  await vi.advanceTimersByTimeAsync(13 * MIN);
+  expect(fetch).toHaveBeenCalledTimes(1);
+  session.set(change === "sign-out" ? null : { ...pair(Date.now() / 1000 + 30 * 60), access_token: token(Date.now() / 1000 + 30 * 60, "u2") });
+  const timers = vi.getTimerCount();
+  finish(new Response("{}", { status: 503 }));
+  await vi.advanceTimersByTimeAsync(0);
+  expect(vi.getTimerCount()).toBe(timers);
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+test("refresh transport has a bounded timeout without timing out other auth commands", async () => {
+  configure({ baseUrl: "https://console.example", passkeys, refresh: { kind: "cookie" } });
+  const signal = new AbortController().signal;
+  const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(signal);
+  const fetch = vi.fn(async (_input: string | Request, _init?: RequestInit) => new Response("{}"));
+  vi.stubGlobal("fetch", fetch);
+  try {
+    await authPost("/api/v1/auth/token/refresh");
+    expect(timeout).toHaveBeenCalledWith(30_000);
+    expect(fetch.mock.calls[0]?.[1]).toMatchObject({ signal });
+    await authPost("/api/v1/auth/passkey/login/start");
+    expect(fetch.mock.calls[1]?.[1]).toMatchObject({ signal: undefined });
+  } finally { timeout.mockRestore(); }
 });

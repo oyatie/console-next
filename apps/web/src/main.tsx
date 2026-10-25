@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, Link, RouterProvider } from "@tanstack/react-router";
 import { useSyncExternalStore } from "react";
 import { I18nProvider } from "react-aria-components";
-import { configure, session } from "@console/api";
+import { ApiError, configure, session } from "@console/api";
 import { webPlatform } from "@console/api/web";
 import { i18n, loadCatalog, t } from "@console/i18n";
 import { chunk, crashed, loaded, started } from "./lib/chunk-guard";
@@ -99,6 +99,8 @@ session.subscribe(() => {
   if (streams === streaming) return;
   streaming = streams;
   if (streams) {
+    // A consent refusal must not survive acceptance when failed reads do not retry on mount.
+    void queryClient.resetQueries({ predicate: q => q.state.error instanceof ApiError && q.state.error.code === "privacy_consent_required" });
     // Consent review can miss change frames; shown data re-reads after acceptance.
     void queryClient.invalidateQueries({ refetchType: "none" });
     openLive(queryClient);

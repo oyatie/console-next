@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { QueryState } from "../../../lib/react/query-state";
+import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { todayKst } from "../../../lib/pure/today";
 import { Banner } from "../../../ui/banner/banner";
 import { Button, IconButton, ToggleButton } from "../../../ui/button/button";
@@ -25,7 +26,7 @@ import { ScopePicker } from "./scope-picker";
 import { PersonScheduleSheet } from "./person-schedule-sheet";
 import type { AssignTarget } from "./assign-sheet";
 import { useDrafts } from "./use-drafts";
-import { useOnline } from "./use-online";
+import { useOnline } from "../../../lib/react/use-online";
 import { usePlanKinds } from "./use-plan-kinds";
 import s from "./records.module.css";
 
@@ -36,11 +37,11 @@ const route = getRouteApi("/app/attendance");
  * groups workplace › department fold their clean rows; issue rows come first, each with its sentence and one verb. Today is judged
  * only after it ends. Drafts typed here are saved through the same save sheet as the month grid.
  */
-export function DayTab() {
+export function DayTab({ head }: { head?: ReactNode }) {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const date = search.date ?? addDays(todayKst(), -1);
-  const board = useQuery(dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled));
+  const board = useQuery({ ...dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled), placeholderData: keepPreviousData });
   const rows = useMemo(() => board.data?.groups.flatMap(g => g.rows) ?? [], [board.data]);
   const kindOf = usePlanKinds(rows, date);
   const store = useDrafts(`day:${date}`);
@@ -56,6 +57,8 @@ export function DayTab() {
 
   return (
     <div className={s.dayPage}>
+      {head}
+      <PageReadGate q={board} own={refusalText} recovery={search.wp ? <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} /> : undefined}>
       <div className={s.toolbar} role="toolbar" aria-label={t("attendanceRecords.toolbar.label")}>
         <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} />
         <div className={s.stepper}>
@@ -71,10 +74,10 @@ export function DayTab() {
         {saveWhy ? <DisabledReason reason={saveWhy} control={(p) => <Button {...p} variant="primary">{t("attendanceRecords.toolbar.save")}</Button>} /> : <Button variant="primary" onClick={() => setSave(true)}>{t("attendanceRecords.toolbar.save")}</Button>}
       </div>
       {feedback && <p className="muted" role="status">{feedback}</p>}
-      <QueryState q={board} own={refusalText}>
-        {(b) => {
-          const ledger = ledgerParts(b.ledger);
-          return (
+
+      <QueryState q={board} own={refusalText} layout="grid">{b => {
+        const ledger = ledgerParts(b.ledger);
+        return <>
             <div className={s.monthLayout} data-docked={save || open ? "" : undefined}>
               <div className={s.dayLayout}>
                 <div className={s.dayPage}>
@@ -130,10 +133,10 @@ export function DayTab() {
               {save && <SaveDock drafts={store.drafts} rows={rows} kindOf={kindOf} month={date.slice(0, 7)} onClose={() => setSave(false)} onFocusCell={() => setSave(false)} onSaved={(r, keys) => (store.saved(keys), setSave(false), setNote(t("attendanceRecords.receipt.saved", { saved: r.saved, opens: r.opens.blocking + r.opens.decision })))} />}
               {!save && open && <DayDock employeeId={open.id} date={date} own={open.own} onClose={() => setOpen(null)} onRewrite={() => setOpen(null)} onDone={(m) => (setOpen(null), setNote(m))} />}
             </div>
-          );
-        }}
-      </QueryState>
       {assign && <PersonScheduleSheet target={assign} onClose={() => setAssign(null)} onAssigned={(message) => (setAssign(null), setNote(message))} />}
+    </>;
+    }}</QueryState>
+    </PageReadGate>
     </div>
   );
 }

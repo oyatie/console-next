@@ -5,7 +5,7 @@ export function EmptyState({ title, reason, actions, meta, alert }: { title: str
   return (
     <div className="state" role={alert ? "alert" : undefined}>
       <h2 className="state__title">{title}</h2>
-      <span className="muted">{reason}</span>
+      {reason != null && <span className="muted">{reason}</span>}
       {actions && <div className="state__actions">{actions}</div>}
       {meta}
     </div>

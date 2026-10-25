@@ -31,6 +31,7 @@ beforeAll(async () => {
       resolveId: (id) => id === "/__go-live-test.tsx" ? id : undefined,
       load: (id) => id === "/__go-live-test.tsx" ? `
         import React from "react";
+        import "/apps/web/src/app.css";
         import { createRoot } from "react-dom/client";
         import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
         import { createRootRoute, createRoute, createRouter, RouterProvider, Outlet, Link } from "@tanstack/react-router";

@@ -8,6 +8,7 @@ import { Dialog } from "../../../ui/dialog";
 import { Banner } from "../../../ui/banner/banner";
 import { useCommand, outcomeUnknown } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
+import { QueryState } from "../../../lib/react/query-state";
 import { ownDomainRequest, requestDomain, verifyDomainRequest } from "../api";
 import { validCompanyDomain } from "../../../lib/pure/company-domain";
 
@@ -26,11 +27,9 @@ export function CompanyDomain({ signInId, ops }: { signInId: string | null | und
   });
   const checking = outcomeUnknown(change.error);
   const valid = validCompanyDomain(requested) && requested !== domain;
-  if (ops && pending.isPending) return <Card title={t("account.domain.title")}><div role="status">{t("common.loading")}</div></Card>;
-  return <Card title={t("account.domain.title")}>
+  const card = <Card title={t("account.domain.title")}>
     <p className="code">{t("account.domain.current", { slug: domain ?? "—" })}</p>
     {pending.data?.pending_domain && <Banner tone="ok">{t("account.domain.pending", { slug: pending.data.pending_domain })}</Banner>}
-    <CommandError error={pending.error}>{pending.error && <Button onClick={() => void pending.refetch()}>{t("common.retry")}</Button>}</CommandError>
     {!ops && <p>{t("account.domain.opsOnly")}</p>}
     <Button disabled={!domain || !ops || Boolean(pending.error)} onClick={() => setOpen(true)}>{t("account.domain.request")}</Button>
     <Dialog open={open} title={t("account.domain.request")} onClose={() => setOpen(false)} dismissable={!requested}>
@@ -45,4 +44,5 @@ export function CompanyDomain({ signInId, ops }: { signInId: string | null | und
       </div>
     </Dialog>
   </Card>;
+  return ops ? <QueryState q={pending}>{() => card}</QueryState> : card;
 }

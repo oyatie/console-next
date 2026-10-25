@@ -1,3 +1,5 @@
+import { QueryState } from "../../../lib/react/query-state";
+import { readGroup } from "../../../lib/react/query-view";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Lock, Settings } from "lucide-react";
@@ -50,11 +52,7 @@ export function SecFamily({ c }: { c: Card }) {
       >
         {!purpose ? (
           <span className={s.lockLine}><Lock size={12} aria-hidden /> {t("empCard.family.disciplineGate")}</span>
-        ) : discipline.isError ? (
-          <span className={s.warn}>{t("empCard.restricted.denied")}</span>
-        ) : (
-          t("empCard.family.disciplineOpen", { count: discipline.data?.items.length ?? 0, purpose: tx(`empCard.purpose.${purpose}`) })
-        )}
+        ) : <QueryState q={discipline}>{data => t("empCard.family.disciplineOpen", { count: data.items.length, purpose: tx(`empCard.purpose.${purpose}`) })}</QueryState>}
       </FieldRow>
       <SubHead tools={e.add("family")}>{t("empCard.family.family", { count: e.of("family").filter((x) => !x.voided).length })}</SubHead>
       {e.rows("family", [{ cell: (x) => <span className={s.familyItem}>{tx(`empRec.family.relation.${f(x).relation}`)}<Masked>{maskName(String(f(x).name))}</Masked></span> }, { cell: (x) => <span className={s.num}>{f(x).birth_date ? <MaskedValue masked={maskedBirth()} value={fmtDate(f(x).birth_date as string)} field={t("empCard.f.birth")} who={familyName(x)} /> : "—"}</span> }], familyName) ?? <SectionLine>{t("empCard.none")}</SectionLine>}
@@ -80,14 +78,12 @@ export function SecRestricted({ c }: { c: Card }) {
           <b>{t("empCard.restricted.gate")}</b> <span className={s.s12}>{t("empCard.restricted.law")}</span>
           <ChipChoice label={t("empCard.purpose.label")} options={PURPOSES.map((p) => ({ value: p, label: t(`empCard.purpose.${p}`) }))} value={purpose} onChange={setPurpose} />
         </Gate>
-      ) : disability.isError || veteran.isError ? (
-        <SectionLine><span className={s.warn}>{t("empCard.restricted.denied")}</span></SectionLine>
       ) : (
-        <>
+        <QueryState q={readGroup([disability, veteran])}>{() => <>
           <SectionLine>{t("empCard.restricted.open", { purpose: tx(`empCard.purpose.${purpose}`) })}</SectionLine>
           <FieldRow label={t("empCard.restricted.disability")}>{disability.data?.items.length ? t("empCard.restricted.recorded") : <Muted>{t("empCard.restricted.none")}</Muted>}</FieldRow>
           <FieldRow label={t("empCard.restricted.veteran")}>{veteran.data?.items.length ? t("empCard.restricted.recorded") : <Muted>{t("empCard.restricted.none")}</Muted>}</FieldRow>
-        </>
+        </>}</QueryState>
       )}
     </RecordSection>
   );

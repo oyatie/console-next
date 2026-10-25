@@ -92,20 +92,20 @@ function Peek({ d, today, onClose }: { d: Detail; today: string; onClose: () => 
         {e.leave_remaining != null && <div><dt className={s.peekTerm}>{t("people.field.leave")}</dt><dd className="num">{t("people.field.leaveLeft", { days: e.leave_remaining })}</dd></div>}
       </dl>
       {c.manage && (
-        <section aria-labelledby="peek-register">
+        <QueryState q={c.register}>{() => <section aria-labelledby="peek-register">
           <h3 id="peek-register" className={s.peekTitle}>
             {t("empCard.reg.title")}
-            <span className={gaps ? s.peekGap : s.peekOk}>{c.register.isPending ? t("common.loading") : gaps ? t("roster.peek.gaps", { count: gaps }) : t("roster.peek.whole")}</span>
+            <span className={gaps ? s.peekGap : s.peekOk}>{gaps ? t("roster.peek.gaps", { count: gaps }) : t("roster.peek.whole")}</span>
           </h3>
           <dl className={s.peekItems}>
             {items.map((i) => (
               <div key={i.key}>
                 <dt className={s.peekTerm}>{t("roster.peek.item", { no: i.no, item: t(`empCard.reg.item.${i.key}`) })}</dt>
-                <dd>{c.register.isPending ? "…" : shown(i)}</dd>
+                <dd>{shown(i)}</dd>
               </div>
             ))}
           </dl>
-        </section>
+        </section>}</QueryState>
       )}
       {/* CRUD: exit and registration cancel from the roster's peek, each opening on the record. */}
       <nav className="row" aria-label={t("crud.person.ends")}><EndActions id={e.id} /></nav>

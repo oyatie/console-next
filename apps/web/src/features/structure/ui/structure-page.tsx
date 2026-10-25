@@ -7,7 +7,6 @@ import { QueryState } from "../../../lib/react/query-state";
 import { EmptyState } from "../../../ui/empty-state";
 import { ChartView } from "./chart-view";
 import { FirstRun } from "./first-run";
-import { LoadFailed } from "./load-failed";
 import { OutlineView } from "./outline-view";
 import { PageHead } from "./page-head";
 import { CompareResults } from "./compare-control";
@@ -86,34 +85,27 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
   const onFocus = (id: string | undefined) => void navigate({ search: (q) => ({ ...q, focus: id }) });
   const empty = s && s.root.children.length === 0;
   return (
-    <>
     <div className={`page ${css.page}`}>
       <PageHead s={s} view={view} cmd={cmd} />
-      {tree.error && tree.data && <LoadFailed at={tree.dataUpdatedAt} onRetry={() => void tree.refetch()} />}
+      <QueryState q={tree} loading={<ChartSkeleton />}>{() => <>
       <div className={css.body}>
-        {tree.isPending ? (
-          <ChartSkeleton />
-        ) : (
-          // A failed re-read keeps the last tree on screen under its own banner (above), not the generic notice.
-          <QueryState q={{ ...tree, error: tree.data ? null : tree.error }}>
-            {() =>
+          {
               !s ? null
               : empty ? (s.readOnly ? <EmptyState title={t("asof.noRecords")} reason={null} /> : <FirstRun />)
               : view === "list" ? <RegistryView s={s} cmd={cmd} sel={sel} onSelect={select} />
               : view === "outline" ? <OutlineView s={s} cmd={cmd} sel={sel} onSelect={select} />
               : <ChartView key={focus ?? "tenant"} pick={jump} dimmed={!!tree.error} s={s} cmd={cmd} focusId={focus} onFocus={onFocus} sel={sel} onSelect={select} />
             }
-          </QueryState>
-        )}
+
         {/* The setup panel belongs to the home view (S1); a focused chart (S2) takes the full width. */}
         {proposing ? <aside className={css.side} aria-label={t("structure.side")}>{proposal}</aside>
           : paneled && tree.data ? <div className={css.side}>{panel(url.last!, tree.data, cmd.readOnly)}</div>
           : s?.phase === "SETUP" && !s.readOnly && view === "chart" && !focus && <SetupPanel s={s} first={empty} fixLink={fixLink} />}
       </div>
       {!cmd.readOnly && sheets}
-    </div>
     {/* Late comparison records follow the full-height chart so they cannot shrink its canvas. */}
     {diff && <CompareResults result={diff} />}
-    </>
+    </>}</QueryState>
+    </div>
   );
 }

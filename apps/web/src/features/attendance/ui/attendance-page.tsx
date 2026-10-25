@@ -32,32 +32,32 @@ type Open = { assign: AssignTarget[] } | { pattern: true } | { cancel: Layer } |
 
 // Each URL-selected screen keeps its own lazy export and standing-text budget.
 export function AttendancePage() {
-  return <AttendanceLayout><ScheduleTab /></AttendanceLayout>;
+  return <AttendanceLayout>{head => <ScheduleTab head={head} />}</AttendanceLayout>;
 }
 
 export function MonthPage() {
-  return <AttendanceLayout><MonthTab /></AttendanceLayout>;
+  return <AttendanceLayout>{head => <MonthTab head={head} />}</AttendanceLayout>;
 }
 
 export function DayPage() {
-  return <AttendanceLayout><DayTab /></AttendanceLayout>;
+  return <AttendanceLayout>{head => <DayTab head={head} />}</AttendanceLayout>;
 }
 
 export function PersonPage() {
   const search = route.useSearch();
-  return <AttendanceLayout><PersonCard id={search.person!} month={search.month} /></AttendanceLayout>;
+  return <AttendanceLayout>{head => <PersonCard id={search.person!} month={search.month} head={head} />}</AttendanceLayout>;
 }
 
-function AttendanceLayout({ children }: { children: ReactNode }) {
+function AttendanceLayout({ children }: { children: (head: ReactNode) => ReactNode }) {
   const search = route.useSearch();
-  return <div className="page"><AttendanceHead tab={search.tab ?? "month"} />{children}</div>;
+  return <div className="page"><AttendanceHead tab={search.tab ?? "month"} />{children(null)}</div>;
 }
 
 /**
  * attendance › work schedule (frames A2-*, A12-first-run). The scope and month are in the URL. Every write lands with a receipt
  * that names the way back: a layer can be cancelled until its start date, after that a new layer replaces it.
  */
-function ScheduleTab() {
+function ScheduleTab({ head }: { head: ReactNode }) {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const view = search.view ?? "calendar";
@@ -84,6 +84,10 @@ function ScheduleTab() {
 
   return (
     <>
+      {head}
+            <Tabs label={t("attendance.views")} items={items} selected={view} onSelect={(id) => go({ view: id as View })}>
+
+              {(id) => <QueryState q={tree} layout="grid">{tr => <>
       {receipt && (
         <Receipt
           state="recorded"
@@ -91,8 +95,7 @@ function ScheduleTab() {
           actions={receipt.layer && receipt.layer.state === "SCHEDULED" && <Button variant="ghost" size="sm" onClick={() => setOpen({ cancel: receipt.layer! })}>{t("attendanceSchedule.receipt.cancel")}</Button>}
         />
       )}
-      <QueryState q={tree}>
-        {(tr) => (
+      {(
           <>
             {tr.people_unscheduled > 0 && (
               <Banner tone="warn" actions={<Link to="/attendance" search={{ tab: "day", date: tr.date, unscheduled: true }}>{t("attendanceRecords.unscheduled.view", { count: tr.people_unscheduled })}</Link>}>{t("attendanceSchedule.unscheduled.banner", { count: tr.people_unscheduled, total: tr.people_total })}</Banner>
@@ -101,9 +104,7 @@ function ScheduleTab() {
             {tr.people_total > 0 && tr.people_unscheduled === tr.people_total && !tr.nodes.some((n) => n.layer) ? (
               <FirstRun patterns={patterns.data?.items.length ?? 0} people={tr.people_total} onSchedule={() => (patterns.data?.items.length ? go({ view: "calendar" }) : setOpen({ pattern: true }))} />
             ) : null}
-            <Tabs label={t("attendance.views")} items={items} selected={view} onSelect={(id) => go({ view: id as View })}>
-              {(id) =>
-                id === "calendar" ? (
+                {id === "calendar" ? (
                   <CalendarView tree={tr} search={search} onScope={(kind, scopeId) => go({ kind, id: scopeId })} onMonth={(month) => go({ month })} onAssign={assign} onCancel={(layer) => setOpen({ cancel: layer })} />
                 ) : id === "types" ? (
                   <PatternsView onAdd={() => setOpen({ pattern: true })} onRetired={(name) => setReceipt({ message: t("attendancePatterns.pattern.retired", { name }) })} />
@@ -113,12 +114,11 @@ function ScheduleTab() {
                   <HolidaysView tree={tr} onDone={(message) => setReceipt({ message })} />
                 ) : (
                   <PublicHolidaysView />
-                )
-              }
-            </Tabs>
+                )}
+
           </>
         )}
-      </QueryState>
+
       <AssignSheet
         targets={open && "assign" in open ? open.assign : null}
         patterns={patterns.data?.items ?? []}
@@ -127,6 +127,8 @@ function ScheduleTab() {
       />
       <PatternSheet open={!!open && "pattern" in open} onClose={() => setOpen(null)} onAdded={(name) => (setOpen(null), setReceipt({ message: t("attendancePatterns.pattern.added", { name }) }))} />
       <CancelLayerSheet layer={open && "cancel" in open ? open.cancel : null} onClose={() => setOpen(null)} onCancelled={(message) => (setOpen(null), setReceipt({ message }))} />
+    </>}</QueryState>}
+    </Tabs>
     </>
   );
 }

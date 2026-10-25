@@ -1,4 +1,5 @@
 import { CompanyMappings } from "./company-mappings";
+import { readGroup } from "../../../lib/react/query-view";
 import { PlacePath } from "./place-path";
 import { EntityName } from "../../../reference/entity/ui/entity-name";
 import { entityNameText } from "../../../reference/entity/present";
@@ -43,9 +44,12 @@ const NONE = "none";
  */
 export function UnplacedPage() {
   const queue = useUnplacedQueue();
-  const units = useQuery({ ...unitsQuery, refetchOnMount: "always" }).data?.items ?? [];
-  const entities = useQuery(entitiesRef).data?.items ?? [];
-  const roots = useQuery({ ...orgStructureRef, retry: false }).data?.entities ?? [];
+  const unitsQ = useQuery({ ...unitsQuery, refetchOnMount: "always" });
+  const units = unitsQ.data?.items ?? [];
+  const entitiesQ = useQuery(entitiesRef);
+  const entities = entitiesQ.data?.items ?? [];
+  const structureQ = useQuery({ ...orgStructureRef, retry: false });
+  const roots = structureQ.data?.entities ?? [];
   const setup = useQuery({ ...checklistRef, retry: false }).data?.phase === "SETUP";
   const all = (queue.data?.items ?? []).map(personOf);
   // The stored legal-entity order (as on the chart); people with no legal entity last.
@@ -135,7 +139,7 @@ export function UnplacedPage() {
           </>
         }
       />
-      <CompanyMappings />
+<QueryState q={readGroup([queue, unitsQ, entitiesQ, structureQ])} layout="list">{() => <>      <CompanyMappings />
       <div role="group" aria-label={t("unplaced.tabs")} className={s.tabs}>
         {tabs.map((x) => (
           <ToggleButton key={x} pressed={x === tab} onClick={() => (setTab(x), setG(0), setSel(new Set()))}>
@@ -144,8 +148,7 @@ export function UnplacedPage() {
           </ToggleButton>
         ))}
       </div>
-      <QueryState q={queue}>
-        {() =>
+      {
           all.length === 0 ? (
             <UnplacedDone placed={placedCount} />
           ) : (
@@ -170,10 +173,11 @@ export function UnplacedPage() {
             </div>
           )
         }
-      </QueryState>
+
       <CommandError error={placer.error} />
       {held && <UnplacedRefused held={held} place={pathOf(held.target.unitId)} pending={placer.isPending} onRest={() => placer.mutate({ people: held.rest, target: held.target })} onCancel={() => setHeld(null)} />}
       {receipt && <div className={s.dock}><Receipt state="applied" message={receipt} onDismiss={() => setReceipt(null)} /></div>}
+    </>}</QueryState>
     </div>
   );
 }

@@ -84,7 +84,7 @@ export function RoleDelete({ role, onClose, onDeleted }: { role: AccessRole | nu
   const who = (g: AccessGrant) => accounts.data?.items.find((a) => a.id === g.account_id);
   const commitText = moving ? t("access.roles.move.commit", { count: n }) : t(n ? "access.roles.delete.commit.holders" : "access.roles.delete.commit", { count: n });
   return (
-    <Dialog open title={t("access.roles.delete.title", { name: role.name_ko })} onClose={close}>
+    <Dialog open read title={t("access.roles.delete.title", { name: role.name_ko })} onClose={close}>
       <QueryState q={grants}>
         {(d) =>
           d.items.length ? (

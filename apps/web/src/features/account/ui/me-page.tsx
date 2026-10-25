@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { SupportLookup } from "../../../lib/react/support-lookup";
 import { PageHead } from "../../../ui/page-head/page-head";
-import { Skeleton } from "../../../ui/skeleton/skeleton";
+import { QueryState } from "../../../lib/react/query-state";
+import { readGroup } from "../../../lib/react/query-view";
 import { claims, meQuery, passkeysQuery } from "../api";
 import { OpsRecoveryNotice } from "./ops-recovery-notice";
 import { ConsentCard } from "./consent-card";
@@ -23,14 +24,11 @@ export function MePage({ locale }: { locale: ReactNode }) {
   // Wait for the passkey warning's facts so it never pushes the cards below it down after they are drawn.
   const keys = useQuery(passkeysQuery);
   const me = useQuery({ ...meQuery, enabled: !vendor });
-  const waiting = keys.isPending || (!vendor && me.isPending);
+  const reads = readGroup(vendor ? [keys] : [keys, me]);
   return (
     <div className={`page ${s.column}`}>
       <PageHead title={t("account.title")} />
-      {waiting && !keys.isError && !me.isError ? (
-        <Skeleton label={t("common.loading")} bones={["title", "row", "row"]} />
-      ) : (
-        <>
+<QueryState q={reads} layout="record">{() => <>      <>
           <ProfileCard locale={locale} me={me} />
           <PasskeysCard ops={vendor ? false : me.data?.is_tenant_ops} passkeys={keys} />
           <ConsentCard />
@@ -38,7 +36,7 @@ export function MePage({ locale }: { locale: ReactNode }) {
           {!vendor && <MyAccessCard />}
           {(vendor || me.data?.is_tenant_ops) && <SupportLookup />}
         </>
-      )}
+    </>}</QueryState>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { QueryState } from "../../../lib/react/query-state";
 import { t } from "@console/i18n";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { DateField } from "../../../ui/date/date-field";
@@ -16,12 +17,11 @@ export function CurrentGrants({ accountId }: { accountId: string }) {
   return (
     <div className={s.stack} role="group" aria-labelledby="ac-current">
       <strong id="ac-current">{t("accessGrants.current")}</strong>
-      {held.isPending ? <span className="muted" role="status">{t("common.loading")}</span>
-        : items.length ? (
+      <QueryState q={held} empty={d => d.items.length ? null : <span className="muted">{t("accessGrants.current.none")}</span>}>{() => (
           <ul className="list-plain">
             {items.map((g) => <li key={g.id}><strong>{g.role_name_ko}</strong> · {scopeText(roots, g.scope)} · {periodText(g)}</li>)}
           </ul>
-        ) : <span className="muted">{t("accessGrants.current.none")}</span>}
+        )}</QueryState>
     </div>
   );
 }

@@ -1,46 +1,57 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeAll, expect, test, vi } from "vitest";
-import { loadCatalog } from "@console/i18n";
-import { Button } from "../../../ui/button/button";
-import type { Composer } from "../../../ui/composer/composer";
-import { RegisterRoute } from "./register-route";
+import { beforeAll, beforeEach, expect, test, vi } from "vitest";
+import { loadCatalog, t } from "@console/i18n";
+import { PeopleRoute } from "./people-route";
 
-const state = vi.hoisted(() => ({ pending: false, failed: false, allowed: false }));
-vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => ({}), useNavigate: () => vi.fn() }) }));
+const state = vi.hoisted(() => ({ pending: false, failed: false, allowed: false, sheet: true }));
+vi.mock("@tanstack/react-router", async original => ({
+  ...await original<typeof import("@tanstack/react-router")>(),
+  useChildMatches: () => state.sheet ? [{}] : [],
+  Outlet: () => state.sheet ? <section aria-label="Registration form" /> : null,
+}));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({
-  isPending: state.pending, isSuccess: !state.pending && !state.failed,
-  data: state.pending || state.failed ? undefined : { capabilities: state.allowed ? [{ feature: "employee_directory_manage", permission: "allow", org_wide: true }] : [] },
+  isPending: state.pending, isSuccess: !state.pending && !state.failed, isError: state.failed,
+  error: state.failed ? new TypeError("offline") : null, refetch: vi.fn(),
+  data: state.pending || state.failed ? undefined : { is_ops: false, entries: state.allowed ? [{ domain: "hr_basic", level: "edit", enforcement: "ENFORCED", scope: { kind: "TENANT" } }] : [] },
 }) }));
 vi.mock("../../../lib/react/denied", () => ({ Denied: () => <section aria-label="Access refused" /> }));
-vi.mock("../../../ui/composer/composer", () => ({ Composer: (p: ComponentProps<typeof Composer>) => <div role="dialog" aria-label={p.title}>{p.loading ? <p role="status" /> : p.children}{p.recovery ?? (p.onSubmit && <Button type="submit">{p.title}</Button>)}</div> }));
-vi.mock("./register-sheet", () => ({ RegisterSheet: () => <section aria-label="Registration form" /> }));
+vi.mock("../People", () => ({ People: () => <section aria-label="Roster" /> }));
+vi.mock("./register-toast", () => ({ RegisterToast: () => null }));
 beforeAll(() => loadCatalog("ko"));
+beforeEach(() => { state.pending = false; state.failed = false; state.allowed = false; state.sheet = true; });
 
-test("a registration refusal stays in the action dialog above the roster", () => {
-  const html = renderToStaticMarkup(<RegisterRoute />);
-  expect(html).toMatch(/role="dialog"[^>]*><section aria-label="Access refused"/);
+test("a registration refusal replaces both the sheet and the roster", () => {
+  const html = renderToStaticMarkup(<PeopleRoute />);
+  expect(html).toContain('aria-label="Access refused"');
   expect(html).not.toContain('aria-label="Registration form"');
-  expect(html).not.toContain('type="submit"');
-  expect(html).toContain(">닫기</button>");
+  expect(html).not.toContain('aria-label="Roster"');
 });
 
 test("registration waits for authorization before presenting the form", () => {
   state.pending = true;
-  try {
-    const html = renderToStaticMarkup(<RegisterRoute />);
-    expect(html).toContain('role="status"');
-    expect(html).not.toContain('aria-label="Registration form"');
-    expect(html).not.toContain('aria-label="Access refused"');
-    expect(html).not.toContain('type="submit"');
-  } finally { state.pending = false; }
+  const html = renderToStaticMarkup(<PeopleRoute />);
+  expect(html).toContain('aria-busy="true"');
+  expect(html).not.toContain('aria-label="Registration form"');
+  expect(html).not.toContain('aria-label="Access refused"');
 });
 
-test.each(["granted", "unavailable"])("registration keeps the server-authorized form when the projection is %s", mode => {
-  state.allowed = mode === "granted";
-  state.failed = mode === "unavailable";
-  try {
-    expect(renderToStaticMarkup(<RegisterRoute />)).toContain('aria-label="Registration form"');
-  } finally { state.allowed = false; state.failed = false; }
+test("an unavailable grant read offers retry before presenting the form", () => {
+  state.failed = true;
+  const html = renderToStaticMarkup(<PeopleRoute />);
+  expect(html).toContain(t("common.loadFailed.title"));
+  expect(html).toContain(t("common.retry"));
+  expect(html).not.toContain('aria-label="Registration form"');
+});
+
+test("a tenant edit grant permits both the roster and registration", () => {
+  state.allowed = true;
+  const html = renderToStaticMarkup(<PeopleRoute />);
+  expect(html).toContain('aria-label="Registration form"');
+  expect(html).toContain('aria-label="Roster"');
+});
+
+test("the roster alone does not require a registration grant", () => {
+  state.sheet = false;
+  expect(renderToStaticMarkup(<PeopleRoute />)).toContain('aria-label="Roster"');
 });
