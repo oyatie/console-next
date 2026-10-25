@@ -84,7 +84,7 @@ test("upload scan roots include data-bearing artifacts without compiler output",
       assert.ok(!job.steps.some((s) => /^actions\/(upload-artifact|cache\/save)@/.test(s.uses ?? "") || s.run?.includes("$GITHUB_STEP_SUMMARY")), name);
       continue;
     }
-    assert.doesNotMatch(scan.run, /\.cache\/ci\/build(?:[\s/]|$)|\.cache\/sccache(?:[\s/]|$)/, name);
+    assert.doesNotMatch(scan.run.replaceAll(".cache/ci/build/tests/source.json", ""), /\.cache\/ci\/build(?:[\s/]|$)|\.cache\/sccache(?:[\s/]|$)/, name);
     for (const target of scan.run.matchAll(/(?:backend\/target\/nextest|\.cache\/ci\/extracted\/target\/nextest)[^\s]*/g)) {
       assert.match(target[0], /(?:\.xml|\.baseline\.json)$/, `${name}: ${target[0]}`);
     }

@@ -5,6 +5,7 @@ value b81ba21cde14 -- Unallocated 000-prefix CRN refusal/checksum fixture; not a
 value b7dd108c8ca9 -- Unallocated 000-prefix CRN refusal/checksum fixture; not a resident number.
 value d006c7c3d649 -- Unallocated 000-prefix CRN refusal/checksum fixture; not a resident number.
 value 27aed3cda18c -- Existing single-letter work-email unit-test placeholder in facts.test.ts.
+value 73eb5a037dce -- Historical synthetic SQLx phone fixture in person_binding_lifecycle and person_fact_validation; retained for hosted base-source scans.
 binary backend/fuzz/corpus/entity-bodies/seed-001 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
 binary backend/fuzz/corpus/entity-bodies/seed-008 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.
 binary backend/fuzz/corpus/import-mapping/seed-000 -- Reviewed synthetic fuzz seed; arbitrary parser bytes, not a document or upload.

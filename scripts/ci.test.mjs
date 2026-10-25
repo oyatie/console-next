@@ -12,6 +12,7 @@ import { load } from "js-yaml";
 import "./ci-cutover.test.mjs";
 import "./ci-egress.test.mjs";
 import "./ci-delivery.test.mjs";
+import "./ci-hosted-db.test.mjs";
 
 const root = new URL("../", import.meta.url);
 const workflow = () => load(readFileSync(new URL(".github/workflows/ci.yml", root), "utf8"));
@@ -208,7 +209,7 @@ test("all three Clippy feature sets keep -D warnings", () => {
     assert.ok(matches.length > 0, `missing strict ${features || "default"} lint`);
     for (const { name, job, step } of matches) {
       mandatory(job, name, ["needs.plan.outputs.backend == 'true'", "needs.plan.outputs.backend == 'true' || needs.plan.outputs.e2e == 'true'"]);
-      mandatory(step, command, "needs.plan.outputs.backend == 'true'");
+      mandatory(step, command, "needs.plan.outputs.backend == 'true' && matrix.source == 'head'");
     }
   }
 });

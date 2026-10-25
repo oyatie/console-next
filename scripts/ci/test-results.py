@@ -110,7 +110,7 @@ def check(kind, context, file, status, entries):
     strict = {ident for ident, entry in entries.items() if entry.get("class", "deterministic") == "deterministic"}
     fixed = passed & strict
     # Only this shard's executed cases can recover; inventory checks catch deleted tests.
-    report = {"tests": len(cases), "baselineReds": sorted(ids & set(entries)), "newReds": sorted(fresh), "fixed": sorted(fixed)}
+    report = {"tests": len(cases), "baselineReds": sorted(ids & set(entries)), "newReds": sorted(fresh), "fixed": sorted(fixed), "passed": sorted(passed)}
     file.with_suffix(".baseline.json").write_text(json.dumps(report))
     print(f"test baseline: {len(cases)} tests, {len(ids & set(entries))} known reds, {len(fresh)} new reds, {len(fixed)} fixed")
     if fixed:

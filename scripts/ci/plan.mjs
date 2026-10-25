@@ -37,8 +37,12 @@ export function planBudget(plan, config, shards, workflow = load(readFileSync(ne
   if (plan.web || plan.e2e) perJob["web-check"] = e.web;
   if (plan.desktop) perJob["desktop-test"] = e.desktop;
   if (plan.backend || plan.e2e) perJob["rust-build"] = e.build;
+  if (plan.db) perJob["rust-build-base"] = e.build;
   if (plan.backend) {
-    for (const mode of ["unit", "db"]) if (plan[mode]) for (let i = 1; i <= config.nextestPartitions[mode]; i++) perJob[`backend-${mode === "unit" ? "test" : "db"}-${i}`] = e[mode];
+    for (const mode of ["unit", "db"]) if (plan[mode]) for (let i = 1; i <= config.nextestPartitions[mode]; i++) {
+      perJob[`backend-${mode === "unit" ? "test" : "db"}-${i}`] = e[mode];
+      if (mode === "db") perJob[`backend-db-base-${i}`] = e.db;
+    }
   }
   if (plan.e2e) {
     perJob["e2e-plan"] = e.e2ePlan;
@@ -136,9 +140,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const targets = cargo.filter((p) => plan.crates.includes(p.name)).flatMap((p) => (p.targets ?? []).filter((t) => t.test).map((t) => t.kind.includes("lib") && !db.has(p.name) ? "unit" : "db"));
   plan.unit = plan.backend && targets.includes("unit");
   plan.db = plan.backend && targets.includes("db");
-  const matrix = (mode) => ({ include: plan[mode] ? Array.from({ length: config.nextestPartitions[mode] }, (_, i) => ({ partition: i + 1 })) : [] });
+  const matrix = (mode) => ({ include: plan[mode] ? Array.from({ length: config.nextestPartitions[mode] }, (_, i) => ({ partition: i + 1 })).flatMap((job) => mode === "db" ? ["base", "head"].map((source) => ({ ...job, source })) : [job]) : [] });
   const budget = planBudget(plan, config);
   const browserVersion = JSON.parse(readFileSync("package-lock.json", "utf8")).packages["node_modules/@playwright/test"].version;
-  const outputs = { ...plan, base: base ?? "", build: build, budget, unitMatrix: matrix("unit"), dbMatrix: matrix("db"), required: requiredJobs(plan), postgres: pin, retention: config.retentionDays, browserVersion, testAdmin: dbContract().admin, database: config.database };
+  const outputs = { ...plan, base: base ?? "", build: build, budget, unitMatrix: matrix("unit"), dbMatrix: matrix("db"), rustMatrix: { source: plan.db ? ["head", "base"] : ["head"] }, required: requiredJobs(plan), postgres: pin, retention: config.retentionDays, browserVersion, testAdmin: dbContract().admin, database: config.database };
   for (const [key, value] of Object.entries(outputs)) appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${typeof value === "object" ? JSON.stringify(value) : value}\n`);
 }

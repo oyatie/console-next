@@ -48,6 +48,7 @@ if __name__ == "__main__":
         archives.append({"compressed": file.stat().st_size, "expanded": expanded})
     tracked = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).split(b"\0")
     checkout = size([ROOT / os.fsdecode(file) for file in tracked if file])
+    checkout += size([ROOT / ".cache/ci/source"])
     if test_job:
         expanded = max(a["expanded"] for a in archives)
         extraction = max(a["compressed"] + a["expanded"] for a in archives) + checkout

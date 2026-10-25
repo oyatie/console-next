@@ -93,6 +93,7 @@ jobs:
       unit: ${{ steps.plan.outputs.unit }}
       db: ${{ steps.plan.outputs.db }}
       build: ${{ steps.plan.outputs.build }}
+      rustMatrix: ${{ steps.plan.outputs.rustMatrix }}
       budget: ${{ steps.plan.outputs.budget }}
       unitMatrix: ${{ steps.plan.outputs.unitMatrix }}
       dbMatrix: ${{ steps.plan.outputs.dbMatrix }}
@@ -258,11 +259,13 @@ jobs:
       - run: |-
           bash scripts/ci/install-tools.sh nextest sccache cargo-deny
           echo "SCCACHE_CACHE_SIZE=$(jq -r .sccacheBytes scripts/ci/config.json)" >>"$GITHUB_ENV"
+      - run: node scripts/ci/hosted-source.mjs
+        if: needs.plan.outputs.backend == 'true'
       - name: Reclaim unused hosted SDKs for the shared archive
         run: |-
           jq -r '.runnerUnusedPaths[]' scripts/ci/config.json | while IFS= read -r unused; do sudo rm -rf -- "$unused"; done
       - name: Format and all Clippy feature sets
-        if: needs.plan.outputs.backend == 'true'
+        if: needs.plan.outputs.backend == 'true' && matrix.source == 'head'
         run: |-
           cd backend
           cargo fmt --check
@@ -271,13 +274,11 @@ jobs:
           cargo clippy --workspace --all-targets --locked --features full,test-postgres -- -D warnings
       - name: Compile and archive the affected workspace once
         if: needs.plan.outputs.backend == 'true'
-        env:
-          CI_RUST_BUILD: ${{ needs.plan.outputs.build }}
         run: |-
           cd backend
           node ../scripts/ci/rust-build.mjs
       - name: Build the backend once for every browser shard
-        if: needs.plan.outputs.e2e == 'true'
+        if: needs.plan.outputs.e2e == 'true' && matrix.source == 'head'
         run: |-
           cd backend
           cargo build --locked -p console-app --features full,e2e-test-support
@@ -292,16 +293,17 @@ jobs:
         env: *scan-terms
         run: >-
           node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/ci/disk.json
+          .cache/ci/build/tests/source.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.backend == 'true' && needs.plan.outputs.retention != ''
         with:
-          name: rust-tests
+          name: rust-tests${{ matrix.source == 'base' && '-base' || '' }}
           path: .cache/ci/build/tests
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
           include-hidden-files: true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.e2e == 'true' && needs.plan.outputs.retention != ''
+        if: success() && steps.privacy.outcome == 'success' && needs.plan.outputs.e2e == 'true' && matrix.source == 'head' && needs.plan.outputs.retention != ''
         with:
           name: backend-binary
           path: .cache/ci/build/backend
@@ -310,7 +312,7 @@ jobs:
           include-hidden-files: true
       - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
         if: >-
-          success() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.privacy.outcome == 'success' &&
+          success() && matrix.source == 'head' && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.privacy.outcome == 'success' &&
           steps.registry.outputs.cache-hit != 'true'
         with:
           path: |-
@@ -320,7 +322,7 @@ jobs:
           key: console-ci-cargo-${{ runner.os }}-${{ hashFiles('backend/Cargo.lock') }}
       - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
         if: >-
-          success() && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.privacy.outcome == 'success' &&
+          success() && matrix.source == 'head' && github.event_name == 'push' && github.ref == 'refs/heads/dev' && steps.privacy.outcome == 'success' &&
           steps.compiler.outputs.cache-hit != 'true'
         with:
           path: .cache/sccache
@@ -333,7 +335,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
-          name: metrics-rust-build
+          name: metrics-rust-build-${{ matrix.source }}
           path: .cache/ci/metrics.json
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
@@ -343,7 +345,15 @@ jobs:
       - plan
       - hygiene
     if: needs.plan.outputs.backend == 'true' || needs.plan.outputs.e2e == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.rustMatrix) }}
     env:
+      CI_HOSTED_SOURCE: ${{ matrix.source }}
+      CI_BASE_SHA: ${{ needs.plan.outputs.base }}
+      CI_HEAD_SHA: ${{ github.sha }}
+      CI_RUST_BUILD: ${{ needs.plan.outputs.build }}
+      CARGO_TARGET_DIR: ${{ github.workspace }}/backend/target
       SQLX_OFFLINE: "true"
       CARGO_INCREMENTAL: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
@@ -430,6 +440,7 @@ jobs:
       - *checkout
       - *duration-start
       - *node
+      - run: node scripts/ci/hosted-source.mjs
       - name: Generate isolated test credentials
         env:
           PG_PORT: ${{ job.services.postgres.ports['5432'] }}
@@ -442,7 +453,7 @@ jobs:
       - run: bash scripts/ci/install-tools.sh nextest
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: rust-tests
+          name: rust-tests${{ matrix.source == 'base' && '-base' || '' }}
           path: .cache/ci
       - name: Every DB suite from the shared archive
         env:
@@ -461,7 +472,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
-          name: backend-db-junit-${{ matrix.partition }}
+          name: backend-db-junit-${{ matrix.source }}-${{ matrix.partition }}
           path: |-
             backend/target/nextest/ci/junit.xml
             backend/target/nextest/ci/junit.baseline.json
@@ -475,7 +486,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
-          name: metrics-backend-db-${{ matrix.partition }}
+          name: metrics-backend-db-${{ matrix.source }}-${{ matrix.partition }}
           path: .cache/ci/metrics.json
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
@@ -489,6 +500,9 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.dbMatrix) }}
     env:
+      CI_HOSTED_SOURCE: ${{ matrix.source }}
+      CI_BASE_SHA: ${{ needs.plan.outputs.base }}
+      CI_HEAD_SHA: ${{ github.sha }}
       CI_RUST_BUILD: ${{ needs.plan.outputs.build }}
       SQLX_OFFLINE: "true"
     services:
@@ -739,9 +753,17 @@ jobs:
           done
           echo "Backend code gates: ${SECONDS}s"
           exit "$failed"
+      - name: Collect this run's base and head DB receipts
+        if: always() && needs.plan.outputs.db == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: backend-db-junit-*
+          path: .cache/ci/db-collected
       - name: Enforce required results and plan-authorized skips
         env:
           NEEDS: ${{ toJSON(needs) }}
+          CI_BASE_SHA: ${{ needs.plan.outputs.base }}
+          CI_HEAD_SHA: ${{ github.sha }}
         run: node scripts/ci/gate.mjs
       - name: Collect job metrics and passing test durations
         if: always() && needs.e2e.result == 'success'
@@ -778,7 +800,7 @@ jobs:
         id: privacy
         if: always()
         env: *scan-terms
-        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/e2e-timings
+        run: node scripts/ci/privacy.mjs .cache/ci/summary.md .cache/ci/metrics.json .cache/e2e-timings .cache/ci/db-collected/comparison.json
       - uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
         if: >-
           success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/dev' && steps.privacy.outcome == 'success' &&
@@ -793,7 +815,9 @@ jobs:
         if: always() && steps.privacy.outcome == 'success' && needs.plan.outputs.retention != ''
         with:
           name: metrics-ci-ok
-          path: .cache/ci/metrics.json
+          path: |-
+            .cache/ci/metrics.json
+            .cache/ci/db-collected/comparison.json
           retention-days: ${{ needs.plan.outputs.retention }}
           if-no-files-found: error
           include-hidden-files: true

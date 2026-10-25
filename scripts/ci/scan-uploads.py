@@ -238,12 +238,13 @@ try:
     if private_file:
         terms = [line.strip().casefold() for line in Path(private_file).read_text().splitlines() if line.strip()]
     if sys.argv[1:] == ["--terms-tree"]:
+        source_root = Path(os.environ.get("CI_SCAN_SOURCE_ROOT", ROOT))
         if terms:
-            for name in rules.git(str(ROOT), "ls-files", "-z").split(b"\0"):
+            for name in rules.git(str(source_root), "ls-files", "-z").split(b"\0"):
                 if name:
-                    file = ROOT / os.fsdecode(name)
+                    file = source_root / os.fsdecode(name)
                     data = file.read_bytes() if file.is_file() and not file.is_symlink() else b""
-                    text = str(file.relative_to(ROOT)) + "\n" + (rules.decode(data) or data.decode("utf-8", "replace"))
+                    text = str(file.relative_to(source_root)) + "\n" + (rules.decode(data) or data.decode("utf-8", "replace"))
                     if any(term in text.casefold() for term in terms):
                         raise Refusal("private client term")
         print("privacy: trusted term tree check passed")

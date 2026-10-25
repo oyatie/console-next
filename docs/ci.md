@@ -56,7 +56,35 @@ The plan's Cargo metadata command runs locked and offline, with a deadline from
 A stalled command fails promptly instead of spending the job timeout waiting
 for a blocked download; fresh runners can still install the pinned toolchain.
 
-`test-results.py` compares exact JUnit failure IDs against `scripts/ci/baseline.json`:
+DB partitions now run twice, from independently compiled head and current-base
+archives, using the same hosted runner image, nextest profile, partition count,
+Postgres digest and role bootstrap. `plan.base` selects the PR/queue base, the
+previous dev commit on push, or the fetched dev commit on dispatch. The base
+source is a detached worktree; product code, tests and migrations stay at that
+commit. Only packages and features present on both sources are compiled for the
+base. A newly added package has explicit empty base receipts, without compiling
+unrelated packages. Each source compiles once and shares its archive across all
+partitions. Only the head builds the E2E binary and writes trusted caches.
+
+DB jobs publish raw observations, without granting quarantine exceptions.
+`ci-ok` requires every base/head partition receipt from this run and attempt,
+with the expected source SHAs. The archive's source receipt must also match the
+consumer checkout. `hosted-db.py` computes standing failures from those fresh
+base results; the committed quarantine supplies ownership and expiry only.
+A head failure absent from the fresh base fails even if it is quarantined.
+A standing head failure without an owned, unexpired quarantine also fails.
+Runner errors, missing/duplicate/stale receipts and recovered deterministic
+quarantines fail closed. Exact differences are in the scanned `comparison.json`
+inside `metrics-ci-ok`; paired JUnit artifacts retain the failure details.
+Source scans include the base worktree with the current reviewed scanner policy;
+product tests stay untouched. The policy retains the exact historical SQLx
+synthetic phone hash needed by base-source scans. Disk accounting includes the
+base checkout.
+Planning budgets include the additional base build and eight base partitions:
+the provisional ceilings are 65 jobs and 440 estimated job-minutes, retaining
+25% headroom over the configured reservation. Hosted timings must refine them.
+
+Non-DB and browser `test-results.py` comparisons still use `scripts/ci/baseline.json`:
 deterministic trunk reds are reported while they still fail. A deterministic pass
 blocks with “fixed: remove from baseline”; a deleted test blocks in the nextest
 or Playwright inventory. Unrelated partitions do not count as fixes. A new red,
@@ -530,6 +558,16 @@ gh run list --workflow ci.yml --json databaseId,event,headSha,conclusion,url
 gh run view RUN_ID --json jobs,headSha,event,conclusion,url
 gh api "repos/$repo/actions/cache/usage"
 ```
+
+The current delivery slice establishes the shared hosted comparison mechanism
+on DB partitions. After the orchestrator publishes it to #60, rerun the merge
+result and inspect all sixteen DB receipts plus `metrics-ci-ok/comparison.json`.
+Do not classify a failure from an old local baseline. Remaining slices, in order:
+fix DB harness failure classes using the paired evidence; add only proven
+standing cases to the existing quarantine with owner, expiry, hosted receipt
+and a backlog row; apply paired evidence to desktop and browser reds; then
+complete hosted `ci-ok`, cold/warm and affected-only receipts. No additional
+standing case is admitted by this slice.
 
 ## Files outside the initial owns list
 

@@ -18,8 +18,8 @@
   "fastE2eFiles": ["first-run-solo.spec.ts"],
   "quarantineFile": "scripts/ci/baseline.json",
   "e2eReservedShards": 24,
-  "maxJobs": 60,
-  "maxTotalMinutes": 320,
+  "maxJobs": 65,
+  "maxTotalMinutes": 440,
   "jobMinutes": {
     "plan": 2,
     "hygiene": 3,

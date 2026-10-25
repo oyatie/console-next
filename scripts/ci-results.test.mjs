@@ -210,13 +210,13 @@ test("archive consumers share the single stripped build and use partitions", () 
   const build = wf.jobs["rust-build"];
   assert.equal(build.env.CARGO_PROFILE_TEST_DEBUG, "0");
   assert.equal(build.env.CARGO_PROFILE_TEST_STRIP, "symbols");
-  assert.equal(build.strategy, undefined);
+  assert.equal(build.strategy.matrix, "${{ fromJSON(needs.plan.outputs.rustMatrix) }}");
   const queue = JSON.parse(readFileSync(new URL("../.github/rulesets/dev.json", import.meta.url), "utf8")).rules.find((r) => r.type === "merge_queue");
   const config = JSON.parse(readFileSync(new URL("./ci/config.json", import.meta.url), "utf8"));
   assert.ok(queue.parameters.check_response_timeout_minutes > build["timeout-minutes"]);
   for (const name of ["backend-test", "backend-db"]) {
     const download = wf.jobs[name].steps.find((s) => s.uses?.startsWith("actions/download-artifact"));
-    assert.equal(download.with.name, "rust-tests");
+    assert.equal(download.with.name, name === "backend-db" ? "rust-tests${{ matrix.source == 'base' && '-base' || '' }}" : "rust-tests");
   }
   const runner = readFileSync(new URL("./ci/rust-tests.mjs", import.meta.url), "utf8");
   assert.match(runner, /--archive-file/);
