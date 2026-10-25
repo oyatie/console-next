@@ -20,7 +20,16 @@ export function rustBuild(crates, packages) {
 
 export function planBudget(plan, config, shards, workflow = load(readFileSync(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8")).jobs) {
   const queue = JSON.parse(readFileSync(new URL("../../.github/rulesets/dev.json", import.meta.url), "utf8")).rules.find((rule) => rule.type === "merge_queue");
-  const chain = (name) => workflow[name]["timeout-minutes"] + Math.max(0, ...[workflow[name].needs ?? []].flat().map(chain));
+  const chain = (name) => {
+    const job = workflow[name], waiting = Math.max(0, ...[job.needs ?? []].flat().map(chain));
+    const timeout = job["timeout-minutes"];
+    // Result jobs can spend their deadline waiting for needs; do not count that wait twice.
+    if (job.if === "always()") {
+      if (timeout <= waiting) throw new Error(`CI result job ${name} timeout must exceed dependency path (${waiting} min)`);
+      return timeout;
+    }
+    return waiting + timeout;
+  };
   const wallMinutes = Math.max(...Object.keys(workflow).map(chain)), queueMinutes = queue.parameters.check_response_timeout_minutes;
   if (!Number.isFinite(wallMinutes) || wallMinutes >= queueMinutes) throw new Error("CI timeout chain must be below the merge-queue timeout");
   const e = config.jobMinutes;

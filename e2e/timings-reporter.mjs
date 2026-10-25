@@ -1,6 +1,7 @@
 // Records each passing test's duration (scripts/e2e-timings.mjs), which scripts/e2e-slot.mjs plans shards from.
 import path from "node:path";
-import { record, testKey } from "../scripts/e2e-timings.mjs";
+import { testKey } from "../scripts/e2e-plan.mjs";
+import { record } from "../scripts/e2e-timings.mjs";
 
 export default class TimingsReporter {
   seen = {};
@@ -10,10 +11,10 @@ export default class TimingsReporter {
   onTestEnd(test, result) {
     if (result.status !== "passed") return;
     const [, project, , ...titles] = test.titlePath();
-    this.seen[testKey(project, path.relative(this.root, test.location.file), titles)] = result.duration / 1000;
+    this.seen[testKey(project, path.relative(this.root, test.location.file), titles, process.env.E2E_SERVED === "1")] = result.duration / 1000;
   }
   onEnd() {
-    if (Object.keys(this.seen).length) record(this.seen);
+    if (Object.keys(this.seen).length) record(this.seen, { file: process.env.E2E_TIMINGS_FILE });
   }
   printsToStdio() {
     return false;

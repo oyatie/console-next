@@ -7,7 +7,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { load } from "js-yaml";
 import { planBudget } from "./ci/plan.mjs";
-import { plan } from "./e2e-timings.mjs";
+import { plan } from "./e2e-plan.mjs";
 
 const config = JSON.parse(readFileSync(new URL("./ci/config.json", import.meta.url), "utf8"));
 const workflow = load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")).jobs;

@@ -2,7 +2,8 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { expect, test } from "vitest";
-import { admitted, listedTests, maxLoadPerCore, plan, record } from "./e2e-timings.mjs";
+import { listedTests, plan } from "./e2e-plan.mjs";
+import { admitted, maxLoadPerCore, record } from "./e2e-timings.mjs";
 
 const t = (project: string, file: string, title = "t") => ({ project, file, key: `${project} › ${file} › ${title}` });
 const timed = (pairs: [ReturnType<typeof t>, number][]) => Object.fromEntries(pairs.map(([x, s]) => [x.key, { s, at: 0 }]));
@@ -43,6 +44,7 @@ test("listedTests skips fixme tests and keys nested describes", () => {
     ],
   };
   expect(listedTests(report)).toEqual([{ project: "clock", file: "a.spec.ts", key: "clock › a.spec.ts › group › runs" }]);
+  expect(listedTests(report, true)).toEqual([{ project: "clock", file: "a.spec.ts", key: "served:clock › a.spec.ts › group › runs" }]);
 });
 
 test("admission: a job waits while the 1-minute load is above the per-core cap, and 0 turns it off", () => {

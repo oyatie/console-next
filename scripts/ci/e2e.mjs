@@ -4,7 +4,8 @@ import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSyn
 import { fileURLToPath } from "node:url";
 import { load } from "js-yaml";
 import { planBudget } from "./plan.mjs";
-import { listedTests, plan, readTimings } from "../e2e-timings.mjs";
+import { listedTests, plan } from "../e2e-plan.mjs";
+import { readTimings } from "../e2e-timings.mjs";
 
 export function shards(tests, timings, config, maxSeconds = Infinity) {
   const target = Math.min(config.e2eTargetSeconds, maxSeconds);
@@ -36,7 +37,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       writeFileSync(inventory, result.stdout);
       if (spawnSync("python3", ["scripts/ci/test-results.py", "--inventory", "playwright", browser, inventory], { stdio: "inherit" }).status !== 0) throw new Error("stale browser baseline");
       const files = selection.e2eFiles ? JSON.parse(selection.e2eFiles) : null;
-      const tests = listedTests(JSON.parse(result.stdout)).filter((test) => files === null || files.includes(test.file));
+      const tests = listedTests(JSON.parse(result.stdout), process.env.E2E_SERVED === "1").filter((test) => files === null || files.includes(test.file));
       for (const test of tests) if (recorded[test.key]) seed[test.key] = recorded[test.key];
       return { browser, tests };
     });

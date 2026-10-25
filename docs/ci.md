@@ -41,6 +41,16 @@ stay together, so a file too long to fit alone gets a specific headroom error.
 The growth regression uses a fixed synthetic seed: doubling its durations grows
 eight shards to sixteen, without depending on the current browser inventory.
 
+Shard planning lives in `scripts/e2e-plan.mjs` and takes timings and served mode
+as inputs. The local `e2e-slot` entry point chooses the shared home cache and
+passes `E2E_TIMINGS_FILE` to its children; CI reads only its configured seed and
+repository-local timing cache. The hermetic input guard has no cache exception.
+
+The always-reporting result jobs have deadlines covering the entire dependency
+path: `ci-ok` gets 210 minutes and the legacy propagators get 225. Budget planning
+rejects shorter result deadlines and counts their dependency wait once, keeping
+the complete path below the merge queue's configured timeout.
+
 The plan's Cargo metadata command runs locked and offline, with a deadline from
 `jobMinutes.plan` that also bounds the rustup proxy's cold toolchain download.
 A stalled command fails promptly instead of spending the job timeout waiting

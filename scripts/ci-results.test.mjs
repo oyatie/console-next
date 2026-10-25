@@ -6,8 +6,31 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { load } from "js-yaml";
+import { planBudget } from "./ci/plan.mjs";
 import "./ci-regressions.test.mjs";
 import "./ci-shards.test.mjs";
+
+test("result job deadlines outlast the complete dependency path", async (t) => {
+  const { jobs } = load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
+  const waiting = (job) => Math.max(0, ...[job.needs ?? []].flat().map(completion));
+  const completion = (name) => {
+    const job = jobs[name];
+    return job["timeout-minutes"] + (job.if === "always()" ? 0 : waiting(job));
+  };
+  for (const [name, job] of Object.entries(jobs).filter(([, job]) => job.if === "always()")) {
+    await t.test(name, () => assert.ok(job["timeout-minutes"] > waiting(job), `${name}: deadline must exceed ${waiting(job)} minutes of dependencies`));
+  }
+});
+
+test("budget planning refuses result deadlines that expire while dependencies run", () => {
+  const { jobs } = load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
+  const config = JSON.parse(readFileSync(new URL("./ci/config.json", import.meta.url), "utf8"));
+  for (const name of ["ci-ok", "backend", "web"]) {
+    const shortened = structuredClone(jobs);
+    shortened[name]["timeout-minutes"] = 1;
+    assert.throws(() => planBudget({}, config, [], shortened), new RegExp(`result job ${name} timeout must exceed dependency path`));
+  }
+});
 
 test("the rollback capacity proof reserves the runner without widening its timeout or quarantine", () => {
   const result = spawnSync("python3", ["-c", `import json,tomllib
@@ -138,20 +161,20 @@ test("one archive covers the affected Rust closure with disjoint DB and unit fil
 test("plan budgets the workflow timeout chain; job-minutes warn without blocking", async () => {
   const { planBudget } = await import("./ci/plan.mjs");
   const c = JSON.parse(readFileSync(new URL("./ci/config.json", import.meta.url), "utf8"));
+  const wf = load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
   const p = { backend: true, web: true, e2e: true, unit: true, db: true };
   const jobs = [{ browser: "chromium", shard: 1, est: 300 }, { browser: "firefox", shard: 1, est: 300 }];
   const proof = planBudget(p, c, jobs);
   const reservation = planBudget(p, c);
   assert.ok(c.maxJobs >= Math.ceil(reservation.jobs * 1.25));
   assert.ok(c.maxTotalMinutes >= Math.ceil(reservation.minutes * 1.25));
-  assert.equal(proof.wallMinutes, 200);
+  assert.equal(proof.wallMinutes, Math.max(wf.jobs.backend["timeout-minutes"], wf.jobs.web["timeout-minutes"]));
   assert.ok(proof.wallMinutes < proof.queueMinutes);
   assert.equal(proof.perJob["e2e-chromium-1"], 5.5);
   assert.throws(() => planBudget(p, { ...c, maxJobs: proof.jobs - 1 }, jobs), /job budget/);
   assert.doesNotThrow(() => planBudget(p, { ...c, maxTotalMinutes: proof.minutes - 1 }, jobs));
-  const wf = load(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"));
   assert.throws(() => planBudget(p, c, [{ est: 60 * wf.jobs.e2e["timeout-minutes"] }]), /timeout headroom/);
-  wf.jobs["rust-build"]["timeout-minutes"] = proof.queueMinutes;
+  wf.jobs.web["timeout-minutes"] = proof.queueMinutes;
   assert.throws(() => planBudget(p, c, jobs, wf.jobs), /merge-queue timeout/);
   assert.ok(planBudget({ backend: false, web: false, e2e: false }, c, []).minutes < proof.minutes);
 });
