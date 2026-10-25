@@ -7,6 +7,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writ
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { resolveBase } from "./git-base.mjs";
 
 const repo = path.resolve(import.meta.dirname, "..");
 
@@ -61,8 +62,8 @@ test("npm run check is hermetic; restoring a home-state dependency fails", { tim
   const succeeds = (result) => assert.equal(result.status, 0, `${result.error ?? ""}\n${result.stdout}${result.stderr}`);
   succeeds(run("git", ["clone", "--quiet", "--no-local", "--single-branch", repo, checkout], dir));
   succeeds(run("git", ["checkout", "--quiet", "--detach"]));
-  // Match ci.yml's full checkout and dev ref for the shrink-only ratchets.
-  succeeds(run("git", ["fetch", "--quiet", "--no-tags", repo, "dev:refs/heads/dev"]));
+  // Match CI's authoritative base; a local dev can still belong to the private tree.
+  succeeds(run("git", ["fetch", "--quiet", "--no-tags", repo, `${resolveBase(repo)}:refs/remotes/origin/dev`]));
   // Reuse the lockfile-installed tools without sharing application sources or local caches.
   cpSync(path.join(repo, "node_modules"), path.join(checkout, "node_modules"), { recursive: true, verbatimSymlinks: true });
   const { packages } = JSON.parse(readFileSync(path.join(checkout, "package-lock.json"), "utf8"));
@@ -76,6 +77,8 @@ test("npm run check is hermetic; restoring a home-state dependency fails", { tim
   succeeds(status);
   assert.equal(status.stdout, "", "start from a clean checkout");
   assertRepoInputs(checkout);
+  // Match web-check's browser tool provisioning inside the isolated home.
+  succeeds(run("node_modules/.bin/playwright", ["install", "--only-shell", "chromium"]));
   succeeds(run("npm", ["run", "check"]));
 
   const reach = path.join(checkout, "scripts/check-reach.mjs");
