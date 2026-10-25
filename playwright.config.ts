@@ -48,6 +48,8 @@ const backendEnv = {
 
 export default defineConfig({
   testDir: "e2e",
+  // Node helper tests share this directory but must never execute during browser discovery.
+  testMatch: "**/*.spec.ts",
   outputDir: OUTPUT_DIR,
   globalSetup: "./e2e/global-setup.ts",
   timeout: 120_000,

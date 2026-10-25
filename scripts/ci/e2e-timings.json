@@ -364,10 +364,6 @@
     "s": 8.3,
     "at": 1792156639533
   },
-  "served:parallel › home-truth.spec.ts › home names a refused and a failed part and asks a refusal once; the calendar locks a month": {
-    "s": 23,
-    "at": 1792156639533
-  },
   "served:parallel › home-truth.spec.ts › an account with no work grant gets an honest home, and 기간 잠금 refuses it once": {
     "s": 19.8,
     "at": 1792156639533
@@ -500,10 +496,6 @@
     "s": 35.5,
     "at": 1792157479625
   },
-  "served:parallel › import-reds-layout.spec.ts › Home waits for the checklist arrival read before offering cached actions": {
-    "s": 3.9,
-    "at": 1792155726653
-  },
   "served:parallel › import-reds-layout.spec.ts › adding a department on a slow read keeps the next input and department actions in place": {
     "s": 7.2,
     "at": 1792155726653
@@ -570,10 +562,6 @@
   },
   "served:parallel › live.spec.ts › a change in one session reaches another without reload or polling, survives a cut stream, and stays in its tenant": {
     "s": 59.4,
-    "at": 1792155085673
-  },
-  "served:parallel › live.spec.ts › an unattended Home holds a change made elsewhere behind its notice: nothing moves until the press": {
-    "s": 11.2,
     "at": 1792155085673
   },
   "served:parallel › live.spec.ts › a sheet holds a change made elsewhere to the record under it, and closing it shows the change": {
@@ -747,18 +735,6 @@
   "served:parallel › record-actions/goals.spec.ts › cold persona: each goal's action is found on its value in two interactions: live tenant": {
     "s": 17.7,
     "at": 1792071324822
-  },
-  "served:parallel › record-actions/propagation.spec.ts › every surface of an edited fact shows the new value and never the old: setup phase": {
-    "s": 34.1,
-    "at": 1792071445346
-  },
-  "served:parallel › record-actions/propagation.spec.ts › every surface of an edited fact shows the new value and never the old: live tenant": {
-    "s": 34.7,
-    "at": 1792071445346
-  },
-  "served:parallel › record-actions/propagation.spec.ts › planted: a surface reading a cached copy of the 사업장 name fails the harness": {
-    "s": 33.5,
-    "at": 1792071445346
   },
   "served:parallel › record-actions/reach.spec.ts › every registered action is reached in two interactions or fewer: setup phase": {
     "s": 39.9,
@@ -1336,10 +1312,6 @@
     "s": 11,
     "at": 1792163003471
   },
-  "served:firefox › home-truth.spec.ts › home names a refused and a failed part and asks a refusal once; the calendar locks a month": {
-    "s": 24.4,
-    "at": 1792163003471
-  },
   "served:firefox › home-truth.spec.ts › an account with no work grant gets an honest home, and 기간 잠금 refuses it once": {
     "s": 18.5,
     "at": 1792163003471
@@ -1472,10 +1444,6 @@
     "s": 50.5,
     "at": 1792163147347
   },
-  "served:firefox › import-reds-layout.spec.ts › Home waits for the checklist arrival read before offering cached actions": {
-    "s": 4.8,
-    "at": 1792161157130
-  },
   "served:firefox › import-reds-layout.spec.ts › adding a department on a slow read keeps the next input and department actions in place": {
     "s": 8.8,
     "at": 1792161157130
@@ -1542,10 +1510,6 @@
   },
   "served:firefox › live.spec.ts › a change in one session reaches another without reload or polling, survives a cut stream, and stays in its tenant": {
     "s": 62.8,
-    "at": 1792161157130
-  },
-  "served:firefox › live.spec.ts › an unattended Home holds a change made elsewhere behind its notice: nothing moves until the press": {
-    "s": 13.6,
     "at": 1792161157130
   },
   "served:firefox › live.spec.ts › a sheet holds a change made elsewhere to the record under it, and closing it shows the change": {
@@ -1707,18 +1671,6 @@
   "served:firefox › record-actions/goals.spec.ts › cold persona: each goal's action is found on its value in two interactions: live tenant": {
     "s": 10.7,
     "at": 1792074395779
-  },
-  "served:firefox › record-actions/propagation.spec.ts › every surface of an edited fact shows the new value and never the old: setup phase": {
-    "s": 14.1,
-    "at": 1792075497353
-  },
-  "served:firefox › record-actions/propagation.spec.ts › every surface of an edited fact shows the new value and never the old: live tenant": {
-    "s": 13.2,
-    "at": 1792075497353
-  },
-  "served:firefox › record-actions/propagation.spec.ts › planted: a surface reading a cached copy of the 사업장 name fails the harness": {
-    "s": 24.9,
-    "at": 1792075497353
   },
   "served:firefox › record-actions/reach.spec.ts › every registered action is reached in two interactions or fewer: setup phase": {
     "s": 9.7,

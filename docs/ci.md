@@ -296,6 +296,15 @@ and release dispatches on dev override it. The gate folds measured shard results
 into the restored record with the existing rolling average, preserving unvisited
 tests and aging out stale entries. Each run/attempt saves a distinct cache key. Regenerate from the autoshard record with
 `E2E_SERVED=1 GITHUB_OUTPUT=/tmp/ci-plan node scripts/ci/e2e.mjs seed`.
+The planner lists specs from the checked-out merge result on every run. Browser
+discovery matches `**/*.spec.ts`, so Node helper tests cannot execute while the
+JSON inventory is collected. Hygiene and `npm run check` run the generator's
+`check-seed` mode against both configured release browsers; a renamed or deleted
+timing key fails until the seed is regenerated. New specs use the autoshard's
+existing duration estimate until their first measured run. Failure quarantine
+stays separately owned and validated against the live inventory; generation never
+adds, renews or removes quarantine entries.
+Node helper tests run explicitly with `node --test` in `npm run check`.
 
 The planner reserves at most 24 browser shards. When recorded times need more,
 it increases the target and uses the existing longest-first duration packer within

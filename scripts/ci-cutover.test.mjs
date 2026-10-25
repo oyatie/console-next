@@ -10,12 +10,13 @@ import { load } from "js-yaml";
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 
 test("GitOps cutover keeps script CD deleted and workflow checks execute the CI contract", () => {
-  for (const file of [".github/workflows/cd.yml", "scripts/cd-workflow.test.mjs"]) assert.equal(existsSync(new URL(`../${file}`, import.meta.url)), false);
+  for (const file of [".github/workflows/cd.yml", "scripts/cd-workflow.test.mjs", "scripts/check-workflow-hardening.mjs"]) assert.equal(existsSync(new URL(`../${file}`, import.meta.url)), false);
   for (const file of [".github/workflows/ci.yml", ".github/workflows/workflows-check.yml", "package.json"]) assert.doesNotMatch(read(file), /cd-workflow|cd\.yml/);
   const wf = load(read(".github/workflows/workflows-check.yml"));
   for (const event of ["pull_request", "push"]) assert.ok(wf.on[event].paths.includes("scripts/ci*.mjs"));
   assert.ok(wf.jobs.workflows.steps.some((s) => s.run?.includes("node --test scripts/ci.test.mjs")));
   assert.ok(JSON.parse(read("package.json")).scripts.check.includes("scripts/e2e-support-logs.test.mjs"));
+  assert.ok(JSON.parse(read("package.json")).scripts.check.includes("e2e/helpers/*.test.mjs"));
 });
 
 test("probe stays opt-in and sends failures only through the shared Telegram adapter", () => {

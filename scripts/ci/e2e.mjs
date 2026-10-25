@@ -27,9 +27,10 @@ export function shards(tests, timings, config) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const config = JSON.parse(readFileSync("scripts/ci/config.json", "utf8"));
-  if (["plan", "seed"].includes(process.argv[2])) {
-    const selection = process.env.CI_PLAN ? JSON.parse(process.env.CI_PLAN) : {};
-    const recorded = { ...readTimings(config.e2eTimingsSeed), ...readTimings() };
+  if (["plan", "seed", "check-seed"].includes(process.argv[2])) {
+    const checking = process.argv[2] === "check-seed";
+    const selection = process.argv[2] === "plan" && process.env.CI_PLAN ? JSON.parse(process.env.CI_PLAN) : {};
+    const recorded = { ...readTimings(config.e2eTimingsSeed), ...(checking ? {} : readTimings()) };
     const seed = { _license: "SPDX-License-Identifier: LicenseRef-Proprietary" };
     mkdirSync(".cache/ci", { recursive: true });
     const include = (selection.browsers ? JSON.parse(selection.browsers) : config.releaseBrowsers).flatMap((browser) => {
@@ -43,8 +44,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       for (const test of tests) if (recorded[test.key]) seed[test.key] = recorded[test.key];
       return shards(tests, recorded, config).map((job) => ({ ...job, browser, est: job.est ?? config.e2eTargetSeconds }));
     });
-    if (process.argv[2] === "seed") writeFileSync(config.e2eTimingsSeed, JSON.stringify(seed, null, 2) + "\n");
     if (!include.length) throw new Error("empty E2E inventory");
+    const generated = JSON.stringify(seed, null, 2) + "\n";
+    if (checking) {
+      if (readFileSync(config.e2eTimingsSeed, "utf8") !== generated) throw new Error("stale browser timing seed; regenerate with E2E_SERVED=1 GITHUB_OUTPUT=/tmp/ci-plan node scripts/ci/e2e.mjs seed");
+      process.exit(0);
+    }
+    if (process.argv[2] === "seed") writeFileSync(config.e2eTimingsSeed, generated);
     const outputs = process.env.CI_PLAN ? JSON.parse(process.env.CI_PLAN) : { backend: "true", web: "true", e2e: "true", unit: "true", db: "true" };
     const budget = planBudget(Object.fromEntries(Object.entries(outputs).map(([k, v]) => [k, v === "true"])), config, include);
     appendFileSync(process.env.GITHUB_OUTPUT, `budget=${JSON.stringify(budget)}\n`);
@@ -60,5 +66,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       const proof = spawnSync("python3", ["scripts/ci/test-results.py", "playwright", job.browser, process.env.PLAYWRIGHT_JUNIT_OUTPUT_FILE ?? ".cache/ci/e2e-results/junit.xml", String(result.status ?? -1)], { stdio: "inherit" });
       process.exitCode = proof.status ?? 1;
     } finally { closeSync(log); }
-  } else throw new Error("expected plan or run");
+  } else throw new Error("expected plan, seed, check-seed or run");
 }
