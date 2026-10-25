@@ -22,11 +22,11 @@ test("operating: new department and dissolution proposals, a governed move, dele
   const c = clickCounter();
 
   // One meaning for direct and total people, on the card, the list and the panel.
-  const staffed = await openUnit(admin, "인사부");
-  await admin.keyboard.press("f");
   const count = "직속 1 · 전체 1";
+  await expect(await openUnit(admin, "인사부")).toContainText(count);
+  await admin.keyboard.press("f"); // fitting the chart closes the panel
   await expect(box(admin, "인사부")).toContainText(count);
-  await expect(staffed).toContainText(count);
+  const staffed = await openUnit(admin, "인사부");
   await expectAccessible(admin, "department panel at 1440px");
   await atPhoneWidth(admin, async () => {
     await expect(staffed).toBeVisible();
