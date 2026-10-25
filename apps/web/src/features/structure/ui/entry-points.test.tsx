@@ -35,3 +35,16 @@ test("outline importing also points to the header instead of a second paste dial
   expect(html).toContain('data-href="/org#structure-import"');
   expect(html).not.toContain("목록 붙여넣기");
 });
+
+test("outline labels its single headcount as including descendants", async () => {
+  const { OutlineRows } = await vi.importActual<typeof import("./outline-rows")>("./outline-rows");
+  const s = buildStructure({ tenant_name: "T", phase: "SETUP", entities: [], unplaced: [] });
+  const unit = { ...s.root, id: "unit", kind: "dept" as const, name: "품질팀", headcount: 3, children: [], depth: 1 };
+  s.root.children = [unit];
+  s.byId.set(unit.id, unit);
+  s.readOnly = true;
+  const html = renderToStaticMarkup(<OutlineRows s={s} cmd={{} as Commands} cursor={unit.id} setCursor={() => undefined} closed={new Set()} setClosed={() => undefined} edit={null} setEdit={() => undefined} sel={new Set()} onSelect={() => undefined} />);
+  expect(html).toContain("하위 포함");
+  expect(html).toContain("3명");
+  expect(html).not.toContain("직속 / 전체");
+});
