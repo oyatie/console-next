@@ -7,16 +7,19 @@
 //      (`exit.action.${k}` uses every `exit.action.*` id). Both over-approximate (comments count,
 //      a template prefix covers its siblings), so the gate can miss an unused id but never fails a
 //      used one. Ids in scripts/copy-unused-baseline.json may stay unused; the list only shrinks.
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { IntlMessageFormat } from "intl-messageformat";
 import { applyJosa, resolveJosa } from "../packages/i18n/src/josa.ts";
 import ts from "typescript";
+import { atBase, baselineGrowth, digest, ratchet } from "./quality/ratchet.mjs";
 
 const HANGUL = /[ㄱ-ㆎ가-힣]/;
 const CATALOGS = "packages/i18n/src/catalogs";
 const BASELINE = "scripts/copy-unused-baseline.json";
+const MATURITY_BASELINE = "scripts/copy-maturity-baseline.json";
 const escape = (s) => s.replace(/[.*+?^$()|[\]\\{}]/g, "\\$&");
 
 // Governed org/lifecycle forms have one owner for commit and dismiss copy, including their page-sized variants.
@@ -76,18 +79,35 @@ export function checkUnused(ids, sources, baseline) {
 // 3. Word gate (docs/design/copy-conventions.md): the verb table and the glossary as banned forms, each naming the
 //    canonical word. Korean copy uses TERM_RULES; English catalogs use EN_TERM_RULES (keys and comments are free).
 //    Legitimate Korean uses live in scripts/copy-terms-allow.json; stale entries fail, so the list only shrinks.
-//    Context-dependent terms (수정 for a dated fact, 이동 for a person, 구성원 in a title) are reviewed, not regexed.
+//    Context comes from the catalog id; rendered walk text is checked separately below.
+const MATURITY_RULES = [
+  { rule: "term.이력", re: /변경 내역/, use: "변경 이력" },
+  { rule: "term.미배치", re: /소속 지점 미지정/, use: "미배치" },
+  { rule: "term.대기", re: /내 차례/, use: "대기" },
+  { rule: "term.업무함", re: /(?<![가-힣])할 일/, when: ({ id, text }) => /title|heading|panel/i.test(id) || (id === "runtime" && text === "할 일"), use: "업무함" },
+  { rule: "term.직원", re: /구성원/, when: ({ id, text }) => /(?:^|\.)(?:title|heading|tab)(?:\.|$)/i.test(id) || (id === "runtime" && /^구성원(?: 관리| 목록)?$/.test(text)), use: "직원 (titles and tabs)" },
+  { rule: "term.검색", re: /찾기/, when: ({ id, text }) => /search|jump/i.test(id) || (id === "runtime" && /^(?:사람 )?찾기$/.test(text)), use: "검색 (find-in-page remains 찾기)" },
+  { rule: "verb.부여", re: /권한을? (?:줄|주[는고며면지]|줍)/, use: "권한 부여" },
+  { rule: "prose.위치", re: /(?:왼쪽|오른쪽|아래|위쪽|상단|하단)(?:의|에 있는|에서|에)?\s*(?:버튼|단추|입력란|메뉴)(?:을|를|에서|로)?|화면 (?:왼쪽|오른쪽|아래|위쪽|상단|하단)에 있습니다/, use: "name the control, not its position" },
+  { rule: "prose.각주", re: /\S+/, when: ({ id, text }) => /(?:^|\.)(?:footnote|footerNote)(?:\.|$)/i.test(id) || (/\.foot(?:\.|$)/.test(id) && /(?:합니다|됩니다|있습니다|없습니다)/.test(text)), use: "remove standing footnotes; put definitions behind 이유 보기" },
+  { rule: "prose.단축키", re: /(?:⌘|Ctrl|Shift|Enter|Esc|단축키)/, when: ({ id, text }) => !/shortcuts?\./i.test(id) && (/hint|\.keys$/i.test(id) || (id === "runtime" && /(?:로|키|선택|추가|편집|취소)/.test(text))), use: "the ? shortcut sheet" },
+  { rule: "prose.설정법령", re: /(?:[가-힣]+법(?:률)?|시행령|규칙)\s*제\s*\d+\s*조|안전성 확보조치 기준/, when: ({ id }) => /^setup\.(?:why|step|rail)\./.test(id), use: "remove law lines from setup steps" },
+  { rule: "prose.정책", re: /(?:합니다|됩니다|있습니다|없습니다|않습니다|남습니다|남깁니다)/, when: ({ id }) => /(?:^|\.)policy(?:\.|$)/.test(id) && !/consent|privacy|terms|reason|help|disclosure/i.test(id), use: "put policy definitions behind 이유 보기" },
+  { rule: "prose.부제", re: /(?:합니다|됩니다|있습니다|없습니다|않습니다|남습니다|남깁니다|반영됩니다|바뀝니다)/, when: ({ id }) => /\.(?:subtitle|subheading)(?:\.|$)/i.test(id), use: "a short factual subtitle; put explanations behind 이유 보기" },
+  { rule: "prose.단계", re: /(?:합니다|됩니다|있습니다|없습니다|않습니다|남습니다|남깁니다|바뀝니다)/, when: ({ id }) => /\.phase\./.test(id), use: "a phase chip; put transition explanations in a dismissible receipt" },
+  { rule: "prose.운영시제", re: /운영을 시작하면/, when: ({ id }) => /phase\.started\./.test(id), use: "the current operating phase" },
+];
 export const TERM_RULES = [
   { rule: "verb.수정", re: /(?<!새로 ?)고[치쳐칠친칩]/, use: "수정 (the recorded act of a dated fact says 변경 or 정정)" },
   { rule: "verb.변경", re: /바[꾸꿔꾼꿨꿉꿀]/, use: "변경 (바뀌다 for a state that changes by itself is fine)" },
-  { rule: "verb.이동", re: /옮[기겨긴길깁]/, use: "이동 (a person is not moved: 발령 · 전보 · 전근 · 전적)" },
-  { rule: "verb.선택", re: /(?<![가-힣])(고[르른를릅]|골라)/, use: "선택" },
-  { rule: "verb.추가", re: /만[들든듭]/, use: "추가 · 등록 · 생성 · 작성 (by object, see the verb table)" },
+  { rule: "verb.이동", re: /옮[기겨긴길깁김]/, use: "이동 (a person is not moved: 발령 · 전보 · 전근 · 전적)" },
+  { rule: "verb.선택", re: /(?<![가-힣])(고[르른를릅름]|골라)/, use: "선택" },
+  { rule: "verb.추가", re: /만[들든듭듦]/, use: "추가 · 등록 · 생성 · 작성 (by object, see the verb table)" },
   { rule: "verb.삭제", re: /(?<![가-힣])지[우워운웁움울]/, use: "삭제 (a field is 비움)" },
   { rule: "verb.제외", re: /(?<![가-힣])(빼[기고면지는려야서]|[뺀뺍뺄](?![가-힣]))/, use: "제외" },
   { rule: "verb.통합", re: /합[치쳐친칩칠]/, use: "통합 (부서) · 병합 (동일인 기록)" },
-  { rule: "verb.입력", re: /적으십시오|적어 ?주십시오|적으면|(?<![가-힣]|붙여 )(적기|넣기|넣으십시오|넣으면)(?![가-힣])/, use: "입력" },
-  { rule: "verb.label", re: /(?<![가-힣])(정하|끝내|남기|두|잠그|세우|비우|더하|멈추|버리|늘리|되살리|바로잡|올리|보내|담)기(?![가-힣])/, use: "지정·설정 · 종료·완료 · 기록 · 유지 · 잠금 · 수립 · 해제 · 추가 · 중지 · 폐기 · 확장 · 복원 · 정정 · 첨부 · 요청 (verb table)" },
+  { rule: "verb.입력", re: /적으십시오|적어 ?주십시오|적으면|(?<![가-힣])적(?:지|는|고|습니다)|(?<![가-힣]|붙여 )넣(?:습니다|지|는|고)|(?<![가-힣]|붙여 )(적기|넣기|넣으십시오|넣으면)(?![가-힣])/, use: "입력" },
+  { rule: "verb.label", re: /(?<![가-힣])(?:정하고|올립니다)|(?<![가-힣])(정하|끝내|남기|두|잠그|세우|비우|더하|멈추|버리|늘리|되살리|바로잡|올리|보내|담)기(?![가-힣])/, use: "지정·설정 · 종료·완료 · 기록 · 유지 · 잠금 · 수립 · 해제 · 추가 · 중지 · 폐기 · 확장 · 복원 · 정정 · 첨부 · 요청 (verb table)" },
   { rule: "verb.하기", re: /하기(?=\s*($|[·({]))/, use: "a bare noun: 「등록」, not 「등록하기」" },
   { rule: "register.합니다체", re: /(세요|해요|어요|아요|여요|예요|에요|죠|나요|가요|까요|래요|게요)(?=[\s.?)」]*($|·))/, use: "합니다체 (…합니다 · …하십시오 · …합니까?)" },
   { rule: "term.퇴직", re: /퇴사/, use: "퇴직" },
@@ -112,6 +132,7 @@ export const TERM_RULES = [
   { rule: "punct.조사", re: /\((을|를|이|가|은|는|으|으로|로|과|와)\)/, use: "{x|을를} josa forms" },
   { rule: "punct.느낌표", re: /!/, use: "no exclamation marks" },
   { rule: "punct.따옴표", re: /'[^'{}\s][^'{}]*'/, use: "「」 for a UI name, “ ” for a value (an ASCII ' is ICU quoting)" },
+  ...MATURITY_RULES,
 ];
 
 export const EN_TERM_RULES = [
@@ -125,14 +146,17 @@ export function checkTerms(entries, allow, rules = TERM_RULES) {
   const allowed = (id, rule) => allow.find((a) => a.rule === rule && (a.id.endsWith("*") ? id.startsWith(a.id.slice(0, -1)) : a.id === id));
   const used = new Set();
   const problems = [];
-  for (const { id, where, text } of entries)
-    for (const { rule, re, use } of rules) {
+  for (const entry of entries) {
+    const { id, where, text } = entry;
+    for (const { rule, re, use, when } of rules) {
+      if (when && !when(entry)) continue;
       const m = text.match(re);
       if (!m) continue;
       const a = allowed(id, rule);
       if (a) used.add(a);
       else problems.push(`${where} ${id}: ${rule}: 「${m[0]}」 → ${use}: ${text.slice(0, 80)}`);
     }
+  }
   for (const a of allow) if (!used.has(a)) problems.push(`${TERMS_ALLOW}: ${a.id} (${a.rule}) no longer matches; remove it`);
   return problems;
 }
@@ -161,12 +185,58 @@ export function checkRuntimeOutput(input) {
 }
 
 // Locale catalogs include every value, even acronym-only copy; mixed-language files keep only Hangul values.
-export const copyEntries = (file, text) =>
-  text.split("\n").flatMap((line) => {
-    const kv = line.match(/^\s*"([^"]+)":\s*("(?:[^"\\]|\\.)*")/);
-    if (kv) return /(^|\/)(ko|en)\//.test(file) || HANGUL.test(kv[2]) ? [{ id: kv[1], where: file, text: JSON.parse(kv[2]) }] : [];
-    return [...line.matchAll(/"((?:[^"\\]|\\.)*[가-힣](?:[^"\\]|\\.)*)"/g)].map((m) => ({ id: file, where: file, text: m[1] }));
-  });
+export function copyEntries(file, text) {
+  if (file.endsWith(".rs")) {
+    const production = text.split(/#\[cfg\(test\)\]\s*mod tests\s*\{/)[0].replace(/^\s*\/\/.*$/gm, "");
+    return [...production.matchAll(/"((?:[^"\\]|\\.)*)"/g)].filter((m) => HANGUL.test(m[1])).map((m) => ({ id: file, where: file, text: m[1] }));
+  }
+  let source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  if (source.parseDiagnostics.length) source = ts.createSourceFile(file, `const catalog = {\n${text}\n}`, ts.ScriptTarget.Latest, true);
+  const entries = [];
+  const visit = (node) => {
+    if (ts.isPropertyAssignment(node) && ts.isStringLiteralLike(node.name) && ts.isStringLiteralLike(node.initializer)) {
+      const value = node.initializer.text;
+      if (/(^|\/)(ko|en)\//.test(file) || HANGUL.test(value)) entries.push({ id: node.name.text, where: file, text: value });
+      return;
+    }
+    if (ts.isStringLiteralLike(node) && HANGUL.test(node.text)) entries.push({ id: file, where: file, text: node.text });
+    else ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return entries;
+}
+
+// Exact text fingerprints prevent a changed string or another id from borrowing old debt.
+export function copyDebt(entries, allow = []) {
+  const counts = {}, messages = {};
+  for (const entry of entries) {
+    const matchingAllow = allow.filter((a) => a.id.endsWith("*") ? entry.id.startsWith(a.id.slice(0, -1)) : a.id === entry.id);
+    for (const problem of checkTerms([entry], matchingAllow).filter((p) => !p.endsWith("no longer matches; remove it"))) {
+      const rule = problem.split(": ")[1];
+      const key = `${entry.where} ${entry.id} ${rule} ${digest(entry.text)}`;
+      counts[key] = (counts[key] ?? 0) + 1;
+      messages[key] = problem;
+    }
+  }
+  return { counts, messages };
+}
+
+const isCopyFile = (p) => /^packages\/i18n\/src\/(?:catalogs\/(?:ko\/.*|boot(?:-[\w-]+)?\.ts)|gallery[\w-]*\.ts)$/.test(p)
+  || p === "apps/web/public/chunk-guard.js" || /(?:^|\/)error_i18n(?:[^/]*\.rs|\/.*\.rs)$/.test(p);
+
+// The same rules read the merge base when seeding; regeneration can never bless newly introduced debt.
+function debtCeiling() {
+  const root = process.cwd();
+  const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
+  const publicBase = spawnSync("git", ["rev-parse", "--verify", "--quiet", "public/dev"]).status === 0;
+  const base = git("merge-base", process.env.QUALITY_BASE ?? (publicBase ? "public/dev" : "dev"), "HEAD");
+  const allow = JSON.parse(atBase(root, base, TERMS_ALLOW)).allow;
+  const previous = atBase(root, base, MATURITY_BASELINE);
+  if (previous !== undefined) return { counts: JSON.parse(previous), allow };
+  const files = git("ls-tree", "-r", "--name-only", base).split("\n").filter(isCopyFile);
+  const entries = files.flatMap((file) => copyEntries(file, git("show", `${base}:${file}`)));
+  return { counts: copyDebt(entries, allow).counts, allow };
+}
 
 const walk = (dir, out = []) => {
   for (const name of readdirSync(dir)) {
@@ -199,14 +269,27 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     .map((p) => readFileSync(p, "utf8"));
   problems.push(...checkUnused(ids, sources, JSON.parse(readFileSync(BASELINE, "utf8")).unused));
   // The gallery is dev-only but still copy; the crash screen's strings ship outside the catalogs by necessity.
-  const copyFiles = [...walk(`${CATALOGS}/ko`), ...boot, ...walk("packages/i18n/src").filter((p) => /\/gallery[\w-]*\.ts$/.test(p)), "apps/web/public/chunk-guard.js"];
+  const copyFiles = [...walk("packages/i18n/src"), ...walk("apps/web/public"), ...(existsSync("backend") ? walk("backend") : [])].filter(isCopyFile);
   const entries = copyFiles.flatMap((f) => copyEntries(f, readFileSync(f, "utf8")));
-  problems.push(...checkTerms(entries, JSON.parse(readFileSync(TERMS_ALLOW, "utf8")).allow));
+  const allow = JSON.parse(readFileSync(TERMS_ALLOW, "utf8")).allow;
+  const debt = copyDebt(entries, allow);
+  const baseline = existsSync(MATURITY_BASELINE) ? JSON.parse(readFileSync(MATURITY_BASELINE, "utf8")) : {};
+  problems.push(...checkTerms(entries, allow).filter((p) => p.endsWith("no longer matches; remove it")));
+  const writing = process.argv.includes("--write-baseline");
+  const candidate = writing ? debt.counts : baseline;
+  try {
+    if (Object.keys(candidate).length || allow.length) {
+      const ceiling = debtCeiling();
+      problems.push(...baselineGrowth(candidate, ceiling.counts));
+      for (const a of allow) if (!ceiling.allow.some((old) => old.id === a.id && old.rule === a.rule)) problems.push(`${TERMS_ALLOW}: ${a.id} (${a.rule}): allow-list must only shrink`);
+    }
+    if (!writing) problems.push(...ratchet(debt.counts, baseline).map((p) => `${debt.messages[p.split(": now ")[0]] ?? p}; run --write-baseline after clearing debt`));
+  } catch (error) { problems.push(`${MATURITY_BASELINE}: ${error.message}`); }
   const enEntries = walk(`${CATALOGS}/en`).flatMap((f) => copyEntries(f, readFileSync(f, "utf8")));
   problems.push(...checkTerms(enEntries, [], EN_TERM_RULES));
   // Exercise catalog messages as well as all particle pairs, even without output paths.
   const message = "{word|이가} {word|을를} {word|은는} {word|과와} {word|으로로} {word|아야} · {word}이(가) {word}을(를) {word}(으)로";
-  const runtimeEntries = [{ id: "runtime", text: message }, ...entries.filter(({ text }) => /\{\w+\|/.test(text) || RUNTIME_JOSA_RE.test(text))];
+  const runtimeEntries = [{ id: "runtime", text: message }, ...entries.filter(({ where, text }) => !where.endsWith(".rs") && (/\{\w+\|/.test(text) || RUNTIME_JOSA_RE.test(text)))];
   for (const word of ["HK-0001", "E-000002", "ABC", "abc", "URL", "IBM", "VPN", "Unit", "Hub", "정하늘", "윤바다"]) {
     for (const { id, text } of runtimeEntries) {
       const values = Object.fromEntries([...text.matchAll(/\{(\w+)(?:,\s*(number|plural|selectordinal|date|time)\b)?/g)]
@@ -216,11 +299,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
   }
   for (const arg of process.argv.slice(2)) {
+    if (arg === "--write-baseline") continue;
     try {
       const st = statSync(arg);
       const files = st.isDirectory() ? walk(arg).filter((f) => f.endsWith(".txt")) : [arg];
       for (const f of files) {
-        problems.push(...checkRuntimeOutput({ where: f, text: readFileSync(f, "utf8") }));
+        const text = readFileSync(f, "utf8");
+        problems.push(...checkRuntimeOutput({ where: f, text }));
+        problems.push(...checkTerms(text.split("\n").map((line) => ({ id: "runtime", where: f, text: line.trim() })), []));
       }
     } catch (error) {
       problems.push(`${arg}: cannot check runtime output: ${error.message}`);
@@ -230,4 +316,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.stderr.write(`copy: ${problems.length} problem(s):\n${problems.join("\n")}\n`);
     process.exit(1);
   }
+  if (writing) writeFileSync(MATURITY_BASELINE, JSON.stringify(Object.fromEntries(Object.entries(candidate).sort(([a], [b]) => a.localeCompare(b))), null, 2) + "\n");
 }

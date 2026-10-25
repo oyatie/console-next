@@ -62,8 +62,8 @@ export function JumpPalette({ onClose }: { onClose: () => void }) {
     <CommandPalette
       open
       onClose={onClose}
-      label={t("structure.jump.label")}
-      placeholder={t("structure.jump.placeholder")}
+      label={t("shell.jumpLabel")}
+      placeholder={t("shell.jump")}
       query={q}
       onQuery={setQ}
       sections={sections}

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { bootKo } from "../packages/i18n/src/catalogs/boot";
 import { expectAccessible } from "./a11y";
 import { go, routeReady, vendorPage } from "./flows";
 import { expectStable } from "./stability";
@@ -158,7 +159,7 @@ test.describe("one state contract across console routes", () => {
     await expect(main.getByText("forbidden", { exact: true })).toBeVisible();
     await expect(main.getByText(reference, { exact: true })).toBeVisible();
     await expect(main.getByRole("button", { name: "권한 요청", exact: true })).toBeVisible();
-    await expect(page.getByRole("main").getByText(/권한을 줄 수 있는 사람|권한 관리 담당자/).first()).toBeVisible();
+    await expect(page.getByRole("main").getByText(path === "/platform" ? bootKo["common.denied.granters.unavailable"] : "권한을 부여할 수 있는 담당자").first()).toBeVisible();
     await expect(page.getByText("일치하는 계정이 없습니다", { exact: true })).toHaveCount(0);
     await page.close();
   });

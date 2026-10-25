@@ -168,8 +168,6 @@ export const enStructure: Record<keyof typeof koStructure, string> = {
   "structure.first.ghostSite": "Workplace · head office, plant, branch… · opens once an entity is registered",
   "structure.first.ghostDept": "Department · any depth inside a workplace · teams are deeper departments",
   "structure.first.caption": "The chart is the first screen of the org structure · whatever you add shows here at once · everything changed now can be undone",
-  "structure.jump.label": "Find and go",
-  "structure.jump.placeholder": "Find and go — entities, workplaces, departments, people, registration numbers",
   "structure.jump.people": "People",
   "structure.jump.tasks": "Tasks",
   "structure.jump.addUnder": "Add a department under {name}",
