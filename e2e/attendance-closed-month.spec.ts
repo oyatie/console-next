@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
+import { grantAccess } from "./access-flows";
+import { letGrantsAge } from "./second-person-fixture";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
-import { cellOf, officeSchedule, openMonth } from "./helpers/attendance-records";
-import { chooseRadio, go, kstDate, option, registerEmployee } from "./flows";
-import { staffedTenant } from "./setup-flows";
+import { expectDrafts, cellOf, officeSchedule, openMonth } from "./helpers/attendance-records";
+import { chooseRadio, firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "./flows";
+import { tenantInSetup } from "./setup-flows";
+import { clearShifts } from "./stability";
 
 const today = kstDate();
 const lastMonth = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1)).toISOString().slice(0, 7);
@@ -14,11 +17,28 @@ const LOCKS = "/people/period-locks";
 // it. Closed is read-only and links to the unlock of the lock behind the close; while unlocked the month takes a save
 // and says when it locks again; the early re-lock closes it again. Every refusal is asserted at the server too.
 test("마감된 달: read-only with the unlock path, editable while unlocked, closed again on re-lock", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
-  test.setTimeout(600_000); // a staffed tenant, a person and a schedule through the UI, then close, unlock, save, re-lock
-  const { admin } = await staffedTenant(browser, "attclose", "근태마감주식회사");
+  test.setTimeout(600_000); // a setup tenant, a linked authority and a schedule through the UI, then close, unlock, save, re-lock
+  const slug = "attclose";
+  const { admin: operator } = await tenantInSetup(browser, slug, "근태마감주식회사", false, "본사", "none");
+  // The sole-authority unlock path is available during setup and requires a linked person.
+  await registerEmployee(operator, { name: "김마감", number: "C-AUTHORITY", unit: "본사", hired: kstDate(-60) });
+  await operator.getByRole("button", { name: "계정 초대", exact: true }).click();
+  await stepUp(operator.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", operator.getByLabel("일회용 코드"));
+  const admin = await firstSignIn(browser, await takeCode(operator));
   const bearer = bearerOf(admin);
-  await registerEmployee(admin, { name: "윤하준", number: "C-0001", hired: kstDate(-60) });
-  await officeSchedule(admin);
+  await registerEmployee(operator, { name: "윤하준", number: "C-0001", unit: "본사", hired: kstDate(-60) });
+  await officeSchedule(operator);
+  await grantAccess(operator, "김마감", "full");
+  await go(admin, "/", true);
+  await passkeyLogin(admin);
+  await admin.reload();
+  const notice = admin.getByRole("button", { name: "전체 업무 부여 확인 기록", exact: true });
+  const noticed = admin.waitForResponse((r) => r.request().method() === "POST" && /\/access\/grants\/[^/]+\/notice$/.test(new URL(r.url()).pathname));
+  await notice.click();
+  expect((await noticed).status()).toBe(200);
+  await admin.reload();
+  await expect(notice).toBeHidden();
+  letGrantsAge(unique(slug), "김마감");
   const api = apiOf(admin, bearer);
   const people = (await (await api("/employees?limit=10")).json()) as { items: { id: string; name: string }[] };
   const yoon = people.items.find((p) => p.name === "윤하준")!.id;
@@ -36,6 +56,7 @@ test("마감된 달: read-only with the unlock path, editable while unlocked, cl
   expect(close.status()).toBe(201);
 
   // Closed: read-only with the one way to change it; typing leaves no draft, and the server refuses a save.
+  await go(admin, `/attendance?month=${lastMonth}`);
   const grid = await openMonth(admin, lastMonth);
   const closed = admin.getByText(`${monthName} 근태는 마감되어 읽기만 할 수 있습니다 · 변경하려면 기간 잠금 해제를 요청합니다`);
   await expect(closed).toBeVisible();
@@ -43,7 +64,7 @@ test("마감된 달: read-only with the unlock path, editable while unlocked, cl
   await admin.keyboard.type("9-18");
   await admin.keyboard.press("Enter");
   await expect(admin.getByRole("status").filter({ hasText: "마감된 달은 저장할 수 없습니다" })).toBeVisible();
-  await expect(admin.getByRole("status").filter({ hasText: /^저장 안 된 칸 0 ·/ })).toBeVisible();
+  await expectDrafts(admin, 0);
   expect(await refusedCode("9-18")).toEqual([422, "cells_refused", "entry_month_closed"]);
   expect((await history()).history).toHaveLength(0);
   await expectAccessible(admin, "closed month");
@@ -57,7 +78,7 @@ test("마감된 달: read-only with the unlock path, editable while unlocked, cl
   await expect(admin.getByRole("status").filter({ hasText: "윤하준의 줄이 화면에서 빠졌습니다 · 마감된 달이라 입력하던 값은 남기지 않았습니다" })).toBeVisible();
   await admin.goForward();
   await expect(closed).toBeVisible();
-  await expect(admin.getByRole("status").filter({ hasText: /^저장 안 된 칸 0 ·/ })).toBeVisible();
+  await expectDrafts(admin, 0);
 
   // The banner opens this lock's unlock on 기간 잠금: the sole close authority unlocks for one day, flagged for review.
   await admin.getByRole("link", { name: "기간 잠금 해제 요청" }).click();
@@ -69,7 +90,9 @@ test("마감된 달: read-only with the unlock path, editable while unlocked, cl
   await expect(admin.getByRole("status").filter({ hasText: "잠금을 해제했습니다" })).toBeVisible();
 
   // Reopened: the banner says until when, and the cell saves with 근거.
-  await go(admin, "/attendance");
+  // Period-lock layout is audited by its own spec; measure this attendance read from its arrival.
+  await admin.evaluate(clearShifts);
+  await go(admin, `/attendance?month=${lastMonth}`);
   await openMonth(admin, lastMonth);
   await expect(admin.getByText(new RegExp(`${monthName} 근태는 기간 잠금 해제로 변경할 수 있습니다 · .+에 다시 잠김`))).toBeVisible();
   await expectAccessible(admin, "reopened month");
@@ -80,7 +103,9 @@ test("마감된 달: read-only with the unlock path, editable while unlocked, cl
   await admin.keyboard.press("ControlOrMeta+s");
   const sheet = admin.getByRole("complementary", { name: /저장 · 초안 1칸/ });
   await chooseRadio(sheet, /출근부 \(종이\)/);
+  const saved = admin.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/v1/attendance/entries");
   await sheet.getByRole("button", { name: "1칸 저장" }).click();
+  expect((await saved).status()).toBe(201);
   await expect(admin.getByRole("status").filter({ hasText: "1칸을 저장했습니다" })).toBeVisible();
   expect((await history()).history).toHaveLength(1);
 

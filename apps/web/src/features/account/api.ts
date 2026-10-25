@@ -7,6 +7,7 @@ import { forgetDomains } from "../../auth/sign-in-id";
 export type Me = components["schemas"]["UserSummary"];
 
 export const passkeysQuery = get("/api/v1/auth/passkeys");
+export const passkeyLabelPolicyQuery = get("/api/v1/auth/passkeys/policy");
 /** Tenant accounts only: a platform token is another world, where this read answers 404. */
 export const meQuery = get("/api/v1/users/me");
 /** Only this user changes their own consent: no polling of the auth endpoint. */
@@ -21,8 +22,12 @@ export const signOutHere = () => (forgetDomains(), logout());
 const list = async () => ({ data: await passkeysQuery.queryFn() });
 
 /** Adds a passkey after a step-up with an existing one. Registration has no idempotency key: a lost response counts as done when the list grew. */
-export const addPasskey = (before: number) =>
-  landed(() => registerPasskey({ stepUp: true }), list, (d) => d.length > before);
+export const addPasskey = (before: number, label?: string) =>
+  landed(() => registerPasskey({ stepUp: true, label }), list, (d) => d.length > before);
+
+/** Display metadata only; credential changes still require the existing step-up flow. */
+export const renamePasskey = (id: string, label: string) =>
+  unwrap(api.PATCH("/api/v1/auth/passkeys/{id}", { params: { path: { id } }, body: { label } }));
 
 /** Removes a passkey after a step-up (the server deletes nothing without it); a lost response counts as done when the row is gone. */
 export async function removePasskey(id: string) {

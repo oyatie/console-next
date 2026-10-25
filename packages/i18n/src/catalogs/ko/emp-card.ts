@@ -144,8 +144,6 @@ export const koEmpCard = {
   "empCard.type.missing": "정보 미입력",
   "empCard.group.empty": "비어 있음 · 입사일로 셉니다",
   "empCard.probation.until": "{date}까지",
-  "empCard.workForm.unserved": "아직 적는 칸이 없습니다",
-  "empCard.concurrent.lock": "겸직 발령은 아직 열지 않았습니다",
   "empCard.job.events": "발령 기록 {count}",
   "empCard.contract.renew": "계약 갱신·변경",
   "empCard.leave.kind": "구분",

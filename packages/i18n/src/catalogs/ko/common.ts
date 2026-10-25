@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Screen-only refusal copy loads with the locale catalog, after sign-in.
 export const koCommon = {
+  "common.failed.code.passkey_label_invalid": "패스키 이름의 길이와 제어문자를 확인하십시오.",
   "common.failed.code.site_needs_workplace": "사업장은 조직 변경으로 추가하지 않습니다. 법인 화면에서 사업장을 추가하십시오.",
   "common.failed.code.region_branch_retired": "권역과 지점은 더 이상 따로 추가하거나 변경하지 않습니다. 사업장을 추가하면 그 지점이 함께 생깁니다.",
   "common.failed.code.branch_backs_workplace": "이 지점은 사업장의 지점이라 따로 닫을 수 없습니다. 사업장을 폐쇄하면 함께 닫힙니다.",

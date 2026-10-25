@@ -1,5 +1,5 @@
 import { EntityName } from "../../../reference/entity/ui/entity-name";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Building2, ChevronDown, ChevronRight, MapPin, Network } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button, ToggleButton } from "../../../ui/button/button";
@@ -22,7 +22,7 @@ const ICON = { entity: Building2, site: MapPin, dept: Network } as const;
  * department's code (CS-BE), direct/total people, and the rows as an org sheet. A workplace's manager is not served;
  * the table says nothing it cannot show.
  */
-export function RegistryView({ s, cmd, sel, onSelect }: { s: Structure; cmd: Commands; sel: ReadonlySet<string>; onSelect: (ids: ReadonlySet<string>) => void }) {
+export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Structure; cmd: Commands; sel: ReadonlySet<string>; onSelect: (ids: ReadonlySet<string>) => void; onVisibleRows?: (rows: readonly ChartNode[]) => void }) {
   const [level, setLevel] = useState<Level>("all");
   const [q, setQ] = useState("");
   const [filters, setFilters] = useState<ReadonlySet<ListFilter>>(new Set());
@@ -30,6 +30,7 @@ export function RegistryView({ s, cmd, sel, onSelect }: { s: Structure; cmd: Com
   const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
   const open = { has: (id: string) => !closed.has(id) };
   const rows = useMemo(() => registryRows(s, { level, q, filters, closed }), [s, level, q, filters, closed]);
+  useEffect(() => { onVisibleRows?.(rows); }, [onVisibleRows, rows]);
   const toggle = (id: string) => setClosed((o) => (o.has(id) ? new Set([...o].filter((x) => x !== id)) : new Set([...o, id])));
   const columns: LongColumn<ChartNode>[] = [
     {

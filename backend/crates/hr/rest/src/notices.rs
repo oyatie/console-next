@@ -8,8 +8,8 @@ use axum::{Extension, Json, Router};
 use console_hr_adapter_postgres::HrService;
 use console_hr_adapter_postgres::change_sets::IDEMPOTENCY_KEY_HEADER;
 use console_hr_adapter_postgres::notices::{
-    AppointmentNotice, AppointmentNoticeListQuery, AppointmentNoticePage,
-    IssueAppointmentNoticeRequest,
+    AppointmentNotice, AppointmentNoticeCandidatePage, AppointmentNoticeListQuery,
+    AppointmentNoticePage, IssueAppointmentNoticeRequest,
 };
 use console_platform_authz::Principal;
 use serde_json::Value;
@@ -18,13 +18,18 @@ use uuid::Uuid;
 use crate::HrApiError;
 
 pub const APPOINTMENT_NOTICES_PATH: &str = "/api/v1/appointment-notices";
+pub const APPOINTMENT_NOTICE_CANDIDATES_PATH: &str = "/api/v1/appointment-notices/candidates";
 pub const APPOINTMENT_NOTICE_PATH_TEMPLATE: &str = "/api/v1/appointment-notices/{id}";
-pub const APPOINTMENT_NOTICE_ROUTE_PATHS: &[&str] =
-    &[APPOINTMENT_NOTICES_PATH, APPOINTMENT_NOTICE_PATH_TEMPLATE];
+pub const APPOINTMENT_NOTICE_ROUTE_PATHS: &[&str] = &[
+    APPOINTMENT_NOTICES_PATH,
+    APPOINTMENT_NOTICE_CANDIDATES_PATH,
+    APPOINTMENT_NOTICE_PATH_TEMPLATE,
+];
 
 pub fn router(service: HrService) -> Router {
     Router::new()
         .route(APPOINTMENT_NOTICES_PATH, get(list).post(issue))
+        .route(APPOINTMENT_NOTICE_CANDIDATES_PATH, get(candidates))
         .route(APPOINTMENT_NOTICE_PATH_TEMPLATE, get(read))
         .with_state(service)
 }
@@ -59,4 +64,16 @@ async fn read(
     Path(id): Path<Uuid>,
 ) -> Result<Json<AppointmentNotice>, HrApiError> {
     Ok(Json(service.appointment_notice(principal, id).await?))
+}
+
+async fn candidates(
+    State(service): State<HrService>,
+    Extension(principal): Extension<Principal>,
+    Query(query): Query<AppointmentNoticeListQuery>,
+) -> Result<Json<AppointmentNoticeCandidatePage>, HrApiError> {
+    Ok(Json(
+        service
+            .appointment_notice_candidates(principal, query)
+            .await?,
+    ))
 }

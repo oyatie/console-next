@@ -1,3 +1,4 @@
+import { useDocumentsServed } from "../../../reference/authz/ui/use-documents-served";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -39,6 +40,7 @@ const TABS: CardTab[] = ["card", "events", "docs", "ledger", "access"];
  */
 export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t: CardTab) => void; onAct: (act: string) => void; onGo: (id: string) => void; onKeys: (next?: () => void, prev?: () => void) => void }) {
   const { e, d } = c;
+  const documents = useDocumentsServed();
   const today = todayKst();
   const list = useQuery({ ...unitListQuery(e.org_unit_id ?? ""), enabled: Boolean(e.org_unit_id) });
   const rows = list.data?.items ?? [];
@@ -164,7 +166,7 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
       <EmployeeWarnings warnings={d.warnings} />
       {/* The record's tabs are URLs (?tab=): route tabs, so Back returns to the tab and each one can be linked. */}
       <TabNav label={t("empCard.tabs")}>
-        {TABS.map((x) => (
+        {TABS.filter((x) => x !== "docs" || documents).map((x) => (
           // Active is this URL exactly: the other tabs' links keep the open sheet and differ only in `tab`.
           <Link key={x} to="/people/$id" params={{ id: e.id }} search={(prev) => ({ ...prev, tab: x === "card" ? undefined : x })} replace className={tabClass} activeOptions={{ exact: true, includeSearch: true }}>
             {t(`empCard.tab.${x}`)}

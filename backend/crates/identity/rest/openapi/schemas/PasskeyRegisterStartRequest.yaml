@@ -11,3 +11,7 @@ properties:
     type: string
   step_up:
     $ref: '#/components/schemas/PasskeyStepUpAssertion'
+  label:
+    type: [string, 'null']
+    minLength: 1
+    description: Optional display name, validated before issuing a device challenge. See the passkey label policy for the maximum length.

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { apiOf, bearerOf } from "./helpers/api";
-import { cellOf, officeSchedule, openMonth, pastWorkDay } from "./helpers/attendance-records";
+import { expectDrafts, cellOf, officeSchedule, openMonth, pastWorkDay } from "./helpers/attendance-records";
 import { chooseRadio, kstDate, newContext, passkeyLogin, registerEmployee } from "./flows";
 import { staffedTenant } from "./setup-flows";
 
@@ -69,7 +69,7 @@ test("regression: a re-read inserting a row above the cell being typed never mov
   await chooseRadio(save, /출근부 \(종이\)/);
   await save.getByRole("button", { name: "1칸 저장" }).click();
   await expect(save).toBeHidden(); // closed on success (the first save's receipt is still on screen)
-  await expect(admin.getByRole("status").filter({ hasText: /^저장 안 된 칸 0 / })).toBeVisible();
+  await expectDrafts(admin, 0);
 
   const mine = await history(yoon);
   expect(mine.map((h) => h.date).sort()).toEqual([other, date].sort());

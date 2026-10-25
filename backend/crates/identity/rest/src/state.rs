@@ -8,6 +8,7 @@ use sqlx::PgPool;
 
 #[derive(Clone)]
 pub struct IdentityRestState {
+    pub(crate) documents_served: bool,
     pub(crate) store: PgOrgStore,
     pub(crate) jwt_verifier: Option<JwtVerifier>,
     pub(crate) passkey_step_up: Option<PasskeyService>,
@@ -17,6 +18,7 @@ impl IdentityRestState {
     #[must_use]
     pub fn new(store: PgOrgStore, jwt_verifier: Option<JwtVerifier>) -> Self {
         Self {
+            documents_served: false,
             store,
             jwt_verifier,
             passkey_step_up: None,
@@ -26,6 +28,12 @@ impl IdentityRestState {
     #[must_use]
     pub fn with_passkey_step_up(mut self, passkey_step_up: Option<PasskeyService>) -> Self {
         self.passkey_step_up = passkey_step_up;
+        self
+    }
+
+    #[must_use]
+    pub fn with_documents_served(mut self, served: bool) -> Self {
+        self.documents_served = served;
         self
     }
 

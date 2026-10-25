@@ -43,6 +43,7 @@ export function RosterFilters({ status, review, unit, sort, counts, onChange, fi
       {icon && <Lock size={12} aria-hidden />}{label}{" "}
     </ToggleButton>
   );
+  const reviews = REVIEWS.filter((r, i) => r !== "contractSoon" && r !== "register" && r !== "branch" && !counts.review.failed[i] && (counts.review.totals[r] ?? 0) > 0);
   const pending = (st.totals.ACTIVE === undefined && !failed) || (counts.review.totals.contractSoon === undefined && !counts.review.failed.some(Boolean));
   return (
     <>
@@ -68,14 +69,15 @@ export function RosterFilters({ status, review, unit, sort, counts, onChange, fi
           {((st.totals.UNKNOWN ?? 0) > 0 || status === "UNKNOWN") && chip("UNKNOWN", t("roster.status.UNKNOWN"))}
           {chip("EXITED", t("roster.status.EXITED.kept"), true)}
         </span>
+        {reviews.length > 0 && <>
         <span className={s.lab} id="roster-review">{t("roster.group.review")}</span>
         <span role="group" aria-labelledby="roster-review" className={s.chips}>
-          {REVIEWS.map((r, i) => (
+          {reviews.map((r) => (
             <ToggleButton
               key={r}
               look="chip"
               countTone={r !== "contractSoon" ? "warn" : undefined}
-              count={n(counts.review.totals[r], counts.review.failed[i]!)}
+              count={n(counts.review.totals[r], counts.review.failed[REVIEWS.indexOf(r)]!)}
               pressed={review.includes(r)}
               title={t(`roster.review.${r}.title`, { days: SOON_DAYS })}
               onClick={() => onChange({ review: toggleReview(review, r) })}
@@ -84,6 +86,7 @@ export function RosterFilters({ status, review, unit, sort, counts, onChange, fi
             </ToggleButton>
           ))}
         </span>
+        </>}
       </Band>
     </>
   );

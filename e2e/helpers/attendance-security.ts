@@ -57,7 +57,11 @@ export async function underPrincipal(page: Page, path: string, token: string, ac
       expect(preview.cells[0]).toMatchObject({ status: "REFUSED", code });
       expect(preview.cells[0]).not.toHaveProperty("after");
     } else expect((await actual.json()).error.code).toBe(code);
-    await expect(page.getByText(text, { exact: false }).first()).toBeVisible();
+    const reason = page.getByText(text, { exact: false }).filter({ visible: true });
+    const why = page.getByRole("region", { name: t("common.denied.title.plain"), exact: true }).getByText(t("common.denied.why"), { exact: true });
+    await expect(reason.or(why).first()).toBeVisible();
+    if (await why.isVisible()) await why.click();
+    await expect(reason.first()).toBeVisible();
   } finally {
     await page.unroute(matches, handler);
   }

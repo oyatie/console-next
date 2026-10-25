@@ -1,30 +1,24 @@
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, CornerDownRight, Download, GitMerge, Network, Rows3, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, CornerDownRight, GitMerge, Network, Rows3, Trash2 } from "lucide-react";
 import { t } from "@console/i18n";
-import { saveFile } from "../../../lib/download";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import type { ChartNode, Structure } from "../domain/model";
-import { LIST_FILTERS, registryCsv, type ListFilter } from "../domain/registry";
+import { LIST_FILTERS, type ListFilter } from "../domain/registry";
 import { collapseSelection, movable, orderStep } from "../domain/rules";
 import type { Commands } from "./use-structure-commands";
-import { levelText } from "../present";
 import css from "./chart.module.css";
 
 const route = getRouteApi("/app/org");
-const SHEET = ["level", "entity", "site", "dept", "code", "head", "people"] as const;
 
 /** The list's quick filters and the org sheet download (spec S2-registry): the sheet holds the rows shown. */
-export function RegistryFilters({ s, rows, filters, onFilters }: { s: Structure; rows: readonly ChartNode[]; filters: ReadonlySet<ListFilter>; onFilters: (f: ReadonlySet<ListFilter>) => void }) {
+export function RegistryFilters({ filters, onFilters }: { s: Structure; rows: readonly ChartNode[]; filters: ReadonlySet<ListFilter>; onFilters: (f: ReadonlySet<ListFilter>) => void }) {
   const flip = (f: ListFilter) => onFilters(filters.has(f) ? new Set([...filters].filter((x) => x !== f)) : new Set([...filters, f]));
-  const download = () =>
-    saveFile(new Blob([registryCsv(s, rows, [...SHEET.map((h) => t(`structureChart.sheet.${h}`)), t("asof.label"), t("asof.knownAt")], levelText)], { type: "text/csv;charset=utf-8" }), t("structureChart.sheet.file", { date: s.asOf }));
   return (
     <>
       <div className="row" role="group" aria-label={t("structureChart.list.filters")}>
         {LIST_FILTERS.map((f) => <ToggleButton key={f} className={css.pill} pressed={filters.has(f)} onClick={() => flip(f)}>{t(`structureChart.list.filter.${f}`)}</ToggleButton>)}
       </div>
       <span className="grow" />
-      <Button onClick={download} disabled={rows.length === 0}><Download size={16} aria-hidden />{t("structureChart.list.download")}</Button>
     </>
   );
 }
@@ -60,8 +54,8 @@ export function OrderCell({ s, n, order }: { s: Structure; n: ChartNode; order: 
   if (s.readOnly || (!step(-1) && !step(1))) return null;
   return (
     <span className={css.orderCell}>
-      <Button variant="ghost" className={css.chev} disabled={!step(-1)} onClick={() => run(-1)} aria-label={t("orgStructure.order.up", { name: n.name })}><ArrowUp size={14} aria-hidden /></Button>
-      <Button variant="ghost" className={css.chev} disabled={!step(1)} onClick={() => run(1)} aria-label={t("orgStructure.order.down", { name: n.name })}><ArrowDown size={14} aria-hidden /></Button>
+      {step(-1) && <Button variant="ghost" className={css.chev} onClick={() => run(-1)} aria-label={t("orgStructure.order.up", { name: n.name })}><ArrowUp size={14} aria-hidden /></Button>}
+      {step(1) && <Button variant="ghost" className={css.chev} onClick={() => run(1)} aria-label={t("orgStructure.order.down", { name: n.name })}><ArrowDown size={14} aria-hidden /></Button>}
     </span>
   );
 }

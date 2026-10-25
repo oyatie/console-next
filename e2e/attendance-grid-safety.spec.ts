@@ -1,11 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { apiOf, bearerOf } from "./helpers/api";
-import { cellOf, officeSchedule, openMonth, pastWorkDay } from "./helpers/attendance-records";
+import { expectDrafts, cellOf, officeSchedule, openMonth, pastWorkDay } from "./helpers/attendance-records";
 import { chooseRadio, kstDate, newContext, passkeyLogin, registerEmployee } from "./flows";
 import { staffedTenant } from "./setup-flows";
 
-const unsaved = (n: number) => new RegExp(`^저장 안 된 칸 ${n} `);
 const nextMonth = (m: string) => new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 1)).toISOString().slice(0, 7);
 
 // Regression (P0, wrong value saved): a range over 윤하준 and 황정우 whose people changed under it (a re-read inserted
@@ -61,13 +60,13 @@ test("regression: a re-read inserting a row inside the selection while typing ne
   // The editor is still open on 황정우 with what was typed; nothing became a draft; the next key continues it.
   await expect(typing).toHaveValue("9-1");
   await expect(cellOf(admin, "황정우", date)).not.toHaveAccessibleName(/초안/);
-  await expect(admin.getByRole("status").filter({ hasText: unsaved(0) })).toBeVisible();
+  await expectDrafts(admin, 0);
   await admin.keyboard.type("8");
   await expect(typing).toHaveValue("9-18");
   await admin.keyboard.press("Enter");
   await expect(cellOf(admin, "황정우", date)).toHaveAccessibleName(/초안 9-18/);
   for (const name of ["윤하준", "한지민"]) await expect(cellOf(admin, name, date)).not.toHaveAccessibleName(/초안/);
-  await expect(admin.getByRole("status").filter({ hasText: unsaved(1) })).toBeVisible();
+  await expectDrafts(admin, 1);
 });
 
 // Regression (P0, draft lost): back-navigation while typing moved the grid to another month already read; the editor
@@ -99,12 +98,12 @@ test("regression: back-navigation while typing keeps the value as a draft of the
   await expect(admin.getByRole("status").filter({ hasText: "입력하던 값은 윤하준의 초안으로 남았습니다" })).toBeVisible();
   await expect(admin.getByRole("textbox")).toHaveCount(0);
   await cellOf(admin, "윤하준", `${later}-02`).click(); // a click here once committed the open editor into this month
-  await expect(admin.getByRole("status").filter({ hasText: unsaved(0) })).toBeVisible();
+  await expectDrafts(admin, 0);
 
   // Back again: this month, with the draft where it was typed.
   await admin.goBack();
   await expect(cellOf(admin, "윤하준", date)).toHaveAccessibleName(/초안 9-18/);
-  await expect(admin.getByRole("status").filter({ hasText: unsaved(1) })).toBeVisible();
+  await expectDrafts(admin, 1);
 
   // Forward while typing onto another tab (the month timesheet goes away altogether): still this month's draft.
   await admin.getByRole("link", { name: "일별" }).click();
@@ -117,5 +116,5 @@ test("regression: back-navigation while typing keeps the value as a draft of the
   await admin.goBack();
   await expect(cellOf(admin, "윤하준", other)).toHaveAccessibleName(/초안 8-17/);
   await expect(cellOf(admin, "윤하준", date)).toHaveAccessibleName(/초안 9-18/);
-  await expect(admin.getByRole("status").filter({ hasText: unsaved(2) })).toBeVisible();
+  await expectDrafts(admin, 2);
 });

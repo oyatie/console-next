@@ -232,3 +232,6 @@ async fn issue_needs_its_key_and_the_manage_gate_and_reads_need_read(pool: PgPoo
             .unwrap_err();
     assert_eq!(status(&elsewhere).0, 404);
 }
+
+#[path = "notice_candidates.rs"]
+mod candidates;

@@ -1,8 +1,9 @@
 import { QueryState } from "../../../lib/react/query-state";
 import { readGroup } from "../../../lib/react/query-view";
+import { useDocumentsServed } from "../../../reference/authz/ui/use-documents-served";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Lock, Settings } from "lucide-react";
+import { Lock, Settings } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { ChipChoice } from "../../../ui/choice/chip-choice";
@@ -68,6 +69,7 @@ export function SecRestricted({ c }: { c: Card }) {
   const on = sections.filter((x) => (x.section === "DISABILITY" || x.section === "VETERAN") && x.enabled).length > 0;
   const disability = useQuery({ ...restrictedQuery(c.e.id, "disability", purpose ?? ""), enabled: Boolean(purpose) && on, retry: false });
   const veteran = useQuery({ ...restrictedQuery(c.e.id, "veteran", purpose ?? ""), enabled: Boolean(purpose) && on, retry: false });
+  if (!on) return null;
   const switchLine = <span className={s.s12}><Settings size={12} aria-hidden /> {t(on ? "empCard.restricted.on" : "empCard.restricted.off")}</span>;
   return (
     <RecordSection id="s7" no={7} title={t("empCard.sec.restricted")} tools={switchLine}>
@@ -90,13 +92,9 @@ export function SecRestricted({ c }: { c: Card }) {
 }
 
 /**
- * 8 documents (E2): employee documents are not served yet (backend-followups EMP-UI), so no upload control is drawn
- * (record-actions §5: no dead button); the line says what is missing and where the one upload today (the photo) is.
+ * The documents slot exists only when the server serves its module and grants its permission.
  */
 export function SecDocs() {
-  return (
-    <RecordSection id="s8" no={8} title={t("empCard.sec.docs")}>
-      <SectionLine><FileText size={14} aria-hidden /> {t("empCard.docs.unserved")}</SectionLine>
-    </RecordSection>
-  );
+  const served = useDocumentsServed();
+  return served ? <RecordSection id="s8" no={8} title={t("empCard.sec.docs")}>{null}</RecordSection> : null;
 }

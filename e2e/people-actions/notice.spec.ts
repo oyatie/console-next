@@ -37,17 +37,17 @@ test("notice: a bulk transfer's 발령 공고 takes the next number; the same ac
   await expect(admin.getByRole("status").filter({ hasText: "2명 전보 반영함" })).toBeVisible();
 
   // From the receipt: the notice for this batch. A commit without a date names the gap and makes nothing.
-  await admin.getByRole("link", { name: "발령 공고 작성" }).click();
-  await expect(admin.getByRole("heading", { name: "발령 공고 작성", level: 1 })).toBeVisible();
+  await admin.getByRole("link", { name: "공고 작성" }).click();
+  await expect(admin.getByRole("heading", { name: "발령 공고", level: 1 })).toBeVisible();
   // The checks below are this page's (the workspace before it is j6-bulk's).
   await forgetResize(admin);
-  await admin.getByRole("button", { name: /^발령 번호 받고 공고 작성/ }).click();
+  await admin.getByRole("button", { name: /^공고 작성/ }).click();
   await expect(admin.getByText("공고일을 선택하십시오")).toBeVisible();
   expect(((await (await api("/appointment-notices")).json()) as { items: unknown[] }).items).toHaveLength(0);
   await todayPreset(admin).click();
   await expectAccessible(admin, "E5-notice: make");
   if (OUT) await shot(admin, "E5-notice");
-  await admin.getByRole("button", { name: /^발령 번호 받고 공고 작성/ }).click();
+  await admin.getByRole("button", { name: /^공고 작성/ }).click();
 
   // The document: 「인 사 발 령」 with the number, one section of two transfers, nothing personal beyond name and 사번.
   const year = new Date().getFullYear();
@@ -60,11 +60,11 @@ test("notice: a bulk transfer's 발령 공고 takes the next number; the same ac
 
   // Made again from the same receipt (back, a second press): the page names the notice that already holds these acts.
   await admin.goBack();
-  await expect(admin.getByRole("heading", { name: "발령 공고 작성", level: 1 })).toBeVisible();
+  await expect(admin.getByRole("heading", { name: "발령 공고", level: 1 })).toBeVisible();
   await todayPreset(admin).click();
-  await admin.getByRole("button", { name: /^발령 번호 받고 공고 작성/ }).click();
+  await admin.getByRole("button", { name: /^공고 작성/ }).click();
   await expect(admin.getByRole("alert")).toContainText(`이미 제${year}-0001호 공고에 들어 있는 발령`);
-  await expect(admin.getByRole("heading", { name: "발령 공고 작성", level: 1 })).toBeVisible();
+  await expect(admin.getByRole("heading", { name: "발령 공고", level: 1 })).toBeVisible();
 
   // The server's line: the same batch again is refused with the first notice's number; no number is used.
   const [first] = ((await (await api("/appointment-notices")).json()) as { items: { id: string; notice_no: string }[] }).items;

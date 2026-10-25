@@ -27,9 +27,9 @@ export function LifecycleChanges({ kind, e, units, v, words }: {
   kind: Verb;
   e: Employee;
   units: readonly Unit[];
-  v: { unit: string; position: string; date: string; returnDate: string; endDate: string; contractEnd?: string | null; roleId: string; gradeId: string; toType: string | null };
+  v: { unit: string; position: string; date: string; returnDate: string; endDate: string; contractEnd?: string | null; roleId: string; jobId: string; familyId: string; gradeId: string; toType: string | null };
   /** The role and type before and after, in words (the sheet resolves them from the catalogs). */
-  words: { fromGrade: string; toGrade: string; fromRole: string; toRole: string; fromType: string; toType: string };
+  words: { fromGrade: string; toGrade: string; fromRole: string; toRole: string; fromJob: string; toJob: string; fromFamily: string; toFamily: string; fromType: string; toType: string };
 }) {
   const rows: Row[] = [];
   const to = units.find((u) => u.id === v.unit);
@@ -43,6 +43,8 @@ export function LifecycleChanges({ kind, e, units, v, words }: {
   if (kind === "PROMOTE" && v.gradeId) rows.push({ k: "grade", label: t("empFix.field.grade"), from: words.fromGrade, to: words.toGrade });
   if (kind === "PROMOTE" && v.position.trim()) rows.push({ k: "position", label: t("lifecycle.changes.position"), from: e.position ?? "—", to: v.position.trim() });
   if (kind === "APPOINT" && v.roleId) rows.push({ k: "role", label: t("lifecycle.changes.role"), from: words.fromRole, to: words.toRole });
+  if (kind === "APPOINT" && v.jobId) rows.push({ k: "job", label: t("lifecycle.appoint.job"), from: words.fromJob, to: words.toJob });
+  if (kind === "APPOINT" && v.familyId) rows.push({ k: "family", label: t("lifecycle.appoint.family"), from: words.fromFamily, to: words.toFamily });
   if (kind === "EMPLOYMENT_TYPE_CHANGE" && v.toType) {
     rows.push({ k: "type", label: t("lifecycle.changes.type"), from: words.fromType, to: words.toType });
     if (v.toType === "CONTRACT" && v.endDate) rows.push({ k: "contract", label: t("lifecycle.changes.contract"), from: "—", to: fmtDayShort(v.endDate) });

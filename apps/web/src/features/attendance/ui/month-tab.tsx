@@ -85,7 +85,8 @@ export function MonthTab({ head }: { head?: ReactNode }) {
     const { employee_id, work_date } = splitKey(key);
     setRange(at(employee_id, work_date));
   };
-  const saveWhy = !online ? t("attendanceRecords.save.offline") : !drafts.length ? t("attendanceRecords.save.nothing") : null;
+  const saveWhy = !online ? t("attendanceRecords.save.offline") : null;
+  const empty = grid.isSuccess && total === 0;
   const saveButton = (
     <Button variant={dock ? "secondary" : "primary"} disabled={!!saveWhy} onClick={() => setDock({ kind: "save" })}>
       {t("attendanceRecords.toolbar.save")} <Kbd keys="⌘S" />
@@ -96,17 +97,18 @@ export function MonthTab({ head }: { head?: ReactNode }) {
     <div className={s.monthPage}>
       {head}
       <PageReadGate q={grid} own={refusalText} recovery={search.wp ? <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} /> : undefined}>
-      <div className={s.toolbar} role="toolbar" aria-label={t("attendanceRecords.toolbar.label")}>
+      {!empty && <div className={s.toolbar} role="toolbar" aria-label={t("attendanceRecords.toolbar.label")}>
         <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} />
         <div className={s.stepper}>
           <IconButton size="sm" label={t("attendanceRecords.toolbar.prevMonth")} onClick={() => go({ month: stepMonth(month, -1) })}><ChevronLeft size={16} aria-hidden /></IconButton>
           <span className={s.stepText}>{monthText(month)}</span>
           <IconButton size="sm" label={t("attendanceRecords.toolbar.nextMonth")} onClick={() => go({ month: stepMonth(month, 1) })}><ChevronRight size={16} aria-hidden /></IconButton>
         </div>
-        <span role="status">{t("attendanceRecords.toolbar.unsaved", { count: drafts.length, refused: bad.length })}</span>
-        {saveWhy ? <DisabledReason reason={saveWhy} control={() => saveButton} /> : saveButton}
-        <DisabledReason reason={t("attendanceRecords.toolbar.approvalLater")} control={(p) => <Button {...p}>{t("attendanceRecords.toolbar.approval")} <Kbd keys="⌘ Shift O" /></Button>} />
-      </div>
+        {drafts.length > 0 && <>
+          <span role="status">{t("attendanceRecords.toolbar.unsaved", { count: drafts.length, refused: bad.length })}</span>
+          {saveWhy ? <DisabledReason reason={saveWhy} control={() => saveButton} /> : saveButton}
+        </>}
+      </div>}
       <QueryState q={grid} own={refusalText} layout="grid">{() => <>
       {!online && <Banner tone="warn">{t("attendanceRecords.offline")}</Banner>}
       <MonthStateBanner state={monthState} month={month} />
@@ -125,12 +127,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
         <Receipt
           state="recorded"
           message={t("attendanceRecords.receipt.saved", { saved: receipt.saved, opens: receipt.opens.blocking + receipt.opens.decision })}
-          actions={
-            <>
-              <Button size="sm" variant="ghost" onClick={() => setUndo(true)}>{t("attendanceRecords.receipt.undo")}</Button>
-              <DisabledReason reason={t("attendanceRecords.receipt.queueLater")} control={(p) => <Button {...p} size="sm" variant="ghost">{t("attendanceRecords.receipt.queue")}</Button>} />
-            </>
-          }
+          actions={<Button size="sm" variant="ghost" onClick={() => setUndo(true)}>{t("attendanceRecords.receipt.undo")}</Button>}
         />
       )}
       <div className={s.monthLayout} data-docked={dock ? "" : undefined}>
@@ -151,7 +148,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
             </>
           )}
         </div>
-        {dock?.kind === "save" && (
+        {dock?.kind === "save" && drafts.length > 0 && (
           <SaveDock drafts={store.drafts} rows={rows} kindOf={kindOf} month={month} onClose={() => setDock(null)} onFocusCell={focusCell} onSaved={(r, keys) => (store.saved(keys), setDock(null), setReceipt(r))} />
         )}
         {dock?.kind === "day" && (

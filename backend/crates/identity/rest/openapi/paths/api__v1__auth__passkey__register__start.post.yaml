@@ -26,3 +26,9 @@ responses:
     $ref: '#/components/responses/Unauthorized'
   '409':
     $ref: '#/components/responses/Conflict'
+  '422':
+    description: passkey_label_invalid — the name violates the passkey label policy; no credential or ceremony is consumed.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

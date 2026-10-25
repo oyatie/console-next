@@ -22,8 +22,8 @@ type Mode = "view" | "correct" | "void";
 
 /**
  * One person-day (A3 day sheet), docked beside the grid: day (plan, record, recognition and what it means), source (the
- * entries behind it and where each came from), history (every change, voids struck through), and week 52 · approval, which say
- * they arrive with approval record. Its verbs: correction (a new value with a reason), void (back to empty, kept as history),
+ * entries behind it and where each came from), and history (every change, voids struck through).
+ * Its verbs: correction (a new value with a reason), void (back to empty, kept as history),
  * and record again after a void (type in the grid again). The own row and a closed month are read-only.
  */
 export function DayDock({ employeeId, date, own, onClose, onRewrite, onDone }: {
@@ -70,9 +70,9 @@ export function DayDock({ employeeId, date, own, onClose, onRewrite, onDone }: {
             label={t("attendanceRecords.day.tabs")}
             selected={tab}
             onSelect={setTab}
-            items={(["day", "source", "history", "week", "approval"] as const).map((id) => ({ id, label: t(`attendanceRecords.day.tab.${id}`) }))}
+            items={(["day", "source", "history"] as const).map((id) => ({ id, label: t(`attendanceRecords.day.tab.${id}`) }))}
           >
-            {(id) => (id === "day" && day ? <DayPanel day={day} /> : id === "source" || id === "history" ? <History rows={id === "source" ? history.filter((h) => !h.entry.undone && h.entry.kind !== "VOID").slice(0, 1) : history.map((h) => h.entry)} /> : <p className="muted">{t("attendanceRecords.day.laterTab")}</p>)}
+            {(id) => (id === "day" && day ? <DayPanel day={day} /> : id === "source" || id === "history" ? <History rows={id === "source" ? history.filter((h) => !h.entry.undone && h.entry.kind !== "VOID").slice(0, 1) : history.map((h) => h.entry)} /> : null)}
           </Tabs>
         )}
       </QueryState>

@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { FileText, Lock, Pencil, Undo2 } from "lucide-react";
+import { FileText, Lock, Pencil } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button";
@@ -29,7 +29,6 @@ export function ExitPeek({ id, exitDate, today }: { id: string; exitDate: string
         <ul className={s.ways}>
           <li className={s.way}><Button onClick={() => act("cert")}><FileText size={14} aria-hidden /> {t("roster.exitPeek.cert")}</Button><span>{t("roster.exitPeek.cert.d")}</span></li>
           <li className={s.way}><Button onClick={() => act("multi")}><Pencil size={14} aria-hidden /> {t("roster.exitPeek.correct")}</Button><span>{t("roster.exitPeek.correct.d")}</span></li>
-          <li className={s.way}><Button aria-disabled onClick={() => undefined}><Undo2 size={14} aria-hidden /> {t("roster.exitPeek.unexit")}</Button><span>{t("roster.exitPeek.unexit.d")}</span></li>
         </ul>
       </section>
     </>

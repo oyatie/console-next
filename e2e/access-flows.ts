@@ -37,7 +37,9 @@ async function ensureRole(admin: Page, access: Access) {
     const open = grid.getByRole("button", { name: new RegExp(`(^| )${level}$`), pressed: false });
     for (let n = await open.count(); n > 0; n = await open.count()) await open.first().click();
   }
+  const created = admin.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/v1/access/roles");
   await admin.getByRole("button", { name: "역할 추가" }).click();
+  expect((await created).ok()).toBe(true);
   await expect(admin).toHaveURL(/\/access\/roles$/);
 }
 

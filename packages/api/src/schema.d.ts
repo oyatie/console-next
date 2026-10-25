@@ -1244,6 +1244,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/appointment-notices/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unannounced applied or scheduled personnel actions
+         * @description Keyset pages by (issued_at, id), newest first; limit 1..500 (default 200), cursor the previous page's next_cursor (422 for one this list did not return). Needs employee_directory_manage org-wide. Excludes cancelled, voided, rescission and already-announced events.
+         */
+        get: operations["listAppointmentNoticeCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/appointment-notices/{id}": {
         parameters: {
             query?: never;
@@ -2360,6 +2380,15 @@ export interface paths {
                 };
                 401: components["responses"]["Unauthorized"];
                 409: components["responses"]["Conflict"];
+                /** @description passkey_label_invalid — the name violates the passkey label policy; no credential or ceremony is consumed. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -2406,6 +2435,15 @@ export interface paths {
                 400: components["responses"]["ValidationError"];
                 401: components["responses"]["Unauthorized"];
                 409: components["responses"]["Conflict"];
+                /** @description passkey_label_invalid — the name violates the passkey label policy; no credential or ceremony is consumed. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorBody"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -2454,6 +2492,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/passkeys/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read passkey naming limits before a device registration */
+        get: operations["getPasskeyLabelPolicy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/passkeys/{id}": {
         parameters: {
             query?: never;
@@ -2471,7 +2526,8 @@ export interface paths {
         delete: operations["deleteAuthPasskey"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Rename one of the authenticated account's own passkeys */
+        patch: operations["renameSelfPasskey"];
         trace?: never;
     };
     "/api/v1/auth/privacy-consent/accept": {
@@ -14792,6 +14848,16 @@ export interface components {
             note: string | null;
             lines: components["schemas"]["AppointmentNoticeLine"][];
         };
+        AppointmentNoticeCandidate: {
+            employee_id: components["schemas"]["Uuid"];
+            employee_number: string | null;
+            name: string;
+            event: components["schemas"]["EmployeeLifecycleEvent"];
+        };
+        AppointmentNoticeCandidatePage: {
+            items: components["schemas"]["AppointmentNoticeCandidate"][];
+            next_cursor: string | null;
+        };
         AppointmentNoticeLine: {
             line_no: number;
             employee_id: components["schemas"]["Uuid"];
@@ -24431,6 +24497,14 @@ export interface components {
             /** Format: int64 */
             declined_count: number;
         };
+        PasskeyLabelPolicy: {
+            /** @description Maximum number of Unicode characters in a trimmed passkey display name. Control characters are refused. */
+            label_max_length: number;
+        };
+        PasskeyLabelRequest: {
+            /** @description Trimmed display name without control characters; null restores the numbered default. */
+            label: string | null;
+        };
         PasskeyLoginFinishRequest: {
             ceremony_id: components["schemas"]["Uuid"];
             credential: {
@@ -24453,6 +24527,8 @@ export interface components {
             credential: {
                 [key: string]: unknown;
             };
+            /** @description Optional account-selected display name; null uses the numbered default. */
+            label?: string | null;
         };
         PasskeyRegisterFinishResponse: {
             passkey_id: components["schemas"]["Uuid"];
@@ -24466,6 +24542,8 @@ export interface components {
             username?: string;
             display_name?: string;
             step_up?: components["schemas"]["PasskeyStepUpAssertion"];
+            /** @description Optional display name, validated before issuing a device challenge. See the passkey label policy for the maximum length. */
+            label?: string | null;
         };
         PasskeyRegisterStartResponse: {
             ceremony_id: components["schemas"]["Uuid"];
@@ -24481,12 +24559,14 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** @description A passkey credential summary for the self-service management surface. It deliberately carries no secret material (no passkey blob, public key, or raw credential id) — only the opaque row id and the registration / last-use timestamps. */
+        /** @description A passkey credential summary for the self-service management surface. It deliberately carries no secret material (no passkey blob, public key, or raw credential id) — only the opaque row id, optional display name and registration / last-use timestamps. */
         PasskeySummary: {
             id: components["schemas"]["Uuid"];
             created_at: components["schemas"]["Timestamp"];
             /** Format: date-time */
             last_used_at: string | null;
+            /** @description Optional account-selected display name; null uses the numbered default. */
+            label?: string | null;
         };
         PayrollClosePreflight: {
             checks: components["schemas"]["PayrollPreflightCheck"][];
@@ -32135,6 +32215,32 @@ export interface operations {
             };
         };
     };
+    listAppointmentNoticeCandidates: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentNoticeCandidatePage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
     getAppointmentNotice: {
         parameters: {
             query?: never;
@@ -33648,6 +33754,26 @@ export interface operations {
             };
         };
     };
+    getPasskeyLabelPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Display name constraints shared by registration and rename. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyLabelPolicy"];
+                };
+            };
+        };
+    };
     deleteAuthPasskey: {
         parameters: {
             query?: never;
@@ -33676,6 +33802,43 @@ export interface operations {
             409: components["responses"]["Conflict"];
             /** @description JWT verification is not configured. */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    renameSelfPasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyLabelRequest"];
+            };
+        };
+        responses: {
+            /** @description The label was updated and audited. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeySummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description passkey_label_invalid — the name violates the passkey label policy. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

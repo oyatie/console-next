@@ -28,9 +28,10 @@ type Detail = components["schemas"]["EmployeeDetail"];
  * The sheet's "what" section: the target of each kind of act (unit, title or position, leave facts, return, new
  * contract end). A correction keeps the dates a second person must approve (the return date, the contract end).
  */
-export function LifecycleWhat({ detail, kind, v, set, today, bounds, lastLeave, currentTitle, contractEnd, show, note, correcting, what, dateSlot, tried }: {
+export function LifecycleWhat({ detail, kind, appointMode, v, set, today, bounds, lastLeave, currentTitle, contractEnd, show, note, correcting, what, dateSlot, tried }: {
   detail: Detail;
   kind: Verb;
+  appointMode?: "role" | "job" | "all";
   v: Draft;
   set: (patch: Partial<Draft>) => void;
   today: string;
@@ -66,7 +67,7 @@ export function LifecycleWhat({ detail, kind, v, set, today, bounds, lastLeave, 
             note={note}
           />
         )}
-        {kind === "APPOINT" && <AppointFields v={v} set={set} missing={show("appoint")} />}
+        {kind === "APPOINT" && <AppointFields mode={appointMode} v={v} set={set} missing={show("appoint")} />}
         {kind === "EMPLOYMENT_TYPE_CHANGE" && (
           <ConvertFields
             current={detail.employment?.employment_type}
@@ -128,6 +129,7 @@ type Missing = "reasonCode" | "comment" | "voidCode" | "voidNote";
  */
 export function LifecycleWhy({ kind, v, set, demotion, replaces, correcting, voidNote, show }: {
   kind: Verb;
+  appointMode?: "role" | "job" | "all";
   v: Draft;
   set: (patch: Partial<Draft>) => void;
   demotion: boolean;

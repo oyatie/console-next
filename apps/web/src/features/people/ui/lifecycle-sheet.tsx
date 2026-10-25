@@ -15,7 +15,7 @@ import { User } from "lucide-react";
 import { LifecycleChanges } from "./lifecycle-changes";
 import { ancestor, unitPath } from "../../../reference/org/present";
 import { jobTitlesQuery, type LifecycleEvent } from "../api";
-import { unitByName, type SheetVerb } from "../domain/lifecycle";
+import { appointmentMode, unitByName, type SheetVerb } from "../domain/lifecycle";
 import { returnRequired } from "../domain/leave";
 import { applies, effectivePresets } from "../domain/presets";
 import { type JobTitle, activeTitles, currentTitle, DEMOTION_REASON, isDemotion } from "../domain/titles";
@@ -63,6 +63,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
 }) {
   const e = detail.employee;
   const kind = offer.event_type;
+  const appointMode = appointmentMode(act, seed?.from);
   const today = todayKst();
   const from = seed?.from;
   const correcting = seed?.mode === "correct" ? from : undefined;
@@ -76,6 +77,9 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
     position: kind === "PROMOTE" ? (from?.to_position ?? "") : "",
     gradeId: kind === "PROMOTE" ? (from?.to_grade_id ?? "") : "",
     titleId: kind === "PROMOTE" ? (from?.to_job_title_id ?? "") : "",
+    roleId: from?.to_position_kind_id ?? "",
+    jobId: from?.to_job_id ?? "",
+    familyId: from?.to_job_family_id ?? "",
     reasonCode: from?.reason_code ?? null,
     leaveType: from?.leave_type ?? null,
     returnDate: locked ? (from?.expected_return_date ?? "") : "",
@@ -83,7 +87,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
     toType: locked ? (from?.to_employment_type ?? null) : null,
     comment: locked ? from!.comment : "",
   });
-  const v0 = f.draft;
+  const v0 = { ...f.draft, ...(kind === "APPOINT" && appointMode === "role" ? { jobId: "", familyId: "" } : kind === "APPOINT" && appointMode === "job" ? { roleId: "" } : {}) };
   const preview = useTrailPreview([kind], {
     effective_date: v0.date || undefined,
     variant: kind === "TRANSFER" && v0.unit && ancestor([...units], units.find((u) => u.id === v0.unit), "SITE")?.id !== ancestor([...units], units.find((u) => u.id === e.org_unit_id), "SITE")?.id ? "WORKPLACE_CHANGE" : undefined,
@@ -99,7 +103,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
   const catalog = activeTitles(items, "TITLE");
   // An appointment picks from the tenant's role, job or job-family list: with all three empty there is nothing to pick.
   // Empty lists lock the sheet only for someone who cannot fill them (the server says who may: can_manage).
-  const noCatalog = kind === "APPOINT" && titles.isSuccess && !titles.data.can_manage && !["POSITION", "JOB", "JOB_FAMILY"].some((k) => activeTitles(items, k as JobTitle["kind"]).length);
+  const noCatalog = kind === "APPOINT" && titles.isSuccess && !titles.data.can_manage && !(appointMode === "job" ? ["JOB", "JOB_FAMILY"] : appointMode === "role" ? ["POSITION"] : ["POSITION", "JOB", "JOB_FAMILY"]).some((k) => activeTitles(items, k as JobTitle["kind"]).length);
   const nowTitle = items.find((x) => x.id === detail.classification.job_title_id) ?? currentTitle(events, items);
   const nowGrade = items.find((x) => x.id === detail.classification.grade_id);
   const demotion = kind === "PROMOTE" && (isDemotion(nowTitle, catalog.find((x) => x.id === v0.titleId)) || isDemotion(nowGrade, activeTitles(items, "GRADE").find((x) => x.id === v0.gradeId)));
@@ -115,7 +119,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
   const basis = pivot ? t(offer.after ? "lifecycle.basis.after" : "lifecycle.basis.before", { date: fmtDayShort(pivot), action: pivotAct ? label(LIFECYCLE_EVENT, pivotAct.event_type) : "—" }) : undefined;
   const when = applies(v0.date, today) ?? "none";
   const unitName = units.find((u) => u.id === v0.unit)?.name;
-  const action = label(LIFECYCLE_EVENT, kind);
+  const action = kind === "APPOINT" && appointMode === "job" ? t("lifecycle.menu.job") : label(LIFECYCLE_EVENT, kind);
   // The reservation this record replaces, by name (BW-11: the server never replaces one silently).
   const sameDay = when === "future" ? events.find((x) => x.state === "SCHEDULED" && x.event_type === kind && x.effective_date === v0.date && x.id !== from?.id) : undefined;
   const replaces = seed?.mode === "edit" ? from!.id : (sameDay?.id ?? (conflict?.date === v0.date ? conflict.id : undefined));
@@ -131,7 +135,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
     // A date outside what the server accepts is not sent: the date field says why beside it.
     returnDate: kind === "LEAVE_OF_ABSENCE" && !correcting && ((returnRequired(v0.leaveType) && !v0.returnDate) || (Boolean(v0.returnDate) && when !== "none" && v0.returnDate <= v0.date)),
     endDate: (kind === "CONTRACT_RENEWAL" || (kind === "EMPLOYMENT_TYPE_CHANGE" && v0.toType === "CONTRACT")) && (!v0.endDate || (when !== "none" && v0.endDate < v0.date)),
-    appoint: kind === "APPOINT" && !v0.roleId && !v0.jobId && !v0.familyId,
+    appoint: kind === "APPOINT" && (appointMode === "role" ? !v0.roleId : appointMode === "job" ? !v0.jobId && !v0.familyId : !v0.roleId && !v0.jobId && !v0.familyId),
     toType: kind === "EMPLOYMENT_TYPE_CHANGE" && !v0.toType,
     date: when === "none" || !inBounds(v0.date, b.min, b.max),
     reasonCode: coded && codes && (!v0.reasonCode || (demotion && v0.reasonCode !== DEMOTION_REASON)),
@@ -141,7 +145,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
     acks: offer.required_signoffs.some((k) => !v0.acks[k]),
   };
   const count = Object.values(missing).filter(Boolean).length;
-  const run = useLifecycleCommand({ employeeId: e.id, kind, unitName, pin, contractEnd, replaces, corrects: correcting }, v0, (out) => {
+  const run = useLifecycleCommand({ employeeId: e.id, kind, appointMode, unitName, pin, contractEnd, replaces, corrects: correcting }, v0, (out) => {
     f.done();
     onRecorded(out);
   });
@@ -161,6 +165,10 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
     endDate: v0.endDate ? fmtDay(v0.endDate) : t("lifecycle.placeholder.endDate"),
     fromRole: (titles.data?.items ?? []).find((x) => x.id === detail.classification?.position_kind_id)?.label ?? t("lifecycle.appoint.vacate"),
     toRole: v0.roleId === VACATE ? t("lifecycle.appoint.vacate") : (items.find((x) => x.id === v0.roleId)?.label ?? t("lifecycle.placeholder.role")),
+    fromJob: items.find((x) => x.id === detail.classification.job_id)?.label ?? "—",
+    toJob: items.find((x) => x.id === v0.jobId)?.label ?? "—",
+    fromFamily: items.find((x) => x.id === detail.classification.job_family_id)?.label ?? "—",
+    toFamily: items.find((x) => x.id === v0.familyId)?.label ?? "—",
     fromType: detail.employment?.employment_type ? label(TYPE, detail.employment.employment_type) : "—",
     toType: v0.toType ? label(TYPE, v0.toType) : t("lifecycle.placeholder.type"),
   };
@@ -226,7 +234,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
       localDraft
       onSaveDraft={onClose}
       kicker={<><User size={12} aria-hidden />{t("lifecycle.kicker", { name: e.name, number: e.employee_number ?? "—", where: [here?.split(" › ").slice(-2).join(" › ") ?? e.org_unit, e.position].filter(Boolean).join(" · ") })}</>}
-      title={correcting ? t("lifecycle.title.correct", { name: e.name, action }) : locked ? t("lifecycle.title.change", { name: e.name, action }) : t(`lifecycle.title.${kind}`)}
+      title={correcting ? t("lifecycle.title.correct", { name: e.name, action }) : locked ? t("lifecycle.title.change", { name: e.name, action }) : kind === "APPOINT" && appointMode === "job" ? action : t(`lifecycle.title.${kind}`)}
       subtitle={here ? t("lifecycle.nowSince", { where: here, date: since }) : t("lifecycle.now", { where: whoLine(e) })}
       onClose={onClose}
       pending={run.isSending}
@@ -240,7 +248,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
           {refusal}
         </>
       }
-      consequence={<><LifecycleChanges kind={kind} e={e} units={units} v={{ ...v0, contractEnd }} words={v} /><Consequence kind={kind} when={when} v={v} replaces={replaces ? fmtDayShort(v0.date) : undefined} corrects={correcting ? fmtDayShort(v0.date) : undefined} /></>}
+      consequence={<><LifecycleChanges kind={kind} e={e} units={units} v={{ ...v0, contractEnd }} words={v} /><Consequence kind={kind} appointJob={kind === "APPOINT" && appointMode === "job"} when={when} v={v} replaces={replaces ? fmtDayShort(v0.date) : undefined} corrects={correcting ? fmtDayShort(v0.date) : undefined} /></>}
       signoffs={{
         items: offer.required_signoffs.map((k) => ({ id: k, label: t(`people.lifecycle.ack.change.${k}`) })),
         value: offer.required_signoffs.filter((k) => v0.acks[k]),
@@ -269,6 +277,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
       <LifecycleWhat
         detail={detail}
         kind={kind}
+        appointMode={appointMode}
         v={v0}
         set={set}
         today={today}

@@ -1,6 +1,6 @@
 use crate::context::principal_from_headers;
 use crate::error::RestError;
-use crate::me::authz::me_authz_projection;
+use crate::me::authz::served_authz_projection;
 use crate::state::IdentityRestState;
 use crate::users::dto::UpdateSelfRequest;
 use axum::Json;
@@ -58,5 +58,8 @@ pub(crate) async fn get_me_authz(
     // custom-role grants (armed under this request's org), so the projection is
     // pure — no DB read beyond principal resolution.
     let principal = principal_from_headers(&state, &headers).await?;
-    Ok(Json(me_authz_projection(&principal)))
+    Ok(Json(served_authz_projection(
+        &principal,
+        state.documents_served,
+    )))
 }

@@ -92,10 +92,6 @@ export function SecJob({ c, onFix, onAct, onTab, onContract }: { c: Card; onFix:
       <FieldRow id="f-probation_end_date" label={t("empCard.f.probation")} mark={c.manage && <FieldMark kind="cor" field={t("empCard.f.probation")} onPress={() => onFix("probation_end_date")} />}>
         {probation?.probation_end_date ? <>{t("empCard.probation.until", { date: fmtDate(probation.probation_end_date) })} · {label(PROBATION_STATE, probation.probation_state)}</> : none}
       </FieldRow>
-      <FieldRow label={t("empCard.f.workForm")} ><Muted>{t("empCard.workForm.unserved")}</Muted></FieldRow>
-      <FieldRow wide label={t("empCard.f.concurrent")}  mark={<FieldMark kind="lock" field={t("empCard.f.concurrent")} text={t("empCard.concurrent.lock")} />}>
-        <Muted>{t("empCard.none")}</Muted>
-      </FieldRow>
       <div className={s.rail}>
         <HomeBranchCard e={e} manage={c.manage} />
         {c.manage && <EmploymentRecord e={e} onContract={onContract} />}

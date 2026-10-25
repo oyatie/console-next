@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { getRouteApi, Link } from "@tanstack/react-router";
-import { Upload, X } from "lucide-react";
+import { getRouteApi } from "@tanstack/react-router";
+import { X } from "lucide-react";
 import { t } from "@console/i18n";
-import { buttonClass } from "../../../ui/button/button-class";
 import { Button } from "../../../ui/button/button";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { CommandError } from "../../../lib/react/command-error";
@@ -35,9 +34,6 @@ export function OutlineView({ s, cmd, sel, onSelect }: { s: Structure; cmd: Comm
         <div className={css.head}>
           <h2 id="outline-title" className="panel__title">{t("structure.outline.title", { name: entity?.name ?? t("structure.root.word") })}</h2>
           <span className="grow" />
-          {!s.readOnly && s.phase === "SETUP" && (
-            <Link to="/org" search={true} hash="structure-import" className={buttonClass("ghost")}><Upload size={16} aria-hidden />{t("structure.import.label")}</Link>
-          )}
           <Button variant="ghost" aria-label={t("structure.outline.close")} onClick={() => void navigate({ search: (q) => ({ ...q, view: undefined }) })}><X size={16} aria-hidden /></Button>
         </div>
         <p className={css.intro}>{t("structure.outline.intro")}</p>

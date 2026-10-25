@@ -53,13 +53,14 @@ export function DayTab({ head }: { head?: ReactNode }) {
   const feedback = [note, store.problem && t(`attendanceRecords.drafts.${store.problem}`)].filter(Boolean).join(" · ");
   const go = (patch: Record<string, unknown>) => void navigate({ search: (x) => ({ ...x, ...patch }) });
   const drafts = Object.keys(store.drafts).length;
-  const saveWhy = !online ? t("attendanceRecords.save.offline") : !drafts ? t("attendanceRecords.save.nothing") : null;
+  const saveWhy = !online ? t("attendanceRecords.save.offline") : null;
+  const empty = board.data?.ledger.people === 0;
 
   return (
     <div className={s.dayPage}>
       {head}
       <PageReadGate q={board} own={refusalText} recovery={search.wp ? <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} /> : undefined}>
-      <div className={s.toolbar} role="toolbar" aria-label={t("attendanceRecords.toolbar.label")}>
+      {!empty && <div className={s.toolbar} role="toolbar" aria-label={t("attendanceRecords.toolbar.label")}>
         <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} />
         <div className={s.stepper}>
           <IconButton size="sm" label={t("attendanceRecords.toolbar.prevDay")} onClick={() => go({ date: addDays(date, -1) })}><ChevronLeft size={16} aria-hidden /></IconButton>
@@ -70,9 +71,11 @@ export function DayTab({ head }: { head?: ReactNode }) {
         <ToggleButton size="sm" pressed={!!search.unscheduled} onClick={() => go({ unscheduled: search.unscheduled ? undefined : true })}>{t("attendanceRecords.unscheduled.only")}</ToggleButton>
         <ToggleButton size="sm" pressed={!search.detail} onClick={() => go({ detail: undefined })}>{t("attendanceRecords.board.simple")}</ToggleButton>
         <ToggleButton size="sm" pressed={!!search.detail} onClick={() => go({ detail: true })}>{t("attendanceRecords.board.detail")}</ToggleButton>
-        <span role="status">{t("attendanceRecords.toolbar.unsaved", { count: drafts, refused: 0 })}</span>
-        {saveWhy ? <DisabledReason reason={saveWhy} control={(p) => <Button {...p} variant="primary">{t("attendanceRecords.toolbar.save")}</Button>} /> : <Button variant="primary" onClick={() => setSave(true)}>{t("attendanceRecords.toolbar.save")}</Button>}
-      </div>
+        {drafts > 0 && <>
+          <span role="status">{t("attendanceRecords.toolbar.unsaved", { count: drafts, refused: 0 })}</span>
+          {saveWhy ? <DisabledReason reason={saveWhy} control={(p) => <Button {...p} variant="primary">{t("attendanceRecords.toolbar.save")}</Button>} /> : <Button variant="primary" onClick={() => setSave(true)}>{t("attendanceRecords.toolbar.save")}</Button>}
+        </>}
+      </div>}
       {feedback && <p className="muted" role="status">{feedback}</p>}
 
       <QueryState q={board} own={refusalText} layout="grid">{b => {
@@ -88,14 +91,14 @@ export function DayTab({ head }: { head?: ReactNode }) {
                     {ledger.parts.filter(([, n]) => n > 0).map(([k, n]) => t(`attendanceRecords.ledger.${k}`, { count: n })).join(" + ")}
                   </p>
                   {!ledger.adds && <Banner tone="warn">{t("attendanceRecords.board.ledgerGap")}</Banner>}
-                  {search.detail ? (
-                    <DayDetail board={b} store={store} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
-                  ) : !b.groups.length ? (
+                  {!b.groups.length ? (
                     search.issues || search.unscheduled ? (
                       <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.board.noIssues")} actions={<Button onClick={() => go({ issues: undefined, unscheduled: undefined, wp: undefined, unit: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />
                     ) : (
-                      <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} />
+                      <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} actions={<Link to="/attendance" search={{ tab: "schedule" }}>{t("attendanceRecords.empty.toSchedule")}</Link>} />
                     )
+                  ) : search.detail ? (
+                    <DayDetail board={b} store={store} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                   ) : (
                     b.groups.map((g) => (
                       <Card

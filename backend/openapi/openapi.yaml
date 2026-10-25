@@ -3012,6 +3012,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/appointment-notices/candidates:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - employees
+      operationId: listAppointmentNoticeCandidates
+      summary: Unannounced applied or scheduled personnel actions
+      description: Keyset pages by (issued_at, id), newest first; limit 1..500 (default 200), cursor the previous
+        page's next_cursor (422 for one this list did not return). Needs employee_directory_manage org-wide. Excludes cancelled, voided, rescission and already-announced events.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: One page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentNoticeCandidatePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/appointment-notices/{id}:
     get:
       tags:
@@ -4149,6 +4186,12 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          description: passkey_label_invalid — the name violates the passkey label policy; no credential or ceremony is consumed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/auth/passkey/register/start:
     post:
       tags:
@@ -4179,6 +4222,12 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          description: passkey_label_invalid — the name violates the passkey label policy; no credential or ceremony is consumed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/auth/passkey/step-up/start:
     post:
       tags:
@@ -4236,6 +4285,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/auth/passkeys/policy:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [auth]
+      operationId: getPasskeyLabelPolicy
+      summary: Read passkey naming limits before a device registration
+      security: []
+      responses:
+        '200':
+          description: Display name constraints shared by registration and rename.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasskeyLabelPolicy'
   /api/v1/auth/passkeys/{id}:
     delete:
       tags:
@@ -4274,6 +4337,42 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           description: JWT verification is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+    patch:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [auth]
+      summary: Rename one of the authenticated account's own passkeys
+      operationId: renameSelfPasskey
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasskeyLabelRequest'
+      responses:
+        '200':
+          description: The label was updated and audited.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasskeySummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: passkey_label_invalid — the name violates the passkey label policy.
           content:
             application/json:
               schema:
@@ -33068,6 +33167,30 @@ components:
             type: array
             items:
               $ref: '#/components/schemas/AppointmentNoticeLine'
+    AppointmentNoticeCandidate:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [employee_id, employee_number, name, event]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        employee_number:
+          type: [string, 'null']
+        name:
+          type: string
+        event:
+          $ref: '#/components/schemas/EmployeeLifecycleEvent'
+    AppointmentNoticeCandidatePage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppointmentNoticeCandidate'
+        next_cursor:
+          type: [string, 'null']
     AppointmentNoticeLine:
       type: object
       required: [line_no, employee_id, employee_number, name, event]
@@ -51221,6 +51344,25 @@ components:
         declined_count:
           type: integer
           format: int64
+    PasskeyLabelPolicy:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [label_max_length]
+      properties:
+        label_max_length:
+          type: integer
+          minimum: 1
+          description: Maximum number of Unicode characters in a trimmed passkey display name. Control characters are refused.
+    PasskeyLabelRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [label]
+      additionalProperties: false
+      properties:
+        label:
+          type: [string, 'null']
+          minLength: 1
+          description: Trimmed display name without control characters; null restores the numbered default.
     PasskeyLoginFinishRequest:
       type: object
       required:
@@ -51266,6 +51408,10 @@ components:
         credential:
           type: object
           additionalProperties: true
+        label:
+          type: [string, 'null']
+          minLength: 1
+          description: Optional account-selected display name; null uses the numbered default.
     PasskeyRegisterFinishResponse:
       type: object
       required:
@@ -51299,6 +51445,10 @@ components:
           type: string
         step_up:
           $ref: '#/components/schemas/PasskeyStepUpAssertion'
+        label:
+          type: [string, 'null']
+          minLength: 1
+          description: Optional display name, validated before issuing a device challenge. See the passkey label policy for the maximum length.
     PasskeyRegisterStartResponse:
       type: object
       required:
@@ -51331,7 +51481,7 @@ components:
     PasskeySummary:
       type: object
       description: A passkey credential summary for the self-service management surface. It deliberately carries no secret
-        material (no passkey blob, public key, or raw credential id) — only the opaque row id and the registration / last-use
+        material (no passkey blob, public key, or raw credential id) — only the opaque row id, optional display name and registration / last-use
         timestamps.
       required:
       - id
@@ -51347,6 +51497,11 @@ components:
           - string
           - 'null'
           format: date-time
+        label:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 80
+          description: Optional account-selected display name; null uses the numbered default.
     PayrollClosePreflight:
       type: object
       required:

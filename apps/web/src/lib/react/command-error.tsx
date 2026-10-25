@@ -43,6 +43,7 @@ export function CommandError({
   fieldReason,
   live,
   recover = true,
+  read = false,
   onFocusField,
   formId,
   formFields,
@@ -50,6 +51,8 @@ export function CommandError({
   error: unknown;
   /** False where the screen offers the uncertain command's recovery itself (its own button or its submit). */
   recover?: boolean;
+  /** Reads can be retried directly; they never have an uncertain write outcome. */
+  read?: boolean;
   children?: ReactNode;
   own?: (code: string) => string | undefined;
   /** The caller's record-history route; never shown for redacted metadata. */
@@ -63,7 +66,7 @@ export function CommandError({
 }) {
   if (!error) return null;
   const api = error instanceof ApiError ? error : undefined;
-  const checking = outcomeUnknown(error);
+  const checking = !read && outcomeUnknown(error);
   const finish = checking && recover ? recoveryOf(error) : undefined;
   const key = api?.originalOperationId ?? api?.operationId ?? api?.requestKey;
   const change = api?.status === 409 && api.code === "stale_revision" && !checking ? api.lastChange : undefined;

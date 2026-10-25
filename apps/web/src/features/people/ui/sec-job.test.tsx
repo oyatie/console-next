@@ -26,6 +26,8 @@ function statusRow(status: Employee["status"], status_since?: string) {
     place: { entity: "법인", workplace: "사업장", path: [] },
   } as unknown as Card;
   const html = renderToStaticMarkup(<SecJob c={c} onFix={() => undefined} onAct={() => undefined} onTab={() => undefined} />);
+  expect(html).not.toContain(t("empCard.f.workForm"));
+  expect(html).not.toContain(t("empCard.f.concurrent"));
   return html.slice(html.indexOf(t("empCard.f.status")), html.indexOf(t("empCard.f.entity")));
 }
 

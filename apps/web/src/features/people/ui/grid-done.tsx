@@ -42,7 +42,6 @@ export function GridDone({ result, cells, now, reason, left, refusedCells = 0, o
           {k.pending > 0 && <Link className={buttonClass()} to="/people/requests">{t("bulkGrid.done.pending", { n: k.pending })}</Link>}
           <Link className={buttonClass(left + refusedCells ? "ghost" : "primary")} to="/people" search={{}}>{t("bulkGrid.done.back")}</Link>
         </div>
-        <p className={s.note}>{t("bulkGrid.side.undo")}</p>
       </Card>
       <Card titleId="gd-next" title={t("bulkGrid.done.next")}>
         <ul className={s.next}>

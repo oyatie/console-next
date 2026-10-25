@@ -147,7 +147,7 @@ export function RegisterRun() {
               {t("register.run.sum", { n: live.length })}
               {chosen && <> · {t("register.run.unitNow", { unit: chosen.unit.name, count: chosen.unit.headcount })}</>}
             </span>
-            <Button onClick={() => save(true)}>{t("register.run.finish")}<Kbd keys="⌘⇧↵" /></Button>
+            {live.length > 0 && <Button onClick={() => save(true)}>{t("register.run.finish")}<Kbd keys="⌘⇧↵" /></Button>}
           </>
         }
       />

@@ -13,7 +13,7 @@ import css from "./structure.module.css";
  * never a version bump). The order drives the structure read, the lists and the chart. A sibling list or order
  * changed by someone else meanwhile is refused (children_changed, pinned to the order read) and says to reopen.
  */
-export function OrderButtons({ parent, node, kind }: { parent: Node; node: Node; kind: "WORKPLACE" | "DEPARTMENT" }) {
+export function OrderButtons({ parent, node, kind, editing = false }: { parent: Node; node: Node; kind: "WORKPLACE" | "DEPARTMENT"; editing?: boolean }) {
   const { parent: key, ids } = orderOf(parent, kind);
   const at = ids.indexOf(node.id);
   const move = useCommand({
@@ -21,11 +21,11 @@ export function OrderButtons({ parent, node, kind }: { parent: Node; node: Node;
     invalidates: STRUCTURE_READS,
     announce: (_, step) => t(step < 0 ? "orgStructure.order.upDone" : "orgStructure.order.downDone", { name: node.name }),
   });
-  if (ids.length < 2) return null;
+  if (!editing || ids.length < 2 || at < 0) return null;
   return (
     <span className={css.order}>
-      <Button variant="ghost" className="btn--sm" disabled={at <= 0 || move.isPending} onClick={() => move.mutate(-1)} aria-label={t("orgStructure.order.up", { name: node.name })}><ArrowUp size={14} aria-hidden /></Button>
-      <Button variant="ghost" className="btn--sm" disabled={at >= ids.length - 1 || move.isPending} onClick={() => move.mutate(1)} aria-label={t("orgStructure.order.down", { name: node.name })}><ArrowDown size={14} aria-hidden /></Button>
+      {at > 0 && <Button variant="ghost" className="btn--sm" disabled={move.isPending} onClick={() => move.mutate(-1)} aria-label={t("orgStructure.order.up", { name: node.name })}><ArrowUp size={14} aria-hidden /></Button>}
+      {at < ids.length - 1 && <Button variant="ghost" className="btn--sm" disabled={move.isPending} onClick={() => move.mutate(1)} aria-label={t("orgStructure.order.down", { name: node.name })}><ArrowDown size={14} aria-hidden /></Button>}
       <CommandError error={move.error} />
     </span>
   );

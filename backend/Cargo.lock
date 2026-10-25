@@ -3184,6 +3184,7 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+ "webauthn-authenticator-rs",
 ]
 
 [[package]]

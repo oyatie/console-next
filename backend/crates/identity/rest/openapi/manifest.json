@@ -168,8 +168,12 @@
     "/api/v1/auth/passkeys": [
       "get"
     ],
+    "/api/v1/auth/passkeys/policy": [
+      "get"
+    ],
     "/api/v1/auth/passkeys/{id}": [
-      "delete"
+      "delete",
+      "patch"
     ],
     "/api/v1/auth/privacy-consent/accept": [
       "post"
@@ -459,6 +463,8 @@
     "OpsUsageEntry",
     "OtpRedeemRequest",
     "OtpRedeemResponse",
+    "PasskeyLabelPolicy",
+    "PasskeyLabelRequest",
     "PasskeyLoginFinishRequest",
     "PasskeyLoginStartRequest",
     "PasskeyLoginStartResponse",
@@ -604,6 +610,7 @@
     "OrgProposalReassignScope",
     "OrgUnitKind",
     "PasskeyStepUpAssertion",
+    "SetupChecklist",
     "Timestamp",
     "Uuid"
   ]

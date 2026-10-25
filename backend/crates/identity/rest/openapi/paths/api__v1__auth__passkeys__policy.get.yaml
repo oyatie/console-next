@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [auth]
+operationId: getPasskeyLabelPolicy
+summary: Read passkey naming limits before a device registration
+security: []
+responses:
+  '200':
+    description: Display name constraints shared by registration and rename.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PasskeyLabelPolicy'

@@ -101,3 +101,19 @@ test.each(["cookie", "body"] as const)("%s initial enrollment logs out without a
   expect(session.token).toBe("passkey-token");
   if (kind === "body") expect(stored).toBe("passkey-refresh");
 });
+
+
+test("a refused registration name never creates an authenticator credential", async () => {
+  const create = vi.fn(async () => ({}));
+  configure({ baseUrl: "https://console.example", passkeys: { get: async () => ({}), create }, refresh: { kind: "cookie" } });
+  vi.stubGlobal("fetch", async (input: Request | string, init?: RequestInit) => {
+    const request = new Request(input, init);
+    if (request.url.endsWith("/register/start")) {
+      expect(await request.json()).toMatchObject({ label: "거절할 이름" });
+      return new Response(JSON.stringify({ error: { code: "passkey_label_invalid", message: "refused" } }), { status: 422 });
+    }
+    return new Response(JSON.stringify({ ceremony_id: "ceremony", challenge: { publicKey: {} } }));
+  });
+  await expect(registerPasskey({ stepUp: true, label: "거절할 이름" })).rejects.toMatchObject({ code: "passkey_label_invalid" });
+  expect(create).not.toHaveBeenCalled();
+});

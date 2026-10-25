@@ -25,7 +25,7 @@ import { usePreview } from "./use-preview";
  * count. One transaction: if one cell is refused or was changed by someone else meanwhile, nothing is saved, and a
  * 409 shows each conflicting cell with its three values and no choice made (A12-conflict).
  */
-export function SaveDock({ drafts, rows, kindOf, month, onClose, onSaved, onFocusCell }: {
+type Props = {
   drafts: Drafts;
   /** Who each cell belongs to (names for the lines). */
   rows: readonly { employee_id: string; name: string }[];
@@ -34,7 +34,13 @@ export function SaveDock({ drafts, rows, kindOf, month, onClose, onSaved, onFocu
   onClose: () => void;
   onSaved: (receipt: SaveReceipt, keys: string[]) => void;
   onFocusCell: (key: string) => void;
-}) {
+};
+
+export function SaveDock(p: Props) {
+  return Object.keys(p.drafts).length ? <SaveDockOpen {...p} /> : null;
+}
+
+function SaveDockOpen({ drafts, rows, kindOf, month, onClose, onSaved, onFocusCell }: Props) {
   const online = useOnline();
   const [confirmed, setConfirmed] = useState<string[]>([]);
   const [evidence, setEvidence] = useState(EMPTY_EVIDENCE);

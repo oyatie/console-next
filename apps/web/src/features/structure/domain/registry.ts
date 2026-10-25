@@ -38,13 +38,16 @@ const cell = (v: string | number) => (/[",\n]/.test(String(v)) ? `"${String(v).r
  * path below the workplace, code, head and people, one row per unit. The org sheet import reads the same columns.
  */
 export function registryCsv(s: Structure, rows: readonly ChartNode[], header: readonly string[], level: (n: ChartNode) => string): string {
-  const lines = rows.map((n) => {
-    const path = pathTo(s, n.id);
-    const entity = path.find((p) => p.kind === "entity")?.name ?? "";
-    const site = path.find((p) => p.kind === "site")?.name ?? "";
-    const depts = path.filter((p) => p.kind === "dept").map((p) => p.name).join(" > ");
-    const head = n.kind === "dept" ? (n.head?.name ?? "") : n.kind === "entity" ? (n.reps?.first ?? "") : "";
-    return [level(n), entity, site, depts, n.code ?? "", head, n.headcount, s.asOf, s.knownAt ?? ""].map(cell).join(",");
-  });
+  const lines = rows.map((n) => registryCells(s, n, level).map(cell).join(","));
   return `﻿${[header.map(cell).join(","), ...lines].join("\r\n")}\r\n`;
+}
+
+/** The same visible cells drive the list export preview and its CSV. */
+export function registryCells(s: Structure, n: ChartNode, level: (n: ChartNode) => string): (string | number)[] {
+  const path = pathTo(s, n.id);
+  const entity = path.find((p) => p.kind === "entity")?.name ?? "";
+  const site = path.find((p) => p.kind === "site")?.name ?? "";
+  const depts = path.filter((p) => p.kind === "dept").map((p) => p.name).join(" > ");
+  const head = n.kind === "dept" ? (n.head?.name ?? "") : n.kind === "entity" ? (n.reps?.first ?? "") : "";
+  return [level(n), entity, site, depts, n.code ?? "", head, n.headcount, s.asOf, s.knownAt ?? ""];
 }

@@ -1,3 +1,4 @@
+import { useDocumentsServed } from "../../../reference/authz/ui/use-documents-served";
 import { useEffect, useState } from "react";
 import { focusSoon } from "../../../lib/react/announce";
 import { Info, Lock } from "lucide-react";
@@ -24,6 +25,8 @@ const SECTIONS = ["personal", "job", "contract", "leave", "records", "family", "
 
 /** Section chips 1–8 and the legend (E2): held under the card head while the sections scroll. */
 export function CardBar({ c, current, onJump }: { c: Card; current: string; onJump: (id: string) => void }) {
+  const documents = useDocumentsServed();
+  const restricted = c.records.data?.sections.some((x) => (x.section === "DISABILITY" || x.section === "VETERAN") && x.enabled);
   const entries = c.records.data?.items.filter((x) => !x.voided) ?? [];
   const n = (...secs: string[]) => entries.filter((x) => secs.includes(x.section)).length;
   const counts: Partial<Record<(typeof SECTIONS)[number], number>> = {
@@ -33,7 +36,7 @@ export function CardBar({ c, current, onJump }: { c: Card; current: string; onJu
   };
   return (
     <Band className={s.bar}>
-      <SecNav items={SECTIONS.map((k, i) => ({ id: `s${i + 1}`, title: t(`empCard.sec.${k}`), count: counts[k] }))} current={current} onJump={onJump} />
+      <SecNav items={SECTIONS.map((k, i) => ({ id: `s${i + 1}`, title: t(`empCard.sec.${k}`), count: counts[k], visible: (k !== "docs" || documents) && (k !== "restricted" || restricted) })).filter((x) => x.visible)} current={current} onJump={onJump} />
       <PopoverButton label={t("empCard.legend.open")} trigger={<><Info size={14} aria-hidden /> {t("empCard.legend.open")} <Kbd k="?" /></>} title={t("empCard.legend.title")}>
         {() => (
           <dl className={s.legendList}>

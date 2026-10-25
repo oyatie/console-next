@@ -9,14 +9,10 @@ import { Button, ToggleButton } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
-import { ItemList } from "../../../ui/item-list/item-list";
 import { Table } from "../../../ui/table";
 import { patternsQuery, retirePattern, type Pattern } from "../api";
 import { duration } from "../domain/minutes";
 import { patternShape, peopleText, refusalText } from "../present";
-
-// flexible · selective · deemed · discretionary (Labor Standards Act §51 · §52 · §58): each needs its written agreement on record first.
-const REGIMES = ["FLEXIBLE", "SELECTIVE", "DEEMED", "DISCRETIONARY"] as const;
 
 /** A2-types: the work pattern the company uses, how many people each decides today, and retire. */
 export function PatternsView({ onAdd, onRetired }: { onAdd: () => void; onRetired: (name: string) => void }) {
@@ -61,12 +57,6 @@ export function PatternsView({ onAdd, onRetired }: { onAdd: () => void; onRetire
             />
           )}
         </QueryState>
-      </Card>
-      <Card title={t("attendancePatterns.regimes.title")} meta={t("attendancePatterns.regimes.meta")}>
-        <ItemList
-          label={t("attendancePatterns.regimes.title")}
-          items={REGIMES.map((r) => ({ key: r, text: <><strong>{t(`attendancePatterns.kind.${r}`)}</strong><br /><span className="muted">{t(`attendancePatterns.regime.${r}`)}</span></>, end: t("attendancePatterns.regimes.later") }))}
-        />
       </Card>
     </>
   );

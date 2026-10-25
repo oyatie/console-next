@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { FileSpreadsheet, FileText, Plus, Settings2, Upload } from "lucide-react";
+import { FileSpreadsheet, Plus, Settings2, Upload } from "lucide-react";
 import { fmtDate } from "@console/i18n/format";
 import { t } from "@console/i18n";
 import { todayKst } from "../../../lib/pure/today";
@@ -41,18 +41,16 @@ export function RosterHead({ headcount, manage, status, review, onView, actions,
         <span className={s.headcount}>{headcount === undefined ? "—" : t("roster.head.count", { count: headcount })}</span>
         <PhaseLine phase={setup ? "setup" : "operating"}>{t(setup ? "roster.head.setup" : "roster.head.op")}</PhaseLine>
         <span className="grow" />
-        <AsOf label={t("roster.head.asof")} date={fmtDate(todayKst())} today={t("roster.head.today")} locked={t("roster.head.asofLocked")} />
+        <AsOf label={t("roster.head.asof")} date={fmtDate(todayKst())} today={t("roster.head.today")} />
         {manage && (
           <>
             <Link className={buttonClass()} to="/people/import"><Upload size={16} aria-hidden /> {t("roster.head.import")}</Link>
             {actions}
             <Link className={buttonClass()} to="/people/certificates" search={{}}>{t("empDoc.certificate.register")}</Link>
-            <Link className={buttonClass()} from="/people" to="/people" search={(prev) => ({ ...prev, export: "register" })}><FileText size={16} aria-hidden /> {t("roster.head.register")}</Link>
             <Link className={buttonClass()} from="/people" to="/people" search={(prev) => ({ ...prev, bulk: "paste" })}><FileSpreadsheet size={16} aria-hidden /> {t("bulk.openPaste")}</Link>
             <MenuButton
               label={t("roster.head.settings")}
               icon={<Settings2 size={16} aria-hidden />}
-              caret={false}
               items={[
                 { id: "/people/numbering", text: t("people.numbering"), label: t("people.numbering") },
                 { id: "/people/job-titles", text: t("titles.title"), label: t("titles.title") },

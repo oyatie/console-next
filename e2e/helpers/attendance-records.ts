@@ -57,3 +57,14 @@ export async function pasteText(admin: Page, text: string) {
     document.activeElement?.dispatchEvent(e);
   }, text);
 }
+
+
+/** The save command and its count exist only while the board holds drafts. */
+export async function expectDrafts(admin: Page, count: number) {
+  const save = admin.getByRole("button", { name: "저장", exact: true });
+  if (count === 0) await expect(save).toHaveCount(0);
+  else {
+    await expect(save).toBeVisible();
+    await expect(admin.getByRole("status").filter({ hasText: new RegExp(`^저장 안 된 칸 ${count} `) })).toBeVisible();
+  }
+}

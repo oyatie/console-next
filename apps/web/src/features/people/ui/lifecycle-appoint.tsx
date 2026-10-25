@@ -19,10 +19,9 @@ const CHIPS = 15;
 const pick = (items: readonly JobTitle[], kind: JobTitle["kind"]) => activeTitles(items, kind).slice(0, CHIPS);
 
 /**
- * A role appointment (spec E5-appoint, MR-25): the role after from the tenant's catalog, or none, and optionally the
- * job and the job family; nothing chosen in advance. Holding two roles at once is not served yet, and says so.
+ * An appointment edits either the role or the job and job family from the tenant's catalog.
  */
-export function AppointFields({ v, set, missing }: { v: Draft; set: (patch: Partial<Draft>) => void; missing: boolean }) {
+export function AppointFields({ v, set, missing, mode = "role" }: { v: Draft; set: (patch: Partial<Draft>) => void; missing: boolean; mode?: "role" | "job" | "all" }) {
   const catalog = useQuery(jobTitlesQuery).data;
   const items = catalog?.items ?? [];
   // Who keeps the lists is the server's (Cedar job_title_manage): only they get an add chip at the end of each.
@@ -31,19 +30,15 @@ export function AppointFields({ v, set, missing }: { v: Draft; set: (patch: Part
   const jobs = pick(items, "JOB");
   const families = pick(items, "JOB_FAMILY");
   const keep = { value: KEEP, label: t("lifecycle.appoint.keep") };
-  // With every list empty and nobody here to fill them, the sheet says so and cannot commit.
-  if (!can && !roles.length && !jobs.length && !families.length) return null;
+  if (!can && (mode === "role" ? !roles.length : mode === "job" ? !jobs.length && !families.length : !roles.length && !jobs.length && !families.length)) return null;
   const add = (kind: "POSITION" | "JOB" | "JOB_FAMILY", what: string, key: "roleId" | "jobId" | "familyId") =>
     can ? <TitleAdd kind={kind} what={what} onAdded={(id) => set({ [key]: id })} /> : undefined;
   return (
     <>
-      {roles.length === 0 && !can ? (
-        <p className={s.fact}>{t("lifecycle.appoint.noRoles")}</p>
-      ) : (
+      {mode !== "job" && (
         <ChoiceField
           label={t("lifecycle.appoint.role")}
           required={false}
-          note={`${t(can ? "lifecycle.appoint.roleNote" : "lifecycle.appoint.roleNoteRead")} · ${t("lifecycle.appoint.concurrent")}`}
           look="chips"
           options={[...roles.map((r) => ({ value: r.id, label: r.label })), { value: VACATE, label: t("lifecycle.appoint.vacate") }]}
           value={v.roleId || null}
@@ -52,10 +47,10 @@ export function AppointFields({ v, set, missing }: { v: Draft; set: (patch: Part
           add={add("POSITION", t("lifecycle.appoint.role"), "roleId")}
         />
       )}
-      {(jobs.length > 0 || can) && (
+      {mode !== "role" && (jobs.length > 0 || can) && (
         <ChoiceField label={t("lifecycle.appoint.job")} required={false} look="chips" options={[keep, ...jobs.map((r) => ({ value: r.id, label: r.label }))]} value={v.jobId} onChange={(jobId) => set({ jobId })} add={add("JOB", t("lifecycle.appoint.job"), "jobId")} />
       )}
-      {(families.length > 0 || can) && (
+      {mode !== "role" && (families.length > 0 || can) && (
         <ChoiceField label={t("lifecycle.appoint.family")} required={false} look="chips" options={[keep, ...families.map((r) => ({ value: r.id, label: r.label }))]} value={v.familyId} onChange={(familyId) => set({ familyId })} add={add("JOB_FAMILY", t("lifecycle.appoint.family"), "familyId")} />
       )}
     </>

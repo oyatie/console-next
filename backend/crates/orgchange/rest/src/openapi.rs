@@ -80,6 +80,15 @@ const PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/appointment-notices/candidates",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../openapi/paths/api__v1__appointment-notices__candidates.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/appointment-notices/{id}",
         operations: &[Operation {
             method: "get",
@@ -1089,6 +1098,14 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "AppointmentNotice",
         body: include_str!("../openapi/schemas/AppointmentNotice.yaml"),
+    },
+    NamedYaml {
+        name: "AppointmentNoticeCandidate",
+        body: include_str!("../openapi/schemas/AppointmentNoticeCandidate.yaml"),
+    },
+    NamedYaml {
+        name: "AppointmentNoticeCandidatePage",
+        body: include_str!("../openapi/schemas/AppointmentNoticeCandidatePage.yaml"),
     },
     NamedYaml {
         name: "AppointmentNoticeLine",

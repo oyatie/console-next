@@ -16,7 +16,7 @@ export async function openSchedule(admin: Page) {
 }
 
 /** One working weekday of the pattern sheet: its four clocks. */
-export async function fillDay(s: Locator, day: string, start: string, end: string, breakStart: string, breakEnd: string) {
+async function fillDay(s: Locator, day: string, start: string, end: string, breakStart: string, breakEnd: string) {
   const g = s.getByRole("group", { name: day, exact: true });
   await g.getByRole("textbox", { name: /^시업/ }).fill(start);
   await g.getByRole("textbox", { name: /^종업/ }).fill(end);
@@ -31,9 +31,14 @@ export async function fillDay(s: Locator, day: string, start: string, end: strin
 export async function draftWeekly(admin: Page, name: string, clocks: [string, string, string, string]) {
   await admin.getByRole("button", { name: "근무 유형 추가" }).first().click();
   const s = sheet(admin, "근무 유형 추가");
+  await fillWeeklyPattern(s, name, clocks);
+  return s;
+}
+
+/** Fill the shared pattern form whether opened from patterns or a missing-schedule remedy. */
+export async function fillWeeklyPattern(s: Locator, name: string, clocks: [string, string, string, string]) {
   await s.getByRole("textbox", { name: /^이름/ }).fill(name);
-  await s.getByRole("combobox", { name: /^유형/ }).selectOption({ label: "통상" });
+  await chooseRadio(s, /^통상/);
   await chooseRadio(s, /공휴일에 쉼/);
   for (const day of ["월", "화", "수", "목", "금"]) await fillDay(s, day, ...clocks);
-  return s;
 }

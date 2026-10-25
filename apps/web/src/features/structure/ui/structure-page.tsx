@@ -1,3 +1,5 @@
+import { RegistryExportContext } from "./export-scope";
+import type { ChartNode } from "../domain/model";
 import type { OrgStructure } from "@console/api/pending";
 import { useState, type ReactNode } from "react";
 import { getRouteApi } from "@tanstack/react-router";
@@ -38,6 +40,7 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
   sheets: ReactNode;
 }) {
   const search = route.useSearch();
+  const [exportRows, setExportRows] = useState<readonly ChartNode[] | null>(null);
   const { view = "chart", focus, act, sel: picked } = search;
   const navigate = route.useNavigate();
   const { s, tree, ready, diff } = useStructure(search);
@@ -85,6 +88,7 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
   const onFocus = (id: string | undefined) => void navigate({ search: (q) => ({ ...q, focus: id }) });
   const empty = s && s.root.children.length === 0;
   return (
+    <RegistryExportContext.Provider value={view === "list" ? exportRows : null}>
     <div className={`page ${css.page}`}>
       <PageHead s={s} view={view} cmd={cmd} />
       <QueryState q={ready} loading={<ChartSkeleton />}>{() => <>
@@ -92,7 +96,7 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
           {
               !s ? null
               : empty ? (s.readOnly ? <EmptyState title={t("asof.noRecords")} reason={null} /> : <FirstRun />)
-              : view === "list" ? <RegistryView s={s} cmd={cmd} sel={sel} onSelect={select} />
+              : view === "list" ? <RegistryView s={s} cmd={cmd} sel={sel} onSelect={select} onVisibleRows={setExportRows} />
               : view === "outline" ? <OutlineView s={s} cmd={cmd} sel={sel} onSelect={select} />
               : <ChartView key={focus ?? "tenant"} pick={jump} dimmed={!!tree.error} s={s} cmd={cmd} focusId={focus} onFocus={onFocus} sel={sel} onSelect={select} />
             }
@@ -107,5 +111,6 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
     {diff && <CompareResults result={diff} />}
     </>}</QueryState>
     </div>
+    </RegistryExportContext.Provider>
   );
 }

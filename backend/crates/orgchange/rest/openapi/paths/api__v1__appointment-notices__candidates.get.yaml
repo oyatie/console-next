@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - employees
+operationId: listAppointmentNoticeCandidates
+summary: Unannounced applied or scheduled personnel actions
+description: Keyset pages by (issued_at, id), newest first; limit 1..500 (default 200), cursor the previous
+  page's next_cursor (422 for one this list did not return). Needs employee_directory_manage org-wide. Excludes cancelled, voided, rescission and already-announced events.
+security:
+- bearerAuth: []
+parameters:
+- name: limit
+  in: query
+  required: false
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 500
+- name: cursor
+  in: query
+  required: false
+  schema:
+    type: string
+responses:
+  '200':
+    description: One page.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AppointmentNoticeCandidatePage'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'

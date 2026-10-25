@@ -8,7 +8,7 @@ import { readGroup } from "../../../lib/react/query-view";
 import { QueryState } from "../../../lib/react/query-state";
 import { scheduledUnitChangesQuery } from "../api";
 import { get } from "../../../lib/query";
-import { Button } from "../../../ui/button/button";
+import { Button, ToggleButton } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { UnitHistory } from "./unit-history";
 import { historyLines } from "../domain/tree";
@@ -42,6 +42,7 @@ export function DeptPanel({ place, setup, onClose, as_of, known_at, readOnly = f
   const sub = depts(n);
   const select = (id: string) => navigate({ search: (s) => ({ ...s, sel: id, act: undefined }) });
   const [details, setDetails] = useState(false);
+  const [ordering, setOrdering] = useState(false);
   const h = n.head;
   return (
     <PanelShell
@@ -91,14 +92,14 @@ export function DeptPanel({ place, setup, onClose, as_of, known_at, readOnly = f
         {details ? <DeptDetails node={n} onDone={() => setDetails(false)} /> : <Button variant="ghost" className={css.actBtn} id="act-dept-details" onClick={() => setDetails(true)}>{t("orgUnit.details.title")}</Button>}
       </Sec>}
       {sub.length > 0 && (
-        <Sec id="dept-sub" title={t("orgUnit.sub", { count: sub.length })}>
+        <Sec id="dept-sub" title={t("orgUnit.sub", { count: sub.length })} more={!readOnly && sub.length > 1 && <ToggleButton size="sm" pressed={ordering} onClick={() => setOrdering(!ordering)}>{t("orgStructure.order.field")}</ToggleButton>}>
           <ul className={css.list}>
             {sub.map((c) => (
               <li key={c.id}>
                 <Network size={14} aria-hidden />
                 <Button variant="ghost" className="btn--sm" onClick={() => select(c.id)}>{c.name}</Button>
                 <span className={css.right}>{t("orgStructure.peopleCount", { count: c.headcount })}</span>
-                {!readOnly && <OrderButtons parent={n} node={c} kind="DEPARTMENT" />}
+                {!readOnly && <OrderButtons parent={n} node={c} kind="DEPARTMENT" editing={ordering} />}
               </li>
             ))}
           </ul>

@@ -22,3 +22,16 @@ test("promotions independently send grade and title ids; grade-only keeps the po
   expect(appoint.to_grade_id).toBeUndefined();
   expect(appoint.to_position_kind_id).toBe("role");
 });
+
+test("role and job appointments never submit hidden fields from an older draft", () => {
+  const draft = { ...EMPTY, roleId: "role", jobId: "job", familyId: "family" };
+  const context = { employeeId: "employee", kind: "APPOINT" as const, pin: 3 };
+  const role = lifecycleBody(draft, { ...context, appointMode: "role" });
+  expect(role.to_position_kind_id).toBe("role");
+  expect(role.to_job_id).toBeUndefined();
+  expect(role.to_job_family_id).toBeUndefined();
+  const job = lifecycleBody(draft, { ...context, appointMode: "job" });
+  expect(job.to_job_id).toBe("job");
+  expect(job.to_job_family_id).toBe("family");
+  expect(job.to_position_kind_id).toBeUndefined();
+});

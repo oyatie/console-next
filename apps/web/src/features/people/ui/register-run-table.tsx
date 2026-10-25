@@ -120,13 +120,13 @@ export function RunTable(p: Props) {
       </span>
     )),
     {
-      header: <span className="sr-only">{t("register.run.col.act")}</span>,
+      header: t("register.run.col.act"),
       fit: true,
       cell: (l) =>
         l.kind === "done" ? (
           l.undone ? <span className={s.n}>{t("register.run.undone")}</span> : p.undoable ? <Button variant="ghost" aria-label={t("register.run.undoOf", { name: l.name })} onClick={() => p.onUndo(l)}>{t("register.run.undo")}</Button> : null
         ) : (
-          <Button variant="primary" aria-label={t("register.run.save")} onClick={p.onSave}><Kbd keys="⌘↵" /></Button>
+          <Button variant="primary" aria-label={t("register.run.save")} onClick={p.onSave}>{t("register.run.submit")} <Kbd keys="⌘↵" /></Button>
         ),
     },
   ];
