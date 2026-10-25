@@ -7,6 +7,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { load } from "js-yaml";
 import "./ci-regressions.test.mjs";
+import "./ci-shards.test.mjs";
 
 test("the rollback capacity proof reserves the runner without widening its timeout or quarantine", () => {
   const result = spawnSync("python3", ["-c", `import json,tomllib
@@ -434,23 +435,6 @@ for entries,old in [([new],[e]),([dict(new,evidence=[receipt])],[dict(e,evidence
  else: raise AssertionError(entries)
 `], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stdout + result.stderr);
-});
-
-test("served timings at twice the seed pack within the cap and report predicted minutes", () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), "console-slower-plan-"));
-  try {
-    const seed = JSON.parse(readFileSync(new URL("./ci/e2e-timings.json", import.meta.url), "utf8"));
-    const timings = path.join(dir, "timings.json");
-    writeFileSync(timings, JSON.stringify(Object.fromEntries(Object.entries(seed).filter(([k]) => k !== "_license").map(([k, v]) => [k, { ...v, s: v.s * 2 }]))));
-    const output = path.join(dir, "outputs");
-    const result = spawnSync("node", ["scripts/ci/e2e.mjs", "plan"], { encoding: "utf8", env: { ...process.env, GITHUB_OUTPUT: output, E2E_SERVED: "1", E2E_TIMINGS_FILE: timings } });
-    assert.equal(result.status, 0, result.stdout + result.stderr);
-    const config = JSON.parse(readFileSync(new URL("./ci/config.json", import.meta.url), "utf8"));
-    const jobs = JSON.parse(readFileSync(output, "utf8").split("\n").find((line) => line.startsWith("matrix=")).slice(7)).include;
-    assert.ok(jobs.length <= config.e2eMaxShards);
-    assert.match(result.stdout, /Predicted per-job minutes/);
-    for (const browser of ["chromium", "firefox"]) assert.ok(jobs.find((job) => job.browser === browser && job.shard === 1).files.includes("first-run-solo.spec.ts"));
-  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 for (const runner of ["nextest", "playwright"]) test(`${runner} runner refuses a failed inventory even when its JSON is valid`, () => {

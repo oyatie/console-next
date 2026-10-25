@@ -33,14 +33,14 @@ export function planBudget(plan, config, shards, workflow = load(readFileSync(ne
   }
   if (plan.e2e) {
     perJob["e2e-plan"] = e.e2ePlan;
-    for (const [i, job] of (shards ?? Array(config.e2eMaxShards).fill({ est: config.e2eTargetSeconds })).entries()) {
+    for (const [i, job] of (shards ?? Array(config.e2eReservedShards).fill({ est: config.e2eTargetSeconds })).entries()) {
       const minutes = e.e2eSetup + job.est / 60;
-      if (!Number.isFinite(minutes) || minutes > workflow.e2e["timeout-minutes"] * 0.8) throw new Error("E2E shard exceeds timeout headroom");
+      if (!Number.isFinite(minutes) || minutes >= workflow.e2e["timeout-minutes"] * 0.8) throw new Error("E2E shard exceeds timeout headroom");
       perJob[`e2e-${job.browser ?? "reserved"}-${job.shard ?? i + 1}`] = Math.round(minutes * 100) / 100;
     }
   }
   const jobs = Object.keys(perJob).length, minutes = Math.ceil(Object.values(perJob).reduce((a, b) => a + b, 0));
-  if (jobs > config.maxJobs) throw new Error("CI plan exceeds job budget");
+  if (jobs > config.maxJobs) throw new Error(`CI plan exceeds job budget: ${jobs} jobs required, ${config.maxJobs} configured`);
   if (jobs >= config.maxJobs * 0.8 || minutes >= config.maxTotalMinutes * 0.8) process.stdout.write("::warning::CI plan reached 80% of a provisional job/minute budget; compare hosted receipts.\n");
   process.stdout.write(`Predicted per-job minutes: ${JSON.stringify(perJob)}; timeout chain ${wallMinutes}/${queueMinutes} min\n`);
   return { jobs, minutes, wallMinutes, queueMinutes, perJob };
@@ -102,12 +102,15 @@ export function requiredJobs(plan) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const root = process.cwd();
+  const config = JSON.parse(readFileSync("scripts/ci/config.json", "utf8"));
   const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
   const requested = process.env.CI_BASE_SHA || event.pull_request?.base.sha || event.merge_group?.base_sha || event.before;
   const force = !requested || /^0+$/.test(requested);
   const base = resolveBase(root);
   const files = force ? [] : execFileSync("git", ["diff", "--name-only", "-z", base, "HEAD"], { encoding: "utf8" }).split("\0").filter(Boolean);
-  const cargo = JSON.parse(execFileSync("cargo", ["metadata", "--manifest-path", "backend/Cargo.toml", "--format-version", "1", "--no-deps", "--locked"], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })).packages;
+  const cargo = JSON.parse(execFileSync("cargo", ["metadata", "--manifest-path", "backend/Cargo.toml", "--format-version", "1", "--no-deps", "--locked", "--offline"], {
+    encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: config.jobMinutes.plan * 60_000,
+  })).packages;
   const npm = JSON.parse(readFileSync("package.json", "utf8")).workspaces.flatMap((glob) => {
     const parent = glob.replace(/\/\*$/, "");
     return readdirSync(parent, { withFileTypes: true }).filter((d) => d.isDirectory()).flatMap((d) => {
@@ -115,7 +118,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       catch (error) { if (error.code === "ENOENT") return []; throw error; }
     });
   });
-  const config = JSON.parse(readFileSync("scripts/ci/config.json", "utf8"));
   const plan = tierPlan(process.env.GITHUB_EVENT_NAME, files, cargo, npm, root, config, force);
   // The existing census harness owns the image pin; service jobs consume this output.
   const pin = postgresImage();

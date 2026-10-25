@@ -32,6 +32,20 @@ services, so cluster-global mutators never share a cluster across jobs.
 
 `scripts/ci/config.json` owns retention, partition counts, plan job/minute ceilings, shard
 size, disk/cache budgets and the quarantine file. Tests execute without retries.
+`e2eReservedShards` is the initial planning reservation, shared by the selected
+browsers. Measured suites may expand beyond it up to `maxJobs`, after accounting
+for the other required jobs. Bin packing includes browser setup and leaves every
+shard below 80% of the E2E workflow timeout. Only exhaustion of that total job
+budget blocks suite growth; minute estimates remain warnings. Whole spec files
+stay together, so a file too long to fit alone gets a specific headroom error.
+The growth regression uses a fixed synthetic seed: doubling its durations grows
+eight shards to sixteen, without depending on the current browser inventory.
+
+The plan's Cargo metadata command runs locked and offline, with a deadline from
+`jobMinutes.plan` that also bounds the rustup proxy's cold toolchain download.
+A stalled command fails promptly instead of spending the job timeout waiting
+for a blocked download; fresh runners can still install the pinned toolchain.
+
 `test-results.py` compares exact JUnit failure IDs against `scripts/ci/baseline.json`:
 deterministic trunk reds are reported while they still fail. A deterministic pass
 blocks with “fixed: remove from baseline”; a deleted test blocks in the nextest

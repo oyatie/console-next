@@ -17,7 +17,7 @@
   "releaseBrowsers": ["chromium", "firefox"],
   "fastE2eFiles": ["first-run-solo.spec.ts"],
   "quarantineFile": "scripts/ci/baseline.json",
-  "e2eMaxShards": 24,
+  "e2eReservedShards": 24,
   "maxJobs": 60,
   "maxTotalMinutes": 320,
   "jobMinutes": {

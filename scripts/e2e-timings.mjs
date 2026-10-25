@@ -54,9 +54,11 @@ export function listedTests(report) {
 /**
  * Splits the listed tests into jobs of at most `target` seconds each: per project, ceil(estimate / budget) shards,
  * whole files packed longest-first into the lightest shard. A job's estimate is `boot` plus its seconds over the
- * project's workers ("clock" runs one at a time). Returns [] when the whole run fits in one job.
+ * project's workers ("clock" runs one at a time). maxSeconds opens another bin rather than overfilling it.
+ * Returns [] when the whole run fits in one job.
  */
-export function plan(tests, timings, { target = 300, workers = 4, boot = 40 } = {}) {
+export function plan(tests, timings, { target = 300, workers = 4, boot = 40, maxSeconds = Infinity } = {}) {
+  target = Math.min(target, maxSeconds);
   const known = tests.map((t) => timings[t.key]?.s).filter((s) => s !== undefined).sort((a, b) => a - b);
   const median = known.length ? known[known.length >> 1] : FALLBACK_S;
   const projects = new Map();
@@ -72,7 +74,12 @@ export function plan(tests, timings, { target = 300, workers = 4, boot = 40 } = 
   return [...projects].flatMap(([project, files]) => {
     const bins = Array.from({ length: Math.ceil(sum(files) / width(project) / budget) }, () => ({ project, files: [], s: 0 }));
     for (const [file, s] of [...files].sort((a, b) => b[1] - a[1])) {
-      const bin = bins.reduce((a, b) => (b.s < a.s ? b : a));
+      if (Math.round(boot + s / width(project)) > maxSeconds) throw new Error(`E2E file exceeds timeout headroom: ${file}`);
+      let bin = bins.reduce((a, b) => (b.s < a.s ? b : a));
+      if (Math.round(boot + (bin.s + s) / width(project)) > maxSeconds) {
+        bin = { project, files: [], s: 0 };
+        bins.push(bin);
+      }
       bin.files.push(file);
       bin.s += s;
     }
