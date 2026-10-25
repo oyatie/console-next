@@ -203,12 +203,56 @@ test("archive consumers share the single stripped build and use partitions", () 
   for (const name of ["backend-binary", "web-dist"]) assert.ok(e2e.steps.some((s) => s.with?.name === name));
 });
 
-test("Firefox retains the global server-expiry exclusion", () => {
-  const result = spawnSync("node_modules/.bin/playwright", ["test", "--list", "--reporter=json"], { encoding: "utf8", maxBuffer: 32 * 1024 * 1024, env: { ...process.env, E2E_XBROWSER: "1" } });
+const browserConfig = JSON.parse(readFileSync(new URL("./ci/config.json", import.meta.url), "utf8"));
+for (const browser of browserConfig.releaseBrowsers) test(`${browser} inventory contains only browser specs and retains server-expiry exclusions`, () => {
+  const result = spawnSync("node_modules/.bin/playwright", ["test", "--list", "--reporter=json"], { encoding: "utf8", maxBuffer: 32 * 1024 * 1024, env: { ...process.env, E2E_XBROWSER: browser === "firefox" ? "1" : "0" } });
   assert.equal(result.status, 0, result.stderr);
   const inventory = JSON.parse(result.stdout);
-  assert.deepEqual(inventory.config.projects.map((project) => project.name), ["firefox"]);
+  assert.ok(inventory.config.projects.every((project) => project.testMatch.includes("**/*.spec.ts")));
+  if (browser === "firefox") assert.deepEqual(inventory.config.projects.map((project) => project.name), ["firefox"]);
   assert.ok(!inventory.suites.some((suite) => suite.file.includes("live-renew.server-expiry.spec.ts")));
+});
+
+test("browser timing seed is a checked projection of the current tree", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-seed-check-"));
+  try {
+    const result = spawnSync(process.execPath, ["scripts/ci/e2e.mjs", "check-seed"], {
+      encoding: "utf8", env: { ...process.env, CI_PLAN: "", E2E_SERVED: "1", E2E_TIMINGS_FILE: path.join(dir, "unused.json") },
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("seed generator removes obsolete tests, discovers new specs and checks without rewriting", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-seed-rebase-"));
+  try {
+    for (const sub of ["scripts/ci", "node_modules/.bin"]) mkdirSync(path.join(dir, sub), { recursive: true });
+    const config = { ...browserConfig, releaseBrowsers: ["chromium"] };
+    writeFileSync(path.join(dir, "scripts/ci/config.json"), JSON.stringify(config));
+    writeFileSync(path.join(dir, config.quarantineFile), "[]");
+    copyFileSync(new URL("./ci/test-results.py", import.meta.url), path.join(dir, "scripts/ci/test-results.py"));
+    const seed = { _license: "SPDX-License-Identifier: LicenseRef-Proprietary", "served:parallel › deleted.spec.ts › deleted": { s: 15, at: 1 } };
+    const seedFile = path.join(dir, config.e2eTimingsSeed);
+    writeFileSync(seedFile, JSON.stringify(seed, null, 2) + "\n");
+    const report = { suites: [{ file: "new.spec.ts", specs: [{ title: "new", tests: [{ projectName: "parallel", expectedStatus: "passed" }] }] }] };
+    writeFileSync(path.join(dir, "node_modules/.bin/playwright"), `#!${process.execPath}\nprocess.stdout.write(process.env.EMPTY_INVENTORY==='1'?'{"suites":[]}':${JSON.stringify(JSON.stringify(report))});\n`, { mode: 0o700 });
+    const run = (mode, empty = false) => spawnSync(process.execPath, [new URL("./ci/e2e.mjs", import.meta.url).pathname, mode], {
+      cwd: dir, encoding: "utf8", env: { ...process.env, EMPTY_INVENTORY: empty ? "1" : "0", CI_PLAN: "", E2E_SERVED: "1", E2E_TIMINGS_FILE: path.join(dir, "unused.json"), GITHUB_OUTPUT: path.join(dir, "outputs") },
+    });
+    const stale = run("check-seed");
+    assert.equal(stale.status, 1);
+    assert.match(stale.stderr, /stale browser timing seed/);
+    assert.deepEqual(JSON.parse(readFileSync(seedFile, "utf8")), seed);
+    const generated = run("seed");
+    assert.equal(generated.status, 0, generated.stdout + generated.stderr);
+    assert.deepEqual(JSON.parse(readFileSync(seedFile, "utf8")), { _license: seed._license });
+    assert.equal(run("check-seed").status, 0);
+    const empty = run("check-seed", true);
+    assert.equal(empty.status, 1);
+    assert.match(empty.stderr, /empty E2E inventory/);
+    const matrix = JSON.parse(readFileSync(path.join(dir, "outputs"), "utf8").split("\n").find((line) => line.startsWith("matrix=")).slice(7));
+    assert.deepEqual(matrix.include.flatMap((job) => job.files), ["new.spec.ts"]);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test("baseline comparison is mandatory in browser and Rust runners", () => {
