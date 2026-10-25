@@ -33,7 +33,8 @@ fn every_minute_round_trips_and_confirmation_changes_only_the_policy_guard() {
 #[test]
 fn arbitrary_unicode_never_panics_or_produces_unbounded_or_overlapping_spans() {
     let alphabet = [
-        '0', '1', '2', '5', '9', ':', '-', '~', ',', '/', '+', ' ', '소', '정', '\0', '💥',
+        '0', '1', '2', '5', '9', ':', '-', '~', ',', '/', '+', ' ', '소', '정', '\0', '💥', '.',
+        '휴', '시', '–', '３', '\u{1112}', '\u{1172}',
     ];
     let mut state = 0x4a50_534fu64;
     for len in 0..=80 {
@@ -44,11 +45,13 @@ fn arbitrary_unicode_never_panics_or_produces_unbounded_or_overlapping_spans() {
                     alphabet[(state >> 32) as usize % alphabet.len()]
                 })
                 .collect();
-            if let Ok(Entry::Times(spans)) = parse(&raw, 960, true) {
-                assert!(!spans.is_empty());
-                assert!(spans[0].start < 1440);
-                assert!(spans.iter().all(|w| w.start < w.end && w.end <= 2880));
-                assert!(spans.windows(2).all(|w| w[0].end <= w[1].start));
+            for overnight in [false, true] {
+                if let Ok(Entry::Times(spans)) = parse_with_overnight(&raw, 960, true, overnight) {
+                    assert!(!spans.is_empty());
+                    assert!(spans[0].start < 1440);
+                    assert!(spans.iter().all(|w| w.start < w.end && w.end <= 2880));
+                    assert!(spans.windows(2).all(|w| w[0].end <= w[1].start));
+                }
             }
         }
     }

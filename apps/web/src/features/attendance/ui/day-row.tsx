@@ -21,7 +21,7 @@ export function DayRow({ row, draft, onDraft, onOpen, onAssign }: { row: BoardRo
   const tone = mark ? MARK_TONE[mark] : undefined;
   const start = row.day.entry?.kind === "CLOCK_IN_ONLY" ? row.day.entry.segments[0]?.start : undefined;
   const typed = draft ? (start !== undefined ? draft.value.slice(draft.value.indexOf("-") + 1) : draft.value) : "";
-  const state = draft ? draftState(draft) : null;
+  const state = draft ? draftState(draft, row.day.plan.kind) : null;
   const inline = !row.own && !closed(row.month_state) && (mark === "MISSING_OUT" || mark === "NO_RECORD");
   return (
     <div className={s.boardRow}>

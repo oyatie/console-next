@@ -41,7 +41,7 @@ export function DayDock({ employeeId, date, own, onClose, onRewrite, onDone }: {
   const history = (month.data?.history ?? []).filter((h) => h.date === date);
   const entry = day?.entry ?? null;
   if (mode !== "view" && entry) {
-    return <EntryForm employeeId={employeeId} mode={mode} entry={entry} name={month.data?.name ?? ""} date={date} onClose={() => setMode("view")} onDone={(m) => (setMode("view"), onDone(m))} />;
+    return <EntryForm employeeId={employeeId} mode={mode} entry={entry} name={month.data?.name ?? ""} date={date} planKind={day?.plan.kind} onClose={() => setMode("view")} onDone={(m) => (setMode("view"), onDone(m))} />;
   }
   const locked = own ? t("attendanceRecords.grid.ownRow") : closed(month.data?.month_state) ? t("attendanceRecords.grid.closedRow") : null;
   const verb = (label: string, go: () => void) =>

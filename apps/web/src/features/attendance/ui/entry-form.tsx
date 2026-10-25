@@ -9,7 +9,7 @@ import { DockSheet } from "../../../ui/dock-sheet/dock-sheet";
 import { Field, TextInput } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
 import { correctEntry, previewEntries, voidEntry, type Entry } from "../api";
-import { parseEntry, recordedMinutes } from "../domain/grammar";
+import { parseDraft, recordedMinutes } from "../domain/grammar";
 import { dateText, entryText, refusalText } from "../present";
 import { EMPTY_EVIDENCE, evidenceOf } from "../domain/evidence";
 import { usePreview } from "./use-preview";
@@ -20,12 +20,13 @@ import { EvidenceField } from "./evidence-field";
  * empty; a correction that lowers what was recorded needs its evidence (the server says so too). Both keep the old value in
  * the history; a void is undone by recording the day again (record again).
  */
-export function EntryForm({ mode, entry, employeeId, name, date, onClose, onDone }: {
+export function EntryForm({ mode, entry, employeeId, name, date, planKind, onClose, onDone }: {
   mode: "correct" | "void";
   entry: Entry;
   employeeId: string;
   name: string;
   date: string;
+  planKind: string | undefined;
   onClose: () => void;
   onDone: (message: string) => void;
 }) {
@@ -33,11 +34,11 @@ export function EntryForm({ mode, entry, employeeId, name, date, onClose, onDone
   const [value, setValue] = useState("");
   const [reason, setReason] = useState("");
   const [evidence, setEvidence] = useState(EMPTY_EVIDENCE);
-  const syntax = value.trim() ? parseEntry(value) : null;
+  const syntax = value.trim() ? parseDraft(value, undefined, false, { kind: planKind }) : null;
   const preview = usePreview(mode === "correct" && syntax?.ok ? [{ employee_id: employeeId, work_date: date, value: value.trim(), base_entry_id: entry.id, long_span_confirmed: confirmed || undefined }] : null, previewEntries);
   const cell = preview.data?.cells[0] ?? preview.stale?.cells[0];
-  const parsed = value.trim() ? parseEntry(value, cell?.long_span_minutes, confirmed) : null;
-  const unconfirmed = cell?.long_span_minutes === undefined ? null : parseEntry(value, cell.long_span_minutes);
+  const parsed = value.trim() ? parseDraft(value, cell?.long_span_minutes, confirmed, { kind: planKind }) : null;
+  const unconfirmed = cell?.long_span_minutes === undefined ? null : parseDraft(value, cell.long_span_minutes, false, { kind: planKind });
   const needsConfirmation = unconfirmed && !unconfirmed.ok && unconfirmed.code === "span_too_long";
   const before = entryText(entry.kind, entry.segments);
   const ev = evidenceOf(evidence);
