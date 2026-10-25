@@ -66,7 +66,6 @@ BEGIN
 END $$;
 CREATE TRIGGER registration_check_head_due AFTER INSERT OR UPDATE OF brn ON business_registrations FOR EACH ROW EXECUTE FUNCTION registration_check_due();
 CREATE TRIGGER registration_check_revision_due AFTER INSERT ON business_registration_revisions FOR EACH ROW EXECUTE FUNCTION registration_check_due();
-INSERT INTO business_registration_check_schedule(org_id, registration_id) SELECT org_id, id FROM business_registrations;
 
 CREATE FUNCTION registration_verification_tier(p_id UUID, p_brn TEXT, p_known TIMESTAMPTZ DEFAULT NULL) RETURNS TEXT
 LANGUAGE sql STABLE SECURITY INVOKER AS $$
@@ -151,3 +150,6 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION claim_registration_check_budget(BIGINT,BIGINT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION claim_registration_check_budget(BIGINT,BIGINT) TO console_rt;
+
+-- Backfill after all DDL so deferred FK checks cannot block ALTER TABLE (55006).
+INSERT INTO business_registration_check_schedule(org_id, registration_id) SELECT org_id, id FROM business_registrations;
