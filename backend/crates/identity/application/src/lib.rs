@@ -9,6 +9,8 @@
 mod access_revocation;
 pub mod holders;
 mod org;
+mod tenant_facts;
+pub use tenant_facts::{CurrentUser, TenantFactsRead, UserTenant};
 
 pub use access_revocation::{RevokeMode, access_end};
 pub use org::{

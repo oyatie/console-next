@@ -7,7 +7,7 @@ use axum::Json;
 use axum::extract::State;
 use axum::http::HeaderMap;
 use axum::response::IntoResponse;
-use console_identity_application::UpdateSelfProfileCommand;
+use console_identity_application::{CurrentUser, UpdateSelfProfileCommand};
 use console_kernel_core::BranchScope;
 use console_kernel_core::TraceContext;
 use time::OffsetDateTime;
@@ -27,7 +27,15 @@ pub(crate) async fn get_me(
         .get_user(principal.user_id, &BranchScope::All)
         .await
         .map_err(RestError::from_store)?;
-    Ok(Json(summary))
+    let tenant = state
+        .tenant_facts
+        .read_tenant(principal.org_id)
+        .await
+        .map_err(RestError::from_kernel)?;
+    Ok(Json(CurrentUser {
+        user: summary,
+        tenant: Some(tenant),
+    }))
 }
 
 pub(crate) async fn update_me(

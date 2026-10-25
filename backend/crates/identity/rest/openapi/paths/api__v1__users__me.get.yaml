@@ -10,7 +10,7 @@ responses:
     content:
       application/json:
         schema:
-          $ref: '#/components/schemas/UserSummary'
+          $ref: '#/components/schemas/CurrentUser'
   '401':
     $ref: '#/components/responses/Unauthorized'
   '404':

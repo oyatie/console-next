@@ -29,6 +29,7 @@ tracing = { workspace = true }
 uuid = { workspace = true }
 
 [dev-dependencies]
+console-onboarding-adapter-postgres.workspace = true
 console-platform-auth-rest = { workspace = true }
 http = { workspace = true }
 tokio = { workspace = true }

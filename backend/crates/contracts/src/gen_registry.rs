@@ -7045,6 +7045,10 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../identity/rest/openapi/schemas/CreateUserRequest.yaml"),
     },
     NamedYaml {
+        name: "CurrentUser",
+        body: include_str!("../../identity/rest/openapi/schemas/CurrentUser.yaml"),
+    },
+    NamedYaml {
         name: "DecisionLogRow",
         body: include_str!("../../identity/rest/openapi/schemas/DecisionLogRow.yaml"),
     },
@@ -7521,6 +7525,10 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "UserSummary",
         body: include_str!("../../identity/rest/openapi/schemas/UserSummary.yaml"),
+    },
+    NamedYaml {
+        name: "UserTenant",
+        body: include_str!("../../identity/rest/openapi/schemas/UserTenant.yaml"),
     },
     NamedYaml {
         name: "WorkbenchActionInboxItem",

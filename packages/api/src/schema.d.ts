@@ -18251,6 +18251,9 @@ export interface components {
             contact_phone: string | null;
             contact_email: string | null;
         };
+        CurrentUser: components["schemas"]["UserSummary"] & {
+            tenant?: components["schemas"]["UserTenant"];
+        };
         CustodyEventView: {
             /** Format: uuid */
             id: string;
@@ -28837,6 +28840,12 @@ export interface components {
             has_passkey: boolean;
             account_status: components["schemas"]["AccountStatus"];
             created_at: components["schemas"]["Timestamp"];
+        };
+        UserTenant: {
+            name: string;
+            phase: string;
+            /** Format: date-time */
+            go_live_at: string | null;
         };
         /** Format: uuid */
         Uuid: string;
@@ -57076,7 +57085,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserSummary"];
+                    "application/json": components["schemas"]["CurrentUser"];
                 };
             };
             401: components["responses"]["Unauthorized"];

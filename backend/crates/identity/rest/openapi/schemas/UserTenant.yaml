@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- name
+- phase
+- go_live_at
+properties:
+  name:
+    type: string
+  phase:
+    type: string
+    x-extensible-enum: [SETUP, OPERATING]
+  go_live_at:
+    type: [string, 'null']
+    format: date-time
