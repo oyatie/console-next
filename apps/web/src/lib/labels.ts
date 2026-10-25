@@ -17,6 +17,7 @@ export const ACCOUNT_STATUS = toned<S["AccountStatus"]>("accountStatus", { ACTIV
 export const TENANT_STATUS = toned("tenantStatus", { ACTIVE: "ok", SUSPENDED: "warn", ARCHIVED: "neutral" });
 export const EMPLOYMENT_TYPE = values<NonNullable<S["EmployeeEmploymentDetail"]["employment_type"]>>("employmentType", ["REGULAR", "CONTRACT", "PART_TIME", "INTERN"]);
 export const ORG_CHANGE_KIND = values<S["OrgChangeKind"]>("orgChangeKind", ["NEW", "REORG", "DISSOLVE"]);
+export const ORG_HISTORY_ACTION = { ...values("orgHistoryAction", ["org_unit.setup_create", "org_unit.setup_rename", "org_unit.setup_move", "org_unit.setup_dissolve", "org_unit.setup_details", "org_unit.setup_revert", "org_unit.dissolve", "org_unit.details", "CREATE_ENTITY", "REVISE_ENTITY", "CREATE_WORKPLACE", "REVISE_WORKPLACE"]), extensible: true };
 export const ORG_CHANGE_STATUS = toned<S["OrgChangeStatus"]>("orgChangeStatus", {
   DRAFT: "neutral",
   PRECHECKED: "info",

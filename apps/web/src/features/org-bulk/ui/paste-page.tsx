@@ -124,7 +124,7 @@ function PasteEditor({ root, entity, operating }: { root: PlanRoot; entity: Node
             <span className={s.legend}>{t("orgBulk.paste.lines", { count: outline.length })}</span>
           </h2>
           <TextArea id="paste-text" className={s.paste} value={text} placeholder={t("orgBulk.paste.placeholder")} onChange={(e) => setText(e.target.value)} spellCheck={false} />
-          {outline.length > 0 && <p className={s.note} role="status">{t("orgBulk.paste.shape", { by: shape.by, depth: shape.depth, kind: shape.kindColumn ? "yes" : "no" })}</p>}
+          {outline.length > 0 && <p className={s.note} role="status">{t("orgBulk.paste.shape", { by: shape.by, depth: shape.depth, kind: plan.some((r) => r.level === "workplace" && r.kind) ? "yes" : "no" })}</p>}
         </section>
         <section className={s.col} aria-labelledby="plan-title">
           <h2 id="plan-title" className={s.colHead}>

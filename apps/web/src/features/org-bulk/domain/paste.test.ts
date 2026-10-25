@@ -48,6 +48,21 @@ describe("planOutline", () => {
     const p = planOutline({ kind: "workplace", node: entity.children[0]! }, parseOutline("경영지원팀\n\t총무파트\n신규팀").rows);
     expect(p.map((r) => `${r.level}:${r.status}`)).toEqual(["dept:link", "dept:create", "dept:create"]);
   });
+  it.each([
+    ["entity", "오송 본사\n\t품질팀\t잘못된칸", 2],
+    ["entity", "오송 본사\n\t경영지원팀\t잘못된칸", 2],
+    ["workplace", "품질팀\t잘못된칸", 1],
+    ["workplace", "품질팀\n\t검사파트\t잘못된칸", 2],
+  ] as const)("refuses a department's second cell under a %s root on its own line", (kind, text, line) => {
+    const root = kind === "entity" ? { kind, node: entity } : { kind, node: entity.children[0]! };
+    const p = planOutline(root, parseOutline(text).rows);
+    expect(p.find((r) => r.line === line)).toMatchObject({ level: "dept", kind: "잘못된칸", status: "kind_not_allowed" });
+    expect(planCounts(p).fix).toBe(1);
+    expect(ready(p, {})).toBe(false);
+    expect(orgOps(root, p, {})).not.toContainEqual(expect.objectContaining({ name: p.find((r) => r.line === line)!.name }));
+    const fixed = planOutline(root, parseOutline(text.replace("\t잘못된칸", "")).rows);
+    expect(planCounts(fixed).fix).toBe(0);
+  });
 });
 
 describe("ops", () => {
@@ -71,4 +86,18 @@ describe("ops", () => {
       { op: "CREATE", ref: "u4", name: "생산부", workplace_id: "W9" },
     ]);
   });
+});
+
+it("a kind cell on a path belongs to its leaf and is refused on a department line", () => {
+  const root = { kind: "entity" as const, node: entity };
+  const p = planOutline(root, parseOutline("오송 본사 > 품질팀\t잘못된칸").rows);
+  expect(p.find(r => r.name === "품질팀")).toMatchObject({ line: 1, kind: "잘못된칸", status: "kind_not_allowed" });
+  expect(p.find(r => r.name === "오송 본사")?.kind).toBeUndefined();
+  expect(ready(p, {})).toBe(false);
+});
+it("a repeated path cannot discard an invalid extra cell", () => {
+  const root = { kind: "entity" as const, node: entity };
+  const p = planOutline(root, parseOutline("오송 본사 > 품질팀\n오송 본사 > 품질팀\t잘못된칸").rows);
+  expect(p.find(r => r.line === 2)).toMatchObject({ kind: "잘못된칸", status: "kind_not_allowed" });
+  expect(ready(p, {})).toBe(false);
 });

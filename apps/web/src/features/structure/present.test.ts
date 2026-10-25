@@ -4,7 +4,7 @@ import type { OrgStructure, OrgStructureNode } from "@console/api/pending";
 import { loadCatalog } from "@console/i18n";
 import { buildStructure } from "./domain/model";
 import { expandedFor, layout } from "./domain/layout";
-import { menuActions, nodeLabel, nodeName, type Gestures } from "./present";
+import { menuActions, nodeLabel, nodeName, unitCounts, type Gestures } from "./present";
 import { chartSvg } from "./ui/use-export";
 
 const n = (kind: OrgStructureNode["kind"], id: string, children: OrgStructureNode[] = []): OrgStructureNode => ({ kind, id, name: id, headcount: 1, direct_headcount: 0, dispatched_headcount: 0, chips: [], version: 1, children });
@@ -63,4 +63,11 @@ describe("the tenant root is never a company", () => {
       expect(svg).toContain(nodeName(s.root));
     });
   }
+});
+
+// SPDX-License-Identifier: LicenseRef-Proprietary
+test("unit counts have one meaning in cards, lists and panels", () => {
+  const unit = { headcount: 148, children: [{ headcount: 100 }, { headcount: 36 }] };
+  expect(unitCounts(unit)).toBe("직속 12 · 전체 148");
+  expect(unitCounts({ headcount: 0, children: [] })).toBe("직속 0 · 전체 0");
 });

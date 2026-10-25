@@ -40,7 +40,7 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
   const search = route.useSearch();
   const { view = "chart", focus, act, sel: picked } = search;
   const navigate = route.useNavigate();
-  const { s, tree, diff } = useStructure(search);
+  const { s, tree, ready, diff } = useStructure(search);
   const cmd = useStructureCommands(!s || s.readOnly);
   // A place picked elsewhere (⌘K, a link) arrives as `sel` and becomes the selection; a pick from outside the chart
   // re-centres it. The values this page writes itself (one box chosen on the chart) arrive the same way, a frame or two
@@ -87,7 +87,7 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
   return (
     <div className={`page ${css.page}`}>
       <PageHead s={s} view={view} cmd={cmd} />
-      <QueryState q={tree} loading={<ChartSkeleton />}>{() => <>
+      <QueryState q={ready} loading={<ChartSkeleton />}>{() => <>
       <div className={css.body}>
           {
               !s ? null

@@ -137,3 +137,12 @@ test("recovery events re-read the vendor panel and tenant card only", () => {
   expect(matches("/api/v1/entity-identifier-corrections/{id}", detail("other"))).toBe(false);
   expect(matches("/api/v1/employees", null)).toBe(false);
 });
+
+test.each(["org_unit", "org_change"])("%s refreshes each open unit's scheduled timeline", (topic) => {
+  const matches = matchChange(topic, "unit");
+  expect(matches("/api/v1/org-changes", { query: { target_ref: "unit", status: ["APPROVED"] } })).toBe(true);
+});
+
+test.each(["legal_entity", "workplace", "entity_setup_batch"])("%s refreshes registration rows in open organization history", (topic) => {
+  expect(matchChange(topic, "record")("/api/v1/entity-setup/batches", null)).toBe(true);
+});

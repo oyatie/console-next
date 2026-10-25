@@ -250,3 +250,10 @@ test("a forbidden refetch hides cached directory counts and badges while keeping
     unsubscribe(); client.clear();
   }
 });
+
+test("members display their employment title alongside position and employee number", () => {
+  currentOrgUnit = { members: { headcount: 1, items: [{ employeeId: "member", name: "김품질", title: "품질팀장", position: "과장", employeeNumber: "Q-01" }] } };
+  const html = renderToStaticMarkup(<Members unitId={UNIT} total={1} expected={1} />);
+  expect(html).toContain("품질팀장 · 과장");
+  expect(html).toContain("Q-01");
+});

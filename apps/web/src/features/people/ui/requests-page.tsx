@@ -35,6 +35,8 @@ export function RequestsPage() {
   const set = (patch: { lane?: Lane; status?: RequestStatus | "ALL"; sel?: string; page?: number }) =>
     void navigate({ search: (x) => ({ ...x, page: undefined, ...patch }), replace: true });
   const active = hr ? lane : "all";
+  const filtered = active !== "all" || status !== "ALL";
+  const filters = [t(hr ? `requests.lane.${active}` : "requests.mine"), status !== "ALL" && t(`requests.status.${status}`)].filter(Boolean).join(" · ");
   const list = useQuery(requestsQuery({ lane: active, mine: !hr, status: status === "ALL" ? undefined : status, offset: page * REQUEST_PAGE }));
   const counts = useQueries({ queries: LANES.map((l) => ({ ...openCountQuery(l), enabled: hr })) });
   const subjects = useQueries({ queries: [...new Set((list.data?.items ?? []).filter((r) => r.subject_type === "EMPLOYEE").map((r) => r.subject_id))].map((id) => employeeQuery(id)) });
@@ -84,7 +86,11 @@ export function RequestsPage() {
               </ToggleButton>
             ))}
           </div>
-          <QueryState q={list} empty={(d) => (d.items.length ? null : <EmptyState title={t("requests.none.title")} reason={t(hr ? "requests.none.hr" : "requests.none.mine")} />)}>
+          <QueryState q={list} empty={(d) => (d.items.length ? null : <EmptyState
+            title={t("requests.none.title")}
+            reason={filtered ? t("requests.none.filtered", { filters }) : t(hr ? "requests.none.hr" : "requests.none.mine")}
+            actions={filtered && <Button onClick={() => set({ lane: "all", status: "ALL", sel: undefined })}>{t("requests.filters.reset")}</Button>}
+          />)}>
             {(d) => (
               <>
                 <Table label={t("requests.list")} rows={d.items} rowId={(r) => r.id} columns={columns} selected={sel} onSelect={(id) => set({ sel: id })} />

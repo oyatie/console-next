@@ -15,7 +15,6 @@ export const enStructureChart = {
   "structureChart.list.filter.todo": "Something to do only",
   "structureChart.list.download": "Download the org sheet",
   "structureChart.list.editTogether": "Edit together",
-  "structureChart.list.unplaced": "Unplaced",
   "structureChart.list.none": "No unit meets these conditions",
   "structureChart.sheet.level": "Level",
   "structureChart.sheet.entity": "Legal entity",

@@ -3,23 +3,27 @@
 // not served, so a row says what kind of record it is and how many units it touched, never a guessed diff.
 import type { components } from "@console/api/schema";
 import type { EntitySetupBatchView, OrgSetupBatchView } from "@console/api/pending";
+import { todayKst } from "../../../lib/pure/today";
 
 type Change = components["schemas"]["OrgChangeSummary"];
 
 /** Why a row cannot be undone here, each with its own words (R27). */
-export type UndoBlock = "isUndo" | "undone" | "governed" | "phase";
+export type UndoBlock = "isUndo" | "undone" | "governed" | "phase" | "registration";
 export type FeedRow = {
   id: string;
   source: "org" | "entity" | "change";
   at: string;
   /** org/entity: APPLY or UNDO; change: the change's status. */
   kind: string;
+  actions?: string[];
+  mode?: string;
+  registration?: string;
   /** org: the units the batch wrote, by name where they still stand; entity: the record count. */
   units: string[];
   count: number;
   /** null when the record does not say who (entity batches). */
-  actor: { mine: boolean; name: string | null } | null;
-  change?: { code: string; label: string; effectiveDate: string };
+  actor: { id?: string; mine: boolean; name: string | null } | null;
+  change?: { code: string; label: string; effectiveDate: string; kind?: string };
   undo: { batchId: string } | { block: UndoBlock };
 };
 
@@ -42,21 +46,26 @@ export function feedRows(input: {
         source: "org",
         at: b.created_at,
         kind: b.kind,
-        units: ids.map(input.nameOf).filter((n): n is string => Boolean(n)),
+        actions: b.actions ?? undefined,
+        mode: b.change_mode ?? undefined,
+        units: b.unit_names ?? ids.map(input.nameOf).filter((n): n is string => Boolean(n)),
         count: ids.length,
-        actor: { mine: b.actor_id === input.me, name: null },
+        actor: { id: b.actor_id, mine: b.actor_id === input.me, name: b.actor_name ?? null },
         undo: b.undoable ? { batchId: b.id } : { block: blockOf(b) },
       };
     }),
     ...input.entity.map((b): FeedRow => ({
-      id: `entity:${b.id}`,
+      id: `${b.registration_action ? "registration" : "entity"}:${b.id}`,
       source: "entity",
       at: b.created_at,
       kind: b.kind,
-      units: [],
+      actions: b.actions ?? undefined,
+      mode: b.change_mode,
+      registration: b.registration_action ?? undefined,
+      units: b.target_names ?? [],
       count: b.records,
-      actor: null,
-      undo: b.undoable ? { batchId: b.id } : { block: blockOf(b) },
+      actor: b.actor_id || b.actor_name ? { id: b.actor_id ?? undefined, mine: b.actor_id === input.me, name: b.actor_name ?? null } : null,
+      undo: b.registration_action ? { block: "registration" } : b.undoable ? { batchId: b.id } : { block: blockOf(b) },
     })),
     ...input.changes.map((c): FeedRow => ({
       id: `change:${c.id}`,
@@ -65,12 +74,25 @@ export function feedRows(input: {
       kind: c.status,
       units: [c.target.label],
       count: c.headcount,
-      actor: { mine: c.draftedBy === input.me, name: c.draftedByName },
-      change: { code: c.code, label: c.target.label, effectiveDate: c.effectiveDate },
+      actor: { id: c.draftedBy, mine: c.draftedBy === input.me, name: c.draftedByName },
+      change: { code: c.code, label: c.target.label, effectiveDate: c.effectiveDate, kind: c.kind },
       undo: { block: "governed" },
     })),
   ];
   return rows.sort((a, b) => b.at.localeCompare(a.at));
+}
+
+/** Recorded dates use the same business calendar as the displayed timestamp. */
+// shortcut: existing server caps bound these filters; move them server-side when feed pagination is added.
+export function filterRows(rows: FeedRow[], filter: { source: FeedRow["source"] | "all"; undoable: boolean; from: string; to: string; actorId: string }): FeedRow[] {
+  return rows.filter(r => {
+    const date = todayKst(new Date(r.at));
+    return (filter.source === "all" || r.source === filter.source)
+      && (!filter.undoable || "batchId" in r.undo)
+      && (!filter.from || date >= filter.from)
+      && (!filter.to || date <= filter.to)
+      && (!filter.actorId || r.actor?.id === filter.actorId);
+  });
 }
 
 /** Approved changes dated after today: the "scheduled changes" banner, nearest first. */

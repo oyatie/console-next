@@ -1,5 +1,7 @@
 // English for `orgBulk.` ids (source: ko/org-bulk.ts).
 export const enOrgBulk = {
+  "orgBulk.paste.error.kind_not_allowed": "Line {line}: departments cannot have a workplace kind. Delete the second cell.",
+  "orgBulk.plan.status.kind_not_allowed": "Delete second cell",
   "orgBulk.crumb": "Org structure",
   "orgBulk.close": "Close and return to org structure",
   "orgBulk.paste.title": "Paste a list",

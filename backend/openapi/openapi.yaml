@@ -11209,7 +11209,7 @@ paths:
       tags:
       - entity
       operationId: listEntitySetupBatches
-      summary: Bulk 법인 · 사업장 receipts, newest first (latest 200), with whether each can still be undone (MR-29)
+      summary: 법인 · 사업장 batch and direct registration receipts, newest first (latest 200), with whether each can still be undone
       security:
       - bearerAuth: []
       responses:
@@ -20733,6 +20733,12 @@ paths:
       security:
       - bearerAuth: []
       parameters:
+      - name: target_ref
+        in: query
+        required: false
+        description: Only requests targeting this unit or other target reference; applied before pagination.
+        schema:
+          type: string
       - name: status
         in: query
         required: false
@@ -42151,6 +42157,7 @@ components:
         id:
           type: string
           format: uuid
+          description: Batch id, or the accepted command id when registration_action is present.
         kind:
           type: string
           enum:
@@ -42175,6 +42182,30 @@ components:
           format: date-time
         undoable:
           type: boolean
+        actor_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        actor_name:
+          type:
+          - string
+          - 'null'
+        actions:
+          type: array
+          items:
+            type: string
+          description: Operations recorded in the batch receipt.
+        target_names:
+          type: array
+          items:
+            type: string
+          description: Names at the revisions recorded by the receipt.
+        registration_action:
+          type:
+          - string
+          - 'null'
+          description: Direct registration command action; such receipts cannot be undone as batches.
     EntitySetupItem:
       type: object
       required:
@@ -49484,6 +49515,14 @@ components:
           $ref: '#/components/schemas/OrgChangeTarget'
         effectiveDate:
           $ref: '#/components/schemas/Date'
+        applies_at:
+          $ref: '#/components/schemas/Timestamp'
+          description: Configured scheduled application instant in UTC; omitted for immediate and terminal changes.
+        created_unit_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/Uuid'
+          description: Actual canonical unit identifiers returned by the applied creation commands, in proposal order.
         reason:
           type: string
         headcount:
@@ -49870,6 +49909,24 @@ components:
         actor_id:
           type: string
           format: uuid
+        actor_name:
+          type:
+          - string
+          - 'null'
+        actions:
+          type: array
+          items:
+            type: string
+          description: Canonical audit actions recorded by this batch.
+        unit_names:
+          type: array
+          items:
+            type: string
+          description: Unit names at the revisions written by this batch.
+        change_mode:
+          type:
+          - string
+          - 'null'
         created_at:
           type: string
           format: date-time
@@ -50261,6 +50318,9 @@ components:
           type: string
         position:
           type: string
+        title:
+          type: string
+          description: Current 직책 from the employee card's position-kind catalog fact.
     OrgUnitMembers:
       type: object
       required: [headcount, items]

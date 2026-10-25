@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { getRouteApi } from "@tanstack/react-router";
-import { ClipboardPaste, X } from "lucide-react";
+import { getRouteApi, Link } from "@tanstack/react-router";
+import { Upload, X } from "lucide-react";
 import { t } from "@console/i18n";
+import { buttonClass } from "../../../ui/button/button-class";
 import { Button } from "../../../ui/button/button";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { CommandError } from "../../../lib/react/command-error";
-import type { ChartNode, Structure } from "../domain/model";
+import type { Structure } from "../domain/model";
 import { ChartView } from "./chart-view";
 import { OutlineRows, type OutlineEdit } from "./outline-rows";
-import { PasteDialog } from "./paste-dialog";
 import type { Commands } from "./use-structure-commands";
 import css from "./outline.module.css";
 
@@ -25,11 +25,9 @@ export function OutlineView({ s, cmd, sel, onSelect }: { s: Structure; cmd: Comm
   // Rows are open unless folded, so a new department shows with its children.
   const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
   const [edit, setEdit] = useState<OutlineEdit | null>(null);
-  const [pasting, setPasting] = useState<ChartNode | null>(null);
   const at = s.byId.get(cursor);
   // The chart shows the place the cursor is in: its workplace, or the legal entity itself.
   const place = at && (at.kind === "entity" || at.kind === "site" ? at : at.siteId ? s.byId.get(at.siteId) : undefined);
-  const pasteTarget = at && (at.kind === "site" || at.kind === "dept" ? at : undefined);
   const entity = at?.entityId ? s.byId.get(at.entityId) : s.root.children[0];
   return (
     <div className={css.split}>
@@ -37,8 +35,8 @@ export function OutlineView({ s, cmd, sel, onSelect }: { s: Structure; cmd: Comm
         <div className={css.head}>
           <h2 id="outline-title" className="panel__title">{t("structure.outline.title", { name: entity?.name ?? t("structure.root.word") })}</h2>
           <span className="grow" />
-          {!s.readOnly && s.phase === "SETUP" && pasteTarget && (
-            <Button variant="ghost" onClick={() => setPasting(pasteTarget)}><ClipboardPaste size={16} aria-hidden />{t("structure.outline.paste")}</Button>
+          {!s.readOnly && s.phase === "SETUP" && (
+            <Link to="/org" search={true} hash="structure-import" className={buttonClass("ghost")}><Upload size={16} aria-hidden />{t("structure.import.label")}</Link>
           )}
           <Button variant="ghost" aria-label={t("structure.outline.close")} onClick={() => void navigate({ search: (q) => ({ ...q, view: undefined }) })}><X size={16} aria-hidden /></Button>
         </div>
@@ -51,7 +49,6 @@ export function OutlineView({ s, cmd, sel, onSelect }: { s: Structure; cmd: Comm
         </div>
       </section>
       {place && <ChartView key={place.id} quiet s={s} cmd={cmd} focusId={place.id} onFocus={() => undefined} sel={sel} onSelect={onSelect} />}
-      {!s.readOnly && pasting && <PasteDialog s={s} parent={pasting} cmd={cmd} onClose={() => setPasting(null)} />}
     </div>
   );
 }

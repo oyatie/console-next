@@ -10,6 +10,7 @@ properties:
   id:
     type: string
     format: uuid
+    description: Batch id, or the accepted command id when registration_action is present.
   kind:
     type: string
     enum:
@@ -34,3 +35,27 @@ properties:
     format: date-time
   undoable:
     type: boolean
+  actor_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+  actor_name:
+    type:
+    - string
+    - 'null'
+  actions:
+    type: array
+    items:
+      type: string
+    description: Operations recorded in the batch receipt.
+  target_names:
+    type: array
+    items:
+      type: string
+    description: Names at the revisions recorded by the receipt.
+  registration_action:
+    type:
+    - string
+    - 'null'
+    description: Direct registration command action; such receipts cannot be undone as batches.

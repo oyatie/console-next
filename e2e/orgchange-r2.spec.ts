@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectAccessible } from "./a11y";
+import { atPhoneWidth, expectAccessible } from "./a11y";
 import { withLifecycleDate } from "./clock";
 import { go, kstDate, registerEmployee } from "./flows";
 import { addDepts, openUnit, sheet } from "./helpers/structure";
@@ -86,6 +86,7 @@ test("an org change moves its people with the unit, stays on the chart with a re
   await expect(admin).toHaveURL(/\/org\/changes\/[0-9a-f-]+/);
   await expect(admin.getByRole("main")).toContainText("1명 · 이 변경으로 소속이나 사업장이 바뀐 사람");
   await expect(admin.getByRole("main")).not.toContainText(APPROVAL);
+  await expect(admin.getByRole("list", { name: "진행 단계" })).not.toContainText("예약");
   await expectAccessible(admin, "ORGCHANGE: an applied move's record");
 
   // org-07: a merge keeps its successor and says the unit is kept in the history, never deleted.
@@ -160,9 +161,12 @@ test("a scheduled change can be moved or cancelled, frees its unit when cancelle
 
   // On its date the rename applies with nobody pressing anything.
   await admin.getByRole("link", { name: "예정 1건" }).click();
+  await expectAccessible(admin, "organization changes at 1440px");
+  await atPhoneWidth(admin, async () => { await expectAccessible(admin, "organization changes at 390px"); });
   await admin.getByRole("row", { name: /영업1팀 → 국내영업팀 이름 변경/ }).getByRole("link").first().click();
   const record = new URL(admin.url()).pathname;
   await expect(admin.getByRole("button", { name: "예약 수정", exact: true })).toBeVisible();
+  await expect(admin.getByRole("main")).toContainText(/\d{2}:\d{2} KST 자동 반영/);
   await withLifecycleDate(due, async () => {
     await expect(async () => {
       await admin.goto(record);

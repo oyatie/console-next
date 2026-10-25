@@ -5,7 +5,7 @@ import { TextInput } from "../../../ui/field/field";
 import type { PlanRow } from "../domain/plan";
 import s from "./bulk.module.css";
 
-const STATUS_TONE = { link: "neutral", create: "ok", clash: "danger", tooDeep: "danger" } as const;
+const STATUS_TONE = { link: "neutral", create: "ok", clash: "danger", tooDeep: "danger", kind_not_allowed: "danger" } as const;
 
 /**
  * The "what will be made" column (S7): each pasted line where it lands, with its status in text (D16) — linked to
@@ -48,11 +48,11 @@ export function PlanList({ rows, names, onRename, rootName, levelOffset }: {
           );
         })}
       </ul>
-      {rows.filter((r) => r.status === "clash" || r.status === "tooDeep").map((r) => (
+      {rows.filter((r) => r.status === "clash" || r.status === "tooDeep" || r.status === "kind_not_allowed").map((r) => (
         <p key={r.at} className={s.danger} role="alert">
           {r.status === "clash"
             ? t("orgBulk.plan.clash", { parent: r.parent === undefined ? rootName : byAt.get(r.parent)!.name, name: r.name, line: r.line })
-            : t("orgBulk.plan.tooDeep", { line: r.line })}
+            : r.status === "kind_not_allowed" ? t("orgBulk.paste.error.kind_not_allowed", { line: r.line }) : t("orgBulk.plan.tooDeep", { line: r.line })}
         </p>
       ))}
     </>

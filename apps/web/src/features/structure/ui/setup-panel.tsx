@@ -1,17 +1,15 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getRouteApi, Link } from "@tanstack/react-router";
-import { AlertTriangle, Check, ClipboardPaste, Eye, Upload } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { AlertTriangle, Check, Eye, Upload } from "lucide-react";
 import type { ChecklistStep } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
 import { codeText } from "../../../lib/labels";
-import { Button } from "../../../ui/button/button";
 import { checklistRef } from "../api";
 import type { Structure } from "../domain/model";
 import css from "./setup-panel.module.css";
 
-const route = getRouteApi("/app/org");
 
 /**
  * The setup panel beside the chart (spec S1 setup progress, S10 getting started): the server's steps in order (numbered,
@@ -20,7 +18,6 @@ const route = getRouteApi("/app/org");
  */
 export function SetupPanel({ s, first, fixLink }: { s: Structure; first?: boolean; fixLink: (code: string) => ReactNode }) {
   const q = useQuery(checklistRef);
-  const navigate = route.useNavigate();
   const steps = q.data?.steps ?? [];
   const done = steps.filter((x) => x.state === "done" || x.state === "attention").length;
   const current = steps.find((x) => x.state !== "done" && x.state !== "attention")?.key;
@@ -63,8 +60,7 @@ export function SetupPanel({ s, first, fixLink }: { s: Structure; first?: boolea
       )}
       <h3 className={css.bulkTitle}>{t("structure.setup.bulk")}</h3>
       <div className={css.bulk}>
-        <Button onClick={() => void navigate({ search: (p) => ({ ...p, view: "outline" }) })}><ClipboardPaste size={16} aria-hidden />{t("structure.setup.paste")}</Button>
-        <Link to="/people/import" className="btn"><Upload size={16} aria-hidden />{t("structure.setup.roster")}</Link>
+        <Link to="/org" search={true} hash="structure-import" className="btn"><Upload size={16} aria-hidden />{t("structure.import.label")}</Link>
       </div>
     </aside>
   );

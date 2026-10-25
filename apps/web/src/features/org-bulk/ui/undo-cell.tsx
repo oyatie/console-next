@@ -3,12 +3,11 @@ import { Undo2 } from "lucide-react";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { Button } from "../../../ui/button/button";
-import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { BATCH_READS, refusalCode, undoEntityBatch, undoOrgBatch } from "../api";
 import type { FeedRow } from "../domain/feed";
 
 /**
- * One row's undo (R27): an icon button named for its row, or the same icon inert with the reason beside it.
+ * One row's undo (R27): only a batch the server marks undoable has a control.
  * A refusal the server names (a later change in the way, a created unit now in use) is said in its own words.
  */
 export function UndoCell({ row, target }: { row: FeedRow; target: string }) {
@@ -18,14 +17,7 @@ export function UndoCell({ row, target }: { row: FeedRow; target: string }) {
     announce: () => t("orgHistory.undone"),
   });
   const label = t("orgHistory.undoLabel", { target });
-  if ("block" in row.undo)
-    return (
-      <DisabledReason
-        layout="inline"
-        reason={t(`orgHistory.block.${row.undo.block}`)}
-        control={(p) => <Button variant="ghost" aria-label={label} {...p}><Undo2 size={16} aria-hidden /></Button>}
-      />
-    );
+  if ("block" in row.undo) return null;
   const { batchId } = row.undo;
   const code = `orgHistory.refused.${refusalCode(undo.error) ?? ""}`;
   return (

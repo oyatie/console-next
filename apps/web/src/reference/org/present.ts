@@ -1,3 +1,4 @@
+import { t } from "@console/i18n";
 import type { components } from "@console/api/schema";
 import { label, ORG_CHANGE_KIND } from "../../lib/labels";
 
@@ -196,3 +197,7 @@ export function applyOps(units: Unit[], ops: Op[]): { units: Unit[]; marks: Map<
   });
   return { units: [...out.values()], marks };
 }
+
+/** Direct members and the subtree total have the same meaning on every unit surface. */
+export const unitCounts = (n: { headcount: number; children: readonly { headcount: number }[] }) =>
+  t("structure.unitCounts", { direct: Math.max(0, n.headcount - n.children.reduce((sum, c) => sum + c.headcount, 0)), total: n.headcount });

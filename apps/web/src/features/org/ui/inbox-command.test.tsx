@@ -13,8 +13,8 @@ type Detail = components["schemas"]["OrgChangeDetail"];
 type Command = { run: () => Promise<unknown>; invalidates: readonly string[]; onSuccess: () => void };
 const state = vi.hoisted(() => ({
   units: { items: [{ id: "from", headcount: 5 }] } as { items: { id: string; headcount: number }[] } | undefined,
-  unitsFetching: false, unitsFailed: false, unitsFresh: true, snapshots: [] as unknown[],
-  detail: undefined as Detail | undefined, fetching: false, pending: false, open: false, error: null as unknown,
+  unitsFetching: false, unitsFailed: false, unitsFresh: true, snapshots: [] as number[],
+  detail: undefined as Detail | undefined, detailFresh: true, detailFailed: false, fetching: false, pending: false, open: false, error: null as unknown,
   buttons: [] as Parameters<typeof Button>[0][], command: undefined as Command | undefined,
   decide: vi.fn(), effectuate: vi.fn(), focus: vi.fn(), mutate: vi.fn(), reads: [] as string[],
 }));
@@ -26,7 +26,7 @@ vi.mock("@tanstack/react-query", async (original) => ({ ...await original<typeof
   const path = String(JSON.parse(readIdentity(query))[0]);
   state.reads.push(path);
   if (path === "/api/v1/org-units") return { data: state.units, isSuccess: !!state.units && !state.unitsFailed, isFetchedAfterMount: state.unitsFresh, isFetching: state.unitsFetching, error: state.unitsFailed ? new Error("headcount unavailable") : null };
-  return { data: state.detail, isSuccess: !!state.detail, isPending: !state.detail, isFetching: state.fetching, error: null, refetch: vi.fn() };
+  return { data: state.detail, isSuccess: !!state.detail && !state.detailFailed, isPending: !state.detail, isFetchedAfterMount: state.detailFresh, isError: state.detailFailed, isFetching: state.fetching, error: null, refetch: vi.fn() };
 } }));
 vi.mock("../api", () => ({
   changeQuery: (id: string) => get("/api/v1/org-changes/{id}", { params: { path: { id } } }),
@@ -38,7 +38,7 @@ vi.mock("../../../lib/react/command", () => ({ useCommand: (options: Command) =>
   return { mutate: state.mutate, isPending: state.pending, error: state.error };
 } }));
 vi.mock("../../../lib/react/command-error", () => ({ CommandError: ({ error }: { error: unknown }) => error ? createElement("div", { role: "alert" }, String(error)) : null }));
-vi.mock("./effectuate-consequence", () => ({ EffectuateConsequence: ({ d, headcount }: { d: Detail; headcount?: unknown }) => { state.snapshots.push(headcount); return createElement("span", null, t("org.change.effectuate.apply", { code: d.code })); } }));
+vi.mock("./effectuate-consequence", () => ({ EffectuateConsequence: ({ d }: { d: Detail }) => { state.snapshots.push(d.headcount); return createElement("span", null, t("org.change.effectuate.apply", { code: d.code })); } }));
 vi.mock("../../../ui/dialog", () => ({ Dialog: ({ open, children }: { open: boolean; children: ReactNode }) => open ? createElement("div", { role: "dialog" }, children) : null }));
 vi.mock("../../../ui/button/button", async (original) => {
   const actual = await original<typeof import("../../../ui/button/button")>();
@@ -61,13 +61,13 @@ beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
   vi.clearAllMocks();
   state.units = { items: [{ id: "from", headcount: 5 }] }; state.unitsFetching = false; state.unitsFailed = false; state.unitsFresh = true; state.snapshots = [];
-  state.detail = detail(); state.fetching = false; state.pending = false; state.open = false; state.error = null; state.command = undefined; state.reads = [];
+  state.detail = detail(); state.detailFresh = true; state.detailFailed = false; state.fetching = false; state.pending = false; state.open = false; state.error = null; state.command = undefined; state.reads = [];
 });
 
 test("inline approval sends the current pending step and refreshes the inbox with focus recovered", async () => {
   const markup = render("approve");
   expect(markup).toContain(t("orgChange.turn", { role: label(APPROVAL_ROLE, "finance") }));
-  expect(state.reads).toEqual(["/api/v1/org-changes/{id}", "/api/v1/org-units"]);
+  expect(state.reads).toEqual(["/api/v1/org-changes/{id}"]);
   const approve = state.buttons[0]!;
   expect(approve.disabled).toBe(false);
   click(approve);
@@ -81,9 +81,11 @@ test("inline approval sends the current pending step and refreshes the inbox wit
   expect(state.focus).toHaveBeenCalledWith("inbox-title");
 });
 
-test.each(["missing", "fetching", "pending"] as const)("approval stays disarmed while its step is %s", (reason) => {
+test.each(["missing", "fetching", "cached", "failed", "pending"] as const)("approval stays disarmed while its step is %s", (reason) => {
   if (reason === "missing") state.detail!.approvalSteps = [];
   if (reason === "fetching") state.fetching = true;
+  if (reason === "cached") state.detailFresh = false;
+  if (reason === "failed") state.detailFailed = true;
   if (reason === "pending") state.pending = true;
   render("approve");
   expect(state.buttons[0]!.disabled).toBe(true);
@@ -121,25 +123,43 @@ test("an unread or refreshing consequence cannot be confirmed and a command fail
 });
 
 
-test.each(["missing", "fetching", "failed", "cached"] as const)("moving people cannot be confirmed with %s headcount", (stateOfRead) => {
+test.each(["missing", "fetching", "failed", "cached"] as const)("moving people uses the server impact even when the unrelated units read is %s", (stateOfRead) => {
+  state.detail!.headcount = 1;
   state.detail!.proposal = [{ op: "REASSIGN_ORG_UNIT", fromOrgUnit: "from", toOrgUnit: "to", scope: { company: "company" } }];
   if (stateOfRead === "missing") state.units = undefined;
   if (stateOfRead === "fetching") state.unitsFetching = true;
   if (stateOfRead === "failed") state.unitsFailed = true;
   if (stateOfRead === "cached") state.unitsFresh = false;
   render("effectuate");
-  expect(state.buttons[0]!.disabled).toBe(true);
+  expect(state.buttons[0]!.disabled).toBe(false);
   state.open = true;
   render("effectuate");
-  expect(state.buttons.at(-1)!.disabled).toBe(true);
+  expect(state.buttons.at(-1)!.disabled).toBe(false);
+  expect(state.reads).not.toContain("/api/v1/org-units");
+  expect(state.snapshots).toEqual([1, 1, 1]);
 });
 
-test("the row and confirmation disclose the same freshly read headcount", () => {
+test("the row and confirmation disclose the same server-computed headcount", () => {
+  state.detail!.headcount = 1;
   state.detail!.proposal = [{ op: "REASSIGN_ORG_UNIT", fromOrgUnit: "from", toOrgUnit: "to", scope: { company: "company" } }];
   render("effectuate");
   expect(state.buttons[0]!.disabled).toBe(false);
   click(state.buttons[0]!);
   render("effectuate");
   expect(state.snapshots).toHaveLength(3);
-  for (const snapshot of state.snapshots) expect(snapshot).toBe(state.units);
+  for (const snapshot of state.snapshots) expect(snapshot).toBe(state.detail!.headcount);
+  expect(state.reads).not.toContain("/api/v1/org-units");
+});
+
+test.each(["missing", "fetching", "cached", "failed", "pending"] as const)("effectuation stays disarmed while its server impact is %s", reason => {
+  state.open = true;
+  if (reason === "missing") state.detail = undefined;
+  if (reason === "fetching") state.fetching = true;
+  if (reason === "cached") state.detailFresh = false;
+  if (reason === "failed") state.detailFailed = true;
+  if (reason === "pending") state.pending = true;
+  render("effectuate");
+  expect(state.buttons[0]!.disabled).toBe(true);
+  expect(state.buttons.at(-1)!.disabled).toBe(true);
+  expect(state.mutate).not.toHaveBeenCalled();
 });

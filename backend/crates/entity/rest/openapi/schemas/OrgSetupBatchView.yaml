@@ -36,6 +36,24 @@ properties:
   actor_id:
     type: string
     format: uuid
+  actor_name:
+    type:
+    - string
+    - 'null'
+  actions:
+    type: array
+    items:
+      type: string
+    description: Canonical audit actions recorded by this batch.
+  unit_names:
+    type: array
+    items:
+      type: string
+    description: Unit names at the revisions written by this batch.
+  change_mode:
+    type:
+    - string
+    - 'null'
   created_at:
     type: string
     format: date-time

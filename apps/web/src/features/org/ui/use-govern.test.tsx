@@ -2,13 +2,14 @@ import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog } from "@console/i18n";
+import { bindAnnouncer } from "../../../lib/react/announce";
 import { read } from "../../../lib/query";
 import { useGovernSubmit, type GovernState } from "./use-govern";
 
 const { navigate, receipt, governed } = vi.hoisted(() => ({
   navigate: vi.fn(),
   receipt: vi.fn(),
-  governed: vi.fn(async () => ({ id: "change", code: "change-code", sent: "sent" })),
+  governed: vi.fn(async () => ({ id: "change", code: "change-code", sent: "sent", select: "new-unit" })),
 }));
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
 vi.mock("../api", () => ({ governed }));
@@ -17,6 +18,8 @@ vi.mock("../../../reference/org/ui/use-change-note", () => ({ noteChange: receip
 beforeAll(() => loadCatalog("ko"));
 
 test("a governed change keeps its sheet pending until the changed chart has been read", async () => {
+  const announced = vi.fn();
+  const unbind = bindAnnouncer(announced);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   let finishRead!: (value: string[]) => void;
   const reread = vi.fn(() => new Promise<string[]>((resolve) => { finishRead = resolve; }));
@@ -51,8 +54,10 @@ test("a governed change keeps its sheet pending until the changed chart has been
     await completed;
     expect(chart.getCurrentResult().data).toEqual(["new department", "existing department"]);
     expect(receipt).toHaveBeenCalledOnce();
-    expect(navigate).toHaveBeenCalledWith({ to: "/org", search: { sel: "parent" } });
+    expect(announced).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith({ to: "/org", search: { sel: "new-unit" } });
   } finally {
+    unbind();
     unsubscribe();
     client.clear();
   }

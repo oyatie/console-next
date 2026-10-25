@@ -2,14 +2,13 @@ import { EntityName } from "../../../reference/entity/ui/entity-name";
 import { useMemo, useState } from "react";
 import { Building2, ChevronDown, ChevronRight, MapPin, Network } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtNumber } from "@console/i18n/format";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
 import { place } from "../../../ui/org-canvas/place";
-import { siteDirect, type ChartNode, type Structure } from "../domain/model";
+import { type ChartNode, type Structure } from "../domain/model";
 import { registryRows, type Level, type ListFilter } from "../domain/registry";
-import { levelText, temporalLabel } from "../present";
+import { temporalLabel, unitCounts } from "../present";
 import { AddUnit } from "./add-unit";
 import { HeadCell, OrderCell, RegistryActions, RegistryFilters } from "./registry-bar";
 import type { Commands } from "./use-structure-commands";
@@ -33,16 +32,16 @@ export function RegistryView({ s, cmd, sel, onSelect }: { s: Structure; cmd: Com
   const rows = useMemo(() => registryRows(s, { level, q, filters, closed }), [s, level, q, filters, closed]);
   const toggle = (id: string) => setClosed((o) => (o.has(id) ? new Set([...o].filter((x) => x !== id)) : new Set([...o, id])));
   const columns: LongColumn<ChartNode>[] = [
-    { id: "order", width: 72, header: t("structureChart.list.order"), cell: (n) => <OrderCell s={s} n={n} order={cmd.order} /> },
     {
       id: "name",
       rowHeader: true,
       width: "3fr",
+      minWidth: 320,
       header: t("structure.list.name"),
       cell: (n) => {
         const Icon = n.kind === "tenant" ? Network : ICON[n.kind];
         return (
-          <span className={css.treeCell} ref={place({ "padding-left": level === "all" ? (n.depth - 1) * 20 : 0 })}>
+          <span className={css.treeCell} ref={place({ "padding-left": level === "all" ? (n.depth - 1) * 16 : 0 })}>
             {level === "all" && n.children.length > 0 ? (
               <Button variant="ghost" className={css.chev} aria-expanded={open.has(n.id)} aria-label={t(open.has(n.id) ? "structure.node.collapseLabel" : "structure.node.expandLabel", { name: n.name })} onClick={() => toggle(n.id)}>
                 {open.has(n.id) ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
@@ -57,23 +56,21 @@ export function RegistryView({ s, cmd, sel, onSelect }: { s: Structure; cmd: Com
         );
       },
     },
-    { id: "level", width: "1fr", header: t("structure.list.level"), cell: levelText },
+    { id: "code", width: 104, header: t("structure.list.code"), cell: (n) => (n.code ? <span className="code">{n.code}</span> : "—") },
     // The head a level has: a legal entity's representatives, a department's head (a workplace's manager is not served).
     {
       id: "head",
       width: 148,
       header: t("structure.list.head"),
       cell: (n) =>
-        n.kind === "entity" ? (n.reps ? t("structure.node.reps", { name: n.reps.first, more: n.reps.more }) : "")
+        n.kind === "entity" ? (n.reps ? t("structure.node.reps", { name: n.reps.first, more: n.reps.more }) : "—")
         : n.kind === "dept" ? <HeadCell n={n} readOnly={s.readOnly} />
-        : "",
+        : "—",
     },
-    { id: "code", width: 104, header: t("structure.list.code"), cell: (n) => (n.code ? <span className="code">{n.code}</span> : "") },
-    { id: "people", width: 96, header: t("structure.list.people"), cell: (n) => <span className="num">{fmtNumber(n.headcount)}</span> },
-    { id: "direct", width: 96, header: t("structure.list.direct"), cell: (n) => <span className="num">{n.kind === "entity" ? "—" : fmtNumber(n.kind === "site" ? siteDirect(n) : n.headcount - n.children.reduce((x, c) => x + c.headcount, 0))}</span> },
-    { id: "unplaced", width: 88, header: t("structureChart.list.unplaced"), cell: (n) => (n.unplaced ? <span className="num">{fmtNumber(n.unplaced)}</span> : "") },
-    { id: "sub", width: 120, header: t("structure.list.sub"), cell: (n) => (n.children.length ? t(`structure.list.subOf.${n.kind}`, { count: n.children.length }) : "") },
-    { id: "chips", width: "2fr", header: t("structure.list.chips"), cell: (n) => <span className="row">{n.chips.map((c) => <Chip key={c} tone="warn">{t(`structure.chip.${c}`)}</Chip>)}</span> },
+    { id: "people", width: 180, header: t("structure.list.people"), cell: (n) => <span className="num">{unitCounts(n)}</span> },
+    { id: "site", width: 160, header: t("orgUnit.fact.place"), cell: (n) => n.kind === "site" ? n.name : n.siteId ? s.byId.get(n.siteId)?.name ?? "—" : "—" },
+    { id: "chips", width: "2fr", minWidth: 160, header: t("structure.list.chips"), cell: (n) => n.chips.length ? <span className="row">{n.chips.map((c) => <Chip key={c} tone="warn">{t(`structure.chip.${c}`)}</Chip>)}</span> : "—" },
+    ...(!s.readOnly ? [{ id: "order", width: 72, header: t("structureChart.list.order"), cell: (n: ChartNode) => <OrderCell s={s} n={n} order={cmd.order} /> }] : []),
     ...(!s.readOnly ? [{ id: "add", width: 148, header: t("orgStructure.tab.actions"), cell: (n: ChartNode) => <AddUnit n={n} /> }] : []),
   ];
   return (

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import type { OrgStructure, OrgStructureNode } from "@console/api/pending";
-import { buildStructure, maskBrn, pathTo, siteDirect } from "./model";
+import type { LegalEntity, OrgStructure, OrgStructureNode } from "@console/api/pending";
+import { buildStructure, pathTo, siteDirect } from "./model";
 import { collapseSelection, nameClash, verdicts } from "./rules";
 import { expandedFor, isFar, layout, W } from "./layout";
 import { findHits } from "./search";
@@ -28,7 +28,10 @@ describe("model", () => {
     expect(pathTo(s, "d11").map((x) => x.id)).toEqual(["tenant", "e1", "w1", "d1", "d11"]);
   });
   test("사업장 직속 is the roll-up less its 부서", () => expect(siteDirect(s.byId.get("w1")!)).toBe(2));
-  test("masks the BRN serial", () => expect(maskBrn("000-00-00000")).toBe("000-00-*****"));
+  test("the card keeps the same full business registration number as the entity", () => {
+    const entity = { id: "e1", names: [], workplaces: [], registrations: [{ holder_workplace_id: "w1", brn: { value: "0000000000", display: "000-00-00000" } }], primary_workplace_id: "w1" } as unknown as LegalEntity;
+    expect(buildStructure(tree(), [entity]).byId.get("e1")?.brn).toBe("000-00-00000");
+  });
 });
 
 describe("rules", () => {

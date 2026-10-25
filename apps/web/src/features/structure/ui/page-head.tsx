@@ -78,7 +78,7 @@ export function PageHead({ s, view, cmd }: { s?: Structure; view: View; cmd: Com
       <span className="grow" />
       {scheduled > 0 && <Link to="/org/changes" search={{ view: "ready" }} className={buttonClass("ghost", { size: "sm", className: css.scheduled })} id="org-scheduled">{t("orgChange.chip.scheduled", { count: scheduled })}</Link>}
       <Link to="/org/history" className={buttonClass("ghost")}><History size={16} aria-hidden />{t("orgChange.chip.history")}</Link>
-      <div className={css.importEntry} data-hidden={readOnly || imports.length === 0 || undefined} inert={readOnly || imports.length === 0 || undefined}>
+      <div id="structure-import" tabIndex={-1} className={css.importEntry} data-hidden={readOnly || imports.length === 0 || undefined} inert={readOnly || imports.length === 0 || undefined}>
         <ActionMenu label={t("structure.import.label")} trigger={<><Upload size={16} aria-hidden />{t("structure.import.label")}</>} actions={imports} />
       </div>
       <Button onClick={() => setExporting(true)} disabled={!s || s.root.children.length === 0}><Download size={16} aria-hidden />{t("structure.export.open")}</Button>

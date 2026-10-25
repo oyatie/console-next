@@ -6,8 +6,8 @@ import { fmtNumber } from "@console/i18n/format";
 import { Chip } from "../../../ui/chip";
 import { NodeChips, NodeFoot, NodeKicker, NodeLine, NodeRow } from "../../../ui/org-canvas/org-node";
 import type { Box } from "../domain/layout";
-import { kindWord, nodeName } from "../present";
-import { deptCount, siteDirect, type ChartNode, type Chip as ChipCode } from "../domain/model";
+import { kindWord, nodeName, unitCounts } from "../present";
+import { deptCount, type ChartNode, type Chip as ChipCode } from "../domain/model";
 
 const people = (count: number) => t("common.headcount", { count });
 const CHIP_TONE: Record<ChipCode, "warn" | "neutral" | "info"> = { registration_missing: "warn", needs_confirmation: "warn", unverified: "warn", suspended: "neutral", closed: "neutral" };
@@ -65,12 +65,12 @@ export function NodeContent({ box, counts, badge }: {
         </>
       );
     const flags = [n.headOffice && t("structure.node.headOffice"), n.primary && t("structure.node.primary")].filter((x): x is string => Boolean(x));
-    const foot = t("structure.node.siteFoot", { depts: deptCount(n), direct: siteDirect(n) });
+    const foot = unitCounts(n);
     if (box.lod === "m")
       return (
         <>
           <NodeRow name={n.name} count={people(n.headcount)}>{badge}</NodeRow>
-          <NodeFoot>{flags.map((f) => <Chip key={f}>{f}</Chip>)}{flags.length > 0 ? null : foot}</NodeFoot>
+          <NodeFoot>{flags.map((f) => <Chip key={f}>{f}</Chip>)}{foot}</NodeFoot>
           {n.chips.length > 0 && <NodeChips>{chips(n)}</NodeChips>}
         </>
       );
@@ -78,19 +78,18 @@ export function NodeContent({ box, counts, badge }: {
       <>
         <NodeKicker icon={<MapPin size={14} aria-hidden />}>{n.area || kindWord(n) ? t("structure.node.siteKicker", { area: [kindWord(n), n.area].filter(Boolean).join(" · ") }) : t("structure.level.site")}</NodeKicker>
         <NodeRow name={n.name}>{flags.map((f) => <Chip key={f}>{f}</Chip>)}{badge}</NodeRow>
-        <NodeFoot><b>{people(n.headcount)}</b>{foot}</NodeFoot>
+        <NodeFoot>{foot}</NodeFoot>
         {n.chips.length > 0 && <NodeChips>{chips(n)}</NodeChips>}
       </>
     );
   }
-  const direct = n.headcount - n.children.reduce((sum, c) => sum + c.headcount, 0);
   // Its head on the second line (S2); a department in the focus's row has room for its code and counts too.
   const head = n.head ? t("structure.node.head", { name: n.head.name, concurrent: n.head.concurrent ? "yes" : "no" }) : t("structure.node.headVacant");
   return (
     <>
       <NodeRow name={n.name} count={people(n.headcount)}>{badge}</NodeRow>
       <NodeLine>{head}</NodeLine>
-      {box.lod === "full" && <NodeFoot>{n.code && <>{n.code}{" · "}</>}{t("structure.node.deptFoot", { direct, children: n.children.length })}</NodeFoot>}
+      {box.lod === "full" && <NodeFoot>{n.code && <>{n.code}{" · "}</>}{unitCounts(n)}</NodeFoot>}
     </>
   );
 }

@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { expectAccessible } from "./a11y";
+import type { components } from "@console/api/schema";
+import { atPhoneWidth, expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
 import { tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { registerEntity, registerWorkplace } from "./setup-flows";
 import { addDepartments, box, findPressable, leaveScreen, receipt, revealUnit } from "./structure-flows";
+import { holdRead } from "./helpers/read";
+import { forgetResize } from "./stability";
 
 // The company structure chart (mockups S10, S1, S2): from an empty tenant, through the UI only, the first run turns
 // into the chart, and every 부서 gesture applies at once in setup with its undo. Click ceilings from spec §4.
@@ -12,6 +15,7 @@ import { addDepartments, box, findPressable, leaveScreen, receipt, revealUnit } 
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test("an empty tenant builds its structure on the chart", { tag: "@org" }, async ({ browser }) => {
+  test.setTimeout(180_000); // one existing tenant, including desktop/phone accessibility and the delayed initial read
   const c = clickCounter();
   const v = await vendorPage(browser);
   await go(v, "/platform");
@@ -28,10 +32,35 @@ test("an empty tenant builds its structure on the chart", { tag: "@org" }, async
   await expectAccessible(admin, "structure first run");
   await c.click(admin.getByRole("link", { name: "법인 추가" }));
   await registerEntity(admin, "새온정밀", false, c);
+  const entityRecord = new URL(admin.url()).pathname;
 
   // S10-first-entity: the 법인 box with its next step in place.
+  const held = await holdRead(admin, /\/api\/v1\/legal-entities(?:\?.*)?$/);
+  const entityRead = admin.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === "/api/v1/legal-entities");
+  const treeRead = admin.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === "/api/v1/org-structure");
+  const opening = admin.goto("/org");
+  await held.requested;
+  await treeRead;
+  try {
+    await expect(admin.locator('[data-read-layout="grid"][aria-busy="true"]')).toBeVisible();
+    await expect(box(admin, "주식회사 새온정밀")).toHaveCount(0);
+  } finally {
+    await held.release();
+    await opening;
+  }
+  const entities = await (await entityRead).json() as components["schemas"]["LegalEntityList"];
+  expect(entities.items).toHaveLength(1);
+  const entity = entities.items[0]!;
+  const brn = entity.registrations.find(r => !r.closed_on)?.brn?.display;
+  expect(brn).toBeTruthy();
+  const company = box(admin, "주식회사 새온정밀");
+  await expect(company).toBeVisible();
+  await expect(company).toContainText(brn!);
+  for (const rep of entity.current?.representatives ?? []) await expect(company).toContainText(rep);
+  await expectAccessible(admin, "structure first enriched entity card");
+  await go(admin, entityRecord);
+  await expect(admin.getByRole("main")).toContainText(brn!);
   await go(admin, "/org");
-  await expect(box(admin, "주식회사 새온정밀")).toBeVisible();
   await c.click(admin.getByRole("link", { name: "사업장 추가" }));
   await registerWorkplace(admin, "새온정밀", "평택공장", false, c);
   await go(admin, "/org");
@@ -117,4 +146,28 @@ test("an empty tenant builds its structure on the chart", { tag: "@org" }, async
   await expectAccessible(admin, "structure chart (entity focus)");
   await admin.getByRole("button", { name: "전체 보기" }).click();
   await expect(admin.getByRole("tree", { name: "전체 조직도" })).toBeVisible();
+
+  // Every route to importing points at the one header menu.
+  const imports = admin.getByRole("button", { name: "가져오기", exact: true });
+  await expect(imports).toHaveCount(1);
+  await expect(admin.getByRole("main").locator('a[href="/org/import"], a[href="/org/paste"], a[href="/org/workplaces/edit"], a[href="/people/import"]')).toHaveCount(0);
+  await imports.click();
+  await expect(admin.getByRole("menuitem", { name: "조직 시트 가져오기", exact: true })).toHaveCount(1);
+  await admin.keyboard.press("Escape");
+
+  await admin.getByRole("group", { name: "보기", exact: true }).getByRole("button", { name: "목록", exact: true }).click();
+  const list = admin.getByRole("grid", { name: "조직 구조 목록" });
+  for (const width of [1280, 1440]) {
+    await admin.setViewportSize({ width, height: 900 });
+    await forgetResize(admin);
+    const names = list.getByRole("rowheader");
+    await expect(names.first()).toBeVisible();
+    const clipped = await names.evaluateAll(cells => cells.filter(cell => cell.scrollWidth > cell.clientWidth).map(cell => ({ name: cell.textContent, scroll: cell.scrollWidth, width: cell.clientWidth })));
+    expect(clipped, `organization names at ${width}px`).toEqual([]);
+  }
+  await expectAccessible(admin, "structure list at 1440px");
+  await atPhoneWidth(admin, async () => {
+    await expect(list).toBeVisible();
+    await expectAccessible(admin, "structure list at 390px");
+  });
 });

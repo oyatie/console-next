@@ -2,9 +2,10 @@
 // changeTitle may move to reference/org/present.ts when the tree (W0) needs it too.
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { APPROVAL_ROLE, ORG_CHANGE_STATUS, UNIT_KIND, actor, label, labeled } from "../../lib/labels";
 import { labelTitle, opsTitle, subjectOf, type Names } from "./domain/change-title";
+import { todayKst } from "../../lib/pure/today";
 import { addDays, daysBetween, nextWeekday } from "../../ui/date/days";
 
 type Detail = components["schemas"]["OrgChangeDetail"];
@@ -118,6 +119,9 @@ export function changeRail(d: Detail): { steps: { key: string; label: string }[]
   const approved = d.approvalSteps.filter((s) => s.decision === "APPROVED").length;
   const settled = d.settlementItems.filter((i) => i.done).length;
   const date = fmtDate(d.effectiveDate);
+  const submitted = d.events.find((e) => e.action === "submit")?.at ?? d.createdAt;
+  const scheduled = d.status === "APPROVED" || d.effectiveDate > todayKst(new Date(submitted));
+  const applies = d.applies_at ? fmtDateTime(d.applies_at) : date;
   const steps = [
     { key: "draft", label: t(d.status === "CANCELLED" ? "orgChange.rail.cancelled" : routed ? "orgChange.rail.draft" : "orgChange.rail.recorded") },
     ...(routed
@@ -125,8 +129,8 @@ export function changeRail(d: Detail): { steps: { key: string; label: string }[]
           { key: "approval", label: t(d.status === "REJECTED" ? "orgChange.rail.rejected" : "orgChange.rail.approval", { n: approved, total }) },
           { key: "approved", label: t("orgChange.rail.approved") },
         ]
-      : [{ key: "approved", label: t("orgChange.rail.scheduled", { date }) }]),
-    { key: "applied", label: d.status === "APPROVED" ? t("orgChange.rail.ready", { date }) : t("orgChange.rail.applied", { date }) },
+      : scheduled ? [{ key: "approved", label: t("orgChange.rail.scheduled", { date }) }] : []),
+    { key: "applied", label: d.status === "APPROVED" ? t("orgChange.rail.ready", { date: applies }) : t("orgChange.rail.applied", { date }) },
     ...(d.settlementItems.length > 0
       ? [
           { key: "settling", label: t("orgChange.rail.settling", { n: settled, total: d.settlementItems.length }) },
@@ -169,7 +173,7 @@ export function nextStep(d: Detail, ctx: { me?: string; can: (f: Feature) => boo
       return { kind: "decide", step, n: i + 1, total: d.approvalSteps.length, next: d.approvalSteps[i + 1], prev, prevByMe: !!prev && prev.decidedBy === ctx.me };
     }
     case "APPROVED": {
-      // org-02: a scheduled change applies by itself on its date (00:05 KST) and can be moved or cancelled before it;
+      // org-02: a scheduled change applies by itself at the time served by its settings and can be moved or cancelled before it;
       // under approval.policy none (decisions #26) whoever may propose it may, under routing only an applier.
       const canTouch = ctx.can("org_change_apply") || (!ctx.routed && ctx.can("org_change_draft"));
       const days = daysBetween(ctx.today, d.effectiveDate);

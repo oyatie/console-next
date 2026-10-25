@@ -49,13 +49,10 @@ export function useGovernSubmit(build: () => Body, s: GovernState, after?: (out:
       const out = await governed(key, { kind: body.kind, target: body.target, proposal: body.proposal, effectiveDate: s.g.date, reason: s.g.reason.trim() }, submit);
       // What follows a recorded change in another module (a dissolution's grants) runs once it is recorded; its outcome joins the receipt.
       const more = out.sent === "sent" && after ? await after(out) : undefined;
-      return { ...out, title: body.title ?? body.target.label, select: body.select ?? body.target.ref, more };
+      return { ...out, title: body.title ?? body.target.label, select: out.select ?? body.select ?? body.target.ref, more };
     },
     invalidates: [...STRUCTURE_READS, "/api/v1/org-changes", "/api/v1/employees", "/api/v1/employment-assignments"],
     awaitFirstRead: true,
-    announce: (out) =>
-      out.sent === "saved" ? t("orgUnit.gov.saved") : out.sent === "unsent" ? t("orgUnit.gov.unsent")
-      : s.mode === "route" ? t("orgUnit.gov.sent") : s.mode === "schedule" ? t("orgUnit.gov.scheduled", { date: fmtDate(s.g.date) }) : t("orgUnit.gov.applied"),
     onSuccess: (out) => {
       if (out.sent !== "sent") return void nav({ to: "/org/changes/$id", params: { id: out.id }, search: { done: "drafted", unsent: out.sent === "unsent" || undefined } });
       const message =

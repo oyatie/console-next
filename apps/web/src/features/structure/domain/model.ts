@@ -27,9 +27,9 @@ export type ChartNode = {
   parentId?: string;
   depth: number;
   children: ChartNode[];
-  /** legal entity: the registration number masked to its first 6 digits; null when no registration is held yet. */
+  /** legal entity: the full business registration number; null when no registration is held yet. */
   brn?: string | null;
-  /** The digits of every registration number it holds (searchable, never shown). */
+  /** The digits of every registration number it holds (searchable). */
   brnKey?: string;
   reps?: { first: string; more: number };
   /** workplace: province and district of its address. */
@@ -53,9 +53,6 @@ export type Structure = { root: ChartNode; byId: Map<string, ChartNode>; phase: 
 
 const KIND: Record<OrgStructureNode["kind"], Kind> = { LEGAL_ENTITY: "entity", WORKPLACE: "site", SITE: "site", DEPARTMENT: "dept" };
 
-/** "000-00-00000" → "220-81-*****": the chart is shared on screens and paper, the serial is not needed there. */
-export const maskBrn = (display: string) => display.replace(/(\d{3}-\d{2}-)\d{5}$/, "$1*****");
-
 function enrich(n: ChartNode, entities: ReadonlyMap<string, LegalEntity>) {
   if (n.kind === "entity") {
     const e = entities.get(n.id);
@@ -64,7 +61,7 @@ function enrich(n: ChartNode, entities: ReadonlyMap<string, LegalEntity>) {
     n.name = names.name || n.name;
     n.alias = names.aliases.join(" · ") || null;
     const primary = e.registrations.find((r) => r.holder_workplace_id === e.primary_workplace_id) ?? e.registrations.find((r) => !r.closed_on);
-    n.brn = primary?.brn ? maskBrn(primary.brn.display) : null;
+    n.brn = primary?.brn?.display ?? null;
     n.brnKey = e.registrations.map((r) => r.brn?.value ?? "").join(" ");
     const reps = e.current?.representatives;
     if (reps?.length) n.reps = { first: reps[0]!, more: reps.length - 1 };

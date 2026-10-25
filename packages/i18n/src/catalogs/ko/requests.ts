@@ -1,6 +1,8 @@
 // Korean source for `requests.` ids (features/people/ui/requests-page.tsx, request-panel.tsx): change requests to
 // HR (변경 요청, BW-17).
 export const koRequests = {
+  "requests.none.filtered": "{filters} 조건에 맞는 요청이 없습니다.",
+  "requests.filters.reset": "조건 초기화",
   "requests.reason.DATA_ENTRY_ERROR": "입력 오류",
   "requests.title": "변경 요청",
   "requests.list": "요청 목록",
