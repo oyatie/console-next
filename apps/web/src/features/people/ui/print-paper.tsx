@@ -6,7 +6,7 @@ import { todayKst } from "../../../lib/pure/today";
 import { PaperGrid, PaperTable } from "../../../ui/paper/paper-table";
 import { initial, maskedAddress, maskedBirth, maskedPhone } from "../domain/card";
 import { retirementDate } from "../domain/employment";
-import { tx, eventWhat } from "../present";
+import { commentText, tx, eventWhat } from "../present";
 import type { Card } from "./use-card";
 import { useCardRegister } from "./use-card-register";
 import { Paper, PaperFoot, PaperHead, PaperId } from "../../../ui/paper/paper";
@@ -57,7 +57,7 @@ export function PrintPaper({ c, parts, why, at }: { c: Card; parts: readonly str
           <PaperTable
             label={t("empCard.tab.events")}
             head={[t("empDoc.print.col.from"), t("empDoc.print.col.act"), t("empDoc.print.col.what")]}
-            rows={events.map((x) => ({ id: x.id, cells: [fmtDate(x.event_type === "TERMINATE" || x.event_type === "OFFBOARD" ? retirementDate(x.effective_date) : x.effective_date), `${label(LIFECYCLE_EVENT, x.event_type)}${x.state === "SCHEDULED" ? ` ${t("empDoc.print.planned")}` : ""}`, <>{eventWhat(x, c.title) || x.comment || "—"} <EnumCode e={LEAVE_TYPE} value={x.leave_type} /></>] }))}
+            rows={events.map((x) => ({ id: x.id, cells: [fmtDate(x.event_type === "TERMINATE" || x.event_type === "OFFBOARD" ? retirementDate(x.effective_date) : x.effective_date), `${label(LIFECYCLE_EVENT, x.event_type)}${x.state === "SCHEDULED" ? ` ${t("empDoc.print.planned")}` : ""}`, <>{eventWhat(x, c.title) || commentText(x.comment, x.comment_code) || "—"} <EnumCode e={LEAVE_TYPE} value={x.leave_type} /></>] }))}
           />
         </>
       )}

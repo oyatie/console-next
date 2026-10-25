@@ -26,7 +26,8 @@ test("my account: add a second passkey, sign in with it, remove the first", { ta
   const main = admin.getByRole("main");
   // Decision #3: enrollment records no inferred privacy consent; legacy consent history stays read-only.
   await expect(main.getByText("직원 기록과 연결되지 않은 계정입니다")).toBeVisible();
-  await expect(main.getByText(/개인정보 처리 고지 \S+/)).toBeVisible();
+  await expect(main.getByRole("region", { name: "동의 내역", exact: true }).locator("summary")).toContainText(/.+ · .+ 판 · 전문 보기/);
+  await expect(main.getByRole("region", { name: "동의 내역", exact: true }).locator("summary")).not.toContainText(/kr-/);
   await expect(main.getByText(/동의함$/)).toBeVisible();
   await expect(main.getByRole("checkbox")).toHaveCount(0);
   await expect(main.getByRole("button", { name: "이 기기에서 로그아웃" })).toHaveAccessibleName("이 기기에서 로그아웃");
@@ -97,18 +98,22 @@ test("my account: add a second passkey, sign in with it, remove the first", { ta
   await fits(admin, "my account");
 });
 
-test("a failed account-facts read keeps the passkeys and never invents HR recovery advice for an ops account", { tag: ["@auth", "@regression"] }, async ({ browser }) => {
+test("a failed account-facts read uses the page refusal and retry restores the account", { tag: ["@auth", "@regression"] }, async ({ browser }) => {
   const admin = await openTenant(browser, "acct-facts-unavailable", "계정사실실패");
   await admin.route("**/api/v1/users/me", (route) => route.fulfill({
     status: 503, contentType: "application/json", body: JSON.stringify({ error: { code: "unavailable", message: "service temporarily unavailable" } }),
   }));
   await admin.goto("/account");
-  await expect(admin.getByRole("region", { name: "프로필" }).getByText("불러오지 못했습니다", { exact: true })).toBeVisible({ timeout: 15_000 }); // wait for the read's retry backoff to finish
+  await expect(admin.getByRole("main").getByText("불러오지 못했습니다", { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(admin.getByRole("region", { name: "프로필" })).toHaveCount(0);
+  await expectAccessible(admin, "my account: account facts unavailable");
+  await admin.unroute("**/api/v1/users/me");
+  await admin.getByRole("button", { name: "다시 불러오기", exact: true }).click();
   const keys = admin.getByRole("region", { name: "패스키", exact: true });
   await expect(keys.getByRole("table").getByRole("row")).toHaveCount(2);
   await expect(keys.getByText(/권한 관리 담당자에게 로그인 코드를 다시 받아야/)).toHaveCount(0);
   await expect(keys.getByRole("button", { name: /등록 패스키 삭제$/ })).toHaveAttribute("aria-disabled", "true");
-  await expectAccessible(admin, "my account: account facts unavailable");
+  await expectAccessible(admin, "my account: account facts restored");
 });
 
 // The vendor's account is a platform token: no employee link to read (that read answers 404 there), never an error.
@@ -116,10 +121,17 @@ test("my account for the platform vendor shows its tier, passkey and consent wit
   const vendor = await vendorPage(browser);
   await go(vendor, "/account");
   const main = vendor.getByRole("main");
+  const accountLink = vendor.getByRole("banner").locator('a[href="/account"]');
+  await expect(accountLink).toBeVisible();
+  await expect(accountLink).toHaveAccessibleName(/\S/);
+  await expect(accountLink).not.toContainText(/Cold Start Admin|Name not set/);
+  const label = (await accountLink.innerText()).trim();
+  await expect(main.getByRole("region", { name: "프로필", exact: true }).locator("dd").first()).toContainText(label);
   await expect(main.getByRole("heading", { name: "내 계정", level: 1 })).toBeVisible();
   await expect(main.getByText("플랫폼 운영")).toBeVisible();
   await expect(main.getByText("소속", { exact: true })).toHaveCount(0);
-  await expect(main.getByText(/개인정보 처리 고지 \S+/)).toBeVisible();
+  await expect(main.getByRole("region", { name: "동의 내역", exact: true }).locator("summary")).toContainText(/.+ · .+ 판 · 전문 보기/);
+  await expect(main.getByRole("region", { name: "동의 내역", exact: true }).locator("summary")).not.toContainText(/kr-/);
   await expect(main.getByRole("table", { name: "패스키" }).getByRole("button", { name: /등록 패스키 삭제$/ })).toHaveAttribute("aria-disabled", "true");
   await expect(vendor.getByRole("alert")).toHaveCount(0);
   await expectAccessible(vendor, "my account (vendor)");

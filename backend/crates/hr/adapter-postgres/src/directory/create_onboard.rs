@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::HrError;
 use crate::directory::create::employee_create_db_error;
 
-const ONBOARD_COMMENT: &str = "Created through People & Workforce";
+const ONBOARD_COMMENT_CODE: &str = "created_by_registration";
 
 /// The ONBOARD a registration records.
 pub struct RegistrationOnboard<'a> {
@@ -82,7 +82,7 @@ pub async fn record_registration_onboard(
             to_workplace_id: None,
             classify: Default::default(),
             effective_date: effective_date.clone(),
-            comment: ONBOARD_COMMENT.to_owned(),
+            comment: String::new(),
             signoffs: EmployeeLifecycleSignoffs {
                 privacy_notice_ack: true,
                 korean_labor_law_ack: true,
@@ -98,9 +98,9 @@ pub async fn record_registration_onboard(
         r#"INSERT INTO employee_lifecycle_events (
             id, org_id, employee_id, event_type, from_status, to_status, to_company,
             to_org_unit, to_position, effective_date, comment, signoffs, created_by,
-            to_org_unit_id, state, scheduled_request
+            to_org_unit_id, state, scheduled_request, comment_code
         ) VALUES ($1, $2, $3, 'ONBOARD', $4, 'ACTIVE', $5, $6, $7, $8, $9,
-            '{}'::jsonb, $10, $11, $12, $13)"#,
+            '{}'::jsonb, $10, $11, $12, $13, $14)"#,
     )
     .bind(event_id)
     .bind(org_uuid)
@@ -110,11 +110,12 @@ pub async fn record_registration_onboard(
     .bind(onboard.org_unit)
     .bind(onboard.position)
     .bind(&effective_date)
-    .bind(ONBOARD_COMMENT)
+    .bind(Option::<&str>::None)
     .bind(actor)
     .bind(onboard.org_unit_id)
     .bind(if scheduled { "SCHEDULED" } else { "APPLIED" })
     .bind(scheduled_request)
+    .bind(ONBOARD_COMMENT_CODE)
     .execute(tx.as_mut())
     .await
     .map_err(employee_create_db_error)?;

@@ -230,8 +230,6 @@ export const koEntity = {
   "entity.history.field.vat_unit_mode_basis": "신고 단위가 정해진 근거",
   "entity.history.field.additional_representatives": "그 밖의 대표자",
   "entity.history.field.issue_reason_kind": "발급 사유",
-  "entity.history.unitMode.OWN": "이 사업장 단독",
-  "entity.history.unitMode.PART_OF": "다른 사업장에 포함",
   "entity.name.unconfirmed": "법인 미확인",
   "entity.name.legal_name_unconfirmed": "등록증 확인 필요",
   "entity.name.legal_name_not_hangul": "법인명에 한글이 없습니다",

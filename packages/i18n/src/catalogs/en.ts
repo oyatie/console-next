@@ -82,6 +82,7 @@ import { enWorkplace } from "./en/workplace";
 import { enWorkplaceRegChange } from "./en/workplace-reg-change";
 import { enCapture } from "./en/capture";
 import { enEntityCreate } from "./en/entity-create";
+import { enEntityHistoryField } from "./en/entity-history-field";
 import { enEntityQuick } from "./en/entity-quick";
 import { enEntityRecord } from "./en/entity-record";
 import { enEntityRecordClose } from "./en/entity-record-close";
@@ -193,6 +194,7 @@ export const en: Partial<Record<ScreenMessageId, string>> = {
   ...enWorkplaceRegChange,
   ...enCapture,
   ...enEntityCreate,
+  ...enEntityHistoryField,
   ...enEntityQuick,
   ...enEntityRecord,
   ...enEntityRecordClose,

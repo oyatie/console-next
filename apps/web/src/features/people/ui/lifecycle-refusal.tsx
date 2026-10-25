@@ -1,3 +1,4 @@
+import { supportReferenceFromError } from "../../../lib/support-reference";
 import { t } from "@console/i18n";
 import { LIFECYCLE_EVENT, actor, label } from "../../../lib/labels";
 import { focusSoon } from "../../../lib/react/announce";
@@ -50,7 +51,7 @@ export function LifecycleRefusal({ error, kind, onLeave, target, onCancelEvent, 
   const you = [{ name: t("lifecycle.blocker.you") }] as const;
   if (r?.code === "lifecycle_schedule_conflict" && r.events.length > 0)
     return (
-      <BlockedPanel kind="route" title={t("lifecycle.blocker.schedule.title")} code={r.code} unblockers={you} actions={<Button onClick={() => onHistory()}>{t("lifecycle.blocker.history")}</Button>}>
+      <BlockedPanel domain="hr" supportRef={supportReferenceFromError(error)} kind="route" title={t("lifecycle.blocker.schedule.title")} code={r.code} unblockers={you} actions={<Button onClick={() => onHistory()}>{t("lifecycle.blocker.history")}</Button>}>
         <ul className={s.lines}>
           {r.events.map((x) => (
             <li key={x.lifecycle_event_id} className={s.line}>
@@ -71,7 +72,7 @@ export function LifecycleRefusal({ error, kind, onLeave, target, onCancelEvent, 
   const named = r?.events[0] as unknown as Named | undefined;
   if (r?.code === "stale_record")
     return (
-      <BlockedPanel title={t("lifecycle.blocker.stale.title")} code={r.code} unblockers={you} actions={onReread && <Button variant="primary" onClick={onReread}>{t("lifecycle.blocker.stale.reread")}</Button>}>
+      <BlockedPanel domain="hr" supportRef={supportReferenceFromError(error)} title={t("lifecycle.blocker.stale.title")} code={r.code} unblockers={you} actions={onReread && <Button variant="primary" onClick={onReread}>{t("lifecycle.blocker.stale.reread")}</Button>}>
         {named?.event_type
           ? t("lifecycle.blocker.stale.line", { action: label(LIFECYCLE_EVENT, named.event_type), date: fmtDay(named.effective_date), actor: actor(named.recorded_by) })
           : t("lifecycle.blocker.stale.body")}
@@ -79,7 +80,7 @@ export function LifecycleRefusal({ error, kind, onLeave, target, onCancelEvent, 
     );
   if (r?.code === "scheduled_conflict" && named?.event_id)
     return (
-      <BlockedPanel
+      <BlockedPanel domain="hr" supportRef={supportReferenceFromError(error)}
         kind="route"
         title={t("lifecycle.blocker.replace.title")}
         code={r.code}
@@ -96,7 +97,7 @@ export function LifecycleRefusal({ error, kind, onLeave, target, onCancelEvent, 
     );
   if (r?.code === "fixed_term_limit")
     return (
-      <BlockedPanel title={t("lifecycle.blocker.fixedTerm.title")} code={r.code} unblockers={you} actions={<Button onClick={onFocusTarget}>{t("lifecycle.blocker.fixedTerm.fix")}</Button>}>
+      <BlockedPanel domain="hr" supportRef={supportReferenceFromError(error)} title={t("lifecycle.blocker.fixedTerm.title")} code={r.code} unblockers={you} actions={<Button onClick={onFocusTarget}>{t("lifecycle.blocker.fixedTerm.fix")}</Button>}>
         <p className={s.blockerText}>{t("lifecycle.blocker.fixedTerm.body")}</p>
         <ul className={s.grounds}>
           {FIXED_TERM_GROUNDS.map((g) => <li key={g}>{t(`lifecycle.fixedTerm.ground.${g}`)}</li>)}
@@ -106,26 +107,26 @@ export function LifecycleRefusal({ error, kind, onLeave, target, onCancelEvent, 
     );
   if (r && (SPECIFIC as Set<string>).has(r.code))
     return (
-      <BlockedPanel title={t(`lifecycle.blocker.${r.code as Specific}`)} code={r.code} unblockers={you} actions={<Button onClick={() => onHistory()}>{t("lifecycle.blocker.history")}</Button>}>
+      <BlockedPanel domain="hr" supportRef={supportReferenceFromError(error)} title={t(`lifecycle.blocker.${r.code as Specific}`)} code={r.code} unblockers={you} actions={<Button onClick={() => onHistory()}>{t("lifecycle.blocker.history")}</Button>}>
         {r.message}
       </BlockedPanel>
     );
   if (r?.code === "lifecycle_scheduled_state")
     return (
-      <BlockedPanel kind="route" title={t("lifecycle.blocker.state.title")} code={r.code} unblockers={you} actions={<Button onClick={() => onHistory()}>{t("lifecycle.blocker.history")}</Button>}>
+      <BlockedPanel domain="hr" supportRef={supportReferenceFromError(error)} kind="route" title={t("lifecycle.blocker.state.title")} code={r.code} unblockers={you} actions={<Button onClick={() => onHistory()}>{t("lifecycle.blocker.history")}</Button>}>
         {r.message}
       </BlockedPanel>
     );
-  if (r?.code === "transfer_cross_entity") return <TransferCrossEntity target={r.events[0] as unknown as CrossEntity | undefined} onFocusTarget={onFocusTarget} onGroupTransfer={onGroupTransfer} />;
+  if (r?.code === "transfer_cross_entity") return <TransferCrossEntity supportRef={supportReferenceFromError(error)} target={r.events[0] as unknown as CrossEntity | undefined} onFocusTarget={onFocusTarget} onGroupTransfer={onGroupTransfer} />;
   if (r?.code === "lifecycle_noop" && (kind === "TRANSFER" || kind === "PROMOTE"))
     return (
-      <BlockedPanel title={t("lifecycle.blocker.noop.title")} code={r.code} unblockers={you} actions={<Button onClick={onFocusTarget}>{t(`lifecycle.blocker.noop.fix.${kind}`)}</Button>}>
+      <BlockedPanel domain="hr" supportRef={supportReferenceFromError(error)} title={t("lifecycle.blocker.noop.title")} code={r.code} unblockers={you} actions={<Button onClick={onFocusTarget}>{t(`lifecycle.blocker.noop.fix.${kind}`)}</Button>}>
         {t(`lifecycle.blocker.noop.${kind}`, { target })}
       </BlockedPanel>
     );
   if (r?.code === "invalid_transition")
     return (
-      <BlockedPanel
+      <BlockedPanel domain="hr" supportRef={supportReferenceFromError(error)}
         title={t("lifecycle.blocker.transition.title")}
         code={r.code}
         unblockers={you}

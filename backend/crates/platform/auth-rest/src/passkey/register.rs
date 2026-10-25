@@ -72,6 +72,20 @@ pub(crate) async fn start_registration(
             .map_err(|err| passkey_error(err, "passkey step-up failed"))?;
     }
 
+    let username = body
+        .username
+        .filter(|name| !name.trim().is_empty())
+        .unwrap_or(
+            console_platform_auth::current_sign_in_id(&state.pool, org_id, user_id)
+                .await
+                .map_err(|err| RestError::internal(err.to_string()))?
+                .unwrap_or(user.username),
+        );
+    let display_name = body
+        .display_name
+        .filter(|name| !name.trim().is_empty())
+        .unwrap_or(user.display_name);
+    let profile = crate::dto::token::PasskeyProfile::new(user_id, &username, &display_name);
     let ceremony = services
         .passkeys
         .start_registration(
@@ -79,16 +93,8 @@ pub(crate) async fn start_registration(
             org_id,
             PasskeyRegistrationStart {
                 user_id,
-                // The authenticator shows the sign-in ID (decisions #33), never
-                // the phone number the legacy label used.
-                username: match body.username {
-                    Some(username) => username,
-                    None => console_platform_auth::current_sign_in_id(&state.pool, org_id, user_id)
-                        .await
-                        .map_err(|err| RestError::internal(err.to_string()))?
-                        .unwrap_or(user.username),
-                },
-                display_name: body.display_name.unwrap_or(user.display_name),
+                username: profile.name,
+                display_name: profile.display_name,
             },
         )
         .await

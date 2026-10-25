@@ -180,6 +180,9 @@ properties:
     description: EMPLOYMENT_TYPE_CHANGE only, the 고용형태 after.
   effective_date:
     type: string
+  comment_code:
+    type: [string, 'null']
+    description: System-authored comment catalog code; absent on legacy or user-written notes.
   comment:
     type: string
   signoffs:

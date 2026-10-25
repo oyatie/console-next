@@ -10,6 +10,7 @@ export const passkeysQuery = get("/api/v1/auth/passkeys");
 export const passkeyLabelPolicyQuery = get("/api/v1/auth/passkeys/policy");
 /** Tenant accounts only: a platform token is another world, where this read answers 404. */
 export const meQuery = get("/api/v1/users/me");
+export const operatorMeQuery = get("/api/platform/users/me");
 /** Only this user changes their own consent: no polling of the auth endpoint. */
 export const consentDocumentsQuery = read("/api/v1/onboarding/terms", consentDocuments);
 export const consentQuery = { ...read("/api/v1/auth/privacy-consent/status", consentStatus), refetchInterval: false } as const;
@@ -52,3 +53,12 @@ export const cancelTenantRecovery = async (orgId: string, id: string, reason: st
   params: { path: { rid: id }, header: { "Idempotency-Key": key } },
   body: { reason, step_up: await assertBoundPasskey("OPERATOR_RECOVERY", id, JSON.stringify([orgId, id, "cancel", "", "", "", "", reason])) },
 }));
+
+/** The same self-profile command in each realm; a lost response is checked by its authoritative read. */
+export function updateName(display_name: string) {
+  const platform = Boolean(claims()?.platform);
+  const body = { display_name };
+  return landed(() => unwrap(platform ? api.PATCH("/api/platform/users/me", { body }) : api.PATCH("/api/v1/users/me", { body })),
+    async () => ({ data: await (platform ? operatorMeQuery : meQuery).queryFn() }),
+    (profile) => profile.display_name === display_name);
+}

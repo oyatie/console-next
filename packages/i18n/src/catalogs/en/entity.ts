@@ -231,8 +231,6 @@ export const enEntity: Record<keyof typeof koEntity, string> = {
   "entity.history.field.vat_unit_mode_basis": "Why the filing unit is set",
   "entity.history.field.additional_representatives": "Other representatives",
   "entity.history.field.issue_reason_kind": "Issue reason",
-  "entity.history.unitMode.OWN": "This workplace alone",
-  "entity.history.unitMode.PART_OF": "Part of another workplace",
   "entity.name.unconfirmed": "No legal entity",
   "entity.name.legal_name_unconfirmed": "Certificate to confirm",
   "entity.name.legal_name_not_hangul": "Legal name has no Korean",

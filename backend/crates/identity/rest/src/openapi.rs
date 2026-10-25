@@ -312,6 +312,19 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/platform/users/me",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__platform__users__me.get.yaml"),
+            },
+            Operation {
+                method: "patch",
+                body: include_str!("../openapi/paths/api__platform__users__me.patch.yaml"),
+            },
+        ],
+    },
+    PathItem {
         path: "/api/v1/access/accounts/{accountId}/effective",
         operations: &[Operation {
             method: "get",

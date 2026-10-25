@@ -269,3 +269,6 @@ async fn the_runtime_role_prunes_rate_limit_windows_older_than_an_hour(owner: Pg
 
 #[path = "enrollment_session_scope/consent_snapshot.rs"]
 mod consent_snapshot;
+
+#[path = "enrollment_session_scope/unnamed_account.rs"]
+mod unnamed_account;

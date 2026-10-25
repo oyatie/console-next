@@ -32,6 +32,9 @@ properties:
     $ref: '#/components/schemas/Uuid'
   display_name:
     type: string
+  name_unset:
+    type: boolean
+    description: Present and true when the non-null display_name is empty.
   sign_in_id:
     type:
     - string

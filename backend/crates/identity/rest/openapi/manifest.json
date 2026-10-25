@@ -81,6 +81,10 @@
     "/api/platform/support-sessions/{id}/start": [
       "post"
     ],
+    "/api/platform/users/me": [
+      "get",
+      "patch"
+    ],
     "/api/v1/access/accounts/{accountId}/effective": [
       "get"
     ],

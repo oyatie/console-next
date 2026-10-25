@@ -43,3 +43,45 @@ pub(crate) struct PasskeyProfile {
     pub(crate) name: String,
     pub(crate) display_name: String,
 }
+
+impl PasskeyProfile {
+    /// WebAuthn names the account by its identifier, with a non-blank friendly label.
+    pub(crate) fn new(user_id: uuid::Uuid, username: &str, display_name: &str) -> Self {
+        let name = username.trim();
+        let name = if name.is_empty() {
+            user_id.to_string()
+        } else {
+            name.to_owned()
+        };
+        let display_name = display_name.trim();
+        Self {
+            user_id,
+            display_name: if display_name.is_empty() {
+                name.clone()
+            } else {
+                display_name.to_owned()
+            },
+            name,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PasskeyProfile;
+
+    #[test]
+    fn authenticator_names_use_the_identifier_and_first_nonblank_friendly_name() {
+        let user = uuid::Uuid::new_v4();
+        let named = PasskeyProfile::new(user, " operator@platform ", " 박관리자 ");
+        assert_eq!(named.name, "operator@platform");
+        assert_eq!(named.display_name, "박관리자");
+        for blank in ["", "   "] {
+            let unnamed = PasskeyProfile::new(user, "operator@platform", blank);
+            assert_eq!(unnamed.display_name, unnamed.name);
+            let missing_identifier = PasskeyProfile::new(user, blank, blank);
+            assert_eq!(missing_identifier.name, user.to_string());
+            assert_eq!(missing_identifier.display_name, missing_identifier.name);
+        }
+    }
+}

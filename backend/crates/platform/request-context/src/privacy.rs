@@ -25,6 +25,10 @@ pub struct Document {
     pub version: String,
     pub sha256: String,
     pub body: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub published_on: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -64,12 +68,18 @@ pub async fn documents_in_tx(
         tx: &mut Transaction<'_, Postgres>,
         kind: &str,
     ) -> Result<(Document, Option<String>, bool), sqlx::Error> {
-        let (version, sha256, body, url, review): (String, String, String, Option<String>, bool) = sqlx::query_as(
-            "SELECT version, sha256, body, policy_url, review_pending FROM terms_documents \
+        let (version, sha256, body, url, review, published_on): (String, String, String, Option<String>, bool, String) = sqlx::query_as(
+            "SELECT version, sha256, body, policy_url, review_pending, (published_at AT TIME ZONE 'UTC')::date::text FROM terms_documents \
              WHERE kind=$1 AND published_at <= now() ORDER BY published_at DESC, version DESC LIMIT 1")
             .bind(kind).fetch_one(tx.as_mut()).await?;
         Ok((
             Document {
+                title: body
+                    .lines()
+                    .map(str::trim)
+                    .find(|line| !line.is_empty())
+                    .map(|line| line.strip_prefix("# ").unwrap_or(line).to_owned()),
+                published_on: Some(published_on),
                 version,
                 sha256,
                 body,

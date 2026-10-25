@@ -759,11 +759,6 @@
    "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "PATCH /api/v1/users/me": {
-   "lane": "K3",
-   "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "POST /api/platform/groups": {
    "lane": "T1",
    "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",

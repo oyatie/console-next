@@ -26,6 +26,9 @@ async function workplaceTab(page: Page) {
 test("a 사업장 records 휴업 with its expected end, then 재개, and moves on a date", { tag: ["@org", "@regression"] }, async ({ browser }) => {
   const a = await openTenant(browser, "uxr1-ops", "새온그룹");
   const panel = await workplaceTab(a);
+  const history = panel.getByRole("region", { name: "이력" });
+  await expect(history).toContainText("건설 사업장 여부: — → 아님");
+  await expect(history).not.toContainText(/\b[a-z]+_[a-z_]+\b|\b(true|false)\b/);
 
   // 휴업: start, reason, an optional expected end; an end before the start is held with its reason.
   await panel.getByRole("button", { name: "상태 수정" }).click();

@@ -1,3 +1,4 @@
+import { supportReferenceFromError } from "../../../lib/support-reference";
 import type { ComponentProps, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { isMessageId, t } from "@console/i18n";
@@ -157,7 +158,7 @@ function Refusal({ error, employeeId }: { error: unknown; employeeId: string }) 
   // CRUD: the report's own refusals (an exit date before the hire date, an open case) in words; the exit-reason refusals from the exit catalog first.
   if (!p || p.code !== "lifecycle_schedule_conflict") return <CommandError error={error} own={own} />;
   return (
-    <BlockedPanel
+    <BlockedPanel domain="hr" supportRef={supportReferenceFromError(error)}
       kind="generic"
       title={t("exit.blocker.schedule.title")}
       code={p.code}

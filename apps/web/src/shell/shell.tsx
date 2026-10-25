@@ -1,3 +1,4 @@
+import { personName } from "../reference/person/present";
 import { activeSupportQuery } from "../reference/support-access/api";
 import { ActiveSupportBanner } from "../features/support-access/ui/support-access";
 import { DomainNotice } from "../auth/domain-notice";
@@ -103,7 +104,7 @@ export function Shell() {
           {theme === "dark" ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden />}
         </button>
         <Link to="/account" className="btn btn--ghost top__name">
-          <UserRound size={16} aria-hidden /> <span>{session.claims?.name ?? t("shell.account")}</span>
+          <UserRound size={16} aria-hidden /> <span>{personName(session.claims?.name, t(session.claims?.platform ? "account.name.unset.operator" : "account.name.unset"))}</span>
         </Link>
         <button className="btn btn--ghost" onClick={async () => (await logout(), nav({ to: "/login" }))}>
           <LogOut size={16} aria-hidden /> {t("shell.logout")}

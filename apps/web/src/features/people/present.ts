@@ -49,7 +49,7 @@ export function describeEvent(x: LifecycleEvent, name: string, byId: (id: string
     fromCompany: x.from_company ?? "—",
     toCompany: x.to_company ?? "—",
   };
-  const comment = coded(x, commentText(x.comment));
+  const comment = coded(x, commentText(x.comment, x.comment_code));
   const date = fmtDate(x.event_type === "TERMINATE" || x.event_type === "OFFBOARD" ? retirementDate(x.effective_date) : x.effective_date);
   if (x.event_type === "RESCIND") {
     const voided = x.voids_event_id ? byId(x.voids_event_id) : undefined;
@@ -105,8 +105,12 @@ export const hrConfirmedTitle = (state: Case["exit_event_state"]) =>
   : state === "SCHEDULED" || state === "CANCELLED" ? "exit.event.hrConfirmed.scheduled"
   : "exit.event.hrConfirmed";
 
-/** The registration's system comment (written by the server in English) reads as the act; any other comment as written. */
-const commentText = (c: string) => (c === "Created through People & Workforce" ? t("person.event.systemComment.created") : c);
+/** Shrink-only compatibility for the one legacy system sentence; new writers use codes. */
+export const LEGACY_SYSTEM_COMMENTS = { "Created through People & Workforce": "created_by_registration" } as const;
+export function commentText(comment: string | null | undefined, code?: string | null) {
+  const system = code ?? (comment && Object.hasOwn(LEGACY_SYSTEM_COMMENTS, comment) ? LEGACY_SYSTEM_COMMENTS[comment as keyof typeof LEGACY_SYSTEM_COMMENTS] : undefined);
+  return system === "created_by_registration" ? t("person.event.systemComment.created") : comment ?? "";
+}
 
 /** A business date in sentences and the next box, with its weekday. */
 export const fmtDay = (d: string) => fmtDate(d, { weekday: "short" });

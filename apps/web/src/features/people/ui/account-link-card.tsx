@@ -1,3 +1,4 @@
+import { personName } from "../../../reference/person/present";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -43,11 +44,11 @@ export function AccountLinkCard({ employee, manage }: { employee: Employee; mana
     run: ({ id, requestId }: { id: string | null; requestId?: string }) => linkAccount(id ?? linked!.id, id ? employee.id : null, requestId),
     invalidates: ["/api/v1/directory", "/api/v1/employees"],
     onSuccess: (result) => { if (!("account_link" in result)) setAccount(null); },
-    announce: (result, { id }) => ("account_link" in result ? t("people.account.waiting") : id ? t("people.account.linked", { name: candidates.find((p) => p.id === id)?.display_name ?? "" }) : t("people.account.unlinked")),
+    announce: (result, { id }) => ("account_link" in result ? t("people.account.waiting") : id ? t("people.account.linked", { name: personName(candidates.find((p) => p.id === id)?.display_name) }) : t("people.account.unlinked")),
   });
   const pending = link.data && "account_link" in link.data && link.data.account_link?.status === "PENDING" ? link.data.account_link : undefined;
   const canChange = manage && linked?.id !== mySub();
-  const shown = linked && t("person.account.linked", { name: linked.display_name, roles: linked.roles.map((r) => label(ROLE, r)).join(", ") });
+  const shown = linked && t("person.account.linked", { name: personName(linked.display_name), roles: linked.roles.map((r) => label(ROLE, r)).join(", ") });
   return (
     <Card titleId="account" title={t("people.account.title")}>
       {/* Until the account lookup succeeds, nothing is said about a link (a failed read is not "unlinked"). */}
@@ -70,7 +71,7 @@ export function AccountLinkCard({ employee, manage }: { employee: Employee; mana
             group={t("person.account.group")}
             query={query}
             onQueryChange={setQuery}
-            options={candidates.map((p) => ({ id: p.id, name: p.display_name, status: p.roles.map((r) => label(ROLE, r)).join(", ") }))}
+            options={candidates.map((p) => ({ id: p.id, name: personName(p.display_name), status: p.roles.map((r) => label(ROLE, r)).join(", ") }))}
             value={account}
             onChange={setAccount}
             loading={found.isFetching}
@@ -86,7 +87,7 @@ export function AccountLinkCard({ employee, manage }: { employee: Employee; mana
       )}
       {pending && <Banner tone="info" live="polite"
         title={t("people.account.pending", {
-          account: link.data?.display_name ?? "",
+          account: personName(link.data?.display_name),
           employee: pending.employee_id ? employee.name : t("accounts.unlinked"), requester: pending.requester_name,
         })}
         actions={pending.requested_by !== mySub() && <Button variant="primary" disabled={link.isPending}

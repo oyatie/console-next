@@ -886,6 +886,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform/users/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the authenticated operator's own profile */
+        get: operations["getCurrentPlatformUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update the authenticated operator's own display name and phone */
+        patch: operations["updateCurrentPlatformUser"];
+        trace?: never;
+    };
     "/api/target-change-requests/{requestId}/review": {
         parameters: {
             query?: never;
@@ -19731,6 +19749,8 @@ export interface components {
             /** @description EMPLOYMENT_TYPE_CHANGE only, the 고용형태 after. */
             to_employment_type?: components["schemas"]["EmploymentType"];
             effective_date: string;
+            /** @description System-authored comment catalog code; absent on legacy or user-written notes. */
+            comment_code?: string | null;
             comment: string;
             signoffs: components["schemas"]["EmployeeLifecycleSignoffs"];
             created_by: components["schemas"]["Uuid"];
@@ -28193,11 +28213,25 @@ export interface components {
             sha256: string;
             /** @description Exact published UTF-8 text whose SHA-256 is returned. */
             body: string;
+            /** @description Title from the stored document heading. */
+            title?: string | null;
+            /**
+             * Format: date
+             * @description Edition date from the stored publication instant (UTC).
+             */
+            published_on?: string | null;
             /** @description Required privacy notice from the same immutable store, including its legal review state. */
             privacy: {
                 version: string;
                 sha256: string;
                 body: string;
+                /** @description Title from the stored document heading. */
+                title?: string | null;
+                /**
+                 * Format: date
+                 * @description Edition date from the stored publication instant (UTC).
+                 */
+                published_on?: string | null;
                 policy_url: string;
                 review_pending: boolean;
             };
@@ -28677,6 +28711,8 @@ export interface components {
             person_id?: string | null;
             id: components["schemas"]["Uuid"];
             display_name: string;
+            /** @description Present and true when the non-null display_name is empty. */
+            name_unset?: boolean;
             /** @description The current sign-in ID `<아이디>@<회사 도메인>` (decisions #33). A label: the account is keyed by `id` only. */
             sign_in_id?: string | null;
             /** Format: uuid */
@@ -31776,6 +31812,72 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["SupportRefusal"];
+                };
+            };
+        };
+    };
+    getCurrentPlatformUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The authenticated user's profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    updateCurrentPlatformUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSelfProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
+            /** @description JWT verification is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
         };

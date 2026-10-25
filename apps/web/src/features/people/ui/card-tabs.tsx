@@ -9,7 +9,7 @@ import { Table } from "../../../ui/table";
 import { Card as Surface } from "../../../ui/card/card";
 import type { LifecycleEvent } from "../api";
 import type { VerbState } from "../domain/lifecycle";
-import { describeEvent, eventField, eventWhat } from "../present";
+import { commentText, describeEvent, eventField, eventWhat } from "../present";
 import { AccountLinkCard } from "./account-link-card";
 import { PersonHistory } from "./person-history";
 import type { Done } from "./person-act";
@@ -54,7 +54,7 @@ function Ledger({ c, onAct }: { c: Card; onAct: (act: string) => void }) {
       // A field and its before → after where the act names one (duty title · lead → foreman), else the act's sentence.
       const field = eventField(x);
       const what = eventWhat(x, c.title) || (x.event_type === "RETURN_FROM_LEAVE" ? t("empCard.ledger.returned") : "");
-      return { id: x.id, at: x.created_at, from: x.effective_date, kind, what: field ?? title, change: field && what ? what : detail, how: t(x.batch_id ? "empCard.ledger.batch" : "empCard.ledger.sheet"), who: actor(x.created_by_name), why: x.comment, event: x };
+      return { id: x.id, at: x.created_at, from: x.effective_date, kind, what: field ?? title, change: field && what ? what : detail, how: t(x.batch_id ? "empCard.ledger.batch" : "empCard.ledger.sheet"), who: actor(x.created_by_name), why: commentText(x.comment, x.comment_code), event: x };
     }),
     ...(c.records.data?.items ?? []).map((x): Row => ({ id: x.id, at: x.created_at, kind: "first", what: tx(`empRec.${x.section.toLowerCase()}`), change: t(x.voided ? "empCard.ledger.voided" : "empCard.ledger.added"), how: t(x.source === "IMPORT" ? "empCard.ledger.import" : "empCard.ledger.card"), who: "—", why: "" })),
   ].sort((a, b) => b.at.localeCompare(a.at));

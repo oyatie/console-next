@@ -17,14 +17,14 @@ async fn ops_recovery_events_and_actor_names_follow_each_committed_step(pool: Pg
         h.p.read_ops_recovery(&h.runtime, h.org, false, OffsetDateTime::now_utc())
             .await
             .unwrap();
-    let name: String = sqlx::query_scalar("SELECT display_name FROM users WHERE id=$1")
+    let name: Option<String> = sqlx::query_scalar("SELECT display_name FROM users WHERE id=$1")
         .bind(h.a.as_uuid())
         .fetch_one(&h.owner)
         .await
         .unwrap();
     assert_eq!(
         read.request.unwrap().requested_by_name.as_deref(),
-        Some(name.as_str())
+        name.as_deref()
     );
     h.command(
         h.ops,

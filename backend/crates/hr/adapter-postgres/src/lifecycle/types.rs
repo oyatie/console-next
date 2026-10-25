@@ -91,6 +91,9 @@ pub struct EmployeeLifecycleEventResponse {
     pub classification: ClassificationColumns,
     pub effective_date: String,
     pub comment: String,
+    /// Catalog code for a system-authored line; absent on legacy and user-written notes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment_code: Option<String>,
     pub signoffs: EmployeeLifecycleSignoffs,
     pub created_by: Uuid,
     /// The recorder's display name within the tenant; null when unknown.

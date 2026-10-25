@@ -57,6 +57,12 @@ async fn tenant_approved_read_is_masked_logged_and_immediately_revocable(owner: 
     assert_eq!(audit.0, h.org);
     assert!(!audit.1.contains(&h.a.id.to_string()));
     assert!(audit.1.contains(" · "));
+    let name: String = sqlx::query_scalar("SELECT display_name FROM users WHERE id=$1")
+        .bind(h.a.id.as_uuid())
+        .fetch_one(&h.owner)
+        .await
+        .unwrap();
+    assert!(audit.1.starts_with(&name));
     assert_eq!(audit.2, "공급사");
     ok(
         h.send("POST", &format!("{TENANT}/{id}/end"), json!({}), &h.tenant)

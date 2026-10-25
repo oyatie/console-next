@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, expect, test } from "vitest";
 import { loadCatalog } from "@console/i18n";
-import { LEAVE_TYPE, label, labeled } from "./labels";
+import { LEAVE_TYPE, actor, label, labeled } from "./labels";
 
 beforeAll(() => loadCatalog("ko"));
+
+test("unnamed actors retain a visible person label", () => {
+  for (const name of ["", "   "]) expect(actor(name)).toBe("이름 미등록");
+  expect(actor(" 박관리자 ")).toBe("박관리자");
+  expect(actor(null)).toBe("—");
+});
 
 test("unknown leave types have a neutral label and a separate diagnostic code", () => {
   expect(label(LEAVE_TYPE, "FUTURE_LEAVE")).toBe("확인되지 않은 항목");

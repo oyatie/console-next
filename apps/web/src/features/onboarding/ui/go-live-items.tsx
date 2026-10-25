@@ -82,7 +82,7 @@ export function Blockers({ items, changed = [] }: { items: GoLiveItem[]; changed
         <div key={x.code} ref={box(x.code)} data-changed={changed.includes(x.code) || undefined}>
           {changed.includes(x.code) && <Chip tone="warn">{t("setup.golive.changed")}</Chip>}
           {open.has(x.code) ? (
-            <BlockedPanel title={itemText(items.find((y) => y.code === x.code)!)} code={x.code} unblockers={[you]} actions={<Fixes x={items.find((y) => y.code === x.code)!} />} />
+            <BlockedPanel domain="onboarding" title={itemText(items.find((y) => y.code === x.code)!)} code={x.code} unblockers={[you]} actions={<Fixes x={items.find((y) => y.code === x.code)!} />} />
           ) : (
             <div className={`${s.resolved} row`}>
               <strong>{itemText(x)}</strong>

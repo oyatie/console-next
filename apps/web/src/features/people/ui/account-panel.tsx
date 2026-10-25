@@ -25,7 +25,7 @@ import { useCan } from "../../../reference/authz/ui/use-can";
 import { Sheet } from "../../../ui/sheet/sheet";
 import { BindingEvidence, BindingReviewChip } from "./binding-evidence";
 import { SignInId } from "./account-sign-in-id";
-import { personLabel } from "../../../reference/person/present";
+import { personLabel, personName } from "../../../reference/person/present";
 import { personOption } from "../../../reference/person/ui/person-option";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { Muted } from "../../../ui/muted/muted";
@@ -64,7 +64,7 @@ export function AccountPanel({ id, row, admin, receipt, onClose, onIssued, onRec
   return (
     <aside className="card panel" aria-labelledby="acct-title">
       <div className="panel__head">
-        <h2 id="acct-title" className="panel__title" tabIndex={-1}>{u?.display_name ?? t("accounts.title")}</h2>
+        <h2 id="acct-title" className="panel__title" tabIndex={-1}>{u ? personName(u.display_name) : t("accounts.title")}</h2>
         {can("employee_directory_manage", "branch") && <BindingReviewChip subjectId={id} onOpen={() => setReviewOpen(true)} />}
         <Button variant="ghost" onClick={onClose} aria-label={t("common.closePanel")}><X size={16} aria-hidden /></Button>
       </div>
@@ -108,7 +108,7 @@ function Sections({ u, admin, onIssued, onRecorded }: { u: User; admin: boolean;
           <>
             <Muted>{t("accounts.signIn.none")}</Muted>
             <div className="row">
-              <Button disabled={issue.isPending} onClick={() => issue.mutate({ id: u.id, name: u.display_name, branch: u.branch_ids[0], signInId: u.sign_in_id })}>
+              <Button disabled={issue.isPending} onClick={() => issue.mutate({ id: u.id, name: personName(u.display_name), branch: u.branch_ids[0], signInId: u.sign_in_id })}>
                 <KeyRound size={16} aria-hidden /> {t("accounts.issueCode")}
               </Button>
             </div>
@@ -139,7 +139,7 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
     run: ({ employeeId, requestId }: { employeeId: string | null; requestId?: string }) => checkedOnAccount(u.id, () => linkAccount(u.id, employeeId, requestId), holdsLink(employeeId)),
     invalidates: [...INVALIDATES, "/api/v1/employees", "/api/v1/person-binding-reviews"],
     onSuccess: (r) =>
-      onRecorded("account_link" in r ? t("people.account.waiting") : r.employee_name ? t("accounts.employee.linked", { name: u.display_name, employee: r.employee_name }) : t("accounts.employee.unlinked", { name: u.display_name })),
+      onRecorded("account_link" in r ? t("people.account.waiting") : r.employee_name ? t("accounts.employee.linked", { name: personName(u.display_name), employee: r.employee_name }) : t("accounts.employee.unlinked", { name: personName(u.display_name) })),
   });
   const pending = link.data && "account_link" in link.data ? link.data.account_link : undefined;
   const canChange = admin && u.id !== mySub();
@@ -193,22 +193,22 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
 function Danger({ u, onIssued, onRecorded }: { u: User; onIssued: (r: Issued) => void; onRecorded: (m: string) => void }) {
   const [open, setOpen] = useState<"reset" | "deactivate" | null>(null);
   const reset = useCommand({
-    run: async (): Promise<Issued> => ({ name: u.display_name, userId: u.id, reset: true, signInId: u.sign_in_id, ...(await resetPasskeys(u.id)) }),
+    run: async (): Promise<Issued> => ({ name: personName(u.display_name), userId: u.id, reset: true, signInId: u.sign_in_id, ...(await resetPasskeys(u.id)) }),
     invalidates: INVALIDATES,
-    onSuccess: (r) => (setOpen(null), onIssued(r), onRecorded(t("accounts.reset.done", { name: u.display_name }))),
-    announce: () => t("accounts.reset.done", { name: u.display_name }),
+    onSuccess: (r) => (setOpen(null), onIssued(r), onRecorded(t("accounts.reset.done", { name: personName(u.display_name) }))),
+    announce: () => t("accounts.reset.done", { name: personName(u.display_name) }),
     forget: true,
   });
   const toggle = useCommand({
     run: () => checkedOnAccount(u.id, () => setAccountActive(u.id, !u.is_active), holdsActive(!u.is_active)),
     invalidates: INVALIDATES,
-    onSuccess: () => (setOpen(null), onRecorded(t(u.is_active ? "accounts.deactivated" : "accounts.activated", { name: u.display_name }))),
-    announce: () => t(u.is_active ? "accounts.deactivated" : "accounts.activated", { name: u.display_name }),
+    onSuccess: () => (setOpen(null), onRecorded(t(u.is_active ? "accounts.deactivated" : "accounts.activated", { name: personName(u.display_name) }))),
+    announce: () => t(u.is_active ? "accounts.deactivated" : "accounts.activated", { name: personName(u.display_name) }),
   });
   const close = () => (setOpen(null), reset.reset(), toggle.reset());
   const confirm = open === "reset"
-    ? { title: t("accounts.reset"), text: t("accounts.reset.consequence", { name: u.display_name }), commit: t("accounts.reset.commit"), cmd: reset }
-    : { title: t("accounts.deactivate"), text: t("accounts.deactivate.consequence", { name: u.display_name }), commit: t("accounts.deactivate.commit"), cmd: toggle };
+    ? { title: t("accounts.reset"), text: t("accounts.reset.consequence", { name: personName(u.display_name) }), commit: t("accounts.reset.commit"), cmd: reset }
+    : { title: t("accounts.deactivate"), text: t("accounts.deactivate.consequence", { name: personName(u.display_name) }), commit: t("accounts.deactivate.commit"), cmd: toggle };
   // governance-22: the ops account and one's own account are never deactivated; the reason replaces the action.
   const keep = u.is_tenant_ops ? "accounts.deactivate.ops" : u.id === mySub() ? "accounts.deactivate.own" : null;
   return (

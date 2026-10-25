@@ -1,3 +1,4 @@
+import { personName } from "../../../reference/person/present";
 import type { components } from "@console/api/schema";
 import { KeyRound } from "lucide-react";
 import { t } from "@console/i18n";
@@ -25,9 +26,9 @@ export function DissolveGrants({ grants, choices, onChoose, toName, unreadable }
     <ul className={css.list}>
       {grants.map((g) => (
         <li key={g.id} className={css.stack}>
-          <span className="row"><KeyRound size={14} aria-hidden /><b>{g.account_display_name ?? t("orgUnit.dissolve.grantAccount")}</b><Muted>{g.role_name_ko}</Muted></span>
+          <span className="row"><KeyRound size={14} aria-hidden /><b>{personName(g.account_display_name, t("orgUnit.dissolve.grantAccount"))}</b><Muted>{g.role_name_ko}</Muted></span>
           <ChoiceField
-            label={t("orgUnit.dissolve.grantChoice", { name: g.account_display_name ?? "", role: g.role_name_ko })}
+            label={t("orgUnit.dissolve.grantChoice", { name: personName(g.account_display_name), role: g.role_name_ko })}
             required
             columns={2}
             options={[

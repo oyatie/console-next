@@ -14,6 +14,8 @@ pub struct UserSummary {
     #[serde(default)]
     pub principal_kind: String,
     pub display_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name_unset: Option<bool>,
     /// The current sign-in ID `<아이디>@<회사 도메인>` (decisions #33). A label:
     /// the account is keyed by `id` only.
     pub sign_in_id: Option<String>,
@@ -86,6 +88,7 @@ impl From<UserSummary> for DirectoryPerson {
             person_id,
             principal_kind,
             display_name,
+            name_unset: _,
             sign_in_id,
             employee_id,
             employee_name,

@@ -164,6 +164,8 @@ async fn identifier_first_names_the_accounts_keys_and_a_non_resident_key_signs_i
     let (status, tokens) = finish(&app, &started, credential).await;
     assert_eq!(status, StatusCode::OK, "{tokens}");
     assert!(tokens["access_token"].is_string());
+    assert_eq!(tokens["passkey_profile"]["name"], sign_in_id);
+    assert_eq!(tokens["passkey_profile"]["display_name"], "홍길동");
 
     // The ceremony was bound to the account.
     let bound: Option<Uuid> =

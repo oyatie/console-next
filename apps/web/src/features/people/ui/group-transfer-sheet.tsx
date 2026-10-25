@@ -1,3 +1,4 @@
+import { supportReferenceFromError } from "../../../lib/support-reference";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -115,7 +116,7 @@ export function GroupTransferSheet({ d, events, head, units, act, offer, seed, c
   const code = run.isError && !checking ? refusalOf(run.error)?.code : undefined;
   const refusal = run.isError && !checking && (
     groupCode(code) ? (
-      <BlockedPanel
+      <BlockedPanel domain="hr" supportRef={supportReferenceFromError(run.error)}
         kind="route"
         title={t(`groupTransfer.refused.${code}`)}
         code={code}

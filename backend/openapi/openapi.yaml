@@ -2368,6 +2368,63 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SupportOperatorDecision'
+  /api/platform/users/me:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - users
+      operationId: getCurrentPlatformUser
+      summary: Get the authenticated operator's own profile
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: The authenticated user's profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: JWT verification is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+    patch:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - users
+      operationId: updateCurrentPlatformUser
+      summary: Update the authenticated operator's own display name and phone
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSelfProfileRequest'
+      responses:
+        '200':
+          description: Updated profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          description: JWT verification is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/target-change-requests/{requestId}/review:
     post:
       tags:
@@ -41936,6 +41993,9 @@ components:
           description: EMPLOYMENT_TYPE_CHANGE only, the 고용형태 after.
         effective_date:
           type: string
+        comment_code:
+          type: [string, 'null']
+          description: System-authored comment catalog code; absent on legacy or user-written notes.
         comment:
           type: string
         signoffs:
@@ -59740,6 +59800,13 @@ components:
         body:
           type: string
           description: Exact published UTF-8 text whose SHA-256 is returned.
+        title:
+          type: [string, 'null']
+          description: Title from the stored document heading.
+        published_on:
+          type: [string, 'null']
+          format: date
+          description: Edition date from the stored publication instant (UTC).
         privacy:
           type: object
           description: Required privacy notice from the same immutable store, including its legal review state.
@@ -59752,6 +59819,13 @@ components:
               pattern: ^[a-f0-9]{64}$
             body:
               type: string
+            title:
+              type: [string, 'null']
+              description: Title from the stored document heading.
+            published_on:
+              type: [string, 'null']
+              format: date
+              description: Edition date from the stored publication instant (UTC).
             policy_url:
               type: string
             review_pending:
@@ -60759,6 +60833,9 @@ components:
           $ref: '#/components/schemas/Uuid'
         display_name:
           type: string
+        name_unset:
+          type: boolean
+          description: Present and true when the non-null display_name is empty.
         sign_in_id:
           type:
           - string

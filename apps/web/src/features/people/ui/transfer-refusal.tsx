@@ -13,11 +13,11 @@ export type CrossEntity = { field?: string; value?: string; to_legal_entity_id?:
  * A transfer into another legal entity, refused by the server (TR-33, decisions #30: that move is a group transfer). Says so in its own
  * sentence, names the unit and its legal entity, and offers either another unit of this legal entity or the group transfer sheet.
  */
-export function TransferCrossEntity({ target, onFocusTarget, onGroupTransfer }: { target?: CrossEntity; onFocusTarget: () => void; onGroupTransfer?: () => void }) {
+export function TransferCrossEntity({ target, onFocusTarget, onGroupTransfer, supportRef }: { target?: CrossEntity; supportRef?: string; onFocusTarget: () => void; onGroupTransfer?: () => void }) {
   const unit = useQuery(unitsQuery).data?.items.find((u) => u.id === target?.value)?.name;
   const entity = entityName(useQuery(entitiesRef).data?.items.find((e) => e.id === target?.to_legal_entity_id));
   return (
-    <BlockedPanel
+    <BlockedPanel domain="hr" supportRef={supportRef}
       kind="route"
       title={t("lifecycle.blocker.transfer_cross_entity")}
       code="transfer_cross_entity"

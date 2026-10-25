@@ -168,17 +168,19 @@ pub(crate) async fn finish_login(
         }),
     )?;
     insert_audit_event(&mut tx, &login_audit).await?;
-    let (name, display_name): (String, String) = sqlx::query_as(
-        "SELECT s.login || '@' || o.slug, u.display_name || ' · ' || o.name || ' — ' || s.login || '@' || o.slug \
-         FROM user_sign_in_ids s JOIN organizations o ON o.id=s.org_id \
-         JOIN person_accounts_current u ON u.id=s.user_id AND u.org_id=s.org_id \
-         WHERE s.user_id=$1 AND s.retired_at IS NULL",
-    ).bind(outcome.user_id).fetch_one(tx.as_mut()).await.map_err(DbError::Sqlx)?;
-    let profile = crate::dto::token::PasskeyProfile {
-        user_id: outcome.user_id,
-        name,
-        display_name,
-    };
+    let username: Option<String> = sqlx::query_scalar(
+        "SELECT s.login || '@' || o.slug FROM user_sign_in_ids s \
+         JOIN organizations o ON o.id=s.org_id \
+         WHERE s.org_id=$1 AND s.user_id=$2 AND s.retired_at IS NULL",
+    )
+    .bind(outcome.org_id.as_uuid())
+    .bind(outcome.user_id)
+    .fetch_optional(tx.as_mut())
+    .await
+    .map_err(DbError::Sqlx)?;
+    let username = username.unwrap_or(user.username);
+    let profile =
+        crate::dto::token::PasskeyProfile::new(outcome.user_id, &username, &user.display_name);
     tx.commit().await.map_err(DbError::Sqlx)?;
     Ok(crate::cookies::token_pair_response_with_profile(
         tokens,
