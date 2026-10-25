@@ -4,4 +4,5 @@ required:
 properties:
   otp:
     type: string
-    description: The one-time sign-in code (8 characters for admin-issued codes).
+    pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{5}-[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{5}$
+    description: Canonical newly issued code (case insensitive). Legacy codes are also accepted by exact stored hash until expiry.

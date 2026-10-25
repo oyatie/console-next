@@ -139,6 +139,7 @@ test("a refused sign-in right after enrollment lands on the login screen, and th
     return route.fulfill({ status: 429, contentType: "application/json", body: JSON.stringify({ error: { code: "rate_limited", message: "too many sign-ins" } }) });
   });
   await page.goto("/login");
+  await page.locator("summary").filter({ hasText: "처음이면 일회용 코드" }).click();
   await page.getByLabel("일회용 코드").fill(code);
   await page.getByRole("button", { name: "코드로 로그인" }).click();
   await acceptConsent(page);

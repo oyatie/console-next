@@ -1,5 +1,5 @@
 import { expectAccessible } from "./a11y";
-import { vendorPage, unique, tenantSlugField } from "./flows";
+import { tenantOnboardSubmit, vendorPage, unique, tenantSlugField } from "./flows";
 import { expect, test, type Page } from "@playwright/test";
 
 // B-01: a white screen, from any cause, reaches our own origin as a beacon (POST /api/v1/client-errors) instead of
@@ -88,7 +88,7 @@ test("a mutation 500 displays the same server reference that ops resolves to the
       envelope = (await response.json()).error;
       return route.fulfill({ response });
     });
-    await page.getByRole("button", { name: "개설하고 코드 발급" }).click();
+    await tenantOnboardSubmit(page).click();
     const panel = page.getByRole("dialog").getByRole("status").filter({ has: page.locator("[data-support-reference]") });
     await expect(panel).toContainText("지원 참조 번호");
     expect(envelope?.support_ref).toMatch(/^[0-9a-f]{32}$/);

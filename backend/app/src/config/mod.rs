@@ -84,9 +84,9 @@ pub struct AppConfig {
     /// deployment.
     pub ontology_command_database_url: Option<String>,
     /// Dedicated least-privilege connection for destructive platform tenant
-    /// removal (`PLATFORM_FORCE_COMMAND_DATABASE_URL`). This API-only pool is
-    /// required whenever the runtime database is configured; it never falls
-    /// back to `console_rt`.
+    /// removal (`PLATFORM_FORCE_COMMAND_DATABASE_URL`). API and worker roles
+    /// require it whenever `DATABASE_URL` is configured; workers use it to run
+    /// approved erasures. It never falls back to `console_rt`.
     pub platform_force_command_database_url: Option<String>,
     pub otlp_endpoint: Option<String>,
     /// Server-only VictoriaLogs /select/logsql/query URL for Cedar-gated diagnostics.

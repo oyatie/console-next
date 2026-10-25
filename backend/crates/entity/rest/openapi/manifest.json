@@ -351,8 +351,12 @@
     "FieldError",
     "GroupTransferFacts",
     "KrAddress",
+    "MobilePasskeyStepUpBinding",
     "MobilePasskeyStepUpEnvelope",
+    "MobileStepUpActionKind",
+    "OrgUnitMember",
     "OrgUnitMembers",
+    "PasskeyStepUpAssertion",
     "Uuid"
   ]
 }

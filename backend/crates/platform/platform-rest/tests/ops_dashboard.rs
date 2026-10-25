@@ -279,3 +279,53 @@ async fn platform_token_aggregates_tenant_health_and_audits_the_read(pool: PgPoo
         "the cross-tenant read must be audited exactly once"
     );
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn tenant_list_reports_credential_facts_instead_of_active_flags(pool: PgPool) {
+    let h = Harness::new(pool.clone());
+    let actor = seed_platform_admin(&pool).await;
+    let token = h.token(actor, OrgId::platform(), true).await;
+    let tenant = PlatformProvisioner::new(Duration::hours(1))
+        .onboard_tenant(
+            &pool,
+            Some(actor),
+            "facts-tenant",
+            "Facts tenant",
+            OffsetDateTime::now_utc(),
+        )
+        .await
+        .unwrap();
+    assert!(
+        tenant
+            .admin_sign_in_id
+            .as_ref()
+            .unwrap()
+            .ends_with("@facts-tenant")
+    );
+    let (status, body) = get(&h.service(), "/api/platform/orgs", &token).await;
+    assert_eq!(status, StatusCode::OK);
+    let row = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["id"] == tenant.organization.id.to_string())
+        .unwrap();
+    assert_eq!(row["lifecycle"], "CODE_ISSUED");
+    assert_eq!(row["code_issued_count"], 1);
+    assert_eq!(row["passkey_registered_count"], 0);
+    assert_eq!(row["removable"], true);
+    sqlx::query("INSERT INTO legal_entities(org_id,needs_confirmation,created_change_mode) VALUES($1,true,'MIGRATION')")
+        .bind(tenant.organization.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let (_, body) = get(&h.service(), "/api/platform/orgs", &token).await;
+    let row = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["id"] == tenant.organization.id.to_string())
+        .unwrap();
+    assert_eq!(row["removable"], false);
+    assert_eq!(row["removal_refusal"], "tenant_has_data");
+}

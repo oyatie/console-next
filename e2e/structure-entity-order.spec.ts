@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
-import { tenantSlugField, firstSignIn, go, newContext, passkeyLogin, takeCode, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, newContext, passkeyLogin, takeCode, unique, vendorPage } from "./flows";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { firstWorkplace } from "./helpers/entity";
 import { quickWorkplace } from "./helpers/structure";
@@ -54,7 +54,7 @@ async function orderWorld(browser: Browser, prefix: string) {
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
   await v.getByLabel("고객 이름").fill("가나그룹");
   await tenantSlugField(v).fill(unique(prefix));
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));
   await setupRail(admin).getByRole("link", { name: "법인 등록" }).first().click();
   await registerEntity(admin, "가나홀딩스");

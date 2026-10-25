@@ -40,6 +40,17 @@ impl PlatformError {
 
     pub(crate) fn from_provisioning(err: ProvisioningError) -> Self {
         match err {
+            ProvisioningError::TenantErase(code) => Self::new(
+                if code == "erase_same_operator" {
+                    StatusCode::FORBIDDEN
+                } else if code == "unauthorized" {
+                    StatusCode::UNAUTHORIZED
+                } else {
+                    StatusCode::CONFLICT
+                },
+                code,
+                code,
+            ),
             ProvisioningError::OpsRecoveryHoldActive(until) => {
                 let mut error = Self::new(
                     StatusCode::CONFLICT,

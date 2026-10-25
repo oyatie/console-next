@@ -1,5 +1,6 @@
-      type: object
-      required: [balance, requests]
-      properties:
-        balance: { $ref: '#/components/schemas/MyLeaveBalance' }
-        requests: { type: array, items: { $ref: '#/components/schemas/LeaveRequest' } }
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [balance, requests]
+properties:
+  balance: { $ref: '#/components/schemas/MyLeaveBalance' }
+  requests: { type: array, items: { $ref: '#/components/schemas/LeaveRequest' } }

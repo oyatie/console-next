@@ -23,10 +23,7 @@
     "GoLivePreviewItem",
     "GoLiveRequest",
     "GoLiveResult",
-    "SetupChecklist",
     "SetupFacts",
-    "SetupStep",
-    "SetupStepState",
     "TermsAcceptanceRequest",
     "TermsDocument"
   ],
@@ -35,6 +32,9 @@
     "AuditLastChange",
     "ErrorBody",
     "FieldError",
+    "SetupChecklist",
+    "SetupStep",
+    "SetupStepState",
     "Uuid"
   ]
 }

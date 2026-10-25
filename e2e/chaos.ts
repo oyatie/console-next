@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, type Browser, type Page } from "@playwright/test";
-import { tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { CACHE_DIR, PORTS } from "./slot";
 
 // Faults injected between the browser and the backend (Playwright routes), and what the server recorded, read back
@@ -85,7 +85,7 @@ export async function soloTenant(browser: Browser, slug: string, name: string) {
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
   await v.getByLabel("고객 이름").fill(name);
   await tenantSlugField(v).fill(unique(slug));
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   return firstSignIn(browser, await takeCode(v));
 }
 

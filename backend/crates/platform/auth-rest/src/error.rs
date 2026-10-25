@@ -205,7 +205,8 @@ impl RestError {
             ProvisioningError::Conflict(_) | ProvisioningError::SlugTaken => {
                 Self::conflict(error.to_string())
             }
-            ProvisioningError::OpsRecovery(_)
+            ProvisioningError::TenantErase(_)
+            | ProvisioningError::OpsRecovery(_)
             | ProvisioningError::OpsRecoveryHoldActive(_)
             | ProvisioningError::Sqlx(_)
             | ProvisioningError::Db(_)

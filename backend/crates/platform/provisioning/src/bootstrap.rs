@@ -8,6 +8,7 @@ mod token;
 
 pub(crate) use issue_tx::*;
 pub(crate) use token::*;
+pub use token::{OTP_ALPHABET, OTP_GROUP_LEN, OTP_LEN, bootstrap_otp_pattern};
 
 use console_kernel_core::OrgId;
 use time::OffsetDateTime;
@@ -48,6 +49,8 @@ pub struct OtpRedemption {
     /// True when the user has no registered passkey yet, so the frontend should
     /// force passkey enrollment during initial settings.
     pub requires_passkey_setup: bool,
+    pub expires_at: OffsetDateTime,
+    pub reusable: bool,
     /// Exact row and immutable provenance read under the source lock. Version 0
     /// retains NULL provenance; callers must not upgrade it by inference.
     pub source: OtpSource,

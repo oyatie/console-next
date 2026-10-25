@@ -83,6 +83,7 @@ async fn serve_api(config: AppConfig, state: AppState) -> Result<(), AppError> {
         DatabaseDependency::Postgres(pool) => Some(lifecycle_schedule::spawn(
             pool.clone(),
             false,
+            None,
             state.nts.clone(),
         )),
         DatabaseDependency::NotConfigured => None,

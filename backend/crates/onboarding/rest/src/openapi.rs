@@ -21,6 +21,9 @@ const EXTERNAL_SCHEMAS: &[&str] = &[
     "AuditLastChange",
     "ErrorBody",
     "FieldError",
+    "SetupChecklist",
+    "SetupStep",
+    "SetupStepState",
     "Uuid",
 ];
 
@@ -86,20 +89,8 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/GoLiveResult.yaml"),
     },
     NamedYaml {
-        name: "SetupChecklist",
-        body: include_str!("../openapi/schemas/SetupChecklist.yaml"),
-    },
-    NamedYaml {
         name: "SetupFacts",
         body: include_str!("../openapi/schemas/SetupFacts.yaml"),
-    },
-    NamedYaml {
-        name: "SetupStep",
-        body: include_str!("../openapi/schemas/SetupStep.yaml"),
-    },
-    NamedYaml {
-        name: "SetupStepState",
-        body: include_str!("../openapi/schemas/SetupStepState.yaml"),
     },
     NamedYaml {
         name: "TermsAcceptanceRequest",

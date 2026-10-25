@@ -39,6 +39,9 @@ export async function newContext(browser: Browser, contextOptions: Pick<BrowserC
 /** The tenant slug was called a domain in current UI copy and an identifier on the shipped UI. */
 export const tenantSlugField = (scope: Page | Locator) => scope.getByLabel(/(?:회사 )?도메인|식별자/);
 
+/** The onboarding action belongs to its named modal, separate from the page opener. */
+export const tenantOnboardSubmit = (page: Page) => page.getByRole("dialog", { name: "고객 계정 개설", exact: true }).getByRole("button", { name: "개설", exact: true });
+
 // `audit`: run axe on the screens a helper passes through. Only the specs that test those screens
 // (onboarding, recovery) pass true; everywhere else they are set-up steps.
 
@@ -53,13 +56,19 @@ export async function acceptConsent(page: Page) {
   await termsCheck.press("Space");
 }
 
+/** Reveal the first-time code form before entering a code on /login. */
+export async function openCodeSignIn(page: Page) {
+  await page.locator("summary").filter({ hasText: "처음이면 일회용 코드" }).click();
+  await expect(page.getByLabel("일회용 코드")).toBeVisible();
+}
+
 /** One-time code → passkey enrollment, as a first-time user does it. */
 export async function firstSignIn(browser: Browser, code: string, keep?: string, audit = false, contextOptions: Pick<BrowserContextOptions, "locale"> = {}): Promise<Page> {
   // Own context (not browser.newPage()): axe opens a helper page in the same context.
   const page = await (await newContext(browser, contextOptions)).newPage();
   const authn = await virtualAuthenticator(page);
   await page.goto("/login");
-  await expect(page.getByLabel("일회용 코드")).toBeVisible();
+  await openCodeSignIn(page);
   if (audit) await expectAccessible(page, "login");
   await page.getByLabel("일회용 코드").fill(code);
   await page.getByRole("button", { name: "코드로 로그인" }).click();

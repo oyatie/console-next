@@ -76,7 +76,7 @@ export function OpsRecovery({ org, data, onIssued }: { org: Org; data: OpsRecove
         </Field>
         <CommandError error={write.error} own={refusal} />
         <div className="form__actions">
-          <Button onClick={() => setCancelling(false)} disabled={write.isPending}>{t("common.back")}</Button>
+          <Button onClick={() => setCancelling(false)} disabled={write.isPending}>{t("common.cancel")}</Button>
           <Button type="submit" variant="primary" disabled={write.isPending}>{t("opsRecovery.cancel")}</Button>
         </div>
       </Form>

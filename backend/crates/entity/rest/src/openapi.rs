@@ -26,8 +26,12 @@ const EXTERNAL_SCHEMAS: &[&str] = &[
     "FieldError",
     "GroupTransferFacts",
     "KrAddress",
+    "MobilePasskeyStepUpBinding",
     "MobilePasskeyStepUpEnvelope",
+    "MobileStepUpActionKind",
+    "OrgUnitMember",
     "OrgUnitMembers",
+    "PasskeyStepUpAssertion",
     "Uuid",
 ];
 

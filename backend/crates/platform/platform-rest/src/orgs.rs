@@ -21,6 +21,7 @@ pub(crate) struct AdminOtpReissueRequest {
 #[derive(Debug, Serialize)]
 pub(crate) struct AdminOtpReissueResponse {
     admin_user_id: Uuid,
+    admin_sign_in_id: Option<String>,
     /// The ONE-TIME replacement OTP. Returned exactly once, to be delivered
     /// out-of-band; never logged or stored in cleartext.
     otp: String,
@@ -67,6 +68,7 @@ pub(crate) async fn reissue_org_admin_otp(
         .map_err(PlatformError::from_provisioning)?;
     Ok(Json(AdminOtpReissueResponse {
         admin_user_id: reissue.admin_user_id,
+        admin_sign_in_id: reissue.admin_sign_in_id,
         otp: reissue.admin_otp.as_str().to_owned(),
         admin_otp_expires_at: reissue.admin_otp_expires_at,
     })

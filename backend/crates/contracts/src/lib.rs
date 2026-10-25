@@ -7,6 +7,8 @@
 //! unresolved schemas. It scans raw YAML text, so it cannot validate every YAML
 //! form; the published document has a parser-based reference gate as well.
 
+pub mod bootstrap_otp_format;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
@@ -240,25 +242,8 @@ impl std::error::Error for ComposeError {}
 // Composition
 // ---------------------------------------------------------------------------
 
-/// Merge `fragments` into one OpenAPI paths+components body (no `openapi`/`info`
-/// preamble). Prefer [`compose_document`] when emitting the published file.
-///
-/// # Errors
-///
-/// Returns every duplicate path, operation and component key found — not just
-/// the first, so one CI run reports the whole conflict set. Once the keys are
-/// unique, returns every malformed and every unresolvable `$ref`.
-pub fn compose(fragments: &[&Fragment]) -> Result<String, ComposeError> {
-    compose_parts(fragments, None)
-}
-
-/// Merge `fragments` into a full OpenAPI document, including the preamble.
-pub fn compose_document(
-    fragments: &[&Fragment],
-    preamble: &DocumentPreamble,
-) -> Result<String, ComposeError> {
-    compose_parts(fragments, Some(preamble))
-}
+mod entry;
+pub use entry::{compose, compose_document};
 
 fn compose_parts(
     fragments: &[&Fragment],
@@ -456,7 +441,10 @@ fn compose_parts(
         });
     }
 
-    Ok(out)
+    Ok(out.replace(
+        "__BOOTSTRAP_OTP_PATTERN__",
+        &bootstrap_otp_format::bootstrap_otp_pattern(),
+    ))
 }
 
 /// First line (1-based) where a plain — unquoted, non-block — scalar value

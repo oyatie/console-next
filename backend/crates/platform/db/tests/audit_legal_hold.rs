@@ -2,6 +2,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! Legal-hold authority, immutable evidence and request-correlated audit preservation.
 
+#[path = "../../../../test_support/governed_erase.rs"]
+mod governed_erase;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
@@ -22,7 +24,7 @@ async fn org(pool: &PgPool) -> Uuid {
 
 async fn fixture(pool: &PgPool) -> (Uuid, Uuid) {
     let target = org(pool).await;
-    let platform_org = org(pool).await;
+    let platform_org = Uuid::parse_str("00000000-0000-0000-0000-00000000face").unwrap();
     let actor = sqlx::query_scalar("INSERT INTO users (display_name, roles, org_id) VALUES ('Hold operator', ARRAY['SUPER_ADMIN'], $1) RETURNING id")
         .bind(platform_org).fetch_one(pool).await.unwrap();
     (target, actor)
@@ -62,6 +64,7 @@ mod registry;
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn platform_command_preserves_correlated_events_after_release_and_removal(pool: PgPool) {
     let (target, actor) = fixture(&pool).await;
+    governed_erase::due(&pool, target, actor).await;
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("SET LOCAL ROLE console_platform_force_cmd")
         .execute(&mut *tx)

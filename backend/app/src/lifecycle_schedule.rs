@@ -46,6 +46,7 @@ impl LifecycleScheduleHandle {
 pub fn spawn(
     pool: sqlx::PgPool,
     worker: bool,
+    force_pool: Option<sqlx::PgPool>,
     nts: std::sync::Arc<console_entity_adapter_nts::NtsClient>,
 ) -> LifecycleScheduleHandle {
     let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
@@ -116,6 +117,12 @@ pub fn spawn(
                     // MR-26: voided registrations past people.void_pii_retention
                     // become tombstones. Worker role only (lane correction #14).
                     if worker {
+                        if let Some(force_pool) = &force_pool {
+                            match console_platform_provisioning::PlatformProvisioner::run_due_tenant_erases(force_pool).await {
+                                Ok(erased) => metrics::counter!("console_platform_tenant_erase_total", "action" => "run").increment(erased.cast_unsigned()),
+                                Err(error) => tracing::error!(%error,"tenant erasure worker failed"),
+                            }
+                        }
                         match console_hr_adapter_postgres::HrService::new(pool.clone())
                             .destroy_due_void_pii()
                             .await

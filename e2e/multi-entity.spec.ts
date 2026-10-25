@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { fmtDate } from "@console/i18n/format";
 import { expectAccessible } from "./a11y";
-import { tenantSlugField, firstSignIn, go, kstDate, option, takeCode, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, kstDate, option, takeCode, unique, vendorPage } from "./flows";
 import { addDepartments } from "./structure-flows";
 import { firstWorkplace, registerAt } from "./helpers/entity";
 import { registerEntity, SECOND, setupRail, startOperations, REGISTRATION_FIXTURES, brnDisplay } from "./setup-flows";
@@ -15,7 +15,7 @@ test("a group of two legal entities: each with its workplace and people, placed 
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
   await v.getByLabel("고객 이름").fill("가나그룹");
   await tenantSlugField(v).fill(unique("ganagroup"));
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));
 
   await setupRail(admin).getByRole("link", { name: "법인 등록" }).first().click();

@@ -1,6 +1,7 @@
 use crate::{
-    BootstrapCredentialStore, OtpRedemption, OtpSource, ProvisioningError, count_user_passkeys_tx,
-    hash_token, require_active_account_tx, resolve_bootstrap_org,
+    BootstrapCredentialStore, OTP_ALPHABET, OTP_GROUP_LEN, OTP_LEN, OtpRedemption, OtpSource,
+    ProvisioningError, count_user_passkeys_tx, hash_token, require_active_account_tx,
+    resolve_bootstrap_org,
 };
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext, UserId};
 use console_platform_auth::authentication_time_tx;
@@ -66,7 +67,26 @@ impl BootstrapCredentialStore {
         token: &str,
         now: OffsetDateTime,
     ) -> Result<OtpRedemption, ProvisioningError> {
-        let token_hash = hash_token(token);
+        let mut token_hash = hash_token(token);
+        let mut resolved_org = resolve_bootstrap_org(tx, &token_hash).await?;
+        // Exact legacy hashes retain precedence over new-format normalization.
+        if resolved_org.is_none() {
+            let compact = token
+                .chars()
+                .filter(|symbol| !symbol.is_ascii_whitespace() && *symbol != '-')
+                .collect::<String>()
+                .to_ascii_uppercase();
+            if compact.len() == OTP_LEN && compact.bytes().all(|byte| OTP_ALPHABET.contains(&byte))
+            {
+                let canonical = format!(
+                    "{}-{}",
+                    &compact[..OTP_GROUP_LEN],
+                    &compact[OTP_GROUP_LEN..]
+                );
+                token_hash = hash_token(&canonical);
+                resolved_org = resolve_bootstrap_org(tx, &token_hash).await?;
+            }
+        }
 
         // Resolve the credential's tenant from the token hash FIRST, then arm the
         // GUC, THEN do the RLS-gated read. `auth_bootstrap_credentials` is FORCE
@@ -77,7 +97,7 @@ impl BootstrapCredentialStore {
         // credential's org_id, breaking that chicken-and-egg so OTP first sign-in
         // works for ANY tenant. A NULL means the token is unknown: keep the same
         // generic invalid-OTP error (no row), revealing nothing.
-        let Some(org_uuid) = resolve_bootstrap_org(tx, &token_hash).await? else {
+        let Some(org_uuid) = resolved_org else {
             return Err(ProvisioningError::InvalidBootstrapCredential);
         };
         sqlx::query("SELECT set_config('app.current_org', $1, true)")
@@ -138,15 +158,19 @@ impl BootstrapCredentialStore {
             return Err(ProvisioningError::InvalidBootstrapCredential);
         }
 
-        if source.try_get::<bool, _>("single_use")? {
+        let single_use = source.try_get::<bool, _>("single_use")?;
+        let requires_passkey_setup = count_user_passkeys_tx(tx, user_id).await? == 0;
+        if !single_use && !requires_passkey_setup {
+            return Err(ProvisioningError::InvalidBootstrapCredential);
+        }
+
+        if single_use {
             sqlx::query("UPDATE auth_bootstrap_credentials SET redeemed_at=$2 WHERE id=$1")
                 .bind(credential_id)
                 .bind(now)
                 .execute(tx.as_mut())
                 .await?;
         }
-
-        let requires_passkey_setup = count_user_passkeys_tx(tx, user_id).await? == 0;
 
         if issuance_version == 1 {
             let (generation, ever_enrolled, status) =
@@ -213,6 +237,8 @@ impl BootstrapCredentialStore {
             user_id,
             org_id: OrgId::from_uuid(org_uuid),
             requires_passkey_setup,
+            expires_at: expires,
+            reusable: !source.try_get::<bool, _>("single_use")?,
             source: OtpSource {
                 credential_id,
                 issuance_version: source.try_get("issuance_version")?,

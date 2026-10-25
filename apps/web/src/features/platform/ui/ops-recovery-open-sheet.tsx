@@ -51,7 +51,7 @@ export function OpsRecoveryOpenSheet({ org, data, onClose }: { org: Org; data: O
       {latest.error && <QueryState q={latest}>{() => null}</QueryState>}
       <CommandError error={open.error} />
       <div className="form__actions">
-        <Button onClick={onClose} disabled={open.isPending}>{t("common.back")}</Button>
+        <Button onClick={onClose} disabled={open.isPending}>{t("common.cancel")}</Button>
         <Button type="submit" variant="primary" disabled={open.isPending || latest.isFetching || Boolean(latest.error)}>{t("opsRecovery.open")}</Button>
       </div>
     </Form>

@@ -1,4 +1,5 @@
-      type: string
-      description: Canonical OrgUnit kinds. Nesting (enforced at preflight and apply) — SITE under the Company root;
-        DEPARTMENT under a SITE; TEAM under a DEPARTMENT or TEAM.
-      enum: [SITE, DEPARTMENT, TEAM]
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: string
+description: Canonical OrgUnit kinds. Nesting (enforced at preflight and apply) — SITE under the Company root;
+  DEPARTMENT under a SITE; TEAM under a DEPARTMENT or TEAM.
+enum: [SITE, DEPARTMENT, TEAM]

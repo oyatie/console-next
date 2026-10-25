@@ -245,45 +245,6 @@ async fn versioned_first_enrollment_redeem_rejects_stale_or_prior_enrollment(poo
     assert_eq!(accepted, 0, "denied proofs must not leave accepted audits");
 }
 
-/// Issued OTP format: exactly 8 characters over the documented alphanumeric +
-/// special alphabet.
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn issued_otp_is_eight_char_alphanumeric_special(pool: PgPool) {
-    let user_id = seed_user(&pool).await;
-    let now = OffsetDateTime::now_utc();
-    let issue = BootstrapCredentialStore
-        .issue_for_zero_credential_user(
-            &pool,
-            None,
-            user_id,
-            OrgId::one(),
-            now,
-            Duration::hours(24),
-        )
-        .await
-        .unwrap();
-
-    let token = issue.token.as_str();
-    assert_eq!(token.chars().count(), 8, "OTP must be exactly 8 characters");
-    const ALLOWED: &str =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*-_";
-    assert!(
-        token.chars().all(|c| ALLOWED.contains(c)),
-        "OTP must use only the documented alphabet, got {token:?}"
-    );
-
-    // The hash is stored, never the plaintext.
-    let token_hash: Vec<u8> =
-        sqlx::query("SELECT token_hash FROM auth_bootstrap_credentials WHERE id = $1")
-            .bind(issue.credential_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap()
-            .try_get("token_hash")
-            .unwrap();
-    assert_ne!(token_hash, token.as_bytes());
-}
-
 /// A caller can wait on the Account lock longer than the requested TTL. The
 /// source owner must start the full validity window after that wait, not at the
 /// time the request first entered Rust.
@@ -864,3 +825,6 @@ async fn seed_cold_start_creates_the_platform_admin_on_an_empty_database(pool: P
             .unwrap();
     assert_eq!(admins, 1);
 }
+
+#[path = "fixtures/bootstrap_code_format.rs"]
+mod code_format;

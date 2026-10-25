@@ -60,6 +60,8 @@ const EXTERNAL_SCHEMAS: &[&str] = &[
     "OrgProposalOpUpdateSite",
     "OrgProposalReassignScope",
     "OrgUnitKind",
+    "OrgUnitMember",
+    "OrgUnitMembers",
     "PasskeyStepUpAssertion",
     "Timestamp",
     "Uuid",
@@ -1710,14 +1712,6 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "OrgUnitList",
         body: include_str!("../openapi/schemas/OrgUnitList.yaml"),
-    },
-    NamedYaml {
-        name: "OrgUnitMember",
-        body: include_str!("../openapi/schemas/OrgUnitMember.yaml"),
-    },
-    NamedYaml {
-        name: "OrgUnitMembers",
-        body: include_str!("../openapi/schemas/OrgUnitMembers.yaml"),
     },
     NamedYaml {
         name: "OrgUnitRevision",

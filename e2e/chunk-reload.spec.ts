@@ -109,7 +109,7 @@ test("a stale index.html whose entry chunk is gone reloads once, afresh, and sig
   await staleIndex(page);
   const docs = documents(page);
   await page.goto("/login");
-  await expect(page.getByLabel("일회용 코드")).toBeVisible();
+  await expect(page.getByLabel("아이디", { exact: true })).toBeVisible();
   await settled(docs, 2);
   expect(busted(docs[1]!)).toBe(true);
   expect(busted(page.url())).toBe(false);

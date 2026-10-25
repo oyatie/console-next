@@ -1,6 +1,8 @@
 //! Real removal owners, row-lock upgrades and auth/FK concurrency in disposable databases.
 //! This tests mechanical containment, not R4 authority or hard-deletion policy acceptance.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[path = "../../../../test_support/governed_erase.rs"]
+mod governed_erase;
 use console_kernel_core::{OrgId, UserId};
 use console_platform_auth::{
     PasskeyRegistrationStart, PasskeyService, RefreshTokenStore, WebauthnSettings,
@@ -65,16 +67,11 @@ async fn blocked(owner: &PgPool, label: &str, blocker: i32) -> i32 {
     }).await.expect("actual owner must wait for the specified blocker")
 }
 
-async fn fixture(owner: &PgPool, force: bool) -> (Uuid, [Uuid; 2], Uuid) {
-    let org:Uuid=sqlx::query_scalar("INSERT INTO organizations(slug,name,status) VALUES($1,'Removal lock test',$2) RETURNING id").bind(format!("lock-{}", &Uuid::new_v4().simple().to_string()[..16])).bind(if force{"ARCHIVED"}else{"ACTIVE"}).fetch_one(owner).await.unwrap();
-    let mut users = [Uuid::new_v4(), Uuid::new_v4()];
-    users.sort();
-    for id in users {
-        sqlx::query("INSERT INTO users(id,display_name,roles,org_id) VALUES($1,'Lock target',ARRAY['MEMBER'],$2)").bind(id).bind(org).execute(owner).await.unwrap();
-    }
-    let actor:Uuid=sqlx::query_scalar("INSERT INTO users(display_name,roles,org_id) VALUES('Separate actor',ARRAY['SUPER_ADMIN'],$1) RETURNING id").bind(*OrgId::platform().as_uuid()).fetch_one(owner).await.unwrap();
-    (org, users, actor)
-}
+#[path = "company_locking/accounts.rs"]
+mod accounts;
+#[path = "fixtures/locking_company.rs"]
+mod removal_fixture;
+use removal_fixture::fixture;
 async fn remover(owner: &PgPool, force: bool) -> PgPool {
     if !force {
         return runtime(owner, "company-removal").await;
@@ -152,99 +149,6 @@ fn service() -> PasskeyService {
     })
     .unwrap()
 }
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn both_removal_owners_wait_for_sorted_accounts_before_children(owner: PgPool) {
-    for force in [false, true] {
-        let (org, users, actor) = fixture(&owner, force).await;
-        let key = opaque_key(&owner, org, users[1]).await;
-        let pool = remover(&owner, force).await;
-        let (held, pid) = account(&owner, users[0]).await;
-        let task = tokio::spawn(async move { remove(&pool, force, org, actor).await });
-        blocked(&owner, "company-removal", pid).await;
-        let mut probe = owner.begin().await.unwrap();
-        sqlx::query("SELECT id FROM users WHERE id=$1 FOR NO KEY UPDATE NOWAIT")
-            .bind(users[1])
-            .fetch_one(&mut *probe)
-            .await
-            .unwrap();
-        sqlx::query("SELECT id FROM auth_webauthn_credentials WHERE id=$1 FOR UPDATE NOWAIT")
-            .bind(key)
-            .fetch_one(&mut *probe)
-            .await
-            .unwrap();
-        probe.rollback().await.unwrap();
-        held.rollback().await.unwrap();
-        assert!(matches!(
-            timeout(WAIT, task).await.unwrap().unwrap().unwrap(),
-            TenantRemovalOutcome::Removed
-        ));
-    }
-}
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn both_removal_owners_do_not_lock_company_before_authentication_finishes(owner: PgPool) {
-    for force in [false, true] {
-        let (org, users, actor) = fixture(&owner, force).await;
-        let rt = runtime(&owner, "company-auth-first").await;
-        let svc = service();
-        let start = svc
-            .start_registration(
-                &rt,
-                OrgId::from_uuid(org),
-                PasskeyRegistrationStart {
-                    user_id: users[0],
-                    username: "Lock auth".into(),
-                    display_name: "Lock auth".into(),
-                },
-            )
-            .await
-            .unwrap();
-        let mut client = WebauthnAuthenticator::new(SoftPasskey::new(true));
-        let signed = client
-            .do_registration(
-                Url::parse("https://auth.example.com").unwrap(),
-                soft_passkey_challenge(start.challenge),
-            )
-            .unwrap();
-        let mut tx = rt.begin().await.unwrap();
-        sqlx::query("SELECT set_config('app.current_org',$1,true)")
-            .bind(org.to_string())
-            .execute(&mut *tx)
-            .await
-            .unwrap();
-        sqlx::query("SELECT id FROM users WHERE id=$1 FOR NO KEY UPDATE")
-            .bind(users[0])
-            .fetch_one(&mut *tx)
-            .await
-            .unwrap();
-        let pid = sqlx::query_scalar("SELECT pg_backend_pid()")
-            .fetch_one(&mut *tx)
-            .await
-            .unwrap();
-        let pool = remover(&owner, force).await;
-        let task = tokio::spawn(async move { remove(&pool, force, org, actor).await });
-        blocked(&owner, "company-removal", pid).await;
-        // Actual registration inserts key + audit, including Company FK checks,
-        // while the waiting remover must not hold an incompatible Company lock.
-        timeout(
-            WAIT,
-            svc.finish_registration_in_tx(
-                &mut tx,
-                OrgId::from_uuid(org),
-                start.ceremony_id,
-                signed,
-                OffsetDateTime::now_utc(),
-            ),
-        )
-        .await
-        .unwrap()
-        .unwrap();
-        tx.commit().await.unwrap();
-        assert!(matches!(
-            timeout(WAIT, task).await.unwrap().unwrap().unwrap(),
-            TenantRemovalOutcome::Removed
-        ));
-    }
-}
 async fn key_share_conflict(owner: &PgPool, company: bool) {
     for force in [false, true] {
         let (org, users, actor) = fixture(owner, force).await;
@@ -319,97 +223,73 @@ async fn new_account_during_removal_wait_is_never_adopted_or_deleted(owner: PgPo
     }
 }
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn removal_guard_blocks_auth_and_new_account_until_delete_commits(owner: PgPool) {
-    for force in [false, true] {
-        let (org, users, actor) = fixture(&owner, force).await;
-        let key = opaque_key(&owner, org, users[0]).await;
-        let mut held = owner.begin().await.unwrap();
-        sqlx::query("SELECT id FROM auth_webauthn_credentials WHERE id=$1 FOR UPDATE")
-            .bind(key)
-            .fetch_one(&mut *held)
-            .await
-            .unwrap();
-        let pid = sqlx::query_scalar("SELECT pg_backend_pid()")
-            .fetch_one(&mut *held)
-            .await
-            .unwrap();
-        let pool = remover(&owner, force).await;
-        let removal = tokio::spawn(async move { remove(&pool, force, org, actor).await });
-        let remover_pid = blocked(&owner, "company-removal", pid).await;
-        let auth = runtime(&owner, "company-auth-second").await;
-        let issuing = tokio::spawn(async move {
-            RefreshTokenStore
-                .issue_family(
-                    &auth,
-                    users[0],
-                    OrgId::from_uuid(org),
-                    OffsetDateTime::now_utc(),
-                    Duration::minutes(5),
-                )
-                .await
-        });
-        blocked(&owner, "company-auth-second", remover_pid).await;
-        let adding = runtime(&owner, "company-new-second").await;
-        let addition = tokio::spawn(async move {
-            let mut tx = adding.begin().await.unwrap();
-            sqlx::query("SELECT set_config('app.current_org',$1,true)")
-                .bind(org.to_string())
-                .execute(&mut *tx)
-                .await
-                .unwrap();
-            let result = sqlx::query(
-                "INSERT INTO users(display_name,roles,org_id) VALUES('Late',ARRAY['MEMBER'],$1)",
+async fn governed_erase_blocks_auth_and_new_accounts_until_commit(owner: PgPool) {
+    let force = true;
+    let (org, users, actor) = fixture(&owner, force).await;
+    let key = opaque_key(&owner, org, users[0]).await;
+    let mut held = owner.begin().await.unwrap();
+    sqlx::query("SELECT id FROM auth_webauthn_credentials WHERE id=$1 FOR UPDATE")
+        .bind(key)
+        .fetch_one(&mut *held)
+        .await
+        .unwrap();
+    let pid = sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(&mut *held)
+        .await
+        .unwrap();
+    let pool = remover(&owner, force).await;
+    let removal = tokio::spawn(async move { remove(&pool, force, org, actor).await });
+    let remover_pid = blocked(&owner, "company-removal", pid).await;
+    let auth = runtime(&owner, "company-auth-second").await;
+    let issuing = tokio::spawn(async move {
+        RefreshTokenStore
+            .issue_family(
+                &auth,
+                users[0],
+                OrgId::from_uuid(org),
+                OffsetDateTime::now_utc(),
+                Duration::minutes(5),
             )
-            .bind(org)
+            .await
+    });
+    blocked(&owner, "company-auth-second", remover_pid).await;
+    let adding = runtime(&owner, "company-new-second").await;
+    let addition = tokio::spawn(async move {
+        let mut tx = adding.begin().await.unwrap();
+        sqlx::query("SELECT set_config('app.current_org',$1,true)")
+            .bind(org.to_string())
             .execute(&mut *tx)
-            .await;
-            if result.is_ok() {
-                tx.commit().await.unwrap();
-            } else {
-                tx.rollback().await.unwrap();
-            }
-            result
-        });
-        blocked(&owner, "company-new-second", remover_pid).await;
-        held.rollback().await.unwrap();
-        assert!(matches!(
-            timeout(WAIT, removal).await.unwrap().unwrap().unwrap(),
-            TenantRemovalOutcome::Removed
-        ));
-        assert!(timeout(WAIT, issuing).await.unwrap().unwrap().is_err());
-        let err = timeout(WAIT, addition).await.unwrap().unwrap().unwrap_err();
-        assert_eq!(
-            err.as_database_error().unwrap().code().as_deref(),
-            Some("23503")
-        );
-        let state:(i64,i64)=sqlx::query_as("SELECT (SELECT count(*) FROM users WHERE org_id=$1),(SELECT count(*) FROM auth_refresh_token_families WHERE org_id=$1)").bind(org).fetch_one(&owner).await.unwrap();
-        assert_eq!(state, (0, 0));
-    }
+            .await
+            .unwrap();
+        let result = sqlx::query(
+            "INSERT INTO users(display_name,roles,org_id) VALUES('Late',ARRAY['MEMBER'],$1)",
+        )
+        .bind(org)
+        .execute(&mut *tx)
+        .await;
+        if result.is_ok() {
+            tx.commit().await.unwrap();
+        } else {
+            tx.rollback().await.unwrap();
+        }
+        result
+    });
+    blocked(&owner, "company-new-second", remover_pid).await;
+    held.rollback().await.unwrap();
+    assert!(matches!(
+        timeout(WAIT, removal).await.unwrap().unwrap().unwrap(),
+        TenantRemovalOutcome::Removed
+    ));
+    assert!(timeout(WAIT, issuing).await.unwrap().unwrap().is_err());
+    let err = timeout(WAIT, addition).await.unwrap().unwrap().unwrap_err();
+    assert_eq!(
+        err.as_database_error().unwrap().code().as_deref(),
+        Some("23503")
+    );
+    let state:(i64,i64)=sqlx::query_as("SELECT (SELECT count(*) FROM users WHERE org_id=$1),(SELECT count(*) FROM auth_refresh_token_families WHERE org_id=$1)").bind(org).fetch_one(&owner).await.unwrap();
+    assert_eq!(state, (0, 0));
 }
 
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn both_removal_owners_lock_every_account_before_first_child_sweep(owner: PgPool) {
-    for force in [false, true] {
-        let (org, users, actor) = fixture(&owner, force).await;
-        let key = opaque_key(&owner, org, users[0]).await;
-        let pool = remover(&owner, force).await;
-        let (held, pid) = account(&owner, users[1]).await;
-        let task = tokio::spawn(async move { remove(&pool, force, org, actor).await });
-        blocked(&owner, "company-removal", pid).await;
-        let mut probe = owner.begin().await.unwrap();
-        sqlx::query("SELECT id FROM auth_webauthn_credentials WHERE id=$1 FOR UPDATE NOWAIT")
-            .bind(key)
-            .fetch_one(&mut *probe)
-            .await
-            .unwrap();
-        probe.rollback().await.unwrap();
-        held.rollback().await.unwrap();
-        assert!(matches!(
-            timeout(WAIT, task).await.unwrap().unwrap().unwrap(),
-            TenantRemovalOutcome::Removed
-        ));
-    }
-}
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn company_status_change_during_account_wait_aborts_both_removal_paths(owner: PgPool) {
     for force in [false, true] {

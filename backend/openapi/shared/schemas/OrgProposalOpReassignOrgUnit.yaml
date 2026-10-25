@@ -1,32 +1,33 @@
-      type: object
-      additionalProperties: false
-      description: >-
-        Move the members of one OrgUnit to another on the change's 시행일: each
-        ACTIVE member gets a dated TRANSFER lifecycle event (전보; also a 전근 when
-        the target sits at another 사업장, its assignment split on the date)
-        batched under the change's id; a member hr refuses a TRANSFER (on leave
-        and the other non-ACTIVE states) is rebound and re-placed with no event,
-        status kept. Matched are every member who is not EXITED, or only
-        `employeeIds` when given (one op per destination). `fromOrgUnit` and
-        `toOrgUnit` are OrgUnit UUIDs (not free-text team labels) and must differ.
-      required:
-      - op
-      - fromOrgUnit
-      - toOrgUnit
-      - scope
-      properties:
-        op:
-          type: string
-          enum: [REASSIGN_ORG_UNIT]
-        fromOrgUnit:
-          $ref: '#/components/schemas/Uuid'
-        toOrgUnit:
-          $ref: '#/components/schemas/Uuid'
-        scope:
-          $ref: '#/components/schemas/OrgProposalReassignScope'
-        employeeIds:
-          type: array
-          minItems: 1
-          maxItems: 5000
-          items:
-            $ref: '#/components/schemas/Uuid'
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+description: >-
+  Move the members of one OrgUnit to another on the change's 시행일: each
+  ACTIVE member gets a dated TRANSFER lifecycle event (전보; also a 전근 when
+  the target sits at another 사업장, its assignment split on the date)
+  batched under the change's id; a member hr refuses a TRANSFER (on leave
+  and the other non-ACTIVE states) is rebound and re-placed with no event,
+  status kept. Matched are every member who is not EXITED, or only
+  `employeeIds` when given (one op per destination). `fromOrgUnit` and
+  `toOrgUnit` are OrgUnit UUIDs (not free-text team labels) and must differ.
+required:
+- op
+- fromOrgUnit
+- toOrgUnit
+- scope
+properties:
+  op:
+    type: string
+    enum: [REASSIGN_ORG_UNIT]
+  fromOrgUnit:
+    $ref: '#/components/schemas/Uuid'
+  toOrgUnit:
+    $ref: '#/components/schemas/Uuid'
+  scope:
+    $ref: '#/components/schemas/OrgProposalReassignScope'
+  employeeIds:
+    type: array
+    minItems: 1
+    maxItems: 5000
+    items:
+      $ref: '#/components/schemas/Uuid'

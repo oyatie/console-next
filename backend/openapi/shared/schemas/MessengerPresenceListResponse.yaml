@@ -1,8 +1,9 @@
-      type: object
-      required:
-      - items
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/MessengerPresence'
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- items
+properties:
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/MessengerPresence'

@@ -523,8 +523,6 @@
     "OrgUnitDetail",
     "OrgUnitHead",
     "OrgUnitList",
-    "OrgUnitMember",
-    "OrgUnitMembers",
     "OrgUnitRevision",
     "OrgUnitStatus",
     "PersonBindingReviews",
@@ -604,6 +602,8 @@
     "OrgProposalOpUpdateSite",
     "OrgProposalReassignScope",
     "OrgUnitKind",
+    "OrgUnitMember",
+    "OrgUnitMembers",
     "PasskeyStepUpAssertion",
     "Timestamp",
     "Uuid"

@@ -10,7 +10,7 @@ export const koEnum = {
   "enum.accountStatus.ACTIVE": "사용 중",
   "enum.accountStatus.PENDING_SETUP": "첫 로그인 대기",
   "enum.accountStatus.ARCHIVED": "보관됨",
-  "enum.tenantStatus.ACTIVE": "운영 중",
+  "enum.tenantStatus.ACTIVE": "이용 가능",
   "enum.tenantStatus.SUSPENDED": "정지됨",
   "enum.tenantStatus.ARCHIVED": "보관됨",
   "enum.employmentType.REGULAR": "정규직",
@@ -235,4 +235,9 @@ export const koEnum = {
   "enum.orgHistoryAction.REVISE_ENTITY": "법인 정보 변경",
   "enum.orgHistoryAction.CREATE_WORKPLACE": "사업장 등록",
   "enum.orgHistoryAction.REVISE_WORKPLACE": "사업장 정보 변경",
+  "enum.tenantLifecycle.OPENED": "개설",
+  "enum.tenantLifecycle.CODE_ISSUED": "코드 발급",
+  "enum.tenantLifecycle.ENROLLED": "패스키 등록",
+  "enum.tenantLifecycle.SETUP": "설정 단계",
+  "enum.tenantLifecycle.OPERATING": "운영 중",
 } as const;

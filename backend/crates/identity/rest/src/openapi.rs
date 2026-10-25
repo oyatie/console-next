@@ -58,6 +58,8 @@ const EXTERNAL_SCHEMAS: &[&str] = &[
     "OrgUnitKind",
     "PasskeyStepUpAssertion",
     "SetupChecklist",
+    "SetupStep",
+    "SetupStepState",
     "Timestamp",
     "Uuid",
 ];
@@ -183,6 +185,37 @@ const PATHS: &[PathItem] = &[
         operations: &[Operation {
             method: "post",
             body: include_str!("../openapi/paths/api__platform__orgs__id__admin-otp.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/platform/orgs/{id}/erase",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__platform__orgs__id__erase.get.yaml"),
+            },
+            Operation {
+                method: "post",
+                body: include_str!("../openapi/paths/api__platform__orgs__id__erase.post.yaml"),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/platform/orgs/{id}/erase/{rid}/approve",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__platform__orgs__id__erase__rid__approve.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/platform/orgs/{id}/erase/{rid}/cancel",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__platform__orgs__id__erase__rid__cancel.post.yaml"
+            ),
         }],
     },
     PathItem {
@@ -1723,6 +1756,14 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "Team",
         body: include_str!("../openapi/schemas/Team.yaml"),
+    },
+    NamedYaml {
+        name: "TenantEraseRead",
+        body: include_str!("../openapi/schemas/TenantEraseRead.yaml"),
+    },
+    NamedYaml {
+        name: "TenantEraseRequest",
+        body: include_str!("../openapi/schemas/TenantEraseRequest.yaml"),
     },
     NamedYaml {
         name: "TokenPairResponse",

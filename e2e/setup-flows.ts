@@ -5,7 +5,7 @@ import { expectAccessible } from "./a11y";
 import type { clickCounter } from "./clicks";
 import { inviteAccount, type Access } from "./access-flows";
 import { addDepartments } from "./structure-flows";
-import { firstSignIn, go, option, plain, routeReady, takeCode, tenantSlugField, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, firstSignIn, go, option, plain, routeReady, takeCode, tenantSlugField, unique, vendorPage } from "./flows";
 
 type C = Pick<ReturnType<typeof clickCounter>, "click">;
 type RegistrationIds = { brn: string; crn: string };
@@ -281,7 +281,7 @@ export async function tenantBeforeSetup(browser: Browser, slug: string, name: st
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
   await v.getByLabel("고객 이름").fill(name);
   await tenantSlugField(v).fill(unique(slug));
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v, audit), undefined, audit);
 
   const exec = await firstSignIn(browser, await inviteAccount(admin, "이임원", execAccess, audit), undefined, audit);

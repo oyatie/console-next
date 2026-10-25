@@ -9,7 +9,7 @@ export type Org = components["schemas"]["PlatformOrg"];
 export type OrgStatus = Org["status"];
 export type Health = components["schemas"]["PlatformTenantHealth"];
 /** A first-admin code to hand over: from onboarding or a reissue. */
-export type Issued = { org: string; otp: string; expiresAt: string; recoveryMinutes?: number };
+export type Issued = { org: string; otp: string; expiresAt: string; signInId?: string | null; recoveryMinutes?: number };
 /** A recorded command's receipt, shown once at the top of the page. */
 export type Recorded = { message: string; meta?: string };
 
@@ -23,7 +23,7 @@ export const onboard = (name: string, slug: string) => unwrap(api.POST("/api/pla
 /** Minting a sign-in code asks for a fresh assertion of the vendor's own passkey (step-up). */
 export const reissueCode = async (org: Org): Promise<Issued> => {
   const r = await unwrap(api.POST("/api/platform/orgs/{id}/admin-otp", { params: { path: { id: org.id } }, body: { step_up: await assertPasskey() } }));
-  return { org: org.name, otp: r.otp, expiresAt: r.admin_otp_expires_at };
+  return { org: org.name, otp: r.otp, expiresAt: r.admin_otp_expires_at, signInId: r.admin_sign_in_id };
 };
 
 export const setStatus = (id: string, status: OrgStatus) => unwrap(api.PATCH("/api/platform/orgs/{id}", { params: { path: { id } }, body: { status } }));
@@ -94,3 +94,15 @@ export async function recoveryWrite(org: Org, requestId: string, command: Recove
 
 
 export const operatorId = () => session.claims?.sub;
+
+export const eraseQuery = (id: string) => get("/api/platform/orgs/{id}/erase", { params: { path: { id } } });
+export type EraseRead = components["schemas"]["TenantEraseRead"];
+export type EraseAction = "open" | "approve" | "cancel";
+/** Same request and action binding as provisioning TenantEraseCommand. */
+export async function eraseWrite(org: Org, id: string, action: EraseAction) {
+  const step_up = await assertBoundPasskey("OPERATOR_RECOVERY", id, `tenant_erase:${org.id}:${id}:${action}`);
+  const params = { path: { id: org.id, rid: id } };
+  if (action === "open") return unwrap(api.POST("/api/platform/orgs/{id}/erase", { params, body: { id, step_up } }));
+  if (action === "approve") return unwrap(api.POST("/api/platform/orgs/{id}/erase/{rid}/approve", { params, body: { step_up } }));
+  return unwrap(api.POST("/api/platform/orgs/{id}/erase/{rid}/cancel", { params, body: { step_up } }));
+}

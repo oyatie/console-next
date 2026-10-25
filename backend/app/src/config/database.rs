@@ -25,12 +25,15 @@ pub(crate) fn validate_database_urls(
                 .to_owned(),
         ));
     }
+    if matches!(role, AppRole::Api | AppRole::Worker)
+        && database_url.is_some()
+        && platform_force_command_database_url.is_none()
+    {
+        return Err(AppError::Config(format!(
+            "PLATFORM_FORCE_COMMAND_DATABASE_URL is required for {role} role when DATABASE_URL is configured"
+        )));
+    }
     if role == AppRole::Api {
-        if database_url.is_some() && platform_force_command_database_url.is_none() {
-            return Err(AppError::Config(
-                "PLATFORM_FORCE_COMMAND_DATABASE_URL is required for api role when DATABASE_URL is configured".to_owned(),
-            ));
-        }
         ensure_distinct_database_urls([
             ("DATABASE_URL", database_url),
             ("LEAVE_COMMAND_DATABASE_URL", leave_command_database_url),
@@ -410,6 +413,35 @@ mod command_database_config_tests {
                 .to_string()
                 .contains("PLATFORM_FORCE_COMMAND_DATABASE_URL is required for api role")
         );
+    }
+
+    #[test]
+    fn worker_with_database_requires_platform_force_command_database_url() {
+        for force_url in [None, Some("   ")] {
+            let mut pairs = vec![
+                ("CONSOLE_APP_ROLE", "worker"),
+                ("DATABASE_URL", RUNTIME_URL),
+            ];
+            if let Some(url) = force_url {
+                pairs.push(("PLATFORM_FORCE_COMMAND_DATABASE_URL", url));
+            }
+            let error = AppConfig::from_pairs(pairs).unwrap_err();
+            assert!(matches!(error, crate::error::AppError::Config(_)));
+            assert!(
+                error.to_string().contains(
+                    "PLATFORM_FORCE_COMMAND_DATABASE_URL is required for worker role when DATABASE_URL is configured"
+                ),
+                "unexpected error: {error}"
+            );
+        }
+    }
+
+    #[test]
+    fn database_free_worker_does_not_require_platform_force_command_database_url() {
+        let config = AppConfig::from_pairs([("CONSOLE_APP_ROLE", "worker")]).unwrap();
+
+        assert!(config.database_url.is_none());
+        assert!(config.platform_force_command_database_url.is_none());
     }
 
     #[test]
@@ -980,9 +1012,14 @@ mod command_database_config_tests {
                 "postgresql://console_app:migration-secret@db/console",
             ),
         ] {
-            let config =
-                AppConfig::from_pairs([("CONSOLE_APP_ROLE", role), ("DATABASE_URL", database_url)])
-                    .unwrap();
+            let mut pairs = vec![("CONSOLE_APP_ROLE", role), ("DATABASE_URL", database_url)];
+            if role == "worker" {
+                pairs.push((
+                    "PLATFORM_FORCE_COMMAND_DATABASE_URL",
+                    PLATFORM_FORCE_COMMAND_URL,
+                ));
+            }
+            let config = AppConfig::from_pairs(pairs).unwrap();
 
             assert!(config.leave_command_database_url.is_none());
             assert!(config.ontology_command_database_url.is_none());
@@ -995,6 +1032,10 @@ mod command_database_config_tests {
             AppConfig::from_pairs([
                 ("CONSOLE_APP_ROLE", "worker"),
                 ("DATABASE_URL", "postgresql://local_dev:secret@db/console",),
+                (
+                    "PLATFORM_FORCE_COMMAND_DATABASE_URL",
+                    PLATFORM_FORCE_COMMAND_URL
+                ),
             ])
             .is_err()
         );

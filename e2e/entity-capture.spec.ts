@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { tenantSlugField, firstSignIn, go, koDate, kstDate, option, takeCode, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, koDate, kstDate, option, takeCode, unique, vendorPage } from "./flows";
 import { registerEntity } from "./setup-flows";
 
 // 사업자등록증 capture (gate U2, U3) with bundled reference lists and no outside lookup (decision #16): the 행정구역 list
@@ -13,7 +13,7 @@ async function admin(browser: Browser, name: string, slug: string): Promise<Page
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
   await v.getByLabel("고객 이름").fill(name);
   await tenantSlugField(v).fill(unique(slug));
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   return firstSignIn(browser, await takeCode(v));
 }
 

@@ -212,3 +212,5 @@ pub mod company_domain_request;
 pub mod import_rollback;
 pub mod ops_recovery_decide;
 pub mod support_reference;
+
+pub mod tenant_erase;

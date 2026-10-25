@@ -42,6 +42,16 @@
     "/api/platform/orgs/{id}/admin-otp": [
       "post"
     ],
+    "/api/platform/orgs/{id}/erase": [
+      "get",
+      "post"
+    ],
+    "/api/platform/orgs/{id}/erase/{rid}/approve": [
+      "post"
+    ],
+    "/api/platform/orgs/{id}/erase/{rid}/cancel": [
+      "post"
+    ],
     "/api/platform/orgs/{id}/ops-recovery": [
       "get",
       "post"
@@ -536,6 +546,8 @@
     "SupportTenantDecision",
     "SystemPolicyRoleResponse",
     "Team",
+    "TenantEraseRead",
+    "TenantEraseRequest",
     "TokenPairResponse",
     "UpdateAccessRoleRequest",
     "UpdateBranchRequest",
@@ -611,6 +623,8 @@
     "OrgUnitKind",
     "PasskeyStepUpAssertion",
     "SetupChecklist",
+    "SetupStep",
+    "SetupStepState",
     "Timestamp",
     "Uuid"
   ]

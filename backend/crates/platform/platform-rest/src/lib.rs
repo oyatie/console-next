@@ -30,6 +30,7 @@ mod support;
 mod support_store;
 mod support_tenant;
 mod tenant_delete;
+mod tenant_erase;
 
 #[cfg(test)]
 #[path = "../tests/fixtures/listings.rs"]
@@ -75,7 +76,8 @@ pub use routes::{
     PLATFORM_OPS_RECOVERY_APPROVE_PATH, PLATFORM_OPS_RECOVERY_CANCEL_PATH,
     PLATFORM_OPS_RECOVERY_ISSUE_PATH, PLATFORM_OPS_RECOVERY_PATH,
     PLATFORM_ORG_ADMIN_OTP_PATH_TEMPLATE, PLATFORM_ORG_PATH_TEMPLATE, PLATFORM_ORGS_PATH,
-    PLATFORM_ROUTE_OPERATIONS, PLATFORM_ROUTE_PATHS, PlatformRouteOperation,
+    PLATFORM_ROUTE_OPERATIONS, PLATFORM_ROUTE_PATHS, PLATFORM_TENANT_ERASE_APPROVE_PATH,
+    PLATFORM_TENANT_ERASE_CANCEL_PATH, PLATFORM_TENANT_ERASE_PATH, PlatformRouteOperation,
     TENANT_OPS_RECOVERY_CANCEL_PATH, TENANT_OPS_RECOVERY_PATH,
 };
 
@@ -166,7 +168,7 @@ pub fn router(state: PlatformRestState) -> Router {
         verifier.clone(),
         pool.clone(),
     );
-    let router = support::routes(router).with_state(state);
+    let router = tenant_erase::routes(support::routes(router)).with_state(state);
     // PLATFORM extractor: resolves the PlatformPrincipal and REJECTS any tenant
     // token. Deliberately NOT the tenant org middleware â the platform tier is
     // not tenant-scoped, and each handler arms the TARGET org per action.

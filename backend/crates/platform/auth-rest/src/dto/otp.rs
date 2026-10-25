@@ -43,5 +43,8 @@ pub(crate) struct OtpRedeemResponse {
     #[serde(with = "time::serde::rfc3339")]
     pub(crate) refresh_expires_at: OffsetDateTime,
     pub(crate) requires_passkey_setup: bool,
+    #[serde(with = "time::serde::rfc3339")]
+    pub(crate) otp_expires_at: OffsetDateTime,
+    pub(crate) otp_reusable: bool,
     pub(crate) privacy_consent_accepted: bool,
 }

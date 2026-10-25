@@ -1,7 +1,8 @@
-      type: string
-      enum:
-      - rented
-      - spare
-      - disposed
-      - replacement
-      - sold
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: string
+enum:
+- rented
+- spare
+- disposed
+- replacement
+- sold

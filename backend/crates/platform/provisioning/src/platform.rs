@@ -1,3 +1,6 @@
+mod tenant_erase;
+mod tenant_erase_types;
+pub use tenant_erase_types::*;
 mod company_domain;
 mod ops_recovery;
 mod ops_recovery_rules;
@@ -33,6 +36,11 @@ pub struct OrganizationSummary {
     pub slug: String,
     pub domain_aliases: Vec<String>,
     pub pending_domain: Option<String>,
+    pub removable: bool,
+    pub removal_refusal: Option<String>,
+    pub lifecycle: String,
+    pub code_issued_count: i64,
+    pub passkey_registered_count: i64,
     pub name: String,
     pub status: String,
     pub created_at: OffsetDateTime,
@@ -136,6 +144,7 @@ pub struct RouteAdoptionMetric {
 pub struct TenantOnboarding {
     pub organization: OrganizationSummary,
     pub admin_user_id: Uuid,
+    pub admin_sign_in_id: Option<String>,
     /// The one-time cold-start OTP for the new org's first SUPER_ADMIN. Returned
     /// to the platform caller exactly once; never logged or audited.
     pub admin_otp: BootstrapToken,
@@ -147,6 +156,7 @@ pub struct TenantOnboarding {
 #[derive(Debug, Clone)]
 pub struct TenantAdminOtpReissue {
     pub admin_user_id: Uuid,
+    pub admin_sign_in_id: Option<String>,
     pub admin_otp: BootstrapToken,
     pub admin_otp_expires_at: OffsetDateTime,
 }

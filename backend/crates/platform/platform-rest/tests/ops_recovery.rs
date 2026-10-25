@@ -27,6 +27,17 @@ async fn ops_recovery_http_refusal_codes(owner: PgPool) {
         "ops_recovery_not_enrolled",
     );
     enrolled(&h, org).await;
+    code(
+        h.send_as(
+            "POST",
+            &format!("/api/platform/orgs/{org}/admin-otp"),
+            json!({"step_up":ak.step_up(&h.owner).await}),
+            &at,
+        )
+        .await,
+        StatusCode::CONFLICT,
+        "admin_already_enrolled",
+    );
     sqlx::query("UPDATE users SET is_active=false WHERE org_id=$1 AND id<>$2")
         .bind(OrgId::platform().as_uuid())
         .bind(a.as_uuid())

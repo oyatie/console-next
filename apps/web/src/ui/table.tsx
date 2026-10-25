@@ -1,7 +1,7 @@
 import { Fragment, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
-/** `fit` shrinks the column to its content (codes, dates, chips); `wide` hides it at phone widths (secondary detail). */
-export type Column<R> = { header: ReactNode; cell: (r: R) => ReactNode; fit?: boolean; wide?: boolean };
+/** `width` reserves a stable share for live content; `fit` shrinks the column to its content (codes, dates, chips); `wide` hides it at phone widths (secondary detail). */
+export type Column<R> = { header: ReactNode; cell: (r: R) => ReactNode; fit?: boolean; wide?: boolean; width?: "code" | "status" | "summary" | "datetime" };
 const cls = (c: { fit?: boolean; wide?: boolean }) => [c.fit && "fit", c.wide && "wide-only"].filter(Boolean).join(" ") || undefined;
 
 /**
@@ -44,9 +44,9 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   };
   const grid = onSelect ? ({ role: "grid", onKeyDown: key } as const) : {};
   return (
-    <table className="table" data-selectable={Boolean(onSelect)} aria-label={label} {...grid}>
+    <table className="table" data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} aria-label={label} {...grid}>
       <thead>
-        <tr>{columns.map((c, i) => <th key={i} className={cls(c)}>{c.header}</th>)}</tr>
+        <tr>{columns.map((c, i) => <th key={i} className={cls(c)} data-width={c.width}>{c.header}</th>)}</tr>
       </thead>
       <tbody ref={body}>
         {rows.map((r) => {

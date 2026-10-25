@@ -207,6 +207,12 @@ aside.panel { position: sticky; top: 0; }
 @media (min-width: 768px) { .table td.fit { white-space: nowrap; } }
 /* Phone widths: long unbroken names (keep-all Korean) wrap instead of pushing the table past its card. */
 @media (max-width: 767px) { .table td { overflow-wrap: anywhere; } .table .wide-only { display: none; } }
+.table[data-fixed="true"] { table-layout: fixed; }
+.table th[data-width="code"] { width: 14%; }
+.table th[data-width="status"] { width: 16%; }
+.table th[data-width="summary"] { width: 20%; }
+.table th[data-width="datetime"] { width: 15%; }
+.table[data-fixed="true"] :is(th, td) { white-space: normal; overflow-wrap: anywhere; }
 
 /* ── gate rail / timeline ──────────────────────────── */
 .rail-steps { display: flex; flex-wrap: wrap; gap: var(--space-1); list-style: none; margin: 0; padding: 0; }

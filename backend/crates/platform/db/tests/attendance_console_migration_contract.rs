@@ -2,6 +2,8 @@
 //! Attendance persistence proven as the non-owner runtime role: tenant isolation
 //! and least privilege are exercised rather than inferred from DDL.
 
+#[path = "../../../../test_support/governed_erase.rs"]
+mod governed_erase;
 use console_kernel_core::UserId;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{PgPool, Row};
@@ -20,68 +22,13 @@ const ORG_A: Uuid = Uuid::from_u128(0x1880_0000_0000_0000_0000_0000_0000_0001);
 const ORG_B: Uuid = Uuid::from_u128(0x1880_0000_0000_0000_0000_0000_0000_0002);
 const FINGERPRINT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
-struct Seeded {
-    branch: Uuid,
-    employee: Uuid,
-    user: Uuid,
-}
-
 fn database_error_code(error: &sqlx::Error) -> Option<String> {
     Some(error.as_database_error()?.code()?.into_owned())
 }
 
-async fn seed_org(pool: &PgPool, org: Uuid, tag: &str) -> Seeded {
-    let region = Uuid::new_v4();
-    let branch = Uuid::new_v4();
-    let employee = Uuid::new_v4();
-    let user = Uuid::new_v4();
-    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3)")
-        .bind(org)
-        .bind(format!("attendance-contract-{tag}"))
-        .bind(format!("Attendance contract {tag}"))
-        .execute(pool)
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO regions (id, name, org_id) VALUES ($1, $2, $3)")
-        .bind(region)
-        .bind(format!("Region {tag}"))
-        .bind(org)
-        .execute(pool)
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO branches (id, region_id, name, org_id) VALUES ($1, $2, $3, $4)")
-        .bind(branch)
-        .bind(region)
-        .bind(format!("Branch {tag}"))
-        .bind(org)
-        .execute(pool)
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO users (id, display_name, roles, org_id) VALUES ($1, $2, $3, $4)")
-        .bind(user)
-        .bind(format!("User {tag}"))
-        .bind(vec!["MECHANIC".to_owned()])
-        .bind(org)
-        .execute(pool)
-        .await
-        .unwrap();
-    sqlx::query(
-        "INSERT INTO employees (id, org_id, company, name, source_filename, source_sheet, source_row, source_key) \
-         VALUES ($1, $2, 'Maintenance', $3, 'attendance-contract', 'employees', 1, $4)",
-    )
-    .bind(employee)
-    .bind(org)
-    .bind(format!("Employee {tag}"))
-    .bind(format!("attendance-contract-{tag}"))
-    .execute(pool)
-    .await
-    .unwrap();
-    Seeded {
-        branch,
-        employee,
-        user,
-    }
-}
+#[path = "attendance_console_migration_contract/fixture.rs"]
+mod fixture;
+use fixture::seed_org;
 
 async fn runtime_tx(pool: &PgPool, org: Uuid) -> sqlx::Transaction<'_, sqlx::Postgres> {
     let mut tx = pool.begin().await.unwrap();
@@ -1288,7 +1235,7 @@ async fn platform_force_removal_runtime_is_denied_and_command_role_can_remove_ar
         .fetch_one(&mut *command)
         .await
         .unwrap();
-    assert_eq!(removed, "removed");
+    assert_eq!(removed, "erase_requires_second_operator");
     command.commit().await.unwrap();
 
     let remaining: i64 = sqlx::query_scalar("SELECT count(*) FROM organizations WHERE id = $1")
@@ -1297,8 +1244,8 @@ async fn platform_force_removal_runtime_is_denied_and_command_role_can_remove_ar
         .await
         .unwrap();
     assert_eq!(
-        remaining, 0,
-        "authorized command path must delete archived tenant"
+        remaining, 1,
+        "legacy command path must preserve an unapproved tenant"
     );
     let receipt: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM audit_events WHERE action = 'platform.tenant.force_remove' AND target_id = $1",
@@ -1308,8 +1255,8 @@ async fn platform_force_removal_runtime_is_denied_and_command_role_can_remove_ar
     .await
     .unwrap();
     assert_eq!(
-        receipt, 1,
-        "command must append exactly one immutable receipt"
+        receipt, 0,
+        "refused command must not append a removal receipt"
     );
 }
 
@@ -1338,13 +1285,15 @@ async fn platform_force_removal_deletes_post_0188_attendance_rows_before_employe
     .await
     .unwrap();
 
+    let platform=sqlx::query_scalar::<_,Uuid>("INSERT INTO users(org_id,display_name,roles) VALUES('00000000-0000-0000-0000-00000000face','Erase attendance approver',ARRAY['SUPER_ADMIN']) RETURNING id").fetch_one(&pool).await.unwrap();
+    governed_erase::due(&pool, org, platform).await;
     let mut command = pool.begin().await.unwrap();
     sqlx::query("SET LOCAL ROLE console_platform_force_cmd")
         .execute(&mut *command)
         .await
         .unwrap();
-    let removed: String = sqlx::query_scalar("SELECT platform_force_remove_organization_command($1, NULL::uuid, '00000000000000000000000000000000', '0000000000000000', now())")
-        .bind(org)
+    let removed: String = sqlx::query_scalar("SELECT platform_force_remove_organization_command($1, $2, '00000000000000000000000000000000', '0000000000000000', now())")
+        .bind(org).bind(platform)
         .fetch_one(&mut *command)
         .await
         .unwrap();

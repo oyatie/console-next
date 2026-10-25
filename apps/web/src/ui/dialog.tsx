@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Dialog as AriaDialog, Heading, Modal, ModalOverlay } from "react-aria-components";
+import { ModalOverlay, Dialog as AriaDialog, Heading, Modal } from "react-aria-components";
 import { useLiveHold } from "../lib/live/hold";
 
 /**

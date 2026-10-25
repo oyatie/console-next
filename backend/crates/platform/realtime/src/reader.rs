@@ -41,10 +41,11 @@ impl ChangeReader {
                     "ops_recovery" | "support_session"
                 ) || may_read(p, row)
             }
-            Self::Platform(p) => {
-                row.resource_type == "ops_recovery"
-                    && p.authorize(PlatformFeature::TenantCreate).is_ok()
-            }
+            Self::Platform(p) => match row.resource_type.as_str() {
+                "ops_recovery" => p.authorize(PlatformFeature::TenantCreate).is_ok(),
+                "tenant_erase" => p.authorize(PlatformFeature::TenantRemove).is_ok(),
+                _ => false,
+            },
         }
     }
 }
@@ -60,7 +61,11 @@ mod tests {
             Default::default(),
             BranchScope::All,
         ));
-        for (kind, allowed) in [("ops_recovery", true), ("employee", false)] {
+        for (kind, allowed) in [
+            ("ops_recovery", true),
+            ("tenant_erase", false),
+            ("employee", false),
+        ] {
             let row = ChangeRow {
                 seq: 1,
                 resource_type: kind.into(),
@@ -73,10 +78,11 @@ mod tests {
     }
 
     #[test]
-    fn platform_stream_has_only_recovery_hints() {
+    fn platform_stream_has_only_authorized_operator_hints() {
         let reader = ChangeReader::Platform(PlatformPrincipal::new(UserId::new()));
         for (kind, allowed) in [
             ("ops_recovery", true),
+            ("tenant_erase", true),
             ("employee", false),
             ("tenant", false),
             ("unknown", false),
@@ -89,6 +95,31 @@ mod tests {
                 ver: None,
             };
             assert_eq!(reader.may_read(&row), allowed);
+        }
+    }
+
+    #[test]
+    fn erasure_hints_require_tenant_remove_and_never_grant_tenant_content() {
+        for (features, expected) in [
+            (vec![PlatformFeature::TenantCreate], false),
+            (vec![PlatformFeature::TenantRemove], true),
+            (vec![], false),
+        ] {
+            let principal: PlatformPrincipal = serde_json::from_value(serde_json::json!({
+                "user_id": UserId::new(), "features": features,
+            }))
+            .unwrap();
+            let reader = ChangeReader::Platform(principal);
+            for kind in ["tenant_erase", "employee", "tenant", "unknown"] {
+                let row = ChangeRow {
+                    seq: 1,
+                    resource_type: kind.into(),
+                    resource_id: None,
+                    branch_id: None,
+                    ver: None,
+                };
+                assert_eq!(reader.may_read(&row), kind == "tenant_erase" && expected);
+            }
         }
     }
 }

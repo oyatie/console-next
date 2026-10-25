@@ -3,6 +3,8 @@ use console_kernel_core::KernelError;
 #[derive(Debug, thiserror::Error)]
 pub enum ProvisioningError {
     #[error("{0}")]
+    TenantErase(&'static str),
+    #[error("{0}")]
     OpsRecovery(&'static str),
     #[error("ops_recovery_hold_active")]
     OpsRecoveryHoldActive(Option<time::OffsetDateTime>),

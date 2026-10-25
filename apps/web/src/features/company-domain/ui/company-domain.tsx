@@ -39,7 +39,7 @@ export function CompanyDomain({ signInId, ops }: { signInId: string | null | und
       </Field>
       <CommandError error={change.error}>{checking && <Button onClick={() => change.check()}>{t("requestOutcome.find")}</Button>}</CommandError>
       <div className="form__actions">
-        <Button disabled={change.isPending && !checking} onClick={() => setOpen(false)}>{t("common.back")}</Button>
+        <Button disabled={change.isPending && !checking} onClick={() => setOpen(false)}>{t("common.cancel")}</Button>
         <Button disabled={!valid || change.isPending} onClick={() => change.mutate(requested)}>{t("account.domain.request")}</Button>
       </div>
     </Dialog>

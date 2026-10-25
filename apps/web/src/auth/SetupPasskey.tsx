@@ -94,7 +94,7 @@ export function SetupPasskey() {
           {!isAppSession && <KeyRound size={16} aria-hidden />} {t(isAppSession ? "auth.setup.consent.continue" : "auth.setup.register")}
         </Button>
         {!confirmed && <p className="muted" id={disabledDescription}>{t("auth.setup.consent.required")}</p>}
-        <Button variant="ghost" disabled={busy} onClick={() => void logout()}>
+        <Button variant="ghost" disabled={busy} onClick={() => void logout().then(() => nav({ to: "/login", search: isAppSession || unpublished ? {} : { cancelled: 1 } }))}>
           <LogOut size={16} aria-hidden /> {t(isAppSession || unpublished ? "shell.logout" : "auth.setup.cancel")}
         </Button>
       </div></Card></div>

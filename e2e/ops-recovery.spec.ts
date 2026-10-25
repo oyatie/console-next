@@ -4,7 +4,7 @@ import { PORTS } from "./slot";
 import { apiAs } from "./chaos";
 import type { Org, OpsRecoveryRead } from "../apps/web/src/features/platform/api";
 import { expectAccessible } from "./a11y";
-import { firstSignIn, go, takeCode, tenantSlugField, unique, vendorPage, vendorStepUp } from "./flows";
+import { tenantOnboardSubmit, firstSignIn, go, takeCode, tenantSlugField, unique, vendorPage, vendorStepUp } from "./flows";
 import { clearShifts, forgetResize, recordShifts } from "./stability";
 
 async function selectTenant(page: Page, slug: string) {
@@ -42,7 +42,7 @@ test("governed ops recovery: two operators, tenant veto, hold and once-only reen
   await vendor.getByRole("button", { name: "고객 계정 개설", exact: true }).click();
   await vendor.getByLabel("고객 이름").fill(company);
   await tenantSlugField(vendor).fill(slug);
-  await vendor.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(vendor).click();
   const holder = await firstSignIn(browser, await takeCode(vendor));
   await vendor.reload();
   const first = await openRecovery(vendor, slug);
@@ -105,7 +105,7 @@ test("regression: a tenant's late ops-recovery read does not move the panel's �
   await vendor.getByRole("button", { name: "고객 계정 개설", exact: true }).click();
   await vendor.getByLabel("고객 이름").fill(unique("패널 고객"));
   await tenantSlugField(vendor).fill(slug);
-  await vendor.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(vendor).click();
   await takeCode(vendor);
   // A fresh load with no tenant chosen (onboarding opened this one's panel), so its recovery read is not cached.
   await vendor.goto("/platform");

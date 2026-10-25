@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::fixture::Harness;
 use console_kernel_core::{OrgId, UserId};
-use console_platform_auth::{MobilePasskeyStepUpBinding, MobileStepUpActionKind};
 use console_platform_provisioning::OpsRecoveryCommand;
-use console_platform_test_support::soft_passkey::{SoftKey, passkey_service};
+use console_platform_test_support::soft_passkey::SoftKey;
+#[path = "operator_proof.rs"]
+mod operator_proof;
 use http::StatusCode;
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -33,19 +34,14 @@ pub(super) async fn proof(
     id: Uuid,
     command: &OpsRecoveryCommand,
 ) -> Value {
-    let binding = MobilePasskeyStepUpBinding::bound(
-        MobileStepUpActionKind::OperatorRecovery,
+    operator_proof::proof(
+        &h.owner,
+        *user.as_uuid(),
+        key,
         id,
         command.payload_hash(OrgId::from_uuid(org), id).unwrap(),
-    );
-    let start = passkey_service()
-        .start_mobile_step_up(&h.owner, *user.as_uuid(), binding.clone())
-        .await
-        .unwrap();
-    let mut challenge = serde_json::to_value(start.challenge).unwrap();
-    challenge["publicKey"]["allowCredentials"] =
-        json!([{"type":"public-key","id":key.credential_id()}]);
-    json!({"binding":binding,"assertion":{"ceremony_id":start.ceremony_id,"credential":key.assert(&challenge).unwrap()}})
+    )
+    .await
 }
 pub(super) async fn send(
     h: &Harness,

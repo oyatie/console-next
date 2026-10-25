@@ -4,6 +4,9 @@ required:
 - otp
 - admin_otp_expires_at
 properties:
+  admin_sign_in_id:
+    type: [string, 'null']
+    description: Current first administrator sign-in ID from the account registry.
   admin_user_id:
     $ref: '#/components/schemas/Uuid'
   otp:

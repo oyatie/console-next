@@ -9,6 +9,7 @@ publish.workspace = true
 
 [dependencies]
 axum = { workspace = true }
+metrics = { workspace = true }
 console-kernel-core = { workspace = true }
 console-platform-auth = { path = "../auth" }
 console-platform-authz = { path = "../authz" }

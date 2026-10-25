@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { go, takeCode, tenantSlugField, unique, vendorPage } from "./flows";
+import { tenantOnboardSubmit, go, takeCode, tenantSlugField, unique, vendorPage } from "./flows";
 
 // regression (UX-R2 SETUP, 2026-10-08): 「테넌트 개설」 read the server's 409 slug_taken as a lost response, found the
 // other tenant holding that slug and name on its re-read, and said 「…개설되었지만 응답이 끊겨…」 for a tenant the server
@@ -37,7 +37,7 @@ test("a slug another tenant holds is the server's refusal on the slug field, nev
   await hideFromList(v, slug);
   await go(v, "/platform");
   await fillOnboard(v, name, slug);
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   await takeCode(v);
 
   // The same name and slug again, past the list's own check.
@@ -48,7 +48,7 @@ test("a slug another tenant holds is the server's refusal on the slug field, nev
   await expect(slugField(v)).not.toHaveAttribute("aria-invalid", "true"); // both checks predate the conflicting create
   await v.unrouteAll({ behavior: "wait" }); // the re-read after the answer sees the server as it is
   const sent = v.waitForResponse((r) => r.url().endsWith("/api/platform/orgs") && r.request().method() === "POST");
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const answer = await sent;
   expect(answer.status()).toBe(409);
   expect(((await answer.json()) as { error: { code: string } }).error.code).toBe("slug_taken");
@@ -65,7 +65,7 @@ test("a slug another tenant holds is the server's refusal on the slug field, nev
   // The remedy: another slug clears the refusal and opens the tenant.
   await slugField(v).fill(other);
   await expect(slugField(v)).not.toHaveAttribute("aria-invalid", "true");
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   await takeCode(v);
   await expect(v.locator("#tenants-receipt")).toContainText(`회사 도메인 ${other}`);
 });
@@ -79,7 +79,7 @@ test("a response lost before any status still finds the tenant it opened, by the
   await hideFromList(v, decoy);
   await go(v, "/platform");
   await fillOnboard(v, name, decoy);
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   await takeCode(v);
   await fillOnboard(v, name, slug);
   await v.unrouteAll({ behavior: "wait" });
@@ -90,7 +90,7 @@ test("a response lost before any status still finds the tenant it opened, by the
     await r.fetch();
     await r.abort("internetdisconnected");
   });
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const receipt = v.locator("#tenants-receipt");
   await expect(receipt).toContainText("개설되었지만 응답이 끊겨 코드를 받지 못했습니다");
   await expect(receipt).toContainText(name); // its particle follows the name's last character (a repeat's "-r1")

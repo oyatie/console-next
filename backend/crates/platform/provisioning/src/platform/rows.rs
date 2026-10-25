@@ -114,8 +114,8 @@ pub(crate) async fn fetch_org_tx(
         r#"
         SELECT
             id, slug, name, status, created_at, updated_at,
-            group_id, group_slug, group_name, platform_organization_domain_aliases(id) AS domain_aliases, platform_organization_pending_domain(id) AS pending_domain
-        FROM platform_get_organization($1)
+            group_id, group_slug, group_name, platform_organization_domain_aliases(id) AS domain_aliases, platform_organization_pending_domain(id) AS pending_domain, facts.*
+        FROM platform_get_organization($1) CROSS JOIN LATERAL platform_tenant_facts(id) facts
         "#,
     )
     .bind(org_id)
@@ -128,6 +128,11 @@ pub(crate) async fn fetch_org_tx(
         slug: row.try_get("slug")?,
         domain_aliases: row.try_get("domain_aliases")?,
         pending_domain: row.try_get("pending_domain")?,
+        removable: row.try_get("removable")?,
+        removal_refusal: row.try_get("removal_refusal")?,
+        lifecycle: row.try_get("lifecycle")?,
+        code_issued_count: row.try_get("code_issued_count")?,
+        passkey_registered_count: row.try_get("passkey_registered_count")?,
         name: row.try_get("name")?,
         status: row.try_get("status")?,
         created_at: row.try_get("created_at")?,

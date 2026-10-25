@@ -14,6 +14,7 @@ const toned = <V extends string>(type: string, tone: Record<V, Tone>): Enum<V> =
 
 export const ROLE = values("role", ["SUPER_ADMIN", "EXECUTIVE", "ADMIN", "MEMBER", "MECHANIC", "RECEPTIONIST"]);
 export const ACCOUNT_STATUS = toned<S["AccountStatus"]>("accountStatus", { ACTIVE: "ok", PENDING_SETUP: "warn", ARCHIVED: "neutral" });
+export const TENANT_LIFECYCLE = toned("tenantLifecycle", { OPENED: "neutral", CODE_ISSUED: "info", ENROLLED: "info", SETUP: "warn", OPERATING: "ok" });
 export const TENANT_STATUS = toned("tenantStatus", { ACTIVE: "ok", SUSPENDED: "warn", ARCHIVED: "neutral" });
 export const EMPLOYMENT_TYPE = values<NonNullable<S["EmployeeEmploymentDetail"]["employment_type"]>>("employmentType", ["REGULAR", "CONTRACT", "PART_TIME", "INTERN"]);
 export const ORG_CHANGE_KIND = values<S["OrgChangeKind"]>("orgChangeKind", ["NEW", "REORG", "DISSOLVE"]);

@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [platform]
+operationId: approvePlatformTenantErase
+summary: Governed tenant erasure approve
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+- name: rid
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        properties:
+          step_up:
+            $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+responses:
+  '200':
+    description: Current erasure request receipt.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/TenantEraseRequest'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    description: tenant_active, blocked_legal_hold, erase_requires_second_operator, erase_cooling, or erase_same_operator.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

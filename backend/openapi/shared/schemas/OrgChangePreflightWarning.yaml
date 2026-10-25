@@ -1,14 +1,15 @@
-      type: object
-      required:
-      - code
-      - label
-      properties:
-        code:
-          type: string
-        label:
-          type: string
-        dependentKind:
-          type: string
-        count:
-          type: integer
-          format: int64
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- code
+- label
+properties:
+  code:
+    type: string
+  label:
+    type: string
+  dependentKind:
+    type: string
+  count:
+    type: integer
+    format: int64

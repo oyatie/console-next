@@ -1,2 +1,3 @@
-      type: string
-      enum: [ENTITY, REGION, BRANCH, SITE, ORG_UNIT]
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: string
+enum: [ENTITY, REGION, BRANCH, SITE, ORG_UNIT]

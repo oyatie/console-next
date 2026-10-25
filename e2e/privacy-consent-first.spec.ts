@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import { acceptConsent, firstSignIn, newContext, takeCode, tenantSlugField, unique, vendorPage, go } from "./flows";
+import { tenantOnboardSubmit, acceptConsent, firstSignIn, newContext, openCodeSignIn, takeCode, tenantSlugField, unique, vendorPage, go } from "./flows";
 import { virtualAuthenticator } from "./auth";
 
 // PV1: Privacy notice and consent before the first personal-data field (P0)
@@ -14,7 +14,7 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
   await v.getByLabel("고객 이름").fill("개인정보테스트");
   await tenantSlugField(v).fill(companyDomain);
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const code = await takeCode(v);
 
   const page = await (await newContext(browser)).newPage();
@@ -26,6 +26,7 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
   await expect(page.locator(".banner--danger, [role='alert']")).toHaveCount(0);
 
   // Enter one-time code to reach enrollment screen
+  await openCodeSignIn(page);
   await page.getByLabel("일회용 코드").fill(code);
   const documentResponse = page.waitForResponse((response) => response.url().endsWith("/api/v1/onboarding/terms") && response.request().method() === "GET");
   await page.getByRole("button", { name: "코드로 로그인" }).click();
@@ -120,7 +121,7 @@ test("fresh sign-in shows no false error on first visit (issue #44 regression)",
   await page.goto("/login");
   await refused;
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.getByLabel("일회용 코드")).toBeVisible();
+  await expect(page.getByLabel("아이디", { exact: true })).toBeVisible();
 
   // Must not display any error banner
   await expect(page.getByRole("alert")).toHaveCount(0);
@@ -133,7 +134,7 @@ test("unpublished consent documents show operator action and allow sign out", { 
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
   await v.getByLabel("고객 이름").fill("개인정보미공개테스트");
   await tenantSlugField(v).fill(unique("pvunpublished"));
-  await v.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(v).click();
   const page = await firstSignIn(browser, await takeCode(v));
   const unavailable = { status: 409, contentType: "application/json", body: JSON.stringify({ error: { code: "terms_not_published", message: "No terms published" } }) };
   try {
@@ -164,7 +165,7 @@ test("ten in-app navigations make no consent requests after first sign-in", { ta
   await vendor.getByRole("button", { name: "고객 계정 개설" }).click();
   await vendor.getByLabel("고객 이름").fill("동의 세션 테스트");
   await tenantSlugField(vendor).fill(unique("pvsession"));
-  await vendor.getByRole("button", { name: "개설하고 코드 발급" }).click();
+  await tenantOnboardSubmit(vendor).click();
   const page = await firstSignIn(browser, await takeCode(vendor));
   const consentRequests: string[] = [];
   page.on("request", (request) => {
