@@ -24,8 +24,12 @@ Enums: `enum.<type>.<VALUE>` — e.g. `enum.orgChangeStatus.IN_APPROVAL`.
 - **One verb per action, everywhere:** the verb table and glossary of `docs/design/copy-conventions.md`
   (수정 · 변경 · 정정 · 추가 · 등록 · 신설 · 삭제 · 제외 · 이동 · 발령 · 선택 · 입력 …). Buttons are object +
   bare action noun (「대표전화 수정」), never 「~하기」 or a native paraphrase (「고치기」, 「옮기기」, 「고르기」).
-  `npm run lint` fails on the banned forms (scripts/check-copy.mjs rule 3); a legitimate use goes in
-  `scripts/copy-terms-allow.json` with its reason.
+  `npm run lint` fails on the banned forms (scripts/check-copy.mjs rule 3).
+  `scripts/copy-terms-allow.json` only shrinks; correct the rule's context for legitimate uses.
+  After changing a baselined string or merging catalog changes, regenerate
+  `scripts/copy-maturity-baseline.json` with `node scripts/check-copy.mjs --write-baseline`;
+  never edit the generated baseline by hand. Stale entries fail the gate, and regeneration
+  cannot allow new debt.
 - 합니다체 for sentences, noun phrases for labels, no trailing periods on labels/buttons.
 - Korean particles after variables use `{name|을를}`, `{x|이가}`, `{x|으로로}` — never "을(를)".
 - Numbers, dates, money: ICU (`{count, number}`, `{count, plural, other {#명}}`) or the shared

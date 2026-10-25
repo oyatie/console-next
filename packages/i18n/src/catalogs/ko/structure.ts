@@ -168,8 +168,6 @@ export const koStructure = {
   "structure.first.ghostSite": "사업장 · 본사·공장·지점… · 법인을 등록하면 열립니다",
   "structure.first.ghostDept": "부서 · 사업장 안에 몇 단계든 · 팀은 더 깊은 부서입니다",
   "structure.first.caption": "조직도가 조직 구조의 첫 화면입니다 · 무엇을 추가하든 여기서 바로 보입니다 · 지금 변경하는 것은 모두 되돌릴 수 있습니다",
-  "structure.jump.label": "찾기·이동",
-  "structure.jump.placeholder": "찾기·이동 — 법인·사업장·부서·직원, 사업자등록번호",
   "structure.jump.people": "직원",
   "structure.jump.tasks": "작업",
   "structure.jump.addUnder": "{name}에 부서 추가",

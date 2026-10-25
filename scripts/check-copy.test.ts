@@ -49,6 +49,49 @@ test("baselined unused ids pass; the baseline fails once an entry is used or rem
 
 const entry = (id: string, text: string) => ({ id, where: "ko/test.ts", text });
 
+test.each([
+  ["term.이력", "org.tab.history", "변경 내역", "변경 이력"],
+  ["term.미배치", "people.status", "소속 지점 미지정", "미배치"],
+  ["term.대기", "home.tab.mine", "내 차례", "대기"],
+  ["term.대기", "home.inbox.filter.turn", "내 차례", "대기"],
+  ["term.업무함", "attendance.panel.title", "할 일", "업무함"],
+  ["term.직원", "people.page.title", "구성원 관리", "직원 관리"],
+  ["term.직원", "orgUnit.tab.members", "구성원 {count, number}", "직원 {count, number}"],
+  ["term.검색", "org.search.placeholder", "사람 찾기", "직원 검색"],
+  ["verb.입력", "org.reason", "사유를 적지 않음", "사유 미입력"],
+  ["verb.label", "org.reason", "범위를 정하고 진행합니다", "범위를 지정합니다"],
+  ["verb.선택", "org.status", "고름", "선택됨"],
+  ["verb.추가", "org.status", "만듦", "생성됨"],
+  ["verb.이동", "org.status", "옮김", "이동됨"],
+  ["verb.label", "org.reason", "파일을 올립니다", "파일을 첨부합니다"],
+  ["verb.부여", "common.denied.granters", "권한을 줄 수 있는 사람", "권한을 부여할 수 있는 담당자"],
+  ["prose.위치", "common.reason", "아래 버튼을 선택하십시오", "등록을 선택하십시오"],
+  ["prose.위치", "home.reason", "로그아웃은 화면 위쪽에 있습니다.", "로그아웃"],
+  ["prose.각주", "org.footnote", "변경 사항은 이력에 남습니다.", ""],
+  ["prose.단축키", "org.keyboardHint", "Ctrl+K로 검색합니다", ""],
+  ["prose.설정법령", "setup.step.entity.law", "근로기준법 제41조", ""],
+  ["prose.정책", "org.policy", "지난 기록은 정정합니다.", ""],
+  ["prose.부제", "org.subtitle", "변경 사항은 이력에 남습니다", "조직 구조"],
+  ["prose.단계", "org.phase.operating", "운영 중 · 변경 사항은 이력에 남습니다", "운영 중"],
+  ["prose.운영시제", "setup.phase.started.detail", "운영을 시작하면 정정으로 바뀝니다.", "운영 중"],
+])("maturity %s refuses %s and accepts its replacement", (rule, id, text, near) => {
+  expect(checkTerms([entry(id, text)], []).some((p) => p.includes(`: ${rule}:`))).toBe(true);
+  expect(checkTerms([entry(id, near)], [])).toEqual([]);
+});
+
+test.each([
+  ["setup.step.entity", "법인 등록"],
+  ["home.empty.partial.title", "볼 수 있는 항목 중에는 처리할 일이 없습니다"],
+  ["orgUnit.merge.subtitle", "구성원 {count, number}명"],
+])("maturity context accepts %s without an exception", (id, text) => {
+  expect(checkTerms([entry(id, text)], [])).toEqual([]);
+});
+
+test("contextual glossary preserves body text, find-in-page and task actions", () => {
+  for (const [id, text] of [["org.reason", "구성원을 지정합니다"], ["org.findInPage", "페이지에서 찾기"], ["home.action", "할 일 추가"], ["setup.state.todo", "할 일"], ["access.policy", "정책"], ["help.shortcuts.search", "Ctrl+K로 검색합니다"], ["org.subtitle", "직원 {count, number}명"], ["org.reason", "아래 부서에 직원이 있습니다"], ["org.reason", "{name|은는} {where} 아래에 있습니다"]])
+    expect(checkTerms([entry(id, text)], []), id).toEqual([]);
+});
+
 test("a planted 「고치기」 fails, naming the id, the rule and the canonical verb", () => {
   const problems = checkTerms([entry("entityRecord.action.fixOf", "대표전화 고치기")], []);
   expect(problems).toHaveLength(1);
@@ -179,7 +222,7 @@ function runtimeCli() {
   const root = fileURLToPath(new URL("..", import.meta.url));
   const dir = mkdtempSync(path.join(root, ".copy-cli-"));
   cliDirs.push(dir);
-  for (const p of ["scripts", "apps/web/src", "apps/web/public", "packages/api/src", "packages/i18n/src/catalogs/ko", "packages/i18n/src/catalogs/en", "output/nested"])
+  for (const p of ["scripts/quality", "apps/web/src", "apps/web/public", "packages/api/src", "packages/i18n/src/catalogs/ko", "packages/i18n/src/catalogs/en", "output/nested"])
     mkdirSync(path.join(dir, p), { recursive: true });
   const catalogs = Object.fromEntries(["structure", "people"].map((name) => {
     const file = `packages/i18n/src/catalogs/ko/${name}.ts`;
@@ -192,6 +235,8 @@ function runtimeCli() {
   for (const [file, text] of Object.entries({
     "package.json": '{"type":"module"}',
     "scripts/check-copy.mjs": readFileSync(path.join(root, "scripts/check-copy.mjs"), "utf8"),
+    "scripts/quality/ratchet.mjs": readFileSync(path.join(root, "scripts/quality/ratchet.mjs"), "utf8"),
+    "scripts/copy-maturity-baseline.json": "{}",
     "scripts/copy-unused-baseline.json": '{"unused":[]}',
     "scripts/copy-terms-allow.json": '{"allow":[]}',
     "apps/web/public/chunk-guard.js": "",
@@ -203,7 +248,7 @@ function runtimeCli() {
   const josaFile = path.join(dir, "packages/i18n/src/josa.ts");
   const josaSource = readFileSync(path.join(root, "packages/i18n/src/josa.ts"), "utf8");
   writeFileSync(josaFile, josaSource);
-  const cli = (...args: string[]) => spawnSync(process.execPath, [path.join(dir, "scripts/check-copy.mjs"), ...args], { cwd: dir, encoding: "utf8" });
+  const cli = (...args: string[]) => spawnSync(process.execPath, [path.join(dir, "scripts/check-copy.mjs"), ...args], { cwd: dir, encoding: "utf8", env: { ...process.env, QUALITY_BASE: "dev" } });
   return { cli, dir, josaFile, josaSource };
 }
 
@@ -268,4 +313,122 @@ test("default CLI catches unresolved particles in real catalog receipts and refu
   expect(result.status, result.stderr).toBe(1);
   for (const id of ["structure.receipt.created", "structure.edit.clash", "people.title.inactive"])
     expect(result.stderr).toContain(`${id} (Unit): punct.조사`);
+});
+
+test("CLI scans backend display strings, excluding comments and test fixtures", () => {
+  const { cli, dir } = runtimeCli();
+  const folder = path.join(dir, "backend/crates/platform/request-context/src/error_i18n");
+  mkdirSync(folder, { recursive: true });
+  const file = path.join(folder, "employees.rs");
+  writeFileSync(file, '// "퇴사"\npub const MESSAGES: &[(&str, &str)] = &[("exit", "퇴직 기록")];\n#[cfg(test)]\nmod tests { const OLD: &str = "퇴사"; }');
+  expect(cli().status).toBe(0);
+  writeFileSync(file, 'pub const MESSAGES: &[(&str, &str)] = &[("exit", "퇴사 기록")];');
+  const result = cli();
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("error_i18n/employees.rs: term.퇴직:");
+  writeFileSync(file, '#[cfg(test)]\nmod frozen_keys;\npub const MESSAGES: &[(&str, &str)] = &[("exit", "퇴사 기록")];');
+  expect(cli().stderr).toContain("error_i18n/employees.rs: term.퇴직:");
+  writeFileSync(file, 'pub const MESSAGES: &[(&str, &str)] = &[("exit", r#"퇴사\n기록"#)];');
+  expect(cli().stderr).toContain("error_i18n/employees.rs: term.퇴직:");
+});
+
+test("CLI refuses a rendered title assembled from two catalog values", () => {
+  const { cli, dir } = runtimeCli();
+  const parts = { noun: "구성원", suffix: " 관리" };
+  writeFileSync(path.join(dir, "output/title.txt"), `${parts.noun}${parts.suffix}`);
+  const result = cli("output/title.txt");
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("term.직원");
+  writeFileSync(path.join(dir, "output/title.txt"), "직원 관리");
+  expect(cli("output/title.txt").status).toBe(0);
+});
+
+test("CLI refuses a standing keyboard hint in rendered walk text", () => {
+  const { cli, dir } = runtimeCli();
+  writeFileSync(path.join(dir, "output/footnote.txt"), "Ctrl+K로 검색합니다");
+  expect(cli("output/footnote.txt").stderr).toContain("prose.단축키");
+  writeFileSync(path.join(dir, "output/footnote.txt"), "검색 · ⌘K");
+  expect(cli("output/footnote.txt").status).toBe(0);
+});
+
+test("catalog parsing covers single quotes, templates and multiline values", () => {
+  const entries = copyEntries("ko/test.ts", "export const ko = { 'org.title':\n `구성원 관리`, 'org.tab.history': '변경 내역' }; // 퇴사");
+  expect(entries.map((e) => e.id)).toEqual(["org.title", "org.tab.history"]);
+  expect(checkTerms(entries, []).map((p) => p.split(": ")[1])).toEqual(["term.직원", "term.이력"]);
+});
+
+function debtFixture() {
+  const fixture = runtimeCli();
+  const file = "packages/i18n/src/catalogs/ko/debt.ts";
+  const set = (text: string) => writeFileSync(path.join(fixture.dir, file), `export const ko = {\n "org.footnote": ${JSON.stringify(text)},\n};`);
+  rmSync(path.join(fixture.dir, "scripts/copy-maturity-baseline.json"));
+  set("변경 사항은 이력에 남습니다.");
+  writeFileSync(path.join(fixture.dir, "apps/web/src/debt.ts"), 't("org.footnote")');
+  const git = (...args: string[]) => {
+    const r = spawnSync("git", ["-C", fixture.dir, ...args], { encoding: "utf8" });
+    expect(r.status, r.stderr).toBe(0);
+  };
+  git("init", "--initial-branch=dev");
+  git("add", ".");
+  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "test fixture");
+  return { ...fixture, set, git, baseline: path.join(fixture.dir, "scripts/copy-maturity-baseline.json") };
+}
+
+test("CLI generates exact debt and requires stale entries to shrink", () => {
+  const { cli, set, baseline, git } = debtFixture();
+  const seeded = cli("--write-baseline");
+  expect(seeded.status, seeded.stderr).toBe(0);
+  expect(Object.keys(JSON.parse(readFileSync(baseline, "utf8")))).toHaveLength(1);
+  git("add", ".");
+  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "generated baseline");
+  expect(cli().status).toBe(0);
+  set("");
+  expect(cli().stderr).toContain("remove/lower stale baseline");
+  expect(cli("--write-baseline").status).toBe(0);
+  expect(JSON.parse(readFileSync(baseline, "utf8"))).toEqual({});
+  expect(cli().status).toBe(0);
+});
+
+test("CLI refuses new debt, changed debt and handwritten baseline growth", async () => {
+  const { cli, set, baseline, git } = debtFixture();
+  expect(cli("--write-baseline").status).toBe(0);
+  git("add", ".");
+  git("-c", "user.name=Jason Lee", "-c", "user.email=56489493+jason931225@users.noreply.github.com", "commit", "-m", "generated baseline");
+  const original = readFileSync(baseline, "utf8");
+  set("다른 변경 사항도 이력에 남습니다.");
+  expect(cli().status).toBe(1);
+  expect(cli("--write-baseline").stderr).toContain("baseline must only shrink");
+  expect(readFileSync(baseline, "utf8")).toBe(original);
+  const { copyDebt } = await import("./check-copy.mjs");
+  const file = "packages/i18n/src/catalogs/ko/debt.ts";
+  writeFileSync(baseline, JSON.stringify(copyDebt([{ id: "org.footnote", where: file, text: "다른 변경 사항도 이력에 남습니다." }]).counts));
+  expect(cli().stderr).toContain("baseline must only shrink");
+});
+
+test("first baseline generation refuses debt introduced after the merge base", () => {
+  const { cli, set } = debtFixture();
+  set("지금 추가한 각주입니다.");
+  expect(cli("--write-baseline").stderr).toContain("baseline must only shrink");
+});
+
+test("new violations cannot hide behind allow-list growth", () => {
+  const { cli, dir, set } = debtFixture();
+  set("지금 추가한 각주입니다.");
+  writeFileSync(path.join(dir, "scripts/copy-terms-allow.json"), JSON.stringify({ allow: [{ id: "org.footnote", rule: "prose.각주", reason: "planted bypass" }] }));
+  expect(cli().stderr).toContain("allow-list must only shrink");
+  expect(cli("--write-baseline").stderr).toContain("allow-list must only shrink");
+});
+
+test("shell and common have no glossary or standing-prose debt", async () => {
+  const root = fileURLToPath(new URL("..", import.meta.url));
+  const { readdirSync } = await import("node:fs");
+  const files = ["packages/i18n/src/catalogs/ko/common.ts", ...readdirSync(path.join(root, "packages/i18n/src/catalogs")).filter((f) => /^boot(?:-[\w-]+)?\.ts$/.test(f)).map((f) => `packages/i18n/src/catalogs/${f}`)];
+  for (const file of files) {
+    const entries = copyEntries(file, readFileSync(path.join(root, file), "utf8")).filter((e) => /^(shell|common)\./.test(e.id));
+    expect(checkTerms(entries, []), file).toEqual([]);
+  }
+  const shared = copyEntries("boot.ts", readFileSync(path.join(root, "packages/i18n/src/catalogs/boot.ts"), "utf8"));
+  expect(shared.find((e) => e.id === "shell.jumpLabel")?.text).toBe("검색·이동");
+  expect(shared.find((e) => e.id === "shell.jump")?.text).toMatch(/^검색·이동/);
+  expect(shared.find((e) => e.id === "common.denied.granters")?.text).toContain("권한을 부여할 수 있는 담당자");
 });

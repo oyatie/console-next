@@ -69,7 +69,7 @@ test("an HR worker granted 인사 실무 over one 법인 works inside it and is 
   await go(hr, "/people/exits");
   await expect(denied(hr)).toBeVisible();
   await expect(denied(hr)).toContainText("부여된 권한이 없습니다 · 지금은 내 계정만 쓸 수 있습니다");
-  await expect(denied(hr)).toContainText(/권한을 줄 수 있는 사람 1명/);
+  await expect(denied(hr)).toContainText("권한을 부여할 수 있는 담당자");
   await expect(denied(hr).getByRole("link", { name: "내 권한 보기" })).toBeVisible();
   await denied(hr).getByRole("button", { name: "권한 요청" }).click();
   await denied(hr).getByRole("button", { name: "권한 요청" }).click();
