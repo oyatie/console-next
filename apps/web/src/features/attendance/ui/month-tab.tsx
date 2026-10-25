@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { failureText } from "../../../lib/refusal";
+import { QueryState } from "../../../lib/react/query-state";
+import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { todayKst } from "../../../lib/pure/today";
 import { Banner } from "../../../ui/banner/banner";
 import { Button, IconButton } from "../../../ui/button/button";
@@ -12,7 +13,6 @@ import { EmptyState } from "../../../ui/empty-state";
 import { Kbd } from "../../../ui/kbd/kbd";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { at, rectIn, rectSize, type Range } from "../../../ui/person-day-grid/range";
-import { Skeleton } from "../../../ui/skeleton/skeleton";
 import { monthGridPages, type GridRow, type SaveReceipt } from "../api";
 import { cellKey, draftState, splitKey } from "../domain/grid";
 import { suggestFix } from "../domain/grammar";
@@ -27,7 +27,7 @@ import { PersonScheduleSheet } from "./person-schedule-sheet";
 import type { AssignTarget } from "./assign-sheet";
 import { UndoBatchSheet } from "./undo-batch-sheet";
 import { useDrafts } from "./use-drafts";
-import { useOnline } from "./use-online";
+import { useOnline } from "../../../lib/react/use-online";
 import { usePlanKinds } from "./use-plan-kinds";
 import s from "./records.module.css";
 
@@ -46,12 +46,12 @@ const daysOf = (m: string) => Array.from({ length: new Date(Date.UTC(Number(m.sl
  * likely fix; the selection bar counts cells against the 10,000-cell save. A saved batch can be undone (batch undo) until
  * its month closes.
  */
-export function MonthTab() {
+export function MonthTab({ head }: { head?: ReactNode }) {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const month = search.month ?? todayKst().slice(0, 7);
   const days = useMemo(() => daysOf(month), [month]);
-  const grid = useInfiniteQuery(monthGridPages(month, search.wp, search.unit));
+  const grid = useInfiniteQuery({ ...monthGridPages(month, search.wp, search.unit), placeholderData: keepPreviousData });
   const rows: GridRow[] = useMemo(() => grid.data?.pages.flatMap((p) => p.rows) ?? [], [grid.data]);
   const total = grid.data?.pages[0]?.people_total ?? 0;
   const monthState = useMemo(() => pageState(rows.map((r) => r.month_state)), [rows]);
@@ -94,6 +94,8 @@ export function MonthTab() {
 
   return (
     <div className={s.monthPage}>
+      {head}
+      <PageReadGate q={grid} own={refusalText} recovery={search.wp ? <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} /> : undefined}>
       <div className={s.toolbar} role="toolbar" aria-label={t("attendanceRecords.toolbar.label")}>
         <ScopePicker value={search.wp} onChange={(wp) => go({ wp, unit: undefined })} />
         <div className={s.stepper}>
@@ -105,6 +107,7 @@ export function MonthTab() {
         {saveWhy ? <DisabledReason reason={saveWhy} control={() => saveButton} /> : saveButton}
         <DisabledReason reason={t("attendanceRecords.toolbar.approvalLater")} control={(p) => <Button {...p}>{t("attendanceRecords.toolbar.approval")} <Kbd keys="⌘ Shift O" /></Button>} />
       </div>
+      <QueryState q={grid} own={refusalText} layout="grid">{() => <>
       {!online && <Banner tone="warn">{t("attendanceRecords.offline")}</Banner>}
       <MonthStateBanner state={monthState} month={month} />
       {focusDraft && focusState && !focusState.ok && (
@@ -132,11 +135,7 @@ export function MonthTab() {
       )}
       <div className={s.monthLayout} data-docked={dock ? "" : undefined}>
         <div className={s.gridCol}>
-          {grid.isPending ? (
-            <Skeleton bones={["row", "row", "row", "row", "row", "row"]} label={t("attendanceRecords.loading")} />
-          ) : grid.isError && !rows.length ? (
-            <EmptyState title={t("attendanceRecords.error.title")} reason={<>{failureText(grid.error, refusalText)} · {t("attendanceRecords.error.reason")}</>} alert actions={<Button onClick={() => void grid.refetch()}>{t("attendanceRecords.error.retry")}</Button>} />
-          ) : !rows.length ? (
+          {!rows.length ? (
             search.wp || search.unit ? (
               <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.empty.filteredReason")} actions={<Button onClick={() => go({ wp: undefined, unit: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />
             ) : (
@@ -161,6 +160,8 @@ export function MonthTab() {
       </div>
       {undo && receipt && <UndoBatchSheet batchId={receipt.batch_id} saved={receipt.saved} month={month} onClose={() => setUndo(false)} onDone={(m) => (setUndo(false), setReceipt(null), setNote(m))} />}
       {assign && <PersonScheduleSheet target={assign} onClose={() => setAssign(null)} onAssigned={(message) => (setAssign(null), setNote(message))} />}
+    </>}</QueryState>
+    </PageReadGate>
     </div>
   );
 }

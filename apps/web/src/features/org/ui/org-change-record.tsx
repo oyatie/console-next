@@ -15,7 +15,7 @@ import { unitsQuery } from "../../../reference/org/api";
 import { GateRail } from "../../../ui/gate-rail";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { Timeline } from "../../../ui/timeline";
-import { changeCommands, changeQuery, changeUnitId, lostRecord, me } from "../api";
+import { changeCommands, changeQuery, changeUnitId, me } from "../api";
 import { changeRail, changeTitle, describeOp, eventTitle, nextStep, submittedText, type Names } from "../present";
 import { ChangeChain } from "./change-chain";
 import { ChangeHead } from "./change-head";
@@ -41,12 +41,9 @@ export function OrgChange() {
   // otherwise land a moment later and move every action on the page under a pointer already on one.
   const [opened] = useState(Date.now);
   const settling = change.isFetching && change.dataUpdatedAt < opened;
-  // A loaded record that a refetch now refuses: say it went away or out of reach, and keep it on screen to read.
-  const lost = change.data ? lostRecord(change.error) : undefined;
   return (
     <div className="page">
-      {lost && <p className="alert" role="status">{t(lost === "gone" ? "live.notice.gone" : "live.notice.no_access")}</p>}
-      <QueryState q={lost ? { ...change, error: null } : settling ? { ...change, isPending: true } : change}>{(d) => <Record key={d.id} d={d} refetch={change.refetch} />}</QueryState>
+      <QueryState q={settling ? { ...change, isPending: true } : change} keepOnLoss back={{ to: "/org/changes", label: t("orgChange.list.title") }} layout="record">{(d) => <Record key={d.id} d={d} refetch={change.refetch} />}</QueryState>
     </div>
   );
 }

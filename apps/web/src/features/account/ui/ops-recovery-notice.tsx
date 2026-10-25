@@ -1,3 +1,4 @@
+import { QueryState } from "../../../lib/react/query-state";
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -22,11 +23,10 @@ export function OpsRecoveryNotice() {
     invalidates: ["/api/v1/tenant/ops-recovery"],
     onSuccess: () => { setCancelling(false); setReason(""); },
   });
-  if (q.isError) return <CommandError error={q.error}><Button onClick={() => void q.refetch()}>{t("common.retry")}</Button></CommandError>;
   const r = q.data?.request;
-  if (!r) return null;
+  if (!r) return <QueryState q={q}>{() => null}</QueryState>;
   const active = q.data?.state === "WAITING_APPROVAL" || q.data?.state === "HOLD";
-  return <Card title={t("opsRecovery.title")} titleId="account-ops-recovery">
+  return <QueryState q={q}>{() => <Card title={t("opsRecovery.title")} titleId="account-ops-recovery">
     <p>{t("opsRecovery.tenantOpenedBy", { actor: r.requested_by_name ?? t("opsRecovery.operator") })} {r.hold_until && t("opsRecovery.holdUntil", { at: fmtDateTime(r.hold_until) })} {active ? t("opsRecovery.tenantNotice") : q.data?.state === "CANCELLED" ? t("opsRecovery.cancelled", { actor: r.cancelled_by_name ?? t("opsRecovery.operator"), reason: r.cancel_reason ?? "—" }) : q.data?.state === "ISSUED" ? t("opsRecovery.issued", { minutes: q.data.code_ttl_minutes }) : t("opsRecovery.ready")}</p>
     {active && <Button onClick={() => setCancelling(true)}>{t("opsRecovery.cancel")}</Button>}
     {cancelling && <Dialog open title={t("opsRecovery.cancel")} onClose={() => setCancelling(false)} dismissable={!reason && !cancel.isPending}>
@@ -38,5 +38,5 @@ export function OpsRecoveryNotice() {
         <div className="form__actions"><Button onClick={() => setCancelling(false)} disabled={cancel.isPending}>{t("common.back")}</Button><Button type="submit" variant="primary" disabled={cancel.isPending}>{t("opsRecovery.cancel")}</Button></div>
       </Form>
     </Dialog>}
-  </Card>;
+  </Card>}</QueryState>;
 }

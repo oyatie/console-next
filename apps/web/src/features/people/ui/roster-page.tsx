@@ -24,13 +24,13 @@ import { BULK_MAX, useRoster } from "./use-roster";
 import { PeopleJump } from "./people-jump";
 import { RegisterExport } from "./register-export";
 import { RosterFirstRun } from "./roster-first-run";
-import { RosterError } from "./roster-error";
+import { QueryState } from "../../../lib/react/query-state";
+import { readGroup } from "../../../lib/react/query-view";
 import { RosterEmpty } from "./roster-empty";
 import { RosterColumns } from "./roster-columns";
 import { useRosterColumns } from "./use-roster-columns";
 import { Band } from "../../../ui/band/band";
 import { Banner } from "../../../ui/banner/banner";
-import { Skeleton } from "../../../ui/skeleton/skeleton";
 import { entitiesRef } from "../../../reference/entity/api";
 import { unitsQuery } from "../../../reference/org/api";
 import s from "./roster.module.css";
@@ -52,6 +52,7 @@ const FOCUS_SETTLE_MS = 150;
  */
 let memory: { key: string; q: string; top: number; row: string | null } | null = null;
 const listened = new WeakSet<HTMLElement>();
+const remember = (key: string, q: string, patch: Partial<NonNullable<typeof memory>>) => void (memory = { ...(memory?.key === key ? memory : { key, q, top: 0, row: null }), ...patch });
 
 /** The people list: status and attention chips, a virtualized server-paged table, and the selected person beside it. */
 export function RosterPage({ manage, scoped = false, switcher }: { manage: boolean; scoped?: boolean; switcher?: ReactNode }) {
@@ -84,7 +85,6 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
   const view = useRosterColumns();
   const can = useCan();
   const prefetch = usePrefetch();
-  const remember = (patch: Partial<NonNullable<typeof memory>>) => void (memory = { ...(memory?.key === key ? memory : { key, q, top: 0, row: null }), ...patch });
   // The memory always describes the current filters (a new filter starts at the top).
   useEffect(() => void (memory = memory?.key === key ? { ...memory, q } : { key, q, top: 0, row: null }), [key, q]);
 
@@ -109,7 +109,7 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
     if (sel.kind === "all" && v !== q) setSel(NO_SELECTION);
     setQ(v);
     setJump(v || null);
-    remember({ q: v, top: 0 });
+    remember(key, q, { q: v, top: 0 });
     void navigate({ search: (prev) => ({ ...prev, sel: undefined }), replace: true });
   };
   const reset = () => {
@@ -128,7 +128,7 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
     focusSoon("people-title");
   };
   const openRecord = (id: string) => {
-    remember({ row: id });
+    remember(key, q, { row: id });
     void navigate({ to: "/people/$id", params: { id } });
   };
 
@@ -179,7 +179,7 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
     clearTimeout(settle.current);
     settle.current = setTimeout(() => {
       prefetch(employeeQuery(id));
-      remember({ row: id });
+      remember(key, q, { row: id });
       if (open && id !== open) select(id); // the panel follows J/K
     }, FOCUS_SETTLE_MS);
   };
@@ -195,7 +195,7 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
   const total = r.total;
   // The first-run ways in are for a company with nobody at all (the starting and the exited counted, once their totals are
   // read); a current view that is empty while others exist is the table's own empty state, with its way to them.
-  if ((entities.isPending && entities.failureCount === 0) || (units.isPending && units.failureCount === 0)) return <Skeleton label={t("common.loading")} bones={["title", "row", "row", "block"]} />;
+  const context = readGroup([entities, units, r.list]);
   if (search.export === "register") return <RegisterExport onClose={() => void navigate({ search: (prev) => ({ ...prev, export: undefined }), replace: true })} />;
   return (
     <div className={s.page}>
@@ -221,6 +221,7 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
         onDensity={view.setDensity}
         tools={<RosterColumns shown={view.shown} onChange={view.set} density={view.density} onDensity={view.setDensity} />}
       />
+      <QueryState q={context} layout="list">{() => <>
       <div className={s.notes}>
       {status === "EXITED" && <ExitTabs view={exitView} kept={r.status.totals.EXITED} onView={setExitView} />}
       {scoped && <p className="muted">{t("roster.scope.branches")}</p>}
@@ -238,7 +239,7 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
       {status === "EXITED" && exitView === "voided" ? <VoidedList /> : !r.loading && !r.list.error && !filtered && (r.status.totals.all ?? total) === 0 && !r.changed ? <RosterFirstRun /> : (
       <div ref={split} className={s.split} data-open={Boolean(open)}>
         <Band className={s.tableWrap}>
-          {r.list.error && <RosterError error={r.list.error} kept={Boolean(r.list.data)} at={r.list.dataUpdatedAt} failedAt={r.list.errorUpdatedAt} retrying={r.list.isFetching} onRetry={() => void r.list.refetch()} />}
+          <>
           {/* Under a failed read the table stays (its search lives in the band above), empty rather than claiming nobody. */}
           <RosterTable
               today={today}
@@ -253,7 +254,7 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
               onLoadMore={() => void (r.list.hasNextPage && !r.list.isFetchingNextPage && r.list.fetchNextPage())}
               loading={r.loading}
               empty={r.list.error && !r.list.data ? null : empty}
-              onRowAction={(id) => (id === open ? openRecord(id) : (remember({ row: id }), select(id)))}
+              onRowAction={(id) => (id === open ? openRecord(id) : (remember(key, q, { row: id }), select(id)))}
               onRowHover={(id) => prefetch(employeeQuery(id))}
               onRowFocus={onRowFocus}
               rowKeys={{ onOpen: openRecord }}
@@ -268,6 +269,7 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
                 selectionActions: <RosterBulk sel={sel} rows={r.rows} total={total} query={r.query} onClear={setSel} onDone={bulkDone} />,
               })}
             />
+          </>
         </Band>
         {open && <RosterPanel id={open} today={today} onClose={() => select(undefined)} />}
       </div>
@@ -281,6 +283,7 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
         )}
       />
       <PeopleJump />
+    </>}</QueryState>
     </div>
   );
 }

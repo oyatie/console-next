@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
+import { QueryState } from "../../../lib/react/query-state";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { grantLines } from "../../../reference/authz/present";
 import { orgStructureRef } from "../../../reference/entity/api";
@@ -10,10 +11,9 @@ type Node = { id: string; name: string; children?: readonly Node[] };
 function Grants() {
   const me = useQuery(myAccessQuery);
   const tree = useQuery(orgStructureRef);
-  if (me.isPending) return <span className="muted" role="status">{t("common.loading")}</span>;
-  if (me.isError) return <span className="muted">{t("common.loadFailed.title")}</span>;
-  if (me.data.is_ops) return <span>{t("account.access.ops")}</span>;
-  const lines = grantLines(me.data.entries, (tree.data?.entities ?? []) as readonly Node[]);
+  return <QueryState q={me}>{data => {
+  if (data.is_ops) return <span>{t("account.access.ops")}</span>;
+  const lines = grantLines(data.entries, (tree.data?.entities ?? []) as readonly Node[]);
   // people-self-13: an account with no grant says what it can do today, never a capability it does not have.
   if (!lines.length) return <span className="muted">{t("account.access.none")}</span>;
   return (
@@ -27,6 +27,7 @@ function Grants() {
       ))}
     </ul>
   );
+  }}</QueryState>;
 }
 
 /**

@@ -11,7 +11,7 @@ vi.mock("@tanstack/react-router", () => ({
   getRouteApi: () => ({ useSearch: () => ({ date: "2026-10-06" }), useNavigate: () => vi.fn() }),
   Link: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({
+vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof import("@tanstack/react-query")>(), useQuery: () => ({
   isPending: false, error: null,
   data: {
     judged: true, marks: { blocking: 1, decision: 0 },

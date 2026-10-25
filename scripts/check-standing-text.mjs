@@ -157,7 +157,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const sources = Object.fromEntries(filesIn("apps/web/src").filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f)).map((f) => [f, readFileSync(f, "utf8")]));
   const { baseline, newScreens } = readRegistry();
   const now = screenCounts(sources, newScreens);
-  const previous = readRegistry("dev").baseline;
+  const previous = readRegistry(process.env.QUALITY_BASE ?? "dev").baseline;
   const problems = ratchet(now, baseline, previous, newScreens);
   if (problems.length) {
     console.error(`standing-text: ${problems.length} problem(s):\n${problems.join("\n")}`);

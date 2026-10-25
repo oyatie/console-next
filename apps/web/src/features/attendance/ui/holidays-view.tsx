@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { todayKst } from "../../../lib/pure/today";
@@ -26,7 +26,7 @@ import { YearStepper } from "./year-stepper";
  */
 export function HolidaysView({ tree, onDone }: { tree: ScheduleTree; onDone: (message: string) => void }) {
   const [year, setYear] = useState(Number(todayKst().slice(0, 4)));
-  const q = useQuery(holidaysQuery(year));
+  const q = useQuery({ ...holidaysQuery(year), placeholderData: keepPreviousData });
   const [adding, setAdding] = useState(false);
   const [retiring, setRetiring] = useState<ContractualHoliday | null>(null);
   return (
@@ -42,7 +42,7 @@ export function HolidaysView({ tree, onDone }: { tree: ScheduleTree; onDone: (me
           </>
         }
       >
-        <QueryState q={q} empty={(d) => (d.contractual.length ? null : <EmptyState title={t("attendanceHolidays.holidays.none", { year })} reason={t("attendanceHolidays.holidays.none.reason")} actions={<Button variant="primary" onClick={() => setAdding(true)}>{t("attendanceHolidays.holidays.add")}</Button>} />)}>
+        <QueryState q={q} layout="list" empty={(d) => (d.contractual.length ? null : <EmptyState title={t("attendanceHolidays.holidays.none", { year })} reason={t("attendanceHolidays.holidays.none.reason")} actions={<Button variant="primary" onClick={() => setAdding(true)}>{t("attendanceHolidays.holidays.add")}</Button>} />)}>
           {(d) => (
             <Table
               label={t("attendanceHolidays.holidays.title")}

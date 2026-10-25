@@ -27,7 +27,8 @@ export function useCreate(seed?: Partial<Draft>, persist?: { key: string; entry:
   const [lastPreview, setPreview] = useState<CheckPreview | null>(null);
   const preview = lastPreview && lastPreview.values.brn === d.brn && lastPreview.values.opened_on === d.openedOn && lastPreview.values.representative === (d.representatives[0] ?? "").trim() ? lastPreview : null;
   const checkAvailability = useQuery(registrationCheckAvailabilityQuery).data;
-  const entities = useQuery(entitiesRef).data?.items ?? [];
+  const q = useQuery(entitiesRef);
+  const entities = q.data?.items ?? [];
   const taken = takenBrn(d.brn, entities);
   const problems = createProblems(d, { today: st.today, taken });
   const clash = legalNameTaken(d.name, entities);
@@ -59,6 +60,7 @@ export function useCreate(seed?: Partial<Draft>, persist?: { key: string; entry:
   const put = <K extends keyof Draft>(k: K, v: Draft[K]) => st.set("identity", k, v);
   return {
     ...st,
+    q,
     put,
     preview,
     checkAvailability,

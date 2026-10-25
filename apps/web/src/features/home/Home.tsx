@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { components } from "@console/api";
 import type { Checklist } from "@console/api/pending";
@@ -67,7 +67,7 @@ const SOURCE_TEXT: Record<string, MessageId> = {
 export function Home({ setup, setupPending = false, action }: { setup?: (c: Checklist) => ReactNode; setupPending?: boolean; action?: RowAction } = {}) {
   const [filter, setFilter] = useState<Filter>("turn");
   const me = useQuery(meQuery);
-  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter }), refetchOnMount: "always" });
+  const inbox = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter }), placeholderData: keepPreviousData, refetchOnMount: "always" });
   const [opened] = useState(Date.now);
   const [caughtUp, setCaughtUp] = useState(false);
   const rereading = !caughtUp && inbox.isFetching && inbox.dataUpdatedAt < opened;
@@ -80,21 +80,21 @@ export function Home({ setup, setupPending = false, action }: { setup?: (c: Chec
         <h1 id="home-title" className="page__title" tabIndex={-1}>{me.data ? t("home.greeting", { name: me.data.display_name }) : t("home.title")}</h1>
         {first?.as_of && <span className="muted num">{t("home.asOf", { time: fmtDateTime(first.as_of) })}</span>}
       </div>
-      {loading ? <QueryState q={{ ...inbox, isPending: true }}>{() => null}</QueryState> : <section className="card panel" aria-labelledby="inbox-title">
+      {loading ? <QueryState q={{ ...inbox, isPending: true }} layout="list">{() => null}</QueryState> : <section className="card panel" aria-labelledby="inbox-title">
         <h2 id="inbox-title" className="panel__title" tabIndex={-1}>{t("home.inbox.title")}</h2>
-        <QueryState q={inbox}>{(data) => {
+            {!first?.setup && first?.has_work && <div role="group" aria-label={t("home.lanes")} className="tabs">
+              {FILTERS.filter((key) => first.available_filters.includes(key)).map((key) => {
+                const count = first.counts[key];
+                return <Button key={key} aria-pressed={filter === key} variant={filter === key ? "secondary" : "ghost"} onClick={() => setFilter(key)}>{t(count && !count.total_is_exact ? "home.inbox.filterCount.lower" : "home.inbox.filterCount", { filter: t(`home.inbox.filter.${key}`), count: count?.total ?? 0 })}</Button>;
+              })}
+            </div>}
+        <QueryState q={inbox} layout="list">{(data) => {
           const pages = data.pages;
           const checklist = pages[0]?.setup;
           const rows = pages.flatMap((page) => page.items).filter((item) => !checklist || !item.kind.startsWith("setup_"));
           const head = pages[0];
           const unavailable = [...new Map(pages.flatMap((page) => page.unavailable).map((part) => [part.source, part])).values()];
           return <>
-            {!checklist && head?.has_work && <div role="group" aria-label={t("home.lanes")} className="tabs">
-              {FILTERS.filter((key) => head.available_filters.includes(key)).map((key) => {
-                const count = head.counts[key];
-                return <Button key={key} aria-pressed={filter === key} variant={filter === key ? "secondary" : "ghost"} onClick={() => setFilter(key)}>{t(count && !count.total_is_exact ? "home.inbox.filterCount.lower" : "home.inbox.filterCount", { filter: t(`home.inbox.filter.${key}`), count: count?.total ?? 0 })}</Button>;
-              })}
-            </div>}
             {unavailable.map((part) => <Banner tone="danger" live="assertive" key={part.source} actions={<Button onClick={() => void inbox.refetch()} disabled={inbox.isFetching}>{t("common.retry")}</Button>}>
               {t("home.inbox.unavailable", { part: t(SOURCE_TEXT[part.source] ?? "home.inbox.unknown") })} · {t("home.inbox.support", { reference: part.support_reference })}
             </Banner>)}

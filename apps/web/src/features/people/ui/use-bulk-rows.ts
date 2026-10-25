@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { unitsQuery } from "../../../reference/org/api";
+import { readGroup } from "../../../lib/react/query-view";
 import { unitPath } from "../../../reference/org/present";
 import { NUMBERS_PER_READ, ROSTER_PAGE, byNumbersQuery, rosterPageQuery } from "../api";
 import { parsePaste, resolvePaste, selectionRows, type Kind, type Row, type SheetTarget, type UnitRef } from "../domain/bulk";
@@ -36,11 +37,12 @@ export function useBulkRows(source: Source, kind: Kind | null, sheet: SheetTarge
     () => (all ?? []).filter((u) => u.status === "ACTIVE" && u.kind !== "COMPANY").map((u) => ({ id: u.id, name: u.name, path: unitPath(all ?? [], u) })),
     [all],
   );
-  const ready = on && reads.every((p) => p.isSuccess) && units.isSuccess;
+  const ready = on && reads.every((p) => p.data !== undefined) && units.data !== undefined;
   // Re-resolved on each render: a few thousand records, cheaper than keeping memo keys right.
   const rows: Row[] = !ready ? [] : paste ? resolvePaste(lines, { employees, units: unitRefs, kind, sheet, picks }) : selectionRows(source.picked, employees, kind, sheet);
   const checked = numberReads.reduce((n, q, i) => n + (q.isSuccess ? chunks[i]!.length : 0), 0);
   return {
+    q: readGroup(on ? [...reads, units] : [units]),
     lines,
     rows,
     ready,

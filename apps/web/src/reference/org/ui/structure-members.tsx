@@ -1,3 +1,5 @@
+import { queryView } from "../../../lib/react/query-view";
+import { QueryState } from "../../../lib/react/query-state";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
@@ -7,7 +9,6 @@ import { todayKst } from "../../../lib/pure/today";
 import { useFreshOnArrival } from "../../../lib/react/arrival";
 import { useCan } from "../../authz/ui/use-can";
 import { Chip } from "../../../ui/chip";
-import { Button } from "../../../ui/button/button";
 import css from "./structure.module.css";
 import { Muted } from "../../../ui/muted/muted";
 
@@ -51,18 +52,18 @@ export function Members({
   const preHireIds = new Set((preHire?.items ?? []).map((m) => m.id));
   const preHireCount = historic ? undefined : joiners ?? preHire?.total;
   // The count is known from the structure before the names arrive: their rows are held, so nothing below moves.
-  const held = q.isPending && unitId ? Math.min(expected, SHOWN) : 0;
-  const empty = held === 0 && items.length === 0;
+  const held = queryView(q) === "loading" && unitId ? Math.min(expected, SHOWN) : 0;
+  const empty = queryView(q) === "ready" && items.length === 0 && (!directory || queryView(preHireQ) === "ready");
   let joinerNote: string | undefined;
   if (unitId && !historic) {
     if (!directory && preHireCount === undefined) joinerNote = t("orgStructure.members.joinersRestricted");
-    else if (directory && preHireQ.isError) joinerNote = t("orgStructure.members.joinersFailed");
-    else if (directory && preHireQ.isPending && preHireCount === undefined) {
-      joinerNote = `${t("enum.employeeStatus.PRE_HIRE")} · ${t("common.loading")}`;
-    }
+
   }
+  if (!unitId) return null;
+  if (["denied", "failed", "not-found"].includes(queryView(q)) || (queryView(q) === "offline" && q.data === undefined)) return <QueryState q={q}>{() => null}</QueryState>;
   return (
     <>
+      <QueryState q={q} inline loading={null}>{() => null}</QueryState>
       {preHireCount !== undefined && preHireCount > 0 && (
         <div className={css.joinerRow}>
           <Chip tone="info">
@@ -75,11 +76,9 @@ export function Members({
           {empty && t("orgStructure.members.none")}
           {empty && joinerNote && " · "}
           {joinerNote}
-          {unitId && directory && preHireQ.isError && (
-            <> <Button size="sm" onClick={() => preHireQ.refetch()}>{t("common.retry")}</Button></>
-          )}
         </p>
       )}
+      {directory && <QueryState q={{ ...preHireQ, data: preHire }} inline own={() => t("orgStructure.members.joinersFailed")} loading={<p className={css.note} role="status">{t("enum.employeeStatus.PRE_HIRE")} · {t("common.loading")}</p>}>{() => null}</QueryState>}
       {held > 0 ? (
         <ul className={css.list} aria-busy="true">
           {Array.from({ length: held }, (_, i) => <li key={i}><span className={css.av} aria-hidden /></li>)}

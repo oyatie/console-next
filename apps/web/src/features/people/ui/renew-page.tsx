@@ -1,3 +1,5 @@
+import { QueryState } from "../../../lib/react/query-state";
+import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -40,8 +42,12 @@ const request = (b: RenewBatch, memo: string): BulkRequest =>
  * server ever takes mixed acts.
  */
 export function RenewPage() {
+  return <AccessGate domain="appointment" level="edit" tenant><RenewWorkspace /></AccessGate>;
+}
+
+function RenewWorkspace() {
   const picked = useBulkSelection();
-  const { rows } = useBulkRows({ picked }, null, {}, {});
+  const { rows, q } = useBulkRows({ picked }, null, {}, {});
   const people = rows.flatMap((r) => (r.employee ? [r.employee] : []));
   const [choices, setChoices] = useState<Record<string, RenewChoice>>({});
   const [months, setMonths] = useState<number | null>(null);
@@ -70,7 +76,8 @@ export function RenewPage() {
     invalidates: ["/api/v1/employees", ...ORG_READS],
     onSuccess: (r) => (setRefused(r.refused), r.sent.length && setDone(r.sent)),
   });
-  if (picked.size === 0 && !done) return <div className="page"><EmptyState title={t("renew.empty.title")} reason={t("renew.empty.reason")} actions={<Link className={buttonClass("primary")} to="/people" search={{}}>{t("people.title")}</Link>} /></div>;
+  if (q.data === undefined) return <QueryState q={q} layout="form">{() => null}</QueryState>;
+  if (picked.size === 0 && !done) return <QueryState q={q} layout="form">{() => <div className="page"><EmptyState title={t("renew.empty.title")} reason={t("renew.empty.reason")} actions={<Link className={buttonClass("primary")} to="/people" search={{}}>{t("people.title")}</Link>} /></div>}</QueryState>;
   const leaving = people.filter((e) => choices[e.id] === "leave");
   const gaps = [n.open > 0 && t("renew.missing.open", { n: n.open }), n.renew > 0 && !months && t("renew.missing.term"), !memo.trim() && t("renew.missing.memo")].filter(Boolean) as string[];
   const submit = () => (setTried(true), !gaps.length && !run.isPending && run.mutate(undefined));
@@ -89,7 +96,7 @@ export function RenewPage() {
         title={t("renew.title", { n: people.length })}
         tools={<StepLine steps={steps} label={t("renew.steps")} />}
       />
-      <div role="group" aria-label={t("renew.same")} className={s.kinds}>
+<QueryState q={q} layout="form">{() => <>      <div role="group" aria-label={t("renew.same")} className={s.kinds}>
         <span className={s.steel}>{t("renew.same")}</span>
         {CHOICES.map((c) => <ToggleButton key={c} pressed={false} onClick={() => setAll(c)}>{t(`renew.choice.${c}`)}</ToggleButton>)}
         <span className={s.steel}>{t("renew.sameNote")}</span>
@@ -121,6 +128,7 @@ export function RenewPage() {
         </div>
         {!done && <Button variant="primary" aria-disabled={run.isPending || undefined} onClick={submit}>{t("renew.commit", { renew: n.renew, convert: n.convert })}<Kbd keys="⌘↵" /></Button>}
       </footer>
+    </>}</QueryState>
     </div>
   );
 }

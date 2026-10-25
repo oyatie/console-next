@@ -9,7 +9,7 @@ import type { CreateState } from "./use-create";
 
 const view = vi.hoisted(() => ({ loaded: false }));
 vi.mock("./use-ref", () => ({
-  useCodeListsKnown: () => true,
+  useCodeLists: () => ({ isPending: false, error: null, data: true, refetch: vi.fn() }),
   useAddressSearch: () => ({ query: "", setQuery: vi.fn(), hits: [], loading: false, problem: null, withCodes: (value: unknown) => value }),
   useCodeSearch: () => ({ list: { title: "공식 코드", loaded: view.loaded }, options: [], query: "", setQuery: vi.fn(), loading: false, ready: true }),
 }));

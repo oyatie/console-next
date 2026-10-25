@@ -48,7 +48,7 @@ export function DeptEndSheet({ place, setup, onClose, onDone, onPropose }: { pla
     onPropose();
   }, [handOff, onPropose]);
   // The sheet opens once the server has answered, so its actions land with it (no shift under the pointer).
-  if (q.isPending || handOff) return null;
+  if (handOff) return null;
   const pending = erase.isPending || dissolve.isPending || raise.isPending;
   const sub = descendants(d).map((c) => c.name);
   const ask = setup && subs.length > 0 && direct(d) === 0;

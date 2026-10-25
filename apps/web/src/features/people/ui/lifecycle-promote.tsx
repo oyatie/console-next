@@ -1,3 +1,4 @@
+import { QueryState } from "../../../lib/react/query-state";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
@@ -33,10 +34,9 @@ export function PromoteTarget({ employee, current, value, titleId, onChange, onT
   const members = useQuery({ ...unitMembersQuery(employee.org_unit_id ?? ""), enabled: Boolean(employee.org_unit_id) });
   const catalog = activeTitles(titles.data?.items ?? [], "TITLE");
   const fact = <p className={s.fact}>{t("lifecycle.promote.current", { position: current?.label ?? employee.position ?? "—" })}</p>;
-  if (titles.isPending) return <div className={s.block}>{fact}</div>;
   if (catalog.length > 0)
     return (
-      <div className={s.block}>
+      <QueryState q={titles} layout="form">{() => <div className={s.block}>
         {fact}
         <ServerPicker
           label={t("lifecycle.promote.title")}
@@ -53,11 +53,11 @@ export function PromoteTarget({ employee, current, value, titleId, onChange, onT
         />
         {missing && <p className={s.error}>{t("lifecycle.promote.pickMissing")}</p>}
         {note != null && <p className={s.note}>{note}</p>}
-      </div>
+      </div>}</QueryState>
     );
   const used = [...new Set((members.data?.items ?? []).map((m) => m.position?.trim()).filter((p): p is string => Boolean(p) && p !== employee.position))].slice(0, SUGGESTIONS);
   return (
-    <div className={s.block}>
+    <QueryState q={titles} layout="form">{() => <div className={s.block}>
       {fact}
       <Field label={t("lifecycle.promote.position")} required={false} hint={t("lifecycle.promote.free")} error={missing ? t("lifecycle.promote.missing") : undefined}>
         {(p) => <TextInput {...p} value={value} maxLength={100} onChange={(e) => onChange(e.target.value)} />}
@@ -71,6 +71,6 @@ export function PromoteTarget({ employee, current, value, titleId, onChange, onT
         </div>
       )}
       {note != null && <p className={s.note}>{note}</p>}
-    </div>
+    </div>}</QueryState>
   );
 }

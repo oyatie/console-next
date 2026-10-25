@@ -16,7 +16,7 @@ import { draftState, splitKey, type Drafts } from "../domain/grid";
 import { dateText, entryText, monthText, refusalText } from "../present";
 import { EMPTY_EVIDENCE, evidenceOf } from "../domain/evidence";
 import { EvidenceField } from "./evidence-field";
-import { useOnline } from "./use-online";
+import { useOnline } from "../../../lib/react/use-online";
 import { usePreview } from "./use-preview";
 
 /**

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { FileSpreadsheet, X } from "lucide-react";
 import { t } from "@console/i18n";
@@ -36,6 +37,10 @@ const HEADING = { upload: "import-title", preview: "import-sheets", dryrun: "imp
  * digest. The file stays in memory so a remapped sheet, or a run that expired, is read again without choosing it twice.
  */
 export function ImportPage() {
+  return <AccessGate domain="hr_basic" level="edit" tenant><ImportWorkspace /></AccessGate>;
+}
+
+function ImportWorkspace() {
   const { mode, run } = route.useSearch();
   const [source, setSource] = useState<Source | null>(null);
   const [mapping, setMapping] = useState<Mapping>({});

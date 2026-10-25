@@ -1,5 +1,5 @@
-/* The shared refused state (people-self-38): the state head, then what the account holds, who can grant, the request. */
-.body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: 0 var(--space-5) var(--space-5); }
-.mine { display: flex; flex-direction: column; gap: var(--space-1); }
+/* One shared refusal card; request details expand inside it. */
+.body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-5); }
 .form { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; max-width: var(--panel-w); }
 .row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.mine { display: flex; flex-direction: column; gap: var(--space-2); }

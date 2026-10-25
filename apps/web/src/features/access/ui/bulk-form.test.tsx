@@ -25,7 +25,7 @@ vi.mock("react", async (original) => {
 });
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { entities: [], items: [] }, isSuccess: true }) }));
 vi.mock("./use-access-context", () => ({ useAccessContext: () => ({
-  cat: { data: {} }, accounts: [], accountsQ: {}, roles: [], setup: true,
+  cat: { data: {} }, accounts: [], accountsQ: { data: { items: [] }, isPending: false, error: null }, roles: [], setup: true, q: { data: true, isPending: false, error: null },
 }) }));
 vi.mock("./access-head", () => ({ AccessHead: () => null }));
 vi.mock("../../../lib/react/command", () => ({ useCommand: () => ({ mutate: view.mutate }) }));

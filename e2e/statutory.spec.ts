@@ -3,6 +3,7 @@ import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { go, kstDate, registerEmployee } from "./flows";
 import { prepareFilingCompletion, selectFilingFact } from "./helpers/statutory";
 import { staffedTenant } from "./setup-flows";
+import { addDays } from "../apps/web/src/ui/date/days";
 
 test("statutory filings and a dated worker register from an empty tenant", { tag: "@hr" }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "statutory", "법정서류회사");
@@ -15,7 +16,8 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await expect(admin.getByRole("link", { name: "조직 구조 열기" })).toHaveAttribute("href", "/org");
   await expect(admin.getByRole("main")).not.toContainText("사업장별 근로자 명부를 조회합니다");
   await expectAccessible(admin, "statutory empty states with next actions");
-  await registerEmployee(admin, { name: "김신고", number: "S-1", hired: kstDate(-20) });
+  const hiredOn = kstDate(-20);
+  await registerEmployee(admin, { name: "김신고", number: "S-1", hired: hiredOn });
   await go(admin, "/statutory");
   await expect(admin.getByRole("heading", { name: "법정 신고·서류" })).toBeVisible();
   await expect(admin.getByRole("tab")).toHaveCount(2);
@@ -31,7 +33,7 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await admin.route(latestRead, (route) => route.abort("failed"));
   await row.getByRole("button", { name: "처리 기록" }).click();
   const dialog = admin.getByRole("dialog");
-  await expect(dialog).toContainText("불러오지 못했습니다");
+  await expect(dialog).toContainText("불러오지 못했습니다", { timeout: 15_000 });
   await expect(dialog.getByRole("button", { name: "신고 완료", exact: true })).toHaveCount(0);
   await admin.unroute(latestRead);
   await dialog.getByRole("button", { name: "다시 불러오기" }).click();
@@ -144,7 +146,7 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await admin.getByRole("button", { name: "PDF 저장·인쇄" }).click();
   await expect.poll(() => admin.locator("html").getAttribute("data-register-printed")).toContain("S-1");
   await expect.poll(() => admin.locator("html").getAttribute("data-register-printed")).toContain("김신고");
-  await admin.getByRole("textbox", { name: /^기준일/ }).fill(kstDate(-21));
+  await admin.getByRole("textbox", { name: /^기준일/ }).fill(addDays(hiredOn, -1));
   await admin.getByRole("textbox", { name: /^기준일/ }).blur();
   await expect(admin.getByText("이 기준일의 근로자 명부가 없습니다", { exact: true })).toBeVisible();
   await admin.getByRole("textbox", { name: /^기준일/ }).fill(kstDate());

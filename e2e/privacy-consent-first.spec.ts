@@ -18,6 +18,7 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
   const code = await takeCode(v);
 
   const page = await (await newContext(browser)).newPage();
+  await virtualAuthenticator(page);
   await go(page, "/login");
 
   // False error regression check (#44): fresh visit shows no error banner
@@ -80,7 +81,6 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
   await expect(commit).toBeEnabled();
 
   // An N-1 request must receive a typed review refusal, then recover with both displayed references.
-  await virtualAuthenticator(page);
   await page.route("**/api/v1/auth/privacy-consent/accept", async (route) => {
     expect(route.request().postDataJSON()).toMatchObject({
       privacy: { version: documents.privacy.version, sha256: documents.privacy.sha256 },
@@ -189,4 +189,5 @@ test("ten in-app navigations make no consent requests after first sign-in", { ta
   await page.getByRole("button", { name: "동의하고 계속", exact: true }).click();
   await expect(page).toHaveURL(/\/org\/entities\?add=true#entities-title$/);
   await expect(page.locator("#entities-title")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "이 화면에 접근 권한이 없습니다", exact: true })).toHaveCount(0);
 });

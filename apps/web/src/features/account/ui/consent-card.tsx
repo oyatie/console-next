@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button";
+import { QueryState } from "../../../lib/react/query-state";
 import { Card } from "../../../ui/card/card";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { consentDocumentsQuery, consentQuery } from "../api";
@@ -14,16 +15,16 @@ export function ConsentCard() {
   const nav = useNavigate();
   return (
     <Card title={t("account.consent.title")}>
-      {q.data ? (
+      <QueryState q={q}>{d => (
         <>
           <KeyValue
             items={[{
               key: "privacy",
-              label: t("account.consent.privacy", { version: q.data.policy_version }),
-              value: q.data.accepted ? t("account.consent.accepted", { at: fmtDateTime(q.data.accepted_at) }) : t("account.consent.pending"),
+              label: t("account.consent.privacy", { version: d.policy_version }),
+              value: d.accepted ? t("account.consent.accepted", { at: fmtDateTime(d.accepted_at) }) : t("account.consent.pending"),
             }]}
           />
-          {!q.data.accepted && (
+          {!d.accepted && (
             <div className="row">
               <Button variant="secondary" onClick={() => void nav({ to: "/setup-passkey" })}>
                 {t("auth.setup.title")}
@@ -32,14 +33,7 @@ export function ConsentCard() {
           )}
           {documents.data && <div className="muted">{t("auth.setup.consent.policy")}: {documents.data.privacy.policy_url}</div>}
         </>
-      ) : q.error ? (
-        <div className="row" role="alert">
-          <span className="muted">{t("account.consent.failed")}</span>
-          <Button variant="ghost" onClick={() => void q.refetch()}>{t("common.retry")}</Button>
-        </div>
-      ) : (
-        <span className="muted" role="status">{t("common.loading")}</span>
-      )}
+      )}</QueryState>
     </Card>
   );
 }

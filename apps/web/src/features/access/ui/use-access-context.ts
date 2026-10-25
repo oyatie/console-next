@@ -1,3 +1,4 @@
+import { readGroup } from "../../../lib/react/query-view";
 import { useQuery } from "@tanstack/react-query";
 import { accountsQuery, catalogQuery, meQuery, opsQuery, rolesQuery } from "../api";
 
@@ -9,6 +10,7 @@ export function useAccessContext() {
   const me = useQuery(meQuery);
   const ops = useQuery(opsQuery);
   return {
+    q: readGroup([cat, roles, accounts, me, ops]),
     cat,
     roles: roles.data?.items ?? [],
     /** Wait for the arrival read before opening a sheet: cached empty roles would flash a notice. */

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Button, Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import { X } from "lucide-react";
 import { t } from "@console/i18n";
+import { Skeleton } from "../skeleton/skeleton";
 import { useLiveHold } from "../../lib/live/hold";
 import s from "./sheet.module.css";
 
@@ -48,7 +49,7 @@ export function Sheet(p: {
             </div>
             <Button className="btn btn--ghost" aria-label={t("uiSheet.close")} isDisabled={p.pending} onPress={p.onClose}><X size={16} aria-hidden /></Button>
           </div>
-          <div className={s.body} inert={p.pending || p.locked || undefined}>{p.loading ? <div className="state muted" role="status">{t("common.loading")}</div> : p.children}</div>
+          <div className={s.body} inert={p.pending || p.locked || undefined}>{p.loading ? <Skeleton bones={["title", "row", "row", "row"]} label={t("common.loading")} /> : p.children}</div>
           <div className={s.foot}>
             {p.notice}
             <div className={s.consequence}>{p.consequence}</div>

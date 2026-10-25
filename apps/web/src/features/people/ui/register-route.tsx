@@ -1,10 +1,4 @@
 import { getRouteApi } from "@tanstack/react-router";
-import { Denied } from "../../../lib/react/denied";
-import { useQuery } from "@tanstack/react-query";
-import { t } from "@console/i18n";
-import { authzQuery, granted } from "../../../reference/authz/api";
-import { Button } from "../../../ui/button/button";
-import { Composer } from "../../../ui/composer/composer";
 import { RegisterSheet } from "./register-sheet";
 
 const route = getRouteApi("/app/people/new");
@@ -13,16 +7,11 @@ const route = getRouteApi("/app/people/new");
 export function RegisterRoute() {
   const { unit } = route.useSearch();
   const navigate = route.useNavigate();
-  const onClose = () => void navigate({ to: "/people", search: (prev) => prev });
-  // Registering is org-wide on the server: a caller without that grant is told so, never handed a form it refuses.
-  const authz = useQuery(authzQuery);
-  if (authz.isPending || (authz.isSuccess && !granted(authz.data.capabilities)("employee_directory_manage", "all"))) {
-    return <Composer open wide title={t("register.title")} onClose={onClose} loading={authz.isPending} action={{ kind: "ONBOARD", mode: "apply", count: 1 }} recovery={<Button onClick={onClose}>{t("composer.dismiss")}</Button>}><Denied /></Composer>;
-  }
+  // PeopleRoute checks the whole-tenant registration grant before mounting the sheet or the roster.
   return (
     <RegisterSheet
       preset={unit}
-      onClose={onClose}
+      onClose={() => void navigate({ to: "/people", search: (prev) => prev })}
       onOpen={(id) => void navigate({ to: "/people/$id", params: { id }, search: {} })}
       onRehire={(id) => void navigate({ to: "/people/$id", params: { id }, search: { act: "rehire" } })}
     />

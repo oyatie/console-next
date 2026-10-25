@@ -85,7 +85,7 @@ function Body({ e, w, place, setup, onClose, onAct, as_of, known_at, readOnly = 
         <Members unitId={n.org_unit_id} total={n.headcount} expected={direct(n)} as_of={as_of} known_at={known_at} />
       </Sec>
       <Sec id="wp-history" title={t("entity.history.title")}>
-        <History target={{ id: e.id, wp: w.id }} q={history} subject={name} known={w.current ? [w.current] : []} />
+        <History target={{ id: e.id, wp: w.id }} q={history} subject={name} />
       </Sec>
     </PanelShell>
   );

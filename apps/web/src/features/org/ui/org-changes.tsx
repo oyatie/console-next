@@ -67,7 +67,7 @@ export function OrgChanges() {
       </div>
       <section className="card">
         <QueryState
-          q={list}
+          q={list} layout="list"
           empty={(d) =>
             d.items.length || lead.length ? null : (
               <EmptyState

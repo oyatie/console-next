@@ -30,7 +30,7 @@ export function headerProblems(file, src) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const base = process.argv[2] ?? "dev";
+  const base = process.argv[2] ?? process.env.QUALITY_BASE ?? "dev";
   const added = execFileSync("git", ["diff", "--merge-base", base, "--name-only", "--diff-filter=A"], { encoding: "utf8" })
     .split("\n")
     .filter(checked);

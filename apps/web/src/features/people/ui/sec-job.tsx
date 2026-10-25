@@ -60,7 +60,7 @@ export function SecJob({ c, onFix, onAct, onTab, onContract }: { c: Card; onFix:
       </FieldRow>
       {/* The employer and workplace by date (the assignments split on each change's effective date, so a unit's move carries the person). */}
       <FieldRow wide label={t("empCard.f.placements")}>
-        <dl className={s.placements}><EmploymentPlacement employeeId={e.id} /></dl>
+        <EmploymentPlacement employeeId={e.id} className={s.placements} />
       </FieldRow>
       <FieldRow id="f-grade" label={t("empCard.f.grade")} sub={!c.manage || promoted ? t(c.manage ? "empCard.grade.since" : "empFix.catalog.scope", { date: promoted ? fmtDate(promoted.effective_date) : "" }) : undefined} mark={rc(t("empCard.f.grade"), "grade")}>
         {title(k.grade_id) ?? none}

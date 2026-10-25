@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -23,13 +24,13 @@ const route = getRouteApi("/app/attendance");
  * person card (A7-card): one person's month exactly as the close will take it (provisional until closed). Not a tab: it
  * opens from a name and its crumb goes back to the grid or board with the scope, month and selection as they were.
  */
-export function PersonCard({ id, month }: { id: string; month?: string }) {
+export function PersonCard({ id, month, head }: { id: string; month?: string; head?: ReactNode }) {
   const m = month ?? todayKst().slice(0, 7);
   const q = useQuery(personMonthQuery(id, m));
   const search = route.useSearch();
   const back = { ...search, person: undefined };
   return (
-    <QueryState q={q}>
+    <>{head}<QueryState q={q} layout="record">
       {(p) => {
         const work = p.days.filter((d) => d.plan.kind === "WORK").length;
         const worked = p.days.filter((d) => d.recognition.recognised > 0).length;
@@ -73,7 +74,7 @@ export function PersonCard({ id, month }: { id: string; month?: string }) {
           </div>
         );
       }}
-    </QueryState>
+    </QueryState></>
   );
 }
 

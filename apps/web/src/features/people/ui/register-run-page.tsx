@@ -1,14 +1,13 @@
+import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { unitsQuery } from "../../../reference/org/api";
 import { unitPath } from "../../../reference/org/present";
-import { authzQuery, granted } from "../../../reference/authz/api";
 import { checklistRef, entitiesRef, orgStructureRef } from "../../../reference/entity/api";
 import { CommandError } from "../../../lib/react/command-error";
 import { peopleRefusal } from "../present";
-import { Denied } from "../../../lib/react/denied";
 import { phoneE164 } from "../../../lib/pure/formats";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
@@ -36,9 +35,7 @@ import s from "./register-run.module.css";
  * nothing preselected, every gap named and focused, a possible duplicate stops the row until the user says who it is.
  */
 export function RegisterRunPage() {
-  const authz = useQuery(authzQuery);
-  if (authz.isSuccess && !granted(authz.data.capabilities)("employee_directory_manage", "all")) return <Denied />;
-  return <RegisterRun />;
+  return <AccessGate domain="hr_basic" level="edit" tenant><RegisterRun /></AccessGate>;
 }
 
 /** "A › B › unit" → "unit · A › B": the place a person goes to, readable when its cell cuts it short. */

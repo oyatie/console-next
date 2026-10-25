@@ -1,3 +1,4 @@
+import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { getRouteApi, Navigate } from "@tanstack/react-router";
 import { EntityWizard } from "./entity-wizard";
 import { EntityList } from "./entity-list";
@@ -8,7 +9,7 @@ import { EntityRecord } from "./entity-record";
 const listRoute = getRouteApi("/app/org/entities");
 export function EntitiesScreen() {
   const { bulk } = listRoute.useSearch();
-  return bulk ? <EntityBulkPage key={bulk} paste={bulk === "paste"} /> : <EntityList />;
+  return bulk ? <AccessGate domain="org" level="edit" tenant><EntityBulkPage key={bulk} paste={bulk === "paste"} /></AccessGate> : <EntityList />;
 }
 
 /** Keep the bulk entry links while registration uses the legal-entity workspace. */
@@ -21,7 +22,7 @@ export function EntityBulkScreen() {
 const newRoute = getRouteApi("/app/org/entities/new");
 export function NewEntityScreen() {
   const { kind, name } = newRoute.useSearch();
-  return <EntityWizard kind={kind} name={name} />;
+  return <AccessGate domain="org" level="edit" tenant><EntityWizard kind={kind} name={name} /></AccessGate>;
 }
 
 const entityRoute = getRouteApi("/app/org/entities/$id");

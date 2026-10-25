@@ -1,6 +1,6 @@
 import { Banner } from "../../../ui/banner/banner";
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { todayKst } from "../../../lib/pure/today";
@@ -63,7 +63,7 @@ export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCance
   const scope = search.kind && search.id ? { kind: search.kind, id: search.id } : fallback && { kind: fallback.kind, id: fallback.id };
   const month = search.month ?? monthOf(todayKst());
   const weeks = useMemo(() => monthWeeks(month), [month]);
-  const cal = useQuery({ ...calendarQuery(scope?.kind ?? "WORKPLACE", scope?.id ?? "", month), enabled: !!scope });
+  const cal = useQuery({ ...calendarQuery(scope?.kind ?? "WORKPLACE", scope?.id ?? "", month), placeholderData: keepPreviousData, enabled: !!scope });
   const keys = useKeys<HTMLDivElement>((e) => {
     if (inField(e) || (e.key !== "[" && e.key !== "]")) return false;
     onMonth(shiftMonth(month, e.key === "[" ? -1 : 1));
@@ -79,7 +79,7 @@ export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCance
           <strong className={s.monthText}>{monthText(month)}</strong>
           <IconButton label={t("attendanceSchedule.month.next")} onClick={() => onMonth(shiftMonth(month, 1))}><ChevronRight size={16} aria-hidden /></IconButton>
         </div>
-        <QueryState q={cal}>{(c) => <Month c={c} month={month} weeks={weeks} />}</QueryState>
+        <QueryState q={cal} layout="grid">{(c) => <Month c={c} month={month} weeks={weeks} />}</QueryState>
         <LayerHistory kind={scope.kind} id={scope.id} onCancel={onCancel} />
       </div>
       <aside className={s.sideCol} aria-label={t("attendanceSchedule.side.label")}>

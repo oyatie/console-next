@@ -19,7 +19,7 @@ const route = getRouteApi("/app/people/certificates/$certificateId");
 export function CertificatePage() {
   const { certificateId } = route.useParams();
   const q = useQuery(certificateQuery(certificateId));
-  return <div className="page"><div className={s.noPrint}><PageHead title={t("empDoc.cert.title")} crumbs={<Crumbs items={[<Link key="register" to="/people/certificates" search={{}}>{t("empDoc.certificate.register")}</Link>]} />} /></div><QueryState q={q} own={certificateError}>{(c) => <Document certificate={c} />}</QueryState></div>;
+  return <div className="page"><div className={s.noPrint}><PageHead title={t("empDoc.cert.title")} crumbs={<Crumbs items={[<Link key="register" to="/people/certificates" search={{}}>{t("empDoc.certificate.register")}</Link>]} />} /></div><QueryState q={q} layout="record" own={certificateError}>{(c) => <Document certificate={c} />}</QueryState></div>;
 }
 function Document({ certificate: c }: { certificate: Certificate }) {
   const nav = route.useNavigate();

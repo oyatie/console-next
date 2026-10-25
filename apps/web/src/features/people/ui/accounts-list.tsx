@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { QueryState } from "../../../lib/react/query-state";
+import { PageReadGate } from "../../../reference/authz/ui/access-gate";
+import { useState, type ReactNode } from "react";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { UserPlus } from "lucide-react";
 import type { components } from "@console/api/schema";
@@ -32,7 +34,7 @@ const PATH = "/api/v1/directory/people";
  * employee number, kept out of the URL). There are no preset roles (governance-01): an account carries no access, and
  * the panel links to Access for what it may do.
  */
-export function Accounts({ q, sel }: { q: string; sel?: string; onSelect?: (id?: string) => void }) {
+export function Accounts({ q, sel, head }: { q: string; sel?: string; onSelect?: (id?: string) => void; head?: (available: boolean) => ReactNode }) {
   const s = route.useSearch() as AccountsSearch;
   const navigate = route.useNavigate();
   const set = (patch: AccountsSearch & { sel?: string }, push = false) => navigate({ search: (prev) => ({ ...prev, ...patch }), replace: !push });
@@ -45,6 +47,7 @@ export function Accounts({ q, sel }: { q: string; sel?: string; onSelect?: (id?:
     ...get(PATH, { params: { query: { ...base, limit: PAGE } } }),
     queryFn: ({ pageParam }) => get(PATH, { params: { query: { ...base, limit: PAGE, offset: pageParam } } }).queryFn(),
     initialPageParam: 0,
+    placeholderData: keepPreviousData,
     getNextPageParam: (last, pages) => {
       const n = pages.reduce((sum, p) => sum + p.items.length, 0);
       return last.items.length > 0 && n < last.total ? n : undefined;
@@ -63,7 +66,7 @@ export function Accounts({ q, sel }: { q: string; sel?: string; onSelect?: (id?:
   const filtered = Boolean(s.inactive);
 
   return (
-    <div className="split" data-open={Boolean(sel)}>
+    <PageReadGate q={list} head={head}><div className="split" data-open={Boolean(sel)}>
       <section className="card" aria-labelledby="accounts-title">
         <div className="toolbar">
           <h2 id="accounts-title" className="toolbar__title" tabIndex={-1}>{t("accounts.title")}</h2>
@@ -72,7 +75,7 @@ export function Accounts({ q, sel }: { q: string; sel?: string; onSelect?: (id?:
         <div className="toolbar">
           <Button variant={s.inactive ? "secondary" : "ghost"} aria-pressed={s.inactive ?? false} onClick={() => set({ inactive: s.inactive ? undefined : true })}>{t("accounts.includeInactive")}</Button>
         </div>
-        <LongTable
+        <QueryState q={list} layout="list">{() => <LongTable
           label={t("accounts.table")}
           caption={total === undefined ? undefined : t("accounts.count", { count: total })}
           columns={columns(rows, sel)}
@@ -91,7 +94,7 @@ export function Accounts({ q, sel }: { q: string; sel?: string; onSelect?: (id?:
             />
           }
           onRowAction={(id) => (setReceipt(undefined), set({ sel: id }))}
-        />
+        />}</QueryState>
       </section>
       {/* Keyed per account: switching accounts must not carry one account's choices or errors to another. */}
       {sel && (
@@ -116,7 +119,7 @@ export function Accounts({ q, sel }: { q: string; sel?: string; onSelect?: (id?:
       )}
       {/* The sheet or panel that opened the code is gone, so focus goes to a stable heading after it. */}
       <IssuedCode issued={issued} onDone={() => (setIssued(null), focusSoon("acct-title", "accounts-title"))} />
-    </div>
+    </div></PageReadGate>
   );
 }
 

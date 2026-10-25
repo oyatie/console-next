@@ -1,4 +1,5 @@
 import { EnumCode } from "../../../ui/enum-value";
+import { QueryState } from "../../../lib/react/query-state";
 import { useState } from "react";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
@@ -56,7 +57,7 @@ export function CardSpine({ c, onAct, onLedger, onHistory }: { c: Card; onAct: (
   });
   const now = [c.place.workplace, c.place.path.at(-1) ?? e.org_unit, c.title(d.classification.grade_id) ?? e.position, c.title(d.classification.position_kind_id), d.employment?.employment_type && label(EMPLOYMENT_TYPE, d.employment.employment_type)].filter(Boolean).join(" · ");
   return (
-    <Spine
+    <QueryState q={c.events}>{() => <Spine
       title={t("empCard.spine.title")}
       tools={
         <Segmented label={t("empCard.spine.view")} value={view} onChange={setView} items={(["all", "acts", "fixes"] as const).map((v) => ({ id: v, label: t(`empCard.spine.${v}`) }))} />
@@ -66,7 +67,7 @@ export function CardSpine({ c, onAct, onLedger, onHistory }: { c: Card; onAct: (
       // What is due next (trunk's next box): it lands with the history, so nothing already drawn moves for it.
       next={c.events.isSuccess && <NextBox d={d} events={events} verbs={verbs} today={todayKst()} onAct={onAct} onShow={(id) => (onHistory(), focusSoon(`ev-${id}`, "history"))} />}
       items={items}
-      empty={<p className={s.note}>{c.events.isPending ? t("common.loading") : view === "fixes" ? t("empCard.spine.fixesUnserved") : t("empCard.spine.empty")}</p>}
+      empty={<p className={s.note}>{view === "fixes" ? t("empCard.spine.fixesUnserved") : t("empCard.spine.empty")}</p>}
       // The foot holds controls: it lands once the history has, so it never moves under the pointer.
       foot={
         c.events.isSuccess && <>
@@ -75,6 +76,6 @@ export function CardSpine({ c, onAct, onLedger, onHistory }: { c: Card; onAct: (
           <Button variant="link" onClick={onLedger}>{t("empCard.spine.ledger")}</Button>
         </>
       }
-    />
+    />}</QueryState>
   );
 }

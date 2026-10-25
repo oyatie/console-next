@@ -57,7 +57,7 @@ export function RosterFilters({ status, review, unit, sort, counts, onChange, fi
         {tools}
       </Band>
       {/* One row that never wraps, its chips shown once both counts land: a count arriving cannot move a control. */}
-      <Band tone="canvas" className={s.stats} role="group" aria-label={t("people.filter.label")} data-pending={pending || undefined}>
+      <Band tone="canvas" className={s.stats} role="group" tabIndex={0} aria-label={t("people.filter.label")} data-pending={pending || undefined}>
         <span className={s.lab} id="roster-status">{t("roster.group.status")}</span>
         <span role="group" aria-labelledby="roster-status" className={s.chips}>
           {chip("ACTIVE", t("roster.status.ACTIVE"))}

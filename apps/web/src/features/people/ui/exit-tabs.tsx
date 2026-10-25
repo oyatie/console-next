@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { ToggleButton } from "../../../ui/button/button";
+import { QueryState } from "../../../lib/react/query-state";
 import { RecordRows } from "../../../ui/record/rows";
 import { voidedQuery } from "../api/record";
 import { tx } from "../present";
@@ -27,7 +28,7 @@ export function VoidedList() {
   const rows = q.data ?? [];
   return (
     <Band className={s.voided}>
-      {rows.length === 0 ? <p className={s.said}>{q.isPending ? t("common.loading") : t("roster.voided.none")}</p> : (
+      <QueryState q={q} empty={d => d.length ? null : <p className={s.said}>{t("roster.voided.none")}</p>}>{() => (
       <RecordRows
         label={t("roster.exitTabs.voided")}
         rows={rows}
@@ -40,7 +41,7 @@ export function VoidedList() {
           { header: t("roster.voided.pii"), cell: (r) => (r.pii_destroyed_at ? fmtDateTime(r.pii_destroyed_at) : t("roster.voided.piiKept")) },
         ]}
       />
-      )}
+      )}</QueryState>
     </Band>
   );
 }

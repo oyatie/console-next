@@ -1,3 +1,4 @@
+import { readGroup } from "../../../lib/react/query-view";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Check, Info, TriangleAlert } from "lucide-react";
@@ -52,12 +53,13 @@ export function ReadinessPage() {
   const manages = new Set(ctx.roles.filter((r) => r.lines.some((l) => l.domain === "access" && l.levels.includes("edit"))).map((r) => r.id));
   const opsName = ctx.accounts.find((a) => a.id === ctx.ops)?.display_name ?? "";
   return (
-    <div className="page">
+      <div className="page">
       <AccessHead
         actions={ctx.setup ? <Link to="/setup/go-live" className={buttonClass("primary")}><ArrowRight size={16} aria-hidden />{t("access.ready.goLive")}</Link> : undefined}
       />
-      <QueryState q={grants}>
-        {(g) => {
+      <QueryState q={readGroup([ctx.q, grants])} layout="list">
+        {() => {
+          const g = grants.data!;
           const checks = readiness(
             ctx.accounts.map((a) => ({ ...a, name: personLabel(a).name, active: a.is_active })),
             g.items.map((x) => ({ account_id: x.account_id, enforcement: x.enforcement, manages_access: manages.has(x.role_id) })),
@@ -72,6 +74,8 @@ export function ReadinessPage() {
             : t("access.ready.all", { count: g.items.length });
           return (
             <>
+
+<>
               <Card label={t("access.ready.checks", { count: blocking(checks) })} flush>
                 {checks.map((c, i) => <Row key={`${c.code}:${"account" in c ? c.account.id : i}`} c={c} ops={opsName} accounts={ctx.accounts} />)}
               </Card>
@@ -97,10 +101,10 @@ export function ReadinessPage() {
                   <EmptyState title={t("access.grants.none")} reason={t("access.ready.none.reason")} />
                 )}
               </Card>
-            </>
+            </></>
           );
         }}
       </QueryState>
-    </div>
+      </div>
   );
 }

@@ -7,6 +7,7 @@ import type { BusinessRegistration, LegalEntity } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
+import { Skeleton } from "../../../ui/skeleton/skeleton";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
@@ -46,7 +47,7 @@ export function NtsCheck({ registration: r, entity, canManage = entity.can_manag
   const failedReason = typeof reportedReason === "string" && Object.hasOwn(UNAVAILABLE, reportedReason) ? reportedReason as keyof typeof UNAVAILABLE : null;
   return (
     <Card title={t("nts.title")} id={`nts-${r.id}`}>
-        <QueryState q={q}>
+        <QueryState q={q} loading={<Skeleton bones={["block"]} label={t("common.loading")} />}>
           {(history) => {
             const checks = [history.latest_status, history.latest_validate].filter((check): check is CheckEvidence => Boolean(check));
             const latest = checks.reduce<CheckEvidence | undefined>((last, check) => !last || check.checked_at > last.checked_at ? check : last, undefined);

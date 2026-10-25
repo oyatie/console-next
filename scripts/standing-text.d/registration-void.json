@@ -1,6 +1,6 @@
 {
   "baseline": {
-    "apps/web/src/features/entity/ui/void-registration.tsx#VoidRegistration": 46
+    "apps/web/src/features/entity/ui/void-registration.tsx#VoidRegistration": 40
   },
   "newScreens": {
     "apps/web/src/features/entity/ui/void-registration.tsx#VoidRegistration": {

@@ -47,9 +47,8 @@ export function RolesPage() {
   return (
     <div className="page">
       <AccessHead actions={<Link to="/access/roles/new" className={buttonClass("primary")}><Plus size={16} aria-hidden />{t("access.roles.create")}</Link>} />
-      {done && <Banner live="polite">{done}</Banner>}
-      <QueryState q={roles} empty={(d) => (d.items.length ? null : <NoRoles />)}>
-        {(d) => (
+<QueryState q={roles} layout="list">{d => <>      {done && <Banner live="polite">{done}</Banner>}
+      {d.items.length ? (
           <>
             <Card label={t("access.roles.count", { count: d.items.length })} flush>
               <Table
@@ -78,9 +77,9 @@ export function RolesPage() {
               />
             </Card>
           </>
-        )}
-      </QueryState>
+        ) : <NoRoles />}
       <RoleDelete role={deleting} onClose={() => setDeleting(null)} onDeleted={(m) => (setDeleting(null), setDone(m))} />
+    </>}</QueryState>
     </div>
   );
 }

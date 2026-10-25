@@ -13,7 +13,6 @@ import { Banner } from "../../../ui/banner/banner";
 import { Card } from "../../../ui/card/card";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { buttonClass } from "../../../ui/button/button-class";
-import { EmptyState } from "../../../ui/empty-state";
 import { ApiError, outcomeQuery, recordHref } from "../api";
 
 export function RequestLookup() {
@@ -34,9 +33,7 @@ export function RequestPage() {
   const {id}=requestRoute.useParams(); const q=useQuery({...outcomeQuery(id),refetchOnMount:"always"});
   return <main className="page"><PageHead title={t("requestOutcome.title")} />
     <Link to="/requests" className={buttonClass("ghost")}>{t("requestOutcome.lookup")}</Link>
-    {q.isPending ? <Skeleton label={t("common.loading")} bones={["title","line","row","row"]} />
-    : q.error instanceof ApiError && q.error.status===404 && !q.data ? <EmptyState title={t("requestOutcome.notFound")} reason={t("requestOutcome.remedy")} actions={<Link to="/requests" className={buttonClass("secondary")}>{t("requestOutcome.lookup")}</Link>} />
-    : <QueryState q={q}>{out=><Card><div className="form">
+    <QueryState q={q} own={code => code === "request_not_found" ? `${t("requestOutcome.notFound")} ${t("requestOutcome.remedy")}` : undefined} loading={<Skeleton label={t("common.loading")} bones={["title","line","row","row"]} />}>{out=><Card><div className="form">
       <h2 role="status">{t(`requestOutcome.${out.state}`)}</h2>
       <p className="code">{out.id}</p>
       <dl><dt>{t("requestOutcome.created")}</dt><dd>{fmtDateTime(out.created_at)}</dd>
@@ -48,7 +45,7 @@ export function RequestPage() {
       {out.result==null ? <p>{t("requestOutcome.none")}</p> : <p>{resultText(out.result)}</p>}
       {out.touched.length>0 && <><h3>{t("requestOutcome.touched")}</h3><ul>{out.touched.map((ref,i)=>
         <li key={`${ref.audit_id}-${i}`}>{recordHref(ref.type,ref.id) ? <Link to={recordHref(ref.type,ref.id) as "/"}>{t("requestOutcome.history")} · <span className="code">{ref.id}</span></Link> : <span className="code">{ref.id}</span>}</li>)}</ul></>}
-    </div></Card>}</QueryState>}
+    </div></Card>}</QueryState>
   </main>;
 }
 

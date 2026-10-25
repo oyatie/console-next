@@ -1,7 +1,5 @@
 {
-  "baseline": {
-    "apps/web/src/features/attendance/ui/person-schedule-sheet.tsx#PersonScheduleSheet": 63
-  },
+  "baseline": {},
   "newScreens": {
     "apps/web/src/features/attendance/ui/person-schedule-sheet.tsx#PersonScheduleSheet": {
       "FACT": 40,

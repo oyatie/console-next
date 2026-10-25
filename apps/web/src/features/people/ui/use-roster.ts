@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { components, paths } from "@console/api/schema";
 import { get, pages } from "../../../lib/query";
 import { useFreshOnArrival } from "../../../lib/react/arrival";
@@ -30,6 +30,7 @@ export function useRoster(f: RosterFilter) {
   const query = listQuery(f, today, SOON_DAYS);
   const list = useInfiniteQuery({
     ...pages("/api/v1/employees", query, PAGE),
+    placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
     refetchInterval: false,
     // Coming back re-reads the pages only if a command changed people meanwhile; age alone shows the banner.

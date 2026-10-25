@@ -1,19 +1,20 @@
 import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, type LinkProps } from "@tanstack/react-router";
 import { ApiError } from "@console/api";
 import { t } from "@console/i18n";
 import { ACCESS_REQUEST_REASONS, grantersQuery, myAccessQuery, requestAccess, type AccessRequestReason } from "../../reference/authz/api";
 import { grantLines } from "../../reference/authz/present";
 import { orgStructureRef } from "../../reference/entity/api";
+import { failureText } from "../refusal";
 import { Banner } from "../../ui/banner/banner";
 import { Button } from "../../ui/button/button";
 import { buttonClass } from "../../ui/button/button-class";
+import { Card } from "../../ui/card/card";
+import { EmptyState } from "../../ui/empty-state";
 import { ReasonField } from "../../ui/reason/reason-field";
 import { reasonProblem, type Reason } from "../../ui/reason/reason";
-import { EmptyState } from "../../ui/empty-state";
-import { failureText } from "../refusal";
-import { SupportReference } from "./support-reference";
+import { ReadReference } from "./read-reference";
 import { CommandError } from "./command-error";
 import css from "./denied.module.css";
 import { useCommand } from "./command";
@@ -74,35 +75,36 @@ function RequestAccess({ screen }: { screen: string }) {
   );
 }
 
-/**
- * The caller lacks the grant for this screen (a 403, or a grant the screen knows it needs) — one state every screen
- * shares (people-self-38): the screen's name, why (no grant, outside the scope, or a whole-tenant door), what this
- * account holds today, who can grant and "request access", and a way back. It never says whether the record exists, and
- * nothing of the refused screen is drawn beside it.
- */
-export function Denied({ screen, error, title, reason }: { screen?: string; error?: unknown; title?: string; reason?: string }) {
+export type ReadBack = { to: LinkProps["to"]; label: string };
+
+/** One route refusal; the refused page and its controls never render beside it. */
+export function Denied({ screen, error, title, reason, back }: { screen?: string; error?: unknown; title?: string; reason?: string; back?: ReadBack }) {
+  const mineId = useId();
   const granters = useQuery(grantersQuery);
-  const code = error instanceof ApiError ? error.code : undefined;
+  const code = error instanceof ApiError ? error.code : "access_denied";
   const why = code === "out_of_scope" ? "common.denied.scope" : code === "scope_tenant_wide_only" ? "common.denied.tenantWide" : "common.denied.reason";
   const path = typeof window === "undefined" ? "/" : window.location.pathname;
-  const mineId = useId();
   return (
-    <div role="region" aria-label={t("common.denied.title.plain")}>
-      <EmptyState title={title ?? (screen ? t("common.denied.title", { screen }) : t("common.denied.title.plain"))} reason={reason ?? t(why)} />
-      {/* The ways out first, then the request (it grows when opened): what loads below never moves a control. */}
+    <div className="page"><Card label={t("common.denied.title.plain")} flush>
+      <EmptyState title={title ?? (screen ? t("common.denied.title", { screen }) : t("common.denied.title.plain"))} reason={null} />
       <div className={css.body}>
-        <div className={css.row}>
-          <Link to="/account" className={buttonClass("ghost")}>{t("common.denied.myAccess")}</Link>
-          <Link to="/" className={buttonClass("ghost")}>{t("common.denied.back")}</Link>
-        </div>
-        <RequestAccess screen={path} />
-        <SupportReference reference={error instanceof ApiError ? error.supportRef : undefined} at={error instanceof ApiError ? error.supportRefAt : undefined} />
-        <section className={css.mine} aria-labelledby={mineId}>
-          <strong id={mineId}>{t("common.denied.mine")}</strong>
-          <Mine />
-        </section>
-        {granters.data && <span className="muted">{t("common.denied.granters", { count: granters.data.count, names: granters.data.names.join(", ") })}</span>}
+      <div className={css.row}>
+        <Link to="/account" className={buttonClass("ghost")}>{t("common.denied.myAccess")}</Link>
+        <Link to={back?.to ?? "/"} className={buttonClass("ghost")}>{back?.label ?? t("common.denied.back")}</Link>
       </div>
-    </div>
+      <section className={css.mine} aria-labelledby={mineId}>
+        <strong id={mineId}>{t("common.denied.mine")}</strong>
+        <Mine />
+      </section>
+      <span className="muted">{granters.data ? t("common.denied.granters", { count: granters.data.count, names: granters.data.names.join(", ") }) : t("common.denied.granters.unavailable")}</span>
+      <RequestAccess screen={path} />
+      <details>
+        <summary>{t("common.denied.why")}</summary>
+        <p>{reason ?? t(why)}</p>
+        <ReadReference error={error} />
+        {error instanceof ApiError && <code>{code}</code>}
+      </details>
+      </div>
+    </Card></div>
   );
 }

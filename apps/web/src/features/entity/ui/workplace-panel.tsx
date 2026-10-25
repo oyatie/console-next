@@ -39,7 +39,7 @@ export function WorkplacePanel({ e, w }: { e: LegalEntity; w: Workplace }) {
       </section>
       <section aria-labelledby={hid}>
         <h3 id={hid} className="field__label" tabIndex={-1}>{t("entity.history.title")}</h3>
-        <History target={{ id: e.id, wp: w.id }} q={history} subject={name} known={w.current ? [w.current] : []} />
+        <History target={{ id: e.id, wp: w.id }} q={history} subject={name} />
       </section>
     </aside>
   );

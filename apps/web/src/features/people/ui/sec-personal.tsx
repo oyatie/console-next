@@ -1,3 +1,4 @@
+import { QueryState } from "../../../lib/react/query-state";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -66,7 +67,7 @@ export function SecPersonal({ c, quick, onFix }: { c: Card; quick: Quick; onFix:
         {f?.birth_date ? <MaskedValue masked={maskedBirth()} value={fmtDate(f.birth_date)} field={t("empCard.f.birth")} who={who} onAlternative={() => onFix("birth_date")} /> : <span className={s.warn}>{t("empCard.missing")}</span>}
       </FieldRow>
       <FieldRow wide label={t("empCard.f.rrn")} >
-        {rrn?.recorded ? <><RrnValue c={c} masked={rrn.masked ?? ""} /> <Tag kind="rev">{t("empCard.rrn.legal")}</Tag></> : <Muted>{t(rrnRead.isError ? "people.field.restricted" : "empCard.rrn.none")}</Muted>}{" "}
+        {c.manage ? <QueryState q={rrnRead}>{() => rrn?.recorded ? <><RrnValue c={c} masked={rrn.masked ?? ""} /> <Tag kind="rev">{t("empCard.rrn.legal")}</Tag></> : <Muted>{t("empCard.rrn.none")}</Muted>}</QueryState> : <Muted>{t("people.field.restricted")}</Muted>}{" "}
         {c.manage && <Muted>{t("empCard.rrn.entryComing")}</Muted>}{" "}
         {c.manage && <Link className={s.link} to="/people/$id/identifiers" params={{ id: e.id }}>{t("empCard.rrn.open")}</Link>}
       </FieldRow>

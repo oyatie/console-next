@@ -1,5 +1,5 @@
 {
-  "//": "Catalog ids allowed to stay unused (scripts/check-copy.mjs); shrink-only. live.*: realtime awareness copy that landed ahead of its screens, which are post-MVP.",
+  "//": "Catalog ids allowed to stay unused (scripts/check-copy.mjs); shrink-only. live.*: realtime awareness copy that landed ahead of its screens, which are post-MVP. empCard.denied.* and empCard.draft.*: retained by the LMG-STATE round-five owner directive during shared-state adoption.",
   "unused": [
     "live.status.offline",
     "live.updated_ago",
@@ -16,6 +16,20 @@
     "live.presence.editing.field",
     "live.claim.held_by",
     "live.claim.take_over",
-    "live.claim.taken_over"
+    "live.claim.taken_over",
+    "empCard.denied.crumb",
+    "empCard.denied.title",
+    "empCard.denied.reason",
+    "empCard.denied.ask",
+    "empCard.denied.ask.NEW_DUTY",
+    "empCard.denied.ask.STAND_IN",
+    "empCard.denied.ask.WRONG_LINK",
+    "empCard.denied.ask.OTHER",
+    "empCard.denied.send",
+    "empCard.denied.list",
+    "empCard.denied.pick",
+    "empCard.denied.unserved",
+    "empCard.draft.save",
+    "empCard.draft.session"
   ]
 }
