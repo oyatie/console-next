@@ -79,6 +79,8 @@ pub struct Penalty {
 #[serde(deny_unknown_fields)]
 pub struct FilingRule {
     pub code: String,
+    #[serde(default)]
+    pub trigger_event_kinds: Vec<String>,
     pub insurer: String,
     pub filing_kind: String,
     pub effective_from: String,

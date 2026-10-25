@@ -1,20 +1,20 @@
 import { ExternalLink } from "../../../ui/external-link";
 import { t } from "@console/i18n";
 import { fmtDate, fmtNumber } from "@console/i18n/format";
-import { todayKst } from "../../../lib/pure/today";
 import { Chip } from "../../../ui/chip";
 import { FilingDeadline } from "../../../reference/statutory/ui/filing-deadline";
 import type { FilingCitation, FilingTask } from "../../../reference/statutory/api";
 import { filingLabel } from "../present";
 const Citation = ({ value }: { value: FilingCitation }) => <dl className="facts"><dt><ExternalLink href={value.source_url}>{value.instrument} · {value.article}</ExternalLink></dt><dd>{value.promulgation} · {fmtDate(value.enforced_on)}</dd></dl>;
-/** A filing's whole window: preparation, the earliest day, the target, the legal deadline (shared FilingDeadline) and its basis. */
+/** A filing's window opens at the earliest day; the legal deadline and its basis come from the register. */
 export function FilingWindow({ task }: { task: FilingTask }) {
   const penalty = task.basis?.penalty;
   return <div className="form">
-    {task.opens_on && task.opens_on > todayKst() && <Chip>{t("statutory.preparing")}</Chip>}
-    {task.opens_on && <div>{t("statutory.opens")} <time dateTime={task.opens_on}>{fmtDate(task.opens_on)}</time></div>}
-    {task.target_on && <div>{t("statutory.target")} <time dateTime={task.target_on}>{fmtDate(task.target_on)}</time></div>}
-    <FilingDeadline task={task} />
+    {task.opens_in_days != null && task.opens_in_days > 0 && <Chip>{t("statutory.preparing")}</Chip>}
+    <div className="row">
+      {task.opens_on && <>{t("statutory.opens")} <time dateTime={task.opens_on}>{fmtDate(task.opens_on)}</time> · </>}
+      {t("statutory.deadline")} <FilingDeadline task={task} />
+    </div>
     {task.dates?.conservative && <Chip tone="warn">{t("statutory.conservative")}</Chip>}
     {task.basis && <details><summary>{t("statutory.basis")}</summary>
       <Citation value={task.basis.citation} />

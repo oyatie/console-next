@@ -124,11 +124,11 @@ test("전적: nowhere to go says why, then one act records the exit and the hire
   // (open from the 퇴직일, due D-n), moving forward only — the way back is the 전적's own, from the history.
   await admin.getByRole("link", { name: /퇴직 정산 열기$/ }).click();
   await expect(admin.getByRole("heading", { level: 1 })).toContainText("강전적");
-  const deadlines = admin.getByRole("region", { name: "정산 기한" });
+  const deadlines = admin.getByRole("region", { name: "서류 · 법정 기한 · 할 일" }).getByRole("region", { name: "지급", exact: true });
   await expect(deadlines).toContainText("금품청산");
-  await expect(deadlines).toContainText("퇴직금 지급");
-  await expect(deadlines).toContainText("「근로기준법」 제36조");
-  await expect(deadlines).toContainText("「근로자퇴직급여 보장법」 제9조제1항");
+  await expect(deadlines).toContainText("퇴직급여 지급");
+  await expect(deadlines).toContainText("근로기준법 제36조");
+  await expect(deadlines).toContainText("근로자퇴직급여 보장법 제9조제1항");
   await expect(deadlines).toContainText(/D-\d+|오늘까지/);
   await expect(admin.getByRole("button", { name: /^퇴직 (반려|보고 취소)$/ })).toHaveCount(0);
   await expect(admin.getByRole("link", { name: "인사 이력에서 전적 철회" })).toBeVisible();

@@ -37,7 +37,7 @@ export function StatutoryPage() {
           onChange={(site) => change({ site: site === "all" ? undefined : site })} /></div>
         {id === "register" && <DateField label={t("statutory.asOf")} required value={date} onChange={(d) => change({ date: d })}
           today={today} max={today} presets={[{ label: t("statutory.today"), date: today }]} />}
-        {id === "insurance" ? <FilingList workplaces={entities} site={search.site} event={search.event} /> : !validDate ? null : search.site ?
+        {id === "insurance" ? <FilingList workplaces={entities} site={search.site} event={search.event} filing={search.filing} /> : !validDate ? null : search.site ?
           <WorkerRegister workplaces={entities} site={search.site} date={date} /> :
           <QueryState q={entities} layout="list">{() =>
           <EmptyState title={t("statutory.noSite")} reason={t("statutory.noSiteReason")} actions={<Link to="/org" className={buttonClass()}>{t("statutory.openStructure")}</Link>} />}</QueryState>}

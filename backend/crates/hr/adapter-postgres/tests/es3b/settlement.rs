@@ -71,6 +71,28 @@ fn id(v: &Value) -> Uuid {
     Uuid::parse_str(v.as_str().unwrap()).unwrap()
 }
 
+async fn trail(f: &Fixture, event: &Value, settlement: Option<Uuid>, receiving: Uuid) {
+    let cases: Vec<Value> = sqlx::query_scalar(
+        "SELECT jsonb_build_object('id',c.id,'kind',c.kind,'linked',c.linked_case_id,'workplace',c.workplace_id, \
+          'entity',c.legal_entity_id,'receiving_entity',(SELECT legal_entity_id FROM workplaces WHERE org_id=$1 AND id=$3), \
+          'receipts',(SELECT count(*) FROM api_idempotency_keys WHERE org_id=$1 AND operation='employee.lifecycle.create' AND response->>'id'=$2::uuid::text)) \
+         FROM lifecycle_cases c LEFT JOIN employee_exit_cases x ON x.org_id=c.org_id AND x.id=c.exit_case_id \
+         WHERE c.org_id=$1 AND (c.trigger_id=$2 OR x.exit_lifecycle_event_id=$2)",
+    ).bind(f.org).bind(id(&event["id"])).bind(receiving).fetch_all(&f.owner).await.unwrap();
+    assert_eq!(cases.len(), 2);
+    let exit = cases.iter().find(|case| case["kind"] == "EXIT").unwrap();
+    let hire = cases.iter().find(|case| case["kind"] == "HIRE").unwrap();
+    assert_eq!(exit["linked"], hire["id"]);
+    assert_eq!(hire["linked"], exit["id"]);
+    assert_eq!(hire["workplace"], json!(receiving));
+    assert_eq!(hire["entity"], hire["receiving_entity"]);
+    assert_eq!(hire["receipts"], 1);
+    assert_eq!(f.events().await, 1);
+    if let Some(settlement) = settlement {
+        assert_eq!(exit["id"], json!(settlement));
+    }
+}
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_settled_group_transfer_opens_the_sending_entitys_settlement_case(pool: PgPool) {
     let f = fixture(pool, true).await;
@@ -92,6 +114,7 @@ async fn a_settled_group_transfer_opens_the_sending_entitys_settlement_case(pool
     let cases = f.cases().await;
     assert_eq!(cases.len(), 1);
     let (case, status, exit_date, reason, linked) = cases[0].clone();
+    trail(&f, &moved, Some(case), wb[0]).await;
     assert_eq!(facts["settlement_case_id"], json!(case));
     assert_eq!(status, "HR_CONFIRMED");
     assert_eq!(
@@ -170,6 +193,7 @@ async fn carried_severance_opens_no_case_and_any_carried_dimension_needs_the_agr
     let carried = json!({ "continuity": "CARRIED", "annual_leave_continuity": "CARRIED",
         "seniority_continuity": "CARRIED", "succession_evidence_ref": "포괄 승계 합의서" });
     let moved = f.record(group(&on, wb[0], carried)).await.unwrap();
+    trail(&f, &moved, None, wb[0]).await;
     assert_eq!(moved["group_transfer"]["seniority_continuity"], "CARRIED");
     assert!(moved["group_transfer"].get("settlement_case_id").is_none());
     assert!(f.cases().await.is_empty());

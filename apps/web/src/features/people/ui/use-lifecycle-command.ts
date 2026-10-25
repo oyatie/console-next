@@ -77,8 +77,8 @@ export function useLifecycleCommand(c: Context, v: Draft, onSuccess: (out: Lifec
       return event;
     },
     // A transfer into another workplace's department moves the workplace (UX-R1 PLACEMENT): the placement and every count move with it.
-    invalidates: ["/api/v1/employees", "/api/v1/org-units", "/api/v1/employment-assignments", "/api/v1/org-structure", "/api/v1/legal-entities"],
-    settle: true,
+    invalidates: ["/api/v1/employees/{id}/lifecycle-events", "/api/v1/employees", "/api/v1/org-units", "/api/v1/employment-assignments", "/api/v1/org-structure", "/api/v1/legal-entities"],
+    awaitFirstRead: true,
     onSuccess,
   });
 }

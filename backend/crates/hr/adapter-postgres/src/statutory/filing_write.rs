@@ -54,7 +54,9 @@ async fn write(
     register: &StatutoryRegister,
 ) -> Result<FilingTask, HrError> {
     let (event, kind, insurer) = target;
-    validate(body, insurer)?;
+    let today =
+        super::filing_read::source_today(tx.as_mut(), *p.org_id.as_uuid(), event, kind).await?;
+    validate(body, insurer, today)?;
     // Serialize retries across tabs, even when the reused key targets another task.
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
         .bind(format!("filing:{}:{}:{key}", p.org_id, p.user_id))
@@ -132,6 +134,13 @@ async fn write(
             StatusCode::CONFLICT,
             "filing_stale",
             "This filing record changed; reload it and compare the completion evidence before retrying.",
+        ));
+    }
+    if task.state == "LEGAL_REVIEW" {
+        return Err(refusal(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "filing_rule_unverified",
+            "The filing rule awaits legal review; no processing record can be made yet.",
         ));
     }
     if body
@@ -266,10 +275,19 @@ async fn write(
         .version
         .checked_add(1)
         .ok_or_else(|| HrError::internal("filing version exhausted"))?;
-    sqlx::query("INSERT INTO insurance_filing_records (org_id,event_id,request_id,filing_kind,insurer,version,action,completed_on,receipt_number,loss_code,detail,actor,idempotency_key,request_hash,not_applicable_reason,applicability_facts,total_remuneration_won) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::date,$9,$10,$11,$12,$13,$14,$15,$16,$17)")
+    let receipt: Uuid = sqlx::query_scalar("INSERT INTO insurance_filing_records (org_id,event_id,request_id,filing_kind,insurer,version,action,completed_on,receipt_number,loss_code,detail,actor,idempotency_key,request_hash,not_applicable_reason,applicability_facts,total_remuneration_won) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::date,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id")
         .bind(p.org_id.as_uuid()).bind(if task.is_request {None}else{Some(event)}).bind(if task.is_request {Some(event)}else{None})
         .bind(kind).bind(insurer).bind(version).bind(&body.action).bind(&body.completed_on).bind(&body.receipt_number).bind(&body.loss_code).bind(&body.detail)
-        .bind(p.user_id.as_uuid()).bind(key).bind(hash).bind(reason).bind(facts).bind(body.total_remuneration_won).execute(tx.as_mut()).await?;
+        .bind(p.user_id.as_uuid()).bind(key).bind(hash).bind(&reason).bind(facts).bind(body.total_remuneration_won).fetch_one(tx.as_mut()).await?;
+    crate::cases::observe::filing(
+        tx,
+        *p.org_id.as_uuid(),
+        (event, kind, insurer),
+        receipt,
+        &body.action,
+        reason.as_deref(),
+    )
+    .await?;
     task = load(tx, p, query(), register)
         .await?
         .items

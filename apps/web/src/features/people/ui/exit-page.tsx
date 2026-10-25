@@ -11,11 +11,14 @@ import { Receipt } from "../../../ui/receipt/receipt";
 import { focusSoon } from "../../../lib/react/announce";
 import { usePageActive } from "../../../lib/react/page-active";
 import { QueryState } from "../../../lib/react/query-state";
+import { freshOnOpen } from "../../../lib/query";
+import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { EXIT_CASE_STATUS, LIFECYCLE_STATE, labeled } from "../../../lib/labels";
 import { EXIT_FEATURES, authzApplies, authzQuery } from "../../../reference/authz/api";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { caseQuery } from "../api";
+import { lifecycleCaseQuery } from "../api/lifecycle-trail";
 import { isForward, type BackKey } from "../domain/exits";
 import { CaseAxis } from "./exit-axis";
 import { CloseForm } from "./exit-close";
@@ -87,8 +90,9 @@ function StatusChips({ c }: { c: Case }) {
 function CaseBody({ c }: { c: Case }) {
   const { act } = route.useSearch();
   const navigate = route.useNavigate();
-  const authz = useQuery({ ...authzQuery, enabled: authzApplies() });
-  const ready = authz.isSuccess || authz.isError || !authzApplies();
+  const authz = freshOnOpen(useQuery({ ...authzQuery, enabled: authzApplies(), refetchOnMount: "always" }));
+  const trail = freshOnOpen(useQuery({ ...lifecycleCaseQuery(c.id), refetchOnMount: "always" }));
+  const ready = !authz.isPending || !authzApplies();
   const { usable, forward } = useCaseActions(c);
   const offered = Boolean(act) && usable.some((k) => k === act);
   // A back decision named by the link opens its sheet until the user closes it or picks another.
@@ -116,6 +120,7 @@ function CaseBody({ c }: { c: Case }) {
     clearAct();
     focusSoon("exit-receipt", "exit");
   };
+  if (!ready || trail.isPending) return <ReadSkeleton layout="record" />;
   return (
     <>
       {act && ready && !offered && (

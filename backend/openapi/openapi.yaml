@@ -9606,6 +9606,57 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/employees/{id}/lifecycle-cases:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "listEmployeeLifecycleCases"
+      tags:
+        - "HR"
+      summary: "Read the lifecycle dossiers of an employee"
+      security:
+        -
+          bearerAuth: []
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        200:
+          description: "Lifecycle trail"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/LifecycleCase"
+        403:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        404:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        409:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        422:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
   /api/v1/employees/{id}/lifecycle-events:
     get:
       tags:
@@ -9941,7 +9992,8 @@ paths:
       tags:
         - employees
       operationId: getOnboardingChecklist
-      summary: Derived onboarding checklist (EMP-MODEL E10)
+      summary: Legacy derived onboarding checklist (EMP-MODEL E10)
+      deprecated: true
       description: Items derived from recorded facts, never ticked. CONTRACT_DELIVERED (근기법 §17② 교부) and
         INSURANCE_ACQUISITION_REPORTED (취득신고) are NOT_TRACKED until their attestation and statutory clock exist.
         NOT_ISSUED identification is a FOLLOW_UP. Org-wide employee_directory_manage.
@@ -17274,6 +17326,229 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/lifecycle-case-templates/{key}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "previewLifecycleCaseTemplate"
+      tags:
+        - "HR"
+      summary: "Preview the register-backed checklist"
+      security:
+        -
+          bearerAuth: []
+      parameters:
+        -
+          name: "key"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: variant
+          in: query
+          schema:
+            type: string
+        - name: exit_reason
+          in: query
+          schema:
+            type: string
+        - name: effective_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        200:
+          description: "Lifecycle trail"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/LifecycleTemplateItem"
+        403:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        404:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        409:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        422:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+  /api/v1/lifecycle-cases/{id}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "getLifecycleCase"
+      tags:
+        - "HR"
+      summary: "Read one lifecycle dossier"
+      security:
+        -
+          bearerAuth: []
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        200:
+          description: "Lifecycle trail"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleCase"
+        403:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        404:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        409:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        422:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+  /api/v1/lifecycle-cases/{id}/close:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "closeLifecycleCase"
+      tags:
+        - "HR"
+      summary: "Close a dossier after its blocking items are terminal"
+      security:
+        -
+          bearerAuth: []
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        200:
+          description: "Lifecycle trail"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleCase"
+        403:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        404:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        409:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        422:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+  /api/v1/lifecycle-cases/{id}/items/{item_id}/complete:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "completeLifecycleCaseItem"
+      tags:
+        - "HR"
+      summary: "Complete, attest or waive an owned item with evidence"
+      security:
+        -
+          bearerAuth: []
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+        -
+          name: "item_id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        200:
+          description: "Lifecycle trail"
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleCase"
+        403:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        404:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        409:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+        422:
+          description: "Refusal with a stable code"
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/LifecycleProblem"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/CompleteLifecycleItem"
   /api/v1/lifecycles/{objectType}/{objectId}:
     get:
       tags:
@@ -26420,6 +26695,10 @@ paths:
       operationId: listInsuranceFilings
       tags: [HR]
       parameters:
+      - in: query
+        name: filing_id
+        required: false
+        schema: { type: string, format: uuid }
       - in: query
         name: workplace_id
         required: false
@@ -35760,6 +36039,50 @@ components:
           type:
           - string
           - 'null'
+    CompleteLifecycleItem:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      additionalProperties: false
+      required:
+        - "expected_version"
+      properties:
+        attestation:
+          type: object
+          additionalProperties: false
+          required: [fact_date, document, reason_code, note]
+          properties:
+            fact_date: { type: string, format: date }
+            reason_code: { type: string }
+            note: { type: string, maxLength: 1000 }
+            document:
+              type: object
+              additionalProperties: false
+              required: [name, url]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 200 }
+                url: { type: string, format: uri, maxLength: 2000 }
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+        expected_version:
+          type: "integer"
+          format: "int64"
+        observed_ref:
+          type: "object"
+          nullable: true
+          additionalProperties: true
+        exception_id:
+          type: "string"
+          format: "uuid"
+          nullable: true
+        waive:
+          type: "boolean"
+          default: false
+        reason:
+          type: "string"
+          nullable: true
+        due_date:
+          type: "string"
+          nullable: true
     CompleteOrgChangeSettlementItemRequest:
       type: object
       additionalProperties: false
@@ -45129,6 +45452,8 @@ components:
       required: [event_id, employee_id, name, employee_number, kind, insurer, effective_date, legal_entity_id, workplace_id, workplace_name, due_date, due_in_days, deadline_status, version, completed_on, receipt_number, loss_code, loss_options, detail, opens_on, target_on, due_on, dates, basis, applicability, applicability_facts, state, record_action, not_applicable_reason, not_applicable_options, total_remuneration_won, is_request, acquired_on, can_record_sensitive_facts, birth_date_known]
       properties:
         event_id: { type: string }
+        filing_obligation_id: { type: string, format: uuid, nullable: true }
+        lifecycle_case_id: { type: string, format: uuid, nullable: true }
         employee_id: { type: string }
         name: { type: string }
         employee_number: { type: string, nullable: true }
@@ -45149,6 +45474,7 @@ components:
         can_record_sensitive_facts: { type: boolean }
         birth_date_known: { type: boolean }
         opens_on: { type: string, format: date, nullable: true }
+        opens_in_days: { type: integer, format: int64, nullable: true }
         target_on: { type: string, format: date, nullable: true }
         due_on: { type: string, format: date, nullable: true }
         dates: { $ref: '#/components/schemas/InsuranceFilingDates' }
@@ -46753,6 +47079,162 @@ components:
       { type: string, enum: [CLEAR, ACTIVE] }
     LegalHoldStatus:
       { type: string, enum: [ACTIVE, RELEASED] }
+    LifecycleCase:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required:
+        - "id"
+        - "employee_id"
+        - "kind"
+        - "state"
+        - "trigger_id"
+        - "effective_date"
+        - "linked_case_id"
+        - "cancellation_reason"
+        - "version"
+        - "items"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        employee_id:
+          type: "string"
+          format: "uuid"
+        kind:
+          type: "string"
+        state:
+          type: "string"
+        trigger_id:
+          type: "string"
+          format: "uuid"
+          nullable: true
+        effective_date:
+          type: "string"
+        linked_case_id:
+          type: "string"
+          format: "uuid"
+          nullable: true
+        cancellation_reason:
+          type: "string"
+          nullable: true
+        version:
+          type: "integer"
+          format: "int64"
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/LifecycleCaseItem"
+    LifecycleCaseItem:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required:
+        - "id"
+        - "case_id"
+        - "item_key"
+        - "label"
+        - "label_key"
+        - "kind"
+        - "owner_line"
+        - "status"
+        - "status_code"
+        - "opens_on"
+        - "opens_in_days"
+        - "due_date"
+        - "due_in_days"
+        - "due_disposition"
+        - "due_rule_ref"
+        - "opens_rule_ref"
+        - "basis"
+        - "blocks_close"
+        - "observed_ref"
+        - "exception_id"
+        - "filing_obligation_id"
+        - "version"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        case_id:
+          type: "string"
+          format: "uuid"
+        item_key:
+          type: "string"
+        label:
+          type: "string"
+        label_key:
+          type: "string"
+          nullable: true
+        kind:
+          type: "string"
+        owner_line:
+          type: "string"
+          nullable: true
+        status:
+          type: "string"
+        status_code:
+          type: "string"
+          nullable: true
+        opens_on:
+          type: "string"
+          nullable: true
+        opens_in_days:
+          type: "integer"
+          nullable: true
+        due_date:
+          type: "string"
+          nullable: true
+        due_in_days:
+          type: "integer"
+          nullable: true
+        due_disposition:
+          type: "string"
+        due_rule_ref:
+          type: "string"
+          nullable: true
+        opens_rule_ref:
+          type: "string"
+          nullable: true
+        basis:
+          type: "object"
+          additionalProperties: true
+        blocks_close:
+          type: "boolean"
+        observed_ref:
+          type: "object"
+          nullable: true
+          additionalProperties: true
+        exception_id:
+          type: "string"
+          format: "uuid"
+          nullable: true
+        filing_obligation_id:
+          type: "string"
+          format: "uuid"
+          nullable: true
+        version:
+          type: "integer"
+          format: "int64"
+        completion_rule_ref:
+          type: string
+          nullable: true
+        completion_risk:
+          type: string
+          nullable: true
+        record_target:
+          type: string
+          nullable: true
+        waiver_rule_ref:
+          type: string
+          nullable: true
+        completion_reason:
+          type: string
+          nullable: true
+        filing_kind:
+          type: string
+          nullable: true
+        insurer:
+          type: string
+          nullable: true
     LifecycleOutcome:
       type: object
       required: [instance, config, gates]
@@ -46760,6 +47242,33 @@ components:
         instance: { $ref: '#/components/schemas/InstanceHead' }
         config: { $ref: '#/components/schemas/GateChainConfig' }
         gates: { $ref: '#/components/schemas/GateChainOutcome' }
+    LifecycleProblem:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required:
+        - "type"
+        - "title"
+        - "status"
+        - "error"
+      properties:
+        type:
+          type: "string"
+        title:
+          type: "string"
+        status:
+          type: "integer"
+        detail:
+          type: "string"
+        code:
+          type: "string"
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
     LifecycleRequest:
       type: object
       required: [to_state]
@@ -46826,6 +47335,80 @@ components:
       - LOCKED
       - ARCHIVED
       - DISPOSED
+    LifecycleTemplateItem:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required:
+        - "item_key"
+        - "label"
+        - "kind"
+        - "blocks_close"
+      properties:
+        item_key:
+          type: "string"
+        label:
+          type: "string"
+        label_key:
+          type: "string"
+          nullable: true
+        kind:
+          type: "string"
+        owner_line:
+          type: "string"
+          nullable: true
+        blocks_close:
+          type: "boolean"
+        rule_ref:
+          type: "string"
+          nullable: true
+        instrument:
+          type: "string"
+          nullable: true
+        article:
+          type: "string"
+          nullable: true
+        legal_review_required:
+          type: boolean
+        due_rule_kind:
+          type: string
+        due_anchor:
+          type: string
+          nullable: true
+        opens_rule_ref:
+          type: string
+          nullable: true
+        insurer:
+          type: string
+          nullable: true
+        filing_kind:
+          type: string
+          nullable: true
+        opens_anchor:
+          type: string
+          nullable: true
+        opens_offset_days:
+          type: integer
+          nullable: true
+        due_rule_value:
+          type: integer
+          nullable: true
+        opens_on:
+          type: string
+          format: date
+          nullable: true
+        due_on:
+          type: string
+          format: date
+          nullable: true
+        opens_in_days:
+          type: integer
+          nullable: true
+        due_in_days:
+          type: integer
+          nullable: true
+        due_disposition:
+          type: string
+          nullable: true
     LinkControlObligationRequest:
       type: object
       required: [control_id, obligation_id, coverage_level]

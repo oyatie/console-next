@@ -10,6 +10,60 @@ use serde_json::json;
 use sqlx::PgPool;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn hire_with_deadlines_before_go_live_has_no_open_filing(pool: PgPool) {
+    let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let ctx = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    let (_, _, branch, unit) = http::structure(&ctx).await;
+    let mut body = http::employee_body("INBOX-HISTORICAL", &branch, &unit);
+    let today = console_hr_domain::text::parse_yyyy_mm_dd(&http::today_kst()).unwrap();
+    body["hire_date"] = (today - time::Duration::days(365)).to_string().into();
+    let (status, created) = ctx.call("POST", "/api/v1/employees", Some(body)).await;
+    assert_eq!(status, StatusCode::CREATED, "{created}");
+    let employee = created["employee"]["id"].as_str().unwrap();
+    sqlx::query("UPDATE tenant_phase SET phase='OPERATING',go_live_at=now(),go_live_by=$2,go_live_preview_digest=repeat('0',64) WHERE org_id=$1")
+        .bind(org).bind(user.as_uuid()).execute(&pool).await.unwrap();
+    let (status, filings) = ctx
+        .call(
+            "GET",
+            "/api/v1/statutory/insurance-filings?state=PENDING&limit=200",
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{filings}");
+    assert!(filings["items"].as_array().unwrap().is_empty(), "{filings}");
+    let (status, inbox) = ctx
+        .call("GET", "/api/v1/me/action-inbox?limit=200", None)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{inbox}");
+    assert!(
+        inbox["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|item| item["kind"] != "insurance_filing"),
+        "{inbox}"
+    );
+    let (status, cases) = ctx
+        .call(
+            "GET",
+            &format!("/api/v1/employees/{employee}/lifecycle-cases"),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{cases}");
+    let items = cases[0]["items"].as_array().unwrap();
+    let filings: Vec<_> = items.iter().filter(|item| item["kind"] == "FIL").collect();
+    assert_eq!(filings.len(), 4);
+    assert!(
+        filings
+            .iter()
+            .all(|item| item["status_code"] == "PRE_CONSOLE"
+                && item["filing_obligation_id"].is_null()),
+        "{cases}"
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn product_created_people_work_preserves_sources_permissions_and_resolution(pool: PgPool) {
     let (org, requester_id) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
     let requester = http::ctx(&pool, org, requester_id, &["SUPER_ADMIN"], None).await;

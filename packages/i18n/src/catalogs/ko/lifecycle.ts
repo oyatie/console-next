@@ -1,3 +1,4 @@
+import { koLifecycleTrail } from "../lifecycle-trail/ko";
 // Korean source for `lifecycle.` ids (apps/web/src/features/people/ui/lifecycle-*.tsx): the action sheets for
 // 전보·승진·휴직·복직·계약 갱신 and withdrawing a reservation. A date after today schedules; today or
 // earlier applies now (only a correction or rescission from the history undoes it), which the sentence and the
@@ -288,4 +289,5 @@ export const koLifecycle = {
   "lifecycle.correct.groupTransfer": "전적은 정정할 수 없습니다. 철회한 뒤 다시 기록하십시오.",
   "lifecycle.convert.dateLocked": "종료일을 변경하는 전환은 철회한 뒤 다시 기록하십시오.",
   "lifecycle.leave.dateLocked": "복귀 예정일이 필요한 휴직은 철회한 뒤 다시 기록하십시오.",
+  ...koLifecycleTrail,
 } as const;

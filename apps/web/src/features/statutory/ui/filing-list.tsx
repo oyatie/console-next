@@ -1,5 +1,5 @@
 import { buttonClass } from "../../../ui/button/button-class";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -14,29 +14,34 @@ import { RecordRows } from "../../../ui/record/rows";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
-import { FILINGS, filingsQuery, recordFiling, type FilingTask } from "../../../reference/statutory/api";
+import { FILING_READS, filingsQuery, recordFiling, type FilingTask } from "../../../reference/statutory/api";
 import { FilingWindow } from "./filing-deadline";
 import { FilingRequest } from "./filing-request";
 import { FilingComplete } from "./filing-complete";
 import { filingLabel } from "../present";
 import s from "./statutory.module.css";
 
-export function FilingList({ site, event, workplaces }: { site?: string; event?: string; workplaces: ReadState }) {
+export function FilingList({ site, event, filing, workplaces }: { site?: string; event?: string; filing?: string; workplaces: ReadState }) {
   const [state, setState] = useState("PENDING");
   const [search, setSearch] = useState("");
   const [after, setAfter] = useState<string>();
   const [selected, setSelected] = useState<FilingTask>();
   const [request, setRequest] = useState<FilingTask>();
   const [receipt, setReceipt] = useState<FilingTask>();
-  const [scope, setScope] = useState(site);
-  if (scope !== site) {
-    setScope(site); setAfter(undefined); setState("PENDING"); setSearch("");
+  const [scope, setScope] = useState(`${site ?? "all"}:${filing ?? ""}`);
+  if (scope !== `${site ?? "all"}:${filing ?? ""}`) {
+    setScope(`${site ?? "all"}:${filing ?? ""}`); setAfter(undefined); setState("PENDING"); setSearch("");
     setSelected(undefined); setRequest(undefined); setReceipt(undefined);
   }
-  const tasks = useQuery({ ...filingsQuery({ workplace_id: site, event_id: event, state, search, after }), placeholderData: keepPreviousData });
+  const tasks = useQuery({ ...filingsQuery({ workplace_id: site, event_id: event, filing_id: filing, state: filing ? undefined : state, search, after }), placeholderData: keepPreviousData });
+  const opened = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const linked = filing && tasks.data?.items.find((task) => task.filing_obligation_id === filing);
+    if (linked && linked.state !== "LEGAL_REVIEW" && opened.current !== filing) { opened.current = filing; setSelected(linked); }
+  }, [filing, tasks.data]);
   const undo = useCommand({
     run: (task: FilingTask, key) => recordFiling(task, { expected_version: task.version, action: "UNDO" }, key),
-    invalidates: [FILINGS, "/api/v1/me/action-inbox"], settle: true,
+    invalidates: FILING_READS, settle: true,
     onSuccess: setReceipt,
   });
   const done = (task: FilingTask) => { setSelected(undefined); setReceipt(task); };
@@ -66,9 +71,9 @@ export function FilingList({ site, event, workplaces }: { site?: string; event?:
             {r.receipt_number && <><dt>{t("statutory.receiptNumber")}</dt><dd>{r.receipt_number}</dd></>}
             {r.loss_code && <><dt>{t("statutory.lossCode")}</dt><dd>{r.loss_code} · {r.loss_options.find((o) => o.code === r.loss_code)?.label}</dd></>}
             {r.detail && <><dt>{t("statutory.detail")}</dt><dd>{r.detail}</dd></>}
-          </dl> : r.state === "NOT_APPLICABLE" ? <><Chip>{t("statutory.notApplicable")}</Chip> {r.not_applicable_reason && filingLabel(r.not_applicable_reason)}{r.detail && <dl className="facts"><dt>{t("statutory.reasonEvidence")}</dt><dd>{r.detail}</dd></dl>}</> : r.state === "COVERED" ? t("statutory.covered") : t("statutory.pending") },
-          { header: t("statutory.action"), end: true, cell: (r) => <div className="row">{r.record_action === "COMPLETE" || r.record_action === "NOT_APPLICABLE" ? <Button onClick={() => undo.mutate(r)} disabled={undo.isPending}>{t("statutory.undo")}</Button> : <Button onClick={() => setSelected(r)}>{t("statutory.record")}</Button>}
-            {!r.is_request && ["ACQUIRE", "LOSE"].includes(r.kind) && r.insurer === "EI" && <Button onClick={() => setRequest(r)}>{t("statutory.futureRequest")}</Button>}</div> },
+          </dl> : r.state === "LEGAL_REVIEW" ? t("lifecycle.trail.unverified") : r.state === "NOT_APPLICABLE" ? <><Chip>{t("statutory.notApplicable")}</Chip> {r.not_applicable_reason && filingLabel(r.not_applicable_reason)}{r.detail && <dl className="facts"><dt>{t("statutory.reasonEvidence")}</dt><dd>{r.detail}</dd></dl>}</> : r.state === "COVERED" ? t("statutory.covered") : t("statutory.pending") },
+          { header: t("statutory.action"), end: true, cell: (r) => <div className="row">{r.lifecycle_case_id && <Link to="/people/$id" params={{ id: r.employee_id }} search={{ act: `case:${r.lifecycle_case_id}` }} hash={`case-${r.lifecycle_case_id}`}>{t("lifecycle.trail.openCase")}</Link>}{r.state !== "LEGAL_REVIEW" && <>{r.record_action === "COMPLETE" || r.record_action === "NOT_APPLICABLE" ? <Button onClick={() => undo.mutate(r)} disabled={undo.isPending}>{t("statutory.undo")}</Button> : <Button onClick={() => setSelected(r)}>{t("statutory.record")}</Button>}
+            {!r.is_request && ["ACQUIRE", "LOSE"].includes(r.kind) && r.insurer === "EI" && <Button onClick={() => setRequest(r)}>{t("statutory.futureRequest")}</Button>}</>}</div> },
         ]} /></div>) : <EmptyState title={t("statutory.empty")} reason={t("statutory.emptyReason")} actions={<Link to="/people" className={buttonClass()}>{t("statutory.openPeople")}</Link>} />}
       <div className="row">{after && <Button onClick={() => setAfter(undefined)}>{t("common.back")}</Button>}{page.next && <Button onClick={() => setAfter(page.next!)}>{t("statutory.more")}</Button>}</div>
     </>; }}</QueryState>

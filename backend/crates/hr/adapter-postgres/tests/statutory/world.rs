@@ -36,6 +36,9 @@ pub async fn world(pool: &PgPool) -> World {
         .bind(tenant.org).bind(employee).bind(entity).bind(site).execute(tx.as_mut()).await.unwrap();
     sqlx::query("INSERT INTO employee_lifecycle_events (org_id,id,employee_id,event_type,to_status,effective_date,comment,created_by,state) VALUES ($1,$2,$3,'ONBOARD','ACTIVE','2026-09-01','hire',$4,'APPLIED')")
         .bind(tenant.org).bind(event).bind(employee).bind(user.as_uuid()).execute(tx.as_mut()).await.unwrap();
+    // The fixed September events belong to an already-operating tenant.
+    sqlx::query("UPDATE tenant_phase SET phase='OPERATING',go_live_at='2020-01-01',go_live_by=$2,go_live_preview_digest=repeat('0',64) WHERE org_id=$1")
+        .bind(tenant.org).bind(user.as_uuid()).execute(tx.as_mut()).await.unwrap();
     tx.commit().await.unwrap();
     World {
         tenant,

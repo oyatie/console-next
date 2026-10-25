@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+additionalProperties: false
+required:
+  - "expected_version"
+properties:
+  attestation:
+    type: object
+    additionalProperties: false
+    required: [fact_date, document, reason_code, note]
+    properties:
+      fact_date: { type: string, format: date }
+      reason_code: { type: string }
+      note: { type: string, maxLength: 1000 }
+      document:
+        type: object
+        additionalProperties: false
+        required: [name, url]
+        properties:
+          name: { type: string, minLength: 1, maxLength: 200 }
+          url: { type: string, format: uri, maxLength: 2000 }
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+  expected_version:
+    type: "integer"
+    format: "int64"
+  observed_ref:
+    type: "object"
+    nullable: true
+    additionalProperties: true
+  exception_id:
+    type: "string"
+    format: "uuid"
+    nullable: true
+  waive:
+    type: "boolean"
+    default: false
+  reason:
+    type: "string"
+    nullable: true
+  due_date:
+    type: "string"
+    nullable: true

@@ -2,26 +2,25 @@
 use super::*;
 use console_hr_application::lifecycle::hooks::{LifecycleApplyEvent, LifecycleApplyHooks};
 use console_kernel_core::KernelError;
-use sqlx::PgConnection;
 struct Refuse;
-impl LifecycleApplyHooks<PgConnection> for Refuse {
+impl LifecycleApplyHooks<sqlx::Transaction<'_, sqlx::Postgres>> for Refuse {
     async fn before_apply(
         &self,
-        _: &mut PgConnection,
+        _: &mut sqlx::Transaction<'_, sqlx::Postgres>,
         _: &LifecycleApplyEvent<'_>,
     ) -> Result<(), KernelError> {
         Err(KernelError::conflict("protected").with_code("exit_protected_period"))
     }
     async fn after_apply(
         &self,
-        _: &mut PgConnection,
+        _: &mut sqlx::Transaction<'_, sqlx::Postgres>,
         _: &LifecycleApplyEvent<'_>,
     ) -> Result<(), KernelError> {
         Ok(())
     }
     async fn on_rescind(
         &self,
-        _: &mut PgConnection,
+        _: &mut sqlx::Transaction<'_, sqlx::Postgres>,
         _: &LifecycleApplyEvent<'_>,
     ) -> Result<(), KernelError> {
         Ok(())

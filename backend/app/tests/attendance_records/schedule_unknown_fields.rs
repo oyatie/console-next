@@ -63,12 +63,9 @@ async fn world(pool: PgPool) -> World {
     let (org, owner) = tenant(&pool, &["SUPER_ADMIN"]).await;
     let admin = ctx(&pool, org, owner, &["SUPER_ADMIN"], None).await;
     let (entity, workplace, branch, unit) = structure(&admin).await;
-    let hired = created(
-        &admin,
-        "/api/v1/employees",
-        employee_body("S1-U1", &branch, &unit),
-    )
-    .await;
+    let mut body = employee_body("S1-U1", &branch, &unit);
+    body["hire_date"] = json!("2026-01-02");
+    let hired = created(&admin, "/api/v1/employees", body).await;
     let person = hired["employee"]["id"].as_str().unwrap().to_owned();
     created(
         &admin,

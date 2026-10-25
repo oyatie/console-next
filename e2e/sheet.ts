@@ -39,5 +39,8 @@ export const statement = (box: Locator) => box.locator("xpath=ancestor::label[1]
 export async function signOff(s: Locator, click: (l: Locator) => Promise<void> = (l) => l.click()) {
   // A named group has signoffs; a whole sheet may legitimately require none.
   if ("getAttribute" in s && await s.getAttribute("role") === "group") await expect(s.getByRole("checkbox").first()).toBeVisible();
-  for (const box of await s.getByRole("checkbox").all()) await click(statement(box));
+  for (const box of await s.getByRole("checkbox").all()) {
+    if (!(await box.isChecked())) await click(statement(box));
+    await expect(box).toBeChecked();
+  }
 }

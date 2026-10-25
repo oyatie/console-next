@@ -1,3 +1,4 @@
+import { enLifecycleTrail } from "../lifecycle-trail/en";
 // English for `lifecycle.` ids (apps/web/src/features/people/ui/lifecycle-*.tsx).
 export const enLifecycle = {
   "lifecycle.title.TRANSFER": "Transfer",
@@ -284,4 +285,5 @@ export const enLifecycle = {
   "lifecycle.correct.groupTransfer": "A group transfer must be rescinded and recorded again.",
   "lifecycle.convert.dateLocked": "Rescind and record again to change the contract end.",
   "lifecycle.leave.dateLocked": "Rescind and record again to add a required return date.",
+  ...enLifecycleTrail,
 } as const;

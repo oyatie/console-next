@@ -19,6 +19,8 @@ const ENTITY_READS = ["/api/v1/entity-setup/batches", "/api/v1/org-structure", "
 // Keys are the `change` types the hub emits (the BE-RT event contract, "Topics"): a subscriber gets a type only when it
 // passes that resource's REST read check, and never an unknown one.
 export const TOPICS: Readonly<Record<string, Topic>> = {
+  lifecycle_case: { paths: ["/api/v1/lifecycle-cases", "/api/v1/employees/{id}/lifecycle-cases", "/api/v1/statutory", "/api/v1/hr/exit-cases", "/api/v1/me/action-inbox"] },
+  lifecycle_case_item: { paths: ["/api/v1/lifecycle-cases", "/api/v1/employees/{id}/lifecycle-cases", "/api/v1/statutory", "/api/v1/hr/exit-cases", "/api/v1/me/action-inbox"] },
   // Go-live, setup steps, terms and renames change what every screen offers.
   support_session: { paths: ["/api/v1/support-sessions", "/api/v1/me/action-inbox"] },
   ops_recovery: { paths: ["/api/platform/orgs", "/api/v1/tenant/ops-recovery"] },

@@ -1,7 +1,8 @@
 tags:
   - employees
 operationId: getOnboardingChecklist
-summary: Derived onboarding checklist (EMP-MODEL E10)
+summary: Legacy derived onboarding checklist (EMP-MODEL E10)
+deprecated: true
 description: Items derived from recorded facts, never ticked. CONTRACT_DELIVERED (근기법 §17② 교부) and
   INSURANCE_ACQUISITION_REPORTED (취득신고) are NOT_TRACKED until their attestation and statutory clock exist.
   NOT_ISSUED identification is a FOLLOW_UP. Org-wide employee_directory_manage.

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { browserTestOptimizeDeps } from "../../lib/browser-test";
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { chromium, type Browser, type Page } from "@playwright/test";
@@ -11,7 +12,7 @@ let page: Page;
 beforeAll(async () => {
   server = await createServer({
     configFile: false, cacheDir: ".cache/composer-test", logLevel: "error",
-    optimizeDeps: { include: ["react", "react/jsx-dev-runtime", "react-dom/client", "intl-messageformat", "lucide-react", "react-aria-components"] },
+    optimizeDeps: browserTestOptimizeDeps,
     resolve: { dedupe: ["react", "react-dom"] },
     server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), realpathSync("node_modules/pretendard")] } },
     plugins: [{

@@ -224,7 +224,19 @@ async fn the_hub_filters_each_reader_and_resets_on_a_listener_gap(pool: PgPool) 
     );
     let (_, kind, id) = change(&next(&mut branch_y).await);
     assert_eq!((kind.as_str(), id), ("employee", Some(in_y)));
-    quiet(&mut branch_y).await;
+    for stream in [&mut tenant_wide, &mut branch_y] {
+        let mut hints = std::collections::BTreeSet::new();
+        for _ in 0..2 {
+            let (_, kind, id) = change(&next(stream).await);
+            assert!(id.is_none(), "trail hints never reveal case identifiers");
+            hints.insert(kind);
+        }
+        assert_eq!(
+            hints,
+            ["lifecycle_case".into(), "lifecycle_case_item".into()].into()
+        );
+        quiet(stream).await;
+    }
     quiet(&mut no_grant).await;
     quiet(&mut other_tenant).await;
 

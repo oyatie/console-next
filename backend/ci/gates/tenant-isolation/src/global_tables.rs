@@ -59,6 +59,10 @@ pub fn global_table_allowlist() -> &'static [(&'static str, &'static str)] {
         // codes. Same reasoning as payroll_statutory_rates (migration-only,
         // SELECT-only to console_rt, never tenant-overridable).
         ("statutory_rules", "BW-30 law reference rows, global"),
+        (
+            "statutory_filing_drafts",
+            "unverified jurisdiction-register filing rules, migration-only and SELECT-only to console_rt; separate from N-1 core readers",
+        ),
         // ATT S1: 공휴일 per 관공서 규정 §2/§3 and 노동절, bundled reference data
         // (migration-only, SELECT-only to console_rt), identical for every tenant.
         (
@@ -121,6 +125,14 @@ pub fn global_table_allowlist() -> &'static [(&'static str, &'static str)] {
         (
             "case_template_items",
             "LC-B3 case template rows, global reference data",
+        ),
+        (
+            "lifecycle_case_triggers",
+            "LC-B6 event-to-template reference vocabulary, SELECT-only to console_rt",
+        ),
+        (
+            "lifecycle_country_packs",
+            "LC-B6 jurisdiction zone defaults, SELECT-only to console_rt",
         ),
         // Approved contract text is immutable and identical for every tenant.
         // Acceptance records stay in tenant_terms_acceptances with tenant RLS.

@@ -194,6 +194,8 @@ impl HrService {
             .execute(tx.as_mut())
             .await?;
 
+            crate::cases::open::initialise(tx,org_uuid,case_id).await?;
+
             // governance-04: the HR confirmation is the exit, so the leaver's
             // access ends with it, in this transaction.
             let mut events = if body.hq_confirmation {
@@ -203,6 +205,9 @@ impl HrService {
             };
             upsert_exit_settlement_package(tx, org_uuid, case_id, body.settlement_input.clone())
                 .await?;
+            if !body.hq_confirmation {
+                crate::cases::observe::access(tx, org, actor, case_id, &mut events).await?;
+            }
             let exit_case = load_exit_case_by_id(tx, org_uuid, case_id).await?;
             let event = exit_case_audit_event(
                 actor,

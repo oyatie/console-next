@@ -1,5 +1,5 @@
 use super::refusal;
-use crate::{HrError, clock::today_kst};
+use crate::HrError;
 use console_compliance_domain::statutory::filing::{FilingFacts, Reason};
 use console_hr_domain::{
     filing::INSURERS,
@@ -7,6 +7,7 @@ use console_hr_domain::{
 };
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
+use time::Date;
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RecordFiling {
@@ -36,7 +37,7 @@ pub(super) fn from_rule(error: console_kernel_core::KernelError) -> HrError {
     translated
 }
 
-pub(super) fn validate(body: &mut RecordFiling, insurer: &str) -> Result<(), HrError> {
+pub(super) fn validate(body: &mut RecordFiling, insurer: &str, today: Date) -> Result<(), HrError> {
     body.receipt_number = normalize_optional_text(body.receipt_number.take());
     body.loss_code = normalize_optional_text(body.loss_code.take());
     body.detail = normalize_optional_text(body.detail.take());
@@ -67,11 +68,8 @@ pub(super) fn validate(body: &mut RecordFiling, insurer: &str) -> Result<(), HrE
     }
     if let Some(facts) = &body.applicability_facts {
         if let Some(birth) = facts.birth_date.as_deref() {
-            console_hr_domain::profile::facts::validate_birth_date(
-                parse_yyyy_mm_dd(birth)?,
-                today_kst(),
-            )
-            .map_err(|_| invalid("Confirm a past birth date; no record was saved."))?;
+            console_hr_domain::profile::facts::validate_birth_date(parse_yyyy_mm_dd(birth)?, today)
+                .map_err(|_| invalid("Confirm a past birth date; no record was saved."))?;
         }
         facts
             .validate()
@@ -83,7 +81,7 @@ pub(super) fn validate(body: &mut RecordFiling, insurer: &str) -> Result<(), HrE
                 .completed_on
                 .as_deref()
                 .and_then(|s| parse_yyyy_mm_dd(s).ok());
-            if date.is_none_or(|d| d > today_kst()) || body.not_applicable_reason.is_some() {
+            if date.is_none_or(|d| d > today) || body.not_applicable_reason.is_some() {
                 return Err(invalid(
                     "Choose the actual filing date, no later than today.",
                 ));
@@ -138,6 +136,9 @@ pub(super) fn validate(body: &mut RecordFiling, insurer: &str) -> Result<(), HrE
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+    fn today() -> Date {
+        time::macros::date!(2026 - 10 - 23)
+    }
     #[test]
     fn statutory_rule_codes_survive_the_hr_translation() {
         for code in [
@@ -159,7 +160,7 @@ mod tests {
         RecordFiling {
             expected_version: 0,
             action: "COMPLETE".into(),
-            completed_on: Some(today_kst().to_string()),
+            completed_on: Some(today().to_string()),
             receipt_number: None,
             loss_code: None,
             detail: None,
@@ -182,12 +183,42 @@ mod tests {
                 5 => b.receipt_number = Some("a".repeat(101)),
                 _ => b.action = "UNDO".into(),
             }
-            let error = validate(&mut b, insurer).unwrap_err();
+            let error = validate(&mut b, insurer, today()).unwrap_err();
             assert_eq!(
                 (error.status.as_u16(), error.code),
                 (422, "filing_record_invalid")
             );
         }
-        assert!(validate(&mut body(), "NPS").is_ok());
+        assert!(validate(&mut body(), "NPS", today()).is_ok());
+    }
+
+    #[test]
+    fn completion_uses_the_owning_workplaces_today() {
+        let mut b = body();
+        assert_eq!(
+            validate(&mut b, "NPS", today().previous_day().unwrap())
+                .unwrap_err()
+                .code,
+            "filing_record_invalid"
+        );
+        assert!(validate(&mut b, "NPS", today()).is_ok());
+    }
+
+    #[test]
+    fn birth_date_uses_the_owning_workplaces_today() {
+        let mut b = body();
+        b.action = "ASSESS".into();
+        b.completed_on = None;
+        b.applicability_facts = Some(FilingFacts {
+            birth_date: Some(today().to_string()),
+            ..FilingFacts::default()
+        });
+        assert_eq!(
+            validate(&mut b, "NPS", today().previous_day().unwrap())
+                .unwrap_err()
+                .code,
+            "filing_record_invalid"
+        );
+        assert!(validate(&mut b, "NPS", today()).is_ok());
     }
 }

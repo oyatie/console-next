@@ -18,13 +18,9 @@ async fn every_record_command_refuses_an_unknown_field_and_writes_nothing(pool: 
     let (org, owner) = tenant(&pool, &["SUPER_ADMIN"]).await;
     let admin = ctx(&pool, org, owner, &["SUPER_ADMIN"], None).await;
     let (entity, workplace, branch, unit) = structure(&admin).await;
-    let (status, hired) = admin
-        .call(
-            "POST",
-            "/api/v1/employees",
-            Some(employee_body("S2-U1", &branch, &unit)),
-        )
-        .await;
+    let mut body = employee_body("S2-U1", &branch, &unit);
+    body["hire_date"] = json!("2026-01-02");
+    let (status, hired) = admin.call("POST", "/api/v1/employees", Some(body)).await;
     assert_eq!(status, StatusCode::CREATED, "{hired}");
     let person = hired["employee"]["id"].clone();
     let (status, bound) = admin.call("POST", "/api/v1/employment-assignments", Some(json!({"employee_id":person, "legal_entity_id":entity, "workplace_id":workplace, "valid_from":"2026-01-02"}))).await;

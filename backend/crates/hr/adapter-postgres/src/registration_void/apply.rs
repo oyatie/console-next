@@ -58,6 +58,16 @@ pub(crate) async fn void_in_tx(
     )
     .await
     .map_err(coded)?;
+    let events: Vec<Uuid> = sqlx::query_scalar(
+        "SELECT id FROM employee_lifecycle_events WHERE org_id=$1 AND employee_id=$2",
+    )
+    .bind(org)
+    .bind(employee_id)
+    .fetch_all(tx.as_mut())
+    .await?;
+    for event in events {
+        crate::cases::open::cancel(tx, org, event, CANCEL_REASON).await?;
+    }
     let voided_at = void_employee_head_in_tx(tx, org, employee_id, mark).await?;
     if let Some(release_number) = destroy {
         destroy_voided_pii_in_tx(tx, employee_id, release_number).await?;

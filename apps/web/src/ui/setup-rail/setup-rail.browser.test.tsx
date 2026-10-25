@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { chromium, type Browser, type Page } from "@playwright/test";
+import { chromium, type Browser, type Page } from "../../lib/browser-test";
 import { SetupRail } from "./setup-rail";
 import appCss from "../../app.css?inline";
 const railCss = readFileSync(new URL("./setup-rail.module.css", import.meta.url), "utf8");

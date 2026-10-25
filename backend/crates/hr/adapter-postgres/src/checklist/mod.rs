@@ -1,7 +1,9 @@
 //! E10 onboarding checklist: loads the facts and derives the items
 //! (`console_hr_domain::checklist`). Read only.
 
-use console_hr_domain::checklist::{ChecklistEntry, OnboardingFacts, onboarding_checklist};
+use console_hr_domain::checklist::{
+    ChecklistEntry, ChecklistItem, OnboardingFacts, onboarding_checklist,
+};
 use console_hr_domain::contract::{in_force, live_history};
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_org_conn;
@@ -34,26 +36,61 @@ impl HrService {
         let org_uuid = *principal.org_id.as_uuid();
         with_org_conn::<_, _, HrError>(&self.pool, principal.org_id, move |tx| {
             Box::pin(async move {
-                let facts = load_facts(tx, org_uuid, employee_id, false).await?;
-                let rows = load_rows(tx, org_uuid, employee_id).await?;
-                let hire_date = facts.hire();
-                let contract_covers_hire = match hire_date {
-                    Some(hire) => in_force(&rows, hire).is_some(),
-                    None => !live_history(&rows).is_empty(),
-                };
-                let items = onboarding_checklist(&OnboardingFacts {
-                    hire_date,
-                    id_type: facts.id_type,
-                    birth_date_recorded: facts.birth_date.is_some(),
-                    pay_recorded: facts
-                        .employment
-                        .as_ref()
-                        .is_some_and(|employment| employment.pay_unit.is_some()),
-                    contract_covers_hire,
-                });
+                let items = observed_checklist(tx, org_uuid, employee_id)
+                    .await?
+                    .into_iter()
+                    .map(|(entry, _)| entry)
+                    .collect();
                 Ok(OnboardingChecklist { employee_id, items })
             })
         })
         .await
     }
+}
+
+/// One fact derivation for the legacy read and the HIRE case observations.
+pub(crate) async fn observed_checklist(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    org_uuid: Uuid,
+    employee_id: Uuid,
+) -> Result<Vec<(ChecklistEntry, Option<serde_json::Value>)>, HrError> {
+    let facts = load_facts(tx, org_uuid, employee_id, false).await?;
+    let rows = load_rows(tx, org_uuid, employee_id).await?;
+    let hire_date = facts.hire();
+    let contract_covers_hire = match hire_date {
+        Some(hire) => in_force(&rows, hire).is_some(),
+        None => !live_history(&rows).is_empty(),
+    };
+    let items = onboarding_checklist(&OnboardingFacts {
+        hire_date,
+        id_type: facts.id_type,
+        birth_date_recorded: facts.birth_date.is_some(),
+        pay_recorded: facts
+            .employment
+            .as_ref()
+            .is_some_and(|employment| employment.pay_unit.is_some()),
+        contract_covers_hire,
+    });
+
+    let contract = hire_date
+        .and_then(|hire| in_force(&rows, hire))
+        .map(|row| row.id);
+    Ok(items
+        .into_iter()
+        .map(|entry| {
+            let reference = match entry.item {
+                ChecklistItem::ContractRecorded => {
+                    contract.map(|id| serde_json::json!({"table":"employee_contracts","id":id}))
+                }
+                ChecklistItem::PayRecorded => Some(
+                    serde_json::json!({"table":"employee_employment_profiles","id":employee_id}),
+                ),
+                ChecklistItem::BirthDateRecorded | ChecklistItem::IdRegistered => {
+                    Some(serde_json::json!({"table":"employees","id":employee_id}))
+                }
+                _ => None,
+            };
+            (entry, reference)
+        })
+        .collect())
 }

@@ -17,13 +17,9 @@ async fn day_board_rest_filters_a_mixed_group_only_when_requested(pool: PgPool) 
     let (entity, workplace, branch, unit) = structure(&admin).await;
     let mut people = Vec::new();
     for number in ["UNSCHEDULED", "SCHEDULED"] {
-        let (status, hired) = admin
-            .call(
-                "POST",
-                "/api/v1/employees",
-                Some(employee_body(number, &branch, &unit)),
-            )
-            .await;
+        let mut body = employee_body(number, &branch, &unit);
+        body["hire_date"] = json!("2026-01-02");
+        let (status, hired) = admin.call("POST", "/api/v1/employees", Some(body)).await;
         assert_eq!(status, StatusCode::CREATED, "{hired}");
         let person = hired["employee"]["id"].as_str().unwrap().to_owned();
         let (status, bound) = admin.call("POST", "/api/v1/employment-assignments", Some(json!({"employee_id": person, "legal_entity_id": entity, "workplace_id": workplace, "valid_from": "2026-01-02"}))).await;

@@ -37,9 +37,9 @@ export async function firstWorkplace(admin: Page, entity: string, name: string) 
  * Registers `name` at `unit` of 주식회사 `entity` through the 직원 등록 sheet (two entities: the place is searched by its
  * path and the employer follows the place, never a default); lands on their record and returns their id.
  */
-export async function registerAt(admin: Page, name: string, entity: string, unit: string, phone?: string) {
+export async function registerAt(admin: Page, name: string, entity: string, unit: string, phone?: string, hired = kstDate()) {
   await go(admin, "/people/new");
-  await fillRegister(admin, { name, unit, hired: kstDate(), phone });
+  await fillRegister(admin, { name, unit, hired, phone });
   const record = receiptOf(admin, name).getByRole("link", { name: "인사카드 열기" });
   const previous = await record.count() ? await record.getAttribute("href") : null;
   const registered = admin.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/v1/employees");

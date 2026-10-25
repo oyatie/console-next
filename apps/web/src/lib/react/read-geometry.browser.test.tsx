@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
-import { chromium, type Browser, type Page } from "@playwright/test";
+import { chromium, type Browser, type Page } from "../browser-test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from "@tanstack/react-router";
 import { ApiError } from "@console/api";

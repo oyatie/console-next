@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
-import { chromium, type Browser, type Page } from "@playwright/test";
+import { chromium, type Browser, type Page } from "../../../lib/browser-test";
 import { loadCatalog } from "@console/i18n";
 import { ChartSkeleton } from "./chart-skeleton";
 

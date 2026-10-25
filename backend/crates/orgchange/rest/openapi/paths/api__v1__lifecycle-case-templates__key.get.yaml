@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "previewLifecycleCaseTemplate"
+tags:
+  - "HR"
+summary: "Preview the register-backed checklist"
+security:
+  -
+    bearerAuth: []
+parameters:
+  -
+    name: "key"
+    in: "path"
+    required: true
+    schema:
+      type: "string"
+  - name: variant
+    in: query
+    schema:
+      type: string
+  - name: exit_reason
+    in: query
+    schema:
+      type: string
+  - name: effective_date
+    in: query
+    schema:
+      type: string
+      format: date
+responses:
+  200:
+    description: "Lifecycle trail"
+    content:
+      application/json:
+        schema:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/LifecycleTemplateItem"
+  403:
+    description: "Refusal with a stable code"
+    content:
+      application/problem+json:
+        schema:
+          "$ref": "#/components/schemas/LifecycleProblem"
+  404:
+    description: "Refusal with a stable code"
+    content:
+      application/problem+json:
+        schema:
+          "$ref": "#/components/schemas/LifecycleProblem"
+  409:
+    description: "Refusal with a stable code"
+    content:
+      application/problem+json:
+        schema:
+          "$ref": "#/components/schemas/LifecycleProblem"
+  422:
+    description: "Refusal with a stable code"
+    content:
+      application/problem+json:
+        schema:
+          "$ref": "#/components/schemas/LifecycleProblem"

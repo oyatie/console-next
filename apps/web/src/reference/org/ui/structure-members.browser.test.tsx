@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { browserTestOptimizeDeps } from "../../../lib/browser-test";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { realpathSync } from "node:fs";
 import { dirname } from "node:path";
@@ -24,7 +25,7 @@ describe("directory retry in a browser", () => {
     server = await createServer({
       configFile: false,
       cacheDir: ".cache/vite-members-test",
-      optimizeDeps: { entries: ["apps/web/src/reference/org/ui/structure-members.browser-fixture.tsx"] },
+      optimizeDeps: { ...browserTestOptimizeDeps, entries: ["apps/web/src/reference/org/ui/structure-members.browser-fixture.tsx"] },
       server: { host: "127.0.0.1", port: 0, fs: { allow: [process.cwd(), dirname(realpathSync("node_modules/pretendard"))] } },
     });
     await server.listen();

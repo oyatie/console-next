@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ComponentProps } from "react";
 import { loadCatalog } from "@console/i18n";
 import { NextBox } from "./person-next";
@@ -22,7 +23,7 @@ test("the next-record date and D-day agree with the card head and exit panel", (
 
 test("the history ribbon does not mark an exit due on its last working day", () => {
   const props = { employee: { name: "경계직원" }, events: { data: { items: [event] } }, verbs: [], manage: false, today: "2026-10-31", done: null, onAct: () => {}, onDismiss: () => {} } as unknown as ComponentProps<typeof PersonHistory>;
-  const html = renderToStaticMarkup(<PersonHistory {...props} />);
+  const html = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><PersonHistory {...props} /></QueryClientProvider>);
   expect(html).toContain("2026. 11. 01.");
   expect(html.match(/2026\. 11\. 01\./g)).toHaveLength(2);
   expect(html).not.toContain("오늘 반영 대기");

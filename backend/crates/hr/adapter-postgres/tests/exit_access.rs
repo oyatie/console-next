@@ -174,9 +174,7 @@ impl World {
 }
 
 fn kst_today() -> Date {
-    OffsetDateTime::now_utc()
-        .to_offset(UtcOffset::from_hms(9, 0, 0).unwrap())
-        .date()
+    console_hr_adapter_postgres::clock::today_kst()
 }
 
 /// regression: governance-04 — a 퇴직일 that has passed ends everything now.
@@ -186,6 +184,23 @@ async fn a_past_exit_suspends_the_account_and_ends_grants_and_sessions(pool: PgP
     let (employee, account) = w.hr_worker().await;
     let yesterday = kst_today().previous_day().unwrap();
     w.exit(employee, yesterday).await.unwrap();
+
+    let retention: (String, Option<String>, Option<String>, Option<serde_json::Value>) = sqlx::query_as(
+        "SELECT i.status,i.owner_line,t.completion_rule_ref,i.observed_ref FROM lifecycle_case_items i \
+         JOIN lifecycle_cases c ON c.org_id=i.org_id AND c.id=i.case_id \
+         JOIN case_template_items t ON t.template_key=c.template_key AND t.version=c.template_version AND t.item_key=i.item_key \
+         WHERE c.employee_id=$1 AND i.item_key='X17'",
+    ).bind(employee).fetch_one(&w.owner).await.unwrap();
+    assert_eq!(
+        retention,
+        (
+            "OPEN".into(),
+            Some("hr_basic.edit".into()),
+            Some("LIFECYCLE_ITEM_ATTESTED".into()),
+            None
+        ),
+        "an exit event proves no document retention; a custodian must supply governed evidence"
+    );
 
     let active: bool = w
         .scalar("SELECT is_active FROM users WHERE id = $1", account)

@@ -1,4 +1,5 @@
 export const koStatutory = {
+  "statutory.CHANGE": "사업장 변경 신고",
   "statutory.title": "법정 신고·서류",
   "statutory.codeHold": "법령 검토 대기",
   "statutory.latest": "최신 목록 확인",
@@ -86,7 +87,7 @@ export const koStatutory = {
   "statutory.notApplicableSaved": "{name}님의 {insurer} {kind} 미해당을 기록했습니다.",
   "statutory.assessed": "적용 사실을 확인했습니다.",
   "statutory.basis": "근거",
-  "statutory.opens": "가능일",
+  "statutory.opens": "시작",
   "statutory.target": "목표",
   "statutory.conservative": "노무사 검토 전 · 보수적 기한",
   "statutory.candidate": "법정 최종일 후보 {date}",

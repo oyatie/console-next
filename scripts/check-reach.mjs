@@ -103,7 +103,7 @@ export function releasePackages(app) {
 
 /** Only executable call expressions count; types, cache prefixes and test fixtures cannot reach an op. */
 export function operationGaps({ spec, files, crates, releaseCrates }) {
-  const ops = Object.entries(spec.paths).flatMap(([p, item]) => Object.keys(item).filter((m) => /^(get|post|put|patch|delete|head|options|trace)$/.test(m)).map((m) => ({ key: `${m.toUpperCase()} ${p}`, method: m.toUpperCase(), path: p })));
+  const ops = Object.entries(spec.paths).flatMap(([p, item]) => Object.keys(item).filter((m) => /^(get|post|put|patch|delete|head|options|trace)$/.test(m) && item[m].deprecated !== true).map((m) => ({ key: `${m.toUpperCase()} ${p}`, method: m.toUpperCase(), path: p })));
   const reached = new Set();
   for (const [file, src] of files) {
     if (!/^(apps\/web\/|packages\/)/.test(file) || /\.(test|spec|gallery)\.|\.d\.ts$|\/(?:__tests__|e2e|pending)\//.test(file)) continue;

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { browserTestOptimizeDeps } from "../browser-test";
 import { dirname, resolve } from "node:path";
 import { realpathSync } from "node:fs";
 import { afterAll, beforeAll, expect, test } from "vitest";
@@ -17,7 +18,7 @@ beforeAll(async () => {
   server = await createServer({
     configFile: false, appType: "custom", cacheDir: ".cache/vite-support-reference-test",
     // The fixture module is virtual, so the scanner misses its deps; a late second optimize pass reloads the page mid-test on a cold cache.
-    optimizeDeps: { include: ["react", "react/jsx-dev-runtime", "react-dom/client", "@tanstack/react-query", "@tanstack/react-router", "intl-messageformat", "lucide-react", "openapi-fetch", "react-aria-components"] },
+    optimizeDeps: browserTestOptimizeDeps,
     resolve: { alias: { "@console/api": resolve("packages/api/src"), "@console/i18n": resolve("packages/i18n/src") }, dedupe: ["react", "react-dom"] },
     server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [searchForWorkspaceRoot(process.cwd()), dirname(realpathSync(resolve("node_modules/pretendard")))] } },
     plugins: [{

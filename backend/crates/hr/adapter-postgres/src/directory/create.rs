@@ -163,6 +163,14 @@ pub async fn register_in_tx(
             request,
         )
         .await?;
+        crate::cases::open::place(
+            tx,
+            org_uuid,
+            detail.employee_id(),
+            request.hire_date.as_deref(),
+            request.home_branch_id,
+        )
+        .await?;
     }
     let warning = same_name_same_hire_date_warning(
         tx,

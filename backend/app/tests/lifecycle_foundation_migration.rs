@@ -11,18 +11,11 @@
 mod seed;
 
 use console_kernel_core::OrgId;
-use seed::{Seeded, day, today};
+use seed::{Seeded, day, scalar_i64, today};
 use serde_json::Value;
 use sqlx::PgPool;
+use time::Duration;
 use uuid::Uuid;
-
-async fn scalar_i64(pool: &PgPool, sql: &'static str, org: Uuid) -> i64 {
-    sqlx::query_scalar(sql)
-        .bind(org)
-        .fetch_one(pool)
-        .await
-        .unwrap()
-}
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn an_api_seeded_tenant_backfills_into_periods_and_cases_with_zero_loss(pool: PgPool) {
@@ -75,7 +68,16 @@ async fn an_api_seeded_tenant_backfills_into_periods_and_cases_with_zero_loss(po
         .fetch_one(&pool)
         .await
         .unwrap();
-    assert!(cases > 0);
+    assert_eq!(cases, 0, "API writes already opened the exit trails");
+    assert!(
+        scalar_i64(
+            &pool,
+            "SELECT count(*) FROM lifecycle_cases WHERE org_id=$1 AND trigger_kind='EXIT_CASE'",
+            org
+        )
+        .await
+            > 0
+    );
 
     let findings: Vec<(Uuid, String, Value)> = sqlx::query_as(
         "SELECT employee_id, kind, detail FROM employment_backfill_findings WHERE org_id = $1 ORDER BY 1, 2",
@@ -236,7 +238,7 @@ async fn an_api_seeded_tenant_backfills_into_periods_and_cases_with_zero_loss(po
         (
             "OPEN".into(),
             Some("RESIGNATION".into()),
-            20,
+            21,
             Some("DONE_OBSERVED".into())
         )
     );
@@ -245,13 +247,18 @@ async fn an_api_seeded_tenant_backfills_into_periods_and_cases_with_zero_loss(po
         (
             "OPEN".into(),
             Some("RESIGNATION".into()),
-            20,
+            21,
             Some("OPEN".into())
         )
     );
     assert_eq!(
         case_of(withdrawn).await,
-        ("CANCELLED".into(), Some("RESIGNATION".into()), 0, None)
+        (
+            "CANCELLED".into(),
+            Some("RESIGNATION".into()),
+            21,
+            Some("CANCELLED".into())
+        )
     );
 
     // A rerun writes nothing.
@@ -268,15 +275,28 @@ async fn an_api_seeded_tenant_backfills_into_periods_and_cases_with_zero_loss(po
         .statutory_register()
         .await
         .unwrap();
+    let on = console_hr_domain::text::parse_yyyy_mm_dd(&day(5)).unwrap();
+    let filing = register
+        .filing_rule_by_code("ins.deadline.lose.nhis", on)
+        .unwrap()
+        .unwrap();
+    let loss = filing.loss_on(on).unwrap();
+    assert_eq!(
+        serde_json::to_value(filing.deadline.kind).unwrap(),
+        serde_json::json!("DAYS")
+    );
+    let included =
+        serde_json::to_value(filing.deadline.first_day).unwrap() == serde_json::json!("INCLUDED");
+    let expected_filing = Some(
+        (loss + Duration::days(i64::from(filing.deadline.value.unwrap()) - i64::from(included)))
+            .to_string(),
+    );
+    let payment = register.rule("FINAL_PAY_DUE_DAYS", on).unwrap();
+    let expected_payment = (on + Duration::days(payment.whole(payment.unit).unwrap())).to_string();
     let hr = console_hr_adapter_postgres::HrService::new(pool.clone());
-    let changed = hr
-        .case_clock_tick(OrgId::from_uuid(org), today(), register.clone())
+    hr.case_clock_tick(OrgId::from_uuid(org), today(), register.clone())
         .await
         .unwrap();
-    assert!(
-        changed >= 2,
-        "both live cases had clocks to settle: {changed}"
-    );
     assert_eq!(
         hr.case_clock_tick(OrgId::from_uuid(org), today(), register)
             .await
@@ -295,11 +315,11 @@ async fn an_api_seeded_tenant_backfills_into_periods_and_cases_with_zero_loss(po
     assert_eq!(
         clocks,
         [
-            ("X10".into(), Some(day(5 + 14)), "HOLD".into()),
+            ("X10".into(), expected_filing, "HOLD".into()),
             ("X12".into(), None, "HOLD".into()),
-            ("X2".into(), None, "HOLD".into()),
+            ("X2".into(), None, "UNKNOWN".into()),
             ("X3".into(), None, "UNKNOWN".into()),
-            ("X6".into(), Some(day(5 + 14)), "HOLD".into()),
+            ("X6".into(), Some(expected_payment), "HOLD".into()),
         ]
     );
 }

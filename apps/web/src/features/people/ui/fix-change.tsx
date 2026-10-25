@@ -85,8 +85,8 @@ export function FixChange({ c, field, act, onClose, onDone, onCorrect }: { c: Ca
   };
   const run = useCommand({
     run: (_: undefined, key: string) => recordLifecycleEvent(c.e.id, body(), key),
-    invalidates: ["/api/v1/employees"],
-    settle: true,
+    invalidates: ["/api/v1/employees/{id}/lifecycle-events", "/api/v1/employees"],
+    awaitFirstRead: true,
     onSuccess: () => onDone(t(from! > today ? "empFix.change.done.planned" : "empFix.change.done.now", { field: fieldName, to: toText, date: fmtDate(from!) })),
   });
   const press = () => (missing ? document.getElementById(`chg-${missing}`)?.querySelector<HTMLElement>("input")?.focus() : run.mutate(undefined));

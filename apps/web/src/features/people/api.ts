@@ -305,7 +305,6 @@ const onEmployee = (id: string) => ({ path: { id } });
 
 export const factsQuery = (id: string) => get("/api/v1/employees/{id}/employment-facts", { params: onEmployee(id) });
 export const contractsQuery = (id: string) => get("/api/v1/employees/{id}/contracts", { params: onEmployee(id) });
-export const checklistQuery = (id: string) => get("/api/v1/employees/{id}/onboarding-checklist", { params: onEmployee(id) });
 
 /** Someone saved a tested field first: re-read and merge (the record says which fields moved). */
 export const isFieldConflict = (e: unknown) => e instanceof ApiError && e.code === "field_conflict";

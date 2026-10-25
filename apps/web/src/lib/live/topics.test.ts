@@ -51,8 +51,23 @@ test("an unmapped topic, and `me` (a changed grant), re-read everything shown ra
 });
 
 test("every type the BE-RT contract emits has an entry", () => {
-  const contract = ["tenant", "legal_entity", "business_registration", "workplace", "org_unit", "org_change", "entity_setup_batch", "employee", "exit_case", "change_request", "import_run", "user", "role"];
+  const contract = ["tenant", "legal_entity", "business_registration", "workplace", "org_unit", "org_change", "entity_setup_batch", "employee", "exit_case", "lifecycle_case", "lifecycle_case_item", "change_request", "import_run", "user", "role"];
   for (const type of contract) expect(TOPICS[type], type).toBeDefined();
+});
+
+test.each(["lifecycle_case", "lifecycle_case_item"])("a named %s hint refreshes the shared trail and filings without refreshing attendance", (topic) => {
+  const matches = matchChange(topic, null);
+  expect(matches("/api/v1/lifecycle-cases", null)).toBe(true);
+  expect(matches("/api/v1/lifecycle-cases/{id}", detail("case-1"))).toBe(true);
+  expect(matches("/api/v1/employees/{id}/lifecycle-cases", detail("employee-1"))).toBe(true);
+  for (const path of ["/api/v1/employees", "/api/v1/employees/{id}", "/api/v1/employees/{id}/contracts", "/api/v1/employees/{id}/personal-facts", "/api/v1/employees/{id}/lifecycle-events"])
+    expect(matches(path, detail("employee-1")), path).toBe(false);
+  expect(matches("/api/v1/statutory/insurance-filings", null)).toBe(true);
+  expect(matches("/api/v1/hr/exit-cases/{id}", detail("exit-1"))).toBe(true);
+  expect(matches("/api/v1/me/action-inbox", null)).toBe(true);
+  expect(matches("/api/v1/attendance/month", null)).toBe(false);
+  expect(matches("/api/v1/attendance/days", null)).toBe(false);
+  expect(matchRecord(topic, null)).toBeNull();
 });
 
 test("a tenant change (go-live) re-reads every screen; a role change re-reads grants, not employee records", () => {

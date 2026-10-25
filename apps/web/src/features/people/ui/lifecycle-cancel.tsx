@@ -54,8 +54,8 @@ export function CancelSheet({ d, x, act, onClose, onRecorded, onOpen }: {
       if (now.state !== "SCHEDULED") setElsewhere(now);
       return false;
     },
-    invalidates: ["/api/v1/employees"],
-    settle: true,
+    invalidates: ["/api/v1/employees/{id}/lifecycle-events", "/api/v1/employees"],
+    awaitFirstRead: true,
     onSuccess: (recorded) => {
       if (!recorded) return setNotRecorded(true);
       f.done();

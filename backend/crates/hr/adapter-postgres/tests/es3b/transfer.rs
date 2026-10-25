@@ -44,6 +44,33 @@ async fn a_transfer_to_another_workplace_splits_the_assignment_until_rescinded(p
         .await
         .unwrap();
     assert_eq!(moved["to_workplace_id"], json!(w[1]));
+    let cases =
+        f.hr.employee_lifecycle_cases(f.principal.clone(), f.employee)
+            .await
+            .unwrap();
+    let case = cases
+        .iter()
+        .find(|case| {
+            Some(case.trigger_id.unwrap().to_string()) == moved["id"].as_str().map(str::to_owned)
+        })
+        .unwrap();
+    let filings: Vec<_> = case
+        .items
+        .iter()
+        .filter(|item| item.kind == "FIL")
+        .collect();
+    assert!(
+        !filings.is_empty(),
+        "a workplace change opens register-owned statutory work"
+    );
+    for item in filings {
+        assert!(item.filing_obligation_id.is_some());
+        assert!(item.insurer.is_some());
+        assert_eq!(item.filing_kind.as_deref(), Some("CHANGE"));
+        assert_eq!(item.due_disposition, "UNKNOWN");
+        assert!(item.due_date.is_none());
+        assert_eq!(item.basis["legal_review_required"], true);
+    }
     assert_eq!(
         f.live().await,
         [

@@ -3234,6 +3234,7 @@ dependencies = [
 name = "console-platform-db"
 version = "0.1.0"
 dependencies = [
+ "console-compliance-domain",
  "console-kernel-core",
  "console-platform-authz",
  "console-settings-domain",

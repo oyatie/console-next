@@ -3,6 +3,8 @@ additionalProperties: false
 required: [event_id, employee_id, name, employee_number, kind, insurer, effective_date, legal_entity_id, workplace_id, workplace_name, due_date, due_in_days, deadline_status, version, completed_on, receipt_number, loss_code, loss_options, detail, opens_on, target_on, due_on, dates, basis, applicability, applicability_facts, state, record_action, not_applicable_reason, not_applicable_options, total_remuneration_won, is_request, acquired_on, can_record_sensitive_facts, birth_date_known]
 properties:
   event_id: { type: string }
+  filing_obligation_id: { type: string, format: uuid, nullable: true }
+  lifecycle_case_id: { type: string, format: uuid, nullable: true }
   employee_id: { type: string }
   name: { type: string }
   employee_number: { type: string, nullable: true }
@@ -23,6 +25,7 @@ properties:
   can_record_sensitive_facts: { type: boolean }
   birth_date_known: { type: boolean }
   opens_on: { type: string, format: date, nullable: true }
+  opens_in_days: { type: integer, format: int64, nullable: true }
   target_on: { type: string, format: date, nullable: true }
   due_on: { type: string, format: date, nullable: true }
   dates: { $ref: '#/components/schemas/InsuranceFilingDates' }

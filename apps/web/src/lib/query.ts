@@ -27,6 +27,9 @@ type Prefix<S extends string> = S extends `${infer H}/${infer T}` ? H | `${H}/${
 /** "/api/v1" still type-checks (invalidates every read); narrow it if a command ever passes it. */
 export type PathPrefix = Exclude<Prefix<keyof paths & string>, "" | "/api">;
 
+/** A query's API path for commands that refresh that read and its lists. */
+export const queryPath = (q: { queryKey: readonly [PathPrefix, ...unknown[]] }) => q.queryKey[0];
+
 /** A derived key whose path is `prefix` or under it (a sibling like "/api/v1/employees-x" is not). */
 export const underPath = (prefix: string) => ([k]: readonly unknown[]) => typeof k === "string" && (k === prefix || k.startsWith(prefix + "/"));
 

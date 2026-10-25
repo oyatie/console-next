@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "completeLifecycleCaseItem"
+tags:
+  - "HR"
+summary: "Complete, attest or waive an owned item with evidence"
+security:
+  -
+    bearerAuth: []
+parameters:
+  -
+    name: "id"
+    in: "path"
+    required: true
+    schema:
+      type: "string"
+      format: "uuid"
+  -
+    name: "item_id"
+    in: "path"
+    required: true
+    schema:
+      type: "string"
+      format: "uuid"
+responses:
+  200:
+    description: "Lifecycle trail"
+    content:
+      application/json:
+        schema:
+          "$ref": "#/components/schemas/LifecycleCase"
+  403:
+    description: "Refusal with a stable code"
+    content:
+      application/problem+json:
+        schema:
+          "$ref": "#/components/schemas/LifecycleProblem"
+  404:
+    description: "Refusal with a stable code"
+    content:
+      application/problem+json:
+        schema:
+          "$ref": "#/components/schemas/LifecycleProblem"
+  409:
+    description: "Refusal with a stable code"
+    content:
+      application/problem+json:
+        schema:
+          "$ref": "#/components/schemas/LifecycleProblem"
+  422:
+    description: "Refusal with a stable code"
+    content:
+      application/problem+json:
+        schema:
+          "$ref": "#/components/schemas/LifecycleProblem"
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        "$ref": "#/components/schemas/CompleteLifecycleItem"

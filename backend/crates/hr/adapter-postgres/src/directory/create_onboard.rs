@@ -93,6 +93,7 @@ pub async fn record_registration_onboard(
     } else {
         None
     };
+    let event_id = Uuid::new_v4();
     sqlx::query(
         r#"INSERT INTO employee_lifecycle_events (
             id, org_id, employee_id, event_type, from_status, to_status, to_company,
@@ -101,7 +102,7 @@ pub async fn record_registration_onboard(
         ) VALUES ($1, $2, $3, 'ONBOARD', $4, 'ACTIVE', $5, $6, $7, $8, $9,
             '{}'::jsonb, $10, $11, $12, $13)"#,
     )
-    .bind(Uuid::new_v4())
+    .bind(event_id)
     .bind(org_uuid)
     .bind(employee_id)
     .bind(scheduled.then_some("PRE_HIRE"))
@@ -117,6 +118,7 @@ pub async fn record_registration_onboard(
     .execute(tx.as_mut())
     .await
     .map_err(employee_create_db_error)?;
+    crate::cases::open::event(tx, org_uuid, event_id).await?;
     Ok(())
 }
 

@@ -3,7 +3,6 @@ import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { go, kstDate, registerEmployee } from "./flows";
 import { prepareFilingCompletion, selectFilingFact } from "./helpers/statutory";
 import { staffedTenant } from "./setup-flows";
-import { addDays } from "../apps/web/src/ui/date/days";
 
 test("statutory filings and a dated worker register from an empty tenant", { tag: "@hr" }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "statutory", "법정서류회사");
@@ -16,7 +15,11 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await expect(admin.getByRole("link", { name: "조직 구조 열기" })).toHaveAttribute("href", "/org");
   await expect(admin.getByRole("main")).not.toContainText("사업장별 근로자 명부를 조회합니다");
   await expectAccessible(admin, "statutory empty states with next actions");
-  const hiredOn = kstDate(-20);
+  await registerEmployee(admin, { name: "김이전", number: "S-HISTORY", hired: kstDate(-90) });
+  await go(admin, "/statutory");
+  await expect(admin.getByText("신고할 항목이 없습니다", { exact: true })).toBeVisible();
+  await expect(admin.getByRole("row").filter({ hasText: "김이전" })).toHaveCount(0);
+  const hiredOn = kstDate(0);
   await registerEmployee(admin, { name: "김신고", number: "S-1", hired: hiredOn });
   await go(admin, "/statutory");
   await expect(admin.getByRole("heading", { name: "법정 신고·서류" })).toBeVisible();
@@ -33,7 +36,8 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await admin.route(latestRead, (route) => route.abort("failed"));
   await row.getByRole("button", { name: "처리 기록" }).click();
   const dialog = admin.getByRole("dialog");
-  await expect(dialog).toContainText("불러오지 못했습니다", { timeout: 15_000 });
+  await dialog.getByRole("button", { name: "다시 불러오기", exact: true }).waitFor({ state: "visible", timeout: 15_000 });
+  await expect(dialog).toContainText("불러오지 못했습니다");
   await expect(dialog.getByRole("button", { name: "신고 완료", exact: true })).toHaveCount(0);
   await admin.unroute(latestRead);
   await dialog.getByRole("button", { name: "다시 불러오기" }).click();
@@ -102,8 +106,9 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await expect(admin.getByText(/사업장·용도·개인 정보 방식.*내려받습니다/)).toBeVisible();
   await expect(admin.getByRole("radiogroup", { name: "개인 정보 필수", exact: true })).toBeVisible();
   await expect(admin.getByRole("radio", { name: /^주소·생년월일 가리기/ })).toBeDisabled();
-  await expect(admin.getByText("근로자 1명 (재직·휴직) + 퇴직 0명", { exact: true })).toBeVisible();
+  await expect(admin.getByText("근로자 2명 (재직·휴직) + 퇴직 0명", { exact: true })).toBeVisible();
   await expect(admin.getByRole("table", { name: "명부 미리 보기" })).toContainText("김신고");
+  await expect(admin.getByRole("table", { name: "명부 미리 보기" })).toContainText("김이전");
   const legacyRequests: string[] = [];
   admin.on("request", (request) => { if (new URL(request.url()).pathname.endsWith("/employees/export.csv")) legacyRequests.push(request.url()); });
   await legacyDownload.click({ force: true });
@@ -127,6 +132,7 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   }
   await filings.first().getByRole("link", { name: "4대보험 신고 열기", exact: true }).click();
   await admin.getByRole("tab", { name: "근로자 명부" }).click();
+  await admin.getByRole("textbox", { name: /^기준일/ }).waitFor({ state: "visible" });
   await admin.getByRole("button", { name: /사업장/ }).click();
   await admin.getByRole("option", { name: /본사/ }).click();
   await expect(admin.getByRole("table", { name: "근로자 명부" })).toContainText("S-1");
@@ -146,7 +152,7 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await admin.getByRole("button", { name: "PDF 저장·인쇄" }).click();
   await expect.poll(() => admin.locator("html").getAttribute("data-register-printed")).toContain("S-1");
   await expect.poll(() => admin.locator("html").getAttribute("data-register-printed")).toContain("김신고");
-  await admin.getByRole("textbox", { name: /^기준일/ }).fill(addDays(hiredOn, -1));
+  await admin.getByRole("textbox", { name: /^기준일/ }).fill(kstDate(-91));
   await admin.getByRole("textbox", { name: /^기준일/ }).blur();
   await expect(admin.getByText("이 기준일의 근로자 명부가 없습니다", { exact: true })).toBeVisible();
   await admin.getByRole("textbox", { name: /^기준일/ }).fill(kstDate());

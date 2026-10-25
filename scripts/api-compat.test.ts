@@ -10,6 +10,14 @@ const spec = yaml.load(readFileSync("backend/openapi/openapi.yaml", "utf8"));
 const schemas = spec.components.schemas;
 const responseBinding = schemas.MobilePasskeyStepUpStartResponse!.properties!.binding!.properties ?? schemas.MobilePasskeyStepUpBinding!.properties!;
 
+test("filing identity and opening countdown are additive response fields for N-1 readers", () => {
+  const filing = schemas.InsuranceFilingTask!;
+  expect(filing.properties!.filing_obligation_id).toEqual({ type: "string", format: "uuid", nullable: true });
+  expect(filing.properties!.opens_in_days).toEqual({ type: "integer", format: "int64", nullable: true });
+  expect(filing.required).not.toContain("filing_obligation_id");
+  expect(filing.required).not.toContain("opens_in_days");
+});
+
 test.each([
   ["step-up response action_kind", responseBinding.action_kind!, 13],
   ["step-up response reason_key", responseBinding.reason_key!, 13],

@@ -51,6 +51,7 @@ async fn entity(
         json!({
             "biz_kind": "CORPORATION", "name": name, "representation_mode": "SINGLE",
             "representatives": ["홍길동"], "crn": crn, "head_office_address": address(),
+            "incorporated_on": "2020-03-02",
         }),
     )
     .await;
@@ -220,4 +221,12 @@ pub async fn seed(pool: &PgPool) -> Seeded {
         live,
         withdrawn,
     }
+}
+
+pub async fn scalar_i64(pool: &PgPool, sql: &'static str, org: Uuid) -> i64 {
+    sqlx::query_scalar(sql)
+        .bind(org)
+        .fetch_one(pool)
+        .await
+        .unwrap()
 }

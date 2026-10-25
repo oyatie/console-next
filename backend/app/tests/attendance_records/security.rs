@@ -61,13 +61,9 @@ async fn all_record_routes_refuse_different_tenant_and_lower_grant_with_audit(po
     let (entity, workplace, branch, unit) = structure(&admin).await;
     let mut people = Vec::new();
     for number in ["S2-1", "S2-2"] {
-        let (status, hired) = admin
-            .call(
-                "POST",
-                "/api/v1/employees",
-                Some(employee_body(number, &branch, &unit)),
-            )
-            .await;
+        let mut body = employee_body(number, &branch, &unit);
+        body["hire_date"] = json!("2026-01-02");
+        let (status, hired) = admin.call("POST", "/api/v1/employees", Some(body)).await;
         assert_eq!(status, StatusCode::CREATED, "{hired}");
         people.push(hired["employee"]["id"].as_str().unwrap().to_owned());
         let (status, bound) = admin.call("POST", "/api/v1/employment-assignments", Some(json!({"employee_id":hired["employee"]["id"], "legal_entity_id":entity, "workplace_id":workplace, "valid_from":"2026-01-02"}))).await;

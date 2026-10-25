@@ -50,7 +50,7 @@ fn coded(error: KernelError) -> HrError {
 }
 
 /// The registry values the exception is admitted under (D0.3 snapshot).
-async fn exception_settings(
+pub(crate) async fn exception_settings(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org: OrgId,
 ) -> Result<ExceptionSettings, HrError> {

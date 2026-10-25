@@ -12,6 +12,7 @@ import { freshOnOpen } from "../../../lib/query";
 import { todayKst } from "../../../lib/pure/today";
 import { editable } from "../../../ui/long-table/row-keys";
 import { contractsQuery, employeeQuery, endOptionsQuery, eventsQuery, exitCasesQuery } from "../api";
+import { rrnStatusQuery } from "../api/record";
 import { assignmentsRef, entitiesRef } from "../../../reference/entity/api";
 import { authzApplies, authzQuery, granted } from "../../../reference/authz/api";
 import { verbStates } from "../domain/lifecycle";
@@ -27,6 +28,7 @@ import { FixHost } from "./fix-host";
 import { useCard } from "./use-card";
 import { useQuick } from "./use-quick";
 import { directorySearch } from "./use-linked-account";
+import { CaseSheet } from "./lifecycle-trail";
 import { PeopleJump } from "./people-jump";
 import s from "./card.module.css";
 
@@ -53,6 +55,7 @@ export function EmployeeCard() {
   // Contracts and end-options change the height of sections and the action row: read them before exposing controls.
   const contracts = freshOnOpen(useQuery({ ...contractsQuery(id), enabled: manage, refetchOnMount: "always" }));
   const ends = freshOnOpen(useQuery({ ...endOptionsQuery(id), enabled: manage, refetchOnMount: "always" }));
+  const rrn = useQuery({ ...rrnStatusQuery(id), enabled: manage, retry: false });
   // The key becomes known after the employee read; a cached key must fetch even when this observer was already mounted.
   const account = freshOnOpen(useQuery({ ...directorySearch(detail.data?.employee.employee_number || detail.data?.employee.name || "", true), enabled: users && !!detail.data, staleTime: 0, refetchOnMount: "always" }));
   // The exit block's first answer changes section 4's height, so it settles before the controls appear too.
@@ -61,7 +64,7 @@ export function EmployeeCard() {
   const first = (q: { isPending: boolean; failureCount: number }) => q.isPending && q.failureCount === 0;
   const view = queryView(detail);
   if (view === "denied" || view === "not-found" || (detail.error && !detail.data)) return <div className={s.page}><QueryState q={detail} layout="record" back={{ to: "/people", label: t("peopleJump.keys.group.roster") }}>{() => null}</QueryState></div>;
-  const loading = (authzApplies() && authz.isPending) || first(events) || first(placed) || first(entities) || (manage && (first(contracts) || first(ends) || first(exits))) || (users && !!detail.data && first(account));
+  const loading = (authzApplies() && authz.isPending) || first(events) || first(placed) || first(entities) || (manage && (first(contracts) || first(ends) || first(exits) || first(rrn))) || (users && !!detail.data && first(account));
   if (detail.isPending || (opened !== id && loading)) return <CardSkeleton />;
   // Later reads keep the mounted card and anything typed into it, including a changed account-search key.
   if (detail.isSuccess && opened !== id) setOpened(id);
@@ -143,6 +146,7 @@ function Card({ d }: { d: Detail }) {
       <ActHost d={d} act={act} back={back} events={c.events} onClose={close} onOpen={open} onRecorded={recorded} />
       <ProfileHost d={d} act={act} onClose={close} />
       <FixHost c={c} act={act} onClose={close} onAct={open} />
+      {act?.startsWith("case:") && <CaseSheet id={act.slice(5)} onClose={close} />}
       <CancelHost e={d.employee} act={act} onClose={close} onAct={open} />
       {tab === "card" ? (
         <CardBody c={c} quick={quick} act={act} onAct={open} onTab={onTab} onJump={jumpTo} />

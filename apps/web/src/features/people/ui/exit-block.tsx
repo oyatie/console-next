@@ -75,7 +75,13 @@ export function ExitCases({ employee, act }: { employee: Employee; act?: string 
         {canReport && <Button onClick={() => show("exit.report")}>{t("exit.report")}</Button>}
         {reportable && own && <DisabledReason layout="inline" control={(p) => <Button {...p}>{t("exit.report")}</Button>} reason={t("common.failed.code.own_record_forbidden")} />}
       </div>
-      {receipt && <Receipt state="recorded" message={receipt.message} meta={receipt.reference && <ReceiptReference value={receipt.reference} />} />}
+      {/* Reserve the report's receipt before its read lands so the next step stays under the pointer. */}
+      {(want?.key === "report" || receipt) && <div className={s.receiptSlot}>
+        <div className={s.receiptReserve} aria-hidden="true">
+          <Receipt state="recorded" message={t("exit.reported", { name: employee.name })} meta={<ReceiptReference value={employee.id} />} />
+        </div>
+        {receipt && <Receipt state="recorded" message={receipt.message} meta={receipt.reference && <ReceiptReference value={receipt.reference} />} />}
+      </div>}
       <QueryState q={cases}>
         {() => (
           <>
@@ -177,7 +183,7 @@ function ActSheet({ act, want, target, employee, canReport, loaded, onClose, onD
 
 function CaseStep({ c, ...props }: { c: Case; k: ForwardKey; sheet: { title: string; subtitle: string; onClose: () => void }; onDone: (message: string) => void }) {
   const detail = useQuery({ ...caseQuery(c.id), placeholderData: c });
-  return <StepForm {...props} c={detail.data ?? c} />;
+  return <StepForm {...props} c={detail.data ?? c} sheet={{ ...props.sheet, loading: detail.isPlaceholderData || !detail.isSuccess }} aside={detail.isError && <QueryState q={detail}>{() => null}</QueryState>} />;
 }
 
 const NONE = { forward: null, back: [] as BackKey[] };

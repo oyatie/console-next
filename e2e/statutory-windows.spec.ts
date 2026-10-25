@@ -16,10 +16,10 @@ test("hire today, prepare next month's exit, and resolve truthful not-applicable
   const hire=kstDate();const exit=nextMonthDay(hire,0);const futureExit=nextMonthDay(exit,28);
   await registerEmployee(admin,{name:"신고기간직원",number:"SW-1",hired:hire,unit:"본사"});
   await admin.getByRole("button",{name:"퇴직 보고",exact:true}).click();
-  let dialog=admin.getByRole("dialog");await fillDate(dialog,futureExit,"마지막 근무일");await dialog.getByLabel("퇴직 경위").fill("다음 달 계약 종료");await dialog.getByRole("radiogroup",{name:/^퇴직 사유/}).getByText("개인 사정",{exact:true}).click();await dialog.getByRole("button",{name:/퇴직 보고$/}).click();await expect(dialog).toBeHidden();
+  let dialog=admin.getByRole("dialog");await fillDate(dialog,futureExit,"마지막 근무일");await dialog.getByLabel("퇴직 경위").fill("다음 달 계약 종료");await dialog.getByRole("radiogroup",{name:/^퇴직 사유/}).getByText("개인 사정",{exact:true}).click();await dialog.getByRole("button",{name:/^퇴직 보고 1명 반영/}).click();await expect(dialog).toBeHidden();
   const exitPanel=admin.getByRole("region",{name:"퇴직",exact:true});await exitPanel.getByRole("button",{name:"인사 확인하고 퇴직 처리"}).click();
-  dialog=admin.getByRole("dialog");await signOff(dialog.getByRole("group",{name:"확인 사항"}));await dialog.getByRole("button",{name:/인사 확인하고/}).click();await expect(dialog).toBeHidden();
-  const href=await exitPanel.getByRole("link",{name:"퇴직 건 열기"}).getAttribute("href");await go(admin,href!);await admin.getByRole("region",{name:/지금/}).getByRole("button",{name:"본사 퇴직 확인"}).click();
+  dialog=admin.getByRole("dialog");await signOff(dialog.getByRole("group",{name:"확인 사항"}));await dialog.getByRole("button",{name:/^퇴직 1명 (반영|예약)/}).click();await expect(dialog).toBeHidden();
+  const href=await exitPanel.getByRole("link",{name:"퇴직 건 열기"}).getAttribute("href");await go(admin,href!);await admin.getByRole("region",{name:/지금/}).getByRole("button",{name:"퇴직 본사 확인 1명 반영"}).click();
   const read=admin.waitForResponse((r)=>(new URL(r.url()).pathname.endsWith("/statutory/insurance-filings")&&!new URL(r.url()).searchParams.has("event_id"))&&r.request().method()==="GET");
   await go(admin,"/statutory");const page=await (await read).json() as FilingPage;expect(page.total).toBe(8);
   for(const task of page.items){
@@ -27,7 +27,7 @@ test("hire today, prepare next month's exit, and resolve truthful not-applicable
     expect(task.opens_on).toBe(opens);expect(task.target_on).toBe(opens);
     expect(task.due_on).toBe(task.insurer==="NHIS"?addDays(opens,13):nextMonthDay(task.kind==="ACQUIRE"?hire:futureExit,15));
     const row=filingRow(admin,task.insurer==="NPS"?"국민연금":task.insurer==="NHIS"?"건강보험":task.insurer==="EI"?"고용보험":"산재보험",task.kind==="ACQUIRE"?"취득 신고":"상실 신고");
-    await expect(row).toContainText("가능일");await expect(row).toContainText("목표");
+    await expect(row).toContainText("시작");await expect(row).toContainText("기한");await expect(row).not.toContainText("목표");
     if(task.dates?.conservative){await row.getByText("근거",{exact:true}).click();await expect(row).toContainText("보수적 기한");await expect(row).toContainText("법정 최종일 후보");}
   }
   await expectAccessible(admin,"statutory earliest window and legal deadline");await atPhoneWidth(admin,()=>fits(admin,"filing windows"));

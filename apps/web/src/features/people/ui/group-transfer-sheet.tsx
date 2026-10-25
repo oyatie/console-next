@@ -25,6 +25,7 @@ import { fmtDay, fmtDayShort, placeEntityText } from "../present";
 import { GroupBlocked, GroupFields } from "./group-transfer-fields";
 import { GroupPreview } from "./group-transfer-preview";
 import { Composer } from "../../../ui/composer/composer";
+import { useTrailPreview } from "./lifecycle-trail-preview";
 import { Changed, LockedDate, Restored } from "./lifecycle-notes";
 import { LifecycleRefusal } from "./lifecycle-refusal";
 import { LifecycleWhy } from "./lifecycle-what";
@@ -69,6 +70,7 @@ export function GroupTransferSheet({ d, events, head, units, act, offer, seed, c
   const locked = seed?.mode === "edit";
   const f = useDraft(e.id, act, { date: locked ? seed!.from.effective_date : "", groupStart: personal.data?.group_service_start_date ?? "" });
   const v0 = f.draft;
+  const preview = useTrailPreview(["EXIT", "GROUP_TRANSFER_HIRE"], { variant: "GROUP_TRANSFER", effective_date: v0.date || undefined });
   const [tried, setTried] = useState(false);
   const [pin, setPin] = useState(head);
   const [conflict, setConflict] = useState<{ id: string; date: string } | null>(null);
@@ -168,6 +170,7 @@ export function GroupTransferSheet({ d, events, head, units, act, offer, seed, c
   );
   return (
     <Composer
+      sections={preview}
       localDraft
       onSaveDraft={onClose}
       kicker={kicker}

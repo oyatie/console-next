@@ -20,6 +20,7 @@ import { useDraft } from "../../../lib/react/use-draft";
 import { eventsQuery, reportExit } from "../api";
 import { OpsExitNote } from "./account-link-card";
 import { StepFrame } from "./exit-foot";
+import { useTrailPreview } from "./lifecycle-trail-preview";
 import { focusFirstInvalid, useExitCommand } from "./use-exit-command";
 import s from "./exit.module.css";
 
@@ -42,6 +43,7 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
     text: (v) => `${t("exit.report")} · ${employee.name}\n${t("exit.field.date")}: ${v.date}\n${t("exit.field.reason")}: ${v.reason ? reasonLabel("exit_reason", v.reason, reasons.data?.items.find((r) => r.code === v.reason)) : ""}\n${t("exit.field.circumstances")}: ${v.note}`,
   });
   const { date, note, reason } = draft.value;
+  const preview = useTrailPreview(["EXIT"], { exit_reason: reason ?? undefined, effective_date: date || undefined });
   const reasonsRead = !reasons.isPending;
   const exitClass = useExitClass(reason);
   const [tried, setTried] = useState(false);
@@ -58,6 +60,7 @@ export function ReportForm({ employee, onClose, onDone }: { employee: Employee; 
   const later = (useQuery(eventsQuery(employee.id)).data?.items ?? []).filter((x) => x.state === "SCHEDULED" && (!date || x.effective_date > date));
   return (
     <StepFrame
+      sections={preview}
       formId={formId}
       onSubmit={() => {
         setTried(true);

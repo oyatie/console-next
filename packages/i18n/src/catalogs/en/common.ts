@@ -18,6 +18,7 @@ export const enCommon = {
   "common.failed.code.workplace_not_open_on_date": "Placement cannot start before the workplace or employer opened. Choose a date on or after opening, or another workplace.",
   "common.failed.code.rehire_date_not_after_exit": "Choose a rehire date on or after the retirement date.",
   "common.failed.code.filing_applicability_unverified": "Nothing was saved because filing applicability is unverified. Confirm the required facts, and correct a conflicting birth date in the employee record.",
+  "common.failed.code.filing_rule_unverified": "Pending legal review. Processing can be recorded once the filing rule has been verified.",
   "common.failed.code.support_reference_cross_tenant_denied": "This support reference belongs to another customer account.",
   "common.failed.code.support_reference_grant_required": "A diagnostic support grant is required. Ask an administrator for access.",
   "common.failed.code.support_reference_not_found": "Support reference not found. Check the full reference.",

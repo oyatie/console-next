@@ -14,6 +14,7 @@ pub struct FilingQuery {
     pub after: Option<String>,
     pub limit: Option<usize>,
     pub event_id: Option<Uuid>,
+    pub filing_id: Option<Uuid>,
     pub insurer: Option<String>,
     pub kind: Option<String>,
     #[serde(skip)]
@@ -35,6 +36,8 @@ pub struct FilingTask {
     #[serde(skip)]
     pub created_at: OffsetDateTime,
     pub event_id: Uuid,
+    pub filing_obligation_id: Option<Uuid>,
+    pub lifecycle_case_id: Option<Uuid>,
     pub employee_id: Uuid,
     pub name: String,
     pub employee_number: Option<String>,
@@ -54,6 +57,7 @@ pub struct FilingTask {
     pub loss_options: Vec<LossOption>,
     pub detail: Option<String>,
     pub opens_on: Option<String>,
+    pub opens_in_days: Option<i64>,
     pub target_on: Option<String>,
     pub due_on: Option<String>,
     pub dates: Option<FilingDates>,

@@ -6,7 +6,7 @@
 //! - a result is write-once (attestation_immutable), CORRECTION_NEEDED aside;
 //! - a case does not close over an open blocking item;
 //! - tenant additions are append-only and cannot touch the statutory rows;
-//! - the EXIT template ships its 40 design rows, HOLD, [U] rows UNKNOWN;
+//! - the EXIT template ships its design rows and IACI filing, HOLD, [U] rows UNKNOWN;
 //! - the exit-case backfill: CANCELLED / PRE_CONSOLE-closed / live, idempotent.
 
 #[path = "lc_fixtures/mod.rs"]
@@ -184,8 +184,8 @@ async fn the_exit_template_ships_the_design_rows_on_hold(pool: PgPool) {
     .unwrap();
     assert_eq!(
         (rows, base, hold.as_str()),
-        (40, 19, "HOLD"),
-        "§3.6: 19 base + 17 by reason + GT1-GT4"
+        (41, 20, "HOLD"),
+        "§3.6: 19 base + IACI filing + 17 by reason + GT1-GT4"
     );
     assert_eq!(
         unknown,
@@ -193,7 +193,7 @@ async fn the_exit_template_ships_the_design_rows_on_hold(pool: PgPool) {
         "[U] rows are 「기한 미확인」"
     );
     let sf_keys: Vec<String> = sqlx::query_scalar(
-        "SELECT DISTINCT due_register_code FROM case_template_items WHERE due_register_code LIKE 'ins.%' ORDER BY 1",
+        "SELECT DISTINCT due_register_code FROM case_template_items WHERE template_key='EXIT' AND due_register_code LIKE 'ins.%' ORDER BY 1",
     )
     .fetch_all(&pool)
     .await
@@ -202,6 +202,7 @@ async fn the_exit_template_ships_the_design_rows_on_hold(pool: PgPool) {
         sf_keys,
         [
             "ins.deadline.lose.ei",
+            "ins.deadline.lose.iaci",
             "ins.deadline.lose.nhis",
             "ins.deadline.lose.nps"
         ]
@@ -224,7 +225,7 @@ async fn past_exits_backfill_closed_pre_console_and_cancelled_ones_without_items
     .unwrap();
     assert_eq!(
         (state.as_str(), basis.as_deref(), items, pre, overdue),
-        ("CLOSED", Some("ALL_TERMINAL"), 25, 25, 0)
+        ("CLOSED", Some("ALL_TERMINAL"), 26, 26, 0)
     );
     let cancelled = case(&pool, &live_exit(), "CANCELLED").await;
     let (state, items): (String, i64) = sqlx::query_as(
@@ -247,7 +248,7 @@ async fn past_exits_backfill_closed_pre_console_and_cancelled_ones_without_items
     .unwrap();
     assert_eq!(
         (state.as_str(), open, pending),
-        ("OPEN", 23, 2),
+        ("OPEN", 24, 2),
         "X12/X13 wait for a request"
     );
     for c in [&old, &cancelled, &live] {

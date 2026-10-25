@@ -273,7 +273,7 @@ fn ins_deadline_keys_answer_from_the_bw30_rows_and_nothing_else() {
 }
 
 #[test]
-fn dismissal_protection_codes_and_migration_check_stay_in_sync() {
+fn register_codes_and_migration_checks_stay_in_sync() {
     let sql = include_str!("../../../../platform/db/migrations/20261021084358333_exit_guards.sql");
     let check = sql
         .split("statutory_rules_code_check CHECK (code IN (")
@@ -282,10 +282,25 @@ fn dismissal_protection_codes_and_migration_check_stay_in_sync() {
         .split(")) NOT VALID")
         .next()
         .unwrap();
-    let listed = check
+    let mut listed = check
         .split(',')
         .map(|c| c.trim().trim_matches('\''))
         .collect::<std::collections::BTreeSet<_>>();
+    let draft_sql = include_str!(
+        "../../../../platform/db/migrations/20261025020100000_lifecycle_trail_product_paths.sql"
+    );
+    let drafts = draft_sql
+        .split("code TEXT NOT NULL CHECK (code IN (")
+        .nth(1)
+        .unwrap()
+        .split("))")
+        .next()
+        .unwrap()
+        .split(',')
+        .map(|c| c.trim().trim_matches('\''))
+        .collect::<std::collections::BTreeSet<_>>();
+    assert!(listed.is_disjoint(&drafts));
+    listed.extend(drafts);
     assert_eq!(listed, codes::ALL.into_iter().collect());
     for code in [
         codes::DISMISSAL_PROTECTION_TAIL_DAYS,
