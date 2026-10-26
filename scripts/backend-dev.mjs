@@ -19,10 +19,11 @@ const WEB_ORIGIN = process.env.CONSOLE_WEB_ORIGIN ?? "http://localhost:5173";
 // its environment variable, so a second stack (e.g. `npm run demo`) sets every port and the compose project and never
 // shares a database with test runs.
 const PORT = PORTS;
-await reapOrphanListener(PORT.backend);
 const PROJECT = process.env.CONSOLE_DEV_PROJECT ?? "console-react-e2e";
 // The E2E slot's cache (e2e/slot.ts sets it); the default is slot 0's.
 const CACHE = process.env.E2E_CACHE_DIR ?? path.resolve(new URL("../.cache/console-e2e", import.meta.url).pathname);
+const RECORD = path.join(CACHE, "backend.json");
+await reapOrphanListener(PORT.backend, RECORD);
 const DB = "console_dev";
 const secrets = ensureDevSecrets();
 const PW = {
@@ -177,8 +178,6 @@ if (process.env.CONSOLE_DEV_ASYNC_COMMIT === "1")
   );
 // Which binary this backend runs, for E2E_REUSE's stale-binary guard (e2e/global-setup.ts).
 mkdirSync(CACHE, { recursive: true });
-// `pid`: this launcher, which a test signals to restart its own slot's backend (below).
-writeFileSync(path.join(CACHE, "backend.json"), JSON.stringify({ bin: BIN, binMtimeMs: statSync(BIN).mtimeMs, pid: process.pid }));
 // No fixtures and no personas: the database holds only what the API itself creates.
 console.log(`backend: http://127.0.0.1:${PORT.backend}  platform cold-start code: coldstartOtp in ${DEV_SECRETS_FILE}`);
 // SIGUSR2 stops the API process and the next SIGUSR2 starts it again on the same database (a backend restart mid-flow,
@@ -189,6 +188,8 @@ let api = null;
 let up = true;
 const startApi = () => {
   const child = startBackend(BIN, { cwd: CONSOLE, env: { ...appEnv("api"), ...(supportLogFixture ? { CONSOLE_SUPPORT_LOG_QUERY_URL: supportLogFixture.url } : {}) }, stdio: supportLogFixture ? ["inherit", "pipe", "inherit"] : "inherit" });
+  // `pid` is the restart signal target; `apiPid` ties orphan cleanup to this slot's launcher.
+  writeFileSync(RECORD, JSON.stringify({ bin: BIN, binMtimeMs: statSync(BIN).mtimeMs, pid: process.pid, apiPid: child.pid }));
   if (supportLogFixture) {
     child.stdout.pipe(process.stdout);
     supportLogFixture.observe(child.stdout);

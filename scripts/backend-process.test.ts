@@ -19,9 +19,19 @@ beforeAll(() => {
   copyFileSync(process.execPath, bin, constants.COPYFILE_FICLONE);
   mkdirSync(path.join(dir, "bin"));
   writeFileSync(path.join(dir, "bin/docker"), "#!/bin/sh\nexit 0\n", { mode: 0o700 });
+  const ps = spawnSync("which", ["ps"], { encoding: "utf8" }).stdout.trim();
+  // Model Linux adoption by a live subreaper even when this suite runs on macOS.
+  writeFileSync(path.join(dir, "bin/ps"), `#!/usr/bin/env node
+    const result = require('node:child_process').spawnSync(${JSON.stringify(ps)}, process.argv.slice(2), { encoding: 'utf8' });
+    const adopted = process.argv[3] === process.env.ADOPTED_LISTENER_PID;
+    process.stdout.write(adopted ? result.stdout.replace(/^\\s*\\d+/, process.env.ADOPTER_PID) : result.stdout);
+    process.stderr.write(result.stderr);
+    process.exit(result.status ?? 1);
+  `, { mode: 0o700 });
   writeFileSync(fixture, `
     if (process.env.CONSOLE_APP_ROLE === 'migrate') process.exit(0);
     if (process.env.CONSOLE_APP_ROLE === 'api') {
+      process.title = require('node:path').basename(process.execPath);
       if (process.env.IGNORE_TERM === '1') process.on('SIGTERM', () => {});
       const child = require('node:child_process').spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
         stdio: 'ignore', env: { ...process.env, CONSOLE_APP_ROLE: 'child' }
@@ -89,18 +99,32 @@ async function plant({ orphan = false, other = false, stubborn = false } = {}) {
   const file = record();
   const command = other ? process.execPath : bin;
   const options = { env: { ...env(file), CONSOLE_APP_ROLE: "api", IGNORE_TERM: stubborn ? "1" : "0" }, stdio: "ignore" as const };
+  const cache = options.env.E2E_CACHE_DIR;
+  mkdirSync(cache, { recursive: true });
+  let launcher = process.pid;
   if (orphan) {
-    const planter = spawnSync(process.execPath, ["-e", `require('node:child_process').spawn(${JSON.stringify(command)}, [], { ...${JSON.stringify(options)}, detached: true }).unref()`], { encoding: "utf8", env: process.env });
+    const planter = spawnSync(process.execPath, ["-e", `
+      const child = require('node:child_process').spawn(${JSON.stringify(command)}, [], { ...${JSON.stringify(options)}, detached: true });
+      require('node:fs').writeFileSync(${JSON.stringify(path.join(cache, "backend.json"))}, JSON.stringify({ pid: process.pid, apiPid: child.pid }));
+      child.unref();
+    `], { encoding: "utf8", env: process.env });
     expect(planter.status, planter.stderr).toBe(0);
+    launcher = planter.pid;
   } else children.push(spawn(command, [], options));
   const value = await listener(file);
-  expect(parent(value.pid)).toBe(orphan ? 1 : process.pid);
-  return value;
+  if (orphan) {
+    expect(alive(launcher)).toBe(false);
+    await eventually(() => parent(value.pid), (pid) => pid !== launcher);
+  } else {
+    expect(parent(value.pid)).toBe(launcher);
+    writeFileSync(path.join(cache, "backend.json"), JSON.stringify({ pid: launcher, apiPid: value.pid }));
+  }
+  return { ...value, cache, launcher };
 }
 
-function launchBackend(port: number) {
+function launchBackend(port: number, overrides: NodeJS.ProcessEnv = {}) {
   const file = record();
-  const child = spawn(process.execPath, ["scripts/backend-dev.mjs"], { env: env(file, port), stdio: ["pipe", "pipe", "pipe"] });
+  const child = spawn(process.execPath, ["scripts/backend-dev.mjs"], { env: { ...env(file, port), ...overrides }, stdio: ["pipe", "pipe", "pipe"] });
   children.push(child);
   let output = "";
   child.stdout.on("data", (data) => { output += data; });
@@ -142,10 +166,19 @@ afterEach(async () => {
 });
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-test.each([false, true])("a console-app orphan is reaped and the next backend binds its port (ignores TERM: %s)", async (stubborn) => {
+test.each([
+  { stubborn: false, adopted: false }, { stubborn: true, adopted: false },
+  { stubborn: false, adopted: true }, { stubborn: true, adopted: true },
+])("a console-app orphan is reaped and the next backend binds its port: %j", async ({ stubborn, adopted }) => {
   const orphan = await plant({ orphan: true, stubborn });
-  const run = launchBackend(orphan.port);
+  const run = launchBackend(orphan.port, {
+    E2E_CACHE_DIR: orphan.cache,
+    ...(adopted ? { ADOPTED_LISTENER_PID: String(orphan.pid), ADOPTER_PID: String(process.pid) } : {}),
+  });
+  await eventually(() => existsSync(run.file) || run.child.exitCode !== null, Boolean);
+  expect(run.child.exitCode, run.output()).toBeNull();
   const next = await listener(run.file);
+  expect(JSON.parse(readFileSync(path.join(orphan.cache, "backend.json"), "utf8"))).toMatchObject({ pid: run.child.pid, apiPid: next.pid });
   expect(next.pid).not.toBe(orphan.pid);
   expect(await responds(orphan.port)).toEqual({ pid: next.pid });
   expect(alive(orphan.pid)).toBe(false);
@@ -155,7 +188,22 @@ test.each([false, true])("a console-app orphan is reaped and the next backend bi
 
 test.each([{ orphan: false, other: false }, { orphan: true, other: true }])("an unsafe listener is refused without killing it: %j", async (options) => {
   const occupied = await plant(options);
-  const run = launchBackend(occupied.port);
+  const run = launchBackend(occupied.port, { E2E_CACHE_DIR: occupied.cache });
+  expect(await run.exited, run.output()).not.toBe(0);
+  expect(run.output()).toContain(`port ${occupied.port} is held by pid ${occupied.pid}`);
+  expect(run.output()).toContain("refusing to stop");
+  expect(await responds(occupied.port)).toEqual({ pid: occupied.pid });
+});
+
+test.each(["missing", "malformed", "wrong listener", "invalid launcher"])("an orphan without valid slot ownership is refused: %s", async (record) => {
+  const occupied = await plant({ orphan: true });
+  const file = path.join(occupied.cache, "backend.json");
+  if (record === "missing") rmSync(file);
+  else writeFileSync(file, record === "malformed" ? "{" : JSON.stringify({
+    pid: record === "invalid launcher" ? -1 : occupied.launcher,
+    apiPid: record === "wrong listener" ? occupied.child : occupied.pid,
+  }));
+  const run = launchBackend(occupied.port, { E2E_CACHE_DIR: occupied.cache });
   expect(await run.exited, run.output()).not.toBe(0);
   expect(run.output()).toContain(`port ${occupied.port} is held by pid ${occupied.pid}`);
   expect(run.output()).toContain("refusing to stop");
