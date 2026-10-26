@@ -9,7 +9,6 @@ export const enPeople: Partial<Record<keyof typeof koPeople, string>> = {
   "people.tab.employees": "Employees",
   "people.tab.accounts": "Accounts",
   "people.register": "Register employee",
-  "people.search.accounts": "Search accounts",
   "people.noMatch.title": "No results",
   "people.noMatch.reason": "No employee matches “{q}”.",
   "people.noMatch.filters": "No employees match these filters. Change the status, unit or review filter.",

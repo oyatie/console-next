@@ -112,7 +112,6 @@
 "apps/web/src/features/org/ui/unit-members.tsx": {"dsClass":2},
 "apps/web/src/features/org/ui/unit-parts.tsx": {"dsClass":1},
 "apps/web/src/features/org/ui/unit-proposal.tsx": {"dsClass":2},
-"apps/web/src/features/people/People.tsx": {"raw":2,"dsClass":2},
 "apps/web/src/features/people/ui/account-invite-sheet.tsx": {"dsClass":2},
 "apps/web/src/features/people/ui/account-issued-code.tsx": {"dsClass":1},
 "apps/web/src/features/people/ui/account-panel.tsx": {"dsClass":7},

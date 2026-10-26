@@ -16,8 +16,11 @@ beforeAll(async () => {
     import { ServerPicker } from '/apps/web/src/ui/server-picker/server-picker.tsx';
     import { PickOne } from '/apps/web/src/reference/entity/ui/pick-one.tsx';
     import { RolePick } from '/apps/web/src/features/access/ui/role-pick.tsx';
+    import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+    import { CatalogPicker } from '/apps/web/src/features/people/ui/catalog-picker.tsx';
     import '/apps/web/src/app.css';
     await loadCatalog('ko');
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     function Fixture() {
       const mode = new URLSearchParams(location.search).get('mode');
       const [query, setQuery] = useState(mode === 'required' ? '' : 'alias');
@@ -27,27 +30,34 @@ beforeAll(async () => {
       const options = Array.from({ length: 20 }, (_, i) => ({ id: String(i), name: 'Employee ' + i, code: 'E-' + i }));
       const count = Number(new URLSearchParams(location.search).get('count') ?? 15);
       const choices = options.slice(0, count).map(o => ({ value: o.id, label: o.name }));
-      return h('main', null,
+      return h(QueryClientProvider, { client }, h('main', null,
         h('button', { id: 'before' }, 'Before'),
+        mode === 'catalog' ? h(CatalogPicker, { kind: 'TITLE', label: 'Title', currentId: '0', required: false, value, onChange: setValue }) :
         mode === 'entity' ? h(PickOne, { label: 'Entity', required: true, options: choices, value, onChange: setValue, group: 'Entities', empty: 'No entities' }) :
         mode === 'role' ? h(RolePick, { label: 'Role', roles: choices.map(o => ({ id: o.value, name_ko: o.label, lines: [] })), value, onChange: setValue }) :
         h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query, onQueryChange: setQuery,
           options: mode === 'empty' || mode === 'readonly-empty' || mode === 'disabled-empty' ? [] : options,
-          value, onChange: setValue, total: 2000, loading, isRequired: true,
+          value, onChange: setValue, total: mode === 'complete' ? options.length : mode === 'unknown-total' ? undefined : 2000, loading, isRequired: true,
           readOnly: mode === 'readonly' || mode === 'readonly-empty',
           disabledReason: mode === 'disabled' || mode === 'disabled-empty' ? 'Approval required' : undefined,
           error: mode === 'error' ? 'Choose a person' : undefined,
           escape: { kind: 'request', label: 'Request addition', note: 'Ask the owner', onRequest: () => setValue('request') } }),
         h('input', { id: 'after', 'aria-label': 'After' }),
-        h('output', { id: 'selected' }, value));
+        h('output', { id: 'selected' }, value)));
     }
     createRoot(document.getElementById('root')).render(h(Fixture));
   `);
   browser = await chromium.launch();
   page = await (await browser.newContext()).newPage();
   page.setDefaultTimeout(10_000);
+  await page.route("**/api/v1/job-titles", route => {
+    const count = Number(new URL(page.url()).searchParams.get("count") ?? 15);
+    return route.fulfill({ json: { items: Array.from({ length: count }, (_, n) => ({
+      id: String(n), kind: "TITLE", label: `Employee ${n}`, active: true, grade_rank: null,
+    })), can_manage: false } });
+  });
   await page.goto(`${server.resolvedUrls!.local[0]}picker-states`);
-  await page.getByRole("combobox").waitFor();
+  await page.getByRole("combobox").waitFor({ timeout: 30_000 });
 }, 60_000);
 
 afterAll(async () => { await browser?.close(); await server?.close(); });
@@ -76,6 +86,65 @@ test("loading changes to the result count in the same live region", async () => 
   await expectElement(status).toHaveText("찾는 중");
   await page.evaluate(() => (window as unknown as { finishLoading: () => void }).finishLoading());
   await expectElement(status).toHaveText("2,000건");
+});
+
+test("only a settled, truncated result page asks the user to narrow the search", async () => {
+  const hint = page.getByText("처음 20건만 표시합니다. 검색어를 더 입력해 범위를 좁히십시오.", { exact: true });
+  for (const mode of ["complete", "unknown-total", "loading"]) {
+    const input = await open(mode);
+    await input.press("ArrowDown");
+    await expectElement(page.getByRole("listbox")).toBeVisible();
+    await expectElement(hint).toHaveCount(0);
+  }
+  const input = await open("results");
+  await expectElement(hint).toHaveCount(0);
+  await input.press("ArrowDown");
+  await expectElement(hint).toBeVisible();
+  await input.press("Tab");
+  await expectElement(hint).toHaveCount(0);
+});
+
+test("field states use the theme tokens and preserve the read-only focus ring", async () => {
+  for (const colorScheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme });
+    for (const mode of ["readonly", "disabled"]) {
+      const input = await open(mode);
+      if (mode === "readonly") {
+        await page.locator("#before").focus();
+        await page.keyboard.press("Tab");
+        await expectElement(input).toBeFocused();
+        await expectElement(input).toHaveCSS("border-top-style", "dashed");
+      } else await expectElement(input).toHaveCSS("cursor", "not-allowed");
+      const background = await page.evaluate((token) => {
+        const probe = document.createElement("span");
+        probe.style.backgroundColor = `var(${token})`;
+        document.body.append(probe);
+        const color = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return color;
+      }, mode === "readonly" ? "--canvas" : "--muted");
+      await expectElement(input).toHaveCSS("background-color", background);
+    }
+  }
+});
+
+test("catalog titles use the shared list/search boundary and keep selection and clearing", async () => {
+  for (const count of [15, 16]) {
+    await page.goto(`${server.resolvedUrls!.local[0]}picker-states?mode=catalog&count=${count}`);
+    if (count === 15) {
+      await expectElement(page.getByRole("combobox")).toHaveCount(0);
+      await expectElement(page.getByRole("radio", { name: /Employee 0/ })).toBeDisabled();
+      await page.getByRole("radio", { name: "Employee 1", exact: true }).press("Space");
+    } else {
+      const input = page.getByRole("combobox", { name: "Title" });
+      await input.fill("Employee");
+      await expectElement(page.getByRole("option", { name: "Employee 0", exact: true })).toHaveCount(0);
+      await page.getByRole("option", { name: "Employee 1", exact: true }).click();
+    }
+    await expectElement(page.locator("#selected")).toHaveText("1");
+    await page.getByRole("button", { name: "그대로", exact: true }).click();
+    await expectElement(page.locator("#selected")).toBeEmpty();
+  }
 });
 
 test("read-only remains in the tab order and cannot edit, open or select", async () => {
