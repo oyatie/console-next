@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "OrgChangeApply", "scope": "capability"}
 tags:
 - entity
 operationId: applyOrgSetupBatch

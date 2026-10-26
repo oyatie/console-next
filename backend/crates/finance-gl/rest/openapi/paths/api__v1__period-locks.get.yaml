@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "PeriodLockManage", "scope": "tenant"}
 tags:
   - period-locks
 operationId: listPeriodLocks

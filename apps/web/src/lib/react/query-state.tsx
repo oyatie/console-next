@@ -12,13 +12,14 @@ import { Denied, type ReadBack } from "./denied";
 import { ReadSkeleton, Skeleton, type ReadLayout } from "../../ui/skeleton/skeleton";
 import { queryView, type ReadState } from "./query-view";
 import { ReadReference } from "./read-reference";
+import type { AccessRequirement } from "../../reference/authz/domain/access";
 
 /**
  * Invariant: page chrome (head, tabs, toolbar and the control just used) stays above read boundaries.
  * Refetches keep rendered content and focus; only a first load may show a layout placeholder.
  * Filter/date/search reads use keepPreviousData; the retained region is busy until the answer lands.
  */
-export function QueryState<T>({ q, empty, children, own, loading, layout, back, removed, inline, keepOnLoss }: { q: ReadState<T>; own?: (code: string) => string | undefined; empty?: (d: T) => ReactNode | null; children: (d: T) => ReactNode; loading?: ReactNode; layout?: ReadLayout; back?: ReadBack; removed?: string; inline?: boolean; keepOnLoss?: boolean }) {
+export function QueryState<T>({ q, empty, children, own, loading, layout, back, removed, inline, keepOnLoss, need }: { q: ReadState<T>; own?: (code: string) => string | undefined; empty?: (d: T) => ReactNode | null; children: (d: T) => ReactNode; loading?: ReactNode; layout?: ReadLayout; back?: ReadBack; removed?: string; inline?: boolean; keepOnLoss?: boolean; need?: AccessRequirement }) {
   const online = useOnline();
   const answer = queryView(online ? q : { ...q, fetchStatus: "paused" });
   const error = q.error instanceof ApiError ? q.error : null;
@@ -47,7 +48,7 @@ export function QueryState<T>({ q, empty, children, own, loading, layout, back, 
     </>}
   </Banner>;
   if (inline && q.error && !lost) return notice;
-  if (view === "denied" && !lost) return <Denied error={e} reason={e ? own?.(e.code) : undefined} back={back} />;
+  if (view === "denied" && !lost) return <Denied error={e} reason={e ? own?.(e.code) : undefined} back={back} need={need} />;
   if (view === "not-found" && !lost) return <div className="page"><EmptyState title={t("common.read.notFound.title")} reason={q.data !== undefined && removed ? removed : e && own?.(e.code) || t("common.read.notFound.reason")} actions={<Link to={back?.to ?? "/"} className="btn">{back?.label ?? t("common.notFound.action")}</Link>} /></div>;
   if (view === "loading" && !retainedRefetch) return loading ?? (layout ? <ReadSkeleton layout={layout} /> : <Skeleton bones={["line"]} label={t("common.loading")} />);
   if ((view === "failed" && !retainedRefetch) || (offline && q.data === undefined && !retainedRefetch)) {

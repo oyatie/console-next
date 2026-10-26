@@ -4,7 +4,7 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 import { ApiError } from "@console/api";
 import { t } from "@console/i18n";
 import { ACCESS_REQUEST_REASONS, grantersQuery, myAccessQuery, requestAccess, type AccessRequestReason } from "../../reference/authz/api";
-import { grantLines } from "../../reference/authz/present";
+import { domainText, grantLines, levelText } from "../../reference/authz/present";
 import { orgStructureRef } from "../../reference/entity/api";
 import { failureText } from "../refusal";
 import { Banner } from "../../ui/banner/banner";
@@ -18,6 +18,7 @@ import { ReadReference } from "./read-reference";
 import { CommandError } from "./command-error";
 import css from "./denied.module.css";
 import { useCommand } from "./command";
+import type { AccessRequirement } from "../../reference/authz/domain/access";
 
 const REASONS = ACCESS_REQUEST_REASONS.map((code) => ({ code, label: t(`common.denied.reason.${code}`) }));
 
@@ -78,7 +79,7 @@ function RequestAccess({ screen }: { screen: string }) {
 export type ReadBack = { to: LinkProps["to"]; label: string };
 
 /** One route refusal; the refused page and its controls never render beside it. */
-export function Denied({ screen, error, title, reason, back }: { screen?: string; error?: unknown; title?: string; reason?: string; back?: ReadBack }) {
+export function Denied({ screen, error, title, reason, back, need }: { screen?: string; error?: unknown; title?: string; reason?: string; back?: ReadBack; need?: AccessRequirement }) {
   const mineId = useId();
   const granters = useQuery(grantersQuery);
   const code = error instanceof ApiError ? error.code : "access_denied";
@@ -86,7 +87,7 @@ export function Denied({ screen, error, title, reason, back }: { screen?: string
   const path = typeof window === "undefined" ? "/" : window.location.pathname;
   return (
     <div className="page"><Card label={t("common.denied.title.plain")} flush>
-      <EmptyState title={title ?? (screen ? t("common.denied.title", { screen }) : t("common.denied.title.plain"))} reason={null} />
+      <EmptyState title={title ?? (screen ? t("common.denied.title", { screen }) : t("common.denied.title.plain"))} reason={need ? ("domain" in need ? [need] : need.allOf).map(r => `${domainText(r.domain)} · ${levelText(r.level)}`).join(" / ") : null} />
       <div className={css.body}>
       <div className={css.row}>
         <Link to="/account" className={buttonClass("ghost")}>{t("common.denied.myAccess")}</Link>

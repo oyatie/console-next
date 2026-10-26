@@ -1,12 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import { ko } from "../packages/i18n/src/catalogs/ko";
+import { bootKo } from "../packages/i18n/src/catalogs/boot";
 import { fmtDateTime } from "@console/i18n/format";
 import { expectAccessible } from "./a11y";
-import { chooseRadio, firstSignIn, go, stepUp, takeCode } from "./flows";
+import { chooseRadio, firstSignIn, go, routeReady, stepUp, takeCode } from "./flows";
 import { firstWorkplace, registerAt } from "./helpers/entity";
-import { bearerOf } from "./helpers/api";
+import { apiOf, bearerOf } from "./helpers/api";
+import { todayKst } from "../apps/web/src/lib/pure/today";
 import { openTenant } from "./helpers/tenant";
-import { registerEntity, SECOND, setupRail, startOperations } from "./setup-flows";
+import { registerEntity, SECOND, setupRail, startOperations, tenantInSetup } from "./setup-flows";
 import { activatePendingGrants } from "./second-person-fixture";
 import { addDepartments } from "./structure-flows";
 import { shot } from "./parity/shot";
@@ -41,6 +43,138 @@ async function role(admin: Page, name: string, cells: string[]) {
 }
 
 const denied = (page: Page) => page.getByRole("region", { name: "이 화면에 접근 권한이 없습니다" });
+async function showWhy(page: Page) {
+  if (await denied(page).locator("details").getAttribute("open") === null) await denied(page).getByText("이유 보기", { exact: true }).click();
+}
+
+for (const { key, scope } of [
+  { key: "department", scope: /^인사부/ },
+  { key: "workplace", scope: /^본점/ },
+  { key: "legal-entity", scope: /주식회사 범위 확인/ },
+]) test(`a ${key}-only HR holder agrees with every initial scoped read and tenant-wide numbering refusal`, async ({ browser }) => {
+  test.setTimeout(300_000);
+  const { admin, exec: hr } = await tenantInSetup(browser, `route-scoped-${key}`, "범위 확인", false, "본점", "none");
+  const token = bearerOf(admin);
+  const readAsHr = apiOf(hr, bearerOf(hr));
+  try {
+    await go(admin, "/org");
+    await addDepartments(admin, "본점", ["인사부"]);
+    await role(admin, "부서 인사", ["인사기본 등록·수정", "조직 조회"]);
+    await go(admin, "/access/grants");
+    await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill("이임원");
+    await admin.getByRole("option", { name: /이임원/ }).first().click();
+    const sheet = admin.getByRole("dialog", { name: "권한 부여" });
+    await sheet.getByRole("button", { name: / 역할$/ }).click();
+    await admin.getByRole("option", { name: /^부서 인사/ }).click();
+    await sheet.getByRole("button", { name: /범위 선택/ }).click();
+    const pick = admin.getByRole("dialog", { name: "범위 선택" });
+    await pick.getByRole("row", { name: scope }).first().click();
+    await pick.getByRole("button", { name: "이 범위로 설정" }).click();
+    await sheet.getByRole("button", { name: /^1년/ }).click();
+    await chooseRadio(sheet, /^설정 단계부터/);
+    await chooseRadio(sheet, /^업무 배정·변경/);
+    await stepUp(sheet, "패스키로 확인하고 부여 1건 저장", admin.getByRole("status").filter({ hasText: "이임원님에게 부여 1건을 저장했습니다" }));
+    await activatePendingGrants(admin, token);
+    for (const [path, read] of [["/people", "/api/v1/employees"], ...(key === "department" ? [] : [["/people/exits", "/api/v1/hr/exit-cases"]])]) {
+      const response = hr.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === read);
+      await hr.goto(path!);
+      expect((await response).status()).toBe(200);
+      await routeReady(hr);
+      await expect(hr.getByRole("main").getByRole("heading", { level: 1 }).first()).toBeVisible();
+      await expect(denied(hr)).toHaveCount(0);
+    }
+    if (key === "department") for (const path of ["/org", "/org/entities", "/org/changes", "/org/history", "/setup/org", "/setup/company-names", "/people/exits"]) {
+      await go(hr, path, path.startsWith("/setup/"));
+      const main = hr.getByRole("main");
+      await expect(denied(hr)).toHaveCount(1);
+      await expect(denied(hr)).toContainText(path === "/people/exits" ? "인사기본 · 조회" : "조직 · 조회");
+      expect(await main.innerText()).toBe(await denied(hr).innerText());
+      await showWhy(hr);
+      await expect(denied(hr).getByText("out_of_scope", { exact: true })).toBeVisible();
+    }
+    if (key !== "department") for (const [path, read] of [["/org", "/api/v1/org-structure"], ["/org/entities", "/api/v1/legal-entities"], ["/org/changes", "/api/v1/org-changes"], ["/org/history", "/api/v1/org-structure/batches"]]) {
+      const response = hr.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === read);
+      await hr.goto(path!);
+      expect((await response).status()).toBe(200);
+      await routeReady(hr);
+      await expect(denied(hr)).toHaveCount(0);
+    }
+    for (const path of ["/org", "/org/entities"]) await expect(hr.locator(`.rail__link[href='${path}']`)).toHaveCount(key === "department" ? 0 : 1);
+    await expect(hr.locator(".rail__link[href='/attendance']")).toHaveCount(key === "department" ? 0 : 1);
+    for (const read of ["/org-structure", "/legal-entities", "/org-units", "/org-changes", "/org-structure/batches"]) expect((await readAsHr(read)).status()).toBe(key === "department" ? 403 : 200);
+    expect((await readAsHr("/hr/exit-cases")).status()).toBe(key === "department" ? 403 : 200);
+    for (const [tab, read] of [
+      ["month", `/attendance/month?month=${todayKst().slice(0, 7)}`],
+      ["day", `/attendance/days?date=${todayKst()}`],
+      ["schedule", "/attendance/schedule/tree"],
+    ]) {
+      const response = key === "department" ? null : hr.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === `/api/v1${read!.split("?")[0]}`);
+      await hr.goto(`/attendance?tab=${tab}`);
+      await routeReady(hr);
+      if (key === "department") {
+        await expect(denied(hr)).toHaveCount(1);
+        expect(await hr.getByRole("main").innerText()).toBe(await denied(hr).innerText());
+        await showWhy(hr);
+        await expect(denied(hr).getByText("out_of_scope", { exact: true })).toBeVisible();
+      } else {
+        expect((await response!).status()).toBe(200);
+        await expect(denied(hr)).toHaveCount(0);
+      }
+      expect((await readAsHr(read!)).status()).toBe(key === "department" ? 403 : 200);
+    }
+    await go(hr, "/people/numbering");
+    await expect(denied(hr)).toBeVisible();
+    await showWhy(hr);
+    await expect(denied(hr).getByText("scope_tenant_wide_only", { exact: true })).toBeVisible();
+  } finally { await Promise.all([admin.context().close(), hr.context().close()]); }
+});
+
+for (const { key, name, cell, admitted, paths } of [
+  { key: "hr-view", name: "인사 조회", cell: "인사기본 조회", admitted: true, paths: [["/people", "/api/v1/employees"], ["/people?view=accounts", "/api/v1/directory/people"], [`/attendance?month=${todayKst().slice(0, 7)}`, "/api/v1/attendance/month"], ["/people/exits", "/api/v1/hr/exit-cases"]] },
+  { key: "account-manager", name: "계정 관리", cell: "권한 관리 등록·수정", admitted: false, paths: [["/people?view=accounts", "/api/v1/directory/people"]] },
+]) test(`${name} alone agrees with the page's actual server read`, async ({ browser }) => {
+  const { admin, exec: reader } = await tenantInSetup(browser, `route-${key}-${test.info().workerIndex}`, name, false, "본점", "none");
+  const token = bearerOf(admin);
+  const readAsReader = apiOf(reader, bearerOf(reader));
+  try {
+    await role(admin, name, [cell]);
+    await go(admin, "/access/grants");
+    await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill("이임원");
+    await admin.getByRole("option", { name: /이임원/ }).first().click();
+    const sheet = admin.getByRole("dialog", { name: "권한 부여" });
+    await sheet.getByRole("button", { name: / 역할$/ }).click();
+    await admin.getByRole("option", { name: new RegExp(`^${name}`) }).click();
+    await sheet.getByRole("button", { name: /범위 선택/ }).click();
+    const pick = admin.getByRole("dialog", { name: "범위 선택" });
+    await pick.getByRole("row", { name: /^전체/ }).first().click();
+    await pick.getByRole("button", { name: "이 범위로 설정" }).click();
+    await sheet.getByRole("button", { name: /^1년/ }).click();
+    await chooseRadio(sheet, /^설정 단계부터/);
+    await chooseRadio(sheet, /^업무 배정·변경/);
+    const previewResponse = admin.waitForResponse(r => r.url().endsWith("/access/grants/preview") && r.request().method() === "POST");
+    await sheet.getByRole("button", { name: "패스키로 확인하고 부여 1건 저장" }).click();
+    const preview = await (await previewResponse).json() as { items: { enforcement_after: string }[] };
+    if (preview.items.some(item => item.enforcement_after === "SCHEDULED")) await sheet.getByRole("button", { name: "패스키로 확인하고 부여 1건 저장" }).click();
+    await expect(admin.getByRole("status").filter({ hasText: "이임원님에게 부여 1건을 저장했습니다" })).toBeVisible();
+    await activatePendingGrants(admin, token);
+    for (const [path, read] of paths) {
+      if (!admitted) {
+        await go(reader, path!);
+        await expect(denied(reader)).toHaveCount(1);
+        await expect(denied(reader)).toContainText("인사기본 · 조회");
+        expect((await readAsReader(read!.replace("/api/v1", ""))).status()).toBe(403);
+        await expect(reader.getByRole("button", { name: "계정 초대", exact: true })).toHaveCount(0);
+        continue;
+      }
+      const response = reader.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === read);
+      await reader.goto(path!);
+      expect((await response).status()).toBe(200);
+      await routeReady(reader);
+      await expect(reader.getByRole("main").getByRole("heading", { level: 1 }).first()).toBeVisible();
+      await expect(denied(reader)).toHaveCount(0);
+    }
+  } finally { await Promise.all([admin.context().close(), reader.context().close()]); }
+});
 
 test("an HR worker granted 인사 실무 over one 법인 works inside it and is refused outside it, typed", { tag: ["@access", "@hr", "@regression"] }, async ({ browser }) => {
   const admin = await openTenant(browser, "axfive", "늘봄그룹");
@@ -142,9 +276,11 @@ test("an HR worker granted 인사 실무 over one 법인 works inside it and is 
   await expectAccessible(hr, "out of scope");
   await snap(hr, "after-hr-outside-record");
 
-  // Another 법인's record: a typed state naming both 「없음」 and 「범위 밖」, never a retry (company-19).
+  // Another 법인's record stays not-found, matching the server's existence-preserving 404.
   await go(hr, otherEntity);
-  await expect(hr.getByRole("heading", { name: "이 법인을 볼 수 없습니다" })).toBeVisible();
+  await expect(hr.getByRole("heading", { name: bootKo["common.read.notFound.title"], exact: true })).toBeVisible();
+  await expect(denied(hr)).toHaveCount(0);
+  await expect(hr.getByRole("button", { name: "권한 요청", exact: true })).toHaveCount(0);
   await expect(hr.getByRole("button", { name: "다시 불러오기" })).toHaveCount(0);
 
   // 내 권한 reads the server's decision, with what the 법인 scope does not reach (governance-18).

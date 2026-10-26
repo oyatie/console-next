@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
 tags:
   - employees
 operationId: listEmployeeNumberRules

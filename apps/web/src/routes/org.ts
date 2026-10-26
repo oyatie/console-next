@@ -1,3 +1,4 @@
+import { readRequirement } from "./route-reads";
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { app, flag, screen, str } from "./app";
 import { STRUCTURE_ACTS } from "../reference/org/domain/structure";
@@ -13,7 +14,7 @@ const oneOf = <T extends string>(all: readonly T[], v: unknown): T | undefined =
 
 const org = createRoute({
   getParentRoute: () => app,
-  path: "/org",
+  path: "/org", staticData: { access: readRequirement("/org") },
   // The company structure: `view` (the chart by default, the list or the outline), `focus` (the box the chart is
   // centred on), `sel` (the selection whose panel shows) and the proposal or structure sheet `act` for it.
   validateSearch: (s: Record<string, unknown>): { view?: (typeof STRUCTURE_VIEWS)[number]; focus?: string; sel?: string; act?: OrgAct; act_unit?: string; kind?: (typeof KINDS)[number]; as_of?: string; known_at?: string; compare_a?: string; compare_b?: string } => ({
@@ -32,7 +33,7 @@ const org = createRoute({
 });
 const orgChanges = createRoute({
   getParentRoute: () => app,
-  path: "/org/changes",
+  path: "/org/changes", staticData: { access: readRequirement("/org/changes") },
   validateSearch: (s: Record<string, unknown>): { view?: (typeof VIEWS)[number]; effective_from?: string; effective_to?: string } => ({
     view: oneOf(VIEWS, s.view),
     effective_from: str(s.effective_from),
@@ -42,7 +43,7 @@ const orgChanges = createRoute({
 });
 const orgChange = createRoute({
   getParentRoute: () => app,
-  path: "/org/changes/$id",
+  path: "/org/changes/$id", staticData: { access: "signed-in" },
   validateSearch: (s: Record<string, unknown>): { unsent?: boolean; done?: (typeof DONE)[number] } => ({ unsent: flag(s.unsent), done: oneOf(DONE, s.done) }),
   component: lazyRouteComponent(screen(() => import("../features/org/OrgChange")), "OrgChange"),
 });
@@ -50,7 +51,7 @@ const orgChange = createRoute({
 /** S8: moving the department `ids` (comma-separated, as chosen on the chart) to one place, as one batch or one proposal. */
 const orgMove = createRoute({
   getParentRoute: () => app,
-  path: "/org/move",
+  path: "/org/move", staticData: { access: readRequirement("/org/move") },
   validateSearch: (s: Record<string, unknown>): { ids?: string } => ({ ids: str(s.ids) }),
   component: lazyRouteComponent(screen(() => import("../features/org/ui/bulk-move-page")), "BulkMovePage"),
 });

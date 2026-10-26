@@ -297,5 +297,3 @@ Detector fixtures retain historical defects after the product fixes them.
 | web-grants | apps/web/src/features/structure/ui/use-structure-gestures.ts | control-guard | 2 |
 | web-grants | apps/web/src/reference/authz/ui/use-can.ts | control-guard | 1 |
 | web-grants | apps/web/src/reference/org/ui/structure-members.tsx | control-guard | 2 |
-| web-grants | apps/web/src/shell/nav.ts | control-guard | 2 |
-| web-grants | apps/web/src/shell/nav.ts | grant-guard | 9 |
