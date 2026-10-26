@@ -16,7 +16,7 @@ pub use applicability::{
     Applicability, Exclusion, FilingFacts, Reason, Treaty, VisaCoverage, applicability, applies,
 };
 use console_kernel_core::KernelError;
-pub use dates::{FilingDates, dates};
+pub use dates::{FilingDates, calculation_date, dates};
 use serde::{Deserialize, Serialize};
 use time::Date;
 
@@ -57,6 +57,17 @@ pub struct Calculation {
     pub kind: FilingRuleKind,
     pub value: Option<u16>,
     pub first_day: FirstDay,
+}
+impl Calculation {
+    pub fn validate(&self) -> Result<(), KernelError> {
+        match (self.kind, self.value) {
+            (FilingRuleKind::Days, Some(n)) if n > 0 => (),
+            (FilingRuleKind::DayOfNextMonth, Some(n)) if (1..=28).contains(&n) => (),
+            (FilingRuleKind::WithoutDelay | FilingRuleKind::Unknown, None) => (),
+            _ => return Err(KernelError::validation("invalid filing calculation")),
+        }
+        Ok(())
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -147,12 +158,7 @@ impl FilingRule {
             ));
         }
         for c in std::iter::once(&self.deadline).chain(self.candidate.iter()) {
-            match (c.kind, c.value) {
-                (FilingRuleKind::Days, Some(n)) if n > 0 => (),
-                (FilingRuleKind::DayOfNextMonth, Some(n)) if (1..=28).contains(&n) => (),
-                (FilingRuleKind::WithoutDelay | FilingRuleKind::Unknown, None) => (),
-                _ => return Err(KernelError::validation("invalid filing calculation")),
-            }
+            c.validate()?;
         }
         Ok(())
     }
