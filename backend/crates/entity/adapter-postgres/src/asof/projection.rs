@@ -97,6 +97,8 @@ pub(crate) async fn apply(
                     .is_none_or(|ids| ids.contains(&m.employee))
             {
                 m.unit = Some(movement.to);
+                // A projected destination must not inherit the source unit's membership date.
+                m.unit_since = None;
                 m.projected = true;
             }
         }

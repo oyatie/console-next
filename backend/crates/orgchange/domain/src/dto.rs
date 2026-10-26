@@ -292,6 +292,8 @@ pub struct OrgUnitMemberView {
     pub position: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[serde(with = "iso_date::option", skip_serializing_if = "Option::is_none")]
+    pub since: Option<Date>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
