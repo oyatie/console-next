@@ -54,6 +54,7 @@
   },
   "wizard": {
     "budget_kb": 167,
+    "deferred": ["src/ui/date/date-calendar.tsx"],
     "routes": [
       "src/features/import/ui/dryrun-step.tsx",
       "src/features/import/ui/import-page.tsx",
