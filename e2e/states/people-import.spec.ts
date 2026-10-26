@@ -48,6 +48,9 @@ for (const screen of peopleImportScreens) for (const state of Object.keys(screen
       }
       await expect(page.getByText("화면을 표시하지 못했습니다", { exact: true })).toHaveCount(0);
       await fits(page, `${screen.key}/${state}/${width}`);
+      // System serif fallback exposes the stepper's wider font metrics on macOS too.
+      await page.addStyleTag({ content: "main { font-family: serif; }" });
+      await fits(page, `${screen.key}/${state}/${width}/fallback-font`);
       await expectAxe(page, `${screen.key}/${state}/${width}`);
       expect(errors).toEqual([]);
       expect(fixture.unexpected).toEqual([]);

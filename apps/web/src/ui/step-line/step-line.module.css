@@ -1,5 +1,5 @@
 /* ui/step-line: a horizontal stepper (numbers in circles, checks when done, rules between). Tokens only. */
-.steps { display: flex; align-items: center; gap: var(--space-2); margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); }
+.steps { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); }
 .step { display: flex; align-items: center; gap: var(--space-1); color: var(--steel); }
 .step + .step::before { content: ""; width: var(--space-6); height: 1px; margin-right: var(--space-2); background: var(--control-border); }
 .n { display: inline-grid; place-items: center; width: var(--space-5); height: var(--space-5); border: 1px solid var(--control-border); border-radius: var(--radius-lg); font-size: var(--text-xs); font-weight: var(--fw-strong); font-variant-numeric: tabular-nums; }
