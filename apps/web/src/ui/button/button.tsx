@@ -1,5 +1,10 @@
-import type { ButtonHTMLAttributes, FormEvent, FormHTMLAttributes, ReactNode, Ref } from "react";
+import { lazy, Suspense, useId, useRef, useState, type ButtonHTMLAttributes, type FormHTMLAttributes, type ReactNode, type Ref } from "react";
+import { t } from "@console/i18n";
+import { chunk } from "../../lib/chunk-guard";
+import type { ErrorSummaryItem } from "../error-summary";
 import { buttonClass, type ButtonSize, type ButtonVariant } from "./button-class";
+
+const ErrorSummary = lazy(() => chunk(import("../error-summary")).then(m => ({ default: m.ErrorSummary })));
 
 export type { ButtonSize, ButtonVariant };
 
@@ -44,24 +49,59 @@ export function ToggleButton({ pressed, look, count, countTone, className, child
  * A form for feature views. `onSubmit` receives the submitter's `value` (two submit buttons may mean
  * "save" and "save and continue"); the browser's own submit is always prevented.
  */
-export function Form({ onSubmit, ...rest }: Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> & { onSubmit: (submitter: string | null) => void }) {
+export function Form({ onSubmit, children, onChangeCapture, ...rest }: Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> & { onSubmit: (submitter: string | null) => void }) {
+  const [errors, setErrors] = useState<ErrorSummaryItem[]>([]);
+  const [failures, setFailures] = useState(0);
+  const armed = useRef(false);
+  const formId = useId();
+  const validate = (form: HTMLFormElement) => {
+    const invalid = [...form.elements].filter((el): el is HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement =>
+      el.matches("input, select, textarea") && !(el as HTMLInputElement).validity.valid);
+    return invalid.map((el, index) => {
+      el.id ||= `${formId}-${index}`;
+      const label = el.labels?.[0];
+      const text = new Range();
+      if (label) {
+        text.selectNode(label);
+        const marker = label.querySelector("[data-marker]");
+        if (marker) text.setEndBefore(marker);
+      }
+      const flag = Object.keys(ValidityState.prototype).find(key => el.validity[key as keyof ValidityState]);
+      return {
+        field: el.id,
+        message: `${label ? text : el.name}: ${el.validity.customError ? el.validationMessage : t(`uiField.${flag as Exclude<keyof ValidityState, "valid" | "customError">}`)}`,
+      };
+    });
+  };
   return (
     <form
       {...rest}
-      onSubmit={(e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        onSubmit((e.nativeEvent as SubmitEvent).submitter?.getAttribute("value") ?? null);
+      noValidate
+      onChangeCapture={(e) => {
+        onChangeCapture?.(e);
+        if (armed.current && !rest.noValidate) setErrors(validate(e.currentTarget));
       }}
-    />
+      onSubmit={(e) => {
+        e.preventDefault();
+        const next = rest.noValidate ? [] : validate(e.currentTarget);
+        armed.current = next.length > 0;
+        setErrors(next);
+        if (next.length) setFailures(n => n + 1);
+        else onSubmit((e.nativeEvent as SubmitEvent).submitter?.getAttribute("value") ?? null);
+      }}
+    >
+      {failures > 0 && <Suspense fallback={null}><ErrorSummary errors={errors} focusKey={failures} /></Suspense>}
+      {children}
+    </form>
   );
 }
 
-/** An attestation checkbox for feature views: the statement is its label. Use it only for a fact the user affirms. */
-export function Check({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
+/** A checkbox with a visible statement, or an accessible label for table selection. */
+export function Check({ checked, onChange, children, "aria-label": label }: { checked: boolean; onChange: (v: boolean) => void; children?: ReactNode; "aria-label"?: string }) {
   return (
     <label className="check">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span>{children}</span>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} />
+      {children != null && <span>{children}</span>}
     </label>
   );
 }

@@ -64,7 +64,7 @@ test("the English UI names a 법인 by its English name on every surface, and Ko
 
   // The workplace bulk edit's picks.
   await go(p, "/org/workplaces/edit");
-  await english(p.getByRole("group").filter({ has: p.getByRole("checkbox") }));
+  await english(p.getByRole("table", { name: "Choose the workplaces to change" }));
 
   // Korean is unchanged: the 법인명 leads and the English name is secondary.
   await language(p, "ko");

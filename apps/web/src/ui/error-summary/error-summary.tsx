@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useCallback, useEffect, useRef, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, type MouseEvent, type ReactNode } from "react";
 import { CircleAlert } from "lucide-react";
 import { t } from "@console/i18n";
 import { shown } from "../shown";
@@ -25,7 +25,7 @@ type ErrorSummaryProps = {
   children?: ReactNode;
   /** List of errors to summarize. */
   errors: ErrorSummaryItem[];
-  /** Whether to automatically move focus to the first invalid field on mount. Defaults to true. */
+  /** Whether to automatically focus the summary on mount. Defaults to true. */
   autoFocus?: boolean;
   /** Identity of the refusal that owns this summary; the same refusal is focused only once. */
   focusKey?: unknown;
@@ -44,7 +44,7 @@ type ErrorSummaryProps = {
  * A genuine Error Summary component (GOV.UK / Polaris pattern).
  * Displays a summary of validation errors at the top of a form or page,
  * links to each invalid field with a valid DOM target, and lands focus
- * on the first invalid field. Server-only fields render without dead anchor targets.
+ * on the summary. Server-only fields render without dead anchor targets.
  */
 export function ErrorSummary({
   title,
@@ -60,7 +60,8 @@ export function ErrorSummary({
 }: ErrorSummaryProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const focusedKeyRef = useRef<unknown>(undefined);
-  const titleId = id ? `${id}-title` : "error-summary-title";
+  const generatedId = useId();
+  const titleId = `${id ?? generatedId}-title`;
 
   // Determine whether an item points to a field that is actually present on the form.
   const isFieldOnForm = useCallback(
@@ -79,20 +80,8 @@ export function ErrorSummary({
     if (!autoFocus || errors.length === 0 || focusedKeyRef.current === focusKey) return;
     focusedKeyRef.current = focusKey;
 
-    // Find the first invalid field with an existing interactive element on the form.
-    const firstTargetItem = errors.find((e) => e.field && isFieldOnForm(e.field));
-    if (firstTargetItem?.field) {
-      const el = findFieldElement(firstTargetItem.field, formId);
-      if (el && typeof el.focus === "function") {
-        el.focus();
-        el.scrollIntoView?.({ behavior: "smooth", block: "center" });
-      }
-      onFocusField?.(firstTargetItem.field);
-    } else {
-      // If no field element is on the form, move focus to the summary container itself.
-      containerRef.current?.focus();
-    }
-  }, [autoFocus, errors, focusKey, formId, isFieldOnForm, onFocusField]);
+    containerRef.current?.focus();
+  }, [autoFocus, errors, focusKey]);
 
   if (!errors || errors.length === 0) return null;
 
@@ -129,7 +118,7 @@ export function ErrorSummary({
                 if (el) {
                   e.preventDefault();
                   el.focus();
-                  el.scrollIntoView?.({ behavior: "smooth", block: "center" });
+                  el.scrollIntoView?.({ behavior: "instant", block: "center" });
                 }
                 onFocusField?.(item.field);
               }

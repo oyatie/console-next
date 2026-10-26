@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronRight, Plus } from "lucide-react";
-import type { LegalEntity, Workplace } from "@console/api/pending";
+import type { LegalEntity } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
 import { labeled, RECORD_STATUS } from "../../../lib/labels";
@@ -9,14 +9,7 @@ import { Table } from "../../../ui/table";
 import { addressLine, headcount, registrationOf, registrationTodo } from "../domain/view";
 import s from "./record.module.css";
 import { Muted } from "../../../ui/muted/muted";
-
-/** A workplace's four social insurance relations in one chip: all established, or how many still wait for their number. */
-function insurance(w: Workplace) {
-  const pending = w.insurance.filter((i) => i.status === "ESTABLISHED_NUMBER_PENDING").length;
-  const done = w.insurance.filter((i) => i.status === "ESTABLISHED").length;
-  if (pending) return <Chip tone="warn">{t("entityRecord.workplaces.insPending", { count: pending })}</Chip>;
-  return done ? <Chip tone="ok">{t("entityRecord.workplaces.insDone", { count: done })}</Chip> : <Chip tone="neutral">{t("entityRecord.workplaces.insNone")}</Chip>;
-}
+import { InsuranceSummary } from "../../../reference/entity/ui/insurance-summary";
 
 /** workplaces and certificates (spec S3): every workplace with its headcount, its certificate's number and status, place and social insurance. */
 export function WorkplacesCard({ e }: { e: LegalEntity }) {
@@ -68,7 +61,7 @@ export function WorkplacesCard({ e }: { e: LegalEntity }) {
               },
             },
             { header: t("entityRecord.workplaces.col.address"), cell: (w) => <Muted>{addressLine(w.current?.address ?? registrationOf(e, w.registration_id)?.current?.business_address) || "—"}</Muted>, wide: true },
-            { header: t("entityRecord.workplaces.col.insurance"), cell: insurance, fit: true },
+            { header: t("entityRecord.workplaces.col.insurance"), cell: w => <InsuranceSummary insurance={w.insurance} />, fit: true },
             { header: <span className="sr-only">{t("entityRecord.workplaces.col.open")}</span>, cell: () => <ChevronRight size={14} aria-hidden />, fit: true },
           ]}
         />

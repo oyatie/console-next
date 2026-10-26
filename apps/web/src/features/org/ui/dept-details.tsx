@@ -54,7 +54,7 @@ export function DeptDetails({ node, onDone, appoint = false }: { node: Node; onD
     onSuccess: onDone,
   });
   return (
-    <Composer kicker={appoint ? node.name : undefined} title={t(appoint ? "structure.head.appoint" : "orgUnit.details.title")} layout={appoint ? "drawer" : "inline"} headingLevel={appoint ? 2 : 3} action={{ kind: "orgDetails", mode: "change", count: 1 }} pending={save.isPending} onClose={onDone} blocked={same ? { reason: t("orgChange.edit.nothing") } : undefined} consequence={appoint && head && t("structure.head.effective", { date: fmtDate(todayKst()) })} onSubmit={() => { if (!bad && !same) save.mutate(undefined); }}>
+    <Composer kicker={appoint ? node.name : undefined} title={t(appoint ? "structure.head.appoint" : "orgUnit.details.title")} layout={appoint ? "drawer" : "inline"} headingLevel={appoint ? 2 : 3} action={appoint ? { kind: "orgHead", mode: "assign" } : { kind: "orgDetails", mode: "change", count: 1 }} pending={save.isPending} onClose={onDone} blocked={same ? { reason: t("orgChange.edit.nothing") } : undefined} consequence={appoint && head && t("structure.head.effective", { date: fmtDate(todayKst()) })} onSubmit={() => { if (!bad && !same) save.mutate(undefined); }}>
       <div ref={box} className={css.stack}>
         <ServerPicker
           label={t("orgUnit.fact.head")}

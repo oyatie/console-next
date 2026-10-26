@@ -7,6 +7,10 @@ import type { OrgChangeState, Screen, State } from "../states/registry";
 
 /** Complete, isolated shell + screen. Any unregistered API request fails the test instead of hitting a server. */
 export async function mockScreen(page: Page, screen: Screen, state: State | OrgChangeState) {
+  if (process.env.E2E_CPU_THROTTLE) {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.E2E_CPU_THROTTLE) });
+  }
   const unexpected: string[] = [];
   await page.route(url => url.pathname.startsWith("/api/"), async route => {
     unexpected.push(`${route.request().method()} ${new URL(route.request().url()).pathname}`);
