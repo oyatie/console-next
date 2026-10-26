@@ -12,6 +12,11 @@ const TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"];
  */
 export async function expectAccessible(page: Page, context: string, options: { openPicker?: boolean } = {}) {
   await expectStable(page, context);
+  await expectAxe(page, context, options);
+}
+
+/** State matrices scan the settled state; live journeys also check arrival shifts through expectAccessible. */
+export async function expectAxe(page: Page, context: string, options: { openPicker?: boolean } = {}) {
   const html = page.locator("html");
   const original = await html.getAttribute("data-theme");
   const found: string[] = [];
