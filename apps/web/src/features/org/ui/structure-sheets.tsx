@@ -17,14 +17,15 @@ const route = getRouteApi("/app/org");
  * back to the panel and to the control that opened the sheet.
  */
 export function StructureSheets() {
-  const { sel, act, view } = route.useSearch();
+  const { sel, act, view, act_unit } = route.useSearch();
   const navigate = route.useNavigate();
   const slots = useStructureSlots();
-  const s = useStructure(sel);
+  const actionUnit = act === "dept-head" ? act_unit ?? sel : sel;
+  const s = useStructure(actionUnit);
   if (!act || !(STRUCTURE_ACTS as readonly string[]).includes(act) || !s.at) return null;
   const close = () => {
-    void navigate({ search: (x) => ({ ...x, act: undefined }) });
-    focusSoon(act === "dept-head" && view === "list" ? `act-dept-head-${sel}` : `act-${act}`, view === "list" ? "registry-vacant" : "org-tree");
+    void navigate({ search: (x) => ({ ...x, act: undefined, act_unit: undefined }) });
+    focusSoon(act === "dept-head" && view === "list" ? `act-dept-head-${actionUnit}` : `act-${act}`, view === "list" ? "registry-vacant" : "org-tree");
   };
   const select = (id?: string) => navigate({ search: (x) => ({ ...x, sel: id, act: undefined }) });
   const onAct = (next: StructureAct) => navigate({ search: (x) => ({ ...x, act: next }) });

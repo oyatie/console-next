@@ -105,6 +105,22 @@ test("a workplace with zero future joiners does not render 입사 예정", () =>
 
 const renderMembers = () => renderToStaticMarkup(<Members unitId={UNIT} total={0} expected={0} />);
 
+test("member rows show the dated source and mark only this unit's head", () => {
+  currentOrgUnit = { members: { headcount: 2, items: [
+    { employeeId: "head", name: "김부서장", title: "팀장", position: "차장", since: "2026-03-02" },
+    { employeeId: "setup", name: "박설정" },
+  ] } };
+  const html = renderToStaticMarkup(<Members unitId={UNIT} headId="head" total={2} expected={2} />);
+  const rows = html.match(/<li>.*?<\/li>/g)!;
+  expect(rows[0].replace(/<[^>]+>/g, "")).toContain("팀장 · 차장 · 2026. 03. 02.부터");
+  // The date is one unbreakable unit at 390 px.
+  expect(rows[0]).toMatch(/<time class="[^"]*nowrap[^"]*" dateTime="2026-03-02">2026\. 03\. 02\.부터<\/time>/);
+  expect(rows[0]).toContain("부서장");
+  expect(rows[0]).toContain("chip");
+  expect(rows[1]).not.toContain("부터");
+  expect(rows[1]).not.toContain("부서장");
+});
+
 function futureJoiner() {
   currentOrgUnit = { members: { headcount: 0, items: [{ employeeId: "e1", name: "김예시" }] } };
   currentEmployees = {

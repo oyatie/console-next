@@ -11,6 +11,7 @@
 //! the row they used.
 
 pub mod codes;
+pub mod deadline;
 pub mod filing;
 mod filing_register;
 mod loss_codes;

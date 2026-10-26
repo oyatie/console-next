@@ -33,7 +33,7 @@ test.each([200, 403, 409])("head appointment focuses the picker, preserves code/
   await picker.press("ArrowDown");
   await page.getByRole("option", { name: /김부서장/ }).click();
   await browserExpect(page.getByText(/오늘\(.+\)부터 부서장으로 기록됩니다/)).toBeVisible();
-  await page.getByRole("button", { name: "부서 정보 1개 변경", exact: true }).click();
+  await page.getByRole("button", { name: "부서장 지정", exact: true }).click();
   if (status === 200) await browserExpect(page.getByRole("status")).toContainText("저장했습니다");
   else {
     await browserExpect(page.getByRole("alert")).toBeVisible();

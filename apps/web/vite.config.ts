@@ -19,7 +19,8 @@ export default defineConfig({
     rolldownOptions: {
       output: { codeSplitting: { groups: [
         { name: "initial", tags: ["$initial"] },
-        { name: "controls", test: /src[\\/]ui[\\/](banner|button|chip|field|skeleton|step-line)([\\/.])/ },
+        // Field feedback shares the controls chunk to avoid separate gzip overhead on wizard routes.
+        { name: "controls", test: /src[\\/]ui[\\/](banner|button|chip|disabled-reason|error-summary|field|skeleton|step-line)([\\/.])/ },
       ] } },
       // Keep shared chunks separate when splitting conditional forms.
       experimental: { chunkOptimization: { avoidRedundantChunkLoads: false } },

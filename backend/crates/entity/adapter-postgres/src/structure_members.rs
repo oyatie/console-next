@@ -35,8 +35,10 @@ impl PgEntityStore {
                 let mut tree = crate::asof::tree::load(tx, point).await?;
                 let mut members = crate::asof::membership::load(tx, point).await?;
                 crate::asof::projection::apply(tx, point, &mut tree, &mut members).await?;
-                let ids: Vec<_> = members.iter().filter(|m| m.unit == Some(unit)).map(|m| m.employee).collect();
-                let headcount = i64::try_from(ids.len()).unwrap_or(i64::MAX);
+                let since: std::collections::HashMap<_, _> = members.iter().filter(|m| m.unit == Some(unit))
+                    .map(|m| (m.employee, m.unit_since)).collect();
+                let ids: Vec<_> = since.keys().copied().collect();
+                let headcount = i64::try_from(since.len()).unwrap_or(i64::MAX);
                 let rows = sqlx::query(
                     "SELECT e.id, e.name, e.employee_number, e.position, title.label AS title FROM person_employees_current e \
                      LEFT JOIN job_titles title ON title.org_id=e.org_id AND title.id=e.position_kind_id \
@@ -46,6 +48,7 @@ impl PgEntityStore {
                     employee_id: row.try_get("id")?, name: row.try_get("name")?,
                     employee_number: row.try_get("employee_number")?, position: row.try_get("position")?,
                     title: row.try_get("title")?,
+                    since: since.get(&row.try_get::<Uuid, _>("id")?).copied().flatten(),
                 })).collect::<Result<_, sqlx::Error>>()?;
                 Ok(OrgUnitMembersView { headcount, items })
             })

@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { OTP_PATTERN } from "../packages/api/src/otp-format.ts";
 import { DEV_SECRETS_FILE, ensureDevSecrets } from "./dev-secrets.ts";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -17,11 +18,24 @@ test("per-checkout secrets are random, made once and kept in a mode-600 file", (
   const first = ensureDevSecrets(file);
   assert.deepEqual(ensureDevSecrets(file), first, "a second run reuses the file");
   assert.equal(statSync(file).mode & 0o777, 0o600);
-  assert.match(first.coldstartOtp, /^[A-HJ-NP-Z2-9]{8}$/);
+  assert.match(first.coldstartOtp, new RegExp(OTP_PATTERN), "the code the backend accepts");
   assert.notEqual(first.coldstartOtp.toLowerCase(), "coss0000");
   assert.match(first.postgresAppPassword, /^[0-9a-f]{64}$/);
   const other = ensureDevSecrets(path.join(dir, "t", "dev-secrets.json"));
   assert.notEqual(other.postgresAppPassword, first.postgresAppPassword, "another checkout gets its own");
+});
+
+test("a file from before the code format changed gets a new code and keeps its passwords", (t) => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-dev-secrets-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, "dev-secrets.json");
+  const old = { ...ensureDevSecrets(file), coldstartOtp: "ABCDEFGH" };
+  writeFileSync(file, JSON.stringify(old), { mode: 0o600 });
+  const now = ensureDevSecrets(file);
+  assert.match(now.coldstartOtp, new RegExp(OTP_PATTERN));
+  assert.equal(now.postgresAppPassword, old.postgresAppPassword);
+  assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), now, "the new code is saved");
+  assert.equal(statSync(file).mode & 0o777, 0o600);
 });
 
 test("backend-dev prints where the secrets are, never a secret", (t) => {

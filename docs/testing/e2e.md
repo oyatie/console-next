@@ -45,8 +45,8 @@ there is no silent skip allowance. Track per-spec duration and flake rate over t
 ## Baseline protocol and evidence
 
 Baseline revision: `6c77f338c8aab12dc903f5b2cb1a5d61b280dddf` (2026-10-26).
-There are **no qualifying three-run artifacts in this checkout**. The public tree also omits `ops/compose.yml`;
-full browser proof belongs to the external verifier with the curated stack. Do not substitute the brief's
+There are **no qualifying three-run artifacts in this checkout**. The [public E2E stack](../../deploy/dev/README.md)
+starts through Playwright without private Compose files. Do not substitute the brief's
 91–94 historical reds or the existing passing-only EWMA timing cache for measured results.
 
 | Metric | Before (three 2-core runs) | After Slice 1 |

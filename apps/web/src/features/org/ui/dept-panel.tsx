@@ -88,7 +88,7 @@ export function DeptPanel({ place, setup, onClose, as_of, known_at, readOnly = f
       </Sec>
       {!readOnly && <Sec id="dept-actions" title={t("orgStructure.tab.actions")}>
         <DeptActions place={place} setup={setup} />
-        {details ? <DeptDetails node={n} onDone={() => setDetails(false)} /> : <Button variant="ghost" className={css.actBtn} id="act-dept-details" onClick={() => setDetails(true)}>{t("orgUnit.details.title")}</Button>}
+        {details ? <DeptDetails node={n} onDone={() => setDetails(false)} /> : <Button variant="ghost" className={css.actBtn} id="act-dept-code" onClick={() => setDetails(true)}>{t("orgUnit.details.title")}</Button>}
       </Sec>}
       {sub.length > 0 && (
         <Sec id="dept-sub" title={t("orgUnit.sub", { count: sub.length })} more={!readOnly && sub.length > 1 && <ToggleButton size="sm" pressed={ordering} onClick={() => setOrdering(!ordering)}>{t("orgStructure.order.field")}</ToggleButton>}>
@@ -105,7 +105,7 @@ export function DeptPanel({ place, setup, onClose, as_of, known_at, readOnly = f
         </Sec>
       )}
       <Sec id="dept-members" title={t("orgUnit.members", { count: direct(n) })}>
-        <Members unitId={n.id} total={n.headcount} expected={direct(n)} as_of={as_of} known_at={known_at} />
+        <Members unitId={n.id} headId={h?.employee_id} total={n.headcount} expected={direct(n)} as_of={as_of} known_at={known_at} />
       </Sec>
       <Sec id="dept-history" title={t("entity.history.title")}>
         <QueryState q={timeline} layout="list">{() => <UnitHistory revisions={revisions} units={units.data?.items ?? []} scheduled={known_at ? [] : scheduled.data} open />}</QueryState>
