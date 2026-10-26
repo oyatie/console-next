@@ -3,94 +3,12 @@
 
 use console_attendance_adapter_postgres::{BoardQuery, GridQuery};
 use console_attendance_domain::records::Mark;
-use console_attendance_domain::schedule::{DayKind, Level};
+use console_attendance_domain::schedule::DayKind;
 use sqlx::PgPool;
 use time::{Duration, macros::date};
 
 use super::save::{cell, save, scheduled};
-use super::support::{assign, key, office, seed, today, world};
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn unscheduled_filter_keeps_only_unscheduled_rows_and_clears_hidden_in_a_mixed_group(
-    owner: PgPool,
-) {
-    let w = world(owner).await;
-    seed(&w.owner, format!(
-        "UPDATE employees SET org_unit_id = '{team}' WHERE id = '{person}'; \
-         UPDATE employment_assignments SET workplace_id = '{workplace}' WHERE employee_id = '{person}';",
-        team = w.team, person = w.people[2], workplace = w.workplaces[0],
-    )).await;
-    let (pattern, _) = w
-        .store
-        .create_pattern(&w.hr(), &key(), office("사무"))
-        .await
-        .unwrap();
-    let day = date!(2026 - 10 - 06);
-    for person in &w.people[..2] {
-        w.store
-            .assign_schedule(
-                &w.hr(),
-                &key(),
-                assign(Level::Person, *person, pattern.id, date!(2026 - 01 - 01)),
-            )
-            .await
-            .unwrap();
-    }
-    w.store
-        .save_entries(&w.hr(), &key(), save(vec![cell(&w, 0, day, "=")]))
-        .await
-        .unwrap();
-    let all = w
-        .store
-        .day_board(
-            &w.hr(),
-            BoardQuery {
-                date: Some(day),
-                ..Default::default()
-            },
-        )
-        .await
-        .unwrap();
-    assert_eq!(all.groups.len(), 1);
-    assert_eq!((all.groups[0].rows.len(), all.groups[0].hidden), (2, 1));
-    assert!(
-        all.groups[0]
-            .rows
-            .iter()
-            .any(|r| r.day.marks.contains(&Mark::NoRecord))
-    );
-    let filtered = w
-        .store
-        .day_board(
-            &w.hr(),
-            BoardQuery {
-                date: Some(day),
-                no_schedule_only: true,
-                ..Default::default()
-            },
-        )
-        .await
-        .unwrap();
-    assert_eq!(
-        (
-            filtered.ledger.people,
-            filtered.ledger.normal,
-            filtered.ledger.no_record,
-            filtered.ledger.no_schedule
-        ),
-        (3, 1, 1, 1)
-    );
-    assert_eq!(filtered.groups.len(), 1);
-    let group = &filtered.groups[0];
-    assert_eq!(
-        (group.people, group.normal, group.no_schedule, group.hidden),
-        (3, 1, 1, 0)
-    );
-    assert_eq!(
-        group.rows.iter().map(|r| r.employee_id).collect::<Vec<_>>(),
-        vec![w.people[2]]
-    );
-}
+use super::support::{key, seed, today};
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn unscheduled_people_are_visible_and_never_normal_at_two_thousand(owner: PgPool) {

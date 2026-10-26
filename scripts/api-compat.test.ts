@@ -93,3 +93,14 @@ test("RRN display duration is optional for N-1 clients and bounded by the regist
   expect(revealed.required).toEqual(["employee_id", "rrn"]);
   expect(revealed.properties!.display_seconds).toMatchObject({ type: "integer", minimum: 15, maximum: 60 });
 });
+
+test("day detail adds only an optional row-density query and leaves the response contract intact", () => {
+  const path = spec.paths["/api/v1/attendance/days"] as unknown as { get: { parameters: { name: string; required: boolean; schema: Schema }[]; responses: Record<string, unknown> } };
+  expect(path.get.parameters.find(p => p.name === "rows")).toEqual({
+    name: "rows", in: "query", required: false,
+    description: "return every row without folding normal people; existing filters still apply",
+    schema: { type: "string", enum: ["all"] },
+  });
+  expect(path.get.parameters.filter(p => p.required).map(p => p.name)).toEqual(["date"]);
+  expect(path.get.responses["200"]).toMatchObject({ content: { "application/json": { schema: { $ref: "#/components/schemas/AttendanceDayBoard" } } } });
+});
