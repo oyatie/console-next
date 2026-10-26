@@ -13,7 +13,7 @@ export function RrnCard({ employeeId, who }: { employeeId: string; who: string }
   return (
     <Card title={t("identifiers.rrn.title")} meta={value && (value.recorded && value.recorded_at ? t("identifiers.rrn.recorded", { at: fmtDateTime(value.recorded_at), source: t(`identifiers.rrn.source.${value.source ?? "IMPORT"}`) }) : t("identifiers.rrn.why"))}>
       <QueryState q={status}>{(s) => <>
-        {s.recorded ? <RrnValue employeeId={employeeId} who={who} masked={s.masked ?? ""} /> : t("identifiers.rrn.none")}
+        {s.recorded ? <RrnValue employeeId={employeeId} who={who} masked={s.masked ?? ""} /> : t("empCard.rrn.none")}
       </>}</QueryState>
     </Card>
   );

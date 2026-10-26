@@ -2881,7 +2881,8 @@
      "st": "ok",
      "be": [
       "GET /api/v1/employees/{id}/rrn",
-      "POST /api/v1/employees/{id}/rrn/reveal"
+      "POST /api/v1/employees/{id}/rrn/reveal",
+      "POST /api/v1/employees/{id}/reveal"
      ]
     },
     "update": {
