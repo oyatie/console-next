@@ -1,0 +1,1697 @@
+{
+  "version": 2,
+  "limits": [
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/action_inbox/legacy.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/action_inbox/response.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/action_inbox/sources/entity_corrections.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/action_inbox/sources/hr_followups.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/audit_api.rs",
+      "kind": "reference",
+      "count": 16
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/collaboration.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/entity_wiring/correction_register.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/entity_wiring/exceptions.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/hr.rs",
+      "kind": "reference",
+      "count": 40
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/objects.rs",
+      "kind": "reference",
+      "count": 33
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/requests/tests.rs",
+      "kind": "reference",
+      "count": 5
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/wiring/dispatch.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/workbench_native.rs",
+      "kind": "reference",
+      "count": 5
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/workbench.rs",
+      "kind": "reference",
+      "count": 14
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/app/src/workflow_object_context.rs",
+      "kind": "reference",
+      "count": 10
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/attendance/adapter-postgres/src/lib.rs",
+      "kind": "reference",
+      "count": 8
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/attendance/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 16
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/attendance/rest/src/schedule/mod.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/benefit/adapter-postgres/src/lib.rs",
+      "kind": "reference",
+      "count": 20
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/benefit/application/src/lib.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/benefit/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 11
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/comms/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/compliance/adapter-postgres/src/lib.rs",
+      "kind": "reference",
+      "count": 16
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/compliance/application/src/lib.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/compliance/integrity/src/rest.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/compliance/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 22
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/consulting/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 5
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/dispatch/adapter-postgres/src/lib.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/dispatch/application/src/lib.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/dispatch/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 12
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/docs/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/entity/rest/src/reach.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/equipment/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 6
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/evaluation/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/facilities/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/finance-gl/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/financial/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/governance/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/authz_reach.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/authz.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/bulk_corrections/select.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/directory/read_export.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/directory/read_facets.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/directory/read_filters.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/directory/read_list.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/exits/queries_service.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/exits/queries.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/lifecycle/bulk_plan.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/lifecycle/bulk_preview.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/lifecycle/bulk_selection.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/lifecycle/bulk.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/hr/adapter-postgres/src/scope_sql.rs",
+      "kind": "reference",
+      "count": 5
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/adapter-postgres/src/second_person.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/adapter-postgres/src/second_person/holders.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/adapter-postgres/src/users/directory.rs",
+      "kind": "reference",
+      "count": 6
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/adapter-postgres/src/users/read.rs",
+      "kind": "reference",
+      "count": 6
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/adapter-postgres/src/users/scope.rs",
+      "kind": "reference",
+      "count": 15
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/application/src/org.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/authz.rs",
+      "kind": "reference",
+      "count": 9
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/cedar_shadow.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/context.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/directory/dto.rs",
+      "kind": "reference",
+      "count": 9
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/me/authz.rs",
+      "kind": "reference",
+      "count": 24
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/me/platform.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/me/routes.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/metrics.rs",
+      "kind": "reference",
+      "count": 6
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/policy/assignments.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/policy/delegation.rs",
+      "kind": "reference",
+      "count": 16
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/policy/preview.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/policy/roles.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/policy/routes.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/policy/runtime.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/policy/status.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/policy/templates.rs",
+      "kind": "reference",
+      "count": 6
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/identity/rest/src/users/authz.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/inbox/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/inspection/adapter-postgres/src/lib.rs",
+      "kind": "reference",
+      "count": 9
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/inspection/application/src/lib.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/inspection/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/intelligence/application/src/lib.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/inventory/adapter-postgres/src/lib.rs",
+      "kind": "reference",
+      "count": 29
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/inventory/application/src/lib.rs",
+      "kind": "reference",
+      "count": 16
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/inventory/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 20
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/kernel/core/src/access_scope.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/kernel/core/src/branch.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/kernel/core/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/leave/adapter-postgres/src/decisions.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/leave/adapter-postgres/src/lib.rs",
+      "kind": "reference",
+      "count": 15
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/leave/application/src/lib.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/leave/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 9
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/logistics/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/messenger/adapter-postgres/src/lib.rs",
+      "kind": "reference",
+      "count": 23
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/messenger/application/src/lib.rs",
+      "kind": "reference",
+      "count": 15
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/messenger/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 14
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/notices/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/notifications/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/onboarding/adapter-postgres/src/access_facts.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/ontology/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/ontology/rest/src/projected_dispatch_derivation.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/orgchange/rest/src/access.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/orgchange/rest/src/org_units.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/payroll/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/auth-rest/src/context/request.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/auth-rest/src/otp.rs",
+      "kind": "reference",
+      "count": 5
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/authz-rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/authz/src/access/load.rs",
+      "kind": "reference",
+      "count": 5
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/authz/src/access/model.rs",
+      "kind": "reference",
+      "count": 11
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/authz/src/access/project.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/authz/src/access/tests.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/authz/src/cedar_pbac/mode_contract.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/authz/src/decide.rs",
+      "kind": "reference",
+      "count": 11
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/authz/src/grants_sql.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/authz/src/grants.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/authz/src/principal.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/authz/src/repository_filter.rs",
+      "kind": "reference",
+      "count": 5
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/authz/src/scope.rs",
+      "kind": "reference",
+      "count": 8
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/realtime/src/auth.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/realtime/src/deliver.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/realtime/src/fanout.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/realtime/src/filter.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/realtime/src/hub.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/realtime/src/messenger_sql.rs",
+      "kind": "reference",
+      "count": 5
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/realtime/src/reader.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/realtime/src/replay.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/realtime/src/stream.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/realtime/src/ws.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/request-context/src/access.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/request-context/src/commands/test_support.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/request-context/src/error_response.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/request-context/src/lib.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/request-context/src/principal.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/request-context/src/record_access.rs",
+      "kind": "reference",
+      "count": 8
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/request-context/src/record_access/hr.rs",
+      "kind": "reference",
+      "count": 13
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/request-context/src/record_access/observed.rs",
+      "kind": "reference",
+      "count": 14
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/request-context/src/record_access/operation.rs",
+      "kind": "reference",
+      "count": 11
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/request-context/src/record_access/support.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/request-context/src/record_access/tests.rs",
+      "kind": "reference",
+      "count": 15
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/platform/request-context/src/support.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/recruiting/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/registry/adapter-postgres/src/lib.rs",
+      "kind": "reference",
+      "count": 42
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/registry/application/src/lib.rs",
+      "kind": "reference",
+      "count": 15
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/registry/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 23
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/reporting/adapter-postgres/src/lib.rs",
+      "kind": "reference",
+      "count": 42
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/reporting/application/src/lib.rs",
+      "kind": "reference",
+      "count": 29
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/reporting/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/sales/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/support/adapter-postgres/src/lib.rs",
+      "kind": "reference",
+      "count": 22
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/support/application/src/lib.rs",
+      "kind": "reference",
+      "count": 6
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/support/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 13
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/todos/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/workorder/adapter-postgres/src/lib.rs",
+      "kind": "reference",
+      "count": 8
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/workorder/application/src/lib.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "BranchScope",
+      "file": "backend/crates/workorder/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 26
+    },
+    {
+      "model": "finding",
+      "file": "backend/app/src/lifecycle/period_unlock.rs",
+      "kind": "all-boolean-facts-hardcoded-true",
+      "count": 1
+    },
+    {
+      "model": "finding",
+      "file": "backend/crates/attendance/rest/src/lib.rs",
+      "kind": "branch-required-for-scoped-holder",
+      "count": 1
+    },
+    {
+      "model": "finding",
+      "file": "backend/crates/hr/adapter-postgres/src/import/rollback.rs",
+      "kind": "all-boolean-facts-hardcoded-true",
+      "count": 1
+    },
+    {
+      "model": "finding",
+      "file": "backend/crates/hr/adapter-postgres/src/requests/cedar.rs",
+      "kind": "all-boolean-facts-hardcoded-true",
+      "count": 1
+    },
+    {
+      "model": "finding",
+      "file": "backend/crates/onboarding/adapter-postgres/src/go_live.rs",
+      "kind": "all-boolean-facts-hardcoded-true",
+      "count": 1
+    },
+    {
+      "model": "finding",
+      "file": "backend/crates/platform/authz/src/decide.rs",
+      "kind": "all-boolean-facts-hardcoded-true",
+      "count": 1
+    },
+    {
+      "model": "finding",
+      "file": "backend/crates/platform/platform-rest/src/support_tenant.rs",
+      "kind": "all-boolean-facts-hardcoded-true",
+      "count": 2
+    },
+    {
+      "model": "finding",
+      "file": "backend/crates/platform/request-context/src/support.rs",
+      "kind": "all-boolean-facts-hardcoded-true",
+      "count": 1
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/action_inbox/legacy.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/action_inbox/response.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/action_inbox/sources/entity_corrections.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/action_inbox/sources/hr_exit.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/action_inbox/sources/hr_lifecycle.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/action_inbox/sources/org_change.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/audit_api.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/cedar_parity.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/entity_wiring/correction_register.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/entity_wiring/exceptions.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/hr.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/http/support_reference.rs",
+      "kind": "reference",
+      "count": 6
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/lifecycle.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/lifecycle/period_locks.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/office.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/recruiting_hire.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/workflow_object_context.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "matrix",
+      "file": "backend/app/src/workflow_studio.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/analytics-quant/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/attendance/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/attendance/rest/src/schedule/mod.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/benefit/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/comms/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/compliance/integrity/src/rest.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/compliance/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 23
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/consulting/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/dispatch/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 12
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/docs/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/entity/rest/src/auth.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/equipment/adapter-postgres/src/lib.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/equipment/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 10
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/evaluation/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/facilities/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/finance-gl/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 14
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/financial/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 27
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/governance/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/hr/adapter-postgres/src/authz_reach.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/hr/adapter-postgres/src/authz.rs",
+      "kind": "reference",
+      "count": 12
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/hr/adapter-postgres/src/requests/cedar.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/hr/adapter-postgres/src/rrn/govern.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/hr/adapter-postgres/src/rrn/reveal.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/identity/rest/src/authz.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/identity/rest/src/cedar_shadow.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/identity/rest/src/me/authz.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/identity/rest/src/users/authz.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/inspection/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 8
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/inventory/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 14
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/leave/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 5
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/logistics/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/notices/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/ontology/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/orgchange/rest/src/access.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/orgchange/rest/src/org_units.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/payroll/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/payroll/rest/src/lifecycle.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/payroll/rest/src/payslip_draft.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/auth-rest/src/admin.rs",
+      "kind": "reference",
+      "count": 6
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/authz-rest/src/lib.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/authz/src/cedar_pbac/boundary.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/authz/src/cedar_pbac/enforce.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/authz/src/cedar_pbac/mode_contract.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/authz/src/cedar_pbac/mode_contract/fail_closed.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/authz/src/cedar_pbac/visible.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/authz/src/decide.rs",
+      "kind": "reference",
+      "count": 5
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/authz/src/platform.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/platform-rest/src/support_store.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/platform-rest/src/support_tenant.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/platform-rest/src/support.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/realtime/src/filter.rs",
+      "kind": "reference",
+      "count": 8
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/request-context/src/record_access.rs",
+      "kind": "reference",
+      "count": 8
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/request-context/src/record_access/hr.rs",
+      "kind": "reference",
+      "count": 6
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/request-context/src/record_access/observed.rs",
+      "kind": "reference",
+      "count": 9
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/request-context/src/record_access/operation.rs",
+      "kind": "reference",
+      "count": 5
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/request-context/src/record_access/support.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/request-context/src/record_access/tests.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/storage/src/sigv4.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/production/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/recruiting/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 6
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/registry/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 6
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/reporting/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 7
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/sales/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/settings/application/src/lib.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/settings/application/src/reason_codes.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/settings/rest/src/authz.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/support/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 10
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/workflow/runtime/src/authz_guard.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/workorder/rest/src/lib.rs",
+      "kind": "reference",
+      "count": 49
+    },
+    {
+      "model": "ScopeGrant",
+      "file": "backend/crates/platform/authz/src/access/model.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "ScopeGrant",
+      "file": "backend/crates/platform/authz/src/access/project.rs",
+      "kind": "reference",
+      "count": 3
+    },
+    {
+      "model": "ScopeGrant",
+      "file": "backend/crates/platform/authz/src/principal.rs",
+      "kind": "reference",
+      "count": 6
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/entity/ui/correction-register.tsx",
+      "kind": "control-guard",
+      "count": 3
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/entity/ui/workplace-actions.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/org/ui/change-apply.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/org/ui/change-settlement.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/org/ui/dept-actions.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/org/ui/org-change-record.tsx",
+      "kind": "control-guard",
+      "count": 1
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/org/ui/use-freeze-check.ts",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/People.tsx",
+      "kind": "control-guard",
+      "count": 5
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/account-panel.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/accounts-list.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/card-page.tsx",
+      "kind": "control-guard",
+      "count": 3
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/certificates-page.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/exit-block.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/exit-confirm.tsx",
+      "kind": "control-guard",
+      "count": 3
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/exit-facts.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/exit-list.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/exit-page.tsx",
+      "kind": "control-guard",
+      "count": 3
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/group-transfer-sheet.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/lifecycle-menu.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/notice-list-page.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/requests-page.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/roster-page.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/use-card.ts",
+      "kind": "control-guard",
+      "count": 4
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/people/ui/use-case-actions.ts",
+      "kind": "control-guard",
+      "count": 1
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/periods/ui/lock-form.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/structure/ui/page-head.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/features/structure/ui/use-structure-gestures.ts",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/reference/authz/ui/use-can.ts",
+      "kind": "control-guard",
+      "count": 1
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/reference/org/ui/structure-members.tsx",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/shell/nav.ts",
+      "kind": "control-guard",
+      "count": 2
+    },
+    {
+      "model": "web-grants",
+      "file": "apps/web/src/shell/nav.ts",
+      "kind": "grant-guard",
+      "count": 9
+    }
+  ]
+}

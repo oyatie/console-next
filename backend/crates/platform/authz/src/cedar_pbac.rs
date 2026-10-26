@@ -54,6 +54,9 @@ mod mode_contract;
 /// untranslatable term ⇒ the whole filter collapses to `FALSE`.
 pub mod residual;
 
+/// One server-loaded snapshot for Cedar point decisions and D1 visible sets.
+pub mod visible;
+
 // The `engine` and `map` module docs above resolve `Feature` and
 // `Feature::from_str` links in this scope.
 use std::str::FromStr;

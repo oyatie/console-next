@@ -256,7 +256,7 @@ function rustFilePrelude(source) {
   };
 }
 
-function scanRustSyntax(source, {
+export function scanRustSyntax(source, {
   start = 0,
   rootDelimiter = null,
   splitTopLevel = false,
@@ -1706,6 +1706,15 @@ export function collectRustRequestBodies(repoRoot) {
       file: item.file, name: item.name, denyUnknown: item.denyUnknown });
   }
   return [...found.values()].sort((a,b) => compareText(`${a.file}::${a.name}`, `${b.file}::${b.name}`));
+}
+
+// Reuse the module-aware route resolver for the access census, including unresolved handlers.
+export function collectAccessRoutes(repoRoot) {
+  return collectSources(repoRoot).routes.map((route) => ({
+    file: route.file, path: route.path, method: route.method, handler: route.handler,
+    handlerFile: route.bodyContext.name ? route.bodyContext.file : null,
+    handlerName: route.bodyContext.name ?? null,
+  }));
 }
 
 export function evaluateRequestBodyContract({ repoRoot }) {
