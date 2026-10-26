@@ -10,7 +10,7 @@ import { collectAccessRoutes, scanRustSyntax } from "./check-request-body-contra
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const OUTPUT = "docs/authz/access-inventory";
 const MODELS = [
-  ["matrix", /(?<![.\w])(?:authorize(?:_org_wide|_scoped|_capability\w*)?|Action::new)\s*\(/g],
+  ["matrix", /(?<![.\w])(?:authorize(?:_org_wide|_scoped|_capability\w*)?|Action::new)\s*\(|\.\s*authorize(?:_org_wide|_scoped|_capability\w*)\s*\(|\.\s*authorize\s*\(\s*(?:\w+::)*PlatformFeature::/g],
   ["BranchScope", /\bBranchScope\b|\.branch_scope\b/g],
   ["ScopeGrant", /\bScopeGrant\b|\.(?:scope_grants|grants_for)\b/g],
   ["Cedar", /\b(?:AccessSlice|DecisionFacts|load_facts|enforce_action|ActionBundle)\b|\b\w+::decide\s*\(/g],
@@ -28,12 +28,22 @@ function files(root, dir, extension) {
 }
 
 export function rustInventory(file, source) {
-  // Inline test modules are not serving surfaces.
-  source = source.split(/#\[cfg\(test\)\]\s*(?:mod\s+tests|#\[path)/)[0];
   const scanned = scanRustSyntax(source, { projectCode: true });
   if (!scanned.valid) throw new Error(`${file}: ${scanned.error}`);
-  const code = scanned.projection;
-  const references = MODELS.flatMap(([model, pattern]) => [...code.matchAll(pattern)].map((m) => ({
+  let code = scanned.projection;
+  // Mask only test items, preserving offsets and production items after them.
+  for (const m of code.matchAll(/#\[\s*cfg\s*\(\s*test\s*\)\s*\]/g)) {
+    if (code[m.index] !== "#") continue;
+    const opening = code.indexOf("{", m.index);
+    const semi = code.indexOf(";", m.index);
+    const end = semi >= 0 && (opening < 0 || semi < opening)
+      ? semi : scanRustSyntax(code, { start: opening, rootDelimiter: "{" }).closing;
+    if (end < 0) throw new Error(`${file}: unterminated test item`);
+    code = code.slice(0, m.index) + code.slice(m.index, end + 1).replace(/[^\n]/g, " ") + code.slice(end + 1);
+  }
+  const references = MODELS.flatMap(([model, pattern]) => [...code.matchAll(pattern)]
+    .filter((m) => model !== "matrix" || !/\bfn\s*$/.test(code.slice(0, m.index)))
+    .map((m) => ({
     file, line: lineAt(source, m.index), model, expression: source.slice(m.index, m.index + m[0].length).trim(),
   })));
   const functions = [];
@@ -178,11 +188,21 @@ export function checkRatchet(current, baseline) {
   if (violations.length) throw new Error(`Access ratchet increased: ${JSON.stringify(violations)}`);
 }
 
+export function writeRatchet(current, output, force = false) {
+  const baseline = JSON.parse(readFileSync(`${output}.json`, "utf8"));
+  checkRatchet(current, baseline);
+  if (force || JSON.stringify(current) !== JSON.stringify(baseline)) {
+    writeFileSync(`${output}.json`, `${JSON.stringify(current, null, 2)}\n`);
+    writeFileSync(`${output}.md`, markdown(current));
+  }
+}
+
 export function markdown(data) {
   return `<!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
 # Access inventory ratchet
 
-Gate: \`node scripts/access-inventory.mjs\`. Shrink the budget after removals: \`node scripts/access-inventory.mjs --write\`.
+Gate: \`node scripts/access-inventory.mjs\`. Every successful run rewrites both budgets when counts decrease; commit those removals.
+Use \`node scripts/access-inventory.mjs --write\` to refresh their formatting without increasing a limit.
 The generated [budget](access-inventory.json) is keyed by model, file and finding kind, with counts per key.
 Line shifts and removals pass; any new key or count increase fails, including when writing the budget.
 Cedar and RLS references may grow as legacy access decisions migrate.
@@ -191,6 +211,7 @@ The scanner still discovers every REST operation, named list/count/search/export
 Detailed census (including current line numbers) is available on demand, without a committed snapshot:
 \`node scripts/access-inventory.mjs --census > /tmp/access-census.json\`.
 Static references are reviewer leads, never proof of enforcement or route/first-read parity.
+Legacy method calls and production code after test items are included; function declarations and \`cfg(test)\` items are excluded.
 Detector fixtures retain historical defects after the product fixes them.
 
 | Model | File | Kind | Maximum count |
@@ -205,12 +226,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(JSON.stringify(data, null, 2));
   } else {
     const current = ratchet(data);
-    const baseline = JSON.parse(readFileSync(path.join(ROOT, `${OUTPUT}.json`), "utf8"));
-    checkRatchet(current, baseline);
-    if (process.argv.includes("--write")) {
-      writeFileSync(path.join(ROOT, `${OUTPUT}.json`), `${JSON.stringify(current, null, 2)}\n`);
-      writeFileSync(path.join(ROOT, `${OUTPUT}.md`), markdown(current));
-    }
+    writeRatchet(current, path.join(ROOT, OUTPUT), process.argv.includes("--write"));
     console.log(`access-inventory: ${data.rest.length} REST, ${data.reads.length} reads, ${data.web.length} web, ${data.references.length} model references, ${data.findings.length} findings; ratchet passed`);
   }
 }
