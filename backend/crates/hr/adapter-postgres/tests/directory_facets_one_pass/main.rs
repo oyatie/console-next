@@ -96,11 +96,16 @@ async fn one_pass_facets_and_lean_total_match_the_five_pass_reads(pool: PgPool) 
                 t.hr.employee_facets(principal.clone(), query(q.clone()))
                     .await
                     .unwrap();
-            assert_eq!(
-                serde_json::to_value(&got).unwrap(),
-                expected,
-                "facets for {q} ({scope:?})"
+            let mut comparable = serde_json::to_value(&got).unwrap();
+            // The frozen oracle predates this additive facet; people_reads_2 pins its population.
+            assert!(
+                comparable["review"]
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("department_missing")
+                    .is_some()
             );
+            assert_eq!(comparable, expected, "facets for {q} ({scope:?})");
             let (full, lean) = totals(&rt, w.org, filters).await;
             assert_eq!(full, lean, "total for {q} ({scope:?})");
             assert_eq!(got.total, full, "facet total = page total for {q}");
@@ -130,7 +135,7 @@ async fn facets_of_an_empty_tenant_are_zero(pool: PgPool) {
     assert_eq!(
         serde_json::to_value(&got).unwrap(),
         json!({ "total": 0, "status": [], "employment_type": [], "legal_entity": [], "workplace": [],
-                "review": { "register_review_required": 0, "identity_review_required": 0, "home_branch_review_required": 0,
+                "review": { "department_missing": 0, "register_review_required": 0, "identity_review_required": 0, "home_branch_review_required": 0,
                             "lifecycle_apply_failed": 0, "contract_ended": 0, "contract_ending_before": 0 } })
     );
 }

@@ -3,7 +3,7 @@ import { expectAccessible } from "./a11y";
 import { go, kstDate, option, registerEmployee } from "./flows";
 import { fillDate, sheet, signOff } from "./sheet";
 import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "./setup-flows";
-import { deleteUnusedDept } from "./helpers/structure";
+import { openUnit } from "./helpers/structure";
 import { box, leaveScreen } from "./structure-flows";
 import { shot } from "./shots";
 
@@ -15,7 +15,7 @@ import { shot } from "./shots";
 for (const lastDay of [-1, 0]) {
 test(`regression: after the only person's exit (${lastDay}) the 법인 counts nobody and its close opens 종료일 (company-01)`, { tag: ["@regression", "@org"] }, async ({ browser }) => {
   const { admin } = await tenantInSetup(browser, `entexit${lastDay + 1}`, "퇴직회사", false, "본사");
-  await registerEmployee(admin, { name: "떠날사람", number: "EX-0001", hired: "2024-03-04", unit: "본사" });
+  await registerEmployee(admin, { name: "떠날사람", number: "EX-0001", hired: "2024-03-04", unit: SETUP_DEPARTMENT });
   const record = new URL(admin.url()).pathname;
   await startOperations(admin);
   await leaveScreen(admin);
@@ -61,8 +61,15 @@ test(`regression: after the only person's exit (${lastDay}) the 법인 counts no
   await expect(admin.getByRole("treeitem", { name: /퇴직회사, 법인,/ })).toHaveAccessibleName(/, 1명(?:,|$)/);
   await go(admin, "/org");
   await expect(box(admin, "본사")).toHaveAccessibleName(/, 0명(?:,|$)/);
-  // The 부서 운영 시작 required, never used, is deleted: an open 부서 would keep the 법인 from closing too.
-  await deleteUnusedDept(admin, SETUP_DEPARTMENT);
+  // The former member makes this a used 부서: its governed 폐지 clears the 법인's remaining open unit.
+  const dept = await openUnit(admin, SETUP_DEPARTMENT);
+  await dept.locator("#act-dept-delete").click();
+  const dissolve = sheet(admin, `${SETUP_DEPARTMENT} 폐지`);
+  await dissolve.getByRole("button", { name: /^오늘/ }).click();
+  await dissolve.getByLabel("사유").fill("재직자 퇴직으로 부서 폐지");
+  await dissolve.getByRole("button", { name: "부서 폐지 1개 반영" }).click();
+  await expect(dissolve).toBeHidden();
+  await expect(box(admin, SETUP_DEPARTMENT)).toHaveCount(0);
 
   // The 법인 list and record count nobody; the close has no 재직자 blocker and 종료일 opens.
   await leaveScreen(admin);

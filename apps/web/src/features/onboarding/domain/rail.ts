@@ -17,7 +17,7 @@ export function grouped(c: Checklist) {
 /** Done, or done with something to look at. */
 export const finished = (s: ChecklistStep) => s.state === "done" || s.state === "attention";
 
-export type Fix = { to: "/org" | "/org/entities" | "/org/entities/new" | "/setup/go-live" | "/org/changes" | "/people" | "/people/new" | "/people/unplaced" | "/access/roles/new" | "/access/grants"; search?: { view: "accounts" } };
+export type Fix = { to: "/org" | "/org/entities" | "/org/entities/new" | "/setup/go-live" | "/org/changes" | "/people" | "/people/new" | "/people/unplaced" | "/access/roles/new" | "/access/grants"; search?: { view: "accounts" } | { review: "department" } };
 const ENTITIES: Fix = { to: "/org/entities" };
 /**
  * Where each server remedy (and step action) is fixed. A code not listed here, or one the server marks as
@@ -40,6 +40,7 @@ const LINKS: Record<string, Fix> = {
   enter_insurance_numbers: ENTITIES,
   update_insurance: ENTITIES,
   add_department: { to: "/org" },
+  assign_department: { to: "/people", search: { review: "department" } },
   review_org_changes: { to: "/org/changes" },
   invite_executive: { to: "/people", search: { view: "accounts" } },
   register_employee: { to: "/people/new" },
@@ -59,7 +60,7 @@ export type GoLiveRecord = GoLiveItem["records"][number];
  * Where a record's fix opens: its legal entity's record, with the workplace selected for a workplace (the registration,
  * social insurance and address fixes live on it). A registration is fixed on its legal entity.
  */
-export const recordFix = (r: GoLiveRecord, remedy?: string) => r.kind === "employee" ? ({ to: "/people/unplaced" as const, params: {}, search: {} }) : ["legal_entity", "registration", "workplace"].includes(r.kind) ? ({
+export const recordFix = (r: GoLiveRecord, remedy?: string) => remedy === "assign_department" ? undefined : r.kind === "employee" ? ({ to: "/people/unplaced" as const, params: {}, search: {} }) : ["legal_entity", "registration", "workplace"].includes(r.kind) ? ({
   to: "/org/entities/$id" as const,
   params: { id: r.legal_entity_id },
   search: r.kind === "workplace" ? { wp: r.id } : r.kind === "registration" && remedy === "verify_registration" ? { nts: r.id } : {},

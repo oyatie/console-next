@@ -7445,6 +7445,12 @@ paths:
         schema:
           type: boolean
         description: Filter to employees whose import identity resolution needs review (true) or not (false).
+      - name: department_missing
+        in: query
+        required: false
+        schema:
+          type: boolean
+        description: True selects people employed today without a live department (including site-only placement); false selects the complement.
       - name: org_unit_id
         in: query
         required: false
@@ -7978,6 +7984,13 @@ paths:
         schema:
           type: boolean
         description: Filter to employees whose import identity resolution needs review (true) or not (false).
+      - name: department_missing
+        in: query
+        required: false
+        schema:
+          type: boolean
+        description: true selects employed people without a live department; false selects all other records. Review
+          counts ignore this filter, while total and the other facet groups apply it.
       - name: org_unit_id
         in: query
         required: false
@@ -35658,7 +35671,7 @@ components:
         query:
           type: object
           description: The GET /api/v1/employees filters as JSON (company, search, org_unit_id, legal_entity_id, workplace_id, status, employee_number,
-            home_branch_review_required, identity_review_required, contract_ending_before, lifecycle_apply_failed),
+            home_branch_review_required, identity_review_required, department_missing, contract_ending_before, lifecycle_apply_failed),
             each written as in the query string (status "ACTIVE,ON_LEAVE"); paging fields are ignored.
           additionalProperties: true
         exclude_employee_ids:
@@ -40530,6 +40543,10 @@ components:
           required: [register_review_required, identity_review_required, home_branch_review_required, lifecycle_apply_failed, contract_ended,
             contract_ending_before]
           properties:
+            department_missing:
+              type: integer
+              format: int64
+              description: Employed people without a live department, ignoring review filters.
             identity_review_required:
               type: integer
               format: int64
@@ -58426,6 +58443,10 @@ components:
           type: integer
           format: int64
           description: The caller's own passkeys; with one, a lost device ends the account.
+        people_without_department:
+          type: integer
+          format: int64
+          description: People employed today without a live department; counted from blocker records.
         unresolved_departments:
           type: integer
           format: int64

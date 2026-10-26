@@ -17,16 +17,21 @@ import { FixLink } from "./fix-link";
 import s from "./go-live.module.css";
 
 const itemText = (x: GoLiveItem) => codeText(`setup.golive.item.${x.code}`, x.code, { count: x.count ?? 0 });
+const hasEmployeeRecords = (x: GoLiveItem) => x.records.length > 0 && x.records.every((r) => r.kind === "employee");
+
+function EmployeeRecords({ x }: { x: GoLiveItem }) {
+  return <LongTable label={itemText(x)} rows={x.records as GoLiveRecord[]} rowId={(r) => r.id} total={x.records.length}
+    hasMore={false} onLoadMore={() => undefined} empty={t("setup.golive.details.none")}
+    columns={[{ id: "person", header: t("setup.golive.details.person"), rowHeader: true, cell: (r) =>
+      r.kind === "employee" ? <Link to="/people/$id" params={{ id: r.id }} className={buttonClass("ghost")}>{r.name}</Link> : r.name }]} />;
+}
 
 /** The fix of each record a line counts, opened on that record (company-53), e.g. attach a registration for one named workplace. */
 function RecordFixes({ x }: { x: GoLiveItem }) {
   const fix = codeText(`setup.fix.${x.remedy}`, t("setup.fix.open"));
-  if (x.remedy === "place_people") return <>
+  if (hasEmployeeRecords(x)) return <>
     <FixLink code={x.remedy} />
-    <LongTable label={itemText(x)} rows={x.records as GoLiveRecord[]} rowId={(r) => r.id} total={x.records.length}
-      hasMore={false} onLoadMore={() => undefined} empty={t("setup.golive.details.none")}
-      columns={[{ id: "person", header: t("setup.golive.details.person"), rowHeader: true, cell: (r) =>
-        r.kind === "employee" ? <Link to="/people/$id" params={{ id: r.id }} className={buttonClass("ghost")}>{r.name}</Link> : r.name }]} />
+    <EmployeeRecords x={x} />
   </>;
   return (
     <>
@@ -78,19 +83,24 @@ export function Blockers({ items, changed = [] }: { items: GoLiveItem[]; changed
   return (
     <section aria-labelledby="blockers">
       <SectionHead level={2} id="blockers">{t("setup.golive.blockers")}</SectionHead>
-      {seen.map((x) => (
-        <div key={x.code} ref={box(x.code)} data-changed={changed.includes(x.code) || undefined}>
-          {changed.includes(x.code) && <Chip tone="warn">{t("setup.golive.changed")}</Chip>}
-          {open.has(x.code) ? (
-            <BlockedPanel domain="onboarding" title={itemText(items.find((y) => y.code === x.code)!)} code={x.code} unblockers={[you]} actions={<Fixes x={items.find((y) => y.code === x.code)!} />} />
-          ) : (
-            <div className={`${s.resolved} row`}>
-              <strong>{itemText(x)}</strong>
-              <Chip tone="ok">{t("setup.golive.resolved")}</Chip>
-            </div>
-          )}
-        </div>
-      ))}
+      {seen.map((x) => {
+        const current = items.find((y) => y.code === x.code);
+        return (
+          <div key={x.code} ref={box(x.code)} data-changed={changed.includes(x.code) || undefined}>
+            {changed.includes(x.code) && <Chip tone="warn">{t("setup.golive.changed")}</Chip>}
+            {current ? (
+              <BlockedPanel domain="onboarding" title={itemText(current)} code={x.code} unblockers={[you]} actions={hasEmployeeRecords(current) ? <FixLink code={current.remedy} /> : <Fixes x={current} />}>
+                {hasEmployeeRecords(current) && <EmployeeRecords x={current} />}
+              </BlockedPanel>
+            ) : (
+              <div className={`${s.resolved} row`}>
+                <strong>{itemText(x)}</strong>
+                <Chip tone="ok">{t("setup.golive.resolved")}</Chip>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </section>
   );
 }

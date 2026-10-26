@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { withLifecycleDate } from "./clock";
 import { go, koDate, kstDate, registerEmployee, routeReady } from "./flows";
-import { startOperations, tenantInSetup } from "./setup-flows";
+import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "./setup-flows";
 import { signOff } from "./sheet";
 import { shot } from "./shots";
 import { box, revealUnit } from "./structure-flows";
@@ -35,7 +35,7 @@ async function counts(page: Page, path: string, date: string, expected: number) 
 test("the reported last working day counts in live, compare, list and exports until the following day", { tag: ["@hr", "@org", "@regression", "@clock"] }, async ({ browser }) => {
   test.setTimeout(300_000);
   const { admin } = await tenantInSetup(browser, "exitcount", "퇴직경계");
-  await registerEmployee(admin, { name: "경계직원", number: "EXIT-0001", unit: "본점", hired: kstDate(-30) });
+  await registerEmployee(admin, { name: "경계직원", number: "EXIT-0001", unit: SETUP_DEPARTMENT, hired: kstDate(-30) });
   await startOperations(admin);
   await go(admin, "/people");
   await admin.getByRole("row", { name: /경계직원/ }).getByRole("rowheader", { name: "경계직원", exact: true }).click();

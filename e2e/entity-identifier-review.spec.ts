@@ -6,7 +6,7 @@ import { grantAccess } from "./access-flows";
 import { firstSignIn, go, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { letGrantsAge } from "./second-person-fixture";
-import { REGISTRATION_FIXTURES, startOperations, tenantInSetup } from "./setup-flows";
+import { REGISTRATION_FIXTURES, SETUP_DEPARTMENT, startOperations, tenantInSetup } from "./setup-flows";
 
 const inbox = (page: Page) => page.getByRole("region", { name: "업무함", exact: true });
 const register = (page: Page) => page.getByRole("region", { name: "번호 정정 · 사후 검토", exact: true });
@@ -58,13 +58,13 @@ test("identifier correction: a second person approves, requester applies, and a 
   const bearer = bearerOf(admin);
 
   // The reviewer is a real employee/account, with its grant and notice made through the product.
-  await registerEmployee(admin, { name: "김검토", number: "ID-REVIEW-1", hired: "2024-03-04", unit: "본사" });
+  await registerEmployee(admin, { name: "김검토", number: "ID-REVIEW-1", hired: "2024-03-04", unit: SETUP_DEPARTMENT });
   await admin.getByRole("button", { name: "계정 초대" }).click();
   await stepUp(admin.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", admin.getByLabel("일회용 코드"));
   const reviewer = await firstSignIn(browser, await takeCode(admin));
   await reviewer.setViewportSize({ width: 1440, height: 900 });
   await go(reviewer, "/");
-  await registerEmployee(admin, { name: "이범위", number: "ID-SCOPE-1", hired: "2024-03-04", unit: "본사" });
+  await registerEmployee(admin, { name: "이범위", number: "ID-SCOPE-1", hired: "2024-03-04", unit: SETUP_DEPARTMENT });
   await admin.getByRole("button", { name: "계정 초대" }).click();
   await stepUp(admin.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", admin.getByLabel("일회용 코드"));
   const manager = await firstSignIn(browser, await takeCode(admin));

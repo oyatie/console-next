@@ -2,7 +2,7 @@ import { expect, type Browser, type Page } from "@playwright/test";
 import { go } from "../flows";
 import { openTenant } from "../helpers/tenant";
 import { chooseWorkbook, payPeriod, people, rosterWorkbook, type Person } from "../helpers/import";
-import { registerBranch, setupCompany } from "../setup-flows";
+import { registerBranch, setupCompany, startOperations } from "../setup-flows";
 import { addDepartments } from "../structure-flows";
 
 // The parity world for the employee action screens (EMP-B): one tenant built through the product from an empty
@@ -69,12 +69,13 @@ async function importRoster(admin: Page, rows: Person[]) {
   await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible({ timeout: 60_000 });
 }
 
-/** 새온그룹 in its setup phase: 법인, two 사업장, nine units, `count` imported people in units and 17 unplaced. */
-export async function world(browser: Browser, count = 30, slug = "parityb", hired?: string) {
+/** 새온그룹: 법인, two 사업장, nine units, `count` people in units and 17 unplaced; operating imports follow go-live. */
+export async function world(browser: Browser, count = 30, slug = "parityb", hired?: string, operating = false) {
   const admin = await openTenant(browser, slug, "새온그룹");
   await setupCompany(admin, ENTITY, SITE);
   await registerBranch(admin, ENTITY, SITE2, "0008512347");
   await addUnits(admin);
+  if (operating) await startOperations(admin);
   await importRoster(admin, roster(count, hired));
   return admin;
 }

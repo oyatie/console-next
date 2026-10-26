@@ -3,6 +3,7 @@
 //! the lifecycle history cursor (A8), bulk per-line units (A5) and selection by
 //! query with exclusions (A4), and the 근로자 명부 export layout (SC-HRR-003).
 
+mod department;
 mod fixtures;
 mod membership;
 mod register;

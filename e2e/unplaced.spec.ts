@@ -4,7 +4,6 @@ import { clickCounter } from "./clicks";
 import { go, kstDate } from "./flows";
 import { world } from "./parity/world-b";
 import { apiOf, bearerOf } from "./helpers/api";
-import { startOperations } from "./setup-flows";
 import { fillDate } from "./sheet";
 
 // E8 미배치 처리 (spec employee-ux E8): people an import could not place, grouped by the file's work-place value; a
@@ -79,9 +78,8 @@ test("unplaced people: grouped by the file's value, placed in a unit or directly
 
 test("an operating placement before opening names the refusal and leaves no transfer or assignment", { tag: ["@hr", "@negative"] }, async ({ browser }) => {
   test.setTimeout(300_000);
-  const admin = await world(browser, 0, "unplacedopening");
+  const admin = await world(browser, 0, "unplacedopening", undefined, true);
   const api = apiOf(admin, bearerOf(admin));
-  await startOperations(admin);
   await go(admin, "/people/unplaced");
   const groups = admin.getByRole("complementary", { name: /원본 값별/ });
   await groups.getByRole("button", { name: /「평택 1공장」/ }).click();

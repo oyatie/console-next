@@ -154,3 +154,12 @@ test("retention runs 3 years from the exit date, the day after the last working 
   expect(retentionEnd("2025-11-16")).toBe("2028-11-17");
   expect(retentionEnd("2024-02-29")).toBe("2027-03-01");
 });
+
+
+test("department review survives the URL and uses the shared list and bulk selection filter", () => {
+  expect(parseReview("department")).toEqual(["department"]);
+  const f = { status: "current", review: parseReview("department") } as const;
+  expect(listQuery(f, TODAY, 60)).toMatchObject({ department_missing: true });
+  expect(facetQueries(f, TODAY, 60).list).toMatchObject({ department_missing: true });
+  expect(facetQueries(f, TODAY, 60).review).not.toHaveProperty("department_missing");
+});

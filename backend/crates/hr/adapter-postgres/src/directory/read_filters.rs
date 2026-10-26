@@ -18,6 +18,8 @@ pub use crate::directory::read_from::{
 /// The most employee numbers one list read resolves (the bulk-action cap).
 pub const MAX_EMPLOYEE_NUMBERS: usize = 500;
 
+pub(crate) const DEPARTMENT_MISSING: &str = "(e.merged_into_employee_id IS NULL AND entity_employed_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AND (e.org_unit_id IS NULL OR e.org_unit_id NOT IN (SELECT department_unit_ids())))";
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct EmployeeListQuery {
     pub company: Option<String>,
@@ -26,6 +28,9 @@ pub struct EmployeeListQuery {
     pub home_branch_review_required: Option<bool>,
     pub identity_review_required: Option<bool>,
     pub register_review_required: Option<bool>,
+    // Preserve N-1 bulk-selection fingerprints when this filter is absent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub department_missing: Option<bool>,
     pub org_unit_id: Option<Uuid>,
     /// 법인 by id: employees whose current (or, once exited, last) employment
     /// assignment names it (E-S3a).
@@ -63,6 +68,7 @@ pub struct EmployeeListFilters {
     pub home_branch_review_required: Option<bool>,
     pub identity_review_required: Option<bool>,
     pub register_review_required: Option<bool>,
+    pub department_missing: Option<bool>,
     pub org_unit_id: Option<Uuid>,
     pub legal_entity_id: Option<Uuid>,
     pub workplace_id: Option<Uuid>,
@@ -127,6 +133,7 @@ impl EmployeeListFilters {
             home_branch_review_required: query.home_branch_review_required,
             identity_review_required: query.identity_review_required,
             register_review_required: query.register_review_required,
+            department_missing: query.department_missing,
             org_unit_id: query.org_unit_id,
             legal_entity_id: query.legal_entity_id,
             workplace_id: query.workplace_id,
@@ -228,6 +235,11 @@ impl EmployeeListFilters {
                 }
             }
             FacetGroup::Review => {
+                if let Some(required) = self.department_missing {
+                    and(builder, DEPARTMENT_MISSING);
+                    builder.push(" = ");
+                    builder.push_bind(required);
+                }
                 if let Some(required) = self.register_review_required {
                     and(builder, crate::register_review_sql!());
                     builder.push(" = ");

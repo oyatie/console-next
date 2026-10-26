@@ -108,6 +108,7 @@ const READY: GoLiveFacts = GoLiveFacts {
     step_up: true,
     entities_ready: true,
     primary_workplaces_ready: true,
+    departments_ready: true,
     org_change_route_resolvable: true,
     org_change_routed: true,
     other_eligible_holders: 1,
@@ -136,10 +137,11 @@ fn tenant_go_live_forbids_any_phase_but_setup_and_every_unready_fact() {
         Ok(false),
         "only the tenant's SUPER_ADMIN"
     );
-    let flips: [fn(&mut GoLiveFacts); 7] = [
+    let flips: [fn(&mut GoLiveFacts); 8] = [
         |f| f.step_up = false,
         |f| f.entities_ready = false,
         |f| f.primary_workplaces_ready = false,
+        |f| f.departments_ready = false,
         |f| f.org_change_route_resolvable = false,
         |f| f.other_eligible_holders = 0,
         |f| f.terms_accepted = false,

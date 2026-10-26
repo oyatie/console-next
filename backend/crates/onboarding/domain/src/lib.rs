@@ -57,6 +57,8 @@ pub struct SetupFacts {
     pub employees_step_deferred: bool,
     pub unplaced_people: i64,
     pub unresolved_departments: i64,
+    /// People employed today without a live department, counted from their records.
+    pub people_without_department: i64,
     pub entity_unknown_people: i64,
     pub tenant_roles: i64,
     pub grants_effective_in_setup: i64,

@@ -124,6 +124,10 @@ properties:
     type: integer
     format: int64
     description: The caller's own passkeys; with one, a lost device ends the account.
+  people_without_department:
+    type: integer
+    format: int64
+    description: People employed today without a live department; counted from blocker records.
   unresolved_departments:
     type: integer
     format: int64

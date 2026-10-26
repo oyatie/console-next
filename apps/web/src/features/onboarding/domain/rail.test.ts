@@ -61,3 +61,8 @@ test("an unresolved department opens the shared bulk placement queue", () => {
   expect(fixFor("assign_departments")).toEqual({ to: "/people/unplaced" });
   expect(recordFix({ kind: "employee", id: "p1", name: "A", legal_entity_id: "e1" }, "assign_departments")).toEqual({ to: "/people/unplaced", params: {}, search: {} });
 });
+
+test("department readiness has one roster remedy and no per-person placement link", () => {
+  expect(recordFix({ kind: "employee", id: "p1", name: "A", legal_entity_id: "e1" }, "assign_department")).toBeUndefined();
+  expect(fixFor("assign_department")).toEqual({ to: "/people", search: { review: "department" } });
+});

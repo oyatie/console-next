@@ -28,6 +28,7 @@ tracing.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
+console-hr-adapter-postgres.workspace = true
 console-platform-test-support.workspace = true
 tokio.workspace = true
 
