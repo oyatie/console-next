@@ -123,9 +123,19 @@ async fn replicas_tick_once_a_day_and_later_days_emit_only_crossings(pool: PgPoo
         ]
     );
 
-    // Three days later X1 (due on the exit date) enters the 7-day window: the
+    sqlx::query("INSERT INTO platform_setting_overrides(key,value,effective_from) VALUES('display.deadline_due_soon_days','2',now()-interval '1 day')")
+        .execute(&pool).await.unwrap();
+    // Day five is outside the two-day window; a fixed seven-day window emits early.
+    assert_eq!(
+        a.case_clock_tick(id, today() + Duration::days(5), register.clone())
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(ticks(&pool, org).await, 1);
+    // Eight days later X1 (due on the exit date) enters the configured window: the
     // case changes once. The other tenant ticks its own day independently.
-    let later = today() + Duration::days(3);
+    let later = today() + Duration::days(8);
     assert_eq!(
         a.case_clock_tick(id, later, register.clone())
             .await
@@ -147,4 +157,45 @@ async fn replicas_tick_once_a_day_and_later_days_emit_only_crossings(pool: PgPoo
             .unwrap(),
         1
     );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn tick_resolves_the_display_window_at_its_kst_date(pool: PgPool) {
+    let (org, _) = live_exit(&pool).await;
+    let day = today();
+    let later = day + Duration::days(5);
+    let midnight = |date: Date| {
+        date.with_hms(0, 0, 0)
+            .unwrap()
+            .assume_offset(UtcOffset::from_hms(9, 0, 0).unwrap())
+    };
+    sqlx::query(
+        "INSERT INTO platform_setting_overrides(key,value,effective_from) VALUES \
+        ('display.deadline_due_soon_days','1',$1),('display.deadline_due_soon_days','5',$2)",
+    )
+    .bind(midnight(day - Duration::days(1)))
+    .bind(midnight(later))
+    .execute(&pool)
+    .await
+    .unwrap();
+    let rt = runtime_role_pool(&pool).await;
+    let register = PgComplianceStore::new(rt.clone())
+        .statutory_register()
+        .await
+        .unwrap();
+    let service = HrService::new(rt);
+    let org = OrgId::from_uuid(org);
+    assert_eq!(
+        service
+            .case_clock_tick(org, day, register.clone())
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        service.case_clock_tick(org, later, register).await.unwrap(),
+        1,
+        "the five-day window takes effect on the tick date, even for a replay or future tick"
+    );
+    assert_eq!(ticks(&pool, *org.as_uuid()).await, 2);
 }

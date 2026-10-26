@@ -14,8 +14,8 @@ fn ready<T>(future: impl std::future::Future<Output = T>) -> T {
 
 struct Source(i64);
 impl ActionInboxSourcePort for Source {
-    fn deadline_due_soon_days(&self) -> i64 {
-        self.0
+    fn deadline_due_soon_days(&self) -> Result<i64, console_kernel_core::KernelError> {
+        Ok(self.0)
     }
 
     fn list_source_page(
@@ -70,8 +70,50 @@ fn a_deadline_three_days_away_is_in_the_shared_display_window() {
         urgency(
             Some(now + Duration::days(3)),
             now,
-            console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+            console_settings_domain::SettingKey::DeadlineDueSoonDays
+                .def()
+                .default
+                .unwrap()
+                .as_int()
+                .unwrap(),
         ),
         ("today", "warn")
     );
+}
+
+#[test]
+fn scheduled_system_acts_stay_neutral_even_when_their_date_has_passed() {
+    let now = OffsetDateTime::UNIX_EPOCH;
+    for days in [-1, 0, 3, 7] {
+        let page = merge_pages(
+            vec![ActionInboxSourcePage {
+                items: vec![ActionInboxSourceItem {
+                    context: None,
+                    id: "scheduled:1".into(),
+                    kind: "org_change_scheduled".into(),
+                    ref_code: String::new(),
+                    title: "예약".into(),
+                    site: None,
+                    who: None,
+                    due: Some(now + Duration::days(days)),
+                    submitted: None,
+                    links: vec![],
+                    created_at: now,
+                }],
+                total: 1,
+                total_is_exact: true,
+                has_more: false,
+            }],
+            now,
+            now,
+            None,
+            10,
+            7,
+        );
+        assert_eq!(
+            (page.items[0].urg, page.items[0].due_tone),
+            ("wait", "neutral")
+        );
+        assert_eq!(page.items[0].days_remaining, Some(days));
+    }
 }

@@ -26,7 +26,7 @@ pub(super) async fn load(
     sqlx::query("SET LOCAL jit = off")
         .execute(tx.as_mut())
         .await?;
-    let limit = query.limit.unwrap_or(50).clamp(1, 200);
+    let limit = query.page_limit();
     let bounds = super::filing_boundary::load(tx, *principal.org_id.as_uuid()).await?;
     let mut candidates = if query.kind.as_deref() == Some("AGE60") {
         Vec::new()

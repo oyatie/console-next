@@ -6,7 +6,7 @@ import { apiOf, bearerOf } from "./helpers/api";
 import { openUnit, sheet } from "./helpers/structure";
 import { SETUP_DEPARTMENT, staffedTenant } from "./setup-flows";
 
-test("the inbox uses the registered display window for a deadline beyond tomorrow", { tag: "@hr" }, async ({ browser }) => {
+test("scheduled system actions keep a neutral deadline under the registered window", { tag: "@hr" }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "inboxdeadline", "신고기한회사");
   const bearer = bearerOf(admin);
   await go(admin, "/org");
@@ -17,7 +17,7 @@ test("the inbox uses the registered display window for a deadline beyond tomorro
   expect(settings.status()).toBe(200);
   const { items } = await settings.json() as { items: { key: string; value: number; governance: string }[] };
   const window = items.find((item) => item.key === "display.deadline_due_soon_days");
-  expect(window).toMatchObject({ governance: "read_only" });
+  expect(window).toMatchObject({ governance: "platform_only" });
   expect(window!.value).toBeGreaterThanOrEqual(3);
 
   const unit = await openUnit(admin, SETUP_DEPARTMENT);
@@ -37,9 +37,11 @@ test("the inbox uses the registered display window for a deadline beyond tomorro
   expect(queue.status()).toBe(200);
   const page = await queue.json() as components["schemas"]["ActionInboxResponse"];
   expect(page.items.find((item) => item.links.some((link) => link.kind === "org_change" && link.id === change.id)))
-    .toMatchObject({ dueTone: "warn", days_remaining: 3 });
+    .toMatchObject({ dueTone: "neutral", days_remaining: 3 });
   await go(admin, "/");
   const inbox = admin.getByRole("region", { name: "업무함", exact: true });
-  await inbox.getByRole("button", { name: /^예정 \d+\+?$/ }).click();
+  await inbox.getByRole("link", { name: "업무함에서 모두 보기", exact: true }).click();
+  await expect(admin).toHaveURL(/\/inbox$/);
+  await inbox.getByRole("link", { name: /^예정 \d+\+?$/ }).click();
   await expect(inbox.locator(`a[href="/org/changes/${change.id}"]`)).toBeVisible();
 });

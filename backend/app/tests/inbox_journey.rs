@@ -163,6 +163,18 @@ async fn renewals_use_the_tenant_window_and_denied_managers_see_none(pool: PgPoo
         due.starts_with(&(today + Duration::days(7)).to_string()),
         "{due}"
     );
+    assert_eq!(rows[0]["dueTone"], "warn");
+    sqlx::query("INSERT INTO platform_setting_overrides(key,value) VALUES('display.deadline_due_soon_days','2')")
+        .execute(&pool).await.unwrap();
+    let narrowed = inbox(&ctx).await;
+    assert_eq!(
+        items_of(&narrowed, "contract_renewal")[0]["dueTone"],
+        "neutral"
+    );
+    assert_eq!(
+        items_of(&narrowed, "contract_renewal")[0]["days_remaining"],
+        7
+    );
     assert_denied_source(&pool, org, "contract_renewal").await;
 }
 

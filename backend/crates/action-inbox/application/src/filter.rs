@@ -134,7 +134,7 @@ struct ViewPort<'a> {
     filter: InboxFilter,
 }
 impl ActionInboxSourcePort for ViewPort<'_> {
-    fn deadline_due_soon_days(&self) -> i64 {
+    fn deadline_due_soon_days(&self) -> Result<i64, console_kernel_core::KernelError> {
         self.port.deadline_due_soon_days()
     }
     fn list_source_page(

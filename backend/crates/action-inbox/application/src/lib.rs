@@ -87,8 +87,12 @@ pub type ActionInboxSourceFuture<'a> =
 /// visibility and persistence predicates; the use case only merges already
 /// person-scoped projections.
 pub trait ActionInboxSourcePort: Send + Sync {
-    fn deadline_due_soon_days(&self) -> i64 {
-        console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS
+    fn deadline_due_soon_days(&self) -> Result<i64, console_kernel_core::KernelError> {
+        console_settings_domain::SettingKey::DeadlineDueSoonDays
+            .def()
+            .default
+            .and_then(console_settings_domain::SettingValue::as_int)
+            .ok_or_else(|| KernelError::internal("deadline display window unavailable"))
     }
     fn list_source_page(
         &self,
@@ -202,7 +206,7 @@ pub async fn list_action_inbox(
         as_of,
         cursor.as_ref(),
         limit,
-        port.deadline_due_soon_days(),
+        port.deadline_due_soon_days()?,
     );
     if !unavailable.is_empty() {
         page.total_is_exact = false;
@@ -312,7 +316,12 @@ mod tests {
                 project_item(
                     source,
                     now,
-                    console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS
+                    console_settings_domain::SettingKey::DeadlineDueSoonDays
+                        .def()
+                        .default
+                        .unwrap()
+                        .as_int()
+                        .unwrap()
                 )
                 .lane,
                 lane
@@ -451,7 +460,12 @@ mod tests {
             at + Duration::seconds(2),
             None,
             10,
-            console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+            console_settings_domain::SettingKey::DeadlineDueSoonDays
+                .def()
+                .default
+                .unwrap()
+                .as_int()
+                .unwrap(),
         );
         assert_eq!(
             page.items
@@ -492,7 +506,12 @@ mod tests {
             as_of,
             None,
             2,
-            console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+            console_settings_domain::SettingKey::DeadlineDueSoonDays
+                .def()
+                .default
+                .unwrap()
+                .as_int()
+                .unwrap(),
         );
         assert_eq!(first.total, 13);
         assert!(!first.total_is_exact);
@@ -511,7 +530,12 @@ mod tests {
             as_of,
             Some(&cursor),
             2,
-            console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+            console_settings_domain::SettingKey::DeadlineDueSoonDays
+                .def()
+                .default
+                .unwrap()
+                .as_int()
+                .unwrap(),
         );
         assert_eq!(second.items.len(), 1);
         assert_eq!(second.items[0].id, format!("work:{}", Uuid::from_u128(3)));
@@ -564,7 +588,12 @@ mod tests {
                     ..item("hr_lifecycle", id, now)
                 },
                 now,
-                console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+                console_settings_domain::SettingKey::DeadlineDueSoonDays
+                    .def()
+                    .default
+                    .unwrap()
+                    .as_int()
+                    .unwrap(),
             )
         };
         assert_ne!(case(1).fold_key, case(2).fold_key);
@@ -577,7 +606,12 @@ mod tests {
                     ..item("insurance_filing", 1, now)
                 },
                 now,
-                console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+                console_settings_domain::SettingKey::DeadlineDueSoonDays
+                    .def()
+                    .default
+                    .unwrap()
+                    .as_int()
+                    .unwrap(),
             )
         };
         assert_eq!(
@@ -607,7 +641,12 @@ mod tests {
             now,
             None,
             10,
-            console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+            console_settings_domain::SettingKey::DeadlineDueSoonDays
+                .def()
+                .default
+                .unwrap()
+                .as_int()
+                .unwrap(),
         );
         assert_eq!(page.items[0].urg, "today");
         assert_eq!(page.items[0].due_tone, "warn");

@@ -131,8 +131,8 @@ pub(crate) async fn apply(
             }
             let assessment = assess(
                 FilingInput {
-                    kind: &rule.filing_kind,
-                    insurer: &rule.insurer,
+                    kind: rule.filing_kind.clone(),
+                    insurer: rule.insurer.clone(),
                     on,
                     acquired_on: hire,
                     ended_on: (row.try_get::<String, _>("kind")? == "EXIT").then_some(on),

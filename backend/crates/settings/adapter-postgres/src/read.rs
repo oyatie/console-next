@@ -265,3 +265,18 @@ pub(crate) fn parse_direction(raw: &str) -> Direction {
 }
 
 pub(crate) use console_platform_db::settings_read::db_error;
+
+/// The shared display window, resolved through the same registry as /settings.
+pub async fn deadline_due_soon_days_in_tx(
+    conn: &mut PgConnection,
+    org: OrgId,
+    now: Timestamp,
+) -> Result<i64, KernelError> {
+    let key = SettingKey::DeadlineDueSoonDays;
+    resolve_in_tx(conn, org, &[key], None, now)
+        .await?
+        .get(&key)
+        .and_then(|value| value.as_ref().ok())
+        .and_then(|value| value.value.as_int())
+        .ok_or_else(|| KernelError::internal("deadline display window unavailable"))
+}

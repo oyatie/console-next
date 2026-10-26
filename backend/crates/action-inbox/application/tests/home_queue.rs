@@ -36,7 +36,12 @@ fn deadline_window_comes_from_the_server() {
         console_action_inbox_application::urgency(
             Some(now + Duration::days(3)),
             now,
-            console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+            console_settings_domain::SettingKey::DeadlineDueSoonDays
+                .def()
+                .default
+                .unwrap()
+                .as_int()
+                .unwrap(),
         ),
         ("today", "warn")
     );
@@ -91,7 +96,12 @@ fn every_home_kind_carries_its_lane_and_database_deadline_days() {
             now,
             None,
             10,
-            console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+            console_settings_domain::SettingKey::DeadlineDueSoonDays
+                .def()
+                .default
+                .unwrap()
+                .as_int()
+                .unwrap(),
         );
         let wire = serde_json::to_value(page).unwrap();
         assert_eq!(wire["items"][0]["lane"], lane, "{kind}");

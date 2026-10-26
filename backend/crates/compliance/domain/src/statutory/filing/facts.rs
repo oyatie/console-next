@@ -1,14 +1,14 @@
 use super::{Treaty, VisaCoverage};
 use console_kernel_core::KernelError;
 use serde::{Deserialize, Serialize};
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PensionDailySector {
     General,
     ConstructionNotice,
     Unverified,
 }
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FilingFacts {
     pub birth_date: Option<String>,
