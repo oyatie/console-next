@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type ColumnProps } from "react-aria-components";
 import { t } from "@console/i18n";
@@ -6,19 +6,23 @@ import { ALL_MATCHING, NO_SELECTION, applyKeys, selectionCount, shownKeys, type 
 import { DisabledReason } from "../disabled-reason/disabled-reason";
 import { listenRowKeys, rowIdOf } from "./row-keys";
 import css from "./long-table.module.css";
+import cards from "./table-cards.module.css";
+import type { CardColumn } from "./card-columns";
+import { CardContent } from "./card-content";
+import { useCardLayout } from "./use-card-layout";
 
 const NONE = new Set<string>();
 
 /** `width` is a React Aria column size: "1fr" (default), "2fr", a percentage, or px for codes and dates. */
-export type LongColumn<R> = { id: string; header: ReactNode; cell: (r: R) => ReactNode; rowHeader?: boolean; width?: ColumnProps["width"]; minWidth?: ColumnProps["minWidth"] };
+export type LongColumn<R> = CardColumn & { id: string; header: ReactNode; cell: (r: R) => ReactNode; width?: ColumnProps["width"]; minWidth?: ColumnProps["minWidth"] };
 
 const SELECT = "__select";
 // aria-rowcount counts loaded rows, not the server total (React Aria has no override); the caption
 // carries the total and the loaded count, and the grid is described by it.
-// Fixed geometry in px, as TableLayout needs it: the --row-h token (regular) or the compact row, and the checkbox column.
+// TableLayout needs pixel estimates; CSS measures each row so cards can wrap and desktop densities stay fixed.
 const LAYOUT = {
-  regular: { rowHeight: 40, headingHeight: 40, loaderHeight: 40 },
-  compact: { rowHeight: 32, headingHeight: 36, loaderHeight: 32 },
+  regular: { estimatedRowHeight: 40, headingHeight: 40, loaderHeight: 40 },
+  compact: { estimatedRowHeight: 32, headingHeight: 36, loaderHeight: 32 },
 };
 const SELECT_WIDTH = 48;
 /** Placeholder rows while the first page loads (long-table.module.css sizes the table to fit them). */
@@ -79,6 +83,30 @@ export function LongTable<R>(p: {
   const search = useRef<HTMLInputElement>(null);
   const region = useRef<HTMLElement>(null);
   const grid = useRef<HTMLElement | null>(null);
+  const hasCards = p.columns.some(c => c.card);
+  const cardLayout = useCardLayout(region, grid) && hasCards;
+  const [cardHeight, setCardHeight] = useState<number>();
+  useLayoutEffect(() => {
+    const table = grid.current;
+    if (!cardLayout || !table) return;
+    const resize = new ResizeObserver(([entry]) => {
+      const height = entry?.target.scrollHeight;
+      if (height) setCardHeight(height);
+    });
+    const measure = () => {
+      const card = table.querySelector<HTMLElement>(`.${cards.content}`);
+      resize.disconnect();
+      if (!card) return;
+      resize.observe(card);
+      const height = card.scrollHeight;
+      if (height) setCardHeight(height);
+    };
+    // Virtualization replaces the first rendered card as the user scrolls.
+    const rows = new MutationObserver(measure);
+    rows.observe(table, { childList: true, subtree: true });
+    measure();
+    return () => { resize.disconnect(); rows.disconnect(); };
+  }, [cardLayout]);
   const captionId = useId();
   const open = p.rowKeys?.onOpen ?? p.onRowAction;
   const hasFind = Boolean(p.find);
@@ -107,7 +135,9 @@ export function LongTable<R>(p: {
   const density = p.density ?? "regular";
   const loaded = p.rows.map(p.rowId);
   const sel = p.selection;
-  const cols: LongColumn<R>[] = sel ? [{ id: SELECT, header: null, cell: () => null, width: SELECT_WIDTH }, ...p.columns] : p.columns;
+  const titleId = (r: R) => `${captionId}-${encodeURIComponent(p.rowId(r))}-title`;
+  const content: LongColumn<R>[] = cardLayout ? [{ id: "__card", header: p.label, rowHeader: true, cell: (r) => <CardContent row={r} columns={p.columns} titleId={titleId(r)} /> }] : p.columns;
+  const cols: LongColumn<R>[] = sel ? [{ id: SELECT, header: null, cell: () => null, width: SELECT_WIDTH }, ...content] : content;
   const slotted = p.findSlot !== undefined;
   const [find, setFind] = useState({ source: p.find?.defaultValue, value: p.find?.defaultValue ?? "" });
   if (find.source !== p.find?.defaultValue) setFind({ source: p.find?.defaultValue, value: p.find?.defaultValue ?? "" });
@@ -119,7 +149,15 @@ export function LongTable<R>(p: {
     </SearchField>
   );
   return (
-    <section ref={region} className={css.region} aria-label={p.label} data-density={density}>
+    <section ref={region} className={`${css.region} ${hasCards ? cards.container : ""}`} aria-label={p.label} data-density={density}
+      onKeyDownCapture={(e) => {
+        if (!cardLayout || e.key !== "Enter" || !p.onRowAction || !(e.target instanceof HTMLElement) || !e.target.matches('[role="row"], [role="rowheader"], [role="gridcell"]')) return;
+        const id = rowIdOf(e.target);
+        if (!id) return;
+        e.preventDefault();
+        e.stopPropagation();
+        p.onRowAction(id);
+      }}>
       {(!slotted || p.caption != null) && (
         <div className={css.bar}>
           {/* Held while the count loads: the hints and the search beside it must not slide over when it lands. */}
@@ -132,7 +170,7 @@ export function LongTable<R>(p: {
         <SelectionBar sel={sel} loaded={loaded.length} total={p.total} hasMore={p.hasMore} limit={p.selectAllLimit} actions={p.selectionActions} unit={p.countUnit ?? "item"} onChange={p.onSelectionChange} />
       )}
       <ResizableTableContainer>
-      <Virtualizer layout={TableLayout} layoutOptions={LAYOUT[density]}>
+      <Virtualizer layout={TableLayout} layoutOptions={cardLayout && cardHeight ? { ...LAYOUT[density], estimatedRowHeight: cardHeight } : LAYOUT[density]}>
         <Table
           ref={(el) => {
             grid.current = el;
@@ -140,7 +178,8 @@ export function LongTable<R>(p: {
           }}
           aria-label={p.label}
           aria-describedby={p.caption ? captionId : undefined}
-          className={css.table}
+          className={`${css.table} ${cards.surface}`}
+          data-layout={cardLayout ? "cards" : "rows"}
           // An empty virtualized body is as tall as the viewport, so give the empty and loading states a height.
           data-state={p.rows.length ? undefined : p.loading ? "loading" : "empty"}
           selectionMode={sel ? "multiple" : "none"}
@@ -171,7 +210,7 @@ export function LongTable<R>(p: {
                 const id = p.rowId(r);
                 return (
                   <Row id={id} columns={cols} className={css.row} onHoverStart={p.onRowHover && (() => p.onRowHover?.(id))}>
-                    {(c) => <Cell className={css.td}>{c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r)}</Cell>}
+                    {(c) => <Cell className={css.td} render={cardLayout && c.id === "__card" ? (props) => <div {...props} aria-labelledby={titleId(r)} /> : undefined}>{c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.cell(r)}</Cell>}
                   </Row>
                 );
               }}
