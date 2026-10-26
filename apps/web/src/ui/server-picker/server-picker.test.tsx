@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { resolve } from "node:path";
-import { realpathSync } from "node:fs";
 import { AxeBuilder } from "@axe-core/playwright";
 import { chromium, expect as expectElement, type Browser, type Page } from "@playwright/test";
-import { createServer, type ViteDevServer } from "vite";
+import type { ViteDevServer } from "vite";
+import { pickerTestServer } from "./browser-test";
 import { afterAll, beforeAll, expect, test } from "vitest";
 
 let server: ViteDevServer;
@@ -11,16 +10,7 @@ let browser: Browser;
 let page: Page;
 
 beforeAll(async () => {
-  server = await createServer({
-    // Pre-bundle the page's deps: a cold cache otherwise re-optimizes mid-test and loads React twice.
-    optimizeDeps: { include: ["react", "react/jsx-dev-runtime", "react-dom/client", "intl-messageformat", "lucide-react", "react-aria-components"] },
-    resolve: { dedupe: ["react", "react-dom"] },
-    configFile: false, cacheDir: ".cache/server-picker-test", logLevel: "error",
-    server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), realpathSync("node_modules/pretendard")] } },
-    plugins: [{
-      name: "server-picker-test",
-      resolveId: (id) => id === "/picker-test.js" ? "\0picker-test" : undefined,
-      load: (id) => id === "\0picker-test" ? `
+  server = await pickerTestServer("picker-test", `
         import { createElement as h, useState } from 'react';
         import { createRoot } from 'react-dom/client';
         import { loadCatalog } from '@console/i18n';
@@ -53,17 +43,7 @@ beforeAll(async () => {
             h('output', { id: 'selected' }, value), h('output', { id: 'clicks' }, clicks));
         }
         createRoot(document.getElementById('root')).render(h(Picker));
-      ` : undefined,
-      configureServer: (vite) => {
-        vite.middlewares.use((req, res, next) => {
-          if (req.url !== "/picker-test") return next();
-          res.setHeader("Content-Type", "text/html");
-          res.end('<html lang="en"><title>Picker</title><div id="root"></div><script type="module" src="/picker-test.js"></script></html>');
-        });
-      },
-    }],
-  });
-  await server.listen();
+      `);
   browser = await chromium.launch();
   page = await (await browser.newContext()).newPage();
   page.setDefaultTimeout(15000);

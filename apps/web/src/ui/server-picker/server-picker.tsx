@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button, ComboBox, Input, Label, ListBox, ListBoxItem, Popover, Text, TextField } from "react-aria-components";
+import { Button, ComboBox, FieldError, Input, Label, ListBox, ListBoxItem, Popover, Text, TextField } from "react-aria-components";
 import { Plus, Search, Send } from "lucide-react";
 import { t } from "@console/i18n";
 import { homonymOf, suffixMatches, SUFFIX } from "./homonym";
@@ -36,6 +36,11 @@ export function ServerPicker(p: {
   empty: ReactNode;
   escape?: PickerEscape;
   isRequired?: boolean;
+  /** Total matching results when the server returns a page. */
+  total?: number;
+  readOnly?: boolean;
+  disabledReason?: string;
+  error?: ReactNode;
 }) {
   const [pending, setPending] = useState<PickerOption>();
   const [suffix, setSuffix] = useState("");
@@ -57,6 +62,7 @@ export function ServerPicker(p: {
   }, [open]);
   const homonyms = homonymOf(p.options, pending);
   const pick = (key: string | null) => {
+    if (p.readOnly || p.disabledReason) return;
     // React Aria re-reports the current key (e.g. on blur); a confirmed namesake must not be asked again.
     if (key !== null && key === p.value) return;
     const o = p.options.find((x) => x.id === key);
@@ -70,6 +76,7 @@ export function ServerPicker(p: {
     p.onChange(o ? o.id : null);
   };
   const confirm = (text: string) => {
+    if (p.readOnly || p.disabledReason) return;
     setSuffix(text);
     if (pending && suffixMatches(pending, text)) {
       p.onChange(pending.id);
@@ -80,8 +87,9 @@ export function ServerPicker(p: {
   };
   // Only while nothing is chosen: a selection writes its name back into the query, which may itself find nothing.
   const none = p.value === null && !pending && p.query.trim() !== "" && !p.loading && p.options.length === 0;
+
   return (
-    <div className={css.picker}>
+    <div className={css.picker} data-readonly={p.readOnly || undefined}>
       <ComboBox
         className="field"
         items={p.options}
@@ -90,19 +98,24 @@ export function ServerPicker(p: {
         onOpenChange={setOpen}
         selectedKey={pending ? pending.id : (p.value ?? null)}
         onSelectionChange={(k) => pick(k === null ? null : String(k))}
-        menuTrigger="input"
+        menuTrigger={p.readOnly ? "manual" : "input"}
         allowsEmptyCollection
         isRequired={p.isRequired}
+        isDisabled={Boolean(p.disabledReason)}
+        isReadOnly={p.readOnly}
+        isInvalid={p.error != null || undefined}
       >
         <Label className="field__label">{p.label}</Label>
         <div className={css.input}>
           <Search aria-hidden="true" className={css.icon} />
           <Input ref={input} className="field__input" />
         </div>
+        {p.disabledReason && <Text slot="description" className={css.sub}>{p.disabledReason}</Text>}
+        <FieldError className={css.error}>{p.error}</FieldError>
         <Popover className={`popover ${css.pop}`}>
-          <div className={css.group} aria-hidden="true">
-            <span>{p.group}</span>
-            <span>{p.loading ? t("uiServerPicker.loading") : t("uiServerPicker.count", { count: p.options.length })}</span>
+          <div className={css.group}>
+            <span aria-hidden="true">{p.group}</span>
+            <span role="status">{p.loading ? t("uiServerPicker.loading") : t("uiServerPicker.count", { count: p.total ?? p.options.length })}</span>
           </div>
           <ListBox className="listbox" renderEmptyState={() => <div className={css.empty}>{p.loading ? t("uiServerPicker.loading") : t("uiServerPicker.none")}</div>}>
             {(o: PickerOption) => (
@@ -117,7 +130,7 @@ export function ServerPicker(p: {
         </Popover>
       </ComboBox>
       {pending && homonyms.length > 1 && (
-        <TextField className={`field ${css.homonym}`} value={suffix} onChange={confirm} isRequired>
+        <TextField className={`field ${css.homonym}`} value={suffix} onChange={confirm} isRequired isReadOnly={p.readOnly} isDisabled={Boolean(p.disabledReason)}>
           <Label className="field__label">{t("uiServerPicker.homonym", { count: homonyms.length, digits: SUFFIX })}</Label>
           <Input className={`field__input ${css.suffix}`} inputMode="numeric" maxLength={SUFFIX} autoComplete="off" />
           <Text slot="description" className={css.sub}>{t("uiServerPicker.homonym.echo", { name: pending.name, code: pending.code ?? "" })}</Text>
@@ -127,7 +140,7 @@ export function ServerPicker(p: {
         <div className={css.escape}>
           <span className={css.missing} role="status">{p.empty}</span>
           {p.escape && (
-            <Button className="btn" onPress={p.escape.kind === "add" ? p.escape.onAdd : p.escape.onRequest}>
+            <Button className="btn" isDisabled={Boolean(p.readOnly || p.disabledReason)} onPress={p.escape.kind === "add" ? p.escape.onAdd : p.escape.onRequest}>
               {p.escape.kind === "add" ? <Plus aria-hidden="true" /> : <Send aria-hidden="true" />}
               {p.escape.label ?? t(`uiServerPicker.escape.${p.escape.kind}`, { query: p.query.trim() })}
             </Button>
