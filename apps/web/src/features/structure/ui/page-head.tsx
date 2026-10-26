@@ -6,9 +6,10 @@ import { t } from "@console/i18n";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { ActionMenu } from "../../../ui/menu/action-menu";
 import type { Structure } from "../domain/model";
-import { freshOnOpen, get } from "../../../lib/query";
+import { get } from "../../../lib/query";
 import { authzApplies, authzQuery, granted, type Feature } from "../../../reference/authz/api";
 import { usePolicyRouted } from "../../../reference/settings/ui/use-policy-routed";
 import { AsOfControl } from "../../../ui/asof-control/asof-control";
@@ -31,13 +32,14 @@ const VIEWS: { id: View; icon: typeof Network }[] = [
  * unless the tenant routes org changes), as-of date with the scheduled changes beside it (org-26), the change list and
  * history as a visible entry (org-26); the receipt of a change made from the chart sits in the chart's gutter (org-19).
  */
-export function PageHead({ s, view, cmd }: { s?: Structure; view: View; cmd: Commands }) {
+export function PageHead({ s, view, cmd, changeDates, loadingDates, readFailed = false }: {
+  s?: Structure; view: View; cmd: Commands; changeDates?: readonly string[]; loadingDates?: boolean; readFailed?: boolean;
+}) {
   const nav = route.useNavigate();
   const navigate = useNavigate();
   const q = route.useSearch();
   const today = todayKst();
   const value = q.compare_b ?? q.as_of ?? today;
-  const dates = freshOnOpen(useQuery({ ...get("/api/v1/org-structure/change-dates", { params: { query: { from: "0001-01-01", to: "9999-12-31", known_at: q.known_at } } }), refetchOnMount: "always" }));
   const readOnly = cmd.readOnly;
   const selected = s?.byId.get(q.sel ?? "");
   const parent = selected?.kind === "site" ? selected : selected?.siteId ? s?.byId.get(selected.siteId) : s?.root.children[0]?.children[0];
@@ -77,18 +79,24 @@ export function PageHead({ s, view, cmd }: { s?: Structure; view: View; cmd: Com
       {!readOnly && orgEdit && selected?.kind === "entity" && <AddUnit n={selected} primary />}
       <span className="grow" />
       {scheduled > 0 && <Link to="/org/changes" search={{ view: "ready" }} className={buttonClass("ghost", { size: "sm", className: css.scheduled })} id="org-scheduled">{t("orgChange.chip.scheduled", { count: scheduled })}</Link>}
+      {readFailed ? <DisabledReason reason={t("structure.readFailed")} control={(p) => <span className="row">
+        <Button variant="ghost" {...p}><History size={16} aria-hidden />{t("orgChange.chip.history")}</Button>
+        {imports.length > 0 && <Button variant="ghost" {...p}><Upload size={16} aria-hidden />{t("structure.import.label")}</Button>}
+        <Button {...p}><Download size={16} aria-hidden />{t("structure.export.open")}</Button>
+        <Button {...p}>{t("asof.compare")}</Button>
+      </span>} /> : <>
       <Link to="/org/history" className={buttonClass("ghost")}><History size={16} aria-hidden />{t("orgChange.chip.history")}</Link>
       <div id="structure-import" tabIndex={-1} className={css.importEntry} data-hidden={readOnly || imports.length === 0 || undefined} inert={readOnly || imports.length === 0 || undefined}>
         <ActionMenu label={t("structure.import.label")} trigger={<><Upload size={16} aria-hidden />{t("structure.import.label")}</>} actions={imports} />
       </div>
       <Button onClick={() => setExporting(true)} disabled={!s || s.root.children.length === 0}><Download size={16} aria-hidden />{t("structure.export.open")}</Button>
+      </>}
       {exporting && s && <ExportDialog s={s} onClose={() => setExporting(false)} />}
       {cmd.pending && <span className="sr-only" role="status">{t("structure.saving")}</span>}
     </div>
-    <AsOfControl today={today} value={value} knownAt={q.known_at} onChange={(date, known_at) => void nav({ search: (search) => ({ ...search, as_of: date === today ? undefined : date, known_at, compare_a: undefined, compare_b: undefined, act: undefined }) })} changeDates={dates.data?.items ?? []} loadingDates={dates.isFetching} />
-    {dates.isError && <p role="alert">{t("asof.error")} <Button onClick={() => void dates.refetch()}>{t("asof.retry")}</Button></p>}
+    <AsOfControl today={today} value={value} knownAt={q.known_at} onChange={(date, known_at) => void nav({ search: (search) => ({ ...search, as_of: date === today ? undefined : date, known_at, compare_a: undefined, compare_b: undefined, act: undefined }) })} changeDates={changeDates} loadingDates={loadingDates} />
     {value > today && !q.known_at && !q.compare_a && parent?.unitId && <Button onClick={() => void nav({ search: (search) => ({ ...search, act: "create", sel: parent.unitId, kind: "DEPARTMENT" }) })}>{t("asof.create")}</Button>}
-    <CompareControl />
+    {!readFailed && <CompareControl />}
     </>
   );
 }

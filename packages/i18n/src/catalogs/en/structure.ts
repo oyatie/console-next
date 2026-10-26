@@ -14,6 +14,7 @@ export const enStructure: Record<keyof typeof koStructure, string> = {
   "structure.import.label": "Import",
   "structure.import.roster": "Import the employee roster",
   "structure.export.open": "Export",
+  "structure.readFailed": "Organization information could not be loaded.",
   "structure.saving": "Saving",
   "structure.side": "Change proposal",
   "structure.loading": "Loading the chart · the boxes keep their places while they fill in",
