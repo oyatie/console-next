@@ -17,7 +17,11 @@ export function ProfileName({ current }: { current: string }) {
   return <>
     <Button variant="ghost" onClick={() => { setName(current); setOpen(true); }}>{t("account.name.edit")}</Button>
     <Dialog open={open} title={t("account.name.edit")} onClose={() => setOpen(false)}>
-      <Form onSubmit={() => save.mutate(name.trim())}>
+      <Form aria-busy={save.isSending} onSubmit={() => {
+        if (save.isPending) return;
+        if (name.trim() === current.trim()) setOpen(false);
+        else save.mutate(name.trim());
+      }}>
         <Field label={t("account.field.name")} required>{(props) => <TextInput {...props} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
         <CommandError error={save.error} />
         <div className="form__actions"><Button type="submit" disabled={!name.trim() || save.isPending}>{t("account.name.edit")}</Button></div>
