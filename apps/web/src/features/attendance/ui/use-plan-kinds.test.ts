@@ -98,19 +98,29 @@ test.each([2_000, 10_000])("2,000 people × %i draft lookups stay within the int
     const measure = (source: Parameters<typeof window.planKinds>[0], days: Parameters<typeof window.planKinds>[1], drafts: string[], kind: string) => {
       const times: number[] = [];
       let matches = 0;
+      // Counts every read of a row's plan data: an index built once per payload reads each row once per run,
+      // a lookup that rescans rows reads them once per draft (deterministic, unlike a wall-clock budget).
+      let reads = 0;
+      const counted = source.map(row => new Proxy(row, { get: (target, key, receiver) => {
+        if (key === "cells" || key === "day") reads++;
+        return Reflect.get(target, key, receiver);
+      } }));
       for (let run = 0; run < 5; run++) {
         const start = performance.now();
-        const lookup = window.planKinds([...source], days);
+        const lookup = window.planKinds([...counted], days);
         for (let pass = 0; pass < 3; pass++) for (const key of drafts) if (lookup(key) === kind) matches++;
         times.push(performance.now() - start);
       }
-      return { median: times.sort((a, b) => a - b)[2]!, matches };
+      return { median: times.sort((a, b) => a - b)[2]!, matches, reads, rows: source.length };
     };
     return { month: measure(rows, dates, keys, "WORK"), day: measure(dayRows, dates[0]!, dayKeys, "REST_DAY") };
   }, count);
   for (const result of [measured.month, measured.day]) {
     expect(result.matches).toBe(count * 3 * 5);
-    // Three draft-validation passes plus a cold index must leave room inside the 200 ms INP gate.
-    expect(result.median).toBeLessThan(50);
+    // Indexed once per payload: plan data is read once per row per run, never per draft lookup.
+    expect(result.reads).toBe(result.rows * 5);
+    // A loose sanity ceiling only (the 200 ms INP gate); the read count above is the real regression guard,
+    // because wall-clock budgets on shared CI runners fail on noise (54.5 ms vs 50 ms on 2026-10-26).
+    expect(result.median).toBeLessThan(200);
   }
 });
