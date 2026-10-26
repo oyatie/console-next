@@ -14,6 +14,7 @@ export const koStructure = {
   "structure.import.label": "가져오기",
   "structure.import.roster": "직원 명단 가져오기",
   "structure.export.open": "내보내기",
+  "structure.readFailed": "조직 정보를 불러오지 못했습니다.",
   "structure.saving": "저장하는 중입니다",
   "structure.side": "조직 변경 작성",
   "structure.loading": "조직도를 불러오는 중입니다 · 상자 자리는 그대로이고 내용만 채워집니다",

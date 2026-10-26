@@ -2,10 +2,12 @@ import { RegistryExportContext } from "./export-scope";
 import type { ChartNode } from "../domain/model";
 import type { OrgStructure } from "@console/api/pending";
 import { useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { todayKst } from "../../../lib/pure/today";
 import { t } from "@console/i18n";
 import { QueryState } from "../../../lib/react/query-state";
+import { freshOnOpen, get } from "../../../lib/query";
 import { EmptyState } from "../../../ui/empty-state";
 import { ChartView } from "./chart-view";
 import { FirstRun } from "./first-run";
@@ -44,6 +46,8 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
   const { view = "chart", focus, act, sel: picked } = search;
   const navigate = route.useNavigate();
   const { s, tree, ready, diff } = useStructure(search);
+  const dates = freshOnOpen(useQuery({ ...get("/api/v1/org-structure/change-dates", { params: { query: { from: "0001-01-01", to: "9999-12-31", known_at: search.known_at } } }), refetchOnMount: "always" }));
+  const pageRead = { ...ready, refetch: () => Promise.all([ready.refetch(), dates.refetch()]) };
   const cmd = useStructureCommands(!s || s.readOnly);
   // A place picked elsewhere (⌘K, a link) arrives as `sel` and becomes the selection; a pick from outside the chart
   // re-centres it. The values this page writes itself (one box chosen on the chart) arrive the same way, a frame or two
@@ -90,15 +94,16 @@ export function StructurePage({ fixLink, proposal, panel, sheets }: {
   return (
     <RegistryExportContext.Provider value={view === "list" ? exportRows : null}>
     <div className={`page ${css.page}`}>
-      <PageHead s={s} view={view} cmd={cmd} />
-      <QueryState q={ready} loading={<ChartSkeleton />}>{() => <>
+      <PageHead s={s} view={view} cmd={cmd} changeDates={dates.isSuccess ? dates.data?.items : undefined} loadingDates={dates.isFetching} readFailed={!!ready.error && !s} />
+      {!ready.error && dates.isError && <QueryState q={dates} inline own={() => t("asof.error")}>{() => null}</QueryState>}
+      <QueryState q={pageRead} loading={<ChartSkeleton />}>{() => <>
       <div className={css.body}>
           {
               !s ? null
               : empty ? (s.readOnly ? <EmptyState title={t("asof.noRecords")} reason={null} /> : <FirstRun />)
               : view === "list" ? <RegistryView s={s} cmd={cmd} sel={sel} onSelect={select} onVisibleRows={setExportRows} />
               : view === "outline" ? <OutlineView s={s} cmd={cmd} sel={sel} onSelect={select} />
-              : <ChartView key={focus ?? "tenant"} pick={jump} dimmed={!!tree.error} s={s} cmd={cmd} focusId={focus} onFocus={onFocus} sel={sel} onSelect={select} />
+              : <ChartView key={focus ?? "tenant"} pick={jump} dimmed={!!ready.error} s={s} cmd={cmd} focusId={focus} onFocus={onFocus} sel={sel} onSelect={select} />
             }
 
         {/* The setup panel belongs to the home view (S1); a focused chart (S2) takes the full width. */}
