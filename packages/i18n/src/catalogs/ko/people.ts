@@ -9,7 +9,6 @@ export const koPeople = {
   "people.tab.employees": "직원",
   "people.tab.accounts": "계정",
   "people.register": "직원 등록",
-  "people.search.accounts": "계정 검색",
   "people.noMatch.title": "검색 결과가 없습니다",
   "people.noMatch.reason": "“{q}” 검색어와 일치하는 직원이 없습니다.",
   "people.noMatch.filters": "선택한 조건에 맞는 직원이 없습니다. 상태·조직·확인 필터를 변경해 보십시오.",

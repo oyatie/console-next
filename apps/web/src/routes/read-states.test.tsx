@@ -35,7 +35,7 @@ const screens = [
   { name: "entities", component: EntityList, query: entitiesRef, control: "entityQuick.title" },
   { name: "job titles", component: JobTitlesPage, query: jobTitlesQuery, control: "titles.add.commit" },
   { name: "platform", component: TenantsPage, query: tenantsQuery, control: "tenants.create" },
-  { name: "accounts", component: () => <Accounts q="" />, query: get("/api/v1/directory/people", { params: { query: { limit: 100, include_inactive: false } } }), control: "accounts.includeInactive" },
+  { name: "accounts", component: () => <Accounts />, query: get("/api/v1/directory/people", { params: { query: { limit: 100, include_inactive: false } } }), control: "accounts.includeInactive" },
   { name: "day attendance", component: DayTab, query: dayBoardQuery(addDays(todayKst(), -1)), control: "attendanceRecords.toolbar.prevDay" },
   { name: "month attendance", component: MonthTab, query: monthGridPages(todayKst().slice(0, 7)), control: "attendanceRecords.toolbar.prevMonth" },
 ] as const;

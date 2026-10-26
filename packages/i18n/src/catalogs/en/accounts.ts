@@ -2,7 +2,6 @@ import type { koAccounts } from "../ko/accounts";
 
 export const enAccounts: Partial<Record<keyof typeof koAccounts, string>> = {
   "accounts.search.label": "Search accounts by name or employee number",
-  "accounts.search.placeholder": "Name or employee number",
 
   "accounts.title": "Accounts",
   "accounts.invite": "Invite account",

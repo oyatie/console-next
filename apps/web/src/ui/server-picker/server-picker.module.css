@@ -2,6 +2,9 @@
 .picker { display: flex; flex-direction: column; gap: var(--space-2); }
 .input { position: relative; display: flex; align-items: center; }
 .input :global(.field__input) { flex: 1; padding-left: var(--space-6); }
+.input :global(.field__input[readonly]) { background: var(--canvas); border-style: dashed; cursor: default; }
+.input :global(.field__input:disabled) { background: var(--muted); color: var(--steel); cursor: not-allowed; }
+.input :global(.field__input[aria-invalid="true"]) { border-color: var(--danger-solid); }
 .icon { position: absolute; left: var(--space-2); width: var(--space-4); height: var(--space-4); color: var(--steel); pointer-events: none; }
 .pop { width: var(--trigger-width); min-width: calc(var(--panel-w) / 1.2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); overflow: hidden; }
 .group { display: flex; justify-content: space-between; padding: var(--space-2) var(--space-3) var(--space-1); font-size: var(--text-xs); color: var(--steel); font-weight: var(--fw-medium); }

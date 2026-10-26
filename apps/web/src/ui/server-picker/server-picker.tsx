@@ -86,7 +86,8 @@ export function ServerPicker(p: {
     }
   };
   // Only while nothing is chosen: a selection writes its name back into the query, which may itself find nothing.
-  const none = p.value === null && !pending && p.query.trim() !== "" && !p.loading && p.options.length === 0;
+  const none = p.value === null && !pending && p.query.trim() !== "" && !p.loading && p.error == null && p.options.length === 0;
+  const truncated = !p.loading && p.total != null && p.options.length > 0 && p.total > p.options.length;
 
   return (
     <div className={css.picker} data-readonly={p.readOnly || undefined}>
@@ -126,7 +127,7 @@ export function ServerPicker(p: {
               </ListBoxItem>
             )}
           </ListBox>
-          <div className={css.foot} aria-hidden="true">{t("uiServerPicker.keys")}</div>
+          <div className={css.foot} aria-hidden={truncated ? undefined : true}>{truncated ? t("uiServerPicker.narrow", { count: p.options.length }) : t("uiServerPicker.keys")}</div>
         </Popover>
       </ComboBox>
       {pending && homonyms.length > 1 && (
