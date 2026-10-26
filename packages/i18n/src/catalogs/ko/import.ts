@@ -5,6 +5,11 @@ import { koEnum } from "./enum";
 export const koImport = {
   // People: roster import
   "import.title": "직원 명부 가져오기",
+  "import.reference.entities": "법인",
+  "import.reference.numbers": "사번 규칙",
+  "import.reference.reasons": "사유 코드",
+  "import.reference.failed": "{name} 정보를 불러오지 못했습니다.",
+  "import.reference.required": "필요한 기준 정보를 불러온 뒤 파일을 선택할 수 있습니다.",
   "import.step.upload": "파일 선택",
   "import.step.preview": "열 확인",
   "import.step.dryrun": "모의 반영",
