@@ -33083,6 +33083,8 @@ export interface operations {
                 issues_only?: boolean;
                 /** @description show only people without a resolved schedule; counts remain for the whole scope */
                 no_schedule_only?: boolean;
+                /** @description return every row without folding normal people; existing filters still apply */
+                rows?: "all";
             };
             header?: never;
             path?: never;

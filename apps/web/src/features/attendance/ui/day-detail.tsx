@@ -8,6 +8,7 @@ import { previewEntries, type BoardRow, type DayBoard } from "../api";
 import { baseOf, cellKey, draftState, readPaste, splitKey } from "../domain/grid";
 import { duration } from "../domain/minutes";
 import { entryText, refusalText, shiftText } from "../present";
+import css from "./records.module.css";
 import { MarkChip } from "./mark-chip";
 import type { useDrafts } from "./use-drafts";
 import { usePreview } from "./use-preview";
@@ -34,6 +35,7 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
   };
   return (
     <div
+      className={css.detail}
       onPaste={(e) => {
         const text = e.clipboardData.getData("text/plain");
         if (!text.includes("\n")) return;
@@ -54,6 +56,11 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
       <Table<BoardRow>
         label={t("attendanceRecords.detail.label")}
         rows={rows}
+        groups={board.groups.map(g => ({
+          id: `${g.workplace_id}-${g.unit_id}`,
+          header: <>{g.name} · {t("attendanceRecords.board.groupMeta", { people: g.people, normal: g.normal, unscheduled: g.no_schedule, blocking: g.marks.blocking, decision: g.marks.decision })}</>,
+          rows: g.rows,
+        }))}
         rowId={(r) => r.employee_id}
         columns={[
           { header: t("attendanceRecords.grid.number"), cell: (r) => r.employee_number ?? "", fit: true },
@@ -75,7 +82,7 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
           },
           { header: t("attendanceRecords.detail.recorded"), cell: (r) => (r.day.entry ? entryText(r.day.entry.kind, r.day.entry.segments) : "–") },
           { header: t("attendanceRecords.detail.recognised"), cell: recognised },
-          { header: t("attendanceRecords.detail.result"), cell: (r) => r.day.marks.map((m) => <MarkChip key={m} mark={m} />) },
+          { header: t("attendanceRecords.detail.result"), cell: (r) => r.day.marks.filter(m => m !== "NO_SCHEDULE").map((m) => <MarkChip key={m} mark={m} />) },
           { header: t("attendanceRecords.detail.source"), cell: (r) => (r.day.entry ? t(`attendanceRecords.source.${r.day.entry.source}`) : "–") },
         ]}
       />
