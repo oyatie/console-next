@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 # Runner-only class B. No registry writes or OIDC signing; all inputs came from a dev push.
 set -euo pipefail
-mkdir -p .tmp/evidence
+mkdir -p .tmp/evidence .tmp/exit-bundle
 started="${SECONDS}"
 cluster="platform-exit-${REPETITION:-1}"
 export KUBECONFIG="${RUNNER_TEMP:?}/platform-exit-${REPETITION:-1}.kubeconfig"
