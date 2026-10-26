@@ -57,6 +57,16 @@ test.each([1440, 390])("menu disclosure is responsive at %spx", async width => {
   await element(page.getByRole("button", { name: "메뉴" })).toBeVisible({ visible: width === 390 });
 });
 
+test.each([390, 640, 641, 1440])("account trigger is icon-only through 640px, retaining its full name at %spx", async width => {
+  await page.setViewportSize({ width, height: 900 });
+  await open();
+  const name = "남궁가나다라마바사 전체 이름";
+  const trigger = page.getByRole("button", { name, exact: true });
+  await element(trigger).toHaveAccessibleName(name);
+  await element(trigger.locator("svg")).toBeVisible();
+  await element(trigger.getByText(name, { exact: true })).toBeVisible({ visible: width > 640 });
+});
+
 test("tenant phase links home only during SETUP and preserves the full tenant name", async () => {
   await open();
   await element(page.getByTitle("이름이 아주 긴 고객 계정 이름 전체")).toHaveText("이름이 아주 긴 고객 계정 이름 전체");

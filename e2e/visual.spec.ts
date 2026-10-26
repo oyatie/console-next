@@ -25,6 +25,7 @@ for (const theme of ["light", "dark"] as const) {
       const name = "남궁가나다라마바사아자차카타파하 선임 인사총무담당";
       const trigger = section.getByRole("button", { name, exact: true }).first();
       await expect(trigger).toHaveAccessibleName(name);
+      await expect(trigger.getByText(name, { exact: true })).toBeVisible({ visible: width > 640 });
       expect(await section.evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);
       await trigger.press("Enter");
       const menu = page.getByRole("menu", { name, exact: true });
