@@ -39,7 +39,7 @@ const FROM: &str = " FROM sources l \
    CASE WHEN kind.k IN ('LOSE','SEPARATION_CERTIFICATE') THEN COALESCE(l.from_org_unit_id, x.org_unit_id) \
         ELSE COALESCE(l.to_org_unit_id, x.org_unit_id) END AS org_unit_id) e \
  LEFT JOIN employee_employment_profiles profile ON profile.org_id=x.org_id AND profile.employee_id=x.id \
- LEFT JOIN LATERAL (SELECT (SELECT r.applicability_facts FROM insurance_filing_records r WHERE r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer=agency.insurer AND r.filing_kind=kind.k AND r.applicability_facts IS NOT NULL ORDER BY r.version DESC LIMIT 1) AS applicability_facts) assessment ON TRUE \
+ LEFT JOIN age_facts assessment ON assessment.source_id=l.id AND assessment.insurer=agency.insurer AND assessment.filing_kind=kind.k \
 ";
 const PLACEMENT: &str = " LEFT JOIN LATERAL (SELECT a.legal_entity_id, a.workplace_id FROM employment_assignments a \
    WHERE a.org_id = l.org_id AND a.employee_id = l.employee_id AND a.superseded_at IS NULL \
@@ -59,6 +59,7 @@ pub(super) async fn rows(
     tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,
     query: &FilingQuery,
+    register: &console_compliance_domain::statutory::StatutoryRegister,
 ) -> Result<Vec<PgRow>, HrError> {
     let bounds = super::filing_boundary::load(tx, *principal.org_id.as_uuid()).await?;
     let reach = hr_reach_in(principal, Feature::EmployeeDirectoryManage, Tier::Branch)?;
@@ -76,6 +77,9 @@ pub(super) async fn rows(
          CROSS JOIN LATERAL (SELECT time_zone FROM lifecycle_country_packs WHERE is_default \
            UNION SELECT time_zone FROM workplaces WHERE org_id=tenant.id \
            UNION SELECT time_zone FROM legal_entities WHERE org_id=tenant.id) zones GROUP BY tenant.id,phase.go_live_at), \
+         age_facts AS MATERIALIZED (SELECT DISTINCT ON (COALESCE(event_id,request_id),insurer,filing_kind) COALESCE(event_id,request_id) AS source_id,insurer,filing_kind,applicability_facts \
+           FROM insurance_filing_records WHERE org_id=(SELECT org_id FROM boundary) AND filing_kind='AGE60' AND applicability_facts IS NOT NULL \
+           ORDER BY COALESCE(event_id,request_id),insurer,filing_kind,version DESC), \
          sources AS (SELECT id,org_id,employee_id,event_type,state,effective_date,created_at,from_org_unit_id,to_org_unit_id,to_workplace_id,NULL::text AS request_kind,NULL::uuid AS source_event_id,effective_date AS placement_date,event_type AS source_type FROM employee_lifecycle_events WHERE org_id=(SELECT org_id FROM boundary) UNION ALL \
            SELECT r.id,r.org_id,r.employee_id,'STATUTORY_REQUEST',p.state,r.anchor_on::text,r.created_at,p.from_org_unit_id,p.to_org_unit_id,p.to_workplace_id,r.filing_kind,r.source_event_id,p.effective_date,p.event_type FROM insurance_filing_requests r JOIN employee_lifecycle_events p ON p.org_id=r.org_id AND p.id=r.source_event_id WHERE r.filing_kind<>'ACQUIRE_REQUESTED' AND r.org_id=(SELECT org_id FROM boundary)), \
          source_bounds AS MATERIALIZED (SELECT min(effective_date::date) AS first_on,max(effective_date::date) AS last_on FROM sources), \
@@ -91,12 +95,13 @@ pub(super) async fn rows(
         ") AS cutoff(code text,effective_from date,earliest_event_on date) ON cutoff.code=r.code AND cutoff.effective_from=r.effective_from CROSS JOIN source_bounds b WHERE r.filing_rule IS NOT NULL \
              AND (r.filing_rule->>'age_trigger_years' IS NOT NULL OR (r.effective_from<=b.last_on+COALESCE((r.filing_rule->>'loss_offset_days')::int,0) \
                AND (r.effective_to_exclusive IS NULL OR b.first_on+COALESCE((r.filing_rule->>'loss_offset_days')::int,0)<r.effective_to_exclusive)))), \
-      filtered AS (SELECT l.id,l.org_id,l.created_at, \
+      filtered AS (SELECT l.id,l.org_id,l.created_at AS source_created_at, \
       'insurance_filing_' || kind.k || '_' || agency.insurer || ':' || l.id AS inbox_id,l.employee_id, \
       kind.k AS kind,agency.insurer AS insurer,rule.recording_held, \
       CASE WHEN l.event_type='GROUP_TRANSFER' AND kind.k='LOSE' THEN (l.effective_date::date-1)::text ELSE l.effective_date END AS effective_date, \
       l.effective_date::date AS source_on,l.placement_date,l.source_type,l.source_event_id,l.event_type, \
-      x.name,x.employee_number,x.birth_date::text,profile.employment_type",
+      x.name,x.employee_number,x.birth_date::text,profile.employment_type, \
+      CASE WHEN kind.k='AGE60' THEN COALESCE(x.birth_date::text,assessment.applicability_facts->>'birth_date') END AS assessment_birth_date",
     );
     if placement_filter {
         q.push(",ea.legal_entity_id,ea.workplace_id");
@@ -119,7 +124,7 @@ pub(super) async fn rows(
     // These candidates are absent under the shared assessment, including its stored-facts fallback.
     q.push(" AND (kind.k <> 'AGE60' OR (agency.insurer = 'NPS' \
       AND COALESCE(x.birth_date::text, assessment.applicability_facts->>'birth_date') IS NOT NULL))");
-    if query.inbox_scan_limit.is_some() {
+    if query.inbox_scan_limit.is_some() && query.kind.as_deref() != Some("AGE60") {
         // Birthday tasks use their projected birthday key in the companion read.
         q.push(" AND kind.k <> 'AGE60'");
     }
@@ -161,7 +166,8 @@ pub(super) async fn rows(
             q.push(" AND ").push(column).push(" = ").push_bind(value);
         }
     }
-    q.push("), paged AS MATERIALIZED (SELECT * FROM filtered");
+    super::filing_age::candidates(&mut q, query, register)?;
+    q.push("), paged AS MATERIALIZED (SELECT * FROM candidates");
     let order = push_page_order(&mut q, query);
     // Resolve each selected workplace once; unplaced legacy rows keep the employee fallback.
     q.push("), hydrated AS MATERIALIZED (SELECT l.*,");

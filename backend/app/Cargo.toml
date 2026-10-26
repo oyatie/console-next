@@ -459,3 +459,6 @@ required-features = ["workspace"]
 [[test]]
 name = "workorder_api"
 required-features = ["workorder"]
+
+[[test]]
+name = "inbox_source_timing"
