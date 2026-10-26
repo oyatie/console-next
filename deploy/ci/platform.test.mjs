@@ -47,6 +47,9 @@ test('the image ships the real API, worker and migrations without development fe
   assert.match(dockerfile, /cargo build --locked --release -p console-app --bin console-app/);
   assert.doesNotMatch(dockerfile, /--features.*(?:dev-auth|e2e-test-support)/);
   assert.match(dockerfile, /COPY --from=web.*dist/);
+  // The context holds apps/web and packages only: the root build type-checks e2e/ and tests outside it.
+  assert.match(dockerfile, /npm run build -w @console\/web\n/);
+  assert.doesNotMatch(dockerfile, /npm run build\n/);
   assert.match(dockerfile, /USER 65532:65532/);
   assert.match(dockerfile, /COPY third-party\/rust\/vendor \/src\/third-party\/rust\/vendor/);
   const lock = JSON.parse(read('deploy/versions.json'));

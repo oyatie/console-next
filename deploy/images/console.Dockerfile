@@ -8,7 +8,8 @@ WORKDIR /src
 COPY package.json package-lock.json tsconfig.json tsconfig.base.json ./
 COPY packages ./packages
 COPY apps/web ./apps/web
-RUN npm ci --ignore-scripts --no-audit --no-fund && npm run build
+# Builds only the shipped web app; type-checking tests and e2e/ (outside this context) is CI's npm run check.
+RUN npm ci --ignore-scripts --no-audit --no-fund && npm run build -w @console/web
 
 FROM ${RUST_IMAGE} AS backend
 WORKDIR /src/backend
