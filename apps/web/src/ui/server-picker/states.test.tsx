@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { chromium, expect as expectElement, type Browser, type Page } from "@playwright/test";
-import { afterAll, beforeAll, test } from "vitest";
+import { afterAll, beforeAll, expect, test } from "vitest";
 import type { ViteDevServer } from "vite";
 import { pickerTestServer } from "./browser-test";
 
 let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
+let catalogCount = 15;
 
 beforeAll(async () => {
   server = await pickerTestServer("picker-states", `
-    import { createElement as h, useState } from 'react';
+    import { createElement as h, useEffect, useState } from 'react';
     import { createRoot } from 'react-dom/client';
     import { loadCatalog } from '@console/i18n';
     import { ServerPicker } from '/apps/web/src/ui/server-picker/server-picker.tsx';
@@ -20,15 +21,14 @@ beforeAll(async () => {
     import { CatalogPicker } from '/apps/web/src/features/people/ui/catalog-picker.tsx';
     import '/apps/web/src/app.css';
     await loadCatalog('ko');
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    function Fixture() {
-      const mode = new URLSearchParams(location.search).get('mode');
+    function Fixture({ mode, count, onReady }) {
+      const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
+      useEffect(() => { onReady?.(); }, [onReady]);
       const [query, setQuery] = useState(mode === 'required' ? '' : 'alias');
       const [value, setValue] = useState(null);
       const [loading, setLoading] = useState(mode === 'loading');
       window.finishLoading = () => setLoading(false);
       const options = Array.from({ length: 20 }, (_, i) => ({ id: String(i), name: 'Employee ' + i, code: 'E-' + i }));
-      const count = Number(new URLSearchParams(location.search).get('count') ?? 15);
       const choices = options.slice(0, count).map(o => ({ value: o.id, label: o.name }));
       return h(QueryClientProvider, { client }, h('main', null,
         h('button', { id: 'before' }, 'Before'),
@@ -45,14 +45,20 @@ beforeAll(async () => {
         h('input', { id: 'after', 'aria-label': 'After' }),
         h('output', { id: 'selected' }, value)));
     }
-    createRoot(document.getElementById('root')).render(h(Fixture));
+    function App() {
+      const [fixture, setFixture] = useState({ mode: 'results', count: 15, revision: 0 });
+      window.renderFixture = (mode, count) => new Promise(onReady => {
+        setFixture(previous => ({ mode, count, onReady, revision: previous.revision + 1 }));
+      });
+      return h(Fixture, { ...fixture, key: fixture.revision });
+    }
+    createRoot(document.getElementById('root')).render(h(App));
   `);
   browser = await chromium.launch();
   page = await (await browser.newContext()).newPage();
   page.setDefaultTimeout(10_000);
   await page.route("**/api/v1/job-titles", route => {
-    const count = Number(new URL(page.url()).searchParams.get("count") ?? 15);
-    return route.fulfill({ json: { items: Array.from({ length: count }, (_, n) => ({
+    return route.fulfill({ json: { items: Array.from({ length: catalogCount }, (_, n) => ({
       id: String(n), kind: "TITLE", label: `Employee ${n}`, active: true, grade_rank: null,
     })), can_manage: false } });
   });
@@ -62,8 +68,12 @@ beforeAll(async () => {
 
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
-async function open(mode: string) {
-  await page.goto(`${server.resolvedUrls!.local[0]}picker-states?mode=${mode}`);
+async function open(mode: string, count = 15) {
+  catalogCount = count;
+  // Remount state, then await React's commit before tests move focus to the preceding button.
+  await page.evaluate(config => (window as unknown as {
+    renderFixture: (mode: string, count: number) => Promise<void>;
+  }).renderFixture(config.mode, config.count), { mode, count });
   return page.getByRole("combobox", { name: "Person" });
 }
 
@@ -77,6 +87,28 @@ test("server matches survive an alias query and the total is announced once, onl
   await page.getByRole("option", { name: "Employee 19 E-19", exact: true }).click();
   await expectElement(page.locator("#selected")).toHaveText("19");
   await expectElement(count).toHaveCount(0);
+});
+
+test("changing fixture modes resets selection and overlays without reloading the module graph", async () => {
+  const input = await open("results");
+  await input.press("ArrowDown");
+  await page.getByRole("option", { name: "Employee 19 E-19", exact: true }).click();
+  await expectElement(page.locator("#selected")).toHaveText("19");
+  await input.press("ArrowDown");
+  await expectElement(page.getByRole("listbox")).toBeVisible();
+  const navigations: string[] = [];
+  const navigated = () => { navigations.push(page.url()); };
+  page.on("domcontentloaded", navigated);
+  try {
+    const readOnly = await open("readonly");
+    await expectElement(readOnly).toHaveValue("alias");
+    await expectElement(page.locator("#selected")).toBeEmpty();
+    await expectElement(page.getByRole("listbox")).toHaveCount(0);
+    await page.locator("#before").focus();
+    await page.keyboard.press("Tab");
+    await expectElement(readOnly).toBeFocused();
+    expect(navigations).toEqual([]);
+  } finally { page.off("domcontentloaded", navigated); }
 });
 
 test("loading changes to the result count in the same live region", async () => {
@@ -155,7 +187,7 @@ test("field states use the theme tokens and preserve the read-only focus ring", 
 
 test("catalog titles use the shared list/search boundary and keep selection and clearing", async () => {
   for (const count of [15, 16]) {
-    await page.goto(`${server.resolvedUrls!.local[0]}picker-states?mode=catalog&count=${count}`);
+    await open("catalog", count);
     if (count === 15) {
       await expectElement(page.getByRole("combobox")).toHaveCount(0);
       await expectElement(page.getByRole("radio", { name: /Employee 0/ })).toBeDisabled();
@@ -231,7 +263,7 @@ test("read-only and disabled empty states cannot request a new item", async () =
 for (const mode of ["entity", "role"]) {
   test(`${mode} uses a list at 15 options and search at 16 without changing selection`, async () => {
     for (const count of [15, 16]) {
-      await page.goto(`${server.resolvedUrls!.local[0]}picker-states?mode=${mode}&count=${count}`);
+      await open(mode, count);
       const input = page.getByRole("combobox");
       if (count === 15) {
         if (mode === "entity") await input.selectOption("1");
