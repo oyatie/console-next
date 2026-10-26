@@ -1686,18 +1686,6 @@
       "file": "apps/web/src/reference/org/ui/structure-members.tsx",
       "kind": "control-guard",
       "count": 2
-    },
-    {
-      "model": "web-grants",
-      "file": "apps/web/src/shell/nav.ts",
-      "kind": "control-guard",
-      "count": 2
-    },
-    {
-      "model": "web-grants",
-      "file": "apps/web/src/shell/nav.ts",
-      "kind": "grant-guard",
-      "count": 9
     }
   ]
 }

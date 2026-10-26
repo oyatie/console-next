@@ -24,7 +24,7 @@ export const NOTE_MAX = 1000;
 export const employeeRef = (id: string) => get("/api/v1/employees/{id}", { params: { path: { id } } });
 export const historyQuery = (id: string) => get("/api/v1/employees/{id}/employee-number/history", { params: { path: { id } } });
 export { rrnStatusQuery as rrnQuery } from "../people/api/record";
-export const rulesQuery = get("/api/v1/employee-number-rules");
+export { rulesQuery } from "../../reference/identifiers/api";
 
 /** A dated number change at the version read, past this tab's own writes to other fields (lib/record-versions). */
 export const changeNumber = (id: string, body: NumberChangeRequest) =>

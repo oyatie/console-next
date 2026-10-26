@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
 tags: [attendance]
 operationId: readAttendanceMonthGrid
 summary: The 월간 근무표 — people × days, 100 people a page by keyset, with the four totals per row

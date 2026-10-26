@@ -2450,6 +2450,7 @@ paths:
                 $ref: '#/components/schemas/TargetChangeRequestSummary'
   /api/v1/access/accounts/{accountId}/effective:
     get:
+      x-console-authz: {"permission": "access:view", "scope": "any"}
       tags:
       - access
       operationId: getAccountEffectiveAccess
@@ -2514,6 +2515,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/access/grants:
     get:
+      x-console-authz: {"permission": "access:view", "scope": "any"}
       tags:
       - access
       operationId: listAccessGrants
@@ -2599,6 +2601,7 @@ paths:
           $ref: '#/components/responses/PreconditionRequired'
   /api/v1/access/grants/preview:
     post:
+      x-console-authz: {"permission": "access:edit", "scope": "any"}
       tags:
       - access
       operationId: previewAccessGrants
@@ -2866,6 +2869,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/access/roles:
     get:
+      x-console-authz: {"permission": "access:view", "scope": "any"}
       tags:
       - access
       operationId: listAccessRoles
@@ -2893,6 +2897,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     post:
+      x-console-authz: {"permission": "access:edit", "scope": "tenant"}
       tags:
       - access
       operationId: createAccessRole
@@ -2971,6 +2976,7 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
     get:
+      x-console-authz: {"permission": "access:view", "scope": "any"}
       tags:
       - access
       operationId: getAccessRole
@@ -3155,6 +3161,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/appointment-notices:
     get:
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
       tags:
         - employees
       operationId: listAppointmentNotices
@@ -3252,6 +3259,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/appointment-notices/candidates:
     get:
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "tenant"}
       # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
         - employees
@@ -3465,6 +3473,7 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/attendance/days:
     get:
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
       tags: [attendance]
       operationId: readAttendanceDayBoard
       summary: One day's board (일별 · 간단히) — the partition ledger, then 사업장 › 부서 groups with issue rows first
@@ -3707,6 +3716,7 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/attendance/month:
     get:
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
       tags: [attendance]
       operationId: readAttendanceMonthGrid
       summary: The 월간 근무표 — people × days, 100 people a page by keyset, with the four totals per row
@@ -3853,6 +3863,7 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/attendance/schedule/tree:
     get:
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
       tags: [attendance]
       operationId: readAttendanceScheduleTree
       summary: 법인 › 사업장 › 부서 with 근무조, the layer each node holds on a date, people counts and the unscheduled count
@@ -6905,6 +6916,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/directory/people:
     get:
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
       tags:
         - directory
       operationId: listDirectoryPeople
@@ -7212,6 +7224,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     get:
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
       tags:
         - employees
       operationId: listEmployeeNumberRules
@@ -7235,6 +7248,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     put:
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "tenant"}
       tags:
         - employees
       operationId: setEmployeeNumberRule
@@ -7408,6 +7422,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/employees:
     get:
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
       tags:
       - employees
       operationId: listEmployees
@@ -7570,6 +7585,7 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
     post:
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
       tags:
         - employees
       operationId: createEmployee
@@ -8169,6 +8185,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/employees/import/unplaced:
     get:
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "tenant"}
       tags:
         - employees
       operationId: listEmployeeImportUnplaced
@@ -8764,6 +8781,7 @@ paths:
                     format: date-time
   /api/v1/employees/lifecycle-events/bulk/preview:
     post:
+      x-console-authz: {"permission": "LifecycleManage", "scope": "tenant"}
       tags:
         - employees
       operationId: previewBulkEmployeeLifecycleEvents
@@ -11728,6 +11746,7 @@ paths:
           description: validation_failed; a review note is required.
   /api/v1/entity-setup/batches:
     get:
+      x-console-authz: {"permission": "OrgChangeRead", "scope": "entity"}
       tags:
       - entity
       operationId: listEntitySetupBatches
@@ -15191,6 +15210,7 @@ paths:
               $ref: '#/components/schemas/CertificateSettingsRequest'
   /api/v1/hr/certificates:
     get:
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
       # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
         - employees
@@ -15490,6 +15510,7 @@ paths:
               $ref: '#/components/schemas/CertificateActionRequest'
   /api/v1/hr/exit-cases:
     get:
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
       tags:
         - hr
       operationId: listEmployeeExitCases
@@ -16387,6 +16408,7 @@ paths:
       responses: { '200': { description: MRP lines, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/InventoryMrpLine' } } } } }, '401': { $ref: '#/components/responses/Unauthorized' }, '403': { $ref: '#/components/responses/Forbidden' } }
   /api/v1/job-titles:
     get:
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
       tags:
         - employees
       operationId: listJobTitles
@@ -16837,6 +16859,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/legal-entities:
     get:
+      x-console-authz: {"permission": "OrgChangeRead", "scope": "entity"}
       tags:
       - entity
       operationId: listLegalEntities
@@ -16878,6 +16901,7 @@ paths:
           type: string
           format: date
     post:
+      x-console-authz: {"permission": "LegalEntityManage", "scope": "tenant"}
       tags:
       - entity
       operationId: createLegalEntity
@@ -16928,6 +16952,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/legal-entities/{entityId}:
     get:
+      x-console-authz: {"permission": "OrgChangeRead", "scope": "entity"}
       tags:
       - entity
       operationId: getLegalEntity
@@ -20616,6 +20641,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/onboarding/go-live/preview:
     get:
+      x-console-authz: {"permission": "tenant:approve", "scope": "ops"}
       tags:
       - onboarding
       operationId: getGoLivePreview
@@ -21470,6 +21496,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/org-changes:
     get:
+      x-console-authz: {"permission": "OrgChangeRead", "scope": "capability"}
       tags:
       - org
       operationId: listOrgChanges
@@ -21548,6 +21575,7 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
     post:
+      x-console-authz: {"permission": "OrgChangeDraft", "scope": "capability"}
       tags:
       - org
       operationId: createOrgChange
@@ -21980,6 +22008,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/org-structure:
     get:
+      x-console-authz: {"permission": "OrgChangeRead", "scope": "entity"}
       tags:
       - entity
       operationId: getOrgStructure
@@ -22022,6 +22051,7 @@ paths:
           format: date
   /api/v1/org-structure/batches:
     get:
+      x-console-authz: {"permission": "OrgChangeRead", "scope": "entity"}
       tags:
       - entity
       operationId: listOrgSetupBatches
@@ -22045,6 +22075,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
     post:
+      x-console-authz: {"permission": "OrgChangeApply", "scope": "capability"}
       tags:
       - entity
       operationId: applyOrgSetupBatch
@@ -22773,6 +22804,7 @@ paths:
           description: Invalid temporal coordinates.
   /api/v1/org-units:
     get:
+      x-console-authz: {"permission": "OrgChangeRead", "scope": "capability"}
       tags:
       - org
       operationId: listOrgUnits
@@ -23763,6 +23795,7 @@ paths:
           $ref: '#/components/responses/Conflict'
   /api/v1/period-locks:
     get:
+      x-console-authz: {"permission": "PeriodLockManage", "scope": "tenant"}
       tags:
         - period-locks
       operationId: listPeriodLocks
@@ -27328,6 +27361,7 @@ paths:
         '422': { description: Missing purpose or invalid date }
   /api/v1/statutory/workplaces:
     get:
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
       operationId: listStatutoryWorkplaces
       tags: [HR]
       parameters:
@@ -28280,6 +28314,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/tenant/company-domain/request:
     get:
+      x-console-authz: {"permission": "tenant:edit", "scope": "ops"}
       tags: [platform]
       operationId: getOwnCompanyDomainRequest
       summary: Read the tenant ops account's pending company-domain request

@@ -84,7 +84,9 @@ export default defineConfig({
       command: served
         ? `${process.env.E2E_PREBUILT === "1" ? "" : "npm run build && "}node scripts/backend-dev.mjs --reset`
         : `node scripts/backend-dev.mjs${reuse ? "" : " --reset"}`,
-      url: `http://127.0.0.1:${PORTS.backend}/readyz`,
+      // Start the launcher before probing a port that may belong to a dead run.
+      ...(reuse ? { url: `http://127.0.0.1:${PORTS.backend}/readyz` } : { wait: { stdout: /\[backend\] ready/ } }),
+      gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
       timeout: 300_000,
       reuseExistingServer: reuse,
       env: backendEnv,

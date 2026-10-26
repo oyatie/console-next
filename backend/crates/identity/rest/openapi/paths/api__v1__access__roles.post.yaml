@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "access:edit", "scope": "tenant"}
 tags:
 - access
 operationId: createAccessRole

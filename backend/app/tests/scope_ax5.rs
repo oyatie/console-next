@@ -33,6 +33,67 @@ use world::{World, world};
 
 const FORBIDDEN: StatusCode = StatusCode::FORBIDDEN;
 
+/// Pin the actual first reads before projecting these boundaries into the route contract.
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn route_first_reads_admit_entity_and_workplace_but_refuse_department_org_grants(
+    pool: PgPool,
+) {
+    let mut w = world::world_with_lines(
+        pool,
+        json!([
+            { "domain": "hr_basic", "levels": ["edit"] },
+            { "domain": "org", "levels": ["edit"] }
+        ]),
+    )
+    .await;
+    for (kind, node) in [
+        ("TENANT", None),
+        ("LEGAL_ENTITY", Some(w.le_a.clone())),
+        ("WORKPLACE", Some(w.wp_a.clone())),
+        ("DEPARTMENT", Some(w.dept_x.clone())),
+    ] {
+        let reader = w.holder(kind, node.as_deref()).await;
+        for path in [
+            "/legal-entities",
+            "/org-structure",
+            "/org-units",
+            "/org-changes",
+            "/org-structure/batches",
+            "/entity-setup/batches",
+        ] {
+            let (status, body) = reader.call("GET", &format!("/api/v1{path}"), None).await;
+            assert_eq!(
+                status,
+                if kind == "DEPARTMENT" {
+                    FORBIDDEN
+                } else {
+                    StatusCode::OK
+                },
+                "{kind} {path}: {body}"
+            );
+        }
+        for path in [
+            format!(
+                "/api/v1/attendance/month?month={}",
+                &support::today_kst()[..7]
+            ),
+            format!("/api/v1/attendance/days?date={}", support::today_kst()),
+            "/api/v1/attendance/schedule/tree".to_owned(),
+        ] {
+            let (status, body) = reader.call("GET", &path, None).await;
+            assert_eq!(
+                status,
+                if kind == "DEPARTMENT" {
+                    FORBIDDEN
+                } else {
+                    StatusCode::OK
+                },
+                "{kind} {path}: {body}"
+            );
+        }
+    }
+}
+
 async fn roster(ctx: &Ctx) -> (i64, Vec<String>) {
     let (status, page) = ctx.call("GET", "/api/v1/employees?limit=100", None).await;
     assert_eq!(status, StatusCode::OK, "{page}");

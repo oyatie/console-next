@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
 # SPDX-License-Identifier: LicenseRef-Proprietary
 tags:
   - employees

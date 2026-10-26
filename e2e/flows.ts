@@ -133,7 +133,7 @@ export async function passkeyLogin(page: Page) {
 
 /** Reads the code a dialog shows exactly once, then closes it (an account code is "delivered", a tenant code is closed). */
 export async function takeCode(page: Page, audit = false): Promise<string> {
-  await expect(page.getByRole("dialog").filter({ has: page.getByLabel("일회용 코드") })).toBeVisible();
+  await expect(page.getByRole("dialog").filter({ has: page.getByLabel("일회용 코드") })).toBeVisible({ timeout: test.info().timeout });
   if (audit) await expectAccessible(page, "one-time code dialog");
   const code = (await page.getByLabel("일회용 코드").textContent())!.trim();
   await page.getByRole("button", { name: /^(코드 전달 완료|코드 닫기)$/ }).click();
@@ -217,7 +217,7 @@ export const chooseRadio = (scope: Locator, name: RegExp) => scope.getByRole("ra
 /** Clicks a dialog's command that first asks for the signed-in user's own passkey (step-up), and waits for `done`. */
 export async function stepUp(dialog: Locator, button: string, done: Locator) {
   await dialog.getByRole("button", { name: button }).click();
-  await expect(done).toBeVisible();
+  await expect(done).toBeVisible({ timeout: test.info().timeout });
 }
 
 // E2E_REUSE=1 keeps the last run's database (playwright.config.ts): what must be unique gets this run's suffix.

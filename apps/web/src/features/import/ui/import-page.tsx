@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { FileSpreadsheet, X } from "lucide-react";
@@ -12,7 +13,7 @@ import { Crumbs } from "../../../ui/page-head/crumbs";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { StepLine } from "../../../ui/step-line/step-line";
 import { Chip } from "../../../ui/chip";
-import { preview as upload } from "../api";
+import { excludeReasonsQuery, preview as upload } from "../api";
 import type { ApplyJob, ImportDryRun, ImportPreview, ImportReport } from "../domain/contract";
 import { keptJob } from "../domain/job";
 import { mappingJson, type Mapping } from "../domain/mapping";
@@ -24,6 +25,11 @@ import { chunk } from "../../../lib/chunk-guard";
 import { DoneStep } from "./done-step";
 import { JobStep } from "./job-step";
 import { RecentRuns } from "./recent-runs";
+import { entitiesRef } from "../../../reference/entity/api";
+import { rulesQuery } from "../../../reference/identifiers/api";
+import { QueryState } from "../../../lib/react/query-state";
+import { queryView, readGroup } from "../../../lib/react/query-view";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 
 const DryRunStep = lazy(() => chunk(import("./dryrun-step")).then(m => ({ default: m.DryRunStep })));
 
@@ -43,6 +49,13 @@ export function ImportPage() {
 }
 
 function ImportWorkspace() {
+  const entities = useQuery(entitiesRef);
+  const numbers = useQuery(rulesQuery);
+  const reasons = useQuery(excludeReasonsQuery);
+  const reads = [entities, numbers, reasons];
+  const references = readGroup(reads);
+  const failed = reads.findIndex(q => q.error === references.error && q.error != null);
+  const labels = [t("import.reference.entities"), t("import.reference.numbers"), t("import.reference.reasons")];
   const { mode, run } = route.useSearch();
   const [source, setSource] = useState<Source | null>(null);
   const [mapping, setMapping] = useState<Mapping>({});
@@ -73,7 +86,7 @@ function ImportWorkspace() {
     setReport(r);
     void navigate({ to: "/people/import", search: { run: jobRun ?? preview!.run_id }, replace: true });
   }, [navigate, jobRun, preview]);
-  const onJobFailed = useCallback(() => setJobRun(null), []);
+  const onJobFailed = useCallback(() => setJobRun(null), [setJobRun]);
   const at = AT[step];
   return (
     <div className="page">
@@ -96,8 +109,16 @@ function ImportWorkspace() {
         </Banner>
       )}
       <CommandError error={reread.error} own={importError} />
-      {step === "upload" && <UploadStep paste={mode === "paste"} onPreview={(p, file) => (setSource(file), setPreview(p), setPicks(initialPicks()))} />}
-      {step === "upload" && <RecentRuns />}
+      {step === "upload" && <>
+        {references.data === undefined && <DisabledReason
+          control={p => <Button {...p} variant="primary">{t("uiFileDrop.pick")}</Button>}
+          reason={t(queryView(references) === "denied" ? "common.denied.reason" : "import.reference.required")}
+        />}
+        <QueryState q={references} layout="form" own={() => t("import.reference.failed", { name: labels[failed] ?? "" })}>{() => <>
+          <UploadStep paste={mode === "paste"} onPreview={(p, file) => (setSource(file), setPreview(p), setPicks(initialPicks()))} />
+          <RecentRuns />
+        </>}</QueryState>
+      </>}
       {step === "preview" && preview && picks && (
         <PreviewStep
           preview={preview}

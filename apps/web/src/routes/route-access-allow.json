@@ -1,0 +1,4 @@
+{
+  "/platform": { "lane": "LMG-PLAT", "reason": "Item 7 owns the platform realm decision and tenant-admin not-found." },
+  "/audit/support-access": { "lane": "LMG-PLAT", "reason": "Item 7 owns the support-access realm decision." }
+}
