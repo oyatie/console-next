@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ClipboardPaste, ListPlus, Users } from "lucide-react";
@@ -19,7 +19,7 @@ import { duplicateCandidates, numberHolder, problemOf } from "../api";
 import { EMPTY, gaps, nextPerson, NO_PICK, type Draft, type DupPick } from "../domain/register";
 import { placeOptions, resolvePlace, workplaceChoices } from "../domain/register-place";
 import { receipts } from "./use-register-receipts";
-import { RegisterDup } from "./register-dup";
+import { chunk } from "../../../lib/chunk-guard";
 import { RegisterFoot } from "./register-foot";
 import { RegisterPerson } from "./register-person";
 import { RegisterPlace } from "./register-place";
@@ -29,6 +29,8 @@ import { useTrailPreview } from "./lifecycle-trail-preview";
 import { useRegister } from "./use-register";
 import s from "./register.module.css";
 import { entityName } from "../../../reference/entity/domain/names";
+
+const RegisterDup = lazy(() => chunk(import("./register-dup")).then(m => ({ default: m.RegisterDup })));
 
 /** Focus the first field still wrong, in page order, once the attempt's marks have rendered. */
 const focusFirst = (root: HTMLElement | null) =>
@@ -155,16 +157,16 @@ export function RegisterSheet({ preset, onClose, onOpen, onRehire }: {
     >
       <div ref={body} className={s.form}>
         <RegisterPerson d={d} set={set} shown={shown} />
-        {cands.length > 0 && (
-          <RegisterDup
+        <Suspense fallback={null}>
+          {cands.length > 0 && <RegisterDup
             mine={{ name: d.name.trim(), birth: d.birth, place: place ? `${place.site} › ${place.unit.name}` : "", hire: d.hire, status, number: d.numberMode === "manual" ? d.number : null }}
             candidates={cands}
             places={options}
             pick={pick}
             onPick={setPick}
             tried={tried}
-          />
-        )}
+          />}
+        </Suspense>
         <RegisterPlace d={d} set={set} units={units} options={options} workplaces={placesRead && place && !place.own ? workplaceChoices(entities) : []} shown={shown} hireLabel={d.hire ? fmtDate(d.hire) : null} hidePreview={Boolean(hireRefusal)} />
         <RegisterTerms d={d} set={set} shown={shown} today={today} tried={tried} hireRefusal={hireRefusal} />
       </div>

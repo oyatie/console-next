@@ -1,7 +1,7 @@
 import { t } from "@console/i18n";
 import { queryView } from "../../../lib/react/query-view";
 import { useDocumentsServed } from "../../../reference/authz/ui/use-documents-served";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
@@ -17,12 +17,12 @@ import { rrnStatusQuery } from "../api/record";
 import { assignmentsRef, entitiesRef } from "../../../reference/entity/api";
 import { authzApplies, authzQuery, granted } from "../../../reference/authz/api";
 import { verbStates } from "../domain/lifecycle";
-import { ActHost, type Done } from "./person-act";
+import type { Done } from "./person-act";
 import { ProfileHost } from "./profile-host";
 import { CancelHost } from "./cancel-sheet";
 import { CardBar, CardBody } from "./card-body";
 import { CardHead, type CardTab } from "./card-head";
-import { CardPrint } from "./card-print";
+import { chunk } from "../../../lib/chunk-guard";
 import { CardSkeleton } from "./card-states";
 import { CardTabs } from "./card-tabs";
 import { FixHost } from "./fix-host";
@@ -32,6 +32,9 @@ import { directorySearch } from "./use-linked-account";
 import { CaseSheet } from "./lifecycle-trail";
 import { PeopleJump } from "./people-jump";
 import s from "./card.module.css";
+
+const ActHost = lazy(() => chunk(import("./person-act")).then(m => ({ default: m.ActHost })));
+const CardPrint = lazy(() => chunk(import("./card-print")).then(m => ({ default: m.CardPrint })));
 
 type Detail = components["schemas"]["EmployeeDetail"];
 const route = getRouteApi("/app/people/$id");
@@ -138,7 +141,8 @@ function Card({ d }: { d: Detail }) {
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
   }, []);
-  if (act === "print") return <CardPrint c={c} onClose={close} />;
+  // The print view replaces the whole card, so its code load needs the page-shaped wait.
+  if (act === "print") return <Suspense fallback={<CardSkeleton />}><CardPrint c={c} onClose={close} /></Suspense>;
   const verbs = c.editable && d.employee.status !== "EXITED" ? verbStates(d, c.events.data?.items ?? []) : [];
   return (
     <>
@@ -146,7 +150,7 @@ function Card({ d }: { d: Detail }) {
         <CardHead c={c} onTab={onTab} onAct={open} onGo={go} onKeys={(next, prev) => Object.assign(keys.current, { next, prev })} />
         {tab === "card" && c.manage && <CardBar c={c} current={current} onJump={jumpTo} />}
       </div>
-      <ActHost d={d} act={act} back={back} events={c.events} onClose={close} onOpen={open} onRecorded={recorded} />
+      {act && <Suspense fallback={null}><ActHost d={d} act={act} back={back} events={c.events} onClose={close} onOpen={open} onRecorded={recorded} /></Suspense>}
       <ProfileHost d={d} act={act} onClose={close} />
       <FixHost c={c} act={act} onClose={close} onAct={open} />
       {act?.startsWith("case:") && <CaseSheet id={act.slice(5)} onClose={close} />}

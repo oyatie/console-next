@@ -2,6 +2,7 @@ import { realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { defineConfig, searchForWorkspaceRoot } from "vite";
 import react from "@vitejs/plugin-react";
+import { fontPolicy } from "./font-policy.ts";
 
 // Same-origin: the backend has no CORS layer and the refresh cookie is SameSite=Strict,
 // so dev proxies /api (incl. the /api/v1/ws upgrade) and prod serves both from one host.
@@ -11,9 +12,19 @@ const backend = process.env.CONSOLE_BACKEND ?? "http://127.0.0.1:8090";
 const deps = dirname(realpathSync(resolve(import.meta.dirname, "../../node_modules/pretendard")));
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), fontPolicy()],
   // The backend CSP allows fonts/images only from 'self' (no data: URIs), so never inline assets.
-  build: { assetsInlineLimit: 0 },
+  build: {
+    assetsInlineLimit: 0, manifest: true,
+    rolldownOptions: {
+      output: { codeSplitting: { groups: [
+        { name: "initial", tags: ["$initial"] },
+        { name: "controls", test: /src[\\/]ui[\\/](banner|button|chip|field|skeleton|step-line)([\\/.])/ },
+      ] } },
+      // Keep shared chunks separate when splitting conditional forms.
+      experimental: { chunkOptimization: { avoidRedundantChunkLoads: false } },
+    },
+  },
   // CONSOLE_WEB_PORT: an E2E slot other than 0 (e2e/slot.ts) serves on its own port, with its own dep cache
   // so two dev servers in one worktree never race on the same optimizer output.
   cacheDir: resolve(import.meta.dirname, `../../.cache/vite-${process.env.CONSOLE_WEB_PORT ?? "dev"}`),

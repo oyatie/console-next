@@ -1,0 +1,73 @@
+{
+  "shell": {
+    "budget_kb": 82,
+    "routes": [
+      "src/auth/IdleGuard.tsx",
+      "src/auth/Login.tsx",
+      "src/auth/ReAuth.tsx",
+      "src/auth/SetupPasskey.tsx",
+      "src/features/structure/ui/jump-palette.tsx",
+      "src/shell/shell.tsx"
+    ]
+  },
+  "list": {
+    "budget_kb": 300,
+    "routes": [
+      "src/features/access/ui/access-routes.tsx",
+      "src/features/attendance/ui/attendance-page.tsx",
+      "src/features/company-domain/ui/domain-page.tsx",
+      "src/features/entity/ui/entity-routes.tsx",
+      "src/features/entity/ui/workplace-sheets.tsx",
+      "src/features/identifiers/ui/identifiers-page.tsx",
+      "src/features/identifiers/ui/numbering-page.tsx",
+      "src/features/org-bulk/ui/history-page.tsx",
+      "src/features/org/ui/propose-card.tsx",
+      "src/features/org/ui/structure-sheets.tsx",
+      "src/features/people/ui/certificates-page.tsx",
+      "src/features/people/ui/exit-list.tsx",
+      "src/features/people/ui/grid-page.tsx",
+      "src/features/people/ui/job-titles-page.tsx",
+      "src/features/people/ui/notice-list-page.tsx",
+      "src/features/people/ui/people-route.tsx",
+      "src/features/people/ui/requests-page.tsx",
+      "src/features/people/ui/unplaced-page.tsx",
+      "src/features/periods/ui/period-lock-page.tsx",
+      "src/features/platform/Tenants.tsx",
+      "src/features/statutory/ui/statutory-page.tsx",
+      "src/routes/home-screen.tsx",
+      "src/routes/org-screen.tsx"
+    ]
+  },
+  "record": {
+    "budget_kb": 252,
+    "routes": [
+      "src/features/account/Account.tsx",
+      "src/features/org/OrgChange.tsx",
+      "src/features/people/ui/card-page.tsx",
+      "src/features/people/ui/card-print.tsx",
+      "src/features/people/ui/certificate-page.tsx",
+      "src/features/people/ui/exit-page.tsx",
+      "src/features/people/ui/notice-page.tsx",
+      "src/features/people/ui/person-act.tsx",
+      "src/features/requests/ui/request-page.tsx"
+    ]
+  },
+  "wizard": {
+    "budget_kb": 167,
+    "routes": [
+      "src/features/import/ui/dryrun-step.tsx",
+      "src/features/import/ui/import-page.tsx",
+      "src/features/onboarding/ui/go-live.tsx",
+      "src/features/org-bulk/ui/bulk-edit-page.tsx",
+      "src/features/org-bulk/ui/import-page.tsx",
+      "src/features/org-bulk/ui/paste-page.tsx",
+      "src/features/org/ui/bulk-move-page.tsx",
+      "src/features/people/ui/bulk-page.tsx",
+      "src/features/people/ui/notice-new-page.tsx",
+      "src/features/people/ui/register-dup.tsx",
+      "src/features/people/ui/register-route.tsx",
+      "src/features/people/ui/register-run-page.tsx",
+      "src/features/people/ui/renew-page.tsx"
+    ]
+  }
+}

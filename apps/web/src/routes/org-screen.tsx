@@ -1,27 +1,30 @@
 import { getRouteApi } from "@tanstack/react-router";
 import { AccessGate } from "../reference/authz/ui/access-gate";
 import { useQuery } from "@tanstack/react-query";
-import { WorkplaceSheet } from "../features/entity/ui/workplace-sheets";
+import { lazy, Suspense } from "react";
+import { chunk } from "../lib/chunk-guard";
 import { WorkplaceSidePanel } from "../features/entity/ui/workplace-side-panel";
 import { FixLink } from "../features/onboarding/ui/fix-link";
 import { useFreshOnArrival } from "../lib/react/arrival";
-import { ProposeSlot } from "../features/org/ui/propose-card";
 import { StructurePanel } from "../features/org/ui/structure-selection";
-import { StructureSheets } from "../features/org/ui/structure-sheets";
 import { StructurePage } from "../features/structure/ui/structure-page";
 import { unitsQuery } from "../reference/org/api";
 import { StructureSlots, type StructureSlotsValue } from "../reference/org/ui/use-structure-slots";
 
+const WorkplaceSheet = lazy(() => chunk(import("../features/entity/ui/workplace-sheets")).then(m => ({ default: m.WorkplaceSheet })));
+const ProposeSlot = lazy(() => chunk(import("../features/org/ui/propose-card")).then(m => ({ default: m.ProposeSlot })));
+const StructureSheets = lazy(() => chunk(import("../features/org/ui/structure-sheets")).then(m => ({ default: m.StructureSheets })));
+
 const slots: StructureSlotsValue = {
   workplacePanel: (p) => <WorkplaceSidePanel {...p} />,
-  workplaceSheet: (p) => <WorkplaceSheet {...p} />,
+  workplaceSheet: (p) => <Suspense fallback={null}><WorkplaceSheet {...p} /></Suspense>,
 };
 
 /** A proposal card for `?act=` (the org slice's governed path, kept for links that name one). */
 function Proposal() {
   // Units a command changed since they were cached are read again first, so the card never opens on a stale tree.
   const units = useFreshOnArrival(useQuery(unitsQuery), unitsQuery);
-  return <ProposeSlot units={units.data?.items ?? []} />;
+  return <Suspense fallback={null}><ProposeSlot units={units.data?.items ?? []} /></Suspense>;
 }
 
 /**
@@ -38,7 +41,7 @@ export function OrgScreen() {
         fixLink={(code) => <FixLink code={code} />}
         proposal={<Proposal />}
         panel={(sel, snapshot, readOnly) => <StructurePanel sel={sel} snapshot={snapshot} readOnly={readOnly} />}
-        sheets={<StructureSheets />}
+        sheets={act && <Suspense fallback={null}><StructureSheets /></Suspense>}
       />
     </StructureSlots.Provider>
   );
