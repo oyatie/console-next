@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/lib/react/route-error.tsx#RouteError": 3
+  },
+  "newScreens": {
+    "apps/web/src/lib/react/route-error.tsx#RouteError": {
+      "FACT": 0,
+      "REFUSAL": 3,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}
