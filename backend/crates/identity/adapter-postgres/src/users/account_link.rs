@@ -28,12 +28,21 @@ pub struct AccountLinkOutcome {
 }
 
 impl PgOrgStore {
-    /// Request or explicitly approve a frozen employee binding. The caller verifies passkey step-up.
+    /// Request or explicitly approve a frozen employee binding using a verifier-issued actor.
     /// Identity, eligibility, baseline, application, audit and notices share this transaction.
+    ///
+    /// ```compile_fail,E0061
+    /// use console_identity_adapter_postgres::PgOrgStore;
+    /// use console_identity_application::UpdateUserCommand;
+    /// fn without_step_up(store: &PgOrgStore, command: UpdateUserCommand) {
+    ///     let _ = store.change_account_link(command, None);
+    /// }
+    /// ```
     pub async fn change_account_link(
         &self,
         command: UpdateUserCommand,
         request_id: Option<uuid::Uuid>,
+        step_up: console_platform_auth::VerifiedStepUp,
     ) -> Result<AccountLinkOutcome, PgOrgError> {
         use crate::second_person::{SecondPersonQuery, second_person_fact_in_tx};
         use console_kernel_core::UserId;
@@ -47,7 +56,7 @@ impl PgOrgStore {
         let desired = command
             .employee_id
             .ok_or_else(|| KernelError::validation("employee_id is required"))?;
-        let actor = command.actor;
+        let actor = UserId::from_uuid(step_up.into_user_id());
         let target = command.user_id;
         let now = command.occurred_at;
         with_audits::<_, _, PgOrgError>(&self.pool, org, move |tx| Box::pin(async move {

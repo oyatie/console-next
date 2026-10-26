@@ -16,6 +16,7 @@ pub(crate) async fn verify_policy_step_up(
         "policy changes require a fresh passkey step-up",
     )
     .await
+    .map(|_| ())
 }
 
 /// 428 `passkey_step_up_required` without an assertion, 401 when it does not
@@ -25,7 +26,7 @@ pub(crate) async fn verify_step_up(
     principal: &Principal,
     step_up: Option<PolicyStepUpAssertionRequest>,
     missing_message: &'static str,
-) -> Result<(), RestError> {
+) -> Result<console_platform_auth::VerifiedStepUp, RestError> {
     let step_up = step_up.ok_or_else(|| {
         RestError::new(
             StatusCode::PRECONDITION_REQUIRED,
@@ -37,13 +38,12 @@ pub(crate) async fn verify_step_up(
         RestError::unavailable("passkey step-up is not configured for identity API")
     })?;
     verifier
-        .verify_step_up_for_user(
+        .verify_step_up_proof_for_user(
             state.pool(),
             step_up.ceremony_id,
             step_up.credential,
             *principal.user_id.as_uuid(),
         )
         .await
-        .map_err(|_| RestError::unauthorized("passkey step-up failed"))?;
-    Ok(())
+        .map_err(|_| RestError::unauthorized("passkey step-up failed"))
 }
