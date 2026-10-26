@@ -1,9 +1,8 @@
 // The route frame: sign-in, passkey set-up, the signed-in app and its small screens. Each feature's
 // screens hang off `app` in their own file here (routes compose slices; slices never import routes).
 import { createRootRoute, createRoute, lazyRouteComponent } from "@tanstack/react-router";
-import { catalogText, i18n, loadCatalog } from "@console/i18n";
 import { chunk } from "../lib/chunk-guard";
-import { glyphs } from "../lib/fonts";
+import { screen } from "../lib/fonts";
 import { ensureEnrolling, ensureSession, leaveSignInWhenSignedIn } from "../lib/react/session";
 import { RouteFrame } from "../lib/react/route-ready";
 import type { TenantsSearch } from "../features/platform/ui/tenants-page";
@@ -13,14 +12,7 @@ export const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
 /** A boolean search param written as `true` or `"true"`, else absent. */
 export const flag = (v: unknown) => v === true || v === "true" || undefined;
 
-/**
- * A lazy screen's import: its route chunk, and the active locale's screen catalog with the font glyphs its text
- * needs (lib/fonts), load together. A chunk a deploy removed reloads the page once (lib/chunk-guard).
- */
-export const screen = <M,>(load: () => Promise<M>) => () => {
-  const l = i18n.locale;
-  return chunk(Promise.all([load(), loadCatalog(l).then(() => glyphs(l, () => catalogText(l)))]).then(([m]) => m));
-};
+export { screen };
 
 export const root = createRootRoute({ component: RouteFrame });
 const login = createRoute({

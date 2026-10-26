@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { FileSpreadsheet, X } from "lucide-react";
@@ -20,10 +20,12 @@ import { initialPicks, type Picks } from "../domain/steps";
 import { importError } from "../present";
 import { UploadStep, type Source } from "./upload-step";
 import { PreviewStep } from "./preview-step";
-import { DryRunStep } from "./dryrun-step";
+import { chunk } from "../../../lib/chunk-guard";
 import { DoneStep } from "./done-step";
 import { JobStep } from "./job-step";
 import { RecentRuns } from "./recent-runs";
+
+const DryRunStep = lazy(() => chunk(import("./dryrun-step")).then(m => ({ default: m.DryRunStep })));
 
 const route = getRouteApi("/app/people/import");
 const STEPS = ["upload", "preview", "dryrun", "done"] as const;
@@ -109,7 +111,7 @@ function ImportWorkspace() {
         />
       )}
       {step === "dryrun" && preview && picks && dry && (
-        <DryRunStep
+        <Suspense fallback={null}><DryRunStep
           picks={picks}
           onPicks={setPicks}
           dry={dry}
@@ -119,7 +121,7 @@ function ImportWorkspace() {
           onExpired={() => setExpired(true)}
           onSheets={toSheets}
           onRestart={restart}
-        />
+        /></Suspense>
       )}
       {step === "job" && jobRun && <JobStep runId={jobRun} onDone={onApplied} onFailed={onJobFailed} />}
       {step === "done" && (run ?? jobRun ?? preview?.run_id) && <DoneStep report={report ?? undefined} runId={(run ?? jobRun ?? preview?.run_id)!} />}

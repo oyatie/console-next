@@ -32,7 +32,7 @@ export function TenantsPage() {
   const { sel, q: q0 = "", view = "active" } = route.useSearch();
   const navigate = route.useNavigate();
   const set = (s: TenantsSearch) => navigate({ search: (p) => ({ ...p, ...s }), replace: true });
-  const list = useQuery({ ...tenantsQuery, refetchOnMount: "always" });
+  const list = useQuery(tenantsQuery);
   const ops = useQuery(opsQuery);
   const health = new Map<string, Health>((ops.data?.tenants ?? []).map((h) => [h.id, h]));
   // Typed text stays local (no lag while composing Korean); the URL follows it once typing pauses, and

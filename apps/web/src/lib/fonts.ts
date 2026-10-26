@@ -1,15 +1,26 @@
-// Pretendard ships as ~90 unicode-range subsets with font-display: swap, fetched as text needing them first paints.
-// A screen painted before its subsets land swaps them in and nudges every control on it a few pixels, under a
-// pointer already aimed. So a screen waits until the subsets its catalog's text needs are in, at most CAP_MS.
-// catalog text only; a name or other user data can still pull one subset late (one swap, not per screen).
+// SPDX-License-Identifier: LicenseRef-Proprietary
+// Subsets use font-display: optional (Vite font policy): slow fonts never swap under an aimed pointer.
+import { catalogText, i18n, loadCatalog } from "@console/i18n";
+import { chunk } from "./chunk-guard";
+
 const FONT = '1em "Pretendard Variable"';
-const CAP_MS = 1500;
 const loads = new Map<string, Promise<unknown>>();
 
-/** Resolves once the glyphs for `text()` are loaded (fetched once per `key`), or after CAP_MS, whichever is first. */
+/** Initiates background loading of glyphs for `text()` (fetched once per `key`). Does not block screen paint. */
 export function glyphs(key: string, text: () => string): Promise<unknown> {
   if (typeof document === "undefined" || !document.fonts) return Promise.resolve();
   let p = loads.get(key);
   if (!p) loads.set(key, (p = document.fonts.load(FONT, text()).catch(() => undefined)));
-  return Promise.race([p, new Promise((r) => setTimeout(r, CAP_MS))]);
+  return p;
 }
+
+/**
+ * A lazy screen's import: its route chunk and the active locale's screen catalog
+ * resolve together so the screen paints without waiting on font glyphs (lib/fonts).
+ * Subsets load in the background; a chunk a deploy removed reloads the page once (lib/chunk-guard).
+ */
+export const screen = <M,>(load: () => Promise<M>) => () => {
+  const l = i18n.locale;
+  void loadCatalog(l).then(() => glyphs(l, () => catalogText(l))).catch(() => {});
+  return chunk(Promise.all([load(), loadCatalog(l)]).then(([m]) => m));
+};
