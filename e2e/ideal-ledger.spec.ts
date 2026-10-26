@@ -66,6 +66,7 @@ test("BL-010 grant apply loses its response, preserves the receipt and is record
   await admin.getByRole("button", { name: "역할 추가", exact: true }).click();
   await expect(admin.getByRole("row", { name: /원장 조회/ })).toBeVisible();
   await go(admin, "/access/grants");
+  await admin.getByRole("button", { name: "권한 부여", exact: true }).click();
   await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill("김원장");
   await admin.getByRole("option", { name: /김원장/ }).click();
   const sheet = admin.getByRole("dialog", { name: "권한 부여" });
@@ -108,7 +109,7 @@ test("BL-010 grant apply loses its response, preserves the receipt and is record
   await expect(admin.getByRole("status").filter({ hasText: /^반영됨$/ })).toBeVisible();
   await expectAccessible(admin, "BL-010 APPLIED grant receipt");
   await go(admin, "/access/grants");
-  const grant = admin.getByRole("row", { name: /김원장.*원장 조회/ });
+  const grant = admin.getByRole("row", { name: /김원장/ }).filter({ hasText: "원장 조회" });
   await expect(grant).toHaveCount(1);
   await expect(grant).toContainText("적용 중");
   expect(commands.count()).toBe(1);

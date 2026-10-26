@@ -1,5 +1,7 @@
 // English for `accessGrants.` ids (source: ../ko/access-grants.ts).
 export const enAccessGrants = {
+  "accessGrants.holders": "{role} · {count, plural, one {# holder} other {# holders}}",
+  "accessGrants.reset": "Reset filters",
   "accessGrants.find": "Find by name, employee number or role",
   "accessGrants.role": "Role",
   "accessGrants.role.all": "All roles",

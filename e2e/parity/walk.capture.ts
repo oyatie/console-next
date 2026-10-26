@@ -176,6 +176,7 @@ test("parity: roles, grants, review entry and emergency account", async ({ brows
   await inspect(a, "access", "roles");
   await inviteAccount(a, "박담당", "none"); // Account record only; this person never signs in or helps setup.
   await go(a, "/access/grants");
+  await a.getByRole("button", { name: "권한 부여", exact: true }).click();
   await a.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill("박담당");
   await a.getByRole("option", { name: /박담당/ }).click();
   const grant = a.getByRole("dialog", { name: "권한 부여" });
