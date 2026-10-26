@@ -1,7 +1,6 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
-import { Search } from "lucide-react";
 import { t } from "@console/i18n";
 import { QueryState } from "../../lib/react/query-state";
 import { ToggleButton } from "../../ui/button/button";
@@ -45,26 +44,6 @@ export function People() {
     </div>
   );
   if (view === "employees") return <RosterPage key="employees" manage={can("employee_directory_manage", "all")} scoped={scoped} switcher={switcher} />;
-  return <AccountsView head={head} sel={sel} onSelect={(id) => void navigate({ search: (prev) => ({ ...prev, sel: id }), replace: true })} />;
+  return <div className="page"><Accounts head={(available, search) => head(search, available)} sel={sel} /></div>;
   }}</QueryState>;
-}
-
-function AccountsView({ head, sel, onSelect }: { head: (actions?: ReactNode, available?: boolean) => ReactNode; sel?: string; onSelect: (id?: string) => void }) {
-  const [draft, setDraft] = useState("");
-  const [q, setQ] = useState("");
-  const search = (e: FormEvent) => {
-    e.preventDefault();
-    setQ(draft.trim());
-    onSelect(undefined);
-  };
-  return (
-    <div className="page">
-      <Accounts head={available => head(available ? (
-        <form role="search" onSubmit={search} className="search">
-          <input className="field__input" aria-label={t("accounts.search.label")} placeholder={t("accounts.search.placeholder")} value={draft} onChange={(e) => setDraft(e.target.value)} />
-          <button className="btn" type="submit"><Search size={16} aria-hidden /> {t("people.search.accounts")}</button>
-        </form>
-      ) : undefined, available)} q={q} sel={sel} onSelect={onSelect} />
-    </div>
-  );
 }

@@ -1,7 +1,6 @@
 // Korean source for `accounts.` ids. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koAccounts = {
   "accounts.search.label": "계정 이름·사번 검색",
-  "accounts.search.placeholder": "이름·사번",
 
   // People: accounts list
   "accounts.title": "계정",

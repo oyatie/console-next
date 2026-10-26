@@ -24,10 +24,18 @@ test("the 2,000-person picker announces the exact matching total once while open
   await expect(count).toHaveCount(0);
   await search.fill(" ");
   await expect(count).toHaveCount(1);
+  await expect(page.getByRole("option")).toHaveCount(50);
+  const narrow = page.getByText("처음 50건만 표시합니다. 검색어를 더 입력해 범위를 좁히십시오.", { exact: true });
+  await expect(narrow).toBeVisible();
+  await search.fill("1");
+  await expect(page.getByRole("status").filter({ hasText: /^1,271건$/ })).toHaveCount(1);
+  await expect(page.getByRole("option")).toHaveCount(50);
+  await expect(narrow).toBeVisible();
   await search.fill("EMP00100");
   await expect(page.getByRole("option")).toHaveCount(1);
   await expect(page.getByRole("option", { name: "100번 직원 EMP00100", exact: true })).toBeVisible();
   await expect(page.getByRole("status").filter({ hasText: /^1건$/ })).toHaveCount(1);
+  await expect(narrow).toHaveCount(0);
   await search.press("Tab");
   await expect(search).not.toBeFocused();
   await expect(page.getByRole("status").filter({ hasText: /^1건$/ })).toHaveCount(0);

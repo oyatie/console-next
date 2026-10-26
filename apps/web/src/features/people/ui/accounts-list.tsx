@@ -21,6 +21,9 @@ import { InviteSheet } from "./account-invite-sheet";
 import { IssuedCode } from "./account-issued-code";
 import type { Issued } from "./use-issue-code";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
+import { personOption } from "../../../reference/person/ui/person-option";
+import { ServerPicker } from "../../../ui/server-picker/server-picker";
+import { readFailureText } from "../../../lib/refusal";
 import { Muted } from "../../../ui/muted/muted";
 
 type Person = components["schemas"]["DirectoryPerson"];
@@ -34,7 +37,8 @@ const PATH = "/api/v1/directory/people";
  * employee number, kept out of the URL). There are no preset roles (governance-01): an account carries no access, and
  * the panel links to Access for what it may do.
  */
-export function Accounts({ q, sel, head }: { q: string; sel?: string; onSelect?: (id?: string) => void; head?: (available: boolean) => ReactNode }) {
+export function Accounts({ sel, head }: { sel?: string; head?: (available: boolean, search?: ReactNode) => ReactNode }) {
+  const [q, setQ] = useState("");
   const s = route.useSearch() as AccountsSearch;
   const navigate = route.useNavigate();
   const set = (patch: AccountsSearch & { sel?: string }, push = false) => navigate({ search: (prev) => ({ ...prev, ...patch }), replace: !push });
@@ -42,7 +46,7 @@ export function Accounts({ q, sel, head }: { q: string; sel?: string; onSelect?:
   const admin = useCan()("user_manage");
   const [receipt, setReceipt] = useState<{ id: string; message: string }>();
   const [issued, setIssued] = useState<Issued | null>(null);
-  const base = { search: q || undefined, include_inactive: s.inactive ?? false };
+  const base = { search: q.trim() || undefined, include_inactive: s.inactive ?? false };
   const list = useInfiniteQuery({
     ...get(PATH, { params: { query: { ...base, limit: PAGE } } }),
     queryFn: ({ pageParam }) => get(PATH, { params: { query: { ...base, limit: PAGE, offset: pageParam } } }).queryFn(),
@@ -64,9 +68,19 @@ export function Accounts({ q, sel, head }: { q: string; sel?: string; onSelect?:
     focusSoon("acct-title");
   };
   const filtered = Boolean(s.inactive);
+  const select = (id: string | null) => (setReceipt(undefined), set({ sel: id ?? undefined }));
+  const options = list.isPlaceholderData || list.isError ? [] : rows;
+  const search = <ServerPicker
+    label={t("accounts.search.label")} group={t("accounts.title")}
+    query={q} onQueryChange={setQ} value={sel ?? null} onChange={select}
+    options={options.map((p) => personOption(p, options))}
+    total={list.isPlaceholderData || list.isError ? undefined : total}
+    loading={list.isFetching} error={list.isError ? readFailureText(list.error) : undefined}
+    empty={t("accounts.noMatch.reason", { q })}
+  />;
 
   return (
-    <PageReadGate q={list} head={head}><div className="split" data-open={Boolean(sel)}>
+    <PageReadGate q={list} head={available => head?.(available, available ? search : undefined)}><div className="split" data-open={Boolean(sel)}>
       <section className="card" aria-labelledby="accounts-title">
         <div className="toolbar">
           <h2 id="accounts-title" className="toolbar__title" tabIndex={-1}>{t("accounts.title")}</h2>
@@ -93,7 +107,7 @@ export function Accounts({ q, sel, head }: { q: string; sel?: string; onSelect?:
               actions={filtered ? <Button onClick={() => set({ inactive: undefined })}>{t("accounts.filter.reset")}</Button> : undefined}
             />
           }
-          onRowAction={(id) => (setReceipt(undefined), set({ sel: id }))}
+          onRowAction={select}
         />}</QueryState>
       </section>
       {/* Keyed per account: switching accounts must not carry one account's choices or errors to another. */}
