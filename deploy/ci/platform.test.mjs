@@ -153,3 +153,13 @@ test('PLAT_RENDER_GROUP: a missing bundle never passes validation by doing zero 
     assert.throws(()=>execFileSync('bash',[join(root,'deploy/ci/validate.sh'),dir],{encoding:'utf8',stdio:'pipe'}),error=>error.status===1 && error.stderr.includes('PLAT_RENDER_GROUP'));
   } finally { rmSync(dir,{recursive:true,force:true}); }
 });
+
+test('a failed previous-artifact pull is printed and is bootstrap only for a missing package', () => {
+  const wf = yaml.load(read('.github/workflows/platform.yml'));
+  const run = wf.jobs.publish.steps.find(step => step.id === 'image').run;
+  const pull = run.slice(run.indexOf('flux pull artifact'), run.indexOf('for arch in'));
+  assert.match(pull, /cat \.tmp\/previous-error\.txt >&2/);
+  assert.match(pull, /packages\/container\//);
+  assert.match(pull, /\[\[ "\$\{code\}" == 404 \]\] \|\| \{ echo .+ exit 1; \}/);
+});
+
