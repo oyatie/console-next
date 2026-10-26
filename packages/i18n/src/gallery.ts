@@ -3,9 +3,10 @@
 import { createT } from "./index";
 import { kitEn, kitKo } from "./gallery-kit";
 import { dsEn, dsKo } from "./gallery-ds";
+import { pickerEn, pickerKo } from "./gallery-picker";
 
 const ko = {
-  ...kitKo, ...dsKo,
+  ...kitKo, ...dsKo, ...pickerKo,
   "title": "컴포넌트 갤러리",
   "hint": "공용 UI 구성요소를 대표 상태별로 보여 줍니다. 개발 환경에서만 열립니다.",
   "section.chips": "상태 칩",
@@ -13,7 +14,6 @@ const ko = {
   "section.states": "화면 상태",
   "section.errors": "명령 오류",
   "section.timeline": "이력",
-  "section.picker": "조직 선택",
   "section.forms": "입력 양식",
   "table.empty": "직원 목록(0행)",
   "table.one": "직원 목록(1행)",
@@ -156,7 +156,7 @@ const ko = {
 } as const;
 
 const en: Record<keyof typeof ko, string> = {
-  ...kitEn, ...dsEn,
+  ...kitEn, ...dsEn, ...pickerEn,
   "title": "Component gallery",
   "hint": "Shows the shared UI components in representative states. Opens in development only.",
   "section.chips": "Status chips",
@@ -164,7 +164,6 @@ const en: Record<keyof typeof ko, string> = {
   "section.states": "Screen states",
   "section.errors": "Command errors",
   "section.timeline": "History",
-  "section.picker": "Unit picker",
   "section.forms": "Forms",
   "table.empty": "Employees (0 rows)",
   "table.one": "Employees (1 row)",

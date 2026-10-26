@@ -4,13 +4,12 @@ import { Check, Plus } from "lucide-react";
 import { t } from "@console/i18n";
 import { Field, Marker } from "../field/field";
 import { MAX_CHIPS } from "./limits";
+import { shouldServerSearch } from "../server-picker/size";
 import s from "./choice.module.css";
 
 /** `disabled` is the reason the option cannot be chosen now: it stays listed and says why (never hidden). */
 export type ChoiceOption = { value: string; label: string; description?: string; content?: ReactNode; disabled?: string };
 
-/** Above this many options a choice is a server search picker, not a list (components.html §3). */
-const MAX_LIST = 15;
 const MAX_VISIBLE = 5;
 
 /**
@@ -35,7 +34,7 @@ export function ChoiceField({ label, required, options, value, onChange, error, 
   add?: ReactNode;
   columns?: 2 | 3;
 }) {
-  if (options.length > (look === "chips" ? MAX_CHIPS : MAX_LIST)) throw new Error(`ChoiceField "${label}": ${options.length} options; use a search picker`);
+  if (look === "chips" ? options.length > MAX_CHIPS : shouldServerSearch(options.length)) throw new Error(`ChoiceField "${label}": ${options.length} options; use a search picker`);
   const chips = look === "chips" && !options.some((o) => o.description);
   if (options.length > MAX_VISIBLE && !chips)
     return (

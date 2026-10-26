@@ -3,12 +3,10 @@ import { Layers } from "lucide-react";
 import { t } from "@console/i18n";
 import { SelectField } from "../../../ui/select/select-field";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
+import { shouldServerSearch } from "../../../ui/server-picker/size";
 import type { AccessRole } from "../api";
 import { linesText } from "../present";
 import s from "./access.module.css";
-
-/** Above this many roles the choice is a search, not a list (components.html §3). */
-const MAX_LIST = 15;
 
 /**
  * One role to grant (mockup M4): a compact dropdown listing each role with what it allows, or a search once the tenant has
@@ -23,7 +21,7 @@ export function RolePick({ roles, value, onChange, error, label = t("access.gran
   hideLabel?: boolean;
 }) {
   const [q, setQ] = useState("");
-  if (roles.length <= MAX_LIST)
+  if (!shouldServerSearch(roles.length))
     return (
       <SelectField
         label={label}

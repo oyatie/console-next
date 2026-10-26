@@ -9,13 +9,13 @@ const person = (n: number, code: string, unit = tg("sample.team")): PickerOption
 const POOL = [person(1, "HK-0112"), person(12, "HK-0187", tg("sample.dept")), person(5, "HK-0045"), person(5, "HK-0203", tg("sample.dept"))];
 
 /** The caller's server search, stood in by filtering a fixed pool. */
-function Sample({ initial, escape }: { initial: string; escape?: PickerEscape }) {
+function Sample({ initial, escape, state }: { initial: string; escape?: PickerEscape; state?: "readOnly" | "disabled" | "error" | "loading" }) {
   const [q, setQ] = useState(initial);
   const [value, setValue] = useState<string | null>(null);
   const options = POOL.filter((o) => q.trim() !== "" && `${o.name} ${o.code}`.includes(q.trim()));
   return (
     <ServerPicker
-      label={tg("col.name")}
+      label={state ? tg(`picker.${state}`) : tg("col.name")}
       group={tg("col.name")}
       query={q}
       onQueryChange={setQ}
@@ -25,6 +25,10 @@ function Sample({ initial, escape }: { initial: string; escape?: PickerEscape })
       empty={tg("empty.reason")}
       escape={escape}
       isRequired
+      readOnly={state === "readOnly"}
+      disabledReason={state === "disabled" ? tg("picker.disabledWhy") : undefined}
+      error={state === "error" ? tg("error.message") : undefined}
+      loading={state === "loading"}
     />
   );
 }
@@ -38,6 +42,10 @@ export default function ServerPickers() {
         <Sample initial={tg("sample.person", { n: 5 })} />
         <Sample initial={tg("sample.position")} escape={{ kind: "add", note: tg("sample.company"), onAdd: () => {} }} />
         <Sample initial={tg("sample.site")} escape={{ kind: "request", note: tg("sample.dept"), onRequest: () => {} }} />
+        <Sample initial={tg("sample.person", { n: 1 })} state="readOnly" />
+        <Sample initial={tg("sample.person", { n: 1 })} state="disabled" />
+        <Sample initial="" state="error" />
+        <Sample initial={tg("sample.person", { n: 1 })} state="loading" />
       </div>
     </section>
   );
