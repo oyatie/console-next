@@ -1,4 +1,5 @@
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { chunk } from "../lib/chunk-guard";
 import type { PeopleSearch } from "../features/people/People";
 import type { ExitFilter } from "../features/people/api";
 import { accountsSearch, type AccountsSearch } from "../features/people/domain/accounts";
@@ -26,7 +27,7 @@ type CardTab = (typeof CARD_TABS)[number];
 // BW-15: the unlock request under review lives in the URL (Home's unlock queue opens it); `unlock` opens one lock's
 // unlock (a closed attendance month links to the lock behind its close).
 const periodLocks = createRoute({ getParentRoute: () => app, path: "/people/period-locks", validateSearch: (s: Record<string, unknown>): { review?: string; unlock?: string } => ({ review: str(s.review), unlock: str(s.unlock) }), component: lazyRouteComponent(screen(() => import("../features/periods/ui/period-lock-page")), "PeriodLockPage") });
-const peopleImport = createRoute({ getParentRoute: () => app, path: "/people/import", validateSearch: (s: Record<string, unknown>): { mode?: "paste"; run?: string } => ({ mode: s.mode === "paste" ? "paste" : undefined, run: str(s.run) }), component: lazyRouteComponent(screen(() => import("../features/import/ui/import-page")), "ImportPage") });
+const peopleImport = createRoute({ getParentRoute: () => app, path: "/people/import", errorComponent: lazyRouteComponent(() => chunk(import("../lib/react/route-error")), "RouteError"), validateSearch: (s: Record<string, unknown>): { mode?: "paste"; run?: string } => ({ mode: s.mode === "paste" ? "paste" : undefined, run: str(s.run) }), component: lazyRouteComponent(screen(() => import("../features/import/ui/import-page")), "ImportPage") });
 // The registration sheet opens over the roster (spec E3): a child of /people, drawn in its outlet.
 const registerEmployee = createRoute({
   getParentRoute: () => people,

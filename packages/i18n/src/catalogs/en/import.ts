@@ -3,6 +3,11 @@ import type { koImport } from "../ko/import";
 
 export const enImport: Partial<Record<keyof typeof koImport, string>> = {
   "import.title": "Import employee roster",
+  "import.reference.entities": "Legal entities",
+  "import.reference.numbers": "Employee number rules",
+  "import.reference.reasons": "Reason codes",
+  "import.reference.failed": "Could not load {name}.",
+  "import.reference.required": "Load the required reference data before choosing a file.",
   "import.step.upload": "Choose file",
   "import.step.preview": "Columns",
   "import.step.dryrun": "Dry run",
