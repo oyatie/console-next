@@ -68,6 +68,7 @@ test("pilot roles: no presets, a role made in setup, granted for go-live, enforc
   // Grant the role over the 법인, from 운영 시작, for a year. Self and ops are refused before any request.
   await go(admin, "/access/grants");
   await expect(admin.getByRole("heading", { name: "부여가 없습니다" })).toBeVisible();
+  await admin.getByRole("button", { name: "권한 부여", exact: true }).click();
   const pick = admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" });
   await pick.fill("김인사");
   await admin.getByRole("option", { name: /김인사/ }).click();

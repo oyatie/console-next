@@ -83,15 +83,20 @@ test("account-only namesakes are distinguishable before bulk selection and each 
   await expectAccessible(admin, "namesake readiness");
 
   await go(admin, "/access/grants");
+  await admin.getByRole("button", { name: "권한 부여", exact: true }).click();
   await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill("권한없음테스트");
   const options = admin.getByRole("option", { name: /권한없음테스트/ });
   await expect(options).toHaveCount(2);
   await expect(options.filter({ hasText: "w••••1234@" })).toHaveCount(1);
   await expect(options.filter({ hasText: "w••••5678@" })).toHaveCount(1);
   await expectAccessible(admin, "namesake account picker", { openPicker: true });
+  await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).press("Escape");
+  await expect(admin.getByRole("listbox")).toHaveCount(0);
+  await expect(admin.getByRole("dialog", { name: "권한 부여할 사람", exact: true })).toBeVisible();
+  await admin.getByRole("dialog", { name: "권한 부여할 사람", exact: true }).getByRole("button", { name: "취소", exact: true }).click();
   await admin.getByRole("button", { name: "어두운 화면으로 전환", includeHidden: true }).click();
   await expect(admin.locator("html")).toHaveAttribute("data-theme", "dark");
-  await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).clear();
+  await admin.getByRole("button", { name: "권한 부여", exact: true }).click();
   await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill("권한없음테스트");
   await options.filter({ hasText: "w••••5678@" }).click();
   const sheet = admin.getByRole("dialog", { name: "권한 부여" });

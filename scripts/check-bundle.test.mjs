@@ -149,4 +149,40 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
       mock.cleanup();
     }
   });
+
+  it("wizard interactions must be split out of both route and initial chunk sets", () => {
+    const mock = createMockDist();
+    try {
+      mock.writeChunk("index-main.js", "main");
+      mock.writeChunk("vendor-boot.js", "vendor");
+      mock.writeChunk("wizard.js", "wizard");
+      mock.writeChunk("calendar.js", "calendar");
+      const source = "src/ui/date/date-calendar.tsx";
+      const route = "src/features/people/ui/register-route.tsx";
+      const budgets = { wizard: { budget_kb: 167, routes: [route], deferred: [source] } };
+      mock.dynamic(route, "wizard.js", [source]);
+      mock.dynamic(source, "calendar.js");
+      assert.match(checkRouteBudgets(mock.dist, budgets).error, /date-calendar.*statically loaded/);
+      mock.dynamic(route, "wizard.js");
+      mock.manifest[route].dynamicImports = [source];
+      writeFileSync(path.join(mock.dist, ".vite/manifest.json"), JSON.stringify(mock.manifest));
+      assert.strictEqual(checkRouteBudgets(mock.dist, budgets).ok, true);
+      mock.dynamic(source, "vendor-boot.js");
+      assert.match(checkRouteBudgets(mock.dist, budgets).error, /date-calendar.*statically loaded/);
+    } finally { mock.cleanup(); }
+  });
+
+  it("a missing interaction entry cannot silently bypass the split guard", () => {
+    const mock = createMockDist();
+    try {
+      mock.writeChunk("index-main.js", "main");
+      mock.writeChunk("vendor-boot.js", "vendor");
+      mock.writeChunk("wizard.js", "wizard");
+      const route = "src/features/people/ui/register-route.tsx";
+      mock.dynamic(route, "wizard.js");
+      const result = checkRouteBudgets(mock.dist, { wizard: { budget_kb: 167, routes: [route], deferred: ["src/ui/date/date-calendar.tsx"] } });
+      assert.strictEqual(result.ok, false);
+      assert.match(result.error, /date-calendar.*dynamic entry/);
+    } finally { mock.cleanup(); }
+  });
 });

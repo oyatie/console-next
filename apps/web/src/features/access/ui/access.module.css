@@ -61,6 +61,8 @@
 
 .filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4) 0; }
 .filters > :first-child { flex: 1; min-width: calc(var(--panel-w) / 1.5); }
+.grants [data-layout="cards"] [role="columnheader"] { clip-path: inset(50%); }
+.grantText { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
 .check { display: grid; grid-template-columns: var(--space-5) 1fr auto; gap: var(--space-3); align-items: start; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border-soft); }
 .check:last-child { border-bottom: 0; }

@@ -26,6 +26,7 @@ async function role(admin: Page, name: string, cells: string[]) {
 async function grant(admin: Page, who: string, roleName: string, scope: RegExp) {
   const token = bearerOf(admin);
   await go(admin, "/access/grants");
+  await admin.getByRole("button", { name: "권한 부여", exact: true }).click();
   await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill(who);
   await admin.getByRole("option", { name: new RegExp(who) }).first().click();
   const sheet = admin.getByRole("dialog", { name: "권한 부여" });

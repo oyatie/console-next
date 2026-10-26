@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useId, useRef, useState, type FocusEventHandler, type KeyboardEventHandler, type Ref, type ReactNode } from "react";
-import { parseDate } from "@internationalized/date";
+import { lazy, Suspense, useEffect, useId, useRef, useState, type FocusEventHandler, type KeyboardEventHandler, type Ref, type ReactNode } from "react";
 import { i18n, t } from "@console/i18n";
 import { fmtDateInput } from "@console/i18n/format";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import { Button as AriaButton, Calendar, CalendarCell, CalendarGrid, CalendarHeading, Dialog, DialogTrigger, Popover } from "react-aria-components";
+import { CalendarDays } from "lucide-react";
+import { Button as AriaButton, Dialog, DialogTrigger, Popover } from "react-aria-components";
+import { chunk } from "../../lib/chunk-guard";
 import { todayKst } from "../../lib/pure/today";
 import { TextInput } from "../field/field";
+import { Skeleton } from "../skeleton/skeleton";
 import { inBounds, isDate, parseTyped } from "./days";
 import { typedProblem } from "./date-text";
 import s from "./date.module.css";
+
+const loadCalendar = () => chunk(import("./date-calendar"));
+const DateCalendar = lazy(() => loadCalendar().then(m => ({ default: m.DateCalendar })));
 
 /** The one keyboard-and-calendar date input used by DateField and fields that already own their label. */
 export function DateInput({ id, value, onChange, onDraftChange, onInvalid, required = false, today = todayKst(), min, minReason, max, maxReason, disabledDates = [], label, className, disabled, showErrors = true, "aria-describedby": describedBy, "aria-invalid": ariaInvalid, inputRef, onBlur, onKeyDown }: {
@@ -55,9 +59,8 @@ export function DateInput({ id, value, onChange, onDraftChange, onInvalid, requi
     ? ("bad" in parsed ? typedProblem(parsed) : unavailable ? (blocked.has(typedDate) ? t("uiDate.disabled") : minimum && typedDate < minimum ? minReason ?? t("uiDate.outOfRange") : maximum && typedDate > maximum ? maxReason ?? t("uiDate.outOfRange") : t("uiDate.outOfRange")) : undefined)
     : undefined;
   const described = [describedBy, problem && errorId].filter(Boolean).join(" ") || undefined;
-  const selected = isDate(value) ? parseDate(value) : null;
   const initial = minimum && today < minimum ? minimum : maximum && today > maximum ? maximum : today;
-  const focused = selected && inBounds(value, minimum, maximum) && !blocked.has(value) ? selected : parseDate(initial);
+  const selected = isDate(value) && inBounds(value, minimum, maximum) && !blocked.has(value) ? value : undefined;
 
   useEffect(() => {
     if (value === previousValue.current) return;
@@ -137,30 +140,12 @@ export function DateInput({ id, value, onChange, onDraftChange, onInvalid, requi
         }}
       />
       <DialogTrigger isOpen={open} onOpenChange={setOpen}>
-        <AriaButton type="button" className={s.calendarButton} aria-label={t("uiDate.calendar.open")} aria-describedby={describedBy} isDisabled={disabled}>
+        <AriaButton type="button" className={s.calendarButton} aria-label={t("uiDate.calendar.open")} aria-describedby={describedBy} isDisabled={disabled} onHoverStart={() => { void loadCalendar(); }} onFocus={() => { void loadCalendar(); }}>
           <CalendarDays size={18} aria-hidden />
         </AriaButton>
         <Popover className={s.popover} placement="bottom start">
           <Dialog aria-label={t("uiDate.calendar.label")} className={s.dialog}>
-            <Calendar
-              aria-label={t("uiDate.calendar.label")}
-              value={selected && inBounds(value, minimum, maximum) && !blocked.has(value) ? selected : null}
-              defaultFocusedValue={focused}
-              minValue={minimum ? parseDate(minimum) : undefined}
-              maxValue={maximum ? parseDate(maximum) : undefined}
-              isDateUnavailable={(date) => blocked.has(date.toString())}
-              onChange={(date) => date && pick(date.toString())}
-              className={s.calendar}
-            >
-              <header className={s.calendarHeader}>
-                <AriaButton slot="previous" type="button" className={s.monthButton} aria-label={t("uiDate.calendar.previous")}><ChevronLeft size={18} aria-hidden /></AriaButton>
-                <CalendarHeading className={s.monthHeading} />
-                <AriaButton slot="next" type="button" className={s.monthButton} aria-label={t("uiDate.calendar.next")}><ChevronRight size={18} aria-hidden /></AriaButton>
-              </header>
-              <CalendarGrid className={s.grid} weekdayStyle="short">
-                {(date) => <CalendarCell date={date} className={s.calendarDay} />}
-              </CalendarGrid>
-            </Calendar>
+            {open && <Suspense fallback={<Skeleton bones={["block"]} label={t("common.loading")} />}><DateCalendar value={selected} focused={selected ?? initial} min={minimum} max={maximum} blocked={blocked} onPick={pick} /></Suspense>}
           </Dialog>
         </Popover>
       </DialogTrigger>
