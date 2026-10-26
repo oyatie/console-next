@@ -119,6 +119,9 @@ impl SubjectAttrs {
 /// How a `field` maps to a SQL column reference.
 #[derive(Debug, Clone, Copy)]
 pub enum LoweringTarget<'a> {
+    /// A UUID node identifier, compared to bound text IDs through a safe cast.
+    /// Only the `id` field and text comparisons are supported.
+    Uuid { column: &'a str },
     /// Projected type: `field` → a real column via this map. A field absent from
     /// the map, or a column that fails the identifier gate, is untranslatable.
     Projected {
@@ -308,6 +311,12 @@ fn field_lhs(
     emitter: &mut Emitter,
 ) -> Result<String, Untranslatable> {
     match target {
+        LoweringTarget::Uuid { column }
+            if field == "id" && cast.is_none() && crate::is_safe_column(column) =>
+        {
+            Ok(format!("{column}::text"))
+        }
+        LoweringTarget::Uuid { .. } => Err(Untranslatable),
         LoweringTarget::Instance { attributes_column } => {
             let key_idx = emitter.bind(SqlValue::Text(field.to_owned()));
             let base = format!("({attributes_column} ->> ${key_idx})");
@@ -550,6 +559,25 @@ mod tests {
             )
             .is_deny_all()
         );
+    }
+
+    #[test]
+    fn uuid_target_refuses_other_fields_and_non_text_casts() {
+        let target = LoweringTarget::Uuid { column: "n.id" };
+        for (field, value) in [
+            ("owner", SqlValue::Text("alice".to_owned())),
+            ("id", SqlValue::Int(1)),
+            ("id", SqlValue::Bool(true)),
+        ] {
+            let filter = lower(
+                target,
+                &SubjectAttrs::default(),
+                &[permit(vec![eq(field, PredicateValue::Literal(value))])],
+                2,
+            );
+            assert!(filter.is_deny_all());
+            assert!(filter.binds.is_empty());
+        }
     }
 
     #[test]

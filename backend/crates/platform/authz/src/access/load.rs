@@ -9,7 +9,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use console_kernel_core::{BranchId, BranchScope, KernelError, OrgId, TenantPhase, Timestamp};
-use sqlx::{Postgres, Row, Transaction};
+use sqlx::{Postgres, Row, Transaction, postgres::PgRow};
 use uuid::Uuid;
 
 use super::catalog::{Domain, Level};
@@ -161,24 +161,50 @@ pub async fn dept_path(
     org: OrgId,
     unit: Uuid,
 ) -> Result<NodePath, KernelError> {
+    Ok(dept_paths(tx, org, Some(unit))
+        .await?
+        .remove(&unit)
+        .unwrap_or_else(|| NodePath(Vec::new())))
+}
+
+/// The same canonical chains in one query; `None` loads every department.
+pub(crate) async fn dept_paths(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    unit: Option<Uuid>,
+) -> Result<BTreeMap<Uuid, NodePath>, KernelError> {
     let rows = sqlx::query(
         "WITH RECURSIVE heads AS (SELECT DISTINCT ON (org_unit_id) org_unit_id, attributes \
             FROM org_unit_revisions WHERE org_id = $1 ORDER BY org_unit_id, version DESC), \
-         up AS (SELECT org_unit_id, attributes, 0 AS depth FROM heads WHERE org_unit_id = $2 \
-            UNION ALL SELECT h.org_unit_id, h.attributes, u.depth + 1 FROM heads h \
+         up AS (SELECT org_unit_id AS root, org_unit_id, attributes, 0 AS depth FROM heads WHERE ($2::uuid IS NULL OR org_unit_id = $2) \
+            UNION ALL SELECT u.root, h.org_unit_id, h.attributes, u.depth + 1 FROM heads h \
             JOIN up u ON h.org_unit_id::text = u.attributes->>'parent_id' WHERE u.depth < 64) \
-         SELECT up.org_unit_id, up.attributes->>'status' = 'dissolved' AS dissolved, \
+         SELECT up.root, up.org_unit_id, up.attributes->>'status' = 'dissolved' AS dissolved, \
                 p.workplace_id, COALESCE(p.represents_workplace, false) AS represents, w.legal_entity_id \
            FROM up LEFT JOIN org_unit_placements p ON p.org_id = $1 AND p.org_unit_id = up.org_unit_id \
                 AND p.valid_to IS NULL AND p.workplace_id IS NOT NULL \
            LEFT JOIN workplaces w ON w.org_id = $1 AND w.id = p.workplace_id AND w.voided_at IS NULL \
-          ORDER BY up.depth",
+          ORDER BY up.root, up.depth",
     )
     .bind(org.as_uuid())
     .bind(unit)
     .fetch_all(tx.as_mut())
     .await
     .map_err(db)?;
+    let mut grouped: BTreeMap<Uuid, Vec<PgRow>> = BTreeMap::new();
+    for row in rows {
+        grouped
+            .entry(row.try_get("root").map_err(db)?)
+            .or_default()
+            .push(row);
+    }
+    grouped
+        .into_iter()
+        .map(|(id, rows)| Ok((id, path_from_rows(&rows, org)?)))
+        .collect()
+}
+
+fn path_from_rows(rows: &[PgRow], org: OrgId) -> Result<NodePath, KernelError> {
     let mut path = Vec::new();
     for (i, row) in rows.iter().enumerate() {
         let id: Uuid = row.try_get("org_unit_id").map_err(db)?;
