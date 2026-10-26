@@ -22,7 +22,7 @@ beforeAll(async () => {
   const board = { date: "2026-10-06", ledger: { people: 5 }, groups } as DayBoard;
 
   server = await pickerTestServer("day-detail", `
-    import { createElement as h } from 'react';
+    import { createElement as h, useState } from 'react';
     import { createRoot } from 'react-dom/client';
     import { loadCatalog } from '@console/i18n';
     import { DayDetail } from '/apps/web/src/features/attendance/ui/day-detail.tsx';
@@ -31,7 +31,8 @@ beforeAll(async () => {
     await loadCatalog('ko');
     function Fixture() {
       const store = useDrafts('day-detail-test');
-      return h('main', null, h('h1', null, 'Day detail'), h(DayDetail, {board: ${JSON.stringify(board)}, store, onAssign() {}}));
+      const [note, setNote] = useState(null);
+      return h('main', null, h('h1', null, 'Day detail'), note && h('p', {role: 'status'}, note), h(DayDetail, {board: ${JSON.stringify(board)}, store, onAssign() {}, onNote: setNote}));
     }
     createRoot(document.getElementById('root')).render(h(Fixture));
   `);
@@ -110,11 +111,11 @@ test.each(["pointer", "keyboard"])("grouped virtual detail keeps editable valida
   await visible(page.getByRole("status")).toContainText(/붙여넣은 2행.*일치 2/);
   await visible(page.getByRole("textbox", { name: /^1-2 입력/ })).toHaveValue("+2");
   const anchor = page.getByRole("textbox", { name: /^1-1 입력/ });
-  await paste(anchor, "9-17\n9-18");
+  await paste(grids.nth(1).getByRole("gridcell").filter({ has: anchor }), "9-17");
   await visible(preview).toBeVisible();
-  await preview.getByRole("button", { name: "초안에 2칸 반영" }).click();
+  await preview.getByRole("button", { name: "초안에 1칸 반영" }).click();
   await visible(anchor).toHaveValue("9-17");
-  await visible(page.getByRole("textbox", { name: /^1-2 입력/ })).toHaveValue("9-18");
+  await visible(page.getByRole("textbox", { name: /^1-2 입력/ })).toHaveValue("+2");
   await page.evaluate(() => window.dispatchEvent(new Event("beforeprint")));
   const paper = page.getByRole("table", { name: "일별 · 자세히" });
   await visible(paper.locator("tbody tr[data-id]")).toHaveCount(5);

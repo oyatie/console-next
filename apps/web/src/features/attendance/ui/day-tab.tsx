@@ -76,7 +76,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
           {saveWhy ? <DisabledReason reason={saveWhy} control={(p) => <Button {...p} variant="primary">{t("attendanceRecords.toolbar.save")}</Button>} /> : <Button variant="primary" onClick={() => setSave(true)}>{t("attendanceRecords.toolbar.save")}</Button>}
         </>}
       </div>}
-      {(drafts > 0 || feedback) && <p className="muted" role="status">{[drafts > 0 ? t("attendanceRecords.toolbar.unsaved", { count: drafts, refused: 0 }) : null, feedback].filter(Boolean).join(" · ")}</p>}
+      {feedback && <p className="muted" role="status">{feedback}</p>}
 
       <QueryState q={restoringDetail ? { ...board, isPending: true } : board} own={refusalText} layout="grid">{b => {
         const ledger = ledgerParts(b.ledger);
@@ -85,12 +85,11 @@ export function DayTab({ head }: { head?: ReactNode }) {
               <div className={s.dayLayout}>
                 <div className={s.dayPage}>
                   <MonthStateBanner state={pageState(b.groups.flatMap((g) => g.rows.map((r) => r.month_state)))} month={date.slice(0, 7)} />
-                  {!b.judged && <Banner tone="info">{t("attendanceRecords.board.notJudged")}</Banner>}
+                  {(!b.judged || !ledger.adds) && <Banner tone={!ledger.adds ? "warn" : "info"}>{[!b.judged && t("attendanceRecords.board.notJudged"), !ledger.adds && t("attendanceRecords.board.ledgerGap")].filter(Boolean).join(" · ")}</Banner>}
                   <p className="num">
                     {t("attendanceRecords.board.ledgerHead", { people: b.ledger.people })}{" "}
                     {ledger.parts.filter(([, n]) => n > 0).map(([k, n]) => t(`attendanceRecords.ledger.${k}`, { count: n })).join(" + ")}
                   </p>
-                  {!ledger.adds && <Banner tone="warn">{t("attendanceRecords.board.ledgerGap")}</Banner>}
                   {!b.groups.length ? (
                     search.issues || search.unscheduled ? (
                       <EmptyState title={t("attendanceRecords.empty.filteredTitle")} reason={t("attendanceRecords.board.noIssues")} actions={<Button onClick={() => go({ issues: undefined, unscheduled: undefined, wp: undefined, unit: undefined })}>{t("attendanceRecords.empty.clear")}</Button>} />
@@ -98,7 +97,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
                       <EmptyState title={t("attendanceRecords.empty.title")} reason={t("attendanceRecords.empty.reason")} actions={<Link to="/attendance" search={{ tab: "schedule" }}>{t("attendanceRecords.empty.toSchedule")}</Link>} />
                     )
                   ) : search.detail ? (
-                    <DayDetail board={b} store={store} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
+                    <DayDetail board={b} store={store} onNote={setNote} onAssign={(r) => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })} />
                   ) : (
                     b.groups.map((g) => (
                       <Card

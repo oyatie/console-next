@@ -200,7 +200,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act }:
   useEffect(() => {
     const paste = (e: ClipboardEvent) => {
       const active = document.activeElement;
-      if (!(active instanceof HTMLElement) || !active.closest('[role="grid"]')) return;
+      if (!(active instanceof HTMLElement) || active.matches("input, textarea, [contenteditable]") || !active.closest('[role="grid"]')) return;
       const text = e.clipboardData?.getData("text/plain");
       if (!text) return;
       e.preventDefault();
