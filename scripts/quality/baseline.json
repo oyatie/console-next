@@ -278,7 +278,6 @@
   "unused-export:e2e/emp/universe.ts:bearer": 1,
   "unused-export:e2e/emp/universe.ts:Call": 1,
   "unused-export:e2e/emp/universe.ts:Row": 1,
-  "unused-export:e2e/emp/universe.ts:ROWS": 1,
   "unused-export:e2e/emp/universe.ts:UNITS": 1,
   "unused-export:e2e/flows.ts:approveAndApply": 1,
   "unused-export:e2e/flows.ts:decideStep": 1,

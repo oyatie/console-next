@@ -42,8 +42,8 @@ test("filing identity and opening countdown are additive response fields for N-1
 });
 
 test.each([
-  ["step-up response action_kind", responseBinding.action_kind!, 13],
-  ["step-up response reason_key", responseBinding.reason_key!, 13],
+  ["step-up response action_kind", responseBinding.action_kind!, 15],
+  ["step-up response reason_key", responseBinding.reason_key!, 15],
   ["EmployeeLifecycleEvent.leave_type", schemas.EmployeeLifecycleEvent!.properties!.leave_type!, 6],
   ["import leave_type", schemas.EmployeeImportPlannedRow!.properties!.new_person!.properties!.leave!.properties!.leave_type!, 5],
   ["leave request leave_type", schemas.LeaveRequestView!.properties!.leave_type!, 2],
@@ -78,12 +78,18 @@ test("leave commands still reject misspelled known types", () => {
 });
 
 test("step-up command enums retain every value accepted by the response", () => {
-  expect(schemas.MobileStepUpActionKind!.enum).toEqual(responseBinding.action_kind!["x-extensible-enum"]);
-  expect(schemas.MobilePasskeyStepUpBinding!.properties!.reason_key!.enum).toEqual(responseBinding.reason_key!["x-extensible-enum"]);
+  expect(schemas.MobileStepUpActionKind!["x-extensible-enum"]).toEqual(responseBinding.action_kind!["x-extensible-enum"]);
+  expect(schemas.MobilePasskeyStepUpBinding!.properties!.reason_key!["x-extensible-enum"]).toEqual(responseBinding.reason_key!["x-extensible-enum"]);
 });
 
 
 test("the access contract publishes the support approval domain", () => {
   expect(schemas.AccessDomain!["x-extensible-enum"]).toContain("support_access");
   expect(schemas.AccessRoleLineInput!.properties!.domain!.enum).toEqual(schemas.AccessDomain!["x-extensible-enum"]);
+});
+
+test("RRN display duration is optional for N-1 clients and bounded by the registry", () => {
+  const revealed = schemas.EmployeeRrnRevealed!;
+  expect(revealed.required).toEqual(["employee_id", "rrn"]);
+  expect(revealed.properties!.display_seconds).toMatchObject({ type: "integer", minimum: 15, maximum: 60 });
 });

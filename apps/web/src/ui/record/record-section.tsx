@@ -43,7 +43,4 @@ export function Kbd({ k }: { k: string }) {
   return <kbd className={s.kbd} aria-hidden>{k}</kbd>;
 }
 
-/** A masked value as shown by default (never the value itself). */
-export function Masked({ children }: { children: ReactNode }) {
-  return <span className={s.masked}>{children}</span>;
-}
+export { Masked } from "./masked";

@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [employees]
+operationId: revealEmployeeField
+summary: Open a personal field with a purpose and a bound passkey
+description: 'The access record commits before the value is read. Every field shares the actor hourly ceiling. The response is never cached.'
+security:
+  - bearerAuth: []
+parameters:
+  - name: id
+    in: path
+    required: true
+    schema:
+      $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/EmployeeFieldRevealRequest'
+responses:
+  '200':
+    description: The field value, once.
+    headers:
+      Cache-Control:
+        schema:
+          type: string
+        description: private, no-store
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/EmployeeFieldRevealed'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '429':
+    description: reveal_rate_limited — retry after the rolling one-hour window.
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

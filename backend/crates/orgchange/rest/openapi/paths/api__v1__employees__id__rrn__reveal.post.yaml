@@ -35,5 +35,7 @@ responses:
     $ref: '#/components/responses/NotFound'
   '422':
     $ref: '#/components/responses/ValidationError'
+  '429':
+    description: reveal_rate_limited — wait for the rolling one-hour window.
   '503':
     $ref: '#/components/responses/ServiceUnavailable'

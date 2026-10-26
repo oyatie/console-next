@@ -3,8 +3,8 @@ import { platform } from "./platform";
 import type { components } from "./schema";
 
 /** The BW-29 step-up kinds a web command binds its passkey assertion to (the server's step_up_kind.rs). */
-export type StepUpKind = "PERIOD_UNLOCK" | "IDENTITY_MERGE" | "EXCEPTION_DECIDE" | "OPERATOR_RECOVERY" | "SUPPORT_SESSION";
-const REASON_KEY: Record<StepUpKind, Envelope["binding"]["reason_key"]> = { SUPPORT_SESSION: "passkey_step_up_support_session", OPERATOR_RECOVERY: "passkey_step_up_operator_recovery", PERIOD_UNLOCK: "passkey_step_up_period_unlock", IDENTITY_MERGE: "passkey_step_up_identity_merge", EXCEPTION_DECIDE: "passkey_step_up_exception_decide" };
+export type StepUpKind = "PII_REVEAL" | "PII_RECORD" | "PERIOD_UNLOCK" | "IDENTITY_MERGE" | "EXCEPTION_DECIDE" | "OPERATOR_RECOVERY" | "SUPPORT_SESSION";
+const REASON_KEY: Record<StepUpKind, Envelope["binding"]["reason_key"]> = { PII_REVEAL: "passkey_step_up_pii_reveal", PII_RECORD: "passkey_step_up_pii_record", SUPPORT_SESSION: "passkey_step_up_support_session", OPERATOR_RECOVERY: "passkey_step_up_operator_recovery", PERIOD_UNLOCK: "passkey_step_up_period_unlock", IDENTITY_MERGE: "passkey_step_up_identity_merge", EXCEPTION_DECIDE: "passkey_step_up_exception_decide" };
 
 type Envelope = components["schemas"]["MobilePasskeyStepUpEnvelope"];
 

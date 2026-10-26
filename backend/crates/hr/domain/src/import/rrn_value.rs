@@ -1,7 +1,7 @@
 //! 주민등록번호 as a value the import keeps (decisions #25): checked for shape
-//! and a real birth date, masked to its first seven digits, sealed and
+//! and a real birth date, sealed and
 //! matched only through the [`RrnVault`] port (the keys live with the
-//! shell, never in the database). The value never prints: `Debug` is masked.
+//! shell, never in the database). The value never prints: `Debug` is redacted.
 //!
 //! Shape only, never the check digit: numbers issued since October 2020
 //! have no check digit. 생년월일/성별 are not derived from it into other
@@ -18,7 +18,7 @@ pub struct Rrn(String);
 
 impl std::fmt::Debug for Rrn {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Rrn({})", self.masked())
+        f.write_str("Rrn([redacted])")
     }
 }
 
@@ -70,7 +70,7 @@ impl Rrn {
         &self.0
     }
 
-    /// `900101-1******`: 생년월일 and the 성별 digit, the rest hidden.
+    /// Storage compatibility only: required by the legacy column CHECKs. Never display this value.
     #[must_use]
     pub fn masked(&self) -> String {
         format!("{}-{}******", &self.0[..6], &self.0[6..7])
@@ -120,6 +120,7 @@ mod tests {
         let a = Rrn::parse("900101-1234567").unwrap();
         assert_eq!(Rrn::parse(" 9001011234567 ").unwrap(), a);
         assert_eq!(a.masked(), "900101-1******");
+        assert!(!format!("{a:?}").chars().any(|c| c.is_ascii_digit()));
         // 2005-01-01, the leading zero stripped by Excel.
         let b = Rrn::parse("501013234567").unwrap();
         assert_eq!(b.digits(), "0501013234567");

@@ -3,4 +3,5 @@
 
 pub mod enums;
 pub mod facts;
+pub mod mask;
 pub mod registration;

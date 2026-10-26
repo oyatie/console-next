@@ -4,6 +4,7 @@
 //! mapping memory, 사번 변경 and renumbering.
 
 mod company_names;
+mod field_reveal;
 #[path = "../emp_create/fixture.rs"]
 mod fixture;
 mod flow;
@@ -23,6 +24,8 @@ mod r3_import;
 mod reconcile;
 mod rollback;
 mod rollback_burst;
+mod rrn_audit;
+mod rrn_governed;
 mod rrn_read;
 mod rrn_tombstone;
 mod statistics;

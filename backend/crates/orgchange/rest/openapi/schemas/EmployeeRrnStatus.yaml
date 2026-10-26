@@ -7,7 +7,8 @@ properties:
     type: boolean
   masked:
     type: [string, 'null']
-    description: 900101-1******
+    description: Policy-controlled display mask; fully masked by default.
+    example: ••••••-•••••••
   source:
     type: [string, 'null']
     enum: [IMPORT, FORM, null]

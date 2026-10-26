@@ -19,9 +19,12 @@ use console_hr_adapter_postgres::employee_number::renumber_apply::{
     RenumberApplyRequest, RenumberResult,
 };
 use console_hr_adapter_postgres::employee_number::rules::{NumberRuleRequest, NumberRuleView};
-use console_hr_adapter_postgres::rrn::{RrnRevealRequest, RrnRevealed, RrnStatus};
+use console_hr_adapter_postgres::rrn::{
+    FieldRevealRequest, FieldRevealed, RrnRevealRequest, RrnRevealed, RrnStatus,
+};
 use console_hr_adapter_postgres::{HrError, HrService};
 use console_hr_domain::import::rrn_value::RrnVault;
+use console_platform_auth::PasskeyService;
 use console_platform_authz::Principal;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -29,6 +32,7 @@ use uuid::Uuid;
 use crate::HrApiError;
 
 pub const RRN_PATH: &str = "/api/v1/employees/{id}/rrn";
+pub const FIELD_REVEAL_PATH: &str = "/api/v1/employees/{id}/reveal";
 pub const RRN_REVEAL_PATH: &str = "/api/v1/employees/{id}/rrn/reveal";
 pub const EMPLOYEE_NUMBER_PATH: &str = "/api/v1/employees/{id}/employee-number";
 pub const EMPLOYEE_NUMBER_HISTORY_PATH: &str = "/api/v1/employees/{id}/employee-number/history";
@@ -41,6 +45,7 @@ pub const IDENTITY_ROUTE_PATHS: &[&str] = &[
     crate::person_binding::REVIEWS_PATH,
     RRN_PATH,
     RRN_REVEAL_PATH,
+    FIELD_REVEAL_PATH,
     EMPLOYEE_NUMBER_PATH,
     EMPLOYEE_NUMBER_HISTORY_PATH,
     EMPLOYEE_BY_NUMBER_PATH,
@@ -54,12 +59,18 @@ pub const IDENTITY_ROUTE_PATHS: &[&str] = &[
 struct IdentityState {
     hr: HrService,
     vault: Option<Arc<dyn RrnVault>>,
+    passkeys: Option<PasskeyService>,
 }
 
-pub fn router(hr: HrService, vault: Option<Arc<dyn RrnVault>>) -> Router {
+pub fn router(
+    hr: HrService,
+    vault: Option<Arc<dyn RrnVault>>,
+    passkeys: Option<PasskeyService>,
+) -> Router {
     Router::new()
         .route(RRN_PATH, get(rrn_status))
         .route(RRN_REVEAL_PATH, post(rrn_reveal))
+        .route(FIELD_REVEAL_PATH, post(field_reveal))
         .route(EMPLOYEE_NUMBER_PATH, post(change_number))
         .route(EMPLOYEE_NUMBER_HISTORY_PATH, get(number_history))
         .route(EMPLOYEE_BY_NUMBER_PATH, get(by_number))
@@ -73,6 +84,7 @@ pub fn router(hr: HrService, vault: Option<Arc<dyn RrnVault>>) -> Router {
         .with_state(IdentityState {
             hr: hr.clone(),
             vault,
+            passkeys,
         })
         .merge(crate::person_binding::router(hr))
 }
@@ -92,9 +104,42 @@ async fn rrn_reveal(
     Extension(principal): Extension<Principal>,
     Path(id): Path<Uuid>,
     Json(body): Json<RrnRevealRequest>,
-) -> Reply<RrnRevealed> {
+) -> Result<
+    (
+        [(axum::http::header::HeaderName, &'static str); 1],
+        Json<RrnRevealed>,
+    ),
+    HrApiError,
+> {
     let vault = s.vault.as_deref();
-    Ok(Json(s.hr.rrn_reveal(principal, id, body, vault).await?))
+    Ok((
+        [(axum::http::header::CACHE_CONTROL, "private, no-store")],
+        Json(
+            s.hr.rrn_reveal(principal, id, body, vault, s.passkeys.as_ref())
+                .await?,
+        ),
+    ))
+}
+
+async fn field_reveal(
+    State(s): State<IdentityState>,
+    Extension(principal): Extension<Principal>,
+    Path(id): Path<Uuid>,
+    Json(body): Json<FieldRevealRequest>,
+) -> Result<
+    (
+        [(axum::http::header::HeaderName, &'static str); 1],
+        Json<FieldRevealed>,
+    ),
+    HrApiError,
+> {
+    Ok((
+        [(axum::http::header::CACHE_CONTROL, "private, no-store")],
+        Json(
+            s.hr.reveal_field(principal, id, body, s.vault.as_deref(), s.passkeys.as_ref())
+                .await?,
+        ),
+    ))
 }
 
 async fn change_number(

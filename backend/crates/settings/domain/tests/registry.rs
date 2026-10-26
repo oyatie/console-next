@@ -10,8 +10,9 @@ use std::collections::HashSet;
 /// section switches + PEOPLE-A's two `people.void_*` + D26's six
 /// `approval.policy.*` + IMPORT-2's nine `import.*` + BE-MIG's
 /// `import.apply.max_rows` + PERF-BE's six `db.pool.*`, support-session ceilings,
-/// inbox settings, five NTS settings, the organization apply time and tenant erasure cooling period.
-const EXPECTED_KEYS: usize = 34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 2 + 3 + 5 + 2;
+/// inbox settings, five NTS settings, the organization apply time tenant erasure cooling period and two privacy reveal settings.
+const EXPECTED_KEYS: usize =
+    34 + 17 + 1 + 1 + 1 + 10 + 2 + 6 + 9 + 1 + 6 + 3 + 2 + 2 + 3 + 5 + 2 + 2;
 
 #[test]
 fn roster_has_every_key_once_and_round_trips() {
@@ -129,4 +130,12 @@ fn recovery_and_erasure_settings_are_platform_only_with_bounded_windows() {
         assert_eq!(def.default, Some(SettingValue::Int(default)));
         assert!(!def.in_range(SettingValue::Int(max + 1)));
     }
+}
+
+#[test]
+fn privacy_reveal_duration_is_independent() {
+    assert_eq!(
+        SettingKey::PrivacyRevealDisplaySeconds.def().default,
+        Some(SettingValue::Int(60))
+    );
 }

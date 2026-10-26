@@ -709,6 +709,13 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/employees/{id}/reveal",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__employees__id__reveal.post.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employees/{id}/rrn",
         operations: &[Operation {
             method: "get",
@@ -1395,6 +1402,14 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "EmployeeFacets",
         body: include_str!("../openapi/schemas/EmployeeFacets.yaml"),
+    },
+    NamedYaml {
+        name: "EmployeeFieldRevealRequest",
+        body: include_str!("../openapi/schemas/EmployeeFieldRevealRequest.yaml"),
+    },
+    NamedYaml {
+        name: "EmployeeFieldRevealed",
+        body: include_str!("../openapi/schemas/EmployeeFieldRevealed.yaml"),
     },
     NamedYaml {
         name: "EmployeeHomeBranch",
