@@ -78,6 +78,8 @@ for (const f of tracked.stdout.split("\0").filter(Boolean)) {
   if (bytes.includes(0)) continue;
   bytes.toString("utf8").split("\n").forEach((line, i) => {
     if (!LOCAL_PATH.test(line)) return;
+    // The pinned upstream controller mounts its in-container plugin directory here.
+    if (f === "deploy/base/platform/rollouts.yaml" && /^- mountPath: \/home\/argo-rollouts\/plugin-bin$/.test(line.trim())) return;
     localPaths.add(f);
     if (!BASELINE.localPaths[f]?.trim()) problems.push(`${f}:${i + 1}: local machine path; keep delivery evidence outside the product repository`);
   });

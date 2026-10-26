@@ -112,3 +112,52 @@ fn an_explicit_no_iac_declaration_is_green_only_without_iac_files() {
     repo.git(&["add", "."]);
     assert!(collect_artifacts(&repo.0).is_err());
 }
+
+#[test]
+fn flux_manifests_are_audited_in_every_platform_directory() {
+    let repo = Repo::new("flux");
+    let paths = [
+        "deploy/base/app/api.yaml",
+        "deploy/clusters/exit-test/kustomization.yml",
+        "deploy/policies/admission.yaml",
+        "deploy/reconcile/kustomizations.yaml",
+        "deploy/source/oci.yaml",
+    ];
+    for path in paths {
+        repo.put(path, b"kind: Deployment\n");
+    }
+    let artifacts = collect_artifacts(&repo.0).unwrap();
+    assert_eq!(artifacts.len(), paths.len());
+    assert!(audit(&artifacts).passed());
+    repo.git(&["add", "."]);
+    for path in paths {
+        repo.put(path, b"kind: aws_vpc\n");
+        let result = audit(&collect_artifacts(&repo.0).unwrap());
+        assert_eq!(result.violations.len(), 1, "{path}");
+        assert_eq!(result.violations[0].path, PathBuf::from(path));
+        repo.put(path, b"kind: Deployment\n");
+    }
+}
+
+#[test]
+fn a_no_iac_declaration_cannot_hide_flux_manifests() {
+    let repo = Repo::new("flux-declared");
+    repo.put("deploy/IAC-NONE.md", b"IaC lives in console-infra.\n");
+    repo.put("deploy/base/app/api.yaml", b"kind: Deployment\n");
+    assert!(collect_artifacts(&repo.0).is_err());
+}
+
+#[test]
+fn platform_tool_configuration_and_schemas_are_not_manifests() {
+    let repo = Repo::new("flux-config");
+    repo.put("deploy/IAC-NONE.md", b"No IaC.\n");
+    for path in [
+        "deploy/ci/external-secrets-values.yaml",
+        "deploy/schemas/deployment_v1.json",
+        "deploy/clusters/template/platform.json",
+        "deploy/README.md",
+    ] {
+        repo.put(path, b"aws_vpc\n");
+    }
+    assert!(collect_artifacts(&repo.0).unwrap().is_empty());
+}

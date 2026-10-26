@@ -3,7 +3,7 @@
 //! Lifted and adapted from oyatie's `oya-check-iac-tier-discipline`
 //! (ADR-0202 three-tier IaC model) for maintenance's `deploy/` layout:
 //!
-//! - Tier A — ArgoCD/Kustomize app manifests: `deploy/argocd/**`, `deploy/apps/**`.
+//! - Tier A — ArgoCD/Flux/Kustomize manifests: `deploy/{argocd,apps,base,clusters,policies,reconcile,source}/**`.
 //! - Tier B — OpenTofu cloud primitives: `deploy/opentofu/**`.
 //!
 //! oyatie also models a Tier C (Cluster API) and two further violation kinds:

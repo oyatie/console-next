@@ -1,0 +1,126 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: console-namespace
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./namespace
+  prune: true
+  wait: true
+  timeout: 2m
+  sourceRef:
+    kind: OCIRepository
+    name: console-deploy
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: console-policies
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./policies
+  prune: true
+  wait: true
+  timeout: 2m
+  dependsOn:
+    - name: console-namespace
+  sourceRef:
+    kind: OCIRepository
+    name: console-deploy
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: console-secrets
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./secrets
+  prune: true
+  wait: true
+  timeout: 3m
+  dependsOn:
+    - name: console-namespace
+  sourceRef:
+    kind: OCIRepository
+    name: console-deploy
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: console-objects
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./objects
+  prune: true
+  wait: true
+  timeout: 4m
+  dependsOn:
+    - name: console-secrets
+    - name: console-policies
+  sourceRef:
+    kind: OCIRepository
+    name: console-deploy
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: console-database
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./database
+  prune: true
+  wait: true
+  timeout: 8m
+  dependsOn:
+    - name: console-secrets
+    - name: console-objects
+  sourceRef:
+    kind: OCIRepository
+    name: console-deploy
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: console-migrate
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./migrate
+  prune: true
+  wait: true
+  timeout: 12m
+  dependsOn:
+    - name: console-database
+    - name: console-policies
+  sourceRef:
+    kind: OCIRepository
+    name: console-deploy
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: console-app
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./app
+  prune: true
+  wait: true
+  timeout: 6m
+  dependsOn:
+    - name: console-migrate
+  sourceRef:
+    kind: OCIRepository
+    name: console-deploy
+  healthCheckExprs:
+    - apiVersion: argoproj.io/v1alpha1
+      kind: Rollout
+      failed: has(status) && has(status.phase) && status.phase == 'Degraded'
+      inProgress: '!has(status) || !has(status.phase) || status.phase != "Healthy"'
+      current: has(status) && has(status.phase) && status.phase == 'Healthy'

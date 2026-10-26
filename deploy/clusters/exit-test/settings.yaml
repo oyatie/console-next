@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: console-settings, namespace: console}
+data:
+  CONSOLE_HTTP_ADDR: 0.0.0.0:8080
+  CONSOLE_WEBAUTHN_RP_ID: localhost
+  CONSOLE_WEBAUTHN_RP_ORIGIN: http://localhost:18080
+  CONSOLE_COOKIE_SECURE: 'false'
+  CONSOLE_WEB_DIST: /app/web
+  CONSOLE_SHUTDOWN_TIMEOUT_SECS: '30'
+  CONSOLE_DB_POOL_PEAK_API_PROCESSES: '3'
+  CONSOLE_DB_POOL_PEAK_WORKER_PROCESSES: '2'

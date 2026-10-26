@@ -1,0 +1,188 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dns
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: app-database
+spec:
+  podSelector:
+    matchLabels:
+      console-workload: app
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: console-db
+      ports:
+        - port: 5432
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: database
+spec:
+  podSelector:
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: Exists
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              console-workload: app
+        - podSelector:
+            matchExpressions:
+              - key: cnpg.io/cluster
+                operator: Exists
+      ports:
+        - port: 5432
+          protocol: TCP
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+      ports:
+        - port: 8000
+          protocol: TCP
+  egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: cnpg.io/cluster
+                operator: Exists
+      ports:
+        - port: 5432
+          protocol: TCP
+        - port: 8000
+          protocol: TCP
+    - ports:
+        - port: 443
+          protocol: TCP
+        - port: 6443
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: console-objects
+      ports:
+        - port: 8333
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: console-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: argo-rollouts
+        - podSelector:
+            matchLabels:
+              app: console-smoke
+      ports:
+        - port: 8080
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: object-store
+spec:
+  podSelector:
+    matchLabels:
+      app: console-objects
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: cnpg.io/cluster
+                operator: Exists
+      ports:
+        - port: 8333
+          protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              app: console-object-bootstrap
+      ports:
+        - port: 8888
+          protocol: TCP
+        - port: 18888
+          protocol: TCP
+        - port: 9333
+          protocol: TCP
+        - port: 19333
+          protocol: TCP
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: object-bootstrap
+spec:
+  podSelector:
+    matchLabels:
+      app: console-object-bootstrap
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: console-objects
+      ports:
+        - port: 8888
+          protocol: TCP
+        - port: 18888
+          protocol: TCP
+        - port: 9333
+          protocol: TCP
+        - port: 19333
+          protocol: TCP

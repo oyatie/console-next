@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+# The renderer suffixes the name with the release digest; Flux waits before app reconciliation.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: console-migrate
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels: {app: console-migrate, console-workload: app}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: console
+          image: console-image
+          env:
+            - {name: CONSOLE_APP_ROLE, value: migrate}
+            - {name: DATABASE_URL_FILE, value: /run/console/DATABASE_URL}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: '1', memory: 1Gi}
+          volumeMounts:
+            - {name: credentials, mountPath: /run/console, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: credentials
+          secret: {secretName: console-migrate, defaultMode: 288}
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}

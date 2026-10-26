@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: console-worker
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels: {app: console-worker}
+  template:
+    metadata:
+      labels: {app: console-worker, console-workload: app}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: console
+          image: console-image
+          envFrom: [{configMapRef: {name: console-settings}}]
+          env:
+            - {name: CONSOLE_APP_ROLE, value: worker}
+            - {name: DATABASE_URL_FILE, value: /run/console/DATABASE_URL}
+            - name: CONSOLE_POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+          ports: [{name: http, containerPort: 8080}]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: '1', memory: 512Mi}
+          startupProbe:
+            httpGet: {path: /healthz, port: http}
+            failureThreshold: 30
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 5
+          volumeMounts:
+            - {name: credentials, mountPath: /run/console, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: credentials
+          secret: {secretName: console-worker, defaultMode: 288}
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector: {matchLabels: {app: console-worker}}

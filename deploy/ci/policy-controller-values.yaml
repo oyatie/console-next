@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+webhook:
+  namespaceSelector:
+    matchExpressions:
+      - key: policy.sigstore.dev/exclude
+        operator: NotIn
+        values: ['true']
+  configData:
+    no-match-policy: deny
+  securityContext:
+    enabled: true
+    runAsUser: 65532
