@@ -16,6 +16,12 @@
   --shadow-pop: 0 12px 32px rgba(20, 26, 33, 0.16);
   /* Non-text contrast (WCAG 1.4.11): ≥3:1 against --surface and --canvas in both themes. */
   --control-border: #7b8797; --on-danger: #ffffff; --on-signal: #141a21;
+  --info-solid: #1d4ed8; --neutral-solid: var(--control-border);
+  --chart-cat-1: #1292e6; --chart-cat-2: #d6559f; --chart-cat-3: #6f49e4; --chart-cat-4: #93912c; --chart-cat-5: #6f447c; --chart-cat-6: var(--faint);
+  --chart-seq-1: #d6ebfb; --chart-seq-2: #9ccdf2; --chart-seq-3: #5aa9e6; --chart-seq-4: #1f7fc9; --chart-seq-5: #0b4f8a;
+  --chart-axis: var(--control-border); --chart-grid: var(--border-soft);
+  --chart-edge-entity: var(--ink); --chart-edge-site: var(--chart-cat-1); --chart-edge-dept: var(--control-border);
+  --grid-chg: var(--warn-solid); --grid-err: var(--danger-solid); --grid-rng: var(--primary);
   --selected-bar: inset 3px 0 0 var(--primary); --tab-selected: inset 0 -2px 0 var(--primary);
 
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
@@ -60,5 +66,8 @@
   --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.55);
   --scrim: rgba(0, 0, 0, 0.55);
   --control-border: #66748a; --on-danger: #0b1020; --on-signal: #141a21;
+  --info-solid: #60a5fa;
+  --chart-cat-1: #29c1f6; --chart-cat-2: #ee9cad; --chart-cat-3: #b463fa; --chart-cat-4: #b1bb27; --chart-cat-5: #915f96;
+  --chart-seq-1: #15304a; --chart-seq-2: #1d5585; --chart-seq-3: #2a7fc0; --chart-seq-4: #5aaee8; --chart-seq-5: #a6d6f7;
   color-scheme: dark;
 }

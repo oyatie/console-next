@@ -1,3 +1,4 @@
+@property --trigger-width { syntax: "*"; inherits: true; }
 .picker { display: flex; flex-direction: column; gap: var(--space-2); }
 .input { position: relative; display: flex; align-items: center; }
 .input :global(.field__input) { flex: 1; padding-left: var(--space-6); }
