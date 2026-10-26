@@ -1,6 +1,7 @@
 // Gallery copy for the canonical layout components added by the standardisation pass (button sizes, banner, tabs,
 // page head, card, facts, action bar). Dev-only, like gallery.ts, which spreads it.
 export const dsKo = {
+  "section.shell": "상단 표시줄",
   "section.buttonSizes": "버튼 크기와 아이콘 버튼",
   "buttonSize.sm": "수정",
   "buttonSize.smPrimary": "저장",
@@ -109,6 +110,7 @@ export const dsKo = {
 } as const;
 
 export const dsEn: Record<keyof typeof dsKo, string> = {
+  "section.shell": "Top bar",
   "section.buttonSizes": "Button sizes and icon buttons",
   "buttonSize.sm": "Fix",
   "buttonSize.smPrimary": "Save",

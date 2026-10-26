@@ -1,0 +1,11 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.tenant { display: flex; align-items: center; gap: var(--space-2); flex: 1; min-width: 0; }
+.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.phase { composes: t-xs t-medium from global; flex-shrink: 0; padding: var(--space-1) var(--space-2); border: 1px solid var(--border); border-radius: var(--radius); }
+.account { composes: btn btn--ghost from global; min-width: 0; max-width: var(--rail-w); flex-shrink: 0; }
+.account svg { flex-shrink: 0; }
+.check { visibility: hidden; }
+[data-selected] > .check { visibility: visible; }
+@media (max-width: 640px) {
+  .account .name { display: none; }
+}
