@@ -223,10 +223,6 @@ aside.panel { position: sticky; top: 0; }
 .rail-steps__item[data-state="done"] { color: var(--ok-tx); border-color: var(--ok-bd); background: var(--ok-bg); }
 .rail-steps__item[data-state="current"] { color: var(--primary); border-color: var(--primary-bd); background: var(--primary-soft); font-weight: var(--fw-strong); }
 .rail-steps__item[data-state="failed"] { color: var(--danger-tx); border-color: var(--danger-bd); background: var(--danger-bg); font-weight: var(--fw-strong); }
-.timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.timeline__item { display: grid; grid-template-columns: max-content 1fr; gap: 0 var(--space-3); font-size: var(--text-sm); }
-.timeline__item .muted, .timeline__action { grid-column: 2; }
-.timeline__at { color: var(--steel); }
 .steps-plain { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
 .list-plain { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
@@ -235,11 +231,6 @@ aside.panel { position: sticky; top: 0; }
 .field__area { height: auto; min-height: calc(var(--row-h) * 2); padding: var(--space-2) var(--space-3); resize: vertical; }
 
 /* ── org tree (React Aria Tree) ────────────────────── */
-.tree { padding: var(--space-1) var(--space-2) var(--space-3); outline: none; }
-.tree .react-aria-TreeItem { border-radius: var(--radius); cursor: pointer; outline: none; }
-.tree .react-aria-TreeItem[data-focus-visible] { box-shadow: var(--focus); }
-.tree .react-aria-TreeItem[data-hovered] { background: var(--muted); }
-.tree .react-aria-TreeItem[data-selected] { background: var(--primary-soft); color: var(--primary); }
 .tree__row { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-h); padding-inline-start: calc((var(--tree-item-level, 1) - 1) * var(--space-5) + var(--space-2)); padding-inline-end: var(--space-2); }
 .tree__chevron { display: inline-grid; place-items: center; width: var(--space-5); height: var(--space-5); border: 0; background: none; color: var(--steel); cursor: pointer; transition: transform 120ms ease; }
 .tree .react-aria-TreeItem[data-expanded] > .tree__row .tree__chevron, .tree [data-expanded] .tree__chevron { transform: rotate(90deg); }

@@ -12,3 +12,10 @@
 .statValue { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 /* Phone widths: the counts stack two by two instead of squeezing. */
 @media (max-width: 767px) { .stats { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat:nth-child(odd) { border-left: 0; } }
+.row:hover > .value, .row[data-hovered] > .value { color: var(--ink); }
+.row:focus-within > .act { box-shadow: var(--focus); }
+.kv[data-density="dense"] { font-size: var(--text-xs); gap: var(--space-1) var(--space-2); }
+.loading { padding: var(--space-3); }
+.skeleton { height: var(--space-6); background: var(--border-soft); border-radius: var(--radius-sm); }
+.empty { padding: var(--space-3); color: var(--steel); font-size: var(--text-sm); text-align: center; }
+.error { padding: var(--space-3); color: var(--danger-solid); font-size: var(--text-sm); }

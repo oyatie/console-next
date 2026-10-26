@@ -1,0 +1,12 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* ui/tree: hierarchy navigation with keyboard support. Tokens only. */
+.tree { padding: var(--space-1) var(--space-2) var(--space-3); outline: none; }
+.tree :global(.react-aria-TreeItem) { border-radius: var(--radius); cursor: pointer; outline: none; }
+.tree :global(.react-aria-TreeItem)[data-focus-visible] { box-shadow: var(--focus); }
+.tree :global(.react-aria-TreeItem)[data-hovered] { background: var(--muted); }
+.tree :global(.react-aria-TreeItem)[data-selected] { background: var(--primary-soft); color: var(--primary); }
+.tree[data-density="dense"] { padding: 0 var(--space-1); }
+.loading { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.skeleton { height: var(--row-h); background: var(--border-soft); border-radius: var(--radius); }
+.empty { padding: var(--space-4); color: var(--steel); font-size: var(--text-sm); text-align: center; }
+.error { padding: var(--space-4); color: var(--danger-solid); font-size: var(--text-sm); }
