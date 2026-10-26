@@ -71,6 +71,7 @@ function useColumns(today: string, exited: boolean, shown: readonly ColumnId[]):
     { id: "hired", header: t("people.col.hired"), cell: (e) => <span className="num">{e.hire_date ? fmtDate(e.hire_date) : "—"}</span>, width: 112 },
     {
       id: "status",
+      card: "status",
       header: t("people.col.status"),
       cell: (e) => (
         <>

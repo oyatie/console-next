@@ -1,7 +1,9 @@
 import { Fragment, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { cardRoles, type CardColumn } from "./long-table/card-columns";
+import cards from "./long-table/table-cards.module.css";
 
 /** `width` reserves a stable share for live content; `fit` shrinks the column to its content (codes, dates, chips); `wide` hides it at phone widths (secondary detail). */
-export type Column<R> = { header: ReactNode; cell: (r: R) => ReactNode; fit?: boolean; wide?: boolean; width?: "code" | "status" | "summary" | "datetime" };
+export type Column<R> = CardColumn & { header: ReactNode; cell: (r: R) => ReactNode; fit?: boolean; width?: "code" | "status" | "summary" | "datetime" };
 const cls = (c: { fit?: boolean; wide?: boolean }) => [c.fit && "fit", c.wide && "wide-only"].filter(Boolean).join(" ") || undefined;
 
 /**
@@ -43,8 +45,10 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
     body.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(next)}"]`)?.focus();
   };
   const grid = onSelect ? ({ role: "grid", onKeyDown: key } as const) : {};
-  return (
-    <table className="table" data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} aria-label={label} {...grid}>
+  const roles = cardRoles(columns);
+  const hasCards = columns.some(c => c.card);
+  const table = (
+    <table className={`table ${hasCards ? cards.short : ""} ${cards.surface}`} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} aria-label={label} {...grid}>
       <thead>
         <tr>{columns.map((c, i) => <th key={i} className={cls(c)} data-width={c.width}>{c.header}</th>)}</tr>
       </thead>
@@ -62,7 +66,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
               onFocus={onSelect && (() => setActive(id))}
               onClick={onSelect && (() => onSelect(id))}
             >
-              {columns.map((c, i) => <td key={i} className={cls(c)}>{c.cell(r)}</td>)}
+              {columns.map((c, i) => <td role={onSelect ? "gridcell" : "cell"} key={i} className={cls(c)} data-card={roles[i]} data-label={typeof c.header === "string" ? c.header : undefined}>{c.cell(r)}</td>)}
             </tr>
             {more != null && more !== false && (
               <tr className="table__detail" data-tone={tone?.(r)}>
@@ -75,4 +79,5 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
       </tbody>
     </table>
   );
+  return hasCards ? <div className={cards.container}>{table}</div> : table;
 }

@@ -23,7 +23,7 @@ export default function Tables() {
     { header: tg("col.name"), cell: (r) => r.name },
     { header: tg("col.unit"), cell: (r) => r.unit },
     { header: tg("col.position"), cell: (r) => r.position },
-    { header: tg("col.status"), fit: true, cell: (r) => { const s = labeled(EMPLOYEE_STATUS, r.status); return <Chip tone={s.tone}>{s.label}</Chip>; } },
+    { header: tg("col.status"), card: "status", fit: true, cell: (r) => { const s = labeled(EMPLOYEE_STATUS, r.status); return <Chip tone={s.tone}>{s.label}</Chip>; } },
   ];
   return (
     <Section title={tg("section.tables")}>
