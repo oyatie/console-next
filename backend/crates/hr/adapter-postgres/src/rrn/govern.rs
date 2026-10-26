@@ -35,7 +35,7 @@ pub(super) fn required() -> HrError {
     )
 }
 
-fn refused(status: http::StatusCode, code: &'static str, message: &str) -> HrError {
+pub(crate) fn refused(status: http::StatusCode, code: &'static str, message: &str) -> HrError {
     HrError {
         status,
         code,
@@ -101,12 +101,10 @@ pub(super) async fn authorize(
     let proof_missing = request.step_up.is_none() || passkeys.is_none();
     let step_up = match (request.step_up, passkeys) {
         (Some(proof), Some(passkeys)) => {
-            verify_step_up(
+            verify_binding(
                 tx,
                 principal,
-                employee,
-                request.field.as_str(),
-                reason,
+                reveal_binding(employee, request.field.as_str(), reason),
                 proof,
                 passkeys,
             )
@@ -160,24 +158,17 @@ pub(super) async fn authorize(
 }
 
 // Storage failures stop the transaction; invalid or stale assertions become Cedar facts.
-async fn verify_step_up(
+pub(super) async fn verify_binding(
     tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,
-    employee: Uuid,
-    field: &str,
-    reason: &str,
+    binding: MobilePasskeyStepUpBinding,
     proof: MobilePasskeyStepUpEnvelope,
     passkeys: &PasskeyService,
 ) -> Result<(), HrError> {
     let fresh: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM auth_webauthn_ceremony_bindings WHERE ceremony_id=$1 AND created_at <= now() AND created_at >= now() - interval '5 minutes')")
         .bind(proof.assertion.ceremony_id).fetch_one(tx.as_mut()).await?;
     passkeys
-        .verify_and_record_step_up_in_tx(
-            tx,
-            proof,
-            *principal.user_id.as_uuid(),
-            &reveal_binding(employee, field, reason),
-        )
+        .verify_and_record_step_up_in_tx(tx, proof, *principal.user_id.as_uuid(), &binding)
         .await
         .map_err(|error| {
             if matches!(

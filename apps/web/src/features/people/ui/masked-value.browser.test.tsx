@@ -285,11 +285,22 @@ test("390px birth-date mask stays whole in a narrow card cell", async () => {
   expect(lines).toBeLessThan(2);
 });
 
-test("identifiers keeps the unserved record command absent", async () => {
-  await page.route("**/api/v1/employees/person/rrn", route => route.fulfill({
-    json: { employee_id: "person", recorded: false, masked: null, source: null },
-  }));
+test("identifiers records through the shared sheet and refreshes its masked status", async () => {
+  let recorded = false;
+  await page.route("**/api/v1/employees/person/rrn", route => {
+    const writing = route.request().method() === "PUT";
+    if (writing) recorded = true;
+    return route.fulfill({ status: writing ? 201 : 200, json: {
+      employee_id: "person", recorded, can_record: !recorded, masked: recorded ? "••••••-•••••••" : null, source: recorded ? "FORM" : null,
+    } });
+  });
   await page.goto(`${server.resolvedUrls!.local[0]}privacy-test?card`);
-  await page.getByText("기록 없음", { exact: true }).waitFor();
+  await page.getByText("기록 없음").waitFor();
+  await page.getByRole("button", { name: "기록", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "주민등록번호 기록" });
+  await sheet.getByRole("textbox", { name: /^주민등록번호/ }).fill(secret);
+  await sheet.getByRole("button", { name: "기록", exact: true }).click();
+  await page.getByText("••••••-•••••••", { exact: true }).waitFor();
   expect(await page.getByRole("button", { name: "기록", exact: true }).count()).toBe(0);
+  expect(await page.getByRole("dialog").count()).toBe(0);
 });

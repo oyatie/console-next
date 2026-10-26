@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [rrn]
+properties:
+  rrn:
+    type: string
+    writeOnly: true
+    description: Resident registration number, validated by the server; never retained in a draft.
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'

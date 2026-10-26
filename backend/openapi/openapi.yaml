@@ -11248,6 +11248,50 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+    put:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [employees]
+      operationId: recordEmployeeRrn
+      summary: Record an employee's resident registration number
+      description: 'Tenant-wide employee_directory_manage through Cedar, with a fresh PII_RECORD passkey bound only to the employee id. The access record commits before sealing and writing. Existing numbers cannot be corrected here. No number or blind index enters the audit or response.'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeRrnRecordRequest'
+      responses:
+        '201':
+          description: Recorded with source FORM; masked status only, never cached.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeRrnStatus'
+        '401':
+          description: step_up_required or passkey_step_up_failed.
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: rrn_already_recorded or rrn_in_use; no other employee identity is returned.
+        '422':
+          description: rrn_invalid.
+        '503':
+          description: rrn_vault_unavailable.
   /api/v1/employees/{id}/rrn/reveal:
     post:
       tags:
@@ -42749,6 +42793,18 @@ components:
         changed:
           type: integer
           minimum: 0
+    EmployeeRrnRecordRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [rrn]
+      properties:
+        rrn:
+          type: string
+          writeOnly: true
+          description: Resident registration number, validated by the server; never retained in a draft.
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     EmployeeRrnRevealRequest:
       type: object
       additionalProperties: false
@@ -42784,6 +42840,9 @@ components:
           $ref: '#/components/schemas/Uuid'
         recorded:
           type: boolean
+        can_record:
+          type: boolean
+          description: Cedar permits org-wide recording; false when a number already exists.
         masked:
           type: [string, 'null']
           description: Policy-controlled display mask; fully masked by default.

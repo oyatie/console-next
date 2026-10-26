@@ -4993,7 +4993,11 @@ export interface paths {
          * @description Decisions #25. Masked by default (생년월일 + 성별 digit); recorded false when none is stored. Org-wide employee_directory_manage; each read leaves a 접속기록 row.
          */
         get: operations["getEmployeeRrn"];
-        put?: never;
+        /**
+         * Record an employee's resident registration number
+         * @description Tenant-wide employee_directory_manage through Cedar, with a fresh PII_RECORD passkey bound only to the employee id. The access record commits before sealing and writing. Existing numbers cannot be corrected here. No number or blind index enters the audit or response.
+         */
+        put: operations["recordEmployeeRrn"];
         post?: never;
         delete?: never;
         options?: never;
@@ -20073,6 +20077,11 @@ export interface components {
             batch_id: components["schemas"]["Uuid"];
             changed: number;
         };
+        EmployeeRrnRecordRequest: {
+            /** @description Resident registration number, validated by the server; never retained in a draft. */
+            rrn: string;
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
         EmployeeRrnRevealRequest: {
             /** @description rrn_reveal reason code. */
             reason_code: string;
@@ -20088,6 +20097,8 @@ export interface components {
         EmployeeRrnStatus: {
             employee_id: components["schemas"]["Uuid"];
             recorded: boolean;
+            /** @description Cedar permits org-wide recording; false when a number already exists. */
+            can_record?: boolean;
             /**
              * @description Policy-controlled display mask; fully masked by default.
              * @example ••••••-•••••••
@@ -39938,6 +39949,63 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    recordEmployeeRrn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmployeeRrnRecordRequest"];
+            };
+        };
+        responses: {
+            /** @description Recorded with source FORM; masked status only, never cached. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeRrnStatus"];
+                };
+            };
+            /** @description step_up_required or passkey_step_up_failed. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description rrn_already_recorded or rrn_in_use; no other employee identity is returned. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description rrn_invalid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description rrn_vault_unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     revealEmployeeRrn: {

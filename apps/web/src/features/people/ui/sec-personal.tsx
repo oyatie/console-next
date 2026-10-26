@@ -15,6 +15,7 @@ import type { Card } from "./use-card";
 import type { Quick } from "./use-quick";
 import s from "./card.module.css";
 import { RrnValue } from "./rrn-value";
+import { RrnEntry } from "./rrn-entry";
 import { EmergencyContacts } from "./emergency-contacts";
 import { PhotoRow } from "./photo-row";
 import { Muted } from "../../../ui/muted/muted";
@@ -65,7 +66,7 @@ export function SecPersonal({ c, quick, onFix }: { c: Card; quick: Quick; onFix:
         {f?.birth_date ? <FieldValue employeeId={e.id} allowed={c.readable} fieldCode="BIRTH_DATE" masked={maskedBirth()} field={t("empCard.f.birth")} who={who} /> : <span className={s.warn}>{t("empCard.missing")}</span>}
       </FieldRow>
       <FieldRow wide label={t("empCard.f.rrn")} >
-        {c.readable ? <QueryState q={rrnRead}>{() => rrn?.recorded ? <RrnValue employeeId={e.id} who={who} masked={rrn.masked ?? ""} /> : <Muted>{t("empCard.rrn.none")}</Muted>}</QueryState> : <Muted>{t("people.field.restricted")}</Muted>}{" "}
+        {c.readable ? <QueryState q={rrnRead}>{() => rrn?.recorded ? <RrnValue employeeId={e.id} who={who} masked={rrn.masked ?? ""} /> : <><Muted>{t("empCard.rrn.none")}</Muted>{c.editable && rrn?.can_record && <> · <RrnEntry employeeId={e.id} who={who} /></>}</>}</QueryState> : <Muted>{t("people.field.restricted")}</Muted>}{" "}
         {c.readable && <Link className={s.link} to="/people/$id/identifiers" params={{ id: e.id }}>{t("empCard.rrn.open")}</Link>}
       </FieldRow>
       <FieldRow id="f-address" no="4" label={t("empCard.f.address")} mark={c.editable && <FieldMark kind="rc" field={t("empCard.f.address")} onPress={() => onFix("address")} />}>

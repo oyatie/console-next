@@ -3,7 +3,8 @@
 //! `rrn_reveal` domain, and every read in 접속기록. Opening the sealed value
 //! takes the shell's vault; without one the reveal is 503, never a fallback.
 
-mod govern;
+pub(crate) mod govern;
+mod record;
 mod reveal;
 use console_hr_domain::{import::rrn_value::RrnVault, profile::mask};
 use console_kernel_core::KernelError;
@@ -11,6 +12,7 @@ use console_platform_auth::{MobilePasskeyStepUpEnvelope, PasskeyService};
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_audits;
 pub use govern::reveal_binding;
+pub use record::{RrnRecordRequest, record_binding};
 pub use reveal::{FieldRevealRequest, FieldRevealed, RevealField};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -26,6 +28,7 @@ use crate::{HrError, HrService};
 pub struct RrnStatus {
     pub employee_id: Uuid,
     pub recorded: bool,
+    pub can_record: bool,
     /// The display policy mask, independent of the legacy stored column.
     pub masked: Option<String>,
     /// `IMPORT` or `FORM`.
@@ -114,6 +117,7 @@ impl HrService {
                 let status = RrnStatus {
                     employee_id,
                     recorded: row.is_some(),
+                    can_record: row.is_none() && record::directory(tx, &principal).await?,
                     masked: row.as_ref().map(|_| mask::rrn()),
                     source: row.as_ref().map(|r| r.1.clone()),
                     recorded_at: row.map(|r| r.2),

@@ -5,6 +5,7 @@ import { fmtDateTime } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
 import { Card } from "../../../ui/card/card";
 import { RrnValue } from "../../people/ui/rrn-value";
+import { RrnEntry } from "../../people/ui/rrn-entry";
 import { rrnQuery } from "../api";
 
 export function RrnCard({ employeeId, who }: { employeeId: string; who: string }) {
@@ -13,7 +14,7 @@ export function RrnCard({ employeeId, who }: { employeeId: string; who: string }
   return (
     <Card title={t("identifiers.rrn.title")} meta={value && (value.recorded && value.recorded_at ? t("identifiers.rrn.recorded", { at: fmtDateTime(value.recorded_at), source: t(`identifiers.rrn.source.${value.source ?? "IMPORT"}`) }) : t("identifiers.rrn.why"))}>
       <QueryState q={status}>{(s) => <>
-        {s.recorded ? <RrnValue employeeId={employeeId} who={who} masked={s.masked ?? ""} /> : t("empCard.rrn.none")}
+        {s.recorded ? <RrnValue employeeId={employeeId} who={who} masked={s.masked ?? ""} /> : <>{t("empCard.rrn.none")}{s.can_record && <> · <RrnEntry employeeId={employeeId} who={who} /></>}</>}
       </>}</QueryState>
     </Card>
   );

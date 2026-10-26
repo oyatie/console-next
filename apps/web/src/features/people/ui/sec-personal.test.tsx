@@ -7,10 +7,10 @@ import { SecPersonal } from "./sec-personal";
 import type { Card } from "./use-card";
 import type { Quick } from "./use-quick";
 
-const rrnRead = vi.hoisted(() => ({ recorded: false }));
+const rrnRead = vi.hoisted(() => ({ recorded: false, can_record: true }));
 vi.mock("@tanstack/react-query", async importOriginal => ({
   ...await importOriginal<typeof import("@tanstack/react-query")>(),
-  useQuery: () => ({ data: { employee_id: "person", recorded: rrnRead.recorded, masked: "••••••-•••••••" }, isPending: false, isError: false }),
+  useQuery: () => ({ data: { employee_id: "person", recorded: rrnRead.recorded, can_record: rrnRead.can_record, masked: "••••••-•••••••" }, isPending: false, isError: false }),
 }));
 
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
@@ -49,9 +49,15 @@ test("a reader without the reveal right has no reveal control", () => {
   }
 });
 
-test("cards keep the identifiers link without offering the unserved record command", () => {
+test("recording is offered only on an editable readable card without a number", () => {
   const action = ">기록</button>";
-  for (const html of [card(true, true), card(false, true), card(true, false), card(true, true, true)]) expect(html).not.toContain(action);
+  expect(card(true, true)).toContain(action);
+  for (const html of [card(false, true), card(true, false), card(true, true, true)]) expect(html).not.toContain(action);
   expect(card(true, true)).toContain(t("empCard.rrn.open"));
   expect(card(true, true)).not.toContain("법적 근거 확인 중");
+});
+
+test("a readable editable card respects the server's recording refusal", () => {
+  rrnRead.can_record = false;
+  expect(card(true, true)).not.toContain(">기록</button>");
 });

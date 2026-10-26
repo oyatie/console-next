@@ -2033,6 +2033,13 @@
       "reason": "rust_struct_not_strict"
     },
     {
+      "operation": "PUT /api/v1/employees/{id}/rrn",
+      "rust_file": "backend/crates/hr/rest/src/identity.rs",
+      "handler": "rrn_record",
+      "body_type": null,
+      "reason": "no_direct_json_binding"
+    },
+    {
       "operation": "PUT /api/v1/financial/purchase-requests/preferences",
       "rust_file": "backend/crates/financial/rest/src/lib.rs",
       "handler": "save_purchase_preferences",
