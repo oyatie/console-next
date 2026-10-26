@@ -192,11 +192,16 @@ test("catalog titles use the shared list/search boundary and keep selection and 
       await expectElement(page.getByRole("combobox")).toHaveCount(0);
       await expectElement(page.getByRole("radio", { name: /Employee 0/ })).toBeDisabled();
       await page.getByRole("radio", { name: "Employee 1", exact: true }).press("Space");
+      await expectElement(page.getByRole("radio", { name: "Employee 1", exact: true })).toBeChecked();
     } else {
       const input = page.getByRole("combobox", { name: "Title" });
       await input.fill("Employee");
+      await expectElement(page.getByRole("listbox")).toBeVisible();
       await expectElement(page.getByRole("option", { name: "Employee 0", exact: true })).toHaveCount(0);
       await page.getByRole("option", { name: "Employee 1", exact: true }).click();
+      // Selection commits before React Aria closes the list and exposes the outside clear button.
+      await expectElement(input).toHaveAttribute("aria-expanded", "false");
+      await expectElement(page.getByRole("listbox")).toHaveCount(0);
     }
     await expectElement(page.locator("#selected")).toHaveText("1");
     await page.getByRole("button", { name: "그대로", exact: true }).click();
