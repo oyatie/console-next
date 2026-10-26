@@ -23,6 +23,7 @@ beforeAll(async () => {
         import { createRoot } from 'react-dom/client';
         import { loadCatalog } from '@console/i18n';
         import { Composer } from '/apps/web/src/ui/composer/composer.tsx';
+        import { TextArea } from '/apps/web/src/ui/field/text-area.tsx';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         function Demo() {
@@ -38,7 +39,7 @@ beforeAll(async () => {
               blocked: state === 'blocked' || state?.startsWith('locate') || (state === 'page-blocked' && !long) ? { reason: 'Resolve first', remedy: h('button', { id: 'remedy', onClick: () => setRemedies(x => x + 1) }, 'Register entity'), press: state?.startsWith('locate') ? () => setRemedies(x => x + 1) : undefined } : undefined,
               pending: state === 'locate-pending', loading: state === 'locate-loading',
               locked: state === 'locked' || state === 'locate-locked', recovery: state === 'recovery' ? h('span', null, 'Checking') : undefined,
-            }, state === 'refusal' ? h('form', { onSubmit: event => { event.preventDefault(); setRemedies(x => x + 1); } }, h('input', { 'aria-label': 'Reason' }), h('button', { type: 'submit' }, 'Request access')) : h('input', { 'aria-label': 'Reason' })),
+            }, state === 'refusal' ? h('form', { onSubmit: event => { event.preventDefault(); setRemedies(x => x + 1); } }, h('input', { 'aria-label': 'Reason' }), h('button', { type: 'submit' }, 'Request access')) : h(TextArea, { 'aria-label': 'Reason' })),
             h('output', { id: 'submits' }, submits), h('output', { id: 'remedies' }, remedies));
         }
         createRoot(document.getElementById('root')).render(h(Demo));
@@ -112,5 +113,17 @@ test.each([[390, "inline"], [1440, "inline"], [390, "page"], [1440, "page"]] as 
   expect(await boxes()).toEqual(before);
   await page.getByLabel("Reason").fill("Reviewed");
   await page.getByLabel("Reason").press("Control+Enter");
+  expect(await page.locator("#submits").textContent()).toBe("1");
+});
+
+test("composition-ending keyCode 229 in a textarea cannot commit", async () => {
+  await open("page");
+  const field = page.getByLabel("Reason");
+  await field.focus();
+  await field.dispatchEvent("compositionstart");
+  await field.dispatchEvent("keydown", { key: "Enter", metaKey: true, isComposing: false, keyCode: 229 });
+  expect(await page.locator("#submits").textContent()).toBe("0");
+  await field.dispatchEvent("compositionend");
+  await field.press("Control+Enter");
   expect(await page.locator("#submits").textContent()).toBe("1");
 });
