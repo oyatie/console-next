@@ -9,7 +9,7 @@ vi.mock("./roster-scope", () => ({ RosterScope: () => null }));
 beforeAll(() => loadCatalog("ko"));
 
 test.each([0, 3, undefined])("an active department review stays visible with server count %s", (count) => {
-  const html = renderToStaticMarkup(<RosterFilters status="current" review={["department"]} sort="name"
+  const html = renderToStaticMarkup(<RosterFilters status="current" review={["department"]}
     counts={{ status: { totals: statusTotals([3, 0, 0, 0, 0]), failed: [] },
       review: { totals: { ...reviewTotals([0, 0, 0, 0, 0, 0]), department: count }, failed: REVIEWS.map(() => false) } }}
     onChange={() => undefined} findSlot={() => undefined} density="regular" onDensity={() => undefined} />);

@@ -2,12 +2,14 @@
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
 .caption { flex: 1; font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; }
 .find { position: relative; display: flex; align-items: center; min-width: calc(var(--panel-w) / 1.6); }
+.sort { display: flex; align-items: center; gap: var(--space-2); }
 .find :global(.field__input) { flex: 1; padding-right: var(--space-6); }
 .find input::-webkit-search-cancel-button { display: none; }
 .kbd { position: absolute; right: var(--space-2); padding: 0 var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: var(--text-xs); color: var(--steel); }
 .selection { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); background: var(--primary-soft); color: var(--primary); font-size: var(--text-sm); font-weight: var(--fw-medium); }
 .table { max-height: min(70dvh, calc(var(--row-h) * 16)); overflow: auto; scroll-padding-top: var(--row-h); outline: none; border-top: 1px solid var(--border); }
 .head { background: var(--surface); }
+.th[data-allows-sorting] { cursor: pointer; gap: var(--space-1); }
 .th { display: flex; align-items: center; height: 100%; padding: 0 var(--space-3); border-bottom: 1px solid var(--border); text-align: left; font-size: var(--text-xs); letter-spacing: var(--tracking-label); color: var(--steel); font-weight: var(--fw-medium); outline: none; box-sizing: border-box; }
 .row { border-bottom: 1px solid var(--border-soft); background: var(--surface); outline: none; cursor: default; }
 .row[data-href], .row[data-action] { cursor: pointer; }

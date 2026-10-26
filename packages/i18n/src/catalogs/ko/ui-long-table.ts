@@ -2,6 +2,9 @@
 // Domain-free: counts use 건, or 명 when the table lists people (`unit` = "person", LongTable `countUnit`).
 export const koUiLongTable = {
   "uiLongTable.name": "긴 목록 표",
+  "uiLongTable.sort": "정렬",
+  "uiLongTable.ascending": "오름차순",
+  "uiLongTable.descending": "내림차순",
   "uiLongTable.loading": "불러오는 중",
   "uiLongTable.loadingMore": "더 불러오는 중",
   "uiLongTable.selection.ids": "{unit, select, person {{count, plural, other {#명}}} other {{count, plural, other {#건}}}} 선택됨",

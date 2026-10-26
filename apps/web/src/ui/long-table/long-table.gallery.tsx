@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { SortDescriptor } from "react-aria-components";
 import { t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
 import { LongTable, type LongColumn } from "./long-table";
@@ -10,8 +11,8 @@ type Person = { id: string; n: number };
 const TOTAL = 3214;
 const PAGE = 100;
 const columns: LongColumn<Person>[] = [
-  { id: "name", header: tg("col.name"), card: "title", cell: (r) => tg("sample.person", { n: r.n }), rowHeader: true, width: "2fr" },
-  { id: "no", header: tg("form.number"), cell: (r) => <span className="code">{r.id}</span>, width: 120 },
+  { id: "name", header: tg("col.name"), card: "title", cell: (r) => tg("sample.person", { n: r.n }), rowHeader: true, allowsSorting: true, width: "2fr" },
+  { id: "no", header: tg("form.number"), cell: (r) => <span className="code">{r.id}</span>, allowsSorting: true, width: 120 },
   { id: "unit", header: tg("col.unit"), cell: (r) => (r.n % 7 === 0 ? tg("sample.teamLong") : tg("sample.team")), width: "3fr" },
   { id: "pos", header: tg("col.position"), cell: () => tg("sample.position") },
 ];
@@ -23,11 +24,12 @@ const columns: LongColumn<Person>[] = [
  */
 export default function LongTables() {
   const [q, setQ] = useState("");
+  const [sort, setSort] = useState<SortDescriptor>({ column: "name", direction: "ascending" });
   const [pages, setPages] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
   const [sel, setSel] = useState<Selection>({ kind: "ids", ids: new Set(Array.from({ length: PAGE }, (_, i) => `HK-${String(i + 1).padStart(4, "0")}`)) });
   const matching = useMemo(() => Array.from({ length: TOTAL }, (_, i) => ({ id: `HK-${String(i + 1).padStart(4, "0")}`, n: i + 1 })).filter((r) => r.id.includes(q)), [q]);
-  const rows = matching.slice(0, pages * PAGE);
+  const rows = (sort.direction === "descending" ? [...matching].reverse() : matching).slice(0, pages * PAGE);
   const loadMore = () => {
     setLoadingMore(true);
     setTimeout(() => (setPages((n) => n + 1), setLoadingMore(false)), 300);
@@ -39,6 +41,8 @@ export default function LongTables() {
         label={t("uiLongTable.name")}
         caption={tg("table.many")}
         columns={columns}
+        sortDescriptor={sort}
+        onSortChange={setSort}
         rows={rows}
         rowId={(r) => r.id}
         total={matching.length}

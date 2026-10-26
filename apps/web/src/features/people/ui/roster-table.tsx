@@ -9,7 +9,8 @@ import { EMPLOYEE_STATUS, EMPLOYMENT_TYPE, label, labeled } from "../../../lib/l
 import { entitiesRef } from "../../../reference/entity/api";
 import { unitsQuery } from "../../../reference/org/api";
 import { unitPath } from "../../../reference/org/present";
-import { daysBetween, nextItems, retentionEnd } from "../domain/roster";
+import { daysBetween, nextItems, retentionEnd, SORTS, type RosterSort } from "../domain/roster";
+import type { RosterOrder } from "../domain/roster-order";
 import type { ColumnId } from "../domain/columns";
 import { Meter } from "../../../ui/meter/meter";
 import { nextText } from "../present";
@@ -103,8 +104,16 @@ function Keep({ e, today }: { e: Employee; today: string }) {
 }
 
 type TableProps = Parameters<typeof LongTable<Employee>>[0];
+const SORT_COLUMNS: Record<RosterSort, string> = { name: "name", employee_number: "number", org_unit: "unit", hire_date: "hired" };
 
 /** The people table: compact rows of the roster's columns, everything else as LongTable takes it. */
-export function RosterTable({ today, exited = false, shown, density, ...p }: Omit<TableProps, "columns" | "density" | "rowId"> & { today: string; exited?: boolean; shown: readonly ColumnId[]; density: "compact" | "regular" }) {
-  return <LongTable {...p} density={density} columns={useColumns(today, exited, shown)} rowId={(e) => e.id} />;
+export function RosterTable({ today, exited = false, shown, density, sort = "name", onSort, ...p }: Omit<TableProps, "columns" | "density" | "rowId" | "sortDescriptor" | "onSortChange"> & { today: string; exited?: boolean; shown: readonly ColumnId[]; density: "compact" | "regular"; sort?: RosterOrder; onSort?: (sort: RosterOrder) => void }) {
+  const activeKey = SORTS.find(key => sort === key || sort === `-${key}`)!;
+  const columns = useColumns(today, exited, shown).map(column => ({ ...column, allowsSorting: Object.values(SORT_COLUMNS).includes(column.id) }));
+  return <LongTable {...p} density={density} columns={columns} rowId={(e) => e.id}
+    sortDescriptor={onSort ? { column: SORT_COLUMNS[activeKey], direction: sort.startsWith("-") ? "descending" : "ascending" } : undefined}
+    onSortChange={onSort && (descriptor => {
+      const requestedKey = SORTS.find(key => SORT_COLUMNS[key] === descriptor.column);
+      if (requestedKey) onSort(descriptor.direction === "descending" ? `-${requestedKey}` : requestedKey);
+    })} />;
 }

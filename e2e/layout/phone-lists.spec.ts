@@ -5,9 +5,10 @@ import { go, registerEmployee } from "../flows";
 import { staffedTenant } from "../setup-flows";
 import { forgetResize } from "../stability";
 
-test("people cards at 390px keep selection, focus and the open record through rotation", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
+test("people cards at 390px keep sorting, selection, focus and the open record through rotation", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "phone-lists", "모바일상사");
   await registerEmployee(admin, { name: "김모바일", number: "MOB-0001", position: "사원" });
+  await registerEmployee(admin, { name: "박모바일", number: "MOB-0002", position: "사원" });
   await admin.setViewportSize({ width: 1280, height: 720 });
   await go(admin, "/people");
   const grid = admin.getByRole("grid", { name: "직원", exact: true });
@@ -17,6 +18,17 @@ test("people cards at 390px keep selection, focus and the open record through ro
   const widths = await grid.getByRole("columnheader").evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect().width));
   await atPhoneWidth(admin, async () => {
     await expect(grid).toHaveAttribute("data-layout", "cards");
+    const sort = admin.getByRole("combobox", { name: "정렬", exact: true });
+    await expect(sort).toBeVisible();
+    await sort.selectOption("number");
+    await expect(admin).toHaveURL(/sort=employee_number/);
+    await admin.getByRole("button", { name: "내림차순", exact: true }).click();
+    await expect(admin).toHaveURL(/sort=-employee_number/);
+    await expect(grid.getByRole("rowheader").first()).toContainText("MOB-0002");
+    await admin.reload();
+    await expect(sort).toHaveValue("number");
+    await expect(admin.getByRole("button", { name: "오름차순", exact: true })).toBeVisible();
+    await expect(grid.getByRole("rowheader").first()).toContainText("MOB-0002");
     await fits(admin, "/people");
     await expect(row.getByText("MOB-0001", { exact: true })).toBeVisible();
     await expect(row.getByText("김모바일", { exact: true })).toBeVisible();
@@ -35,6 +47,7 @@ test("people cards at 390px keep selection, focus and the open record through ro
     await expect(row).toBeFocused();
     await expect(panel).toBeVisible();
     await admin.setViewportSize({ width: 390, height: 844 });
+    await forgetResize(admin);
     await expect(grid).toHaveAttribute("data-layout", "cards");
     await expect(row).toHaveAttribute("aria-selected", "true");
     await expect(row).toBeFocused();
