@@ -23,17 +23,13 @@ export const NOTE_MAX = 1000;
 
 export const employeeRef = (id: string) => get("/api/v1/employees/{id}", { params: { path: { id } } });
 export const historyQuery = (id: string) => get("/api/v1/employees/{id}/employee-number/history", { params: { path: { id } } });
-export const rrnQuery = (id: string) => get("/api/v1/employees/{id}/rrn", { params: { path: { id } } });
+export { rrnStatusQuery as rrnQuery } from "../people/api/record";
 export const rulesQuery = get("/api/v1/employee-number-rules");
 
 /** A dated number change at the version read, past this tab's own writes to other fields (lib/record-versions). */
 export const changeNumber = (id: string, body: NumberChangeRequest) =>
   pinned(employeeRecord(id), body.expected_updated_at, ["employee_number"], (at) =>
     unwrap(api.POST("/api/v1/employees/{id}/employee-number", { params: { path: { id } }, body: { ...body, expected_updated_at: at } })));
-/** The full number, once: never cached (the caller's command forgets it), never stored. */
-export const revealRrn = (id: string, reason: { code: string; note: string }) =>
-  unwrap(api.POST("/api/v1/employees/{id}/rrn/reveal", { params: { path: { id } }, body: { reason_code: reason.code, ...(reason.note ? { note: reason.note } : {}) } }));
-
 export const setRule = (body: NumberRuleRequest) => unwrap(api.PUT("/api/v1/employee-number-rules", { body }));
 export const removeRule = (scope_kind: ScopeKind, scope_id?: string) =>
   unwrap(api.DELETE("/api/v1/employee-number-rules", { params: { query: { scope_kind, ...(scope_id ? { scope_id } : {}) } } }));

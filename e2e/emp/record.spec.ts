@@ -4,8 +4,10 @@ import { clickCounter } from "../clicks";
 import { go } from "../flows";
 import { reasonChip } from "../helpers/lifecycle";
 import { startOperations } from "../setup-flows";
+import { clearShifts } from "../stability";
 import { cardHeading, cutRecordUpdates, openByNumber, pick, restoreRecordUpdates, sheet } from "./steps";
-import { HERO, saeonInSetup, staffSaeon } from "./universe";
+import { HERO, ROWS, saeonInSetup, staffSaeon } from "./universe";
+import { expectGovernedBirthReveal } from "../helpers/privacy";
 
 // The employee record (spec employee-ux/final E1 E2 E4 E9 E10 E12) as a solo HR administrator, from an empty database
 // through the product: the click budgets of spec §5 and the refusals each screen must show (owner rule 2026-10-07).
@@ -100,6 +102,29 @@ test("roster: first run, counts that add up, 3-year retention, a void in setup a
   await dark(a, false);
 });
 
+test("record card: birth date and RRN open only through governed reveals", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
+  const { admin: a } = await saeonInSetup(browser, "saeonprivacy");
+  await staffSaeon(a);
+  await startOperations(a);
+  await openByNumber(a, HERO.no, HERO.name);
+  const person = ROWS.find(r => r.no === HERO.no)!;
+  await expectGovernedBirthReveal(a, a.locator("#f-birth_date"), person.birth);
+
+  const rrnField = a.getByRole("region", { name: "인적사항" });
+  await expect(rrnField).toContainText("••••••-•••••••");
+  await a.getByRole("button", { name: "주민등록번호 보기 · 사유를 선택합니다" }).click();
+  await expect(a.getByRole("dialog").getByRole("button", { name: "보기", exact: true })).toBeDisabled();
+  await a.getByRole("radiogroup", { name: /왜 봅니까/ }).locator("label").first().click();
+  await expectAccessible(a, "E2 RRN reveal");
+  const opened = a.waitForResponse(r => r.url().endsWith("/rrn/reveal") && r.request().method() === "POST");
+  await a.getByRole("dialog").getByRole("button", { name: "보기", exact: true }).click();
+  expect((await opened).ok()).toBe(true);
+  await expect(rrnField).toContainText(person.rrn!);
+  await rrnField.getByRole("button", { name: "가리기", exact: true }).click();
+  await expect(rrnField).not.toContainText(person.rrn!);
+  await expect(rrnField).toContainText("••••••-•••••••");
+});
+
 test("record card: a hire date corrected within budget, a taken number refused, a stale sheet keeps what was typed", { tag: "@hr" }, async ({ browser }) => {
   test.setTimeout(600_000); // a tenant from nothing, 34 people imported, then the journey
   const { admin: a } = await saeonInSetup(browser, "saeoncard");
@@ -109,6 +134,8 @@ test("record card: a hire date corrected within budget, a taken number refused, 
   // ⌘K 사번 Enter opens the record without a click (spec §3).
   await go(a, "/people");
   await expect(a.getByRole("searchbox", { name: "이름 또는 사번" })).toBeVisible();
+  // The card measurement starts after roster setup, before navigating to the card.
+  await a.evaluate(clearShifts);
   await a.keyboard.press("ControlOrMeta+k");
   await a.getByRole("searchbox", { name: "찾기와 이동" }).fill(HERO.no);
   await expect(a.getByRole("option", { name: new RegExp(`^${HERO.name} ${HERO.no}`) })).toBeVisible(); // the person, first
@@ -130,28 +157,6 @@ test("record card: a hire date corrected within budget, a taken number refused, 
   await expect(a.getByRole("status").filter({ hasText: "검토 표시" })).toBeVisible();
   expect(c.done("E4 correct a mistyped hire date")).toBeLessThanOrEqual(7);
   await expect(a.getByRole("group", { name: "소속" })).toContainText("2019. 03. 04.");
-
-  // E2-reveal: 보기 → reason → 보기 (3, spec §5); without a reason it does not open.
-  // FIN-DOB-MASK masks the birth date in 고용 기록 too; this walk reveals the 인적사항 one.
-  await c.click(a.getByRole("region", { name: "인적사항" }).getByRole("button", { name: "생년월일 보기 · 사유를 선택합니다" }));
-  // Refused: no reason yet (the primary is aria-disabled but focusable, R9), so pressing it goes to the reasons.
-  await a.getByRole("button", { name: "보기", exact: true }).press("Enter");
-  await expect(a.getByRole("radiogroup", { name: /왜 봅니까/ }).getByRole("radio").first()).toBeFocused();
-  await c.click(pick(a, /왜 봅니까/, "법정 신고"));
-  await c.click(a.getByRole("button", { name: "보기", exact: true }));
-  await expect(a.getByRole("region", { name: "인적사항" })).toContainText("1994. 08. 21.");
-  expect(c.done("E2 reveal a masked field")).toBeLessThanOrEqual(3);
-
-  // The 주민등록번호 (decisions #25): masked; no reason, nothing opens; with one the server returns it (and logs it).
-  const rrnField = a.getByRole("region", { name: "인적사항" });
-  await expect(rrnField).toContainText(/940821-1●{6}/);
-  await a.getByRole("button", { name: "주민등록번호 보기 · 사유를 선택합니다" }).click();
-  await a.getByRole("button", { name: /^보기/ }).press("Enter");
-  await expect(a.getByRole("radiogroup", { name: /왜 봅니까/ }).getByRole("radio").first()).toBeFocused();
-  await a.getByRole("radiogroup", { name: /왜 봅니까/ }).locator("label").first().click();
-  await expectAccessible(a, "E2 RRN reveal");
-  await a.getByRole("button", { name: /^보기/ }).click();
-  await expect(rrnField).toContainText(/940821-1\d{6}/);
 
   // E4-empno-change (refusal): a number someone holds is named with its holder; pressing goes back to it, nothing changes.
   await a.getByRole("group", { name: "인사카드 동작" }).getByRole("button", { name: "더 보기" }).click();

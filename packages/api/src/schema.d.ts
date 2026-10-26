@@ -4961,6 +4961,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/employees/{id}/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open a personal field with a purpose and a bound passkey
+         * @description The access record commits before the value is read. Every field shares the actor hourly ceiling. The response is never cached.
+         */
+        post: operations["revealEmployeeField"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/employees/{id}/rrn": {
         parameters: {
             query?: never;
@@ -19084,6 +19104,21 @@ export interface components {
                 contract_ending_before: number | null;
             };
         };
+        EmployeeFieldRevealRequest: {
+            /** @enum {string} */
+            field: "RRN" | "BIRTH_DATE" | "ADDRESS" | "PHONE" | "PERSONAL_EMAIL";
+            /** @description A reason from rrn_reveal. */
+            reason_code: string;
+            note?: string;
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
+        EmployeeFieldRevealed: {
+            employee_id: components["schemas"]["Uuid"];
+            field: string;
+            value: string | components["schemas"]["KrAddress"];
+            /** @description Display lifetime resolved from privacy.reveal_display_seconds. */
+            display_seconds: number;
+        };
         EmployeeHomeBranch: {
             employee_id: components["schemas"]["Uuid"];
             branch_id: components["schemas"]["Uuid"];
@@ -19975,15 +20010,21 @@ export interface components {
             /** @description rrn_reveal reason code. */
             reason_code: string;
             note?: string;
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
         };
         EmployeeRrnRevealed: {
             employee_id: components["schemas"]["Uuid"];
             rrn: string;
+            /** @description Display lifetime resolved from privacy.reveal_display_seconds. */
+            display_seconds?: number;
         };
         EmployeeRrnStatus: {
             employee_id: components["schemas"]["Uuid"];
             recorded: boolean;
-            /** @description 900101-1****** */
+            /**
+             * @description Policy-controlled display mask; fully masked by default.
+             * @example ••••••-•••••••
+             */
             masked?: string | null;
             /** @enum {string|null} */
             source?: "IMPORT" | "FORM" | null;
@@ -23411,8 +23452,7 @@ export interface components {
         MobilePasskeyStepUpBinding: {
             action_kind: components["schemas"]["MobileStepUpActionKind"];
             object_id: components["schemas"]["Uuid"];
-            /** @enum {string} */
-            reason_key: "operations_passkey_approval_decision" | "operations_passkey_poll_vote" | "passkey_step_up_exit_confirm" | "passkey_step_up_exit_rescind" | "passkey_step_up_elevated_grant" | "passkey_step_up_period_unlock" | "passkey_step_up_identity_merge" | "passkey_step_up_exception_decide" | "passkey_step_up_settings_change" | "passkey_step_up_credential_reset" | "passkey_step_up_tenant_offboard" | "passkey_step_up_operator_recovery" | "passkey_step_up_support_session";
+            reason_key: string;
             /**
              * Format: int32
              * @description Null for an immediate online action; 1-based for queued replay attempts.
@@ -23447,8 +23487,7 @@ export interface components {
                 payload_hash?: string | null;
             };
         };
-        /** @enum {string} */
-        MobileStepUpActionKind: "APPROVAL_DECISION" | "POLL_VOTE" | "EXIT_CONFIRM" | "EXIT_RESCIND" | "ELEVATED_GRANT" | "PERIOD_UNLOCK" | "IDENTITY_MERGE" | "EXCEPTION_DECIDE" | "SETTINGS_CHANGE" | "CREDENTIAL_RESET" | "TENANT_OFFBOARD" | "OPERATOR_RECOVERY" | "SUPPORT_SESSION";
+        MobileStepUpActionKind: string;
         MobileVotePollRequest: {
             selected_option_ids: components["schemas"]["Uuid"][];
             step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
@@ -39670,6 +39709,46 @@ export interface operations {
             422: components["responses"]["ValidationError"];
         };
     };
+    revealEmployeeField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmployeeFieldRevealRequest"];
+            };
+        };
+        responses: {
+            /** @description The field value, once. */
+            200: {
+                headers: {
+                    /** @description private, no-store */
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeFieldRevealed"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
+            /** @description reveal_rate_limited — retry after the rolling one-hour window. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
     getEmployeeRrn: {
         parameters: {
             query?: never;
@@ -39723,6 +39802,13 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationError"];
+            /** @description reveal_rate_limited — wait for the rolling one-hour window. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             503: components["responses"]["ServiceUnavailable"];
         };
     };

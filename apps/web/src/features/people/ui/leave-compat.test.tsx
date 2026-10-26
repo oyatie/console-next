@@ -57,7 +57,7 @@ test.each([
   ["history", () => <PersonHistory employee={c.e} events={c.events} verbs={[]} manage={false} today="2026-10-23" done={null} onAct={noop} onDismiss={noop} />],
   ["spine", () => <CardSpine c={c} onAct={noop} onLedger={noop} onHistory={noop} />],
   ["ledger", () => <CardTabs c={c} tab="ledger" verbs={[]} today="2026-10-23" done={null} onAct={noop} onDismiss={noop} />],
-  ["printed history", () => <PrintPaper c={c} parts={["events"]} why={null} at="2026-10-23T00:00:00Z" />],
+  ["printed history", () => <PrintPaper c={c} parts={["events"]} at="2026-10-23T00:00:00Z" />],
   ["leave periods", () => <SecLeave c={c} />],
   ["protected periods", () => <ProtectedPeriods periods={[{ lifecycle_event_id: event.id, leave_type: event.leave_type!, leave_from: event.effective_date, leave_until: null, protected_until: null, instrument: null, article: null }]} />],
   ["leave correction", () => <LeaveFields start="2026-10-01" today="2026-10-23" type={event.leave_type!} onType={noop} returnDate="" onReturn={noop} tried={false} />],

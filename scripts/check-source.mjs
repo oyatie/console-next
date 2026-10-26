@@ -104,7 +104,10 @@ const importRule = (from, to) => {
   const a = zone(from), b = zone(to);
   if (a === "packages" && to.startsWith("apps/")) return "packages never import apps";
   if (b === "routes" && a !== "routes" && a !== "main.tsx" && !to.endsWith("route-tree.gen.ts")) return "nothing imports routes/";
-  if (a.startsWith("features/") && b.startsWith("features/") && a !== b) return "features never import other features";
+  // The identifiers screen shares the people privacy implementation (one RRN client and reveal UI).
+  const privacy = (from === `${APP}/features/identifiers/api.ts` && to === `${APP}/features/people/api/record.ts`)
+    || (from === `${APP}/features/identifiers/ui/rrn-card.tsx` && to === `${APP}/features/people/ui/rrn-value.tsx`);
+  if (a.startsWith("features/") && b.startsWith("features/") && a !== b && !privacy) return "features never import other features";
   if ((LOWER.has(a) || a.startsWith("reference/")) && UPPER(b)) return `${a} never imports upward`;
   return undefined;
 };

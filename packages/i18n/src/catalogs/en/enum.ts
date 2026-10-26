@@ -113,6 +113,8 @@ export const enEnum: Partial<Record<keyof typeof koEnum, string>> = {
   "enum.stepUpAction.SETTINGS_CHANGE": "Settings change",
   "enum.stepUpAction.CREDENTIAL_RESET": "Credential reset",
   "enum.stepUpAction.TENANT_OFFBOARD": "Organization offboarding",
+  "enum.stepUpAction.PII_REVEAL": "View personal data",
+  "enum.stepUpAction.PII_RECORD": "Record resident registration number",
   "enum.stepUpAction.SUPPORT_SESSION": "Support access",
   "enum.stepUpAction.OPERATOR_RECOVERY": "Operator recovery",
   "enum.unknown": "Unrecognized value",

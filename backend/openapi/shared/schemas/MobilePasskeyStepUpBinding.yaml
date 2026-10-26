@@ -12,7 +12,7 @@ properties:
     $ref: '#/components/schemas/Uuid'
   reason_key:
     type: string
-    enum:
+    x-extensible-enum:
       - operations_passkey_approval_decision
       - operations_passkey_poll_vote
       - passkey_step_up_exit_confirm
@@ -26,6 +26,8 @@ properties:
       - passkey_step_up_tenant_offboard
       - passkey_step_up_operator_recovery
       - passkey_step_up_support_session
+      - passkey_step_up_pii_reveal
+      - passkey_step_up_pii_record
   replay_attempt:
     type:
       - integer

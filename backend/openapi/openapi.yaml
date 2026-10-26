@@ -11141,6 +11141,51 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/employees/{id}/reveal:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [employees]
+      operationId: revealEmployeeField
+      summary: Open a personal field with a purpose and a bound passkey
+      description: 'The access record commits before the value is read. Every field shares the actor hourly ceiling. The response is never cached.'
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeFieldRevealRequest'
+      responses:
+        '200':
+          description: The field value, once.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeFieldRevealed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          description: reveal_rate_limited — retry after the rolling one-hour window.
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/employees/{id}/rrn:
     get:
       tags:
@@ -11209,6 +11254,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '429':
+          description: reveal_rate_limited — wait for the rolling one-hour window.
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/employees/{id}/void:
@@ -40554,6 +40601,40 @@ components:
               - type: integer
                 format: int64
               - type: 'null'
+    EmployeeFieldRevealRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [field, reason_code]
+      properties:
+        field:
+          type: string
+          enum: [RRN, BIRTH_DATE, ADDRESS, PHONE, PERSONAL_EMAIL]
+        reason_code:
+          type: string
+          description: A reason from rrn_reveal.
+        note:
+          type: string
+          maxLength: 1000
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+    EmployeeFieldRevealed:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [employee_id, field, value, display_seconds]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        field:
+          type: string
+          x-extensible-enum: [RRN, BIRTH_DATE, ADDRESS, PHONE, PERSONAL_EMAIL]
+        value:
+          oneOf:
+            - type: string
+            - $ref: '#/components/schemas/KrAddress'
+        display_seconds:
+          type: integer
+          description: Display lifetime resolved from privacy.reveal_display_seconds.
     EmployeeHomeBranch:
       type: object
       required:
@@ -42496,6 +42577,8 @@ components:
         note:
           type: string
           maxLength: 1000
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     EmployeeRrnRevealed:
       type: object
       required: [employee_id, rrn]
@@ -42505,6 +42588,11 @@ components:
         rrn:
           type: string
           pattern: ^[0-9]{6}-[1-8][0-9]{6}$
+        display_seconds:
+          type: integer
+          minimum: 15
+          maximum: 60
+          description: Display lifetime resolved from privacy.reveal_display_seconds.
     EmployeeRrnStatus:
       type: object
       required: [employee_id, recorded]
@@ -42515,7 +42603,8 @@ components:
           type: boolean
         masked:
           type: [string, 'null']
-          description: 900101-1******
+          description: Policy-controlled display mask; fully masked by default.
+          example: ••••••-•••••••
         source:
           type: [string, 'null']
           enum: [IMPORT, FORM, null]
@@ -49110,7 +49199,7 @@ components:
           $ref: '#/components/schemas/Uuid'
         reason_key:
           type: string
-          enum:
+          x-extensible-enum:
             - operations_passkey_approval_decision
             - operations_passkey_poll_vote
             - passkey_step_up_exit_confirm
@@ -49124,6 +49213,8 @@ components:
             - passkey_step_up_tenant_offboard
             - passkey_step_up_operator_recovery
             - passkey_step_up_support_session
+            - passkey_step_up_pii_reveal
+            - passkey_step_up_pii_record
         replay_attempt:
           type:
             - integer
@@ -49195,6 +49286,8 @@ components:
                 - TENANT_OFFBOARD
                 - OPERATOR_RECOVERY
                 - SUPPORT_SESSION
+                - PII_REVEAL
+                - PII_RECORD
             object_id:
               $ref: '#/components/schemas/Uuid'
             reason_key:
@@ -49213,6 +49306,8 @@ components:
                 - passkey_step_up_tenant_offboard
                 - passkey_step_up_operator_recovery
                 - passkey_step_up_support_session
+                - passkey_step_up_pii_reveal
+                - passkey_step_up_pii_record
             replay_attempt:
               type:
                 - integer
@@ -49229,7 +49324,7 @@ components:
     MobileStepUpActionKind:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
-      enum:
+      x-extensible-enum:
         - APPROVAL_DECISION
         - POLL_VOTE
         - EXIT_CONFIRM
@@ -49243,6 +49338,8 @@ components:
         - TENANT_OFFBOARD
         - OPERATOR_RECOVERY
         - SUPPORT_SESSION
+        - PII_REVEAL
+        - PII_RECORD
     MobileVotePollRequest:
       type: object
       required:

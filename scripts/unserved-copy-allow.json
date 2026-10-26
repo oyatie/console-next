@@ -19,12 +19,6 @@
   },
   {
     "locale": "ko",
-    "id": "empCard.reveal.unserved",
-    "lane": "LMG-PRIV",
-    "gap": "PRIV"
-  },
-  {
-    "locale": "ko",
     "id": "empCard.docs.unserved",
     "lane": "LMG-RAW",
     "gap": "1055"
@@ -85,12 +79,6 @@
   },
   {
     "locale": "en",
-    "id": "empCard.reveal.unserved",
-    "lane": "LMG-PRIV",
-    "gap": "PRIV"
-  },
-  {
-    "locale": "en",
     "id": "empCard.docs.unserved",
     "lane": "LMG-RAW",
     "gap": "1055"
@@ -106,18 +94,6 @@
     "id": "empDoc.reg.asOfLocked",
     "lane": "LMG-TIME",
     "gap": "991/983"
-  },
-  {
-    "locale": "en",
-    "id": "empDoc.print.mode.open.unserved",
-    "lane": "LMG-PRIV",
-    "gap": "PRIV"
-  },
-  {
-    "locale": "en",
-    "id": "empDoc.print.unserved",
-    "lane": "LMG-PRIV",
-    "gap": "PRIV"
   },
   {
     "locale": "en",

@@ -16,10 +16,10 @@ const HISTORY: readonly string[] = ["EDUCATION", "QUALIFICATION", "MILITARY", "L
 
 /**
  * The personnel-record paper (E10-print): photo and identity in a grid, the nine register items (Decree §20), the action history
- * table, history lines; masked values print as masked. Always light (print colours), with the printed-at and purpose line as its foot
+ * table, history lines; masked values print as masked. Always light (print colours), with the printed-at line as its foot
  * and a faint preview watermark on screen.
  */
-export function PrintPaper({ c, parts, why, at }: { c: Card; parts: readonly string[]; why: string | null; at: string }) {
+export function PrintPaper({ c, parts, at }: { c: Card; parts: readonly string[]; at: string }) {
   const { e, d } = c;
   const r = c.register.data;
   const p = c.personal.data;
@@ -62,7 +62,7 @@ export function PrintPaper({ c, parts, why, at }: { c: Card; parts: readonly str
         </>
       )}
       {has("records") && records.length > 0 && <><b>{t("empDoc.print.part.records")}</b><PaperGrid rows={records.map((x): [string, string] => [tx(`empRec.${x.section.toLowerCase()}`), Object.values(x.fields ?? {}).filter((v) => typeof v === "string").slice(0, 3).join(" · ")])} /></>}
-      <PaperFoot>{t("empDoc.print.foot", { at: fmtDateTime(at), purpose: why ? tx(`empDoc.print.purpose.${why}`) : "—" })}</PaperFoot>
+      <PaperFoot>{t("empDoc.print.foot", { at: fmtDateTime(at) })}</PaperFoot>
     </Paper>
   );
 }

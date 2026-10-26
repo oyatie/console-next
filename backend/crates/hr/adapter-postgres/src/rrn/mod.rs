@@ -3,12 +3,15 @@
 //! `rrn_reveal` domain, and every read in 접속기록. Opening the sealed value
 //! takes the shell's vault; without one the reveal is 503, never a fallback.
 
-use console_hr_domain::import::rrn_value::RrnVault;
+mod govern;
+mod reveal;
+use console_hr_domain::{import::rrn_value::RrnVault, profile::mask};
 use console_kernel_core::KernelError;
+use console_platform_auth::{MobilePasskeyStepUpEnvelope, PasskeyService};
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_audits;
-use console_settings_adapter_postgres::validate_reason_in_tx;
-use console_settings_domain::code_lists::ReasonDomain;
+pub use govern::reveal_binding;
+pub use reveal::{FieldRevealRequest, FieldRevealed, RevealField};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Postgres;
@@ -17,14 +20,13 @@ use uuid::Uuid;
 
 use crate::authz::{authorize_hr_person, hr_reach};
 use crate::directory::access_log::{DirectoryAccess, access_event, actor_employee_id};
-use crate::import::identities::sealed_from_row;
 use crate::{HrError, HrService};
 
 #[derive(Debug, Serialize)]
 pub struct RrnStatus {
     pub employee_id: Uuid,
     pub recorded: bool,
-    /// `900101-1******`.
+    /// The display policy mask, independent of the legacy stored column.
     pub masked: Option<String>,
     /// `IMPORT` or `FORM`.
     pub source: Option<String>,
@@ -38,6 +40,8 @@ pub struct RrnRevealRequest {
     pub reason_code: String,
     #[serde(default)]
     pub note: Option<String>,
+    #[serde(default)]
+    pub step_up: Option<MobilePasskeyStepUpEnvelope>,
 }
 
 #[derive(Serialize)]
@@ -45,6 +49,7 @@ pub struct RrnRevealed {
     pub employee_id: Uuid,
     /// `900101-1234567`.
     pub rrn: String,
+    pub display_seconds: i64,
 }
 
 impl std::fmt::Debug for RrnRevealed {
@@ -109,7 +114,7 @@ impl HrService {
                 let status = RrnStatus {
                     employee_id,
                     recorded: row.is_some(),
-                    masked: row.as_ref().map(|r| r.0.clone()),
+                    masked: row.as_ref().map(|_| mask::rrn()),
                     source: row.as_ref().map(|r| r.1.clone()),
                     recorded_at: row.map(|r| r.2),
                 };
@@ -131,53 +136,30 @@ impl HrService {
         employee_id: Uuid,
         request: RrnRevealRequest,
         vault: Option<&dyn RrnVault>,
+        passkeys: Option<&PasskeyService>,
     ) -> Result<RrnRevealed, HrError> {
-        hr_reach(&principal, Feature::EmployeeDirectoryManage)?;
-        let vault = vault.ok_or_else(unavailable)?;
-        let org = principal.org_id;
-        let org_uuid = *org.as_uuid();
-        let sealed = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
-            Box::pin(async move {
-                authorize_hr_person(tx, &principal, Feature::EmployeeDirectoryManage, employee_id).await?;
-                require_employee(tx, org_uuid, employee_id).await?;
-                let code = request.reason_code.trim().to_owned();
-                validate_reason_in_tx(tx.as_mut(), org, ReasonDomain::RrnReveal, &code, request.note.as_deref())
-                    .await
-                    .map_err(|error| {
-                        let code = error.code;
-                        let mut hr = HrError::from_kernel(error);
-                        if let Some(code) = code {
-                            hr.code = code;
-                        }
-                        hr
-                    })?;
-                let row = sqlx::query(
-                    "SELECT rrn_hmac, hmac_key_version, ciphertext, nonce, dek_wrapped, dek_nonce, \
-                            key_version, masked FROM employee_rrn WHERE org_id = $1 AND employee_id = $2",
-                )
-                .bind(org_uuid)
-                .bind(employee_id)
-                .fetch_optional(tx.as_mut())
-                .await?
-                .ok_or_else(|| HrError::from_kernel(KernelError::not_found("no resident registration number is recorded")))?;
-                let sealed = sealed_from_row(&row)?;
-                let me = actor_employee_id(tx, &principal).await?;
-                let event = access_event(
-                    &principal,
-                    DirectoryAccess::RrnReveal,
-                    &[employee_id],
-                    me,
-                    json!({ "reason_code": code, "note_given": request.note.is_some() }),
-                )?;
-                Ok((sealed, vec![event]))
-            })
-        })
-        .await?;
-        let rrn = vault.open(org_uuid, &sealed).map_err(|_| unavailable())?;
-        let digits = rrn.digits();
+        let result = self
+            .reveal_field(
+                principal,
+                employee_id,
+                FieldRevealRequest {
+                    field: RevealField::Rrn,
+                    reason_code: request.reason_code,
+                    note: request.note,
+                    step_up: request.step_up,
+                },
+                vault,
+                passkeys,
+            )
+            .await?;
         Ok(RrnRevealed {
             employee_id,
-            rrn: format!("{}-{}", &digits[..6], &digits[6..]),
+            rrn: result
+                .value
+                .as_str()
+                .ok_or_else(|| HrError::internal("invalid RRN response"))?
+                .to_owned(),
+            display_seconds: result.display_seconds,
         })
     }
 }

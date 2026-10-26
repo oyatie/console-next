@@ -73,7 +73,7 @@ test.each([{ comment: "Created through People & Workforce" }, { comment: "", com
   expect(createdLedger).not.toContain("Created through People &amp; Workforce");
 
   const createdPrint = renderToStaticMarkup(
-    <PrintPaper c={cCreated} parts={["events"]} why={null} at="2026-10-15T09:00:00Z" />,
+    <PrintPaper c={cCreated} parts={["events"]} at="2026-10-15T09:00:00Z" />,
   );
   expect(createdPrint).toContain("직원 등록");
   expect(createdPrint).not.toContain("Created through People & Workforce");
@@ -103,7 +103,7 @@ test("a user-written English comment on a TRANSFER event still renders verbatim 
     comment: "transferred per request",
   });
   const printHtml = renderToStaticMarkup(
-    <PrintPaper c={makeCard([evNoUnits])} parts={["events"]} why={null} at="2026-10-15T09:00:00Z" />,
+    <PrintPaper c={makeCard([evNoUnits])} parts={["events"]} at="2026-10-15T09:00:00Z" />,
   );
   expect(printHtml).toContain("transferred per request");
 });

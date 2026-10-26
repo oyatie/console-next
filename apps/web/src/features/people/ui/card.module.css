@@ -52,7 +52,13 @@
 .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .legend { display: inline-flex; align-items: center; gap: var(--space-2); }
 .keys { display: inline-flex; align-items: center; gap: var(--space-1); }
-.reveal { display: inline-flex; align-items: center; gap: calc(var(--space-1) / 2); }
+/* Reserve the timer and action in both states so revealing cannot move neighbouring content. */
+.reveal { display: inline-flex; flex-wrap: wrap; max-width: 100%; align-items: center; gap: var(--space-1); }
+.revealValue { composes: masked from "../../../ui/record/record.module.css"; }
+.reveal > code, .reveal > span { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+.reveal > output { min-width: 4ch; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.reveal [data-hidden] { visibility: hidden; }
+.reveal > button { min-width: calc(var(--row-h) * 2.5); justify-content: center; }
 .note { composes: t-xs muted from global; margin: 0; line-height: var(--lh-base); }
 .popActs { display: flex; justify-content: flex-end; gap: var(--space-2); flex-wrap: wrap; }
 .lockLine { composes: t-xs muted from global; display: inline-flex; align-items: center; gap: var(--space-1); }

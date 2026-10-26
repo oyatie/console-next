@@ -34,6 +34,7 @@ pub enum DirectoryAccess {
     OrgChart,
     /// IMPORT-2: 주민등록번호 열람 (the full number, with its 사유).
     RrnReveal,
+    FieldReveal,
     PersonBindingReview,
 }
 
@@ -49,6 +50,7 @@ impl DirectoryAccess {
             Self::LifecycleHistory => "employee.lifecycle_read",
             Self::OrgChart => "employee.org_chart_read",
             Self::RrnReveal => "employee.rrn_reveal",
+            Self::FieldReveal => "employee.field_reveal",
             Self::PersonBindingReview => "person_binding_reviews.read",
         }
     }
@@ -91,7 +93,8 @@ pub fn access_event(
         (
             DirectoryAccess::Detail
             | DirectoryAccess::LifecycleHistory
-            | DirectoryAccess::RrnReveal,
+            | DirectoryAccess::RrnReveal
+            | DirectoryAccess::FieldReveal,
             [one],
         ) => one.to_string(),
         _ => "query".to_owned(),

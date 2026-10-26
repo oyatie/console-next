@@ -22,7 +22,7 @@ test.each([
     d: { classification: {} }, place: { entity: "법인", path: [] }, title: () => undefined,
     events: { data: { items: [event] } }, register: {}, personal: {}, facts: {}, records: {},
   } as unknown as Card;
-  const html = renderToStaticMarkup(<PrintPaper c={c} parts={["events"]} why={null} at="2026-10-23T00:00:00Z" />);
+  const html = renderToStaticMarkup(<PrintPaper c={c} parts={["events"]} at="2026-10-23T00:00:00Z" />);
   expect(html).toContain("적용일");
   expect(html).toContain(`<td>${date}</td><td>${action}</td>`);
   if (event_type === "TERMINATE" || event_type === "OFFBOARD") expect(html).not.toContain("2026. 10. 31.");

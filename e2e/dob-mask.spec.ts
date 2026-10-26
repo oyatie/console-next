@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
-import { koDate, registerEmployee } from "./flows";
+import { registerEmployee } from "./flows";
 import { staffedTenant } from "./setup-flows";
 import { fillDate } from "./sheet";
 import { shotSet } from "./shots";
+import { expectGovernedBirthReveal } from "./helpers/privacy";
 
-test("birth date stays masked across the card until a reason is chosen", { tag: "@hr" }, async ({ browser }) => {
+test("birth date opens only with a purpose, passkey and timed server reveal", { tag: "@hr" }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "dob-mask", "마스킹상사");
   await registerEmployee(admin, { name: "한기록", number: "DOB-0001" });
   const facts = admin.getByRole("region", { name: "고용 기록" });
@@ -21,26 +22,16 @@ test("birth date stays masked across the card until a reason is chosen", { tag: 
   await expectAccessible(admin, "birth date masked on the personnel card");
   await atPhoneWidth(admin, async () => {
     await fits(admin, "masked birth date");
-    await expect(facts.getByRole("button", { name: "생년월일 보기 · 사유를 선택합니다" })).toBeVisible();
+    await expectGovernedBirthReveal(admin, facts, birth);
   });
   await facts.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await shotSet(admin, "dob-mask--card");
 
-  await facts.getByRole("button", { name: "생년월일 보기 · 사유를 선택합니다" }).click();
-  const reveal = admin.getByRole("dialog", { name: /생년월일.*봅니다/ });
-  await reveal.getByRole("button", { name: "보기", exact: true }).press("Enter");
-  await expect(reveal.getByRole("radiogroup", { name: /왜 봅니까/ }).getByRole("radio").first()).toBeFocused();
-  await expect(admin.locator("body")).not.toContainText("1965");
-  await reveal.getByRole("radiogroup", { name: /왜 봅니까/ }).getByText("법정 신고", { exact: true }).click();
-  await reveal.getByRole("button", { name: "보기", exact: true }).click();
-  await expect(facts.getByText(koDate(birth), { exact: true })).toBeVisible();
-  await expect(admin.getByText(koDate(birth), { exact: true })).toHaveCount(1);
-  await facts.getByRole("button", { name: "가리기", exact: true }).click();
-  await expect(facts).toContainText("••••-••-••");
+  await expectGovernedBirthReveal(admin, facts, birth);
   await expect(admin.locator("body")).not.toContainText("1965");
 });
 
-test("family birth dates use the same reason-gated reveal and hide", { tag: "@hr" }, async ({ browser }) => {
+test("family birth dates stay masked without a server reveal", { tag: "@hr" }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "family-dob-mask", "가족마스킹상사");
   await registerEmployee(admin, { name: "한기록", number: "DOB-0002" });
   const family = admin.getByRole("region", { name: "상벌·가족" });
@@ -56,17 +47,7 @@ test("family birth dates use the same reason-gated reveal and hide", { tag: "@hr
   const row = family.getByRole("table", { name: "가족", exact: true }).getByRole("row");
   await expect(row).toContainText("••••-••-••");
   await expect(admin.locator("body")).not.toContainText("2015");
-  await row.getByRole("button", { name: "생년월일 보기 · 사유를 선택합니다", exact: true }).click();
-  const reveal = admin.getByRole("dialog", { name: /생년월일.*봅니다/ });
-  await reveal.getByRole("button", { name: "보기", exact: true }).press("Enter");
-  await expect(reveal.getByRole("radiogroup", { name: /왜 봅니까/ }).getByRole("radio").first()).toBeFocused();
+  await expect(row.getByRole("button", { name: "생년월일 보기 · 사유를 선택합니다", exact: true })).toHaveCount(0);
   await expect(admin.locator("body")).not.toContainText("2015");
-  await expect(reveal).not.toContainText("한가족");
-  await reveal.getByRole("radiogroup", { name: /왜 봅니까/ }).getByText("법정 신고", { exact: true }).click();
-  await reveal.getByRole("button", { name: "보기", exact: true }).click();
-  await expect(admin.getByText(koDate(birth), { exact: true })).toHaveCount(1);
-  await row.getByRole("button", { name: "가리기", exact: true }).click();
-  await expect(row).toContainText("••••-••-••");
-  await expect(admin.locator("body")).not.toContainText("2015");
-  await expectAccessible(admin, "family birth date masked again");
+  await expectAccessible(admin, "family birth date stays masked");
 });

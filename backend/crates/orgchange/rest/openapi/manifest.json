@@ -224,6 +224,9 @@
     "/api/v1/employees/{id}/rehire": [
       "post"
     ],
+    "/api/v1/employees/{id}/reveal": [
+      "post"
+    ],
     "/api/v1/employees/{id}/rrn": [
       "get"
     ],
@@ -445,6 +448,8 @@
     "EmployeeExitSettlementPackage",
     "EmployeeFacetCount",
     "EmployeeFacets",
+    "EmployeeFieldRevealRequest",
+    "EmployeeFieldRevealed",
     "EmployeeHomeBranch",
     "EmployeeIdentityResolution",
     "EmployeeImportApplyJob",

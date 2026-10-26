@@ -3,16 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { Pencil } from "lucide-react";
-import { fmtDate } from "@console/i18n/format";
 import { ID_TYPE, label } from "../../../lib/labels";
-import { phoneDisplay } from "../../../lib/pure/formats";
 import { Button } from "../../../ui/button/button";
 import { FieldMark, FieldRow } from "../../../ui/record/field-row";
 import { RecordSection, Tag } from "../../../ui/record/record-section";
-import { fullAddress, maskedAddress, maskedBirth, maskedEmail, maskedPhone } from "../domain/card";
+import { maskedAddress, maskedBirth, maskedEmail, maskedPhone } from "../domain/card";
 import { rrnStatusQuery } from "../api/record";
 import { InlineField } from "./inline-field";
-import { MaskedValue } from "./masked-value";
+import { FieldValue } from "./field-value";
 import type { Card } from "./use-card";
 import type { Quick } from "./use-quick";
 import s from "./card.module.css";
@@ -64,24 +62,24 @@ export function SecPersonal({ c, quick, onFix }: { c: Card; quick: Quick; onFix:
         {r?.sex ? t(SEX[r.sex]) : <span className={s.warn}>{t("empCard.missing")}</span>}
       </FieldRow>
       <FieldRow id="f-birth_date" no="3" label={t("empCard.f.birth")}  mark={c.editable && <FieldMark kind="corTwo" field={t("empCard.f.birth")} onPress={() => onFix("birth_date")} />}>
-        {f?.birth_date ? <MaskedValue masked={maskedBirth()} value={fmtDate(f.birth_date)} field={t("empCard.f.birth")} who={who} onAlternative={() => onFix("birth_date")} /> : <span className={s.warn}>{t("empCard.missing")}</span>}
+        {f?.birth_date ? <FieldValue employeeId={e.id} allowed={c.readable} fieldCode="BIRTH_DATE" masked={maskedBirth()} field={t("empCard.f.birth")} who={who} /> : <span className={s.warn}>{t("empCard.missing")}</span>}
       </FieldRow>
       <FieldRow wide label={t("empCard.f.rrn")} >
-        {c.readable ? <QueryState q={rrnRead}>{() => rrn?.recorded ? <><RrnValue c={c} masked={rrn.masked ?? ""} /> <Tag kind="rev">{t("empCard.rrn.legal")}</Tag></> : <Muted>{t("empCard.rrn.none")}</Muted>}</QueryState> : <Muted>{t("people.field.restricted")}</Muted>}{" "}
-        {c.editable && <Muted>{t("empCard.rrn.entryComing")}</Muted>}{" "}
-        {c.editable && <Link className={s.link} to="/people/$id/identifiers" params={{ id: e.id }}>{t("empCard.rrn.open")}</Link>}
+        {c.readable ? <QueryState q={rrnRead}>{() => rrn?.recorded ? <><RrnValue employeeId={e.id} who={who} masked={rrn.masked ?? ""} /> <Tag kind="rev">{t("empCard.rrn.legal")}</Tag></> : <Muted>{t("empCard.rrn.none")}</Muted>}</QueryState> : <Muted>{t("people.field.restricted")}</Muted>}{" "}
+        {c.readable && <Muted>{t("empCard.rrn.entryComing")}</Muted>}{" "}
+        {c.readable && <Link className={s.link} to="/people/$id/identifiers" params={{ id: e.id }}>{t("empCard.rrn.open")}</Link>}
       </FieldRow>
       <FieldRow id="f-address" no="4" label={t("empCard.f.address")} mark={c.editable && <FieldMark kind="rc" field={t("empCard.f.address")} onPress={() => onFix("address")} />}>
-        {r?.address ? <MaskedValue masked={maskedAddress(r.address)} value={fullAddress(r.address)} field={t("empCard.f.address")} who={who} onAlternative={() => onFix("address")} /> : <span className={s.warn}>{t("empCard.missing")}</span>}
+        {r?.address ? <FieldValue employeeId={e.id} allowed={c.readable} fieldCode="ADDRESS" masked={maskedAddress(r.address)} field={t("empCard.f.address")} who={who} /> : <span className={s.warn}>{t("empCard.missing")}</span>}
       </FieldRow>
       <InlineField manage={c.editable} conflict={quick.conflictFor(t("empCard.f.phone"))} label={t("empCard.f.phone")} raw={phone ?? ""} sending={sending("phone")} onSave={(v) => quick.save(t("empCard.f.phone"), { phone: v }, { phone: phone ?? "" })}>
-        {phone ? <MaskedValue masked={maskedPhone(phone)} value={phoneDisplay(phone)} field={t("empCard.f.phone")} who={who} /> : none}
+        {phone ? <FieldValue employeeId={e.id} allowed={c.readable} fieldCode="PHONE" masked={maskedPhone(phone)} field={t("empCard.f.phone")} who={who} /> : none}
       </InlineField>
       <InlineField manage={c.editable} conflict={quick.conflictFor(t("empCard.f.workEmail"))} label={t("empCard.f.workEmail")} raw={e.work_email ?? ""} sending={sending("work_email")} onSave={(v) => quick.save(t("empCard.f.workEmail"), { work_email: v || null }, { work_email: e.work_email ?? null })}>
         {e.work_email ?? none}
       </InlineField>
       <InlineField manage={c.editable} conflict={quick.conflictFor(t("empCard.f.personalEmail"))} label={t("empCard.f.personalEmail")} raw={p?.personal_email ?? ""} sending={sending("personal_email")} onSave={(v) => quick.save(t("empCard.f.personalEmail"), { personal_email: v || null }, { personal_email: p?.personal_email ?? null })}>
-        {p?.personal_email ? <MaskedValue masked={maskedEmail(p.personal_email)} value={p.personal_email} field={t("empCard.f.personalEmail")} who={who} /> : none}
+        {p?.personal_email ? <FieldValue employeeId={e.id} allowed={c.readable} fieldCode="PERSONAL_EMAIL" masked={maskedEmail(p.personal_email)} field={t("empCard.f.personalEmail")} who={who} /> : none}
       </InlineField>
       <EmergencyContacts c={c} quick={quick} />
       <InlineField manage={c.editable} conflict={quick.conflictFor(t("empCard.f.registerNote"))} label={t("empCard.f.registerNote")} raw={r?.register_note ?? ""} sending={sending("register_note")} placeholder={t("empCard.f.registerNote.hint")} onSave={(v) => quick.save(t("empCard.f.registerNote"), { register_note: v || null }, { register_note: r?.register_note ?? null })}>

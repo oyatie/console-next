@@ -37,6 +37,8 @@ properties:
           - TENANT_OFFBOARD
           - OPERATOR_RECOVERY
           - SUPPORT_SESSION
+          - PII_REVEAL
+          - PII_RECORD
       object_id:
         $ref: '#/components/schemas/Uuid'
       reason_key:
@@ -55,6 +57,8 @@ properties:
           - passkey_step_up_tenant_offboard
           - passkey_step_up_operator_recovery
           - passkey_step_up_support_session
+          - passkey_step_up_pii_reveal
+          - passkey_step_up_pii_record
       replay_attempt:
         type:
           - integer

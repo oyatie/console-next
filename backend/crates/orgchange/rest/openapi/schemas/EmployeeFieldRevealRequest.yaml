@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [field, reason_code]
+properties:
+  field:
+    type: string
+    enum: [RRN, BIRTH_DATE, ADDRESS, PHONE, PERSONAL_EMAIL]
+  reason_code:
+    type: string
+    description: A reason from rrn_reveal.
+  note:
+    type: string
+    maxLength: 1000
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'

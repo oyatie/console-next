@@ -56,7 +56,7 @@ export function SecFamily({ c }: { c: Card }) {
         ) : <QueryState q={discipline}>{data => t("empCard.family.disciplineOpen", { count: data.items.length, purpose: tx(`empCard.purpose.${purpose}`) })}</QueryState>}
       </FieldRow>
       <SubHead tools={e.add("family")}>{t("empCard.family.family", { count: e.of("family").filter((x) => !x.voided).length })}</SubHead>
-      {e.rows("family", [{ cell: (x) => <span className={s.familyItem}>{tx(`empRec.family.relation.${f(x).relation}`)}<Masked>{maskName(String(f(x).name))}</Masked></span> }, { cell: (x) => <span className={s.num}>{f(x).birth_date ? <MaskedValue masked={maskedBirth()} value={fmtDate(f(x).birth_date as string)} field={t("empCard.f.birth")} who={familyName(x)} /> : "—"}</span> }], familyName) ?? <SectionLine>{t("empCard.none")}</SectionLine>}
+      {e.rows("family", [{ cell: (x) => <span className={s.familyItem}>{tx(`empRec.family.relation.${f(x).relation}`)}<Masked>{maskName(String(f(x).name))}</Masked></span> }, { cell: (x) => <span className={s.num}>{f(x).birth_date ? <MaskedValue masked={maskedBirth()} field={t("empCard.f.birth")} who={familyName(x)} /> : "—"}</span> }], familyName) ?? <SectionLine>{t("empCard.none")}</SectionLine>}
       {e.editor("family")}
     </RecordSection>
   );

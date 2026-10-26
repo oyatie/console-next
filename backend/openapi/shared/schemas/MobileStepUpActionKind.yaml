@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 type: string
-enum:
+x-extensible-enum:
   - APPROVAL_DECISION
   - POLL_VOTE
   - EXIT_CONFIRM
@@ -14,3 +14,5 @@ enum:
   - TENANT_OFFBOARD
   - OPERATOR_RECOVERY
   - SUPPORT_SESSION
+  - PII_REVEAL
+  - PII_RECORD

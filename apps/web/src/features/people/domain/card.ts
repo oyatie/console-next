@@ -12,7 +12,7 @@ const dots = (n: number) => DOT.repeat(n);
 /** birth date as shown by default: nothing of it (the reveal opens it with a reason). */
 export const maskedBirth = () => `${dots(4)}-${dots(2)}-${dots(2)}`;
 
-/** A phone as shown by default: the prefix and the last four digits ("010-••••-5821"). */
+/** Default phone display keeps the local prefix and last four digits. */
 export function maskedPhone(e164: string): string {
   const d = e164.replace(/\D/g, "").replace(/^82/, "0");
   if (d.length < 8) return dots(4);
@@ -26,7 +26,7 @@ export function maskedEmail(email: string): string {
   return `${user.slice(0, 1)}${dots(4)}@${dots(4)}${tld}`;
 }
 
-/** An address as shown by default: province and district only ("Gyeonggi-do Pyeongtaek-si ••••"). */
+/** Default address display keeps province and district only. */
 export const maskedAddress = (a: Address) => [a.si_nm, a.sgg_nm, dots(4)].filter(Boolean).join(" ");
 
 /** The whole address as printed. */

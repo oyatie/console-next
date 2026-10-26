@@ -8,3 +8,5 @@ properties:
   note:
     type: string
     maxLength: 1000
+  step_up:
+    $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'

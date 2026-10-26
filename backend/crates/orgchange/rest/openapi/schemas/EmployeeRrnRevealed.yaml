@@ -6,3 +6,8 @@ properties:
   rrn:
     type: string
     pattern: ^[0-9]{6}-[1-8][0-9]{6}$
+  display_seconds:
+    type: integer
+    minimum: 15
+    maximum: 60
+    description: Display lifetime resolved from privacy.reveal_display_seconds.

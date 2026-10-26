@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [employee_id, field, value, display_seconds]
+properties:
+  employee_id:
+    $ref: '#/components/schemas/Uuid'
+  field:
+    type: string
+    x-extensible-enum: [RRN, BIRTH_DATE, ADDRESS, PHONE, PERSONAL_EMAIL]
+  value:
+    oneOf:
+      - type: string
+      - $ref: '#/components/schemas/KrAddress'
+  display_seconds:
+    type: integer
+    description: Display lifetime resolved from privacy.reveal_display_seconds.

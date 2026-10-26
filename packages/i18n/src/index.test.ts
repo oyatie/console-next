@@ -45,8 +45,8 @@ test("the dev gallery's own catalog formats in every locale (it is not part of t
 });
 
 // regression (hire-37): the catalogs' written-out fallbacks resolve on screen.
-test("t() resolves a written-out particle after the value", () => {
+test("t() resolves particles and keeps record metadata as facts", () => {
   i18n.set("ko");
   expect(t("profile.correct.secondNote", { fields: "입사일" })).toBe("입사일은 다른 인사 담당자가 확인해야 바뀝니다");
-  expect(t("identifiers.rrn.recorded", { at: "10월 7일", source: "명부 가져오기" })).toMatch(/^10월 7일에 명부 가져오기로 기록했습니다/);
+  expect(t("identifiers.rrn.recorded", { at: "10월 7일", source: "명부 가져오기" })).toBe("10월 7일 · 명부 가져오기");
 });

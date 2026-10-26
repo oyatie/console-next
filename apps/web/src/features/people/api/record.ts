@@ -1,4 +1,4 @@
-import { api, ApiError, unwrap } from "@console/api";
+import { assertBoundPasskeyHash, sha256Hex, api, ApiError, unwrap } from "@console/api";
 import type { components, paths } from "@console/api/schema";
 import { get } from "../../../lib/query";
 import { employeeRecord, pinned } from "../../../lib/record-versions";
@@ -58,7 +58,16 @@ export const errorCode = (e: unknown) => (e instanceof ApiError ? e.code : undef
 /** The resident registration number as stored: masked, or that none is (decision #25; each read is logged). */
 export const rrnStatusQuery = (id: string) => get("/api/v1/employees/{id}/rrn", { params: { path: { id } } });
 /** The whole number for a recorded reason (decisions #25); the server logs the reason, never the number. */
-export const revealRrn = (id: string, reason_code: string, note?: string) => unwrap(api.POST("/api/v1/employees/{id}/rrn/reveal", { params: { path: { id } }, body: { reason_code, ...(note ? { note } : {}) } }));
+const revealProof = async (id: string, field: RevealField, reason: string) => assertBoundPasskeyHash("PII_REVEAL", id, await sha256Hex(`${field}:${reason.trim()}`));
+export const revealRrn = async (id: string, reason_code: string, note?: string) => {
+  const step_up = await revealProof(id, "RRN", reason_code);
+  return unwrap(api.POST("/api/v1/employees/{id}/rrn/reveal", { params: { path: { id } }, body: { reason_code, ...(note ? { note } : {}), step_up } }));
+};
+export type RevealField = components["schemas"]["EmployeeFieldRevealRequest"]["field"];
+export const revealField = async (id: string, field: RevealField, reason_code: string, note?: string) => {
+  const step_up = await revealProof(id, field, reason_code);
+  return unwrap(api.POST("/api/v1/employees/{id}/reveal", { params: { path: { id } }, body: { field, reason_code, ...(note ? { note } : {}), step_up } }));
+};
 /** Who an employee number finds: its holder, else the person whose earlier number it was (an alias). */
 export const numberMatchQuery = (number: string) => get("/api/v1/employees/by-number/{number}", { params: { path: { number } } });
 /**

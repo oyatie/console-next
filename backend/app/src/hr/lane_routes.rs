@@ -33,7 +33,11 @@ impl HrState {
 pub(super) fn merge(router: Router, state: &HrState) -> Router {
     let hr: &HrService = &state.hr;
     let router = router
-        .merge(identity::router(hr.clone(), state.rrn_vault.clone()))
+        .merge(identity::router(
+            hr.clone(),
+            state.rrn_vault.clone(),
+            state.passkey_step_up.clone(),
+        ))
         .merge(profile::router(hr.clone()))
         .merge(contract::router(hr.clone()))
         .merge(checklist::router(hr.clone()))

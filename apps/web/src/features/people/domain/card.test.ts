@@ -2,6 +2,8 @@ import { expect, test } from "vitest";
 import { listPosition, maskedAddress, maskedBirth, maskedEmail, maskedPhone, registerGaps, registerItems, serviceSpan } from "./card";
 
 test("default masks show only what identifies the field, never the value", () => {
+  expect(maskedPhone("+821012345821")).toBe("010-••••-5821");
+  expect(maskedAddress({ si_nm: "경기도", sgg_nm: "평택시" } as never)).toBe("경기도 평택시 ••••");
   expect(maskedBirth()).toBe("••••-••-••");
   expect(maskedPhone("+821012345821")).toBe("010-••••-5821");
   expect(maskedPhone("010-1234-5821")).toBe("010-••••-5821");

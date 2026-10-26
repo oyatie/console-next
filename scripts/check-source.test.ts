@@ -109,6 +109,19 @@ test("refuses stale local-path fixture exemptions", () => {
   expect(run().stderr).toContain("stale baseline local-path fixture (delete it): scripts/check-hermetic.test.mjs");
 });
 
+test("identifiers reuses only the canonical people privacy client and component", () => {
+  const { write, git, run } = fixture();
+  write("apps/web/src/features/people/api/record.ts", "");
+  write("apps/web/src/features/people/ui/rrn-value.tsx", "");
+  write("apps/web/src/features/people/ui/other.tsx", "");
+  write("apps/web/src/features/identifiers/api.ts", 'export { rrnStatusQuery } from "../people/api/record";');
+  write("apps/web/src/features/identifiers/ui/rrn-card.tsx", 'import { RrnValue } from "../../people/ui/rrn-value";');
+  git("add", ".");
+  expect(run().status).toBe(0);
+  write("apps/web/src/features/identifiers/ui/rrn-card.tsx", 'import { Other } from "../../people/ui/other";');
+  expect(run().stderr).toContain("features never import other features");
+});
+
 test("permits the upstream Rollouts container mount but still refuses host paths in that manifest", () => {
   const { write, git, run } = fixture();
   const manifest = "deploy/base/platform/rollouts.yaml";

@@ -1,50 +1,86 @@
-import { useState } from "react";
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { useCallback, useEffect, useId, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Eye, EyeOff } from "lucide-react";
-import { t } from "@console/i18n";
+import { isMessageId, t } from "@console/i18n";
+import { announce, focusSoon } from "../../../lib/react/announce";
+import { useCommand } from "../../../lib/react/command";
+import { CommandError } from "../../../lib/react/command-error";
+import { reasonCodesQuery, reasonOptions } from "../../../lib/reason-codes";
+import { ReasonCodeField } from "../../../reference/reason/ui/reason-code-field";
 import { Button } from "../../../ui/button/button";
-import { ChipChoice } from "../../../ui/choice/chip-choice";
+import { TextInput } from "../../../ui/field/field";
 import { PopoverButton } from "../../../ui/popover/popover-button";
-import { Masked } from "../../../ui/record/record-section";
+import { Masked } from "../../../ui/record/masked";
 import s from "./card.module.css";
 
-const REASONS = ["LEGAL_FILING", "SELF_REQUEST", "CORRECTION", "DISPUTE", "OTHER"] as const;
+type Props = { masked: string; field: string; who: string; reveal?: (reason: string, note: string) => Promise<{ value: string; displaySeconds: number }> };
 
-/**
- * A masked value and its "show" (E2-reveal): a reveal asks why first (no default). The server already sends this value
- * to this reader, so it opens on screen; the reveal log is not served yet (POST /reveals, backend-followups EMP-UI),
- * which the panel says instead of implying the reason was kept. The correction sheet stays offered beside it.
- */
-export function MaskedValue({ masked, value, field, who, onAlternative }: { masked: string; value: string; field: string; who: string; onAlternative?: () => void }) {
+/** A field stays closed unless its server can return an audited reveal. */
+export function MaskedValue(props: Props) {
+  return props.reveal ? <RevealValue {...props} reveal={props.reveal} /> : <Masked>{props.masked}</Masked>;
+}
+
+function RevealValue({ masked, field, who, reveal }: Props & { reveal: NonNullable<Props["reveal"]> }) {
+  const scope = useId();
   const [why, setWhy] = useState<string | null>(null);
-  const [shown, setShown] = useState(false);
-  if (shown)
-    return (
-      <span className={s.reveal}>
-        <span>{value}</span>
-        <Button variant="ghost" onClick={() => setShown(false)}><EyeOff size={13} aria-hidden /> {t("empCard.reveal.hide")}</Button>
-      </span>
-    );
+  const [note, setNote] = useState("");
+  const [shown, setShown] = useState<{ value: string; until: number } | null>(null);
+  const [seconds, setSeconds] = useState(0);
+  const hide = useCallback(() => {
+    const ownsFocus = document.getElementById(scope)?.contains(document.activeElement);
+    setShown(null);
+    announce(t("empCard.reveal.remasked", { field }));
+    if (ownsFocus) focusSoon(scope);
+  }, [field, scope]);
+  const options = reasonOptions("rrn_reveal", useQuery(reasonCodesQuery("rrn_reveal")).data?.items);
+  const picked = options.find((o) => o.value === why);
+  const command = useCommand({
+    run: async () => {
+      const result = await reveal(why!, note.trim());
+      if (!Number.isFinite(result.displaySeconds) || result.displaySeconds <= 0) throw new Error("invalid_reveal_duration");
+      return result;
+    }, forget: true,
+    onSuccess: (r) => {
+      setShown({ value: r.value, until: Date.now() + r.displaySeconds * 1000 });
+      setSeconds(r.displaySeconds);
+      announce(t("empCard.reveal.shown", { field, seconds: r.displaySeconds }));
+      focusSoon(scope);
+      setWhy(null); setNote("");
+    },
+  });
+  useEffect(() => {
+    if (!shown) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      const left = Math.max(0, shown.until - Date.now());
+      if (!left) hide();
+      else { setSeconds(Math.ceil(left / 1000)); timer = setTimeout(tick, Math.min(1000, left)); }
+    };
+    timer = setTimeout(tick, Math.min(1000, Math.max(0, shown.until - Date.now())));
+    const escape = (e: KeyboardEvent) => { if (e.key === "Escape") hide(); };
+    document.addEventListener("keydown", escape);
+    return () => { clearTimeout(timer); document.removeEventListener("keydown", escape); };
+  }, [shown, hide]);
+  const ready = picked && (!picked.requiresNote || note.trim());
   return (
-    <span className={s.reveal}>
-      <Masked>{masked}</Masked>
-      <PopoverButton
-        link
-        label={t("empCard.reveal.open", { field })}
-        trigger={<><Eye size={13} aria-hidden />{t("empCard.reveal.show")}</>}
-        title={<><Eye size={14} aria-hidden />{t("empCard.reveal.title", { field, who })}</>}
-      >
-        {(close) => (
-          <>
-            <ChipChoice id="reveal-why" label={t("empCard.reveal.why")} options={REASONS.map((r) => ({ value: r, label: t(`empCard.reveal.reason.${r}`) }))} value={why} onChange={setWhy} />
-            <p className={s.note}>{t("empCard.reveal.unserved")}</p>
-            <div className={s.popActs}>
-              <Button variant="ghost" onClick={close}>{t("empCard.reveal.cancel")}</Button>
-              {onAlternative && <Button onClick={() => (close(), onAlternative())}>{t("empCard.reveal.alternative")}</Button>}
-              <Button variant="primary" aria-disabled={why ? undefined : true} onClick={() => (why ? (close(), setShown(true)) : document.getElementById("reveal-why")?.querySelector<HTMLElement>("input")?.focus())}>{t("empCard.reveal.primary")}</Button>
-            </div>
-          </>
-        )}
+    <span className={s.reveal} id={scope} tabIndex={-1}>
+      {shown ? <code className={s.revealValue}>{shown.value}</code> : <Masked>{masked}</Masked>}
+      <output role={shown ? "timer" : undefined} data-hidden={!shown || undefined} aria-hidden={!shown}>{t("empCard.reveal.remaining", { seconds })}</output>
+      {shown ? <Button variant="ghost" onClick={hide}><EyeOff size={13} aria-hidden /> {t("empCard.reveal.hide")}</Button> : (
+      <PopoverButton wide label={t("empCard.reveal.open", { field })} trigger={<><Eye size={13} aria-hidden />{t("empCard.reveal.show")}</>} title={<><Eye size={14} aria-hidden />{t("empCard.reveal.title", { field, who })}</>}>
+        {(close) => <>
+          <ReasonCodeField domain="rrn_reveal" label={t("empCard.rrn.why")} value={why} onChange={setWhy} look="chips" />
+          {picked?.requiresNote && <TextInput aria-label={t("empCard.rrn.note")} placeholder={t("empCard.rrn.note")} value={note} onChange={(e) => setNote(e.target.value)} />}
+          <p className={s.note}>{t("empCard.rrn.logLine", { person: who, field, reason: picked?.label ?? t("empCard.rrn.logPending") })}</p>
+          <CommandError error={command.error} own={code => { const key = `empCard.reveal.error.${code}`; return isMessageId(key) ? t(key) : undefined; }} />
+          <div className={s.popActs}>
+            <Button variant="ghost" onClick={close}>{t("empCard.reveal.cancel")}</Button>
+            <Button variant="primary" disabled={!ready || command.isPending} onClick={() => command.mutate(undefined, { onSuccess: close })}>{t("empCard.reveal.primary")}</Button>
+          </div>
+        </>}
       </PopoverButton>
+      )}
     </span>
   );
 }

@@ -114,6 +114,8 @@ export const koEnum = {
   "enum.stepUpAction.SETTINGS_CHANGE": "설정 변경",
   "enum.stepUpAction.CREDENTIAL_RESET": "인증 수단 재설정",
   "enum.stepUpAction.TENANT_OFFBOARD": "조직 이용 종료",
+  "enum.stepUpAction.PII_REVEAL": "개인정보 보기",
+  "enum.stepUpAction.PII_RECORD": "주민등록번호 기록",
   "enum.stepUpAction.SUPPORT_SESSION": "지원 접근",
   "enum.stepUpAction.OPERATOR_RECOVERY": "운영 계정 복구",
   "enum.unknown": "확인되지 않은 항목",

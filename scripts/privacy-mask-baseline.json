@@ -1,0 +1,10 @@
+{
+  "apps/web/src/reference/person/present.ts": 1,
+  "apps/web/src/features/attendance/domain/day.ts": 1,
+  "apps/web/src/features/people/ui/emergency-contacts.tsx": 1,
+  "apps/web/src/features/people/ui/register-dup.tsx": 2,
+  "apps/web/src/features/people/ui/sec-more.tsx": 1,
+  "backend/crates/hr/domain/src/import/plan_identity.rs": 1,
+  "apps/web/src/features/access/ui/bulk-page.tsx": 1,
+  "apps/web/src/features/entity/ui/create-review-step.tsx": 1
+}
