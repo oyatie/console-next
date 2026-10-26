@@ -229,30 +229,17 @@ fn authorize_inner(
 }
 
 fn support_permission(principal: &Principal, action: Action) -> Result<(), KernelError> {
-    use crate::cedar_pbac::actions::support_session::{self, Facts};
+    use crate::cedar_pbac::actions::support_session;
     let Some(support) = &principal.support else {
         return Err(KernelError::forbidden("support principal required"));
     };
-    let in_scope = crate::access::tag(action.feature())
-        .is_some_and(|(domain, _)| support.scope.iter().any(|scope| scope == domain.as_str()));
-    let allowed = support_session::decide_feature(
+    support_session::require_feature(
         action.feature(),
         &support.session_id.to_string(),
         &principal.org_id.to_string(),
-        Facts {
-            active: true,
-            operator_approved: support.operator_approved,
-            tenant_approved: support.tenant_approved,
-            in_scope,
-            ..Facts::default()
-        },
-    );
-    if allowed {
-        Ok(())
-    } else {
-        Err(KernelError::forbidden("support scope refuses this action")
-            .with_code("support.refuse.out_of_scope"))
-    }
+        support.feature_facts(action.feature()),
+    )
+    .map_err(|code| KernelError::forbidden("support scope refuses this action").with_code(code))
 }
 
 /// The BRANCH-SCOPED authorization door: the decision instant is an argument and

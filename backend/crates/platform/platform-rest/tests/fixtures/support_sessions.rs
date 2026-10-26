@@ -139,9 +139,9 @@ impl Support {
         let probe = Router::new().route(READ,get(move |Extension(p):Extension<Principal>, q:axum::extract::Query<std::collections::BTreeMap<String,u64>>| { let pool=handler_pool.clone(); async move {
             if q.contains_key("revoke") {
                 sqlx::query("UPDATE support_sessions SET state='REVOKED',ended_at=now() WHERE id=$1")
-                    .bind(p.support.unwrap().session_id).execute(&pool).await.unwrap();
+                    .bind(p.support.as_ref().unwrap().session_id).execute(&pool).await.unwrap();
             }
-            Json(json!({"display_name":"고객 이름","phone":"010-private","personal_email":"private@example.com","total":1,"name":"고객 이름","unknown":"private"}))
+            Json(json!({"display_name":"고객 이름","phone":"010-private","personal_email":"private@example.com","total":1,"name":"고객 이름","unknown":"private","branch_scope_empty":p.branch_scope.is_empty()}))
         }}).post(move || {let count=count.clone();async move {count.fetch_add(1,Ordering::SeqCst);Json(json!({"mutated":true}))}}));
         let app = with_support_gate(
             service.merge(with_request_context(

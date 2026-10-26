@@ -148,6 +148,16 @@ test("two operators and the customer authorize support; every read arrives live 
     org_id: org, step_up: await boundStepUp(operator, requesterBearer(), id, JSON.stringify([org, id, "start"])),
   }));
   const token = started.access_token;
+  for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+    const refused = await operator.request.fetch("/api/v1/org-structure", {
+      method, headers: { authorization: `Bearer ${token}` }, data: {},
+    });
+    expect(refused.status()).toBe(403);
+    expect(await codeOf(refused)).toBe("support.refuse.read_only");
+  }
+  const outsideScope = await operator.request.get("/api/v1/settings", { headers: { authorization: `Bearer ${token}` } });
+  expect(outsideScope.status()).toBe(403);
+  expect(await codeOf(outsideScope)).toBe("support.refuse.out_of_scope");
   const metadata = (await requester.list(org)).sessions.find((s) => s.id === id);
   expect(metadata?.state).toBe("ACTIVE");
   expect(metadata).not.toHaveProperty("reason");

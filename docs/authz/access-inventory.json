@@ -927,21 +927,9 @@
     },
     {
       "model": "finding",
-      "file": "backend/crates/platform/authz/src/decide.rs",
-      "kind": "all-boolean-facts-hardcoded-true",
-      "count": 1
-    },
-    {
-      "model": "finding",
       "file": "backend/crates/platform/platform-rest/src/support_tenant.rs",
       "kind": "all-boolean-facts-hardcoded-true",
       "count": 2
-    },
-    {
-      "model": "finding",
-      "file": "backend/crates/platform/request-context/src/support.rs",
-      "kind": "all-boolean-facts-hardcoded-true",
-      "count": 1
     },
     {
       "model": "matrix",

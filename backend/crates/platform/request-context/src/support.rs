@@ -9,7 +9,13 @@ use axum::{
 };
 use console_kernel_core::{BranchScope, OrgId, UserId};
 use console_platform_auth::{AccessClaims, JwtVerifier};
-use console_platform_authz::{Principal, SupportPrincipal};
+use console_platform_authz::{
+    Principal,
+    cedar_pbac::{
+        actions::support_session::{self, Action, PrincipalKind},
+        visible::load_support_session,
+    },
+};
 use console_platform_db::support::{self, SupportError};
 use http::{Method, StatusCode, header};
 use serde_json::{Value, json};
@@ -43,16 +49,12 @@ pub(crate) async fn principal(
     if claims.exp > session.expires_at.map_or(0, |time| time.unix_timestamp()) {
         return Err(SupportError::Refused("support.refuse.session_ended"));
     }
+    let facts = load_support_session(&mut tx, org, id)
+        .await
+        .map_err(|_| SupportError::Refused("internal"))?;
     tx.commit().await.map_err(SupportError::from)?;
-    let mut principal = Principal::new(user, org, BTreeSet::new(), BranchScope::All);
-    principal.support = Some(SupportPrincipal {
-        operator_approved: session.operator_approver_ref.is_some(),
-        tenant_approved: session.tenant_approved_at.is_some(),
-        session_id: id,
-        operator_label: session.operator_label,
-        scope: session.scope,
-        reveal_classes: session.reveal_classes,
-    });
+    let mut principal = Principal::new(user, org, BTreeSet::new(), BranchScope::none());
+    principal.support = Some(facts);
     Ok(principal)
 }
 
@@ -126,8 +128,19 @@ async fn run(
     {
         return Err(SupportError::Refused("support.refuse.reveal_not_granted"));
     }
+    let loaded = load_support_session(&mut tx, org, id)
+        .await
+        .map_err(|_| SupportError::Refused("internal"))?;
     if !matches!(*request.method(), Method::GET | Method::HEAD) {
-        return Err(SupportError::Refused("support.refuse.read_only"));
+        support_session::require(
+            Action::Write,
+            PrincipalKind::Support,
+            &id.to_string(),
+            &org.to_string(),
+            &org.to_string(),
+            loaded.facts(None, None),
+        )
+        .map_err(SupportError::Refused)?;
     }
     let surface: Option<(String, String, Value)> = sqlx::query_as(
         "SELECT domain,feature,field_classes FROM support_read_surfaces WHERE path=$1",
@@ -138,25 +151,15 @@ async fn run(
     let Some((domain, feature, aliases)) = surface else {
         return Err(SupportError::Refused("support.refuse.out_of_scope"));
     };
-    if !session.scope.contains(&domain) {
-        return Err(SupportError::Refused("support.refuse.out_of_scope"));
-    }
     let feature = console_platform_authz::Feature::from_str(&feature)
         .map_err(|_| SupportError::Refused("internal"))?;
-    if !console_platform_authz::cedar_pbac::actions::support_session::decide_feature(
+    support_session::require_feature(
         feature,
         &id.to_string(),
         &org.to_string(),
-        console_platform_authz::cedar_pbac::actions::support_session::Facts {
-            active: true,
-            operator_approved: session.operator_approver_ref.is_some(),
-            tenant_approved: session.tenant_approved_at.is_some(),
-            in_scope: true,
-            ..Default::default()
-        },
-    ) {
-        return Err(SupportError::Refused("support.refuse.out_of_scope"));
-    }
+        loaded.facts(Some(&domain), None),
+    )
+    .map_err(SupportError::Refused)?;
     tx.commit().await?;
     crate::validate_current_claims(pool, &claims)
         .await
@@ -166,6 +169,16 @@ async fn run(
     let mut tx = pool.begin().await?;
     let session = support::lock(&mut tx, org, id).await?;
     support::live(&session, OffsetDateTime::now_utc())?;
+    let loaded = load_support_session(&mut tx, org, id)
+        .await
+        .map_err(|_| SupportError::Refused("internal"))?;
+    support_session::require_feature(
+        feature,
+        &id.to_string(),
+        &org.to_string(),
+        loaded.facts(Some(&domain), None),
+    )
+    .map_err(SupportError::Refused)?;
     let mut classes = BTreeMap::new();
     if let Value::Object(aliases) = aliases {
         for (field, class) in aliases {
@@ -195,7 +208,14 @@ async fn run(
         .map_err(|_| SupportError::Refused("internal"))?;
     let mut value: Value =
         serde_json::from_slice(&bytes).map_err(|_| SupportError::Refused("internal"))?;
-    mask(&mut value, &classes, &session.reveal_classes, "");
+    let visible: Vec<String> = classes
+        .values()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .filter(|class| loaded.field_visible(&domain, class))
+        .cloned()
+        .collect();
+    mask(&mut value, &classes, &visible, "");
     parts.headers.remove(header::CONTENT_LENGTH);
     let bytes = serde_json::to_vec(&value).map_err(|_| SupportError::Refused("internal"))?;
     Ok(Response::from_parts(parts, Body::from(bytes)))
@@ -236,12 +256,7 @@ fn field_class<'a>(classes: &'a BTreeMap<String, String>, path: &str) -> Option<
 
 fn mask(value: &mut Value, classes: &BTreeMap<String, String>, grants: &[String], path: &str) {
     let class = field_class(classes, path);
-    let visible = |class: &str| {
-        console_platform_authz::cedar_pbac::actions::support_session::field_visible(
-            class != "metadata",
-            grants.iter().any(|grant| grant == class),
-        )
-    };
+    let visible = |class: &str| grants.iter().any(|grant| grant == class);
     // Only reviewed containers may expose children; a familiar leaf name cannot bless an unknown object.
     if (value.is_object() || value.is_array())
         && !path.is_empty()
@@ -294,74 +309,5 @@ fn websocket_token(headers: &http::HeaderMap) -> Option<&str> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn nested_personal_aliases_override_metadata_names_at_every_tree_depth() {
-        let classes = BTreeMap::from([
-            ("name".into(), "metadata".into()),
-            ("entities".into(), "container".into()),
-            ("children".into(), "container".into()),
-            ("head".into(), "container".into()),
-            ("head.name".into(), "personal".into()),
-        ]);
-        let mut value = json!({"entities":[{"name":"부서","children":[{"name":"하위 부서","head":{"name":"담당자"}}]}]});
-        mask(&mut value, &classes, &[], "");
-        assert_eq!(value["entities"][0]["name"], "부서");
-        assert_eq!(value["entities"][0]["children"][0]["name"], "하위 부서");
-        assert_eq!(value["entities"][0]["children"][0]["head"]["name"], "••••");
-        let mut value = json!({"head":{"name":"담당자"}});
-        mask(&mut value, &classes, &["personal".into()], "");
-        assert_eq!(value["head"]["name"], "담당자");
-    }
-
-    #[test]
-    fn classified_personal_containers_cannot_expose_metadata_named_children() {
-        let classes = BTreeMap::from([
-            ("contacts".into(), "personal".into()),
-            ("name".into(), "metadata".into()),
-        ]);
-        let mut value = json!({"contacts":[{"name":"개인 이름"}]});
-        mask(&mut value, &classes, &[], "");
-        assert!(value["contacts"].is_null());
-    }
-
-    #[test]
-    fn metadata_arrays_preserve_their_values() {
-        let classes = BTreeMap::from([("codes".into(), "metadata".into())]);
-        let mut value = json!({"codes":["A","B"]});
-        mask(&mut value, &classes, &[], "");
-        assert_eq!(value["codes"], json!(["A", "B"]));
-    }
-
-    #[test]
-    fn unknown_and_sensitive_fields_stay_masked_with_a_personal_grant() {
-        let classes = BTreeMap::from([
-            ("items".into(), "container".into()),
-            ("count".into(), "metadata".into()),
-            ("name".into(), "personal".into()),
-            ("rrn".into(), "sensitive".into()),
-        ]);
-        let mut value =
-            json!({"items":[{"name":"이름","rrn":"protected","phone":"private","count":2}]});
-        mask(&mut value, &classes, &[], "");
-        assert_eq!(value["items"][0]["name"], "••••");
-        assert_eq!(value["items"][0]["count"], 2);
-        let mut value = json!({"name":"이름","rrn":"protected"});
-        mask(&mut value, &classes, &["personal".into()], "");
-        assert_eq!(value["name"], "이름");
-        assert_eq!(value["rrn"], "••••");
-    }
-}
-
-#[cfg(test)]
-mod container_tests {
-    use super::*;
-    #[test]
-    fn unknown_objects_cannot_expose_metadata_named_children() {
-        let classes = BTreeMap::from([("name".into(), "metadata".into())]);
-        let mut value = json!({"unreviewed":{"name":"private"}});
-        mask(&mut value, &classes, &[], "");
-        assert!(value["unreviewed"].is_null());
-    }
-}
+#[path = "support/tests.rs"]
+mod tests;

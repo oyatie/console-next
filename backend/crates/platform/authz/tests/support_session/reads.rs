@@ -156,3 +156,30 @@ fn absent_authority_defaults_to_deny_for_every_action() {
         }
     }
 }
+
+#[test]
+fn mutation_refusal_is_the_cedar_forbid_reason() {
+    use console_platform_authz::cedar_pbac::actions::support_session::require;
+    assert_eq!(
+        require(
+            Action::Write,
+            PrincipalKind::Support,
+            "session",
+            "tenant",
+            "tenant",
+            eligible()
+        ),
+        Err("support.refuse.read_only")
+    );
+    assert_eq!(
+        require(
+            Action::Write,
+            PrincipalKind::Operator,
+            "operator",
+            "vendor",
+            "tenant",
+            eligible()
+        ),
+        Err("forbidden")
+    );
+}

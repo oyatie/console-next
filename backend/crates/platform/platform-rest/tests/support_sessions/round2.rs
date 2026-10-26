@@ -144,3 +144,28 @@ async fn revocation_during_handler_withholds_content_and_records_refusal(owner: 
         .bind(id.to_string()).fetch_one(&h.owner).await.unwrap();
     assert_eq!(status, "401");
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn support_principal_has_no_legacy_branch_authority(owner: PgPool) {
+    let mut h = Support::new(owner).await;
+    sqlx::query("UPDATE support_read_surfaces SET field_classes=field_classes || '{\"branch_scope_empty\":\"metadata\"}'::jsonb WHERE path=$1")
+        .bind(READ).execute(&h.owner).await.unwrap();
+    let (_, token) = h.active().await;
+    let read = h.send("GET", READ, Value::Null, &token).await;
+    assert_eq!(read.0, StatusCode::OK, "{}", read.1);
+    assert_eq!(read.1["branch_scope_empty"], true);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn every_mutation_verb_is_refused_before_the_handler(owner: PgPool) {
+    let mut h = Support::new(owner).await;
+    let (_, token) = h.active().await;
+    for method in ["POST", "PUT", "PATCH", "DELETE"] {
+        code(
+            h.send(method, READ, json!({}), &token).await,
+            StatusCode::FORBIDDEN,
+            "support.refuse.read_only",
+        );
+    }
+    assert_eq!(h.writes.load(Ordering::SeqCst), 0);
+}
