@@ -11,7 +11,7 @@ export const enTimeline = {
   "timeline.restricted": "Restricted field",
   "timeline.before": "Before: ",
   "timeline.after": "After: ",
-  "timeline.noValue": "No value",
+  "timeline.noValue": "—",
   "timeline.showFull": "Show full text",
   "timeline.liveNew": "Newly recorded",
   "timeline.reason": "Reason: {reason}",

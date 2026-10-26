@@ -2,7 +2,7 @@
 
 # Contract-backed screen states
 
-Run the Chromium matrix with Vite alone (no Rust build, backend or database).
+Run the Chromium matrix against a production Vite build (no Rust build, backend or database).
 The normal journey config excludes these specs:
 
 ```sh
@@ -15,8 +15,19 @@ installed Chromium headless shell (kept out of `npm run check` so local checks n
 global timeout keep the mock gate within the PR budget; it never starts a backend.
 
 Use the existing `E2E_SLOT` / `CONSOLE_WEB_PORT` environment variables to isolate
-concurrent runs. The config starts its own Vite and never reuses another run's
-server. Each test has a fresh browser context. Service workers are blocked.
+concurrent runs. The config builds the web app once, then starts Vite preview on
+the slot's strict port and never reuses another run's server. Vite's `test` mode
+includes `/_gallery` in this optimized build under `.cache/states-<port>`;
+normal production builds omit it, and their `apps/web/dist` output is preserved.
+Lazy chunks are already built before assertions start; the same `page.route` mocks supply API
+states. Each test has a fresh browser context. Service workers are blocked.
+
+Fix-round proof (2026-10-27): `CONSOLE_WEB_PORT=5293 /usr/bin/time -p npm run e2e:states`
+passed all 113 Chromium cases in **143.58 s wall time**, including the single build
+and preview startup, with two workers, no retries and unchanged timeouts. The
+pre-fix `cfeee3232` dev-server run passed its 104 cases in 208.32 s; the reported
+department-head flake did not recur. Rebased `public/dev` added nine cases. An HTML
+assertion rejected the base's dev entry and passed for preview's built assets.
 
 `mockRoute(page, method, path, reply)` derives valid operations, response status
 codes and JSON from `@console/api`'s generated `paths`. A reply can be a value or
@@ -30,8 +41,7 @@ Never cast a fixture to fit, edit generated types, or add a dependency.
 `screen.ts` mocks every supporting read, including session restoration and the
 existing server access projection. It introduces no authorization rule. The
 catch-all rejects unregistered API requests and the suite asserts there were
-none; it never falls through to a real backend. Vite's `packages/api/` module
-URLs remain ordinary source requests. Loading reads are held until cleanup,
+none; it never falls through to a real backend. Loading reads are held until cleanup,
 without sleeps. Playwright buffers fulfilled response bodies, so a browser
 ReadableStream supplies the healthy SSE connection without events. Failed reads
 exhaust the product's real retry budget.
@@ -77,7 +87,8 @@ effective-date range and offset/limit. Its 2,000-row state proves forward/back
 paging with only 50 rows rendered. The record has no empty-list state: a missing
 record returns 404. Its matrix covers draft (including legacy PRECHECKED),
 approval, scheduled, applied, settling, rejected, cancelled and archived records,
-plus loading, failed, refused, long text and a 2,000-event history. These are read
+plus loading, failed, refused, long text and a 2,000-event history (50 rendered
+rows with next/previous paging, matching the shared timeline). These are read
 states; command success/refusal journeys remain real-backend release gates.
 
 The list uses the existing table's phone cards; its shared component proof is

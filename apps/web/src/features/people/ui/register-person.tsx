@@ -10,8 +10,8 @@ import s from "./register.module.css";
 type Set = <K extends keyof Draft>(k: K, v: Draft[K]) => void;
 
 /**
- * Who: name, birth date (typed, read in any common form), resident registration number (not taken on this screen
- * yet, said so) and employee number (the server's next one, or typed). Errors show only after a commit attempt (`shown`).
+ * Who: name, birth date and employee number. RRN is recorded separately on the personnel card.
+ * Errors show only after a commit attempt (`shown`).
  */
 export function RegisterPerson({ d, set, shown }: { d: Draft; set: Set; shown: ReadonlySet<Gap> }) {
   const birth = parseTyped(d.birth);
@@ -28,14 +28,6 @@ export function RegisterPerson({ d, set, shown }: { d: Draft; set: Set; shown: R
         error={shown.has("birth") ? (typedProblem(birth) ?? undefined) : undefined}
       >
         {(p) => <DateInput {...p} className="num" value={d.birth} onDraftChange={(v) => set("birth", v)} onChange={(v) => set("birth", v)} />}
-      </Field>
-      <Field
-        label={t("register.rrn")}
-        required={null}
-        tag={<><span className={s.tag}>{t("register.optional")}</span><span className={s.legal}>{t("register.rrn.legal")}</span></>}
-        hint={t("register.rrn.closed")}
-      >
-        {(p) => <TextInput {...p} className="num" disabled placeholder={t("register.rrn.placeholder")} value="" />}
       </Field>
       <div className={s.numberCol}>
         <ChoiceField

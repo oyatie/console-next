@@ -22,8 +22,8 @@ export function FieldDiff({ fields, corrected = false }: { fields: readonly Fiel
 }
 
 function Value({ value }: { value: string | null }) {
-  if (value === null) return <span>{t("timeline.noValue")}</span>;
+  if (value === null) return t("timeline.noValue");
   return value.length > 180
-    ? <details className={s.long}><summary>{t("timeline.showFull")}</summary><span>{value}</span></details>
-    : <span>{value}</span>;
+    ? <details className={s.long}><summary>{t("timeline.showFull")}</summary><div>{value}</div></details>
+    : value;
 }

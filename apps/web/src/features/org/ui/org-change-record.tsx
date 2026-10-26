@@ -14,7 +14,7 @@ import { useCan } from "../../../reference/authz/ui/use-can";
 import { unitsQuery } from "../../../reference/org/api";
 import { GateRail } from "../../../ui/gate-rail";
 import { Receipt } from "../../../ui/receipt/receipt";
-import { Timeline } from "../../../ui/timeline";
+import { TimelineLanes } from "../../../ui/timeline-lanes/timeline-lanes";
 import { changeCommands, changeQuery, changeUnitId, me } from "../api";
 import { changeRail, changeTitle, describeOp, eventTitle, nextStep, submittedText, type Names } from "../present";
 import { ChangeChain } from "./change-chain";
@@ -133,7 +133,9 @@ function Record({ d, refetch }: { d: Detail; refetch: () => Promise<{ data?: Det
         <aside className="card panel" aria-labelledby="history">
           <h2 id="history" className="panel__title">{t("orgChange.history")}</h2>
           {place && <Link to="/org" search={place}>{t("orgChange.openUnit")}</Link>}
-          <Timeline items={[...d.events].reverse().map((e, i) => ({ key: `${i}`, at: e.at, ...eventTitle(e) }))} />
+          <TimelineLanes
+            items={[...d.events].reverse().map((e, i) => ({ key: `${d.events.length - i - 1}`, date: fmtDateTime(e.at), ...eventTitle(e) }))}
+          />
         </aside>
       </div>
     </>

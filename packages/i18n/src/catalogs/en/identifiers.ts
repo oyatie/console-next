@@ -32,7 +32,6 @@ export const enIdentifiers: Partial<Record<keyof typeof koIdentifiers, string>> 
   "identifiers.history.batch": "Renumbering",
   "identifiers.history.undone": "Undone {at}",
   "identifiers.rrn.title": "Resident registration number",
-  "identifiers.rrn.none": "Not recorded",
   "identifiers.rrn.why": "Resident registration numbers are masked. Viewing records the purpose in the access log.",
   "identifiers.rrn.recorded": "{at} · {source}",
   "identifiers.rrn.source.IMPORT": "roster import",

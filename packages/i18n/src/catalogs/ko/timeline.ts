@@ -11,7 +11,7 @@ export const koTimeline = {
   "timeline.restricted": "제한된 항목",
   "timeline.before": "변경 전: ",
   "timeline.after": "변경 후: ",
-  "timeline.noValue": "값 없음",
+  "timeline.noValue": "—",
   "timeline.showFull": "전체 내용 보기",
   "timeline.liveNew": "새로 기록됨",
   "timeline.reason": "사유: {reason}",

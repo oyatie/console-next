@@ -3,7 +3,7 @@ import { beforeAll, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ComponentProps } from "react";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { NextBox } from "./person-next";
 import { PersonHistory } from "./person-history";
 import { CardSpine } from "./card-spine";
@@ -27,6 +27,13 @@ test("the history ribbon does not mark an exit due on its last working day", () 
   expect(html).toContain("2026. 11. 01.");
   expect(html.match(/2026\. 11\. 01\./g)).toHaveLength(2);
   expect(html).not.toContain("오늘 반영 대기");
+});
+
+test("person history shows its catalog empty state when there are no events", () => {
+  const props = { employee: { name: "경계직원" }, events: { data: { items: [] } }, verbs: [], manage: false, today: "2026-10-31", done: null, onAct: () => {}, onDismiss: () => {} } as unknown as ComponentProps<typeof PersonHistory>;
+  const html = renderToStaticMarkup(<PersonHistory {...props} />);
+  expect(html).toContain(t("empCard.spine.empty"));
+  expect(html).not.toContain('role="separator"');
 });
 
 test("the default card ribbon labels retirement on the same date as the full history", () => {

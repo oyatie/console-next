@@ -8,6 +8,7 @@ parameters:
   - { name: unit_id, in: query, required: false, description: open this 부서 group (all its rows), schema: { $ref: '#/components/schemas/Uuid' } }
   - { name: issues_only, in: query, required: false, schema: { type: boolean } }
   - { name: no_schedule_only, in: query, required: false, description: show only people without a resolved schedule; counts remain for the whole scope, schema: { type: boolean } }
+  - { name: rows, in: query, required: false, description: return every row without folding normal people; existing filters still apply, schema: { type: string, enum: [all] } }
 responses:
   '200': { description: Board, content: { application/json: { schema: { $ref: '#/components/schemas/AttendanceDayBoard' } } } }
   '401': { $ref: '#/components/responses/Unauthorized' }

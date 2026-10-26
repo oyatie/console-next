@@ -32,6 +32,7 @@ pub struct BoardQuery {
     pub unit_id: Option<Uuid>,
     pub issues_only: bool,
     pub no_schedule_only: bool,
+    pub all_rows: bool,
 }
 
 pub(crate) fn group_name(org: &OrgModel, p: &Person) -> String {
@@ -179,7 +180,7 @@ impl PgAttendanceStore {
                         if row.day.marks.is_empty() {
                             g.normal += 1;
                         }
-                        if open || !row.day.marks.is_empty() {
+                        if (q.all_rows && !q.issues_only) || open || !row.day.marks.is_empty() {
                             g.rows.push(row);
                         } else {
                             g.hidden += 1;

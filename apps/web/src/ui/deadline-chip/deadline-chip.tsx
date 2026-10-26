@@ -7,8 +7,8 @@ import css from "./deadline-chip.module.css";
 
 /**
  * The server's clock severity (BW-05). The tone comes only from here, never from a client threshold:
- * `due` is a legal clock with 14 days or less, `over` a legal clock past its date, `far` everything else
- * (a scheduled act, a contract more than 14 days out).
+ * `due` follows the server’s configured display window, `over` a legal clock past its date, `far` everything else
+ * (a scheduled act, a contract outside that window).
  */
 export type ClockSeverity = "far" | "due" | "over";
 

@@ -113,14 +113,19 @@ export const sectionOwner = (s: Section) => t(`entity.owner.${OWNER[s]}`);
 const INSURANCE_FIELD = /^insurance\.(NPS|NHIS|EI|IACI)\.(.+)$/;
 
 /** One changed field as read: its name, and enum values (an insurance status) by their labels. */
-export function changeLine(c: Revision["changes"][number]) {
-  if (c.field === "registration_id") return t("entityHistoryField.registration.changed");
+export function changeField(c: Revision["changes"][number]) {
   const m = INSURANCE_FIELD.exec(c.field);
-  const value = (v: string | null | undefined) => (v == null ? "—" : historyValue(m?.[2] ? `insurance.${m[2]}` : c.field, v));
+  const value = (v: string | null | undefined) => (v == null ? null : historyValue(m?.[2] ? `insurance.${m[2]}` : c.field, v));
   const field = m
     ? t("entity.history.insuranceField", { insurer: label(INSURER, m[1]!), field: fieldLabel(`insurance.${m[2]}`) ?? t("entity.refusal.field") })
     : (fieldLabel(c.field) ?? t("entity.refusal.field"));
-  return t("entity.history.change", { field, before: value(c.before), after: value(c.after) });
+  return { field: c.field, label: field, before: value(c.before), after: value(c.after) };
+}
+
+export function changeLine(c: Revision["changes"][number]) {
+  if (c.field === "registration_id") return t("entityHistoryField.registration.changed");
+  const field = changeField(c);
+  return t("entity.history.change", { field: field.label, before: field.before ?? t("timeline.noValue"), after: field.after ?? t("timeline.noValue") });
 }
 /** The same boolean value words apply to every boolean field definition. */
 const booleanText = (v: string) => v === "true" || v === "false" ? t(`entityHistoryField.bool.${v}`) : v;

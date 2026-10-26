@@ -1,14 +1,14 @@
 {
   "baseline": {
-    "apps/web/src/features/org/OrgChange.tsx#OrgChange": 117,
+    "apps/web/src/features/org/OrgChange.tsx#OrgChange": 115,
     "apps/web/src/features/people/ui/bulk-page.tsx#BulkPage": 77,
-    "apps/web/src/features/people/ui/card-page.tsx#EmployeeCard": 416,
+    "apps/web/src/features/people/ui/card-page.tsx#EmployeeCard": 411,
     "apps/web/src/features/people/ui/exit-page.tsx#ExitCasePage": 85,
     "apps/web/src/features/people/ui/people-route.tsx#PeopleRoute": 200,
     "apps/web/src/routes/home-screen.tsx#HomeScreen": 55,
     "apps/web/src/routes/org-screen.tsx#OrgScreen": 286,
     "apps/web/src/ui/composer/composer.tsx#Composer": 20,
-    "apps/web/src/features/people/ui/register-route.tsx#RegisterRoute": 75
+    "apps/web/src/features/people/ui/register-route.tsx#RegisterRoute": 72
   },
   "newScreens": {
     "apps/web/src/ui/composer/composer.tsx#Composer": {

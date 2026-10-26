@@ -19,7 +19,7 @@
     "e2e:states": "playwright test --config e2e/mock/playwright.config.ts --global-timeout=300000",
     "e2e:agent": "mkdir -p \"$HOME/.cache\" && node scripts/e2e-slot.mjs",
     "lint": "oxlint -c oxlint.json apps packages && stylelint \"apps/**/*.css\" && node scripts/check-copy.mjs",
-    "check": "node scripts/check-person-reads.mjs && node scripts/check-standing-text.mjs && node scripts/check-api-schema.mjs && node scripts/check-reach.mjs && node scripts/check-e2e-identifiers.mjs && npm run typecheck && npm run lint && npm test && npm run build && node scripts/check-bundle.mjs && npm run secrets && node scripts/check-license-headers.mjs && node scripts/check-fixture-ids.mjs && node scripts/third-party-licenses.mjs --check && node --test scripts/dev-secrets.test.mjs scripts/e2e-support-logs.test.mjs scripts/check-bundle.test.mjs",
+    "check": "node scripts/check-person-reads.mjs && node scripts/check-standing-text.mjs && node scripts/check-api-schema.mjs && node scripts/check-reach.mjs && node scripts/check-e2e-identifiers.mjs && npm run typecheck && npm run lint && npm test && npm run build && node scripts/check-bundle.mjs && npm run secrets && node scripts/check-license-headers.mjs && node scripts/check-fixture-ids.mjs && node scripts/third-party-licenses.mjs --check && node --test scripts/dev-secrets.test.mjs scripts/e2e-support-logs.test.mjs scripts/check-bundle.test.mjs scripts/e2e-stack.test.mjs",
     "secrets": "gitleaks git --redact --no-banner --config .gitleaks.toml --log-opts=HEAD . && gitleaks dir --redact --no-banner --config .gitleaks.toml apps/web/dist",
     "e2e:served": "E2E_SERVED=1 playwright test",
     "desktop:test": "cd apps/desktop/src-tauri && CONSOLE_URL=https://console.invalid cargo test",

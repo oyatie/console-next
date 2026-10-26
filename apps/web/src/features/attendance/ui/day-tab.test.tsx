@@ -6,12 +6,13 @@ import { loadCatalog, t } from "@console/i18n";
 import { fillSchedule, type Drafts } from "../domain/grid";
 import { DayTab } from "./day-tab";
 
-const state = vi.hoisted(() => ({ marks: ["NO_SCHEDULE"], people: 1, drafts: {} as Drafts, load: "ready" as "ready" | "loading" | "error" }));
+const stateQuery = vi.hoisted(() => vi.fn());
+const state = vi.hoisted(() => ({ marks: ["NO_SCHEDULE"], people: 1, drafts: {} as Drafts, detail: false, load: "ready" as "ready" | "loading" | "error" }));
 vi.mock("@tanstack/react-router", () => ({
-  getRouteApi: () => ({ useSearch: () => ({ date: "2026-10-06" }), useNavigate: () => vi.fn() }),
+  getRouteApi: () => ({ useSearch: () => ({ date: "2026-10-06", detail: state.detail }), useNavigate: () => vi.fn() }),
   Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-href={to}>{children}</span>,
 }));
-vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof import("@tanstack/react-query")>(), useQuery: () => ({
+vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof import("@tanstack/react-query")>(), useQuery: (options: unknown) => { stateQuery(options); return ({
   isPending: state.load === "loading", isSuccess: state.load === "ready", error: state.load === "error" ? new Error("unavailable") : null,
   data: state.load === "ready" ? {
     judged: true, marks: { blocking: 1, decision: 0 },
@@ -20,7 +21,7 @@ vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof i
       rows: [{ employee_id: "person", name: "Person", month_state: { state: "OPEN" }, day: { marks: state.marks, plan: { kind: "NO_SCHEDULE" } } }],
     }] : [],
   } : undefined,
-}) }));
+}); } }));
 vi.mock("./use-drafts", () => ({ useDrafts: () => ({ drafts: state.drafts }) }));
 vi.mock("./scope-picker", () => ({ ScopePicker: () => null }));
 vi.mock("./day-row", () => ({ DayRow: () => null }));
@@ -31,6 +32,8 @@ beforeEach(() => {
   state.people = 1;
   state.drafts = {};
   state.load = "ready";
+  state.detail = false;
+  stateQuery.mockClear();
 });
 
 test("a successful empty board hides its toolbar and names schedule assignment", () => {
@@ -81,4 +84,17 @@ test("the fill receipt names unscheduled skips without claiming a locked row", (
   const note = t("attendanceRecords.fill.done", { filled: r.filled, ...r.skipped });
   expect(note).toContain("일정 없음 1");
   expect(note).toContain("본인·마감 0");
+});
+
+test("only the detailed board requests all rows, in a separate cache entry", () => {
+  renderToStaticMarkup(<DayTab />);
+  const compact = stateQuery.mock.calls[0]![0];
+  state.detail = true;
+  stateQuery.mockClear();
+  state.people = 0;
+  renderToStaticMarkup(<DayTab />);
+  const detail = stateQuery.mock.calls[0]![0];
+  expect(JSON.stringify(compact)).not.toContain('"rows":"all"');
+  expect(JSON.stringify(detail)).toContain('"rows":"all"');
+  expect(detail).not.toEqual(compact);
 });
