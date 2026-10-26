@@ -1,10 +1,62 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
+import AxeBuilder from "@axe-core/playwright";
 
 // /_gallery is registered only in dev builds; the production shape (E2E_SERVED) has no gallery.
 test.skip(process.env.E2E_SERVED === "1", "the component gallery is dev-only");
 
 const gallery = (page: import("@playwright/test").Page) => page.getByRole("heading", { name: "컴포넌트 갤러리", level: 1 });
+
+for (const theme of ["light", "dark"] as const) {
+  for (const width of [1440, 390]) {
+    test(`top-bar parts at ${width}px, ${theme}`, { tag: ["@visual", "@regression"] }, async ({ page }, info) => {
+      await page.emulateMedia({ colorScheme: theme });
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/_gallery");
+      // The dock-sheet gallery starts open and becomes modal on phones.
+      if (width === 390) {
+        await expect(page.getByRole("dialog")).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(page.getByRole("dialog")).toHaveCount(0);
+      }
+      const section = page.getByRole("heading", { name: "상단 표시줄", exact: true }).locator("..");
+      await section.scrollIntoViewIfNeeded();
+      await expect(section.getByRole("link", { name: "설정 단계", exact: true })).toHaveCount(1);
+      const name = "남궁가나다라마바사아자차카타파하 선임 인사총무담당";
+      const trigger = section.getByRole("button", { name, exact: true }).first();
+      await expect(trigger).toHaveAccessibleName(name);
+      expect(await section.evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);
+      await trigger.press("Enter");
+      const menu = page.getByRole("menu", { name, exact: true });
+      await expect(menu.getByRole("menuitem")).toHaveText(["내 계정", "언어", "화면 테마", "로그아웃"]);
+      await expect(page.getByRole("menuitem", { name: "내 계정", exact: true })).toBeFocused();
+      await page.keyboard.press("ArrowDown");
+      await expect(page.getByRole("menuitem", { name: "언어", exact: true })).toBeFocused();
+      await page.keyboard.press("ArrowRight");
+      await expect(page.getByRole("menuitemradio", { name: "한국어", exact: true })).toHaveAttribute("aria-checked", "true");
+      // Both submenus open inside the viewport (they once opened off the left edge at 390 px).
+      const onScreen = async (label: string) => {
+        const box = await page.getByRole("menu", { name: label, exact: true }).boundingBox();
+        expect(box, label).not.toBeNull();
+        expect(box!.x, `${label} left edge`).toBeGreaterThanOrEqual(0);
+        expect(box!.x + box!.width, `${label} right edge`).toBeLessThanOrEqual(width);
+      };
+      await onScreen("언어");
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("menuitem", { name: "언어", exact: true })).toBeFocused();
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("ArrowRight");
+      await expect(page.getByRole("menu", { name: "화면 테마", exact: true })).toBeVisible();
+      await onScreen("화면 테마");
+      const axe = await new AxeBuilder({ page }).include(".gallery__section:has(#gallery-account-SETUP)").include('[role="menu"]').analyze();
+      expect(axe.violations).toEqual([]);
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape");
+      await expect(trigger).toBeFocused();
+      await info.attach(`top-bar-${width}-${theme}`, { body: await section.screenshot({ animations: "disabled" }), contentType: "image/png" });
+    });
+  }
+}
 
 for (const theme of ["light", "dark"] as const) {
   for (const width of [1440, 1024, 390]) {

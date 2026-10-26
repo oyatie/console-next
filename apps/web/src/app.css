@@ -63,9 +63,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .rail__link:hover { background: var(--muted); color: var(--ink); }
 .rail__link[data-status="active"] { background: var(--primary-soft); color: var(--primary); }
 .top { grid-area: top; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-4); min-width: 0; }
-.top__name { flex: 0 0 calc(var(--space-6) * 4); min-width: 0; }
+.top__name { min-width: 0; }
 .top__name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.top__menu { display: none; }
+.top .top__menu { display: none; }
 .top__spacer { flex: 1; }
 /* The scroll container is also the containing block: an absolutely placed node inside (a visually hidden input) scrolls and clips with it instead of lengthening the document, which a focus would then scroll (E2-reveal). */
 .main { grid-area: main; overflow: auto; position: relative; }
@@ -86,7 +86,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .shell { grid-template: "top" var(--topbar-h) "main" 1fr / 1fr; }
   .rail { display: none; }
   .top { gap: var(--space-2); padding: 0 var(--space-2); }
-  .top__menu { display: inline-flex; }
+  .top .top__menu { display: inline-flex; }
   .shell[data-menu="open"] .rail { display: flex; position: fixed; top: var(--topbar-h); bottom: 0; left: 0; width: var(--rail-w); z-index: 15; box-shadow: var(--shadow-pop); }
 }
 

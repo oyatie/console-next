@@ -16,6 +16,7 @@ for (const theme of ["light", "dark"] as const) {
       for (const route of ["/account", "/"]) {
         await go(page, route);
         await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.getByRole("banner").getByRole("button", { name: "메뉴", exact: true })).toBeVisible({ visible: width === 390 });
         const response = await api("/users/me");
         expect(response.status()).toBe(200);
         expect((await response.json()).tenant).toEqual({ name, phase: "SETUP", go_live_at: null });
