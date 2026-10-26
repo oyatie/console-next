@@ -117,6 +117,7 @@ impl PgOrgChangeStore {
                         employee_number: row.try_get("employee_number")?,
                         position: row.try_get("position")?,
                         title: row.try_get("title")?,
+                        since: None,
                     });
                 }
                 let headcount = head.headcount;

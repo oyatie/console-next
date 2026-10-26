@@ -35,7 +35,7 @@ test.each([true, false])("department vacancy has a direct appoint action, with o
   expect(html.match(/id="act-dept-rename"/g)).toHaveLength(1);
   expect(html.match(/id="act-dept-move-row"/g)).toHaveLength(1);
   expect(html).not.toContain('id="act-dept-move"');
-  expect(html.match(/id="act-dept-details"/g)).toHaveLength(1);
+  expect(html.match(/id="act-dept-code"/g)).toHaveLength(1);
 });
 
 test("department statistics use the same direct and total presenter as the list and card", () => {
@@ -50,6 +50,6 @@ test("department statistics use the same direct and total presenter as the list 
 test("historical department facts offer no edit actions", () => {
   const html = render(false, true);
   expect(html).not.toContain('id="dept-actions"');
-  expect(html).not.toContain('id="act-dept-details"');
+  expect(html).not.toContain('id="act-dept-code"');
   expect(html).not.toContain('id="act-dept-head"');
 });

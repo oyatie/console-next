@@ -51710,6 +51710,10 @@ components:
         title:
           type: string
           description: Current 직책 from the employee card's position-kind catalog fact.
+        since:
+          type: string
+          format: date
+          description: Winning membership event date or employment revision business date, omitted when undated.
     OrgUnitMembers:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object

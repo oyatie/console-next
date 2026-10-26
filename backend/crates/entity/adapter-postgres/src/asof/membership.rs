@@ -7,6 +7,7 @@ use uuid::Uuid;
 pub(crate) struct Membership {
     pub employee: Uuid,
     pub unit: Option<Uuid>,
+    pub unit_since: Option<time::Date>,
     pub entity: Option<Uuid>,
     pub workplace: Option<Uuid>,
     pub dispatched: bool,
@@ -54,6 +55,8 @@ pub(crate) async fn load(
            CASE WHEN u.id IS NOT NULL AND (r.valid_from IS NULL OR (entity_try_iso_date(u.effective_date),u.created_at) >= (r.business_date,r.created_at)) THEN u.to_org_unit_id \
                 WHEN r.attributes ? 'org_unit_id' THEN (r.attributes->>'org_unit_id')::uuid \
                 WHEN first_event.id IS NOT NULL THEN first_event.from_org_unit_id ELSE e.org_unit_id END AS unit_id, \
+           CASE WHEN u.id IS NOT NULL AND (r.valid_from IS NULL OR (entity_try_iso_date(u.effective_date),u.created_at) >= (r.business_date,r.created_at)) THEN entity_try_iso_date(u.effective_date) \
+                WHEN r.attributes ? 'org_unit_id' THEN r.business_date END AS unit_since, \
            CASE WHEN w.id IS NOT NULL AND (a.employee_id IS NULL OR (entity_try_iso_date(w.effective_date),w.created_at) > (a.valid_from,a.created_at)) THEN wp.legal_entity_id ELSE a.legal_entity_id END AS legal_entity_id, \
            CASE WHEN w.id IS NOT NULL AND (a.employee_id IS NULL OR (entity_try_iso_date(w.effective_date),w.created_at) > (a.valid_from,a.created_at)) THEN w.to_workplace_id ELSE a.workplace_id END AS workplace_id, \
            COALESCE(t.to_employment_type,first_type.from_employment_type,CASE WHEN $2::timestamptz IS NULL THEN f.employment_type ELSE entity_known_row(to_jsonb(f),$2)->>'employment_type' END) \
@@ -91,6 +94,7 @@ pub(crate) async fn load(
                 employee: r.try_get("id")?,
                 projected: false,
                 unit: r.try_get("unit_id")?,
+                unit_since: r.try_get("unit_since")?,
                 entity: r.try_get("legal_entity_id")?,
                 workplace: r.try_get("workplace_id")?,
                 dispatched: r.try_get::<Option<bool>, _>("dispatched")?.unwrap_or(false),

@@ -3,6 +3,7 @@ import { t } from "@console/i18n";
 
 /** Action nouns and verbs are catalog data; screens describe intent, never build frame copy. */
 const ACTION_KINDS = {
+  orgHead: ["composer.action.orgHead", "units"],
   orgDetails: ["composer.action.orgDetails", "units"],
   orgSettlement: ["composer.action.orgSettlement", "units"],
   orgCreate: ["composer.action.orgCreate", "units"],
@@ -43,6 +44,7 @@ const ACTION_KINDS = {
 
 /** Withdraw pending approval; cancel before effect; correct an applied fact; revoke an applied act. */
 const ACTION_VERBS = {
+  assign: "composer.verb.assign",
   calculate: "composer.verb.calculate",
   approve: "composer.verb.approve",
   complete: "composer.verb.complete",

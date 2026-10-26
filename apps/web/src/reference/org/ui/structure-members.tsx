@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { get } from "../../../lib/query";
 import { todayKst } from "../../../lib/pure/today";
 import { useFreshOnArrival } from "../../../lib/react/arrival";
@@ -23,11 +24,13 @@ export function Members({
   unitId,
   total,
   expected,
+  headId,
   joiners, as_of, known_at,
 }: {
   unitId?: string;
   total: number;
   expected: number;
+  headId?: string;
   joiners?: number;
   as_of?: string;
   known_at?: string;
@@ -92,7 +95,8 @@ export function Members({
                 <span className={css.av} aria-hidden>{m.name.slice(0, 1)}</span>
                 {directory ? <Link to="/people/$id" params={{ id: m.employeeId }}>{m.name}</Link> : <b>{m.name}</b>}
                 {isPreHire && <Chip tone="info">{t("enum.employeeStatus.PRE_HIRE")}</Chip>}
-                <Muted>{[m.title, m.position].filter(Boolean).join(" · ")}</Muted>
+                {m.employeeId === headId && <Chip>{t("orgUnit.fact.head")}</Chip>}
+                <Muted>{[m.title, m.position].filter(Boolean).join(" · ")}{m.since && <>{m.title || m.position ? " · " : ""}<time className={css.nowrap} dateTime={m.since}>{t("orgUnit.head.since", { date: fmtDate(m.since) })}</time></>}</Muted>
                 <span className={css.right}>{m.employeeNumber ?? ""}</span>
               </li>
             );

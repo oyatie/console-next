@@ -16,11 +16,12 @@ const org = createRoute({
   path: "/org",
   // The company structure: `view` (the chart by default, the list or the outline), `focus` (the box the chart is
   // centred on), `sel` (the selection whose panel shows) and the proposal or structure sheet `act` for it.
-  validateSearch: (s: Record<string, unknown>): { view?: (typeof STRUCTURE_VIEWS)[number]; focus?: string; sel?: string; act?: OrgAct; kind?: (typeof KINDS)[number]; as_of?: string; known_at?: string; compare_a?: string; compare_b?: string } => ({
+  validateSearch: (s: Record<string, unknown>): { view?: (typeof STRUCTURE_VIEWS)[number]; focus?: string; sel?: string; act?: OrgAct; act_unit?: string; kind?: (typeof KINDS)[number]; as_of?: string; known_at?: string; compare_a?: string; compare_b?: string } => ({
     view: oneOf(STRUCTURE_VIEWS, s.view),
     focus: str(s.focus),
     sel: str(s.sel),
     act: oneOf(ORG_ACTS, s.act),
+    act_unit: str(s.act_unit),
     kind: oneOf(KINDS, s.kind),
     as_of: str(s.as_of),
     known_at: str(s.known_at),
