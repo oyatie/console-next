@@ -131,14 +131,22 @@ jobs:
           echo "DEPLOY=ghcr.io/${GITHUB_REPOSITORY,,}/console-deploy" >> "${GITHUB_ENV}"
       - name: Push native manifests and merge OCI index
         id: image
+        env: {GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'}
         run: |
           sources=()
           unsigned_sources=()
           if flux pull artifact "oci://${DEPLOY}:shadow" --output=.tmp/previous 2> .tmp/previous-error.txt; then
             cp .tmp/previous/revision.json .tmp/previous-revision.json
           else
-            # Only an absent first artifact is bootstrapping; auth/network failures remain errors.
-            grep -Eqi 'MANIFEST_UNKNOWN|manifest unknown|not found|404' .tmp/previous-error.txt
+            # Only an absent first artifact is bootstrapping; auth/network failures remain errors. GHCR answers a
+            # package that does not exist yet with 'denied', so that case is confirmed by the package API's 404.
+            cat .tmp/previous-error.txt >&2
+            if ! grep -Eqi 'MANIFEST_UNKNOWN|manifest unknown|not found|404' .tmp/previous-error.txt; then
+              pkg="${DEPLOY#ghcr.io/*/}"
+              code="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${GH_TOKEN}" \
+                "https://api.github.com/orgs/${GITHUB_REPOSITORY_OWNER}/packages/container/${pkg//\//%2F}")"
+              [[ "${code}" == 404 ]] || { echo "previous deploy artifact unreadable and its package exists (HTTP ${code})" >&2; exit 1; }
+            fi
             printf '{}\n' > .tmp/previous-revision.json
           fi
           for arch in amd64 arm64; do
