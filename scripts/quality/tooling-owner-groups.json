@@ -1,0 +1,14 @@
+{
+  "_status": "**Superseded 2026-10-26:** the owner ruled on these groups after this summary was generated (full ESLint replaces oxlint; aws-lc-rs everywhere; mail stack removed; spreadsheets on calamine + rust_xlsxwriter; the remaining groups as recorded in the dependency ruling). The rows below are the pre-ruling research; applying the rulings is tracked as DEP-RULINGS-APPLY.",
+  "React ecosystem": "Approve the existing stack as a group, with a separate OFL font exception and follow-up pin review; retain current behavior pending the ruling.",
+  "Rust HTTP/DB": "Approve the existing HTTP/DB stack conditionally on one SQLx line and a stable job-runner/licence review before any separate migration.",
+  "Crypto/auth": "Approve one RustCrypto provider and the scoped WebAuthn MPL exception, with a separate follow-up plan for stale crates and the vendored OpenSSL declaration; never write cryptographic primitives ourselves.",
+  "Observability": "Owner selects one supported telemetry strategy before approving these six rows; the Rust traces SDK Beta status prevents delegated approval of all four trace integrations.",
+  "E-mail/IMAP": "Keep this group out of the release under the Telegram-only ruling; require an explicit mail-scope and trust-root licence ruling before activation.",
+  "Spreadsheets/import": "Approve the pure-Rust spreadsheet boundary and plan a separately proved replacement of stale ExcelJS fixtures and its UUID override.",
+  "Desktop (Tauri)": "Confirm desktop release scope first, then approve Tauri 2 and its scoped Windows integrations together if desktop remains in scope.",
+  "CI/supply-chain tools": "Rule on one minimal CI/signing/scanning stack as a group, resolving duplicate attestation/actionlint paths and the bundled CLI, CodeQL and image-content licence exceptions before changes.",
+  "Kubernetes/GitOps platform images and tools": "Reconcile the deployed Flux stack with the recorded Argo CD direction and approve one platform bill of materials, with operator, admission, backup and image provenance evidence.",
+  "Test/lint tooling": "Approve the current test/lint stack conditionally on MPL/NCSA exceptions and the linter ADR; defer replacements until rule parity and PR timing are proved.",
+  "Rust core/product libraries": "Approve one date/time direction and scoped product helpers, with a separate stale-crate replacement plan and Unicode licence ruling before implementation."
+}

@@ -1,0 +1,295 @@
+{
+  "generatedBy": "node scripts/quality/linter-evidence.mjs --refresh",
+  "candidates": [
+    {
+      "name": "eslint",
+      "source": "https://registry.npmjs.org/eslint",
+      "latest": "10.13.0",
+      "lastRelease": "2026-10-16T14:24:10.765Z",
+      "license": "MIT",
+      "maintainers": [
+        "openjsfoundation",
+        "eslintbot"
+      ],
+      "repository": {
+        "url": "git+https://github.com/eslint/eslint.git",
+        "type": "git"
+      },
+      "adoptionSource": "https://api.npmjs.org/downloads/point/last-week/eslint",
+      "adoption": {
+        "downloads": 102207674,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "eslint"
+      },
+      "approval": null
+    },
+    {
+      "name": "typescript-eslint",
+      "source": "https://registry.npmjs.org/typescript-eslint",
+      "latest": "8.72.0",
+      "lastRelease": "2026-10-19T17:08:09.147Z",
+      "license": "MIT",
+      "maintainers": [
+        "jameshenry",
+        "bradzacher"
+      ],
+      "repository": {
+        "url": "https://github.com/typescript-eslint/typescript-eslint.git",
+        "type": "git",
+        "directory": "packages/typescript-eslint"
+      },
+      "adoptionSource": "https://api.npmjs.org/downloads/point/last-week/typescript-eslint",
+      "adoption": {
+        "downloads": 58934498,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "typescript-eslint"
+      },
+      "approval": null
+    },
+    {
+      "name": "eslint-plugin-react-hooks",
+      "source": "https://registry.npmjs.org/eslint-plugin-react-hooks",
+      "latest": "7.1.1",
+      "lastRelease": "2026-04-17T18:03:19.591Z",
+      "license": "MIT",
+      "maintainers": [
+        "react-bot"
+      ],
+      "repository": {
+        "url": "git+https://github.com/facebook/react.git",
+        "type": "git",
+        "directory": "packages/eslint-plugin-react-hooks"
+      },
+      "adoptionSource": "https://api.npmjs.org/downloads/point/last-week/eslint-plugin-react-hooks",
+      "adoption": {
+        "downloads": 63108579,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "eslint-plugin-react-hooks"
+      },
+      "approval": null
+    },
+    {
+      "name": "eslint-plugin-jsx-a11y",
+      "source": "https://registry.npmjs.org/eslint-plugin-jsx-a11y",
+      "latest": "6.10.2",
+      "lastRelease": "2024-10-26T04:45:18.067Z",
+      "license": "MIT",
+      "maintainers": [
+        "ljharb",
+        "lencioni",
+        "jessebeach",
+        "evcohen"
+      ],
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jsx-eslint/eslint-plugin-jsx-a11y.git"
+      },
+      "adoptionSource": "https://api.npmjs.org/downloads/point/last-week/eslint-plugin-jsx-a11y",
+      "adoption": {
+        "downloads": 33212419,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "eslint-plugin-jsx-a11y"
+      },
+      "approval": null
+    },
+    {
+      "name": "eslint-plugin-playwright",
+      "source": "https://registry.npmjs.org/eslint-plugin-playwright",
+      "latest": "2.12.1",
+      "lastRelease": "2026-10-05T10:10:20.807Z",
+      "license": "MIT",
+      "maintainers": [
+        "mskelton"
+      ],
+      "repository": {
+        "url": "git+https://github.com/mskelton/eslint-plugin-playwright.git",
+        "type": "git"
+      },
+      "adoptionSource": "https://api.npmjs.org/downloads/point/last-week/eslint-plugin-playwright",
+      "adoption": {
+        "downloads": 3316646,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "eslint-plugin-playwright"
+      },
+      "approval": null
+    },
+    {
+      "name": "eslint-plugin-react",
+      "source": "https://registry.npmjs.org/eslint-plugin-react",
+      "latest": "7.37.5",
+      "lastRelease": "2025-04-03T20:01:15.958Z",
+      "license": "MIT",
+      "maintainers": [
+        "ljharb",
+        "yannickcr"
+      ],
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jsx-eslint/eslint-plugin-react.git"
+      },
+      "adoptionSource": "https://api.npmjs.org/downloads/point/last-week/eslint-plugin-react",
+      "adoption": {
+        "downloads": 40606555,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "eslint-plugin-react"
+      },
+      "approval": null
+    },
+    {
+      "name": "eslint-plugin-import",
+      "source": "https://registry.npmjs.org/eslint-plugin-import",
+      "latest": "2.32.0",
+      "lastRelease": "2025-06-20T21:59:09.822Z",
+      "license": "MIT",
+      "maintainers": [
+        "benmosher",
+        "ljharb",
+        "jfmengels"
+      ],
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/import-js/eslint-plugin-import.git"
+      },
+      "adoptionSource": "https://api.npmjs.org/downloads/point/last-week/eslint-plugin-import",
+      "adoption": {
+        "downloads": 40331000,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "eslint-plugin-import"
+      },
+      "approval": null
+    },
+    {
+      "name": "eslint-plugin-react-refresh",
+      "source": "https://registry.npmjs.org/eslint-plugin-react-refresh",
+      "latest": "0.5.7",
+      "lastRelease": "2026-09-14T16:12:50.394Z",
+      "license": "MIT",
+      "maintainers": [
+        "arnaud-barre"
+      ],
+      "repository": {
+        "url": "git+https://github.com/ArnaudBarre/eslint-plugin-react-refresh.git",
+        "type": "git"
+      },
+      "adoptionSource": "https://api.npmjs.org/downloads/point/last-week/eslint-plugin-react-refresh",
+      "adoption": {
+        "downloads": 20551697,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "eslint-plugin-react-refresh"
+      },
+      "approval": null
+    },
+    {
+      "name": "eslint-plugin-oxlint",
+      "source": "https://registry.npmjs.org/eslint-plugin-oxlint",
+      "latest": "1.89.0",
+      "lastRelease": "2026-10-19T17:41:34.813Z",
+      "license": "MIT",
+      "maintainers": [
+        "boshen",
+        "dengqing"
+      ],
+      "repository": {
+        "url": "git+https://github.com/oxc-project/eslint-plugin-oxlint",
+        "type": "git"
+      },
+      "adoptionSource": "https://api.npmjs.org/downloads/point/last-week/eslint-plugin-oxlint",
+      "adoption": {
+        "downloads": 755516,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "eslint-plugin-oxlint"
+      },
+      "approval": null
+    },
+    {
+      "name": "oxlint-tsgolint",
+      "source": "https://registry.npmjs.org/oxlint-tsgolint",
+      "latest": "7.0.2005",
+      "lastRelease": "2026-10-22T23:24:50.720Z",
+      "license": "MIT",
+      "maintainers": [
+        "boshen"
+      ],
+      "repository": {
+        "url": "github:oxc-project/tsgolint",
+        "type": "git"
+      },
+      "adoptionSource": "https://api.npmjs.org/downloads/point/last-week/oxlint-tsgolint",
+      "adoption": {
+        "downloads": 8245456,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "oxlint-tsgolint"
+      },
+      "approval": null
+    },
+    {
+      "name": "@biomejs/biome",
+      "source": "https://registry.npmjs.org/%40biomejs%2Fbiome",
+      "latest": "2.6.3",
+      "lastRelease": "2026-10-24T13:14:10.610Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": [
+        "nhedger",
+        "dominionl",
+        "conaclos",
+        "ematipico",
+        "siketyan"
+      ],
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "adoptionSource": "https://api.npmjs.org/downloads/point/last-week/%40biomejs%2Fbiome",
+      "adoption": {
+        "downloads": 11857085,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "@biomejs/biome"
+      },
+      "approval": null
+    },
+    {
+      "name": "prettier",
+      "source": "https://registry.npmjs.org/prettier",
+      "latest": "3.9.10",
+      "lastRelease": "2026-10-10T08:35:28.472Z",
+      "license": "MIT",
+      "maintainers": [
+        "jlongster",
+        "lydell",
+        "thorn0",
+        "vjeux",
+        "fisker",
+        "suchipi",
+        "duailibe",
+        "ikatyang",
+        "azz",
+        "sosukesuzuki",
+        "prettier-bot"
+      ],
+      "repository": {
+        "url": "git+https://github.com/prettier/prettier.git",
+        "type": "git"
+      },
+      "adoptionSource": "https://api.npmjs.org/downloads/point/last-week/prettier",
+      "adoption": {
+        "downloads": 87471658,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "prettier"
+      },
+      "approval": null
+    }
+  ]
+}
