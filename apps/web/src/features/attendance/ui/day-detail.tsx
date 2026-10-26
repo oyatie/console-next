@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import { t } from "@console/i18n";
-import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
 import { Field, TextInput } from "../../../ui/field/field";
 import { Card } from "../../../ui/card/card";
@@ -26,7 +25,7 @@ type PendingPaste = { scope: string; date: string; people: PastePerson[]; plan: 
  * employee number (never by name) and says how many matched. The recognition column is the server's preview of the
  * drafts, "computing recognition" while it is on its way, never a guessed number.
  */
-export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: ReturnType<typeof useDrafts>; onAssign: (row: BoardRow) => void }) {
+export function DayDetail({ board, store, onAssign, onNote }: { board: DayBoard; store: ReturnType<typeof useDrafts>; onAssign: (row: BoardRow) => void; onNote: (message: string) => void }) {
   const rows = useMemo(() => board.groups.flatMap((g) => g.rows), [board.groups]);
   const date = board.date;
   const [query, setQuery] = useState("");
@@ -38,7 +37,6 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
     window.addEventListener("afterprint", after);
     return () => { window.removeEventListener("beforeprint", before); window.removeEventListener("afterprint", after); };
   }, []);
-  const [pasted, setPasted] = useState<{ message: string; tone: "ok" | "warn" } | null>(null);
   const [pasting, setPasting] = useState<PendingPaste | null>(null);
   const kindOf = usePlanKinds(rows, date);
   const cells = Object.entries(store.drafts).filter(([k, d]) => draftState(d, kindOf(k)).ok).map(([k, d]) => ({ ...splitKey(k), value: d.value, base_entry_id: d.base ?? undefined }));
@@ -82,7 +80,7 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
       return cell.date !== date || !row || row.own !== person.own || closed(row.month_state) !== person.closed;
     })) {
       setPasting(null);
-      setPasted({ message: t("attendanceRecords.paste.preview.stale"), tone: "warn" });
+      onNote(t("attendanceRecords.paste.preview.stale"));
       return;
     }
     const currentRows = new Map(rows.map((row) => [row.employee_id, row] as const));
@@ -100,7 +98,7 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
     }
     store.set(next);
     setPasting(null);
-    setPasted({ message: t("attendanceRecords.paste.matched", { rows: pasting.plan.matched + pasting.plan.missing.length, matched: pasting.plan.matched, missing: pasting.plan.missing.length, locked }), tone: "ok" });
+    onNote(t("attendanceRecords.paste.matched", { rows: pasting.plan.matched + pasting.plan.missing.length, matched: pasting.plan.matched, missing: pasting.plan.missing.length, locked }));
   };
   return (
     <div
@@ -109,9 +107,10 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
         if (!(e.target instanceof HTMLElement) || !e.target.closest('[role="grid"], table')) return;
         const text = e.clipboardData.getData("text/plain");
         if (!text) return;
+        if (e.target instanceof HTMLElement && e.target.matches("input, textarea") && !/[\t\n]/.test(text)) return;
         e.preventDefault();
-        const row = e.target.closest<HTMLElement>('tr[data-id], [role="row"][data-key]');
-        const rowId = row?.dataset.id ?? row?.dataset.key;
+        const targetRow = e.target.closest<HTMLElement>('tr[data-id], [role="row"][data-key]');
+        const rowId = targetRow?.dataset.id ?? targetRow?.dataset.key;
         const anchorRow = rows.findIndex((row) => row.employee_id === rowId);
         const plan = readPaste(text, rows.map((r) => r.employee_number ?? null), [date], { r: Math.max(0, anchorRow), c: 0 });
         const people = rows.map((row) => ({ employee_id: row.employee_id, employee_number: row.employee_number ?? null, name: row.name, own: row.own, closed: closed(row.month_state) }));
@@ -123,7 +122,6 @@ export function DayDetail({ board, store, onAssign }: { board: DayBoard; store: 
         setPasting({ scope: store.scope, date, people, plan, bases });
       }}
     >
-      {pasted && <Banner tone={pasted.tone}>{pasted.message}</Banner>}
       {printing ? <Table<BoardRow>
         label={t("attendanceRecords.detail.label")}
         rows={rows}
