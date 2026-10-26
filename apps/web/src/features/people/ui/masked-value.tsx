@@ -14,14 +14,14 @@ import { PopoverButton } from "../../../ui/popover/popover-button";
 import { Masked } from "../../../ui/record/masked";
 import s from "./card.module.css";
 
-type Props = { masked: string; field: string; who: string; reveal?: (reason: string, note: string) => Promise<{ value: string; displaySeconds: number }> };
+type Props = { masked: string; field: string; who: string; wrapMask?: boolean; reveal?: (reason: string, note: string) => Promise<{ value: string; displaySeconds: number }> };
 
 /** A field stays closed unless its server can return an audited reveal. */
 export function MaskedValue(props: Props) {
   return props.reveal ? <RevealValue {...props} reveal={props.reveal} /> : <Masked>{props.masked}</Masked>;
 }
 
-function RevealValue({ masked, field, who, reveal }: Props & { reveal: NonNullable<Props["reveal"]> }) {
+function RevealValue({ masked, field, who, reveal, wrapMask }: Props & { reveal: NonNullable<Props["reveal"]> }) {
   const scope = useId();
   const [why, setWhy] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -64,7 +64,7 @@ function RevealValue({ masked, field, who, reveal }: Props & { reveal: NonNullab
   }, [shown, hide]);
   const ready = picked && (!picked.requiresNote || note.trim());
   return (
-    <span className={s.reveal} id={scope} tabIndex={-1}>
+    <span className={s.reveal} data-wrap-mask={wrapMask || undefined} id={scope} tabIndex={-1}>
       {shown ? <code className={s.revealValue}>{shown.value}</code> : <Masked>{masked}</Masked>}
       <output role={shown ? "timer" : undefined} data-hidden={!shown || undefined} aria-hidden={!shown}>{t("empCard.reveal.remaining", { seconds })}</output>
       {shown ? <Button variant="ghost" onClick={hide}><EyeOff size={13} aria-hidden /> {t("empCard.reveal.hide")}</Button> : (

@@ -8,7 +8,7 @@
     "apps/web/src/routes/home-screen.tsx#HomeScreen": 55,
     "apps/web/src/routes/org-screen.tsx#OrgScreen": 286,
     "apps/web/src/ui/composer/composer.tsx#Composer": 20,
-    "apps/web/src/features/people/ui/register-route.tsx#RegisterRoute": 75
+    "apps/web/src/features/people/ui/register-route.tsx#RegisterRoute": 72
   },
   "newScreens": {
     "apps/web/src/ui/composer/composer.tsx#Composer": {

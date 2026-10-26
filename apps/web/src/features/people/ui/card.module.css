@@ -56,8 +56,11 @@
 .reveal { display: inline-flex; flex-wrap: wrap; max-width: 100%; align-items: center; gap: var(--space-1); }
 .revealValue { composes: masked from "../../../ui/record/record.module.css"; }
 .reveal > code, .reveal > span { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+.reveal > span { flex-shrink: 0; overflow-wrap: normal; white-space: nowrap; }
+.reveal[data-wrap-mask] > span { white-space: normal; }
 .reveal > output { min-width: 4ch; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .reveal [data-hidden] { visibility: hidden; }
+.reveal > output[data-hidden] { order: 1; }
 .reveal > button { min-width: calc(var(--row-h) * 2.5); justify-content: center; }
 .note { composes: t-xs muted from global; margin: 0; line-height: var(--lh-base); }
 .popActs { display: flex; justify-content: flex-end; gap: var(--space-2); flex-wrap: wrap; }
@@ -95,7 +98,7 @@
 .conflictHead { composes: t-sm t-warn from global; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin: 0; }
 .readOnly { composes: t-sm muted from global; display: flex; align-items: center; gap: var(--space-2); margin: 0; }
 .rail { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) 0; }
-.link { composes: t-sm t-primary from global; }
+.link { composes: t-sm t-primary from global; display: inline-flex; align-items: center; min-block-size: var(--target); }
 .inlineConflict { grid-column: 1 / -1; margin-top: var(--space-2); }
 /* The placement history in section 2: the term beside its value, the earlier placements under it. */
 .placements { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-1) var(--space-3); margin: 0; }

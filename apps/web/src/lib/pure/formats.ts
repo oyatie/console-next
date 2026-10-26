@@ -72,6 +72,8 @@ export function phoneE164(raw: string) {
 }
 
 export const FORMATS = {
+  /** RRN: length and display only; the server decides validity. */
+  rrn: { max: 13, min: 13, display: (d) => applyMask(d, "######-#######") },
   /** BRN ###-##-#####. */
   bizRegNo: { max: 10, min: 10, display: (d) => applyMask(d, "###-##-#####"), warnings: (d) => (bizRegNoChecksumOk(d) ? [] : ["checksum"]) },
   /** CRN ######-#######; the check digit is tested only when the corporation is known to predate 2025-01-31. */
