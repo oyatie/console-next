@@ -6,9 +6,13 @@ Run the Chromium matrix with Vite alone (no Rust build, backend or database).
 The normal journey config excludes these specs:
 
 ```sh
-npx playwright test --config e2e/mock/playwright.config.ts
-npx playwright test --config e2e/mock/playwright.config.ts --grep 'people: loading at 390'
+npm run e2e:states
+npm run e2e:states -- --grep 'people: loading at 390'
 ```
+
+The web CI job runs this suite as its own step after `npm run check`, using its
+installed Chromium headless shell (kept out of `npm run check` so local checks never bind a fixed port). Two workers, no retries and a five-minute
+global timeout keep the mock gate within the PR budget; it never starts a backend.
 
 Use the existing `E2E_SLOT` / `CONSOLE_WEB_PORT` environment variables to isolate
 concurrent runs. The config starts its own Vite and never reuses another run's
@@ -39,6 +43,14 @@ tests retain their arrival-layout checks; these tests prove the held or settled
 state. The large fixture contains 2,000 records: inbox and roster replies page
 them, and the chart contains 2,000 departments. The suite proves inbox load-more
 and bounded roster DOM as well as the states themselves.
+The roster uses opaque row-id cursors and signals exhaustion with `next_cursor:
+null`; its large case scrolls through every page and rejects offset requests.
+
+`org-change-counts.spec.ts` covers loading/failed counts at both widths, including
+recovery from a held read. The existing count component reserves space while
+loading and shows a dash with a failure reason; a successful zero stays zero.
+The list fixture mixes drafters and effective dates so selecting my changes and
+clearing an inclusive date range proves both the request and visible rows.
 
 For a new screen, add typed fixtures and a screen record with its primary read,
 production route, central registry ID and real-backend journey spec. Add every

@@ -50,6 +50,8 @@ jobs:
       - name: Chromium headless shell for browser-backed unit tests
         run: npx playwright install --with-deps --only-shell chromium
       - run: npm run check
+      # Contract-typed screen states (Vite only): its own step so a local `npm run check` never binds a fixed port.
+      - run: npm run e2e:states
 
   backend:
     runs-on: ubuntu-24.04-arm

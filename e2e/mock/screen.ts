@@ -56,8 +56,10 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "get", "/api/v1/employees", async request => {
     const failed = await beforeReply("/api/v1/employees");
     const query = new URL(request.url()).searchParams;
-    const offset = Number(query.get("offset") ?? 0), limit = Number(query.get("limit") ?? 100);
-    return failed ?? { status: 200, json: { items: rows.slice(offset, offset + limit), total: count, offset, limit, next_cursor: null } };
+    const cursor = query.get("cursor");
+    const offset = cursor ? rows.findIndex(row => row.id === cursor) + 1 : 0;
+    const limit = Number(query.get("limit") ?? 100), end = offset + limit;
+    return failed ?? { status: 200, json: { items: rows.slice(offset, end), total: count, offset, limit, next_cursor: end < count ? rows[end - 1]!.id : null } };
   });
   await mockRoute(page, "get", "/api/v1/me/action-inbox", async request => {
     const failed = await beforeReply("/api/v1/me/action-inbox");

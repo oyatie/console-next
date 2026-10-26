@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtNumber } from "@console/i18n/format";
 import { expectAxe, fits } from "../a11y";
 import { LONG_NAME } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
@@ -80,8 +81,8 @@ test("saved views use server filters and keep phone cards linked to their record
     const main = page.getByRole("main");
     const views = main.getByRole("group", { name: t("orgChange.list.views") });
     const table = main.getByRole("table", { name: t("orgChange.list.title") });
-    for (const [view, count] of [["open", 2], ["ready", 1], ["done", 1], ["mine", 3]] as const) {
-      const pick = views.getByRole("button", { name: t(`orgChange.list.view.${view}`, { count }), exact: true });
+    for (const [view, count] of [["open", 2], ["ready", 1], ["done", 1], ["mine", 2]] as const) {
+      const pick = views.getByRole("button", { name: `${t(`orgChange.list.view.${view}`)} ${fmtNumber(count)}`, exact: true });
       await pick.click();
       await expect(pick).toHaveAttribute("aria-pressed", "true");
       await expect(table.locator("tbody > tr")).toHaveCount(count);

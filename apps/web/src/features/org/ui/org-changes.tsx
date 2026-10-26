@@ -9,6 +9,7 @@ import { QueryState } from "../../../lib/react/query-state";
 import { todayKst } from "../../../lib/pure/today";
 import { ToggleButton } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
+import { Count } from "../../../ui/count/count";
 import { daysBetween } from "../../../ui/date/days";
 import { EmptyState } from "../../../ui/empty-state";
 import { Pager } from "../../../ui/pager";
@@ -60,11 +61,16 @@ export function OrgChanges() {
         }}>{t("orgChange.list.range", { from: fmtDate(effective_from), to: fmtDate(effective_to) })}<X size={14} aria-hidden /></ToggleButton>}
       </div>
       <div role="group" aria-label={t("orgChange.list.views")} className="tabs">
-        {VIEWS.map((v, i) => (
-          <ToggleButton key={v} pressed={v === view} onClick={() => pick(v)}>
-            {t(`orgChange.list.view.${word(v)}`, { count: (counts[i]?.data?.total ?? 0) + (v === "open" ? redraft.length : 0) })}
-          </ToggleButton>
-        ))}
+        {VIEWS.map((v, i) => {
+          const count = counts[i]!;
+          const known = count.isSuccess && (v !== "open" || mine.isSuccess);
+          const failed = count.isError || (v === "open" && mine.isError);
+          return (
+            <ToggleButton key={v} pressed={v === view} onClick={() => pick(v)}>
+              {t(`orgChange.list.view.${word(v)}`)} <Count n={known ? count.data.total + (v === "open" ? redraft.length : 0) : undefined} failed={failed ? t("orgChange.list.countFailed") : undefined} />
+            </ToggleButton>
+          );
+        })}
       </div>
       <section className="card">
         <QueryState
@@ -96,11 +102,11 @@ export function OrgChanges() {
                     cell: (c) => {
                       const days = daysBetween(today, c.effectiveDate);
                       const ahead = days > 0 && (c.status === "DRAFT" || c.status === "PRECHECKED" || c.status === "IN_APPROVAL" || c.status === "APPROVED");
-                      return <span className={`num ${css.nowrap}`}>{fmtDate(c.effectiveDate)}{ahead && <> · {t("orgChange.rel.ahead", { days })}</>}</span>;
+                      return <time dateTime={c.effectiveDate} className={`num ${css.nowrap}`}>{fmtDate(c.effectiveDate)}{ahead && <> · {t("orgChange.rel.ahead", { days })}</>}</time>;
                     },
                   },
                   { header: t("orgChange.list.col.drafter"), cell: (c) => <span className={css.nowrap}>{actor(c.draftedByName)}</span>, fit: true, wide: true },
-                  { header: t("orgChange.list.col.updated"), cell: (c) => <span className={`num ${css.nowrap}`}>{fmtDateTime(c.updatedAt)}</span>, fit: true, wide: true },
+                  { header: t("orgChange.list.col.updated"), cell: (c) => <time dateTime={c.updatedAt} className={`num ${css.nowrap}`}>{fmtDateTime(c.updatedAt)}</time>, fit: true, wide: true },
                 ]}
               />
               <Pager offset={offset} limit={CHANGES_PAGE} total={d.total} onPage={setOffset} />

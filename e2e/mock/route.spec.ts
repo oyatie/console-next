@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
+import type { components } from "@console/api";
 import { mockRoute } from "./route";
 import { facets } from "./fixtures";
 import { mockScreen } from "./screen";
@@ -43,6 +44,28 @@ test("roster facets succeed beside the parameterized employee read", async ({ pa
     return { status: response.status, body: await response.json() };
   });
   expect(result).toEqual({ status: 200, body: facets(fixture.count) });
+  expect(fixture.unexpected).toEqual([]);
+});
+
+test("large roster follows opaque cursors through every employee to exhaustion", async ({ page }) => {
+  const fixture = await mockScreen(page, screens[1], "large");
+  await page.goto("/_gallery");
+  const pages = await page.evaluate(async () => {
+    const pages: { ids: string[]; cursor: string | null }[] = [];
+    let cursor: string | null = null;
+    do {
+      const query = new URLSearchParams({ limit: "1000", ...(cursor ? { cursor } : {}) });
+      const response = await fetch(`/api/v1/employees?${query}`);
+      const body: components["schemas"]["EmployeePage"] = await response.json();
+      pages.push({ ids: body.items.map((row: { id: string }) => row.id), cursor: body.next_cursor });
+      cursor = body.next_cursor;
+    } while (cursor && pages.length < 3);
+    return pages;
+  });
+  expect(pages.map(page => page.ids.length)).toEqual([1000, 1000]);
+  expect(pages[0]!.cursor).toBe(pages[0]!.ids.at(-1));
+  expect(pages[1]!.cursor).toBeNull();
+  expect(new Set(pages.flatMap(page => page.ids)).size).toBe(fixture.count);
   expect(fixture.unexpected).toEqual([]);
 });
 

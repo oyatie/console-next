@@ -6,11 +6,12 @@ import { recordStatuses, type OrgChangeState } from "../states/registry";
 type S = components["schemas"];
 export function orgChanges(count: number, long = false): S["OrgChangeSummary"][] {
   const statuses = ["DRAFT", "APPROVED", "APPLIED"] as const;
+  const dates = ["2026-11-01", "2026-11-02", "2026-11-03"] as const;
   return Array.from({ length: count }, (_, i) => ({
     id: id(3000 + i), code: `OC-2026-${String(i + 1).padStart(4, "0")}`, kind: "NEW", status: statuses[i % statuses.length]!,
     target: { kind: "ORG_UNIT", ref: id(5000 + i), label: long ? LONG_NAME.repeat(3) : `검증부서 ${i + 1}` },
-    effectiveDate: "2026-11-01", reason: long ? LONG_NAME.repeat(8) : "조직 운영 개선",
-    headcount: 3, siteCount: 1, teamCount: 1, draftedBy: user.id, draftedByName: long ? LONG_NAME : user.display_name,
+    effectiveDate: dates[i % dates.length]!, reason: long ? LONG_NAME.repeat(8) : "조직 운영 개선",
+    headcount: 3, siteCount: 1, teamCount: 1, draftedBy: i % 2 === 0 ? user.id : id(5), draftedByName: long ? LONG_NAME : i % 2 === 0 ? user.display_name : "김기안",
     createdAt: AT, updatedAt: AT,
   }));
 }
