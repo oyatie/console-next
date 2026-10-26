@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+// Executable state matrix, keyed to the central screen registry route records.
+const states = {
+  empty: "Return zero items and totals (first run / no work).",
+  loading: "Hold the primary read until the test releases it; supporting reads succeed.",
+  failed: "Return the contract ErrorBody with 503 on every primary-read attempt.",
+  refused: "Return the common middleware ErrorBody with 403; granters and my access succeed.",
+  populated: "Return three typed items (three departments for the chart).",
+  long: "Return long Korean names and placement labels.",
+  large: "Return 2,000 typed rows; honor roster offset/limit and inbox cursor pagination.",
+} as const;
+export type State = keyof typeof states;
+export const screens = [
+  { key: "home", path: "/", read: "/api/v1/me/action-inbox", states, registry: "home--operating-업무함-one-live-action-inbox-default-tab", live: "e2e/inbox-live.spec.ts" },
+  { key: "people", path: "/people", read: "/api/v1/employees", states, registry: "people--roster-populated-table-columns-sort-org_unit-name-employee_n", live: "e2e/people-reads.spec.ts" },
+  { key: "org", path: "/org", read: "/api/v1/org-structure", states, registry: "org--chart-view-default", live: "e2e/structure-chart.spec.ts" },
+] as const;
+export type Screen = (typeof screens)[number];
