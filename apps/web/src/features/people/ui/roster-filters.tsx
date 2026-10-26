@@ -1,12 +1,11 @@
 import type { ReactNode } from "react";
-import { ArrowDownUp, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { Segmented } from "../../../ui/button/segmented";
 import { Band } from "../../../ui/band/band";
-import { SelectField } from "../../../ui/select/select-field";
-import { REVIEWS, SORTS, headcount, toggleReview, type Review, type RosterSort, type StatusView } from "../domain/roster";
+import { REVIEWS, headcount, toggleReview, type Review, type StatusView } from "../domain/roster";
 import type { Density } from "./use-roster-columns";
 import { RosterScope } from "./roster-scope";
 import { SOON_DAYS } from "./use-roster";
@@ -22,13 +21,12 @@ const n = (v: number | undefined, failed: boolean) => (failed ? <span title={t("
  * arithmetic on screen (active + on leave = headcount; starting soon counted apart; exit kept 3 years), then the to-do chips. A status chip
  * is one choice (pressed = shown); to-do chips toggle and combine with AND. Every count is the server's total.
  */
-export function RosterFilters({ status, review, unit, sort, counts, onChange, findSlot, density, onDensity, tools }: {
+export function RosterFilters({ status, review, unit, counts, onChange, findSlot, density, onDensity, tools }: {
   status: StatusView;
   review: readonly Review[];
   unit?: string;
-  sort: RosterSort;
   counts: { status: Totals<StatusView>; review: Totals<Review> };
-  onChange: (f: { status?: StatusView; review?: Review[]; unit?: string | null; sort?: RosterSort }) => void;
+  onChange: (f: { status?: StatusView; review?: Review[]; unit?: string | null }) => void;
   /** Where the table's search lands, in this band. */
   findSlot: (el: HTMLElement | null) => void;
   density: Density;
@@ -51,9 +49,6 @@ export function RosterFilters({ status, review, unit, sort, counts, onChange, fi
         <RosterScope value={unit} onChange={(v) => onChange({ unit: v })} />
         {unit && <Button variant="ghost" onClick={() => onChange({ unit: null })}>{t("people.filter.anyUnit")}</Button>}
         <span ref={findSlot} className={s.findSlot} />
-        <span className={s.sortPick}>
-          <SelectField label={t("roster.sort.label")} hideLabel options={SORTS.map((x) => ({ id: x, label: t(`roster.sort.${x}`) }))} value={sort} onChange={(v) => onChange({ sort: v as RosterSort })} placeholder={t("roster.sort.label")} icon={<ArrowDownUp size={14} aria-hidden />} />
-        </span>
         <Segmented label={t("roster.columns.density")} value={density} onChange={onDensity} items={(["compact", "regular"] as const).map((d) => ({ id: d, label: t(`roster.density.${d}`) }))} />
         {tools}
       </Band>

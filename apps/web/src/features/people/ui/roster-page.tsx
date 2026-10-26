@@ -13,7 +13,8 @@ import { freshOnOpen } from "../../../lib/query";
 import { todayKst } from "../../../lib/pure/today";
 import { useReasonCodesReady } from "../../../lib/reason-codes";
 import { employeeQuery } from "../api";
-import { exactNumber, headcount, joinReview, parseReview, parseSort, parseStatus, type Review, type RosterSort, type StatusView } from "../domain/roster";
+import { exactNumber, headcount, joinReview, parseReview, parseStatus, type Review, type StatusView } from "../domain/roster";
+import { parseOrder, type RosterOrder } from "../domain/roster-order";
 import { BulkRescind } from "./bulk-rescind";
 import { BulkSheet } from "./bulk-sheet";
 import { RosterBulk } from "./roster-bulk";
@@ -65,7 +66,7 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
   const status = parseStatus(search.status);
   const review = parseReview(search.review);
   const { unit, sel: open } = search;
-  const sort = parseSort(search.sort);
+  const sort = parseOrder(search.sort);
   const key = JSON.stringify([status, review, unit ?? null, sort]);
   const [back] = useState(() => (memory?.key === key ? memory : null));
   const [q, setQ] = useState(back?.q ?? "");
@@ -88,7 +89,7 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
   // The memory always describes the current filters (a new filter starts at the top).
   useEffect(() => void (memory = memory?.key === key ? { ...memory, q } : { key, q, top: 0, row: null }), [key, q]);
 
-  const setFilter = (f: { status?: StatusView; review?: Review[]; unit?: string | null; sort?: RosterSort }) => {
+  const setFilter = (f: { status?: StatusView; review?: Review[]; unit?: string | null; sort?: RosterOrder }) => {
     // A select-all selection is a saved query: a new filter would silently mean other people.
     if (sel.kind === "all") setSel(NO_SELECTION);
     setRecorded(undefined);
@@ -213,7 +214,6 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
         status={status}
         review={review}
         unit={unit}
-        sort={sort}
         counts={r}
         onChange={setFilter}
         findSlot={setFindSlot}
@@ -242,6 +242,8 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
           <>
           {/* Under a failed read the table stays (its search lives in the band above), empty rather than claiming nobody. */}
           <RosterTable
+              sort={sort}
+              onSort={(nextSort) => setFilter({ sort: nextSort })}
               today={today}
               exited={status === "EXITED"}
               shown={view.shown}

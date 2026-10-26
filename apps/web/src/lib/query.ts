@@ -64,24 +64,6 @@ export const freshOnOpen = <R extends { isFetchedAfterMount: boolean; isError: b
 });
 
 /**
- * Offset pages of a list GET as an infinite query (`useInfiniteQuery`): `limit` rows a page, the next page while
- * the server's `total` says more rows exist. Keyed apart from the plain GET of the same params ("pages").
- * offset paging can skip or repeat a row inserted mid-scroll; switch to the keyset cursor
- * (`(sort key, id)` + `as_of`, data-display §6.1) when the list endpoints serve one.
- */
-export const pages = <P extends Gettable>(path: P, query: object, limit: number) => ({
-  queryKey: [path, { query }, "pages"] as const,
-  queryFn: ({ pageParam }: { pageParam: number }) =>
-    unwrap(api.GET(path, { params: { query: { ...query, limit, offset: pageParam } } } as never)) as Promise<Data<P>>,
-  initialPageParam: 0,
-  getNextPageParam: (last: Data<P>, all: Data<P>[]) => {
-    const page = last as { items?: unknown[]; total?: number };
-    const next = all.length * limit;
-    return page.items?.length === limit && next < (page.total ?? Infinity) ? next : undefined;
-  },
-});
-
-/**
  * Keyset pages of a list GET (`cursor` in, `next_cursor` out) as an infinite query: rows stay put while new ones
  * arrive (the attendance month grid). Keyed apart from the plain GET ("cursor").
  */

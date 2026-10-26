@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { components, paths } from "@console/api/schema";
-import { get, pages } from "../../../lib/query";
+import { cursorPages, get } from "../../../lib/query";
 import { useFreshOnArrival } from "../../../lib/react/arrival";
 import { todayKst } from "../../../lib/pure/today";
 import { MAX_LINES } from "../domain/bulk";
-import { facetQueries, listQuery, reviewCounts, reviewTotals, statusCounts, statusTotals, type RosterFilter } from "../domain/roster";
+import { facetQueries, reviewCounts, reviewTotals, statusCounts, statusTotals } from "../domain/roster";
+import { orderedQuery, type OrderedRoster } from "../domain/roster-order";
 
 type Employee = components["schemas"]["Employee"];
 type FacetQuery = NonNullable<paths["/api/v1/employees/facets"]["get"]["parameters"]["query"]>;
@@ -20,23 +21,23 @@ const NONE: Employee[] = [];
 const employees = (query: object) => get("/api/v1/employees", { params: { query } });
 
 /**
- * The roster's reads. Rows: offset pages of 100 that never re-read on focus or polling (that would re-read every
+ * The roster's reads. Rows: cursor pages of 100 that never re-read on focus or polling (that would re-read every
  * loaded page, ~30 reads per Alt-Tab at 3,000 rows); only a command's invalidation reloads them. Counts: two facet
  * reads (domain/roster facetQueries), which do follow focus and polling; the list filter's total is the probe, so a
  * change by someone else shows as a banner instead of reshuffling the rows under the cursor.
  */
-export function useRoster(f: RosterFilter) {
+export function useRoster(f: OrderedRoster) {
   const today = todayKst();
-  const query = listQuery(f, today, SOON_DAYS);
+  const query = orderedQuery(f, today, SOON_DAYS);
   const list = useInfiniteQuery({
-    ...pages("/api/v1/employees", query, PAGE),
+    ...cursorPages("/api/v1/employees", { ...query, limit: PAGE }),
     placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
     refetchInterval: false,
     // Coming back re-reads the pages only if a command changed people meanwhile; age alone shows the banner.
     refetchOnMount: (q) => q.state.isInvalidated,
   });
-  // Offset pages can repeat a row when one was inserted mid-scroll: keep the first.
+  // A command can update cached pages while scrolling: keep one row per person.
   const rows: Employee[] = useMemo(() => {
     const seen = new Set<string>();
     return (list.data?.pages ?? []).flatMap((p) => p.items).filter((e) => !seen.has(e.id) && seen.add(e.id));
@@ -49,7 +50,7 @@ export function useRoster(f: RosterFilter) {
   const rereading = !arrived && !list.isFetchedAfterMount;
   // The facets read takes the same status filter as the list, PRE_HIRE included (read_filters.rs); its OpenAPI enum
   // has not caught up with the list's, hence the cast.
-  const facets = facetQueries(f, today, SOON_DAYS) as unknown as Record<"list" | "review", FacetQuery>;
+  const facets = facetQueries({ ...f, sort: undefined }, today, SOON_DAYS) as unknown as Record<"list" | "review", FacetQuery>;
   // Counts a command changed since they were cached are shown only once re-read (as the rows): the old ones would
   // redraw the filter chips under the pointer when the new ones land.
   const probeRead = get("/api/v1/employees/facets", { params: { query: facets.list } });

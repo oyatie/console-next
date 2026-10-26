@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type ColumnProps } from "react-aria-components";
+import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type ColumnProps, type SortDescriptor } from "react-aria-components";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { t } from "@console/i18n";
 import { ALL_MATCHING, NO_SELECTION, applyKeys, selectionCount, shownKeys, type Selection } from "./selection";
 import { DisabledReason } from "../disabled-reason/disabled-reason";
@@ -10,11 +11,12 @@ import cards from "./table-cards.module.css";
 import type { CardColumn } from "./card-columns";
 import { CardContent } from "./card-content";
 import { useCardLayout } from "./use-card-layout";
+import { SelectInput } from "../field/select-input";
 
 const NONE = new Set<string>();
 
 /** `width` is a React Aria column size: "1fr" (default), "2fr", a percentage, or px for codes and dates. */
-export type LongColumn<R> = CardColumn & { id: string; header: ReactNode; cell: (r: R) => ReactNode; width?: ColumnProps["width"]; minWidth?: ColumnProps["minWidth"] };
+export type LongColumn<R> = CardColumn & { id: string; header: ReactNode; cell: (r: R) => ReactNode; allowsSorting?: boolean; width?: ColumnProps["width"]; minWidth?: ColumnProps["minWidth"] };
 
 const SELECT = "__select";
 // aria-rowcount counts loaded rows, not the server total (React Aria has no override); the caption
@@ -45,6 +47,9 @@ const SKELETON_ROWS = 8;
 export function LongTable<R>(p: {
   label: string;
   columns: LongColumn<R>[];
+  /** Controlled by the caller's server query; the table never reorders a loaded page. */
+  sortDescriptor?: SortDescriptor;
+  onSortChange?: (sort: SortDescriptor) => void;
   rows: R[];
   rowId: (r: R) => string;
   /** The server's count of rows matching the filter. */
@@ -85,6 +90,8 @@ export function LongTable<R>(p: {
   const grid = useRef<HTMLElement | null>(null);
   const hasCards = p.columns.some(c => c.card);
   const cardLayout = useCardLayout(region, grid) && hasCards;
+  const { sortDescriptor: sort, onSortChange } = p;
+  const sortable = p.columns.filter(column => column.allowsSorting);
   const [cardHeight, setCardHeight] = useState<number>();
   useLayoutEffect(() => {
     const table = grid.current;
@@ -166,6 +173,19 @@ export function LongTable<R>(p: {
         </div>
       )}
       {slotted && p.findSlot && finder && createPortal(finder, p.findSlot)}
+      {cardLayout && sort && onSortChange && sortable.length > 0 && (
+        <div className={css.bar}>
+          <label className={css.sort}>{t("uiLongTable.sort")}
+            <SelectInput value={sort.column} onChange={e => onSortChange({ column: e.target.value, direction: sort.direction })}>
+              {sortable.map(column => <option key={column.id} value={column.id}>{column.header}</option>)}
+            </SelectInput>
+          </label>
+          <Button className="btn" onPress={() => onSortChange({ column: sort.column, direction: sort.direction === "ascending" ? "descending" : "ascending" })}>
+            {sort.direction === "ascending" ? <ArrowDown size={14} aria-hidden /> : <ArrowUp size={14} aria-hidden />}
+            {t(sort.direction === "ascending" ? "uiLongTable.descending" : "uiLongTable.ascending")}
+          </Button>
+        </div>
+      )}
       {sel && p.onSelectionChange && (
         <SelectionBar sel={sel} loaded={loaded.length} total={p.total} hasMore={p.hasMore} limit={p.selectAllLimit} actions={p.selectionActions} unit={p.countUnit ?? "item"} onChange={p.onSelectionChange} />
       )}
@@ -180,6 +200,8 @@ export function LongTable<R>(p: {
           aria-describedby={p.caption ? captionId : undefined}
           className={`${css.table} ${cards.surface}`}
           data-layout={cardLayout ? "cards" : "rows"}
+          sortDescriptor={p.sortDescriptor}
+          onSortChange={p.onSortChange}
           // An empty virtualized body is as tall as the viewport, so give the empty and loading states a height.
           data-state={p.rows.length ? undefined : p.loading ? "loading" : "empty"}
           selectionMode={sel ? "multiple" : "none"}
@@ -194,8 +216,8 @@ export function LongTable<R>(p: {
         >
           <TableHeader className={css.head} columns={cols}>
             {(c) => (
-              <Column id={c.id} isRowHeader={c.rowHeader} width={c.width ?? "1fr"} minWidth={c.minWidth} className={css.th}>
-                {c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : c.header}
+              <Column id={c.id} isRowHeader={c.rowHeader} allowsSorting={Boolean(p.onSortChange && c.allowsSorting)} width={c.width ?? "1fr"} minWidth={c.minWidth} className={css.th}>
+                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check}><Box /></Checkbox> : <>{c.header}{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
               </Column>
             )}
           </TableHeader>

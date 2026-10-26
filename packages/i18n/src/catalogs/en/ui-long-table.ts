@@ -1,6 +1,9 @@
 // English for `uiLongTable.` ids (ui/long-table).
 export const enUiLongTable = {
   "uiLongTable.name": "Long table",
+  "uiLongTable.sort": "Sort",
+  "uiLongTable.ascending": "Ascending",
+  "uiLongTable.descending": "Descending",
   "uiLongTable.loading": "Loading",
   "uiLongTable.loadingMore": "Loading more",
   "uiLongTable.selection.ids": "{count, plural, one {# selected} other {# selected}}",
