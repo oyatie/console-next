@@ -1,3 +1,4 @@
+@property --unzoom { syntax: "*"; inherits: true; }
 .tools { position: absolute; z-index: 3; display: flex; gap: calc(2 * 1px); padding: calc(2 * 1px); white-space: nowrap; transform-origin: 0 0; scale: var(--unzoom, 1); }
 .tools[data-side="above"] { transform: translate(-100%, calc(-100% - var(--space-1))); }
 .tools[data-side="below"], .tools[data-side="left"], .tools[data-side="inside"] { transform: translateX(-100%); }

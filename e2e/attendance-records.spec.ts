@@ -40,6 +40,18 @@ test("월간 근무표: type, refuse, fix, paste, save with 근거, undo, correc
   await cellOf(admin, "윤하준", date).click();
   await expect(admin.getByText(/연장은 승인 기록으로만 반영됩니다/).first()).toBeVisible();
   await expect(admin.getByRole("status").filter({ hasText: "초안을 이 탭에 보관하지 못했습니다" })).toBeVisible();
+  // A refused, focused cell keeps its solid danger outline in either theme (VL-BROKEN-REFS).
+  const originalTheme = await admin.locator("html").getAttribute("data-theme");
+  for (const theme of ["light", "dark"]) {
+    await admin.evaluate((value) => { document.documentElement.dataset.theme = value; }, theme);
+    const refused = cellOf(admin, "윤하준", date);
+    await expect(refused).toHaveCSS("outline-style", "solid");
+    await expect(refused).toHaveCSS("outline-width", "2px");
+  }
+  await admin.evaluate((value) => {
+    if (value === null) delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = value;
+  }, originalTheme);
   await admin.evaluate((original) => { Storage.prototype.setItem = original; }, storageSetItem);
   await storageSetItem.dispose();
   await admin.keyboard.press("Delete");

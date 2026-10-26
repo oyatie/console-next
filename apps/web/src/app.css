@@ -1,5 +1,7 @@
 @import "@console/tokens/tokens.css";
 @import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+@property --trigger-width { syntax: "*"; inherits: true; }
+@property --tree-item-level { syntax: "*"; inherits: true; }
 
 /* Tokens only: no literal colours or sizes below this line. */
 *, *::before, *::after { box-sizing: border-box; }
@@ -8,6 +10,7 @@ body {
   background: var(--canvas);
   color: var(--ink);
   font: var(--fw-body) var(--text-body) / var(--lh-base) var(--font-sans);
+  font-variant-numeric: tabular-nums;
   word-break: keep-all;
   -webkit-font-smoothing: antialiased;
 }

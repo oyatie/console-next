@@ -10,6 +10,8 @@
 //            .tsx); and every :global( selector;
 //   literal  a literal length (px, rem, em) or colour in a CSS value that is not a token: hairline borders and
 //            outlines (1px … 3px) and @media conditions excepted.
+//   brokenRef  unconditional hard failure, including fallback refs and theme/condition gaps.
+// Contrast is part of this gate too; --lower / --admit never bypass either hard failure.
 // scripts/ds-baseline.json holds today's counts. They may only go down: a count above its pin fails, a count below
 // fails too ("lower the baseline", in the same diff), and a file without a pin must count zero.
 //   node scripts/check-ds.mjs              check (npm test runs it through scripts/gates.test.ts)
@@ -19,8 +21,10 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parse } from "postcss";
-import valueParser from "postcss-value-parser";
+
+import { checkContrast } from "./check-contrast.mjs";
+import { brokenRefs, decodeIdent, parseCss } from "./check-ds-refs.mjs";
+export { decodeIdent } from "./check-ds-refs.mjs";
 
 export const METRICS = ["raw", "dsClass", "restyle", "literal"];
 const APP = "apps/web/src";
@@ -31,8 +35,6 @@ const LOOK = /^(color|background(-color)?|border(-[\w-]+)?|font-size|font-weight
 const BOX = /^(height|min-height|padding(-[\w-]+)?)$/;
 const NATIVE_CONTROL = /(^|[\s>+~,(])(button|input|select|textarea|a)(?=[\s.:[>+~,)]|$)|\[aria-pressed|:global\(\.(btn|field__input)/;
 const CONTROL_TAGS = "Button|ToggleButton|IconButton|TextInput|SelectInput|TextArea|DisabledReason|Chip";
-
-const strip = (css) => css.replace(/\/\*[\s\S]*?\*\//g, "");
 
 /** raw and dsClass counts of one .tsx source. */
 export function countTsx(src) {
@@ -53,24 +55,22 @@ export function controlClasses(src) {
 export function countCss(css, controls = new Set()) {
   let restyle = 0;
   let literal = 0;
-  // Flat walk: each `selector { body }`; an @media / @container wrapper's own braces are skipped over.
-  for (const [, selector, body] of strip(css).matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
-    const sel = selector.trim();
-    if (sel.startsWith("@")) continue;
+  const sheet = typeof css === "string" ? parseCss(css) : css;
+  sheet.walkRules((rule) => {
+    const sel = rule.selector;
     const onControl = NATIVE_CONTROL.test(sel) || [...controls].some((c) => new RegExp(`\\.${c}(?![\\w-])`).test(sel));
     if (sel.includes(":global(")) restyle++;
-    for (const decl of body.split(";")) {
-      const i = decl.indexOf(":");
-      if (i < 0) continue;
-      const prop = decl.slice(0, i).trim().toLowerCase();
-      const value = decl.slice(i + 1).trim();
-      if (!prop || prop.startsWith("--")) continue;
+    for (const decl of rule.nodes ?? []) {
+      if (decl.type !== "decl") continue;
+      const prop = decodeIdent(decl.prop).toLowerCase();
+      const value = decl.value;
+      if (prop.startsWith("--")) continue;
       if (LOOK.test(prop) || (onControl && BOX.test(prop))) restyle++;
       const hair = /^(border|outline)/.test(prop);
       for (const [n] of value.matchAll(/(?<![\w-])\d*\.?\d+(px|rem|em)\b/g)) if (!(hair && /^[123]px$/.test(n))) literal++;
       literal += value.match(/#[0-9a-f]{3,8}\b|\b(rgba?|hsla?)\(/gi)?.length ?? 0;
     }
-  }
+  });
   return { restyle, literal };
 }
 
@@ -85,25 +85,38 @@ function walk(dir, out = []) {
   return out;
 }
 
-/** Per-file counts under `root` (only nonzero metrics; files with none are left out). */
-export function measure(root) {
-  const files = walk(path.join(root, APP)).map((p) => posix(path.relative(root, p))).filter((f) => !EXEMPT.test(f));
+const TOKENS = "packages/tokens/tokens.css";
+/** Per-file counts; broken references have no baseline allowance, in every theme and scope. */
+export function measure(root, problems = []) {
+  const files = walk(path.join(root, APP)).map((p) => posix(path.relative(root, p)));
+  if (existsSync(path.join(root, TOKENS))) files.push(TOKENS);
+  const sources = new Map(files.filter((f) => /\.(?:css|tsx?)$/.test(f) && !/\.test\.tsx?$/.test(f))
+    .map((f) => [f, readFileSync(path.join(root, f), "utf8")]));
   const counts = {};
   const add = (f, c) => {
     const nonzero = Object.fromEntries(Object.entries(c).filter(([, n]) => n > 0));
     if (Object.keys(nonzero).length) counts[f] = { ...counts[f], ...nonzero };
   };
-  const tsx = files.filter((f) => f.endsWith(".tsx") && !/\.test\.tsx$/.test(f));
   const controlsByDir = new Map();
-  for (const f of tsx) {
-    const src = readFileSync(path.join(root, f), "utf8");
+  for (const [f, src] of sources) {
+    if (!f.endsWith(".tsx") || EXEMPT.test(f)) continue;
     add(f, countTsx(src));
     const dir = path.dirname(f);
     controlsByDir.set(dir, new Set([...(controlsByDir.get(dir) ?? []), ...controlClasses(src)]));
   }
-  for (const f of files.filter((file) => file.endsWith(".css")))
-    add(f, countCss(readFileSync(path.join(root, f), "utf8"), f.endsWith(".module.css") ? controlsByDir.get(path.dirname(f)) : undefined));
+  const sheets = new Map([...sources].filter(([f]) => f.endsWith(".css")).map(([f, src]) => [f, parseCss(src, f)]));
+  problems.push(...brokenRefs(sources, sheets, TOKENS));
+  for (const [f, sheet] of sheets) {
+    if (!EXEMPT.test(f) && f !== TOKENS)
+      add(f, countCss(sheet, f.endsWith(".module.css") ? controlsByDir.get(path.dirname(f)) : undefined));
+  }
   return counts;
+}
+
+export function checkBrokenRefs(root = ".") {
+  const problems = [];
+  measure(root, problems);
+  return problems;
 }
 
 /** Problems of `counts` against `baseline` (empty = pass). */
@@ -118,6 +131,7 @@ const metricCount = (source, file, metric) => {
 export function compare(counts, baseline) {
   const problems = [];
   for (const f of new Set([...Object.keys(counts), ...Object.keys(baseline)])) {
+    if (Object.hasOwn(baseline[f] ?? {}, "brokenRef")) problems.push(`${f}: brokenRef is a hard fail and cannot have a baseline pin`);
     for (const m of METRICS) {
       const now = metricCount(counts, f, m);
       const pin = metricCount(baseline, f, m);
@@ -125,87 +139,6 @@ export function compare(counts, baseline) {
         problems.push(`${f}: ${m} ×${now}, baseline ×${pin} — use the design-system component instead (docs/design/design-language.md §5)`);
       else if (now < pin) problems.push(`${f}: ${m} ×${now}, baseline ×${pin} — lower the baseline (node scripts/check-ds.mjs --lower)`);
     }
-  }
-  return problems;
-}
-
-// Runtime CSSOM/library properties are contracts of these consumers, never global token definitions.
-const RUNTIME_PROPS = {
-  "app.css": ["--trigger-width", "--tree-item-level"], // React Aria Popover/Tree.
-  "ui/select/select-field.module.css": ["--trigger-width"],
-  "ui/server-picker/server-picker.module.css": ["--trigger-width"],
-  "ui/meter/meter.module.css": ["--pct"], // meter.tsx setProperty.
-  "ui/record/record.module.css": ["--record-sticky"], // features/people/ui/card-page.tsx setProperty.
-  "ui/org-canvas/org-node.module.css": ["--unzoom"], // org-canvas.tsx place (inherited by its children).
-  "ui/org-canvas/node-actions.module.css": ["--unzoom"],
-  "features/structure/ui/chart.module.css": ["--unzoom"],
-};
-
-const CSS_ESCAPE = /\\(?:([0-9a-f]{1,6})(?:\r\n|[ \t\r\n\f])?|([^\r\n\f]))/gi;
-
-const parseCss = (file) => {
-  // Six-digit escapes keep both parsers from splitting names at escaped whitespace.
-  const css = readFileSync(file, "utf8").replace(CSS_ESCAPE, (escape, hex, ch) => {
-    if (!hex && ch !== " " && ch !== "\t") return escape;
-    return `\\${(hex ?? ch.codePointAt(0).toString(16)).padStart(6, "0")}`;
-  });
-  return parse(css, { from: file });
-};
-
-/** A CSS identifier with its escapes decoded (CSS Syntax §4.3.7): `\2d \2d x` and `\-\-x` are both `--x`. */
-export const decodeIdent = (raw) =>
-  raw.replace(CSS_ESCAPE, (_, hex, ch) => {
-    if (ch !== undefined) return ch;
-    const cp = parseInt(hex, 16);
-    return cp === 0 || cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff) ? "\ufffd" : String.fromCodePoint(cp);
-  });
-
-const customProperties = (sheet) => {
-  const definitions = new Set();
-  sheet.walkDecls((decl) => {
-    const prop = decodeIdent(decl.prop);
-    if (prop.startsWith("--")) definitions.add(prop);
-  });
-  return definitions;
-};
-
-/** The property name a var() node references: its first argument, decoded, without surrounding space or comments. */
-const varName = (node) => {
-  const comma = node.nodes.findIndex((part) => part.type === "div" && part.value === ",");
-  const parts = (comma < 0 ? node.nodes : node.nodes.slice(0, comma)).filter((part) => part.type !== "comment");
-  while (parts[0]?.type === "space") parts.shift();
-  while (parts.at(-1)?.type === "space") parts.pop();
-  return decodeIdent(valueParser.stringify(parts));
-};
-
-/** Check for custom properties in CSS referencing undefined tokens (hard fail per visual-language §10). */
-export function checkBrokenRefs(root = ".") {
-  const tokensFile = path.join(root, "packages/tokens/tokens.css");
-  const tokens = existsSync(tokensFile)
-    ? customProperties(parseCss(tokensFile))
-    : new Set();
-  const appDir = path.join(root, APP);
-  const problems = [];
-  // The token sheet's own values are references too (`--surface: var(--nope)` breaks every consumer of --surface).
-  const sheets = [...(existsSync(tokensFile) ? [tokensFile] : []), ...walk(appDir).filter((file) => file.endsWith(".css"))];
-  for (const f of sheets) {
-    const sheet = parseCss(f);
-    const localDefs = customProperties(sheet);
-    const runtime = RUNTIME_PROPS[posix(path.relative(appDir, f))] ?? [];
-    const seen = new Set();
-    sheet.walkDecls((decl) => {
-      // Preserve comments so varName handles the original argument's whitespace.
-      valueParser(decl.raws.value?.raw ?? decl.value).walk((node) => {
-        if (node.type !== "function" || decodeIdent(node.value).toLowerCase() !== "var") return;
-        // A name that is not a custom property (`var(nope)`) is never defined, so it fails like an undefined one.
-        const v = varName(node);
-        if (!tokens.has(v) && !localDefs.has(v) && !runtime.includes(v) && !seen.has(v)) {
-          seen.add(v);
-          const rel = posix(path.relative(root, f));
-          problems.push(`${rel}: broken var reference var(${v}) — token undefined in packages/tokens/tokens.css or local module (visual-language §10)`);
-        }
-      });
-    });
   }
   return problems;
 }
@@ -220,8 +153,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   const root = rootAt >= 0 ? args[rootAt + 1] : ".";
   const file = path.join(root, BASELINE);
   const baseline = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
-  const counts = measure(root);
-  if (args.includes("--lower") || args.includes("--admit")) {
+  const hardFailures = [];
+  const counts = measure(root, hardFailures);
+  if (!hardFailures.length && !Object.values(baseline).some((pins) => Object.hasOwn(pins, "brokenRef")) && (args.includes("--lower") || args.includes("--admit"))) {
     const admit = args.includes("--admit") ? args.slice(args.indexOf("--admit") + 1).filter((a) => !a.startsWith("--")) : [];
     const next = {};
     for (const f of new Set([...Object.keys(baseline), ...admit])) {
@@ -235,12 +169,12 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     }
     writeFileSync(file, serialize(next));
   }
-  const problems = [
-    ...compare(counts, existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {}),
-    ...checkBrokenRefs(root),
-  ];
+  const problems = [...hardFailures, ...compare(counts, existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {})];
+  const tokens = path.join(root, TOKENS);
+  if (existsSync(tokens)) problems.push(...checkContrast(readFileSync(tokens, "utf8")).problems);
+  console.log(`design system: ${METRICS.map((m) => `${m}=${Object.values(counts).reduce((sum, c) => sum + (c[m] ?? 0), 0)}`).join(" ")}`);
   if (problems.length) {
-    process.stderr.write(`design system: ${problems.length} problem(s):\n${problems.join("\n")}\n`);
-    process.exit(1);
+    console.error(`design system: ${problems.length} problem(s):\n${problems.join("\n")}`);
+    process.exitCode = 1;
   }
 }

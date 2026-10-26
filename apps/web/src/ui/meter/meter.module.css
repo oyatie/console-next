@@ -1,3 +1,4 @@
+@property --pct { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
 /* ui/meter: a small bar. Tokens only. */
 .meter { display: inline-flex; width: calc(var(--space-6) * 2.25); height: var(--space-2); border-radius: var(--radius-sm); background: var(--muted); overflow: hidden; }
 .fill { display: block; height: 100%; width: var(--pct, 0%); background: var(--control-border); }

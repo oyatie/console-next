@@ -1,3 +1,4 @@
+@property --unzoom { syntax: "*"; inherits: true; }
 /* features/structure: the company structure page, its chart chrome and the list view (mockups S1, S2, S2-registry). */
 .page { height: 100%; min-height: 0; gap: var(--space-3); padding-bottom: var(--space-4); }
 .head :global(.page__title) { white-space: nowrap; }

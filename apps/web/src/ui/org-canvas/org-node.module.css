@@ -1,3 +1,4 @@
+@property --unzoom { syntax: "*"; inherits: true; }
 /* ui/org-canvas: one chart box (spec §2 OrgNode; mockup kit .nd). Level = 3 px top edge + a text kicker. */
 .node {
   position: absolute;
