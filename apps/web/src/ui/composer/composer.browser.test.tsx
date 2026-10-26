@@ -60,11 +60,10 @@ beforeAll(async () => {
 test.each([390, 1440])("resolving a page block keeps both controls fixed at %ipx", async (width) => {
   await page.setViewportSize({ width, height: 900 });
   await open("page-blocked");
-  const boxes = async () => Promise.all([page.locator("#commit"), page.getByRole("button", { name: "닫기", exact: true })].map((button) => button.boundingBox()));
-  const before = await boxes();
+  const before = await actionBoxes();
   await page.locator("#toggle").click();
   await page.locator('#commit[type="submit"]').waitFor();
-  expect(await boxes()).toEqual(before);
+  await expect.poll(actionBoxes).toEqual(before);
 });
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
@@ -72,6 +71,12 @@ const open = async (state: string) => {
   await page.goto(`${server.resolvedUrls!.local[0]}composer-test?state=${state}`);
   await page.getByRole("heading", { name: "Review" }).waitFor();
 };
+
+async function actionBoxes() {
+  // A visible heading can still use fallback fonts; compare only after font layout finishes.
+  await page.evaluate(() => document.fonts.ready);
+  return Promise.all([page.locator("#commit"), page.getByRole("button", { name: "닫기", exact: true })].map((button) => button.boundingBox()));
+}
 
 test.each(["blocked", "locked", "recovery"])("%s refuses native form submission", async (state) => {
   await open(state);
@@ -106,11 +111,10 @@ test.each(["locate", "locate-pending", "locate-loading", "locate-locked"])("%s o
 test.each([[390, "inline"], [1440, "inline"], [390, "page"], [1440, "page"]] as const)("commit and dismiss boxes stay fixed at %ipx in %s", async (width, state) => {
   await page.setViewportSize({ width, height: 900 });
   await open(state);
-  const boxes = async () => Promise.all([page.locator('button[type="submit"]'), page.getByRole("button", { name: "닫기", exact: true })].map((button) => button.boundingBox()));
-  const before = await boxes();
+  const before = await actionBoxes();
   await page.locator("#toggle").click();
   await page.getByRole("button", { name: /고용 형태 변경/ }).waitFor();
-  expect(await boxes()).toEqual(before);
+  await expect.poll(actionBoxes).toEqual(before);
   await page.getByLabel("Reason").fill("Reviewed");
   await page.getByLabel("Reason").press("Control+Enter");
   expect(await page.locator("#submits").textContent()).toBe("1");
