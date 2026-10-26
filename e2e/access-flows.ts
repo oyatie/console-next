@@ -52,6 +52,7 @@ export async function grantAccess(admin: Page, name: string, access: Access, sco
   await ensureRole(admin, access);
   const FULL = ROLE[access].name;
   await go(admin, "/access/grants");
+  await admin.getByRole("button", { name: "권한 부여", exact: true }).click();
   await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill(name);
   await admin.getByRole("option", { name: new RegExp(name) }).first().click();
   const sheet = admin.getByRole("dialog", { name: "권한 부여" });

@@ -12,7 +12,7 @@ export type GrantRow = {
 };
 export type GrantFilter = { q: string; role: string | null; ending: boolean };
 
-/** The window "ending within n days" reads (the mockup's 30 days; a view filter, not a policy). */
+// shortcut: access.grant.ending_window_days is not served by GET /api/v1/settings; replace when that setting lands.
 export const ENDING_DAYS = 30;
 
 /** Whether a grant's last day falls within `days` from `today` (an open end never does). */

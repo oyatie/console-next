@@ -220,8 +220,11 @@ test("an HR worker granted 인사 실무 over one 법인 works inside it and is 
   const requests = admin.getByRole("region", { name: "열린 권한 요청 1건" });
   await expect(requests.getByRole("row", { name: /김인사/ })).toContainText("/people/exits");
   await expect(requests).toContainText("새로 맡은 업무");
+  await expect(requests.getByRole("button", { name: /김인사.*권한 부여/ })).toHaveCount(1);
+  await expect(admin.getByRole("button", { name: "권한 부여", exact: true })).toHaveCount(1);
 
   // The grant: 인사 실무 over 늘봄정밀 only. The scope picker offers 부서 subtrees now (governance-22).
+  await admin.getByRole("button", { name: "권한 부여", exact: true }).click();
   await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill("김인사");
   await admin.getByRole("option", { name: /김인사/ }).first().click();
   const sheet = admin.getByRole("dialog", { name: "권한 부여" });

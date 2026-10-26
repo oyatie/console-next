@@ -84,7 +84,7 @@ export const roleQuery = (id: string) => q<AccessRole>(`${BASE}/roles/${id}`);
 /** Live grants (not ended or revoked), for one account or one role when asked. */
 export const grantsQuery = (by?: { account_id: string } | { role_id: string }) => list<AccessGrant>(`${BASE}/grants`, by);
 export const effectiveQuery = accountAccessQuery;
-// one page of 200 accounts (the server's cap); the pilot signs in ops and HR workers only. Page it past that.
+// shortcut: GET /api/v1/users lacks q; keep the current 200-account page until server search is served.
 // Re-read on every visit, so an account invited a moment ago is grantable at once (governance-20).
 export const accountsQuery = { ...get("/api/v1/users", { params: { query: { limit: 200 } } }), refetchOnMount: "always" as const };
 export const reasonCodesQuery = get("/api/v1/reason-codes", { params: { query: { domain: "role_change" } } });

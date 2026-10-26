@@ -117,6 +117,7 @@ test("roles parity capture: M1–M6 from an empty database", { tag: "@parity" },
   const ops = await opsName;
   const pick = admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" });
   const open = async (name: string, nth = 0) => {
+    await admin.getByRole("button", { name: "권한 부여", exact: true }).click();
     await pick.fill(name);
     await c.click(admin.getByRole("option", { name: new RegExp(name) }).nth(nth));
     return admin.getByRole("dialog", { name: "권한 부여" });
@@ -156,9 +157,13 @@ test("roles parity capture: M1–M6 from an empty database", { tag: "@parity" },
   expect(path2, "§9.4 (2) grant until a date: 12 clicks + passkey").toBeLessThanOrEqual(12);
 
   // M4 self: the ops account (holding everything already) is never offered in the picker (r3 SCOPE).
+  await admin.getByRole("button", { name: "권한 부여", exact: true }).click();
   await pick.fill(ops);
   await expect(admin.getByRole("option", { name: new RegExp(ops) })).toHaveCount(0);
-  await pick.fill("");
+  await pick.press("Escape");
+  await expect(admin.getByRole("listbox")).toHaveCount(0);
+  await expect(admin.getByRole("dialog", { name: "권한 부여할 사람", exact: true })).toBeVisible();
+  await admin.getByRole("dialog", { name: "권한 부여할 사람", exact: true }).getByRole("button", { name: "취소", exact: true }).click();
 
   // M4 no passkey: 한서연 was invited and has not signed in.
   sheet = await open("한서연");

@@ -9,6 +9,7 @@ export async function grantSetupRole(admin: Page, person: string, role: string, 
   await admin.getByRole("button", { name: "역할 추가" }).click();
   await expect(admin).toHaveURL(/\/access\/roles$/);
   await go(admin, "/access/grants");
+  await admin.getByRole("button", { name: "권한 부여", exact: true }).click();
   await admin.getByRole("combobox", { name: "권한을 부여할 사람 (이름 또는 사번)" }).fill(person);
   await admin.getByRole("option", { name: new RegExp(person) }).click();
   const sheet = admin.getByRole("dialog", { name: "권한 부여" });

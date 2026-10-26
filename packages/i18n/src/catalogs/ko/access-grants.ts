@@ -1,6 +1,8 @@
 // Korean source for `accessGrants.` ids: 부여 현황 to the M7 floor and the grant sheet's additions (governance-23,
 // ROL-M4/M7, people-self-46/47, governance-31/32). Rules: the header of ../ko.ts and GUIDE.md.
 export const koAccessGrants = {
+  "accessGrants.holders": "{role} 보유자 {count, number}명",
+  "accessGrants.reset": "필터 초기화",
   "accessGrants.find": "이름·사번·역할 찾기",
   "accessGrants.role": "역할",
   "accessGrants.role.all": "모든 역할",

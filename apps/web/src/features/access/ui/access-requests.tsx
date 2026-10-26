@@ -8,6 +8,7 @@ import { Button } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
 import { Table } from "../../../ui/table";
 import type { Account } from "../api";
+import { personLabel } from "../../../reference/person/present";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
 import s from "./access.module.css";
 
@@ -42,7 +43,7 @@ export function AccessRequests({ accounts, onGrant }: { accounts: readonly Accou
             fit: true,
             cell: (r) => (
               <span className={s.actions}>
-                {who(r) && <Button variant="ghost" onClick={() => onGrant(who(r)!)}>{t("access.grant.title")}</Button>}
+                {who(r) && <Button variant="ghost" aria-label={t("people.label.grant", { name: personLabel(who(r)!, accounts).text })} onClick={() => onGrant(who(r)!)}>{t("access.grant.title")}</Button>}
                 <Button variant="ghost" disabled={close.isPending} onClick={() => close.mutate({ id: r.id, status: "DONE" })}>{t("accessGrants.requests.done")}</Button>
                 <Button variant="ghost-danger" disabled={close.isPending} onClick={() => close.mutate({ id: r.id, status: "DECLINED" })}>{t("accessGrants.requests.decline")}</Button>
               </span>
