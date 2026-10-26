@@ -4,7 +4,7 @@
 //! rows, no drift). On failure, paste the printed block into the migration.
 #![allow(clippy::unwrap_used, clippy::panic)]
 
-use console_settings_domain::{SettingKey, SettingKind};
+use console_settings_domain::{Governance, SettingKey, SettingKind};
 
 const MIGRATION: &str =
     include_str!("../../../platform/db/migrations/20261026004009323_privacy_governed_reveal.sql");
@@ -26,6 +26,11 @@ fn label<T: serde::Serialize>(v: T) -> String {
 fn generated() -> String {
     let rows: Vec<String> = SettingKey::ALL
         .iter()
+        // New read-only configuration has no storage path; retain legacy SQL rows for N-1.
+        .filter(|key| {
+            key.def().governance != Governance::ReadOnly
+                || MIGRATION.contains(&format!("('{}',", key.as_str()))
+        })
         .map(|key| {
             let def = key.def();
             let (kind, min, max, codes) = match def.kind {

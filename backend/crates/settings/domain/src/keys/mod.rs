@@ -122,6 +122,7 @@ mod ops_recovery;
 
 #[macro_use]
 mod display;
+pub use display::DEADLINE_DUE_SOON_DAYS;
 #[macro_use]
 mod support;
 

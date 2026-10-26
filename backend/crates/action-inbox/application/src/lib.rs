@@ -1,6 +1,9 @@
 //! Source-neutral action inbox application boundary.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod projection;
+use projection::project_item;
+pub use projection::urgency;
 mod complete;
 pub use complete::list_complete_action_inbox;
 mod filter;
@@ -16,7 +19,7 @@ use std::pin::Pin;
 
 use console_kernel_core::KernelError;
 use serde::Serialize;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 
 pub const DEFAULT_PAGE_LIMIT: usize = 100;
 pub const MAX_PAGE_LIMIT: usize = 200;
@@ -80,6 +83,9 @@ pub type ActionInboxSourceFuture<'a> =
 /// visibility and persistence predicates; the use case only merges already
 /// person-scoped projections.
 pub trait ActionInboxSourcePort: Send + Sync {
+    fn deadline_due_soon_days(&self) -> i64 {
+        console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS
+    }
     fn list_source_page(
         &self,
         source: ActionInboxSource,
@@ -185,7 +191,14 @@ pub async fn list_action_inbox(
             Err(_) => unavailable.push(source),
         }
     }
-    let mut page = merge_pages(pages, now, as_of, cursor.as_ref(), limit);
+    let mut page = merge_pages(
+        pages,
+        now,
+        as_of,
+        cursor.as_ref(),
+        limit,
+        port.deadline_due_soon_days(),
+    );
     if !unavailable.is_empty() {
         page.total_is_exact = false;
         for count in page.counts.values_mut() {
@@ -202,6 +215,7 @@ pub fn merge_pages(
     as_of: OffsetDateTime,
     cursor: Option<&ActionInboxCursor>,
     limit: usize,
+    due_soon_days: i64,
 ) -> ActionInboxPage {
     let total = pages
         .iter()
@@ -212,7 +226,7 @@ pub fn merge_pages(
         .into_iter()
         .flat_map(|page| page.items)
         .filter(|item| item.created_at <= as_of)
-        .map(|item| project_item(item, now))
+        .map(|item| project_item(item, now, due_soon_days))
         .collect::<Vec<_>>();
     items.sort_by(compare_items);
     if let Some(cursor) = cursor {
@@ -255,44 +269,6 @@ pub fn merge_pages(
     }
 }
 
-fn project_item(item: ActionInboxSourceItem, now: OffsetDateTime) -> ActionInboxItem {
-    let (urg, due_tone) = urgency(item.due, now);
-    ActionInboxItem {
-        context: item.context,
-        lane: match item.kind.as_str() {
-            "org_change_waiting" | "identifier_correction_waiting" => "waiting",
-            "org_change_scheduled" => "scheduled",
-            _ => "turn",
-        },
-        days_remaining: item.due.map(|due| {
-            let zone = time::UtcOffset::from_hms(9, 0, 0).unwrap_or(time::UtcOffset::UTC);
-            (due.to_offset(zone).date() - now.to_offset(zone).date()).whole_days()
-        }),
-        id: item.id,
-        kind: item.kind,
-        urg,
-        ref_code: item.ref_code,
-        title: item.title,
-        site: item.site,
-        who: item.who,
-        due: item.due,
-        due_tone,
-        submitted: item.submitted,
-        links: item.links,
-        done: false,
-        created_at: item.created_at,
-    }
-}
-
-pub fn urgency(due: Option<OffsetDateTime>, now: OffsetDateTime) -> (&'static str, &'static str) {
-    match due {
-        None => ("wait", "neutral"),
-        Some(due) if due <= now => ("now", "danger"),
-        Some(due) if due <= now + Duration::hours(24) => ("today", "warn"),
-        Some(_) => ("wait", "neutral"),
-    }
-}
-
 fn compare_items(a: &ActionInboxItem, b: &ActionInboxItem) -> std::cmp::Ordering {
     a.created_at
         .cmp(&b.created_at)
@@ -321,7 +297,9 @@ mod tests {
     use std::collections::HashSet;
     use std::sync::Mutex;
 
-    use time::{Duration, OffsetDateTime};
+    #[cfg(test)]
+    use time::Duration;
+    use time::OffsetDateTime;
     use uuid::Uuid;
 
     use super::*;
@@ -337,7 +315,15 @@ mod tests {
         ] {
             let mut source = item("identifier_correction", 1, now);
             source.kind = kind.into();
-            assert_eq!(project_item(source, now).lane, lane);
+            assert_eq!(
+                project_item(
+                    source,
+                    now,
+                    console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS
+                )
+                .lane,
+                lane
+            );
         }
     }
 
@@ -445,6 +431,7 @@ mod tests {
             at + Duration::seconds(2),
             None,
             10,
+            console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
         );
         assert_eq!(
             page.items
@@ -479,7 +466,14 @@ mod tests {
                 false,
             ),
         ];
-        let first = merge_pages(pages.clone(), as_of, as_of, None, 2);
+        let first = merge_pages(
+            pages.clone(),
+            as_of,
+            as_of,
+            None,
+            2,
+            console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+        );
         assert_eq!(first.total, 13);
         assert!(!first.total_is_exact);
         assert_eq!(first.items.len(), 2);
@@ -491,7 +485,14 @@ mod tests {
                 page
             })
             .collect();
-        let second = merge_pages(second_pages, as_of, as_of, Some(&cursor), 2);
+        let second = merge_pages(
+            second_pages,
+            as_of,
+            as_of,
+            Some(&cursor),
+            2,
+            console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+        );
         assert_eq!(second.items.len(), 1);
         assert_eq!(second.items[0].id, format!("work:{}", Uuid::from_u128(3)));
         assert!(second.next_cursor.is_none());
@@ -514,6 +515,7 @@ mod tests {
             now,
             None,
             10,
+            console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
         );
         assert_eq!(page.items[0].urg, "today");
         assert_eq!(page.items[0].due_tone, "warn");
