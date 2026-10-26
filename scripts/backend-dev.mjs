@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Local backend for the client: mirrors <backend>/scripts/dev-up.mjs (same compose project,
 // ports, roles and dev secrets) but runs a Cargo-built `console-app` instead of Buck2.
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { generateKeyPairSync, randomBytes } from "node:crypto";
 import http from "node:http";
@@ -9,6 +9,7 @@ import path from "node:path";
 import { supportLogs } from "./e2e-support-logs.mjs";
 import { PORTS } from "../e2e/slot.ts";
 import { DEV_SECRETS_FILE, ensureDevSecrets } from "./dev-secrets.ts";
+import { backendReady, reapOrphanListener, startBackend, stopBackend } from "./backend-process.mjs";
 
 // The backend tree: this repository when it carries backend/ (the public monorepo), else the sibling checkout.
 const CONSOLE = path.resolve(process.env.CONSOLE_REPO ?? (existsSync("backend/Cargo.toml") ? "." : "../frontend/backend-mvp"));
@@ -18,6 +19,7 @@ const WEB_ORIGIN = process.env.CONSOLE_WEB_ORIGIN ?? "http://localhost:5173";
 // its environment variable, so a second stack (e.g. `npm run demo`) sets every port and the compose project and never
 // shares a database with test runs.
 const PORT = PORTS;
+await reapOrphanListener(PORT.backend);
 const PROJECT = process.env.CONSOLE_DEV_PROJECT ?? "console-react-e2e";
 // The E2E slot's cache (e2e/slot.ts sets it); the default is slot 0's.
 const CACHE = process.env.E2E_CACHE_DIR ?? path.resolve(new URL("../.cache/console-e2e", import.meta.url).pathname);
@@ -186,13 +188,13 @@ const supportLogFixture = process.env.CONSOLE_EMAIL_STUB_MODE === "e2e" && !proc
 let api = null;
 let up = true;
 const startApi = () => {
-  const child = spawn(BIN, [], { cwd: CONSOLE, env: { ...appEnv("api"), ...(supportLogFixture ? { CONSOLE_SUPPORT_LOG_QUERY_URL: supportLogFixture.url } : {}) }, stdio: supportLogFixture ? ["inherit", "pipe", "inherit"] : "inherit" });
+  const child = startBackend(BIN, { cwd: CONSOLE, env: { ...appEnv("api"), ...(supportLogFixture ? { CONSOLE_SUPPORT_LOG_QUERY_URL: supportLogFixture.url } : {}) }, stdio: supportLogFixture ? ["inherit", "pipe", "inherit"] : "inherit" });
   if (supportLogFixture) {
     child.stdout.pipe(process.stdout);
     supportLogFixture.observe(child.stdout);
   }
   child.on("exit", (c) => {
-    if (!child.stopping) process.exit(c ?? 0);
+    if (!child.stopping) process.exit(c ?? 1);
     api = null;
     if (up) startApi(); // started again while this one was still stopping
   });
@@ -202,6 +204,13 @@ startApi();
 setInterval(() => {}, 2 ** 30); // a signal handler alone does not keep the launcher alive while its API is stopped
 process.on("SIGUSR2", () => {
   up = !up;
-  if (!up && api) (api.stopping = true), api.kill();
+  if (!up && api) (api.stopping = true), stopBackend(api);
   else if (up && !api) startApi();
 });
+if (process.env.CONSOLE_EMAIL_STUB_MODE === "e2e") {
+  // Playwright owns this pipe: EOF also cleans up when its runner crashes or is killed.
+  process.stdin.on("end", () => process.exit(1));
+  process.stdin.resume();
+  await backendReady(PORT.backend);
+  console.log("[backend] ready");
+}

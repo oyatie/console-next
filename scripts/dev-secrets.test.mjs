@@ -39,6 +39,7 @@ test("backend-dev prints where the secrets are, never a secret", (t) => {
       PATH: `${path.join(dir, "bin")}:${process.env.PATH ?? ""}`,
       CONSOLE_APP_BIN: path.join(dir, "console-app"),
       CONSOLE_DEV_PROJECT: "dev-secrets-test",
+      CONSOLE_DEV_BACKEND_PORT: "0",
       CONSOLE_DEV_S3_PORT: "1",
       E2E_CACHE_DIR: path.join(dir, "cache"),
     },

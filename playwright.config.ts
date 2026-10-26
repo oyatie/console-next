@@ -88,7 +88,9 @@ export default defineConfig({
       command: served
         ? `${process.env.E2E_PREBUILT === "1" ? "" : "npm run build && "}node scripts/backend-dev.mjs --reset`
         : `node scripts/backend-dev.mjs${reuse ? "" : " --reset"}`,
-      url: `http://127.0.0.1:${PORTS.backend}/readyz`,
+      // Always run orphan inspection before readiness checks; explicit reuse keeps its existing server.
+      ...(reuse ? { url: `http://127.0.0.1:${PORTS.backend}/readyz` } : { wait: { stdout: /\[backend\] ready/ } }),
+      gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
       timeout: 300_000,
       reuseExistingServer: reuse,
       env: backendEnv,
