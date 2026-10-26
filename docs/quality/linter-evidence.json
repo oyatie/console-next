@@ -1,0 +1,763 @@
+{
+  "generatedBy": "node scripts/quality/linter-evidence.mjs --write",
+  "version": "Version: 1.86.0",
+  "lintCommand": "oxlint -c oxlint.json apps packages && stylelint \"apps/**/*.css\" && node scripts/check-copy.mjs",
+  "configSha256": "7fd49c8409cc7f7301a9ce21d4d52df325d00237f1065de7663a7e2a0d8a4ed9",
+  "effective": {
+    "plugins": [
+      "react",
+      "typescript",
+      "oxc",
+      "import",
+      "jsx-a11y"
+    ],
+    "categories": {
+      "correctness": "deny",
+      "suspicious": "warn"
+    },
+    "rules": {
+      "block-scoped-var": "warn",
+      "constructor-super": "deny",
+      "for-direction": "deny",
+      "getter-return": "deny",
+      "max-lines": [
+        "deny",
+        [
+          {
+            "max": 300,
+            "skipBlankLines": true,
+            "skipComments": true
+          }
+        ]
+      ],
+      "no-async-promise-executor": "deny",
+      "no-caller": "deny",
+      "no-class-assign": "deny",
+      "no-compare-neg-zero": "deny",
+      "no-cond-assign": "deny",
+      "no-console": "deny",
+      "no-const-assign": "deny",
+      "no-constant-binary-expression": "deny",
+      "no-constant-condition": "deny",
+      "no-control-regex": "deny",
+      "no-debugger": "deny",
+      "no-delete-var": "deny",
+      "no-dupe-class-members": "deny",
+      "no-dupe-else-if": "deny",
+      "no-dupe-keys": "deny",
+      "no-duplicate-case": "deny",
+      "no-empty-character-class": "deny",
+      "no-empty-pattern": "deny",
+      "no-empty-static-block": "deny",
+      "no-eval": "deny",
+      "no-ex-assign": "deny",
+      "no-extend-native": "warn",
+      "no-extra-bind": "warn",
+      "no-extra-boolean-cast": "deny",
+      "no-func-assign": "deny",
+      "no-global-assign": "deny",
+      "no-implied-eval": "warn",
+      "no-import-assign": "deny",
+      "no-invalid-regexp": "deny",
+      "no-irregular-whitespace": "deny",
+      "no-iterator": "deny",
+      "no-loss-of-precision": "deny",
+      "no-misleading-character-class": "deny",
+      "no-new": "warn",
+      "no-new-native-nonconstructor": "deny",
+      "no-nonoctal-decimal-escape": "deny",
+      "no-obj-calls": "deny",
+      "no-restricted-imports": [
+        "deny",
+        [
+          {
+            "paths": [
+              {
+                "name": "@tanstack/react-query",
+                "importNames": [
+                  "useMutation",
+                  "useQueryClient"
+                ],
+                "message": "Writes go through lib/command.ts (idempotent, no optimistic updates)"
+              }
+            ]
+          }
+        ]
+      ],
+      "no-self-assign": "deny",
+      "no-setter-return": "deny",
+      "no-shadow": "warn",
+      "no-shadow-restricted-names": "deny",
+      "no-sparse-arrays": "deny",
+      "no-this-before-super": "deny",
+      "no-unassigned-vars": "deny",
+      "no-underscore-dangle": "warn",
+      "no-unexpected-multiline": "warn",
+      "no-unmodified-loop-condition": "warn",
+      "no-unneeded-ternary": "warn",
+      "no-unreachable": "deny",
+      "no-unsafe-finally": "deny",
+      "no-unsafe-negation": "deny",
+      "no-unsafe-optional-chaining": "deny",
+      "no-unused-expressions": "deny",
+      "no-unused-labels": "deny",
+      "no-unused-private-class-members": "deny",
+      "no-unused-vars": "deny",
+      "no-useless-backreference": "deny",
+      "no-useless-catch": "deny",
+      "no-useless-concat": "warn",
+      "no-useless-constructor": "warn",
+      "no-useless-escape": "deny",
+      "no-useless-rename": "deny",
+      "no-with": "deny",
+      "preserve-caught-error": "warn",
+      "require-yield": "deny",
+      "use-isnan": "deny",
+      "valid-typeof": "deny",
+      "import/default": "deny",
+      "import/namespace": "deny",
+      "import/no-absolute-path": "warn",
+      "import/no-cycle": "deny",
+      "import/no-empty-named-blocks": "warn",
+      "import/no-named-as-default": "warn",
+      "import/no-named-as-default-member": "warn",
+      "import/no-self-import": "warn",
+      "import/no-unassigned-import": [
+        "warn",
+        [
+          {
+            "allow": [
+              "**/*.css"
+            ]
+          }
+        ]
+      ],
+      "jsx_a11y/alt-text": "deny",
+      "jsx_a11y/anchor-has-content": "deny",
+      "jsx_a11y/anchor-is-valid": "deny",
+      "jsx_a11y/aria-activedescendant-has-tabindex": "deny",
+      "jsx_a11y/aria-props": "deny",
+      "jsx_a11y/aria-proptypes": "deny",
+      "jsx_a11y/aria-role": "deny",
+      "jsx_a11y/aria-unsupported-elements": "deny",
+      "jsx_a11y/autocomplete-valid": "deny",
+      "jsx_a11y/click-events-have-key-events": "deny",
+      "jsx_a11y/control-has-associated-label": "deny",
+      "jsx_a11y/heading-has-content": "deny",
+      "jsx_a11y/html-has-lang": "deny",
+      "jsx_a11y/iframe-has-title": "deny",
+      "jsx_a11y/img-redundant-alt": "deny",
+      "jsx_a11y/interactive-supports-focus": "deny",
+      "jsx_a11y/label-has-associated-control": "deny",
+      "jsx_a11y/lang": "deny",
+      "jsx_a11y/media-has-caption": "deny",
+      "jsx_a11y/mouse-events-have-key-events": "deny",
+      "jsx_a11y/no-access-key": "deny",
+      "jsx_a11y/no-aria-hidden-on-focusable": "deny",
+      "jsx_a11y/no-autofocus": "deny",
+      "jsx_a11y/no-distracting-elements": "deny",
+      "jsx_a11y/no-interactive-element-to-noninteractive-role": "deny",
+      "jsx_a11y/no-noninteractive-element-interactions": "deny",
+      "jsx_a11y/no-noninteractive-element-to-interactive-role": "deny",
+      "jsx_a11y/no-noninteractive-tabindex": "deny",
+      "jsx_a11y/no-redundant-roles": "deny",
+      "jsx_a11y/no-static-element-interactions": "deny",
+      "jsx_a11y/prefer-tag-over-role": "allow",
+      "jsx_a11y/role-has-required-aria-props": "deny",
+      "jsx_a11y/role-supports-aria-props": "deny",
+      "jsx_a11y/scope": "deny",
+      "jsx_a11y/tabindex-no-positive": "deny",
+      "oxc/approx-constant": "warn",
+      "oxc/bad-array-method-on-arguments": "deny",
+      "oxc/bad-char-at-comparison": "deny",
+      "oxc/bad-comparison-sequence": "deny",
+      "oxc/bad-match-all-arg": "deny",
+      "oxc/bad-min-max-func": "deny",
+      "oxc/bad-object-literal-comparison": "deny",
+      "oxc/bad-replace-all-arg": "deny",
+      "oxc/const-comparisons": "deny",
+      "oxc/double-comparisons": "deny",
+      "oxc/erasing-op": "deny",
+      "oxc/misrefactored-assign-op": "warn",
+      "oxc/missing-throw": "deny",
+      "oxc/no-async-endpoint-handlers": "warn",
+      "oxc/no-barrel-file": [
+        "deny",
+        [
+          {
+            "threshold": 0
+          }
+        ]
+      ],
+      "oxc/no-this-in-exported-function": "warn",
+      "oxc/number-arg-out-of-range": "deny",
+      "oxc/only-used-in-recursion": "deny",
+      "oxc/uninvoked-array-callback": "deny",
+      "react/capitalized-calls": "warn",
+      "react/error-boundaries": "deny",
+      "react/exhaustive-deps": "deny",
+      "react/exhaustive-effect-dependencies": "warn",
+      "react/forbid-dom-props": [
+        "deny",
+        [
+          {
+            "forbid": [
+              "style"
+            ]
+          }
+        ]
+      ],
+      "react/forward-ref-uses-ref": "deny",
+      "react/globals": "deny",
+      "react/hooks": "warn",
+      "react/iframe-missing-sandbox": "warn",
+      "react/immutability": "deny",
+      "react/incompatible-library": "deny",
+      "react/jsx-key": "deny",
+      "react/jsx-no-comment-textnodes": "warn",
+      "react/jsx-no-duplicate-props": "deny",
+      "react/jsx-no-literals": [
+        "deny",
+        [
+          {
+            "noStrings": true,
+            "ignoreProps": true,
+            "allowedStrings": [
+              "·",
+              "—",
+              "–",
+              "/",
+              ":",
+              "|",
+              "…",
+              "(",
+              ")",
+              " "
+            ]
+          }
+        ]
+      ],
+      "react/jsx-no-script-url": "warn",
+      "react/jsx-no-undef": "deny",
+      "react/jsx-props-no-spread-multi": "deny",
+      "react/memo-dependencies": "warn",
+      "react/no-children-prop": "deny",
+      "react/no-danger-with-children": "deny",
+      "react/no-did-mount-set-state": "deny",
+      "react/no-did-update-set-state": "deny",
+      "react/no-direct-mutation-state": "deny",
+      "react/no-find-dom-node": "deny",
+      "react/no-is-mounted": "deny",
+      "react/no-namespace": "warn",
+      "react/no-render-return-value": "deny",
+      "react/no-string-refs": "deny",
+      "react/no-this-in-sfc": "deny",
+      "react/no-unsafe": "deny",
+      "react/no-unstable-nested-components": [
+        "warn",
+        [
+          {
+            "allowAsProps": true
+          }
+        ]
+      ],
+      "react/no-will-update-set-state": "deny",
+      "react/only-export-components": "deny",
+      "react/preserve-manual-memoization": "deny",
+      "react/purity": "deny",
+      "react/react-in-jsx-scope": "allow",
+      "react/refs": "deny",
+      "react/set-state-in-effect": "deny",
+      "react/set-state-in-render": "deny",
+      "react/static-components": "deny",
+      "react/style-prop-object": "warn",
+      "react/use-memo": "deny",
+      "react/void-dom-elements-no-children": "deny",
+      "react/void-use-memo": "deny",
+      "typescript/await-thenable": "deny",
+      "typescript/consistent-return": "warn",
+      "typescript/no-array-delete": "deny",
+      "typescript/no-base-to-string": "deny",
+      "typescript/no-confusing-non-null-assertion": "warn",
+      "typescript/no-duplicate-enum-values": "deny",
+      "typescript/no-duplicate-type-constituents": "deny",
+      "typescript/no-extra-non-null-assertion": "deny",
+      "typescript/no-extraneous-class": "warn",
+      "typescript/no-floating-promises": "deny",
+      "typescript/no-for-in-array": "deny",
+      "typescript/no-generated-empty-object-type": "warn",
+      "typescript/no-implied-eval": "deny",
+      "typescript/no-meaningless-void-operator": "deny",
+      "typescript/no-misused-new": "deny",
+      "typescript/no-misused-spread": "deny",
+      "typescript/no-non-null-asserted-optional-chain": "deny",
+      "typescript/no-redundant-type-constituents": "deny",
+      "typescript/no-this-alias": "deny",
+      "typescript/no-unnecessary-boolean-literal-compare": "warn",
+      "typescript/no-unnecessary-parameter-property-assignment": "deny",
+      "typescript/no-unnecessary-template-expression": "warn",
+      "typescript/no-unnecessary-type-arguments": "warn",
+      "typescript/no-unnecessary-type-assertion": "warn",
+      "typescript/no-unnecessary-type-constraint": "warn",
+      "typescript/no-unnecessary-type-conversion": "warn",
+      "typescript/no-unnecessary-type-parameters": "warn",
+      "typescript/no-unsafe-declaration-merging": "deny",
+      "typescript/no-unsafe-enum-comparison": "warn",
+      "typescript/no-unsafe-type-assertion": "warn",
+      "typescript/no-unsafe-unary-minus": "deny",
+      "typescript/no-useless-default-assignment": "deny",
+      "typescript/no-useless-empty-export": "deny",
+      "typescript/no-wrapper-object-types": "deny",
+      "typescript/prefer-as-const": "deny",
+      "typescript/prefer-namespace-keyword": "deny",
+      "typescript/require-array-sort-compare": "deny",
+      "typescript/restrict-template-expressions": "deny",
+      "typescript/triple-slash-reference": "deny",
+      "typescript/unbound-method": "deny"
+    },
+    "settings": {
+      "jsx-a11y": {
+        "polymorphicPropName": null,
+        "components": {},
+        "attributes": {}
+      },
+      "next": {
+        "rootDir": []
+      },
+      "react": {
+        "formComponents": [],
+        "linkComponents": [],
+        "version": null,
+        "componentWrapperFunctions": []
+      },
+      "jsdoc": {
+        "ignorePrivate": false,
+        "ignoreInternal": false,
+        "ignoreReplacesDocs": true,
+        "overrideReplacesDocs": true,
+        "augmentsExtendsReplacesDocs": false,
+        "implementsReplacesDocs": false,
+        "exemptDestructuredRootsFromChecks": false,
+        "tagNamePreference": {}
+      },
+      "vitest": {
+        "typecheck": false
+      },
+      "jest": {
+        "version": null
+      }
+    },
+    "env": {
+      "builtin": true
+    },
+    "globals": {},
+    "overrides": [
+      {
+        "files": [
+          "packages/*/src/index.ts"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "oxc/no-barrel-file": "allow"
+        }
+      },
+      {
+        "files": [
+          "apps/web/src/routes/**"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "react/only-export-components": "allow"
+        }
+      },
+      {
+        "files": [
+          "apps/web/src/lib/**",
+          "apps/web/src/main.tsx"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "no-restricted-imports": "allow"
+        }
+      },
+      {
+        "files": [
+          "apps/web/src/features/*/domain/**",
+          "apps/web/src/lib/pure/**"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "no-restricted-imports": [
+            "deny",
+            [
+              {
+                "patterns": [
+                  {
+                    "group": [
+                      "react",
+                      "react-dom",
+                      "react-dom/**",
+                      "@tanstack/**",
+                      "react-aria*",
+                      "react-aria*/**",
+                      "lucide-react",
+                      "@console/i18n",
+                      "@console/i18n/**"
+                    ],
+                    "message": "domain ring: no frameworks, no copy"
+                  },
+                  {
+                    "group": [
+                      "@console/api",
+                      "@console/api/web"
+                    ],
+                    "message": "domain may import only types from @console/api/schema"
+                  }
+                ]
+              }
+            ]
+          ],
+          "no-restricted-globals": [
+            "deny",
+            [
+              "window",
+              "document",
+              "navigator",
+              "location",
+              "localStorage",
+              "sessionStorage",
+              "fetch"
+            ]
+          ]
+        }
+      },
+      {
+        "files": [
+          "apps/web/src/features/*/*.ts",
+          "apps/web/src/features/*/api/*.ts",
+          "apps/web/src/reference/*/*.ts",
+          "apps/web/src/reference/*/api/*.ts"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "no-restricted-imports": [
+            "deny",
+            [
+              {
+                "patterns": [
+                  {
+                    "group": [
+                      "react",
+                      "react-dom",
+                      "react-dom/**",
+                      "@tanstack/**",
+                      "react-aria*",
+                      "react-aria*/**",
+                      "lucide-react",
+                      "@console/api/web"
+                    ],
+                    "message": "slice root is pure TS; React and TanStack live under ui/"
+                  }
+                ]
+              }
+            ]
+          ],
+          "no-restricted-globals": [
+            "deny",
+            [
+              "window",
+              "document",
+              "navigator",
+              "location",
+              "localStorage",
+              "sessionStorage"
+            ]
+          ]
+        }
+      },
+      {
+        "files": [
+          "apps/web/src/ui/**"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "no-restricted-imports": [
+            "deny",
+            [
+              {
+                "patterns": [
+                  {
+                    "group": [
+                      "@console/api",
+                      "@console/api/**",
+                      "@tanstack/**"
+                    ],
+                    "message": "ui primitives know no domain, data or router"
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      {
+        "files": [
+          "packages/api/src/**",
+          "packages/i18n/src/**"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "no-restricted-imports": [
+            "deny",
+            [
+              {
+                "patterns": [
+                  {
+                    "group": [
+                      "react",
+                      "react-dom",
+                      "react-dom/**",
+                      "@tanstack/**",
+                      "react-aria*",
+                      "react-aria*/**"
+                    ],
+                    "message": "packages are platform-neutral"
+                  }
+                ]
+              }
+            ]
+          ],
+          "no-restricted-globals": [
+            "deny",
+            [
+              "window",
+              "document",
+              "navigator",
+              "location",
+              "localStorage",
+              "sessionStorage"
+            ]
+          ]
+        }
+      },
+      {
+        "files": [
+          "packages/api/src/web.ts"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "no-restricted-globals": "allow"
+        }
+      },
+      {
+        "files": [
+          "apps/web/src/features/*/ui/**",
+          "apps/web/src/reference/*/ui/**",
+          "apps/web/src/routes/**"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "react/forbid-elements": [
+            "deny",
+            [
+              {
+                "forbid": [
+                  "button",
+                  "input",
+                  "select",
+                  "textarea",
+                  "table",
+                  "dialog",
+                  "a",
+                  "form"
+                ]
+              }
+            ]
+          ],
+          "no-restricted-imports": [
+            "deny",
+            [
+              {
+                "patterns": [
+                  {
+                    "group": [
+                      "react-aria*",
+                      "react-aria*/**",
+                      "@console/api",
+                      "@console/api/web"
+                    ],
+                    "message": "views use ui/ and the slice api.ts"
+                  }
+                ],
+                "paths": [
+                  {
+                    "name": "@tanstack/react-query",
+                    "importNames": [
+                      "useMutation",
+                      "useQueryClient"
+                    ],
+                    "message": "Writes go through lib/command.ts"
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      {
+        "files": [
+          "apps/web/src/main.tsx"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "react/only-export-components": "allow"
+        }
+      },
+      {
+        "files": [
+          "apps/web/src/**/*.gallery.tsx"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "react/only-export-components": [
+            "deny",
+            [
+              {
+                "allowExportNames": [
+                  "order"
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      {
+        "files": [
+          "apps/web/src/reference/org/ui/unit-picker.tsx"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "no-restricted-imports": [
+            "deny",
+            [
+              {
+                "paths": [
+                  {
+                    "name": "@tanstack/react-query",
+                    "importNames": [
+                      "useMutation",
+                      "useQueryClient"
+                    ],
+                    "message": "Writes go through lib/command.ts (idempotent, no optimistic updates)"
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      {
+        "files": [
+          "apps/web/src/auth/Login.tsx",
+          "apps/web/src/features/home/Home.tsx",
+          "apps/web/src/features/org/OrgChange.tsx",
+          "apps/web/src/features/people/Employee.tsx"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "react/only-export-components": "allow"
+        }
+      },
+      {
+        "files": [
+          "apps/web/src/shell/shell.tsx"
+        ],
+        "env": null,
+        "globals": null,
+        "plugins": null,
+        "rules": {
+          "react/jsx-no-literals": [
+            "deny",
+            [
+              {
+                "noStrings": true,
+                "ignoreProps": true,
+                "allowedStrings": [
+                  "·",
+                  "—",
+                  "–",
+                  "/",
+                  ":",
+                  "|",
+                  "…",
+                  "(",
+                  ")",
+                  " ",
+                  "C"
+                ]
+              }
+            ]
+          ]
+        }
+      }
+    ],
+    "ignorePatterns": [
+      "packages/api/src/schema.d.ts"
+    ]
+  },
+  "probes": {
+    "floating-promise.ts": {
+      "source": "async function save() { return 1; }\nsave();\n",
+      "status": 0,
+      "diagnostics": ""
+    },
+    "playwright-wait.ts": {
+      "source": "declare const page: { waitForTimeout(ms: number): Promise<void> };\npage.waitForTimeout(100);\n",
+      "status": 0,
+      "diagnostics": ""
+    },
+    "conditional-hook.tsx": {
+      "source": "import { useState } from 'react';\nexport function Probe({ enabled }: { enabled: boolean }) { if (enabled) useState(0); return null; }\n",
+      "status": 0,
+      "diagnostics": "<fixture>/conditional-hook.tsx:2:73: warning react(hooks): Hooks must always be called in a consistent order and may not be called conditionally help: Call Hooks unconditionally at the top level of the component or custom Hook\n"
+    }
+  },
+  "timing": {
+    "command": "npm run lint",
+    "node": "v26.7.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M5 Max",
+    "seconds": [
+      2.100700292,
+      2.1335292500000005,
+      1.9674628329999997
+    ]
+  }
+}

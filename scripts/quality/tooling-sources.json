@@ -1,0 +1,1642 @@
+{
+  "generatedBy": "generate-tooling-ledger.mjs --refresh",
+  "checked": "2026-10-26",
+  "entries": {
+    "cargo:apalis": {
+      "source": "https://crates.io/api/v1/crates/apalis",
+      "latest": "1.0.0",
+      "lastRelease": "2026-10-12T06:42:50.380183Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/apalis-dev/apalis",
+      "downloads": 406298
+    },
+    "cargo:apalis-postgres": {
+      "source": "https://crates.io/api/v1/crates/apalis-postgres",
+      "latest": "1.0.0",
+      "lastRelease": "2026-10-12T09:08:20.583545Z",
+      "license": "non-standard",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/apalis-dev/apalis-postgres",
+      "downloads": 136055
+    },
+    "cargo:apalis-sql": {
+      "source": "https://crates.io/api/v1/crates/apalis-sql",
+      "latest": "1.0.0-rc.9",
+      "lastRelease": "2026-05-06T19:26:26.244830Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/apalis-dev/apalis",
+      "downloads": 245038
+    },
+    "cargo:async-imap": {
+      "source": "https://crates.io/api/v1/crates/async-imap",
+      "latest": "0.12.0",
+      "lastRelease": "2026-09-30T18:50:13.788310Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/async-email/async-imap",
+      "downloads": 993942
+    },
+    "cargo:axum": {
+      "source": "https://crates.io/api/v1/crates/axum",
+      "latest": "0.8.9",
+      "lastRelease": "2026-04-14T07:55:20.258398Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tokio-rs/axum",
+      "downloads": 141257267
+    },
+    "cargo:base64": {
+      "source": "https://crates.io/api/v1/crates/base64",
+      "latest": "0.23.1",
+      "lastRelease": "2026-08-04T12:34:31.976297Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/marshallpierce/rust-base64",
+      "downloads": 435367172
+    },
+    "cargo:bytes": {
+      "source": "https://crates.io/api/v1/crates/bytes",
+      "latest": "1.12.1",
+      "lastRelease": "2026-07-08T10:01:28.616466Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tokio-rs/bytes",
+      "downloads": 295828062
+    },
+    "cargo:calamine": {
+      "source": "https://crates.io/api/v1/crates/calamine",
+      "latest": "0.37.0",
+      "lastRelease": "2026-10-18T20:14:07.129707Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tafia/calamine",
+      "downloads": 5951471
+    },
+    "cargo:cedar-policy": {
+      "source": "https://crates.io/api/v1/crates/cedar-policy",
+      "latest": "4.14.0",
+      "lastRelease": "2026-10-17T16:24:12.478001Z",
+      "license": "Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/cedar-policy/cedar",
+      "downloads": 3505613
+    },
+    "cargo:chacha20poly1305": {
+      "source": "https://crates.io/api/v1/crates/chacha20poly1305",
+      "latest": "0.11.0",
+      "lastRelease": "2026-06-28T17:41:38.459924Z",
+      "license": "Apache-2.0 OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/RustCrypto/AEADs",
+      "downloads": 32140739
+    },
+    "cargo:chrono": {
+      "source": "https://crates.io/api/v1/crates/chrono",
+      "latest": "0.4.45",
+      "lastRelease": "2026-06-04T12:16:42.063037Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/chronotope/chrono",
+      "downloads": 212284724
+    },
+    "cargo:chrono-tz": {
+      "source": "https://crates.io/api/v1/crates/chrono-tz",
+      "latest": "0.10.4",
+      "lastRelease": "2025-07-11T19:08:33.700056Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/chronotope/chrono-tz",
+      "downloads": 46711638
+    },
+    "cargo:croner": {
+      "source": "https://crates.io/api/v1/crates/croner",
+      "latest": "4.0.2",
+      "lastRelease": "2026-10-21T20:55:53.658699Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/hexagon/croner-rust",
+      "downloads": 4868323
+    },
+    "cargo:futures": {
+      "source": "https://crates.io/api/v1/crates/futures",
+      "latest": "0.3.34",
+      "lastRelease": "2026-08-11T12:13:28.064590Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/rust-lang/futures-rs",
+      "downloads": 199894797
+    },
+    "cargo:hex": {
+      "source": "https://crates.io/api/v1/crates/hex",
+      "latest": "0.4.3",
+      "lastRelease": "2021-03-03T10:48:58.682837Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/KokaKiwi/rust-hex",
+      "downloads": 180617904
+    },
+    "cargo:hickory-resolver": {
+      "source": "https://crates.io/api/v1/crates/hickory-resolver",
+      "latest": "0.26.3",
+      "lastRelease": "2026-09-10T14:17:52.079379Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/hickory-dns/hickory-dns",
+      "downloads": 29260792
+    },
+    "cargo:hmac": {
+      "source": "https://crates.io/api/v1/crates/hmac",
+      "latest": "0.13.0",
+      "lastRelease": "2026-03-29T23:19:21.430299Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/RustCrypto/MACs",
+      "downloads": 195891983
+    },
+    "cargo:http": {
+      "source": "https://crates.io/api/v1/crates/http",
+      "latest": "1.5.0",
+      "lastRelease": "2026-07-29T14:57:21.755258Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/hyperium/http",
+      "downloads": 290323045
+    },
+    "cargo:infer": {
+      "source": "https://crates.io/api/v1/crates/infer",
+      "latest": "0.22.0",
+      "lastRelease": "2026-07-15T15:05:03.081761Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/bojand/infer",
+      "downloads": 32785932
+    },
+    "cargo:ipnet": {
+      "source": "https://crates.io/api/v1/crates/ipnet",
+      "latest": "2.12.2",
+      "lastRelease": "2026-09-06T05:45:08.121491Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/krisprice/ipnet",
+      "downloads": 181187251
+    },
+    "cargo:jsonwebtoken": {
+      "source": "https://crates.io/api/v1/crates/jsonwebtoken",
+      "latest": "11.1.0",
+      "lastRelease": "2026-09-16T10:18:33.566871Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/Keats/jsonwebtoken",
+      "downloads": 63417427
+    },
+    "cargo:lettre": {
+      "source": "https://crates.io/api/v1/crates/lettre",
+      "latest": "0.11.23",
+      "lastRelease": "2026-08-03T11:10:11.720283Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/lettre/lettre",
+      "downloads": 8129778
+    },
+    "cargo:libfuzzer-sys": {
+      "source": "https://crates.io/api/v1/crates/libfuzzer-sys",
+      "latest": "0.4.13",
+      "lastRelease": "2026-06-04T18:55:34.718132Z",
+      "license": "(MIT OR Apache-2.0) AND NCSA",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/rust-fuzz/libfuzzer",
+      "downloads": 19428576
+    },
+    "cargo:mail-parser": {
+      "source": "https://crates.io/api/v1/crates/mail-parser",
+      "latest": "1.0.0",
+      "lastRelease": "2026-10-24T07:44:25.815785Z",
+      "license": "Apache-2.0 OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/stalwartlabs/mail-parser",
+      "downloads": 2104128
+    },
+    "cargo:metrics": {
+      "source": "https://crates.io/api/v1/crates/metrics",
+      "latest": "0.24.6",
+      "lastRelease": "2026-05-13T17:50:59.032914Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/metrics-rs/metrics",
+      "downloads": 24502205
+    },
+    "cargo:metrics-exporter-prometheus": {
+      "source": "https://crates.io/api/v1/crates/metrics-exporter-prometheus",
+      "latest": "0.18.3",
+      "lastRelease": "2026-04-30T13:36:08.766993Z",
+      "license": "MIT AND Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/metrics-rs/metrics",
+      "downloads": 15652191
+    },
+    "cargo:openssl": {
+      "source": "https://crates.io/api/v1/crates/openssl",
+      "latest": "0.10.81",
+      "lastRelease": "2026-06-12T18:11:18.530903Z",
+      "license": "Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/rust-openssl/rust-openssl",
+      "downloads": 79400635
+    },
+    "cargo:opentelemetry": {
+      "source": "https://crates.io/api/v1/crates/opentelemetry",
+      "latest": "0.33.1",
+      "lastRelease": "2026-10-09T20:45:06.452460Z",
+      "license": "Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/open-telemetry/opentelemetry-rust/tree/main/opentelemetry",
+      "downloads": 75622752
+    },
+    "cargo:opentelemetry_sdk": {
+      "source": "https://crates.io/api/v1/crates/opentelemetry_sdk",
+      "latest": "0.33.1",
+      "lastRelease": "2026-10-09T20:45:11.115162Z",
+      "license": "Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/open-telemetry/opentelemetry-rust/tree/main/opentelemetry-sdk",
+      "downloads": 69345624
+    },
+    "cargo:opentelemetry-otlp": {
+      "source": "https://crates.io/api/v1/crates/opentelemetry-otlp",
+      "latest": "0.33.1",
+      "lastRelease": "2026-10-09T20:45:16.347572Z",
+      "license": "Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/open-telemetry/opentelemetry-rust/tree/main/opentelemetry-otlp",
+      "downloads": 50017601
+    },
+    "cargo:p256": {
+      "source": "https://crates.io/api/v1/crates/p256",
+      "latest": "0.14.0",
+      "lastRelease": "2026-07-03T17:56:52.396813Z",
+      "license": "Apache-2.0 OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/RustCrypto/elliptic-curves",
+      "downloads": 66281864
+    },
+    "cargo:proptest": {
+      "source": "https://crates.io/api/v1/crates/proptest",
+      "latest": "1.12.0",
+      "lastRelease": "2026-10-10T18:18:05.623491Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/proptest-rs/proptest",
+      "downloads": 62952796
+    },
+    "cargo:reqwest": {
+      "source": "https://crates.io/api/v1/crates/reqwest",
+      "latest": "0.13.5",
+      "lastRelease": "2026-09-08T20:55:26.479356Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/seanmonstar/reqwest",
+      "downloads": 230919225
+    },
+    "cargo:ring": {
+      "source": "https://crates.io/api/v1/crates/ring",
+      "latest": "0.17.14",
+      "lastRelease": "2025-03-11T19:42:03.889273Z",
+      "license": "Apache-2.0 AND ISC",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/briansmith/ring",
+      "downloads": 195348142
+    },
+    "cargo:rustls": {
+      "source": "https://crates.io/api/v1/crates/rustls",
+      "latest": "0.24.0-dev.2",
+      "lastRelease": "2026-10-14T09:54:15.075873Z",
+      "license": "Apache-2.0 OR ISC OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/rustls/rustls",
+      "downloads": 248928488
+    },
+    "cargo:secrecy": {
+      "source": "https://crates.io/api/v1/crates/secrecy",
+      "latest": "0.10.3",
+      "lastRelease": "2024-10-09T19:23:36.825181Z",
+      "license": "Apache-2.0 OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/iqlusioninc/crates/tree/main/secrecy",
+      "downloads": 50605281
+    },
+    "cargo:serde": {
+      "source": "https://crates.io/api/v1/crates/serde",
+      "latest": "1.0.229",
+      "lastRelease": "2026-07-18T23:05:13.266456Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/serde-rs/serde",
+      "downloads": 381481664
+    },
+    "cargo:serde_json": {
+      "source": "https://crates.io/api/v1/crates/serde_json",
+      "latest": "1.0.154",
+      "lastRelease": "2026-10-11T15:31:46.076577Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/serde-rs/json",
+      "downloads": 381556492
+    },
+    "cargo:sha2": {
+      "source": "https://crates.io/api/v1/crates/sha2",
+      "latest": "0.11.1",
+      "lastRelease": "2026-10-12T18:58:22.836567Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/RustCrypto/hashes",
+      "downloads": 327095332
+    },
+    "cargo:sqlparser": {
+      "source": "https://crates.io/api/v1/crates/sqlparser",
+      "latest": "0.63.0",
+      "lastRelease": "2026-09-13T20:07:26.055155Z",
+      "license": "Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/apache/datafusion-sqlparser-rs",
+      "downloads": 15577744
+    },
+    "cargo:sqlx": {
+      "source": "https://crates.io/api/v1/crates/sqlx",
+      "latest": "0.9.0",
+      "lastRelease": "2026-05-21T17:35:53.403466Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/launchbadge/sqlx",
+      "downloads": 49996326
+    },
+    "cargo:stacker": {
+      "source": "https://crates.io/api/v1/crates/stacker",
+      "latest": "0.1.25",
+      "lastRelease": "2026-08-02T09:31:06.457261Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/rust-lang/stacker",
+      "downloads": 33765887
+    },
+    "cargo:subtle": {
+      "source": "https://crates.io/api/v1/crates/subtle",
+      "latest": "2.6.1",
+      "lastRelease": "2024-06-24T17:25:24.458503Z",
+      "license": "BSD-3-Clause",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/dalek-cryptography/subtle",
+      "downloads": 201065302
+    },
+    "cargo:syn": {
+      "source": "https://crates.io/api/v1/crates/syn",
+      "latest": "3.0.9",
+      "lastRelease": "2026-10-12T15:04:09.212573Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/dtolnay/syn",
+      "downloads": 768693743
+    },
+    "cargo:tauri": {
+      "source": "https://crates.io/api/v1/crates/tauri",
+      "latest": "3.0.0-alpha.5",
+      "lastRelease": "2026-10-21T11:54:45.622972Z",
+      "license": "Apache-2.0 OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tauri-apps/tauri",
+      "downloads": 15698798
+    },
+    "cargo:tauri-build": {
+      "source": "https://crates.io/api/v1/crates/tauri-build",
+      "latest": "3.0.0-alpha.4",
+      "lastRelease": "2026-10-21T11:53:41.144795Z",
+      "license": "Apache-2.0 OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tauri-apps/tauri",
+      "downloads": 15774256
+    },
+    "cargo:tauri-plugin-deep-link": {
+      "source": "https://crates.io/api/v1/crates/tauri-plugin-deep-link",
+      "latest": "3.0.0-alpha.3",
+      "lastRelease": "2026-10-14T21:47:21.651520Z",
+      "license": "Apache-2.0 OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tauri-apps/plugins-workspace",
+      "downloads": 3277728
+    },
+    "cargo:tauri-plugin-opener": {
+      "source": "https://crates.io/api/v1/crates/tauri-plugin-opener",
+      "latest": "3.0.0-alpha.3",
+      "lastRelease": "2026-10-14T21:48:25.273280Z",
+      "license": "Apache-2.0 OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tauri-apps/plugins-workspace",
+      "downloads": 6691970
+    },
+    "cargo:tauri-plugin-single-instance": {
+      "source": "https://crates.io/api/v1/crates/tauri-plugin-single-instance",
+      "latest": "3.0.0-alpha.3",
+      "lastRelease": "2026-10-14T21:51:19.171958Z",
+      "license": "Apache-2.0 OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tauri-apps/plugins-workspace",
+      "downloads": 5429373
+    },
+    "cargo:tauri-plugin-updater": {
+      "source": "https://crates.io/api/v1/crates/tauri-plugin-updater",
+      "latest": "3.0.0-alpha.3",
+      "lastRelease": "2026-10-14T21:51:57.585615Z",
+      "license": "Apache-2.0 OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tauri-apps/plugins-workspace",
+      "downloads": 6141953
+    },
+    "cargo:tauri-plugin-window-state": {
+      "source": "https://crates.io/api/v1/crates/tauri-plugin-window-state",
+      "latest": "3.0.0-alpha.2",
+      "lastRelease": "2026-09-30T15:55:44.596718Z",
+      "license": "Apache-2.0 OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tauri-apps/plugins-workspace",
+      "downloads": 2266221
+    },
+    "cargo:tempfile": {
+      "source": "https://crates.io/api/v1/crates/tempfile",
+      "latest": "3.27.0",
+      "lastRelease": "2026-03-11T00:20:04.812840Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/Stebalien/tempfile",
+      "downloads": 222329927
+    },
+    "cargo:thiserror": {
+      "source": "https://crates.io/api/v1/crates/thiserror",
+      "latest": "2.0.21",
+      "lastRelease": "2026-09-23T20:24:07.771104Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/dtolnay/thiserror",
+      "downloads": 457287300
+    },
+    "cargo:time": {
+      "source": "https://crates.io/api/v1/crates/time",
+      "latest": "0.3.55",
+      "lastRelease": "2026-08-01T08:08:34.139758Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/time-rs/time",
+      "downloads": 215935311
+    },
+    "cargo:tokio": {
+      "source": "https://crates.io/api/v1/crates/tokio",
+      "latest": "1.54.1",
+      "lastRelease": "2026-10-21T21:05:43.950213Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tokio-rs/tokio",
+      "downloads": 272877114
+    },
+    "cargo:tokio-rustls": {
+      "source": "https://crates.io/api/v1/crates/tokio-rustls",
+      "latest": "0.26.6",
+      "lastRelease": "2026-09-28T09:18:10.392472Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/rustls/tokio-rustls",
+      "downloads": 210449880
+    },
+    "cargo:tower": {
+      "source": "https://crates.io/api/v1/crates/tower",
+      "latest": "0.5.3",
+      "lastRelease": "2026-01-12T18:43:05.227461Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tower-rs/tower",
+      "downloads": 210124167
+    },
+    "cargo:tower-http": {
+      "source": "https://crates.io/api/v1/crates/tower-http",
+      "latest": "0.7.1",
+      "lastRelease": "2026-08-31T14:49:25.697237Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tower-rs/tower-http",
+      "downloads": 189004442
+    },
+    "cargo:tracing": {
+      "source": "https://crates.io/api/v1/crates/tracing",
+      "latest": "0.1.44",
+      "lastRelease": "2025-12-18T14:26:12.360139Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tokio-rs/tracing",
+      "downloads": 236630937
+    },
+    "cargo:tracing-opentelemetry": {
+      "source": "https://crates.io/api/v1/crates/tracing-opentelemetry",
+      "latest": "0.34.0",
+      "lastRelease": "2026-09-23T08:25:46.694649Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tokio-rs/tracing-opentelemetry",
+      "downloads": 54940124
+    },
+    "cargo:tracing-subscriber": {
+      "source": "https://crates.io/api/v1/crates/tracing-subscriber",
+      "latest": "0.3.23",
+      "lastRelease": "2026-03-13T10:04:15.571048Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/tokio-rs/tracing",
+      "downloads": 171166868
+    },
+    "cargo:umya-spreadsheet": {
+      "source": "https://crates.io/api/v1/crates/umya-spreadsheet",
+      "latest": "4.0.0-beta.1",
+      "lastRelease": "2026-10-26T04:49:44.660135Z",
+      "license": "MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/MathNya/umya-spreadsheet",
+      "downloads": 507583
+    },
+    "cargo:unicode-normalization": {
+      "source": "https://crates.io/api/v1/crates/unicode-normalization",
+      "latest": "0.1.26",
+      "lastRelease": "2026-10-16T23:28:29.955206Z",
+      "license": "(MIT OR Apache-2.0) AND Unicode-3.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/unicode-rs/unicode-normalization",
+      "downloads": 126996008
+    },
+    "cargo:url": {
+      "source": "https://crates.io/api/v1/crates/url",
+      "latest": "2.5.8",
+      "lastRelease": "2026-01-05T22:14:31.414927Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/servo/rust-url",
+      "downloads": 227764038
+    },
+    "cargo:uuid": {
+      "source": "https://crates.io/api/v1/crates/uuid",
+      "latest": "1.29.0",
+      "lastRelease": "2026-10-23T09:59:10.723650Z",
+      "license": "Apache-2.0 OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/uuid-rs/uuid",
+      "downloads": 226455628
+    },
+    "cargo:webauthn-authenticator-rs": {
+      "source": "https://crates.io/api/v1/crates/webauthn-authenticator-rs",
+      "latest": "0.6.1-dev",
+      "lastRelease": "2026-04-30T02:14:45.041705Z",
+      "license": "MPL-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/kanidm/webauthn-rs",
+      "downloads": 1271736
+    },
+    "cargo:webauthn-rs": {
+      "source": "https://crates.io/api/v1/crates/webauthn-rs",
+      "latest": "0.6.1-dev",
+      "lastRelease": "2026-04-30T02:03:55.653656Z",
+      "license": "MPL-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/kanidm/webauthn-rs",
+      "downloads": 2979671
+    },
+    "cargo:webauthn-rs-proto": {
+      "source": "https://crates.io/api/v1/crates/webauthn-rs-proto",
+      "latest": "0.6.1-dev",
+      "lastRelease": "2026-04-30T02:02:58.344667Z",
+      "license": "MPL-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/kanidm/webauthn-rs",
+      "downloads": 3459453
+    },
+    "cargo:webpki-roots": {
+      "source": "https://crates.io/api/v1/crates/webpki-roots",
+      "latest": "1.0.11",
+      "lastRelease": "2026-10-23T08:25:08.250247Z",
+      "license": "CDLA-Permissive-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/rustls/webpki-roots",
+      "downloads": 226842453
+    },
+    "cargo:windows-registry": {
+      "source": "https://crates.io/api/v1/crates/windows-registry",
+      "latest": "0.100.0",
+      "lastRelease": "2026-09-03T16:43:10.320902Z",
+      "license": "MIT OR Apache-2.0",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/microsoft/windows-rs",
+      "downloads": 43681483
+    },
+    "cargo:zeroize": {
+      "source": "https://crates.io/api/v1/crates/zeroize",
+      "latest": "1.9.1",
+      "lastRelease": "2026-10-06T17:49:21.148259Z",
+      "license": "Apache-2.0 OR MIT",
+      "maintainers": "registry owners not yet independently reviewed",
+      "repository": "https://github.com/RustCrypto/utils",
+      "downloads": 221590862
+    },
+    "npm:@axe-core/playwright": {
+      "source": "https://registry.npmjs.org/%40axe-core%2Fplaywright",
+      "latest": "4.14.0",
+      "lastRelease": "2026-10-15T13:33:17.706Z",
+      "license": "MPL-2.0",
+      "maintainers": [
+        "dqlabs",
+        "wilcofiers",
+        "dylanb",
+        "npmdeque",
+        "stephendeque"
+      ],
+      "repository": {
+        "url": "git+https://github.com/dequelabs/axe-core-npm.git",
+        "type": "git"
+      },
+      "unpackedBytes": 47795,
+      "downloads": {
+        "downloads": 10033245,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "@axe-core/playwright"
+      }
+    },
+    "npm:@internationalized/date": {
+      "source": "https://registry.npmjs.org/%40internationalized%2Fdate",
+      "latest": "3.12.4",
+      "lastRelease": "2026-09-01T14:27:23.965Z",
+      "license": "Apache-2.0",
+      "maintainers": [
+        "devongovett",
+        "aspro83"
+      ],
+      "repository": {
+        "url": "https://github.com/adobe/react-spectrum/tree/main/packages/@internationalized/date",
+        "type": "git"
+      },
+      "unpackedBytes": 1224987,
+      "downloads": {
+        "downloads": 11094952,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "@internationalized/date"
+      }
+    },
+    "npm:@playwright/test": {
+      "source": "https://registry.npmjs.org/%40playwright%2Ftest",
+      "latest": "1.64.1",
+      "lastRelease": "2026-10-14T11:58:13.696Z",
+      "license": "Apache-2.0",
+      "maintainers": [
+        "pavelfeldman",
+        "yurys",
+        "dgozman-ms",
+        "microsoft-oss-releases",
+        "microsoft1es"
+      ],
+      "repository": {
+        "url": "git+https://github.com/microsoft/playwright.git",
+        "type": "git"
+      },
+      "unpackedBytes": 28542,
+      "downloads": {
+        "downloads": 49812826,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "@playwright/test"
+      }
+    },
+    "npm:@stryker-mutator/core": {
+      "source": "https://registry.npmjs.org/%40stryker-mutator%2Fcore",
+      "latest": "10.1.1",
+      "lastRelease": "2026-10-23T19:18:22.458Z",
+      "license": "Apache-2.0",
+      "maintainers": [
+        "nicojs",
+        "simondel",
+        "strykermutator-npa"
+      ],
+      "repository": {
+        "url": "git+https://github.com/stryker-mutator/stryker-js.git",
+        "type": "git",
+        "directory": "packages/core"
+      },
+      "unpackedBytes": 1230542,
+      "downloads": {
+        "downloads": 2515194,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "@stryker-mutator/core"
+      }
+    },
+    "npm:@tanstack/react-query": {
+      "source": "https://registry.npmjs.org/%40tanstack%2Freact-query",
+      "latest": "5.104.5",
+      "lastRelease": "2026-10-19T16:57:50.440Z",
+      "license": "MIT",
+      "maintainers": [
+        "tannerlinsley",
+        "alemtuzlak",
+        "kevinvandy"
+      ],
+      "repository": {
+        "url": "git+https://github.com/TanStack/query.git",
+        "type": "git",
+        "directory": "packages/react-query"
+      },
+      "unpackedBytes": 1796659,
+      "downloads": {
+        "downloads": 42710852,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "@tanstack/react-query"
+      }
+    },
+    "npm:@tanstack/react-router": {
+      "source": "https://registry.npmjs.org/%40tanstack%2Freact-router",
+      "latest": "1.170.46",
+      "lastRelease": "2026-10-22T20:10:14.318Z",
+      "license": "MIT",
+      "maintainers": [
+        "tannerlinsley",
+        "alemtuzlak",
+        "kevinvandy"
+      ],
+      "repository": {
+        "url": "git+https://github.com/TanStack/router.git",
+        "type": "git",
+        "directory": "packages/react-router"
+      },
+      "unpackedBytes": 1073323,
+      "downloads": {
+        "downloads": 12785350,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "@tanstack/react-router"
+      }
+    },
+    "npm:@types/node": {
+      "source": "https://registry.npmjs.org/%40types%2Fnode",
+      "latest": "26.6.5",
+      "lastRelease": "2026-10-09T18:46:47.657Z",
+      "license": "MIT",
+      "maintainers": [
+        "types"
+      ],
+      "repository": {
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "type": "git",
+        "directory": "types/node"
+      },
+      "unpackedBytes": 2546175,
+      "downloads": {
+        "downloads": 296109529,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "@types/node"
+      }
+    },
+    "npm:@types/react": {
+      "source": "https://registry.npmjs.org/%40types%2Freact",
+      "latest": "19.3.0",
+      "lastRelease": "2026-09-09T18:08:49.750Z",
+      "license": "MIT",
+      "maintainers": [
+        "types"
+      ],
+      "repository": {
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "type": "git",
+        "directory": "types/react"
+      },
+      "unpackedBytes": 408108,
+      "downloads": {
+        "downloads": 112703929,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "@types/react"
+      }
+    },
+    "npm:@types/react-dom": {
+      "source": "https://registry.npmjs.org/%40types%2Freact-dom",
+      "latest": "19.3.0",
+      "lastRelease": "2026-09-09T18:07:51.886Z",
+      "license": "MIT",
+      "maintainers": [
+        "types"
+      ],
+      "repository": {
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "type": "git",
+        "directory": "types/react-dom"
+      },
+      "unpackedBytes": 32862,
+      "downloads": {
+        "downloads": 96961133,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "@types/react-dom"
+      }
+    },
+    "npm:@vitejs/plugin-react": {
+      "source": "https://registry.npmjs.org/%40vitejs%2Fplugin-react",
+      "latest": "6.1.2",
+      "lastRelease": "2026-10-05T10:08:27.143Z",
+      "license": "MIT",
+      "maintainers": [
+        "yyx990803",
+        "vitebot"
+      ],
+      "repository": {
+        "url": "git+https://github.com/vitejs/vite-plugin-react.git",
+        "type": "git",
+        "directory": "packages/plugin-react"
+      },
+      "unpackedBytes": 46296,
+      "downloads": {
+        "downloads": 63341472,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "@vitejs/plugin-react"
+      }
+    },
+    "npm:exceljs": {
+      "source": "https://registry.npmjs.org/exceljs",
+      "latest": "4.4.0",
+      "lastRelease": "2023-10-19T19:49:55.669Z",
+      "license": "MIT",
+      "maintainers": [
+        "guyonroche",
+        "siemienik"
+      ],
+      "repository": {
+        "url": "git+https://github.com/exceljs/exceljs.git",
+        "type": "git"
+      },
+      "unpackedBytes": 21825509,
+      "downloads": {
+        "downloads": 11801759,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "exceljs"
+      }
+    },
+    "npm:intl-messageformat": {
+      "source": "https://registry.npmjs.org/intl-messageformat",
+      "latest": "12.1.4",
+      "lastRelease": "2026-10-19T23:41:01.448Z",
+      "license": "BSD-3-Clause",
+      "maintainers": [
+        "longlho",
+        "redonkulus",
+        "pyrocat"
+      ],
+      "repository": {
+        "url": "git@github.com:formatjs/formatjs.git",
+        "type": "git"
+      },
+      "unpackedBytes": 117556,
+      "downloads": {
+        "downloads": 14026170,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "intl-messageformat"
+      }
+    },
+    "npm:lucide-react": {
+      "source": "https://registry.npmjs.org/lucide-react",
+      "latest": "1.61.0",
+      "lastRelease": "2026-10-21T06:12:38.158Z",
+      "license": "ISC",
+      "maintainers": [
+        "ericfennis"
+      ],
+      "repository": {
+        "url": "https://github.com/lucide-icons/lucide.git",
+        "type": "git",
+        "directory": "packages/lucide-react"
+      },
+      "unpackedBytes": 36339823,
+      "downloads": {
+        "downloads": 70598744,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "lucide-react"
+      }
+    },
+    "npm:openapi-fetch": {
+      "source": "https://registry.npmjs.org/openapi-fetch",
+      "latest": "0.17.0",
+      "lastRelease": "2026-02-11T16:02:21.454Z",
+      "license": "MIT",
+      "maintainers": [
+        "drewpowers",
+        "mpaucot",
+        "gzm0"
+      ],
+      "repository": {
+        "url": "git+https://github.com/openapi-ts/openapi-typescript.git",
+        "type": "git",
+        "directory": "packages/openapi-fetch"
+      },
+      "unpackedBytes": 228795,
+      "downloads": {
+        "downloads": 7135067,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "openapi-fetch"
+      }
+    },
+    "npm:openapi-typescript": {
+      "source": "https://registry.npmjs.org/openapi-typescript",
+      "latest": "7.13.0",
+      "lastRelease": "2026-02-11T16:02:25.378Z",
+      "license": "MIT",
+      "maintainers": [
+        "drewpowers",
+        "gzm0"
+      ],
+      "repository": {
+        "url": "git+https://github.com/openapi-ts/openapi-typescript.git",
+        "type": "git",
+        "directory": "packages/openapi-typescript"
+      },
+      "unpackedBytes": 878193,
+      "downloads": {
+        "downloads": 6455689,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "openapi-typescript"
+      }
+    },
+    "npm:oxlint": {
+      "source": "https://registry.npmjs.org/oxlint",
+      "latest": "1.89.0",
+      "lastRelease": "2026-10-19T17:24:22.105Z",
+      "license": "MIT",
+      "maintainers": [
+        "boshen"
+      ],
+      "repository": {
+        "url": "git+https://github.com/oxc-project/oxc",
+        "type": "git",
+        "directory": "npm/oxlint"
+      },
+      "unpackedBytes": 2416011,
+      "downloads": {
+        "downloads": 18019127,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "oxlint"
+      }
+    },
+    "npm:pretendard": {
+      "source": "https://registry.npmjs.org/pretendard",
+      "latest": "1.3.9",
+      "lastRelease": "2023-11-05T18:22:53.187Z",
+      "license": "OFL-1.1",
+      "maintainers": [
+        "orioncactus",
+        "phoary"
+      ],
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/orioncactus/pretendard",
+        "directory": "packages/pretendard"
+      },
+      "unpackedBytes": 97653151,
+      "downloads": {
+        "downloads": 230986,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "pretendard"
+      }
+    },
+    "npm:qs": {
+      "source": "https://registry.npmjs.org/qs",
+      "latest": "6.16.1",
+      "lastRelease": "2026-10-14T22:06:17.002Z",
+      "license": "BSD-3-Clause",
+      "maintainers": [
+        "nlf",
+        "ljharb"
+      ],
+      "repository": {
+        "url": "git+https://github.com/ljharb/qs.git",
+        "type": "git"
+      },
+      "unpackedBytes": 418793,
+      "downloads": {
+        "downloads": 121426210,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "qs"
+      }
+    },
+    "npm:react": {
+      "source": "https://registry.npmjs.org/react",
+      "latest": "19.3.1",
+      "lastRelease": "2026-10-14T16:47:15.290Z",
+      "license": "MIT",
+      "maintainers": [
+        "fb",
+        "react-bot"
+      ],
+      "repository": {
+        "url": "git+https://github.com/react/react.git",
+        "type": "git",
+        "directory": "packages/react"
+      },
+      "unpackedBytes": 178663,
+      "downloads": {
+        "downloads": 123680288,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "react"
+      }
+    },
+    "npm:react-aria-components": {
+      "source": "https://registry.npmjs.org/react-aria-components",
+      "latest": "1.22.1",
+      "lastRelease": "2026-10-09T20:23:49.939Z",
+      "license": "Apache-2.0",
+      "maintainers": [
+        "devongovett",
+        "aspro83"
+      ],
+      "repository": {
+        "url": "git+https://github.com/adobe/react-spectrum.git",
+        "type": "git"
+      },
+      "unpackedBytes": 6935582,
+      "downloads": {
+        "downloads": 3263395,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "react-aria-components"
+      }
+    },
+    "npm:react-dom": {
+      "source": "https://registry.npmjs.org/react-dom",
+      "latest": "19.3.1",
+      "lastRelease": "2026-10-14T16:49:10.081Z",
+      "license": "MIT",
+      "maintainers": [
+        "fb",
+        "react-bot"
+      ],
+      "repository": {
+        "url": "git+https://github.com/react/react.git",
+        "type": "git",
+        "directory": "packages/react-dom"
+      },
+      "unpackedBytes": 8067632,
+      "downloads": {
+        "downloads": 116435539,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "react-dom"
+      }
+    },
+    "npm:stylelint": {
+      "source": "https://registry.npmjs.org/stylelint",
+      "latest": "17.16.0",
+      "lastRelease": "2026-10-01T10:17:13.977Z",
+      "license": "MIT",
+      "maintainers": [
+        "jeddy3",
+        "ybiquitous",
+        "romainmenke",
+        "ntwb"
+      ],
+      "repository": {
+        "url": "git+https://github.com/stylelint/stylelint.git",
+        "type": "git"
+      },
+      "unpackedBytes": 987484,
+      "downloads": {
+        "downloads": 6162972,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "stylelint"
+      }
+    },
+    "npm:stylelint-declaration-strict-value": {
+      "source": "https://registry.npmjs.org/stylelint-declaration-strict-value",
+      "latest": "1.12.1",
+      "lastRelease": "2026-08-24T18:56:29.569Z",
+      "license": "MIT",
+      "maintainers": [
+        "andyogo"
+      ],
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/AndyOGo/stylelint-declaration-strict-value.git"
+      },
+      "unpackedBytes": 1092289,
+      "downloads": {
+        "downloads": 380791,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "stylelint-declaration-strict-value"
+      }
+    },
+    "npm:typescript": {
+      "source": "https://registry.npmjs.org/typescript",
+      "latest": "7.0.2",
+      "lastRelease": "2026-07-08T15:55:18.431Z",
+      "license": "Apache-2.0",
+      "maintainers": [
+        "microsoft1es",
+        "typescript-bot",
+        "weswigham",
+        "andrewbranch",
+        "typescript-deploys",
+        "microsoft-oss-releases",
+        "jakebailey"
+      ],
+      "repository": {
+        "url": "git+https://github.com/microsoft/TypeScript.git",
+        "type": "git"
+      },
+      "unpackedBytes": 2497498,
+      "downloads": {
+        "downloads": 196209861,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "typescript"
+      }
+    },
+    "npm:uuid": {
+      "source": "https://registry.npmjs.org/uuid",
+      "latest": "14.0.3",
+      "lastRelease": "2026-10-10T00:30:19.423Z",
+      "license": "MIT",
+      "maintainers": [
+        "broofa",
+        "ctavan"
+      ],
+      "repository": {
+        "url": "git+https://github.com/uuidjs/uuid.git",
+        "type": "git"
+      },
+      "unpackedBytes": 65739,
+      "downloads": {
+        "downloads": 187343522,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "uuid"
+      }
+    },
+    "npm:vite": {
+      "source": "https://registry.npmjs.org/vite",
+      "latest": "8.3.5",
+      "lastRelease": "2026-10-21T06:38:54.907Z",
+      "license": "MIT",
+      "maintainers": [
+        "yyx990803",
+        "vitebot"
+      ],
+      "repository": {
+        "url": "git+https://github.com/vitejs/vite.git",
+        "type": "git",
+        "directory": "packages/vite"
+      },
+      "unpackedBytes": 2383283,
+      "downloads": {
+        "downloads": 127196570,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "vite"
+      }
+    },
+    "npm:vitest": {
+      "source": "https://registry.npmjs.org/vitest",
+      "latest": "5.0.5",
+      "lastRelease": "2026-10-15T14:29:01.396Z",
+      "license": "MIT",
+      "maintainers": [
+        "ariperkkio",
+        "antfu",
+        "hiogawa",
+        "oreanno",
+        "yyx990803"
+      ],
+      "repository": {
+        "url": "git+https://github.com/vitest-dev/vitest.git",
+        "type": "git",
+        "directory": "packages/vitest"
+      },
+      "unpackedBytes": 2817789,
+      "downloads": {
+        "downloads": 83654107,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "vitest"
+      }
+    },
+    "npm:zod": {
+      "source": "https://registry.npmjs.org/zod",
+      "latest": "4.6.7",
+      "lastRelease": "2026-10-12T16:29:37.778Z",
+      "license": "MIT",
+      "maintainers": [
+        "colinhacks"
+      ],
+      "repository": {
+        "url": "git+https://github.com/colinhacks/zod.git",
+        "type": "git"
+      },
+      "unpackedBytes": 6148944,
+      "downloads": {
+        "downloads": 221643257,
+        "start": "2026-10-16",
+        "end": "2026-10-22",
+        "package": "zod"
+      }
+    },
+    "action:actions/attest": {
+      "source": "https://api.github.com/repos/actions/attest",
+      "latest": "v4.2.2",
+      "lastRelease": "2026-08-04T20:36:29Z",
+      "license": "MIT",
+      "maintainers": "actions",
+      "archived": false,
+      "repository": "https://github.com/actions/attest"
+    },
+    "action:actions/attest-build-provenance": {
+      "source": "https://api.github.com/repos/actions/attest-build-provenance",
+      "latest": "v4.2.2",
+      "lastRelease": "2026-08-06T19:59:04Z",
+      "license": "MIT",
+      "maintainers": "actions",
+      "archived": false,
+      "repository": "https://github.com/actions/attest-build-provenance"
+    },
+    "action:actions/attest-sbom": {
+      "source": "https://api.github.com/repos/actions/attest-sbom",
+      "latest": "v4.1.0",
+      "lastRelease": "2026-03-18T19:03:45Z",
+      "license": "MIT",
+      "maintainers": "actions",
+      "archived": false,
+      "repository": "https://github.com/actions/attest-sbom"
+    },
+    "action:actions/checkout": {
+      "source": "https://api.github.com/repos/actions/checkout",
+      "latest": "v7.0.1",
+      "lastRelease": "2026-07-20T15:10:05Z",
+      "license": "MIT",
+      "maintainers": "actions",
+      "archived": false,
+      "repository": "https://github.com/actions/checkout"
+    },
+    "action:actions/download-artifact": {
+      "source": "https://api.github.com/repos/actions/download-artifact",
+      "latest": "v8.0.2",
+      "lastRelease": "2026-10-07T10:09:51Z",
+      "license": "MIT",
+      "maintainers": "actions",
+      "archived": false,
+      "repository": "https://github.com/actions/download-artifact"
+    },
+    "action:actions/github-script": {
+      "source": "https://api.github.com/repos/actions/github-script",
+      "latest": "v9.0.0",
+      "lastRelease": "2026-04-09T22:57:15Z",
+      "license": "MIT",
+      "maintainers": "actions",
+      "archived": false,
+      "repository": "https://github.com/actions/github-script"
+    },
+    "action:actions/setup-node": {
+      "source": "https://api.github.com/repos/actions/setup-node",
+      "latest": "v7.1.0",
+      "lastRelease": "2026-10-08T02:52:34Z",
+      "license": "MIT",
+      "maintainers": "actions",
+      "archived": false,
+      "repository": "https://github.com/actions/setup-node"
+    },
+    "action:actions/upload-artifact": {
+      "source": "https://api.github.com/repos/actions/upload-artifact",
+      "latest": "v7.0.2",
+      "lastRelease": "2026-10-07T10:08:14Z",
+      "license": "MIT",
+      "maintainers": "actions",
+      "archived": false,
+      "repository": "https://github.com/actions/upload-artifact"
+    },
+    "action:github/codeql-action/analyze": {
+      "source": "https://api.github.com/repos/github/codeql-action",
+      "latest": "codeql-bundle-v2.27.3",
+      "lastRelease": "2026-10-20T16:51:44Z",
+      "license": "MIT",
+      "maintainers": "github",
+      "archived": false,
+      "repository": "https://github.com/github/codeql-action"
+    },
+    "action:github/codeql-action/init": {
+      "source": "https://api.github.com/repos/github/codeql-action",
+      "latest": "codeql-bundle-v2.27.3",
+      "lastRelease": "2026-10-20T16:51:44Z",
+      "license": "MIT",
+      "maintainers": "github",
+      "archived": false,
+      "repository": "https://github.com/github/codeql-action"
+    },
+    "action:step-security/harden-runner": {
+      "source": "https://api.github.com/repos/step-security/harden-runner",
+      "latest": "v2.22.2",
+      "lastRelease": "2026-10-19T16:55:35Z",
+      "license": "Apache-2.0",
+      "maintainers": "step-security",
+      "archived": false,
+      "repository": "https://github.com/step-security/harden-runner"
+    },
+    "ci-source:apache-license": {
+      "source": "https://api.github.com/repos/fluxcd/flux2",
+      "latest": "v2.9.6",
+      "lastRelease": "2026-10-01T09:56:48Z",
+      "license": "Apache-2.0",
+      "maintainers": "fluxcd",
+      "archived": false,
+      "repository": "https://github.com/fluxcd/flux2"
+    },
+    "ci-source:barman": {
+      "source": "https://api.github.com/repos/cloudnative-pg/plugin-barman-cloud",
+      "latest": "v0.15.1",
+      "lastRelease": "2026-09-30T13:34:15Z",
+      "license": "Apache-2.0",
+      "maintainers": "cloudnative-pg",
+      "archived": false,
+      "repository": "https://github.com/cloudnative-pg/plugin-barman-cloud"
+    },
+    "ci-source:cert-manager": {
+      "source": "https://api.github.com/repos/cert-manager/cert-manager",
+      "latest": "v1.21.3",
+      "lastRelease": "2026-10-23T20:47:13Z",
+      "license": "Apache-2.0",
+      "maintainers": "cert-manager",
+      "archived": false,
+      "repository": "https://github.com/cert-manager/cert-manager"
+    },
+    "ci-source:cnpg": {
+      "source": "https://api.github.com/repos/cloudnative-pg/cloudnative-pg",
+      "latest": "v1.30.1",
+      "lastRelease": "2026-09-23T13:35:42Z",
+      "license": "Apache-2.0",
+      "maintainers": "cloudnative-pg",
+      "archived": false,
+      "repository": "https://github.com/cloudnative-pg/cloudnative-pg"
+    },
+    "ci-source:eso": {
+      "source": "https://api.github.com/repos/external-secrets/external-secrets",
+      "latest": "helm-chart-2.14.0",
+      "lastRelease": "2026-10-23T16:22:37Z",
+      "license": "Apache-2.0",
+      "maintainers": "external-secrets",
+      "archived": false,
+      "repository": "https://github.com/external-secrets/external-secrets"
+    },
+    "ci-source:external-secrets": {
+      "source": "https://api.github.com/repos/external-secrets/external-secrets",
+      "latest": "helm-chart-2.14.0",
+      "lastRelease": "2026-10-23T16:22:37Z",
+      "license": "Apache-2.0",
+      "maintainers": "external-secrets",
+      "archived": false,
+      "repository": "https://github.com/external-secrets/external-secrets"
+    },
+    "ci-source:kubernetes-openapi": {
+      "source": "https://api.github.com/repos/kubernetes/kubernetes",
+      "latest": "v1.37.1",
+      "lastRelease": "2026-09-23T19:13:17Z",
+      "license": "Apache-2.0",
+      "maintainers": "kubernetes",
+      "archived": false,
+      "repository": "https://github.com/kubernetes/kubernetes"
+    },
+    "ci-source:kubernetes-schema": {
+      "source": "https://api.github.com/repos/yannh/kubernetes-json-schema",
+      "unavailable": "https://api.github.com/repos/yannh/kubernetes-json-schema/releases/latest: HTTP 404"
+    },
+    "ci-source:policy-chart": {
+      "source": "https://api.github.com/repos/sigstore/helm-charts",
+      "latest": "rekor-tiles-1.3.0",
+      "lastRelease": "2026-10-23T03:18:40Z",
+      "license": "Apache-2.0",
+      "maintainers": "sigstore",
+      "archived": false,
+      "repository": "https://github.com/sigstore/helm-charts"
+    },
+    "ci-source:policy-controller": {
+      "source": "https://api.github.com/repos/sigstore/helm-charts",
+      "latest": "rekor-tiles-1.3.0",
+      "lastRelease": "2026-10-23T03:18:40Z",
+      "license": "Apache-2.0",
+      "maintainers": "sigstore",
+      "archived": false,
+      "repository": "https://github.com/sigstore/helm-charts"
+    },
+    "ci-source:rollouts": {
+      "source": "https://api.github.com/repos/argoproj/argo-rollouts",
+      "latest": "v1.10.1",
+      "lastRelease": "2026-10-12T13:16:45Z",
+      "license": "Apache-2.0",
+      "maintainers": "argoproj",
+      "archived": false,
+      "repository": "https://github.com/argoproj/argo-rollouts"
+    },
+    "ci-tool:actionlint": {
+      "source": "https://api.github.com/repos/rhysd/actionlint",
+      "unavailable": "https://api.github.com/repos/rhysd/actionlint: HTTP 403"
+    },
+    "ci-tool:buildx": {
+      "source": "https://api.github.com/repos/docker/buildx",
+      "unavailable": "https://api.github.com/repos/docker/buildx: HTTP 403"
+    },
+    "ci-tool:conftest": {
+      "source": "https://api.github.com/repos/open-policy-agent/conftest",
+      "unavailable": "https://api.github.com/repos/open-policy-agent/conftest/releases/latest: HTTP 403"
+    },
+    "ci-tool:cosign": {
+      "source": "https://api.github.com/repos/sigstore/cosign",
+      "unavailable": "https://api.github.com/repos/sigstore/cosign: HTTP 403"
+    },
+    "ci-tool:flux": {
+      "source": "https://api.github.com/repos/fluxcd/flux2",
+      "latest": "v2.9.6",
+      "lastRelease": "2026-10-01T09:56:48Z",
+      "license": "Apache-2.0",
+      "maintainers": "fluxcd",
+      "archived": false,
+      "repository": "https://github.com/fluxcd/flux2"
+    },
+    "ci-tool:gitleaks": {
+      "source": "https://api.github.com/repos/gitleaks/gitleaks",
+      "unavailable": "https://api.github.com/repos/gitleaks/gitleaks: HTTP 403"
+    },
+    "ci-tool:helm": {
+      "source": "https://api.github.com/repos/helm/helm",
+      "unavailable": "https://api.github.com/repos/helm/helm/releases/latest: HTTP 403"
+    },
+    "ci-tool:kind": {
+      "source": "https://api.github.com/repos/kubernetes-sigs/kind",
+      "unavailable": "https://api.github.com/repos/kubernetes-sigs/kind/releases/latest: HTTP 403"
+    },
+    "ci-tool:kubeconform": {
+      "source": "https://api.github.com/repos/yannh/kubeconform",
+      "unavailable": "https://api.github.com/repos/yannh/kubeconform/releases/latest: HTTP 403"
+    },
+    "ci-tool:kubectl": {
+      "source": "https://api.github.com/repos/kubernetes/kubernetes",
+      "latest": "v1.37.1",
+      "lastRelease": "2026-09-23T19:13:17Z",
+      "license": "Apache-2.0",
+      "maintainers": "kubernetes",
+      "archived": false,
+      "repository": "https://github.com/kubernetes/kubernetes"
+    },
+    "ci-tool:kustomize": {
+      "source": "https://api.github.com/repos/kubernetes-sigs/kustomize",
+      "unavailable": "https://api.github.com/repos/kubernetes-sigs/kustomize: HTTP 403"
+    },
+    "ci-tool:syft": {
+      "source": "https://api.github.com/repos/anchore/syft",
+      "unavailable": "https://api.github.com/repos/anchore/syft: HTTP 403"
+    },
+    "container:docker.io/chrislusf/seaweedfs": {
+      "source": "https://api.github.com/repos/chrislusf/seaweedfs",
+      "unavailable": "https://api.github.com/repos/chrislusf/seaweedfs: HTTP 403"
+    },
+    "container:docker.io/kindest/node": {
+      "source": "https://api.github.com/repos/kubernetes-sigs/kind",
+      "unavailable": "https://api.github.com/repos/kubernetes-sigs/kind: HTTP 403"
+    },
+    "container:docker.io/library/node": {
+      "source": "https://api.github.com/repos/nodejs/docker-node",
+      "unavailable": "https://api.github.com/repos/nodejs/docker-node/releases/latest: HTTP 403"
+    },
+    "container:docker.io/library/rust": {
+      "source": "https://api.github.com/repos/rust-lang/docker-rust",
+      "unavailable": "https://api.github.com/repos/rust-lang/docker-rust/releases/latest: HTTP 403"
+    },
+    "container:docker.io/moby/buildkit": {
+      "source": "https://api.github.com/repos/moby/buildkit",
+      "unavailable": "https://api.github.com/repos/moby/buildkit/releases/latest: HTTP 403"
+    },
+    "container:gcr.io/distroless/cc-debian12": {
+      "source": "https://api.github.com/repos/GoogleContainerTools/distroless",
+      "unavailable": "https://api.github.com/repos/GoogleContainerTools/distroless/releases/latest: HTTP 403"
+    },
+    "container:ghcr.io/cloudnative-pg/cloudnative-pg": {
+      "source": "https://api.github.com/repos/cloudnative-pg/cloudnative-pg",
+      "latest": "v1.30.1",
+      "lastRelease": "2026-09-23T13:35:42Z",
+      "license": "Apache-2.0",
+      "maintainers": "cloudnative-pg",
+      "archived": false,
+      "repository": "https://github.com/cloudnative-pg/cloudnative-pg"
+    },
+    "container:ghcr.io/cloudnative-pg/plugin-barman-cloud": {
+      "source": "https://api.github.com/repos/cloudnative-pg/plugin-barman-cloud",
+      "latest": "v0.15.1",
+      "lastRelease": "2026-09-30T13:34:15Z",
+      "license": "Apache-2.0",
+      "maintainers": "cloudnative-pg",
+      "archived": false,
+      "repository": "https://github.com/cloudnative-pg/plugin-barman-cloud"
+    },
+    "container:ghcr.io/cloudnative-pg/plugin-barman-cloud-sidecar": {
+      "source": "https://api.github.com/repos/cloudnative-pg/plugin-barman-cloud",
+      "latest": "v0.15.1",
+      "lastRelease": "2026-09-30T13:34:15Z",
+      "license": "Apache-2.0",
+      "maintainers": "cloudnative-pg",
+      "archived": false,
+      "repository": "https://github.com/cloudnative-pg/plugin-barman-cloud"
+    },
+    "container:ghcr.io/cloudnative-pg/postgresql": {
+      "source": "https://api.github.com/repos/cloudnative-pg/postgres-containers",
+      "unavailable": "https://api.github.com/repos/cloudnative-pg/postgres-containers: HTTP 403"
+    },
+    "container:ghcr.io/external-secrets/external-secrets": {
+      "source": "https://api.github.com/repos/external-secrets/external-secrets",
+      "latest": "helm-chart-2.14.0",
+      "lastRelease": "2026-10-23T16:22:37Z",
+      "license": "Apache-2.0",
+      "maintainers": "external-secrets",
+      "archived": false,
+      "repository": "https://github.com/external-secrets/external-secrets"
+    },
+    "container:ghcr.io/fluxcd/kustomize-controller": {
+      "source": "https://api.github.com/repos/fluxcd/kustomize-controller",
+      "unavailable": "https://api.github.com/repos/fluxcd/kustomize-controller/releases/latest: HTTP 403"
+    },
+    "container:ghcr.io/fluxcd/notification-controller": {
+      "source": "https://api.github.com/repos/fluxcd/notification-controller",
+      "unavailable": "https://api.github.com/repos/fluxcd/notification-controller: HTTP 403"
+    },
+    "container:ghcr.io/fluxcd/source-controller": {
+      "source": "https://api.github.com/repos/fluxcd/source-controller",
+      "unavailable": "https://api.github.com/repos/fluxcd/source-controller/releases/latest: HTTP 403"
+    },
+    "container:ghcr.io/oracle/oci-cli": {
+      "source": "https://api.github.com/repos/oracle/oci-cli",
+      "unavailable": "https://api.github.com/repos/oracle/oci-cli: HTTP 403"
+    },
+    "container:ghcr.io/sigstore/policy-controller/policy-controller": {
+      "source": "https://api.github.com/repos/sigstore/policy-controller",
+      "unavailable": "https://api.github.com/repos/sigstore/policy-controller: HTTP 403"
+    },
+    "container:quay.io/argoproj/argo-rollouts": {
+      "source": "https://api.github.com/repos/argoproj/argo-rollouts",
+      "latest": "v1.10.1",
+      "lastRelease": "2026-10-12T13:16:45Z",
+      "license": "Apache-2.0",
+      "maintainers": "argoproj",
+      "archived": false,
+      "repository": "https://github.com/argoproj/argo-rollouts"
+    },
+    "container:quay.io/jetstack/cert-manager-cainjector": {
+      "source": "https://api.github.com/repos/cert-manager/cert-manager",
+      "latest": "v1.21.3",
+      "lastRelease": "2026-10-23T20:47:13Z",
+      "license": "Apache-2.0",
+      "maintainers": "cert-manager",
+      "archived": false,
+      "repository": "https://github.com/cert-manager/cert-manager"
+    },
+    "container:quay.io/jetstack/cert-manager-controller": {
+      "source": "https://api.github.com/repos/cert-manager/cert-manager",
+      "latest": "v1.21.3",
+      "lastRelease": "2026-10-23T20:47:13Z",
+      "license": "Apache-2.0",
+      "maintainers": "cert-manager",
+      "archived": false,
+      "repository": "https://github.com/cert-manager/cert-manager"
+    },
+    "container:quay.io/jetstack/cert-manager-webhook": {
+      "source": "https://api.github.com/repos/cert-manager/cert-manager",
+      "latest": "v1.21.3",
+      "lastRelease": "2026-10-23T20:47:13Z",
+      "license": "Apache-2.0",
+      "maintainers": "cert-manager",
+      "archived": false,
+      "repository": "https://github.com/cert-manager/cert-manager"
+    },
+    "container:rhysd/actionlint": {
+      "source": "https://api.github.com/repos/rhysd/actionlint",
+      "unavailable": "https://api.github.com/repos/rhysd/actionlint/releases/latest: HTTP 403"
+    },
+    "ci-tool:Rust": {
+      "source": "https://api.github.com/repos/rust-lang/rust",
+      "unavailable": "https://api.github.com/repos/rust-lang/rust: HTTP 403"
+    }
+  }
+}
