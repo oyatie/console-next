@@ -87,9 +87,9 @@ export function OrgChanges() {
                 rowId={(c) => c.id}
                 columns={[
                   // Each change opens from its number: a real link, reachable by Tab like any other.
-                  { header: t("orgChange.list.col.code"), cell: (c) => <Link to="/org/changes/$id" params={{ id: c.id }} className={`code ${css.nowrap}`}>{c.code}</Link>, fit: true },
-                  { header: t("orgChange.list.col.change"), cell: (c) => changeTitle(c, n) },
-                  { header: t("orgChange.list.col.status"), cell: (c) => { const s = labeled(ORG_CHANGE_STATUS, c.status); return <Chip tone={s.tone}>{s.label}</Chip>; }, fit: true },
+                  { header: t("orgChange.list.col.code"), cell: (c) => <Link to="/org/changes/$id" params={{ id: c.id }} className={`code ${css.nowrap}`}>{c.code}</Link>, fit: true, card: "title" },
+                  { header: t("orgChange.list.col.change"), cell: (c) => changeTitle(c, n), card: "title" },
+                  { header: t("orgChange.list.col.status"), cell: (c) => { const s = labeled(ORG_CHANGE_STATUS, c.status); return <Chip tone={s.tone}>{s.label}</Chip>; }, fit: true, card: "status" },
                   {
                     header: t("orgChange.list.col.effective"),
                     fit: true,

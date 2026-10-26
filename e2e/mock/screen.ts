@@ -2,10 +2,11 @@
 import type { Page } from "@playwright/test";
 import { mockRoute } from "./route";
 import { AT, authz, checklist, employees, facets, failure, id, inbox, structure, token, user } from "./fixtures";
-import type { Screen, State } from "../states/registry";
+import { orgChange, orgChanges } from "./org-changes";
+import type { OrgChangeState, Screen, State } from "../states/registry";
 
 /** Complete, isolated shell + screen. Any unregistered API request fails the test instead of hitting a server. */
-export async function mockScreen(page: Page, screen: Screen, state: State) {
+export async function mockScreen(page: Page, screen: Screen, state: State | OrgChangeState) {
   const unexpected: string[] = [];
   await page.route(url => url.pathname.startsWith("/api/"), async route => {
     unexpected.push(`${route.request().method()} ${new URL(route.request().url()).pathname}`);
@@ -18,11 +19,12 @@ export async function mockScreen(page: Page, screen: Screen, state: State) {
   await mockRoute(page, "get", "/api/v1/onboarding/checklist", { status: 200, json: checklist });
   await mockRoute(page, "get", "/api/v1/legal-entities", { status: 200, json: { items: [] } });
   await mockRoute(page, "get", "/api/v1/org-units", { status: 200, json: { items: [] } });
+  await mockRoute(page, "get", "/api/v1/regions", { status: 200, json: [] });
+  await mockRoute(page, "get", "/api/v1/branches", { status: 200, json: [] });
   await mockRoute(page, "get", "/api/v1/workplace-kinds", { status: 200, json: { items: [] } });
   await mockRoute(page, "get", "/api/v1/access/granters", { status: 200, json: { count: 1, names: ["김권한담당"] } });
   await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: false, phase: "OPERATING", as_of: AT, entries: [] } });
   await mockRoute(page, "get", "/api/v1/org-structure/change-dates", { status: 200, json: { items: [] } });
-  await mockRoute(page, "get", "/api/v1/org-changes", { status: 200, json: { items: [], total: 0 } });
   await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { items: [] } });
   // route.fulfill buffers bodies; a browser stream keeps the shell healthy without fake reconnects.
   await page.addInitScript(() => {
@@ -64,5 +66,17 @@ export async function mockScreen(page: Page, screen: Screen, state: State) {
     return failed ?? { status: 200, json: { ...queue, items: queue.items.slice(offset, end), next_cursor: end < count ? String(end) : null } };
   });
   await mockRoute(page, "get", "/api/v1/org-structure", async () => (await beforeReply("/api/v1/org-structure")) ?? { status: 200, json: tree });
+  const changes = orgChanges(screen.key === "org-changes" ? count : 0, state === "long");
+  await mockRoute(page, "get", "/api/v1/org-changes", async request => {
+    const failed = await beforeReply("/api/v1/org-changes");
+    const query = new URL(request.url()).searchParams;
+    const statuses = query.getAll("status").flatMap(value => value.split(","));
+    const filtered = changes.filter(row => (!statuses.length || statuses.includes(row.status)) && (!query.has("drafted_by") || row.draftedBy === query.get("drafted_by")) && (!query.has("effective_from") || row.effectiveDate >= query.get("effective_from")!) && (!query.has("effective_to") || row.effectiveDate <= query.get("effective_to")!));
+    const offset = Number(query.get("offset") ?? 0), limit = Number(query.get("limit") ?? 50);
+    return failed ?? { status: 200, json: { items: filtered.slice(offset, offset + limit), total: filtered.length } };
+  });
+  const record = orgChange(state === "empty" ? "populated" : state);
+  await mockRoute(page, "get", "/api/v1/org-changes/{id}", async () => (await beforeReply("/api/v1/org-changes/{id}")) ?? (state === "missing" ? { status: 404, json: failure("not_found") } : { status: 200, json: record }));
+  await mockRoute(page, "post", "/api/v1/org-changes/{id}/preflight", { status: 200, json: record });
   return { unexpected, release, count, operationId: id(99) };
 }
