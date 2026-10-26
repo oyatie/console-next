@@ -3,7 +3,7 @@ import { activeSupportQuery } from "../reference/support-access/api";
 import { ActiveSupportBanner } from "../features/support-access/ui/support-access";
 import { DomainNotice } from "../auth/domain-notice";
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
+import { Link, Outlet, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { LogOut, Menu, Moon, Search, Sun, UserRound } from "lucide-react";
 import { logout, session } from "@console/api";
@@ -14,12 +14,13 @@ import { HeldNotice } from "../ui/live/held-notice";
 import { LiveStatus } from "../ui/live/live-status";
 import { bindAnnouncer, focusSoon } from "../lib/react/announce";
 import { chunk } from "../lib/chunk-guard";
-import { authzQuery } from "../reference/authz/api";
+import { myAccessQuery } from "../reference/authz/api";
 import { setLocale } from "./locale";
 import { useTheme } from "./theme";
 import { PLATFORM_NAV, activeLink, tenantNav } from "./nav";
 import { PhaseBand } from "./phase-band";
 import { SessionRecovery } from "./session-recovery";
+import { RouteGuard } from "../reference/authz/ui/access-gate";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
 const JumpPalette = lazy(() => chunk(import("../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
@@ -30,11 +31,11 @@ export function Shell() {
   const [theme, toggle] = useTheme();
   const claims = useSyncExternalStore(session.subscribe, () => session.claims);
   const platform = !!claims?.platform;
-  // Platform tokens are refused by /me/authz; the vendor menu is fixed.
-  const authz = useQuery({ ...authzQuery, enabled: !platform && Boolean(session.token) });
+  const router = useRouter();
+  const access = useQuery({ ...myAccessQuery, enabled: !platform && Boolean(session.token) });
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && Boolean(session.token) });
-  const navReady = !authz.isPending && !support.isPending;
-  const menu = platform ? PLATFORM_NAV : tenantNav(navReady ? authz.data?.capabilities : undefined, navReady && authz.isError, navReady && support.data?.can_approve);
+  const ready = !access.isPending && !support.isPending;
+  const menu = platform ? PLATFORM_NAV : tenantNav(ready ? access.data : undefined, router.routesByPath, ready && support.data?.can_approve);
   // Phone widths hide the rail; the top bar's menu button discloses it.
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -116,7 +117,7 @@ export function Shell() {
         <ChangeNotice key={pathname} />
         <HeldNotice />
         {!platform && <DomainNotice />}{!platform && <ActiveSupportBanner />}
-        {platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand><Outlet /></PhaseBand>}
+        <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? <Outlet /> : <PhaseBand><Outlet /></PhaseBand>}</RouteGuard>
         </SessionRecovery>
       </main>
       {jump && (

@@ -16,18 +16,7 @@ import { EmptyState } from "./ui/empty-state";
 import { initLocale } from "./shell/locale";
 import { IDLE_EXPIRED, watchSession } from "./auth/idle";
 import { pauseAutofill } from "./auth/sign-in-id";
-import { app, frame, root } from "./routes/app";
-import { orgRoutes } from "./routes/org";
-import { peopleRoutes } from "./routes/people";
-import { identifierRoutes } from "./routes/identifiers";
-import { entityRoutes } from "./routes/entity";
-import { onboardingRoutes } from "./routes/onboarding";
-import { accessRoutes } from "./routes/access";
-import { orgBulkRoutes } from "./routes/org-bulk";
-import { requestRoutes } from "./routes/requests";
-import { attendanceRoutes } from "./routes/attendance";
-import { companyDomainRoute } from "./routes/company-domain";
-import { statutoryRoute } from "./routes/statutory";
+import { routeTree } from "./routes/tree";
 import "./app.css";
 
 // Every static import is in: from here a failed chunk is a lazy one (public/chunk-guard.js).
@@ -52,7 +41,7 @@ const queryClient = new QueryClient({
 
 // Screens are lazy route chunks; the entry keeps only the router, shell and sign-in.
 const router = createRouter({
-  routeTree: root.addChildren([...frame.signIn, app.addChildren([...frame.screens, ...orgRoutes, ...entityRoutes, ...onboardingRoutes, companyDomainRoute, ...peopleRoutes, ...identifierRoutes, ...accessRoutes, ...orgBulkRoutes, ...requestRoutes, ...attendanceRoutes, statutoryRoute])]),
+  routeTree: routeTree,
   defaultPreload: "intent",
   defaultNotFoundComponent: () => (
     <main className="page">

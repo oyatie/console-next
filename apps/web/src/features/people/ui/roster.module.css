@@ -58,6 +58,8 @@
 .peekItems dd { margin: 0; }
 .peekFoot { composes: t-xs muted from global; margin: 0; }
 .scopePick { display: flex; flex-direction: column; gap: var(--space-2); }
+/* A late facet name must not move the search or density controls beside it. */
+.scopeName { display: inline-block; width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .peekKept { composes: t-xs muted from global; display: flex; align-items: center; gap: var(--space-1); margin: 0; }
 .peekBox { composes: t-sm from global; display: grid; gap: var(--space-1); margin: 0; }
 .peekBox > div { display: grid; grid-template-columns: calc(var(--space-6) * 3) minmax(0, 1fr); gap: var(--space-2); }

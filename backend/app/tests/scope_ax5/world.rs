@@ -24,6 +24,7 @@ pub struct World {
     pub ops: Ctx,
     key: SoftKey,
     pub le_a: String,
+    pub wp_a: String,
     pub le_b: String,
     pub dept_x: String,
     pub dept_y: String,
@@ -125,6 +126,15 @@ impl World {
 }
 
 pub async fn world(pool: PgPool) -> World {
+    world_with_lines(
+        pool,
+        json!([{ "domain": "hr_basic", "levels": ["edit"] },
+        { "domain": "appointment", "levels": ["edit"] }]),
+    )
+    .await
+}
+
+pub async fn world_with_lines(pool: PgPool, lines: Value) -> World {
     let (org, ops) = crate::support::tenant(&pool, ADMIN).await;
     sqlx::query("UPDATE users SET is_tenant_ops = true WHERE id = $1")
         .bind(ops.as_uuid())
@@ -135,8 +145,6 @@ pub async fn world(pool: PgPool) -> World {
     let ops_ctx = ctx(&pool, org, ops, ADMIN, None).await;
     let (le_a, wp_a, branch_a, _) = structure(&ops_ctx).await;
     let (le_b, wp_b, branch_b) = entity_b(&ops_ctx).await;
-    let lines = json!([{ "domain": "hr_basic", "levels": ["edit"] },
-                       { "domain": "appointment", "levels": ["edit"] }]);
     let (status, role) = ops_ctx
         .call(
             "POST",
@@ -151,6 +159,7 @@ pub async fn world(pool: PgPool) -> World {
         ops: ops_ctx,
         key,
         le_a,
+        wp_a: wp_a.clone(),
         le_b,
         dept_x: String::new(),
         dept_y: String::new(),

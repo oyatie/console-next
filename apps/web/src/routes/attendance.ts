@@ -1,3 +1,4 @@
+import { readRequirement } from "./route-reads";
 import { createElement } from "react";
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import type { AttendanceSearch } from "../features/attendance/ui/attendance-page";
@@ -17,7 +18,7 @@ const ISO = /^\d{4}-\d{2}-\d{2}$/;
 // the URL so a link reopens the same view.
 const attendance = createRoute({
   getParentRoute: () => app,
-  path: "/attendance",
+  path: "/attendance", staticData: { access: readRequirement("/attendance") },
   validateSearch: (s: Record<string, unknown>): AttendanceSearch => ({
     view: VIEWS.find((v) => v === s.view),
     kind: KINDS.find((k) => k === s.kind),

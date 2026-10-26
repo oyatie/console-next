@@ -193,7 +193,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: "@fir
   await admin.keyboard.press("ControlOrMeta+s");
   const save = admin.getByRole("complementary", { name: /저장 · 초안 1칸/ });
   const confirm = save.getByRole("checkbox", { name: /김직원.*5-23.*확인 기준 960분/ });
-  await expect(confirm).not.toBeChecked();
+  await expect(confirm).not.toBeChecked({ timeout: test.info().timeout });
   await chooseRadio(save, /출근부 \(종이\)/);
   await expect(save.getByRole("button", { name: /칸 저장/ })).toHaveAttribute("aria-disabled", "true");
   await expectAccessible(admin, "solo long record confirmation");

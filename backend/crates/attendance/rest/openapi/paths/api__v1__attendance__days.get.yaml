@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
 tags: [attendance]
 operationId: readAttendanceDayBoard
 summary: One day's board (일별 · 간단히) — the partition ledger, then 사업장 › 부서 groups with issue rows first

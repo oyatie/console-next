@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "access:edit", "scope": "any"}
 tags:
 - access
 operationId: previewAccessGrants

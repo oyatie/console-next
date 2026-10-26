@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "tenant"}
 tags:
   - employees
 operationId: setEmployeeNumberRule

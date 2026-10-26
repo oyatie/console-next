@@ -2,7 +2,12 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import { bootKo } from "../packages/i18n/src/catalogs/boot";
-import { expectAccessible } from "./a11y";
+import { ko } from "../packages/i18n/src/catalogs/ko";
+import { expectAccessible, expectAxe } from "./a11y";
+import { apiOf, bearerOf } from "./helpers/api";
+import { routeList } from "./helpers/route-list";
+import { readRequirement } from "../apps/web/src/routes/route-reads";
+import { todayKst } from "../apps/web/src/lib/pure/today";
 import { go, routeReady, vendorPage } from "./flows";
 import { expectStable } from "./stability";
 import { setupCompany, startOperations, tenantBeforeSetup } from "./setup-flows";
@@ -38,6 +43,69 @@ const details = routes.filter(({ path }) => path.includes(record));
 const reference = "state-regression-reference";
 const failure = (status: number) => ({ status, json: { error: { code: status === 403 ? "forbidden" : status === 404 ? "not_found" : "service_unavailable", message: "읽기 요청을 처리하지 못했습니다.", operation_id: reference } } });
 
+test.describe("route requirements with a real grantless account", () => {
+  test.describe.configure({ mode: "default" });
+  let admin: Page;
+  let reader: Page;
+  let token: ReturnType<typeof bearerOf>;
+  test.beforeAll(async ({ browser }) => {
+    ({ admin, exec: reader } = await tenantBeforeSetup(browser, `route-refusal-${test.info().workerIndex}`, "권한 없는 화면", false, "none"));
+    token = bearerOf(reader);
+    await reader.reload();
+    await routeReady(reader);
+    await expect.poll(token).not.toBe("");
+    const me = await (await apiOf(reader, token)("/access/me")).json();
+    expect(me.is_ops).toBe(false);
+    expect(me.entries).toEqual([]);
+  });
+  test.afterAll(async () => { await Promise.all([admin?.context().close(), reader?.context().close()]); });
+
+  for (const { path, reads } of routeList.filter(route => route.reads.length)) {
+    test(`${path}: the server refuses the protected read`, async () => {
+      for (const read of reads) {
+      const endpoint = read.replace(/\$[^/]+/g, record).replace("/api/v1", "");
+      const query = read.endsWith("/attendance/month") ? `?month=${todayKst().slice(0, 7)}` : read.endsWith("/attendance/days") ? `?date=${todayKst()}` : "";
+      const response = await apiOf(reader, token)(`${endpoint}${query}`);
+      expect(response.status(), read).toBe(403);
+      expect((await response.json()).error.code).toBeTruthy();
+      }
+    });
+    for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+      test(`${path}: one refusal, no page controls at ${width} ${theme}`, async () => {
+        const page = await reader.context().newPage();
+        try {
+          await page.setViewportSize({ width, height: 900 });
+          await page.addInitScript(value => { localStorage.setItem("console.theme", value); }, theme);
+          await go(page, path.replace(/\$[^/]+/g, record), ["/access", "/setup/org", "/setup/company-names"].includes(path));
+          const main = page.getByRole("main");
+          const card = main.getByRole("region", { name: bootKo["common.denied.title.plain"], exact: true });
+          await expect(card).toHaveCount(1);
+          await expect(card.getByRole("button", { name: bootKo["common.denied.request"], exact: true })).toBeVisible();
+          const permission = await card.locator(".state > .muted").innerText();
+          const need = readRequirement(path as Parameters<typeof readRequirement>[0]);
+          const required = "domain" in need ? [need] : need.allOf;
+          for (const entry of required) {
+            expect(permission).toContain(ko[`accessCodes.domain.${entry.domain}` as keyof typeof ko]);
+            expect(permission).toContain(ko[`accessCodes.level.${entry.level}` as keyof typeof ko]);
+          }
+          expect(await main.locator("button, a, input, select, textarea, [role=tab]").evaluateAll((elements, label) => elements.filter(element => element.closest('section[aria-label]')?.getAttribute("aria-label") !== label).length, bootKo["common.denied.title.plain"])).toBe(0);
+          expect(await main.innerText()).toBe(await card.innerText());
+          expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+          if (["/people", "/org/changes", "/access/roles"].includes(path)) await expectAxe(page, `${path} refused at ${width} ${theme}`);
+        } finally { await page.close(); }
+      });
+    }
+  }
+
+  for (const path of [`/people/${record}`, `/org/entities/${record}`]) {
+    test(`ops ${path.replace(record, "$id")}: an absent record stays not-found`, async () => {
+      await go(admin, path);
+      await expect(admin.getByRole("heading", { name: bootKo["common.read.notFound.title"], exact: true })).toBeVisible();
+      await expect(admin.getByRole("button", { name: bootKo["common.denied.request"], exact: true })).toHaveCount(0);
+    });
+  }
+});
+
 test.describe("one state contract across console routes", () => {
   test.describe.configure({ mode: "default" });
   let admin: Page;
@@ -50,6 +118,45 @@ test.describe("one state contract across console routes", () => {
   });
   // The vendor page is shared by the worker's other specs.
   test.afterAll(async () => { await Promise.all([admin?.context().close(), exec?.context().close()]); });
+
+  for (const width of [1440, 390]) test(`account-name font swap keeps top-bar controls in place at ${width}px`, async () => {
+    const page = await admin.context().newPage();
+    await page.setViewportSize({ width, height: 900 });
+    try {
+      await page.goto("/attendance");
+      await routeReady(page);
+      const positions = await page.locator(".top").evaluate(async top => {
+        await document.fonts.ready;
+        const name = top.querySelector<HTMLElement>(".top__name span")!;
+        const rects = () => [...top.querySelectorAll("button, a, select")].map(control => control.getBoundingClientRect().toJSON());
+        name.style.fontFamily = "sans-serif";
+        const fallback = rects();
+        name.style.removeProperty("font-family");
+        return { fallback, loaded: rects() };
+      });
+      expect(positions.loaded).toEqual(positions.fallback);
+      if (width === 390) {
+        // On a phone the name may shorten, but it never draws over the controls beside it.
+        const overlaps = await page.locator(".top").evaluate(top => {
+          const name = top.querySelector<HTMLElement>(".top__name span")!.getBoundingClientRect();
+          return [...top.querySelectorAll<HTMLElement>("button, a, select")]
+            .filter(control => !control.contains(top.querySelector(".top__name span")))
+            .map(control => control.getBoundingClientRect())
+            .filter(r => r.width > 0 && r.left < name.right && name.left < r.right && r.top < name.bottom && name.top < r.bottom).length;
+        });
+        expect(overlaps).toBe(0);
+      }
+      if (width === 1440) {
+        // The reserved slot is a minimum, never a cap: the account name is shown whole.
+        expect(await page.locator(".top__name span").evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+        const name = page.locator(".top__name");
+        const wide = await name.boundingBox();
+        await page.setViewportSize({ width: 1280, height: 900 });
+        expect((await name.boundingBox())!.width).toBe(wide!.width);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width);
+    } finally { await page.close(); }
+  });
 
   for (const width of [1440, 390]) for (const path of ["/org/entities/new", "/people/new"]) {
     test(`${path}: first-visit setup band leaves creation controls clear at ${width}px`, async () => {
