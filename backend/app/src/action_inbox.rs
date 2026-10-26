@@ -16,6 +16,7 @@ use console_platform_authz::Principal;
 use serde::Deserialize;
 use sqlx::PgPool;
 use time::OffsetDateTime;
+use tracing::Instrument;
 
 mod error;
 mod response;
@@ -150,11 +151,18 @@ impl ActionInboxSourcePort for PgActionInboxSources {
         query: ActionInboxSourceQuery,
     ) -> ActionInboxSourceFuture<'_> {
         Box::pin(async move {
-            let _permit = self
-                .read_permits
-                .acquire()
-                .await
-                .map_err(|_| KernelError::internal("inbox reader closed"))?;
+            let span = tracing::debug_span!("action_inbox.source", source = ?source,
+                permit_wait_seconds = tracing::field::Empty, work_seconds = tracing::field::Empty);
+            let waiting = std::time::Instant::now();
+            let permit = self.read_permits.acquire().await;
+            let permit_wait_seconds = waiting.elapsed().as_secs_f64();
+            let label = format!("{source:?}");
+            metrics::histogram!("action_inbox_source_seconds", "source" => label.clone(), "phase" => "permit_wait")
+                .record(permit_wait_seconds);
+            span.record("permit_wait_seconds", permit_wait_seconds);
+            let _permit = permit.map_err(|_| KernelError::internal("inbox reader closed"))?;
+            let started = std::time::Instant::now();
+            let result = async {
             let mut page = match source {
                 #[cfg(feature = "workspace")]
                 ActionInboxSource::Workflow => self.workflow_page(query).await,
@@ -239,6 +247,13 @@ impl ActionInboxSourcePort for PgActionInboxSources {
                 })?;
             }
             Ok(page)
+            }.instrument(span.clone()).await;
+            let work_seconds = started.elapsed().as_secs_f64();
+            metrics::histogram!("action_inbox_source_seconds", "source" => label, "phase" => "work")
+                .record(work_seconds);
+            span.record("work_seconds", work_seconds);
+            tracing::debug!(parent: &span, permit_wait_seconds, work_seconds, "inbox source measured");
+            result
         })
     }
 }
