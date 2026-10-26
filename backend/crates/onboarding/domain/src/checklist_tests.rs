@@ -280,3 +280,37 @@ fn workplace_step_done_even_when_staffed_without_registration() {
     assert_eq!(wp_unreg.remedy, None);
     assert_eq!(wp_unreg.count, None);
 }
+
+#[test]
+fn department_step_names_the_staffed_gap_even_with_an_existing_department() {
+    let mut f = SetupFacts {
+        phase_is_setup: true,
+        workplaces: 1,
+        org_units: 1,
+        employees: 3,
+        people_without_department: 2,
+        ..SetupFacts::default()
+    };
+    let org = |f: &SetupFacts| {
+        checklist(f)
+            .steps
+            .into_iter()
+            .find(|s| s.key == "org")
+            .unwrap()
+    };
+    let s = org(&f);
+    assert_eq!(
+        (s.state, s.remedy, s.count),
+        (StepState::Attention, Some("assign_department"), Some(2))
+    );
+    assert!(!s.skippable);
+    f.people_without_department = 0;
+    assert_eq!(org(&f).state, StepState::Done);
+    f.org_units = 0;
+    f.people_without_department = 2;
+    let missing = org(&f);
+    assert_eq!(
+        (missing.state, missing.action, missing.remedy),
+        (StepState::Todo, "add_department", None)
+    );
+}

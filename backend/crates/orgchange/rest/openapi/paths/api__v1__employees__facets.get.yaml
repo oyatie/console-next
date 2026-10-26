@@ -36,6 +36,13 @@ parameters:
   schema:
     type: boolean
   description: Filter to employees whose import identity resolution needs review (true) or not (false).
+- name: department_missing
+  in: query
+  required: false
+  schema:
+    type: boolean
+  description: true selects employed people without a live department; false selects all other records. Review
+    counts ignore this filter, while total and the other facet groups apply it.
 - name: org_unit_id
   in: query
   required: false

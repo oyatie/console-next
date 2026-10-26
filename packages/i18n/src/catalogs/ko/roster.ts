@@ -14,6 +14,8 @@ export const koRoster = {
   "roster.review.contractSoon": "계약 종료 {days, number}일 이내",
   "roster.review.identity": "신원 확인",
   "roster.review.unplaced": "미배치",
+  "roster.review.department": "부서 없음",
+  "roster.review.department.title": "부서에 배치하지 않은 재직자입니다",
   "roster.review.failed": "반영 실패",
   "roster.review.contractPast.title": "계약 종료일이 지난 직원입니다 (선택한 상태 기준)",
   "roster.review.contractSoon.title": "오늘부터 {days, number}일 안에 계약이 끝나는 직원 수입니다. 이 조건의 목록에는 계약이 이미 지난 직원도 함께 보입니다",

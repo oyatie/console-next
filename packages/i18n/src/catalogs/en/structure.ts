@@ -148,7 +148,7 @@ export const enStructure: Record<keyof typeof koStructure, string> = {
   "structure.setup.kpi.depts": "Departments",
   "structure.setup.stepHint.entity": "With its business registration",
   "structure.setup.stepHint.workplace": "At least one per entity · usually the head office first",
-  "structure.setup.stepHint.org": "Optional · people can sit directly at a workplace",
+  "structure.setup.stepHint.org": "Required before operations start · place every employed person in a department",
   "structure.setup.stepHint.approval": "Who approves structure changes once operating",
   "structure.setup.stepHint.people": "Security contact and key people",
   "structure.setup.stepHint.passkey": "A passkey on another device · so losing this one does not lock you out",

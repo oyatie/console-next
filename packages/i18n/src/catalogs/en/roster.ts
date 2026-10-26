@@ -13,6 +13,8 @@ export const enRoster = {
   "roster.review.contractSoon": "Contract ends ≤ {days, number} days",
   "roster.review.identity": "Identity check",
   "roster.review.unplaced": "Unplaced",
+  "roster.review.department": "No department",
+  "roster.review.department.title": "Employed people without a department",
   "roster.review.failed": "Failed to apply",
   "roster.review.contractPast.title": "Contract ended before today (within the chosen status)",
   "roster.review.contractSoon.title": "Contracts ending within {days, number} days from today; this filter's list also shows contracts already over",

@@ -173,7 +173,9 @@ async fn stale_preview_returns_a_fresh_digest_and_changed_codes_before_any_write
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn two_thousand_unplaced_people_have_consistent_summary_and_named_warnings(owner: PgPool) {
+async fn two_thousand_unplaced_people_have_a_named_setup_blocker_and_consistent_summary(
+    owner: PgPool,
+) {
     let (store, a) = tenant(&owner).await;
     // rls-arming: ok owner-only scale fixture; all production reads below use console_rt and RLS.
     sqlx::query("INSERT INTO employees (org_id, company, name, source_filename, source_sheet, source_row, source_key, employment_status) SELECT $1, 'Test company', 'Person ' || n, 'fixture.xlsx', 'Roster', n, 'scale-' || n, 'ACTIVE' FROM generate_series(1, 2000) n")
@@ -184,18 +186,29 @@ async fn two_thousand_unplaced_people_have_consistent_summary_and_named_warnings
     assert_eq!(c.summary.unplaced, 2000);
     assert_eq!(c.summary.entity_unknown, 2000);
     let p = store.preview(&a).await.unwrap();
-    for code in ["unplaced_people", "entity_unknown_people"] {
-        let warning = p.warnings.iter().find(|w| w.code == code).unwrap();
-        assert_eq!(warning.count, Some(2000));
-        assert_eq!(warning.records.len(), 2000);
-        assert!(
-            warning
-                .records
-                .iter()
-                .all(|r| r.legal_entity_id == uuid::Uuid::nil().to_string())
-        );
-        assert_eq!(warning.remedy, Some("place_people"));
-    }
+    let blocker = p
+        .blockers
+        .iter()
+        .find(|b| b.code == "people_without_department")
+        .unwrap();
+    assert_eq!(blocker.count, Some(2000));
+    assert_eq!(blocker.records.len(), 2000);
+    assert_eq!(blocker.remedy, Some("assign_department"));
+    assert!(!p.warnings.iter().any(|w| w.code == "unplaced_people"));
+    let warning = p
+        .warnings
+        .iter()
+        .find(|w| w.code == "entity_unknown_people")
+        .unwrap();
+    assert_eq!(warning.count, Some(2000));
+    assert_eq!(warning.records.len(), 2000);
+    assert!(
+        warning
+            .records
+            .iter()
+            .all(|r| r.legal_entity_id == uuid::Uuid::nil().to_string())
+    );
+    assert_eq!(warning.remedy, Some("place_people"));
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

@@ -122,6 +122,13 @@ pub fn preview(f: &SetupFacts, records: &Records) -> Preview {
     if f.org_units == 0 {
         blockers.push(item("no_department", 0, "add_department"));
     }
+    if f.phase_is_setup && f.people_without_department > 0 {
+        blockers.push(item(
+            "people_without_department",
+            f.people_without_department,
+            "assign_department",
+        ));
+    }
     if !f.org_change_route_resolvable() {
         blockers.push(item("no_org_change_approver", 0, "invite_executive"));
     }
@@ -194,7 +201,7 @@ pub fn preview(f: &SetupFacts, records: &Records) -> Preview {
     );
     warn(f.employees == 0, "no_employees_yet", 0, "register_employee");
     warn(
-        f.unplaced_people > 0,
+        f.unplaced_people > 0 && (!f.phase_is_setup || f.people_without_department == 0),
         "unplaced_people",
         f.unplaced_people,
         "place_people",
@@ -207,7 +214,7 @@ pub fn preview(f: &SetupFacts, records: &Records) -> Preview {
     );
 
     warn(
-        f.unresolved_departments > 0,
+        f.unresolved_departments > 0 && (!f.phase_is_setup || f.people_without_department == 0),
         "unresolved_departments",
         f.unresolved_departments,
         "assign_departments",
@@ -259,6 +266,10 @@ pub fn backstop(
         (f.entities_ready(), "entities_ready"),
         (f.primary_workplaces_ready(), "primary_workplaces_ready"),
         (f.org_units > 0, "org_units"),
+        (
+            f.people_without_department == 0,
+            "people_without_department",
+        ),
         (
             f.org_change_route_resolvable(),
             "org_change_route_resolvable",

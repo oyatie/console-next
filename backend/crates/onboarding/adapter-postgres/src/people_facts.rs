@@ -4,7 +4,7 @@ use console_onboarding_domain::{Breakdown, Record, Records};
 use sqlx::{Postgres, Row, Transaction};
 
 macro_rules! current { () => { "WITH RECURSIVE today AS (SELECT entity_today() AS d), \
- people AS (SELECT e.id, e.name, e.org_unit_id, e.source_metadata, up.employee_id IS NOT NULL AS unplaced, a.legal_entity_id, cp.workplace_id \
+ people AS (SELECT e.id, e.name, entity_employed_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AS employed, e.org_unit_id, e.source_metadata, up.employee_id IS NOT NULL AS unplaced, a.legal_entity_id, cp.workplace_id \
  FROM person_employees_current e LEFT JOIN employment_resolved_assignments a ON a.employee_id=e.id AND a.org_id=e.org_id \
  LEFT JOIN employment_unplaced_people up ON up.org_id=e.org_id AND up.employee_id=e.id \
  LEFT JOIN employment_current_placements cp ON cp.employee_id=e.id AND cp.org_id=e.org_id \
@@ -16,10 +16,11 @@ pub(crate) async fn records(
 ) -> Result<Records, PgOnboardingError> {
     let sql = concat!(
         current!(),
-        " SELECT id::text, name, legal_entity_id::text AS entity, \
+        ", reviewed AS (SELECT *, employed AND (org_unit_id IS NULL OR org_unit_id NOT IN (SELECT department_unit_ids())) AS no_department FROM people) \
+        SELECT id::text, name, legal_entity_id::text AS entity, no_department, \
         unplaced, \
         (org_unit_id IS NULL AND source_metadata ? 'unresolved_org_unit') AS department_missing \
-        FROM people WHERE legal_entity_id IS NULL OR unplaced \
+        FROM reviewed WHERE no_department OR legal_entity_id IS NULL OR unplaced \
         OR (org_unit_id IS NULL AND source_metadata ? 'unresolved_org_unit') ORDER BY name, id"
     );
     let rows = sqlx::query(sql).fetch_all(tx.as_mut()).await?;
@@ -43,6 +44,11 @@ pub(crate) async fn records(
                 .or_default()
                 .push(record.clone());
         }
+        if r.try_get::<bool, _>("no_department")? {
+            out.entry("people_without_department".into())
+                .or_default()
+                .push(record.clone());
+        }
         if unknown {
             out.entry("entity_unknown_people".into())
                 .or_default()
@@ -60,8 +66,7 @@ pub(crate) async fn breakdown(
         ", heads AS (SELECT DISTINCT ON (org_unit_id) org_unit_id, attributes \
          FROM org_unit_revisions ORDER BY org_unit_id, version DESC), \
         up AS (SELECT h.org_unit_id AS unit, h.org_unit_id, h.attributes, 0 AS depth FROM heads h \
-          WHERE h.attributes->>'kind' IN ('department', 'team') \
-            AND h.attributes->>'status' IS DISTINCT FROM 'dissolved' \
+          WHERE h.org_unit_id IN (SELECT department_unit_ids()) \
           UNION ALL SELECT u.unit, h.org_unit_id, h.attributes, u.depth + 1 FROM heads h JOIN up u \
             ON h.org_unit_id::text = u.attributes->>'parent_id' \
           WHERE u.depth < 64 AND h.attributes->>'status' IS DISTINCT FROM 'dissolved'), \

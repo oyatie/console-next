@@ -7,7 +7,7 @@ properties:
   query:
     type: object
     description: The GET /api/v1/employees filters as JSON (company, search, org_unit_id, legal_entity_id, workplace_id, status, employee_number,
-      home_branch_review_required, identity_review_required, contract_ending_before, lifecycle_apply_failed),
+      home_branch_review_required, identity_review_required, department_missing, contract_ending_before, lifecycle_apply_failed),
       each written as in the query string (status "ACTIVE,ON_LEAVE"); paging fields are ignored.
     additionalProperties: true
   exclude_employee_ids:

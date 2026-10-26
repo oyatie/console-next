@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "../a11y";
 import { go, kstDate } from "../flows";
-import { startOperations, tenantInSetup } from "../setup-flows";
+import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "../setup-flows";
 import { chooseWorkbook, payPeriod } from "../helpers/import";
 import { plain, rrn, workbook } from "../helpers/import-layouts";
 
@@ -15,8 +15,8 @@ test("identifiers: masked 주민등록번호 revealed with a reason, 사번 변�
   const { admin } = await tenantInSetup(browser, "identifiers", "한결", false, "한결 본점");
   await go(admin, "/people/import");
   await chooseWorkbook(admin, "인사기록.xlsx", await workbook([plain("본사", [
-    { number: "HJ-0101", name: "김민준", position: "과장", hired: "2015-03-02", birth: "1985-04-12", rrn: rrn("1985-04-12", 1, 101) },
-    { number: "HJ-0103", name: "이서연", position: "대리", hired: "2018-01-15", birth: "1990-02-03", rrn: rrn("1990-02-03", 2, 103) },
+    { number: "HJ-0101", name: "김민준", unit: SETUP_DEPARTMENT, position: "과장", hired: "2015-03-02", birth: "1985-04-12", rrn: rrn("1985-04-12", 1, 101) },
+    { number: "HJ-0103", name: "이서연", unit: SETUP_DEPARTMENT, position: "대리", hired: "2018-01-15", birth: "1990-02-03", rrn: rrn("1990-02-03", 2, 103) },
   ])]));
   await payPeriod(admin);
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
@@ -69,6 +69,17 @@ test("identifiers: masked 주민등록번호 revealed with a reason, 사번 변�
   await renumber.getByRole("button", { name: "재부여 되돌리기" }).click();
   await expect(renumber).toContainText("사번을 예전으로 되돌렸습니다");
   await startOperations(admin);
+  // The ruling keeps post-go-live imports without a department as warnings.
+  await go(admin, "/people/import");
+  await chooseWorkbook(admin, "추가직원.xlsx", await workbook([plain("한결", [
+    { number: "HJ-LATE1", name: "박추가", hired: kstDate() },
+  ])]));
+  await payPeriod(admin);
+  await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await admin.getByRole("button", { name: "모의 반영 실행" }).click();
+  await expect(admin.getByText(/미배치 1명/).first()).toBeVisible();
+  await admin.getByRole("button", { name: "명부 반영: 신규 1명 · 갱신 0명" }).click();
+  await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible({ timeout: 60_000 });
   await go(admin, "/people/numbering");
   await expect(admin.getByRole("region", { name: "사번 일괄 재부여" })).toContainText("운영을 시작한 뒤에는 일괄 재부여를 할 수 없습니다");
 });

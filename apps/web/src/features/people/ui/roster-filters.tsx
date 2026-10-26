@@ -43,7 +43,7 @@ export function RosterFilters({ status, review, unit, sort, counts, onChange, fi
       {icon && <Lock size={12} aria-hidden />}{label}{" "}
     </ToggleButton>
   );
-  const reviews = REVIEWS.filter((r, i) => r !== "contractSoon" && r !== "register" && r !== "unplaced" && !counts.review.failed[i] && (counts.review.totals[r] ?? 0) > 0);
+  const reviews = REVIEWS.filter((r, i) => r !== "contractSoon" && r !== "register" && r !== "unplaced" && (review.includes(r) || (!counts.review.failed[i] && (counts.review.totals[r] ?? 0) > 0)));
   const pending = (st.totals.ACTIVE === undefined && !failed) || (counts.review.totals.contractSoon === undefined && !counts.review.failed.some(Boolean));
   return (
     <>

@@ -16575,7 +16575,7 @@ export interface components {
         };
         /** @description 「필터와 일치하는 {n}명 모두 선택」 — every employee the list filters admit under the caller's scope, minus exclude_employee_ids, resolved by the server in the batch transaction (recorded in employee id order). */
         BulkSelection: {
-            /** @description The GET /api/v1/employees filters as JSON (company, search, org_unit_id, legal_entity_id, workplace_id, status, employee_number, home_branch_review_required, identity_review_required, contract_ending_before, lifecycle_apply_failed), each written as in the query string (status "ACTIVE,ON_LEAVE"); paging fields are ignored. */
+            /** @description The GET /api/v1/employees filters as JSON (company, search, org_unit_id, legal_entity_id, workplace_id, status, employee_number, home_branch_review_required, identity_review_required, department_missing, contract_ending_before, lifecycle_apply_failed), each written as in the query string (status "ACTIVE,ON_LEAVE"); paging fields are ignored. */
             query: {
                 [key: string]: unknown;
             };
@@ -19091,6 +19091,11 @@ export interface components {
             /** @description Counts per workplace_id (value is the id; null counts rows with no 사업장), with every filter except workplace_id. */
             workplace: components["schemas"]["EmployeeFacetCount"][];
             review: {
+                /**
+                 * Format: int64
+                 * @description Employed people without a live department, ignoring review filters.
+                 */
+                department_missing?: number;
                 /** Format: int64 */
                 identity_review_required: number;
                 /** Format: int64 */
@@ -27704,6 +27709,11 @@ export interface components {
              * @description The caller's own passkeys; with one, a lost device ends the account.
              */
             own_passkeys: number;
+            /**
+             * Format: int64
+             * @description People employed today without a live department; counted from blocker records.
+             */
+            people_without_department?: number;
             /** Format: int64 */
             unresolved_departments?: number;
             /** Format: int64 */
@@ -37197,6 +37207,8 @@ export interface operations {
                 home_branch_review_required?: boolean;
                 /** @description Filter to employees whose import identity resolution needs review (true) or not (false). */
                 identity_review_required?: boolean;
+                /** @description True selects people employed today without a live department (including site-only placement); false selects the complement. */
+                department_missing?: boolean;
                 /** @description Only employees bound to this OrgUnit (direct members; child units are not included). */
                 org_unit_id?: components["schemas"]["Uuid"];
                 /** @description Only employees whose current employment assignment (the last one once exited, the first one before the hire date) names this 법인. */
@@ -37501,6 +37513,8 @@ export interface operations {
                 home_branch_review_required?: boolean;
                 /** @description Filter to employees whose import identity resolution needs review (true) or not (false). */
                 identity_review_required?: boolean;
+                /** @description true selects employed people without a live department; false selects all other records. Review counts ignore this filter, while total and the other facet groups apply it. */
+                department_missing?: boolean;
                 /** @description Only employees bound to this OrgUnit (direct members; child units are not included). */
                 org_unit_id?: components["schemas"]["Uuid"];
                 /** @description Only employees whose current employment assignment (the last one once exited, the first one before the hire date) names this 법인. */

@@ -29,7 +29,7 @@ export const statusesOf = (v: StatusView): Status[] | undefined => (v === "all" 
  * The "needs attention" chips: each toggles on its own and they combine with AND, as the server's filters do.
  * The two contract chips are one server filter (`contract_ending_before`), so at most one of them is on.
  */
-export const REVIEWS = ["contractPast", "contractSoon", "identity", "unplaced", "register", "failed"] as const;
+export const REVIEWS = ["contractPast", "contractSoon", "identity", "unplaced", "register", "failed", "department"] as const;
 export type Review = (typeof REVIEWS)[number];
 const isContract = (r: Review) => r === "contractPast" || r === "contractSoon";
 /** The URL value ("identity,failed") as chips; unknown tokens are dropped, a second contract chip too. */
@@ -53,6 +53,7 @@ const reviewQuery = (on: readonly Review[], today: string, soonDays: number) => 
   identity_review_required: on.includes("identity") || undefined,
   home_branch_review_required: on.includes("unplaced") || undefined,
   register_review_required: on.includes("register") || undefined,
+  department_missing: on.includes("department") || undefined,
   lifecycle_apply_failed: on.includes("failed") || undefined,
   // Strictly before the date: today finds contracts already over, today + window + 1 every one ending within it.
   contract_ending_before: on.includes("contractPast") ? today : on.includes("contractSoon") ? addDays(today, soonDays + 1) : undefined,
@@ -82,7 +83,7 @@ export function facetQueries(f: RosterFilter, today: string, soonDays: number) {
 export const statusCounts = (rows?: Facets["status"]) => STATUSES.map((s) => (rows ? (rows.find((r) => r.value === s)?.count ?? 0) : undefined));
 /** The review counts in REVIEWS order; contracts ending in the window still include those already over (reviewTotals). */
 export const reviewCounts = (r?: Facets["review"]) =>
-  r ? [r.contract_ended, r.contract_ending_before ?? undefined, r.identity_review_required, r.home_branch_review_required, r.register_review_required, r.lifecycle_apply_failed] : REVIEWS.map(() => undefined);
+  r ? [r.contract_ended, r.contract_ending_before ?? undefined, r.identity_review_required, r.home_branch_review_required, r.register_review_required, r.lifecycle_apply_failed, r.department_missing] : REVIEWS.map(() => undefined);
 
 /** Status chip totals from the per-status server totals; a chip whose inputs are missing is unknown. */
 export function statusTotals(n: readonly (number | undefined)[]): Record<StatusView, number | undefined> {
@@ -96,8 +97,8 @@ export function statusTotals(n: readonly (number | undefined)[]): Record<StatusV
  * filter for it lists both (it has only a strictly-before bound); the chip's description says so.
  */
 export function reviewTotals(n: readonly (number | undefined)[]): Record<Review, number | undefined> {
-  const [past, soon, identity, unplaced, register, failed] = n;
-  return { contractPast: past, contractSoon: soon === undefined || past === undefined ? undefined : soon - past, identity, unplaced, register, failed };
+  const [past, soon, identity, unplaced, register, failed, department] = n;
+  return { contractPast: past, contractSoon: soon === undefined || past === undefined ? undefined : soon - past, identity, unplaced, register, failed, department };
 }
 
 export type NextItem =

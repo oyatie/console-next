@@ -201,7 +201,13 @@ impl PgOnboardingStore {
                 let p = phase(tx, false).await?;
                 let (f, records, details) =
                     facts::setup_facts(tx, (org, user), p == TenantPhase::Setup).await?;
-                Ok(preview(&f, &records).with_details(details))
+                let preview = preview(&f, &records).with_details(details);
+                tracing::info!(
+                    event = "tenant_go_live_previewed",
+                    blocker_codes = ?preview.blockers.iter().map(|item| item.code).collect::<Vec<_>>(),
+                    "tenant go-live previewed"
+                );
+                Ok(preview)
             })
         })
         .await;

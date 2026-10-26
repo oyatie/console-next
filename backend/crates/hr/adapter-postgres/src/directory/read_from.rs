@@ -191,4 +191,17 @@ mod tests {
         assert!(!sql.contains("LATERAL"), "{sql}");
         assert!(sql.contains(") fe"), "{sql}");
     }
+    #[test]
+    fn department_filter_preserves_n_minus_one_bulk_selection_fingerprints_when_absent() {
+        let absent = serde_json::to_value(EmployeeListQuery::default()).unwrap();
+        assert!(absent.get("department_missing").is_none());
+        for missing in [false, true] {
+            let query: EmployeeListQuery =
+                serde_json::from_value(serde_json::json!({"department_missing": missing})).unwrap();
+            assert_eq!(
+                serde_json::to_value(query).unwrap()["department_missing"],
+                missing
+            );
+        }
+    }
 }

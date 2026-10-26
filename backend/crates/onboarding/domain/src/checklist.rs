@@ -137,6 +137,10 @@ pub fn checklist(f: &SetupFacts) -> Checklist {
     if f.workplaces == 0 {
         org.state = Blocked;
         org.remedy = Some("create_workplace");
+    } else if f.org_units > 0 && f.people_without_department > 0 {
+        org.state = Attention;
+        org.remedy = Some("assign_department");
+        org.count = Some(f.people_without_department);
     } else if f.org_units > 0 {
         org.state = Done;
         org.count = Some(f.org_units);

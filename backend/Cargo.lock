@@ -2782,6 +2782,7 @@ dependencies = [
 name = "console-onboarding-adapter-postgres"
 version = "0.1.0"
 dependencies = [
+ "console-hr-adapter-postgres",
  "console-identity-adapter-postgres",
  "console-identity-application",
  "console-kernel-core",

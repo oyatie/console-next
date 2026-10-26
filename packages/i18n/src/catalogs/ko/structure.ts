@@ -148,7 +148,7 @@ export const koStructure = {
   "structure.setup.kpi.depts": "부서",
   "structure.setup.stepHint.entity": "사업자등록증 정보와 함께",
   "structure.setup.stepHint.workplace": "법인마다 하나 이상 · 보통 본사부터",
-  "structure.setup.stepHint.org": "없어도 됩니다 · 사업장 직속으로 둘 수 있음",
+  "structure.setup.stepHint.org": "운영 시작 전 모든 재직자를 부서에 배치해야 합니다",
   "structure.setup.stepHint.approval": "운영 시작 뒤 조직 변경을 결재할 사람",
   "structure.setup.stepHint.people": "보안 연락처와 핵심 인원",
   "structure.setup.stepHint.passkey": "다른 기기에서 쓸 패스키 · 이 기기를 잃어도 로그인할 수 있게",

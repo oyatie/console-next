@@ -10,7 +10,7 @@ use sqlx::{Postgres, QueryBuilder, Row};
 use crate::authz::{Tier, hr_reach_in};
 use crate::clock::today_kst;
 use crate::directory::read_filters::{
-    EmployeeListFilters, EmployeeListQuery, FacetGroup, push_facets_from,
+    DEPARTMENT_MISSING, EmployeeListFilters, EmployeeListQuery, FacetGroup, push_facets_from,
 };
 use crate::metrics::record_hr_read;
 use crate::{HrError, HrService};
@@ -24,6 +24,7 @@ pub struct FacetCount {
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct EmployeeReviewCounts {
+    pub department_missing: i64,
     pub identity_review_required: i64,
     pub register_review_required: i64,
     /// Deprecated compatibility name: the count of people without a current workplace placement.
@@ -79,6 +80,8 @@ impl HrService {
         ));
         query.push(crate::register_review_sql!());
         query.push(" AS register_gap, ");
+        query.push(DEPARTMENT_MISSING);
+        query.push(" AS no_department, ");
         for (group, alias) in [
             (FacetGroup::Status, " AS s, "),
             (FacetGroup::LegalEntity, " AS en, "),
@@ -100,6 +103,7 @@ impl HrService {
              count(*) FILTER (WHERE s AND en AND w AND register_gap) AS register_gap, \
              count(*) FILTER (WHERE s AND en AND w AND identity) AS identity, \
              count(*) FILTER (WHERE s AND en AND w AND no_branch) AS branch, \
+             count(*) FILTER (WHERE s AND en AND w AND no_department) AS department_missing, \
              count(*) FILTER (WHERE s AND en AND w AND failed) AS failed, \
              count(*) FILTER (WHERE s AND en AND w AND contract_end < ",
         );
@@ -124,6 +128,7 @@ impl HrService {
             legal_entity: Vec::new(),
             workplace: Vec::new(),
             review: EmployeeReviewCounts {
+                department_missing: 0,
                 identity_review_required: 0,
                 register_review_required: 0,
                 home_branch_review_required: 0,
@@ -142,6 +147,7 @@ impl HrService {
                 _ => {
                     facets.total = row.try_get("n_all")?;
                     facets.review = EmployeeReviewCounts {
+                        department_missing: row.try_get("department_missing")?,
                         identity_review_required: row.try_get("identity")?,
                         register_review_required: row.try_get("register_gap")?,
                         home_branch_review_required: row.try_get("branch")?,
