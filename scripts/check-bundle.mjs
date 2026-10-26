@@ -50,9 +50,13 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
   const { initial } = checkInitialBudget(dist);
   const failures = [];
   const measured = Object.fromEntries(Object.keys(budgetConfig).map(type => [type, { maxKb: 0, chunk: null, chunksCount: 0 }]));
+  const deferred = new Set(Object.values(budgetConfig).flatMap(config => config.deferred ?? []));
+  for (const source of deferred) {
+    if (!manifest[source]?.isDynamicEntry) failures.push({ error: `check-bundle: ${source} must have its own dynamic entry` });
+  }
   for (const [source, entry] of Object.entries(manifest)) {
     // Catalogs and third-party utilities are not screens; every local dynamic entry is budgeted explicitly.
-    if (!entry.isDynamicEntry || !source.startsWith("src/")) continue;
+    if (!entry.isDynamicEntry || !source.startsWith("src/") || deferred.has(source)) continue;
     const pageType = Object.keys(budgetConfig).find(type => budgetConfig[type].routes.includes(source));
     if (!pageType) {
       failures.push({ route: source, error: `check-bundle: unclassified dynamic screen ${source}; add its page type to ${DEFAULT_BUDGET_FILE}` });
@@ -66,6 +70,12 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
       for (const imported of chunk.imports ?? []) visit(imported);
     };
     visit(source);
+    for (const interaction of budgetConfig[pageType].deferred ?? []) {
+      const file = manifest[interaction]?.file;
+      if (file && (files.has(file) || initial.has(file))) failures.push({
+        route: source, error: `check-bundle: ${interaction} is statically loaded by ${source}; load it on interaction`,
+      });
+    }
     const size = [...files].reduce((sum, file) => sum + kb(dist, file), 0);
     const budgetKb = budgetConfig[pageType].budget_kb;
     if (size > measured[pageType].maxKb) measured[pageType] = { maxKb: size, chunk: source, chunksCount: files.size };
