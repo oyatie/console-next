@@ -215,8 +215,12 @@ export const dissolveUnit = (key: string, id: string, version: number) =>
   unwrap(api.POST("/api/v1/org-structure/units/{orgUnitId}/dissolve", { params: unitAt(key, id), body: { expected_version: version } }));
 
 /** A department's head and code, as their full new values (null clears), in either phase. */
-export const setUnitDetails = (key: string, id: string, body: { expected_version: number; code: string | null; head_employee_id: string | null }) =>
+const setUnitDetails = (key: string, id: string, body: { expected_version: number; code: string | null; head_employee_id: string | null }) =>
   unwrap(api.PUT("/api/v1/org-structure/units/{orgUnitId}/details", { params: unitAt(key, id), body }));
+
+/** Head appointment uses the existing details command with its version and code. */
+export const appointHead = (key: string, unitId: string, employeeId: string | null, details: { expected_version: number; code: string | null }) =>
+  setUnitDetails(key, unitId, { ...details, head_employee_id: employeeId });
 
 
 /** Every scheduled action for one unit, read atomically before the timeline is shown. */

@@ -8,6 +8,8 @@ import { fmtNumber } from "@console/i18n/format";
 import { codeText } from "../../../lib/labels";
 import { checklistRef } from "../api";
 import type { Structure } from "../domain/model";
+import { vacantHeads } from "../domain/registry";
+import { Chip } from "../../../ui/chip";
 import css from "./setup-panel.module.css";
 
 
@@ -19,6 +21,7 @@ import css from "./setup-panel.module.css";
 export function SetupPanel({ s, first, fixLink }: { s: Structure; first?: boolean; fixLink: (code: string) => ReactNode }) {
   const q = useQuery(checklistRef);
   const steps = q.data?.steps ?? [];
+  const vacancies = s.counts.depts > 0 ? vacantHeads(s).count : 0;
   const done = steps.filter((x) => x.state === "done" || x.state === "attention").length;
   const current = steps.find((x) => x.state !== "done" && x.state !== "attention")?.key;
   const mark = (x: ChecklistStep, i: number) =>
@@ -48,7 +51,7 @@ export function SetupPanel({ s, first, fixLink }: { s: Structure; first?: boolea
               {codeText(`setup.step.${x.key}`, x.key)}
               <span className="sr-only">{t(`uiSetupRail.state.${x.state}`)}</span>
             </span>
-            <span className={css.detail}>{x.remedy ? codeText(`setup.remedy.${x.remedy}`, x.remedy, { count: x.count ?? 0 }) : x.key === "roles" ? t("setup.roles.prepared") : codeText(`structure.setup.stepHint.${x.key}`, x.key)}</span>
+            <span className={css.detail}>{x.remedy ? codeText(`setup.remedy.${x.remedy}`, x.remedy, { count: x.count ?? 0 }) : x.key === "roles" ? t("setup.roles.prepared") : codeText(`structure.setup.stepHint.${x.key}`, x.key)}{x.key === "org" && vacancies > 0 && <> <Chip tone="warn">{t("structure.head.missingCount", { count: vacancies })}</Chip></>}</span>
             {x.state !== "done" && x.remedy && <span className={css.fix}>{fixLink(x.remedy)}</span>}
           </li>
         ))}

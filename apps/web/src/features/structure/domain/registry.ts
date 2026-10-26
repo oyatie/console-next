@@ -7,8 +7,11 @@ export type Level = "all" | Exclude<Kind, "tenant">;
 export type ListFilter = "vacant" | "todo";
 export const LIST_FILTERS: readonly ListFilter[] = ["vacant", "todo"];
 
-const passes = (n: ChartNode, f: ReadonlySet<ListFilter>) =>
-  (!f.has("vacant") || (n.kind === "dept" && !n.head)) && (!f.has("todo") || n.chips.length > 0 || (n.unplaced ?? 0) > 0);
+/** One vacancy set for the registry filter and every department-head count. */
+export function vacantHeads(s: Structure): { count: number; ids: string[] } {
+  const ids = descendants(s.root).filter(n => n.kind === "dept" && !n.head).map(n => n.id);
+  return { count: ids.length, ids };
+}
 
 /**
  * The rows shown: one level flat, or every level as a tree (folded rows hide their children). A find or a filter
@@ -16,8 +19,10 @@ const passes = (n: ChartNode, f: ReadonlySet<ListFilter>) =>
  */
 export function registryRows(s: Structure, o: { level: Level; q: string; filters: ReadonlySet<ListFilter>; closed: ReadonlySet<string> }): ChartNode[] {
   const all = descendants(s.root);
+  const vacant = o.filters.has("vacant") ? new Set(vacantHeads(s).ids) : undefined;
   const hits = o.q ? new Set(findHits(s, o.q).ids) : undefined;
-  const match = (n: ChartNode) => (!hits || hits.has(n.id)) && passes(n, o.filters);
+  const match = (n: ChartNode) => (!hits || hits.has(n.id)) && (!vacant || vacant.has(n.id))
+    && (!o.filters.has("todo") || n.chips.length > 0 || (n.unplaced ?? 0) > 0);
   if (o.level !== "all") return all.filter((n) => n.kind === o.level && match(n));
   const narrowed = Boolean(hits || o.filters.size);
   const keep = narrowed ? new Set(all.filter(match).flatMap((n) => pathTo(s, n.id).map((p) => p.id))) : undefined;

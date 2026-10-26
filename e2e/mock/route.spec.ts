@@ -62,3 +62,14 @@ function contractErrors(page: Page) {
   void mockRoute(page, "get", "/api/v1/employees", { status: 201, json: { items: [], total: 0, limit: 100, offset: 0, next_cursor: null } });
 }
 void contractErrors;
+
+test("screen mocks preserve a Request's JSON body for commands", async ({ page }) => {
+  await mockScreen(page, screens[2], "populated");
+  await page.route("**/mock-command", route => route.fulfill({ json: route.request().postDataJSON() }));
+  await page.goto("/_gallery");
+  const body = await page.evaluate(async () => {
+    const request = new Request(new URL("/mock-command", location.href), { method: "PUT", body: JSON.stringify({ expected_version: 7 }) });
+    return (await fetch(request)).json();
+  });
+  expect(body).toEqual({ expected_version: 7 });
+});

@@ -92,7 +92,6 @@ export const enOrgUnit: Record<keyof typeof koOrgUnit, string> = {
   "orgUnit.dissolve.consequence": "On {date} {name} is dissolved, its {n, number} direct members are each transferred where chosen, and its {sub, number} sub-departments move up one level.",
   "orgUnit.fact.head": "Department head",
   "orgUnit.fact.code": "Department code",
-  "orgUnit.head.vacant": "Vacant",
   "orgUnit.head.concurrent": "(concurrent)",
   "orgUnit.head.since": "since {date}",
   "orgUnit.head.otherUnit": "Another unit · {unit} · placement stays",

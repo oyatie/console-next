@@ -41,7 +41,7 @@ function boxLines(n: ChartNode, f: ReadonlySet<BoxField>, redact: boolean): stri
     ];
   if (n.kind === "site") return [levelText(n)];
   if (n.kind === "dept") {
-    const who = head ? (n.head ? t("structure.node.head", { name: n.head.name, concurrent: n.head.concurrent ? "yes" : "no" }) : t("structure.node.headVacant")) : "";
+    const who = head ? (n.head ? t("structure.node.head", { name: n.head.name, concurrent: n.head.concurrent ? "yes" : "no" }) : t("structure.head.missing")) : "";
     return [[who, f.has("code") ? n.code : ""].filter(Boolean).join(" · ")];
   }
   return [];

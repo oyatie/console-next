@@ -64,7 +64,6 @@ export function DeptPanel({ place, setup, onClose, as_of, known_at, readOnly = f
           items={[
             { label: t("structure.list.people"), value: unitCounts(n) },
             { label: t("orgUnit.stat.sub"), value: sub.length },
-            { label: t("orgUnit.fact.head"), value: h?.name ?? t("orgUnit.head.vacant"), name: true },
           ]}
         />
         <Facts
@@ -80,7 +79,7 @@ export function DeptPanel({ place, setup, onClose, as_of, known_at, readOnly = f
             { label: t("orgUnit.fact.place"), value: <>{place.entity.name} · {place.workplace?.name} <Muted>{t("orgUnit.fact.derived")}</Muted></> },
             {
               label: t("orgUnit.fact.head"),
-              value: h ? <>{h.name}{h.concurrent && ` ${t("orgUnit.head.concurrent")}`}{h.since && <Muted> · {t("orgUnit.head.since", { date: fmtDate(h.since) })}</Muted>}</> : <Muted>{t("orgUnit.head.vacant")}</Muted>,
+              value: h ? <>{h.name}{h.concurrent && ` ${t("orgUnit.head.concurrent")}`}{h.since && <Muted> · {t("orgUnit.head.since", { date: fmtDate(h.since) })}</Muted>}</> : <><Chip tone="warn">{t("structure.head.missing")}</Chip>{!readOnly && <Button variant="ghost" id="act-dept-head" onClick={() => void navigate({ search: s => ({ ...s, sel: n.id, act: "dept-head" }) })}>{t("structure.head.appoint")}</Button>}</>,
             },
             { label: t("orgUnit.fact.code"), value: n.code ? <span className="num">{n.code}</span> : <Muted>{t("orgUnit.code.none")}</Muted> },
             { label: t("orgUnit.fact.since"), value: <><span className="num">{since ? fmtDate(since) : "—"}</span>{!readOnly && <> <Muted>{t("orgStructure.corOnly")}</Muted></>}</> },

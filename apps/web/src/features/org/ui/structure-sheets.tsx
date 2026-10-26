@@ -7,6 +7,7 @@ import { DeptNameComposer } from "./dept-name-composer";
 import { DeptDissolveSheet } from "./dept-dissolve-sheet";
 import { DeptEndSheet } from "./dept-end-sheet";
 import { DeptMergeSheet } from "./dept-merge-sheet";
+import { DeptDetails } from "./dept-details";
 
 const route = getRouteApi("/app/org");
 
@@ -16,14 +17,14 @@ const route = getRouteApi("/app/org");
  * back to the panel and to the control that opened the sheet.
  */
 export function StructureSheets() {
-  const { sel, act } = route.useSearch();
+  const { sel, act, view } = route.useSearch();
   const navigate = route.useNavigate();
   const slots = useStructureSlots();
   const s = useStructure(sel);
   if (!act || !(STRUCTURE_ACTS as readonly string[]).includes(act) || !s.at) return null;
   const close = () => {
     void navigate({ search: (x) => ({ ...x, act: undefined }) });
-    focusSoon(`act-${act}`, "org-tree");
+    focusSoon(act === "dept-head" && view === "list" ? `act-dept-head-${sel}` : `act-${act}`, view === "list" ? "registry-vacant" : "org-tree");
   };
   const select = (id?: string) => navigate({ search: (x) => ({ ...x, sel: id, act: undefined }) });
   const onAct = (next: StructureAct) => navigate({ search: (x) => ({ ...x, act: next }) });
@@ -31,6 +32,8 @@ export function StructureSheets() {
   const a = act as StructureAct;
   if (a.startsWith("wp-")) return slots?.workplaceSheet({ act: a, at, setup: s.setup, onClose: close, onSelect: (id) => void select(id), onAct: (n) => void onAct(n) }) ?? null;
   switch (a) {
+    case "dept-head":
+      return at.kind === "dept" && !s.q.data?.read_only ? <DeptDetails key={at.node.id} node={at.node} appoint onDone={close} /> : null;
     case "dept-add":
       return at.kind !== "entity" && !s.setup ? <DeptNameComposer key={`create:${at.node.id}`} mode="create" place={at} onClose={close} /> : null;
     case "dept-rename":

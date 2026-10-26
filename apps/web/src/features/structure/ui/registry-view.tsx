@@ -7,7 +7,7 @@ import { Chip } from "../../../ui/chip";
 import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
 import { place } from "../../../ui/org-canvas/place";
 import { type ChartNode, type Structure } from "../domain/model";
-import { registryRows, type Level, type ListFilter } from "../domain/registry";
+import { registryRows, vacantHeads, type Level, type ListFilter } from "../domain/registry";
 import { temporalLabel, unitCounts } from "../present";
 import { AddUnit } from "./add-unit";
 import { HeadCell, OrderCell, RegistryActions, RegistryFilters } from "./registry-bar";
@@ -61,7 +61,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
     // The head a level has: a legal entity's representatives, a department's head (a workplace's manager is not served).
     {
       id: "head",
-      width: 148,
+      width: 180,
       header: t("structure.list.head"),
       cell: (n) =>
         n.kind === "entity" ? (n.reps ? t("structure.node.reps", { name: n.reps.first, more: n.reps.more }) : "—")
@@ -84,7 +84,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows }: { s: Stru
             </ToggleButton>
           ))}
         </div>
-        <RegistryFilters s={s} rows={rows} filters={filters} onFilters={setFilters} />
+        <RegistryFilters s={s} rows={rows} filters={filters} onFilters={setFilters} vacancyCount={vacantHeads(s).count} />
       </div>
       <LongTable
         label={t("structure.list.label")}

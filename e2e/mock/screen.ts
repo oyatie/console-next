@@ -30,7 +30,7 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await page.addInitScript(() => {
     const fetch = window.fetch;
     window.fetch = (input, init) => {
-      const request = new Request(input, init);
+      const request = input instanceof Request ? input : new Request(input, init);
       if (new URL(request.url).pathname !== "/api/v1/events") return fetch(input, init);
       return Promise.resolve(new Response(new ReadableStream({ start(controller) {
         controller.enqueue(new TextEncoder().encode(": connected\n\n"));

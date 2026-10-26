@@ -10,6 +10,10 @@ import { TargetTree } from "../../features/org/ui/target-tree";
 import { placesOf } from "../../reference/org/domain/structure";
 import { Facts, Stats } from "../../reference/org/ui/panel-shell";
 import { Section } from "../Section";
+import { buildStructure } from "../../features/structure/domain/model";
+import { vacantHeads } from "../../features/structure/domain/registry";
+import { NodeContent } from "../../features/structure/ui/node-content";
+import { Chip } from "../../ui/chip";
 
 export const order = 84;
 
@@ -18,6 +22,7 @@ const site = (id: string, name: string, headcount: number, children: StructureNo
 const team = dept("d", tg("sample.dept"), 12, [dept("t1", tg("sample.team"), 5), dept("t2", tg("sample.teamLong"), 3)]);
 const entity: StructureNode = { kind: "LEGAL_ENTITY", id: "e", name: tg("sample.company"), headcount: 40, direct_headcount: 0, dispatched_headcount: 0, chips: [], children: [site("s", tg("sample.site"), 30, [team]), site("s2", `${tg("sample.site")} 2`, 10, [dept("d2", tg("sample.dept"), 10)])] };
 const places = placesOf({ tenant_name: tg("sample.company"), phase: "SETUP", entities: [entity], unplaced: [] });
+const structure = buildStructure({ tenant_name: tg("sample.company"), phase: "SETUP", entities: [entity], unplaced: [] });
 
 /**
  * The editor's building blocks with sample data: answer chips with nothing preselected (D7), described cards with an
@@ -31,6 +36,8 @@ export default function Structure() {
   const plan = deletePlan(places.get("d")!, "raise");
   return (
     <Section title={tg("section.structure")}>
+      <Chip tone="warn">{t("structure.head.missingCount", { count: vacantHeads(structure).count })}</Chip>
+      <NodeContent box={{ node: structure.byId.get(team.id)!, lod: "full", x: 0, y: 0, w: 0, h: 0 }} counts={structure.counts} />
       <ChoiceField
         label={t("workplace.field.insurance")}
         note={t("workplace.create.statutoryNote")}

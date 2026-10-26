@@ -2,6 +2,7 @@ import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, CornerDownRight, GitMerge, Network, Rows3, Trash2 } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button, ToggleButton } from "../../../ui/button/button";
+import { Chip } from "../../../ui/chip";
 import type { ChartNode, Structure } from "../domain/model";
 import { LIST_FILTERS, type ListFilter } from "../domain/registry";
 import { collapseSelection, movable, orderStep } from "../domain/rules";
@@ -11,12 +12,12 @@ import css from "./chart.module.css";
 const route = getRouteApi("/app/org");
 
 /** The list's quick filters and the org sheet download (spec S2-registry): the sheet holds the rows shown. */
-export function RegistryFilters({ filters, onFilters }: { s: Structure; rows: readonly ChartNode[]; filters: ReadonlySet<ListFilter>; onFilters: (f: ReadonlySet<ListFilter>) => void }) {
+export function RegistryFilters({ filters, onFilters, vacancyCount }: { s: Structure; rows: readonly ChartNode[]; filters: ReadonlySet<ListFilter>; onFilters: (f: ReadonlySet<ListFilter>) => void; vacancyCount?: number }) {
   const flip = (f: ListFilter) => onFilters(filters.has(f) ? new Set([...filters].filter((x) => x !== f)) : new Set([...filters, f]));
   return (
     <>
       <div className="row" role="group" aria-label={t("structureChart.list.filters")}>
-        {LIST_FILTERS.map((f) => <ToggleButton key={f} className={css.pill} pressed={filters.has(f)} onClick={() => flip(f)}>{t(`structureChart.list.filter.${f}`)}</ToggleButton>)}
+        {LIST_FILTERS.map((f) => <ToggleButton key={f} id={f === "vacant" ? "registry-vacant" : undefined} className={css.pill} pressed={filters.has(f)} onClick={() => flip(f)}>{f === "vacant" && vacancyCount !== undefined ? t("structure.head.missingCount", { count: vacancyCount }) : t(`structureChart.list.filter.${f}`)}</ToggleButton>)}
       </div>
       <span className="grow" />
     </>
@@ -60,14 +61,15 @@ export function OrderCell({ s, n, order }: { s: Structure; n: ChartNode; order: 
   );
 }
 
-/** A department's head in the list; a vacant one opens the department on the chart, where its head is set (S6). */
+/** A vacant head opens the existing details composer directly, keeping the list in place. */
 export function HeadCell({ n, readOnly = false }: { n: ChartNode; readOnly?: boolean }) {
   const nav = route.useNavigate();
   if (n.head) return <>{n.head.name}{n.head.concurrent ? t("structure.list.concurrent") : ""}</>;
-  if (readOnly) return <span className="muted">{t("structure.list.vacant")}</span>;
+  const missing = <Chip tone="warn">{t("structure.head.missing")}</Chip>;
+  if (readOnly) return missing;
   return (
-    <Button variant="ghost" className={css.headPick} onClick={() => void nav({ search: (q) => ({ ...q, view: undefined, focus: undefined, sel: n.id, act: undefined }) })}>
-      <span className="muted">{t("structure.list.vacant")}</span> {t("structureChart.list.setHead")}
+    <Button variant="ghost" id={`act-dept-head-${n.id}`} className={css.headPick} aria-label={t("structure.head.appoint")} onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); void nav({ search: (q) => ({ ...q, sel: n.id, act: "dept-head" }) }); }}>
+      {missing} {t("structureChart.list.setHead")}
     </Button>
   );
 }
