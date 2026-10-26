@@ -36,11 +36,11 @@ beforeAll(async () => {
         mode === 'entity' ? h(PickOne, { label: 'Entity', required: true, options: choices, value, onChange: setValue, group: 'Entities', empty: 'No entities' }) :
         mode === 'role' ? h(RolePick, { label: 'Role', roles: choices.map(o => ({ id: o.value, name_ko: o.label, lines: [] })), value, onChange: setValue }) :
         h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query, onQueryChange: setQuery,
-          options: mode === 'empty' || mode === 'readonly-empty' || mode === 'disabled-empty' ? [] : options,
+          options: ['empty', 'readonly-empty', 'disabled-empty', 'error-empty'].includes(mode) ? [] : options,
           value, onChange: setValue, total: mode === 'complete' ? options.length : mode === 'unknown-total' ? undefined : 2000, loading, isRequired: true,
           readOnly: mode === 'readonly' || mode === 'readonly-empty',
           disabledReason: mode === 'disabled' || mode === 'disabled-empty' ? 'Approval required' : undefined,
-          error: mode === 'error' ? 'Choose a person' : undefined,
+          error: mode === 'error' || mode === 'error-empty' ? 'Choose a person' : undefined,
           escape: { kind: 'request', label: 'Request addition', note: 'Ask the owner', onRequest: () => setValue('request') } }),
         h('input', { id: 'after', 'aria-label': 'After' }),
         h('output', { id: 'selected' }, value)));
@@ -102,6 +102,31 @@ test("only a settled, truncated result page asks the user to narrow the search",
   await expectElement(hint).toBeVisible();
   await input.press("Tab");
   await expectElement(hint).toHaveCount(0);
+});
+
+test("an empty page with a positive total does not ask to narrow zero results", async () => {
+  const input = await open("empty");
+  await input.press("ArrowDown");
+  await expectElement(page.getByRole("listbox")).toBeVisible();
+  await expectElement(page.getByText(/처음 0건만 표시합니다/)).toHaveCount(0);
+});
+
+test("the narrowing guidance is exposed to assistive technology, keyboard tips are decorative", async () => {
+  for (const mode of ["complete", "results"]) {
+    const input = await open(mode);
+    await input.press("ArrowDown");
+    const footer = page.getByText(mode === "results" ? "처음 20건만 표시합니다. 검색어를 더 입력해 범위를 좁히십시오." : "↑↓ 이동 · Enter 선택 · 이름이 겹치면 사번이나 소속, 로그인 아이디를 확인합니다", { exact: true });
+    await expectElement(footer).toBeVisible();
+    if (mode === "results") await expectElement(footer).not.toHaveAttribute("aria-hidden", "true");
+    else await expectElement(footer).toHaveAttribute("aria-hidden", "true");
+  }
+});
+
+test("a failed empty search reports the error without a no-match escape", async () => {
+  const input = await open("error-empty");
+  await expectElement(input).toHaveAccessibleDescription("Choose a person");
+  await expectElement(page.getByText("No people", { exact: true })).toHaveCount(0);
+  await expectElement(page.getByRole("button", { name: "Request addition" })).toHaveCount(0);
 });
 
 test("field states use the theme tokens and preserve the read-only focus ring", async () => {
@@ -176,6 +201,15 @@ test("an invalid picker associates the error with its input", async () => {
   const input = await open("error");
   await expectElement(input).toHaveAttribute("aria-invalid", "true");
   await expectElement(input).toHaveAccessibleDescription("Choose a person");
+  const danger = await page.evaluate(() => {
+    const probe = document.createElement("span");
+    probe.style.borderColor = "var(--danger-solid)";
+    document.body.append(probe);
+    const color = getComputedStyle(probe).borderTopColor;
+    probe.remove();
+    return color;
+  });
+  await expectElement(input).toHaveCSS("border-top-color", danger);
 });
 
 test("required pickers retain native required validation", async () => {

@@ -1,7 +1,7 @@
 import { QueryState } from "../../../lib/react/query-state";
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
-import { useState, type ReactNode } from "react";
-import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { useEffect, useState, type ReactNode } from "react";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { UserPlus } from "lucide-react";
 import type { components } from "@console/api/schema";
@@ -25,6 +25,8 @@ import { personOption } from "../../../reference/person/ui/person-option";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
 import { readFailureText } from "../../../lib/refusal";
 import { Muted } from "../../../ui/muted/muted";
+import { settingsQuery } from "../../../reference/settings/api";
+import { SEARCH_DEBOUNCE_MS } from "../../../lib/freshness";
 
 type Person = components["schemas"]["DirectoryPerson"];
 const route = getRouteApi("/app/people");
@@ -39,6 +41,16 @@ const PATH = "/api/v1/directory/people";
  */
 export function Accounts({ sel, head }: { sel?: string; head?: (available: boolean, search?: ReactNode) => ReactNode }) {
   const [q, setQ] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [composing, setComposing] = useState(false);
+  const settings = useQuery(settingsQuery);
+  const configuredDelay = settings.data?.items.find(item => item.key === "display.search_debounce")?.value;
+  const delay = typeof configuredDelay === "number" && Number.isFinite(configuredDelay) && configuredDelay > 0 ? configuredDelay : SEARCH_DEBOUNCE_MS;
+  useEffect(() => {
+    if (composing) return;
+    const timer = setTimeout(() => setSearchQuery(q.trim()), delay);
+    return () => clearTimeout(timer);
+  }, [q, composing, delay]);
   const s = route.useSearch() as AccountsSearch;
   const navigate = route.useNavigate();
   const set = (patch: AccountsSearch & { sel?: string }, push = false) => navigate({ search: (prev) => ({ ...prev, ...patch }), replace: !push });
@@ -46,7 +58,7 @@ export function Accounts({ sel, head }: { sel?: string; head?: (available: boole
   const admin = useCan()("user_manage");
   const [receipt, setReceipt] = useState<{ id: string; message: string }>();
   const [issued, setIssued] = useState<Issued | null>(null);
-  const base = { search: q.trim() || undefined, include_inactive: s.inactive ?? false };
+  const base = { search: searchQuery || undefined, include_inactive: s.inactive ?? false };
   const list = useInfiniteQuery({
     ...get(PATH, { params: { query: { ...base, limit: PAGE } } }),
     queryFn: ({ pageParam }) => get(PATH, { params: { query: { ...base, limit: PAGE, offset: pageParam } } }).queryFn(),
@@ -69,15 +81,17 @@ export function Accounts({ sel, head }: { sel?: string; head?: (available: boole
   };
   const filtered = Boolean(s.inactive);
   const select = (id: string | null) => (setReceipt(undefined), set({ sel: id ?? undefined }));
-  const options = list.isPlaceholderData || list.isError ? [] : rows;
-  const search = <ServerPicker
+  const waiting = composing || q.trim() !== searchQuery;
+  const stale = waiting || list.isPlaceholderData || list.isError;
+  const options = stale ? [] : rows;
+  const search = <div onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)}><ServerPicker
     label={t("accounts.search.label")} group={t("accounts.title")}
     query={q} onQueryChange={setQ} value={sel ?? null} onChange={select}
     options={options.map((p) => personOption(p, options))}
-    total={list.isPlaceholderData || list.isError ? undefined : total}
-    loading={list.isFetching} error={list.isError ? readFailureText(list.error) : undefined}
+    total={stale ? undefined : total}
+    loading={waiting || list.isFetching} error={!waiting && list.isError ? readFailureText(list.error) : undefined}
     empty={t("accounts.noMatch.reason", { q })}
-  />;
+  /></div>;
 
   return (
     <PageReadGate q={list} head={available => head?.(available, available ? search : undefined)}><div className="split" data-open={Boolean(sel)}>

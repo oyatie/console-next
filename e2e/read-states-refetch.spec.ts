@@ -21,7 +21,7 @@ const cases = [
   { path: "/org", read: "/api/v1/org-structure", date: true },
   { path: "/org/changes", read: "/api/v1/org-changes", button: /^완료 / },
   { path: "/people", read: "/api/v1/employees", search: "이름 또는 사번" },
-  { path: "/people?view=accounts", read: "/api/v1/directory/people", search: "계정 이름·사번 검색", submit: "계정 검색" },
+  { path: "/people?view=accounts", read: "/api/v1/directory/people", search: "계정 이름·사번 검색" },
   { path: "/people?view=accounts", read: "/api/v1/directory/people", button: "비활성 계정 포함" },
   { path: "/access/grants", read: "/api/v1/access/grants", select: "역할" },
   { path: "/people/exits", read: "/api/v1/hr/exit-cases", search: "이름 또는 사번" },
@@ -108,9 +108,9 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
           await field.press("Tab");
           control = main.getByRole("button", { name: "달력 열기", exact: true }).first();
         } else if ("search" in row) {
-          const field = main.getByRole("textbox", { name: row.search }).or(main.getByRole("searchbox", { name: row.search }));
+          const field = main.getByRole("textbox", { name: row.search }).or(main.getByRole("searchbox", { name: row.search })).or(main.getByRole("combobox", { name: row.search }));
           await field.fill("읽기 유지");
-          control = "submit" in row ? main.getByRole("button", { name: row.submit, exact: true }) : field;
+          control = field;
           await control.focus();
           await control.press("Enter");
         } else if ("select" in row) {
