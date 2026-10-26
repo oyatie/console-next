@@ -18,7 +18,7 @@ export const bootIdleKo = {
   "idle.reauth.copied": "입력 내용을 복사했습니다.",
   "idle.reauth.copyFailed": "자동으로 복사하지 못했습니다. 아래 입력 내용을 선택하여 복사하십시오.",
   "draft.restored": "작성 중이던 내용을 불러왔습니다",
-  "draft.discard": "버리기",
+  "draft.discard": "폐기",
   "draft.unavailable": "작성 중인 내용을 이 탭에 보관하지 못했습니다. 화면을 닫기 전에 입력 내용을 복사하십시오.",
   "idle.warn.body": "사용하지 않으면 {time}에 자동으로 로그아웃됩니다. 계속하려면 화면을 누르거나 “로그인 유지”를 누르십시오.",
   "idle.warn.stay": "로그인 유지",

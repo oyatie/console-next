@@ -28,7 +28,7 @@ test("월간 근무표: type, refuse, fix, paste, save with 근거, undo, correc
   await admin.evaluate(() => {
     const original = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key: string, value: string) {
-      if (key.startsWith("console.attendance.drafts:")) throw new DOMException("Full", "QuotaExceededError");
+      if (key.startsWith("console.draft:") && JSON.parse(key.slice("console.draft:".length))[1] === "attendance") throw new DOMException("Full", "QuotaExceededError");
       original.call(this, key, value);
     };
   });

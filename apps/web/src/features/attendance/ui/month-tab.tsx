@@ -55,7 +55,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
   const rows: GridRow[] = useMemo(() => grid.data?.pages.flatMap((p) => p.rows) ?? [], [grid.data]);
   const total = grid.data?.pages[0]?.people_total ?? 0;
   const monthState = useMemo(() => pageState(rows.map((r) => r.month_state)), [rows]);
-  const store = useDrafts(`${month}:${search.wp ?? ""}:${search.unit ?? ""}`);
+  const store = useDrafts(`${month}:${search.wp ?? ""}:${search.unit ?? ""}`, rows);
   const online = useOnline();
   const [range, setRange] = useState<Range | null>(null);
   const [dock, setDock] = useState<Dock>(null);

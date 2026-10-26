@@ -1,5 +1,6 @@
 import { ApiError, api, unwrap, type components } from "@console/api";
 import { cursorPages, get } from "../../lib/query";
+export { session } from "@console/api";
 
 type S = components["schemas"];
 export type Pattern = S["AttendancePattern"];
