@@ -21,7 +21,7 @@ beforeAll(async () => {
       "@console/api": resolve("packages/api/src"),
       "@console/i18n": resolve("packages/i18n/src"),
     }, dedupe: ["react", "react-dom"] },
-    server: { host: "127.0.0.1", port: 0, fs: { allow: [resolve("."), realpathSync("node_modules"), realpathSync("node_modules/pretendard")] } },
+    server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), realpathSync("node_modules"), realpathSync("node_modules/pretendard")] } },
     plugins: [{
       name: "go-live-test",
       configureServer(s) {
