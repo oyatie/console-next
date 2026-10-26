@@ -84,6 +84,12 @@ fn written((v, fresh): (SaveReceipt, bool)) -> (StatusCode, Json<SaveReceipt>) {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum Rows {
+    All,
+}
+
+#[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct DaysQuery {
     date: String,
@@ -91,6 +97,7 @@ pub(crate) struct DaysQuery {
     unit_id: Option<Uuid>,
     issues_only: Option<bool>,
     no_schedule_only: Option<bool>,
+    rows: Option<Rows>,
 }
 
 async fn days(
@@ -105,6 +112,7 @@ async fn days(
         unit_id: q.unit_id,
         issues_only: q.issues_only.unwrap_or(false),
         no_schedule_only: q.no_schedule_only.unwrap_or(false),
+        all_rows: q.rows.is_some(),
     };
     Ok(Json(
         s.store

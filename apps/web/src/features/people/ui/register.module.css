@@ -1,7 +1,7 @@
 /* features/people/register: the registration sheet (spec E3) and its parts. Tokens only. */
 .consequence { display: flex; flex-direction: column; gap: var(--space-1); min-block-size: 3lh; }
 .form { display: flex; flex-direction: column; gap: var(--space-5); }
-.personRow { display: grid; grid-template-columns: 1fr .9fr 1.25fr 1.05fr; gap: var(--space-3); align-items: start; }
+.personRow { display: grid; grid-template-columns: 1fr .9fr 1.05fr; gap: var(--space-3); align-items: start; }
 .termsRow { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); align-items: start; }
 /* The date's explanation must not move the fields below a pointer. */
 .termsRow > :first-child > :first-child:not(:has([data-hint="field"]))::after { content: ""; block-size: calc(var(--text-xs) * var(--lh-base)); }

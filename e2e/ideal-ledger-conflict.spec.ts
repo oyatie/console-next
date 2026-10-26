@@ -23,7 +23,7 @@ test("BL-009/011 two browsers expose the latest authorized change and its origin
   const staleContext = await browser.newContext({ storageState: await admin.context().storageState() });
   await staleContext.addInitScript(recordShifts);
   const otherBrowser = await staleContext.newPage();
-  await otherBrowser.goto(entityPage);
+  await go(otherBrowser, entityPage);
   await expect(otherBrowser.getByRole("heading", { name: /원장동시/, level: 1 })).toBeVisible();
 
   // Each browser opens its own snapshot. Only UI saves create the race.
@@ -66,7 +66,8 @@ test("BL-009/011 two browsers expose the latest authorized change and its origin
   await expect(alert.getByText(OPS_BADGE, { exact: true })).toBeVisible();
   await expect(input).toHaveValue("02-555-0142");
   const conflict = stale.getByRole("region", { name: "그사이 기록된 내용" });
-  await expect(conflict).toContainText(/대표전화: .*→ .*0199/);
+  await expect(conflict.getByRole("term").filter({ hasText: /^대표전화$/ })).toBeVisible();
+  await expect(conflict.getByRole("definition")).toContainText("변경 전: — → 변경 후: 02-555-0199");
   await expect(conflict).toContainText("내 값: 02-555-0142");
   await expect(stale.getByRole("button", { name: "정정 기록", exact: true })).toHaveAttribute("aria-disabled", "true");
   expect(attempts.count()).toBe(1);
@@ -84,7 +85,8 @@ test("BL-009/011 two browsers expose the latest authorized change and its origin
   const history = otherBrowser.locator('section[aria-labelledby="history-title"]');
   const phoneRow = history.getByRole("listitem").filter({ hasText: "대표전화" }).first();
   await expect(phoneRow).toContainText("0199");
-  await expect(phoneRow.getByText(OPS_BADGE, { exact: true })).toBeVisible();
+  await expect(phoneRow.getByText("운영 계정", { exact: true })).toBeVisible();
+  await expect(phoneRow.getByText(/긴급 권한/)).toHaveCount(0);
   const outcomeLink = phoneRow.getByRole("link", { name: "요청 결과 보기", exact: true });
   await expect(outcomeLink).toHaveAttribute("href", `/requests/${winnerId}`);
   await expectAccessible(otherBrowser, "BL-009 ops badge and history outcome link");

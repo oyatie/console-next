@@ -8,6 +8,9 @@ import type { RealtimeTunables } from "@console/api/events";
 /** `query.stale_time`: a read younger than this is not re-read when a screen mounts it again. */
 export const STALE_TIME_MS = 30_000;
 
+/** `display.search_debounce`: wait for a pause in typing before a server search. */
+export const SEARCH_DEBOUNCE_MS = 100;
+
 /** `realtime.*` stream tunables (spec §5.1). */
 export const REALTIME: RealtimeTunables = {
   retryHint: 3_000,

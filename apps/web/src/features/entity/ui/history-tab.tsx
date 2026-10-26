@@ -2,34 +2,35 @@ import { Link } from "@tanstack/react-router";
 import { useQueries, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { LegalEntity, Revision } from "@console/api/pending";
 import { t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
+import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { CHANGE_MODE, labeled } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
 import { OutcomeLink } from "../../../lib/react/outcome-link";
 import { ActorBadge } from "../../../ui/timeline-lanes/actor-badge";
 import { Chip } from "../../../ui/chip";
-import { Timeline } from "../../../ui/timeline";
+import { TimelineLanes } from "../../../ui/timeline-lanes/timeline-lanes";
+import { FieldDiff } from "../../../ui/timeline-lanes/field-diff";
 import { entityDocumentsQuery, entityHistoryQuery, registrationHistoryQuery } from "../api";
 import { OpenOriginal } from "./open-original";
 import { revisionKind } from "../domain/history";
 import { entityName } from "../../../reference/entity/domain/names";
-import { changeLine } from "../present";
-import { reasonText } from "../present";
+import { changeField, changeLine, reasonText } from "../present";
 
 type MomentTarget = { id: string; wp?: string };
 
 /** One dated revision: who recorded it, from which date it holds, how it was decided, and what changed. */
 export function RevisionItems({ items, subject, target }: { items: Revision[]; subject?: string; target?: MomentTarget }) {
   return (
-    <Timeline
-      items={items.map((r, i) => {
+    <TimelineLanes
+      items={items.map((r) => {
         const mode = labeled(CHANGE_MODE, r.change_mode);
+        const reason = reasonText(r.reason_code);
         return {
-          // Versions repeat across the insurer chains of one workplace; the read's order is stable.
-          key: `${i}-${r.version}`,
-          at: r.recorded_at,
+          // Insurer chains can share versions; their field paths distinguish the records.
+          key: `${r.recorded_at}-${r.version}-${r.changes.map(c => c.field).join(",")}`,
+          date: fmtDateTime(r.recorded_at),
           title: (
-            <span className="row">
+            <div className="row">
               {revisionKind(r) === "derived"
                 ? `${t("entityRecord.history.derived")} · ${t("entityRecord.history.from", { date: fmtDate(r.effective_from) })}`
                 : r.actor_name
@@ -39,10 +40,16 @@ export function RevisionItems({ items, subject, target }: { items: Revision[]; s
               {target && <Link to="/org/entities/$id" params={{ id: target.id }} search={{ wp: target.wp, as_of: r.effective_from, known_at: r.recorded_at }}>{t("asof.viewMoment")}</Link>}
               <ActorBadge kind={r.actor_kind} /><OutcomeLink id={r.command_id} />
               {r.evidence_document_id && target && <Evidence id={r.evidence_document_id} entityId={target.id} />}
-            </span>
+            </div>
           ),
-          // company-19: old → new for each field, and why it was recorded.
-          detail: [r.changes.map(changeLine).join(" · "), reasonText(r.reason_code)].filter(Boolean).join(" · ") || undefined,
+          detail: (
+            <>
+              {r.changes.map(c => c.field === "registration_id"
+                ? <div key={c.field}>{changeLine(c)}</div>
+                : <FieldDiff key={c.field} fields={[changeField(c)]} />)}
+              {reason && <div className="muted">{reason}</div>}
+            </>
+          ),
         };
       })}
     />

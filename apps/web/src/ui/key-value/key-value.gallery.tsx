@@ -18,6 +18,7 @@ export default function KeyValueGallery() {
           { key: "open", label: tg("facts.open"), value: <span className="num">{tg("facts.openValue")}</span> },
         ]}
       />
+      <KeyValue label={tg("facts.label")} items={[]} loading />
       <StatRow
         label={tg("facts.stats")}
         items={[

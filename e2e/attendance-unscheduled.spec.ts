@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import { expectAccessible } from "./a11y";
+import { atPhoneWidth, expectAccessible } from "./a11y";
 import { chooseRadio, go, kstDate, registerEmployee } from "./flows";
 import { fillWeeklyPattern, openSchedule } from "./helpers/attendance";
 import { apiOf, bearerOf } from "./helpers/api";
@@ -48,6 +48,26 @@ test("일정 없음: warning → filtered people → assign one person; month sa
   await admin.getByRole("button", { name: "소정대로 기록", exact: true }).click();
   await expect(admin.getByRole("status").filter({ hasText: "소정대로 1칸" })).toContainText("일정 없음 2");
   await expect(admin.getByRole("status").filter({ hasText: "소정대로 1칸" })).toContainText("본인·마감 0");
+
+  // Once the scheduled record is saved, compact folds it; detail must restore the ledger population.
+  await admin.getByRole("button", { name: "저장", exact: true }).click();
+  const save = admin.getByRole("complementary", { name: /저장 · 초안 1칸/ });
+  await chooseRadio(save, /출근부 \(종이\)/);
+  await save.getByRole("button", { name: /저장$/ }).click();
+  await expect(admin.getByRole("button", { name: "저장", exact: true })).toHaveCount(0);
+  await admin.getByRole("button", { name: "자세히", exact: true }).click();
+  const detail = admin.getByRole("table", { name: "일별 · 자세히" });
+  const ledger = (await admin.getByText(/^근태 대상 \d+명/).innerText()).match(/^근태 대상 (\d+)명/)!;
+  await expect(detail.locator("tbody tr[data-id]")).toHaveCount(Number(ledger[1]));
+  await expect(detail.locator('th[scope="rowgroup"]')).toContainText(["3명 · 정상 1 · 일정 없음 2"]);
+  await admin.getByRole("button", { name: "확인 필요만", exact: true }).click();
+  await expect(detail.locator("tbody tr[data-id]")).toHaveCount(2);
+  await expect(detail.getByRole("button", { name: "일정 지정", exact: true })).toHaveCount(2);
+  await expect(admin.getByText(/^근태 대상 3명/)).toBeVisible();
+  await admin.getByRole("button", { name: "확인 필요만", exact: true }).click();
+  await expect(detail.locator("tbody tr[data-id]")).toHaveCount(Number(ledger[1]));
+  await expectAccessible(admin, "detail parity at 1440");
+  await atPhoneWidth(admin, () => expectAccessible(admin, "detail parity at 390"));
 
   const month = kstDate(0).slice(0, 7);
   await go(admin, `/attendance?month=${month}`);

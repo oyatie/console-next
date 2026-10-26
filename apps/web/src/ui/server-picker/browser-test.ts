@@ -2,6 +2,7 @@
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { createServer } from "vite";
+import { browserTestOptimizeDeps } from "../../lib/browser-test";
 
 /** Real DOM fixture shared by the picker keyboard and overlay regression suites. */
 export async function pickerTestServer(name: string, source: string) {
@@ -9,7 +10,7 @@ export async function pickerTestServer(name: string, source: string) {
   const virtual = `\0${name}`;
   const server = await createServer({
     // A cold re-optimization mid-test would load React twice.
-    optimizeDeps: { include: ["react", "react/jsx-dev-runtime", "react-dom/client", "intl-messageformat", "lucide-react", "react-aria-components"] },
+    optimizeDeps: browserTestOptimizeDeps,
     resolve: { dedupe: ["react", "react-dom"] },
     configFile: false, cacheDir: `.cache/${name}`, logLevel: "error",
     server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), realpathSync("node_modules/pretendard")] } },

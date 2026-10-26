@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/people/ui/rrn-entry.tsx#RrnEntrySheet": 24
+  },
+  "newScreens": {
+    "apps/web/src/features/people/ui/rrn-entry.tsx#RrnEntrySheet": {
+      "FACT": 15,
+      "REFUSAL": 7,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    }
+  }
+}

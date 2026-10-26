@@ -25,11 +25,18 @@ beforeAll(async () => {
         import '/apps/web/src/app.css';
         function App() {
           const [rows, setRows] = useState([{ id: 'first', name: 'Short', count: '0' }]);
+          const [grouped, setGrouped] = useState(false);
+          const [selected, setSelected] = useState();
+          window.groupRows = () => { window.updateRows(); setGrouped(true); };
           window.updateRows = () => setRows([
             { id: 'first', name: 'Short', count: 'Code issued 12 · Passkey registered 345' },
             { id: 'live', name: 'A much longer tenant name arriving over the stream', count: '123456789' },
           ]);
-          return h(Table, { label: 'Tenants', rows, rowId: r => r.id, columns: [
+          return h(Table, { label: 'Tenants', rows, rowId: r => r.id,
+            groups: grouped ? [...rows].reverse().map(r => ({ id: r.id, header: r.name, rows: [r] })) : undefined,
+            selected, onSelect: grouped ? setSelected : undefined,
+            tone: grouped ? () => 'warn' : undefined, detail: grouped ? r => r.id === 'first' ? 'Row details' : null : undefined,
+            columns: [
             { header: 'Name', cell: r => r.name },
             { header: 'Accounts', width: 'summary', fit: true, cell: r => r.count },
           ] });
@@ -70,3 +77,20 @@ for (const width of [1440, 390]) {
     expect(await cells.last().evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
   });
 }
+
+test("grouped tables preserve row detail, tone and keyboard selection across native bodies", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}table-test`);
+  await page.evaluate(() => (window as unknown as { groupRows: () => void }).groupRows());
+  await expectElement(page.locator("tbody")).toHaveCount(2);
+  await expectElement(page.locator('th[scope="rowgroup"]')).toHaveCount(2);
+  await expectElement(page.getByText("Row details")).toBeVisible();
+  const first = page.locator('tr[data-id="first"]'), last = page.locator('tr[data-id="live"]');
+  await expectElement(first).toHaveAttribute("data-tone", "warn");
+  await first.focus();
+  await page.keyboard.press("ArrowUp");
+  await expectElement(last).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expectElement(last).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("ArrowDown");
+  await expectElement(first).toBeFocused();
+});
