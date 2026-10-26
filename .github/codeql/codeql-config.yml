@@ -2,3 +2,6 @@
 name: First-party code
 paths-ignore:
   - third-party/**
+  - backend/**/tests/**
+  - e2e/**
+  - '**/*.test.*'

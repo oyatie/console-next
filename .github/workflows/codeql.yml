@@ -4,12 +4,16 @@ name: CodeQL
 on:
   push:
     branches: [dev]
+  pull_request:
+  merge_group:
+    types: [checks_requested]
   schedule:
     - cron: '37 3 * * 1'
 permissions: {}
 concurrency:
   group: codeql-${{ github.ref }}
-  cancel-in-progress: true
+  # dev pushes and the weekly scan run to completion; only superseded PR scans are cancelled.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   analyze:
@@ -21,7 +25,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [actions, javascript-typescript, python, rust]
+        # Rust takes ~31 min, so PRs and merge groups skip it (owner ruling CI-CODEQL-TIER, 2026-10-22);
+        # dev pushes and the weekly schedule scan every language.
+        language: ${{ fromJSON((github.event_name == 'pull_request' || github.event_name == 'merge_group') && '["actions","javascript-typescript","python"]' || '["actions","javascript-typescript","python","rust"]') }}
     steps:
       - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
         with:
@@ -29,6 +35,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - name: Initialize CodeQL
         uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
         with:
@@ -39,3 +46,25 @@ jobs:
         uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
         with:
           category: /language:${{ matrix.language }}
+          output: ${{ runner.temp }}/codeql-results
+      - name: Refuse high or critical findings in changed lines
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+        env:
+          CODEQL_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          CODEQL_RESULTS: ${{ runner.temp }}/codeql-results
+        run: node scripts/check-codeql-diff.mjs "$CODEQL_RESULTS" "$CODEQL_BASE"
+
+  code-scanning:
+    name: Code scanning gate
+    needs: [analyze]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+        with:
+          egress-policy: audit
+      - name: Require every language analysis and diff gate
+        env:
+          ANALYZE_RESULT: ${{ needs.analyze.result }}
+        run: test "$ANALYZE_RESULT" = success
