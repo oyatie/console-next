@@ -51,7 +51,10 @@ export function ImportPage() {
 
 function ImportWorkspace() {
   const tree = useQuery(structureQuery);
-  return <QueryState q={tree} layout="form">{(d) => <ImportWizard ents={d.entities.filter((e) => e.kind === "LEGAL_ENTITY")} operating={d.phase === "OPERATING"} />}</QueryState>;
+  return <div className={s.frame}>
+    <BulkHead title={t("orgBulk.import.title")} crumb={t("orgBulk.import.crumb")} />
+    <QueryState q={tree} layout="form">{(d) => <ImportWizard ents={d.entities.filter((e) => e.kind === "LEGAL_ENTITY")} operating={d.phase === "OPERATING"} />}</QueryState>
+  </div>;
 }
 
 function ImportWizard({ ents: allEntities, operating }: { ents: Node[]; operating: boolean }) {
@@ -132,7 +135,7 @@ function ImportWizard({ ents: allEntities, operating }: { ents: Node[]; operatin
     step === "file" ? t("orgBulk.import.private")
     : step === "columns" ? (columnsReady(cols) ? t("orgBulk.import.columnsFoot", { total: cols.length, used, levels }) : t("orgBulk.import.columnsNeed"))
     : step === "values" ? (picksOpen ? t("orgBulk.import.valuesFoot", { count: picksOpen }) : t("orgBulk.import.valuesReady"))
-    : operating ? t("orgBulk.foot.operating")
+    : operating ? t("orgBulk.operating")
     : questions ? t("orgBulk.import.previewFoot.questions", { count: questions })
     : sum.sites + sum.depts === 0 ? t("orgBulk.import.previewFoot.nothing")
     : plan.errors.length ? t("orgBulk.import.previewFoot.errors", { count: plan.errors.length })
@@ -141,11 +144,11 @@ function ImportWizard({ ents: allEntities, operating }: { ents: Node[]; operatin
   const next = (to: Step) => () => !blocked && setStep(to);
 
   return (
-    <div className={s.frame}>
-      <BulkHead title={t("orgBulk.import.title")} crumb={t("orgBulk.import.crumb")}>
+    <>
+      <div className={s.head}>
         <GateRail steps={STEPS.map((k) => ({ key: k, label: t(`orgBulk.import.step.${k}`) }))} current={step} />
         {file && <span className={s.note}><FileSpreadsheet size={14} aria-hidden /> {t("orgBulk.import.fileChip", { file: file.name, sheet: file.sheets[sheet]!.name, rows: rows.length })}</span>}
-      </BulkHead>
+      </div>
       {step === "file" && (
         <div className={s.body}>
           <FileDrop label={t("orgBulk.import.drop")} hint={t("orgBulk.import.dropHint")} accept={FILES} maxBytes={MAX_BYTES} onFiles={([f]) => f && void load(f)} error={unreadable ? t("orgBulk.import.unreadable") : undefined} />
@@ -182,6 +185,6 @@ function ImportWizard({ ents: allEntities, operating }: { ents: Node[]; operatin
           )}
         </footer>
       )}
-    </div>
+    </>
   );
 }
