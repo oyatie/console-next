@@ -7159,11 +7159,15 @@
   },
   "container:docker.io/chrislusf/seaweedfs": {
     "group": "Kubernetes/GitOps platform images and tools",
-    "job": "S3-compatible storage for platform portability tests; removal breaks the inherited platform build, deployment or verification caller",
+    "job": "S3-compatible object storage: production file storage and the dev/E2E stack (file uploads)",
     "verdict": "keep",
     "convention": "contested / review required",
-    "class": "NEEDS-OWNER",
-    "approval": null,
+    "class": "STANDARD",
+    "approval": {
+      "by": "owner",
+      "on": "2026-10-26",
+      "ruling": "approve SeaweedFS"
+    },
     "alternatives": "Existing S3-compatible test service; own code approximately 3000 LOC (review estimate)",
     "reason": "Image from a personal Docker Hub namespace; Apache-2.0 (seaweedfs org); the usual rivals (MinIO, Garage) are AGPL.",
     "evidence": [
@@ -7172,15 +7176,17 @@
       "docs/quality/dependency-ruling-2026-10-26.md"
     ],
     "allowedLayers": [
-      "CI/supply chain"
+      "frameworks & drivers/object storage",
+      "CI/supply chain",
+      "dev/E2E stack"
     ],
-    "layer": "CI/supply chain",
+    "layer": "frameworks & drivers/object storage",
     "exitPlan": "Replace only the listed platform callers after image/admission/signature/restore parity, then remove the lock entry and regenerate this register.",
     "securityProcess": "not independently verified; blocks delegated approval",
     "ruleMapping": "Preserve digest/checksum pin, supported target architecture and deployment/admission/rollback test contract.",
     "license": "unverified for exact pinned artifact including bundled OS packages",
     "footprint": "image/download size and execution delta unmeasured",
-    "recommendation": "Keep for portability tests; pin the image to the org-published name if one exists.",
+    "recommendation": "Approved by the owner 2026-10-26; one digest pin per environment from deploy/versions.json (follow-up E2E-STACK-PINS).",
     "rulingEvidence": {
       "source": "docs/quality/dependency-ruling-2026-10-26.md",
       "checkedOn": "2026-10-26",
