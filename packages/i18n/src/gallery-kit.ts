@@ -4,6 +4,9 @@ import { orgBulkKitEn, orgBulkKitKo } from "./gallery-org-bulk";
 import { chartEn, chartKo } from "./gallery-chart";
 
 export const kitKo = {
+  "timeline.event": "기록 {number}",
+  "meter.usage": "사용량",
+  "paper.preview": "미리 보기",
   ...orgBulkKitKo,
   ...chartKo,
   "section.rails": "진행 단계",
@@ -79,6 +82,9 @@ export const kitKo = {
 } as const;
 
 export const kitEn: Record<keyof typeof kitKo, string> = {
+  "timeline.event": "Event {number}",
+  "meter.usage": "Usage",
+  "paper.preview": "Preview",
   ...orgBulkKitEn,
   ...chartEn,
   "section.rails": "Progress steps",

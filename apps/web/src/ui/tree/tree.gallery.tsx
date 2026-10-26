@@ -31,6 +31,16 @@ export default function Trees() {
         expanded={expanded}
         onExpandedChange={setExpanded}
       />
+      <TreeView
+        label={tg("tree.label")}
+        roots={[]}
+        childrenOf={() => []}
+        textValue={(n: Node) => n.name}
+        row={(n: Node) => <span className="grow">{n.name}</span>}
+        expanded={new Set()}
+        onExpandedChange={() => undefined}
+        onSelect={() => undefined}
+      />
     </section>
   );
 }

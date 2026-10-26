@@ -114,6 +114,7 @@ export function PersonHistory({ employee, events, verbs, manage, today, done, on
                 labels={{ upcoming: t("person.history.upcoming"), today: t("person.history.today", { date: fmtDay(today) }), past: t("person.history.past") }}
                 upcoming={l.upcoming.map(row)}
                 past={l.past.map(row)}
+                empty={t("empCard.spine.empty")}
               />
             </>
           );
