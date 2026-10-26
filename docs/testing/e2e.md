@@ -27,9 +27,10 @@ New specs declare a journey (`@journey:<name>`) and tier (`@tier:pr`, `@tier:que
 `@tier:stability` or `@tier:visual`) in Playwright test/describe tags or titles. These are selection metadata;
 adding a tag alone does not wire a CI tier. Existing untagged files are shrink-only debt in Slice 2.
 
-Layout stability remains a product guarantee. Today `go()` checks it on every navigation and Chromium records
-shifts from first paint. Remove that check only after a dedicated route-registry suite covers **every route at
-1440 and 390**, checks the CLS budget and controls moving under the pointer, and passes independently.
+Layout stability remains a product guarantee. Today `expectAccessible()` calls `expectStable()` at 516 call sites,
+with a 500 ms wait each, and Chromium records shifts from first paint. Remove that check only after a dedicated
+route-registry suite covers **every route at 1440 and 390**, checks the CLS budget and controls moving under the
+pointer, and passes independently.
 Functional tests then assert function; the dedicated suite still fails on moving controls. No assertion,
 retry policy, selector, seed, auth path or product access decision changes in this baseline slice.
 
@@ -67,20 +68,31 @@ path. Use the same built frontend/backend revision and runner image for all repe
 concurrently. Cold startup and teardown are included in measured subprocess wall time; record the runner image,
 CPU allocation, dependency/cache state and stack image digests alongside the artifacts. Do not upload traces or
 reports until CI's personal-data scan passes. A test red keeps the collector red while retaining measurements.
-A setup error, interruption or unexpectedly unexecuted dependency test is an incomplete run, not a zero-duration
-pass. Replace incomplete runs with complete evidence before accepting a baseline.
+A setup error, interruption or unexpectedly unexecuted dependency test marks `complete: false` without discarding
+any measurements. Each run retains wall time, runner `errors`, coverage and per-project/file `spec_statuses`
+counts (`expected`, `unexpected`, `flaky`, `skipped`, `unexecuted`, `interrupted`). `specs` retains the sum of
+available attempt durations, including interrupted attempts; a file with no execution has a `null` timing, never
+a zero-duration pass. Deliberate skips remain counted separately. A run with no executions has a `null` flake rate.
+The collector finishes all six repetitions and exits red for failures or incomplete evidence. Missing/unreadable
+reports retain wall time and an error in `baseline.json`; raw reports remain untouched. An ineligible three-run
+set retains its runs and a `summary_error`, without publishing percentiles or aborting the other browser.
+Replace incomplete runs with complete evidence before accepting a baseline.
 
 Per-spec samples are the sum of test-attempt durations (including retries and failures) per project/file per run;
 these are work durations, not that file's parallel wall time. Across three comparable runs, p50/p95 use nearest
 rank (p95 is therefore the maximum, a coarse baseline). Flake rate is the total Playwright `flaky` outcomes divided
 by executed logical tests across repetitions; deliberate skips are excluded and failed outcomes stay counted.
-Coverage must match across all three runs. Fill the table from `baseline.json` and retain the revision-bound raw
+Interrupted attempts count as executions in retained runs, which remain ineligible for aggregation.
+All three runs must be complete and both declared and executed coverage must match. Deliberately skipped files
+have `null` percentiles. Complete red runs still contribute their failed-test durations and flake denominator.
+Fill the table from `baseline.json` and retain the revision-bound raw
 artifacts before calling Slice 1 measurement complete. Repeat the same protocol for later behaviour changes.
 
 ## Ordered delivery
 
 1. Baseline collector, recorded three-run evidence, budgets and tiers (evidence pending verifier).
-2. Practices guard in `npm run check`, shrink-only existing debt and fail-before controls for each rule.
+2. Conventional Playwright lint rules with shrink-only debt and fail-before controls, after the tooling ADR
+   selects the linter and the owner approves and records any dependency. No hand-written practices checker.
 3. Auth setup project and API preconditions, preserving the solo UI gate.
 4. Registry-driven stability suite before removing navigation checks.
 5. Lean services by tag, affected/both-browser CI tiers and two-core heavy-data sizing.
