@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
 # Access inventory ratchet
 
-Gate: `node scripts/access-inventory.mjs`. Shrink the budget after removals: `node scripts/access-inventory.mjs --write`.
+Gate: `node scripts/access-inventory.mjs`. Every successful run rewrites both budgets when counts decrease; commit those removals.
+Use `node scripts/access-inventory.mjs --write` to refresh their formatting without increasing a limit.
 The generated [budget](access-inventory.json) is keyed by model, file and finding kind, with counts per key.
 Line shifts and removals pass; any new key or count increase fails, including when writing the budget.
 Cedar and RLS references may grow as legacy access decisions migrate.
@@ -10,6 +11,7 @@ The scanner still discovers every REST operation, named list/count/search/export
 Detailed census (including current line numbers) is available on demand, without a committed snapshot:
 `node scripts/access-inventory.mjs --census > /tmp/access-census.json`.
 Static references are reviewer leads, never proof of enforcement or route/first-read parity.
+Legacy method calls and production code after test items are included; function declarations and `cfg(test)` items are excluded.
 Detector fixtures retain historical defects after the product fixes them.
 
 | Model | File | Kind | Maximum count |
@@ -18,17 +20,17 @@ Detector fixtures retain historical defects after the product fixes them.
 | BranchScope | backend/app/src/action_inbox/response.rs | reference | 2 |
 | BranchScope | backend/app/src/action_inbox/sources/entity_corrections.rs | reference | 3 |
 | BranchScope | backend/app/src/action_inbox/sources/hr_followups.rs | reference | 1 |
-| BranchScope | backend/app/src/audit_api.rs | reference | 16 |
+| BranchScope | backend/app/src/audit_api.rs | reference | 10 |
 | BranchScope | backend/app/src/collaboration.rs | reference | 4 |
 | BranchScope | backend/app/src/entity_wiring/correction_register.rs | reference | 3 |
 | BranchScope | backend/app/src/entity_wiring/exceptions.rs | reference | 2 |
-| BranchScope | backend/app/src/hr.rs | reference | 40 |
+| BranchScope | backend/app/src/hr.rs | reference | 13 |
 | BranchScope | backend/app/src/objects.rs | reference | 33 |
 | BranchScope | backend/app/src/requests/tests.rs | reference | 5 |
 | BranchScope | backend/app/src/wiring/dispatch.rs | reference | 1 |
 | BranchScope | backend/app/src/workbench_native.rs | reference | 5 |
-| BranchScope | backend/app/src/workbench.rs | reference | 14 |
-| BranchScope | backend/app/src/workflow_object_context.rs | reference | 10 |
+| BranchScope | backend/app/src/workbench.rs | reference | 10 |
+| BranchScope | backend/app/src/workflow_object_context.rs | reference | 5 |
 | BranchScope | backend/crates/attendance/adapter-postgres/src/lib.rs | reference | 8 |
 | BranchScope | backend/crates/attendance/rest/src/lib.rs | reference | 16 |
 | BranchScope | backend/crates/attendance/rest/src/schedule/mod.rs | reference | 4 |
@@ -70,13 +72,11 @@ Detector fixtures retain historical defects after the product fixes them.
 | BranchScope | backend/crates/identity/adapter-postgres/src/second_person/holders.rs | reference | 7 |
 | BranchScope | backend/crates/identity/adapter-postgres/src/users/directory.rs | reference | 6 |
 | BranchScope | backend/crates/identity/adapter-postgres/src/users/read.rs | reference | 6 |
-| BranchScope | backend/crates/identity/adapter-postgres/src/users/scope.rs | reference | 15 |
+| BranchScope | backend/crates/identity/adapter-postgres/src/users/scope.rs | reference | 11 |
 | BranchScope | backend/crates/identity/application/src/org.rs | reference | 3 |
 | BranchScope | backend/crates/identity/rest/src/authz.rs | reference | 9 |
-| BranchScope | backend/crates/identity/rest/src/cedar_shadow.rs | reference | 2 |
 | BranchScope | backend/crates/identity/rest/src/context.rs | reference | 1 |
-| BranchScope | backend/crates/identity/rest/src/directory/dto.rs | reference | 9 |
-| BranchScope | backend/crates/identity/rest/src/me/authz.rs | reference | 24 |
+| BranchScope | backend/crates/identity/rest/src/me/authz.rs | reference | 17 |
 | BranchScope | backend/crates/identity/rest/src/me/platform.rs | reference | 2 |
 | BranchScope | backend/crates/identity/rest/src/me/routes.rs | reference | 2 |
 | BranchScope | backend/crates/identity/rest/src/metrics.rs | reference | 6 |
@@ -87,8 +87,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | BranchScope | backend/crates/identity/rest/src/policy/routes.rs | reference | 4 |
 | BranchScope | backend/crates/identity/rest/src/policy/runtime.rs | reference | 7 |
 | BranchScope | backend/crates/identity/rest/src/policy/status.rs | reference | 2 |
-| BranchScope | backend/crates/identity/rest/src/policy/templates.rs | reference | 6 |
-| BranchScope | backend/crates/identity/rest/src/users/authz.rs | reference | 7 |
+| BranchScope | backend/crates/identity/rest/src/users/authz.rs | reference | 5 |
 | BranchScope | backend/crates/inbox/rest/src/lib.rs | reference | 1 |
 | BranchScope | backend/crates/inspection/adapter-postgres/src/lib.rs | reference | 9 |
 | BranchScope | backend/crates/inspection/application/src/lib.rs | reference | 3 |
@@ -146,9 +145,9 @@ Detector fixtures retain historical defects after the product fixes them.
 | BranchScope | backend/crates/platform/request-context/src/lib.rs | reference | 2 |
 | BranchScope | backend/crates/platform/request-context/src/principal.rs | reference | 2 |
 | BranchScope | backend/crates/platform/request-context/src/record_access.rs | reference | 8 |
-| BranchScope | backend/crates/platform/request-context/src/record_access/hr.rs | reference | 13 |
-| BranchScope | backend/crates/platform/request-context/src/record_access/observed.rs | reference | 14 |
-| BranchScope | backend/crates/platform/request-context/src/record_access/operation.rs | reference | 11 |
+| BranchScope | backend/crates/platform/request-context/src/record_access/hr.rs | reference | 6 |
+| BranchScope | backend/crates/platform/request-context/src/record_access/observed.rs | reference | 3 |
+| BranchScope | backend/crates/platform/request-context/src/record_access/operation.rs | reference | 8 |
 | BranchScope | backend/crates/platform/request-context/src/record_access/support.rs | reference | 3 |
 | BranchScope | backend/crates/platform/request-context/src/record_access/tests.rs | reference | 15 |
 | BranchScope | backend/crates/platform/request-context/src/support.rs | reference | 2 |
@@ -157,7 +156,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | BranchScope | backend/crates/registry/application/src/lib.rs | reference | 15 |
 | BranchScope | backend/crates/registry/rest/src/lib.rs | reference | 23 |
 | BranchScope | backend/crates/reporting/adapter-postgres/src/lib.rs | reference | 42 |
-| BranchScope | backend/crates/reporting/application/src/lib.rs | reference | 29 |
+| BranchScope | backend/crates/reporting/application/src/lib.rs | reference | 18 |
 | BranchScope | backend/crates/reporting/rest/src/lib.rs | reference | 7 |
 | BranchScope | backend/crates/sales/rest/src/lib.rs | reference | 1 |
 | BranchScope | backend/crates/support/adapter-postgres/src/lib.rs | reference | 22 |
@@ -171,7 +170,6 @@ Detector fixtures retain historical defects after the product fixes them.
 | finding | backend/crates/attendance/rest/src/lib.rs | branch-required-for-scoped-holder | 1 |
 | finding | backend/crates/hr/adapter-postgres/src/import/rollback.rs | all-boolean-facts-hardcoded-true | 1 |
 | finding | backend/crates/hr/adapter-postgres/src/requests/cedar.rs | all-boolean-facts-hardcoded-true | 1 |
-| finding | backend/crates/onboarding/adapter-postgres/src/go_live.rs | all-boolean-facts-hardcoded-true | 1 |
 | finding | backend/crates/platform/authz/src/decide.rs | all-boolean-facts-hardcoded-true | 1 |
 | finding | backend/crates/platform/platform-rest/src/support_tenant.rs | all-boolean-facts-hardcoded-true | 2 |
 | finding | backend/crates/platform/request-context/src/support.rs | all-boolean-facts-hardcoded-true | 1 |
@@ -202,7 +200,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/crates/compliance/rest/src/lib.rs | reference | 23 |
 | matrix | backend/crates/consulting/rest/src/lib.rs | reference | 2 |
 | matrix | backend/crates/dispatch/rest/src/lib.rs | reference | 12 |
-| matrix | backend/crates/docs/rest/src/lib.rs | reference | 7 |
+| matrix | backend/crates/docs/rest/src/lib.rs | reference | 6 |
 | matrix | backend/crates/entity/rest/src/auth.rs | reference | 7 |
 | matrix | backend/crates/equipment/adapter-postgres/src/lib.rs | reference | 7 |
 | matrix | backend/crates/equipment/rest/src/lib.rs | reference | 10 |
@@ -214,10 +212,9 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/crates/hr/adapter-postgres/src/authz_reach.rs | reference | 2 |
 | matrix | backend/crates/hr/adapter-postgres/src/authz.rs | reference | 12 |
 | matrix | backend/crates/hr/adapter-postgres/src/requests/cedar.rs | reference | 1 |
-| matrix | backend/crates/hr/adapter-postgres/src/rrn/govern.rs | reference | 1 |
 | matrix | backend/crates/hr/adapter-postgres/src/rrn/reveal.rs | reference | 1 |
 | matrix | backend/crates/identity/rest/src/authz.rs | reference | 2 |
-| matrix | backend/crates/identity/rest/src/cedar_shadow.rs | reference | 2 |
+| matrix | backend/crates/identity/rest/src/cedar_shadow.rs | reference | 1 |
 | matrix | backend/crates/identity/rest/src/me/authz.rs | reference | 2 |
 | matrix | backend/crates/identity/rest/src/users/authz.rs | reference | 3 |
 | matrix | backend/crates/inspection/rest/src/lib.rs | reference | 8 |
@@ -232,25 +229,30 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/crates/payroll/rest/src/lifecycle.rs | reference | 2 |
 | matrix | backend/crates/payroll/rest/src/payslip_draft.rs | reference | 2 |
 | matrix | backend/crates/platform/auth-rest/src/admin.rs | reference | 6 |
-| matrix | backend/crates/platform/authz-rest/src/lib.rs | reference | 3 |
+| matrix | backend/crates/platform/authz-rest/src/lib.rs | reference | 2 |
 | matrix | backend/crates/platform/authz/src/cedar_pbac/boundary.rs | reference | 3 |
 | matrix | backend/crates/platform/authz/src/cedar_pbac/enforce.rs | reference | 1 |
 | matrix | backend/crates/platform/authz/src/cedar_pbac/mode_contract.rs | reference | 1 |
 | matrix | backend/crates/platform/authz/src/cedar_pbac/mode_contract/fail_closed.rs | reference | 3 |
-| matrix | backend/crates/platform/authz/src/cedar_pbac/visible.rs | reference | 1 |
-| matrix | backend/crates/platform/authz/src/decide.rs | reference | 5 |
-| matrix | backend/crates/platform/authz/src/platform.rs | reference | 1 |
-| matrix | backend/crates/platform/platform-rest/src/support_store.rs | reference | 2 |
+| matrix | backend/crates/platform/platform-rest/src/groups.rs | reference | 4 |
+| matrix | backend/crates/platform/platform-rest/src/lib.rs | reference | 2 |
+| matrix | backend/crates/platform/platform-rest/src/onboard.rs | reference | 2 |
+| matrix | backend/crates/platform/platform-rest/src/ops_recovery.rs | reference | 1 |
+| matrix | backend/crates/platform/platform-rest/src/orgs.rs | reference | 3 |
+| matrix | backend/crates/platform/platform-rest/src/support_store.rs | reference | 1 |
 | matrix | backend/crates/platform/platform-rest/src/support_tenant.rs | reference | 2 |
 | matrix | backend/crates/platform/platform-rest/src/support.rs | reference | 3 |
+| matrix | backend/crates/platform/platform-rest/src/tenant_delete.rs | reference | 1 |
+| matrix | backend/crates/platform/platform-rest/src/tenant_erase.rs | reference | 1 |
 | matrix | backend/crates/platform/realtime/src/filter.rs | reference | 8 |
+| matrix | backend/crates/platform/realtime/src/reader.rs | reference | 2 |
 | matrix | backend/crates/platform/request-context/src/record_access.rs | reference | 8 |
 | matrix | backend/crates/platform/request-context/src/record_access/hr.rs | reference | 6 |
 | matrix | backend/crates/platform/request-context/src/record_access/observed.rs | reference | 9 |
 | matrix | backend/crates/platform/request-context/src/record_access/operation.rs | reference | 5 |
 | matrix | backend/crates/platform/request-context/src/record_access/support.rs | reference | 3 |
 | matrix | backend/crates/platform/request-context/src/record_access/tests.rs | reference | 2 |
-| matrix | backend/crates/platform/storage/src/sigv4.rs | reference | 2 |
+| matrix | backend/crates/platform/storage/src/sigv4.rs | reference | 1 |
 | matrix | backend/crates/production/rest/src/lib.rs | reference | 7 |
 | matrix | backend/crates/recruiting/rest/src/lib.rs | reference | 6 |
 | matrix | backend/crates/registry/rest/src/lib.rs | reference | 6 |
@@ -262,6 +264,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/crates/support/rest/src/lib.rs | reference | 10 |
 | matrix | backend/crates/workflow/runtime/src/authz_guard.rs | reference | 1 |
 | matrix | backend/crates/workorder/rest/src/lib.rs | reference | 49 |
+| ScopeGrant | backend/crates/platform/authz/src/access/mod.rs | reference | 1 |
 | ScopeGrant | backend/crates/platform/authz/src/access/model.rs | reference | 1 |
 | ScopeGrant | backend/crates/platform/authz/src/access/project.rs | reference | 3 |
 | ScopeGrant | backend/crates/platform/authz/src/principal.rs | reference | 6 |

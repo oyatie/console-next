@@ -29,7 +29,7 @@
       "model": "BranchScope",
       "file": "backend/app/src/audit_api.rs",
       "kind": "reference",
-      "count": 16
+      "count": 10
     },
     {
       "model": "BranchScope",
@@ -53,7 +53,7 @@
       "model": "BranchScope",
       "file": "backend/app/src/hr.rs",
       "kind": "reference",
-      "count": 40
+      "count": 13
     },
     {
       "model": "BranchScope",
@@ -83,13 +83,13 @@
       "model": "BranchScope",
       "file": "backend/app/src/workbench.rs",
       "kind": "reference",
-      "count": 14
+      "count": 10
     },
     {
       "model": "BranchScope",
       "file": "backend/app/src/workflow_object_context.rs",
       "kind": "reference",
-      "count": 10
+      "count": 5
     },
     {
       "model": "BranchScope",
@@ -341,7 +341,7 @@
       "model": "BranchScope",
       "file": "backend/crates/identity/adapter-postgres/src/users/scope.rs",
       "kind": "reference",
-      "count": 15
+      "count": 11
     },
     {
       "model": "BranchScope",
@@ -357,27 +357,15 @@
     },
     {
       "model": "BranchScope",
-      "file": "backend/crates/identity/rest/src/cedar_shadow.rs",
-      "kind": "reference",
-      "count": 2
-    },
-    {
-      "model": "BranchScope",
       "file": "backend/crates/identity/rest/src/context.rs",
       "kind": "reference",
       "count": 1
     },
     {
       "model": "BranchScope",
-      "file": "backend/crates/identity/rest/src/directory/dto.rs",
-      "kind": "reference",
-      "count": 9
-    },
-    {
-      "model": "BranchScope",
       "file": "backend/crates/identity/rest/src/me/authz.rs",
       "kind": "reference",
-      "count": 24
+      "count": 17
     },
     {
       "model": "BranchScope",
@@ -441,15 +429,9 @@
     },
     {
       "model": "BranchScope",
-      "file": "backend/crates/identity/rest/src/policy/templates.rs",
-      "kind": "reference",
-      "count": 6
-    },
-    {
-      "model": "BranchScope",
       "file": "backend/crates/identity/rest/src/users/authz.rs",
       "kind": "reference",
-      "count": 7
+      "count": 5
     },
     {
       "model": "BranchScope",
@@ -797,19 +779,19 @@
       "model": "BranchScope",
       "file": "backend/crates/platform/request-context/src/record_access/hr.rs",
       "kind": "reference",
-      "count": 13
+      "count": 6
     },
     {
       "model": "BranchScope",
       "file": "backend/crates/platform/request-context/src/record_access/observed.rs",
       "kind": "reference",
-      "count": 14
+      "count": 3
     },
     {
       "model": "BranchScope",
       "file": "backend/crates/platform/request-context/src/record_access/operation.rs",
       "kind": "reference",
-      "count": 11
+      "count": 8
     },
     {
       "model": "BranchScope",
@@ -863,7 +845,7 @@
       "model": "BranchScope",
       "file": "backend/crates/reporting/application/src/lib.rs",
       "kind": "reference",
-      "count": 29
+      "count": 18
     },
     {
       "model": "BranchScope",
@@ -940,12 +922,6 @@
     {
       "model": "finding",
       "file": "backend/crates/hr/adapter-postgres/src/requests/cedar.rs",
-      "kind": "all-boolean-facts-hardcoded-true",
-      "count": 1
-    },
-    {
-      "model": "finding",
-      "file": "backend/crates/onboarding/adapter-postgres/src/go_live.rs",
       "kind": "all-boolean-facts-hardcoded-true",
       "count": 1
     },
@@ -1133,7 +1109,7 @@
       "model": "matrix",
       "file": "backend/crates/docs/rest/src/lib.rs",
       "kind": "reference",
-      "count": 7
+      "count": 6
     },
     {
       "model": "matrix",
@@ -1203,12 +1179,6 @@
     },
     {
       "model": "matrix",
-      "file": "backend/crates/hr/adapter-postgres/src/rrn/govern.rs",
-      "kind": "reference",
-      "count": 1
-    },
-    {
-      "model": "matrix",
       "file": "backend/crates/hr/adapter-postgres/src/rrn/reveal.rs",
       "kind": "reference",
       "count": 1
@@ -1223,7 +1193,7 @@
       "model": "matrix",
       "file": "backend/crates/identity/rest/src/cedar_shadow.rs",
       "kind": "reference",
-      "count": 2
+      "count": 1
     },
     {
       "model": "matrix",
@@ -1313,7 +1283,7 @@
       "model": "matrix",
       "file": "backend/crates/platform/authz-rest/src/lib.rs",
       "kind": "reference",
-      "count": 3
+      "count": 2
     },
     {
       "model": "matrix",
@@ -1341,27 +1311,39 @@
     },
     {
       "model": "matrix",
-      "file": "backend/crates/platform/authz/src/cedar_pbac/visible.rs",
+      "file": "backend/crates/platform/platform-rest/src/groups.rs",
+      "kind": "reference",
+      "count": 4
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/platform-rest/src/lib.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/platform-rest/src/onboard.rs",
+      "kind": "reference",
+      "count": 2
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/platform-rest/src/ops_recovery.rs",
       "kind": "reference",
       "count": 1
     },
     {
       "model": "matrix",
-      "file": "backend/crates/platform/authz/src/decide.rs",
+      "file": "backend/crates/platform/platform-rest/src/orgs.rs",
       "kind": "reference",
-      "count": 5
-    },
-    {
-      "model": "matrix",
-      "file": "backend/crates/platform/authz/src/platform.rs",
-      "kind": "reference",
-      "count": 1
+      "count": 3
     },
     {
       "model": "matrix",
       "file": "backend/crates/platform/platform-rest/src/support_store.rs",
       "kind": "reference",
-      "count": 2
+      "count": 1
     },
     {
       "model": "matrix",
@@ -1377,9 +1359,27 @@
     },
     {
       "model": "matrix",
+      "file": "backend/crates/platform/platform-rest/src/tenant_delete.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/platform-rest/src/tenant_erase.rs",
+      "kind": "reference",
+      "count": 1
+    },
+    {
+      "model": "matrix",
       "file": "backend/crates/platform/realtime/src/filter.rs",
       "kind": "reference",
       "count": 8
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/platform/realtime/src/reader.rs",
+      "kind": "reference",
+      "count": 2
     },
     {
       "model": "matrix",
@@ -1421,7 +1421,7 @@
       "model": "matrix",
       "file": "backend/crates/platform/storage/src/sigv4.rs",
       "kind": "reference",
-      "count": 2
+      "count": 1
     },
     {
       "model": "matrix",
@@ -1488,6 +1488,12 @@
       "file": "backend/crates/workorder/rest/src/lib.rs",
       "kind": "reference",
       "count": 49
+    },
+    {
+      "model": "ScopeGrant",
+      "file": "backend/crates/platform/authz/src/access/mod.rs",
+      "kind": "reference",
+      "count": 1
     },
     {
       "model": "ScopeGrant",
