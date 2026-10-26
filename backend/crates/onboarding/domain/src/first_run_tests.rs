@@ -39,9 +39,9 @@ fn roles_can_be_prepared_or_skipped_and_counts_add_up_at_two_thousand_people() {
 }
 
 #[test]
-fn unplaced_people_are_a_warning_and_change_the_digest() {
+fn post_live_unplaced_people_are_a_warning_and_change_the_digest() {
     let f = SetupFacts {
-        phase_is_setup: true,
+        phase_is_setup: false,
         terms_accepted: true,
         entities: 1,
         workplaces: 1,
@@ -53,11 +53,18 @@ fn unplaced_people_are_a_warning_and_change_the_digest() {
     let before = preview(&f, &Records::new());
     let f = SetupFacts {
         unplaced_people: 18,
+        people_without_department: 18,
         ..f
     };
     let after = preview(&f, &Records::new());
-    assert!(after.blockers.is_empty());
-    assert!(backstop(&f, true, true, false, true).is_empty());
+    assert_eq!(
+        after.blockers.iter().map(|b| b.code).collect::<Vec<_>>(),
+        ["already_operating"]
+    );
+    assert_eq!(
+        backstop(&f, true, true, false, true),
+        ["phase", "people_without_department"]
+    );
     assert!(after.warnings.iter().any(|i| i.code == "unplaced_people"
         && i.count == Some(18)
         && i.remedy == Some("place_people")));

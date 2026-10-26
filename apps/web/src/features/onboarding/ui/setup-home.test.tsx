@@ -97,3 +97,10 @@ test("the placement remedy has one control in the setup step", () => {
   const html = render(checklist([step("employees", true, "hr_basic::edit", { state: "attention", remedy: "place_people" })]));
   expect(html.match(/href="\/people\/unplaced"/g)).toHaveLength(1);
 });
+
+
+test("Home keeps the server's department gap and one bulk fix for a solo admin", () => {
+  const html = render(checklist([step("org", true, "org::edit", { state: "attention", remedy: "assign_department", count: 3 })]));
+  expect(html).toContain("부서 없는 직원 3명");
+  expect(html.match(/href="\/people\?review=department"/g)).toHaveLength(1);
+});

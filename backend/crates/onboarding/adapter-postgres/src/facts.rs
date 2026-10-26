@@ -76,9 +76,7 @@ const SCALARS: &str = concat!(
        (SELECT count(*) FROM ent) AS entities, \
        (SELECT count(*) FROM reg) AS registrations, \
        (SELECT count(*) FROM wp) AS workplaces, \
-       (SELECT count(*) FROM (SELECT DISTINCT ON (org_unit_id) attributes FROM org_unit_revisions \
-          ORDER BY org_unit_id, version DESC) units WHERE attributes->>'kind' IN ('department', 'team') \
-          AND attributes->>'status' IS DISTINCT FROM 'dissolved') AS org_units, \
+       (SELECT count(*) FROM department_unit_ids()) AS org_units, \
        EXISTS (SELECT 1 FROM tenant_phase_events WHERE kind = 'ORG_STEP_SKIPPED') AS org_step_skipped, \
        (SELECT count(*) FROM employees WHERE entity_employed_on(entity_today(), hire_on, exit_on, employment_status) AND merged_into_employee_id IS NULL) AS employees, \
        (SELECT count(*) FROM employees WHERE employment_status = 'PRE_HIRE' AND merged_into_employee_id IS NULL) AS starting_later, \
@@ -189,6 +187,7 @@ pub(crate) async fn setup_facts(
         employees_step_deferred: r.try_get("employees_deferred")?,
         unplaced_people: count(&listed, "unplaced_people"),
         unresolved_departments: count(&listed, "unresolved_departments"),
+        people_without_department: count(&listed, "people_without_department"),
         entity_unknown_people: count(&listed, "entity_unknown_people"),
         tenant_roles: r.try_get("tenant_roles")?,
         roles_step_skipped: r.try_get("roles_skipped")?,

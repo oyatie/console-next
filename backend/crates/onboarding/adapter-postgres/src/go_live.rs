@@ -74,20 +74,7 @@ impl PgOnboardingStore {
                     &actor.user.as_uuid().to_string(),
                     &actor.org.as_uuid().to_string(),
                     &roles,
-                    tenant_go_live::GoLiveFacts {
-                        phase_is_setup: true,
-                        step_up: step_up_verified,
-                        entities_ready: f.entities_ready(),
-                        primary_workplaces_ready: f.primary_workplaces_ready(),
-                        org_change_route_resolvable: f.org_change_route_resolvable(),
-                        org_change_routed: f.org_change_routed,
-                        other_eligible_holders: f.other_eligible_holders,
-                        sole_holder_acknowledged,
-                        security_contact_recorded: f.security_contact_recorded,
-                        security_contact_store_available: f.security_contact_store_available,
-                        terms_accepted: f.terms_accepted,
-                        preview_digest_matches: digest_matches,
-                    },
+                    go_live_facts(&f, step_up_verified, sole_holder_acknowledged, digest_matches),
                 );
                 require_ready(&current, failing, cedar)?;
                 let go_live_at: time::OffsetDateTime = sqlx::query_scalar(
@@ -137,6 +124,29 @@ impl PgOnboardingStore {
     }
 }
 
+fn go_live_facts(
+    f: &console_onboarding_domain::SetupFacts,
+    step_up_verified: bool,
+    sole_holder_acknowledged: bool,
+    digest_matches: bool,
+) -> tenant_go_live::GoLiveFacts {
+    tenant_go_live::GoLiveFacts {
+        phase_is_setup: f.phase_is_setup,
+        step_up: step_up_verified,
+        entities_ready: f.entities_ready(),
+        primary_workplaces_ready: f.primary_workplaces_ready(),
+        departments_ready: f.org_units > 0 && f.people_without_department == 0,
+        org_change_route_resolvable: f.org_change_route_resolvable(),
+        org_change_routed: f.org_change_routed,
+        other_eligible_holders: f.other_eligible_holders,
+        sole_holder_acknowledged,
+        security_contact_recorded: f.security_contact_recorded,
+        security_contact_store_available: f.security_contact_store_available,
+        terms_accepted: f.terms_accepted,
+        preview_digest_matches: digest_matches,
+    }
+}
+
 /// Both engines must allow; diagnostics stay a refusal before any business write.
 fn require_ready(
     current: &console_onboarding_domain::Preview,
@@ -171,6 +181,31 @@ fn require_ready(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn cedar_reads_department_readiness_from_the_transaction_facts() {
+        let mut f = console_onboarding_domain::SetupFacts {
+            phase_is_setup: true,
+            entities: 1,
+            workplaces: 1,
+            org_units: 1,
+            terms_accepted: true,
+            ..Default::default()
+        };
+        for (units, missing, allowed) in [(1, 0, true), (0, 0, false), (1, 2, false)] {
+            f.org_units = units;
+            f.people_without_department = missing;
+            let facts = go_live_facts(&f, true, true, true);
+            assert_eq!(facts.departments_ready, allowed);
+            let cedar = tenant_go_live::decide("actor", "tenant", &["SUPER_ADMIN"], facts);
+            let current = preview(&f, &Default::default());
+            assert_eq!(
+                require_ready(&current, vec![], cedar).is_ok(),
+                allowed,
+                "Cedar must independently refuse even when the backstop allows"
+            );
+        }
+    }
+
     #[test]
     fn a_cedar_error_is_a_blocked_refusal_even_when_the_backstop_allows() {
         let current = preview(

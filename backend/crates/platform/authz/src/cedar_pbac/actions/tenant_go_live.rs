@@ -8,7 +8,7 @@ use std::sync::OnceLock;
 use super::{ActionBundle, Fact};
 
 pub const ACTION: &str = "tenant_go_live";
-pub const SCHEMA_VERSION: &str = "2026-10-tenant-go-live-v2";
+pub const SCHEMA_VERSION: &str = "2026-10-tenant-go-live-v3";
 
 pub const SCHEMA: &str = r#"entity Subject = { "org": String, "roles": Set<String> };
 entity Resource = { "org": String };
@@ -20,6 +20,7 @@ action tenant_go_live appliesTo {
     "step_up": Bool,
     "entities_ready": Bool,
     "primary_workplaces_ready": Bool,
+    "departments_ready": Bool,
     "org_change_route_resolvable": Bool,
     "org_change_routed": Bool,
     "other_eligible_holders": Long,
@@ -36,7 +37,7 @@ pub const POLICIES: &str = r#"permit (principal, action == Action::"tenant_go_li
 when {
   principal.roles.contains("SUPER_ADMIN") && principal.org == resource.org
   && context.step_up && context.phase == "SETUP"
-  && context.entities_ready && context.primary_workplaces_ready
+  && context.entities_ready && context.primary_workplaces_ready && context.departments_ready
   && context.org_change_route_resolvable
   && (!context.org_change_routed || context.other_eligible_holders > 0
       || context.sole_holder_acknowledged)
@@ -54,6 +55,7 @@ pub struct GoLiveFacts {
     pub step_up: bool,
     pub entities_ready: bool,
     pub primary_workplaces_ready: bool,
+    pub departments_ready: bool,
     pub org_change_route_resolvable: bool,
     /// `approval.policy.org_structure = route` (decisions #26): only then is
     /// a sole holder's acknowledgement asked for.
@@ -93,6 +95,7 @@ pub fn decide(principal: &str, org: &str, roles: &[&str], f: GoLiveFacts) -> Res
         ),
         ("step_up", Fact::Bool(f.step_up)),
         ("entities_ready", Fact::Bool(f.entities_ready)),
+        ("departments_ready", Fact::Bool(f.departments_ready)),
         (
             "primary_workplaces_ready",
             Fact::Bool(f.primary_workplaces_ready),
@@ -136,6 +139,7 @@ mod tests {
         step_up: true,
         entities_ready: true,
         primary_workplaces_ready: true,
+        departments_ready: true,
         org_change_route_resolvable: true,
         org_change_routed: true,
         other_eligible_holders: 0,
@@ -154,11 +158,12 @@ mod tests {
 
     #[test]
     fn every_fact_is_load_bearing() {
-        let flips: [fn(&mut GoLiveFacts); 9] = [
+        let flips: [fn(&mut GoLiveFacts); 10] = [
             |f| f.phase_is_setup = false,
             |f| f.step_up = false,
             |f| f.entities_ready = false,
             |f| f.primary_workplaces_ready = false,
+            |f| f.departments_ready = false,
             |f| f.org_change_route_resolvable = false,
             |f| f.sole_holder_acknowledged = false,
             |f| f.security_contact_store_available = true,
@@ -205,6 +210,30 @@ mod tests {
         let partial = [("phase", Fact::Str("SETUP".into()))];
         assert!(
             bundle
+                .decide("u", "o", &["SUPER_ADMIN"], "o", &partial)
+                .is_err()
+        );
+    }
+    #[test]
+    fn v3_requires_the_department_fact_even_when_every_other_fact_is_ready() {
+        assert_eq!(SCHEMA_VERSION, "2026-10-tenant-go-live-v3");
+        let partial = [
+            ("phase", Fact::Str("SETUP".into())),
+            ("step_up", Fact::Bool(true)),
+            ("entities_ready", Fact::Bool(true)),
+            ("primary_workplaces_ready", Fact::Bool(true)),
+            ("org_change_route_resolvable", Fact::Bool(true)),
+            ("org_change_routed", Fact::Bool(false)),
+            ("other_eligible_holders", Fact::Long(0)),
+            ("sole_holder_acknowledged", Fact::Bool(false)),
+            ("security_contact_recorded", Fact::Bool(false)),
+            ("security_contact_store_available", Fact::Bool(false)),
+            ("terms_accepted", Fact::Bool(true)),
+            ("preview_digest_matches", Fact::Bool(true)),
+        ];
+        assert!(
+            bundle()
+                .unwrap()
                 .decide("u", "o", &["SUPER_ADMIN"], "o", &partial)
                 .is_err()
         );

@@ -2,7 +2,7 @@ import { expect, type Browser, type Locator, type Page } from "@playwright/test"
 import { go } from "../flows";
 import { registerAt } from "../helpers/entity";
 import { openTenant } from "../helpers/tenant";
-import { setupCompany, startOperations } from "../setup-flows";
+import { SETUP_DEPARTMENT, setupCompany, startOperations } from "../setup-flows";
 import { addDepartments } from "../structure-flows";
 import type { ReachPage, ReachStep } from "./reach";
 
@@ -21,7 +21,7 @@ export async function soloWorld(browser: Browser, slug: string, company: string,
     await go(admin, "/org");
     await addDepartments(admin, NAMES.workplace, [NAMES.dept]);
   }
-  const personId = await registerAt(admin, NAMES.person, company, NAMES.workplace);
+  const personId = await registerAt(admin, NAMES.person, company, live ? SETUP_DEPARTMENT : NAMES.workplace);
   const w = { admin, company, entityId, personId, person: NAMES.person, live };
   if (o.seed) await seedCard(w);
   if (live) await startOperations(admin);

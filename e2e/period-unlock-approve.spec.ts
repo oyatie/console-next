@@ -6,7 +6,7 @@ import { firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, stepU
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { letGrantsAge } from "./second-person-fixture";
-import { startOperations, tenantInSetup } from "./setup-flows";
+import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "./setup-flows";
 
 const today = kstDate();
 const lastMonth = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1)).toISOString().slice(0, 7);
@@ -49,7 +49,7 @@ test("period unlock: a second close authority refuses, then approves; the reques
   // Both acts need verified people: the bootstrap operator has no employee record link.
   const authorities: Page[] = [];
   for (const [name, number] of [["이요청", "UL-0001"], ["김마감", "UL-0002"]]) {
-    await registerEmployee(operator, { name: name!, number: number!, hired: "2024-03-04", unit: "본사" });
+    await registerEmployee(operator, { name: name!, number: number!, hired: "2024-03-04", unit: SETUP_DEPARTMENT });
     await operator.getByRole("button", { name: "계정 초대" }).click();
     await stepUp(operator.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", operator.getByLabel("일회용 코드"));
     authorities.push(await firstSignIn(browser, await takeCode(operator)));
@@ -173,7 +173,7 @@ test("setup with ops and one linked close authority unlocks with review; go-live
   test.setTimeout(8 * 60_000);
   const slug = "unlocksolo";
   const { admin: operator } = await tenantInSetup(browser, slug, "단독마감회사", false, "본사", "none");
-  await registerEmployee(operator, { name: "단독마감", number: "UL-0003", hired: "2024-03-04", unit: "본사" });
+  await registerEmployee(operator, { name: "단독마감", number: "UL-0003", hired: "2024-03-04", unit: SETUP_DEPARTMENT });
   await operator.getByRole("button", { name: "계정 초대" }).click();
   await stepUp(operator.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", operator.getByLabel("일회용 코드"));
   const human = await firstSignIn(browser, await takeCode(operator));

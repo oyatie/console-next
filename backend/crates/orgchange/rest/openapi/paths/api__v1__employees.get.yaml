@@ -36,6 +36,12 @@ parameters:
   schema:
     type: boolean
   description: Filter to employees whose import identity resolution needs review (true) or not (false).
+- name: department_missing
+  in: query
+  required: false
+  schema:
+    type: boolean
+  description: True selects people employed today without a live department (including site-only placement); false selects the complement.
 - name: org_unit_id
   in: query
   required: false

@@ -10,7 +10,7 @@ import { chooseRadio, go, kstDate, registerEmployee, routeReady, stepUp, takeCod
 import { firstWorkplace, registerAt } from "./helpers/entity";
 import { fillRegister, openRegistered, pressRegister, registerSheet } from "./helpers/register";
 import { hrAct, openCard, openHistory } from "./record";
-import { SECOND, REGISTRATION_FIXTURES, registerBranch, registerEntity, setupCompany, startOperations } from "./setup-flows";
+import { SETUP_DEPARTMENT, SECOND, REGISTRATION_FIXTURES, registerBranch, registerEntity, setupCompany, startOperations } from "./setup-flows";
 import { addDepartments, leaveScreen } from "./structure-flows";
 import { reasonChip } from "./helpers/lifecycle";
 import { prepareFilingCompletion } from "./helpers/statutory";
@@ -62,7 +62,7 @@ test("past hires use the go-live boundary in the preview and case, including set
   const read = apiAs(admin);
   const hired = kstDate(-90);
   await go(admin, "/people/new");
-  await fillRegister(admin, { name: "한준비", number: "TRAIL-SETUP", hired, unit: "본사" });
+  await fillRegister(admin, { name: "한준비", number: "TRAIL-SETUP", hired, unit: SETUP_DEPARTMENT });
   const setupPreview = registerSheet(admin).locator('[data-composer-section="deadlines"] [data-trail-preview-item]');
   await expect(setupPreview).toHaveCount(4);
   // Go-live commits at now(), so expired filings already precede its earliest possible boundary.

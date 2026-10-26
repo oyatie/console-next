@@ -15,11 +15,12 @@ const ENTITY = "배치정밀";
 const SITE = "평택공장";
 
 /** A tenant in setup with 경영지원부 › 인사팀, and `n` people whose 부서 「총무팀」 is not a unit (they come in 미배치). */
-async function world(page: Page, slug: string, n: number) {
+async function world(page: Page, slug: string, n: number, operating = false) {
   await setupCompany(page, ENTITY, SITE);
   await go(page, "/org");
   await addDepartments(page, SITE, ["경영지원부"]);
   await addDepartments(page, "경영지원부", ["인사팀"]);
+  if (operating) await startOperations(page);
   const rows = people("PL", n, ["총무팀"], [SITE]).map((p) => ({ ...p, position: "과장" }));
   await go(page, "/people/import");
   await chooseWorkbook(page, `${slug}.xlsx`, await rosterWorkbook([{ name: "재직자", rows }]));
@@ -48,10 +49,9 @@ for (const operating of [false, true]) test(`unplaced: a whole group is placed a
   test.setTimeout(300_000);
   const admin = await openTenant(browser, operating ? "placeallop" : "placeall", "배치그룹");
   const api = apiOf(admin, bearerOf(admin));
-  const rows = await world(admin, "placeall", 8);
+  const rows = await world(admin, "placeall", 8, operating);
   const facets = await (await api("/employees/facets")).json() as { review: { home_branch_review_required: number } };
   expect(facets.review.home_branch_review_required).toBe(0);
-  if (operating) await startOperations(admin);
   await go(admin, "/people/unplaced");
   await expect(admin.getByText("사업장 없음 · 배치 0명 · 부서 없음 · 지정 8명")).toBeVisible();
   const grid = admin.getByRole("grid", { name: "미배치 처리" });
@@ -82,8 +82,7 @@ test("unplaced: a future operating placement stays in the current queue until it
   test.setTimeout(300_000);
   const admin = await openTenant(browser, "placefuture", "배치예약");
   const api = apiOf(admin, bearerOf(admin));
-  await world(admin, "placefuture", 1);
-  await startOperations(admin);
+  await world(admin, "placefuture", 1, true);
   await pickAll(admin, 1);
   await fillDate(admin, kstDate(1));
   await admin.getByRole("button", { name: "선택한 부서에 배치" }).click();

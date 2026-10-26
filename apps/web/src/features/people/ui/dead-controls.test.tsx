@@ -25,7 +25,7 @@ beforeAll(() => loadCatalog("ko"));
 function filters(identity: number) {
   return renderToStaticMarkup(<RosterFilters status="current" review={[]} sort="name" counts={{
     status: { totals: { current: 4, ACTIVE: 2, ON_LEAVE: 1, PRE_HIRE: 1, UNKNOWN: 0, EXITED: 0, all: 4 }, failed: [] },
-    review: { totals: { contractPast: 0, contractSoon: 3, identity, unplaced: 4, register: 2, failed: 0 }, failed: [] },
+    review: { totals: { department: 0, contractPast: 0, contractSoon: 3, identity, unplaced: 4, register: 2, failed: 0 }, failed: [] },
   }} onChange={() => {}} findSlot={() => {}} density="regular" onDensity={() => {}} />);
 }
 

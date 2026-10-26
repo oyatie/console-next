@@ -195,23 +195,6 @@ async fn one_person_goes_from_an_empty_tenant_to_operating(pool: PgPool) {
         .unwrap()
         .to_owned();
 
-    // decisions #14.1: 「부서 없이 진행」 — the 사업장's own unit takes people directly.
-    let site = wp["record"]["org_unit_id"].as_str().unwrap().to_owned();
-    let (status, direct) = ctx
-        .call("POST", "/api/v1/employees", Some(json!({
-            "employee_number": "E-000", "name": "이현장", "company": "주식회사 가나", "employment_type": "REGULAR",
-            "phone": "010-1234-0000", "position": "사원", "site": "본사", "home_branch_id": branch,
-            "base_pay": "3000000", "idempotency_key": "fr-emp-0", "hire_date": "2026-01-02", "org_unit_id": site,
-        })))
-        .await;
-    assert_eq!(status, StatusCode::CREATED, "{direct}");
-    let (status, bound) = ctx
-        .call("POST", "/api/v1/employment-assignments", Some(json!({
-            "employee_id": direct["employee"]["id"], "legal_entity_id": entity_id, "workplace_id": workplace_id, "valid_from": "2026-01-02",
-        })))
-        .await;
-    assert_eq!(status, StatusCode::CREATED, "{bound}");
-
     // A department applies immediately in SETUP: no proposal, no second person.
     let (status, unit) = ctx
         .call(
@@ -222,6 +205,21 @@ async fn one_person_goes_from_an_empty_tenant_to_operating(pool: PgPool) {
         .await;
     assert_eq!(status, StatusCode::CREATED, "{unit}");
     let dept = unit["id"].as_str().unwrap().to_owned();
+    let (status, direct) = ctx
+        .call("POST", "/api/v1/employees", Some(json!({
+            "employee_number": "E-000", "name": "이현장", "company": "주식회사 가나", "employment_type": "REGULAR",
+            "phone": "010-1234-0000", "position": "사원", "site": "본사", "home_branch_id": branch,
+            "base_pay": "3000000", "idempotency_key": "fr-emp-0", "hire_date": "2026-01-02", "org_unit_id": dept,
+        })))
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{direct}");
+    let (status, bound) = ctx
+        .call("POST", "/api/v1/employment-assignments", Some(json!({
+            "employee_id": direct["employee"]["id"], "legal_entity_id": entity_id, "workplace_id": workplace_id, "valid_from": "2026-01-02",
+        })))
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{bound}");
+
     let (_, tree) = ctx.call("GET", "/api/v1/org-structure", None).await;
     assert_eq!(
         tree["entities"][0]["children"][0]["children"][0]["name"], "영업팀",

@@ -21,7 +21,11 @@ async fn void_registration_refuses_with_phase_not_setup_after_go_live(pool: PgPo
         .call(
             "POST",
             "/api/v1/employees",
-            Some(support::employee_body("E-1", &branch, &unit)),
+            Some(support::employee_body(
+                "E-1",
+                &branch,
+                department["id"].as_str().unwrap(),
+            )),
         )
         .await;
     assert_eq!(status, StatusCode::CREATED, "{person}");

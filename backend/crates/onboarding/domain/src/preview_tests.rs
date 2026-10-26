@@ -215,3 +215,99 @@ fn every_blocker_names_its_fix_and_changes_the_digest() {
     };
     assert!(preview(&empty_wp, &Records::new()).blockers.is_empty());
 }
+
+#[test]
+fn staffed_people_without_department_block_even_after_the_org_step_was_skipped() {
+    for org_step_skipped in [false, true] {
+        let mut f = SetupFacts {
+            employees: 3,
+            people_without_department: 2,
+            org_step_skipped,
+            ..ready()
+        };
+        let records = Records::from([(
+            "people_without_department".into(),
+            vec![
+                Record {
+                    kind: "employee".into(),
+                    id: "b".into(),
+                    name: "B".into(),
+                    legal_entity_id: "e".into(),
+                },
+                Record {
+                    kind: "employee".into(),
+                    id: "c".into(),
+                    name: "C".into(),
+                    legal_entity_id: "e".into(),
+                },
+            ],
+        )]);
+        let p = preview(&f, &records);
+        assert_eq!(p.blockers.len(), 1);
+        assert_eq!(
+            (
+                p.blockers[0].code,
+                p.blockers[0].count,
+                p.blockers[0].remedy
+            ),
+            (
+                "people_without_department",
+                Some(2),
+                Some("assign_department")
+            )
+        );
+        assert_eq!(p.blockers[0].records.len(), 2);
+        assert_eq!(
+            backstop(&f, true, true, true, true),
+            ["people_without_department"]
+        );
+        f.people_without_department = 0;
+        assert!(preview(&f, &Records::new()).blockers.is_empty());
+        assert!(backstop(&f, true, true, true, true).is_empty());
+        f.org_units = 0;
+        assert_eq!(
+            preview(&f, &Records::new()).blockers[0].code,
+            "no_department"
+        );
+    }
+}
+
+#[test]
+fn setup_department_blocker_does_not_also_offer_an_unplaced_start_warning() {
+    let f = SetupFacts {
+        people_without_department: 2,
+        unplaced_people: 2,
+        unresolved_departments: 2,
+        ..ready()
+    };
+    let p = preview(&f, &Records::new());
+    assert!(
+        p.blockers
+            .iter()
+            .any(|i| i.code == "people_without_department")
+    );
+    assert!(
+        !p.warnings
+            .iter()
+            .any(|i| matches!(i.code, "unplaced_people" | "unresolved_departments"))
+    );
+    let operating = preview(
+        &SetupFacts {
+            phase_is_setup: false,
+            ..f
+        },
+        &Records::new(),
+    );
+    assert!(
+        !operating
+            .blockers
+            .iter()
+            .any(|i| i.code == "people_without_department")
+    );
+    assert!(
+        operating
+            .warnings
+            .iter()
+            .any(|i| i.code == "unplaced_people")
+    );
+}

@@ -208,7 +208,7 @@ export async function homeRail(page: Page) {
   return setupRail(page);
 }
 
-/** The 부서 every setup helper adds under its first workplace: one is required before 운영 시작 (MVP requirement #4). */
+/** The 부서 every setup helper adds under its first workplace: every staffed setup person must be placed here (or in another 부서) before 운영 시작. */
 export const SETUP_DEPARTMENT = "기획관리팀";
 
 /**

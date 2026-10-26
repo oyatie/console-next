@@ -5,7 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { OWN_ECHO_MS } from "../../apps/web/src/lib/freshness";
 import { expectAccessible } from "../a11y";
 import { go, option, registerEmployee, unique } from "../flows";
-import { startOperations, tenantInSetup } from "../setup-flows";
+import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "../setup-flows";
 import { apiOf, bearerOf, codeOf, headcount } from "../helpers/api";
 import { chooseWorkbook } from "../helpers/import";
 import { workbook } from "../helpers/import-layouts";
@@ -184,7 +184,7 @@ test("OPERATING rollback waits for another holder and reaches done through the l
   const { admin, exec } = await tenantInSetup(browser, slug, "결정상사", false, "본점", "full");
   const api = apiOf(admin, bearerOf(admin));
   // D0.2 excludes an unlinked account without a non-employee exception from second-person eligibility.
-  await registerEmployee(admin, { name: "이임원", number: "RB-HOLDER", hired: "2020-03-02", unit: "본점" });
+  await registerEmployee(admin, { name: "이임원", number: "RB-HOLDER", hired: "2020-03-02", unit: SETUP_DEPARTMENT });
   await admin.getByRole("navigation", { name: "인사카드 탭" }).getByRole("link", { name: "권한", exact: true }).click();
   await admin.getByRole("combobox", { name: "연결할 계정" }).fill("이임");
   await admin.getByRole("option", { name: /이임원/ }).click();

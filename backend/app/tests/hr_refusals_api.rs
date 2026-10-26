@@ -25,7 +25,12 @@ async fn phase(pool: &PgPool, org: Uuid) -> String {
 }
 
 /// 운영 시작 needs a 부서 (LMG-ORG-6); the workplace's own unit is not one.
-async fn department(pool: &PgPool, org: Uuid, actor: console_kernel_core::UserId, parent: &str) {
+async fn department(
+    pool: &PgPool,
+    org: Uuid,
+    actor: console_kernel_core::UserId,
+    parent: &str,
+) -> String {
     let id = Uuid::new_v4();
     let attributes =
         json!({ "kind": "department", "name": "인사팀", "status": "active", "parent_id": parent });
@@ -54,6 +59,7 @@ async fn department(pool: &PgPool, org: Uuid, actor: console_kernel_core::UserId
     .await
     .unwrap();
     tx.commit().await.unwrap();
+    id.to_string()
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
@@ -84,12 +90,12 @@ async fn go_live_refuses_a_non_holder_a_stale_preview_and_a_second_time(pool: Pg
     let mut passkey = SoftKey::enroll(&pool, OrgId::from_uuid(org), owner).await;
     let ctx = ctx(&pool, org, owner, ADMIN, None).await;
     let (_, _, branch, unit) = structure(&ctx).await;
-    department(&pool, org, owner, &unit).await;
+    let dept = department(&pool, org, owner, &unit).await;
     let (status, _) = ctx
         .call(
             "POST",
             "/api/v1/employees",
-            Some(employee_body("E-1", &branch, &unit)),
+            Some(employee_body("E-1", &branch, &dept)),
         )
         .await;
     assert_eq!(status, StatusCode::CREATED);

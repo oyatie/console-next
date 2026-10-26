@@ -2,20 +2,20 @@ import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { apiAs, soloTenant } from "./chaos";
 import { go, kstDate } from "./flows";
-import { setupCompany, setupRail, startOperations } from "./setup-flows";
+import { SETUP_DEPARTMENT, setupCompany, setupRail, startOperations } from "./setup-flows";
 import { chooseWorkbook } from "./helpers/import";
 import { plain, workbook } from "./helpers/import-layouts";
 import { keyboardActivate, probeActions } from "./helpers/first-run";
 import { addDepartments } from "./structure-flows";
 
 // Each journey begins with an empty UI-created tenant and only its contracting administrator.
-test("BL-014: unplaced is a warning, stale preview re-arms, and operating Home keeps placement", { tag: "@first-run" }, async ({ browser }, info) => {
+test("BL-014: setup people have departments, stale preview re-arms, and post-live unplaced people warn", { tag: "@first-run" }, async ({ browser }, info) => {
   test.setTimeout(180_000);
   const admin = await soloTenant(browser, "ideal-preview", "미리보기그룹");
   const read = apiAs(admin);
   await setupCompany(admin, "미리보기정밀", "본사");
   await go(admin, "/people/import");
-  await chooseWorkbook(admin, "미배치.xlsx", await workbook([plain("미리보기정밀", Array.from({ length: 18 }, (_, i) => ({ name: `미배치${i + 1}`, number: `UP-${i + 1}`, hired: kstDate(-30) })))]));
+  await chooseWorkbook(admin, "미배치.xlsx", await workbook([plain("미리보기정밀", Array.from({ length: 18 }, (_, i) => ({ name: `미배치${i + 1}`, number: `UP-${i + 1}`, unit: SETUP_DEPARTMENT, hired: kstDate(-30) })))]));
   await admin.getByRole("button", { name: "명부 미리보기" }).click();
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await admin.getByRole("button", { name: "명부 반영: 신규 18명 · 갱신 0명" }).click();
@@ -28,7 +28,7 @@ test("BL-014: unplaced is a warning, stale preview re-arms, and operating Home k
     await r.continue();
   });
   await admin.getByRole("button", { name: "이용약관 읽기" }).click();
-  const placement = admin.getByRole("link", { name: "배치", exact: true }).first();
+  const placement = admin.getByRole("button", { name: "운영 시작", exact: true });
   const loadingY = (await placement.boundingBox())!.y;
   showTerms();
   const accept = admin.getByRole("button", { name: "고객 계정을 대표해 이용약관 동의" });
@@ -40,11 +40,8 @@ test("BL-014: unplaced is a warning, stale preview re-arms, and operating Home k
   expect(Math.abs((await placement.boundingBox())!.y - readY)).toBeLessThan(2);
   await admin.unroute("**/api/v1/onboarding/terms");
   await expect(admin.getByRole("button", { name: "고객 계정을 대표해 이용약관 동의" })).toBeHidden();
-  const warning = admin.getByRole("main").getByText("미배치 18명 · 운영 시작 후에도 배치할 수 있습니다", { exact: true });
-  await expect(warning).toBeVisible();
-  await expect(admin.getByRole("link", { name: "배치", exact: true }).first()).toBeVisible();
   await expect(admin.getByRole("grid", { name: "권한 관리 담당자" })).toContainText(/.+/);
-  await expectAccessible(admin, "ideal preview unplaced warning");
+  await expectAccessible(admin, "ideal preview with department placements");
   await probeActions(admin);
   let release!: () => void;
   let hit!: () => void;
@@ -72,6 +69,14 @@ test("BL-014: unplaced is a warning, stale preview re-arms, and operating Home k
   await admin.unroute("**/api/v1/onboarding/go-live");
   await admin.getByRole("button", { name: "운영 시작", exact: true }).click();
   await expect(admin).toHaveURL(/\/$/);
+  await go(admin, "/people/import");
+  await chooseWorkbook(admin, "운영추가.xlsx", await workbook([plain("미리보기정밀", [{ name: "운영미배치", number: "UP-LATE", hired: kstDate() }])]));
+  await admin.getByRole("button", { name: "명부 미리보기" }).click();
+  await admin.getByRole("button", { name: "모의 반영 실행" }).click();
+  await expect(admin.getByText(/미배치 1명/).first()).toBeVisible();
+  await admin.getByRole("button", { name: "명부 반영: 신규 1명 · 갱신 0명" }).click();
+  await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible();
+  await go(admin, "/");
   await expect(admin.getByRole("main")).toContainText("미배치");
   await expect(admin.getByText("운영 시작 · 되돌리기 → 정정", { exact: true })).toBeVisible();
   await admin.screenshot({ path: info.outputPath("operating-home-unplaced.png"), fullPage: true });

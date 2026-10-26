@@ -30,6 +30,10 @@ properties:
     required: [register_review_required, identity_review_required, home_branch_review_required, lifecycle_apply_failed, contract_ended,
       contract_ending_before]
     properties:
+      department_missing:
+        type: integer
+        format: int64
+        description: Employed people without a live department, ignoring review filters.
       identity_review_required:
         type: integer
         format: int64
