@@ -216,7 +216,7 @@ test("record binds only the employee id, clears the input before passkey, and re
   release();
   await sheet.waitFor({ state: "detached" });
   expect(sent?.rrn === secret.replace(/\D/g, "")).toBe(true);
-  expect(await page.evaluate(() => {
+  await expect.poll(() => page.evaluate(() => {
     const client = (window as unknown as { privacyClient: import("@tanstack/react-query").QueryClient }).privacyClient;
     return { mutations: client.getMutationCache().getAll().length, queries: JSON.stringify(client.getQueryCache().getAll().map(q => q.state.data)) };
   })).toEqual({ mutations: 0, queries: expect.not.stringContaining(secret.replace(/\D/g, "")) });

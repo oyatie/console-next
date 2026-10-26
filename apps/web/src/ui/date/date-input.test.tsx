@@ -3,6 +3,7 @@ import type { ComponentProps, ReactElement } from "react";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { DateInput } from "./date-input";
+import { DateCalendar } from "./date-calendar";
 import { TextInput } from "../field/field";
 
 // Exercise the real input handlers without adding a DOM test dependency.
@@ -131,14 +132,20 @@ test("a refused commit reports invalid; a valid or cleared one reports valid", (
 
 test("calendar picks refuse bounds and blocked dates and accept an available date", () => {
   const onChange = vi.fn();
+  const props = { value: "", today: "2026-10-01", onChange, min: "2026-10-01", max: "2026-12-31", disabledDates: ["2026-11-15"] };
   hooks.cursor = 0;
-  const tree = DateInput({ value: "", today: "2026-10-01", onChange, min: "2026-10-01", max: "2026-12-31", disabledDates: ["2026-11-15"] });
-  const calendar = tree.props.children[1].props.children[1].props.children.props.children;
+  const closed = DateInput(props);
+  expect(closed.props.children[1].props.children[1].props.children.props.children).toBe(false);
+  closed.props.children[1].props.onOpenChange(true);
+  hooks.cursor = 0;
+  const tree = DateInput(props);
+  const lazyCalendar = tree.props.children[1].props.children[1].props.children.props.children.props.children;
+  const calendar = DateCalendar(lazyCalendar.props);
   expect(calendar.props.minValue.toString()).toBe("2026-10-01");
   expect(calendar.props.maxValue.toString()).toBe("2026-12-31");
   expect(calendar.props.isDateUnavailable({ toString: () => "2026-11-15" })).toBe(true);
   for (const date of ["2026-09-30", "2027-01-01", "2026-11-15", "2026-02-30"]) {
-    calendar.props.onChange({ toString: () => date });
+    lazyCalendar.props.onPick(date);
   }
   expect(onChange).not.toHaveBeenCalled();
   calendar.props.onChange({ toString: () => "2026-11-16" });
