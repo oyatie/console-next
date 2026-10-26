@@ -56,12 +56,12 @@ export function Form({ onSubmit, ...rest }: Omit<FormHTMLAttributes<HTMLFormElem
   );
 }
 
-/** An attestation checkbox for feature views: the statement is its label. Use it only for a fact the user affirms. */
-export function Check({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
+/** A checkbox with a visible statement, or an accessible label for table selection. */
+export function Check({ checked, onChange, children, "aria-label": label }: { checked: boolean; onChange: (v: boolean) => void; children?: ReactNode; "aria-label"?: string }) {
   return (
     <label className="check">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span>{children}</span>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} />
+      {children != null && <span>{children}</span>}
     </label>
   );
 }

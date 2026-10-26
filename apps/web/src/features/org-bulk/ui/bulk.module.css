@@ -6,6 +6,7 @@
 .title { margin: 0; font-size: var(--text-xl); font-weight: var(--fw-strong); }
 .under { flex: 1; min-width: 0; padding-left: var(--space-5); border-left: 1px solid var(--border); font-size: var(--text-sm); color: var(--steel); }
 .body { display: grid; gap: var(--space-5); padding: var(--space-5); align-items: start; min-width: 0; }
+.workplaces { min-width: 0; overflow-wrap: anywhere; }
 .cols3 { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 0.8fr); }
 .col { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
 .colHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); margin: 0; font-size: var(--text-body); font-weight: var(--fw-strong); }
@@ -36,7 +37,6 @@
 
 @media (max-width: 1280px) {
   .cols3 { grid-template-columns: minmax(0, 1fr); }
-  .under { padding-left: 0; border-left: 0; }
 }
 .cols2 { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
 .scrollX { overflow-x: auto; }
