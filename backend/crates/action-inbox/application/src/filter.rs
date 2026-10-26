@@ -133,6 +133,9 @@ struct ViewPort<'a> {
     filter: InboxFilter,
 }
 impl ActionInboxSourcePort for ViewPort<'_> {
+    fn deadline_due_soon_days(&self) -> i64 {
+        self.port.deadline_due_soon_days()
+    }
     fn list_source_page(
         &self,
         source: crate::ActionInboxSource,

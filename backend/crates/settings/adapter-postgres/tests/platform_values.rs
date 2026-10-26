@@ -25,3 +25,28 @@ async fn effective_settings_show_the_same_platform_value_and_schedule_as_command
     assert_eq!(value.scheduled.len(), 1);
     assert_eq!(value.scheduled[0].value, SettingValue::Int(3));
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn deadline_display_window_is_available_without_a_stored_definition(pool: PgPool) {
+    let runtime = console_platform_test_support::runtime_role_pool(&pool).await;
+    let settings = PgSettingsStore::new(runtime)
+        .list_effective(OrgId::new(), None)
+        .await
+        .unwrap();
+    let window = settings
+        .iter()
+        .find(|row| row.key.as_str() == "display.deadline_due_soon_days")
+        .expect("the shared display window must be in the settings registry");
+    assert_eq!(
+        window.governance,
+        console_settings_domain::Governance::ReadOnly
+    );
+    assert!(window.value.is_some());
+    assert_eq!(window.value, window.default);
+    assert_eq!(
+        window.version,
+        Some(console_kernel_core::SettingVersionId::CodeDefault)
+    );
+    assert!(window.effective_from.is_none());
+    assert!(window.scheduled.is_empty());
+}

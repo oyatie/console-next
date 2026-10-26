@@ -800,7 +800,9 @@ dependencies = [
 name = "console-action-inbox-application"
 version = "0.1.0"
 dependencies = [
+ "console-compliance-domain",
  "console-kernel-core",
+ "console-settings-domain",
  "futures",
  "serde",
  "serde_json",

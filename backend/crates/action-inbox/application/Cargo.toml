@@ -8,6 +8,8 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+console-compliance-domain = { workspace = true }
+console-settings-domain = { path = "../../settings/domain" }
 futures = { workspace = true }
 console-kernel-core = { workspace = true }
 serde = { workspace = true }
