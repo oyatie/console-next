@@ -105,6 +105,12 @@ impl PgAttendanceStore {
                         .filter(|p| {
                             visible(&caller, &u, p)
                                 && q.workplace_id.is_none_or(|w| p.workplace_id == Some(w))
+                                && (!q.no_schedule_only
+                                    || q.unit_id.is_none_or(|unit| {
+                                        p.unit.is_some_and(|id| {
+                                            u.org.chain(id).iter().any(|(id, _)| *id == unit)
+                                        })
+                                    }))
                         })
                         .collect();
                     let ids: Vec<Uuid> = people.iter().map(|p| p.id).collect();

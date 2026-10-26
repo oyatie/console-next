@@ -1,7 +1,7 @@
 // The work schedule scope tree (legal entity › workplace › department, crew under their workplace) as the server lists it, flat with parents.
 
 export type ScopeKind = "LEGAL_ENTITY" | "WORKPLACE" | "DEPARTMENT" | "CREW" | "PERSON";
-export type TreeNode = { kind: ScopeKind; id: string; parent_id?: string | null; name: string; people: number; layer?: { pattern_name: string } | null };
+export type TreeNode = { kind: ScopeKind; id: string; parent_id?: string | null; workplace_id?: string | null; name: string; people: number; layer?: { pattern_name: string } | null; effective?: { pattern_name: string; from: ScopeKind } | null; unscheduled?: number };
 
 /** Nearest level first: the order layers win in (person › crew › department › workplace › legal entity). */
 export const LEVELS: readonly ScopeKind[] = ["PERSON", "CREW", "DEPARTMENT", "WORKPLACE", "LEGAL_ENTITY"];

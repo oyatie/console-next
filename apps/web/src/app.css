@@ -237,7 +237,7 @@ aside.panel { position: sticky; top: 0; }
 .tree .react-aria-TreeItem[data-focus-visible] { box-shadow: var(--focus); }
 .tree .react-aria-TreeItem[data-hovered] { background: var(--muted); }
 .tree .react-aria-TreeItem[data-selected] { background: var(--primary-soft); color: var(--primary); }
-.tree__row { display: flex; align-items: center; gap: var(--space-2); height: var(--row-h); padding-inline-start: calc((var(--tree-item-level, 1) - 1) * var(--space-5) + var(--space-2)); padding-inline-end: var(--space-2); }
+.tree__row { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-h); padding-inline-start: calc((var(--tree-item-level, 1) - 1) * var(--space-5) + var(--space-2)); padding-inline-end: var(--space-2); }
 .tree__chevron { display: inline-grid; place-items: center; width: var(--space-5); height: var(--space-5); border: 0; background: none; color: var(--steel); cursor: pointer; transition: transform 120ms ease; }
 .tree .react-aria-TreeItem[data-expanded] > .tree__row .tree__chevron, .tree [data-expanded] .tree__chevron { transform: rotate(90deg); }
 @media (prefers-reduced-motion: reduce) { .tree__chevron { transition: none; } }

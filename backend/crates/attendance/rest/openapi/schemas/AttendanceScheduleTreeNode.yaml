@@ -1,3 +1,20 @@
 type: object
 required: [kind, id, name, people]
-properties: { kind: { $ref: '#/components/schemas/AttendanceScopeKind' }, id: { $ref: '#/components/schemas/Uuid' }, parent_id: { $ref: '#/components/schemas/Uuid', nullable: true }, name: { type: string }, people: { type: integer, description: people placed here on the date (subtree for 법인 and 사업장) }, layer: { $ref: '#/components/schemas/AttendanceLayerSummary', nullable: true } }
+properties:
+  kind: { $ref: '#/components/schemas/AttendanceScopeKind' }
+  id: { $ref: '#/components/schemas/Uuid' }
+  parent_id: { $ref: '#/components/schemas/Uuid', nullable: true }
+  workplace_id: { $ref: '#/components/schemas/Uuid', nullable: true, description: The workplace containing this department }
+  name: { type: string }
+  people: { type: integer, description: People placed in this scope's subtree on the date }
+  layer: { $ref: '#/components/schemas/AttendanceLayerSummary', nullable: true }
+  effective:
+    nullable: true
+    description: Nearest active layer on this scope's chain; null when nothing applies
+    allOf:
+      - { $ref: '#/components/schemas/AttendanceLayerSummary' }
+      - type: object
+        required: [from]
+        properties:
+          from: { $ref: '#/components/schemas/AttendanceScopeKind' }
+  unscheduled: { type: integer, description: People in this subtree for whom the schedule winner is absent }

@@ -68,13 +68,23 @@ pub struct LayerSummary {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct EffectiveLayer {
+    #[serde(flatten)]
+    pub layer: LayerSummary,
+    pub from: Level,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct TreeNode {
     pub kind: Level,
     pub id: Uuid,
     pub parent_id: Option<Uuid>,
+    pub workplace_id: Option<Uuid>,
     pub name: String,
     pub people: i64,
     pub layer: Option<LayerSummary>,
+    pub effective: Option<EffectiveLayer>,
+    pub unscheduled: i64,
 }
 
 #[derive(Debug, Clone, Serialize)]

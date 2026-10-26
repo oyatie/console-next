@@ -8,7 +8,7 @@ import { ChevronRight } from "lucide-react";
  * (put everything the row shows in it: name, kind, count, marker), and type-ahead matches it. `disabled` rows stay
  * visible but cannot be chosen (say why in the row).
  */
-export function TreeView<T extends { id: string }>({ id, label, roots, childrenOf, textValue, row, selected, onSelect, expanded, onExpandedChange, disabled }: {
+export function TreeView<T extends { id: string }>({ id, label, roots, childrenOf, textValue, row, selected, onSelect, expanded, onExpandedChange, disabled, keyboardNavigationBehavior }: {
   id?: string;
   label: string;
   roots: T[];
@@ -21,6 +21,8 @@ export function TreeView<T extends { id: string }>({ id, label, roots, childrenO
   expanded: Set<string>;
   onExpandedChange: (keys: Set<string>) => void;
   disabled?: ReadonlySet<string>;
+  /** Let Tab reach interactive content within a row. */
+  keyboardNavigationBehavior?: "arrow" | "tab";
 }) {
   const node = (item: T): ReactNode => (
     <TreeItem key={item.id} id={item.id} textValue={textValue(item)} data-id={item.id}>
@@ -45,6 +47,7 @@ export function TreeView<T extends { id: string }>({ id, label, roots, childrenO
       aria-label={label}
       className="tree"
       selectionMode="single"
+      keyboardNavigationBehavior={keyboardNavigationBehavior}
       selectedKeys={selected ? [selected] : []}
       onSelectionChange={(keys) => onSelect(keys instanceof Set ? ([...keys][0] as string | undefined) : undefined)}
       expandedKeys={expanded}

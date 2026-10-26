@@ -1,11 +1,11 @@
 //! The 근무 일정 scope tree: 법인 › 사업장 › 부서 and 근무조 with people counts,
-//! each node's own layer, and who has no schedule. Nodes come in the chart's
+//! each node's effective layer, and who has no schedule. Nodes come in the chart's
 //! order, so every picker built from them lists siblings as the chart does.
 
 use std::collections::HashMap;
 
 use console_attendance_application::CallerScope;
-use console_attendance_application::schedule::{ScheduleTree, TreeNode};
+use console_attendance_application::schedule::{EffectiveLayer, ScheduleTree, TreeNode};
 use console_attendance_domain::schedule::{Level, winner};
 use console_kernel_core::OrgId;
 use console_platform_db::with_org_conn;
@@ -22,6 +22,7 @@ use crate::PgAttendanceStore;
 use super::read::{own_layer, summary};
 
 impl PgAttendanceStore {
+    #[tracing::instrument(skip_all, fields(node_count, people_unscheduled))]
     pub async fn schedule_tree(
         &self,
         caller: &CallerScope,
@@ -41,30 +42,50 @@ impl PgAttendanceStore {
                         .into_iter()
                         .filter(|p| visible(&caller, &u, p))
                         .collect();
-                    let mut people: HashMap<Uuid, i64> = HashMap::new();
+                    let mut counts: HashMap<Uuid, (i64, i64)> = HashMap::new();
                     let mut unscheduled = 0;
                     for p in &roster {
                         let chain = p.unit.map(|x| u.org.chain(x)).unwrap_or_default();
+                        let missing = i64::from(winner(&u.layers_for(p), date).is_none());
                         for id in [p.legal_entity_id, p.workplace_id, p.crew]
                             .into_iter()
                             .flatten()
                             .chain(chain.iter().map(|(d, _)| *d))
                         {
-                            *people.entry(id).or_default() += 1;
+                            let count = counts.entry(id).or_default();
+                            count.0 += 1;
+                            count.1 += missing;
                         }
-                        unscheduled += i64::from(winner(&u.layers_for(p), date).is_none());
+                        unscheduled += missing;
                     }
                     let seen =
                         |branch: Option<Uuid>| caller.org_wide || caller.permits_branch(branch);
                     let mut nodes = Vec::new();
                     let mut node = |kind: Level, id: Uuid, parent: Option<Uuid>, name: String| {
+                        let effective = u.stand_in(kind, id).and_then(|p| {
+                            let refs = u.layers_for(&p);
+                            let win = winner(&refs, date)?;
+                            let layer = u.layers.iter().find(|l| l.id == win.id)?;
+                            Some(EffectiveLayer {
+                                layer: summary(&u, layer),
+                                from: win.level,
+                            })
+                        });
+                        let (people, unscheduled) = counts.get(&id).copied().unwrap_or_default();
                         nodes.push(TreeNode {
                             kind,
                             id,
                             parent_id: parent,
+                            workplace_id: if kind == Level::Department {
+                                u.org.workplace_of_unit(id)
+                            } else {
+                                None
+                            },
                             name,
-                            people: people.get(&id).copied().unwrap_or(0),
+                            people,
                             layer: own_layer(&u, kind, id, date).map(|l| summary(&u, l)),
+                            effective,
+                            unscheduled,
                         });
                     };
                     let workplaces: Vec<_> = u
@@ -112,6 +133,8 @@ impl PgAttendanceStore {
                     nodes.sort_by(|a, b| {
                         (a.kind, at(&a.id), &a.name).cmp(&(b.kind, at(&b.id), &b.name))
                     });
+                    tracing::Span::current().record("node_count", nodes.len());
+                    tracing::Span::current().record("people_unscheduled", unscheduled);
                     Ok(ScheduleTree {
                         date,
                         nodes,

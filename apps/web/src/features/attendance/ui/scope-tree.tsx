@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "@console/i18n";
+import { Link } from "@tanstack/react-router";
 import { EmptyState } from "../../../ui/empty-state";
 import { Button } from "../../../ui/button/button";
 import { SearchField } from "../../../ui/search/search-field";
@@ -11,9 +12,11 @@ import { PersonScope } from "./person-scope";
 import { inField, useKeys } from "./use-keys";
 import s from "./attendance.module.css";
 
-/** What a node holds: its own layer, else what it follows (the level above decides). */
+/** The server resolves inheritance on the tree's date, including an absent winner. */
 const holds = (n: TreeNode) =>
-  n.layer?.pattern_name ?? t(n.kind === "LEGAL_ENTITY" ? "attendanceSchedule.tree.noEntityDefault" : n.kind === "WORKPLACE" ? "attendanceSchedule.tree.followsEntity" : "attendanceSchedule.tree.followsWorkplace");
+  n.layer?.pattern_name ?? (n.effective
+    ? t("attendanceSchedule.tree.inherited", { pattern: n.effective.pattern_name, from: t(`attendance.level.${n.effective.from}`) })
+    : n.unscheduled ? null : t("attendanceSchedule.tree.noSchedule"));
 
 /**
  * The scope tree of A2 calendar (legal entity › workplace › department, crew under their workplace): each row says what decides its work schedule.
@@ -43,12 +46,17 @@ export function ScopeTree({ tree, selected, onSelect, onPerson }: { tree: Schedu
           label={t("attendanceSchedule.tree.label")}
           roots={found.roots}
           childrenOf={found.childrenOf}
-          textValue={(n) => n.name}
+          keyboardNavigationBehavior="tab"
+          textValue={(n) => [n.name, holds(n), peopleText(n.people), n.unscheduled ? t("attendanceSchedule.tree.missing", { count: n.unscheduled }) : null].filter(Boolean).join(" · ")}
           row={(n) => (
-            <span className={s.treeRow}>
-              <span className={s.grow}>{n.name}</span>
-              <span className="muted">{holds(n)}</span>
-            </span>
+            <div className={s.treeRow}>
+              <div className={s.treeName}>{n.name}</div>
+              {holds(n) && <span className={n.layer || n.effective ? "muted" : "t-warn"}>{holds(n)}</span>}
+              <span className="muted">{peopleText(n.people)}</span>
+              {(n.unscheduled ?? 0) > 0 && (n.kind === "WORKPLACE" || n.kind === "DEPARTMENT"
+                ? <Link className="link t-warn" to="/attendance" search={{ tab: "day", date: tree.date, unscheduled: true, wp: n.kind === "WORKPLACE" ? n.id : n.workplace_id ?? undefined, unit: n.kind === "DEPARTMENT" ? n.id : undefined }}>{t("attendanceSchedule.tree.missing", { count: n.unscheduled! })}</Link>
+                : <span className="t-warn">{t("attendanceSchedule.tree.missing", { count: n.unscheduled! })}</span>)}
+            </div>
           )}
           selected={selected}
           onSelect={(id) => {
@@ -59,9 +67,7 @@ export function ScopeTree({ tree, selected, onSelect, onPerson }: { tree: Schedu
           onExpandedChange={setExpanded}
         />
       )}
-      <p className="muted">
-        {tree.people_unscheduled > 0 ? t("attendanceSchedule.tree.unscheduled", { count: tree.people_unscheduled }) : t("attendanceSchedule.tree.allScheduled", { people: peopleText(tree.people_total) })}
-      </p>
+      {tree.people_unscheduled === 0 && <p className="muted">{t("attendanceSchedule.tree.allScheduled", { people: peopleText(tree.people_total) })}</p>}
     </div>
   );
 }

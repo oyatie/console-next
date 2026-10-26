@@ -1,6 +1,9 @@
 import type { koAttendanceSchedule } from "../ko/attendance-schedule";
 
 export const enAttendanceSchedule: Partial<Record<keyof typeof koAttendanceSchedule, string>> = {
+  "attendanceSchedule.tree.inherited": "{pattern} · from {from}",
+  "attendanceSchedule.tree.noSchedule": "No schedule",
+  "attendanceSchedule.tree.missing": "No schedule for {count, number} people",
   "attendanceSchedule.unscheduled.banner": "{count, number} people have no work schedule, so their missing records and overtime are not judged · {total, number} in all",
   "attendanceSchedule.receipt.cancel": "Cancel before it starts",
   "attendanceSchedule.tree.label": "Scope (entity › workplace › department)",
@@ -8,13 +11,9 @@ export const enAttendanceSchedule: Partial<Record<keyof typeof koAttendanceSched
   "attendanceSchedule.person.find": "Find a person — name or employee no.",
   "attendanceSchedule.person.group": "Employees",
   "attendanceSchedule.person.none": "No employee matches that name or number",
-  "attendanceSchedule.tree.noEntityDefault": "No entity default",
-  "attendanceSchedule.tree.followsEntity": "Follows entity",
-  "attendanceSchedule.tree.followsWorkplace": "Follows workplace",
   "attendanceSchedule.tree.noMatch": "No scope matches",
   "attendanceSchedule.tree.noMatch.reason": "No entity, workplace, department or crew is named “{query}”.",
   "attendanceSchedule.tree.clear": "Reset filter",
-  "attendanceSchedule.tree.unscheduled": "{count, number} people unassigned · without a schedule, missing records and overtime are not judged",
   "attendanceSchedule.tree.allScheduled": "All {people} have a schedule",
   "attendanceSchedule.month.prev": "Previous month",
   "attendanceSchedule.month.next": "Next month",

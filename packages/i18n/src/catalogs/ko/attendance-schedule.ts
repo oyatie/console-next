@@ -1,6 +1,9 @@
 // Korean source for `attendanceSchedule.` ids: A2 달력 (scope tree, month, layer stack and history), the assign sheet
 // with its preview, and the cancel sheet. Rules: the header of ../ko.ts and packages/i18n/GUIDE.md.
 export const koAttendanceSchedule = {
+  "attendanceSchedule.tree.inherited": "{pattern} · {from} 기준",
+  "attendanceSchedule.tree.noSchedule": "일정 없음",
+  "attendanceSchedule.tree.missing": "일정 없음 {count, number}명",
   "attendanceSchedule.unscheduled.banner": "근무 일정이 지정되지 않은 {count, number}명은 소정 근무를 알 수 없어 미기록과 연장을 판정하지 않습니다 · 전체 {total, number}명",
   "attendanceSchedule.receipt.cancel": "적용 전 취소",
   // Scope tree
@@ -9,13 +12,9 @@ export const koAttendanceSchedule = {
   "attendanceSchedule.person.find": "사람 찾기 — 이름·사번",
   "attendanceSchedule.person.group": "직원",
   "attendanceSchedule.person.none": "이름이나 사번이 맞는 직원이 없습니다",
-  "attendanceSchedule.tree.noEntityDefault": "법인 기본 없음",
-  "attendanceSchedule.tree.followsEntity": "법인 따름",
-  "attendanceSchedule.tree.followsWorkplace": "사업장 따름",
   "attendanceSchedule.tree.noMatch": "조건에 맞는 범위가 없습니다",
   "attendanceSchedule.tree.noMatch.reason": "「{query}」 이름을 가진 법인·사업장·부서·근무조가 없습니다.",
   "attendanceSchedule.tree.clear": "조건 초기화",
-  "attendanceSchedule.tree.unscheduled": "지정되지 않은 사람 {count, number}명 · 근무 일정이 없으면 미기록과 연장을 판정하지 않습니다",
   "attendanceSchedule.tree.allScheduled": "{people} 모두 근무 일정이 있습니다",
   // Month
   "attendanceSchedule.month.prev": "이전 달",
