@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const enComposer = {
+  "composer.action.orgHead": "Department head",
+  "composer.verb.assign": "Appoint",
   "composer.section.preflight": "Preflight",
   "composer.section.effects": "Effects",
   "composer.section.approvals": "Approval route",

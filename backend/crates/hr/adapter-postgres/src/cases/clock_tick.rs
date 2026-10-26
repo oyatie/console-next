@@ -8,7 +8,7 @@
 //!    (`due_basis = '{}'`), still waiting for its anchor, or unresolved, through
 //!    `case_clocks` over the statutory register;
 //! 2. finds the open cases with an item that became overdue, or entered the
-//!    7-day window, since the last run;
+//!    configured display window, since the last run;
 //! 3. writes one `lifecycle_case.clock_tick` audit row per such case (system
 //!    actor). BE-RT's audit trigger turns it into the change rows that make
 //!    open shells invalidate once.
@@ -27,10 +27,8 @@ use uuid::Uuid;
 use super::register::Register;
 use crate::{HrError, HrService};
 
-/// Items whose due date entered the Home window (「이번 주」, §7) count as changed.
-/// the window is the UI's 7 days; read it from the summary API's
-/// setting if that ever becomes tenant policy.
-const DUE_SOON_DAYS: i64 = 7;
+/// Items entering the same display window as the inbox count as changed.
+const DUE_SOON_DAYS: i64 = console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS;
 
 impl HrService {
     /// Runs today's clock tick in every tenant. Returns how many cases changed.
@@ -168,7 +166,7 @@ impl HrService {
                 .bind(org_uuid)
                 .bind(since)
                 .bind(today)
-                .bind(i32::try_from(DUE_SOON_DAYS).unwrap_or(7))
+                .bind(i32::try_from(DUE_SOON_DAYS).map_err(|_| HrError::internal("invalid deadline display window"))?)
                 .fetch_all(tx.as_mut())
                 .await?;
                 touched.extend(crossed);

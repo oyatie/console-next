@@ -4,6 +4,45 @@ use console_action_inbox_application::{ActionInboxSourceItem, ActionInboxSourceP
 use time::{Duration, OffsetDateTime};
 
 #[test]
+fn deadline_window_comes_from_the_server() {
+    let now = OffsetDateTime::UNIX_EPOCH;
+    assert_eq!(
+        console_action_inbox_application::urgency(Some(now - Duration::HOUR), now, 3),
+        ("now", "danger")
+    );
+    let source = ActionInboxSourcePage {
+        items: vec![ActionInboxSourceItem {
+            context: None,
+            id: "insurance_filing_ACQUIRE_NPS:00000000-0000-0000-0000-000000000001".into(),
+            kind: "insurance_filing".into(),
+            ref_code: String::new(),
+            title: "신고".into(),
+            site: None,
+            who: None,
+            due: Some(now + Duration::days(3)),
+            submitted: None,
+            links: vec![],
+            created_at: now,
+        }],
+        total: 1,
+        total_is_exact: true,
+        has_more: false,
+    };
+    let far = merge_pages(vec![source.clone()], now, now, None, 10, 2);
+    let due = merge_pages(vec![source], now, now, None, 10, 3);
+    assert_eq!(far.items[0].due_tone, "neutral");
+    assert_eq!(due.items[0].due_tone, "warn");
+    assert_eq!(
+        console_action_inbox_application::urgency(
+            Some(now + Duration::days(3)),
+            now,
+            console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
+        ),
+        ("today", "warn")
+    );
+}
+
+#[test]
 fn every_home_kind_carries_its_lane_and_database_deadline_days() {
     let now = OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap();
     for (kind, lane) in [
@@ -52,6 +91,7 @@ fn every_home_kind_carries_its_lane_and_database_deadline_days() {
             now,
             None,
             10,
+            console_settings_domain::keys::DEADLINE_DUE_SOON_DAYS,
         );
         let wire = serde_json::to_value(page).unwrap();
         assert_eq!(wire["items"][0]["lane"], lane, "{kind}");

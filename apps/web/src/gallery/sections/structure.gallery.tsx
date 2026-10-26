@@ -9,6 +9,9 @@ import { DiffPair } from "../../features/org/ui/diff-pair";
 import { TargetTree } from "../../features/org/ui/target-tree";
 import { placesOf } from "../../reference/org/domain/structure";
 import { Facts, Stats } from "../../reference/org/ui/panel-shell";
+import { Band } from "../../ui/band/band";
+import { Paper, PaperHead } from "../../ui/paper/paper";
+import { StepLine } from "../../ui/step-line/step-line";
 import { Section } from "../Section";
 import { buildStructure } from "../../features/structure/domain/model";
 import { vacantHeads } from "../../features/structure/domain/registry";
@@ -82,6 +85,18 @@ export default function Structure() {
       <Stats items={[{ label: t("orgUnit.stat.total"), value: 12 }, { label: t("orgUnit.stat.direct"), value: 4 }, { label: t("orgUnit.stat.sub"), value: 2 }]} />
       <Facts rows={[{ label: t("orgUnit.fact.parent"), value: tg("sample.site") }, { label: t("orgUnit.fact.place"), value: tg("sample.company") }]} />
       <DiffPair before={plan.before} after={plan.after} afterLabel={t("orgUnit.delete.after")} legend={["gone", "raised"]} pending={t("orgUnit.delete.previewPending")} />
+      <StepLine
+        label={t("common.steps")}
+        steps={[
+          { key: "1", label: tg("sample.dept"), state: "done" },
+          { key: "2", label: tg("sample.team"), state: "current" },
+        ]}
+      />
+      <Band edge="bottom" tone="surface">
+        <Paper size="a4" label={tg("paper.preview")}>
+          <PaperHead title={tg("sample.company")} />
+        </Paper>
+      </Band>
     </Section>
   );
 }

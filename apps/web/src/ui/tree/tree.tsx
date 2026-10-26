@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Button, Tree, TreeItem, TreeItemContent } from "react-aria-components";
 import { ChevronRight } from "lucide-react";
+import s from "./tree.module.css";
 
 /**
  * A single-select tree (React Aria treegrid): ↑↓ move, ←→ collapse and expand, Enter or a click selects,
@@ -8,7 +9,24 @@ import { ChevronRight } from "lucide-react";
  * (put everything the row shows in it: name, kind, count, marker), and type-ahead matches it. `disabled` rows stay
  * visible but cannot be chosen (say why in the row).
  */
-export function TreeView<T extends { id: string }>({ id, label, roots, childrenOf, textValue, row, selected, onSelect, expanded, onExpandedChange, disabled, keyboardNavigationBehavior }: {
+export function TreeView<T extends { id: string }>({
+  id,
+  label,
+  roots,
+  childrenOf,
+  textValue,
+  row,
+  selected,
+  onSelect,
+  expanded,
+  onExpandedChange,
+  disabled,
+  keyboardNavigationBehavior,
+  loading,
+  empty,
+  error,
+  density,
+}: {
   id?: string;
   label: string;
   roots: T[];
@@ -21,6 +39,10 @@ export function TreeView<T extends { id: string }>({ id, label, roots, childrenO
   expanded: Set<string>;
   onExpandedChange: (keys: Set<string>) => void;
   disabled?: ReadonlySet<string>;
+  loading?: boolean;
+  empty?: ReactNode;
+  error?: ReactNode;
+  density?: "dense" | "default";
   /** Let Tab reach interactive content within a row. */
   keyboardNavigationBehavior?: "arrow" | "tab";
 }) {
@@ -45,7 +67,11 @@ export function TreeView<T extends { id: string }>({ id, label, roots, childrenO
     <Tree
       id={id}
       aria-label={label}
-      className="tree"
+      className={`tree ${s.tree}`}
+      data-density={density}
+      aria-busy={loading || undefined}
+      data-state={error ? "error" : undefined}
+      renderEmptyState={() => error ? <div className={s.error} role="alert">{error}</div> : loading ? <div className={s.loading} role="status" aria-busy="true"><div className={s.skeleton} /></div> : empty != null && <div className={s.empty}>{empty}</div>}
       selectionMode="single"
       keyboardNavigationBehavior={keyboardNavigationBehavior}
       selectedKeys={selected ? [selected] : []}
@@ -54,7 +80,7 @@ export function TreeView<T extends { id: string }>({ id, label, roots, childrenO
       disabledKeys={disabled}
       onExpandedChange={(keys) => onExpandedChange(new Set([...keys].map(String)))}
     >
-      {roots.map(node)}
+      {(loading || error ? [] : roots).map(node)}
     </Tree>
   );
 }

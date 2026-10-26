@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
 import { EmptyState } from "../../../ui/empty-state";
@@ -9,7 +8,6 @@ import { editable } from "../../../ui/long-table/row-keys";
 import { NO_SELECTION, type Selection } from "../../../ui/long-table/selection";
 import { focusSoon } from "../../../lib/react/announce";
 import { usePrefetch } from "../../../lib/react/prefetch";
-import { freshOnOpen } from "../../../lib/query";
 import { todayKst } from "../../../lib/pure/today";
 import { useReasonCodesReady } from "../../../lib/reason-codes";
 import { employeeQuery } from "../api";
@@ -26,14 +24,12 @@ import { PeopleJump } from "./people-jump";
 import { RegisterExport } from "./register-export";
 import { RosterFirstRun } from "./roster-first-run";
 import { QueryState } from "../../../lib/react/query-state";
-import { readGroup } from "../../../lib/react/query-view";
+import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { RosterEmpty } from "./roster-empty";
 import { RosterColumns } from "./roster-columns";
 import { useRosterColumns } from "./use-roster-columns";
 import { Band } from "../../../ui/band/band";
 import { Banner } from "../../../ui/banner/banner";
-import { entitiesRef } from "../../../reference/entity/api";
-import { unitsQuery } from "../../../reference/org/api";
 import s from "./roster.module.css";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { RosterExport } from "./roster-export";
@@ -57,9 +53,6 @@ const remember = (key: string, q: string, patch: Partial<NonNullable<typeof memo
 
 /** The people list: status and attention chips, a virtualized server-paged table, and the selected person beside it. */
 export function RosterPage({ manage, scoped = false, switcher }: { manage: boolean; scoped?: boolean; switcher?: ReactNode }) {
-  // Resolve the chosen scope before drawing its controls; cached structure can predate the unit just created.
-  const entities = freshOnOpen(useQuery({ ...entitiesRef, refetchOnMount: "always" }));
-  const units = freshOnOpen(useQuery({ ...unitsQuery, refetchOnMount: "always" }));
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const today = todayKst();
@@ -196,10 +189,9 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
   const total = r.total;
   // The first-run ways in are for a company with nobody at all (the starting and the exited counted, once their totals are
   // read); a current view that is empty while others exist is the table's own empty state, with its way to them.
-  const context = readGroup([entities, units, r.list]);
   if (search.export === "register") return <RegisterExport onClose={() => void navigate({ search: (prev) => ({ ...prev, export: undefined }), replace: true })} />;
   return (
-    <div className={s.page}>
+    <PageReadGate q={r.list}><div className={s.page}>
       <RosterHead
         headcount={headcount(r.status.totals)}
         manage={manage}
@@ -221,7 +213,7 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
         onDensity={view.setDensity}
         tools={<RosterColumns shown={view.shown} onChange={view.set} density={view.density} onDensity={view.setDensity} />}
       />
-      <QueryState q={context} layout="list">{() => <>
+      <QueryState q={r.list} layout="list">{() => <>
       <div className={s.notes}>
       {status === "EXITED" && <ExitTabs view={exitView} kept={r.status.totals.EXITED} onView={setExitView} />}
       {scoped && <p className="muted">{t("roster.scope.branches")}</p>}
@@ -286,6 +278,6 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
       />
       <PeopleJump />
     </>}</QueryState>
-    </div>
+    </div></PageReadGate>
   );
 }

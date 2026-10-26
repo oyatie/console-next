@@ -5,6 +5,7 @@ mod closed_month;
 mod closed_month_db_guard;
 mod closed_month_order;
 mod conflict;
+mod detail;
 mod edits;
 mod grammar;
 mod long_spans;

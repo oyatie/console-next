@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
 import { LIFECYCLE_TODAY_FILE } from "./e2e/clock";
@@ -16,10 +15,7 @@ const reuse = process.env.E2E_REUSE === "1" && !served;
 const xbrowser = process.env.E2E_XBROWSER === "1";
 const origin = served ? `http://localhost:${PORTS.backend}` : `http://localhost:${PORTS.web}`;
 const backendEnv = {
-  // The public monorepo carries backend/ beside apps/; the private checkouts are siblings.
-  CONSOLE_APP_BIN:
-    process.env.CONSOLE_APP_BIN ??
-    `${existsSync("backend/Cargo.toml") ? "." : "../frontend/backend-mvp"}/backend/target/debug/console-app`,
+  CONSOLE_APP_BIN: process.env.CONSOLE_APP_BIN ?? "backend/target/debug/console-app",
   CONSOLE_WEB_ORIGIN: origin,
   // The slot's own stack (e2e/slot.ts): ports, compose project and cache never overlap another slot's.
   CONSOLE_DEV_PROJECT: COMPOSE_PROJECT,
@@ -88,7 +84,7 @@ export default defineConfig({
       command: served
         ? `${process.env.E2E_PREBUILT === "1" ? "" : "npm run build && "}node scripts/backend-dev.mjs --reset`
         : `node scripts/backend-dev.mjs${reuse ? "" : " --reset"}`,
-      // Always run orphan inspection before readiness checks; explicit reuse keeps its existing server.
+      // Start the launcher before probing a port that may belong to a dead run.
       ...(reuse ? { url: `http://127.0.0.1:${PORTS.backend}/readyz` } : { wait: { stdout: /\[backend\] ready/ } }),
       gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
       timeout: 300_000,

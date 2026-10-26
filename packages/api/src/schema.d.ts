@@ -24550,6 +24550,11 @@ export interface components {
             position?: string;
             /** @description Current 직책 from the employee card's position-kind catalog fact. */
             title?: string;
+            /**
+             * Format: date
+             * @description Winning membership event date or employment revision business date, omitted when undated.
+             */
+            since?: string;
         };
         OrgUnitMembers: {
             /**
@@ -33083,6 +33088,8 @@ export interface operations {
                 issues_only?: boolean;
                 /** @description show only people without a resolved schedule; counts remain for the whole scope */
                 no_schedule_only?: boolean;
+                /** @description return every row without folding normal people; existing filters still apply */
+                rows?: "all";
             };
             header?: never;
             path?: never;

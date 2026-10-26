@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { t } from "@console/i18n";
-import { Chip } from "../chip";
+import { ActorBadge } from "./actor-badge";
 import { FieldDiff, type FieldChange } from "./field-diff";
 import { RetentionChip, type Retention } from "./retention-chip";
 import type { ActorKind, TimelineState } from "./states";
@@ -33,8 +33,7 @@ export function TimelineLine({ id, date, state, title, actor, actorKind, recorde
         <span>{t(`timeline.state.${state}`)}</span>
         {valuesVisible && title != null && separator}
         {valuesVisible && title}
-        {actorKind === "OPS_ACCOUNT" && state !== "emergency" && <Chip tone="warn">{t("timeline.state.emergency")}</Chip>}
-        {actorKind === "SUPPORT_OPERATOR" && state !== "operator" && <Chip>{t("timeline.state.operator")}</Chip>}
+        {state !== "emergency" && state !== "operator" && <ActorBadge kind={actorKind} />}
         {liveNew && <span className="sr-only">{t("timeline.liveNew")}</span>}
     </>}
     meta={state !== "destroyed" && (actorLabel || recordedAt) ? <>{actorLabel}{actorLabel && recordedAt && separator}{recordedAt}</> : undefined}

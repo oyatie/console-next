@@ -29,7 +29,7 @@ export default function Tables() {
     <Section title={tg("section.tables")}>
       <Table label={tg("table.empty")} rows={[]} columns={columns} rowId={(r) => r.id} />
       <Table label={tg("table.one")} rows={rows.slice(0, 1)} columns={columns} rowId={(r) => r.id} />
-      <Table label={tg("table.many")} rows={rows} columns={columns} rowId={(r) => r.id} selected={selected} onSelect={setSelected} />
+      <Table label={tg("table.many")} groups={STATUSES.map(status => ({ id: status, header: labeled(EMPLOYEE_STATUS, status).label, rows: rows.filter(r => r.status === status) }))} rows={rows} columns={columns} rowId={(r) => r.id} selected={selected} onSelect={setSelected} />
     </Section>
   );
 }

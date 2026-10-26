@@ -8,9 +8,11 @@ import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { PickOne } from "../../../reference/entity/ui/pick-one";
 import { TextArea } from "../../../ui/field/text-area";
 import { Receipt } from "../../../ui/receipt/receipt";
+import { EmptyState } from "../../../ui/empty-state";
 import { entitiesRef as entitiesQuery } from "../../../reference/entity/api";
 import { BATCH_READS, commitBatches, RowsRefused, structureQuery, type Committed } from "../api";
 import { emptyAnswers, entityOps, openQuestions, orgOps, ready, wpRef, type SiteAnswers } from "../domain/ops";
@@ -32,14 +34,23 @@ export function PastePage() {
 function PasteWorkspace() {
   const { entity, workplace } = route.useSearch();
   const tree = useQuery(structureQuery);
+  const at = findRoot(tree.data?.entities ?? [], entity, workplace);
+  const under = at && tree.data?.phase !== "OPERATING" ? at.root.kind === "entity" ? t("orgBulk.paste.under.entity", { entity: at.root.node.name }) : t("orgBulk.paste.under.workplace", { workplace: at.root.node.name }) : undefined;
   return (
-    <QueryState q={tree} layout="grid">
-      {(d) => {
-        const ents = d.entities.filter((e) => e.kind === "LEGAL_ENTITY");
-        const at = findRoot(ents, entity, workplace);
-        return at ? <PasteEditor key={at.root.node.id} root={at.root} entity={at.owner} operating={d.phase === "OPERATING"} /> : <PickRoot entities={ents} />;
-      }}
-    </QueryState>
+    <div className={s.frame}>
+      <BulkHead title={t("orgBulk.paste.title")} under={under} />
+      <QueryState q={tree} layout="grid">
+        {(d) => {
+          const ents = d.entities.filter((e) => e.kind === "LEGAL_ENTITY");
+          if (ents.length === 0) return <PickRoot entities={ents} />;
+          if (d.phase === "OPERATING") {
+            const target = at?.root.kind === "workplace" ? at.root.node : (at?.owner.children ?? ents.flatMap((e) => e.children)).find((n) => n.kind === "WORKPLACE");
+            return <EmptyState title={t("orgBulk.operating")} reason={null} actions={<Link to="/org" search={{ sel: target?.id, act: "dept-add" }} className={buttonClass("primary")}>{t("orgBulk.operating.action")}</Link>} />;
+          }
+          return at ? <PasteEditor key={at.root.node.id} root={at.root} entity={at.owner} /> : <PickRoot entities={ents} />;
+        }}
+      </QueryState>
+    </div>
   );
 }
 
@@ -58,21 +69,18 @@ function PickRoot({ entities }: { entities: Node[] }) {
   const pick = (v: string) => void navigate({ search: v.startsWith("e:") ? { entity: v.slice(2) } : { workplace: v.slice(2) } });
   const options = entities.flatMap((e) => [{ value: `e:${e.id}`, label: e.name }, ...e.children.filter((w) => w.kind === "WORKPLACE").map((w) => ({ value: `w:${w.id}`, label: t("orgBulk.import.sitePath", { entity: e.name, name: w.name }) }))]);
   return (
-    <div className={s.frame}>
-      <BulkHead title={t("orgBulk.paste.title")} />
-      <div className={s.body}>
-        {options.length === 0 ? (
-          <p className={s.note}>{t("orgBulk.paste.noEntity")}</p>
-        ) : (
-          // Every place is offered (a group with many workplaces still reaches its later legal entities): past 15, a search.
-          <PickOne label={t("orgBulk.paste.pickRoot")} required  options={options} value={null} onChange={pick} group={t("orgBulk.paste.pickRoot")} empty={t("orgBulk.paste.pickRootNone")} />
-        )}
-      </div>
+    <div className={s.body}>
+      {options.length === 0 ? (
+        <EmptyState title={t("orgBulk.paste.noEntity")} reason={null} actions={<Link to="/org/entities/new" className={buttonClass("primary")}>{t("entity.empty.action")}</Link>} />
+      ) : (
+        // Every place is offered (a group with many workplaces still reaches its later legal entities): past 15, a search.
+        <PickOne label={t("orgBulk.paste.pickRoot")} required  options={options} value={null} onChange={pick} group={t("orgBulk.paste.pickRoot")} empty={t("orgBulk.paste.pickRootNone")} />
+      )}
     </div>
   );
 }
 
-function PasteEditor({ root, entity, operating }: { root: PlanRoot; entity: Node; operating: boolean }) {
+function PasteEditor({ root, entity }: { root: PlanRoot; entity: Node }) {
   const [text, setText] = useState("");
   const [names, setNames] = useState<Record<number, string>>({});
   const [answers, setAnswers] = useState<Record<string, SiteAnswers>>({});
@@ -96,27 +104,21 @@ function PasteEditor({ root, entity, operating }: { root: PlanRoot; entity: Node
     setText(""); setNames({}); setAnswers({}); setDone(null); memo.current = {};
   };
   // The legal entity kind decides the withholding sent for a new workplace, so nothing commits before it is read.
-  const can = !operating && entities.isSuccess && ready(plan, answers) && !commit.isPending;
+  const can = entities.isSuccess && ready(plan, answers) && !commit.isPending;
   const foot =
-    operating ? t("orgBulk.foot.operating")
-    : plan.length === 0 ? t("orgBulk.foot.empty")
+    plan.length === 0 ? t("orgBulk.foot.empty")
     : counts.fix || open ? t("orgBulk.foot.blocked", { fix: counts.fix, open })
     : counts.workplaces + counts.depts === 0 ? t("orgBulk.foot.nothing")
     : t("orgBulk.foot.ready", { workplaces: counts.workplaces, depts: counts.depts });
-  const under = root.kind === "entity" ? t("orgBulk.paste.under.entity", { entity: root.node.name }) : t("orgBulk.paste.under.workplace", { workplace: root.node.name });
 
   if (done)
     return (
-      <div className={s.frame}>
-        <BulkHead title={t("orgBulk.paste.title")} under={under} />
         <div className={s.body}>
           <CommittedReceipt committed={done.c} message={t("orgBulk.done", { workplaces: done.w, depts: done.d })} again={restart} />
         </div>
-      </div>
     );
   return (
-    <div className={s.frame}>
-      <BulkHead title={t("orgBulk.paste.title")} under={under} />
+    <>
       <div className={`${s.body} ${s.cols3}`}>
         <section className={s.col}>
           <h2 className={s.colHead}>
@@ -148,7 +150,7 @@ function PasteEditor({ root, entity, operating }: { root: PlanRoot; entity: Node
           <section className={`card ${s.card}`}>
             <h2 className={s.cardHead}>{t("orgBulk.summary.title")}</h2>
             <p className={s.note}>{t("orgBulk.summary.what", { workplaces: counts.workplaces, depts: counts.depts, links: counts.links })}</p>
-            <p className={s.note}>{operating ? t("orgBulk.summary.operating") : t("orgBulk.summary.setup", { total: counts.workplaces + counts.depts })}</p>
+            <p className={s.note}>{t("orgBulk.summary.setup", { total: counts.workplaces + counts.depts })}</p>
           </section>
         </aside>
       </div>
@@ -168,6 +170,6 @@ function PasteEditor({ root, entity, operating }: { root: PlanRoot; entity: Node
           {t("orgBulk.submit", { workplaces: counts.workplaces, depts: counts.depts })}
         </Button>
       </footer>
-    </div>
+    </>
   );
 }

@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "tenant:edit", "scope": "ops"}
 tags: [platform]
 operationId: getOwnCompanyDomainRequest
 summary: Read the tenant ops account's pending company-domain request

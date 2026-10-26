@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+# Existing E2E images only; no production ingress, telemetry or mail services.
+services:
+  postgres:
+    image: postgres:18.4@sha256:65f70a152846cf504dff86e807007e9aeac98c3aeb7b62541b2c55ab9d264e56
+    environment:
+      POSTGRES_DB: ${CONSOLE_POSTGRES_DB:?}
+      POSTGRES_USER: ${CONSOLE_POSTGRES_ADMIN_USER:?}
+      POSTGRES_PASSWORD: ${CONSOLE_POSTGRES_ADMIN_PASSWORD:?}
+      CONSOLE_APP_POSTGRES_PASSWORD: ${CONSOLE_APP_POSTGRES_PASSWORD:?}
+      CONSOLE_RT_POSTGRES_PASSWORD: ${CONSOLE_RT_POSTGRES_PASSWORD:?}
+      CONSOLE_LEAVE_COMMAND_POSTGRES_PASSWORD: ${CONSOLE_LEAVE_COMMAND_POSTGRES_PASSWORD:?}
+      CONSOLE_ONTOLOGY_COMMAND_POSTGRES_PASSWORD: ${CONSOLE_ONTOLOGY_COMMAND_POSTGRES_PASSWORD:?}
+      CONSOLE_PLATFORM_FORCE_COMMAND_POSTGRES_PASSWORD: ${CONSOLE_PLATFORM_FORCE_COMMAND_POSTGRES_PASSWORD:?}
+    ports:
+      - "127.0.0.1:${CONSOLE_POSTGRES_PORT:?}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./postgres-init.sh:/docker-entrypoint-initdb.d/10-console.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 1s
+      timeout: 5s
+      retries: 60
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.32@sha256:bcfb7aac11928f314e0032d68275b7166222987f72b60dafeac71ede5d2a38a4
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - |
+        umask 077
+        printf '{"identities":[{"name":"e2e","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$$CONSOLE_S3_ACCESS_KEY_ID" "$$CONSOLE_S3_SECRET_ACCESS_KEY" > /tmp/s3.json
+        exec weed server -ip=seaweedfs -ip.bind=0.0.0.0 -dir=/data -volume.max=2 -master.volumeSizeLimitMB=64 -s3 -s3.config=/tmp/s3.json
+    environment:
+      CONSOLE_S3_ACCESS_KEY_ID: ${CONSOLE_S3_ACCESS_KEY_ID:?}
+      CONSOLE_S3_SECRET_ACCESS_KEY: ${CONSOLE_S3_SECRET_ACCESS_KEY:?}
+    ports:
+      - "127.0.0.1:${CONSOLE_S3_PORT:?}:8333"
+    volumes:
+      - objects-data:/data
+    healthcheck:
+      test: [CMD-SHELL, 'wget -q -O /dev/null http://127.0.0.1:8333/status']
+      interval: 1s
+      timeout: 5s
+      retries: 60
+volumes:
+  postgres-data:
+  objects-data:

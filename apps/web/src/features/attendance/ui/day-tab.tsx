@@ -41,7 +41,7 @@ export function DayTab({ head }: { head?: ReactNode }) {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const date = search.date ?? addDays(todayKst(), -1);
-  const board = useQuery({ ...dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled), placeholderData: keepPreviousData });
+  const board = useQuery({ ...dayBoardQuery(date, search.wp, search.unit, search.issues, search.unscheduled, search.detail ? "all" : undefined), placeholderData: keepPreviousData });
   const rows = useMemo(() => board.data?.groups.flatMap(g => g.rows) ?? [], [board.data]);
   const kindOf = usePlanKinds(rows, date);
   const store = useDrafts(`day:${date}`);

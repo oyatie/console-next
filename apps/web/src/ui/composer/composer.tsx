@@ -55,7 +55,7 @@ export function Composer(p: {
   useEffect(() => {
     if (p.open === false) return;
     const key = (e: KeyboardEvent) => {
-      if (e.key !== "Enter" || e.shiftKey || !(e.metaKey || e.ctrlKey) || e.isComposing || !document.getElementById(id)?.closest('[role="dialog"], [data-composer-root]')?.contains(document.activeElement)) return;
+      if (e.key !== "Enter" || e.shiftKey || !(e.metaKey || e.ctrlKey) || e.isComposing || e.keyCode === 229 || !document.getElementById(id)?.closest('[role="dialog"], [data-composer-root]')?.contains(document.activeElement)) return;
       e.preventDefault();
       submitter.current?.click();
     };

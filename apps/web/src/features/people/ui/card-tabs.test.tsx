@@ -113,3 +113,11 @@ test("the legacy system-sentence alias list can only shrink and arbitrary notes 
   expect(commentText("Created through another service")).toBe("Created through another service");
   expect(commentText("사용자 메모", "future_code")).toBe("사용자 메모");
 });
+
+
+test("the real ledger identifies routine ops recorders without emergency wording", () => {
+  const c = makeCard([makeEvent({ actor_kind: "OPS_ACCOUNT" })]);
+  const out = renderToStaticMarkup(<CardTabs c={c} tab="ledger" verbs={[]} today="2026-10-25" done={null} onAct={() => {}} onDismiss={() => {}} />);
+  expect(out).toContain("운영 계정");
+  expect(out).not.toContain("긴급 권한");
+});

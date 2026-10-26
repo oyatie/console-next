@@ -2,8 +2,9 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible, fits } from "./a11y";
 import { clearShifts, forgetResize } from "./stability";
-import { go, registerEmployee } from "./flows";
+import { go, kstDate, registerEmployee } from "./flows";
 import { SETUP_DEPARTMENT, setupCompany, setupRail, tenantBeforeSetup } from "./setup-flows";
+import { fmtDate } from "@console/i18n/format";
 import { addDepts, openUnit, sheet } from "./helpers/structure";
 
 test("staffed people at 사업장 직속 block go-live even when a department exists", { tag: "@org" }, async ({ browser }) => {
@@ -63,12 +64,14 @@ test("department vacancy count appoints a head directly from the list and panel"
   await filter.click();
   const row = admin.getByRole("row").filter({ hasText: SETUP_DEPARTMENT });
   await row.getByRole("button", { name: "부서장 지정", exact: true }).click();
+  await expect(row).not.toHaveAttribute("aria-selected", "true");
+  await expect(admin.getByRole("button", { name: "선택 해제", exact: true })).toHaveCount(0);
   const appoint = sheet(admin, "부서장 지정");
   const picker = appoint.getByRole("combobox", { name: "부서장", exact: true });
   await expect(picker).toBeFocused();
   await picker.press("ArrowDown");
   await admin.getByRole("option", { name: /김부서장/ }).click();
-  await appoint.getByRole("button", { name: "부서 정보 1개 변경", exact: true }).click();
+  await appoint.getByRole("button", { name: "부서장 지정", exact: true }).click();
   await expect(appoint).toBeHidden();
   await expect(admin.getByRole("button", { name: "부서장 없음 1", exact: true })).toBeVisible();
   // Removing the last vacant head while the filter is active must keep the chip usable.
@@ -81,6 +84,10 @@ test("department vacancy count appoints a head directly from the list and panel"
   }
   await admin.setViewportSize({ width: 1440, height: 900 });
   await go(admin, "/org");
+  const staffed = await openUnit(admin, SETUP_DEPARTMENT);
+  const head = staffed.locator("#dept-members").getByRole("listitem").filter({ hasText: "김부서장" });
+  await expect(head.getByText("부서장", { exact: true })).toBeVisible();
+  await expect(head).toContainText(`${fmtDate(kstDate())}부터`);
   const panel = await openUnit(admin, "품질팀");
   await panel.getByRole("button", { name: "부서장 지정", exact: true }).click();
   await expect(appoint.getByRole("combobox", { name: "부서장", exact: true })).toBeFocused();

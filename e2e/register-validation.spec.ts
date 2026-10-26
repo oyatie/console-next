@@ -81,7 +81,7 @@ test("a named server refusal focuses once and its summary link returns to the fi
   const phone = sheet.getByLabel("휴대전화");
   const summary = sheet.locator('[data-component="error-summary"]');
   await expect(summary).toBeVisible();
-  await expect(name).toBeFocused();
+  await expect(summary).toBeFocused();
   await phone.fill("01012345678");
   await expect(phone).toBeFocused();
   await summary.getByRole("link", { name: /이름/ }).click();

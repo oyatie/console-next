@@ -5,13 +5,14 @@ import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
+import { queryView } from "../../../lib/react/query-view";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { Composer } from "../../../ui/composer/composer";
 import { Dialog } from "../../../ui/dialog";
 import { applySetup, STRUCTURE_READS } from "../../../reference/org/api";
 import { bulkPlan, type Resolution } from "../domain/bulk-move";
-import { collapse, descendants, targetsFor, type Node, type Place } from "../../../reference/org/domain/structure";
+import { collapse, descendants, targetsFor, type Node } from "../../../reference/org/domain/structure";
 import { BulkMoveTable } from "./bulk-move-table";
 import { useEiUnit } from "../../../reference/entity/ui/use-ei-unit";
 import { GovernFields } from "./govern-fields";
@@ -33,14 +34,12 @@ export function BulkMovePage() {
   const { ids } = route.useSearch();
   const chosen = (ids ?? "").split(",").filter(Boolean);
   const st = useStructure();
-  return <QueryState q={st.q} layout="form">{() => <Body chosen={chosen} places={st.places} setup={st.setup} company={st.tenant} />}</QueryState>;
-}
-
-function Body({ chosen, places, setup, company }: { chosen: string[]; places: Map<string, Place>; setup: boolean; company: string }) {
+  const { places, setup, tenant: company } = st;
   const nav = useNavigate();
   const { roots, carried } = collapse(places, chosen);
   const { entity, excluded } = targetsFor(places, roots);
   const first = roots[0] && places.get(roots[0].id);
+  const available = first && entity && ["ready", "stale", "offline"].includes(queryView(st.q));
   const ei = useEiUnit(entity?.id);
   const [to, setTo] = useState<string | null>(null);
   const [res, setRes] = useState<Map<string, Resolution>>(new Map());
@@ -58,7 +57,6 @@ function Body({ chosen, places, setup, company }: { chosen: string[]; places: Ma
   const moveTitle = () =>
     roots.length === 1 ? t("orgChange.title.move", { name: roots[0]!.name, parent: target!.node.name }) : t("orgChange.title.moveMany", { name: roots[0]!.name, count: roots.length - 1, parent: target!.node.name });
   const submit = useGovernSubmit(() => ({ kind: "REORG", target: { kind: "ORG_UNIT", ref: roots[0]!.id, label: moveTitle() }, proposal: plan!.govOps(company) }), gov);
-  if (!first || !entity) return <Unmovable mixed={roots.length > 1} onClose={close} />;
   const count = roots.length + carried.length;
   const total = roots.reduce((n, r) => n + 1 + descendants(r).length, 0);
   const here = (n: Node) => roots.every((r) => places.get(r.id)?.parent?.id === n.id);
@@ -72,30 +70,30 @@ function Body({ chosen, places, setup, company }: { chosen: string[]; places: Ma
   return (
     <Composer
       layout="page"
-      title={count === 1 ? t("bulkMove.titleOne", { name: roots[0]!.name }) : t("bulkMove.title", { n: count })}
-      kicker={<span className={s.crumb}><Network size={14} aria-hidden />{t("bulkMove.from")} · {[t("orgStructure.title"), ...first.path].join(" › ")}</span>}
-      subtitle={t("bulkMove.titleSub", { m: total })}
-      tools={<><AddMore entity={entity} chosen={chosen} /><Chip tone={setup ? "ok" : "info"}>{t(setup ? "bulkMove.phaseSetup" : "bulkMove.phaseOperating")}</Chip></>}
+      title={count === 1 ? t("bulkMove.titleOne", { name: roots[0]!.name }) : t("bulkMove.title", { n: count || chosen.length })}
+      kicker={<span className={s.crumb}><Network size={14} aria-hidden />{t("bulkMove.from")} · {[t("orgStructure.title"), ...(first ? first.path : [])].join(" › ")}</span>}
+      subtitle={first && t("bulkMove.titleSub", { m: total })}
+      tools={available && entity && <><AddMore entity={entity} chosen={chosen} /><Chip tone={setup ? "ok" : "info"}>{t(setup ? "bulkMove.phaseSetup" : "bulkMove.phaseOperating")}</Chip></>}
       onClose={close}
       pending={run.isPending || submit.isPending}
       action={{ kind: "orgMove", mode: !setup && gov.routed ? "request" : !setup && gov.mode === "schedule" ? "schedule" : "apply", count }}
-      onSubmit={() => { if (blockers.length === 0) { if (setup) run.mutate(undefined); else submit.mutate(true); } }}
-      blocked={blockers.length ? { reason: blockers.join(", ") } : undefined}
-      onSaveDraft={!setup && blockers.length === 0 ? () => submit.mutate(false) : undefined}
+      onSubmit={available ? () => { if (blockers.length === 0) { if (setup) run.mutate(undefined); else submit.mutate(true); } } : undefined}
+      blocked={available && blockers.length ? { reason: blockers.join(", ") } : undefined}
+      onSaveDraft={available && !setup && blockers.length === 0 ? () => submit.mutate(false) : undefined}
       notice={<CommandError error={run.error ?? submit.error} />}
       sections={{
-        preflight: blockers.length || carried.length ? <>
+        preflight: available && (blockers.length || carried.length) ? <>
           {blockers.length > 0 && <span className={s.reason}><Lock size={14} aria-hidden />{blockers[0]}</span>}
           {carried.length > 0 && <p className={s.lead}>{t("bulkMove.collapsed", { names: carried.map((c) => c.name).join("·"), parent: carried.map((c) => places.get(c.id)?.parent?.name).join("·"), n: roots.length })}</p>}
         </> : null,
-        effects: !blockers.length ? <>
+        effects: available && !blockers.length ? <>
           <span>{t(setup ? "bulkMove.consequence" : "bulkMove.consequenceGoverned", { n: count, m: total, p: plan!.totals.members, to: target!.workplace!.name, date: gov.g.date, items, moves: plan!.items.moves, renames: plan!.items.renames })}</span>
           <Muted>{t(setup ? "bulkMove.consequenceSetupNote" : "bulkMove.consequenceGovNote", { p: plan!.totals.siteChanged })}</Muted>
         </> : null,
-        approvals: !setup && gov.routed ? t("orgPropose.route") : null,
+        approvals: available && !setup && gov.routed ? t("orgPropose.route") : null,
       }}
     >
-      <div className={s.cols}>
+      <QueryState q={st.q} layout="form">{() => !first || !entity ? <Unmovable mixed={roots.length > 1} /> : <div className={s.cols}>
         <section className={`card ${s.col}`} aria-label={t("bulkMove.where")}>
           <TargetTree
             label={t("bulkMove.where")}
@@ -123,7 +121,7 @@ function Body({ chosen, places, setup, company }: { chosen: string[]; places: Ma
           <TreeLegend tags={["movedIn", "movedRenamed", "merged"]} />
           {plan && <MiniTree label={t("bulkMove.after", { site: target!.workplace!.name })} root={plan.after} />}
         </section>
-      </div>
+      </div>}</QueryState>
     </Composer>
   );
 }
@@ -157,11 +155,10 @@ function AddMore({ entity, chosen }: { entity: Node; chosen: string[] }) {
 }
 
 /** Nothing to move, or units of different legal entity together: said plainly, with the way back. */
-function Unmovable({ mixed, onClose }: { mixed: boolean; onClose: () => void }) {
+function Unmovable({ mixed }: { mixed: boolean }) {
   return (
     <div className="page">
       <p className="alert" role="alert">{t(mixed ? "bulkMove.mixedEntities" : "bulkMove.nothing")}</p>
-      <div><Button onClick={onClose}>{t("composer.dismiss")}</Button></div>
     </div>
   );
 }

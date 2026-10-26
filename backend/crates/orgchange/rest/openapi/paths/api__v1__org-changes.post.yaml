@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "OrgChangeDraft", "scope": "capability"}
 tags:
 - org
 operationId: createOrgChange

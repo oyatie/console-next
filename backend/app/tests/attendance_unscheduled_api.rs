@@ -63,4 +63,43 @@ async fn day_board_rest_filters_a_mixed_group_only_when_requested(pool: PgPool) 
             );
         }
     }
+
+    let (status, saved) = admin
+        .call(
+            "POST",
+            "/api/v1/attendance/entries",
+            Some(json!({
+                "cells": [{"employee_id": people[1], "work_date": "2026-10-06", "value": "="}],
+                "source": "MANUAL", "evidence": {"kind": "PAPER_SHEET"}
+            })),
+        )
+        .await;
+    assert!(status.is_success(), "{saved}");
+    for (query, expected_rows, expected_hidden) in [
+        ("", 1, 1),
+        ("&rows=all", 2, 0),
+        ("&rows=all&no_schedule_only=true", 1, 0),
+        ("&rows=all&issues_only=true", 1, 1),
+    ] {
+        let (status, board) = admin
+            .call(
+                "GET",
+                &format!("/api/v1/attendance/days?date=2026-10-06{query}"),
+                None,
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK, "{board}");
+        assert_eq!(board["ledger"]["people"], 2);
+        let group = &board["groups"][0];
+        assert_eq!(group["rows"].as_array().unwrap().len(), expected_rows);
+        assert_eq!(group["hidden"], expected_hidden);
+    }
+    let (status, _) = admin
+        .call(
+            "GET",
+            "/api/v1/attendance/days?date=2026-10-06&rows=invalid",
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
 }

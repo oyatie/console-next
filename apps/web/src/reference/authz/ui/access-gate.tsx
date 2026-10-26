@@ -1,22 +1,32 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useMatches } from "@tanstack/react-router";
 import { QueryState } from "../../../lib/react/query-state";
 import { queryView, type ReadState } from "../../../lib/react/query-view";
 import type { ReadBack } from "../../../lib/react/denied";
 import { PageHead } from "../../../ui/page-head/page-head";
-import type { ReadLayout } from "../../../ui/skeleton/skeleton";
-import { accessRefusal, type Requirement } from "../domain/access";
+import { ReadSkeleton, type ReadLayout } from "../../../ui/skeleton/skeleton";
+import { accessRefusal, type AccessRequirement } from "../domain/access";
 import { ApiError, myAccessQuery } from "../api";
 
 /** Form routes wait for their own grant, independently of onboarding and legacy role names. */
-export function AccessGate({ children, layout = "form", ...requirement }: Requirement & { children: ReactNode; layout?: ReadLayout }) {
+export function AccessGate({ children, layout = "form", ...need }: AccessRequirement & { children: ReactNode; layout?: ReadLayout }) {
   const access = useQuery(myAccessQuery);
   const view = queryView(access);
-  const code = access.data && view !== "denied" && view !== "not-found" ? accessRefusal(access.data, requirement) : null;
+  const code = access.data && view !== "denied" && view !== "not-found" ? accessRefusal(access.data, need) : null;
   const reference = access.error instanceof ApiError ? access.error.operationId : undefined;
   const q = code ? { ...access, error: new ApiError(403, code, "", [], reference, false) } : access;
-  return <QueryState q={q} layout={layout}>{() => children}</QueryState>;
+  return <QueryState q={q} layout={layout} need={need}>{() => children}</QueryState>;
+}
+
+/** The leaf route decides before its page (or a nested sheet's parent page) mounts. */
+export function RouteGuard({ children }: { children: ReactNode }) {
+  const need = useMatches({ select: matches => matches.at(-1)?.staticData.access });
+  if (!need) throw new Error("Route must declare staticData.access");
+  return <Suspense fallback={<ReadSkeleton layout="list" />}>
+    {need === "signed-in" ? children : <AccessGate {...need} layout="list">{children}</AccessGate>}
+  </Suspense>;
 }
 
 /** A refusal replaces the whole page body; loading and transient failures keep its controls mounted. */

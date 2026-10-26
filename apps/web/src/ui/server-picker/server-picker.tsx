@@ -118,7 +118,7 @@ export function ServerPicker(p: {
             <span aria-hidden="true">{p.group}</span>
             <span role="status">{p.loading ? t("uiServerPicker.loading") : t("uiServerPicker.count", { count: p.total ?? p.options.length })}</span>
           </div>
-          <ListBox className="listbox" renderEmptyState={() => <div className={css.empty}>{p.loading ? t("uiServerPicker.loading") : t("uiServerPicker.none")}</div>}>
+          <ListBox className="listbox" shouldFocusOnHover={false} renderEmptyState={() => <div className={css.empty}>{p.loading ? t("uiServerPicker.loading") : t("uiServerPicker.none")}</div>}>
             {(o: PickerOption) => (
               <ListBoxItem id={o.id} textValue={o.name} className={`listbox__item ${css.option}`}>
                 <span className={css.name}>{o.display ?? o.name}</span>

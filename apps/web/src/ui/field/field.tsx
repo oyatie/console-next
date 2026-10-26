@@ -7,7 +7,7 @@ export type ControlProps = { id: string; "aria-describedby"?: string; "aria-inva
 
 /** The required-or-optional marker. Every field label carries one, so `required` is never left implicit. */
 export const Marker = ({ required }: { required: boolean }) => (
-  <span className={s.marker}>{t(required ? "uiField.required" : "uiField.optional")}</span>
+  <span data-marker className={s.marker}>{t(required ? "uiField.required" : "uiField.optional")}</span>
 );
 
 /** Related fields share one accessible legend and requiredness marker. */
@@ -24,7 +24,8 @@ export function FieldSet({ label, required, children }: { label: ReactNode; requ
  * under the field. Server errors arrive here too: the caller maps `errors[].field` to `error`.
  * The control is a render prop so any native control (input, select, textarea, date) gets the ids.
  */
-export function Field({ label, required, unit, hint, example, error, warning, tag, children }: {
+export function Field({ id: givenId, label, required, unit, hint, example, error, warning, tag, children }: {
+  id?: string;
   label: ReactNode;
   /** `null`: a search or filter box, which is neither required nor optional, so it carries no marker. */
   required: boolean | null;
@@ -39,7 +40,8 @@ export function Field({ label, required, unit, hint, example, error, warning, ta
   tag?: ReactNode;
   children: (control: ControlProps) => ReactNode;
 }) {
-  const id = useId();
+  const generatedId = useId();
+  const id = givenId ?? generatedId;
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
   const warningId = `${id}-warning`;
@@ -78,7 +80,10 @@ export function TextInput({ className, onKeyDown, ...rest }: InputHTMLAttributes
       {...rest}
       className={className ? `field__input ${className}` : "field__input"}
       onKeyDown={(e) => {
-        if (e.key === "Enter" && !(e.nativeEvent.isComposing || e.keyCode === 229)) e.preventDefault();
+        if (e.key === "Enter") {
+          if (e.nativeEvent.isComposing || e.keyCode === 229) { e.stopPropagation(); return; }
+          e.preventDefault();
+        }
         onKeyDown?.(e);
       }}
     />

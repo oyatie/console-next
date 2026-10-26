@@ -6,7 +6,7 @@ import { Pencil } from "lucide-react";
 import { ID_TYPE, label } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
 import { FieldMark, FieldRow } from "../../../ui/record/field-row";
-import { RecordSection, Tag } from "../../../ui/record/record-section";
+import { RecordSection } from "../../../ui/record/record-section";
 import { maskedAddress, maskedBirth, maskedEmail, maskedPhone } from "../domain/card";
 import { rrnStatusQuery } from "../api/record";
 import { InlineField } from "./inline-field";
@@ -65,8 +65,7 @@ export function SecPersonal({ c, quick, onFix }: { c: Card; quick: Quick; onFix:
         {f?.birth_date ? <FieldValue employeeId={e.id} allowed={c.readable} fieldCode="BIRTH_DATE" masked={maskedBirth()} field={t("empCard.f.birth")} who={who} /> : <span className={s.warn}>{t("empCard.missing")}</span>}
       </FieldRow>
       <FieldRow wide label={t("empCard.f.rrn")} >
-        {c.readable ? <QueryState q={rrnRead}>{() => rrn?.recorded ? <><RrnValue employeeId={e.id} who={who} masked={rrn.masked ?? ""} /> <Tag kind="rev">{t("empCard.rrn.legal")}</Tag></> : <Muted>{t("empCard.rrn.none")}</Muted>}</QueryState> : <Muted>{t("people.field.restricted")}</Muted>}{" "}
-        {c.readable && <Muted>{t("empCard.rrn.entryComing")}</Muted>}{" "}
+        {c.readable ? <QueryState q={rrnRead}>{() => rrn?.recorded ? <RrnValue employeeId={e.id} who={who} masked={rrn.masked ?? ""} /> : <Muted>{t("empCard.rrn.none")}</Muted>}</QueryState> : <Muted>{t("people.field.restricted")}</Muted>}{" "}
         {c.readable && <Link className={s.link} to="/people/$id/identifiers" params={{ id: e.id }}>{t("empCard.rrn.open")}</Link>}
       </FieldRow>
       <FieldRow id="f-address" no="4" label={t("empCard.f.address")} mark={c.editable && <FieldMark kind="rc" field={t("empCard.f.address")} onPress={() => onFix("address")} />}>

@@ -14,7 +14,7 @@ const cls = (c: { fit?: boolean; wide?: boolean }) => [c.fit && "fit", c.wide &&
  * what resolves it in place (a name clash and its answers).
  * plain <table>; switch to TanStack Table + Virtual when a list needs sorting or >1k rows.
  */
-export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone, detail }: {
+export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone, detail, groups }: {
   label: string;
   rows: R[];
   columns: Column<R>[];
@@ -23,10 +23,11 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
   onSelect?: (id: string) => void;
   tone?: (r: R) => "danger" | "warn" | undefined;
   detail?: (r: R) => ReactNode;
+  groups?: { id: string; header: ReactNode; rows: R[] }[];
 }) {
-  const body = useRef<HTMLTableSectionElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
   const [active, setActive] = useState<string>();
-  const ids = rows.map(rowId);
+  const ids = (groups ? groups.flatMap(g => g.rows) : rows).map(rowId);
   const current = active && ids.includes(active) ? active : selected && ids.includes(selected) ? selected : ids[0];
   const key = (e: KeyboardEvent) => {
     if (!onSelect || !current) return;
@@ -42,41 +43,45 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, tone
     e.preventDefault();
     const next = ids[Math.min(ids.length - 1, Math.max(0, ids.indexOf(current) + step))]!;
     setActive(next);
-    body.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(next)}"]`)?.focus();
+    tableRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(next)}"]`)?.focus();
   };
   const grid = onSelect ? ({ role: "grid", onKeyDown: key } as const) : {};
   const roles = cardRoles(columns);
   const hasCards = columns.some(c => c.card);
+  const renderRows = (items: R[]) => items.map((r) => {
+    const id = rowId(r);
+    const more = detail?.(r);
+    return (
+      <Fragment key={id}>
+      <tr
+        data-tone={tone?.(r)}
+        data-id={id}
+        tabIndex={onSelect ? (id === current ? 0 : -1) : undefined}
+        aria-selected={onSelect ? id === selected : undefined}
+        onFocus={onSelect && (() => setActive(id))}
+        onClick={onSelect && (() => onSelect(id))}
+      >
+        {columns.map((c, i) => <td role={onSelect ? "gridcell" : "cell"} key={i} className={cls(c)} data-card={roles[i]} data-label={typeof c.header === "string" ? c.header : undefined}>{c.cell(r)}</td>)}
+      </tr>
+      {more != null && more !== false && (
+        <tr className="table__detail" data-tone={tone?.(r)}>
+          <td colSpan={columns.length}>{more}</td>
+        </tr>
+      )}
+      </Fragment>
+    );
+  });
   const table = (
-    <table className={`table ${hasCards ? cards.short : ""} ${cards.surface}`} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} aria-label={label} {...grid}>
+    <table ref={tableRef} className={`table ${hasCards ? cards.short : ""} ${cards.surface}`} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} aria-label={label} {...grid}>
       <thead>
         <tr>{columns.map((c, i) => <th key={i} className={cls(c)} data-width={c.width}>{c.header}</th>)}</tr>
       </thead>
-      <tbody ref={body}>
-        {rows.map((r) => {
-          const id = rowId(r);
-          const more = detail?.(r);
-          return (
-            <Fragment key={id}>
-            <tr
-              data-tone={tone?.(r)}
-              data-id={id}
-              tabIndex={onSelect ? (id === current ? 0 : -1) : undefined}
-              aria-selected={onSelect ? id === selected : undefined}
-              onFocus={onSelect && (() => setActive(id))}
-              onClick={onSelect && (() => onSelect(id))}
-            >
-              {columns.map((c, i) => <td role={onSelect ? "gridcell" : "cell"} key={i} className={cls(c)} data-card={roles[i]} data-label={typeof c.header === "string" ? c.header : undefined}>{c.cell(r)}</td>)}
-            </tr>
-            {more != null && more !== false && (
-              <tr className="table__detail" data-tone={tone?.(r)}>
-                <td colSpan={columns.length}>{more}</td>
-              </tr>
-            )}
-            </Fragment>
-          );
-        })}
-      </tbody>
+      {groups ? groups.map(g => (
+        <tbody key={g.id}>
+          <tr><th scope="rowgroup" colSpan={columns.length}>{g.header}</th></tr>
+          {renderRows(g.rows)}
+        </tbody>
+      )) : <tbody>{renderRows(rows)}</tbody>}
     </table>
   );
   return hasCards ? <div className={cards.container}>{table}</div> : table;

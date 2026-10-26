@@ -7,6 +7,7 @@
       "src/auth/ReAuth.tsx",
       "src/auth/SetupPasskey.tsx",
       "src/features/structure/ui/jump-palette.tsx",
+      "src/lib/react/route-error.tsx",
       "src/shell/shell.tsx"
     ]
   },
@@ -54,6 +55,7 @@
   },
   "wizard": {
     "budget_kb": 167,
+    "deferred": ["src/ui/date/date-calendar.tsx"],
     "routes": [
       "src/features/import/ui/dryrun-step.tsx",
       "src/features/import/ui/import-page.tsx",

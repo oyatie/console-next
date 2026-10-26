@@ -68,7 +68,11 @@ export function HeadCell({ n, readOnly = false }: { n: ChartNode; readOnly?: boo
   const missing = <Chip tone="warn">{t("structure.head.missing")}</Chip>;
   if (readOnly) return missing;
   return (
-    <Button variant="ghost" id={`act-dept-head-${n.id}`} className={css.headPick} aria-label={t("structure.head.appoint")} onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); void nav({ search: (q) => ({ ...q, sel: n.id, act: "dept-head" }) }); }}>
+    <Button variant="ghost" id={`act-dept-head-${n.id}`} className={css.headPick} aria-label={t("structure.head.appoint")}
+      onPointerDown={e => e.stopPropagation()}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") e.stopPropagation(); }}
+      onKeyUp={e => { if (e.key === "Enter" || e.key === " ") e.stopPropagation(); }}
+      onClick={e => { e.stopPropagation(); void nav({ search: (q) => ({ ...q, act_unit: n.id, act: "dept-head" }) }); }}>
       {missing} {t("structureChart.list.setHead")}
     </Button>
   );

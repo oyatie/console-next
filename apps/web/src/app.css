@@ -66,8 +66,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .rail__link:hover { background: var(--muted); color: var(--ink); }
 .rail__link[data-status="active"] { background: var(--primary-soft); color: var(--primary); }
 .top { grid-area: top; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-4); min-width: 0; }
-.top__name { min-width: 0; }
-.top__name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top__name { min-width: 0; flex-shrink: 0; }
+/* Reserve the name slot through the fallback-to-web-font swap so adjacent controls keep their position. */
+.top__name span { min-inline-size: calc(var(--space-6) * 2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .top .top__menu { display: none; }
 .top__spacer { flex: 1; }
 /* The scroll container is also the containing block: an absolutely placed node inside (a visually hidden input) scrolls and clips with it instead of lengthening the document, which a focus would then scroll (E2-reveal). */
@@ -79,6 +80,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 @media (max-width: 640px) {
   .top .top__jump { display: none; }
   .top__name { flex-shrink: 1; }
+  /* The slot reserve is a desktop guarantee; on a phone the name yields to the sign-out button. */
+  .top__name span { min-inline-size: 0; }
 }
 .top__kbd { padding: 0 var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-family: var(--font-mono); font-size: var(--text-xs); }
 .page { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); min-height: 100%; }
@@ -223,10 +226,6 @@ aside.panel { position: sticky; top: 0; }
 .rail-steps__item[data-state="done"] { color: var(--ok-tx); border-color: var(--ok-bd); background: var(--ok-bg); }
 .rail-steps__item[data-state="current"] { color: var(--primary); border-color: var(--primary-bd); background: var(--primary-soft); font-weight: var(--fw-strong); }
 .rail-steps__item[data-state="failed"] { color: var(--danger-tx); border-color: var(--danger-bd); background: var(--danger-bg); font-weight: var(--fw-strong); }
-.timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.timeline__item { display: grid; grid-template-columns: max-content 1fr; gap: 0 var(--space-3); font-size: var(--text-sm); }
-.timeline__item .muted, .timeline__action { grid-column: 2; }
-.timeline__at { color: var(--steel); }
 .steps-plain { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
 .list-plain { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
@@ -235,11 +234,6 @@ aside.panel { position: sticky; top: 0; }
 .field__area { height: auto; min-height: calc(var(--row-h) * 2); padding: var(--space-2) var(--space-3); resize: vertical; }
 
 /* ── org tree (React Aria Tree) ────────────────────── */
-.tree { padding: var(--space-1) var(--space-2) var(--space-3); outline: none; }
-.tree .react-aria-TreeItem { border-radius: var(--radius); cursor: pointer; outline: none; }
-.tree .react-aria-TreeItem[data-focus-visible] { box-shadow: var(--focus); }
-.tree .react-aria-TreeItem[data-hovered] { background: var(--muted); }
-.tree .react-aria-TreeItem[data-selected] { background: var(--primary-soft); color: var(--primary); }
 .tree__row { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-h); padding-inline-start: calc((var(--tree-item-level, 1) - 1) * var(--space-5) + var(--space-2)); padding-inline-end: var(--space-2); }
 .tree__chevron { display: inline-grid; place-items: center; width: var(--space-5); height: var(--space-5); border: 0; background: none; color: var(--steel); cursor: pointer; transition: transform 120ms ease; }
 .tree .react-aria-TreeItem[data-expanded] > .tree__row .tree__chevron, .tree [data-expanded] .tree__chevron { transform: rotate(90deg); }

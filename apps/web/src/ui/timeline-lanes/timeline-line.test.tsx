@@ -25,7 +25,7 @@ test("the state and recorded act stay separated when they wrap on a narrow scree
 test("a correction strikes the old value and keeps the reason and new value", () => {
   const line = html(<TimelineLine state="corrected" date="2026-10-09" reason="recording error"
     fields={[{ field: "unit", label: "unit", before: "old unit", after: "new unit" }]} />);
-  expect(line).toContain("<del><span>old unit</span></del>");
+  expect(line).toContain("<del>old unit</del>");
   expect(line).toContain("new unit");
   expect(line).toContain("recording error");
 });
@@ -71,9 +71,9 @@ test("long text collapses under a keyboard-operable native disclosure; missing v
 });
 
 test("ops and support actors are badged independently of the change kind; new rows have a textual signal", () => {
-  for (const [actorKind, state] of [["OPS_ACCOUNT", "emergency"], ["SUPPORT_OPERATOR", "operator"]] as const) {
+  for (const [actorKind, state] of [["OPS_ACCOUNT", "accounts.ops"], ["SUPPORT_OPERATOR", "timeline.state.operator"]] as const) {
     const line = html(<TimelineLine state="changed" date="2026-10-09" actorKind={actorKind} liveNew />);
-    expect(line).toContain(t(`timeline.state.${state}`));
+    expect(line).toContain(t(state));
     expect(line).toContain(t("timeline.liveNew"));
     expect(line).toContain('data-highlight="true"');
   }
@@ -83,4 +83,11 @@ test("every retention state names its status and retained and held records name 
   expect(html(<RetentionChip retention={{ state: "retained", until: "2029-10-09" }} />)).toContain("2029");
   expect(html(<RetentionChip retention={{ state: "hold", reason: "legal hold" }} />)).toContain("legal hold");
   for (const state of ["due", "destroyed"] as const) expect(html(<RetentionChip retention={{ state }} />)).toContain(t(`timeline.retention.${state}`));
+});
+
+
+test("a routine ops recorder uses the shared actor badge, while emergency is explicit", () => {
+  const routine = html(<TimelineLine state="changed" date="2026-10-09" actorKind="OPS_ACCOUNT" />);
+  expect(routine).toContain("운영 계정");
+  expect(routine).not.toContain("긴급 권한");
 });

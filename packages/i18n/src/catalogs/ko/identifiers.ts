@@ -32,7 +32,6 @@ export const koIdentifiers = {
   "identifiers.history.batch": "일괄 재부여",
   "identifiers.history.undone": "{at}에 되돌림",
   "identifiers.rrn.title": "주민등록번호",
-  "identifiers.rrn.none": "기록 없음",
   "identifiers.rrn.why": "주민등록번호는 가려서 표시합니다. 보기는 사유를 접속기록에 남깁니다.",
   "identifiers.rrn.recorded": "{at} · {source}",
   "identifiers.rrn.source.IMPORT": "명부 가져오기",

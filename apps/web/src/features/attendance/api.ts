@@ -72,8 +72,18 @@ type CellPreview = S["AttendanceCellPreview"];
 
 // Reads. A save, undo, correction or void anywhere re-reads them (the prefix is invalidated; the live topic
 // `attendance_day` does the same for another HR worker's writes).
-export const dayBoardQuery = (date: string, workplace_id?: string, unit_id?: string, issues_only?: boolean, no_schedule_only?: boolean) =>
-  get("/api/v1/attendance/days", { params: { query: { date, workplace_id, unit_id, issues_only: issues_only || undefined, no_schedule_only: no_schedule_only || undefined } } });
+export const dayBoardQuery = (date: string, workplace_id?: string, unit_id?: string, issues_only?: boolean, no_schedule_only?: boolean, rows?: "all") => {
+  const query = { date, workplace_id, unit_id, issues_only: issues_only || undefined, no_schedule_only: no_schedule_only || undefined, rows };
+  const board = get("/api/v1/attendance/days", { params: { query } });
+  return { ...board, queryFn: async () => {
+    try { return await board.queryFn(); }
+    catch (error) {
+      // N-1 servers reject unknown query fields; retry once with their existing request shape.
+      if (!rows || !(error instanceof ApiError) || error.status !== 400 || error.code !== "invalid_query") throw error;
+      return get("/api/v1/attendance/days", { params: { query: { ...query, rows: undefined } } }).queryFn();
+    }
+  } };
+};
 /** The month grid, 100 people a page by keyset (useInfiniteQuery). */
 export const monthGridPages = (month: string, workplace_id?: string, unit_id?: string) => cursorPages("/api/v1/attendance/month", { month, workplace_id, unit_id, limit: 100 });
 export const personMonthQuery = (employee_id: string, month: string) => get("/api/v1/attendance/people/{employee_id}/month", { params: { path: { employee_id }, query: { month } } });

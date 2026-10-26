@@ -3,6 +3,7 @@
 .lane { margin: 0; font-size: var(--text-sm); font-weight: var(--fw-strong); color: var(--steel); }
 .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .item { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); gap: 0 var(--space-3); padding: var(--space-2); border-radius: var(--radius); font-size: var(--text-sm); }
+.item:hover, .item[data-hovered] { background: var(--muted); }
 .item:focus-visible { box-shadow: var(--focus); outline: none; }
 .item[data-highlight] { background: var(--info-bg); }
 .item[data-struck] .text { text-decoration: line-through; color: var(--steel); }
@@ -28,3 +29,13 @@
 .long { display: inline-block; max-width: 100%; white-space: pre-wrap; }
 .long summary { min-height: var(--target); cursor: pointer; color: var(--info-tx); }
 .retention { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.empty { padding: var(--space-4); text-align: center; color: var(--steel); font-size: var(--text-sm); }
+.error { padding: var(--space-3); color: var(--danger-solid); font-size: var(--text-sm); }
+.loading { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.skeleton { display: block; width: 100%; height: var(--row-h); background: var(--muted); border-radius: var(--radius); }
+.lanes[data-density="dense"] .item { padding: var(--space-1); font-size: var(--text-xs); }
+@media (max-width: 767px) {
+  .item { grid-template-columns: max-content minmax(0, 1fr); }
+  .date { grid-column: 1 / -1; }
+  .diff > div { grid-template-columns: minmax(0, 1fr); }
+}

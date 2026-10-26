@@ -15,11 +15,13 @@ export const order = 80;
 export default function Forms() {
   const [checked, setChecked] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [name, setName] = useState("");
+  const [number, setNumber] = useState("");
   return (
     <Section title={tg("section.forms")}>
       <Form className="form form--wide" onSubmit={() => setSubmitted(true)}>
         <div className="grid-3">
-          <Field label={tg("form.name")} required>{(p) => <TextInput {...p} defaultValue={tg("sample.longName")} />}</Field>
+          <Field id="name-field" label={tg("form.name")} required>{(p) => <TextInput {...p} value={name} onChange={e => setName(e.target.value)} />}</Field>
           <Field label={tg("form.type")} required>
             {(p) => (
               <SelectInput {...p} defaultValue="CONTRACT">
@@ -28,7 +30,7 @@ export default function Forms() {
             )}
           </Field>
           <Field label={tg("form.date")} required>{(p) => <DateInput {...p} value="2026-10-01" onChange={() => undefined} />}</Field>
-          <Field label={tg("form.number")} required={false} error={tg("form.numberError")}>{(p) => <TextInput {...p} defaultValue="HK 0001" />}</Field>
+          <Field id="number-field" label={tg("form.number")} required hint={tg("form.numberError")}>{(p) => <TextInput {...p} value={number} onChange={e => setNumber(e.target.value)} />}</Field>
         </div>
         <Field label={tg("form.note")} required={false}>{(p) => <TextArea {...p} defaultValue={tg("empty.reason")} />}</Field>
         <Check checked={checked} onChange={setChecked}>{tg("form.ack")}</Check>

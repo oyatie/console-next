@@ -2,13 +2,24 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { OTP_PATTERN } from "../packages/api/src/otp-format.ts";
 import { DEV_SECRETS_FILE, ensureDevSecrets } from "./dev-secrets.ts";
+import { PORTS } from "../e2e/slot.ts";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
+
+async function freePort() {
+  const server = new net.Server();
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  await new Promise((resolve) => server.close(resolve));
+  return port;
+}
 
 test("per-checkout secrets are random, made once and kept in a mode-600 file", (t) => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-dev-secrets-"));
@@ -17,14 +28,27 @@ test("per-checkout secrets are random, made once and kept in a mode-600 file", (
   const first = ensureDevSecrets(file);
   assert.deepEqual(ensureDevSecrets(file), first, "a second run reuses the file");
   assert.equal(statSync(file).mode & 0o777, 0o600);
-  assert.match(first.coldstartOtp, /^[A-HJ-NP-Z2-9]{8}$/);
+  assert.match(first.coldstartOtp, new RegExp(OTP_PATTERN), "the code the backend accepts");
   assert.notEqual(first.coldstartOtp.toLowerCase(), "coss0000");
   assert.match(first.postgresAppPassword, /^[0-9a-f]{64}$/);
   const other = ensureDevSecrets(path.join(dir, "t", "dev-secrets.json"));
   assert.notEqual(other.postgresAppPassword, first.postgresAppPassword, "another checkout gets its own");
 });
 
-test("backend-dev prints where the secrets are, never a secret", (t) => {
+test("a file from before the code format changed gets a new code and keeps its passwords", (t) => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "console-dev-secrets-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, "dev-secrets.json");
+  const old = { ...ensureDevSecrets(file), coldstartOtp: "ABCDEFGH" };
+  writeFileSync(file, JSON.stringify(old), { mode: 0o600 });
+  const now = ensureDevSecrets(file);
+  assert.match(now.coldstartOtp, new RegExp(OTP_PATTERN));
+  assert.equal(now.postgresAppPassword, old.postgresAppPassword);
+  assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), now, "the new code is saved");
+  assert.equal(statSync(file).mode & 0o777, 0o600);
+});
+
+test("backend-dev prints where the secrets are, never a secret", async (t) => {
   assert.equal(spawnSync("git", ["check-ignore", "-q", DEV_SECRETS_FILE], { cwd: root }).status, 0, "the file is git-ignored");
   const dir = mkdtempSync(path.join(os.tmpdir(), "console-backend-dev-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -39,7 +63,7 @@ test("backend-dev prints where the secrets are, never a secret", (t) => {
       PATH: `${path.join(dir, "bin")}:${process.env.PATH ?? ""}`,
       CONSOLE_APP_BIN: path.join(dir, "console-app"),
       CONSOLE_DEV_PROJECT: "dev-secrets-test",
-      CONSOLE_DEV_BACKEND_PORT: "0",
+      CONSOLE_DEV_BACKEND_PORT: String(await freePort()),
       CONSOLE_DEV_S3_PORT: "1",
       E2E_CACHE_DIR: path.join(dir, "cache"),
     },
@@ -48,4 +72,17 @@ test("backend-dev prints where the secrets are, never a secret", (t) => {
   assert.ok(run.stdout.includes(DEV_SECRETS_FILE), run.stdout);
   const secrets = JSON.parse(readFileSync(DEV_SECRETS_FILE, "utf8"));
   for (const value of Object.values(secrets)) assert.ok(!run.stdout.includes(value), "a secret value was printed");
+});
+
+test("the backend-dev secret-output test passes while the default backend port is held", async (t) => {
+  const server = new net.Server();
+  t.after(() => { if (server.listening) server.close(); });
+  await new Promise((resolve, reject) => {
+    server.once("error", (error) => error.code === "EADDRINUSE" ? resolve() : reject(error));
+    server.listen(PORTS.backend, "127.0.0.1", resolve);
+  });
+  const run = spawnSync(process.execPath, ["--test", "--test-name-pattern=^backend-dev prints", "scripts/dev-secrets.test.mjs"], {
+    cwd: root, env: { ...process.env, NODE_TEST_CONTEXT: undefined }, encoding: "utf8", timeout: 40_000,
+  });
+  assert.equal(run.status, 0, run.stdout + run.stderr);
 });
