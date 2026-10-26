@@ -4,8 +4,9 @@ import http from "node:http";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
+// -w: Linux lsof prints mount warnings on stderr even for a free port; they are not errors.
 function listeners(port) {
-  const result = spawnSync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-Fp"], { encoding: "utf8" });
+  const result = spawnSync("lsof", ["-w", "-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-Fp"], { encoding: "utf8" });
   if (result.error || (result.status !== 0 && !(result.status === 1 && !result.stdout && !result.stderr)))
     throw new Error(`cannot inspect backend port ${port}: ${result.error?.message ?? result.stderr}`);
   return [...new Set(result.stdout.split("\n").filter((line) => /^p\d+$/.test(line)).map((line) => Number(line.slice(1))))];
