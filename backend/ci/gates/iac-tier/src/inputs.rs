@@ -54,7 +54,17 @@ pub fn collect_artifacts(repo_root: &Path) -> Result<Vec<IacArtifact>, String> {
         let rel_str = rel.to_string_lossy();
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
-        let tier = if (rel_str.starts_with("deploy/argocd/") || rel_str.starts_with("deploy/apps/"))
+        let tier = if [
+            "deploy/argocd/",
+            "deploy/apps/",
+            "deploy/base/",
+            "deploy/clusters/",
+            "deploy/policies/",
+            "deploy/reconcile/",
+            "deploy/source/",
+        ]
+        .iter()
+        .any(|prefix| rel_str.starts_with(prefix))
             && matches!(ext, "yaml" | "yml")
         {
             Some(IacTier::TierAArgoCd)
@@ -82,7 +92,7 @@ pub fn collect_artifacts(repo_root: &Path) -> Result<Vec<IacArtifact>, String> {
     let declared_none = repo_root.join(NO_IAC_DECLARATION).is_file();
     match (artifacts.is_empty(), declared_none) {
         (true, false) => Err(format!(
-            "no IaC artifacts found in deploy/argocd, deploy/apps or deploy/opentofu, and no {NO_IAC_DECLARATION} declaring where IaC lives"
+            "no IaC artifacts found in the deploy/ manifest or OpenTofu directories, and no {NO_IAC_DECLARATION} declaring where IaC lives"
         )),
         (false, true) => Err(format!(
             "{NO_IAC_DECLARATION} declares no IaC here, but {} IaC artifact(s) exist: remove one or the other",

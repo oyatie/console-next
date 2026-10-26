@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base/namespace
+  - ../../base/app
+  - ../../base/migrate
+  - ../../base/database
+  - ../../base/secrets
+  - settings.yaml
+  - ../../base/objects
+  - object-store.yaml
+patches:
+  - target:
+      kind: Namespace
+      name: console
+    patch: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: console
+        labels:
+          policy.sigstore.dev/include: 'true'
+          platform.console/enforce: 'true'
+          env: template

@@ -108,3 +108,14 @@ test("refuses stale local-path fixture exemptions", () => {
   git("add", ".");
   expect(run().stderr).toContain("stale baseline local-path fixture (delete it): scripts/check-hermetic.test.mjs");
 });
+
+test("permits the upstream Rollouts container mount but still refuses host paths in that manifest", () => {
+  const { write, git, run } = fixture();
+  const manifest = "deploy/base/platform/rollouts.yaml";
+  const mount = "volumeMounts:\n  - mountPath: /home/argo-rollouts/plugin-bin\n";
+  write(manifest, mount);
+  git("add", ".");
+  expect(run().status).toBe(0);
+  write(manifest, `${mount}# Evidence: /Users/operator/private-proof\n`);
+  expect(run().stderr).toContain(`${manifest}:3: local machine path`);
+});

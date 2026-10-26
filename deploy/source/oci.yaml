@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata: {name: console-deploy, namespace: flux-system}
+spec:
+  interval: 1m
+  url: oci://example.invalid/console-deploy
+  ref: {tag: shadow}
+  verify:
+    provider: cosign
+    matchOIDCIdentity:
+      - issuer: '^https://token\.actions\.githubusercontent\.com$'
+        subject: '^https://github\.com/EXAMPLE/REPOSITORY/\.github/workflows/platform\.yml@refs/heads/dev$'

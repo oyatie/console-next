@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+# Rendered from overlay identity and image settings. Every matching policy must pass.
+apiVersion: policy.sigstore.dev/v1beta1
+kind: ClusterImagePolicy
+metadata: {name: console-signature}
+spec:
+  images: [{glob: console-image-pattern}]
+  authorities:
+    - keyless:
+        url: https://fulcio.sigstore.dev
+        identities:
+          - issuer: https://token.actions.githubusercontent.com
+            subject: console-workflow-identity
+---
+apiVersion: policy.sigstore.dev/v1beta1
+kind: ClusterImagePolicy
+metadata: {name: console-attestations}
+spec:
+  images: [{glob: console-image-pattern}]
+  authorities:
+    - keyless:
+        url: https://fulcio.sigstore.dev
+        identities:
+          - issuer: https://token.actions.githubusercontent.com
+            subject: console-workflow-identity
+      attestations:
+        - name: provenance
+          predicateType: https://slsa.dev/provenance/v1
+          policy:
+            type: cue
+            data: |
+              predicateType: "https://slsa.dev/provenance/v1"
+              predicate: buildDefinition: buildType: "https://actions.github.io/buildtypes/workflow/v1"
+        - name: sbom
+          predicateType: https://spdx.dev/Document/v2.3
+          policy:
+            type: cue
+            data: |
+              predicateType: "https://spdx.dev/Document/v2.3"
+              predicate: spdxVersion: =~"^SPDX-2\\."

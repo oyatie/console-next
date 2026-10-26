@@ -1,0 +1,267 @@
+{
+  "tools": {
+    "flux": {
+      "version": "2.9.6",
+      "files": {
+        "linux-amd64": {
+          "url": "https://github.com/fluxcd/flux2/releases/download/v2.9.6/flux_2.9.6_linux_amd64.tar.gz",
+          "sha256": "b4d22673e9246cbd628881f1a9ef3b090085dced291e42d804555cee8e8d42c5"
+        },
+        "linux-arm64": {
+          "url": "https://github.com/fluxcd/flux2/releases/download/v2.9.6/flux_2.9.6_linux_arm64.tar.gz",
+          "sha256": "6663c154755b732f43dc993d72321f71c2fc1ff0bcb94b2696e0a8638fa562b4"
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/fluxcd/flux2/releases/download/v2.9.6/flux_2.9.6_darwin_arm64.tar.gz",
+          "sha256": "7008a758da4b8d57c5845aad6552f256d4d23630c2b2de2ca8da362f9a48c126"
+        }
+      }
+    },
+    "cosign": {
+      "version": "3.1.4",
+      "files": {
+        "linux-amd64": {
+          "url": "https://github.com/sigstore/cosign/releases/download/v3.1.4/cosign-linux-amd64",
+          "sha256": "424e2c97d0b45fd7a6b608a87f090f35633f4c23ece5f092d48bba11aaf4bbfa"
+        },
+        "linux-arm64": {
+          "url": "https://github.com/sigstore/cosign/releases/download/v3.1.4/cosign-linux-arm64",
+          "sha256": "ade83b7aac62e131cacfe96d958948b2150cc9efec46a570a2649b8e27dedad2"
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/sigstore/cosign/releases/download/v3.1.4/cosign-darwin-arm64",
+          "sha256": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4"
+        }
+      }
+    },
+    "kind": {
+      "version": "0.33.0",
+      "files": {
+        "linux-amd64": {
+          "url": "https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-linux-amd64",
+          "sha256": "aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d"
+        },
+        "linux-arm64": {
+          "url": "https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-linux-arm64",
+          "sha256": "20022bee6cfcd5086cb7234d218e3454e6090022f2a8f55d1fa7fcf42c3867a2"
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-darwin-arm64",
+          "sha256": "0c8c7dbe5e23594a198b786c4bc13dacc101fa6196b0cb0b23a1ca44e61f4b4f"
+        }
+      }
+    },
+    "buildx": {
+      "version": "0.38.1",
+      "files": {
+        "linux-amd64": {
+          "url": "https://github.com/docker/buildx/releases/download/v0.38.1/buildx-v0.38.1.linux-amd64",
+          "sha256": "e25d5cd675092bb5d1d03632fdc46cdf3fede7b514dc5f023a105e00d3ce5ad4"
+        },
+        "linux-arm64": {
+          "url": "https://github.com/docker/buildx/releases/download/v0.38.1/buildx-v0.38.1.linux-arm64",
+          "sha256": "3b83b3731916ba433feccaaa689fe5bcdc81c641d92c8e6c2ea865dfa141c97a"
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/docker/buildx/releases/download/v0.38.1/buildx-v0.38.1.darwin-arm64",
+          "sha256": "6f20ba2437865311ef99015bf5d1039c3c8e4d2177c1c64aa41b134b5ecd3012"
+        }
+      }
+    },
+    "conftest": {
+      "version": "0.71.1",
+      "files": {
+        "linux-amd64": {
+          "url": "https://github.com/open-policy-agent/conftest/releases/download/v0.71.1/conftest_0.71.1_Linux_x86_64.tar.gz",
+          "sha256": "c3f6b2a753bd56e377a1e51a95ae3e057f926f2e9139f7d5b5dfbbaf810f7985"
+        },
+        "linux-arm64": {
+          "url": "https://github.com/open-policy-agent/conftest/releases/download/v0.71.1/conftest_0.71.1_Linux_arm64.tar.gz",
+          "sha256": "218c682e110ae7e826dc14a746a6f9b43eb782643dbe730b771fd305634e3f47"
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/open-policy-agent/conftest/releases/download/v0.71.1/conftest_0.71.1_Darwin_arm64.tar.gz",
+          "sha256": "e1cc50d2590b6c5e3da6912666a71264bae82d60bdd62d7ae2b99971ccc8eedd"
+        }
+      }
+    },
+    "kubeconform": {
+      "version": "0.8.0",
+      "files": {
+        "linux-amd64": {
+          "url": "https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz",
+          "sha256": "9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883"
+        },
+        "linux-arm64": {
+          "url": "https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-arm64.tar.gz",
+          "sha256": "1f53fc8e81258197a35e8603054162a5af1de8c5af13746c71ab680d9534ed87"
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-darwin-arm64.tar.gz",
+          "sha256": "f84f4dfbebf4a6b0b230385fa065a39ea35e02608c2b50d025dcf64775a69d67"
+        }
+      }
+    },
+    "syft": {
+      "version": "1.55.0",
+      "files": {
+        "linux-amd64": {
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.tar.gz",
+          "sha256": "bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d"
+        },
+        "linux-arm64": {
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_arm64.tar.gz",
+          "sha256": "929bd163db2d7cd2255d3bcb8967208079813d7b46b0c952f7b794d8e2c7d304"
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_darwin_arm64.tar.gz",
+          "sha256": "1217c258bd5eb91ef3189cf22a82e02f9cac07e4ce934350f428e93aff674625"
+        }
+      }
+    },
+    "kustomize": {
+      "version": "5.8.3",
+      "files": {
+        "linux-amd64": {
+          "url": "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.8.3/kustomize_v5.8.3_linux_amd64.tar.gz",
+          "sha256": "cb9e31198d3f63b44848bd0afc4c8efc56e6cfef9c93a4a39a211940e6decd61"
+        },
+        "linux-arm64": {
+          "url": "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.8.3/kustomize_v5.8.3_linux_arm64.tar.gz",
+          "sha256": "9867b76482cfc6d25b546abc1d2b5a32bd137505aba640649b4b378f64f6d68f"
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.8.3/kustomize_v5.8.3_darwin_arm64.tar.gz",
+          "sha256": "4cbb08e209d8fff47cd60bfb6407daaf5ee699f9b9295849a1065024fac2d1ef"
+        }
+      }
+    },
+    "actionlint": {
+      "version": "1.7.12",
+      "files": {
+        "linux-amd64": {
+          "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz",
+          "sha256": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+        },
+        "linux-arm64": {
+          "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_arm64.tar.gz",
+          "sha256": "325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6"
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_darwin_arm64.tar.gz",
+          "sha256": "aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f"
+        }
+      }
+    },
+    "helm": {
+      "version": "4.3.1",
+      "files": {
+        "linux-amd64": {
+          "url": "https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz",
+          "sha256": "0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b"
+        },
+        "linux-arm64": {
+          "url": "https://get.helm.sh/helm-v4.3.1-linux-arm64.tar.gz",
+          "sha256": "8cf8f66ecbc252ac8f7f06cca68aba88508ddfde3a6a34feb1678ad1694b4f88"
+        },
+        "darwin-arm64": {
+          "url": "https://get.helm.sh/helm-v4.3.1-darwin-arm64.tar.gz",
+          "sha256": "6b4e61c8cd27d99e5a801e63ff25dd5c70b36875c2cd659d3e9ce6b76fc23198"
+        }
+      }
+    },
+    "kubectl": {
+      "version": "1.36.4",
+      "files": {
+        "linux-amd64": {
+          "url": "https://dl.k8s.io/release/v1.36.4/bin/linux/amd64/kubectl",
+          "sha256": "8b8f088da2dab964f853b38464033b1be15ede2839eca751482357c45abdd05a"
+        },
+        "linux-arm64": {
+          "url": "https://dl.k8s.io/release/v1.36.4/bin/linux/arm64/kubectl",
+          "sha256": "0ecf44450ee6063bf19dd166a103ee6df4a9034455c2abce626e6eea657d73fb"
+        },
+        "darwin-arm64": {
+          "url": "https://dl.k8s.io/release/v1.36.4/bin/darwin/arm64/kubectl",
+          "sha256": "c9e4f713d6fee0043a3d835cca13077cda2bc0973840eb9779360df0b5bdfc69"
+        }
+      }
+    }
+  },
+  "images": {
+    "rust": "docker.io/library/rust@sha256:93ce27a88655056a51dbdd8f5f2d7ddc071c7b0070fb288a37b5a285fc83971e",
+    "node": "docker.io/library/node@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205",
+    "runtime": "gcr.io/distroless/cc-debian12@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f",
+    "postgres": "ghcr.io/cloudnative-pg/postgresql@sha256:d72ace96f5803b12c341bb5dac48532e8c1f92f69e8a717a59d779bfc038dea9",
+    "buildkit": "docker.io/moby/buildkit@sha256:99368f3e46177c6405b9740e4461d91cee004128daeecca78d4ceac50ec1da5c",
+    "kind": "docker.io/kindest/node@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed",
+    "seaweed": "docker.io/chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d"
+  },
+  "sources": {
+    "rollouts": {
+      "url": "https://raw.githubusercontent.com/argoproj/argo-rollouts/v1.10.1/manifests/install.yaml",
+      "sha256": "be25242c55bab7650e0b845da11dbce811f7427deae367e224435e0d766ebe5a"
+    },
+    "cnpg": {
+      "url": "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/v1.30.1/releases/cnpg-1.30.1.yaml",
+      "sha256": "37237f145d8138256ea25ae830f87759255665ff08f8d552fdd8224a5ec032fb"
+    },
+    "kubernetes-schema": {
+      "repository": "yannh/kubernetes-json-schema",
+      "commit": "b2ba4defe30ed5a0104987433896f1fd32807304"
+    },
+    "policy-chart": {
+      "repository": "sigstore/helm-charts",
+      "commit": "0d64bc7916e8be30b42bef0e28a646943212a4f0"
+    },
+    "eso": {
+      "repository": "external-secrets/external-secrets",
+      "commit": "db95fe1c087b27e0f8ddcb5888966b1c7fcd040d"
+    },
+    "policy-controller": {
+      "url": "https://github.com/sigstore/helm-charts/releases/download/policy-controller-0.10.8/policy-controller-0.10.8.tgz",
+      "sha256": "71ecc9f1168dd7ad04b2f7456c2d492b5ca3e09a31883bb71f6369213ceeb814",
+      "version": "0.10.8"
+    },
+    "external-secrets": {
+      "url": "https://github.com/external-secrets/external-secrets/releases/download/helm-chart-2.13.0/external-secrets-2.13.0.tgz",
+      "sha256": "f693a96f0d929a07e000dd39e68b92a1a1343c5bc440ebab091b03da30bcac3a",
+      "version": "2.13.0"
+    },
+    "kubernetes-openapi": {
+      "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.36.4/api/openapi-spec/v3/apis__apiextensions.k8s.io__v1_openapi.json",
+      "sha256": "1c7dd621bece6661867bcc29471f774a46b36c02567d59815c7c72f6d08aa512"
+    },
+    "cert-manager": {
+      "url": "https://github.com/cert-manager/cert-manager/releases/download/v1.21.2/cert-manager.yaml",
+      "sha256": "e03b668ec8675214af6b0a671699d088f2601fa3878e0dbe1b41d3feafd1879f"
+    },
+    "barman": {
+      "url": "https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.15.1/manifest.yaml",
+      "sha256": "8f377ff4a7d0d3f74fc64b0f7ac4f449fc38ca9e83a40107cca2f9315a9bd920"
+    },
+    "apache-license": {
+      "url": "https://raw.githubusercontent.com/fluxcd/flux2/v2.9.6/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    }
+  },
+  "kubernetes": "1.36.4",
+  "platformImages": {
+    "ghcr.io/fluxcd/source-controller:v1.9.6": "ghcr.io/fluxcd/source-controller@sha256:6a6693172589f8ff26123a231d5fa6ceb194a6efb4dc647cdf057c959f76a2e3",
+    "ghcr.io/fluxcd/kustomize-controller:v1.9.6": "ghcr.io/fluxcd/kustomize-controller@sha256:2ebeaa341da77d52b6abbbba5efcee0450d47f8b42f0e6f33b08f9020262d606",
+    "ghcr.io/fluxcd/notification-controller:v1.9.4": "ghcr.io/fluxcd/notification-controller@sha256:840f318265ee26f0d2c48a158bf7896b22aa4e998e320a18646309f0e40b15da",
+    "quay.io/argoproj/argo-rollouts:latest": "quay.io/argoproj/argo-rollouts@sha256:fbcc4cf0a29da25d86230992b1dfdeadf30b6f1baa74ea7c9c98e3e580769396",
+    "ghcr.io/cloudnative-pg/cloudnative-pg:1.30.1": "ghcr.io/cloudnative-pg/cloudnative-pg@sha256:923c267ec29636db3bee20f993d0ec4973fa22998e1adad37da79e4d32b5bc07",
+    "ghcr.io/sigstore/policy-controller/policy-controller@sha256:0bcd60beb93f4427c29cf3a669743caf58490e98ded4380c33c09f092734a6ab": "ghcr.io/sigstore/policy-controller/policy-controller@sha256:0492bb264fb1d9bdc8e3f343ef542cc85b7dd7c7fd8d9524b453c2bd31a1d128",
+    "ghcr.io/external-secrets/external-secrets:v2.13.0": "ghcr.io/external-secrets/external-secrets@sha256:f799d87a6a959e597a4ba7a8d2379886292c3fcfbee678f7dc2d3566051bcb96",
+    "ghcr.io/cloudnative-pg/plugin-barman-cloud-sidecar:v0.15.1": "ghcr.io/cloudnative-pg/plugin-barman-cloud-sidecar@sha256:2287a793a804db751edd0d07d44cd549e357677e98a800eb12e2cf7c0d53f9b0",
+    "quay.io/jetstack/cert-manager-cainjector:v1.21.2": "quay.io/jetstack/cert-manager-cainjector@sha256:c85268c64f2e0e76684bf5fe8906caff34b82523561c6affe0fae3546bd87562",
+    "quay.io/jetstack/cert-manager-controller:v1.21.2": "quay.io/jetstack/cert-manager-controller@sha256:70f532fd9cfde0b09d55687200942399d89838bc2d5d5b45152eb799a15912b8",
+    "quay.io/jetstack/cert-manager-webhook:v1.21.2": "quay.io/jetstack/cert-manager-webhook@sha256:a60e2dac46dbb8a7f3df95c54ce941012f54c2fe022f0ee55aaa1ab40ed957ae",
+    "ghcr.io/cloudnative-pg/plugin-barman-cloud:v0.15.1": "ghcr.io/cloudnative-pg/plugin-barman-cloud@sha256:c75acad19a36e8176cfe2885761ff1b836c6ef977d7257e298c99a28b5c302ef"
+  },
+  "upstreamImages": {
+    "quay.io/argoproj/argo-rollouts:latest": "quay.io/argoproj/argo-rollouts:v1.10.1",
+    "ghcr.io/sigstore/policy-controller/policy-controller@sha256:0bcd60beb93f4427c29cf3a669743caf58490e98ded4380c33c09f092734a6ab": "ghcr.io/sigstore/policy-controller/policy-controller:v0.15.1"
+  }
+}

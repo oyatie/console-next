@@ -1,0 +1,90 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: console-db
+spec:
+  instances: 1
+  imageName: postgres-image
+  enableSuperuserAccess: false
+  storage:
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: '1'
+      memory: 768Mi
+  bootstrap:
+    initdb:
+      database: console
+      owner: console_app
+      secret:
+        name: console-app-role
+      postInitSQL:
+        - CREATE ROLE console_leave_definer NOLOGIN NOINHERIT
+        - CREATE ROLE console_ontology_writer NOLOGIN NOINHERIT
+        - ALTER ROLE console_app BYPASSRLS INHERIT
+        - GRANT console_leave_definer, console_ontology_writer TO console_app WITH ADMIN FALSE, INHERIT TRUE, SET TRUE
+        - CREATE ROLE console_rt LOGIN NOINHERIT
+        - CREATE ROLE console_leave_cmd LOGIN NOINHERIT
+        - CREATE ROLE console_ontology_cmd LOGIN NOINHERIT
+        - CREATE ROLE console_platform_force_cmd LOGIN NOINHERIT
+        - ALTER ROLE console_rt SET statement_timeout = '30s'
+        - ALTER ROLE console_rt SET idle_in_transaction_session_timeout = '30s'
+        - ALTER ROLE console_rt SET transaction_timeout = '45s'
+        - ALTER ROLE console_leave_cmd SET statement_timeout = '30s'
+        - ALTER ROLE console_leave_cmd SET idle_in_transaction_session_timeout = '30s'
+        - ALTER ROLE console_leave_cmd SET transaction_timeout = '45s'
+        - ALTER ROLE console_ontology_cmd SET statement_timeout = '30s'
+        - ALTER ROLE console_ontology_cmd SET idle_in_transaction_session_timeout = '30s'
+        - ALTER ROLE console_ontology_cmd SET transaction_timeout = '45s'
+        - ALTER ROLE console_platform_force_cmd SET statement_timeout = '30s'
+        - ALTER ROLE console_platform_force_cmd SET idle_in_transaction_session_timeout = '30s'
+        - ALTER ROLE console_platform_force_cmd SET transaction_timeout = '45s'
+      postInitApplicationSQL:
+        - GRANT CREATE ON DATABASE console TO console_leave_definer, console_ontology_writer
+        - GRANT CREATE ON SCHEMA public TO console_leave_definer, console_ontology_writer
+  managed:
+    roles:
+      - name: console_app
+        login: true
+        inherit: true
+        bypassrls: true
+        inRoles:
+          - console_leave_definer
+          - console_ontology_writer
+        passwordSecret:
+          name: console-app-role
+      - name: console_rt
+        login: true
+        inherit: false
+        passwordSecret:
+          name: console-rt-role
+      - name: console_leave_cmd
+        login: true
+        inherit: false
+        passwordSecret:
+          name: console-leave-role
+      - name: console_ontology_cmd
+        login: true
+        inherit: false
+        passwordSecret:
+          name: console-ontology-role
+      - name: console_platform_force_cmd
+        login: true
+        inherit: false
+        passwordSecret:
+          name: console-force-role
+      - name: console_leave_definer
+        login: false
+        inherit: false
+      - name: console_ontology_writer
+        login: false
+        inherit: false
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: console-backup

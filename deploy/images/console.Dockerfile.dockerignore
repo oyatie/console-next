@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+**
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.base.json
+!rustfmt.toml
+!packages/**
+!apps/web/**
+!docs/specs/cedar-pbac-coexistence-map.json
+!backend/**
+!third-party/rust/vendor/**
+**/node_modules
+**/dist
+**/target
+**/.dev-secrets
+**/.env*

@@ -1,0 +1,247 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+name: platform
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+  schedule:
+    - cron: '19 3 * * 1'
+permissions: {}
+concurrency:
+  group: platform-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with: {node-version-file: package.json, cache: npm}
+      - name: Locked tools
+        run: python3 deploy/ci/tools.py
+      - name: Contracts and strict manifests
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          actionlint .github/workflows/platform.yml .github/workflows/platform-negative-signer.yml
+          python3 -m unittest discover -s deploy/ci -p '*_test.py'
+          node --test deploy/ci/*.test.mjs
+          bash deploy/ci/validate.sh
+      - name: ValidatingAdmissionPolicy server dry-run and refusals
+        run: |
+          export KUBECONFIG="${RUNNER_TEMP}/platform-admission.kubeconfig"
+          trap 'kind delete cluster --name platform-admission' EXIT
+          kind create cluster --name platform-admission --image "$(jq -r .images.kind deploy/versions.json)" --wait 120s
+          node deploy/ci/admission.mjs
+
+  build:
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {arch: amd64, runner: ubuntu-24.04}
+          - {arch: arm64, runner: ubuntu-24.04-arm}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - name: Locked Buildx
+        run: python3 deploy/ci/tools.py buildx
+      - name: Export GHA cache credentials
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            if (!process.env.ACTIONS_RUNTIME_TOKEN) throw new Error('GHA cache runtime token is missing');
+            core.setSecret(process.env.ACTIONS_RUNTIME_TOKEN);
+            for (const name of ['ACTIONS_RUNTIME_TOKEN', 'ACTIONS_CACHE_URL', 'ACTIONS_RESULTS_URL']) {
+              if (process.env[name]) core.exportVariable(name, process.env[name]);
+            }
+      - name: Native image and GHA cache
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          case "${ARCH}/$(docker info --format '{{.Architecture}}')" in
+            amd64/x86_64|arm64/aarch64) ;;
+            *) echo 'PLAT_NATIVE_ARCH: Docker must run the matrix architecture natively' >&2; exit 1;;
+          esac
+          buildx create --name platform --driver docker-container --driver-opt "image=$(jq -r .images.buildkit deploy/versions.json)" --use
+          buildx build --builder platform --platform "linux/${ARCH}" \
+            --build-arg "NODE_IMAGE=$(jq -r .images.node deploy/versions.json)" \
+            --build-arg "RUST_IMAGE=$(jq -r .images.rust deploy/versions.json)" \
+            --build-arg "RUNTIME_IMAGE=$(jq -r .images.runtime deploy/versions.json)" \
+            --cache-from "type=gha,version=2,scope=platform-${ARCH}" \
+            --cache-to "type=gha,version=2,scope=platform-${ARCH},mode=max" \
+            --tag "console-platform:${ARCH}" --file deploy/images/console.Dockerfile \
+            --output "type=docker,dest=${RUNNER_TEMP}/console-${ARCH}.tar" .
+      - name: Test native image
+        env: {ARCH: '${{ matrix.arch }}'}
+        run: |
+          docker load --input "${RUNNER_TEMP}/console-${ARCH}.tar"
+          bash deploy/ci/image-smoke.sh "console-platform:${ARCH}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: console-${{ matrix.arch }}
+          path: ${{ runner.temp }}/console-${{ matrix.arch }}.tar
+          retention-days: 2
+          compression-level: 0
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: [validate, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      artifact: ${{ steps.artifact.outputs.reference }}
+    steps:
+      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with: {node-version-file: package.json, cache: npm}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with: {pattern: 'console-*', merge-multiple: true, path: '.tmp/images'}
+      - name: Tools and registry login
+        env: {REGISTRY_TOKEN: '${{ secrets.GITHUB_TOKEN }}'}
+        run: |
+          python3 deploy/ci/tools.py buildx cosign syft flux kustomize kubeconform conftest
+          npm ci --ignore-scripts --no-audit --no-fund
+          printf '%s' "${REGISTRY_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/console" >> "${GITHUB_ENV}"
+          echo "DEPLOY=ghcr.io/${GITHUB_REPOSITORY,,}/console-deploy" >> "${GITHUB_ENV}"
+      - name: Push native manifests and merge OCI index
+        id: image
+        run: |
+          sources=()
+          unsigned_sources=()
+          if flux pull artifact "oci://${DEPLOY}:shadow" --output=.tmp/previous 2> .tmp/previous-error.txt; then
+            cp .tmp/previous/revision.json .tmp/previous-revision.json
+          else
+            # Only an absent first artifact is bootstrapping; auth/network failures remain errors.
+            grep -Eqi 'MANIFEST_UNKNOWN|manifest unknown|not found|404' .tmp/previous-error.txt
+            printf '{}\n' > .tmp/previous-revision.json
+          fi
+          for arch in amd64 arm64; do
+            docker load --input ".tmp/images/console-${arch}.tar"
+            tag="${IMAGE}:${GITHUB_SHA}-${GITHUB_RUN_ID}-${arch}"
+            docker tag "console-platform:${arch}" "${tag}"
+            docker push "${tag}"
+            digest="$(buildx imagetools inspect "${tag}" --format '{{json .Manifest}}' | jq -er .digest)"
+            sources+=("${IMAGE}@${digest}")
+            unsigned_tag="${IMAGE}-unsigned:${GITHUB_SHA}-${GITHUB_RUN_ID}-${arch}"
+            docker tag "console-platform:${arch}" "${unsigned_tag}"
+            docker push "${unsigned_tag}"
+            unsigned_sources+=("${IMAGE}-unsigned@${digest}")
+          done
+          buildx imagetools create --tag "${IMAGE}:${GITHUB_SHA}" "${sources[@]}"
+          buildx imagetools create --tag "${IMAGE}-unsigned:${GITHUB_SHA}" "${unsigned_sources[@]}"
+          digest="$(buildx imagetools inspect "${IMAGE}:${GITHUB_SHA}" --format '{{json .Manifest}}' | jq -er .digest)"
+          buildx imagetools inspect "${IMAGE}@${digest}" --raw > .tmp/index.json
+          jq -e '[.manifests[].platform | .os + "/" + .architecture] | sort == ["linux/amd64", "linux/arm64"]' .tmp/index.json
+          echo "digest=${digest}" >> "${GITHUB_OUTPUT}"
+          echo "name=${IMAGE}" >> "${GITHUB_OUTPUT}"
+          cosign sign --yes "${IMAGE}@${digest}"
+          syft "registry:${IMAGE}@${digest}" --platform linux/amd64 -o spdx-json=.tmp/sbom-amd64.json
+          syft "registry:${IMAGE}@${digest}" --platform linux/arm64 -o spdx-json=.tmp/sbom-arm64.json
+          node deploy/ci/sbom.mjs .tmp/sbom-amd64.json .tmp/sbom-arm64.json .tmp/sbom.json
+      - name: SLSA provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
+      - name: SPDX SBOM
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          sbom-path: .tmp/sbom.json
+          push-to-registry: true
+      - name: Signed shadow deploy artifact
+        id: artifact
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          PLATFORM_WORKFLOW_IDENTITY: ${{ github.server_url }}/${{ github.repository }}/.github/workflows/platform.yml@refs/heads/dev
+        run: |
+          node deploy/ci/render.mjs exit-test "${IMAGE}@${IMAGE_DIGEST}" .tmp/bundle
+          unsigned_digest="$(buildx imagetools inspect "${IMAGE}-unsigned:${GITHUB_SHA}" --format '{{json .Manifest}}' | jq -er .digest)"
+          jq --arg unsigned "${IMAGE}-unsigned@${unsigned_digest}" --arg wrong "${IMAGE}-wrong-identity@${unsigned_digest}" --slurpfile previous .tmp/previous-revision.json \
+            '. + {unsignedImage: $unsigned, wrongIdentityImage: $wrong, previousImage: ($previous[0].image // null)}' .tmp/bundle/revision.json > .tmp/revision.json
+          mv .tmp/revision.json .tmp/bundle/revision.json
+          cp .tmp/sbom.json .tmp/bundle/image-sbom.json
+          bash deploy/ci/validate.sh .tmp/bundle
+          flux push artifact "oci://${DEPLOY}:shadow" --path=.tmp/bundle \
+            --source="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" --revision="${GITHUB_SHA}" --output=json > .tmp/artifact.json
+          digest="$(jq -er '.digest' .tmp/artifact.json)"
+          cosign sign --yes "${DEPLOY}@${digest}"
+          echo "reference=oci://${DEPLOY}@${digest}" >> "${GITHUB_OUTPUT}"
+
+  negative-signer:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: publish
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/platform-negative-signer.yml
+    with:
+      artifact: ${{ needs.publish.outputs.artifact }}
+
+  exit-test:
+    if: always() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && needs.negative-signer.result == 'success'))
+    needs: [publish, negative-signer]
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+        repetition: [1, 2]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false, ref: dev}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with: {node-version-file: package.json, cache: npm}
+      - name: Locked tools
+        run: |
+          python3 deploy/ci/tools.py kind kubectl flux cosign kustomize
+          npm ci --ignore-scripts --no-audit --no-fund
+      - name: Class B reconciliation and negative controls
+        env:
+          REPETITION: ${{ matrix.repetition }}
+          PLATFORM_WORKFLOW_IDENTITY: ${{ github.server_url }}/${{ github.repository }}/.github/workflows/platform.yml@refs/heads/dev
+          ARTIFACT: ${{ needs.publish.outputs.artifact }}
+          WRONG_ARTIFACT: ${{ needs.negative-signer.outputs.artifact }}
+        run: bash deploy/ci/exit-test.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: class-b-${{ runner.arch }}-${{ matrix.repetition }}
+          path: .tmp/evidence
+          if-no-files-found: error
+          retention-days: 14

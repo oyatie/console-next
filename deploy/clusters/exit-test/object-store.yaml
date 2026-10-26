@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: console-backup
+  namespace: console
+spec:
+  configuration:
+    destinationPath: s3://console-exit/
+    endpointURL: http://console-objects:8333
+    s3Credentials:
+      accessKeyId:
+        name: console-object-credentials
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: console-object-credentials
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+  instanceSidecarConfiguration:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: console-object-settings
+  namespace: console
+data:
+  bucket: console-exit

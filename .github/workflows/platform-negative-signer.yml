@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+# A distinct GitHub workflow identity signs ONLY the rejection fixture.
+name: platform-negative-signer
+on:
+  workflow_call:
+    inputs:
+      artifact: {type: string, required: true}
+    outputs:
+      artifact:
+        value: ${{ jobs.sign.outputs.artifact }}
+permissions: {}
+jobs:
+  sign:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      artifact: ${{ steps.sign.outputs.artifact }}
+    steps:
+      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
+        with: {egress-policy: audit}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - name: Locked tools
+        run: python3 deploy/ci/tools.py flux cosign buildx
+      - name: Sign a distinct negative-control artifact
+        id: sign
+        env:
+          ARTIFACT: ${{ inputs.artifact }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "${REGISTRY_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+          flux pull artifact "${ARTIFACT}" --output=.tmp/negative
+          unsigned="$(jq -er .unsignedImage .tmp/negative/revision.json)"
+          wrong="$(jq -er .wrongIdentityImage .tmp/negative/revision.json)"
+          image_repository="${wrong%@*}"
+          buildx imagetools create --prefer-index=false --tag "${image_repository}:${GITHUB_SHA}" "${unsigned}"
+          test "$(buildx imagetools inspect "${image_repository}:${GITHUB_SHA}" --format '{{json .Manifest}}' | jq -er .digest)" = "${wrong##*@}"
+          cosign sign --yes "${wrong}"
+          cosign verify --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+            --certificate-identity="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/platform-negative-signer.yml@refs/heads/dev" "${wrong}"
+          echo "image=${image_repository}" >> "${GITHUB_OUTPUT}"
+          echo "image-digest=${wrong##*@}" >> "${GITHUB_OUTPUT}"
+          printf '%s\n' 'PLAT_ARTIFACT_IDENTITY: rejection fixture' > .tmp/negative/wrong-identity.txt
+          repository="ghcr.io/${GITHUB_REPOSITORY,,}/console-deploy"
+          flux push artifact "oci://${repository}:shadow-wrong-identity" --path=.tmp/negative \
+            --source="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" --revision="${GITHUB_SHA}" --output=json > .tmp/negative.json
+          digest="$(jq -er .digest .tmp/negative.json)"
+          cosign sign --yes "${repository}@${digest}"
+          cosign verify --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+            --certificate-identity="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/platform-negative-signer.yml@refs/heads/dev" \
+            "${repository}@${digest}"
+          echo "artifact=oci://${repository}@${digest}" >> "${GITHUB_OUTPUT}"
+      # Supply both required attestations so a missing predicate cannot mask the identity control.
+      - name: Negative image provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
+        with:
+          subject-name: ${{ steps.sign.outputs.image }}
+          subject-digest: ${{ steps.sign.outputs.image-digest }}
+          push-to-registry: true
+      - name: Negative image SBOM
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e
+        with:
+          subject-name: ${{ steps.sign.outputs.image }}
+          subject-digest: ${{ steps.sign.outputs.image-digest }}
+          sbom-path: .tmp/negative/image-sbom.json
+          push-to-registry: true

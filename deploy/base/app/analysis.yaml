@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata: {name: console-ready}
+spec:
+  metrics:
+    - name: canary-ready
+      count: 3
+      interval: 5s
+      failureLimit: 0
+      successCondition: result == 'ready'
+      provider:
+        web:
+          url: http://console-api-canary:8080/readyz
+          jsonPath: '{$.status}'

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+apiVersion: v1
+kind: Service
+metadata: {name: console-api}
+spec:
+  selector: {app: console-api}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: console-api-canary}
+spec:
+  selector: {app: console-api}
+  ports: [{name: http, port: 8080, targetPort: http}]

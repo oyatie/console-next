@@ -1,0 +1,171 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: console-objects
+  namespace: console
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: console-objects
+  namespace: console
+spec:
+  selector:
+    app: console-objects
+  ports:
+    - name: s3
+      port: 8333
+      targetPort: s3
+    - name: filer
+      port: 8888
+      targetPort: 8888
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: console-objects
+  namespace: console
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: console-objects
+  template:
+    metadata:
+      labels:
+        app: console-objects
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: seaweed
+          image: seaweed-image
+          command:
+            - /usr/bin/weed
+          args:
+            - server
+            - '-ip=console-objects'
+            - '-ip.bind=0.0.0.0'
+            - '-dir=/data'
+            - '-volume.max=2'
+            - '-master.volumeSizeLimitMB=64'
+            - '-s3'
+            - '-s3.config=/run/s3/config.json'
+          ports:
+            - name: s3
+              containerPort: 8333
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: '1'
+              memory: 512Mi
+          startupProbe:
+            tcpSocket:
+              port: s3
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: s3
+          livenessProbe:
+            tcpSocket:
+              port: s3
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+            - name: auth
+              mountPath: /run/s3
+              readOnly: true
+          workingDir: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: console-objects
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: auth
+          secret:
+            secretName: console-object-auth
+            defaultMode: 288
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: console-object-bootstrap
+  namespace: console
+spec:
+  backoffLimit: 6
+  activeDeadlineSeconds: 180
+  template:
+    metadata:
+      labels:
+        app: console-object-bootstrap
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bucket
+          image: seaweed-image
+          command:
+            - /bin/sh
+            - '-ec'
+          args:
+            - printf "s3.bucket.create -name %s\n" "$BUCKET" | /usr/bin/weed shell -filer=console-objects:8888 -master=console-objects:9333
+          env:
+            - name: BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: console-object-settings
+                  key: bucket
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
