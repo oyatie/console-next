@@ -30,17 +30,25 @@ jobs:
         run: python3 deploy/ci/tools.py flux cosign buildx
       - name: Sign a distinct negative-control artifact
         id: sign
+        shell: bash
         env:
           ARTIFACT: ${{ inputs.artifact }}
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -Eeuo pipefail
+          trap 'printf "::error::PLAT_NEGATIVE_SIGNER: line %s exited %s: %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2' ERR
+          mkdir -p .tmp/negative
           printf '%s' "${REGISTRY_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
           flux pull artifact "${ARTIFACT}" --output=.tmp/negative
           unsigned="$(jq -er .unsignedImage .tmp/negative/revision.json)"
           wrong="$(jq -er .wrongIdentityImage .tmp/negative/revision.json)"
           image_repository="${wrong%@*}"
           buildx imagetools create --prefer-index=false --tag "${image_repository}:${GITHUB_SHA}" "${unsigned}"
-          test "$(buildx imagetools inspect "${image_repository}:${GITHUB_SHA}" --format '{{json .Manifest}}' | jq -er .digest)" = "${wrong##*@}"
+          actual="$(buildx imagetools inspect "${image_repository}:${GITHUB_SHA}" --format '{{json .Manifest}}' | jq -er .digest)"
+          if [[ "${actual}" != "${wrong##*@}" ]]; then
+            echo "PLAT_NEGATIVE_SIGNER: PLAT_NEGATIVE_IMAGE_DIGEST: expected ${wrong##*@}, got ${actual}" >&2
+            exit 1
+          fi
           cosign sign --yes "${wrong}"
           cosign verify --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
             --certificate-identity="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/platform-negative-signer.yml@refs/heads/dev" "${wrong}"

@@ -135,6 +135,7 @@ jobs:
         run: |
           sources=()
           unsigned_sources=()
+          mkdir -p .tmp/previous
           if flux pull artifact "oci://${DEPLOY}:shadow" --output=.tmp/previous 2> .tmp/previous-error.txt; then
             cp .tmp/previous/revision.json .tmp/previous-revision.json
           else
