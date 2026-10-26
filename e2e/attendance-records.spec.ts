@@ -90,7 +90,8 @@ test("월간 근무표: type, refuse, fix, paste, save with 근거, undo, correc
   await expect(paste.getByRole("button", { name: /초안에/ })).toHaveCount(0);
   await admin.keyboard.press("Escape");
   await expect(paste).not.toBeVisible();
-  await expect(admin.getByRole("status").filter({ hasText: /^저장 안 된 칸 0 / })).toBeVisible();
+  // With no drafts the unsaved-cell count is not shown at all (month-tab renders it only for drafts).
+  await expect(admin.getByRole("status").filter({ hasText: /저장 안 된 칸/ })).toHaveCount(0);
 
   // The dated header, away from focus, determines the destination; preview and acceptance precede drafts and save.
   await cellOf(admin, "윤하준", date).click();
