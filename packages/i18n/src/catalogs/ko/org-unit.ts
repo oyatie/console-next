@@ -91,7 +91,6 @@ export const koOrgUnit = {
   "orgUnit.dissolve.consequence": "{date}에 {name|이가} 폐지되고, 직속 구성원 {n, number}명이 지정한 곳으로 각자 전보되며, 하위 부서 {sub, number}개는 한 단계 위로 이동합니다.",
   "orgUnit.fact.head": "부서장",
   "orgUnit.fact.code": "부서 코드",
-  "orgUnit.head.vacant": "공석",
   "orgUnit.head.concurrent": "(겸)",
   "orgUnit.head.since": "{date}부터",
   "orgUnit.head.otherUnit": "다른 부서 · {unit} · 소속은 그대로",

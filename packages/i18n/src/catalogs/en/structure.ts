@@ -1,6 +1,10 @@
 import type { koStructure } from "../ko/structure";
 
 export const enStructure: Record<keyof typeof koStructure, string> = {
+  "structure.head.missing": "No department head",
+  "structure.head.missingCount": "No department head {count, number}",
+  "structure.head.appoint": "Appoint department head",
+  "structure.head.effective": "Recorded as department head from today ({date})",
   "structure.unitCounts": "Direct {direct} · Total {total}",
   "structure.title": "Org structure",
   "structure.views": "View",
@@ -54,7 +58,6 @@ export const enStructure: Record<keyof typeof koStructure, string> = {
   "structure.node.siteKicker": "Workplace · {area}",
   "structure.node.tileFoot": " people · {depts, number} departments",
   "structure.node.head": "Head {name}{concurrent, select, yes { (concurrent)} other {}}",
-  "structure.node.headVacant": "No head",
   "structure.node.headOffice": "Head office",
   "structure.node.primary": "Primary workplace",
   "structure.node.moreSite": "{count, number} departments",
@@ -183,7 +186,6 @@ export const enStructure: Record<keyof typeof koStructure, string> = {
   "structure.list.name": "Name",
   "structure.list.head": "Department head",
   "structure.list.code": "Code",
-  "structure.list.vacant": "Vacant",
   "structure.list.concurrent": " (concurrent)",
   "structure.list.people": "Direct / total",
   "structure.list.chips": "Marks",

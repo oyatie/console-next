@@ -63,7 +63,7 @@ export function SitePreview({ L, box }: { L: Layout; box: Box }) {
  */
 export function HitPreview({ s, L, box, hit, at, total }: { s: Structure; L: Layout; box: Box; hit: ChartNode; at: number; total: number }) {
   const path = pathTo(s, hit.id).slice(1, -1).map((n) => n.name).join(" › ");
-  const line = [hit.kind === "dept" && (hit.head ? t("structure.node.head", { name: hit.head.name, concurrent: hit.head.concurrent ? "yes" : "no" }) : t("structure.node.headVacant")), hit.code].filter(Boolean).join(" · ");
+  const line = [hit.kind === "dept" && (hit.head ? t("structure.node.head", { name: hit.head.name, concurrent: hit.head.concurrent ? "yes" : "no" }) : t("structure.head.missing")), hit.code].filter(Boolean).join(" · ");
   return (
     <PreviewCard L={L} box={box} h={150} label={t("structure.find.label")}>
       <strong>{t("structure.find.now")} · {t("structureChart.find.at", { at, total })}</strong>

@@ -1,6 +1,10 @@
 // Korean source for `structure.` ids (features/structure): 회사 구조 — 조직도, 목록, 아웃라인, first run, export.
 // Copy follows mockups S1, S2, S2b, S2-registry and S10 (structure-ux final/spec.md). Rules: ../ko.ts header and GUIDE.md.
 export const koStructure = {
+  "structure.head.missing": "부서장 없음",
+  "structure.head.missingCount": "부서장 없음 {count, number}",
+  "structure.head.appoint": "부서장 지정",
+  "structure.head.effective": "오늘({date})부터 부서장으로 기록됩니다",
   "structure.unitCounts": "직속 {direct} · 전체 {total}",
   "structure.title": "조직 구조",
   "structure.views": "보기",
@@ -54,7 +58,6 @@ export const koStructure = {
   "structure.node.siteKicker": "사업장 · {area}",
   "structure.node.tileFoot": "명 · 부서 {depts, number}",
   "structure.node.head": "부서장 {name}{concurrent, select, yes { (겸)} other {}}",
-  "structure.node.headVacant": "부서장 공석",
   "structure.node.headOffice": "본점",
   "structure.node.primary": "대표 사업장",
   "structure.node.moreSite": "부서 {count, number}",
@@ -183,7 +186,6 @@ export const koStructure = {
   "structure.list.name": "이름",
   "structure.list.head": "부서장",
   "structure.list.code": "코드",
-  "structure.list.vacant": "공석",
   "structure.list.concurrent": " (겸)",
   "structure.list.people": "직속 / 전체",
   "structure.list.chips": "표시",

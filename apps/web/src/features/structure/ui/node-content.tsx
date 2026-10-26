@@ -84,7 +84,7 @@ export function NodeContent({ box, counts, badge }: {
     );
   }
   // Its head on the second line (S2); a department in the focus's row has room for its code and counts too.
-  const head = n.head ? t("structure.node.head", { name: n.head.name, concurrent: n.head.concurrent ? "yes" : "no" }) : t("structure.node.headVacant");
+  const head = n.head ? t("structure.node.head", { name: n.head.name, concurrent: n.head.concurrent ? "yes" : "no" }) : <Chip tone="warn">{t("structure.head.missing")}</Chip>;
   return (
     <>
       <NodeRow name={n.name} count={people(n.headcount)}>{badge}</NodeRow>

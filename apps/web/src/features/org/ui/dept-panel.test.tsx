@@ -22,11 +22,14 @@ const parent: Node = { ...child, id: "workplace", kind: "WORKPLACE", name: "서�
 const place: Place = { node, parent, entity: { ...parent, kind: "LEGAL_ENTITY", name: "법인" }, workplace: parent, path: [parent.name] };
 const render = (setup: boolean, readOnly = false) => renderToStaticMarkup(<DeptPanel place={place} setup={setup} readOnly={readOnly} onClose={() => undefined} />);
 
-test.each([true, false])("department facts are values, with one rename and one details action (setup %s)", setup => {
+test.each([true, false])("department vacancy has a direct appoint action, with one rename and one details action (setup %s)", setup => {
   const html = render(setup);
   const basic = html.match(/<section id="dept-basic"[\s\S]*?<\/section>/)?.[0];
   expect(basic).toBeDefined();
-  expect(basic).not.toContain("<button");
+  expect(basic?.match(/<button/g)).toHaveLength(1);
+  expect(basic).toContain('id="act-dept-head"');
+  expect(basic).toContain("부서장 없음");
+  expect(basic).toContain("chip--warn");
   expect(basic).toContain(t("orgStructure.corOnly"));
   expect(basic).not.toMatch(/class="[^"]*corOnly/);
   expect(html.match(/id="act-dept-rename"/g)).toHaveLength(1);
@@ -48,4 +51,5 @@ test("historical department facts offer no edit actions", () => {
   const html = render(false, true);
   expect(html).not.toContain('id="dept-actions"');
   expect(html).not.toContain('id="act-dept-details"');
+  expect(html).not.toContain('id="act-dept-head"');
 });

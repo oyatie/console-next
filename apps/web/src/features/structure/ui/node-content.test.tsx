@@ -34,3 +34,12 @@ test("a workplace and department use the same direct and total count presenter",
     expect(html(n)).toContain("직속 2 · 전체 5");
   }
 });
+
+test("a department without a head shows one warning, while a filled department shows its head", () => {
+  const vacant = html(node("dept", "품질팀"));
+  expect(vacant).toContain('class="chip chip--warn">부서장 없음</span>');
+  expect(vacant.match(/부서장 없음/g)).toHaveLength(1);
+  const filled = html({ ...node("dept", "품질팀"), head: { name: "김부서장", concurrent: false } });
+  expect(filled).toContain("김부서장");
+  expect(filled).not.toContain("부서장 없음");
+});

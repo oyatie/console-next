@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
+import { todayKst } from "../../../lib/pure/today";
 import { get } from "../../../lib/query";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
@@ -14,7 +16,7 @@ import { ServerPicker } from "../../../ui/server-picker/server-picker";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { personOption } from "../../../reference/person/ui/person-option";
 import { ownRefusal } from "../../../reference/crud/present";
-import { setUnitDetails } from "../api";
+import { appointHead } from "../api";
 import css from "../../../reference/org/ui/structure.module.css";
 
 /** The code rule the server checks (the org change's): 1–30 letters, digits, '.', '_' or '-'. */
@@ -27,7 +29,7 @@ const LIVE: ("ACTIVE" | "ON_LEAVE")[] = ["ACTIVE", "ON_LEAVE"];
  * org_change_routed, said in words). The head is anyone who has not left; someone from another unit keeps their placement
  * and is shown as concurrent. The unit's own members are offered first; typing searches everyone.
  */
-export function DeptDetails({ node, onDone }: { node: Node; onDone: () => void }) {
+export function DeptDetails({ node, onDone, appoint = false }: { node: Node; onDone: () => void; appoint?: boolean }) {
   const [code, setCode] = useState(node.code ?? "");
   const [head, setHead] = useState<string | null>(node.head?.employee_id ?? null);
   const [query, setQuery] = useState("");
@@ -45,14 +47,15 @@ export function DeptDetails({ node, onDone }: { node: Node; onDone: () => void }
   const bad = v !== "" && !CODE.test(v);
   const same = v === (node.code ?? "") && head === (node.head?.employee_id ?? null);
   const save = useCommand({
-    run: (_: undefined, key: string) => setUnitDetails(key, node.id, { expected_version: node.version ?? 1, code: v || null, head_employee_id: head }),
+    run: (_: undefined, key: string) => appointHead(key, node.id, head, { expected_version: node.version ?? 1, code: v || null }),
     invalidates: STRUCTURE_READS,
+    awaitFirstRead: true,
     announce: () => t("orgUnit.details.done", { name: node.name }),
     onSuccess: onDone,
   });
   return (
-    <div ref={box} className={css.stack}>
-      <Composer title={t("orgUnit.details.title")} layout="inline" headingLevel={3} action={{ kind: "orgDetails", mode: "change", count: 1 }} pending={save.isPending} onClose={onDone} blocked={same ? { reason: t("orgChange.edit.nothing") } : undefined} onSubmit={() => { if (!bad && !same) save.mutate(undefined); }}>
+    <Composer kicker={appoint ? node.name : undefined} title={t(appoint ? "structure.head.appoint" : "orgUnit.details.title")} layout={appoint ? "drawer" : "inline"} headingLevel={appoint ? 2 : 3} action={{ kind: "orgDetails", mode: "change", count: 1 }} pending={save.isPending} onClose={onDone} blocked={same ? { reason: t("orgChange.edit.nothing") } : undefined} consequence={appoint && head && t("structure.head.effective", { date: fmtDate(todayKst()) })} onSubmit={() => { if (!bad && !same) save.mutate(undefined); }}>
+      <div ref={box} className={css.stack}>
         <ServerPicker
           label={t("orgUnit.fact.head")}
           query={query}
@@ -66,11 +69,11 @@ export function DeptDetails({ node, onDone }: { node: Node; onDone: () => void }
         />
         {head && <PersonLabel person={{ ...selected, id: head, employee_id: head, name: selected?.name ?? (node.head?.employee_id === head ? node.head.name : undefined) }} peers={peers} />}
         {head && <Button variant="ghost" className="btn--sm" onClick={() => setHead(null)}>{t("orgUnit.head.clear")}</Button>}
-        <Field label={t("orgUnit.fact.code")} required={null} hint={t("orgUnit.code.hint")} error={bad ? t("orgUnit.code.invalid") : undefined}>
+        {!appoint && <Field label={t("orgUnit.fact.code")} required={null} hint={t("orgUnit.code.hint")} error={bad ? t("orgUnit.code.invalid") : undefined}>
           {(p) => <TextInput {...p} maxLength={30} value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === "Escape" && onDone()} />}
-        </Field>
+        </Field>}
         <CommandError error={save.error} own={ownRefusal} />
-      </Composer>
-    </div>
+      </div>
+    </Composer>
   );
 }

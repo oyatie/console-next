@@ -81,9 +81,9 @@ test("order on the chart and the list's conditions", { tag: "@org" }, async ({ b
   await admin.waitForTimeout(500);
   expect(await top(admin, "판교지점")).toBeLessThan(await top(admin, "본점"));
 
-  // 4. The list: 부서장 공석만 keeps the 부서 with the path to them; the rows download as an org sheet.
+  // 4. The list: 부서장 없음 keeps the 부서 with the path to them; the rows download as an org sheet.
   await admin.getByRole("button", { name: "목록", exact: true }).click();
-  const vacant = admin.getByRole("button", { name: "부서장 공석만" });
+  const vacant = admin.getByRole("button", { name: /^부서장 없음 \d+$/ });
   await vacant.click();
   await expect(vacant).toHaveAttribute("aria-pressed", "true");
   const table = admin.getByRole("grid", { name: "조직 구조 목록" });
