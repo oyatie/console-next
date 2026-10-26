@@ -195,6 +195,17 @@ async fn the_nearest_layer_decides_and_the_tree_counts_who_has_none(owner: PgPoo
             .iter()
             .any(|s| s.level == Level::Department && s.wins)
     );
+    let tree = serde_json::to_value(w.store.schedule_tree(&w.hr(), None).await.unwrap()).unwrap();
+    let team = tree["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|n| n["id"] == w.team.to_string())
+        .unwrap();
+    assert_eq!(team["layer"], serde_json::Value::Null);
+    assert_eq!(team["effective"]["pattern_id"], dept.id.to_string());
+    assert_eq!(team["effective"]["from"], "DEPARTMENT");
+    assert_eq!(team["unscheduled"], 0);
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

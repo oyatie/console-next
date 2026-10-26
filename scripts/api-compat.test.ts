@@ -10,6 +10,18 @@ const spec = yaml.load(readFileSync("backend/openapi/openapi.yaml", "utf8"));
 const schemas = spec.components.schemas;
 const responseBinding = schemas.MobilePasskeyStepUpStartResponse!.properties!.binding!.properties ?? schemas.MobilePasskeyStepUpBinding!.properties!;
 
+test("schedule tree truth adds optional fields without changing the existing layer contract", () => {
+  const node = schemas.AttendanceScheduleTreeNode!;
+  expect(node.required).toEqual(["kind", "id", "name", "people"]);
+  expect(node.properties!.layer).toEqual({ $ref: "#/components/schemas/AttendanceLayerSummary", nullable: true });
+  expect(node.properties!.unscheduled?.type).toBe("integer");
+  expect(node.properties!.workplace_id).toMatchObject({ $ref: "#/components/schemas/Uuid", nullable: true });
+  expect(node.properties!.effective).toMatchObject({ nullable: true, allOf: [
+    { $ref: "#/components/schemas/AttendanceLayerSummary" },
+    { required: ["from"], properties: { from: { $ref: "#/components/schemas/AttendanceScopeKind" } } },
+  ] });
+});
+
 test("current user adds optional tenant facts without changing directory or platform rows", () => {
   const current = schemas.CurrentUser as Schema & { allOf: Schema[] };
   expect(current.allOf[0]).toEqual({ $ref: "#/components/schemas/UserSummary" });

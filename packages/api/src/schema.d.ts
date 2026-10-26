@@ -15942,10 +15942,18 @@ export interface components {
             kind: components["schemas"]["AttendanceScopeKind"];
             id: components["schemas"]["Uuid"];
             parent_id?: components["schemas"]["Uuid"];
+            /** @description The workplace containing this department */
+            workplace_id?: components["schemas"]["Uuid"];
             name: string;
-            /** @description people placed here on the date (subtree for 법인 and 사업장) */
+            /** @description People placed in this scope's subtree on the date */
             people: number;
             layer?: components["schemas"]["AttendanceLayerSummary"];
+            /** @description Nearest active layer on this scope's chain; null when nothing applies */
+            effective?: (components["schemas"]["AttendanceLayerSummary"] & {
+                from: components["schemas"]["AttendanceScopeKind"];
+            }) | null;
+            /** @description People in this subtree for whom the schedule winner is absent */
+            unscheduled?: number;
         };
         /** @enum {string} */
         AttendanceScopeKind: "LEGAL_ENTITY" | "WORKPLACE" | "DEPARTMENT" | "CREW" | "PERSON";
