@@ -15,6 +15,9 @@
 .row[data-selected] { background: var(--primary-soft); }
 .row[data-focus-visible], .th[data-focus-visible] { outline: 2px solid var(--primary); outline-offset: -2px; }
 .td { display: flex; align-items: center; height: 100%; padding: 0 var(--space-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; outline: none; }
+.table[data-layout="rows"] .td { height: var(--row-h); }
+[data-density="compact"] .table[data-layout="rows"] .td { height: var(--row-h-compact); }
+.table[data-layout="cards"] .td { align-items: start; white-space: normal; }
 .td[data-focus-visible] { outline: 2px solid var(--primary); outline-offset: -2px; }
 .check { display: inline-flex; cursor: pointer; }
 .box { width: var(--space-4); height: var(--space-4); border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--surface); }

@@ -10,7 +10,7 @@ type Person = { id: string; n: number };
 const TOTAL = 3214;
 const PAGE = 100;
 const columns: LongColumn<Person>[] = [
-  { id: "name", header: tg("col.name"), cell: (r) => tg("sample.person", { n: r.n }), rowHeader: true, width: "2fr" },
+  { id: "name", header: tg("col.name"), card: "title", cell: (r) => tg("sample.person", { n: r.n }), rowHeader: true, width: "2fr" },
   { id: "no", header: tg("form.number"), cell: (r) => <span className="code">{r.id}</span>, width: 120 },
   { id: "unit", header: tg("col.unit"), cell: (r) => (r.n % 7 === 0 ? tg("sample.teamLong") : tg("sample.team")), width: "3fr" },
   { id: "pos", header: tg("col.position"), cell: () => tg("sample.position") },
