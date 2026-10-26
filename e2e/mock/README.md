@@ -33,7 +33,7 @@ ReadableStream supplies the healthy SSE connection without events. Failed reads
 exhaust the product's real retry budget.
 
 The executable screen registry is [../states/registry.ts](../states/registry.ts).
-Its screen records carry the central screen registry IDs; every listed state is crossed with every screen at 1440 and 390 px. Each
+Its screen records carry the central screen registry IDs; every listed state is crossed with its screen at 1440 and 390 px. Each
 case runs the shared WCAG 2.2 AA axe scanner in light and dark. Live journey
 tests retain their arrival-layout checks; these tests prove the held or settled
 state. The large fixture contains 2,000 records: inbox and roster replies page
@@ -50,3 +50,29 @@ mock results do not substitute for it. Web-only live checks set `CONSOLE_APP_BIN
 prebuilt backend binary and use the normal Playwright config. See Playwright's
 [mocking guide](https://playwright.dev/docs/mock) and
 [test isolation guidance](https://playwright.dev/docs/best-practices).
+
+## Org/HR sweep: organization changes
+
+`orgChangeScreens` adds the change list and record to the same matrix. Run their
+44 state cases and saved-view/keyboard navigation proof with:
+
+```sh
+npx playwright test --config e2e/mock/playwright.config.ts e2e/states/org-changes.spec.ts
+```
+
+The list fixture honors the contract's comma-separated status filters, drafter,
+effective-date range and offset/limit. Its 2,000-row state proves forward/back
+paging with only 50 rows rendered. The record has no empty-list state: a missing
+record returns 404. Its matrix covers draft (including legacy PRECHECKED),
+approval, scheduled, applied, settling, rejected, cancelled and archived records,
+plus loading, failed, refused, long text and a 2,000-event history. These are read
+states; command success/refusal journeys remain real-backend release gates.
+
+The list uses the existing table's phone cards; its shared component proof is
+`apps/web/src/ui/long-table/phone-tables.browser.test.tsx` and the table examples
+are in `/_gallery`. The regression was reproduced on bd22bc6: populated and long
+lists overflowed the main column by 17 px at 390 px before enabling card roles.
+
+Remaining sweep batches, in order: organization list/outline/selection and move;
+personnel card and register; bulk and renewals; exits, notices and certificates;
+remaining HR reference screens. Lane-budget policy follows the screen sweep.

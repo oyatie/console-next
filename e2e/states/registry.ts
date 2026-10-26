@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { id } from "../mock/fixtures";
 // Executable state matrix, keyed to the central screen registry route records.
 const states = {
   empty: "Return zero items and totals (first run / no work).",
@@ -15,4 +16,17 @@ export const screens = [
   { key: "people", path: "/people", read: "/api/v1/employees", states, registry: "people--roster-populated-table-columns-sort-org_unit-name-employee_n", live: "e2e/people-reads.spec.ts" },
   { key: "org", path: "/org", read: "/api/v1/org-structure", states, registry: "org--chart-view-default", live: "e2e/structure-chart.spec.ts" },
 ] as const;
-export type Screen = (typeof screens)[number];
+export const recordStatuses = {
+  draft: "DRAFT", prechecked: "PRECHECKED", approval: "IN_APPROVAL", scheduled: "APPROVED",
+  settling: "SETTLING", rejected: "REJECTED", cancelled: "CANCELLED", archived: "ARCHIVED",
+} as const;
+const recordStates = { loading: states.loading, failed: states.failed, refused: states.refused, populated: "Return an APPLIED record with its proposal and three history events.", long: "Return long Korean proposal, reason and actor labels." };
+export const orgChangeScreens = [
+  { key: "org-changes", path: "/org/changes?view=all", read: "/api/v1/org-changes", states: { ...states, large: "Return 2,000 summaries; honor status, drafter, effective range and offset/limit." }, registry: "org-changes--list-view-open-mine-approval-ready-done-closed-all", live: "e2e/orgchange-r2.spec.ts" },
+  { key: "org-change", path: `/org/changes/${id(3000)}`, read: "/api/v1/org-changes/{id}", states: {
+    ...recordStates, large: "Return one record with 2,000 history events.", missing: "Return the contract 404 not_found envelope.",
+    ...Object.fromEntries(Object.entries(recordStatuses).map(([state, status]) => [state, `Return a ${status} record with its preflight, approval or settlement facts.`])),
+  }, registry: "org-changes-id--approval-chain", live: "e2e/orgchange-r2.spec.ts" },
+] as const;
+export type Screen = (typeof screens)[number] | (typeof orgChangeScreens)[number];
+export type OrgChangeState = Exclude<State, "empty"> | keyof typeof recordStatuses | "missing";
