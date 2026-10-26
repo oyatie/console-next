@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { spawn, spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -14,21 +13,18 @@ function listeners(port) {
 }
 
 function owner(pid) {
-  const result = spawnSync("ps", ["-p", String(pid), "-o", "ppid=", "-o", "stat=", "-o", "comm="], { encoding: "utf8" });
+  const result = spawnSync("ps", ["-p", String(pid), "-o", "ppid=", "-o", "comm="], { encoding: "utf8" });
   if (result.status === 1 && !result.stdout && !result.stderr) return null;
   if (result.error || result.status !== 0) throw new Error(`cannot inspect pid ${pid}: ${result.error?.message ?? result.stderr}`);
-  const match = result.stdout.trim().match(/^(\d+)\s+(\S+)\s+(.+)$/);
+  const match = result.stdout.trim().match(/^(\d+)\s+(.+)$/);
   if (!match) throw new Error(`cannot read parent and command for pid ${pid}`);
-  if (match[2].startsWith("Z")) return null;
-  return { parent: Number(match[1]), command: match[3] };
+  return { parent: Number(match[1]), command: match[2] };
 }
 
-function orphan(port, pid, record) {
+function orphan(port, pid) {
   const info = owner(pid);
-  // Linux may adopt dead launchers' children into a live subreaper instead of pid 1.
-  if (info && !(path.basename(info.command) === "console-app" && record?.apiPid === pid &&
-      Number.isSafeInteger(record.pid) && record.pid > 1 && !owner(record.pid)))
-    throw new Error(`backend port ${port} is held by pid ${pid} (parent ${info.parent}, command ${info.command}); refusing to stop anything except this slot's recorded console-app with an exited launcher`);
+  if (info && (info.parent !== 1 || path.basename(info.command) !== "console-app"))
+    throw new Error(`backend port ${port} is held by pid ${pid} (parent ${info.parent}, command ${info.command}); refusing to stop anything except a console-app orphan with parent 1`);
   return info;
 }
 
@@ -38,22 +34,16 @@ function signal(pid, name) {
 }
 
 /** Inspect every listener before stopping only positively identified console-app orphans. */
-export async function reapOrphanListener(port, file) {
+export async function reapOrphanListener(port) {
   const pids = listeners(port);
-  if (!pids.length) return;
-  let record;
-  try { record = JSON.parse(readFileSync(file, "utf8")); }
-  catch (error) {
-    throw new Error(`backend port ${port} is held by pid ${pids.join(", ")}; refusing to stop without a readable launcher record at ${file}`, { cause: error });
-  }
-  for (const pid of pids) orphan(port, pid, record);
+  for (const pid of pids) orphan(port, pid);
   for (const pid of pids) {
-    if (!orphan(port, pid, record)) continue;
+    if (!orphan(port, pid)) continue;
     signal(pid, "SIGTERM");
     const until = Date.now() + 5_000;
     while (listeners(port).includes(pid)) {
       if (Date.now() >= until) {
-        if (orphan(port, pid, record)) signal(pid, "SIGKILL");
+        if (orphan(port, pid)) signal(pid, "SIGKILL");
         break;
       }
       await delay(50);
@@ -63,7 +53,7 @@ export async function reapOrphanListener(port, file) {
   for (;;) {
     const remaining = listeners(port);
     if (!remaining.length) return;
-    for (const pid of remaining) orphan(port, pid, record);
+    for (const pid of remaining) orphan(port, pid);
     if (Date.now() >= until) throw new Error(`backend port ${port} is still held by pid ${remaining.join(", ")} after orphan cleanup`);
     await delay(50);
   }
