@@ -107,6 +107,7 @@ async fn missing_and_expired_grants_have_a_stable_403_without_writes(pool: PgPoo
                     .call("POST", &org_change::path(id, steps[0]), Some(body))
                     .await;
                 assert_eq!(status, StatusCode::FORBIDDEN, "{refused}");
+                org_change::assert_legacy_error(&refused);
                 assert_eq!(refused["error"]["code"], "org_change.refuse.missing_grant");
                 assert!(
                     refused["error"]["support_ref"]

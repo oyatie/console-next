@@ -33,6 +33,20 @@ pub(super) fn path(id: Uuid, step: Uuid) -> String {
     format!("/api/v1/org-changes/{id}/approval-steps/{step}/decision")
 }
 
+pub(super) fn assert_legacy_error(body: &Value) {
+    assert!(body.is_object(), "{body}");
+    for field in ["code", "message"] {
+        assert!(
+            body["error"][field].as_str().is_some_and(|s| !s.is_empty()),
+            "{body}"
+        );
+    }
+    assert!(
+        body["error"].get("current_version").is_none(),
+        "opaque versions belong in optional details: {body}"
+    );
+}
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn prior_decider_and_same_person_alias_cannot_decide_another_step(pool: PgPool) {
     let (org, maker) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
@@ -73,6 +87,7 @@ async fn prior_decider_and_same_person_alias_cannot_decide_another_step(pool: Pg
                 )
                 .await;
             assert_eq!(status, StatusCode::CONFLICT, "{refused}");
+            assert_legacy_error(&refused);
             assert_eq!(refused["error"]["code"], "org_change_sod_violation");
             assert!(
                 refused["error"]["support_ref"]
@@ -122,6 +137,7 @@ async fn stale_merge_and_withdrawn_are_coded_without_writes(pool: PgPool) {
         let before = snapshot(&pool, id).await;
         let (status, refused) = ctx.call("POST", &path(id, steps[0]), Some(body)).await;
         assert_eq!(status, StatusCode::CONFLICT, "{refused}");
+        assert_legacy_error(&refused);
         assert_eq!(refused["error"]["code"], code);
         assert!(
             refused["error"]["support_ref"]
@@ -129,7 +145,10 @@ async fn stale_merge_and_withdrawn_are_coded_without_writes(pool: PgPool) {
                 .is_some_and(|s| !s.is_empty())
         );
         if code.ends_with("stale_version") {
-            assert_eq!(refused["error"]["current_version"], json!(version));
+            assert_eq!(
+                refused["error"]["details"]["current_version"],
+                json!(version)
+            );
         }
         assert_eq!(snapshot(&pool, id).await, before);
     }
@@ -147,6 +166,7 @@ async fn stale_merge_and_withdrawn_are_coded_without_writes(pool: PgPool) {
         )
         .await;
     assert_eq!(status, StatusCode::CONFLICT, "{refused}");
+    assert_legacy_error(&refused);
     assert_eq!(refused["error"]["code"], "lifecycle.refuse.withdrawn");
     assert_eq!(snapshot(&pool, id).await, before);
 }

@@ -10050,7 +10050,7 @@ export interface paths {
         put?: never;
         /**
          * Decide one approval step
-         * @description IN_APPROVAL only. Cedar checks live tenant-wide approval authority and distinct natural persons in the locked decision transaction; the drafter and any person who decided another step cannot decide. Steps decide strictly in order and a rejection ends the request as REJECTED. CANCELLED returns 409 lifecycle.refuse.withdrawn before checking expected_version; a mismatch returns 409 lifecycle.refuse.stale_version with error.current_version. Missing or expired approval authority returns 403 org_change.refuse.missing_grant, before document-version checks. through_step always returns 409 lifecycle.refuse.merge_not_allowed. Refusals write no business state.
+         * @description IN_APPROVAL only. Cedar checks live tenant-wide approval authority and distinct natural persons in the locked decision transaction; the drafter and any person who decided another step cannot decide. Steps decide strictly in order and a rejection ends the request as REJECTED. CANCELLED returns 409 lifecycle.refuse.withdrawn before checking expected_version; a mismatch returns 409 lifecycle.refuse.stale_version with error.details.current_version. Missing or expired approval authority returns 403 org_change.refuse.missing_grant, before document-version checks. through_step always returns 409 lifecycle.refuse.merge_not_allowed. Refusals write no business state.
          */
         post: operations["decideOrgChangeApprovalStep"];
         delete?: never;
@@ -20627,6 +20627,10 @@ export interface components {
         };
         ErrorBody: {
             error: {
+                details?: {
+                    /** @description Current opaque decision version; re-read the document before deciding again. */
+                    current_version?: string;
+                };
                 code: string;
                 message: string;
                 /** @description Request correlation id shared by the response, structured log and request span. */
@@ -24105,7 +24109,7 @@ export interface components {
             memo?: string;
         };
         OrgChangeDecisionRequest: {
-            /** @description Opaque version from the document read. Optional for older clients; mismatches return 409 lifecycle.refuse.stale_version with error.current_version. */
+            /** @description Opaque version from the document read. Optional for older clients; mismatches return 409 lifecycle.refuse.stale_version with error.details.current_version. */
             expected_version?: string;
             /** @description Merging stored steps is refused with 409 lifecycle.refuse.merge_not_allowed. Each step requires a distinct natural person. */
             through_step?: components["schemas"]["Uuid"];
@@ -50844,15 +50848,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorBody"] | {
-                        error: {
-                            /** @enum {string} */
-                            code: "lifecycle.refuse.stale_version";
-                            message: string;
-                            /** @description Current opaque decision version; re-read the document before deciding again. */
-                            current_version: string;
-                        };
-                    };
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
             422: components["responses"]["ValidationError"];
