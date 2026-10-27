@@ -39,10 +39,7 @@ pub(crate) async fn logout(
     // in the browser after the family is revoked.
     if cookie_mode {
         let response = StatusCode::NO_CONTENT.into_response();
-        Ok(with_refresh_cookie(
-            response,
-            refresh_clear_cookie(services.cookie_secure),
-        ))
+        Ok(with_refresh_cookie(response, refresh_clear_cookie()))
     } else {
         Ok(StatusCode::NO_CONTENT.into_response())
     }

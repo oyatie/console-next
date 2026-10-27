@@ -2138,7 +2138,7 @@ export interface paths {
         put?: never;
         /**
          * Poll a desktop QR login handoff
-         * @description Desktop-only polling endpoint. Pending/expired responses carry no tokens. Once a phone has approved the paired approve token, this endpoint consumes the poll token exactly once and returns a normal token pair; in web cookie transport the refresh token is set as `console_refresh` and is omitted from the JSON body.
+         * @description Desktop-only polling endpoint. Pending/expired responses carry no tokens. Once a phone has approved the paired approve token, this endpoint consumes the poll token exactly once and returns a normal token pair; in web cookie transport the refresh token is set as `__Host-console_refresh` and is omitted from the JSON body.
          */
         post: operations["pollDeviceLogin"];
         delete?: never;
@@ -24628,7 +24628,7 @@ export interface components {
             /** @description Current required document acceptance for this session, checked on issuance and refresh. Absent means consent is required. */
             privacy_consent_accepted?: boolean;
             access_token: string;
-            /** @description The opaque rotating refresh token in the body transport (mobile). It is null in the cookie transport (web), where the token is set as an HttpOnly `console_refresh` cookie and must never reach web JS. */
+            /** @description The opaque rotating refresh token in the body transport (mobile). It is null in the cookie transport (web), where the token is set as an HttpOnly `__Host-console_refresh` cookie and must never reach web JS. */
             refresh_token?: string | null;
             token_type: string;
             refresh_expires_at: components["schemas"]["Timestamp"];
@@ -26774,7 +26774,7 @@ export interface components {
             sha256: string;
             derivation: string;
         };
-        /** @description Refresh/logout request body. `refresh_token` is OPTIONAL because the web transport carries the token in the HttpOnly `console_refresh` cookie (sent automatically by the browser) and the body is empty; mobile clients send the token here. */
+        /** @description Refresh/logout request body. `refresh_token` is OPTIONAL because the web transport carries the token in the HttpOnly `__Host-console_refresh` cookie (sent automatically by the browser) and the body is empty; mobile clients send the token here. */
         RefreshTokenRequest: {
             refresh_token?: string | null;
         };
@@ -28522,7 +28522,7 @@ export interface components {
                 display_name: string;
             };
             access_token: string;
-            /** @description The opaque rotating refresh token in the body transport (mobile). It is null in the cookie transport (web), where the token is set as an HttpOnly `console_refresh` cookie and must never reach web JS. */
+            /** @description The opaque rotating refresh token in the body transport (mobile). It is null in the cookie transport (web), where the token is set as an HttpOnly `__Host-console_refresh` cookie and must never reach web JS. */
             refresh_token?: string | null;
             /** @enum {string} */
             token_type: "Bearer";

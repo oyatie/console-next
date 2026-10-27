@@ -44,7 +44,6 @@ pub(crate) struct AuthServices {
     pub(crate) rp_origin: Url,
     pub(crate) refresh_token_ttl: Duration,
     pub(crate) refresh_family_absolute_ttl: Duration,
-    pub(crate) cookie_secure: bool,
     /// Outbound OTP email sender for open self-service signup (#38). Always
     /// present: live SMTP, an explicitly configured non-prod stub, or a disabled
     /// fail-closed sender that never logs OTPs.
@@ -96,7 +95,6 @@ impl AuthRestState {
                 rp_origin: handoff_origin,
                 refresh_token_ttl: config.refresh_token_ttl,
                 refresh_family_absolute_ttl: config.refresh_family_absolute_ttl,
-                cookie_secure: config.cookie_secure,
                 // Fail closed by default; the composition root installs live SMTP
                 // or an explicit non-prod logging stub via `with_email_sender`.
                 email_sender: Arc::new(DisabledEmailSender),

@@ -28,7 +28,6 @@ pub(crate) fn device_login_status(status: &'static str) -> DeviceLoginPollRespon
 pub(crate) fn device_login_token_response(
     tokens: IssuedTokenPair,
     headers: &HeaderMap,
-    cookie_secure: bool,
 ) -> Response {
     if wants_cookie_transport(headers) {
         let max_age = (tokens.refresh_expires_at - OffsetDateTime::now_utc()).whole_seconds();
@@ -43,7 +42,7 @@ pub(crate) fn device_login_token_response(
         };
         with_refresh_cookie(
             Json(body).into_response(),
-            refresh_set_cookie(&tokens.refresh_token, max_age, cookie_secure),
+            refresh_set_cookie(&tokens.refresh_token, max_age),
         )
     } else {
         let body = DeviceLoginPollResponse {

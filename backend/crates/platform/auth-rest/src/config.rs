@@ -18,10 +18,8 @@ pub struct AuthRestConfig {
     /// revoked, forcing a fresh primary authentication (NIST 800-63B AAL2).
     /// Sourced from `CONSOLE_REFRESH_FAMILY_ABSOLUTE_TTL_SECS` (default 24h).
     pub refresh_family_absolute_ttl: Duration,
-    /// Whether the web refresh cookie carries the `Secure` attribute (`true` in
-    /// production over HTTPS). Disabled (`CONSOLE_COOKIE_SECURE=false`) only for local
-    /// http dev where the browser would otherwise drop a `Secure` cookie on
-    /// `http://localhost`.
+    /// HTTPS deployment flag used by the composition root for SPA HSTS.
+    /// Refresh cookies always carry Secure to satisfy the __Host- prefix.
     pub cookie_secure: bool,
 }
 

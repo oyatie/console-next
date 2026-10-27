@@ -167,9 +167,5 @@ pub(crate) async fn poll_device_login(
     insert_audit_event(&mut tx, &audit).await?;
     tx.commit().await.map_err(DbError::Sqlx)?;
 
-    Ok(device_login_token_response(
-        tokens,
-        &headers,
-        services.cookie_secure,
-    ))
+    Ok(device_login_token_response(tokens, &headers))
 }

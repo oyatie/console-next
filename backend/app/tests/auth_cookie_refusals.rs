@@ -48,6 +48,7 @@ async fn refresh_and_logout_cookie_refusals_leave_sessions_unchanged(pool: PgPoo
             "missing_fetch_site",
             "same_site",
             "cross_site",
+            "foreign_cross_site",
             "fetch_none",
             "mixed_bearer",
             "mixed_body",
@@ -88,7 +89,7 @@ async fn refresh_and_logout_cookie_refusals_leave_sessions_unchanged(pool: PgPoo
         .split(';')
         .next()
         .unwrap()
-        .strip_prefix("console_refresh=")
+        .strip_prefix("__Host-console_refresh=")
         .unwrap()
         .to_owned();
     assert_ne!(rotated, issued.token.as_str());
@@ -108,7 +109,7 @@ fn cookie_headers(token: &str) -> HeaderMap {
     HeaderMap::from_iter([
         (
             header::COOKIE,
-            HeaderValue::from_str(&format!("console_refresh={token}")).unwrap(),
+            HeaderValue::from_str(&format!("__Host-console_refresh={token}")).unwrap(),
         ),
         (header::ORIGIN, HeaderValue::from_static(ORIGIN)),
         (
@@ -153,6 +154,13 @@ fn refused_request(case: &str, token: &str) -> (HeaderMap, Value) {
         "cross_site" => {
             headers.insert("sec-fetch-site", HeaderValue::from_static("cross-site"));
         }
+        "foreign_cross_site" => {
+            headers.insert(
+                header::ORIGIN,
+                HeaderValue::from_static("https://foreign.example.test"),
+            );
+            headers.insert("sec-fetch-site", HeaderValue::from_static("cross-site"));
+        }
         "fetch_none" => {
             headers.insert("sec-fetch-site", HeaderValue::from_static("none"));
         }
@@ -171,8 +179,10 @@ fn refused_request(case: &str, token: &str) -> (HeaderMap, Value) {
         "duplicate_cookie" => {
             headers.insert(
                 header::COOKIE,
-                HeaderValue::from_str(&format!("console_refresh={token}; console_refresh={token}"))
-                    .unwrap(),
+                HeaderValue::from_str(&format!(
+                    "__Host-console_refresh={token}; __Host-console_refresh={token}"
+                ))
+                .unwrap(),
             );
         }
         "repeated_cookie_header" => {
@@ -219,4 +229,78 @@ async fn session_snapshot(pool: &PgPool, family: Uuid) -> Value {
     .fetch_one(pool)
     .await
     .unwrap()
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn legacy_refresh_migrates_to_host_cookie_without_losing_the_session(pool: PgPool) {
+    let branch = seed_branch(&pool, "Cookie migration", "Cookie migration").await;
+    let user = seed_user(&pool, "Cookie migration", "MECHANIC", branch).await;
+    let issued = RefreshTokenStore
+        .issue_family(
+            &pool,
+            *user.as_uuid(),
+            OrgId::one(),
+            OffsetDateTime::now_utc(),
+            Duration::hours(1),
+        )
+        .await
+        .unwrap();
+    let runtime = runtime_role_pool(&pool).await;
+    let service = console_app::build_router(support::app_state(
+        runtime.clone(),
+        runtime,
+        &support::keys(),
+    ));
+    let mut headers = cookie_headers(issued.token.as_str());
+    headers.insert(
+        header::COOKIE,
+        HeaderValue::from_str(&format!("console_refresh={}", issued.token.as_str())).unwrap(),
+    );
+    let before = session_snapshot(&pool, issued.family_id).await;
+    let mut foreign = headers.clone();
+    foreign.insert(
+        header::ORIGIN,
+        HeaderValue::from_static("https://foreign.example.test"),
+    );
+    foreign.insert("sec-fetch-site", HeaderValue::from_static("cross-site"));
+    assert_eq!(
+        post(&service, REFRESH, foreign, json!({})).await.status(),
+        StatusCode::FORBIDDEN
+    );
+    assert_eq!(session_snapshot(&pool, issued.family_id).await, before);
+    let response = post(&service, REFRESH, headers, json!({})).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let cookies: Vec<_> = response
+        .headers()
+        .get_all(header::SET_COOKIE)
+        .iter()
+        .map(|value| value.to_str().unwrap())
+        .collect();
+    let host = cookies
+        .iter()
+        .find(|cookie| cookie.starts_with("__Host-console_refresh="))
+        .unwrap();
+    assert!(host.contains("; Secure"));
+    assert!(host.contains("; Path=/;"));
+    assert!(!host.contains("Domain="));
+    assert!(cookies.contains(
+        &"console_refresh=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=0; Secure"
+    ));
+    let rotated = host
+        .split(';')
+        .next()
+        .unwrap()
+        .strip_prefix("__Host-console_refresh=")
+        .unwrap()
+        .to_owned();
+    let body: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
+    assert!(body["refresh_token"].is_null());
+    assert!(body["access_token"].is_string());
+    assert_eq!(
+        post(&service, LOGOUT, cookie_headers(&rotated), json!({}))
+            .await
+            .status(),
+        StatusCode::NO_CONTENT
+    );
 }

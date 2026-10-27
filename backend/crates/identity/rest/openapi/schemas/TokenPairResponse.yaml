@@ -25,7 +25,7 @@ properties:
     type: string
     nullable: true
     description: The opaque rotating refresh token in the body transport (mobile). It is null in the cookie transport
-      (web), where the token is set as an HttpOnly `console_refresh` cookie and must never reach web JS.
+      (web), where the token is set as an HttpOnly `__Host-console_refresh` cookie and must never reach web JS.
   token_type:
     type: string
     enum:

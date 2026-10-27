@@ -307,7 +307,7 @@ test("refresh and logout commit allowed audit rows tied to their session family"
 test("replaying a rotated refresh token commits a denied audit row for its session family", { tag: ["@auth", "@regression"] }, async ({ browser, request }) => {
   const { page, slug } = await tenantAdmin(browser, "auditreuse", "재사용기록주식회사");
   await settled(page);
-  const cookie = (await page.context().cookies()).find((entry) => entry.name === "console_refresh");
+  const cookie = (await page.context().cookies()).find((entry) => entry.name === "__Host-console_refresh");
   expect(cookie).toBeDefined();
   const rotation = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/v1/auth/token/refresh");
   await page.reload();

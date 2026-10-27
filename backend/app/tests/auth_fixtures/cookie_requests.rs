@@ -1,7 +1,7 @@
 use super::*;
 
 /// POST as a WEB client: sends `X-Auth-Transport: cookie` and, optionally, a
-/// `Cookie` header carrying `console_refresh=<token>` (what a browser would replay).
+/// `Cookie` header carrying `__Host-console_refresh=<token>` (what a browser would replay).
 pub(super) async fn post_cookie_mode(
     service: axum::Router,
     uri: &str,
@@ -16,7 +16,7 @@ pub(super) async fn post_cookie_mode(
         .header(header::ORIGIN, TEST_ORIGIN)
         .header("sec-fetch-site", "same-origin");
     if let Some(cookie) = cookie {
-        builder = builder.header(header::COOKIE, format!("console_refresh={cookie}"));
+        builder = builder.header(header::COOKIE, format!("__Host-console_refresh={cookie}"));
     }
     service
         .oneshot(builder.body(Body::from(body.to_string())).unwrap())
@@ -43,7 +43,7 @@ pub(super) async fn post_cookie_mode_with_device_id(
         .header("sec-fetch-site", "same-origin")
         .header("x-device-id", device_id);
     if let Some(cookie) = cookie {
-        builder = builder.header(header::COOKIE, format!("console_refresh={cookie}"));
+        builder = builder.header(header::COOKIE, format!("__Host-console_refresh={cookie}"));
     }
     service
         .oneshot(builder.body(Body::from(body.to_string())).unwrap())

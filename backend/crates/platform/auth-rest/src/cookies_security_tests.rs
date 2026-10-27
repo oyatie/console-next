@@ -7,7 +7,7 @@ fn cookie_request() -> HeaderMap {
     HeaderMap::from_iter([
         (
             header::COOKIE,
-            HeaderValue::from_static("console_refresh=cookie-token"),
+            HeaderValue::from_static("__Host-console_refresh=cookie-token"),
         ),
         (header::ORIGIN, HeaderValue::from_static(ORIGIN)),
         (
@@ -93,10 +93,13 @@ fn cookies_refuse_body_credentials_even_when_equal_or_empty() {
 #[test]
 fn cookies_refuse_duplicate_credentials_in_one_header() {
     for cookie in [
+        "__Host-console_refresh=first; __Host-console_refresh=second",
         "console_refresh=first; console_refresh=second",
-        "console_refresh=same; console_refresh=same",
-        "console_refresh=; console_refresh=second",
-        "other=value; console_refresh = first ; console_refresh = second",
+        "console_refresh",
+        "__Host-console_refresh",
+        "__Host-console_refresh=same; __Host-console_refresh=same",
+        "__Host-console_refresh=; __Host-console_refresh=second",
+        "other=value; __Host-console_refresh = first ; __Host-console_refresh = second",
     ] {
         let mut headers = cookie_request();
         headers.insert(header::COOKIE, HeaderValue::from_str(cookie).unwrap());
@@ -135,7 +138,10 @@ fn cookies_refuse_non_text_security_headers() {
 #[test]
 fn cookies_treat_empty_refresh_cookie_as_an_ambient_credential() {
     let mut headers = cookie_request();
-    headers.insert(header::COOKIE, HeaderValue::from_static("console_refresh="));
+    headers.insert(
+        header::COOKIE,
+        HeaderValue::from_static("__Host-console_refresh="),
+    );
     assert_eq!(
         select_refresh_credential(&headers, None, ORIGIN).unwrap(),
         None
@@ -169,11 +175,68 @@ fn cookies_preserve_mobile_body_transport_and_absent_logout_credential() {
 #[test]
 fn cookies_keep_refresh_cookie_wire_attributes() {
     assert_eq!(
-        refresh_set_cookie("token", 60, true).unwrap(),
-        "console_refresh=token; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=60; Secure"
+        refresh_set_cookie("token", 60).unwrap(),
+        "__Host-console_refresh=token; HttpOnly; SameSite=Strict; Path=/; Max-Age=60; Secure"
     );
     assert_eq!(
-        refresh_set_cookie("token", 60, false).unwrap(),
-        "console_refresh=token; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=60"
+        refresh_set_cookie("", 0).unwrap(),
+        "__Host-console_refresh=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0; Secure"
     );
+}
+
+#[test]
+fn cookies_accept_legacy_for_one_release_and_prefer_host_cookie() {
+    let mut headers = cookie_request();
+    for (cookie, expected) in [
+        ("console_refresh=legacy-token", "legacy-token"),
+        (
+            "console_refresh=legacy-token; __Host-console_refresh=host-token",
+            "host-token",
+        ),
+        (
+            "__Host-console_refresh=host-token; console_refresh=legacy-token",
+            "host-token",
+        ),
+    ] {
+        headers.insert(header::COOKIE, HeaderValue::from_str(cookie).unwrap());
+        assert_eq!(
+            select_refresh_credential(&headers, None, ORIGIN)
+                .unwrap()
+                .as_deref(),
+            Some(expected)
+        );
+        headers.insert(
+            header::ORIGIN,
+            HeaderValue::from_static("https://foreign.example.test"),
+        );
+        headers.insert("sec-fetch-site", HeaderValue::from_static("cross-site"));
+        assert_forbidden(&headers, None);
+        headers = cookie_request();
+    }
+}
+
+#[test]
+fn cookies_clear_legacy_path_when_setting_or_clearing_host_cookie() {
+    for token in ["token", ""] {
+        let response = super::with_refresh_cookie(
+            axum::response::Response::new(axum::body::Body::empty()),
+            refresh_set_cookie(token, 0),
+        );
+        let cookies: Vec<_> = response
+            .headers()
+            .get_all(header::SET_COOKIE)
+            .iter()
+            .collect();
+        assert_eq!(cookies.len(), 2);
+        assert!(
+            cookies[0]
+                .to_str()
+                .unwrap()
+                .starts_with("__Host-console_refresh=")
+        );
+        assert_eq!(
+            cookies[1],
+            "console_refresh=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=0; Secure"
+        );
+    }
 }

@@ -303,6 +303,9 @@ pub fn build_router(state: AppState) -> Router {
         .layer(axum::middleware::from_fn(error_i18n::localize))
         // INF-01: `/api` responses get `no-store`; downloads `private, no-store`.
         .layer(axum::middleware::from_fn(cache_control::default_no_store))
+        .layer(axum::middleware::from_fn(
+            crate::http::security_headers::api_security_headers,
+        ))
         .layer(http_trace_layer())
         .layer(axum::middleware::from_fn(
             crate::telemetry::with_trace_context,

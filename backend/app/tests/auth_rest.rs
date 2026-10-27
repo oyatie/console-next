@@ -3656,9 +3656,9 @@ async fn otp_redeem_rate_limit_wires_up_on_real_clock_path(pool: PgPool) {
 }
 
 /// WEB dual-transport: when `X-Auth-Transport: cookie` is present, an OTP redeem
-/// sets the refresh token as an HttpOnly `console_refresh` cookie and OMITS it from
+/// sets the refresh token as an HttpOnly `__Host-console_refresh` cookie and OMITS it from
 /// the JSON body, while the access token stays in the body. The cookie carries
-/// the CSRF-safe attributes (HttpOnly, SameSite=Strict, Path=/api/v1/auth).
+/// the CSRF-safe attributes (HttpOnly, SameSite=Strict, Path=/).
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn cookie_mode_redeem_sets_httponly_cookie_and_omits_body_refresh(pool: PgPool) {
     let signing_key = SigningKey::random(&mut OsRng);
@@ -3701,10 +3701,10 @@ async fn cookie_mode_redeem_sets_httponly_cookie_and_omits_body_refresh(pool: Pg
     assert_eq!(response.status(), StatusCode::OK);
 
     let set_cookie = console_refresh_set_cookie(&response)
-        .expect("cookie-mode redeem must set an console_refresh cookie");
+        .expect("cookie-mode redeem must set a __Host-console_refresh cookie");
     assert!(set_cookie.contains("HttpOnly"), "{set_cookie}");
     assert!(set_cookie.contains("SameSite=Strict"), "{set_cookie}");
-    assert!(set_cookie.contains("Path=/api/v1/auth"), "{set_cookie}");
+    assert!(set_cookie.contains("Path=/"), "{set_cookie}");
     assert!(set_cookie.contains("Max-Age="), "{set_cookie}");
     // Local-dev config leaves CONSOLE_COOKIE_SECURE at its default (true) in this
     // test harness, so Secure must be present.
@@ -3779,7 +3779,7 @@ async fn cookie_mode_login_then_refresh_reads_and_rotates_cookie(pool: PgPool) {
     // Cookie-mode usernameless passkey login -> cookie set, body refresh null.
     let login = cookie_mode_usernameless_login(&service, &mut authenticator, &credential_id).await;
     let login_cookie = console_refresh_set_cookie(&login)
-        .expect("cookie-mode login must set an console_refresh cookie");
+        .expect("cookie-mode login must set a __Host-console_refresh cookie");
     let cookie_value = cookie_token(&login_cookie).to_owned();
     let login_body = body_json(login).await;
     assert!(login_body["refresh_token"].is_null());
@@ -3795,7 +3795,7 @@ async fn cookie_mode_login_then_refresh_reads_and_rotates_cookie(pool: PgPool) {
     .await;
     assert_eq!(refreshed.status(), StatusCode::OK);
     let rotated_cookie = console_refresh_set_cookie(&refreshed)
-        .expect("cookie-mode refresh must rotate the console_refresh cookie");
+        .expect("cookie-mode refresh must rotate the __Host-console_refresh cookie");
     let rotated_value = cookie_token(&rotated_cookie).to_owned();
     assert_ne!(
         rotated_value, cookie_value,
@@ -3816,9 +3816,9 @@ async fn cookie_mode_login_then_refresh_reads_and_rotates_cookie(pool: PgPool) {
     .await;
     assert_eq!(logout.status(), StatusCode::NO_CONTENT);
     let clear_cookie = console_refresh_set_cookie(&logout)
-        .expect("logout must emit a clearing console_refresh cookie");
+        .expect("logout must emit a clearing __Host-console_refresh cookie");
     assert!(clear_cookie.contains("Max-Age=0"), "{clear_cookie}");
-    assert!(clear_cookie.contains("Path=/api/v1/auth"), "{clear_cookie}");
+    assert!(clear_cookie.contains("Path=/"), "{clear_cookie}");
 
     let after_logout = post_cookie_mode(
         service,
@@ -3888,7 +3888,7 @@ async fn cookie_mode_refresh_allows_rapid_navigation_burst_with_device_id(pool: 
 
     let login = cookie_mode_usernameless_login(&service, &mut authenticator, &credential_id).await;
     let login_cookie = console_refresh_set_cookie(&login)
-        .expect("cookie-mode login must set an console_refresh cookie");
+        .expect("cookie-mode login must set a __Host-console_refresh cookie");
     let mut cookie_value = cookie_token(&login_cookie).to_owned();
 
     for attempt in 1..=12 {
@@ -3906,7 +3906,7 @@ async fn cookie_mode_refresh_allows_rapid_navigation_burst_with_device_id(pool: 
             "refresh attempt {attempt} should stay within the normal browser navigation budget"
         );
         let rotated_cookie = console_refresh_set_cookie(&refreshed)
-            .expect("cookie-mode refresh must rotate the console_refresh cookie");
+            .expect("cookie-mode refresh must rotate the __Host-console_refresh cookie");
         cookie_value = cookie_token(&rotated_cookie).to_owned();
         assert!(body_json(refreshed).await["refresh_token"].is_null());
     }
@@ -4732,18 +4732,18 @@ fn set_cookie_values(response: &http::Response<Body>) -> Vec<String> {
         .collect()
 }
 
-/// Find the `console_refresh` Set-Cookie attribute string, returning its full
-/// directive (e.g. `console_refresh=abc; HttpOnly; SameSite=Strict; ...`).
+/// Find the `__Host-console_refresh` Set-Cookie attribute string, returning its full
+/// directive (e.g. `__Host-console_refresh=abc; HttpOnly; SameSite=Strict; ...`).
 fn console_refresh_set_cookie(response: &http::Response<Body>) -> Option<String> {
     set_cookie_values(response)
         .into_iter()
-        .find(|value| value.starts_with("console_refresh="))
+        .find(|value| value.starts_with("__Host-console_refresh="))
 }
 
-/// Pull the cookie's value (the substring between `console_refresh=` and the first `;`).
+/// Pull the cookie's value (the substring between `__Host-console_refresh=` and the first `;`).
 fn cookie_token(set_cookie: &str) -> &str {
     set_cookie
-        .strip_prefix("console_refresh=")
+        .strip_prefix("__Host-console_refresh=")
         .and_then(|rest| rest.split(';').next())
         .unwrap()
 }

@@ -182,9 +182,8 @@ pub(crate) fn access_token_ttl_from_vars(
     )
 }
 
-/// Whether the web refresh cookie carries the `Secure` attribute. Defaults to
-/// `true` (production over HTTPS); set `CONSOLE_COOKIE_SECURE=false` only for local
-/// http dev, where a `Secure` cookie would be dropped on `http://localhost`.
+/// HTTPS deployment flag (including SPA HSTS), disabled for local HTTP dev.
+/// Refresh cookies always carry Secure to satisfy the __Host- prefix.
 fn parse_cookie_secure(raw: Option<&String>) -> Result<bool, AppError> {
     match non_empty(raw) {
         Some(value) => value

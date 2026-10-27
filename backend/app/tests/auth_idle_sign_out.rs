@@ -144,7 +144,7 @@ impl Session {
     /// The browser's cookie refresh: status, error code, and the rotated cookie.
     async fn refresh(&self, token: &str) -> (StatusCode, Option<String>, Option<String>) {
         let request = Request::post(REFRESH)
-            .header(header::COOKIE, format!("console_refresh={token}"))
+            .header(header::COOKIE, format!("__Host-console_refresh={token}"))
             .header(header::ORIGIN, "https://auth.example.com")
             .header("sec-fetch-site", "same-origin")
             .header("x-auth-transport", "cookie")
@@ -194,7 +194,7 @@ async fn refresh_while_active_rotates_and_after_the_idle_cutoff_is_refused_with_
         .split(';')
         .next()
         .unwrap()
-        .strip_prefix("console_refresh=")
+        .strip_prefix("__Host-console_refresh=")
         .unwrap()
         .to_owned();
     assert_ne!(rotated, s.refresh);
@@ -293,7 +293,7 @@ async fn the_tenant_value_holds_at_the_floor_and_the_ceiling(owner: PgPool) {
         .split(';')
         .next()
         .unwrap()
-        .strip_prefix("console_refresh=")
+        .strip_prefix("__Host-console_refresh=")
         .unwrap()
         .to_owned();
     s.idle_for(Duration::minutes(61)).await;
