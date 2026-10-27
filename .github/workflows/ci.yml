@@ -51,11 +51,33 @@ jobs:
       - name: Chromium headless shell for browser-backed unit tests
         run: npx playwright install --with-deps --only-shell chromium
       - run: npm run check
-      # Contract-typed screen states (Vite only): its own step so a local `npm run check` never binds a fixed port.
-      - run: npm run e2e:states
-        env:
-          # ubuntu-24.04 public-repo runners have 4 vCPUs; the suite is static preview + route mocks.
-          E2E_WORKERS: "4"
+
+  # Contract-typed screen states (Vite preview + route mocks): sharded across jobs so the suite stays inside
+  # e2e:states' 10-minute budget as it grows (https://playwright.dev/docs/test-sharding). Add a shard when one nears it.
+  states:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: package.json
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps --only-shell chromium
+      # Workers stay at the config default (2 = half of the runner's 4 vCPUs); go wider with shards, not workers.
+      - run: npm run e2e:states -- --shard=${{ matrix.shard }}/3
 
   backend:
     runs-on: ubuntu-24.04-arm
@@ -163,12 +185,13 @@ jobs:
 
   ci-ok:
     if: ${{ always() }}
-    needs: [web, backend, supply-chain]
+    needs: [web, states, backend, supply-chain]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require every CI job
         run: |
           test "${{ needs.web.result }}" = success
+          test "${{ needs.states.result }}" = success
           test "${{ needs.backend.result }}" = success
           test "${{ needs.supply-chain.result }}" = success
