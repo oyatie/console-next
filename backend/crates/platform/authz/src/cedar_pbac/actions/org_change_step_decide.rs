@@ -15,6 +15,9 @@ action org_change_step_decide appliesTo {
 };"#;
 const POLICIES: &str = r#"permit(principal, action == Action::"org_change_step_decide", resource)
 when { principal.org == resource.org && context.holds_permission };
+@reason("org_change.refuse.missing_grant")
+forbid(principal, action == Action::"org_change_step_decide", resource)
+unless { context.holds_permission };
 @reason("org_change.refuse.identity_unbound")
 forbid(principal, action == Action::"org_change_step_decide", resource)
 unless { context.identities_bound };
@@ -71,6 +74,7 @@ pub fn enforce(
         return Ok(());
     }
     for (code, kind) in [
+        ("org_change.refuse.missing_grant", ErrorKind::Forbidden),
         ("lifecycle.refuse.merge_not_allowed", ErrorKind::Conflict),
         ("org_change.refuse.identity_unbound", ErrorKind::Forbidden),
         ("org_change_sod_violation", ErrorKind::Conflict),
@@ -79,7 +83,8 @@ pub fn enforce(
             return Err(KernelError::new(kind, "org approval refused").with_code(code));
         }
     }
-    Err(KernelError::forbidden("org approval permission required"))
+    Err(KernelError::forbidden("org approval permission required")
+        .with_code("org_change.refuse.missing_grant"))
 }
 
 #[cfg(test)]
@@ -100,6 +105,20 @@ mod tests {
     #[test]
     fn distinct_people_and_live_authority_are_required() {
         assert!(enforce("actor", "org", "org", facts()).is_ok());
+        let missing = enforce(
+            "actor",
+            "org",
+            "org",
+            Facts {
+                holds_permission: false,
+                identities_bound: false,
+                merge_requested: true,
+                ..facts()
+            },
+        )
+        .expect_err("missing authority has priority over other refusals");
+        assert_eq!(missing.kind, ErrorKind::Forbidden);
+        assert_eq!(missing.code, Some("org_change.refuse.missing_grant"));
         for (facts, code) in [
             (
                 Facts {

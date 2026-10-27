@@ -8,6 +8,7 @@ description: >-
   Steps decide strictly in order and a rejection ends the request as REJECTED.
   CANCELLED returns 409 lifecycle.refuse.withdrawn before checking expected_version;
   a mismatch returns 409 lifecycle.refuse.stale_version with error.current_version.
+  Missing or expired approval authority returns 403 org_change.refuse.missing_grant, before document-version checks.
   through_step always returns 409 lifecycle.refuse.merge_not_allowed. Refusals write no business state.
 security:
 - bearerAuth: []

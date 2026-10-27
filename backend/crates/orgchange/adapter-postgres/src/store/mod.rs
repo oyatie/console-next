@@ -2,6 +2,8 @@ mod archive_cancel;
 mod create;
 mod decide;
 mod decision_admission;
+mod decision_facts;
+pub use decision_facts::step_decision_facts_in_tx;
 mod detail;
 mod draft;
 mod effectuate;

@@ -49,6 +49,12 @@ pub(crate) fn allow_approve(p: &Principal) -> Result<(), RestError> {
         Feature::OrgChangeApprove,
         "role is not allowed to approve org changes",
     )
+    .map_err(|_| {
+        RestError::kernel(
+            KernelError::forbidden("org approval permission required")
+                .with_code("org_change.refuse.missing_grant"),
+        )
+    })
 }
 
 /// `org_change_apply` (EXECUTIVE, SUPER_ADMIN).

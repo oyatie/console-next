@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-async fn request(pool: &PgPool, org: Uuid, maker: UserId) -> (Uuid, [Uuid; 2]) {
+pub(super) async fn request(pool: &PgPool, org: Uuid, maker: UserId) -> (Uuid, [Uuid; 2]) {
     let id: Uuid = sqlx::query_scalar("INSERT INTO org_change_requests (org_id,code,kind,status,target_kind,target_ref,target_label,effective_date,reason,proposal,drafted_by,idempotency_key,request_fingerprint) VALUES ($1,'OC-2026-0001','REORG','IN_APPROVAL','REGION','region','Region',CURRENT_DATE,'Review','[]',$2,$3,repeat('a',64)) RETURNING id")
         .bind(org).bind(maker.as_uuid()).bind(Uuid::new_v4().to_string()).fetch_one(pool).await.unwrap();
     let mut steps = [Uuid::nil(); 2];
@@ -17,19 +17,19 @@ async fn request(pool: &PgPool, org: Uuid, maker: UserId) -> (Uuid, [Uuid; 2]) {
     (id, steps)
 }
 
-async fn actor(pool: &PgPool, org: Uuid) -> UserId {
+pub(super) async fn actor(pool: &PgPool, org: Uuid) -> UserId {
     let user = http::add_user(pool, org, &["EXECUTIVE"]).await;
     person_fixtures::bind_user_to_distinct_person(pool, user).await;
     super::org_change_fixtures::grant_org_approve(pool, user).await;
     user
 }
 
-async fn snapshot(pool: &PgPool, id: Uuid) -> Value {
+pub(super) async fn snapshot(pool: &PgPool, id: Uuid) -> Value {
     sqlx::query_scalar("SELECT jsonb_build_array(to_jsonb(r), (SELECT jsonb_agg(to_jsonb(s) ORDER BY step_order) FROM org_change_approval_steps s WHERE request_id=r.id), (SELECT count(*) FROM gov_approvals), (SELECT count(*) FROM org_change_events), (SELECT count(*) FROM audit_events WHERE action='org_change.step.decide')) FROM org_change_requests r WHERE id=$1")
         .bind(id).fetch_one(pool).await.unwrap()
 }
 
-fn path(id: Uuid, step: Uuid) -> String {
+pub(super) fn path(id: Uuid, step: Uuid) -> String {
     format!("/api/v1/org-changes/{id}/approval-steps/{step}/decision")
 }
 
