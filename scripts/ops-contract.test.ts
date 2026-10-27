@@ -128,7 +128,7 @@ test("bundle schemas refuse missing intervals, plaintext emails, malformed dates
   expect(accepts(bundle("operators"), [{ ...operator, email_sha256: "operator@example.invalid" }])).toBe(false);
   expect(accepts(bundle("operators"), [{ ...operator, email: "operator@example.invalid" }])).toBe(false);
   expect(accepts(bundle("operators"), [{ ...operator, grants: [{ ...operator.grants[0], until: "tomorrow" }] }])).toBe(false);
-  const source = { url: "http://example.invalid", producer: "fixture", interval_s: 60 };
+  const source = { url: "http://example.invalid", producer: "fixture", interval_s: 60, read_limits: { request_timeout_ms: 500, max_response_bytes: 4096 } };
   const settings = { sources: { alertmanager: source, vmalert: source, victoriametrics: source }, access: { team: "fixture", aud: "fixture-aud", issuer: "https://example.invalid", jwks: "/fixture/jwks.json", interval_s: 60 }, origin: "https://example.invalid", thresholds: {}, budgets: {} };
   expect(accepts(bundle("ops-settings"), settings)).toBe(true);
   expect(accepts(bundle("ops-settings"), { ...settings, sources: { ...settings.sources, invented: source } })).toBe(false);
@@ -145,5 +145,34 @@ test("SSE payloads retain typed data and evaluated_at, with resync and heartbeat
     expect(accepts(schemas.Event, { ...frame, id: 0 })).toBe(false);
     delete frame.evaluated_at;
     expect(accepts(schemas.Event, frame)).toBe(false);
+  }
+});
+
+test("every HTTP source requires positive bounded-read settings and rejects unknown limits", () => {
+  const settings = JSON.parse(read("backend/crates/ops/domain/schemas/ops-settings.schema.json"));
+  for (const source of Object.values(settings.properties.sources.properties) as any[]) {
+    const valid = { url: "http://example.invalid", producer: "fixture", interval_s: 60, read_limits: { request_timeout_ms: 500, max_response_bytes: 4096 } };
+    expect(accepts(source, valid)).toBe(true);
+    const missing = structuredClone(valid) as any;
+    delete missing.read_limits;
+    expect(accepts(source, missing)).toBe(false);
+    for (const key of Object.keys(valid.read_limits)) {
+      for (const value of [0, -1, 0.5, "500", null]) {
+        expect(accepts(source, { ...valid, read_limits: { ...valid.read_limits, [key]: value } })).toBe(false);
+      }
+      const missingLimit = structuredClone(valid) as any;
+      delete missingLimit.read_limits[key];
+      expect(accepts(source, missingLimit)).toBe(false);
+    }
+    expect(accepts(source, { ...valid, read_limits: { ...valid.read_limits, invented: 1 } })).toBe(false);
+  }
+});
+
+test("alert count and group count have distinct units in the contract", () => {
+  expect(schemas.AlertGroups.required).toContain("alert_count");
+  expect(schemas.AlertGroups.properties.count.description).toMatch(/groups/);
+  expect(schemas.AlertGroups.properties.alert_count.description).toMatch(/alerts/);
+  for (const snapshot of Object.values(fixtures) as any[]) {
+    expect(snapshot.alerts).toHaveProperty("alert_count");
   }
 });

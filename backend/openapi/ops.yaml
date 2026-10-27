@@ -130,18 +130,23 @@ components:
         summary: {"$ref": "#/components/schemas/ObservedText"}
         value_vs_threshold: {"$ref": "#/components/schemas/ValueVsThreshold"}
         lead: {"$ref": "#/components/schemas/ObservedText"}
-      description: "Group key is alertname × component; until AS-SCHEMA-LINT instruments component, fall back to alertname × job. Missing component, impact and first_action are Unknown: not instrumented, never fabricated."
+      description: "Group key is alertname × component; until AS-SCHEMA-LINT instruments component, fall back to alertname × job. Missing component, impact and first_action are Unknown: not instrumented, never fabricated. A missing or empty field on one member and a present value on another is Unknown: members disagree. An instrumented severity outside page/ticket is Unknown: severity <value> not on the ladder."
     AlertGroupDetail:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       allOf: [{"$ref": "#/components/schemas/AlertGroup"}, {"type": "object", "required": ["impact", "probable_cause", "first_action", "notices", "rule", "members", "changes", "links", "footer_key"], "properties": {"impact": {"$ref": "#/components/schemas/ObservedText"}, "probable_cause": {"$ref": "#/components/schemas/ObservedText"}, "first_action": {"$ref": "#/components/schemas/ObservedText"}, "notices": {"type": "array", "items": {"$ref": "#/components/schemas/ObservedText"}}, "rule": {"$ref": "#/components/schemas/Rule"}, "members": {"type": "array", "items": {"$ref": "#/components/schemas/AlertMember"}}, "changes": {"type": "array", "items": {"$ref": "#/components/schemas/Change"}}, "links": {"type": "array", "items": {"$ref": "#/components/schemas/ObservedText"}}, "footer_key": {"$ref": "#/components/schemas/Text"}}, "description": "Detail order: summary, impact, value and since, probable cause, first action, notices, rule/current value, members, changes in the preceding 2 h, plain-text links, footer key."}]
     AlertGroups:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
-      required: ["evaluated_at", "groups", "count"]
+      required: ["evaluated_at", "groups", "count", "alert_count"]
       properties:
         evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
         groups: {"type": "array", "items": {"$ref": "#/components/schemas/AlertGroup"}}
-        count: {$ref: '#/components/schemas/ObservedCount'}
+        count:
+          allOf: [{"$ref": "#/components/schemas/ObservedCount"}]
+          description: "Number of groups, not member alerts. Unknown when Alertmanager evidence is not current."
+        alert_count:
+          allOf: [{"$ref": "#/components/schemas/ObservedCount"}]
+          description: "Number of individual alerts across all groups. Unknown when Alertmanager evidence is not current."
     AlertMember:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"

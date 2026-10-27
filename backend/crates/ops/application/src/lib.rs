@@ -5,6 +5,8 @@ use serde::Deserialize;
 use time::OffsetDateTime;
 
 pub mod evaluation;
+pub mod vmalert;
+pub use vmalert::{Vmalert, VmalertSnapshot};
 
 pub type SourceFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T, SourceError>> + Send + 'a>>;
 

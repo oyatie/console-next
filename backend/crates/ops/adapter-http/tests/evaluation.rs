@@ -95,6 +95,8 @@ async fn the_next_due_read_invalidates_every_group_and_count_and_recovers() {
     assert_eq!(down.groups.len(), 1);
     assert!(down.count.value().is_none());
     assert_eq!(down.count.reason(), Some("source down"));
+    assert_eq!(down.alert_count.reason(), Some("source down"));
+    assert!(down.alert_count.value().is_none());
     assert_eq!(down.groups[0].members_n.reason(), Some("source down"));
     assert!(down.groups[0].summary.value().is_none());
     assert_eq!(down.groups[0].component.reason(), Some("source down"));
@@ -131,6 +133,8 @@ async fn stalled_evaluation_marks_source_groups_and_count_stale_at_one_shared_bo
     );
     let stale = evaluator.evaluate(now + time::Duration::seconds(180));
     assert_eq!(stale.count.reason(), Some("stale 3m"));
+    assert_eq!(stale.alert_count.reason(), Some("stale 3m"));
+    assert!(stale.alert_count.value().is_none());
     assert!(stale.count.value().is_none());
     assert_eq!(stale.source.reason(), Some("stale 3m"));
     assert_eq!(stale.groups[0].members_n.reason(), Some("stale 3m"));
@@ -161,6 +165,8 @@ async fn groups_use_component_then_job_and_do_not_guess_unknown_severity() {
     let result = evaluator.evaluate(now);
     assert_eq!(result.groups.len(), 1);
     assert_eq!(result.groups[0].members_n.value(), Some(&2));
+    assert_eq!(result.count.value(), Some(&1));
+    assert_eq!(result.alert_count.value(), Some(&2));
     assert_eq!(result.groups[0].severity.reason(), Some("not instrumented"));
     assert_eq!(
         result.groups[0].impact.value().map(String::as_str),
