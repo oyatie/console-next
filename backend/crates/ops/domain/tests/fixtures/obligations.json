@@ -1,0 +1,197 @@
+{
+  "$comment": "SPDX-License-Identifier: LicenseRef-Proprietary; acceptance input only, never production seed data",
+  "items": [
+    {
+      "kind": "professional-review",
+      "reviewer_role": "lawyer",
+      "title": "Synthetic professional review 1",
+      "evidence_ref": "ref-1"
+    },
+    {
+      "kind": "professional-review",
+      "reviewer_role": "labor-attorney",
+      "title": "Synthetic professional review 2",
+      "evidence_ref": "ref-2"
+    },
+    {
+      "kind": "professional-review",
+      "reviewer_role": "labor-attorney",
+      "title": "Synthetic professional review 3",
+      "evidence_ref": "ref-3"
+    },
+    {
+      "kind": "professional-review",
+      "reviewer_role": "lawyer",
+      "title": "Synthetic professional review 4",
+      "evidence_ref": "ref-4"
+    },
+    {
+      "kind": "professional-review",
+      "reviewer_role": "labor-attorney",
+      "title": "Synthetic professional review 5",
+      "evidence_ref": "ref-5"
+    },
+    {
+      "kind": "professional-review",
+      "reviewer_role": "lawyer",
+      "title": "Synthetic professional review 6",
+      "evidence_ref": "ref-6"
+    },
+    {
+      "kind": "professional-review",
+      "reviewer_role": "tax-accountant",
+      "title": "Synthetic professional review 7",
+      "evidence_ref": "ref-7"
+    },
+    {
+      "kind": "credential-rotation",
+      "reviewer_role": "owner",
+      "title": "Synthetic credential rotation 8",
+      "due": "2026-12-31",
+      "evidence_ref": "ref-8"
+    },
+    {
+      "kind": "credential-rotation",
+      "reviewer_role": "owner",
+      "title": "Synthetic credential rotation 9",
+      "due": "2026-11-22",
+      "evidence_ref": "ref-9"
+    },
+    {
+      "kind": "escrow",
+      "reviewer_role": "owner",
+      "title": "Synthetic escrow 10",
+      "evidence_ref": "ref-10"
+    },
+    {
+      "kind": "drill",
+      "reviewer_role": "owner",
+      "title": "Synthetic drill 11",
+      "evidence_ref": "ref-11"
+    },
+    {
+      "kind": "launch-gate",
+      "reviewer_role": "owner",
+      "title": "Synthetic launch gate 12",
+      "evidence_ref": "ref-12"
+    },
+    {
+      "kind": "launch-gate",
+      "reviewer_role": "owner",
+      "title": "Synthetic launch gate 13",
+      "evidence_ref": "ref-13"
+    },
+    {
+      "kind": "launch-gate",
+      "reviewer_role": "owner",
+      "title": "Synthetic launch gate 14",
+      "evidence_ref": "ref-14"
+    },
+    {
+      "kind": "launch-gate",
+      "reviewer_role": "owner",
+      "title": "Synthetic launch gate 15",
+      "evidence_ref": "ref-15"
+    },
+    {
+      "kind": "launch-gate",
+      "reviewer_role": "owner",
+      "title": "Synthetic launch gate 16",
+      "evidence_ref": "ref-16"
+    },
+    {
+      "kind": "launch-gate",
+      "reviewer_role": "owner",
+      "title": "Synthetic launch gate 17",
+      "evidence_ref": "ref-17"
+    },
+    {
+      "kind": "professional-review",
+      "reviewer_role": "lawyer",
+      "title": "Synthetic professional review 18",
+      "evidence_ref": "ref-18"
+    },
+    {
+      "kind": "professional-review",
+      "reviewer_role": "lawyer",
+      "title": "Synthetic professional review 19",
+      "evidence_ref": "ref-19"
+    },
+    {
+      "kind": "professional-review",
+      "reviewer_role": "labor-attorney",
+      "title": "Synthetic professional review 20",
+      "evidence_ref": "ref-20"
+    },
+    {
+      "kind": "professional-review",
+      "reviewer_role": "tax-accountant",
+      "title": "Synthetic professional review 21",
+      "evidence_ref": "ref-21"
+    },
+    {
+      "kind": "owner-decision",
+      "reviewer_role": "owner",
+      "title": "Synthetic owner decision 22",
+      "evidence_ref": "ref-22"
+    },
+    {
+      "kind": "owner-decision",
+      "reviewer_role": "owner",
+      "title": "Synthetic owner decision 23",
+      "evidence_ref": "ref-23"
+    },
+    {
+      "kind": "owner-decision",
+      "reviewer_role": "owner",
+      "title": "Synthetic owner decision 24",
+      "evidence_ref": "ref-24"
+    },
+    {
+      "kind": "owner-decision",
+      "reviewer_role": "owner",
+      "title": "Synthetic owner decision 25",
+      "evidence_ref": "ref-25"
+    },
+    {
+      "kind": "credential-rotation",
+      "reviewer_role": "owner",
+      "title": "Synthetic credential rotation 26",
+      "evidence_ref": "ref-26"
+    },
+    {
+      "kind": "owner-decision",
+      "reviewer_role": "owner",
+      "title": "Synthetic owner decision 27",
+      "evidence_ref": "ref-27"
+    },
+    {
+      "kind": "regulatory-watch",
+      "reviewer_role": "owner",
+      "title": "Synthetic regulatory watch 28",
+      "due": "2026-12-24",
+      "evidence_ref": "ref-28"
+    },
+    {
+      "kind": "regulatory-watch",
+      "reviewer_role": "owner",
+      "title": "Synthetic regulatory watch 29",
+      "due": "2026-12-24",
+      "evidence_ref": "ref-29"
+    },
+    {
+      "kind": "professional-review",
+      "reviewer_role": "tax-accountant",
+      "title": "Synthetic professional review 30",
+      "due": "2026-12-24",
+      "evidence_ref": "ref-30"
+    },
+    {
+      "kind": "regulatory-watch",
+      "reviewer_role": "owner",
+      "title": "Synthetic regulatory watch 31",
+      "due": "2026-12-24",
+      "evidence_ref": "ref-31"
+    }
+  ]
+}

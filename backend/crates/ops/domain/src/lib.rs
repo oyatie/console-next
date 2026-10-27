@@ -5,11 +5,13 @@ use serde::Serialize;
 use time::{OffsetDateTime, UtcOffset};
 
 pub mod ladders;
+pub mod obligation;
 pub use ladders::{EvidenceState, Health, WorkKind};
 
 pub const COMPONENTS_SCHEMA: &str = include_str!("../schemas/components.schema.json");
 pub const OPERATORS_SCHEMA: &str = include_str!("../schemas/operators.schema.json");
 pub const SETTINGS_SCHEMA: &str = include_str!("../schemas/ops-settings.schema.json");
+pub const OBLIGATION_RECORD_SCHEMA: &str = include_str!("../schemas/obligation-record.schema.json");
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Observed<T> {

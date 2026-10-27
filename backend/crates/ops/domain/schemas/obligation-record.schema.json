@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "type": "object",
+  "required": ["v", "seq", "prev", "at", "operator", "support_ref", "obligation_id", "event", "fields"],
+  "additionalProperties": false,
+  "properties": {
+    "v": {"const": 1},
+    "seq": {"type": "integer", "minimum": 1},
+    "prev": {"type": "string", "pattern": "^(?:genesis|[a-f0-9]{64})$"},
+    "at": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "operator": {
+      "type": "object", "required": ["person", "method"], "additionalProperties": false,
+      "properties": {
+        "person": {"type": "string", "format": "uuid"},
+        "method": {"type": "string", "pattern": "\\S"}
+      }
+    },
+    "support_ref": {"type": "string", "pattern": "\\S"},
+    "obligation_id": {"type": "string", "pattern": "\\S"},
+    "event": {"type": "string"},
+    "fields": {"type": "object"}
+  },
+  "oneOf": [
+    {"properties": {
+      "event": {"const": "opened"},
+      "fields": {
+        "required": ["kind", "reviewer_role", "title"], "additionalProperties": false,
+        "properties": {
+          "kind": {"enum": ["professional-review", "credential-rotation", "escrow", "drill", "launch-gate", "owner-decision", "regulatory-watch"]},
+          "reviewer_role": {"enum": ["labor-attorney", "lawyer", "tax-accountant", "owner"]},
+          "title": {"type": "string", "pattern": "\\S"},
+          "due": {"anyOf": [{"type": "null"}, {"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}]},
+          "evidence_ref": {"anyOf": [{"type": "null"}, {"type": "string"}]}
+        }
+      }
+    }},
+    {"properties": {
+      "event": {"const": "in_review"},
+      "fields": {"additionalProperties": false, "properties": {"note": {"anyOf": [{"type": "null"}, {"type": "string"}]}}}
+    }},
+    {"properties": {
+      "event": {"const": "redated"},
+      "fields": {
+        "required": ["due", "reason"], "additionalProperties": false,
+        "properties": {
+          "due": {"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+          "reason": {"type": "string", "pattern": "\\S"}
+        }
+      }
+    }},
+    {"properties": {
+      "event": {"const": "done"},
+      "fields": {
+        "required": ["evidence_ref", "signer", "signed_on"], "additionalProperties": false,
+        "properties": {
+          "evidence_ref": {"type": "string", "pattern": "\\S"},
+          "signer": {"type": "string", "pattern": "\\S"},
+          "signed_on": {"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+        }
+      }
+    }},
+    {"properties": {
+      "event": {"const": "waived"},
+      "fields": {
+        "required": ["reason", "signer"], "additionalProperties": false,
+        "properties": {
+          "reason": {"type": "string", "pattern": "\\S"},
+          "signer": {"type": "string", "pattern": "\\S"}
+        }
+      }
+    }}
+  ]
+}
