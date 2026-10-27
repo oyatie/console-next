@@ -44,7 +44,7 @@ for (const [path, contract] of Object.entries(routeReads)) {
 }
 
 test("attendance's actual month/day/schedule handlers use the projected branch caller", () => {
-  expect(source("attendance/rest/src/records.rs")).toMatch(/fn month[\s\S]*?caller\(&principal\(&s, &h\).await\?, READ\)/);
+  expect(source("attendance/rest/src/records.rs")).toMatch(/fn month[\s\S]*?let p = principal\(&s, &h\).await\?;\s*let c = caller\(&p, READ\)/);
   expect(source("attendance/rest/src/schedule/mod.rs")).toMatch(/const READ: Feature = Feature::EmployeeDirectoryRead/);
   expect(source("attendance/rest/src/schedule/mod.rs")).toContain("if branch_ids.is_empty()");
   for (const op of routeReads["/attendance"].reads) expect(operationAccess[op]).toEqual({ domain: "hr_basic", level: "view", scopes: ["TENANT", "LEGAL_ENTITY", "WORKPLACE"] });

@@ -11,7 +11,9 @@
 
 use console_kernel_core::{AccessScopeLevel, AuditAction, AuditEvent, KernelError, TraceContext};
 use console_platform_authz::Principal;
+use console_platform_db::{DbError, with_audit};
 use serde_json::{Value, json};
+use sqlx::PgPool;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -93,4 +95,16 @@ pub fn access_event(
         event = event.with_request_context(context.request);
     }
     Ok(event)
+}
+
+/// Commit a read's access record before its response leaves the server.
+/// Reads already using `with_audits` keep the event in their own transaction.
+pub async fn record_access(
+    pool: &PgPool,
+    principal: &Principal,
+    record: AccessRecord<'_>,
+) -> Result<(), DbError> {
+    let event = access_event(principal, record)
+        .map_err(|error| DbError::Sqlx(sqlx::Error::Protocol(error.to_string())))?;
+    with_audit(pool, event, |_tx| Box::pin(async { Ok(()) })).await
 }
