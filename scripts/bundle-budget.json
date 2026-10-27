@@ -24,6 +24,7 @@
       "src/features/org-bulk/ui/history-page.tsx",
       "src/features/org/ui/propose-card.tsx",
       "src/features/org/ui/structure-sheets.tsx",
+      "src/features/people/ui/appointments-content.tsx",
       "src/features/people/ui/certificates-page.tsx",
       "src/features/people/ui/exit-list.tsx",
       "src/features/people/ui/grid-page.tsx",

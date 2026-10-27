@@ -4,6 +4,7 @@ import { chunk } from "../lib/chunk-guard";
 import type { PeopleSearch } from "../features/people/People";
 import type { ExitFilter } from "../features/people/api";
 import { accountsSearch, type AccountsSearch } from "../features/people/domain/accounts";
+import { parsePeopleTab, parseExitFilter } from "../features/people/domain/people-tabs";
 import { app, screen, str } from "./app";
 
 const unplaced = createRoute({ getParentRoute: () => app, path: "/people/unplaced", staticData: { access: readRequirement("/people/unplaced") }, component: lazyRouteComponent(screen(() => import("../features/people/ui/unplaced-page")), "UnplacedPage") });
@@ -61,12 +62,11 @@ const changeRequests = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/people/ui/requests-page")), "RequestsPage"),
 });
 const jobTitles = createRoute({ getParentRoute: () => app, path: "/people/job-titles", staticData: { access: readRequirement("/people/job-titles") }, component: lazyRouteComponent(screen(() => import("../features/people/ui/job-titles-page")), "JobTitlesPage") });
-const EXIT_FILTERS = ["open", "closed", "REPORTED", "HR_CONFIRMED", "HQ_CONFIRMED", "SETTLEMENT_READY", "APPROVAL_DRAFTED", "SUBMITTED", "REJECTED", "CANCELLED"] as const satisfies readonly ExitFilter[];
 const exitCases = createRoute({
   getParentRoute: () => app,
   path: "/people/exits", staticData: { access: readRequirement("/people/exits") },
   // The status filter lives in the URL so Home can link to the open cases.
-  validateSearch: (s: Record<string, unknown>): { status?: ExitFilter } => ({ status: EXIT_FILTERS.find((f) => f === s.status) }),
+  validateSearch: (s: Record<string, unknown>): { status?: ExitFilter } => ({ status: parseExitFilter(s.status) }),
   component: lazyRouteComponent(screen(() => import("../features/people/ui/exit-list")), "ExitCaseList"),
 });
 const exitCase = createRoute({
@@ -78,10 +78,17 @@ const exitCase = createRoute({
 const people = createRoute({
   getParentRoute: () => app,
   path: "/people", staticData: { access: readRequirement("/people") },
+  beforeLoad: () => ({ peopleAccess: {
+    roster: readRequirement("/people"), appointments: readRequirement("/people/bulk"),
+    notices: readRequirement("/people/notices"), exits: readRequirement("/people/exits"), unplaced: readRequirement("/people/unplaced"),
+  } }),
   // The search term (a person's name) stays out of the URL and so out of history; only ids, filters and the view go here.
   // The accounts view adds its role chip, inactive toggle, open sheet (`act`) and the person to invite.
   validateSearch: (s: Record<string, unknown>): PeopleSearch & AccountsSearch => ({
     ...accountsSearch(s),
+    tab: parsePeopleTab(s.tab) === "roster" ? undefined : parsePeopleTab(s.tab),
+    exitStatus: parseExitFilter(s.exitStatus),
+    placement: s.placement === "unplaced" ? "unplaced" : undefined,
     sel: str(s.sel),
     view: s.view === "accounts" ? "accounts" : undefined,
     unit: str(s.unit),

@@ -34,3 +34,11 @@ test.each([false, true])("only server-supported columns sort, including the exit
   props.onSortChange!({ column: "type", direction: "ascending" });
   expect(onSort).not.toHaveBeenCalled();
 });
+
+test("a roster without a sort handler offers no sortable columns", () => {
+  renderToStaticMarkup(<RosterTable rows={[]} today="2026-10-25" shown={["unit", "hired", "type"]} density="regular" label="people" hasMore={false} onLoadMore={() => undefined} empty={null} />);
+  const props = vi.mocked(LongTable).mock.calls.at(-1)![0];
+  expect(props.columns.filter(column => column.allowsSorting)).toEqual([]);
+  expect(props.sortDescriptor).toBeUndefined();
+  expect(props.onSortChange).toBeUndefined();
+});

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { keepPreviousData, useInfiniteQuery, useQueries } from "@tanstack/react-query";
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
@@ -16,6 +16,7 @@ import { useCan } from "../../../reference/authz/ui/use-can";
 import { caseQuery, exitCasesPagesQuery, exitCountQuery, OPEN_EXIT_STATUSES, type ExitFilter } from "../api";
 import { forwardStep, usableActions } from "../domain/exits";
 import { RelDay } from "./exit-facts";
+import { PageHead } from "../../../ui/page-head/page-head";
 import s from "./exit.module.css";
 
 type Case = components["schemas"]["EmployeeExitCase"];
@@ -36,15 +37,16 @@ const STEP_OF = { confirm_exit: "HR_CONFIRMED", confirm_exit_hq: "HQ_CONFIRMED",
 export function ExitCaseList() {
   const { status } = route.useSearch();
   const navigate = route.useNavigate();
+  return <ExitCaseListContent status={status} onStatus={next => void navigate({ search: next ? { status: next } : {}, replace: true })} />;
+}
+
+export function ExitCaseListContent({ status, onStatus: pick }: { status?: ExitFilter; onStatus: (status?: ExitFilter) => void }) {
   const [q, setQ] = useState("");
   const [findSlot, setFindSlot] = useState<HTMLElement | null>(null);
   const counts = useQueries({ queries: CHIPS.map((f) => exitCountQuery(f, q)) });
-  const pick = (f?: ExitFilter) => void navigate({ search: f ? { status: f } : {}, replace: true });
   return (
     <div className="page">
-      <div className="page__head">
-        <h1 className="page__title">{t("exit.list.title")}</h1>
-      </div>
+      <PageHead title={t("exit.list.title")} />
       <section className="card">
         <div className={`tabs ${s.chips}`} role="group" aria-label={t("exit.list.chips")}>
           {CHIPS.map((f, i) => {
@@ -65,7 +67,7 @@ export function ExitCaseList() {
 
 function Cases({ status, q, findSlot, onFind, onReset }: { status?: ExitFilter; q: string; findSlot: HTMLElement | null; onFind: (q: string) => void; onReset: () => void }) {
   const can = useCan();
-  const navigate = route.useNavigate();
+  const navigate = useNavigate();
   const prefetch = usePrefetch();
   // Polling would re-read every loaded page; the counts above poll, and focus refreshes the rows.
   const list = useInfiniteQuery({ ...exitCasesPagesQuery(status, PAGE, q), placeholderData: keepPreviousData, refetchInterval: false });

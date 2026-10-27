@@ -109,7 +109,7 @@ const SORT_COLUMNS: Record<RosterSort, string> = { name: "name", employee_number
 /** The people table: compact rows of the roster's columns, everything else as LongTable takes it. */
 export function RosterTable({ today, exited = false, shown, density, sort = "name", onSort, ...p }: Omit<TableProps, "columns" | "density" | "rowId" | "sortDescriptor" | "onSortChange"> & { today: string; exited?: boolean; shown: readonly ColumnId[]; density: "compact" | "regular"; sort?: RosterOrder; onSort?: (sort: RosterOrder) => void }) {
   const activeKey = SORTS.find(key => sort === key || sort === `-${key}`)!;
-  const columns = useColumns(today, exited, shown).map(column => ({ ...column, allowsSorting: Object.values(SORT_COLUMNS).includes(column.id) }));
+  const columns = useColumns(today, exited, shown).map(column => ({ ...column, allowsSorting: Boolean(onSort) && Object.values(SORT_COLUMNS).includes(column.id) }));
   return <LongTable {...p} density={density} columns={columns} rowId={(e) => e.id}
     sortDescriptor={onSort ? { column: SORT_COLUMNS[activeKey], direction: sort.startsWith("-") ? "descending" : "ascending" } : undefined}
     onSortChange={onSort && (descriptor => {

@@ -3,10 +3,6 @@
    PathList), type and tone are composed from the §3 classes. */
 .page { display: flex; flex-direction: column; min-height: 100%; }
 .band { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-5) 0; }
-.titleRow { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.title { composes: t-xl t-strong from global; margin: 0; white-space: nowrap; }
-/* Counts hold the room of a 2,000-person company before and after they land: a count that a live change re-reads moves nothing beside it. */
-.headcount { composes: t-sm muted num from global; display: inline-block; min-width: 10ch; white-space: nowrap; }
 .views { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; padding-bottom: var(--space-2); }
 .findSlot { display: flex; flex: 1 1 auto; justify-content: flex-end; min-width: min(100%, calc(var(--panel-w) / 1.6)); min-height: calc(var(--target) + var(--space-1)); }
 .scope { display: flex; align-items: center; gap: var(--space-2); min-height: calc(var(--target) + var(--space-1) + var(--space-2) * 2); box-sizing: border-box; padding: var(--space-2) var(--space-5); flex-wrap: wrap; }

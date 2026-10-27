@@ -11,7 +11,7 @@ import { usePrefetch } from "../../../lib/react/prefetch";
 import { todayKst } from "../../../lib/pure/today";
 import { useReasonCodesReady } from "../../../lib/reason-codes";
 import { employeeQuery } from "../api";
-import { exactNumber, headcount, joinReview, parseReview, parseStatus, type Review, type StatusView } from "../domain/roster";
+import { exactNumber, joinReview, parseReview, parseStatus, type Review, type StatusView } from "../domain/roster";
 import { parseOrder, type RosterOrder } from "../domain/roster-order";
 import { BulkRescind } from "./bulk-rescind";
 import { BulkSheet } from "./bulk-sheet";
@@ -52,7 +52,7 @@ const listened = new WeakSet<HTMLElement>();
 const remember = (key: string, q: string, patch: Partial<NonNullable<typeof memory>>) => void (memory = { ...(memory?.key === key ? memory : { key, q, top: 0, row: null }), ...patch });
 
 /** The people list: status and attention chips, a virtualized server-paged table, and the selected person beside it. */
-export function RosterPage({ manage, scoped = false, switcher }: { manage: boolean; scoped?: boolean; switcher?: ReactNode }) {
+export function RosterPage({ manage, scoped = false, switcher, notice }: { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode }) {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const today = todayKst();
@@ -193,7 +193,6 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
   return (
     <PageReadGate q={r.list}><div className={s.page}>
       <RosterHead
-        headcount={headcount(r.status.totals)}
         manage={manage}
         status={status}
         review={review}
@@ -216,7 +215,7 @@ export function RosterPage({ manage, scoped = false, switcher }: { manage: boole
       <QueryState q={r.list} layout="list">{() => <>
       <div className={s.notes}>
       {status === "EXITED" && <ExitTabs view={exitView} kept={r.status.totals.EXITED} onView={setExitView} />}
-      {scoped && <p className="muted">{t("roster.scope.branches")}</p>}
+      {(notice || scoped) && <p className="muted" role={notice ? "note" : undefined}>{notice}{notice && scoped && " "}{scoped && t("roster.scope.branches")}</p>}
       {sameName > 1 && <div role="note"><Banner>{t("roster.sameName", { count: sameName, name: r.rows[0]!.name })}</Banner></div>}
       {recorded && (
         <Receipt

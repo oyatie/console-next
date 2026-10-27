@@ -14,10 +14,10 @@ import { ExitPeek } from "./exit-peek";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <span data-to={to}>{children}</span>,
-  getRouteApi: () => ({ useNavigate: () => vi.fn() }), useNavigate: () => vi.fn(),
+  getRouteApi: () => ({ useNavigate: () => vi.fn(), useRouteContext: () => ({ peopleAccess: { unplaced: { domain: "hr_basic", level: "edit", tenant: true } } }) }), useNavigate: () => vi.fn(),
 }));
 vi.mock("./roster-scope", () => ({ RosterScope: () => null }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ isSuccess: true, isPending: false, error: null, data: { items: [], entities: [], phase: "SETUP", capabilities: [{ feature: "employee_directory_manage", permission: "allow", org_wide: true }] } }) }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ isSuccess: true, isPending: false, error: null, data: { items: [], entities: [], entries: [], phase: "SETUP", capabilities: [{ feature: "employee_directory_manage", permission: "allow", org_wide: true }] } }) }));
 vi.mock("./use-register", () => ({ useRegister: () => ({ mutate: vi.fn() }), useUndoRegister: () => ({ mutate: vi.fn() }) }));
 vi.mock("./register-toast", () => ({ RegisterToast: () => null }));
 beforeAll(() => loadCatalog("ko"));
