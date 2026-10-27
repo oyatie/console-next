@@ -343,6 +343,7 @@ async fn reorg_lifecycle_runs_draft_to_applied_with_ordered_sod(pool: PgPool) {
     // SoD gate itself instead of stopping at the role floor.
     let drafter = seed_user(&pool, org, "EXECUTIVE").await;
     let approver = seed_user(&pool, org, "EXECUTIVE").await;
+    org_change_support::grant_org_approve(&pool, drafter).await;
     let draft_token = keys.token(&pool, drafter, org, &["EXECUTIVE"]).await;
     let exec_token = keys.token(&pool, approver, org, &["EXECUTIVE"]).await;
 
@@ -597,21 +598,9 @@ async fn reorg_lifecycle_runs_draft_to_applied_with_ordered_sod(pool: PgPool) {
     .await;
     assert_eq!(status, StatusCode::CONFLICT, "out of order: {out_of_order}");
 
-    let mut last = Value::Null;
-    for step_id in &step_ids {
-        let (status, decided) = send(
-            &rt,
-            &keys,
-            "POST",
-            &format!("{CHANGES}/{id}/approval-steps/{step_id}/decision"),
-            &exec_token,
-            Some(decision.clone()),
-            None,
-        )
-        .await;
-        assert_eq!(status, StatusCode::OK, "decide {step_id}: {decided}");
-        last = decided;
-    }
+    let last =
+        org_change_support::approve_chain(&pool, &rt, &keys, org, &id, &submitted["approvalSteps"])
+            .await;
     assert_eq!(last["status"], "APPROVED", "all four decided: {last}");
     // Each decision moved `updated_at` past the receipt's `computedAt`, so the
     // only thing holding `stale` false here is the draft-editable guard in the
@@ -687,18 +676,20 @@ async fn reorg_lifecycle_runs_draft_to_applied_with_ordered_sod(pool: PgPool) {
     assert_eq!(status, StatusCode::OK, "detail: {detail}");
     // Actor display names are resolved server-side next to every actor id.
     let drafter_name = format!("story-{drafter}");
-    let approver_name = format!("story-{approver}");
     assert_eq!(detail["draftedByName"], drafter_name.as_str(), "{detail}");
     for step in detail["approvalSteps"].as_array().unwrap() {
-        assert_eq!(step["decidedByName"], approver_name.as_str(), "{step}");
+        assert_eq!(
+            step["decidedByName"],
+            format!("story-{}", step["decidedBy"].as_str().unwrap()),
+            "{step}"
+        );
     }
     for event in detail["events"].as_array().unwrap() {
-        let expected = if event["actor"] == drafter.as_uuid().to_string() {
-            &drafter_name
-        } else {
-            &approver_name
-        };
-        assert_eq!(event["actorName"], expected.as_str(), "{event}");
+        assert_eq!(
+            event["actorName"],
+            format!("story-{}", event["actor"].as_str().unwrap()),
+            "{event}"
+        );
     }
     // List filters: a status set and the drafter.
     for (query, expected) in [
@@ -884,20 +875,8 @@ async fn dissolve_applies_on_its_date_behind_the_referential_net(pool: PgPool) {
         parse_rfc3339(&submitted["preflight"]["computedAt"]) > legacy_at,
         "submit recomputed the receipt instead of trusting the stored one: {submitted}"
     );
-    for step in submitted["approvalSteps"].as_array().unwrap() {
-        let step_id = step["id"].as_str().unwrap();
-        let (status, decided) = send(
-            &rt,
-            &keys,
-            "POST",
-            &format!("{CHANGES}/{id}/approval-steps/{step_id}/decision"),
-            &exec_token,
-            Some(json!({"decision": "APPROVED"})),
-            None,
-        )
+    org_change_support::approve_chain(&pool, &rt, &keys, org, &id, &submitted["approvalSteps"])
         .await;
-        assert_eq!(status, StatusCode::OK, "decide: {decided}");
-    }
 
     // org-05: a DISSOLVE applies on its 시행일 like every change — no tick
     // list. The referential net still holds: while the resident user remains,
@@ -1066,20 +1045,15 @@ async fn dissolve_applies_on_its_date_behind_the_referential_net(pool: PgPool) {
         None,
     )
     .await;
-    for step in submitted["approvalSteps"].as_array().unwrap() {
-        let step_id = step["id"].as_str().unwrap();
-        let (status, decided) = send(
-            &rt,
-            &keys,
-            "POST",
-            &format!("{CHANGES}/{future_id}/approval-steps/{step_id}/decision"),
-            &exec_token,
-            Some(json!({"decision": "APPROVED"})),
-            None,
-        )
-        .await;
-        assert_eq!(status, StatusCode::OK, "decide future: {decided}");
-    }
+    org_change_support::approve_chain(
+        &pool,
+        &rt,
+        &keys,
+        org,
+        &future_id,
+        &submitted["approvalSteps"],
+    )
+    .await;
     let (status, early) = send(
         &rt,
         &keys,
@@ -1522,20 +1496,8 @@ async fn effectuate_is_frozen_inside_a_locked_period_and_records_the_attempt(poo
     )
     .await;
     assert_eq!(status, StatusCode::OK, "submit: {submitted}");
-    for step in submitted["approvalSteps"].as_array().unwrap() {
-        let step_id = step["id"].as_str().unwrap();
-        let (status, decided) = send(
-            &rt,
-            &keys,
-            "POST",
-            &format!("{CHANGES}/{id}/approval-steps/{step_id}/decision"),
-            &exec_token,
-            Some(json!({"decision": "APPROVED"})),
-            None,
-        )
+    org_change_support::approve_chain(&pool, &rt, &keys, org, &id, &submitted["approvalSteps"])
         .await;
-        assert_eq!(status, StatusCode::OK, "decide: {decided}");
-    }
 
     // Both freeze domains block, and each refusal names its own window. The
     // second pass proves the accounting domain gates on its own, with the

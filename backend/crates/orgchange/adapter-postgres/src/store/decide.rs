@@ -1,5 +1,5 @@
 use crate::*;
-use console_platform_authz::cedar_pbac::actions::independent_people::{self, Refusal};
+use console_orgchange_domain::StepDecisionCommand;
 
 impl PgOrgChangeStore {
     pub async fn decide_step(
@@ -10,39 +10,39 @@ impl PgOrgChangeStore {
         approved: bool,
         memo: Option<String>,
     ) -> Result<OrgChangeDetail, PgOrgChangeError> {
-        if let Some(memo) = &memo {
+        self.decide_step_command(
+            actor,
+            id,
+            step_id,
+            StepDecisionCommand {
+                approved,
+                memo,
+                ..Default::default()
+            },
+        )
+        .await
+    }
+
+    pub async fn decide_step_command(
+        &self,
+        actor: UserId,
+        id: Uuid,
+        step_id: Uuid,
+        command: StepDecisionCommand,
+    ) -> Result<OrgChangeDetail, PgOrgChangeError> {
+        let approved = command.approved;
+        if let Some(memo) = &command.memo {
             bounded_text(memo, "memo", 2000)?;
         }
         let org = current_org().map_err(KernelError::from)?;
-        let now = OffsetDateTime::now_utc();
         with_audits(&self.pool, org, |tx| {
             Box::pin(async move {
                 let request = lock_request(tx, id).await?;
+                super::decision_admission::admit(tx, org, actor, id, &request, &command).await?;
                 if request.status != OrgChangeStatus::InApproval {
                     return Err(KernelError::conflict(
                         "approval decisions apply only while the request is IN_APPROVAL",
                     )
-                    .into());
-                }
-                if let Some(refusal) = independent_people::refusal_in_tx(
-                    tx.as_mut(),
-                    Some(request.drafted_by),
-                    *actor.as_uuid(),
-                )
-                .await
-                {
-                    let kind = match refusal {
-                        Refusal::IdentityUnbound => ErrorKind::Forbidden,
-                        Refusal::SamePerson => ErrorKind::Conflict,
-                    };
-                    return Err(KernelError::new(
-                        kind,
-                        "approval requires two bound, distinct natural persons",
-                    )
-                    .with_code(refusal.code(
-                        "org_change.refuse.identity_unbound",
-                        "org_change_sod_violation",
-                    ))
                     .into());
                 }
                 let step = sqlx::query(
@@ -74,6 +74,7 @@ impl PgOrgChangeStore {
                     );
                 }
 
+                let now = OffsetDateTime::now_utc();
                 // Record the decision through gov_approvals so the DB-level
                 // approver <> requester CHECK is the second SoD net.
                 sqlx::query(
@@ -103,7 +104,7 @@ impl PgOrgChangeStore {
                 .bind(next_decision.as_db())
                 .bind(*actor.as_uuid())
                 .bind(now)
-                .bind(memo.as_deref())
+                .bind(command.memo.as_deref())
                 .execute(tx.as_mut())
                 .await?;
 

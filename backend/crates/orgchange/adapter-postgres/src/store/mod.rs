@@ -1,6 +1,7 @@
 mod archive_cancel;
 mod create;
 mod decide;
+mod decision_admission;
 mod detail;
 mod draft;
 mod effectuate;

@@ -3,6 +3,12 @@ additionalProperties: false
 required:
 - decision
 properties:
+  expected_version:
+    type: string
+    description: Opaque version from the document read. Optional for older clients; mismatches return 409 lifecycle.refuse.stale_version with error.current_version.
+  through_step:
+    $ref: '#/components/schemas/Uuid'
+    description: Merging stored steps is refused with 409 lifecycle.refuse.merge_not_allowed. Each step requires a distinct natural person.
   decision:
     type: string
     enum: [APPROVED, REJECTED]

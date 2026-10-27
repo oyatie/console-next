@@ -8,6 +8,9 @@ allOf:
   - settlementItems
   - events
   properties:
+    version:
+      type: string
+      description: Opaque version derived from this request and its stored step decisions. Send as expected_version when deciding.
     proposal:
       type: array
       items:

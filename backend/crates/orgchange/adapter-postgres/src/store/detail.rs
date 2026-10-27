@@ -100,6 +100,10 @@ pub(crate) async fn load_detail(
     }
 
     Ok(Some(OrgChangeDetail {
+        version: console_orgchange_domain::decision_version(
+            row.try_get("updated_at")?,
+            approval_steps.iter().filter_map(|s| s.decided_at).max(),
+        ),
         summary,
         proposal,
         preflight,
