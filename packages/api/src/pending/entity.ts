@@ -77,8 +77,11 @@ type Path<Ops> = { parameters: { query?: never; header?: never; path?: never; co
 
 export type IdentifierCorrectionReason = S["IdentifierCorrectionReason"];
 export type CloseReason = S["EntityCloseReason"];
+export type OrgChangeCounts = Record<"open" | "mine" | "approval" | "ready" | "done" | "closed" | "all", number>;
 
 type Requested = {
+  /** Pending grouped read; the web count query falls back on older backends. */
+  "/api/v1/org-changes/counts": Path<{ get: Op<OrgChangeCounts, never, { effective_from?: string; effective_to?: string }> }>;
   /** PEOPLE-P1 slice 4: pending server record command; GET remains the generated contract. */
   "/api/v1/employees/{id}/rrn": Omit<paths["/api/v1/employees/{id}/rrn"], "put"> & {
     put: {

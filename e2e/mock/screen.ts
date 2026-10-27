@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import { mockRoute } from "./route";
 import { authz, checklist, employees, facets, failure, id, inbox, screenAccess, structure, token, user } from "./fixtures";
 import { orgChange, orgChanges } from "./org-changes";
+import { mockOrgChangeCounts } from "./org-changes-web";
 import type { OrgChangeState, Screen, State } from "../states/registry";
 
 /** Complete, isolated shell + screen. Any unregistered API request fails the test instead of hitting a server. */
@@ -80,5 +81,6 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   const record = orgChange(state === "empty" ? "populated" : state);
   await mockRoute(page, "get", "/api/v1/org-changes/{id}", async () => (await beforeReply("/api/v1/org-changes/{id}")) ?? (state === "missing" ? { status: 404, json: failure("not_found") } : { status: 200, json: record }));
   await mockRoute(page, "post", "/api/v1/org-changes/{id}/preflight", { status: 200, json: record });
+  await mockOrgChangeCounts(page, "populated", changes);
   return { unexpected, release, count, operationId: id(99) };
 }
