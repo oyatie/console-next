@@ -11,11 +11,11 @@ containers contains c if c := podspec.ephemeralContainers[_]
 
 deny contains "PLAT_IMAGE_DIGEST: images must use sha256 digests" if {
     c := containers[_]
-    not regex.match(`^([^/@]+/)*[^/:@]+@sha256:[a-f0-9]{64}$`, c.image)
+    not regex.match(`^([^/@]+/)*[^/:@]+(:[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127})?@sha256:[a-f0-9]{64}$`, c.image)
 }
 deny contains "PLAT_IMAGE_DIGEST: database image must use a sha256 digest" if {
     input.kind == "Cluster"
-    not regex.match(`^([^/@]+/)*[^/:@]+@sha256:[a-f0-9]{64}$`, input.spec.imageName)
+    not regex.match(`^([^/@]+/)*[^/:@]+(:[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127})?@sha256:[a-f0-9]{64}$`, input.spec.imageName)
 }
 deny contains "PLAT_NON_ROOT: workloads must run as non-root" if {
     object.get(object.get(podspec, "securityContext", {}), "runAsNonRoot", false) != true

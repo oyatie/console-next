@@ -84,6 +84,24 @@ test('hardened pods are accepted by the actual OPA policy', () => {
   const result = JSON.parse(evaluate(pod()));
   assert.equal(result.flatMap(r => r.failures ?? []).length, 0);
 });
+test('PLAT_IMAGE_DIGEST: pod policies accept version tags only with a digest in every container list', () => {
+  const policy = yaml.loadAll(read('deploy/policies/admission.yaml')).find(doc => doc.kind === 'ValidatingAdmissionPolicy');
+  const expression = policy.spec.validations.find(v => v.message.startsWith('PLAT_IMAGE_DIGEST:')).expression;
+  const pattern = new RegExp(expression.match(/matches\('([^']+)'\)/)[1]);
+  for (const field of ['containers', 'initContainers', 'ephemeralContainers']) {
+    const fixture = pod();
+    fixture.spec[field] = [structuredClone(fixture.spec.containers[0])];
+    const container = fixture.spec[field][0];
+    container.image = `registry.invalid:5000/postgresql:18.6-standard-trixie@sha256:${'a'.repeat(64)}`;
+    assert.ok(pattern.test(container.image), 'server admission must accept tagged digests');
+    assert.equal(JSON.parse(evaluate(fixture)).flatMap(r => r.failures ?? []).length, 0);
+    for (const invalid of ['postgres:18.6', container.image.slice(0, -1), container.image + 'a', container.image.replace('@sha256:', '@sha512:')]) {
+      container.image = invalid;
+      assert.equal(pattern.test(invalid), false);
+      assert.match(evaluate(fixture), /PLAT_IMAGE_DIGEST/);
+    }
+  }
+});
 for (const [code, mutate] of Object.entries(refusals)) test(`${code}: refuses the unsafe pod and init container`, () => {
   const fixture = pod(); mutate(fixture);
   assert.match(evaluate(fixture), new RegExp(code));
@@ -113,8 +131,48 @@ for (const [name, code, mutate] of [
 test('PLAT_IMAGE_DIGEST: database images independently require a digest', () => {
   const fixture = {apiVersion:'postgresql.cnpg.io/v1', kind:'Cluster', metadata:{name:'db'}, spec:{imageName:JSON.parse(read('deploy/versions.json')).images.postgres}};
   assert.equal(JSON.parse(evaluate(fixture)).flatMap(r => r.failures ?? []).length, 0);
+  fixture.spec.imageName = `registry.invalid:5000/postgresql:18.6-standard-trixie@sha256:${'a'.repeat(64)}`;
+  assert.equal(JSON.parse(evaluate(fixture)).flatMap(r => r.failures ?? []).length, 0, 'a version tag must preserve the digest pin');
   fixture.spec.imageName = 'postgres:latest';
   assert.match(evaluate(fixture), /PLAT_IMAGE_DIGEST/);
+  fixture.spec.imageName = 'postgres:18.6';
+  assert.match(evaluate(fixture), /PLAT_IMAGE_DIGEST/);
+});
+
+// CNPG v1.30.1 validateImageName uses machinery v0.6.0 reference.Tag and version.FromTag:
+// https://github.com/cloudnative-pg/cloudnative-pg/blob/v1.30.1/internal/webhook/v1/cluster_webhook.go
+// https://github.com/cloudnative-pg/machinery/blob/v0.6.0/pkg/postgres/version/version.go
+function cnpgVersion(imageName) {
+  const tag = imageName.split('@')[0].split('/').at(-1).split(':')[1] ?? '';
+  assert.ok(tag && tag !== 'latest', 'CNPG imageName needs a version tag to detect upgrades');
+  const version = tag.match(/^(?:[0-9]\.?)+/)?.[0];
+  assert.ok(version, 'CNPG invalid version tag');
+  const [major, minor = '0'] = version.split('.');
+  for (const part of [major, minor]) assert.ok(/^[0-9]+$/.test(part) && BigInt(part) <= (1n << 63n) - 1n, 'CNPG invalid version component');
+  return [Number(major), Number(minor)];
+}
+
+test('CNPG image validation accepts version tags and refuses digest-only, latest and invalid versions', () => {
+  for (const [tag, version] of [['18.6-standard-trixie',[18,6]], ['14',[14,0]], ['13.3.2.1-1',[13,3]], ['17beta1',[17,0]]]) {
+    assert.deepEqual(cnpgVersion(`registry.invalid:5000/postgresql:${tag}@sha256:${'a'.repeat(64)}`), version);
+  }
+  for (const tag of ['', ':latest', ':stable', ':v18.6', ':18.-trixie', ':99999999999999999999']) {
+    assert.throws(() => cnpgVersion(`registry.invalid:5000/postgresql${tag}@sha256:${'a'.repeat(64)}`), /CNPG/);
+  }
+});
+
+for (const environment of ['exit-test', 'template']) test(`${environment}: rendered database and restore images pass CNPG imageName validation`, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'platform-cnpg-'));
+  try {
+    execFileSync(process.execPath, ['deploy/ci/render.mjs', environment, `example.invalid/console@sha256:${'a'.repeat(64)}`, dir], {cwd:root});
+    const groups = environment === 'exit-test' ? ['database', 'tests/restore'] : ['database'];
+    for (const group of groups) {
+      const clusters = yaml.loadAll(readFileSync(join(dir, group, 'resources.yaml'), 'utf8')).filter(doc => doc.kind === 'Cluster');
+      assert.equal(clusters.length, 1);
+      assert.equal(clusters[0].spec.imageName, JSON.parse(read('deploy/versions.json')).images.postgres);
+      cnpgVersion(clusters[0].spec.imageName);
+    }
+  } finally { rmSync(dir, {recursive:true,force:true}); }
 });
 
 test('PLAT_IMAGE_DIGEST and PLAT_OVERLAY: renderer refuses tags and unknown environments before output', () => {

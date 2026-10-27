@@ -16,7 +16,7 @@ spec:
         object.spec.containers + (has(object.spec.initContainers) ? object.spec.initContainers : []) + (has(object.spec.ephemeralContainers) ? object.spec.ephemeralContainers : [])
   validations:
     - expression: >-
-        variables.containers.all(c, c.image.matches('^([^/@]+/)*[^/:@]+@sha256:[a-f0-9]{64}$'))
+        variables.containers.all(c, c.image.matches('^([^/@]+/)*[^/:@]+(:[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127})?@sha256:[a-f0-9]{64}$'))
       message: 'PLAT_IMAGE_DIGEST: images must use sha256 digests'
     - expression: >-
         has(object.spec.securityContext) && has(object.spec.securityContext.runAsNonRoot) && object.spec.securityContext.runAsNonRoot && variables.containers.all(c, !has(c.securityContext) || ((!has(c.securityContext.runAsNonRoot) || c.securityContext.runAsNonRoot) && (!has(c.securityContext.runAsUser) || c.securityContext.runAsUser != 0)))
