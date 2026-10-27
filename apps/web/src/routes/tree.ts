@@ -11,5 +11,6 @@ import { requestRoutes } from "./requests";
 import { attendanceRoutes } from "./attendance";
 import { companyDomainRoute } from "./company-domain";
 import { statutoryRoute } from "./statutory";
+import { settingsRoute } from "./settings";
 
-export const routeTree = root.addChildren([...frame.signIn, app.addChildren([...frame.screens, ...orgRoutes, ...entityRoutes, ...onboardingRoutes, companyDomainRoute, ...peopleRoutes, ...identifierRoutes, ...accessRoutes, ...orgBulkRoutes, ...requestRoutes, ...attendanceRoutes, statutoryRoute])]);
+export const routeTree = root.addChildren([...frame.signIn, app.addChildren([...frame.screens, ...orgRoutes, ...entityRoutes, ...onboardingRoutes, companyDomainRoute, ...peopleRoutes, ...identifierRoutes, ...accessRoutes, ...orgBulkRoutes, ...requestRoutes, ...attendanceRoutes, statutoryRoute, settingsRoute])]);
