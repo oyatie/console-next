@@ -8,6 +8,18 @@ use console_settings_domain::{SettingError, SettingKey, SettingKind, SettingValu
 use serde_json::json;
 
 #[test]
+fn loosening_refusal_uses_the_same_code_in_every_conversion() {
+    let error = SettingError::LooseningTooSoon {
+        key: SettingKey::AuthIdleTimeoutMinutes,
+        earliest: time::OffsetDateTime::UNIX_EPOCH,
+    };
+    assert_eq!(error.code(), "setting_loosening_too_soon");
+    let wire = KernelError::from(error);
+    assert_eq!(wire.code, Some("setting_loosening_too_soon"));
+    assert_eq!(wire.field.as_deref(), Some("effective_from"));
+}
+
+#[test]
 fn each_accessor_answers_only_for_its_own_kind() {
     assert_eq!(SettingValue::Int(7).as_int(), Some(7));
     assert_eq!(SettingValue::Int(7).as_bool(), None);

@@ -23,7 +23,8 @@ pub use tx::settings_change_payload;
 use console_kernel_core::{AuditRequestContext, KernelError, OrgId, Timestamp, TraceContext};
 use console_platform_db::{DbError, with_audits, with_org_conn};
 use console_settings_application::{
-    Actor, ChangeFacts, ChangeSetting, SettingChangeView, change_setting,
+    Actor, ChangeError, ChangeFacts, ChangeSetting, SettingChangePlan, SettingChangeView,
+    change_setting, plan_setting,
 };
 use console_settings_domain::SettingKey;
 use sqlx::PgPool;
@@ -34,7 +35,20 @@ use uuid::Uuid;
 #[derive(Debug)]
 pub enum PgSettingsError {
     Domain(KernelError),
+    TooSoon {
+        error: KernelError,
+        earliest: Timestamp,
+    },
     Db(DbError),
+}
+
+impl From<ChangeError> for PgSettingsError {
+    fn from(error: ChangeError) -> Self {
+        match error {
+            ChangeError::Refused(e) => Self::Domain(e),
+            ChangeError::TooSoon { error, earliest } => Self::TooSoon { error, earliest },
+        }
+    }
 }
 
 impl From<KernelError> for PgSettingsError {
@@ -85,7 +99,28 @@ impl PgSettingsStore {
                 let mut port = tx::PgSettingsTx { tx, org: actor.org };
                 change_setting(&mut port, authorize, actor, cmd, audit)
                     .await
-                    .map_err(PgSettingsError::Domain)
+                    .map_err(PgSettingsError::from)
+            })
+        })
+        .await
+    }
+
+    pub async fn plan_setting<A>(
+        &self,
+        actor: Actor,
+        cmd: ChangeSetting,
+        authorize: A,
+    ) -> Result<SettingChangePlan, PgSettingsError>
+    where
+        A: FnOnce(&ChangeFacts) -> Result<(), KernelError> + Send + 'static,
+    {
+        with_org_conn(&self.pool, actor.org, move |tx| {
+            Box::pin(async move {
+                let mut port = tx::PgSettingsTx { tx, org: actor.org };
+                plan_setting(&mut port, authorize, actor, cmd, true)
+                    .await
+                    .map(|(plan, _)| plan)
+                    .map_err(PgSettingsError::from)
             })
         })
         .await

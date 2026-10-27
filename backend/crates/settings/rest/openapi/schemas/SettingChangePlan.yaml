@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [key, scope_entity_id, value, effective_from, direction, path, requires, earliest_effective_from]
+properties:
+  key:
+    type: string
+  scope_entity_id:
+    allOf: [{$ref: '#/components/schemas/Uuid'}]
+    nullable: true
+  value:
+    $ref: '#/components/schemas/SettingValue'
+  effective_from:
+    $ref: '#/components/schemas/Timestamp'
+  direction:
+    $ref: '#/components/schemas/SettingDirection'
+  path:
+    type: string
+    enum: [direct, step_up, step_up_delayed]
+  requires:
+    type: object
+    additionalProperties: false
+    required: [reason, step_up, second_person]
+    properties:
+      reason:
+        type: boolean
+        enum: [true]
+      step_up:
+        type: boolean
+      second_person:
+        type: boolean
+        enum: [false]
+  earliest_effective_from:
+    $ref: '#/components/schemas/Timestamp'

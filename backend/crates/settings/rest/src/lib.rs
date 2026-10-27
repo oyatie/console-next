@@ -18,6 +18,7 @@ pub use openapi::OPENAPI_FRAGMENT;
 
 pub mod authz;
 pub use authz::authorize_change;
+pub use console_settings_application::SettingChangePlan;
 
 mod error;
 pub mod reason_codes;
@@ -125,10 +126,17 @@ struct ChangeRequest {
     step_up_assertion_id: Option<Uuid>,
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct ChangeQuery {
+    #[serde(default)]
+    dry_run: bool,
+}
+
 async fn change(
     State(state): State<SettingsRestState>,
     Extension(principal): Extension<Principal>,
     Path(key): Path<String>,
+    Query(query): Query<ChangeQuery>,
     Json(body): Json<ChangeRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     let audit = current_audit_context()
@@ -146,13 +154,21 @@ async fn change(
         reason_note: body.reason_note,
         step_up_assertion_id: body.step_up_assertion_id,
     };
+    if query.dry_run {
+        let plan = state
+            .store
+            .plan_setting(actor, cmd, move |facts| authorize_change(&principal, facts))
+            .await?;
+        tracing::info!(path = plan.path, direction = ?plan.direction, "settings change planned");
+        return Ok((axum::Extension(plan.clone()), Json(plan)).into_response());
+    }
     let view = state
         .store
         .change_setting(actor, cmd, (audit.trace, audit.request), move |facts| {
             authorize_change(&principal, facts)
         })
         .await?;
-    Ok((StatusCode::CREATED, Json(view)))
+    Ok((StatusCode::CREATED, Json(view)).into_response())
 }
 
 fn parse_key(raw: &str) -> Result<SettingKey, ApiError> {

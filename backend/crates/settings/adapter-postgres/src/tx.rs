@@ -7,7 +7,7 @@ use crate::read::{db_error, load_rows_in_tx, parse_direction};
 use crate::reason_codes::validate_reason_in_tx;
 use console_kernel_core::{KernelError, OrgId};
 use console_settings_application::{
-    Actor, InsertedOverride, NewOverride, SettingsStore, StoreFacts,
+    Actor, ChangeError, InsertedOverride, NewOverride, SettingsStore, StoreFacts,
 };
 use console_settings_domain::code_lists::{ReasonDomain, ValidReason};
 use console_settings_domain::{
@@ -98,7 +98,7 @@ impl SettingsStore for PgSettingsTx<'_, '_> {
         Ok(rows.remove(&key).unwrap_or_default())
     }
 
-    async fn insert(&mut self, row: NewOverride) -> Result<InsertedOverride, KernelError> {
+    async fn insert(&mut self, row: NewOverride) -> Result<InsertedOverride, ChangeError> {
         let value =
             serde_json::to_value(row.value).map_err(|e| KernelError::internal(e.to_string()))?;
         let inserted = sqlx::query(
@@ -129,7 +129,7 @@ impl SettingsStore for PgSettingsTx<'_, '_> {
     }
 }
 
-fn insert_error(row: &NewOverride, error: sqlx::Error) -> KernelError {
+fn insert_error(row: &NewOverride, error: sqlx::Error) -> ChangeError {
     let key = row.key;
     if let sqlx::Error::Database(db) = &error {
         match db.code().as_deref() {
@@ -156,10 +156,11 @@ fn insert_error(row: &NewOverride, error: sqlx::Error) -> KernelError {
                     "a value for this setting already takes effect at that time",
                 )
                 .with_code("setting_effective_from_taken")
-                .with_field("effective_from");
+                .with_field("effective_from")
+                .into();
             }
             _ => {}
         }
     }
-    db_error(error)
+    db_error(error).into()
 }

@@ -13854,6 +13854,10 @@ const SETTINGS_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../../settings/rest/openapi/schemas/SettingChange.yaml"),
     },
     NamedYaml {
+        name: "SettingChangePlan",
+        body: include_str!("../../settings/rest/openapi/schemas/SettingChangePlan.yaml"),
+    },
+    NamedYaml {
         name: "SettingChangeRequest",
         body: include_str!("../../settings/rest/openapi/schemas/SettingChangeRequest.yaml"),
     },

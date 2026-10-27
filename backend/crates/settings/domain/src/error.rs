@@ -33,7 +33,7 @@ impl SettingError {
             Self::InvalidValue(_) => "setting_value_invalid",
             Self::OutOfRange(_) => "setting_out_of_range",
             Self::Backdated(_) => "setting_backdated",
-            Self::LooseningTooSoon { .. } => "setting_loosening_delay",
+            Self::LooseningTooSoon { .. } => "setting_loosening_too_soon",
             Self::FactUndeclared(_) => "setting_fact_undeclared",
         }
     }

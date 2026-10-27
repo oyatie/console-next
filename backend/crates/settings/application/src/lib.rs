@@ -9,16 +9,16 @@
 //! Layer: application. Depends on the settings domain and the kernel; no IO.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+pub mod plan;
 pub mod reason_codes;
+pub use plan::{ChangeError, SettingChangePlan, plan_setting};
 
 use console_kernel_core::{
     AuditAction, AuditEvent, AuditRequestContext, KernelError, OrgId, Timestamp, TraceContext,
     UserId,
 };
 use console_settings_domain::code_lists::ValidReason;
-use console_settings_domain::{
-    Direction, OverrideRow, SettingError, SettingKey, SettingValue, check_change, resolve,
-};
+use console_settings_domain::{Direction, OverrideRow, SettingKey, SettingValue};
 use serde::Serialize;
 use std::future::Future;
 use uuid::Uuid;
@@ -87,7 +87,7 @@ pub trait SettingsStore {
     fn insert(
         &mut self,
         row: NewOverride,
-    ) -> impl Future<Output = Result<InsertedOverride, KernelError>> + Send;
+    ) -> impl Future<Output = Result<InsertedOverride, ChangeError>> + Send;
 }
 
 /// The request to change one setting.
@@ -138,7 +138,7 @@ pub struct SettingChangeView {
 ///
 /// # Errors
 /// - `setting_unknown_key` (422) for a key the roster does not have;
-/// - a coded [`SettingError`] for the first change rule the request breaks;
+/// - a coded [`console_settings_domain::SettingError`] for the first change rule the request breaks;
 /// - whatever `authorize` refuses with (fail closed);
 /// - store errors as they come.
 pub async fn change_setting<S, A>(
@@ -147,71 +147,22 @@ pub async fn change_setting<S, A>(
     actor: Actor,
     cmd: ChangeSetting,
     (trace, request): (TraceContext, AuditRequestContext),
-) -> Result<(SettingChangeView, Vec<AuditEvent>), KernelError>
+) -> Result<(SettingChangeView, Vec<AuditEvent>), ChangeError>
 where
     S: SettingsStore + Send,
     A: FnOnce(&ChangeFacts) -> Result<(), KernelError> + Send,
 {
-    let key: SettingKey = cmd.key.parse().map_err(|_| unknown_key(&cmd.key))?;
-    let valid_reason = store
-        .validate_reason(&cmd.reason_code, cmd.reason_note.as_deref())
-        .await?;
-    let facts = store.facts().await?;
-    let effective_from = cmd.effective_from.unwrap_or(facts.now);
-    let rows = store.rows(key, cmd.scope_entity_id).await?;
-    let in_force = match resolve(key, &rows, cmd.scope_entity_id, effective_from) {
-        Ok(resolved) => Some(resolved.value),
-        Err(SettingError::FactUndeclared(_)) => None,
-        Err(other) => return Err(other.into()),
-    };
-    let accepted = check_change(
-        key,
-        &cmd.value,
-        effective_from,
-        facts.now,
-        in_force,
-        facts.onboarding,
-    )?;
-    let step_up = store
-        .resolve_step_up(
-            actor,
-            cmd.step_up_assertion_id,
-            cmd.scope_entity_id,
-            key,
-            &accepted.value,
-        )
-        .await?;
-    authorize(&ChangeFacts {
-        key,
-        direction: accepted.direction,
-        step_up,
-        step_up_assertion_id: cmd.step_up_assertion_id,
-        scope_entity_id: cmd.scope_entity_id,
-    })?;
-    let step_up_assertion_id = if step_up {
-        cmd.step_up_assertion_id
-    } else {
-        None
-    };
-    let inserted = store
-        .insert(NewOverride {
-            key,
-            scope_entity_id: cmd.scope_entity_id,
-            value: accepted.value,
-            effective_from,
-            set_by: actor.user,
-            reason_code: valid_reason.code.clone(),
-            reason_note: valid_reason.note,
-            step_up_assertion_id,
-            now: facts.now,
-        })
-        .await?;
+    let (plan, row) = plan_setting(store, authorize, actor, cmd, false).await?;
+    let step_up_assertion_id = row.step_up_assertion_id;
+    let reason_code = row.reason_code.clone();
+    let now = row.now;
+    let inserted = store.insert(row).await?;
     let view = SettingChangeView {
         id: inserted.id,
-        key,
-        scope_entity_id: cmd.scope_entity_id,
-        value: accepted.value,
-        effective_from,
+        key: plan.key,
+        scope_entity_id: plan.scope_entity_id,
+        value: plan.value,
+        effective_from: plan.effective_from,
         direction: inserted.direction,
         onboarding_exempt: inserted.onboarding_exempt,
     };
@@ -220,7 +171,7 @@ where
     // what it keys on. Add with BW-29's security-contact channel.
     let mut after =
         serde_json::to_value(&view).map_err(|e| KernelError::internal(e.to_string()))?;
-    after["reason_code"] = valid_reason.code.into();
+    after["reason_code"] = reason_code.into();
     after["step_up_assertion_id"] = serde_json::json!(step_up_assertion_id);
     let event = AuditEvent::new(
         Some(actor.user),
@@ -228,7 +179,7 @@ where
         "tenant_setting_override",
         view.id.to_string(),
         trace,
-        facts.now,
+        now,
     )
     .with_org(actor.org)
     .with_request_context(request)

@@ -52,7 +52,11 @@ pub async fn hire_someone(pool: &PgPool, org: OrgId) {
 
 pub fn err_code(err: &PgSettingsError) -> &'static str {
     match err {
-        PgSettingsError::Domain(KernelError { code: Some(c), .. }) => c,
+        PgSettingsError::Domain(KernelError { code: Some(c), .. })
+        | PgSettingsError::TooSoon {
+            error: KernelError { code: Some(c), .. },
+            ..
+        } => c,
         other => panic!("expected a coded refusal, got {other:?}"),
     }
 }

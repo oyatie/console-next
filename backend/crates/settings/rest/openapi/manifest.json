@@ -28,6 +28,7 @@
     "ReasonCodeSourceStats",
     "ReasonCodeUpdateRequest",
     "SettingChange",
+    "SettingChangePlan",
     "SettingChangeRequest",
     "SettingDirection",
     "SettingEntry",
