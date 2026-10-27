@@ -12,7 +12,9 @@ for (const intent of ["hover", "focus"] as const) {
     let requests = 0;
     let release!: () => void;
     const held = new Promise<void>(resolve => { release = resolve; });
-    await page.route("**/ui/date/date-calendar.tsx*", async route => {
+    // The dev server serves the source module; the prebuilt suite serves the hashed chunk.
+    const calendarChunk = (url: URL) => /\/ui\/date\/date-calendar\.tsx$|\/assets\/date-calendar-[^/]+\.js$/.test(url.pathname);
+    await page.route(calendarChunk, async route => {
       requests++;
       await held;
       await route.continue();
@@ -35,7 +37,7 @@ for (const intent of ["hover", "focus"] as const) {
       await expect(calendar).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(calendar).toHaveCount(0);
-      const delivered = page.waitForResponse("**/ui/date/date-calendar.tsx*");
+      const delivered = page.waitForResponse(response => calendarChunk(new URL(response.url())));
       release();
       await delivered;
       await expect(calendar).toHaveCount(0);

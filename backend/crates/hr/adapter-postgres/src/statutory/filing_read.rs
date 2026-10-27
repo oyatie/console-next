@@ -5,12 +5,10 @@ use console_compliance_domain::statutory::{Insurer, StatutoryRegister};
 use console_hr_domain::text::parse_yyyy_mm_dd;
 use sqlx::{Row, postgres::PgRow};
 
-pub(super) async fn task(
+pub(super) fn task(
     row: PgRow,
     register: &StatutoryRegister,
-    conn: &mut sqlx::PgConnection,
 ) -> Result<Option<FilingTask>, HrError> {
-    let zone: String = row.try_get("time_zone")?;
     let today: time::Date = row.try_get("today")?;
     let insurer: String = row.try_get("insurer")?;
     let kind: String = row.try_get("kind")?;
@@ -60,18 +58,7 @@ pub(super) async fn task(
         return Ok(None);
     };
     let on = assessment.on;
-    let source_created: time::OffsetDateTime = row.try_get("created_at")?;
-    let created_at = if kind == "AGE60" {
-        let midnight: time::OffsetDateTime =
-            sqlx::query_scalar("SELECT $1::date::timestamp AT TIME ZONE $2")
-                .bind(on)
-                .bind(&zone)
-                .fetch_one(conn)
-                .await?;
-        source_created.max(midnight)
-    } else {
-        source_created
-    };
+    let created_at = row.try_get("created_at")?;
     effective_date = on.to_string();
     let dates = assessment.dates;
     let rule = assessment.rule;

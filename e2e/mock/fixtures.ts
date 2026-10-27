@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { components } from "@console/api";
+import { readRequirement, routeReads } from "../../apps/web/src/routes/route-reads";
 
 type S = components["schemas"];
 export const AT = "2026-10-26T09:00:00Z";
@@ -19,6 +20,26 @@ export const authz: S["MeAuthzResponse"] = {
   authority: "advisory_ui_only", source: "cedar", user_id: user.id, org_id: id(2), roles: [], branch_scope: { kind: "all" },
   capabilities: ["employee_directory_read", "org_change_read"].map(feature => ({ feature, permission: "allow", branch_scope: { kind: "all" }, org_wide: true, scoped: false })),
 };
+/** Match the browser route, including parameters; signed-in-only pages need no effective grants. */
+export function screenAccess(path: string, phase: S["AccessEffective"]["phase"] = "OPERATING"): S["AccessEffective"] {
+  const pathname = path.split("?")[0]!;
+  const segments = pathname.split("/");
+  const routes = Object.keys(routeReads) as (keyof typeof routeReads)[];
+  const route = routes.find(route => route === pathname) ?? routes.find(route => {
+    const pattern = route.split("/");
+    return pattern.length === segments.length && pattern.every((part, i) => part.startsWith("$") ? Boolean(segments[i]) : part === segments[i]);
+  });
+  const need = route && readRequirement(route);
+  const requirements = need ? "allOf" in need ? need.allOf : [need] : [];
+  const entries: S["AccessEffectiveEntry"][] = requirements.filter(need => need.scopes?.length !== 0).map(need => ({
+    domain: need.domain, level: need.level, enforcement: "ENFORCED",
+    scope: { kind: need.tenant ? "TENANT" : need.scopes?.[0] ?? "TENANT", include_descendants: true },
+    grant_id: id(90), role_id: id(91), role_name_ko: "화면 검증 역할", valid_from: AT, caveats: [],
+  }));
+  return { account_id: user.id, is_ops: false, phase, as_of: AT,
+    entries: entries.filter((entry, i) => entries.findIndex(other => other.domain === entry.domain && other.level === entry.level && other.scope.kind === entry.scope.kind) === i),
+  };
+}
 export const checklist: S["SetupChecklist"] = {
   phase: "OPERATING", steps: [], done: 0, total: 0, go_live_at: "2026-01-01T00:00:00Z",
   summary: { people: 0, placed: 0, unplaced: 0, entity_unknown: 0, progress: 100 },

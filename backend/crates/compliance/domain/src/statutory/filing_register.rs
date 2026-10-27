@@ -2,6 +2,10 @@ use super::{StatutoryRegister, codes, filing, reject_overlaps};
 use console_kernel_core::KernelError;
 use time::Date;
 impl StatutoryRegister {
+    pub fn filing_rules(&self) -> &[filing::FilingRule] {
+        &self.filing_rules
+    }
+
     pub fn first_filing_date(
         &self,
         insurer: &str,

@@ -18,7 +18,6 @@ const run: components["schemas"]["EmployeeImportRun"] = {
 export async function mockPeopleImport(page: Page, state: PeopleImportState) {
   // LAND-ORDER: reuse the shared shell until UI-DECOUPLE can spread this lane's screen records.
   const shell = await mockScreen(page, screens[0], "empty");
-  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
   let recovering = false;

@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import type { components } from "@console/api";
 import { mockScreen } from "../mock/screen";
 import { mockRoute } from "../mock/route";
-import { AT, LONG_NAME, checklist, failure, id, user } from "../mock/fixtures";
+import { AT, LONG_NAME, checklist, failure, id, screenAccess, user } from "../mock/fixtures";
 import { screens, type State } from "./registry";
 
 type S = components["schemas"];
@@ -43,7 +43,7 @@ export async function mockAccessScreen(page: Page, screen: AccessScreen, state: 
   };
   await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: { ...user, tenant: { ...user.tenant!, phase } } });
   await mockRoute(page, "get", "/api/v1/onboarding/checklist", { status: 200, json: { ...checklist, phase } });
-  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: false, phase, as_of: AT, entries: [] } });
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: screenAccess(screen.path, phase) });
   await mockRoute(page, "get", "/api/v1/access/ops", { status: 200, json: { account_id: id(20), display_name: "운영 계정" } });
   await mockRoute(page, "get", "/api/v1/access/catalog", { status: 200, json: {
     domains: [{ domain: "hr_basic", grantable: true, levels: ["view", "edit"], operations: [] }],

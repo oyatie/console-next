@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { Page } from "@playwright/test";
 import { mockRoute } from "./route";
-import { AT, authz, checklist, employees, facets, failure, id, inbox, structure, token, user } from "./fixtures";
+import { authz, checklist, employees, facets, failure, id, inbox, screenAccess, structure, token, user } from "./fixtures";
 import { orgChange, orgChanges } from "./org-changes";
 import type { OrgChangeState, Screen, State } from "../states/registry";
 
@@ -27,7 +27,9 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "get", "/api/v1/branches", { status: 200, json: [] });
   await mockRoute(page, "get", "/api/v1/workplace-kinds", { status: 200, json: { items: [] } });
   await mockRoute(page, "get", "/api/v1/access/granters", { status: 200, json: { count: 1, names: ["김권한담당"] } });
-  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: false, phase: "OPERATING", as_of: AT, entries: [] } });
+  await mockRoute(page, "get", "/api/v1/access/me", request => ({ status: 200,
+    json: screenAccess(new URL(request.headers().referer ?? request.url()).pathname),
+  }));
   await mockRoute(page, "get", "/api/v1/org-structure/change-dates", { status: 200, json: { items: [] } });
   await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: { items: [] } });
   // route.fulfill buffers bodies; a browser stream keeps the shell healthy without fake reconnects.
