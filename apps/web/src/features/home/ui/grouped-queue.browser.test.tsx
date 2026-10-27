@@ -36,7 +36,8 @@ beforeAll(async () => {
     }],
   });
   await server.listen();
-  for (const engine of [chromium, firefox]) {
+  // Firefox runs with the cross-browser suite (E2E_XBROWSER=1); CI installs Chromium only.
+  for (const engine of process.env.E2E_XBROWSER === "1" ? [chromium, firefox] : [chromium]) {
     const browser = await engine.launch();
     const page = await browser.newPage();
     sessions.push({ browser, page });
