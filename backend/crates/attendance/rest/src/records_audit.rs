@@ -5,6 +5,38 @@ use axum::http::{Method, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use console_platform_authz::Principal;
+use console_platform_request_context::audit_context::access_log::{AccessRecord, record_access};
+use uuid::Uuid;
+
+pub(super) async fn read(
+    state: &AttendanceRestState,
+    principal: &Principal,
+    action: &'static str,
+    target_id: String,
+    subject_ids: &[Uuid],
+    reader_subject: Option<Uuid>,
+) -> Result<(), RestError> {
+    record_access(
+        state.store.pool(),
+        principal,
+        AccessRecord {
+            action,
+            target_type: "employee",
+            target_id,
+            subject_ids,
+            reader_subject,
+            details: serde_json::json!({}),
+        },
+    )
+    .await
+    .map_err(|_| {
+        RestError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "unavailable",
+            "attendance access record could not be recorded",
+        )
+    })
+}
 
 pub(super) async fn record(
     state: &AttendanceRestState,

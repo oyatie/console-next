@@ -105,7 +105,8 @@ async fn days(
     h: HeaderMap,
     AttendanceQuery(q): AttendanceQuery<DaysQuery>,
 ) -> Result<Json<DayBoard>, RestError> {
-    let c = caller(&principal(&s, &h).await?, READ)?;
+    let p = principal(&s, &h).await?;
+    let c = caller(&p, READ)?;
     let query = BoardQuery {
         date: Some(parse_date(&q.date, "date")?),
         workplace_id: q.workplace_id,
@@ -114,12 +115,24 @@ async fn days(
         no_schedule_only: q.no_schedule_only.unwrap_or(false),
         all_rows: q.rows.is_some(),
     };
-    Ok(Json(
-        s.store
-            .day_board(&c, query)
-            .await
-            .map_err(RestError::schedule)?,
-    ))
+    let board = s
+        .store
+        .day_board(&c, query)
+        .await
+        .map_err(RestError::schedule)?;
+    let rows = || board.groups.iter().flat_map(|group| &group.rows);
+    let subjects = rows().map(|row| row.employee_id).collect::<Vec<_>>();
+    let own = rows().find(|row| row.own).map(|row| row.employee_id);
+    audit::read(
+        &s,
+        &p,
+        "attendance.day_read",
+        "query".into(),
+        &subjects,
+        own,
+    )
+    .await?;
+    Ok(Json(board))
 }
 
 #[derive(Deserialize)]
@@ -137,7 +150,8 @@ async fn month(
     h: HeaderMap,
     AttendanceQuery(q): AttendanceQuery<MonthQuery>,
 ) -> Result<Json<MonthGrid>, RestError> {
-    let c = caller(&principal(&s, &h).await?, READ)?;
+    let p = principal(&s, &h).await?;
+    let c = caller(&p, READ)?;
     let query = GridQuery {
         month: q.month,
         workplace_id: q.workplace_id,
@@ -145,12 +159,31 @@ async fn month(
         cursor: q.cursor,
         limit: q.limit.unwrap_or(100),
     };
-    Ok(Json(
-        s.store
-            .month_grid(&c, query)
-            .await
-            .map_err(RestError::schedule)?,
-    ))
+    let grid = s
+        .store
+        .month_grid(&c, query)
+        .await
+        .map_err(RestError::schedule)?;
+    let subjects = grid
+        .rows
+        .iter()
+        .map(|row| row.employee_id)
+        .collect::<Vec<_>>();
+    let own = grid
+        .rows
+        .iter()
+        .find(|row| row.own)
+        .map(|row| row.employee_id);
+    audit::read(
+        &s,
+        &p,
+        "attendance.month_read",
+        "query".into(),
+        &subjects,
+        own,
+    )
+    .await?;
+    Ok(Json(grid))
 }
 
 #[derive(Deserialize)]
@@ -165,13 +198,23 @@ async fn person_month(
     Path(id): Path<Uuid>,
     AttendanceQuery(q): AttendanceQuery<PersonMonthQuery>,
 ) -> Result<Json<PersonMonth>, RestError> {
-    let c = caller(&principal(&s, &h).await?, READ)?;
-    Ok(Json(
-        s.store
-            .person_month(&c, id, q.month)
-            .await
-            .map_err(RestError::schedule)?,
-    ))
+    let p = principal(&s, &h).await?;
+    let c = caller(&p, READ)?;
+    let detail = s
+        .store
+        .person_month(&c, id, q.month)
+        .await
+        .map_err(RestError::schedule)?;
+    audit::read(
+        &s,
+        &p,
+        "attendance.person_month_read",
+        id.to_string(),
+        &[detail.employee_id],
+        None,
+    )
+    .await?;
+    Ok(Json(detail))
 }
 
 async fn preview(
